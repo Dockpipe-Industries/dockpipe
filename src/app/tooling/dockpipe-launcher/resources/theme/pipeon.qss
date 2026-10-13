@@ -248,6 +248,7 @@ QGroupBox::title {
 }
 
 QPushButton#primaryButton,
+QPushButton#installRemoteProvider,
 QPushButton#secondaryButton,
 QPushButton#dangerButton {
     min-height: 26px;
@@ -267,6 +268,7 @@ QPushButton#primaryButton:pressed {
     padding-bottom: 9px;
 }
 
+QPushButton#installRemoteProvider,
 QPushButton#secondaryButton,
 QPushButton#dangerButton {
     padding: 10px 14px;
@@ -464,7 +466,7 @@ QLabel#cardStatus {
     border-radius: 5px;
 }
 
-QPushButton#remoteSetupNavigation, QPushButton#quietButton, QPushButton#cardLaunchButton {
+QPushButton#remoteSetupNavigation, QPushButton#reviewRemoteSetup, QPushButton#checkRemoteConnection, QPushButton#quietButton, QPushButton#cardLaunchButton {
     border: 1px solid transparent;
     border-radius: 7px;
     padding: 7px 10px;
@@ -475,7 +477,7 @@ QPushButton#cardLaunchButton {
     font-weight: 600;
 }
 
-QPushButton#remoteSetupNavigation:focus, QPushButton#quietButton:focus, QPushButton#cardLaunchButton:focus {
+QPushButton#remoteSetupNavigation:focus, QPushButton#reviewRemoteSetup:focus, QPushButton#checkRemoteConnection:focus, QPushButton#quietButton:focus, QPushButton#cardLaunchButton:focus {
     border-color: #508cca;
 }
 

@@ -250,6 +250,10 @@ QWidget *RemoteWidget::buildPairing()
     m_pairingAddress = textLabel(tr("Refresh Machines to see your configured remote address."));
     m_pairingAddress->setTextInteractionFlags(Qt::TextSelectableByMouse);
     layout->addWidget(m_pairingAddress);
+    auto *reviewSetup = new QPushButton(tr("Review remote setup…"));
+    reviewSetup->setObjectName(QStringLiteral("reviewRemoteSetup"));
+    connect(reviewSetup, &QPushButton::clicked, this, [this]() { showPage(Setup); });
+    layout->addWidget(reviewSetup, 0, Qt::AlignLeft);
     layout->addWidget(textLabel(tr("3. Compare and approve its code here"), "sectionTitle"));
     m_pairingHint = textLabel(tr("No requests yet. They appear here automatically while this page is open."));
     layout->addWidget(m_pairingHint);
@@ -343,7 +347,11 @@ QWidget *RemoteWidget::buildSetup()
     connect(back, &QPushButton::clicked, this, [this]() { showPage(Overview); });
     layout->addWidget(back, 0, Qt::AlignLeft);
     layout->addWidget(textLabel(tr("Set up remote access"), "sectionTitle"));
-    layout->addWidget(textLabel(tr("Choose an installed provider. It handles authentication and connects your machines through a broker.")));
+    layout->addWidget(textLabel(tr("Choose a provider to connect your machines. Install a provider package here if you don't have one yet.")));
+    m_existingConnection = textLabel(QString());
+    m_existingConnection->setObjectName(QStringLiteral("existingRemoteConnection"));
+    m_existingConnection->hide();
+    layout->addWidget(m_existingConnection);
     auto *form = new QFormLayout;
     form->setSpacing(12);
     m_resolver = new QComboBox;
@@ -352,16 +360,28 @@ QWidget *RemoteWidget::buildSetup()
     m_hostname->setObjectName(QStringLiteral("remoteHostname"));
     m_hostname->setPlaceholderText(tr("remote.example.com"));
     m_hostnameLabel = textLabel(tr("Public hostname (if required)"));
-    form->addRow(tr("Remote-access resolver"), m_resolver);
+    form->addRow(tr("Provider"), m_resolver);
     form->addRow(m_hostnameLabel, m_hostname);
     layout->addLayout(form);
+    m_installProvider = new QPushButton(tr("Install provider…"));
+    m_installProvider->setObjectName(QStringLiteral("installRemoteProvider"));
+    connect(m_installProvider, &QPushButton::clicked, this, &RemoteWidget::installProviderRequested);
+    layout->addWidget(m_installProvider, 0, Qt::AlignLeft);
     m_setupHint = textLabel(QString());
     m_setupHint->setObjectName(QStringLiteral("remoteSetupHint"));
     layout->addWidget(m_setupHint);
     m_setup = new QPushButton(tr("Set up remote access…"));
     m_setup->setObjectName(QStringLiteral("primaryButton"));
     layout->addWidget(m_setup, 0, Qt::AlignLeft);
-    connect(m_resolver, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &RemoteWidget::updateSetup);
+    auto *check = new QPushButton(tr("Check connection"));
+    check->setObjectName(QStringLiteral("checkRemoteConnection"));
+    m_actions.append(check);
+    connect(check, &QPushButton::clicked, this, &RemoteWidget::refresh);
+    layout->addWidget(check, 0, Qt::AlignLeft);
+    connect(m_resolver, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
+        m_preferredResolver = m_resolver->currentData().toString();
+        updateSetup();
+    });
     connect(m_hostname, &QLineEdit::textChanged, this, &RemoteWidget::updateSetup);
     connect(m_setup, &QPushButton::clicked, this, [this]() {
         const int index = m_resolver->currentIndex();
@@ -571,7 +591,7 @@ void RemoteWidget::decidePairing(bool approve)
 
 void RemoteWidget::setResolvers(const QVector<ResolverMeta> &resolvers)
 {
-    const QString selected = m_resolver->currentData().toString();
+    const QString selected = m_preferredResolver.isEmpty() ? m_resolver->currentData().toString() : m_preferredResolver;
     const QSignalBlocker blocker(m_resolver);
     m_resolver->clear();
     m_resolvers.clear();
@@ -590,6 +610,15 @@ void RemoteWidget::setResolvers(const QVector<ResolverMeta> &resolvers)
     updateSetup();
 }
 
+void RemoteWidget::selectResolver(const QString &name)
+{
+    m_preferredResolver = name;
+    const int index = m_resolver->findData(name);
+    if (index >= 0)
+        m_resolver->setCurrentIndex(index);
+    updateSetup();
+}
+
 void RemoteWidget::updateSetup()
 {
     const bool idle = !m_command.busy();
@@ -597,22 +626,26 @@ void RemoteWidget::updateSetup()
     const bool available = index >= 0 && index < m_resolvers.size();
     const bool hosted = available && m_resolvers[index].remoteSetup == "hosted";
     m_resolver->setEnabled(idle && available);
+    m_installProvider->setEnabled(idle);
+    m_installProvider->setText(available ? tr("Add provider…") : tr("Install provider…"));
     m_hostname->setVisible(available && !hosted);
     m_hostnameLabel->setVisible(available && !hosted);
     m_hostname->setEnabled(idle);
-    m_setup->setEnabled(idle && available);
+    m_setup->setEnabled(idle && available && (hosted || !m_hostname->text().trimmed().isEmpty()));
     m_setup->setText(hosted ? tr("Sign in and connect…") : tr("Set up remote access…"));
     if (!available) {
-        m_setupHint->setText(tr("No remote-access resolvers found. Install one from Packages, then refresh your workspace. If one is already installed, update the CLI to load provider details."));
+        m_setupHint->setText(tr("Install a provider to continue. You'll return here with it selected, ready to complete setup."));
         return;
     }
     const auto &resolver = m_resolvers[index];
     const QString mode = hosted ? tr("Hosted broker — the provider runs the service. No hostname or local broker setup is needed.")
                                 : tr("Broker on this computer — the provider connects it to your public hostname. Keep this computer available for remote work.");
-    QStringList details{resolver.name + "\n" + mode};
+    QStringList details{mode};
     if (!resolver.description.isEmpty())
         details.append(resolver.description);
-    details.append(tr("Setup opens a terminal for installation prompts and browser sign-in. Selecting a provider does not change your current connection."));
+    details.append(hosted
+        ? tr("Setup opens a terminal for browser sign-in and checks your connection. When it finishes, choose Check connection.")
+        : tr("Setup opens a terminal for installation and browser sign-in, then configures your tunnel, DNS and broker service. When it finishes, choose Check connection."));
     m_setupHint->setText(details.join("\n\n"));
 }
 
@@ -629,10 +662,15 @@ void RemoteWidget::refresh()
         const auto info = document.object();
         const auto broker = info.value("broker").toObject();
         const auto worker = info.value("worker").toObject();
+        m_existingConnection->hide();
         if (!broker.isEmpty()) {
             const auto resolver = broker.value("resolver").toObject();
             QString provider = resolver.value("title").toString();
             const QString name = resolver.value("name").toString();
+            if (name != m_savedResolver) {
+                m_savedResolver = name;
+                selectResolver(name);
+            }
             if (provider.isEmpty())
                 provider = name;
             if (!name.isEmpty() && provider != name)
@@ -641,9 +679,13 @@ void RemoteWidget::refresh()
             if (!version.isEmpty())
                 provider += " · " + version;
             if (provider.isEmpty())
-                provider = tr("Resolver not recorded by this older setup");
+                provider = tr("Choose your provider in Review remote setup.");
             const QString mode = broker.value("mode").toString() == "hosted" ? tr("Hosted broker") : tr("Broker on this computer");
             const QString address = broker.value("endpoint").toString();
+            m_existingConnection->setText(tr("Current remote address: %1\nUse the provider that manages this address.").arg(address));
+            m_existingConnection->show();
+            if (m_hostname->text().isEmpty())
+                m_hostname->setText(QUrl(address).host());
             m_connectionSummary->setText(provider + "\n" + mode + " · " + address);
             m_pairingAddress->setText(tr("Remote address: %1\nProvider: %2").arg(address, provider));
             refreshNodes();

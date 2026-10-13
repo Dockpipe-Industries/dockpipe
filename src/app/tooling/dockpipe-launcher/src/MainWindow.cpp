@@ -493,6 +493,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
             m_activityWidget->refreshLocal();
         }
     });
+    connect(m_remoteWidget, &RemoteWidget::installProviderRequested, this, [this]() {
+        PackageManagerDialog dialog(m_settings.projectFolder, this);
+        dialog.showRemoteProviders();
+        connect(&dialog, &PackageManagerDialog::packageInstalled, &dialog, [this, &dialog](const QString &name) {
+            m_remoteWidget->selectResolver(name);
+            QTimer::singleShot(0, &dialog, &QDialog::accept);
+        });
+        dialog.exec();
+        startWorkflowCatalogDiscovery();
+    });
     connect(m_remoteWidget, &RemoteWidget::nodesChanged, this, [this](const QStringList &nodes) {
         const QString selected = m_runTarget->currentData().toString();
         m_runTarget->clear();

@@ -40,7 +40,7 @@ int main(int argc, char **argv)
 case "$2" in
 list)
     if [ -f installed-marker ]; then
-        echo '{"packages":[{"name":"installed-tool","kind":"workflow","version":"1.0.0","source":"System","removable":false},{"name":"remote-tool","kind":"workflow","version":"1.2.3","source":"User","path":"/user/packages/workflows/dockpipe-workflow-remote-tool-1.2.3.tar.gz","removable":true}],"install_root":"/user/packages","warnings":[]}'
+        echo '{"packages":[{"name":"installed-tool","kind":"workflow","version":"1.0.0","source":"System","removable":false},{"name":"remote-tool","kind":"workflow","version":"1.2.3","size_bytes":2048,"source":"User","path":"/user/packages/workflows/dockpipe-workflow-remote-tool-1.2.3.tar.gz","removable":true}],"install_root":"/user/packages","warnings":[]}'
     else
         echo '{"packages":[{"name":"installed-tool","kind":"workflow","version":"1.0.0","source":"System","removable":false}],"install_root":"/user/packages","warnings":[]}'
     fi
@@ -49,7 +49,11 @@ catalog)
     if [ -f slow-catalog ]; then
         exec sleep 10
     fi
-    echo '{"manifest":"https://example.com/pinned/store.json","platform":"test-platform","packages":[{"name":"remote-tool","kind":"workflow","version":"1.2.3","sha256":"selection-digest"}]}'
+    if [ -f provider-catalog ]; then
+        echo '{"manifest":"https://example.com/pinned/store.json","platform":"test-platform","packages":[{"name":"example.tunnel","kind":"resolver","capability":"remote.edge","version":"1.0.0","sha256":"provider-digest","size_bytes":1073741824},{"name":"example.hosted","kind":"resolver","capability":"remote.broker","version":"1.0.0","sha256":"hosted-digest","size_bytes":-1},{"name":"unrelated","kind":"resolver","capability":"editor"},{"name":"misleading-workflow","kind":"workflow","capability":"remote.edge"}]}'
+        exit 0
+    fi
+    echo '{"manifest":"https://example.com/pinned/store.json","platform":"test-platform","packages":[{"name":"remote-tool","kind":"workflow","version":"1.2.3","sha256":"selection-digest","size_bytes":1572864}]}'
     ;;
 install)
     printf '%s\n' "$@" > install-args
@@ -92,6 +96,11 @@ esac
         return 1;
     }
     tabs->setCurrentIndex(1);
+    if (marketplace->item(0, 4)->text() != QStringLiteral("1.5 MiB")
+        || installed->item(0, 4)->text() != QStringLiteral("Not available")) {
+        std::fprintf(stderr, "Package download size or missing-size fallback is incorrect\n");
+        return 1;
+    }
     if (!install->isEnabled())
         return 1;
     install->click();
@@ -106,6 +115,8 @@ esac
         return 1;
     }
     if (!waitUntil([&]() { return installed->rowCount() == 2 && !cancel->isVisible(); }))
+        return 1;
+    if (installed->item(1, 4)->text() != QStringLiteral("2.0 KiB"))
         return 1;
     if (install->isEnabled() || install->text() != QStringLiteral("Installed")) {
         std::fprintf(stderr, "Marketplace still offers duplicate installation\n");
@@ -144,6 +155,36 @@ esac
     const QString screenshot = qEnvironmentVariable("DOCKPIPE_PACKAGE_TEST_SCREENSHOT");
     if (!screenshot.isEmpty())
         dialog.grab().save(screenshot);
+    QFile providerCatalog(directory.filePath(QStringLiteral("provider-catalog")));
+    if (!providerCatalog.open(QIODevice::WriteOnly))
+        return 1;
+    providerCatalog.close();
+    dialog.showRemoteProviders();
+    refresh->click();
+    if (!waitUntil([&]() { return marketplace->rowCount() == 2 && install->isEnabled(); })) {
+        std::fprintf(stderr, "Provider catalog must include only remote resolver capabilities\n");
+        return 1;
+    }
+    if (tabs->currentIndex() != 1)
+        return 1;
+    if (marketplace->item(0, 4)->text() != QStringLiteral("1.0 GiB")
+        || marketplace->item(1, 4)->text() != QStringLiteral("Not available"))
+        return 1;
+    QString installedProvider;
+    QObject::connect(&dialog, &PackageManagerDialog::packageInstalled, &dialog, [&](const QString &name) {
+        installedProvider = name;
+    });
+    if (!screenshot.isEmpty())
+        dialog.grab().save(screenshot + QStringLiteral("-providers.png"));
+    install->click();
+    if (!waitUntil([&]() { return installedProvider == QStringLiteral("example.tunnel"); }))
+        return 1;
+    arguments.close();
+    if (!arguments.open(QIODevice::ReadOnly)
+        || arguments.readAll() != "package\ninstall\n--remote\nhttps://example.com/pinned/store.json\n--kind\nresolver\n--name\nexample.tunnel\n--sha256\nprovider-digest\n") {
+        std::fprintf(stderr, "Provider installation did not use the pinned package selection\n");
+        return 1;
+    }
     settings.packageRemotes.clear();
     if (!settings.save() || !LauncherSettings::current().packageRemotes.isEmpty())
         return 1;

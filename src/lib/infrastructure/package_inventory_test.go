@@ -63,6 +63,13 @@ func TestInstalledPackageInventoryIncludesRuntimeStores(t *testing.T) {
 	}
 	sources := map[string]string{}
 	for _, entry := range inventory.Packages {
+		info, err := os.Stat(entry.Path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if entry.SizeBytes <= 0 || entry.SizeBytes != info.Size() {
+			t.Fatalf("inventory archive size does not match stored file: %+v", entry)
+		}
 		sources[entry.Name] = entry.Source
 		if entry.Removable != (entry.Source == "User") {
 			t.Fatalf("unexpected removal permission: %+v", entry)

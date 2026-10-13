@@ -1,0 +1,87 @@
+name: Notify Homebrew after staging publication
+
+# This must live on the default branch. The tap requires the entire source CI
+# attempt to have completed, so dispatching inside release.yml would race it.
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [staging]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Completed staging CI run to verify before notifying the tap
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: homebrew-staging-notification
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    if: >-
+      vars.HOMEBREW_SYNC_ENABLED == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
+    runs-on: ubuntu-latest
+    steps:
+      # Never execute the triggering branch's code in this privileged workflow.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Verify completed staging publication
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+          SOURCE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+        run: python3 release/packaging/homebrew/verify-dispatch.py
+
+      - name: Validate tap configuration
+        if: steps.source.outputs.published == 'true'
+        env:
+          TAP_OWNER: ${{ vars.HOMEBREW_TAP_OWNER }}
+          TAP_REPOSITORY: ${{ vars.HOMEBREW_TAP_REPOSITORY }}
+          TAP_REF: ${{ vars.HOMEBREW_TAP_REF }}
+          APP_CLIENT_ID: ${{ vars.HOMEBREW_APP_CLIENT_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.HOMEBREW_APP_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in TAP_OWNER TAP_REPOSITORY TAP_REF APP_CLIENT_ID APP_PRIVATE_KEY; do
+            [[ -n "${!name}" ]] || { echo "::error::Missing Homebrew setting: $name"; exit 1; }
+          done
+          [[ "$TAP_OWNER" =~ ^[A-Za-z0-9-]+$ && "$TAP_REPOSITORY" =~ ^[A-Za-z0-9_.-]+$ ]]
+
+      - name: Create token for the tap only
+        if: steps.source.outputs.published == 'true'
+        id: tap-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
+        with:
+          client-id: ${{ vars.HOMEBREW_APP_CLIENT_ID }}
+          private-key: ${{ secrets.HOMEBREW_APP_PRIVATE_KEY }}
+          owner: ${{ vars.HOMEBREW_TAP_OWNER }}
+          repositories: ${{ vars.HOMEBREW_TAP_REPOSITORY }}
+          permission-actions: write
+
+      - name: Request native Homebrew qualification and sync
+        if: steps.source.outputs.published == 'true'
+        env:
+          GH_TOKEN: ${{ steps.tap-token.outputs.token }}
+          TAP_OWNER: ${{ vars.HOMEBREW_TAP_OWNER }}
+          TAP_REPOSITORY: ${{ vars.HOMEBREW_TAP_REPOSITORY }}
+          TAP_REF: ${{ vars.HOMEBREW_TAP_REF }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run update-staging.yml --repo "$TAP_OWNER/$TAP_REPOSITORY" --ref "$TAP_REF"
+          echo 'Homebrew sync requested. The tap independently verifies the latest candidate and both native Mac installations before publishing.' >> "$GITHUB_STEP_SUMMARY"

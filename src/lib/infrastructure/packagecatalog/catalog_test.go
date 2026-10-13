@@ -55,6 +55,7 @@ func fixture(t *testing.T, archive []byte) (*Client, *httptest.Server, Entry) {
 	t.Helper()
 	digest := sha256.Sum256(archive)
 	entry := Entry{packagebuild.StoreArtifact{Name: "sample", Version: "1.2.3", Tarball: "dockpipe-workflow-sample-1.2.3.tar.gz", SHA256: hex.EncodeToString(digest[:])}, "workflow"}
+	entry.SizeBytes = int64(len(archive))
 	mux := http.NewServeMux()
 	mux.HandleFunc("/packages/latest.json", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `{"manifest":"releases/1/release.json"}`)
@@ -84,6 +85,9 @@ func TestCatalogInstallAndReplacement(t *testing.T) {
 	}
 	if len(catalog.Packages) != 1 || catalog.Packages[0].Name != "sample" || !strings.HasSuffix(catalog.Manifest, "/store/index.json") {
 		t.Fatalf("wrong catalog: %+v", catalog)
+	}
+	if catalog.Packages[0].SizeBytes != int64(len(archive)) {
+		t.Fatalf("catalog lost the archive size: %+v", catalog.Packages[0])
 	}
 	root := t.TempDir()
 	installed, err := client.Install(context.Background(), catalog, entry, root)
