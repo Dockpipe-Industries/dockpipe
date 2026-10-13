@@ -11,6 +11,9 @@ import (
 )
 
 func TestServiceDefinitionReplacementRequiresExplicitIntent(t *testing.T) {
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+		t.Skip("remote user services require Linux or macOS directory durability semantics")
+	}
 	root := t.TempDir()
 	definition := serviceDefinition{path: filepath.Join(root, "remote.service"), content: "new service\n"}
 	old := []byte("custom service\n")
