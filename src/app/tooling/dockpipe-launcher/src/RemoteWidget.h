@@ -21,8 +21,10 @@ public:
     void setWorkdir(const QString &workdir);
     void refresh();
     void setResolvers(const QVector<ResolverMeta> &resolvers);
+    void selectResolver(const QString &name);
 signals:
     void nodesChanged(const QStringList &nodes);
+    void installProviderRequested();
 private:
     QWidget *buildOverview();
     QWidget *buildPairing();
@@ -41,6 +43,8 @@ private:
     QLineEdit *m_hostname = nullptr;
     QLabel *m_hostnameLabel = nullptr;
     QLabel *m_setupHint = nullptr;
+    QLabel *m_existingConnection = nullptr;
+    QPushButton *m_installProvider = nullptr;
     QLabel *m_connectionSummary = nullptr;
     QLabel *m_pairingAddress = nullptr;
     QPushButton *m_setup = nullptr;
@@ -68,4 +72,6 @@ private:
     QPushButton *m_cancel = nullptr;
     QList<QPushButton *> m_actions;
     bool m_brokerAvailable = false;
+    QString m_preferredResolver;
+    QString m_savedResolver;
 };

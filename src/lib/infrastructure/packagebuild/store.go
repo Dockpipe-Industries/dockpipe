@@ -33,6 +33,7 @@ type StoreArtifact struct {
 	Version              string   `json:"version"`
 	Tarball              string   `json:"tarball"`
 	SHA256               string   `json:"sha256"`
+	SizeBytes            int64    `json:"size_bytes,omitempty"`
 	Provider             string   `json:"provider,omitempty"`
 	Capability           string   `json:"capability,omitempty"`
 	RequiresCapabilities []string `json:"requires_capabilities,omitempty"`
@@ -95,6 +96,24 @@ func BuildCompiledStore(packagesRoot, outDir, fallbackVersion, only string) (*St
 
 	if m.Packages.Core == nil && len(m.Packages.Workflows) == 0 && len(m.Packages.Resolvers) == 0 {
 		return nil, fmt.Errorf("no compiled packages under %s — run `dockpipe build` (or `dockpipe package compile all`) first", packagesRoot)
+	}
+
+	artifacts := []*StoreArtifact{}
+	if m.Packages.Core != nil {
+		artifacts = append(artifacts, m.Packages.Core)
+	}
+	for index := range m.Packages.Workflows {
+		artifacts = append(artifacts, &m.Packages.Workflows[index])
+	}
+	for index := range m.Packages.Resolvers {
+		artifacts = append(artifacts, &m.Packages.Resolvers[index])
+	}
+	for _, artifact := range artifacts {
+		info, err := os.Stat(filepath.Join(outDir, artifact.Tarball))
+		if err != nil {
+			return nil, fmt.Errorf("package archive size: %w", err)
+		}
+		artifact.SizeBytes = info.Size()
 	}
 
 	b, err := json.MarshalIndent(m, "", "  ")
@@ -373,6 +392,7 @@ func (a *StoreArtifact) UnmarshalJSON(data []byte) error {
 		Version              string   `json:"version"`
 		Tarball              string   `json:"tarball"`
 		SHA256               string   `json:"sha256"`
+		SizeBytes            int64    `json:"size_bytes,omitempty"`
 		Provider             string   `json:"provider,omitempty"`
 		Capability           string   `json:"capability,omitempty"`
 		RequiresCapabilities []string `json:"requires_capabilities,omitempty"`
@@ -386,6 +406,7 @@ func (a *StoreArtifact) UnmarshalJSON(data []byte) error {
 	a.Version = x.Version
 	a.Tarball = x.Tarball
 	a.SHA256 = x.SHA256
+	a.SizeBytes = x.SizeBytes
 	a.Provider = x.Provider
 	a.Capability = strings.TrimSpace(x.Capability)
 	if a.Capability == "" {

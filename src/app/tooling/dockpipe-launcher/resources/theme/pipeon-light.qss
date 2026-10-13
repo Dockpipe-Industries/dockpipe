@@ -56,11 +56,30 @@ QLabel#statusBadge[status="failed"] {
     color: #5c0000;
 }
 
+QDialog#packageManagerDialog, QDialog#packageManagerDialog QTextBrowser {
+    background-color: #f6f8fc;
+    color: #263449;
+}
+
+QDialog#packageManagerDialog QPushButton {
+    background-color: #edf1f7;
+    color: #263449;
+    border: 1px solid #c4cddd;
+    border-radius: 7px;
+    padding: 7px 14px;
+}
+
+QDialog#packageManagerDialog QPushButton:disabled {
+    color: #7b8799;
+}
+
+QPushButton#installRemoteProvider,
 QPushButton#secondaryButton {
     color: #1f1f1f;
     border: 1px solid #9a9a9a;
 }
 
+QPushButton#installRemoteProvider:hover,
 QPushButton#secondaryButton:hover {
     background-color: #dedede;
     color: #0a0a0a;
@@ -376,12 +395,12 @@ QLabel#cardStatus {
     color: #256147;
 }
 
-QPushButton#remoteSetupNavigation, QPushButton#quietButton {
+QPushButton#remoteSetupNavigation, QPushButton#reviewRemoteSetup, QPushButton#checkRemoteConnection, QPushButton#quietButton {
     background: transparent;
     color: #5e6b7e;
 }
 
-QPushButton#remoteSetupNavigation:hover, QPushButton#quietButton:hover {
+QPushButton#remoteSetupNavigation:hover, QPushButton#reviewRemoteSetup:hover, QPushButton#checkRemoteConnection:hover, QPushButton#quietButton:hover {
     background: #e8edf5;
     color: #25344a;
 }
@@ -411,8 +430,9 @@ QPushButton#primaryButton:disabled {
     color: #8591a2;
 }
 
+QPushButton#installRemoteProvider:disabled,
 QPushButton#secondaryButton:disabled,
-QPushButton#remoteSetupNavigation:disabled, QPushButton#quietButton:disabled {
+QPushButton#remoteSetupNavigation:disabled, QPushButton#reviewRemoteSetup:disabled, QPushButton#checkRemoteConnection:disabled, QPushButton#quietButton:disabled {
     color: #8591a2;
     background: transparent;
 }
