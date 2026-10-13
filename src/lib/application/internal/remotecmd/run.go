@@ -43,7 +43,7 @@ const usage = `dockpipe remote <command> [options]
   result  --id <id> [--out <new-private-directory>] Inspect/download a result
   cancel  --id <id>                               Request cancellation
   revoke  --id <node>                             Revoke a worker
-  service --role broker|worker                    Install a user service
+  service --role broker|worker                    Install a user service; --replace updates and restarts it
 All commands accept --state <directory>. Remote nodes currently target Linux/macOS.
 Profiles are local JSON: {"bench":{"workdir":"/absolute/checkout","workflow":"bench",
 "timeout_seconds":3600,"artifacts":["results/bench.json"]}}.
@@ -79,12 +79,16 @@ func Run(args []string, checkDependencies func(string) error) error {
 	flags.Var(&includes, "include", "additional source path inside workdir (repeatable)")
 	flags.Var(&dependencies, "dependency", "unpacked package directory to deliver (repeatable)")
 	flags.Var(&artifacts, "artifact", "exact result file relative to delivered workdir (repeatable)")
+	replaceService := flags.Bool("replace", false, "replace the user-service definition and restart it")
 	role := flags.String("role", "", "broker or worker service")
 	if err := flags.Parse(args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
 		}
 		return err
+	}
+	if *replaceService && command != "service" {
+		return errors.New("--replace is supported only by remote service")
 	}
 	if flags.NArg() != 0 {
 		return errors.New("unexpected remote positional arguments")
@@ -149,7 +153,7 @@ func Run(args []string, checkDependencies func(string) error) error {
 			}
 			return remoteio.RunWorker(ctx, root, executable, config)
 		case "service":
-			return installService(ctx, root, *role)
+			return installServiceWithReplacement(ctx, root, *role, *replaceService)
 		case "submit":
 			if *workflow != "" {
 				if *profile != "" {

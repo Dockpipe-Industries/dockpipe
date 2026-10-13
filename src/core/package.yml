@@ -1,8 +1,10 @@
 schema: 1
 name: dockpipe.core
-title: Dockpipe Core
-platforms: [windows, deb]
-description: Core runtime assets shipped with Dockpipe.
+title: Dockpipe core runtime
+catalog_type: core
+categories: [development]
+platforms: [windows, deb, macos]
+description: Runtime assets, execution profiles, and shared tools required by Dockpipe.
 kind: core
 build:
   source:

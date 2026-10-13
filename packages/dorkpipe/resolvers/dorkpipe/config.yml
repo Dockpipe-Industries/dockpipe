@@ -1,7 +1,10 @@
 name: dorkpipe
+title: DorkPipe automation assets
+catalog_type: integration
+categories: [ai, development]
 namespace: dockpipeproject
-platforms: [windows, deb]
-description: Domain asset pack (DorkPipe scripts and resources); not intended for direct run.
+platforms: [windows, deb, macos]
+description: Shared scripts and helper tools used by DorkPipe automation workflows; this package is not a standalone AI service.
 compile_hooks:
   - bash assets/scripts/package-consumer-artifacts.sh
 steps: []

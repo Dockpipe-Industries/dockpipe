@@ -1,18 +1,9 @@
 name: backlog.remote
+title: Remote backlog task runner
+catalog_type: workflow
+categories: [ai, development, testing]
 namespace: dockpipeproject
-description: >-
-  Inspect one explicit open backlog task, compile one bounded remote request, and record
-  fixture-backed dispatch, completion-candidate identity, and untrusted status, diff, result, and
-  validation-receipt evidence, then mechanically verify accepted patch structure and lexical
-  allowed-path containment, apply it only to an isolated temporary copy, and execute the immutable
-  required validation in an exact-input temporary workspace, then record one explicit local
-  semantic-review decision and emit readiness only for an approved, passed candidate, then require
-  a separate explicit local decision before rollback-safe application of the exact accepted patch
-  to the consumer checkout, then require one separately approved exact-path request before the
-  Dockpipe runtime creates a checkpoint, then require one distinct approved request before the
-  runtime publishes that exact commit to one reviewed remote branch ref, without invoking a live
-  provider, syncing, merging, or selecting another task.
-
+description: Prepare and verify bounded remote backlog tasks with reviewable evidence. The current delivery path uses fixtures and is intended for maintainers.
 docker_preflight: false
 platforms: [windows, deb]
 dependencies:

@@ -1,24 +1,26 @@
 name: dockpipe.cloudflare.r2infra
+title: Cloudflare R2 infrastructure
+catalog_type: workflow
+categories: [infrastructure, storage]
 namespace: dockpipe-cloudflare
-description: >-
-  Terraform-only for the Cloudflare R2 module under dockpipe.cloudflare.r2publish/terraform.
-  Secrets: vault / .env. Non-secret TF_VAR_* below. Follow with dockpipe.cloudflare.r2upload for objects.
-  PipeLang defaults are typed in IR2InfraConfig/R2InfraConfig and projected directly to matching env names.
-platforms: [windows, deb]
+description: Plan or apply Terraform configuration for Cloudflare R2 storage. Requires your own Cloudflare credentials and explicit infrastructure settings.
+platforms: [windows, deb, macos]
 dependencies:
   host:
     - id: bash
       command: bash
-      description: Required to run the Cloudflare R2 Terraform wrapper.
+      description: Required to run the Cloudflare R2 Terraform wrapper. On macOS, use Homebrew Bash 4.2+ on PATH.
       install:
         windows: winget install Git.Git
         deb: sudo apt-get update && sudo apt-get install -y bash
+        macos: brew install bash
     - id: terraform
       command: terraform
       description: Required to provision Cloudflare R2 infrastructure.
       install:
         windows: winget install Hashicorp.Terraform
         deb: sudo apt-get update && sudo apt-get install -y terraform
+        macos: brew install hashicorp/tap/terraform
 
 types:
   - models/IR2InfraConfig

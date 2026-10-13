@@ -2,9 +2,10 @@
 # Optional local sidecar stack (Ollama + Postgres): scripts/dorkpipe/dev-stack.sh up
 # Host-only fallback workflow: dorkpipe-self-analysis-host
 name: dorkpipe-self-analysis
-description: >-
-  Container-isolated DorkPipe run from packaged assets and packaged tooling.
-  Resolve artifacts and package state with dockpipe scope commands. Tear down sidecars with dev-stack.sh down when done.
+title: Repository analysis (container)
+catalog_type: workflow
+categories: [ai, development]
+description: Collect repository facts and prepare an AI handoff using the container execution path. Requires the configured DorkPipe tools.
 platforms: [windows, deb]
 dependencies:
   host:

@@ -52,10 +52,24 @@ Bash/Zsh startup configuration or a Fish `conf.d` file. Existing content is reta
 symlinks, conflicting files, and modified Dockpipe blocks are not replaced. Setup
 errors stay visible in the launcher without preventing it from opening.
 
-The wrapper uses Flatpak's normal app selection, forwards arguments and exit status,
-and retains the caller's working directory. Version/installation smoke probes and
-native launcher runs do not perform terminal setup. Remove the wrapper and the
-labelled PATH configuration when uninstalling the app.
+The wrapper uses Flatpak's normal app selection and forwards arguments and exit
+status. It resolves the caller's physical working directory, passes it explicitly
+with `--cwd`, and grants that directory filesystem access for this invocation.
+Mounted project folders outside the home directory therefore remain the target of
+commands such as `dockpipe init`. If the directory disappears or Flatpak cannot
+enter it, the command fails instead of initializing the home directory.
+
+Launcher startup upgrades the exact previous Dockpipe-generated shortcut even when
+it is already on PATH. User-modified shortcuts and native commands are preserved;
+updates use an atomic file replacement and retain executable permissions.
+Version/installation smoke probes and native launcher runs do not perform terminal
+setup. Remove the wrapper and labelled PATH configuration when uninstalling the app.
+
+For older bundles affected by [issue #127](https://github.com/Dockpipe-Industries/dockpipe/issues/127),
+explicitly select the project directory when invoking Flatpak directly. See the
+[installation guide](../../../../docs/install.md#flatpak-desktop-linux-amd64) for
+the command. The source fix must be included in a new bundle before launcher
+startup can update an installed shortcut.
 
 The launcher filters only the older Qt text-input-v3 warning for a null surface
 on leave, matching [Qt's treatment of destroyed surfaces as normal teardown](https://github.com/qt/qtbase/blob/dev/src/plugins/platforms/wayland/qwaylandtextinputv3.cpp).
@@ -154,24 +168,26 @@ Flatpak download contains both launcher and CLI. Native and Flatpak stores canno
 be substituted, including through pinned store URLs. Runtime branch upgrades
 require package rebuilds and qualification.
 
-Publication verified on **2026-10-10**: the
-[staging pointer](https://packages.staging.dockpipe.com/packages/latest.json) selects
-`0.6.3-staging.37959504785.1.4da6948415b9`. Its
-[release manifest](https://packages.staging.dockpipe.com/packages/candidates/0.6.3-staging.37959504785.1.4da6948415b9/release-manifest.json)
-records source `4da6948415b9ecb2af3d7ce7f5d3d1f38544498f`, 62 Flatpak store entries
-(core plus 61 optional artifacts), and the same
-[desktop bundle](https://packages.staging.dockpipe.com/packages/candidates/0.6.3-staging.37959504785.1.4da6948415b9/dockpipe-desktop_0.6.3_linux_amd64.flatpak)
-for both `cli` and `desktop` downloads. The bundle URL returned HTTP 200 and appears
-in the candidate's `SHA256SUMS.txt`. The matching
-[hosted Flatpak qualification run](https://github.com/Dockpipe-Industries/dockpipe/actions/runs/37959515012)
-succeeded. Use package-host URLs; the matching GitHub release did not attach the
-`.flatpak` asset. Recheck the pointer and candidate metadata for later versions.
+Use the [production release catalog](https://packages.dockpipe.com/packages/latest.json)
+to discover the current immutable release manifest. Its
+`downloads["linux-amd64-flatpak-org.kde.Platform-6.10"].desktop` entry names the
+bundle relative to the manifest directory. The same release supplies
+`SHA256SUMS.txt` and the matching Flatpak package store. Do not pin installation
+instructions to a historical staging candidate or assume a GitHub release has a
+Flatpak attachment. The [installation guide](../../../../docs/install.md#flatpak-desktop-linux-amd64)
+resolves the current catalog and verifies the bundle before installation.
+
+For pre-release qualification, select the
+[staging catalog](https://packages.staging.dockpipe.com/packages/latest.json)
+explicitly and keep its manifest, checksums and stores together. Published bundles
+currently retain the internal OSTree branch name `staging`; that branch name does
+not select the production or staging package host.
 
 Dependency/preflight checks cover package availability, not authenticated cloud
 operations, editor interaction, VM boot or all container lifecycle behavior. These
 still depend on the user's host tools, credentials and engine. Native Bazzite,
-Podman/SELinux behavior, ARM64 Flatpak builds, a signed/updating Flatpak remote and
-production-channel distribution remain separate qualification/publication work.
+Podman/SELinux behavior, ARM64 Flatpak builds and a signed/updating Flatpak remote
+remain separate qualification/publication work.
 Do not describe local or hosted checks as universal workflow parity.
 
 Local Linux amd64 qualification exercised all 61 optional artifacts in the Platform,

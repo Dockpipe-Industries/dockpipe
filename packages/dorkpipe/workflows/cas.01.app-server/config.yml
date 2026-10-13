@@ -1,16 +1,23 @@
 name: cas.01.app-server
+title: Codex App Server test harness
+catalog_type: workflow
+categories: [ai, testing]
 namespace: dockpipeproject
-description: Run the disposable CAS-01 App Server harness with evidence in workflow artifacts.
+description: Exercise an installed Codex App Server and collect disposable test evidence. Intended for integration testing.
 docker_preflight: false
-platforms: [windows, deb]
+platforms: [windows, deb, macos]
 dependencies:
   host:
     - id: bash
       command: bash
-      description: Runs the package-owned CAS-01 wrapper.
+      description: Runs the package-owned CAS-01 wrapper. On macOS, use Homebrew Bash 4.2+ on PATH.
+      install:
+        macos: brew install bash
     - id: go
       command: go
       description: Runs the standard-library-only harness.
+      install:
+        macos: brew install go
 steps:
   - id: probe
     kind: host

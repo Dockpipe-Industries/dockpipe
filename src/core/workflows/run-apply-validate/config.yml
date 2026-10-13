@@ -1,7 +1,10 @@
 # Pipeline: run → apply → validate (customize cmds for your stack: terraform, k8s, etc.)
 name: run-apply-validate
-description: Three sequential steps — run phase, apply phase, validate phase.
-platforms: [windows, deb]
+title: Three-stage workflow example
+catalog_type: workflow
+categories: [examples]
+description: A starter workflow with placeholder run, apply, and validation steps in containers.
+platforms: [windows, deb, macos]
 dependencies:
   host:
     - id: docker
@@ -10,6 +13,7 @@ dependencies:
       install:
         windows: winget install Docker.DockerDesktop
         deb: sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin
+        macos: brew install --cask docker
 
 steps:
   - id: run

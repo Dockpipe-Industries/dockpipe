@@ -1,8 +1,8 @@
 name: docs.optimize-orchestrate
-description: >-
-  Codex-led DorkPipe optimizer for docs.orchestrate. It reviews the latest target artifacts, lets
-  Codex make the code-change decision, writes a constrained patch proposal, and does not touch the
-  working tree.
+title: Documentation workflow evaluator
+catalog_type: workflow
+categories: [ai, documentation, testing]
+description: Evaluate documentation-review results and prepare a constrained improvement proposal. Leaves the working tree unchanged by default.
 platforms: [windows, deb]
 dependencies:
   host:

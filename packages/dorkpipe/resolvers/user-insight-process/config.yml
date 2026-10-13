@@ -1,18 +1,19 @@
 # Host-only: normalize DorkPipe package-scope analysis/queue.json → insights.json via the dorkpipe CLI.
 name: user-insight-process
-description: >-
-  Run the packaged user-insight processing host steps and optional export-by-category.
-  Uses the dorkpipe CLI user-insight commands. Does not treat user text as truth —
-  see docs/runtime/artifacts.md and resolvers/user-insight-process/README.md.
-platforms: [windows, deb]
+title: Process user feedback
+catalog_type: workflow
+categories: [documentation]
+description: Process recorded user feedback and export the results by category.
+platforms: [windows, deb, macos]
 dependencies:
   host:
     - id: bash
       command: bash
-      description: Required to run the packaged user-insight scripts.
+      description: Required to run the packaged user-insight scripts. On macOS, use Homebrew Bash 4.2+ on PATH.
       install:
         windows: winget install Git.Git
         deb: sudo apt-get update && sudo apt-get install -y bash
+        macos: brew install bash
 
 docker_preflight: false
 steps:
