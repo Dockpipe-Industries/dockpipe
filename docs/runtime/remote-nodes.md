@@ -31,6 +31,21 @@ host. Its title is **Cloudflare Tunnel remote edge**. The worker only needs the 
 The resolver was previously published as `cloudflare`; existing installs of that name
 are not renamed automatically. New setup commands use the qualified identity below.
 
+In **Machines → Set up remote access**, choose **Install provider** (or **Add provider**)
+to open the Marketplace filtered to remote-access resolver packages. Select a package
+and choose **Install**. The launcher uses the catalog's pinned version and checksum,
+returns to setup, refreshes installed providers and selects the package you installed.
+Choose its setup action to continue; installing or selecting a package alone does not
+change your remote connection. Other providers appear through their `remote.edge`
+or `remote.broker` package capability, without a Cloudflare-only launcher path.
+
+An existing connection keeps its remote address visible, including when it was created
+before provider metadata was saved. **Review remote setup** from the pairing page
+opens the provider selector and pre-fills the existing hostname. Select the provider
+that originally created the connection, then complete setup to verify its saved state
+and record its provider details. The launcher does not infer a provider from a hostname
+or silently replace an existing connection.
+
 ## Build the resolver
 
 Use a CLI built from this revision. Install it at a stable path before installing services:
@@ -67,6 +82,9 @@ dockpipe remote setup --resolver dockpipe.cloudflare.remote-edge --hostname benc
 This command authorizes its documented setup effects: browser login, one named tunnel, its DNS
 route, private local state, and a user service. Passwords and MFA stay in Cloudflare's browser flow.
 Setup reports its login, tunnel, DNS, and readiness stages and prints the next pairing command.
+The launcher's setup button starts this same flow in a terminal for interactive prompts
+and browser authentication; there is no command to type. When it finishes, choose
+**Check connection** in the launcher to reload the saved address and provider details.
 Cloudflared opens the browser itself; the resolver preserves desktop-session variables including
 XAUTHORITY and XDG desktop settings. If no window opens, follow cloudflared's printed login URL
 and keep the terminal open. A valid existing account certificate skips browser login explicitly.

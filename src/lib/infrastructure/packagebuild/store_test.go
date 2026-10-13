@@ -81,6 +81,7 @@ requires_capabilities: [cli.codex]
 	if dec.Packages.Core.Tarball == "" {
 		t.Fatal("empty core tarball in manifest")
 	}
+	assertStoreArchiveSizes(t, out, &dec)
 	if len(dec.Packages.Workflows) != 1 || dec.Packages.Workflows[0].Provider != "cloudflare" {
 		t.Fatalf("workflow provider in JSON: %+v", dec.Packages.Workflows)
 	}
@@ -180,10 +181,29 @@ capability: cli.codex
 	if len(m.Packages.Resolvers) != 1 || m.Packages.Resolvers[0].Name != "codex" {
 		t.Fatalf("resolvers: %+v", m.Packages.Resolvers)
 	}
+	assertStoreArchiveSizes(t, out, m)
 	if _, err := os.Stat(filepath.Join(out, "dockpipe-workflow-demo-0.6.0.tar.gz")); err != nil {
 		t.Fatalf("expected workflow tarball copy: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(out, "dockpipe-resolver-codex-0.6.0.tar.gz")); err != nil {
 		t.Fatalf("expected resolver tarball copy: %v", err)
+	}
+}
+
+func assertStoreArchiveSizes(t *testing.T, root string, manifest *StoreBuildManifest) {
+	t.Helper()
+	artifacts := append([]StoreArtifact{}, manifest.Packages.Workflows...)
+	artifacts = append(artifacts, manifest.Packages.Resolvers...)
+	if manifest.Packages.Core != nil {
+		artifacts = append(artifacts, *manifest.Packages.Core)
+	}
+	for _, artifact := range artifacts {
+		info, err := os.Stat(filepath.Join(root, artifact.Tarball))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if artifact.SizeBytes <= 0 || artifact.SizeBytes != info.Size() {
+			t.Fatalf("archive %s: reported %d bytes; actual %d", artifact.Tarball, artifact.SizeBytes, info.Size())
+		}
 	}
 }

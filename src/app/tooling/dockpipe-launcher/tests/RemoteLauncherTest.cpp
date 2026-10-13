@@ -4,6 +4,7 @@
 #include "DockerObservabilityWidget.h"
 #include "RemoteWidget.h"
 #include "RemoteRunDialog.h"
+#include "PackageManagerDialog.h"
 #include "LauncherSettings.h"
 #include "Theme.h"
 
@@ -24,6 +25,7 @@
 #include <QStackedWidget>
 #include <QTemporaryDir>
 #include <QThread>
+#include <QTimer>
 #include <functional>
 #include <cstdio>
 
@@ -63,7 +65,12 @@ int main(int argc, char **argv)
 case "$1:$2" in
 catalog:list)
   printf '{"workflows":[{"workflow_id":"build","display_name":"Build project","description":"Compile and verify the project","config_path":"%s/work/config.yml"},{"workflow_id":"editor","display_name":"Project editor","category":"app"}],"runtimes":["host"],"resolver_details":[{"name":"example.tunnel","title":"Example Tunnel","version":"1.2.0","capability":"remote.edge","remote_setup":"local"},{"name":"example.hosted","title":"Example Hosted","version":"2.0.0","capability":"remote.broker","remote_setup":"hosted"},{"name":"unrelated.tool","capability":"editor"}]}\n' "$DOCKPIPE_TEST_ROOT" ;;
-remote:info) echo '{"broker":{"mode":"local","endpoint":"https://remote.example.com","resolver":{"name":"example.tunnel","title":"Example Tunnel","version":"1.2.0"}}}' ;;
+remote:info)
+  if [ -f "$DOCKPIPE_TEST_ROOT/legacy-connection" ]; then
+    echo '{"broker":{"mode":"local","endpoint":"https://remote.example.com"}}'
+  else
+    echo '{"broker":{"mode":"local","endpoint":"https://remote.example.com","resolver":{"name":"example.tunnel","title":"Example Tunnel","version":"1.2.0"}}}'
+  fi ;;
 remote:nodes) echo '[{"node":"mac-mini","status":"paired"},{"node":"studio-invite","status":"invited"}]' ;;
 remote:pairings) echo '[{"node":"studio","code":"ABCD-1234-5678","status":"pending","expires_at":"2026-10-09T07:00:00Z"}]' ;;
 remote:pair)
@@ -72,6 +79,11 @@ remote:pair)
 remote:submit)
   printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/submit-args"
   echo '{"submission":{"bundle_hash":"abc123"},"files":["work/config.yml"],"bytes":100}' ;;
+package:list) echo '{"packages":[],"warnings":[],"install_root":"/example/packages"}' ;;
+package:catalog) echo '{"manifest":"https://example.com/pinned/store.json","platform":"test-platform","packages":[{"name":"example.hosted","kind":"resolver","capability":"remote.broker","version":"2.0.0","sha256":"provider-digest","size_bytes":1572864}]}' ;;
+package:install)
+  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/provider-install-args"
+  echo '{"path":"/example/packages/provider.tar.gz"}' ;;
 *) echo '{}' ;;
 esac
 )SH");
@@ -247,6 +259,47 @@ esac
     resolver->setCurrentIndex(0);
     if (!hostname->isVisible() || !setupHint->text().contains("Broker on this computer"))
         return 36;
+    if (hostname->text() != QStringLiteral("remote.example.com"))
+        return 37;
+    QFile legacy(directory.filePath(QStringLiteral("legacy-connection")));
+    if (!legacy.open(QIODevice::WriteOnly))
+        return 38;
+    legacy.close();
+    hostname->setText(QStringLiteral("edited.example.com"));
+    remote->refresh();
+    if (!waitUntil([&]() { return summary->text().contains("Choose your provider"); })
+        || summary->text().contains("older setup") || hostname->text() != "edited.example.com")
+        return 39;
+    remote->setResolvers({});
+    auto *installProvider = remote->findChild<QPushButton *>("installRemoteProvider");
+    auto *setupAction = machinePages->currentWidget()->findChild<QPushButton *>("primaryButton");
+    if (!installProvider || !setupAction || !waitUntil([&]() { return installProvider->isEnabled(); })
+        || installProvider->text() != "Install provider…" || setupAction->isEnabled())
+        return 40;
+    capture("-setup-missing-provider");
+    bool providerInstalled = false;
+    QTimer::singleShot(0, &window, [&]() {
+        auto *dialog = window.findChild<PackageManagerDialog *>();
+        if (!dialog)
+            return;
+        auto *install = dialog->findChild<QPushButton *>("installPackage");
+        if (!install || !waitUntil([&]() { return install->isEnabled(); })) {
+            dialog->reject();
+            return;
+        }
+        QObject::connect(dialog, &PackageManagerDialog::packageInstalled, &window, [&](const QString &name) {
+            providerInstalled = name == QStringLiteral("example.hosted");
+        });
+        if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE"))
+            dialog->grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + "-provider-marketplace.png");
+        install->click();
+    });
+    installProvider->click();
+    if (!providerInstalled || !waitUntil([&]() { return resolver->currentData().toString() == "example.hosted"; })
+        || hostname->isVisible() || machinePages->currentIndex() != 3)
+        return 41;
+    resolver->setCurrentIndex(0);
+    legacy.remove();
     for (auto *back : remote->findChildren<QPushButton *>()) {
         if (back->text() == "← Machines" && back->isVisible()) {
             back->click();

@@ -6,18 +6,18 @@ the CLI; workflows use the same YAML and package model in both.
 
 ## Install
 
-Start with the [installation guide](docs/install.md). Published staging options
+Start with the [installation guide](docs/install.md). Published release options
 include:
 
 | Platform | Desktop | CLI |
 | --- | --- | --- |
 | Linux | DEB launcher or Linux amd64 Flatpak bundle | DEB, RPM, APK, Arch or portable archive |
-| macOS | Homebrew staging cask or DMG | Homebrew staging formula or tarball |
+| macOS | DMG installer | Native tarball or portable installer |
 | Windows x64 | MSI with launcher | MSI CLI feature or ZIP |
 
-The [Flatpak instructions](docs/install.md#flatpak-desktop-staging-linux-amd64)
+The [Flatpak instructions](docs/install.md#flatpak-desktop-linux-amd64)
 cover KDE Platform 6.10, verified downloads and manual bundle updates. Bazzite and
-full Podman/SELinux qualification remain open. macOS staging DMGs are not yet
+full Podman/SELinux qualification remain open. macOS DMGs are not yet
 Developer ID signed and notarized.
 
 Installers include required core. Optional workflows and resolvers are selected
@@ -68,8 +68,8 @@ container tools, outputs and packaged child workflows.
 
 ## Use packages
 
-Open **Packages → Marketplace** in the launcher. For staging, first choose
-**Settings → Package Remotes → Use staging** and save.
+Open **Packages → Marketplace** in the launcher. Use
+**Settings → Package Remotes → Use production** for the stable catalog.
 
 [Find and use packages](docs/packages/package-quickstart.md) explains installation,
 dependencies, terminal commands and removal. A package can require host tools,
