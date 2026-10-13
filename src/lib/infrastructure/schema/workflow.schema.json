@@ -782,6 +782,9 @@
   },
   "properties": {
     "name": { "type": "string" },
+    "title": { "type": "string", "description": "Human-readable display name; name remains the stable workflow ID." },
+    "catalog_type": { "type": "string", "enum": ["app", "workflow", "integration", "core"] },
+    "categories": { "type": "array", "maxItems": 16, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$" } },
     "description": { "type": "string" },
     "category": {
       "type": "string",

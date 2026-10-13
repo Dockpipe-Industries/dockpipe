@@ -66,109 +66,82 @@ Use `arm64` filenames on ARM64. Launch **Dockpipe** from the application menu. R
 
 ### Flatpak desktop (Linux amd64)
 
-The release package host publishes `dockpipe-desktop_VERSION_linux_amd64.flatpak`.
-It installs **`com.dockpipe.Dockpipe`** with launcher, CLI,
-required core, Git, Docker CLI, Compose and Buildx. Optional Marketplace packages
-are downloaded separately. There is no published ARM64 Flatpak catalog or Dockpipe
-Flathub listing. Native DEB/RPM/APK/Arch packages and tarballs remain separate host
-CLI installation choices.
+Install the launcher and CLI together on **Linux x86_64 (amd64)**. Install
+Flatpak from your distribution first. DockPipe uses the **KDE Platform 6.10**
+runtime from Flathub; the DockPipe app itself is a separate download. ARM64
+Flatpak builds are not available.
 
-Install Flatpak using your distribution's instructions first. The app requires the
-**`org.kde.Platform//6.10` x86_64 runtime**; the SDK is only needed to build it.
-Set up the runtime in your user installation:
+**1. Add the runtime** (once):
 
 ```sh
 flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 flatpak install --user flathub org.kde.Platform/x86_64/6.10
 ```
 
-Flathub supplies the KDE runtime here, not the Dockpipe app. The bundle also carries
-that runtime-repository hint; it does not contain the runtime itself.
+**2. Download, verify and install the current release.** Run this block in Bash
+with `curl`, `jq` and `sha256sum` installed. It reads the current release catalog,
+then uses that same release for the bundle and checksum. It stops if a download
+or checksum check fails; there is no version number to edit.
 
-Use the current [release catalog](https://packages.dockpipe.com/packages/latest.json)
-to select one immutable release. The commands below require `curl`, `jq`, and
-`sha256sum`. Run them in a download directory and continue only when the checksum
-reports `OK`. The manifest supplies the bundle filename on the package host;
-do not construct a GitHub asset URL.
+```bash
+(
+    set -euo pipefail
+    mkdir -p "$HOME/Downloads/dockpipe"
+    cd "$HOME/Downloads/dockpipe"
 
-```sh
-origin=https://packages.dockpipe.com
-manifest=$(curl -fsSL "$origin/packages/latest.json" | jq -er '.manifest')
-base="$origin/${manifest%/*}"
-curl -fsSL "$origin/$manifest" -o release-manifest.json
-bundle=$(jq -er '.downloads["linux-amd64-flatpak-org.kde.Platform-6.10"].desktop' release-manifest.json)
-curl -fSL "$base/$bundle" -o "$bundle"
-curl -fsSL "$base/SHA256SUMS.txt" -o SHA256SUMS.txt
-awk -v file="$bundle" '$2 == file { print }' SHA256SUMS.txt > "$bundle.sha256"
-sha256sum --check "$bundle.sha256"
+    origin=https://packages.dockpipe.com
+    manifest=$(curl -fsSL "$origin/packages/latest.json" | jq -er '.manifest')
+    base="$origin/${manifest%/*}"
+    curl -fsSL "$origin/$manifest" -o release-manifest.json
+    bundle=$(jq -er '.downloads["linux-amd64-flatpak-org.kde.Platform-6.10"].desktop' release-manifest.json)
+    curl -fSL "$base/$bundle" -o "$bundle"
+    curl -fsSL "$base/SHA256SUMS.txt" -o SHA256SUMS.txt
+    awk -v file="$bundle" '$2 == file { print }' SHA256SUMS.txt > "$bundle.sha256"
+    sha256sum --check "$bundle.sha256"
+    flatpak install --user --or-update "./$bundle"
+)
 ```
 
-After the checksum succeeds, use the same shell and download directory:
+**3. Open DockPipe** from your application menu, or run:
 
 ```sh
-flatpak install --user --or-update "./$bundle"
 flatpak run com.dockpipe.Dockpipe
+```
+
+The launcher sets up a user-level `dockpipe` shortcut on its first start. Open a
+new terminal and run `dockpipe --version`. Existing native installations are
+preserved. You can always run the bundled CLI directly:
+
+```sh
 flatpak run --command=dockpipe com.dockpipe.Dockpipe --version
 ```
 
-**Terminal setup is automatic:** open Dockpipe after installing the Flatpak,
-then open a terminal and run `dockpipe --version`. The launcher creates
-`~/.local/bin/dockpipe` for your account and, when needed, adds that directory to
-Bash, Zsh, or Fish startup configuration. There is no separate enable step.
-Existing native commands and files are preserved. The shortcut uses the bundled
-CLI and the Flatpak's package storage.
-
-Flatpak bundles do not run host installation hooks, so this user-level integration
-finishes on the first launcher start. Older bundles can use the direct
-`flatpak run --command=dockpipe com.dockpipe.Dockpipe` command above until upgraded.
-If automatic setup cannot complete, the launcher reports the reason and remains
-usable. Custom or symlinked shell configuration is left unchanged. Other shells
-can invoke the shortcut by its full path. Remove the shortcut and its labelled
-PATH block when uninstalling Dockpipe.
-
-Normal app XDG data is separate from native
-Dockpipe data. Project-local packages and explicit data-root overrides still take
-precedence, so check those when sharing a project between native and Flatpak runs.
-
-**Desktop warnings:** Dockpipe uses a tray only when the desktop provides one;
-without a tray, closing the window exits the launcher. The Flatpak requests access
-to the tray watcher service rather than the entire session bus. A known Qt warning
-about a null Wayland surface during teardown is filtered narrowly in the launcher;
-other Qt warnings and errors remain visible. To include that diagnostic in a bug
-report, run:
+For commands that work on a project, pass its directory and filesystem access
+explicitly when bypassing the terminal shortcut. This also works around the
+mounted-directory shortcut bug in 0.6.13. Run from the intended project folder:
 
 ```sh
-flatpak run --env=DOCKPIPE_QT_DIAGNOSTICS=1 com.dockpipe.Dockpipe
+(
+    project_dir=$(pwd -P) || exit 1
+    flatpak run --command=dockpipe --cwd="$project_dir" \
+        --filesystem="$project_dir" com.dockpipe.Dockpipe init
+)
 ```
 
-Actual keyboard, focus, or window failures should still be reported with the
-desktop environment, Flatpak/runtime versions, and steps to reproduce them.
+**Updates:** close DockPipe and finish active workflows, then repeat step 2.
+`flatpak update` updates the KDE runtime, but does not download new DockPipe
+bundles. DockPipe does not yet provide an updating Flatpak remote.
 
-**Updates:** this is a standalone bundle, without an updating Dockpipe Flatpak
-remote. `flatpak update` can update the KDE runtime from Flathub, but does not fetch
-new Dockpipe bundles from the release catalog. Download and verify the newer
-release as above, close the launcher and finish active workflows, then run
-`flatpak install --user --or-update ./dockpipe-desktop_VERSION_linux_amd64.flatpak`
-with the new filename. See Flatpak's [bundle guidance](https://docs.flatpak.org/en/latest/single-file-bundles.html)
-and [install options](https://docs.flatpak.org/en/latest/flatpak-command-reference.html#flatpak-install).
+**Optional packages:** open **Settings → Package Remotes → Use production**,
+save, then open **Packages → Marketplace**. The Flatpak selects packages built
+for its architecture and runtime; native package stores are separate.
 
-**Packages:** in the Flatpak launcher, choose **Settings → Package Remotes → Use production**,
-save, then open **Packages → Marketplace**. Selection uses the running app's
-architecture and KDE runtime branch, currently `linux-amd64-flatpak-org.kde.Platform-6.10`.
-The catalog lists required core and optional artifacts; optional packages are not bundled apps. Native Dockpipe still selects native stores on the same machine. Missing or
-mismatched Flatpak stores fail explicitly, including pinned store URLs; there is no
-automatic native fallback. Marketplace packages are ordinary Dockpipe archives,
-not separate Flatpak apps, and are independent of the app-bundle update procedure.
-
-**Host integrations and limits:** container clients require a reachable host Docker
-or compatible Podman API socket; the app does not install or start an engine.
-Explicit Docker environment settings take priority over detected sockets. Editors,
-Codex/Claude, 1Password, QEMU and service/GPU management use explicit host bridges
-and require the host tools and authentication. The app requests home access,
-network, display/graphics, engine sockets and host execution permission. Local amd64
-tests and hosted CI do not qualify native Bazzite, full Podman/SELinux behavior,
-authenticated providers, VM boot or universal workflow parity. See the
-[host integration and qualification details](../release/packaging/desktop/flatpak/README.md).
+**Host tools:** container workflows need a running host Docker or compatible
+Podman API socket. Editors, provider CLIs and authentication must be installed
+on the host when a workflow uses them. The Flatpak includes Git, Docker CLI,
+Compose and Buildx; it does not install a host engine. See
+[host integration and platform limits](../release/packaging/desktop/flatpak/README.md)
+for permissions, terminal setup details and troubleshooting.
 
 ## Signed APT repository
 

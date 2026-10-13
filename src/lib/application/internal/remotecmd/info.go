@@ -14,11 +14,13 @@ type connectionInfo struct {
 	Mode     string                           `json:"mode"`
 	Endpoint string                           `json:"endpoint"`
 	Resolver *infrastructure.ResolverMetadata `json:"resolver,omitempty"`
+	Service  *serviceInfo                     `json:"service,omitempty"`
 }
 
 type workerInfo struct {
-	Endpoint string `json:"endpoint"`
-	Node     string `json:"node"`
+	Endpoint string       `json:"endpoint"`
+	Node     string       `json:"node"`
+	Service  *serviceInfo `json:"service,omitempty"`
 }
 
 type remoteInfo struct {
@@ -45,7 +47,7 @@ func describeRemote(root string) (remoteInfo, error) {
 			if err := contract.Endpoint(operator.Endpoint); err != nil {
 				return result, err
 			}
-			result.Broker = &connectionInfo{Mode: "local", Endpoint: operator.Endpoint}
+			result.Broker = &connectionInfo{Mode: "local", Endpoint: operator.Endpoint, Service: describeService(root, "broker")}
 			if connection != nil && connection.Endpoint == operator.Endpoint {
 				var edge contract.EdgeConfig
 				if err := remoteio.ReadPrivate(filepath.Join(root, "edge.json"), &edge); err != nil && !os.IsNotExist(err) {
@@ -66,7 +68,7 @@ func describeRemote(root string) (remoteInfo, error) {
 		if err := contract.Endpoint(worker.Endpoint); err != nil {
 			return result, err
 		}
-		result.Worker = &workerInfo{Endpoint: worker.Endpoint, Node: worker.Node}
+		result.Worker = &workerInfo{Endpoint: worker.Endpoint, Node: worker.Node, Service: describeService(root, "worker")}
 	} else if !os.IsNotExist(err) {
 		return result, err
 	}

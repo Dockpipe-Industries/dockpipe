@@ -2,18 +2,20 @@
 # Not a Dockpipe core primitive — Dockpipe is the user; workflows/scripts are the extension surface (AGENTS.md).
 # runtime: dockerimage (host steps use kind: host; docker_preflight skips socket check for run:).
 name: compliance-handoff
-description: >-
-  Host-only: run scripts/dorkpipe/compliance-handoff.sh. Points AI at docs/runtime/artifacts.md and
-  available DorkPipe package artifacts for CI scan signals, self-analysis, and run metadata.
-platforms: [windows, deb]
+title: Compliance review handoff
+catalog_type: workflow
+categories: [documentation, security]
+description: Prepare a structured handoff for review from the selected DorkPipe evidence. Does not certify compliance.
+platforms: [windows, deb, macos]
 dependencies:
   host:
     - id: bash
       command: bash
-      description: Required to run the packaged compliance handoff script.
+      description: Required to run the packaged compliance handoff script. On macOS, use Homebrew Bash 4.2+ on PATH.
       install:
         windows: winget install Git.Git
         deb: sudo apt-get update && sudo apt-get install -y bash
+        macos: brew install bash
 
 docker_preflight: false
 steps:

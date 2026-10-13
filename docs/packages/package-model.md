@@ -112,6 +112,51 @@ Compile steps:
 
 The runner checks compiled package-store roots before authoring **`CoreDir`** so you can opt in to the compiled store per workdir. Declare **namespaces**, **`depends`**, and metadata in the authored **`package.yml`** before compiling; do not rely on edits to generated package output.
 
+## Names, descriptions and discovery
+
+Author catalog metadata in `package.yml`. Workflow-backed packages can also declare
+these fields in `config.yml`:
+
+```yaml
+schema: 1
+kind: workflow
+name: editor-workspace
+title: Browser development workspace
+description: Open a containerized editor in your browser. Requires Docker.
+catalog_type: app
+categories: [development]
+```
+
+`name` and `kind` remain the package's install identity. Use `title` for a readable
+display name and `description` to explain what the package provides, its purpose
+and important prerequisites. For third-party tool integrations, describe the
+Dockpipe integration rather than implying that Dockpipe distributes the vendor's
+product itself.
+
+`catalog_type` controls discovery: `app`, `workflow`, `integration`, or `core`.
+For example, an app can still install with `--kind workflow`; a resolver normally
+appears as an integration. `categories` adds purpose filters such as `development`,
+`ai`, `secrets`, or `virtual-machines`. It accepts at most 16 unique lowercase
+slugs, each starting with a letter and containing only letters, digits and hyphens,
+up to 64 characters. These fields do not grant capabilities or change execution.
+
+During workflow/resolver compilation, nonempty manifest strings override matching
+workflow metadata. An explicit manifest `categories: []` clears workflow categories.
+Missing titles fall back to the package name; missing types use workflow metadata,
+legacy `category: app`, then the package kind (`resolver` becomes `integration`).
+An explicit workflow `catalog_type` takes precedence over legacy `category: app`.
+Core packages take metadata directly from their manifest.
+
+Store manifests, the remote catalog and installed-package inventory carry these
+fields. The launcher and public catalog display titles and filter discovery types;
+search also matches stable IDs and purpose categories. Older published catalogs
+remain readable with name/kind fallbacks.
+
+To update published metadata, edit the authored source, compile and publish a new
+package version, then rebuild the consuming catalog/site. Existing installed
+archives retain their metadata until upgraded. Do not edit generated stores or
+replace an immutable release solely to refresh its description.
+
 ## Remote catalogs and user installation
 
 `dockpipe package catalog --remote <HTTPS manifest URL>` returns JSON for the current

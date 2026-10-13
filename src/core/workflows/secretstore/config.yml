@@ -1,19 +1,21 @@
 # Bundled workflow: run a host command with env loaded from a dotenv-style file (no vendor CLI).
 # For 1Password (op), use maintainer workflow secretstore-onepassword (packages/secrets/resolvers/onepassword/).
 name: secretstore
+title: Run with a local environment file
+catalog_type: workflow
+categories: [secrets]
 workflow_type: secretstore
-description: >-
-  Host-only: SECRETSTORE_COMMAND runs after loading KEY=value from SECRETSTORE_ENV_FILE (default .env.secretstore).
-  Copy .env.secretstore.example; for op:// vault mapping use workflow secretstore-onepassword.
-platforms: [windows, deb]
+description: Load a local environment file and run your selected host command. Treat the file as trusted executable shell input.
+platforms: [windows, deb, macos]
 dependencies:
   host:
     - id: bash
       command: bash
-      description: Required to run the dotenv secretstore script.
+      description: Required to run the dotenv secretstore script. On macOS, use Homebrew Bash 4.2+ on PATH.
       install:
         windows: winget install Git.Git
         deb: sudo apt-get update && sudo apt-get install -y bash
+        macos: brew install bash
 
 docker_preflight: false
 # Substrate is per-step; dotenv resolver loads SECRETSTORE_ENV_FILE; script-owned env merge.

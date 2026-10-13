@@ -5,13 +5,23 @@
 #include <QFileInfo>
 #include <QObject>
 #include <QProcess>
+#include <QSaveFile>
 
 namespace {
+
+const QByteArray legacyWrapper =
+    "#!/bin/sh\n"
+    "# Dockpipe Flatpak terminal command. Remove this file to uninstall the shortcut.\n"
+    "exec flatpak run --command=dockpipe com.dockpipe.Dockpipe \"$@\"\n";
 
 const QByteArray wrapper =
     "#!/bin/sh\n"
     "# Dockpipe Flatpak terminal command. Remove this file to uninstall the shortcut.\n"
-    "exec flatpak run --command=dockpipe com.dockpipe.Dockpipe \"$@\"\n";
+    "if ! workdir=$(pwd -P) || [ ! -d \"$workdir\" ]; then\n"
+    "    echo 'Dockpipe cannot access the current folder. Change to an existing project folder and retry.' >&2\n"
+    "    exit 1\n"
+    "fi\n"
+    "exec flatpak run --command=dockpipe --cwd=\"$workdir\" --filesystem=\"$workdir\" com.dockpipe.Dockpipe \"$@\"\n";
 
 } // namespace
 
@@ -37,10 +47,23 @@ FlatpakTerminal::Result FlatpakTerminal::install(const QString &home)
 
     QFile file(path);
     if (existing.exists()) {
-        if (!file.open(QIODevice::ReadOnly) || file.readAll() != wrapper)
+        if (!file.open(QIODevice::ReadOnly))
+            return {false, QObject::tr("Cannot read %1: %2").arg(path, file.errorString())};
+        const QByteArray contents = file.readAll();
+        file.close();
+        if (contents != wrapper && contents != legacyWrapper)
             return {false, QObject::tr("%1 already contains another command. It was left unchanged.").arg(path)};
         if (!existing.isExecutable())
             return {false, QObject::tr("%1 exists but is not executable. Check its permissions.").arg(path)};
+        if (contents == legacyWrapper) {
+            QSaveFile updated(path);
+            if (!updated.open(QIODevice::WriteOnly)
+                || updated.write(wrapper) != wrapper.size()
+                || !updated.setPermissions(existing.permissions())
+                || !updated.commit())
+                return {false, QObject::tr("Could not update the terminal shortcut: %1").arg(updated.errorString())};
+            return {true, QObject::tr("Updated the terminal shortcut at %1 to preserve the current folder.").arg(path)};
+        }
         return {true, QObject::tr("The terminal shortcut is already installed at %1.").arg(path)};
     }
 
@@ -70,7 +93,8 @@ FlatpakTerminal::Result FlatpakTerminal::completeSetup(const HostEnvironment &en
 {
     // The lookup runs on the host, not against the sandbox's /app/bin/dockpipe.
     // Keep an existing native command as the user's selected terminal CLI.
-    if (!environment.command.isEmpty())
+    if (!environment.command.isEmpty()
+        && QDir::cleanPath(environment.command) != wrapperPath(environment.home))
         return {true, QObject::tr("Using the existing terminal command: %1").arg(environment.command)};
 
     const auto installed = install(environment.home);

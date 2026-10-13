@@ -2,8 +2,8 @@ schema: 1
 kind: resolver
 name: dockpipe.cloudflare.remote-edge
 version: 0.3.1
-title: Cloudflare Tunnel remote edge
-description: Browser login, named tunnel, and DNS setup for a loopback Dockpipe broker.
+title: Cloudflare Tunnel remote access
+description: Connect a Dockpipe broker through Cloudflare Tunnel with browser sign-in and DNS setup. Requires your own Cloudflare account and domain.
 capability: remote.edge
 dependencies:
   host:
@@ -33,3 +33,7 @@ dependencies:
           -o Dir::Etc::sourceparts=-
           -o APT::Get::List-Cleanup=0;
           sudo apt-get install -y cloudflared
+catalog_type: integration
+categories:
+- networking
+- infrastructure

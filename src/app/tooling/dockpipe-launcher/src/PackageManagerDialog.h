@@ -47,6 +47,7 @@ private:
     QJsonArray m_available;
     PackageCommand *m_localCommand = nullptr;
     PackageCommand *m_remoteCommand = nullptr;
+    QComboBox *m_catalogType = nullptr;
     QComboBox *m_remote = nullptr;
     QLineEdit *m_search = nullptr;
     QLabel *m_status = nullptr;

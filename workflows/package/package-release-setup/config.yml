@@ -1,5 +1,8 @@
 name: package-release-setup
-description: Configure the GitHub release environment using only scoped package credentials. Checks only unless RELEASE_SETUP_APPLY=1.
+title: Configure package publishing
+catalog_type: workflow
+categories: [publishing, secrets]
+description: Prepare the private settings and secret references needed to publish package releases.
 platforms: [deb, macos, windows]
 vault: environment
 docker_preflight: false

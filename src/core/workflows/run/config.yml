@@ -2,8 +2,11 @@
 # For isolated branches, worktrees, and AI resolver flows, use strategy worktree in your own workflow YAML (see docs/workflows/workflow-yaml.md).
 # Commit is provided by named strategy commit (templates/core/strategies/commit).
 name: run
-description: Disposable container run, then commit changes on your current branch.
-platforms: [windows, deb]
+title: Run and commit
+catalog_type: workflow
+categories: [development]
+description: Run a command in a disposable container, then commit successful changes on the current branch. Review the selected command before use.
+platforms: [windows, deb, macos]
 dependencies:
   host:
     - id: docker
@@ -12,6 +15,7 @@ dependencies:
       install:
         windows: winget install Docker.DockerDesktop
         deb: sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin
+        macos: brew install --cask docker
 
 strategy: commit
 strategies:

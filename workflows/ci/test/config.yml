@@ -3,11 +3,14 @@
 # Mount only $(go env GOPATH)/pkg:/go/pkg — do NOT mount host GOBIN: govulncheck/gosec must be built with the
 # container Go (e.g. 1.26); a host-built binary often mismatches and breaks vulncheck.
 # Images: golang official (pulls from Docker Hub on first use).
-# DOCKPIPE_DOCKER_NETWORK=host: many Linux setups have no working IPv6 from Docker bridge; Go then
-# cannot reach proxy.golang.org for go install / govulncheck. Host network matches the host stack.
+# Bridge networking works on Docker Desktop as well as Linux. Linux hosts with broken
+# bridge DNS/IPv6 can explicitly override DOCKPIPE_DOCKER_NETWORK=host.
 name: test
+title: Isolated Go quality checks
+catalog_type: workflow
+categories: [development, testing, security]
 vault: none
-platforms: [windows, deb]
+platforms: [windows, deb, macos]
 dependencies:
   host:
     - id: docker
@@ -16,15 +19,13 @@ dependencies:
       install:
         windows: winget install Docker.DockerDesktop
         deb: sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin
+        macos: brew install --cask docker
 types:
   - models/ITestWorkflowConfig
 vars:
-  DOCKPIPE_DOCKER_NETWORK: host
+  DOCKPIPE_DOCKER_NETWORK: bridge
   GOTOOLCHAIN: local
-description: >-
-  Isolation preamble → verify artifact → go test → go vet → staticcheck → govulncheck → gosec → security brief.
-  Go tools are installed inside the image (match container Go); mount GOPATH/pkg only. govulncheck needs outbound HTTPS to vuln.go.dev.
-
+description: Run Go tests, static analysis, and security scans inside disposable containers. Requires the Dockpipe source checkout and Docker.
 steps:
   - id: prepare
     isolate: golang:1.26.9-bookworm

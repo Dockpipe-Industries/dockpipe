@@ -1,5 +1,31 @@
 # TASK-036 Remote Node Onboarding
 
+## User-service upgrade recovery (2026-10-13)
+
+- A live pairing failure was traced to a user service still pinned to an older test CLI,
+  despite newer desktop installations. Application/package updates did not migrate that service.
+- Remote info now reports registration drift, including executable-content changes at the same
+  path. Machines offers explicit service replacement/restart with an interruption/custom-settings
+  confirmation; hosted brokers have no local service action.
+- `remote service --role broker|worker --replace` preserves remote identity/provider state,
+  publishes the service definition atomically, and restarts through systemd or launchd. Failed or
+  interrupted activation remains update-required until an explicit retry completes.
+- Focused remote-command/broker race tests, service failure/retry/cancellation fixtures, launcher
+  confirmation/refusal/retry checks, native Linux builds, Go vet, and Darwin arm64 test cross-build
+  passed. Rendered UI was inspected; the repaired CLI detects the stale local registration.
+- After separate user approval, the affected live Linux broker service was repointed from the old
+  test binary to the installed 0.6.13 CLI and restarted. Its prior definition was backed up; no jobs
+  were running. The process executable, active service, local broker response, and public tunnel
+  response were verified. Revoked enrollments remained revoked until the user's subsequent pairing.
+- The Mac subsequently paired and received a newly submitted `test` workflow. Its returned result
+  failed at the workflow platform allowlist (`macos` excluded), establishing delivery and worker
+  pickup but not successful workflow execution. Native service lifecycle qualification remains
+  open; the new upgrade UI/CLI source is not published.
+- The authorized portability follow-up enables 31 workflow definitions and matching manifests for
+  macOS, including `test`, whose default Docker network is now bridge. See
+  [TASK-033](../macos-platform-support/overview.md) and the
+  [workflow support guide](../../../workflows/macos.md) for prerequisites and deferred paths.
+
 ## Worker setup completion and Activity roles (2026-10-13)
 
 - The user confirmed that the Mac is successfully paired to receive workflows.

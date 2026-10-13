@@ -1,9 +1,11 @@
 # Reference resolver-shaped workflow — see README.md in this directory.
 name: example
+title: Resolver authoring example
+catalog_type: integration
+categories: [examples]
 category: demo
-platforms: [windows, deb]
-description: Minimal layout demo for resolver profiles (agnostic script only).
-
+platforms: [windows, deb, macos]
+description: A minimal host script showing the structure for a Dockpipe integration. Copy and customize it when authoring a resolver.
 steps:
   - id: notice
     run: scripts/core.assets.scripts.example-resolver-notice.sh
