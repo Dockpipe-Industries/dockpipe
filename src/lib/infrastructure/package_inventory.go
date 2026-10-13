@@ -26,6 +26,7 @@ type InstalledPackage struct {
 	Path        string `json:"path"`
 	Source      string `json:"source"`
 	Removable   bool   `json:"removable"`
+	SizeBytes   int64  `json:"size_bytes,omitempty"`
 }
 
 type PackageInventory struct {
@@ -106,9 +107,19 @@ func ListInstalledPackages(workdir string) (PackageInventory, error) {
 				return nil
 			}
 			_, removalErr := userPackageArchivePath(out.InstallRoot, absolute)
+			var archiveSize int64
+			if archive {
+				info, err := entry.Info()
+				if err != nil {
+					out.Warnings = append(out.Warnings, fmt.Sprintf("%s: %v", filename, err))
+				} else {
+					archiveSize = info.Size()
+				}
+			}
 			out.Packages = append(out.Packages, InstalledPackage{
 				Name: manifest.Name, Title: manifest.Title, Version: manifest.Version,
 				Kind: manifest.Kind, Description: manifest.Description, Path: absolute, Source: location.label,
+				SizeBytes: archiveSize,
 				Removable: location.label == "User" && archive && removalErr == nil && (manifest.Kind == "workflow" || manifest.Kind == "resolver"),
 			})
 			return nil

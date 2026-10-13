@@ -5,13 +5,13 @@ for terminals, servers and CI. You do not need a Dockpipe source checkout or Go.
 Optional workflows and resolvers are installed from **Packages → Marketplace** or
 `dockpipe package install`; the base installer includes required core.
 
-The verified downloads below use the **staging channel**. Check the
-[staging catalog](https://packages.staging.dockpipe.com/packages/latest.json) for the
-current candidate. Staging builds carry the qualification limits described below.
+Use the [release catalog](https://packages.dockpipe.com/packages/latest.json)
+to select the current release. The website selects the matching catalog for
+its environment; this source guide defaults to production.
 
 | Platform | Desktop | CLI / Remote Worker |
 | --- | --- | --- |
-| macOS Apple Silicon / Intel | Homebrew staging cask or DMG | Homebrew staging formula or native tarball |
+| macOS Apple Silicon / Intel | DMG installer | Native tarball or portable installer |
 | Windows x64 | MSI with launcher selected | ZIP, or MSI with only the CLI feature |
 | Ubuntu 22.04 / 24.04 amd64 / arm64; Pop!_OS 22.04 | `dockpipe-desktop` DEB plus `dockpipe` | `dockpipe` DEB |
 | Linux amd64 with Flatpak | Combined launcher and CLI bundle, KDE Platform 6.10 | Bundled CLI via `flatpak run`; native packages are separate |
@@ -28,8 +28,14 @@ After installation, start with [Your first workflow](onboarding.md).
 
 **macOS:** download `dockpipe-desktop_VERSION_darwin_arm64.dmg` for Apple Silicon or `dockpipe-desktop_VERSION_darwin_amd64.dmg` for Intel, verify it against that release's `SHA256SUMS.txt`, open it, and run **Install Dockpipe.pkg**. Apple's Installer installs **DockPipe.app** in Applications and **`dockpipe`** in `/usr/local/bin`. Open Dockpipe from Applications; new terminals can run `dockpipe --version`. The desktop app contains the matching CLI, Qt runtime and required core package. macOS 13 or newer is required.
 
-Use one installation method. The DMG installer refuses an existing foreign CLI or app; users with the Homebrew CLI should use the cask below. Re-running the DMG installer updates an installation owned by that installer. Current staging DMGs use ad-hoc signatures and are not yet Developer ID signed and notarized. They may be blocked by Gatekeeper; the installation instructions do not require changing macOS security settings.
+Use one installation method. The DMG installer refuses an existing foreign CLI or app; users with an existing Homebrew installation should keep that installation method or remove it before switching. Re-running the DMG installer updates an installation owned by that installer. Current DMGs use ad-hoc signatures and are not yet Developer ID signed and notarized. They may be blocked by Gatekeeper; the installation instructions do not require changing macOS security settings.
 
+<!-- dockpipe:channel production -->
+The Homebrew tap currently publishes staging formulas only. For production,
+use the DMG above or the native CLI installer below.
+<!-- dockpipe:end-channel -->
+
+<!-- dockpipe:channel staging -->
 **Homebrew on macOS (staging):** refresh the tap, then install the launcher and CLI together:
 
 ```sh
@@ -46,6 +52,8 @@ brew upgrade dockpipe-staging dockpipe-desktop-staging
 
 Uninstalling the desktop cask removes the app and retains the CLI formula. User contexts and data are retained. The app uses its bundled matching CLI; terminal commands use the formula. See [desktop packaging](../release/packaging/desktop/README.md) for direct-installer removal and signing requirements.
 
+<!-- dockpipe:end-channel -->
+
 **Windows:** run `dockpipe_VERSION_windows_amd64.msi`. The default installs the CLI, full Qt launcher runtime and a Start menu shortcut. Deselect **Dockpipe Launcher** for a CLI-only install, or change the feature later through the installer's Modify option. The ZIP is always CLI-only.
 
 **Ubuntu 22.04 / 24.04 and Pop!_OS 22.04:** after configuring the signed APT source below, run `sudo apt install dockpipe-desktop`; it installs the matching CLI dependency. The DEB supports Ubuntu 22.04's Qt libraries and is installation-tested on both Ubuntu releases. For downloaded DEBs, install both together:
@@ -56,10 +64,10 @@ sudo apt install ./dockpipe_VERSION_amd64.deb ./dockpipe-desktop_VERSION_amd64.d
 
 Use `arm64` filenames on ARM64. Launch **Dockpipe** from the application menu. Removing `dockpipe-desktop` leaves the CLI available. Desktop RPM, APK and Arch packages are not currently provided; those formats remain CLI-only.
 
-### Flatpak desktop (staging, Linux amd64)
+### Flatpak desktop (Linux amd64)
 
-The staging package host publishes `dockpipe-desktop_VERSION_linux_amd64.flatpak`.
-It installs **`com.dockpipe.Dockpipe`**, branch **`staging`**, with launcher, CLI,
+The release package host publishes `dockpipe-desktop_VERSION_linux_amd64.flatpak`.
+It installs **`com.dockpipe.Dockpipe`** with launcher, CLI,
 required core, Git, Docker CLI, Compose and Buildx. Optional Marketplace packages
 are downloaded separately. There is no published ARM64 Flatpak catalog or Dockpipe
 Flathub listing. Native DEB/RPM/APK/Arch packages and tarballs remain separate host
@@ -77,14 +85,14 @@ flatpak install --user flathub org.kde.Platform/x86_64/6.10
 Flathub supplies the KDE runtime here, not the Dockpipe app. The bundle also carries
 that runtime-repository hint; it does not contain the runtime itself.
 
-Use the current [staging pointer](https://packages.staging.dockpipe.com/packages/latest.json)
-to select one immutable candidate. The commands below require `curl`, `jq`, and
+Use the current [release catalog](https://packages.dockpipe.com/packages/latest.json)
+to select one immutable release. The commands below require `curl`, `jq`, and
 `sha256sum`. Run them in a download directory and continue only when the checksum
 reports `OK`. The manifest supplies the bundle filename on the package host;
 do not construct a GitHub asset URL.
 
 ```sh
-origin=https://packages.staging.dockpipe.com
+origin=https://packages.dockpipe.com
 manifest=$(curl -fsSL "$origin/packages/latest.json" | jq -er '.manifest')
 base="$origin/${manifest%/*}"
 curl -fsSL "$origin/$manifest" -o release-manifest.json
@@ -138,17 +146,16 @@ desktop environment, Flatpak/runtime versions, and steps to reproduce them.
 
 **Updates:** this is a standalone bundle, without an updating Dockpipe Flatpak
 remote. `flatpak update` can update the KDE runtime from Flathub, but does not fetch
-new Dockpipe bundles from the staging JSON catalog. Download and verify the newer
-candidate as above, close the launcher and finish active workflows, then run
+new Dockpipe bundles from the release catalog. Download and verify the newer
+release as above, close the launcher and finish active workflows, then run
 `flatpak install --user --or-update ./dockpipe-desktop_VERSION_linux_amd64.flatpak`
 with the new filename. See Flatpak's [bundle guidance](https://docs.flatpak.org/en/latest/single-file-bundles.html)
 and [install options](https://docs.flatpak.org/en/latest/flatpak-command-reference.html#flatpak-install).
 
-**Packages:** in the Flatpak launcher, choose **Settings → Package Remotes → Use staging**,
+**Packages:** in the Flatpak launcher, choose **Settings → Package Remotes → Use production**,
 save, then open **Packages → Marketplace**. Selection uses the running app's
 architecture and KDE runtime branch, currently `linux-amd64-flatpak-org.kde.Platform-6.10`.
-The verified catalog has 62 entries: core plus 61 optional artifacts, not 62 bundled
-apps. Native Dockpipe still selects native stores on the same machine. Missing or
+The catalog lists required core and optional artifacts; optional packages are not bundled apps. Native Dockpipe still selects native stores on the same machine. Missing or
 mismatched Flatpak stores fail explicitly, including pinned store URLs; there is no
 automatic native fallback. Marketplace packages are ordinary Dockpipe archives,
 not separate Flatpak apps, and are independent of the app-bundle update procedure.
@@ -165,19 +172,19 @@ authenticated providers, VM boot or universal workflow parity. See the
 
 ## Signed APT repository
 
-For Ubuntu/Pop!_OS staging installations, configure the permanent staging source
+For Ubuntu/Pop!_OS installations, configure the signed APT source
 once. Download the public key and inspect its fingerprint:
 
 ```sh
-curl -fsSL https://packages.staging.dockpipe.com/apt/dockpipe-archive-keyring.gpg -o /tmp/dockpipe-staging-keyring.gpg
-gpg --show-keys --with-fingerprint /tmp/dockpipe-staging-keyring.gpg
+curl -fsSL https://packages.dockpipe.com/apt/dockpipe-archive-keyring.gpg -o /tmp/dockpipe-archive-keyring.gpg
+gpg --show-keys --with-fingerprint /tmp/dockpipe-archive-keyring.gpg
 ```
 
-Confirm fingerprint `7295FA3FC25A3998E146D0779EAF522778B9C909` before proceeding:
+Confirm fingerprint `71B23431AB2FD718629B2696A27C6DAE150CD947` before proceeding:
 
 ```sh
-sudo install -m 0644 /tmp/dockpipe-staging-keyring.gpg /usr/share/keyrings/dockpipe-staging.gpg
-printf '%s\n' 'deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/dockpipe-staging.gpg] https://packages.staging.dockpipe.com/apt staging main' | sudo tee /etc/apt/sources.list.d/dockpipe-staging.list >/dev/null
+sudo install -m 0644 /tmp/dockpipe-archive-keyring.gpg /usr/share/keyrings/dockpipe.gpg
+printf '%s\n' 'deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/dockpipe.gpg] https://packages.dockpipe.com/apt stable main' | sudo tee /etc/apt/sources.list.d/dockpipe.list >/dev/null
 sudo apt update
 sudo apt install dockpipe-desktop
 ```
@@ -190,26 +197,25 @@ sudo apt update
 sudo apt upgrade
 ```
 
-Do not configure staging and production APT sources together. If you previously
-used a candidate-specific staging source, replace that source with the permanent
-one above to receive later candidates. Removing `dockpipe-desktop` retains the CLI.
+Use only one APT release channel at a time. Remove a previous channel source
+before configuring the source above. Removing `dockpipe-desktop` retains the CLI.
 
 ## Direct downloads and complete package stores
 
-Read the [staging pointer](https://packages.staging.dockpipe.com/packages/latest.json)
-and follow its `manifest` path relative to `https://packages.staging.dockpipe.com/`.
+Read the [release catalog](https://packages.dockpipe.com/packages/latest.json)
+and follow its `manifest` path relative to `https://packages.dockpipe.com/`.
 The release manifest lists numeric `version`, per-platform `downloads`, and
 `stores`. Download filenames are relative to the manifest's directory.
 
 Choose `amd64` for x86_64 or `arm64` for aarch64/Apple Silicon. Verify downloaded
-files against `SHA256SUMS.txt` from that same candidate before installing. On Linux
+files against `SHA256SUMS.txt` from that same release before installing. On Linux
 use `sha256sum`; on macOS use `shasum -a 256`; on Windows use `Get-FileHash -Algorithm SHA256`.
 
-The native CLI installer can use the current staging candidate. These commands
+The native CLI installer can use the current release. These commands
 require `curl` and `jq` and select one immutable manifest before downloading:
 
 ```sh
-origin=https://packages.staging.dockpipe.com
+origin=https://packages.dockpipe.com
 manifest=$(curl -fsSL "$origin/packages/latest.json" | jq -er '.manifest')
 base="$origin/${manifest%/*}"
 version=$(curl -fsSL "$origin/$manifest" | jq -er '.version')
@@ -219,7 +225,7 @@ DOCKPIPE_VERSION="$version" DOCKPIPE_DOWNLOAD_BASE="$base" DOCKPIPE_INSTALL_MODE
 
 The installer verifies its CLI payload checksum. It installs the portable CLI in
 `~/.local/bin` by default; add that directory to your shell's `PATH` if needed.
-Use the candidate's numeric version for `DOCKPIPE_VERSION`, not its staging suffix.
+Use the numeric manifest `version` for `DOCKPIPE_VERSION`.
 This script installs CLI/core, not the desktop launcher.
 
 ### Native Linux packages
@@ -273,14 +279,21 @@ winget catalog yet.
 
 ## macOS CLI / Remote Worker
 
+Use the [native CLI installer](#direct-downloads-and-complete-package-stores)
+or download the matching macOS tarball from the selected release catalog.
+The portable installer installs CLI/core into `~/.local/bin`; add it to
+your shell PATH and check `dockpipe --version`.
+
+<!-- dockpipe:channel staging -->
+For the staging Homebrew CLI:
+
 ```sh
 brew install dockpipe-industries/dockpipe/dockpipe-staging
 dockpipe --version
 ```
 
-This formula installs CLI/core. The desktop cask above adds the launcher. Update
-with `brew update` followed by `brew upgrade dockpipe-staging`. The stable formula
-is not published yet; native tarballs are another option.
+Update with `brew update` followed by `brew upgrade dockpipe-staging`.
+<!-- dockpipe:end-channel -->
 
 ### Containers with Colima
 
@@ -318,12 +331,12 @@ The compatibility changes are implemented in source. Native Colima container, mo
 and Compose qualification on macOS remains pending; the earlier desktop installer dry run does not
 cover this integration.
 
-## Browsing staging packages in the launcher
+## Browsing packages in the launcher
 
-Open **Settings → Package Remotes → Use staging**, save, then open
-**Packages → Marketplace**. The staging origin is
-`https://packages.staging.dockpipe.com`; new launcher settings otherwise default to
-production at `https://packages.dockpipe.com`. Select one channel explicitly.
+Open **Settings → Package Remotes → Use production**, save, then open
+**Packages → Marketplace**. The package origin for this guide is
+`https://packages.dockpipe.com`. Keep application downloads and package
+catalogs on the same release channel.
 
 Marketplace verifies checksums and installs selected packages into your user
 store. Base installers include core only. See [Find and use packages](packages/package-quickstart.md)

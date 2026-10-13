@@ -17,6 +17,10 @@ class PackageManagerDialog : public QDialog {
 public:
     explicit PackageManagerDialog(const QString &hintWorkdir, QWidget *parent = nullptr);
     ~PackageManagerDialog() override;
+    void showRemoteProviders();
+
+signals:
+    void packageInstalled(const QString &name);
 
 private:
     void loadInstalled();
@@ -37,6 +41,8 @@ private:
     Operation m_operation = Operation::Catalog;
     bool m_cancelling = false;
     bool m_inventoryReady = false;
+    bool m_remoteProvidersOnly = false;
+    QString m_installingPackage;
     QJsonArray m_installed;
     QJsonArray m_available;
     PackageCommand *m_localCommand = nullptr;

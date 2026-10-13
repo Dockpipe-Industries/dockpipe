@@ -36,7 +36,7 @@ complete artifact tree, including individual platform package stores and APT.
 Each new successful staging push creates a separately selectable candidate.
 The Flatpak bundle is published on the package host; it was absent from the GitHub
 assets for the verified 0.6.3 candidate. Use the catalog's download entry. See
-[Flatpak user installation and manual updates](../../docs/install.md#flatpak-desktop-staging-linux-amd64)
+[Flatpak user installation and manual updates](../../docs/install.md#flatpak-desktop-linux-amd64)
 and [publication evidence and qualification limits](../packaging/desktop/flatpak/README.md#release-integration-and-proof-limits).
 
 ## Versions and immutable candidates
