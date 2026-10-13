@@ -6,10 +6,10 @@
 # Leave Ollama/Postgres running after (e.g. for another job):
 #   DORKPIPE_DEV_STACK_AUTODOWN=0 dockpipe --workflow dorkpipe-self-analysis-stack --workdir . --
 name: dorkpipe-self-analysis-stack
-description: >-
-  stack_up (host): Postgres+Ollama via the DorkPipe host stack script with GPU-aware Ollama setup.
-  self_analysis (container): same as dorkpipe-self-analysis.
-  finally.stack_down (host): compose down unless DORKPIPE_DEV_STACK_AUTODOWN=0.
+title: Repository analysis (local stack)
+catalog_type: workflow
+categories: [ai, development]
+description: Collect repository facts and prepare an AI handoff using the local stack execution path. Requires the configured DorkPipe tools.
 platforms: [windows, deb]
 dependencies:
   host:

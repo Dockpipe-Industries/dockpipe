@@ -1,23 +1,26 @@
 name: dockpipe.cloudflare.r2upload
+title: Publish files to Cloudflare R2
+catalog_type: workflow
+categories: [storage, publishing]
 namespace: dockpipe-cloudflare
-description: >-
-  Tar R2_PUBLISH_SOURCE and upload to R2 via scripts/dockpipe/r2-publish.sh. Terraform skipped (R2_SKIP_TERRAFORM=1).
-  Run after dockpipe.cloudflare.r2infra when the bucket exists.
-platforms: [windows, deb]
+description: Package and upload a selected source directory to your R2 bucket. Requires bucket credentials and configured upload tooling.
+platforms: [windows, deb, macos]
 dependencies:
   host:
     - id: bash
       command: bash
-      description: Required to run the R2 upload script.
+      description: Required to run the R2 upload script. On macOS, use Homebrew Bash 4.2+ on PATH.
       install:
         windows: winget install Git.Git
         deb: sudo apt-get update && sudo apt-get install -y bash
+        macos: brew install bash
     - id: wrangler
       command: wrangler
       description: Required for the default Cloudflare R2 upload path.
       install:
         windows: winget install OpenJS.NodeJS.LTS
         deb: sudo apt-get update && sudo apt-get install -y npm && sudo npm install -g wrangler
+        macos: npm install --global wrangler
 
 docker_preflight: false
 

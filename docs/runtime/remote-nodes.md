@@ -102,6 +102,22 @@ Services use systemd user units on Linux and LaunchAgents on macOS. They retain 
 user's PATH. They are user-session services, not a promise of operation before login or while the
 machine sleeps. Configure power/session policy separately for an always-on benchmark worker.
 
+After installing a new Dockpipe version, open **Machines**. The launcher reports when a
+registered service differs from the current CLI installation, including when the binary
+has changed at the same path. **Update broker service…** or **Update worker service…**
+asks before replacing the service definition and restarting it. This can interrupt active
+remote work and replaces custom service settings; pairing credentials and provider state
+are preserved. Package installation alone does not migrate an existing user service.
+
+The equivalent explicit CLI operation is `dockpipe remote service --role broker --replace`
+(or `--role worker`). Run it from the stable installation you want the service to use.
+Without `--replace`, a differing definition is refused. Updates publish a complete, private
+service file atomically and retain a pending marker until activation succeeds. If activation
+fails or is interrupted, retry the same explicit update after inspecting the error.
+`remote info` exposes each local role's `service.state`: `missing`, `update-required`,
+`current`, or `unavailable`. This checks registration and completion of the activation
+command; it does not prove process health, worker presence, or successful workflow execution.
+
 ## Pair and run
 
 ### Pair without transferring a file

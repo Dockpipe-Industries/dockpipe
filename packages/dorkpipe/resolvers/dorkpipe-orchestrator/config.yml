@@ -1,8 +1,10 @@
 # Internal workflow: run the DorkPipe orchestrator (bin/dorkpipe) on a DAG spec.
 # This repo: orchestration is a separate binary that still calls `dockpipe` for tool steps.
 name: dorkpipe-orchestrator
-description: >-
-  Host step runs assets/scripts/run-orchestrator.sh (requires `make build` for bin/dorkpipe).
+title: DorkPipe task graph runner
+catalog_type: workflow
+categories: [ai, development]
+description: Run a configured DorkPipe task graph and collect its results. Requires the tools and providers selected by the graph.
 platforms: [windows, deb]
 dependencies:
   host:

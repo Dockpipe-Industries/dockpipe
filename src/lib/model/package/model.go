@@ -7,14 +7,16 @@ import modeldependency "dockpipe/src/lib/model/dependency"
 // Stored as package.yml next to the package contents. Schema may evolve; extra YAML keys are ignored by the parser.
 // Rich fields support store discovery, authoring, and dependency hints (workflows vs resolver packs).
 type PackageManifest struct {
-	Schema      int    `yaml:"schema"`
-	Name        string `yaml:"name"`
-	Version     string `yaml:"version"`
-	Title       string `yaml:"title"`
-	Description string `yaml:"description"`
-	Author      string `yaml:"author"`
-	Website     string `yaml:"website"`
-	License     string `yaml:"license"`
+	Schema      int      `yaml:"schema"`
+	Name        string   `yaml:"name"`
+	Version     string   `yaml:"version"`
+	Title       string   `yaml:"title"`
+	CatalogType string   `yaml:"catalog_type,omitempty"`
+	Categories  []string `yaml:"categories,omitempty"`
+	Description string   `yaml:"description"`
+	Author      string   `yaml:"author"`
+	Website     string   `yaml:"website"`
+	License     string   `yaml:"license"`
 	// Icon: optional package-owned artwork path for package/tooling surfaces. Relative paths resolve next to package.yml.
 	Icon string `yaml:"icon,omitempty"`
 	// Artwork: optional named artwork variants (e.g. icon, vscode, cursor-dev) relative to package.yml.

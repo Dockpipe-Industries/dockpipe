@@ -199,8 +199,8 @@ func compileWorkflowOne(workdir, srcAbs, name string, force bool) error {
 				"schema":       1,
 				"name":         pkgName,
 				"version":      defaultVersion,
-				"title":        pkgName,
-				"description":  "Compiled workflow package " + pkgName,
+				"title":        "",
+				"description":  "",
 				"kind":         "workflow",
 				"allow_clone":  true,
 				"distribution": "source",
@@ -223,6 +223,9 @@ func compileWorkflowOne(workdir, srcAbs, name string, force bool) error {
 			if err := os.WriteFile(manifestPath, out, 0o644); err != nil {
 				return err
 			}
+		}
+		if err := mergeCompiledCatalogMetadata(manifestPath, filepath.Join(staging, "config.yml")); err != nil {
+			return err
 		}
 		pmParsed, err := readVersionedCompiledManifest(manifestPath, defaultVersion)
 		if err != nil {

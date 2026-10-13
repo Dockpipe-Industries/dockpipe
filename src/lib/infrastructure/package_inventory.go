@@ -18,15 +18,17 @@ import (
 // InstalledPackage describes an available local package, not a promise that it
 // wins every workflow's resolution precedence.
 type InstalledPackage struct {
-	Name        string `json:"name"`
-	Title       string `json:"title,omitempty"`
-	Version     string `json:"version"`
-	Kind        string `json:"kind"`
-	Description string `json:"description,omitempty"`
-	Path        string `json:"path"`
-	Source      string `json:"source"`
-	Removable   bool   `json:"removable"`
-	SizeBytes   int64  `json:"size_bytes,omitempty"`
+	CatalogType string   `json:"catalog_type,omitempty"`
+	Categories  []string `json:"categories,omitempty"`
+	Name        string   `json:"name"`
+	Title       string   `json:"title,omitempty"`
+	Version     string   `json:"version"`
+	Kind        string   `json:"kind"`
+	Description string   `json:"description,omitempty"`
+	Path        string   `json:"path"`
+	Source      string   `json:"source"`
+	Removable   bool     `json:"removable"`
+	SizeBytes   int64    `json:"size_bytes,omitempty"`
 }
 
 type PackageInventory struct {
@@ -118,6 +120,7 @@ func ListInstalledPackages(workdir string) (PackageInventory, error) {
 			}
 			out.Packages = append(out.Packages, InstalledPackage{
 				Name: manifest.Name, Title: manifest.Title, Version: manifest.Version,
+				CatalogType: manifest.CatalogType, Categories: manifest.Categories,
 				Kind: manifest.Kind, Description: manifest.Description, Path: absolute, Source: location.label,
 				SizeBytes: archiveSize,
 				Removable: location.label == "User" && archive && removalErr == nil && (manifest.Kind == "workflow" || manifest.Kind == "resolver"),

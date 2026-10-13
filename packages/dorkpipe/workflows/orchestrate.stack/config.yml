@@ -1,10 +1,9 @@
 name: orchestrate.stack
+title: Local AI orchestration stack
+catalog_type: workflow
+categories: [ai, development]
 namespace: dockpipeproject
-description: >-
-  Package-owned DorkPipe orchestration wrapper: stack up, plan, run workers, merge, verify,
-  approval, apply, and finally stack down. When called from a consumer workflow step, planning
-  reads the caller workflow config and step orchestration block by default.
-
+description: Run an AI task graph with local supporting services and review results before applying changes. Requires Docker.
 docker_preflight: false
 platforms: [windows, deb]
 dependencies:

@@ -1,8 +1,11 @@
 # Bundled workflow for resolver claude and DOCKPIPE_RESOLVER_WORKFLOW=claude.
 # Used after worktree strategy clone; parent runs commit-worktree on the host.
 name: claude
-description: Claude Code in a worktree (dockpipe-claude image).
-platforms: [windows, deb]
+title: Claude Code integration
+catalog_type: integration
+categories: [ai, development]
+description: Run Claude Code through a Dockpipe-managed container. Requires Docker and your own Claude authentication.
+platforms: [windows, deb, macos]
 dependencies:
   host:
     - id: docker
@@ -11,6 +14,7 @@ dependencies:
       install:
         windows: winget install Docker.DockerDesktop
         deb: sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin
+        macos: brew install --cask docker
 
 image:
   packages:

@@ -1,4 +1,7 @@
 name: windows-vm
+title: Windows virtual machine
+catalog_type: app
+categories: [virtual-machines, development]
 category: app
 vault: none
 platforms: [windows, deb]
@@ -126,12 +129,7 @@ view:
             - Advanced.KeepAlive
             - Advanced.KeepAliveSeconds
             - Advanced.GuestCommand
-description: >-
-  Boot a user-supplied Windows guest through the generic vm runtime using the
-  packaged qemu resolver, prompt for either a bootable disk image or an
-  installer ISO, then either run a guest command over SSH or keep an interactive
-  installer VM alive until the user exits.
-
+description: Boot a Windows guest image or installer through QEMU. Supply your own image, firmware, and any required Windows license.
 runtime: vm
 resolver: qemu
 

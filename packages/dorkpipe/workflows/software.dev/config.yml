@@ -1,9 +1,9 @@
 name: software.dev
+title: Assisted software development
+catalog_type: workflow
+categories: [ai, development]
 namespace: dockpipeproject
-description: >-
-  Package-owned governed software-development orchestration with repo-selected task packs and an
-  optional strictly compiled planner proposal.
-
+description: Plan development work, run configured AI workers, and review their proposed changes before applying them.
 docker_preflight: false
 platforms: [windows, deb]
 dependencies:

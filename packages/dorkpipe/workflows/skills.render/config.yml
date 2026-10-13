@@ -1,22 +1,27 @@
 name: skills.render
+title: Export agent skills
+catalog_type: workflow
+categories: [ai, development]
 namespace: dockpipeproject
-description: Render curated DorkPipe skills to assistant-specific local formats.
+description: Export the packaged agent skills for your selected coding assistant.
 docker_preflight: false
-platforms: [windows, deb]
+platforms: [windows, deb, macos]
 dependencies:
   host:
     - id: bash
       command: bash
-      description: Runs the skills render wrapper script.
+      description: Runs the skills render wrapper script. On macOS, use Homebrew Bash 4.2+ on PATH.
       install:
         windows: winget install Git.Git
         deb: sudo apt-get update && sudo apt-get install -y bash
+        macos: brew install bash
     - id: go
       command: go
       description: Builds the skills-render helper from source when no compiled helper is present.
       install:
         windows: winget install GoLang.Go
         deb: sudo apt-get update && sudo apt-get install -y golang-go
+        macos: brew install go
 
 steps:
   - id: render

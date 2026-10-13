@@ -1,24 +1,26 @@
 name: dockpipe.terraform.core
+title: Terraform workflow runner
+catalog_type: workflow
+categories: [infrastructure]
 namespace: dockpipe-terraform
-description: >-
-  Provider-agnostic host: packages/terraform/resolvers/terraform-core/assets/scripts/terraform-run.sh + terraform-pipeline.sh.
-  Set DOCKPIPE_TF_MODULE_DIR. Remote: DOCKPIPE_TF_REMOTE_BACKEND_FILE only (no generated R2 backend here).
-  Cloudflare R2: dockpipe.cloudflare.r2infra resolver ships terraform-cloudflare-r2-run.sh (wraps this pipeline; module .tf under dockpipe.cloudflare.r2publish/terraform).
-platforms: [windows, deb]
+description: Run Terraform commands against your chosen module and backend. Requires Terraform and provider credentials; apply commands can change infrastructure.
+platforms: [windows, deb, macos]
 dependencies:
   host:
     - id: bash
       command: bash
-      description: Required to run the Terraform wrapper scripts.
+      description: Required to run the Terraform wrapper scripts. On macOS, use Homebrew Bash 4.2+ on PATH.
       install:
         windows: winget install Git.Git
         deb: sudo apt-get update && sudo apt-get install -y bash
+        macos: brew install bash
     - id: terraform
       command: terraform
       description: Required by the Terraform core workflow.
       install:
         windows: winget install Hashicorp.Terraform
         deb: sudo apt-get update && sudo apt-get install -y terraform
+        macos: brew install hashicorp/tap/terraform
 
 docker_preflight: false
 

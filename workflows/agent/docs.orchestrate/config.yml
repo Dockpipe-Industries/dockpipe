@@ -1,7 +1,8 @@
 name: docs.orchestrate
-description: >-
-  DorkPipe task-graph workflow: plan, split into bounded worker tasks, merge results, verify, and
-  require approval before manual promotion.
+title: Documentation review workflow
+catalog_type: workflow
+categories: [ai, documentation]
+description: Review repository documentation with configured AI workers and approve proposed changes before applying them.
 platforms: [windows, deb]
 dependencies:
   host:
