@@ -1,5 +1,13 @@
 # TASK-035 Recurring Codebase Hygiene
 
+## Reliability — 2026-10-13
+
+The [reliability audit](reliability-audit.md) ranks seven open gaps against the new
+[coding standard](../../../coding-style.md). Small isolated fixtures reproduce
+destructive core replacement, silently skipped archive members and import
+amplification. The remaining findings have source evidence and proposed failure
+tests. This pass adds guidance and an audit; the listed repairs remain unimplemented.
+
 ## Agent documentation — 2026-10-10
 
 The [agent documentation audit](agent-docs-audit.md) removes personal machine

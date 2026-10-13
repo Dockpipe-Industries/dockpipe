@@ -16,6 +16,14 @@ skills:
     claude: ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target claude --output <path>
 
 tasks:
+  reliability_review:
+    read:
+      - AGENTS.md
+      - docs/coding-style.md
+      - docs/agents/tasks/recurring-codebase-hygiene/reliability-audit.md
+    skills:
+      - dorkpipe-core-review
+
   pipelang_foundation_planning:
     read:
       - AGENTS.md
