@@ -132,6 +132,7 @@
   "src/core/package.yml",
   "src/lib/application/bundled_tools.go",
   "src/lib/domain/branchslug.go",
+  "src/lib/domain/catalog_metadata.go",
   "src/lib/domain/compile_roots.go",
   "src/lib/domain/dependencies.go",
   "src/lib/domain/env.go",
