@@ -56,6 +56,9 @@ func ValidatePackageManifest(m *PackageManifest) error {
 	if m == nil {
 		return nil
 	}
+	if err := ValidateCatalogMetadata(m.CatalogType, m.Categories); err != nil {
+		return err
+	}
 	if err := ValidatePackageVersion(m.Version); err != nil {
 		return err
 	}

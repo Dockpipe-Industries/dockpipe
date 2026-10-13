@@ -44,23 +44,69 @@ int main(int argc, char **argv)
     auto environment = QProcessEnvironment::systemEnvironment();
     environment.insert(QStringLiteral("PATH"), fixtureBin + QStringLiteral(":/usr/bin:/bin"));
     process.setProcessEnvironment(environment);
-    process.setWorkingDirectory(home);
+    const QString project = temporary.filePath(QStringLiteral("Recordings/Final Cuts $(must-not-run)"));
+    if (!QDir().mkpath(project))
+        return 23;
+    process.setWorkingDirectory(project);
     process.start(wrapper, {QStringLiteral("--version"), QStringLiteral("two words"),
                            QStringLiteral("$(must-not-run)"), QStringLiteral(""), QStringLiteral("*.yml")});
     if (!process.waitForFinished(5000) || process.exitCode() != 23)
         return 6;
-    const QByteArray expected = QByteArray("run\n--command=dockpipe\ncom.dockpipe.Dockpipe\n"
-                                         "--version\ntwo words\n$(must-not-run)\n\n*.yml\n")
-        + home.toUtf8() + '\n';
+    const QByteArray expected = QByteArray("run\n--command=dockpipe\n--cwd=")
+        + project.toUtf8() + "\n--filesystem=" + project.toUtf8()
+        + "\ncom.dockpipe.Dockpipe\n--version\ntwo words\n$(must-not-run)\n\n*.yml\n"
+        + project.toUtf8() + '\n';
     if (process.readAllStandardOutput() != expected)
         return 7;
+
+    // Resolve a shell's logical symlink path to the real host directory before
+    // exposing it to Flatpak. The sandbox must receive that exact same cwd.
+    const QString linkedProject = temporary.filePath(QStringLiteral("project-link"));
+    if (!QFile::link(project, linkedProject))
+        return 24;
+    environment.insert(QStringLiteral("PWD"), linkedProject);
+    process.setProcessEnvironment(environment);
+    process.setWorkingDirectory(linkedProject);
+    process.start(wrapper, {QStringLiteral("init")});
+    if (!process.waitForFinished(5000) || process.exitCode() != 23
+        || !process.readAllStandardOutput().contains("--cwd=" + project.toUtf8() + '\n'))
+        return 25;
+
+    // A disappeared working directory must fail before Flatpak can fall back.
+    const QString deletedProject = temporary.filePath(QStringLiteral("removed-project"));
+    QDir().mkpath(deletedProject);
+    process.setWorkingDirectory(temporary.path());
+    process.start(QStringLiteral("/bin/sh"), {QStringLiteral("-c"),
+        QStringLiteral("cd \"$1\" && rmdir \"$1\" && exec \"$2\" init"),
+        QStringLiteral("removed-directory-test"), deletedProject, wrapper});
+    if (!process.waitForFinished(5000) || process.exitCode() == 0
+        || process.exitCode() == 23 || !process.readAllStandardOutput().isEmpty())
+        return 26;
+
+    // Existing users already have the old shortcut on PATH. Upgrade only its
+    // exact known contents; a native command or modified shortcut remains owned
+    // by the user.
+    QFile legacy(wrapper);
+    if (!legacy.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        return 27;
+    legacy.write("#!/bin/sh\n"
+        "# Dockpipe Flatpak terminal command. Remove this file to uninstall the shortcut.\n"
+        "exec flatpak run --command=dockpipe com.dockpipe.Dockpipe \"$@\"\n");
+    legacy.close();
+    const auto permissions = QFile::permissions(wrapper);
+    FlatpakTerminal::HostEnvironment existingHost{home, wrapper, QDir(home).filePath(QStringLiteral(".local/bin")),
+        QStringLiteral("/bin/bash"), QString(), QString()};
+    if (!FlatpakTerminal::completeSetup(existingHost).success || readFile(wrapper) != original
+        || QFile::permissions(wrapper) != permissions)
+        return 28;
 
     QFile native(wrapper);
     if (!native.open(QIODevice::WriteOnly | QIODevice::Truncate))
         return 8;
     native.write("native-cli-placeholder\n");
     native.close();
-    if (FlatpakTerminal::install(home).success || readFile(wrapper) != "native-cli-placeholder\n")
+    if (FlatpakTerminal::install(home).success || FlatpakTerminal::completeSetup(existingHost).success
+        || readFile(wrapper) != "native-cli-placeholder\n")
         return 9;
     QFile::remove(wrapper);
     if (!QFile::link(temporary.filePath(QStringLiteral("missing-target")), wrapper)

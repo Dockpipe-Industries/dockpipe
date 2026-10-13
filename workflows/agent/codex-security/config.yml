@@ -1,8 +1,11 @@
 # Run tests in isolation, then Codex-assisted security-oriented follow-up.
 # Substrate is per-step (runtime / resolver); workflow-level runtime is not used.
 name: codex-security
-description: Isolated tests then Codex security review step (requires OPENAI_API_KEY for Codex).
-platforms: [windows, deb]
+title: Codex security review example
+catalog_type: workflow
+categories: [ai, security, examples]
+description: Starter container workflow with placeholder test and security-review commands. Customize it for your project.
+platforms: [windows, deb, macos]
 dependencies:
   host:
     - id: docker
@@ -11,6 +14,7 @@ dependencies:
       install:
         windows: winget install Docker.DockerDesktop
         deb: sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin
+        macos: brew install --cask docker
 
 steps:
   - id: tests

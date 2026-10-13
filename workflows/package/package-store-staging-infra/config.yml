@@ -1,6 +1,23 @@
 name: package-store-staging-infra
-description: Plan the staging bucket and custom domain through the Cloudflare R2 package, with isolated remote state.
-platforms: [deb]
+title: Plan staging package infrastructure
+catalog_type: workflow
+categories: [infrastructure, publishing]
+description: Prepare a Terraform plan for an explicitly configured staging package store. Applying the saved plan is a separate action.
+platforms: [deb, macos]
+dependencies:
+  host:
+    - id: bash
+      command: bash
+      description: Requires Bash 4.2 or newer; use Homebrew Bash on macOS.
+      install:
+        deb: sudo apt-get install -y bash
+        macos: brew install bash
+    - id: terraform
+      command: terraform
+      description: Required to prepare the staging infrastructure plan.
+      install:
+        deb: sudo apt-get install -y terraform
+        macos: brew install hashicorp/tap/terraform
 vault: op
 docker_preflight: false
 vars:

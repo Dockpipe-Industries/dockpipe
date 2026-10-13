@@ -1,7 +1,10 @@
 # Pipeline: run → apply (pair with run-apply-validate when you need a third validate phase)
 name: run-apply
-description: Two sequential steps — run phase, then apply phase.
-platforms: [windows, deb]
+title: Two-stage workflow example
+catalog_type: workflow
+categories: [examples]
+description: A starter workflow with placeholder run and apply steps in containers.
+platforms: [windows, deb, macos]
 dependencies:
   host:
     - id: docker
@@ -10,6 +13,7 @@ dependencies:
       install:
         windows: winget install Docker.DockerDesktop
         deb: sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin
+        macos: brew install --cask docker
 
 steps:
   - id: run

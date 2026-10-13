@@ -44,8 +44,11 @@ func (r *RunSpec) UnmarshalYAML(n *yaml.Node) error {
 
 // Workflow is templates/<name>/config.yml (bundled or user project) or templates/core/resolvers/<name>/config.yml (delegate).
 type Workflow struct {
-	Name        string `yaml:"name"`
-	Description string `yaml:"description,omitempty"`
+	Name        string   `yaml:"name"`
+	Title       string   `yaml:"title,omitempty"`
+	CatalogType string   `yaml:"catalog_type,omitempty"`
+	Categories  []string `yaml:"categories,omitempty"`
+	Description string   `yaml:"description,omitempty"`
 	// Category: optional launcher/UI hint (e.g. "app" = show in Pipeon Basic mode as a launchable GUI/tool).
 	Category string `yaml:"category,omitempty"`
 	// Icon: optional package-owned artwork path for launcher/tooling surfaces. Relative paths resolve
@@ -640,6 +643,9 @@ func (s *Step) OutputsPath() string {
 
 // workflowFile is the on-disk shape: steps may mix plain steps and group wrappers.
 type workflowFile struct {
+	Title           string                     `yaml:"title,omitempty"`
+	CatalogType     string                     `yaml:"catalog_type,omitempty"`
+	Categories      []string                   `yaml:"categories,omitempty"`
 	Name            string                     `yaml:"name"`
 	Description     string                     `yaml:"description,omitempty"`
 	Category        string                     `yaml:"category,omitempty"`

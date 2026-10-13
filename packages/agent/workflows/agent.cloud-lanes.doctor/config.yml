@@ -1,5 +1,8 @@
 name: agent.cloud-lanes.doctor
-description: Validate Codex and Claude CLI resolver containers, auth mounts, skills, and optional live prompts.
+title: AI connection diagnostics
+catalog_type: workflow
+categories: [ai, diagnostics]
+description: Check Codex and Claude container setup, authentication mounts, and skills. Optional live checks contact the selected provider.
 platforms: [windows, deb]
 dependencies:
   host:

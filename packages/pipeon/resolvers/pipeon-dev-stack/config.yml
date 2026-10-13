@@ -1,10 +1,10 @@
 name: pipeon-dev-stack
+title: Pipeon development environment
+catalog_type: app
+categories: [development, ai]
 category: app
 vault: none
-description: >-
-  Pipeon product dev stack: ensure dockpipe + dorkpipe + mcpd binaries, start the isolated
-  DorkPipe control-plane stack with internal Postgres + Ollama, expose MCP only, warm the default local
-  model, and open Pipeon against the current workdir.
+description: Start the Pipeon development UI and its local Docker services. Requires Docker and the package build prerequisites.
 platforms: [windows, deb]
 dependencies:
   host:

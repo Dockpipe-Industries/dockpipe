@@ -43,6 +43,36 @@ See the [qualification receipt](../recurring-codebase-hygiene/staging-release.md
 Launchd, sleep/wake, notarization/quarantine, M6 hardware, and full application/runtime acceptance
 remain open; installer qualification does not prove Colima integration.
 
+## Workflow portability audit (2026-10-13)
+
+The user authorized enabling macOS for workflows whose implementation can support it after a
+remote `test` job reached the Mac but failed its host-platform allowlist.
+
+- Enabled 31 workflow definitions across core starters, container examples, agent resolver
+  workflows, editors, secrets, Terraform/publication, and bounded DorkPipe helpers. Updated 13
+  matching workflow/package manifests and macOS dependency installation hints.
+- Changed `test` to bridge networking so Docker Desktop does not require optional host networking.
+  Linux operators can still explicitly select host networking where needed.
+- Documented Homebrew Bash 4.2+ and service PATH requirements for SDK-based host scripts.
+- Retained VM/CI-emulation, GNU-dependent doctor/Pipeon, and complex orchestration/self-analysis
+  restrictions pending their own portability work. Package availability does not override those
+  workflow restrictions.
+- All 31 workflow definitions validate. An isolated package compile completed 44 workflow builds
+  from the affected roots, including unchanged siblings; Dev Container lifecycle fixtures pass.
+  Tarball inspection confirms macOS declarations, bridge networking, and deferred restrictions.
+  Separately compiled and newly scaffolded starters also preserve macOS support.
+  Compilation hooks produced local helper artifacts under the existing ignored build tree, with
+  the validation store and private test state under `/tmp`.
+- Validation exposed an existing compiler cleanup collision: compiling `secretstore` with force
+  removes previously emitted `secretstore-*` tarballs through the name-prefix glob in
+  `src/lib/application/internal/packagecompile/workflow.go`. The affected secrets workflows were
+  compiled and inspected in independent temporary stores. Fix that cleanup boundary before
+  claiming a complete combined package store; it was not changed in this YAML portability slice.
+- This is source/local validation, not native macOS execution, provider acceptance, or publication.
+  Existing compiled packages and queued job snapshots still need updated workflow content.
+
+Canonical prerequisites and exceptions: [Workflows on macOS](../../../workflows/macos.md).
+
 ## Colima container workflows backlog
 
 Requested and authorized for implementation 2026-10-06. Enable Dockpipe CLI and launcher container

@@ -1,23 +1,28 @@
 # Experimental: long-lived base-dev container (docker wait) + user-installed Cursor on the host.
 name: cursor-dev
+title: Cursor development workspace
+catalog_type: app
+categories: [development, ai]
 category: app
 icon: assets/images/icon.png
-description: Experimental — base-dev session container until you stop it; open a user-installed Cursor desktop app on the host (no remote server).
-platforms: [windows, deb]
+description: Open your installed Cursor editor in a Docker-backed development workspace. Requires Docker and a compatible remote-container setup.
+platforms: [windows, deb, macos]
 dependencies:
   host:
     - id: bash
       command: bash
-      description: Required to run the Cursor session scripts.
+      description: Required to run the Cursor session scripts. On macOS, use Homebrew Bash 4.2+ on PATH.
       install:
         windows: winget install Git.Git
         deb: sudo apt-get update && sudo apt-get install -y bash
+        macos: brew install bash
     - id: docker
       command: docker
       description: Required to run the Cursor session container.
       install:
         windows: winget install Docker.DockerDesktop
         deb: sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin
+        macos: brew install --cask docker
 
 types:
   - models/ICursorDevResolverConfig

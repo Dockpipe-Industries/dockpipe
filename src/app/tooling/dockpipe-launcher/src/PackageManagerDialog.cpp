@@ -26,7 +26,7 @@ QTableWidget *packageTable()
 {
     auto *table = new QTableWidget;
     table->setColumnCount(6);
-    table->setHorizontalHeaderLabels({QObject::tr("Name"), QObject::tr("Version"), QObject::tr("Kind"), QObject::tr("Source"), QObject::tr("Size"), QObject::tr("Status")});
+    table->setHorizontalHeaderLabels({QObject::tr("Name"), QObject::tr("Version"), QObject::tr("Type"), QObject::tr("Source"), QObject::tr("Size"), QObject::tr("Status")});
     table->setSelectionBehavior(QAbstractItemView::SelectRows);
     table->setSelectionMode(QAbstractItemView::SingleSelection);
     table->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -56,7 +56,17 @@ QString archiveSize(const QJsonObject &record)
     return QLocale().formattedDataSize(static_cast<qint64>(bytes), 1, QLocale::DataSizeIecFormat);
 }
 
-void populate(QTableWidget *table, const QJsonArray &packages, const QString &filter, const QString &status, bool remoteProvidersOnly)
+QString catalogType(const QJsonObject &record)
+{
+    const QString type = record.value(QStringLiteral("catalog_type")).toString();
+    if (type == QStringLiteral("app") || type == QStringLiteral("workflow")
+        || type == QStringLiteral("integration") || type == QStringLiteral("core"))
+        return type;
+    const QString kind = record.value(QStringLiteral("kind")).toString();
+    return kind == QStringLiteral("resolver") ? QStringLiteral("integration") : kind;
+}
+
+void populate(QTableWidget *table, const QJsonArray &packages, const QString &filter, const QString &status, bool remoteProvidersOnly, const QString &typeFilter)
 {
     const QSignalBlocker blocker(table);
     table->setRowCount(0);
@@ -66,7 +76,12 @@ void populate(QTableWidget *table, const QJsonArray &packages, const QString &fi
         if (remoteProvidersOnly && (record.value(QStringLiteral("kind")).toString() != QStringLiteral("resolver")
             || (capability != QStringLiteral("remote.edge") && capability != QStringLiteral("remote.broker"))))
             continue;
+        if (!typeFilter.isEmpty() && catalogType(record) != typeFilter)
+            continue;
         QStringList searchable;
+        searchable.append(catalogType(record));
+        for (const auto &category : record.value(QStringLiteral("categories")).toArray())
+            searchable.append(category.toString());
         for (const auto &field : {"name", "title", "description", "kind", "provider", "capability", "version", "source"})
             searchable.append(record.value(QLatin1String(field)).toString());
         if (!searchable.join(QLatin1Char(' ')).contains(filter, Qt::CaseInsensitive))
@@ -80,7 +95,7 @@ void populate(QTableWidget *table, const QJsonArray &packages, const QString &fi
         item->setData(Qt::UserRole, record);
         table->setItem(row, 0, item);
         table->setItem(row, 1, new QTableWidgetItem(record.value(QStringLiteral("version")).toString()));
-        table->setItem(row, 2, new QTableWidgetItem(record.value(QStringLiteral("kind")).toString()));
+        table->setItem(row, 2, new QTableWidgetItem(catalogType(record)));
         table->setItem(row, 3, new QTableWidgetItem(record.value(QStringLiteral("source")).toString()));
         auto *size = new QTableWidgetItem(archiveSize(record));
         size->setToolTip(QObject::tr("Compressed package archive size. Does not include extracted files, caches or separately installed dependencies."));
@@ -117,7 +132,18 @@ PackageManagerDialog::PackageManagerDialog(const QString &hintWorkdir, QWidget *
     layout->addLayout(remoteRow);
     m_search = new QLineEdit;
     m_search->setPlaceholderText(tr("Search packages…"));
-    layout->addWidget(m_search);
+    auto *filterRow = new QHBoxLayout;
+    filterRow->addWidget(m_search, 1);
+    m_catalogType = new QComboBox;
+    m_catalogType->setObjectName(QStringLiteral("packageTypeFilter"));
+    m_catalogType->setAccessibleName(tr("Package type"));
+    m_catalogType->addItem(tr("All types"), QString());
+    m_catalogType->addItem(tr("Apps"), QStringLiteral("app"));
+    m_catalogType->addItem(tr("Workflows"), QStringLiteral("workflow"));
+    m_catalogType->addItem(tr("Integrations"), QStringLiteral("integration"));
+    m_catalogType->addItem(tr("Core"), QStringLiteral("core"));
+    filterRow->addWidget(m_catalogType);
+    layout->addLayout(filterRow);
     auto *splitter = new QSplitter;
     m_tabs = new QTabWidget;
     m_installedTable = packageTable();
@@ -157,6 +183,7 @@ PackageManagerDialog::PackageManagerDialog(const QString &hintWorkdir, QWidget *
     layout->addLayout(actions);
 
     connect(m_search, &QLineEdit::textChanged, this, &PackageManagerDialog::applyFilter);
+    connect(m_catalogType, &QComboBox::currentIndexChanged, this, &PackageManagerDialog::applyFilter);
     connect(m_tabs, &QTabWidget::currentChanged, this, &PackageManagerDialog::refreshDetails);
     connect(m_installedTable, &QTableWidget::itemSelectionChanged, this, &PackageManagerDialog::refreshDetails);
     connect(m_marketplaceTable, &QTableWidget::itemSelectionChanged, this, &PackageManagerDialog::refreshDetails);
@@ -313,7 +340,7 @@ bool PackageManagerDialog::versionInstalled(const QJsonObject &record) const
 
 void PackageManagerDialog::applyFilter()
 {
-    populate(m_installedTable, m_installed, m_search->text(), tr("Installed"), m_remoteProvidersOnly);
+    populate(m_installedTable, m_installed, m_search->text(), tr("Installed"), m_remoteProvidersOnly, m_catalogType->currentData().toString());
     QJsonArray available = m_available;
     for (int index = 0; index < available.size(); ++index) {
         auto remote = available[index].toObject();
@@ -321,7 +348,7 @@ void PackageManagerDialog::applyFilter()
             remote.insert(QStringLiteral("status"), tr("Installed"));
         available[index] = remote;
     }
-    populate(m_marketplaceTable, available, m_search->text(), tr("Available"), m_remoteProvidersOnly);
+    populate(m_marketplaceTable, available, m_search->text(), tr("Available"), m_remoteProvidersOnly, m_catalogType->currentData().toString());
     m_tabs->setTabText(0, tr("Installed (%1)").arg(m_installedTable->rowCount()));
     m_tabs->setTabText(1, tr("Marketplace (%1)").arg(m_marketplaceTable->rowCount()));
     refreshDetails();
@@ -335,7 +362,7 @@ void PackageManagerDialog::refreshDetails()
         const QString label = m_tabs->currentIndex() == 1 ? tr("Download size") : tr("Stored archive size");
         lines.append(tr("%1: %2").arg(label, archiveSize(record)));
     }
-    for (const auto &field : {"name", "version", "kind", "description", "provider", "capability", "source", "path", "sha256"}) {
+    for (const auto &field : {"name", "title", "version", "catalog_type", "kind", "description", "provider", "capability", "source", "path", "sha256"}) {
         const auto value = record.value(QLatin1String(field)).toString();
         if (!value.isEmpty())
             lines.append(QStringLiteral("%1: %2").arg(QLatin1String(field), value));

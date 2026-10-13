@@ -2,6 +2,9 @@
 
 This directory is the **canonical** place for **this repository’s** Dockpipe workflows: CI pipelines, Codex demos, R2 publish, self-analysis stacks, sandbox experiments, and host-only helpers.
 
+See [macOS workflow support](../docs/workflows/macos.md) for prerequisites,
+Docker Desktop networking, and workflows that still have platform restrictions.
+
 Workflows are grouped by purpose while retaining their leaf workflow names for `--workflow`:
 
 - `agent/` — Codex demos and DorkPipe agentic docs-orchestration dogfood.

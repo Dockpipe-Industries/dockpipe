@@ -1,11 +1,11 @@
 schema: 1
 kind: workflow
 name: example.brain
+title: Repository review example
+catalog_type: workflow
+categories: [ai, examples]
 version: 0.6.1
-title: Example Brain Starter
-description: |
-  Package-owned starter workflow for generating durable repo brain guidance with repo-native
-  wording, source-precedence rules, starter indexes, and open-gap docs under docs/agents/brain/.
+description: Use configured AI workers to inspect a repository and prepare reviewable guidance. Requires Docker and provider access.
 author: Dockpipe
 license: Apache-2.0
 repository: https://github.com/Dockpipe-Industries/dockpipe
