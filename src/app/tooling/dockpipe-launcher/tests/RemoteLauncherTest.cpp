@@ -4,6 +4,7 @@
 #include "DockerObservabilityWidget.h"
 #include "RemoteWidget.h"
 #include "RemoteRunDialog.h"
+#include "ActivityWidget.h"
 #include "PackageManagerDialog.h"
 #include "LauncherSettings.h"
 #include "Theme.h"
@@ -66,16 +67,31 @@ case "$1:$2" in
 catalog:list)
   printf '{"workflows":[{"workflow_id":"build","display_name":"Build project","description":"Compile and verify the project","config_path":"%s/work/config.yml"},{"workflow_id":"editor","display_name":"Project editor","category":"app"}],"runtimes":["host"],"resolver_details":[{"name":"example.tunnel","title":"Example Tunnel","version":"1.2.0","capability":"remote.edge","remote_setup":"local"},{"name":"example.hosted","title":"Example Hosted","version":"2.0.0","capability":"remote.broker","remote_setup":"hosted"},{"name":"unrelated.tool","capability":"editor"}]}\n' "$DOCKPIPE_TEST_ROOT" ;;
 remote:info)
-  if [ -f "$DOCKPIPE_TEST_ROOT/legacy-connection" ]; then
+  if [ -f "$DOCKPIPE_TEST_ROOT/worker-connection" ]; then
+    echo '{"worker":{"endpoint":"https://remote.example.com","node":"mac-mini"}}'
+  elif [ -f "$DOCKPIPE_TEST_ROOT/legacy-connection" ]; then
     echo '{"broker":{"mode":"local","endpoint":"https://remote.example.com"}}'
   else
     echo '{"broker":{"mode":"local","endpoint":"https://remote.example.com","resolver":{"name":"example.tunnel","title":"Example Tunnel","version":"1.2.0"}}}'
   fi ;;
+remote:jobs)
+  echo called >> "$DOCKPIPE_TEST_ROOT/jobs-calls"
+  echo '[{"id":"build-1","node":"mac-mini","status":"completed"}]' ;;
 remote:nodes) echo '[{"node":"mac-mini","status":"paired"},{"node":"studio-invite","status":"invited"}]' ;;
 remote:pairings) echo '[{"node":"studio","code":"ABCD-1234-5678","status":"pending","expires_at":"2026-10-09T07:00:00Z"}]' ;;
 remote:pair)
+  echo called >> "$DOCKPIPE_TEST_ROOT/pair-calls"
+  if [ -f "$DOCKPIPE_TEST_ROOT/pair-approved" ]; then
+    exit 0
+  fi
   echo '{"node":"studio","code":"ABCD-1234-5678","status":"pending"}'
   exec sleep 60 ;;
+remote:service)
+  printf '%s\n' "$@" >> "$DOCKPIPE_TEST_ROOT/service-calls"
+  if [ -f "$DOCKPIPE_TEST_ROOT/service-fails" ]; then
+    echo 'Service fixture failed' >&2
+    exit 1
+  fi ;;
 remote:submit)
   printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/submit-args"
   echo '{"submission":{"bundle_hash":"abc123"},"files":["work/config.yml"],"bytes":100}' ;;
@@ -346,6 +362,43 @@ esac
         std::fprintf(stderr, "Cancellation left pairing controls busy\n");
         return 5;
     }
+    if (QFile::exists(directory.filePath("service-calls")))
+        return 49;
+    const auto hasRemoteStatus = [&](const QString &text) {
+        for (auto *label : remote->findChildren<QLabel *>()) {
+            if (label->text().startsWith(text))
+                return true;
+        }
+        return false;
+    };
+    QFile approved(directory.filePath("pair-approved"));
+    if (!approved.open(QIODevice::WriteOnly))
+        return 50;
+    approved.close();
+    pair->click();
+    if (!waitUntil([&]() { return hasRemoteStatus("Worker service started."); }))
+        return 51;
+    QFile serviceCalls(directory.filePath("service-calls"));
+    if (!serviceCalls.open(QIODevice::ReadOnly) || serviceCalls.readAll() != "remote\nservice\n--role\nworker\n")
+        return 52;
+    serviceCalls.close();
+    QFile serviceFails(directory.filePath("service-fails"));
+    if (!serviceFails.open(QIODevice::WriteOnly))
+        return 53;
+    serviceFails.close();
+    pair->click();
+    if (!waitUntil([&]() { return hasRemoteStatus("Could not start the worker service. Your pairing is preserved."); }))
+        return 54;
+    QFile pairCalls(directory.filePath("pair-calls"));
+    if (!pairCalls.open(QIODevice::ReadOnly))
+        return 55;
+    const QByteArray completedPairCalls = pairCalls.readAll();
+    pairCalls.close();
+    serviceFails.remove();
+    button(remote, "Start worker service")->click();
+    if (!waitUntil([&]() { return hasRemoteStatus("Worker service started."); })
+        || !pairCalls.open(QIODevice::ReadOnly) || pairCalls.readAll() != completedPairCalls)
+        return 56;
     navigation->setCurrentRow(1);
     target->setCurrentIndex(target->findData("mac-mini"));
     QApplication::processEvents();
@@ -383,6 +436,38 @@ esac
     QFile submitted(directory.filePath("submit-args"));
     if (!submitted.open(QIODevice::ReadOnly) || !submitted.readAll().contains("--expected-digest\nabc123\n"))
         return 11;
+    auto *activity = window.findChild<ActivityWidget *>();
+    if (!activity)
+        return 42;
+    activity->refreshRemote();
+    auto *download = button(activity, "Download result & logs");
+    if (!waitUntil([&]() { return download->isEnabled(); }))
+        return 43;
+    QFile jobsCalls(directory.filePath("jobs-calls"));
+    if (!jobsCalls.open(QIODevice::ReadOnly))
+        return 44;
+    const QByteArray operatorCalls = jobsCalls.readAll();
+    jobsCalls.close();
+    QFile workerConnection(directory.filePath("worker-connection"));
+    if (!workerConnection.open(QIODevice::WriteOnly))
+        return 45;
+    workerConnection.close();
+    activity->refreshRemote();
+    if (!waitUntil([&]() {
+        for (auto *label : activity->findChildren<QLabel *>()) {
+            if (label->text().contains("paired to receive workflows"))
+                return true;
+        }
+        return false;
+    }))
+        return 46;
+    if (download->isEnabled() || button(activity, "Cancel selected job")->isEnabled()
+        || !jobsCalls.open(QIODevice::ReadOnly) || jobsCalls.readAll() != operatorCalls)
+        return 47;
+    for (auto *table : activity->findChildren<QTableWidget *>()) {
+        if (table->rowCount() != 0)
+            return 48;
+    }
     // The offscreen platform has no tray. Closing must really close the window,
     // rather than pretending an unavailable tray can reopen it.
     if (QSystemTrayIcon::isSystemTrayAvailable() || window.findChild<QSystemTrayIcon *>())
