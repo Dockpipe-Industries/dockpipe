@@ -102,7 +102,8 @@ int main(int argc, char **argv)
     QProcess shell;
     auto shellEnvironment = QProcessEnvironment::systemEnvironment();
     shellEnvironment.insert(QStringLiteral("HOME"), preserveHome);
-    shellEnvironment.insert(QStringLiteral("PATH"), QStringLiteral("/usr/bin:/bin"));
+    // Keep an installed host CLI from shadowing the fixture's new shortcut.
+    shellEnvironment.insert(QStringLiteral("PATH"), fixtureBin);
     shell.setProcessEnvironment(shellEnvironment);
     shell.start(QStringLiteral("/bin/bash"), {QStringLiteral("--rcfile"), bashrc.fileName(),
         QStringLiteral("-ic"), QStringLiteral("command -v dockpipe; printf '%s' \"$USER_SETTING\"")});

@@ -1,5 +1,27 @@
 # TASK-036 Remote Node Onboarding
 
+## Worker setup completion and Activity roles (2026-10-13)
+
+- The user confirmed that the Mac is successfully paired to receive workflows.
+  The reported `remote.jobs` missing-operator-file error is an operator-only
+  Activity request, not evidence of a submitted workflow failing.
+- The launcher now starts the worker user service after successful pairing,
+  discloses that behavior before the request, and reports startup failure while
+  preserving pairing. The existing service button retries without re-pairing.
+- Activity reads the public remote-info projection first. Receive-only workers
+  get role guidance, no broker-wide jobs request, and disabled job-management
+  actions. CLI operator commands give actionable setup guidance when credentials
+  are missing; worker credentials never become operator credentials.
+- Focused Go remote tests and the Qt launcher fixture pass. The UI fixture covers
+  cancelled pairing, automatic service startup, startup failure and service-only
+  retry, plus operator-to-worker Activity transitions. Linux builds pass.
+- The broader `go test ./src/lib/... ./src/cmd` sweep was stopped after
+  application-IR tests refused to compile generated Go outside the required
+  containment runner. This is not full-suite proof; the guard was not bypassed.
+- Test service commands are fixtures; no live service was installed or started
+  during local verification. Staging promotion is tracked separately. Native Mac
+  service readiness and an actual delivered workflow still need verification.
+
 ## Objective and authority
 
 Connect Cloudflare through browser login, pair a Mac without SSH, deliver selected workflows with their assets and package dependencies, execute them on an
