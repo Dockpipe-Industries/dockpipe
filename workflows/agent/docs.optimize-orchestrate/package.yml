@@ -2,11 +2,8 @@ schema: 1
 kind: workflow
 name: docs.optimize-orchestrate
 version: 0.6.1
-title: Ollama + DorkPipe Docs Orchestration Optimizer
-description: |
-  Local-first optimizer loop that reviews the latest docs.orchestrate artifacts, runs bounded
-  Ollama worker analysis, proposes a constrained patch, requires approval, and applies to the
-  working tree without committing.
+title: Documentation workflow evaluator
+description: Evaluate documentation-review results and prepare a constrained improvement proposal. Leaves the working tree unchanged by default.
 author: Dockpipe
 license: Apache-2.0
 repository: https://github.com/Dockpipe-Industries/dockpipe
@@ -41,3 +38,8 @@ dependencies:
         deb: sudo apt-get update && sudo apt-get install -y curl
 allow_clone: true
 distribution: source
+catalog_type: workflow
+categories:
+- ai
+- documentation
+- testing

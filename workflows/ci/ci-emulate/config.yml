@@ -1,11 +1,9 @@
 name: ci-emulate
+title: Local cross-platform CI
+catalog_type: workflow
+categories: [development, testing]
 vault: none
-description: >-
-  Local CI emulator. Runs the Linux GitHub Actions test job through nektos/act and validates the
-  Windows CI subset either on the native Windows host or through the repo's windows-vm workflow on
-  Linux. CodeQL and PR-only release gates still stay on GitHub unless you explicitly select those
-  jobs.
-
+description: Run the Linux CI job through act and the Windows checks on Windows or in a configured VM. Requires Docker and the target tooling.
 docker_preflight: false
 platforms: [windows, deb]
 dependencies:

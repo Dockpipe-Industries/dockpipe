@@ -3,6 +3,8 @@
 
 #include <QApplication>
 #include <QDir>
+#include <QComboBox>
+#include <QLineEdit>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QLabel>
@@ -40,7 +42,7 @@ int main(int argc, char **argv)
 case "$2" in
 list)
     if [ -f installed-marker ]; then
-        echo '{"packages":[{"name":"installed-tool","kind":"workflow","version":"1.0.0","source":"System","removable":false},{"name":"remote-tool","kind":"workflow","version":"1.2.3","size_bytes":2048,"source":"User","path":"/user/packages/workflows/dockpipe-workflow-remote-tool-1.2.3.tar.gz","removable":true}],"install_root":"/user/packages","warnings":[]}'
+        echo '{"packages":[{"name":"installed-tool","kind":"workflow","version":"1.0.0","source":"System","removable":false},{"name":"remote-tool","title":"Example desktop workspace","catalog_type":"app","categories":["development"],"kind":"workflow","version":"1.2.3","size_bytes":2048,"source":"User","path":"/user/packages/workflows/dockpipe-workflow-remote-tool-1.2.3.tar.gz","removable":true}],"install_root":"/user/packages","warnings":[]}'
     else
         echo '{"packages":[{"name":"installed-tool","kind":"workflow","version":"1.0.0","source":"System","removable":false}],"install_root":"/user/packages","warnings":[]}'
     fi
@@ -53,7 +55,7 @@ catalog)
         echo '{"manifest":"https://example.com/pinned/store.json","platform":"test-platform","packages":[{"name":"example.tunnel","kind":"resolver","capability":"remote.edge","version":"1.0.0","sha256":"provider-digest","size_bytes":1073741824},{"name":"example.hosted","kind":"resolver","capability":"remote.broker","version":"1.0.0","sha256":"hosted-digest","size_bytes":-1},{"name":"unrelated","kind":"resolver","capability":"editor"},{"name":"misleading-workflow","kind":"workflow","capability":"remote.edge"}]}'
         exit 0
     fi
-    echo '{"manifest":"https://example.com/pinned/store.json","platform":"test-platform","packages":[{"name":"remote-tool","kind":"workflow","version":"1.2.3","sha256":"selection-digest","size_bytes":1572864}]}'
+    echo '{"manifest":"https://example.com/pinned/store.json","platform":"test-platform","packages":[{"name":"remote-tool","title":"Example desktop workspace","catalog_type":"app","categories":["development"],"kind":"workflow","version":"1.2.3","sha256":"selection-digest","size_bytes":1572864}]}'
     ;;
 install)
     printf '%s\n' "$@" > install-args
@@ -91,6 +93,17 @@ esac
         std::fprintf(stderr, "Package tables did not load\n");
         return 1;
     }
+    auto *typeFilter = dialog.findChild<QComboBox *>(QStringLiteral("packageTypeFilter"));
+    if (!typeFilter || marketplace->item(0, 0)->text() != QStringLiteral("Example desktop workspace")
+        || marketplace->item(0, 2)->text() != QStringLiteral("app"))
+        return 1;
+    typeFilter->setCurrentIndex(typeFilter->findData(QStringLiteral("app")));
+    if (installed->rowCount() != 0 || marketplace->rowCount() != 1)
+        return 1;
+    typeFilter->setCurrentIndex(typeFilter->findData(QStringLiteral("integration")));
+    if (marketplace->rowCount() != 0)
+        return 1;
+    typeFilter->setCurrentIndex(0);
     if (install->isVisible() || !uninstall->isVisible() || uninstall->isEnabled() || cancel->isVisible()) {
         std::fprintf(stderr, "Idle installed actions are misleading\n");
         return 1;

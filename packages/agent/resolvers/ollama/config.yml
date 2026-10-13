@@ -1,7 +1,10 @@
 # Bundled workflow for resolver ollama and DOCKPIPE_RESOLVER_WORKFLOW=ollama.
 name: ollama
-description: Local Ollama with dockpipe entrypoint (dockpipe-ollama image).
-platforms: [windows, deb]
+title: Ollama integration
+catalog_type: integration
+categories: [ai]
+description: Run local AI models through an Ollama container managed by Dockpipe. Requires Docker and downloaded models.
+platforms: [windows, deb, macos]
 dependencies:
   host:
     - id: docker
@@ -10,6 +13,7 @@ dependencies:
       install:
         windows: winget install Docker.DockerDesktop
         deb: sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin
+        macos: brew install --cask docker
 
 steps:
   - id: ollama

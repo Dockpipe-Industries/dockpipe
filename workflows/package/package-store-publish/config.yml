@@ -1,8 +1,8 @@
 name: package-store-publish
-description: >-
-  Build release/artifacts for the Dockpipe self-hosted package mirror, then upload each file to an
-  S3-compatible bucket such as Cloudflare R2 with credentials injected from 1Password.
-  Default upload mode is dry-run; set R2_PUBLISH_DRY_RUN=0 for a real push.
+title: Publish a package store
+catalog_type: workflow
+categories: [publishing]
+description: Build release artifacts and upload them to your configured package store. Starts in dry-run mode and requires publishing credentials.
 platforms: [windows, deb, macos]
 vault: environment
 

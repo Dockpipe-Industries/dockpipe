@@ -1,4 +1,7 @@
 name: linux-vm
+title: Linux virtual machine
+catalog_type: app
+categories: [virtual-machines, development]
 category: app
 vault: none
 platforms: [deb]
@@ -45,11 +48,7 @@ view:
         - id: protocol
           title: Mutual pinning
           fields: [Protocol.ControllerPublicKey, Protocol.GuestPublicKey, Protocol.HarnessSha256]
-description: >-
-  Boot a user-supplied Linux development guest through the generic vm runtime
-  and packaged qemu resolver. The typed qualification fields describe the
-  package-owned offline contract only; this slice intentionally rejects live
-  qualification execution until its separately approved integration gate.
+description: Boot your Linux guest image through QEMU and run a development command over SSH. Requires a prepared compatible image.
 runtime: vm
 resolver: qemu
 inputs:

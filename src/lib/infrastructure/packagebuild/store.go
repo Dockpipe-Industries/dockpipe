@@ -29,6 +29,10 @@ type StoreBuildManifest struct {
 
 // StoreArtifact names one gzip tarball built from a compiled package directory.
 type StoreArtifact struct {
+	Title                string   `json:"title,omitempty"`
+	Description          string   `json:"description,omitempty"`
+	CatalogType          string   `json:"catalog_type,omitempty"`
+	Categories           []string `json:"categories,omitempty"`
 	Name                 string   `json:"name"`
 	Version              string   `json:"version"`
 	Tarball              string   `json:"tarball"`
@@ -130,6 +134,10 @@ func BuildCompiledStore(packagesRoot, outDir, fallbackVersion, only string) (*St
 
 // packageManifestMeta aggregates package.yml fields for store manifests and tooling.
 type packageManifestMeta struct {
+	Title                string
+	Description          string
+	CatalogType          string
+	Categories           []string
 	Version              string
 	Provider             string
 	Capability           string
@@ -147,6 +155,10 @@ func readPackageManifestMeta(dir, fallback string) packageManifestMeta {
 	if strings.TrimSpace(pm.Version) != "" {
 		out.Version = strings.TrimSpace(pm.Version)
 	}
+	out.Title = strings.TrimSpace(pm.Title)
+	out.Description = strings.TrimSpace(pm.Description)
+	out.CatalogType = pm.CatalogType
+	out.Categories = append([]string(nil), pm.Categories...)
 	out.Provider = strings.TrimSpace(pm.Provider)
 	out.Capability = strings.TrimSpace(pm.Capability)
 	if len(pm.RequiresCapabilities) > 0 {
@@ -169,7 +181,18 @@ func buildOrCopyCoreArtifact(coreDir, outDir, fallback string) (*StoreArtifact, 
 	if err != nil {
 		return nil, err
 	}
-	return &StoreArtifact{Name: "core", Version: ver, Tarball: base, SHA256: sum, Provider: meta.Provider, Capability: meta.Capability}, nil
+	return &StoreArtifact{
+		Title:       meta.Title,
+		Description: meta.Description,
+		CatalogType: meta.CatalogType,
+		Categories:  meta.Categories,
+		Name:        "core",
+		Version:     ver,
+		Tarball:     base,
+		SHA256:      sum,
+		Provider:    meta.Provider,
+		Capability:  meta.Capability,
+	}, nil
 }
 
 func buildOrCopyWorkflowArtifacts(root, outDir, fallback string) ([]StoreArtifact, error) {
@@ -203,8 +226,17 @@ func buildOrCopyWorkflowArtifacts(root, outDir, fallback string) ([]StoreArtifac
 			return nil, fmt.Errorf("workflow %q: %w", name, err)
 		}
 		out = append(out, StoreArtifact{
-			Name: name, Version: ver, Tarball: base, SHA256: sum,
-			Provider: meta.Provider, Capability: meta.Capability, RequiresCapabilities: meta.RequiresCapabilities,
+			Title:                meta.Title,
+			Description:          meta.Description,
+			CatalogType:          meta.CatalogType,
+			Categories:           meta.Categories,
+			Name:                 name,
+			Version:              ver,
+			Tarball:              base,
+			SHA256:               sum,
+			Provider:             meta.Provider,
+			Capability:           meta.Capability,
+			RequiresCapabilities: meta.RequiresCapabilities,
 		})
 	}
 	return out, nil
@@ -241,8 +273,16 @@ func buildOrCopyResolverArtifacts(root, outDir, fallback string) ([]StoreArtifac
 			return nil, fmt.Errorf("resolver %q: %w", name, err)
 		}
 		out = append(out, StoreArtifact{
-			Name: name, Version: ver, Tarball: base, SHA256: sum,
-			Provider: meta.Provider, Capability: meta.Capability,
+			Title:       meta.Title,
+			Description: meta.Description,
+			CatalogType: meta.CatalogType,
+			Categories:  meta.Categories,
+			Name:        name,
+			Version:     ver,
+			Tarball:     base,
+			SHA256:      sum,
+			Provider:    meta.Provider,
+			Capability:  meta.Capability,
 		})
 	}
 	return out, nil
@@ -268,6 +308,10 @@ func copyTarballArtifact(srcPath, outDir, fallback string, kind tarballKind) (*S
 		return nil, err
 	}
 	return &StoreArtifact{
+		Title:                meta.Title,
+		Description:          meta.Description,
+		CatalogType:          meta.CatalogType,
+		Categories:           meta.Categories,
 		Name:                 name,
 		Version:              meta.Version,
 		Tarball:              base,
@@ -300,6 +344,10 @@ func readPackageManifestMetaFromTarball(tarGzPath, fallback string, kind tarball
 	if strings.TrimSpace(pm.Version) != "" {
 		out.Version = strings.TrimSpace(pm.Version)
 	}
+	out.Title = strings.TrimSpace(pm.Title)
+	out.Description = strings.TrimSpace(pm.Description)
+	out.CatalogType = pm.CatalogType
+	out.Categories = append([]string(nil), pm.Categories...)
 	out.Provider = strings.TrimSpace(pm.Provider)
 	out.Capability = strings.TrimSpace(pm.Capability)
 	if len(pm.RequiresCapabilities) > 0 {
@@ -388,6 +436,10 @@ func listPackageSubdirs(root string) ([]string, error) {
 // UnmarshalJSON accepts legacy "primitive" / "requires_primitives" keys for older packages-store-manifest.json.
 func (a *StoreArtifact) UnmarshalJSON(data []byte) error {
 	var x struct {
+		Title                string   `json:"title,omitempty"`
+		Description          string   `json:"description,omitempty"`
+		CatalogType          string   `json:"catalog_type,omitempty"`
+		Categories           []string `json:"categories,omitempty"`
 		Name                 string   `json:"name"`
 		Version              string   `json:"version"`
 		Tarball              string   `json:"tarball"`
@@ -402,6 +454,10 @@ func (a *StoreArtifact) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &x); err != nil {
 		return err
 	}
+	a.Title = x.Title
+	a.Description = x.Description
+	a.CatalogType = x.CatalogType
+	a.Categories = x.Categories
 	a.Name = x.Name
 	a.Version = x.Version
 	a.Tarball = x.Tarball

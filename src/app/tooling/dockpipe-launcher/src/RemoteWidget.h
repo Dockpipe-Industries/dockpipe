@@ -4,6 +4,7 @@
 #include "WorkflowCatalog.h"
 #include <QWidget>
 
+class QJsonObject;
 class QLabel;
 class QComboBox;
 class QLineEdit;
@@ -35,6 +36,8 @@ private:
     void refreshPairings();
     void refreshNodes();
     void startWorkerService();
+    void replaceService(const QString &role);
+    void updateServiceNotices(const QJsonObject &info);
     void updateSetup();
     void run(const QStringList &arguments, RemoteCommand::Completion completion = {}, int timeoutMs = 30000);
     void decidePairing(bool approve);
@@ -47,6 +50,10 @@ private:
     QLabel *m_existingConnection = nullptr;
     QPushButton *m_installProvider = nullptr;
     QLabel *m_connectionSummary = nullptr;
+    QLabel *m_brokerServiceHint = nullptr;
+    QLabel *m_workerServiceHint = nullptr;
+    QPushButton *m_updateBrokerService = nullptr;
+    QPushButton *m_updateWorkerService = nullptr;
     QLabel *m_pairingAddress = nullptr;
     QPushButton *m_setup = nullptr;
     RemoteCommand m_command;

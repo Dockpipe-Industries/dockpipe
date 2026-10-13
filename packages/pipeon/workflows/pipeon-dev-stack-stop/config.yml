@@ -1,5 +1,8 @@
 name: pipeon-dev-stack-stop
-description: Stop the Pipeon local dev stack for the current workdir.
+title: Stop Pipeon services
+catalog_type: workflow
+categories: [development]
+description: Stop the local Pipeon development services for the current workspace.
 platforms: [windows, deb]
 dependencies:
   host:

@@ -1,8 +1,9 @@
 name: example.brain
+title: Repository review example
+catalog_type: workflow
+categories: [ai, examples]
 namespace: dockpipeproject
-description: >-
-  Package-owned starter workflow for generating repo-native brain guidance in a checkout.
-
+description: Use configured AI workers to inspect a repository and prepare reviewable guidance. Requires Docker and provider access.
 docker_preflight: false
 platforms: [windows, deb]
 dependencies:

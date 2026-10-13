@@ -1,9 +1,11 @@
 schema: 1
 kind: workflow
 name: agent.cloud-lanes.doctor
+title: AI connection diagnostics
+catalog_type: workflow
+categories: [ai, diagnostics]
 version: 0.6.1
-title: Agent Cloud Lane Doctor
-description: Validate Codex and Claude resolver containers, auth mounts, skills, and tiny live prompts.
+description: Check Codex and Claude container setup, authentication mounts, and skills. Optional live checks contact the selected provider.
 author: Dockpipe
 license: Apache-2.0
 tags: [agent, codex, claude, doctor, validation]

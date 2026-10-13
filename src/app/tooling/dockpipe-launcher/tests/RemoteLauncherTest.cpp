@@ -18,6 +18,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QStyle>
@@ -67,7 +68,9 @@ case "$1:$2" in
 catalog:list)
   printf '{"workflows":[{"workflow_id":"build","display_name":"Build project","description":"Compile and verify the project","config_path":"%s/work/config.yml"},{"workflow_id":"editor","display_name":"Project editor","category":"app"}],"runtimes":["host"],"resolver_details":[{"name":"example.tunnel","title":"Example Tunnel","version":"1.2.0","capability":"remote.edge","remote_setup":"local"},{"name":"example.hosted","title":"Example Hosted","version":"2.0.0","capability":"remote.broker","remote_setup":"hosted"},{"name":"unrelated.tool","capability":"editor"}]}\n' "$DOCKPIPE_TEST_ROOT" ;;
 remote:info)
-  if [ -f "$DOCKPIPE_TEST_ROOT/worker-connection" ]; then
+  if [ -f "$DOCKPIPE_TEST_ROOT/stale-service" ]; then
+    echo '{"broker":{"mode":"local","endpoint":"https://remote.example.com","service":{"state":"update-required"}}}'
+  elif [ -f "$DOCKPIPE_TEST_ROOT/worker-connection" ]; then
     echo '{"worker":{"endpoint":"https://remote.example.com","node":"mac-mini"}}'
   elif [ -f "$DOCKPIPE_TEST_ROOT/legacy-connection" ]; then
     echo '{"broker":{"mode":"local","endpoint":"https://remote.example.com"}}'
@@ -91,6 +94,9 @@ remote:service)
   if [ -f "$DOCKPIPE_TEST_ROOT/service-fails" ]; then
     echo 'Service fixture failed' >&2
     exit 1
+  fi
+  if [ "$5" = "--replace" ]; then
+    rm -f "$DOCKPIPE_TEST_ROOT/stale-service"
   fi ;;
 remote:submit)
   printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/submit-args"
@@ -468,6 +474,52 @@ esac
         if (table->rowCount() != 0)
             return 48;
     }
+    QFile staleService(directory.filePath("stale-service"));
+    if (!staleService.open(QIODevice::WriteOnly))
+        return 57;
+    staleService.close();
+    navigation->setCurrentRow(2);
+    button(remote, "← Machines")->click();
+    remote->refresh();
+    auto *repair = button(remote, "Update broker service…");
+    auto *serviceHint = remote->findChild<QLabel *>("brokerServiceHint");
+    if (!waitUntil([&]() { return repair->isVisible() && repair->isEnabled() && serviceHint->isVisible(); }))
+        return 58;
+    capture("-service-update");
+    if (!serviceCalls.open(QIODevice::ReadOnly))
+        return 59;
+    const QByteArray beforeRepair = serviceCalls.readAll();
+    serviceCalls.close();
+    const auto answerConfirmation = [](QMessageBox::StandardButton answer) {
+        QTimer::singleShot(0, [answer]() {
+            for (auto *widget : QApplication::topLevelWidgets()) {
+                if (auto *dialog = qobject_cast<QMessageBox *>(widget))
+                    dialog->button(answer)->click();
+            }
+        });
+    };
+    answerConfirmation(QMessageBox::No);
+    repair->click();
+    if (!serviceCalls.open(QIODevice::ReadOnly) || serviceCalls.readAll() != beforeRepair)
+        return 60;
+    serviceCalls.close();
+    if (!serviceFails.open(QIODevice::WriteOnly))
+        return 61;
+    serviceFails.close();
+    answerConfirmation(QMessageBox::Yes);
+    repair->click();
+    if (!waitUntil([&]() { return hasRemoteStatus("The service update did not finish."); }) || !repair->isVisible())
+        return 62;
+    serviceFails.remove();
+    answerConfirmation(QMessageBox::Yes);
+    repair->click();
+    if (!waitUntil([&]() { return !repair->isVisible(); }))
+        return 63;
+    if (!serviceCalls.open(QIODevice::ReadOnly)
+        || serviceCalls.readAll().mid(beforeRepair.size()) != "remote\nservice\n--role\nbroker\n--replace\nremote\nservice\n--role\nbroker\n--replace\n")
+        return 64;
+    serviceCalls.close();
+
     // The offscreen platform has no tray. Closing must really close the window,
     // rather than pretending an unavailable tray can reopen it.
     if (QSystemTrayIcon::isSystemTrayAvailable() || window.findChild<QSystemTrayIcon *>())

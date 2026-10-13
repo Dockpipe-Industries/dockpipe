@@ -4,16 +4,27 @@
 # - a couple of vars with concrete defaults
 # - clear multi-step flow with host/container boundaries
 name: example
-description: Starter typed pipeline with a prepare step, an isolated run step, and a host summary step.
-platforms: [windows, deb]
+title: Getting started example
+catalog_type: workflow
+categories: [examples]
+description: A small example showing Dockpipe workflow structure. Customize its steps for your project.
+platforms: [windows, deb, macos]
 dependencies:
   host:
     - id: bash
       command: bash
-      description: Required by the starter host steps.
+      description: Required by the starter host steps. On macOS, use Homebrew Bash 4.2+ on PATH.
       install:
         windows: winget install Git.Git
         deb: sudo apt-get update && sudo apt-get install -y bash
+        macos: brew install bash
+    - id: docker
+      command: docker
+      description: Required by the isolated starter step; start Docker Desktop on macOS.
+      install:
+        windows: winget install Docker.DockerDesktop
+        deb: sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin
+        macos: brew install --cask docker
 
 types:
   - models/IExampleWorkflowConfig.pipe
