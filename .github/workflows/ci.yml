@@ -36,13 +36,19 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.26.9"
+
+      - name: Verify MCP module without workspace resolution
+        working-directory: packages/dorkpipe-mcp
+        env:
+          GOWORK: "off"
+        run: go test -mod=readonly ./...
 
       - name: Public repository configuration boundary
         run: python3 release/packaging/check-public-content.py
@@ -192,7 +198,7 @@ jobs:
       - name: Upload DorkPipe CI analysis bundle
         if: always()
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dockpipe-ci-analysis-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -210,11 +216,11 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.26.9"
 
