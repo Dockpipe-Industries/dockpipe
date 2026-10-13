@@ -92,13 +92,13 @@ variable "cache_rule_expression" {
 }
 
 variable "cache_edge_ttl_seconds" {
-  description = "Edge cache TTL (seconds) when overriding origin for matched package objects."
+  description = "Edge cache TTL (seconds), used only when cache_edge_ttl_mode is override_origin."
   type        = number
   default     = 86400
 }
 
 variable "cache_browser_ttl_seconds" {
-  description = "Browser cache TTL (seconds) for matched package objects (override_origin)."
+  description = "Browser cache TTL (seconds), used only when cache_browser_ttl_mode is override_origin."
   type        = number
   default     = 3600
 }
@@ -198,13 +198,13 @@ variable "cache_rule_enabled" {
 variable "cache_edge_ttl_mode" {
   description = "Edge TTL mode for the cache rule (e.g. override_origin, respect_origin, bypass_by_default)."
   type        = string
-  default     = "override_origin"
+  default     = "respect_origin"
 }
 
 variable "cache_browser_ttl_mode" {
   description = "Browser TTL mode for the cache rule (e.g. override_origin, respect_origin, bypass)."
   type        = string
-  default     = "override_origin"
+  default     = "respect_origin"
 }
 
 variable "cache_respect_strong_etags" {
