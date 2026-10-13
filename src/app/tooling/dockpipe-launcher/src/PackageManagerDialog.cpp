@@ -9,6 +9,7 @@
 #include <QHeaderView>
 #include <QJsonObject>
 #include <QLabel>
+#include <QLocale>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QSplitter>
@@ -17,19 +18,22 @@
 #include <QTextBrowser>
 #include <QUrl>
 #include <QVBoxLayout>
+#include <cmath>
+#include <limits>
 
 namespace {
 QTableWidget *packageTable()
 {
     auto *table = new QTableWidget;
-    table->setColumnCount(5);
-    table->setHorizontalHeaderLabels({QObject::tr("Name"), QObject::tr("Version"), QObject::tr("Kind"), QObject::tr("Source"), QObject::tr("Status")});
+    table->setColumnCount(6);
+    table->setHorizontalHeaderLabels({QObject::tr("Name"), QObject::tr("Version"), QObject::tr("Kind"), QObject::tr("Source"), QObject::tr("Size"), QObject::tr("Status")});
     table->setSelectionBehavior(QAbstractItemView::SelectRows);
     table->setSelectionMode(QAbstractItemView::SingleSelection);
     table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     table->setAlternatingRowColors(true);
     table->verticalHeader()->setVisible(false);
     table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    table->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
     table->horizontalHeader()->setStretchLastSection(true);
     return table;
 }
@@ -42,12 +46,26 @@ QString remoteManifest(QString remote)
     return url.toString();
 }
 
-void populate(QTableWidget *table, const QJsonArray &packages, const QString &filter, const QString &status)
+QString archiveSize(const QJsonObject &record)
+{
+    const auto value = record.value(QStringLiteral("size_bytes"));
+    const double bytes = value.toDouble(-1);
+    if (!value.isDouble() || !std::isfinite(bytes) || bytes < 0 || std::floor(bytes) != bytes
+        || bytes >= static_cast<double>(std::numeric_limits<qint64>::max()))
+        return QObject::tr("Not available");
+    return QLocale().formattedDataSize(static_cast<qint64>(bytes), 1, QLocale::DataSizeIecFormat);
+}
+
+void populate(QTableWidget *table, const QJsonArray &packages, const QString &filter, const QString &status, bool remoteProvidersOnly)
 {
     const QSignalBlocker blocker(table);
     table->setRowCount(0);
     for (const auto &value : packages) {
         const auto record = value.toObject();
+        const QString capability = record.value(QStringLiteral("capability")).toString();
+        if (remoteProvidersOnly && (record.value(QStringLiteral("kind")).toString() != QStringLiteral("resolver")
+            || (capability != QStringLiteral("remote.edge") && capability != QStringLiteral("remote.broker"))))
+            continue;
         QStringList searchable;
         for (const auto &field : {"name", "title", "description", "kind", "provider", "capability", "version", "source"})
             searchable.append(record.value(QLatin1String(field)).toString());
@@ -64,7 +82,10 @@ void populate(QTableWidget *table, const QJsonArray &packages, const QString &fi
         table->setItem(row, 1, new QTableWidgetItem(record.value(QStringLiteral("version")).toString()));
         table->setItem(row, 2, new QTableWidgetItem(record.value(QStringLiteral("kind")).toString()));
         table->setItem(row, 3, new QTableWidgetItem(record.value(QStringLiteral("source")).toString()));
-        table->setItem(row, 4, new QTableWidgetItem(record.value(QStringLiteral("status")).toString(status)));
+        auto *size = new QTableWidgetItem(archiveSize(record));
+        size->setToolTip(QObject::tr("Compressed package archive size. Does not include extracted files, caches or separately installed dependencies."));
+        table->setItem(row, 4, size);
+        table->setItem(row, 5, new QTableWidgetItem(record.value(QStringLiteral("status")).toString(status)));
     }
     if (table->rowCount() > 0)
         table->selectRow(0);
@@ -75,6 +96,7 @@ PackageManagerDialog::PackageManagerDialog(const QString &hintWorkdir, QWidget *
     : QDialog(parent), m_hintWorkdir(hintWorkdir)
 {
     setWindowTitle(tr("Packages"));
+    setObjectName(QStringLiteral("packageManagerDialog"));
     resize(1060, 680);
     if (m_hintWorkdir.isEmpty())
         m_hintWorkdir = QDir::homePath();
@@ -170,6 +192,8 @@ PackageManagerDialog::PackageManagerDialog(const QString &hintWorkdir, QWidget *
             m_status->setText((installed ? tr("Installed: %1") : tr("Uninstalled: %1. Package data and settings were kept."))
                                  .arg(result.value(QStringLiteral("path")).toString()));
             loadInstalled();
+            if (installed)
+                emit packageInstalled(m_installingPackage);
         } else {
             m_manifest = result.value(QStringLiteral("manifest")).toString();
             m_available = result.value(QStringLiteral("packages")).toArray();
@@ -201,6 +225,15 @@ PackageManagerDialog::~PackageManagerDialog()
     m_remoteCommand->disconnect(this);
     delete m_localCommand;
     delete m_remoteCommand;
+}
+
+void PackageManagerDialog::showRemoteProviders()
+{
+    m_remoteProvidersOnly = true;
+    setWindowTitle(tr("Install remote-access provider"));
+    m_search->setPlaceholderText(tr("Search remote-access providers…"));
+    m_tabs->setCurrentIndex(1);
+    applyFilter();
 }
 
 void PackageManagerDialog::run(PackageCommand *command, const QStringList &arguments)
@@ -246,6 +279,7 @@ void PackageManagerDialog::installSelected()
         || m_tabs->currentIndex() != 1 || versionInstalled(record))
         return;
     m_operation = Operation::Install;
+    m_installingPackage = record.value(QStringLiteral("name")).toString();
     m_status->setText(tr("Downloading and verifying %1…").arg(record.value(QStringLiteral("name")).toString()));
     run(m_remoteCommand, {QStringLiteral("package"), QStringLiteral("install"), QStringLiteral("--remote"), m_manifest,
         QStringLiteral("--kind"), record.value(QStringLiteral("kind")).toString(),
@@ -279,7 +313,7 @@ bool PackageManagerDialog::versionInstalled(const QJsonObject &record) const
 
 void PackageManagerDialog::applyFilter()
 {
-    populate(m_installedTable, m_installed, m_search->text(), tr("Installed"));
+    populate(m_installedTable, m_installed, m_search->text(), tr("Installed"), m_remoteProvidersOnly);
     QJsonArray available = m_available;
     for (int index = 0; index < available.size(); ++index) {
         auto remote = available[index].toObject();
@@ -287,7 +321,7 @@ void PackageManagerDialog::applyFilter()
             remote.insert(QStringLiteral("status"), tr("Installed"));
         available[index] = remote;
     }
-    populate(m_marketplaceTable, available, m_search->text(), tr("Available"));
+    populate(m_marketplaceTable, available, m_search->text(), tr("Available"), m_remoteProvidersOnly);
     m_tabs->setTabText(0, tr("Installed (%1)").arg(m_installedTable->rowCount()));
     m_tabs->setTabText(1, tr("Marketplace (%1)").arg(m_marketplaceTable->rowCount()));
     refreshDetails();
@@ -297,6 +331,10 @@ void PackageManagerDialog::refreshDetails()
 {
     const auto record = selection();
     QStringList lines;
+    if (!record.isEmpty()) {
+        const QString label = m_tabs->currentIndex() == 1 ? tr("Download size") : tr("Stored archive size");
+        lines.append(tr("%1: %2").arg(label, archiveSize(record)));
+    }
     for (const auto &field : {"name", "version", "kind", "description", "provider", "capability", "source", "path", "sha256"}) {
         const auto value = record.value(QLatin1String(field)).toString();
         if (!value.isEmpty())

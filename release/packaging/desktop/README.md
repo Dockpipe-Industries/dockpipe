@@ -53,7 +53,7 @@ Published staging Linux desktop artifacts include DEBs and the
 [Flatpak launcher-plus-CLI bundle](flatpak/README.md), with separate on-demand
 runtime-compatible packages. The Flatpak bundle is available from the staging
 package host; this does not establish Bazzite/Pipeon or full Podman/SELinux support.
-See [Flatpak installation and manual updates](../../../docs/install.md#flatpak-desktop-staging-linux-amd64).
+See [Flatpak installation and manual updates](../../../docs/install.md#flatpak-desktop-linux-amd64).
 Do not put the glibc Qt binary into
 an Alpine package. Other Linux package formats and portable archives remain CLI
 options. Native Mac/Windows installation proof cannot be inferred from a Linux

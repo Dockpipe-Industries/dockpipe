@@ -47,6 +47,14 @@ Normal installers provide CLI/core. Install optional packages from a published
 catalog with `dockpipe package install` or the launcher Marketplace. No Dockpipe
 source checkout or release workflow is required.
 
+The launcher shows compressed package sizes in **Marketplace** and **Installed**.
+Marketplace sizes come from the catalog's optional `size_bytes` field; store builds
+measure each finished archive, and `dockpipe package catalog` preserves that value.
+`dockpipe package list --format json` reports the actual local archive size using
+the same field. Older catalogs and unpacked package directories omit it and display
+**Not available**. These sizes exclude extracted runtime files, caches and separate
+dependencies; they are not total disk-usage estimates.
+
 For a reproducible setup, use an immutable manifest URL and the selected package's
 checksum. When authoring your own packages, keep YAML, scripts and assets together
 and declare dependencies so another user can run them without your source tree.

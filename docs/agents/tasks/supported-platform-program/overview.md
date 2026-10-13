@@ -108,7 +108,7 @@ Publication rechecked 2026-10-10: the staging pointer selects
 store and the combined launcher/CLI bundle, whose package-host URL returns HTTP 200.
 The matching hosted Flatpak run succeeded. See the canonical
 [publication evidence](../../../../release/packaging/desktop/flatpak/README.md#release-integration-and-proof-limits)
-and [installation guide](../../../install.md#flatpak-desktop-staging-linux-amd64).
+and [installation guide](../../../install.md#flatpak-desktop-linux-amd64).
 
 Still open: native Bazzite, Podman/SELinux, arm64, signed/updating Flatpak remote,
 production Flatpak publication and authenticated/provider or VM end-to-end parity. Package

@@ -87,8 +87,8 @@ own project's command and select an image that contains the tools it needs.
 ## 4. Add reusable tools when you need them
 
 The installer includes required core. Open **Packages → Marketplace** in the
-launcher to install optional workflows and resolvers. Staging users first select
-**Settings → Package Remotes → Use staging** and save.
+launcher to install optional workflows and resolvers. Select
+**Settings → Package Remotes → Use production** and save to use the release catalog.
 
 The [package quickstart](packages/package-quickstart.md) covers discovery,
 installation and dependencies from the terminal. A workflow shown in an example

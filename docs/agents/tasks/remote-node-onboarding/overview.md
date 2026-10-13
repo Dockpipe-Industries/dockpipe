@@ -148,6 +148,19 @@ not authorize live account mutation, service installation on the current host, o
 
 ## Remaining qualification
 
+### Launcher provider setup (2026-10-12)
+
+Source changes add a capability-filtered provider Marketplace action directly to
+remote setup, return to setup with the installed provider selected, and retain an
+existing connection's address while offering provider review from pairing. The
+launcher delegates installation to the pinned package CLI and setup to the existing
+provider contract; Cloudflare behavior stays package-owned. An explicit connection
+refresh follows interactive setup. Local Qt fixtures cover missing providers,
+legacy connection display, hosted/local selection and checksum-pinned installation.
+Cloudflare fake-provider checks retain browser login, saved-state reuse and the
+unknown-create refusal. Live account changes, native Mac UI acceptance and release
+publication have not been performed for this change.
+
 - Real Cloudflare browser/account/DNS/readiness with authorization.
 - Native Apple Silicon execution, launchd, sleep/wake, and process teardown.
 - The actual Nucleon benchmark workflow and source/compiler/measurement evidence on the Mac.

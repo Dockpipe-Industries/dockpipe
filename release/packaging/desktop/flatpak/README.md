@@ -1,7 +1,7 @@
 # Flatpak desktop and Marketplace packages
 
 The Linux amd64 launcher-plus-CLI bundle is published on the staging package host.
-Use the [installation guide](../../../../docs/install.md#flatpak-desktop-staging-linux-amd64)
+Use the [installation guide](../../../../docs/install.md#flatpak-desktop-linux-amd64)
 for KDE runtime setup, verified download URLs, user installation, launch commands,
 manual bundle updates and Marketplace setup. This is not a Flathub listing or an
 updating Dockpipe Flatpak remote.
