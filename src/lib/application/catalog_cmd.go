@@ -187,7 +187,10 @@ func listCatalogWorkflows(projectRoot, workdir string) ([]catalogWorkflowRecord,
 		if err != nil {
 			continue
 		}
-		display := strings.TrimSpace(wf.Name)
+		display := strings.TrimSpace(wf.Title)
+		if display == "" {
+			display = strings.TrimSpace(wf.Name)
+		}
 		if display == "" {
 			display = name
 		}
@@ -196,7 +199,7 @@ func listCatalogWorkflows(projectRoot, workdir string) ([]catalogWorkflowRecord,
 			WorkflowID:  name,
 			DisplayName: display,
 			Description: strings.TrimSpace(wf.Description),
-			Category:    strings.TrimSpace(wf.Category),
+			Category:    catalogWorkflowCategory(wf),
 			IconPath:    resolveCatalogWorkflowIcon(cfgPath, strings.TrimSpace(wf.Icon), name),
 			ConfigPath:  cfgPath,
 			Vars:        cloneCatalogVars(wf.Vars),

@@ -78,30 +78,34 @@ RemoteWidget::RemoteWidget(QWidget *parent) : QWidget(parent), m_command(this)
     root->addWidget(textLabel(tr("Machines"), "appTitle"));
     root->addWidget(textLabel(tr("Choose which computers can run your workflows.")));
 
-    auto *scroll = new QScrollArea;
-    scroll->setObjectName(QStringLiteral("machineScroll"));
-    scroll->setFrameShape(QFrame::NoFrame);
-    scroll->setWidgetResizable(true);
-    auto *content = new QWidget;
-    content->setObjectName(QStringLiteral("machineContent"));
-    content->setAttribute(Qt::WA_StyledBackground);
-    auto *contentLayout = pageLayout(content);
     m_pages = new QStackedWidget;
     m_pages->setObjectName(QStringLiteral("machinePages"));
-    m_pages->setMaximumWidth(1120);
-    m_pages->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-    m_pages->addWidget(buildOverview());
-    m_pages->addWidget(buildPairing());
-    m_pages->addWidget(buildConnection());
-    m_pages->addWidget(buildSetup());
-    contentLayout->addWidget(m_pages);
+    // Each screen scrolls independently so hidden setup forms cannot enlarge the overview.
+    const auto addPage = [this](QWidget *page) {
+        auto *scroll = new QScrollArea;
+        scroll->setObjectName(QStringLiteral("machineScroll"));
+        scroll->setFrameShape(QFrame::NoFrame);
+        scroll->setWidgetResizable(true);
+        auto *content = new QWidget;
+        content->setObjectName(QStringLiteral("machineContent"));
+        content->setAttribute(Qt::WA_StyledBackground);
+        auto *layout = pageLayout(content);
+        page->setMaximumWidth(1120);
+        page->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+        layout->addWidget(page);
+        layout->addStretch();
+        scroll->setWidget(content);
+        m_pages->addWidget(scroll);
+    };
+    addPage(buildOverview());
+    addPage(buildPairing());
+    addPage(buildConnection());
+    addPage(buildSetup());
+    root->addWidget(m_pages, 1);
     m_status = textLabel(QString(), "hintText");
     m_status->setObjectName(QStringLiteral("machineStatus"));
     m_status->hide();
-    contentLayout->addWidget(m_status);
-    contentLayout->addStretch();
-    scroll->setWidget(content);
-    root->addWidget(scroll, 1);
+    root->addWidget(m_status);
 
     auto *footer = new QHBoxLayout;
     auto *details = actionButton(tr("Show details"), footer, "quietButton");
@@ -156,6 +160,24 @@ QWidget *RemoteWidget::buildOverview()
     m_connectionSummary->setObjectName(QStringLiteral("remoteConnectionSummary"));
     m_connectionSummary->setTextInteractionFlags(Qt::TextSelectableByMouse);
     layout->addWidget(m_connectionSummary);
+    m_brokerServiceHint = textLabel(QString(), "hintText");
+    m_workerServiceHint = textLabel(QString(), "hintText");
+    m_updateBrokerService = new QPushButton(tr("Update broker service…"));
+    m_updateWorkerService = new QPushButton(tr("Update worker service…"));
+    m_brokerServiceHint->setObjectName(QStringLiteral("brokerServiceHint"));
+    m_workerServiceHint->setObjectName(QStringLiteral("workerServiceHint"));
+    for (auto *hint : {m_brokerServiceHint, m_workerServiceHint}) {
+        layout->addWidget(hint);
+        hint->hide();
+    }
+    for (auto *button : {m_updateBrokerService, m_updateWorkerService}) {
+        button->setObjectName(QStringLiteral("secondaryButton"));
+        layout->addWidget(button, 0, Qt::AlignLeft);
+        m_actions.append(button);
+        button->hide();
+    }
+    connect(m_updateBrokerService, &QPushButton::clicked, this, [this]() { replaceService("broker"); });
+    connect(m_updateWorkerService, &QPushButton::clicked, this, [this]() { replaceService("worker"); });
     auto *actions = new QHBoxLayout;
     auto *add = actionButton(tr("Add another machine"), actions, "primaryButton");
     auto *join = actionButton(tr("Connect this computer"), actions);
@@ -332,6 +354,42 @@ QWidget *RemoteWidget::buildConnection()
     connect(start, &QPushButton::clicked, this, &RemoteWidget::startWorkerService);
     layout->addLayout(serviceActions);
     return page;
+}
+
+void RemoteWidget::updateServiceNotices(const QJsonObject &info)
+{
+    const auto update = [](const QJsonObject &service, QLabel *hint, QPushButton *button) {
+        const QString state = service.value("state").toString();
+        const bool needsUpdate = state == "update-required";
+        const bool missing = state == "missing";
+        const bool unavailable = state == "unavailable";
+        hint->setVisible(needsUpdate || missing || unavailable);
+        button->setVisible(needsUpdate || missing);
+        if (needsUpdate)
+            hint->setText(tr("The background service needs an update. It may still use an older Dockpipe installation or an unfinished update. Update it before retrying remote work."));
+        else if (missing)
+            hint->setText(tr("The background service is not installed. Install it to receive remote work."));
+        else if (unavailable)
+            hint->setText(tr("The background service registration could not be inspected. Check its configuration before retrying remote work."));
+    };
+    update(info.value("broker").toObject().value("service").toObject(), m_brokerServiceHint, m_updateBrokerService);
+    update(info.value("worker").toObject().value("service").toObject(), m_workerServiceHint, m_updateWorkerService);
+}
+
+void RemoteWidget::replaceService(const QString &role)
+{
+    const QString title = role == "broker" ? tr("Update broker service") : tr("Update worker service");
+    if (QMessageBox::question(this, title,
+            tr("Replace this background service's configuration with the current Dockpipe installation and restart it? "
+               "This replaces custom service settings and interrupts active remote work. Pairing and remote-access settings are preserved."),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes)
+        return;
+    run({"service", "--role", role, "--replace"}, [this](bool ok, const QByteArray &) {
+        if (ok)
+            refresh();
+        else
+            m_status->setText(tr("The service update did not finish. Pairing is preserved. See details, then retry Update service."));
+    }, 35000);
 }
 
 void RemoteWidget::startWorkerService()
@@ -666,6 +724,7 @@ void RemoteWidget::refresh()
             return;
         }
         const auto info = document.object();
+        updateServiceNotices(info);
         const auto broker = info.value("broker").toObject();
         const auto worker = info.value("worker").toObject();
         m_existingConnection->hide();

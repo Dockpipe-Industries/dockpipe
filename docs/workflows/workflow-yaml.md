@@ -363,9 +363,12 @@ Dockpipe also injects these variables for every step:
 
 | Key | Purpose |
 |-----|---------|
-| `name` | Optional display title for stderr (defaults to the template folder name, e.g. `run`). |
+| `name` | Workflow name used by execution and as the display fallback (defaults to the template folder name, e.g. `run`). Keep published identifiers stable. |
+| `title` | Optional readable name for launcher and package discovery, independent of the stable name. |
 | `description` | Optional one-line task summary printed after `name` (e.g. what this workflow is for). |
-| `category` | Optional **UI metadata** for tools like **Pipeon**: e.g. `app` marks a launchable GUI/container IDE-style workflow shown in **Basic** mode. Omit or use other values for pipelines and advanced-only flows. |
+| `catalog_type` | Optional discovery type: `app`, `workflow`, `integration`, or `core`. Does not change the compiled package kind or execution. Use `app` for launchable applications. |
+| `categories` | Optional purpose tags, such as `[ai, development]`: at most 16 unique lowercase slugs of at most 64 characters, starting with a letter. See [package metadata](../packages/package-model.md#names-descriptions-and-discovery). |
+| `category` | Legacy **UI metadata**: `app` marks a launchable GUI/container IDE-style workflow. An explicit `catalog_type` takes precedence in the launcher; existing tools may still consume this field. |
 | `vars` | Map of default env vars (merged if not already set; `--var` overrides). |
 | `compose` | Optional Docker Compose settings for host built-ins such as `compose_up`, `compose_down`, and `compose_ps`. Fields: `file`, `project`, `project_directory`, `autodown_env`, `exports`, `services`. Compose runs inherit Dockpipe’s resolved environment and vault-injected vars directly. |
 | `container` | Optional container mount defaults. Use this to override the primary host path bound at `/work` (`workdir_host`), set a default container subdirectory under `/work` (`work_path`), and declare extra bind mounts (`mounts`). Relative host paths resolve from the active source/workdir, not the packaged workflow asset directory. |

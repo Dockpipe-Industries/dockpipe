@@ -1,0 +1,9 @@
+schema: 1
+kind: resolver
+name: qemu
+title: QEMU virtual machine integration
+description: Run supported guest virtual machines through QEMU. Requires QEMU, compatible firmware, and your own guest image.
+catalog_type: integration
+categories:
+- virtual-machines
+- development

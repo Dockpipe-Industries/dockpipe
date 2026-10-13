@@ -1,5 +1,8 @@
 name: pipeon
+title: Pipeon support assets
+catalog_type: integration
+categories: [development]
 namespace: dockpipeproject
 platforms: [windows, deb]
-description: Domain asset pack (Pipeon harness scripts and resources); not intended for direct run.
+description: Shared scripts and resources used by Pipeon workflows; this package is not a standalone application.
 steps: []

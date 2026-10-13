@@ -2,10 +2,8 @@ schema: 1
 kind: workflow
 name: docs.orchestrate
 version: 0.6.1
-title: Orchestrated documentation task graph
-description: |
-  Multi-worker orchestration workflow that splits a docs task into bounded artifacts, runs multiple
-  specialized workers, merges results, verifies them, and requires approval.
+title: Documentation review workflow
+description: Review repository documentation with configured AI workers and approve proposed changes before applying them.
 author: Dockpipe
 license: Apache-2.0
 repository: https://github.com/Dockpipe-Industries/dockpipe
@@ -40,3 +38,7 @@ dependencies:
         deb: sudo apt-get update && sudo apt-get install -y curl
 allow_clone: true
 distribution: source
+catalog_type: workflow
+categories:
+- ai
+- documentation

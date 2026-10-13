@@ -1,22 +1,27 @@
 name: orchestrator
+title: AI provider prompt runner
+catalog_type: workflow
+categories: [ai]
 namespace: dockpipeproject
-description: Direct DorkPipe orchestrator prompt routed through the shared provider-pool contract.
+description: Send a prompt through a configured DorkPipe provider pool. Requires authentication for the selected provider.
 docker_preflight: false
-platforms: [windows, deb]
+platforms: [windows, deb, macos]
 dependencies:
   host:
     - id: bash
       command: bash
-      description: Runs the DorkPipe provider-pool orchestrator wrapper.
+      description: Runs the DorkPipe provider-pool orchestrator wrapper. On macOS, use Homebrew Bash 4.2+ on PATH.
       install:
         windows: winget install Git.Git
         deb: sudo apt-get update && sudo apt-get install -y bash
+        macos: brew install bash
     - id: go
       command: go
       description: Builds the DorkPipe CLI from source when no compiled helper is present.
       install:
         windows: winget install GoLang.Go
         deb: sudo apt-get update && sudo apt-get install -y golang-go
+        macos: brew install go
 
 steps:
   - id: prompt

@@ -3,7 +3,6 @@ package remotecmd
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -13,11 +12,21 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
-	"dockpipe/src/lib/infrastructure/packageplatform"
+	remoteio "dockpipe/src/lib/infrastructure/remote"
 )
 
 func installService(ctx context.Context, root, role string) error {
+	return installServiceWithReplacement(ctx, root, role, false)
+}
+
+func installServiceWithReplacement(ctx context.Context, root, role string, replace bool) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if role != "broker" && role != "worker" {
 		return errors.New("service role must be broker or worker")
 	}
@@ -27,75 +36,50 @@ func installService(ctx context.Context, root, role string) error {
 		}
 	}
 	config := "operator.json"
-	command := "serve"
 	if role == "worker" {
-		config, command = "worker.json", "worker"
+		config = "worker.json"
 	}
 	if _, err := os.Stat(filepath.Join(root, config)); err != nil {
 		return err
 	}
-	executable, err := os.Executable()
+	definition, err := prepareService(root, role)
 	if err != nil {
 		return err
 	}
-	home, err := os.UserHomeDir()
+	unlock, err := remoteio.Lock(filepath.Join(root, "service.lock"))
 	if err != nil {
 		return err
 	}
-	digest := sha256.Sum256([]byte(root))
-	name := fmt.Sprintf("com.dockpipe.remote.%s.%x", role, digest[:6])
-	arguments := []string{executable, "remote", command, "--state", root}
-	flatpak := packageplatform.IsFlatpak()
-	if flatpak {
-		applicationID, err := packageplatform.ApplicationID()
-		if err != nil {
+	defer unlock()
+	if _, _, err := readServiceForReplacement(definition, replace); err != nil {
+		return err
+	}
+	pendingPath := filepath.Join(root, role+"-service-update.json")
+	if !replace {
+		if _, err := os.Lstat(pendingPath); err == nil {
+			return fmt.Errorf("previous service activation did not finish; retry remote service --role %s --replace", role)
+		} else if !os.IsNotExist(err) {
 			return err
 		}
-		arguments = flatpakServiceArguments(applicationID, command, root)
 	}
-	var path, content string
-	switch runtime.GOOS {
-	case "darwin":
-		path = filepath.Join(home, "Library", "LaunchAgents", name+".plist")
-		content = launchAgent(name, arguments, filepath.Join(root, role+".log"))
-	case "linux":
-		base := os.Getenv("XDG_CONFIG_HOME")
-		if base == "" {
-			base = filepath.Join(home, ".config")
-		}
-		path = filepath.Join(base, "systemd", "user", name+".service")
-		content = systemdUnit(arguments)
-		if flatpak {
-			// /app and the sandbox PATH do not exist in the host user manager.
-			content = systemdUnitWithPath(arguments, "")
-		}
-	default:
-		return errors.New("remote user services currently support Linux and macOS")
-	}
-	if _, err := os.Lstat(path); err == nil {
-		previous, err := os.ReadFile(path)
-		if err != nil || string(previous) != content {
-			return errors.New("existing service differs; inspect it before replacing")
-		}
-	} else if !os.IsNotExist(err) {
+	if err := remoteio.WritePrivate(pendingPath, map[string]bool{"pending": true}); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+	if err := publishServiceDefinition(ctx, definition, replace); err != nil {
 		return err
 	}
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-	if err == nil {
-		_, writeErr := file.WriteString(content)
-		closeErr := file.Close()
-		if writeErr != nil {
-			return writeErr
-		}
-		if closeErr != nil {
-			return closeErr
-		}
-	} else if !os.IsExist(err) {
-		return err
+	if err := activateService(ctx, definition, replace); err != nil {
+		return fmt.Errorf("service activation failed; registration is preserved; retry remote service --role %s --replace: %w", role, err)
 	}
+	return os.Remove(pendingPath)
+}
+
+func activateService(ctx context.Context, definition serviceDefinition, replace bool) error {
+	return activateServiceForPlatform(ctx, definition, replace, runtime.GOOS)
+}
+
+func activateServiceForPlatform(ctx context.Context, definition serviceDefinition, replace bool, platform string) error {
+	path, name, flatpak := definition.path, definition.name, definition.flatpak
 	run := func(tool string, args ...string) error {
 		if flatpak {
 			args = append([]string{"--host", "--watch-bus", tool}, args...)
@@ -103,13 +87,22 @@ func installService(ctx context.Context, root, role string) error {
 		}
 		process := exec.CommandContext(ctx, tool, args...)
 		process.Stdout, process.Stderr = os.Stderr, os.Stderr
+		process.WaitDelay = 2 * time.Second
 		return process.Run()
 	}
-	if runtime.GOOS == "darwin" {
+	if platform == "darwin" {
 		domain := "gui/" + strconv.Itoa(os.Getuid())
 		// An existing loaded service is a valid retry after setup lost its reply.
 		if exec.CommandContext(ctx, "launchctl", "print", domain+"/"+name).Run() == nil {
-			return nil
+			if !replace {
+				return nil
+			}
+			if err := run("launchctl", "bootout", domain+"/"+name); err != nil {
+				return err
+			}
+		}
+		if err := ctx.Err(); err != nil {
+			return err
 		}
 		return run("launchctl", "bootstrap", domain, path)
 	}
@@ -122,6 +115,12 @@ func installService(ctx context.Context, root, role string) error {
 	}
 	if err := run("systemctl", "--user", "daemon-reload"); err != nil {
 		return err
+	}
+	if replace {
+		if err := run("systemctl", "--user", "enable", name+".service"); err != nil {
+			return err
+		}
+		return run("systemctl", "--user", "restart", name+".service")
 	}
 	return run("systemctl", "--user", "enable", "--now", name+".service")
 }

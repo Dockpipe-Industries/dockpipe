@@ -1,5 +1,8 @@
 name: pipeon-dev-stack-status
-description: Print status for the Pipeon local dev stack for the current workdir.
+title: Pipeon service status
+catalog_type: workflow
+categories: [development, diagnostics]
+description: Show the local Pipeon development services for the current workspace.
 platforms: [windows, deb]
 dependencies:
   host:
