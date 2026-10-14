@@ -454,6 +454,20 @@ func resolveScriptsPrefixedPath(repoRoot, projectRoot, rel string) string {
 			return p
 		}
 	}
+	// Installed dependencies live in the global or system store. Resolve their
+	// scripts before falling back to older assets bundled with the executable.
+	installedRoots := SystemPackagesRoots()
+	if globalRoot, err := GlobalPackagesRoot(); err == nil {
+		installedRoots = append([]string{globalRoot}, installedRoots...)
+	}
+	for _, root := range installedRoots {
+		if p, ok := scriptPathFromResolverTarballs(projectRoot, filepath.Join(root, "resolvers"), rest); ok {
+			return p
+		}
+		if p, ok := scriptPathFromWorkflowTarballs(projectRoot, filepath.Join(root, "workflows"), rest); ok {
+			return p
+		}
+	}
 	core := CoreDir(repoRoot)
 	wfRoots := WorkflowCompileRootsCached(projectRoot)
 	// Bundled cache layout: prefer spine resolvers/bundles under core/, then project compile roots

@@ -37,7 +37,7 @@ type PackageManifest struct {
 	// Tags and keywords: search / store facets (optional).
 	Tags     []string `yaml:"tags,omitempty"`
 	Keywords []string `yaml:"keywords,omitempty"`
-	// MinDockpipeVersion is a semver constraint for the CLI/engine (optional).
+	// MinDockpipeVersion is an exact semantic-version lower bound for the CLI/engine (optional).
 	MinDockpipeVersion string `yaml:"min_dockpipe_version,omitempty"`
 	// Repository is source URL (optional).
 	Repository string `yaml:"repository,omitempty"`

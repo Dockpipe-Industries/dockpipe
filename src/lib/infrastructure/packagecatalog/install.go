@@ -28,6 +28,9 @@ func (c *Client) Install(ctx context.Context, catalog Catalog, entry Entry, stor
 	if err := validateEntry(entry); err != nil {
 		return "", err
 	}
+	if err := domain.CheckPackageEngineVersion(entry.Name, entry.MinDockpipeVersion, c.engineVersion); err != nil {
+		return "", err
+	}
 	base, err := parseURL(catalog.Manifest)
 	if err != nil {
 		return "", err
@@ -81,7 +84,7 @@ func (c *Client) Install(ctx context.Context, catalog Catalog, entry Entry, stor
 	if _, err := file.Seek(0, io.SeekStart); err != nil {
 		return "", err
 	}
-	if err := validateArchive(ctx, file, entry); err != nil {
+	if err := validateArchiveForEngine(ctx, file, entry, c.engineVersion); err != nil {
 		return "", fmt.Errorf("invalid package archive: %w", err)
 	}
 	if err := file.Sync(); err != nil {
@@ -101,6 +104,10 @@ func (c *Client) Install(ctx context.Context, catalog Catalog, entry Entry, stor
 }
 
 func validateArchive(ctx context.Context, reader io.Reader, entry Entry) error {
+	return validateArchiveForEngine(ctx, reader, entry, "dev")
+}
+
+func validateArchiveForEngine(ctx context.Context, reader io.Reader, entry Entry, engineVersion string) error {
 	gz, err := gzip.NewReader(reader)
 	if err != nil {
 		return err
@@ -153,6 +160,9 @@ func validateArchive(ctx context.Context, reader io.Reader, entry Entry) error {
 			}
 			if manifest.Name != entry.Name || (manifest.Version != "" && manifest.Version != entry.Version) || manifest.Kind != entry.Kind {
 				return fmt.Errorf("package metadata does not match catalog identity")
+			}
+			if err := domain.CheckPackageEngineVersion(manifest.Name, manifest.MinDockpipeVersion, engineVersion); err != nil {
+				return err
 			}
 			if err := domain.ValidatePackageManifest(&manifest); err != nil {
 				return err

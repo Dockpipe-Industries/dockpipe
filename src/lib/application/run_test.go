@@ -12,7 +12,48 @@ import (
 
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
+	"dockpipe/src/lib/infrastructure/packagebuild"
 )
+
+func TestRunInstalledWorkflowUsesItsOwnScriptDirectory(t *testing.T) {
+	withRunSeams(t)
+	project, bundle, source := t.TempDir(), t.TempDir(), t.TempDir()
+	repoRootAppFn = func() (string, error) { return bundle, nil }
+	config := "name: installed\nnamespace: dockpipeproject\ndocker_preflight: false\nsteps:\n  - kind: host\n    run: local.sh\n"
+	if err := os.WriteFile(filepath.Join(source, "config.yml"), []byte(config), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "local.sh"), []byte("installed script"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	store, err := infrastructure.PackagesWorkflowsDir(project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(store, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	archive := filepath.Join(store, "dockpipe-workflow-installed-1.0.0.tar.gz")
+	if _, err := packagebuild.WriteDirTarGzWithPrefix(source, archive, "workflows/installed"); err != nil {
+		t.Fatal(err)
+	}
+	called := false
+	runStepsAppFn = func(options runStepsOpts) error {
+		called = true
+		script := infrastructure.ResolveWorkflowScript("local.sh", options.wfRoot, options.repoRoot, options.projectRoot)
+		data, err := os.ReadFile(script)
+		if err != nil || string(data) != "installed script" {
+			t.Fatalf("workflow root does not refer to installed archive: %s, %v", script, err)
+		}
+		return nil
+	}
+	if err := Run([]string{"--workdir", project, "--workflow", "installed"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if !called {
+		t.Fatal("installed workflow did not reach step execution")
+	}
+}
 
 // writeTestCoreResolver seeds templates/core/resolvers/<name> for tests that use a temp repoRoot.
 func writeTestCoreResolver(t *testing.T, repoRoot, name, body string) {

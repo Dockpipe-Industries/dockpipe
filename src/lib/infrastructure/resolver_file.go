@@ -8,6 +8,9 @@ import (
 
 // LoadResolverFile reads KEY=value lines from a resolver file into a map.
 func LoadResolverFile(path string) (map[string]string, error) {
+	if err := checkPackageEngineFile(path); err != nil {
+		return nil, err
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err

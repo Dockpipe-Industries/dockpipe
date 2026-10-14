@@ -234,11 +234,16 @@ The package manifest does **not** become runtime truth. Compile folds the refere
 
 ## Workflow install and resolver dependencies
 
-When **`dockpipe install`** (workflow package) exists end-to-end, installing a **workflow** should **also install declared dependencies**, primarily **`kind: resolver`** packages (**`depends`** / pins in **`package.yml`**), including a **transitive** closure where needed. **Domain-specific** scripts and assets belong **inside** the workflow package / compile output — not as a separate CDN hop for every file at run time. **Resolver** packages remain **shared adapters** (tool profiles, resolver-owned assets).
+**`dockpipe package install`** installs the selected package and its transitive **`depends`** and **`requires_resolvers`** dependencies from the same platform catalog. It verifies every archive and compatibility requirement in a temporary store before publishing dependencies first and the selected package last. Missing dependencies, ambiguous names, cycles, checksum failures and incompatible engine versions fail preparation without changing installed packages. A publication I/O failure or cancellation can leave already-published dependencies in place; the error reports that partial outcome. Closure limits are 128 packages, 64 dependency levels and 2 GiB of downloaded archives (one bounded archive may be downloaded before an inaccurate size is detected). **Domain-specific** scripts and assets belong **inside** the workflow package / compile output — not as a separate CDN hop for every file at run time. **Resolver** packages remain **shared adapters** (tool profiles, resolver-owned assets).
+
+Installed dependency scripts are resolved from global and system package stores
+before bundled fallback assets. Tarball-backed workflows use their extracted
+workflow directory at runtime. Recompilation retains an extraction while it is
+still the compiler's source; changed archives use distinct content-addressed caches.
 
 Package dependencies should remain package-shaped:
 
-- **`depends`** names other package ids.
+- **`depends`** names other package ids. A name matching multiple package kinds is rejected; use **`requires_resolvers`** to identify a required resolver explicitly.
 - **`requires_resolvers`** names resolver profile ids that must be available project-locally, globally, or from the install closure. Workflows that use logical resolver script ids such as **`scripts/dorkpipe/...`** should declare the owning resolver here instead of relying on workflow-package fallback.
 - **`requires_capabilities`** names dotted capability ids for catalog/search and dependency checks.
 - **`platforms`** declares which host platforms the package supports, and **`dependencies.host`** names required external executables with OS-specific install commands. Core preflights these before workflow execution. Tools bundled under the selected package’s `assets/tooling/bin` take precedence over host executables during preflight and in host-script `PATH`. Flatpak packages declare `platforms: [flatpak]` and supply runtime-compatible dependencies; native distribution installers are disabled in Flatpak.
@@ -296,7 +301,7 @@ Versions must be semver-shaped so tarball names and CDN paths stay stable.
 | **`capability`** | For **`kind: resolver`** — dotted id this package provides (e.g. **`cli.codex`**, **`blob.storage`**) — see **[../concepts/capabilities.md](../concepts/capabilities.md)** |
 | **`requires_capabilities`** | For **`kind: workflow`** — dotted capability ids this workflow expects (complements **`requires_resolvers`**) |
 | **`tags`**, **`keywords`** | Faceted search / UI filters |
-| **`min_dockpipe_version`** | Semver constraint on the CLI |
+| **`min_dockpipe_version`** | Optional complete semantic-version minimum, e.g. `0.6.14`; checked before package installation and workflow/resolver loading |
 | **`repository`** | Source repo URL |
 | **`provides`** | Resolver capability names (e.g. tool ids) for **`kind: resolver`** |
 | **`requires_resolvers`** | Hint compatible resolver profiles for **`kind: workflow`** |
@@ -407,3 +412,15 @@ The selected process platform also controls remote catalog compatibility, includ
 Flatpak runtime identity as described above.
 
 See also **[../concepts/architecture-model.md](../concepts/architecture-model.md)** and **[../cli-reference.md](../cli-reference.md)** (`dockpipe package`, `dockpipe install`).
+
+### Engine compatibility diagnostics
+
+Set `min_dockpipe_version` in `package.yml` when a package uses newer engine features.
+The minimum is retained in exported store catalogs and checked again against verified
+archive metadata. A version mismatch reports the package, required version, running
+executable version and an instruction to update Dockpipe and its desktop app. The
+comparison uses semantic-version ordering, including prereleases; build metadata does
+not affect ordering. Unversioned `dev` builds use normal schema validation instead.
+Older archives without a declared minimum remain supported. Unsupported workflow
+fields retain their schema diagnostic and add an update-or-check-field-names hint.
+Already-installed older CLIs must be updated to gain these checks.
