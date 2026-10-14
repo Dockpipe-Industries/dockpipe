@@ -6,8 +6,28 @@ import (
 	"strings"
 	"testing"
 
+	"dockpipe/src/lib/infrastructure"
 	"dockpipe/src/lib/infrastructure/packagebuild"
 )
+
+func TestRecompilePreservesExtractedWorkflowSource(t *testing.T) {
+	workdir := t.TempDir()
+	source := filepath.Join(infrastructure.TarballExtractCacheRoot(workdir), "active", "workflows", "example")
+	if err := os.MkdirAll(source, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "config.yml"), []byte("name: example\nsteps: []\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for attempt := 0; attempt < 2; attempt++ {
+		if err := compileWorkflowOne(workdir, source, "", true); err != nil {
+			t.Fatalf("compile attempt %d: %v", attempt, err)
+		}
+		if _, err := os.Stat(filepath.Join(source, "config.yml")); err != nil {
+			t.Fatalf("compiler removed a source still needed by its caller: %v", err)
+		}
+	}
+}
 
 func TestCompileWorkflowHooksRunInStagingCopy(t *testing.T) {
 	workdir := t.TempDir()

@@ -301,7 +301,7 @@ const PACKAGE_MANIFEST_KEY_DETAILS = {
   namespace: "Optional author or org namespace used for compiled artifacts and lookup preference.",
   tags: "Search and filtering tags.",
   keywords: "Additional search keywords.",
-  min_dockpipe_version: "Optional minimum Dockpipe version constraint.",
+  min_dockpipe_version: "Optional complete semantic-version minimum, e.g. 0.6.14. Older Dockpipe releases reject the package with update guidance.",
   repository: "Source repository URL.",
   provides: "Additional named capabilities or features exposed by this package.",
   requires_capabilities: "Capabilities a workflow package expects from its chosen resolver.",

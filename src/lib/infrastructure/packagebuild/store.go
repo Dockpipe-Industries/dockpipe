@@ -29,6 +29,7 @@ type StoreBuildManifest struct {
 
 // StoreArtifact names one gzip tarball built from a compiled package directory.
 type StoreArtifact struct {
+	MinDockpipeVersion   string   `json:"min_dockpipe_version,omitempty"`
 	Title                string   `json:"title,omitempty"`
 	Description          string   `json:"description,omitempty"`
 	CatalogType          string   `json:"catalog_type,omitempty"`
@@ -134,6 +135,7 @@ func BuildCompiledStore(packagesRoot, outDir, fallbackVersion, only string) (*St
 
 // packageManifestMeta aggregates package.yml fields for store manifests and tooling.
 type packageManifestMeta struct {
+	MinDockpipeVersion   string
 	Title                string
 	Description          string
 	CatalogType          string
@@ -155,6 +157,7 @@ func readPackageManifestMeta(dir, fallback string) packageManifestMeta {
 	if strings.TrimSpace(pm.Version) != "" {
 		out.Version = strings.TrimSpace(pm.Version)
 	}
+	out.MinDockpipeVersion = pm.MinDockpipeVersion
 	out.Title = strings.TrimSpace(pm.Title)
 	out.Description = strings.TrimSpace(pm.Description)
 	out.CatalogType = pm.CatalogType
@@ -182,16 +185,17 @@ func buildOrCopyCoreArtifact(coreDir, outDir, fallback string) (*StoreArtifact, 
 		return nil, err
 	}
 	return &StoreArtifact{
-		Title:       meta.Title,
-		Description: meta.Description,
-		CatalogType: meta.CatalogType,
-		Categories:  meta.Categories,
-		Name:        "core",
-		Version:     ver,
-		Tarball:     base,
-		SHA256:      sum,
-		Provider:    meta.Provider,
-		Capability:  meta.Capability,
+		MinDockpipeVersion: meta.MinDockpipeVersion,
+		Title:              meta.Title,
+		Description:        meta.Description,
+		CatalogType:        meta.CatalogType,
+		Categories:         meta.Categories,
+		Name:               "core",
+		Version:            ver,
+		Tarball:            base,
+		SHA256:             sum,
+		Provider:           meta.Provider,
+		Capability:         meta.Capability,
 	}, nil
 }
 
@@ -226,6 +230,7 @@ func buildOrCopyWorkflowArtifacts(root, outDir, fallback string) ([]StoreArtifac
 			return nil, fmt.Errorf("workflow %q: %w", name, err)
 		}
 		out = append(out, StoreArtifact{
+			MinDockpipeVersion:   meta.MinDockpipeVersion,
 			Title:                meta.Title,
 			Description:          meta.Description,
 			CatalogType:          meta.CatalogType,
@@ -273,16 +278,17 @@ func buildOrCopyResolverArtifacts(root, outDir, fallback string) ([]StoreArtifac
 			return nil, fmt.Errorf("resolver %q: %w", name, err)
 		}
 		out = append(out, StoreArtifact{
-			Title:       meta.Title,
-			Description: meta.Description,
-			CatalogType: meta.CatalogType,
-			Categories:  meta.Categories,
-			Name:        name,
-			Version:     ver,
-			Tarball:     base,
-			SHA256:      sum,
-			Provider:    meta.Provider,
-			Capability:  meta.Capability,
+			MinDockpipeVersion: meta.MinDockpipeVersion,
+			Title:              meta.Title,
+			Description:        meta.Description,
+			CatalogType:        meta.CatalogType,
+			Categories:         meta.Categories,
+			Name:               name,
+			Version:            ver,
+			Tarball:            base,
+			SHA256:             sum,
+			Provider:           meta.Provider,
+			Capability:         meta.Capability,
 		})
 	}
 	return out, nil
@@ -308,6 +314,7 @@ func copyTarballArtifact(srcPath, outDir, fallback string, kind tarballKind) (*S
 		return nil, err
 	}
 	return &StoreArtifact{
+		MinDockpipeVersion:   meta.MinDockpipeVersion,
 		Title:                meta.Title,
 		Description:          meta.Description,
 		CatalogType:          meta.CatalogType,
@@ -344,6 +351,7 @@ func readPackageManifestMetaFromTarball(tarGzPath, fallback string, kind tarball
 	if strings.TrimSpace(pm.Version) != "" {
 		out.Version = strings.TrimSpace(pm.Version)
 	}
+	out.MinDockpipeVersion = pm.MinDockpipeVersion
 	out.Title = strings.TrimSpace(pm.Title)
 	out.Description = strings.TrimSpace(pm.Description)
 	out.CatalogType = pm.CatalogType
@@ -436,6 +444,7 @@ func listPackageSubdirs(root string) ([]string, error) {
 // UnmarshalJSON accepts legacy "primitive" / "requires_primitives" keys for older packages-store-manifest.json.
 func (a *StoreArtifact) UnmarshalJSON(data []byte) error {
 	var x struct {
+		MinDockpipeVersion   string   `json:"min_dockpipe_version,omitempty"`
 		Title                string   `json:"title,omitempty"`
 		Description          string   `json:"description,omitempty"`
 		CatalogType          string   `json:"catalog_type,omitempty"`
@@ -454,6 +463,7 @@ func (a *StoreArtifact) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &x); err != nil {
 		return err
 	}
+	a.MinDockpipeVersion = x.MinDockpipeVersion
 	a.Title = x.Title
 	a.Description = x.Description
 	a.CatalogType = x.CatalogType

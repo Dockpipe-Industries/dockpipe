@@ -5,6 +5,7 @@ title: Export agent skills
 catalog_type: workflow
 categories: [ai, development]
 version: 0.6.1
+min_dockpipe_version: 0.6.14
 description: Export the packaged agent skills for your selected coding assistant.
 author: Dockpipe
 license: Apache-2.0

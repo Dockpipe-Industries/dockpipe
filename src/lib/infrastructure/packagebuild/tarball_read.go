@@ -14,6 +14,18 @@ import (
 // entryName uses forward slashes (e.g. workflows/demo/config.yml). Does not extract to disk — suitable
 // for workflow resolution (dockpipe run) without extracting the archive.
 func ReadFileFromTarGz(tarGzPath, entryName string) ([]byte, error) {
+	return readFileFromTarGz(tarGzPath, entryName, 0)
+}
+
+// ReadFileFromTarGzLimit bounds allocation when reading package metadata.
+func ReadFileFromTarGzLimit(tarGzPath, entryName string, maxBytes int64) ([]byte, error) {
+	if maxBytes <= 0 {
+		return nil, fmt.Errorf("tar member size limit must be positive")
+	}
+	return readFileFromTarGz(tarGzPath, entryName, maxBytes)
+}
+
+func readFileFromTarGz(tarGzPath, entryName string, maxBytes int64) ([]byte, error) {
 	entryName = filepath.ToSlash(strings.TrimSpace(entryName))
 	if entryName == "" || strings.Contains(entryName, "..") {
 		return nil, fmt.Errorf("invalid entry path %q", entryName)
@@ -32,7 +44,7 @@ func ReadFileFromTarGz(tarGzPath, entryName string) ([]byte, error) {
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
-			return nil, fmt.Errorf("entry %q not found in %s", entryName, tarGzPath)
+			return nil, fmt.Errorf("entry %q not found in %s: %w", entryName, tarGzPath, os.ErrNotExist)
 		}
 		if err != nil {
 			return nil, err
@@ -44,6 +56,9 @@ func ReadFileFromTarGz(tarGzPath, entryName string) ([]byte, error) {
 		name = strings.TrimPrefix(name, "./")
 		name = filepath.ToSlash(name)
 		if name == entryName {
+			if maxBytes > 0 && hdr.Size > maxBytes {
+				return nil, fmt.Errorf("tar member %q exceeds size limit", entryName)
+			}
 			return io.ReadAll(tr)
 		}
 	}
