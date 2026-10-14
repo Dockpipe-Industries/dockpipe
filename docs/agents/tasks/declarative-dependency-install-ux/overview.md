@@ -13,6 +13,8 @@
   found, missing, optional-missing, and malformed dependency declarations before install approval
   or workflow execution.
 
+- Package installation now prepares and verifies transitive `depends` and `requires_resolvers` archives from the same platform catalog before publishing. Engine minimums are enforced at install/load boundaries, with explicit update guidance. Missing/cyclic/ambiguous dependencies fail without replacing installed packages during preparation; host executable installation still uses the separate approval flow.
+
 ## Still Open
 
 - Define trusted install command policy by OS/package manager (`winget`, `brew`, apt/dnf/pacman,

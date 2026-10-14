@@ -59,7 +59,7 @@ while IFS= read -r validation_input; do
   mkdir -p "$application_consumer/$(dirname "$validation_input")"
   cp "$validation_source" "$application_consumer/$validation_input"
 done <"$fixture_root/validation-input-files.json"
-test "$validation_input_file_count" -eq 235
+test "$validation_input_file_count" -eq 240
 cp -R "$application_consumer" "$application_pristine"
 cp -R "$application_consumer" "$application_expected"
 printf '%s\n' '# Fixture package' 'Untrusted remote fixture change.' >"$application_expected/packages/dorkpipe/README.md"
@@ -149,7 +149,7 @@ export DORKPIPE_BACKLOG_PUBLICATION_FIXTURE="$fixture_root/checkout-publication-
 export DORKPIPE_BACKLOG_CONSUMER_ROOT="$application_consumer"
 export ROOT="$consumer"
 
-for required_input in VERSION assets/entrypoint.sh embed.go go.mod go.sum src/core/package.yml \
+for required_input in VERSION assets/entrypoint.sh embed.go go.mod go.sum go.work.sum src/core/package.yml \
   src/lib/infrastructure/schema/workflow.schema.json workflows/README.md; do
   grep -Fq "\"$required_input\"" "$fixture_root/validation-input-files.json"
 done
@@ -162,6 +162,7 @@ done < <(
   find packages/dorkpipe/lib/statepaths src/lib/model src/lib/infrastructure/operationrecord \
     src/lib/infrastructure/sourcemtime src/lib/domain/secretenv \
     src/lib/infrastructure/envfile src/lib/infrastructure/filepublication \
+    src/lib/infrastructure/engineversion \
     packages/dorkpipe/lib/orchestrationhelper/internal/cloudusage \
     -type f -name '*.go' ! -name '*_test.go' -print
   find src/lib/domain src/lib/infrastructure/packagebuild -maxdepth 1 -type f -name '*.go' ! -name '*_test.go' -print
