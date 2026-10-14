@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -48,18 +49,39 @@ func TestStoreRetainsBoundedHistoryAndUpdatesLifecycle(t *testing.T) {
 
 func TestStoreConcurrentExecutions(t *testing.T) {
 	store := Store{Directory: t.TempDir()}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// Exercise atomic lifecycle updates independently of RecordContext's short
+	// observation budget: loaded CI hosts need not finish all writers in 250 ms.
+	recordEventually := func(record Execution) error {
+		for {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if err := store.Record(record); !errors.Is(err, ErrBusy) {
+				return err
+			}
+			timer := time.NewTimer(5 * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return ctx.Err()
+			case <-timer.C:
+			}
+		}
+	}
 	var workers sync.WaitGroup
 	for index := 0; index < 12; index++ {
 		workers.Add(1)
 		go func(index int) {
 			defer workers.Done()
 			record := Execution{ID: fmt.Sprint(index), WorkflowRun: fmt.Sprint(index), StartedAt: time.Now().UTC(), State: "running"}
-			if err := store.RecordContext(context.Background(), record); err != nil {
+			if err := recordEventually(record); err != nil {
 				t.Error(err)
 				return
 			}
 			record.State = "succeeded"
-			if err := store.RecordContext(context.Background(), record); err != nil {
+			if err := recordEventually(record); err != nil {
 				t.Error(err)
 			}
 		}(index)
@@ -73,6 +95,36 @@ func TestStoreConcurrentExecutions(t *testing.T) {
 		if record.State != "succeeded" {
 			t.Fatal(record)
 		}
+	}
+}
+
+func TestRecordContextStopsWhenLockRemainsBusy(t *testing.T) {
+	store := Store{Directory: t.TempDir()}
+	lock, err := os.OpenFile(filepath.Join(store.Directory, "lock"), os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lock.Close()
+	if err := tryLock(lock); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.RecordContext(context.Background(), Execution{ID: "blocked"}); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("expected observation deadline, got %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(store.Directory, "snapshot.json")); !os.IsNotExist(err) {
+		t.Fatalf("blocked writer created history: %v", err)
+	}
+}
+
+func TestRecordContextHonorsCancellationBeforeWriting(t *testing.T) {
+	store := Store{Directory: filepath.Join(t.TempDir(), "history")}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := store.RecordContext(ctx, Execution{ID: "cancelled"}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected caller cancellation, got %v", err)
+	}
+	if _, err := os.Stat(store.Directory); !os.IsNotExist(err) {
+		t.Fatalf("cancelled writer created storage: %v", err)
 	}
 }
 
