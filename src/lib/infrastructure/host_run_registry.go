@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -10,18 +11,21 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"dockpipe/src/lib/infrastructure/telemetry"
 )
 
 const hostRunIDBytes = 4 // 8 hex chars
 
 // HostRunRecord is written to bin/.dockpipe/runs/<id>.json while a host script (kind: host step) runs.
 type HostRunRecord struct {
-	ID        string `json:"id"`
-	PID       int    `json:"pid"`
-	StartedAt string `json:"startedAt"`
-	Workdir   string `json:"workdir"`
-	Script    string `json:"script"`
-	Container string `json:"container,omitempty"`
+	ProcessStart string `json:"process_start,omitempty"`
+	ID           string `json:"id"`
+	PID          int    `json:"pid"`
+	StartedAt    string `json:"startedAt"`
+	Workdir      string `json:"workdir"`
+	Script       string `json:"script"`
+	Container    string `json:"container,omitempty"`
 }
 
 // HostRunsDir returns the per-project runs directory.
@@ -50,7 +54,8 @@ func BeginHostRun(workdir string, env []string) (runID, runFile string, outEnv [
 	}
 	rf := filepath.Join(dir, rid+".json")
 	out := append([]string(nil), env...)
-	out = append(out, "DOCKPIPE_RUN_ID="+rid, "DOCKPIPE_RUN_FILE="+rf)
+	out = upsertEnv(out, "DOCKPIPE_RUN_ID", rid)
+	out = upsertEnv(out, "DOCKPIPE_RUN_FILE", rf)
 	return rid, rf, out, nil
 }
 
@@ -73,6 +78,9 @@ func WriteHostRunRecord(runFile, runID string, pid int, workdir, scriptPath stri
 		StartedAt: time.Now().UTC().Format(time.RFC3339),
 		Workdir:   wd,
 		Script:    filepath.Base(scriptPath),
+	}
+	if process, err := (telemetry.NativeCollector{}).Inspect(context.Background(), pid); err == nil {
+		rec.ProcessStart = process.StartToken
 	}
 	b, err := json.MarshalIndent(rec, "", "  ")
 	if err != nil {
@@ -97,7 +105,7 @@ func RemoveHostRunArtifacts(runFile string) {
 	if id == "" || strings.Contains(id, string(filepath.Separator)) || strings.Contains(id, "..") {
 		return
 	}
-	for _, suffix := range []string{".container", ".pid"} {
+	for _, suffix := range []string{".container", ".pid", ".resource"} {
 		_ = os.Remove(filepath.Join(dir, id+suffix))
 	}
 }
@@ -116,7 +124,7 @@ func ReadHostRunContainerSidecar(runFile string) string {
 	if id == "" {
 		return ""
 	}
-	b, err := os.ReadFile(filepath.Join(dir, id+".container"))
+	b, err := readHostRunSidecar(filepath.Join(dir, id+".container"))
 	if err != nil {
 		return ""
 	}
@@ -137,7 +145,7 @@ func ReadHostRunPIDSidecar(runFile string) int {
 	if id == "" {
 		return 0
 	}
-	b, err := os.ReadFile(filepath.Join(dir, id+".pid"))
+	b, err := readHostRunSidecar(filepath.Join(dir, id+".pid"))
 	if err != nil {
 		return 0
 	}
@@ -228,4 +236,24 @@ func randomRunID() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+func readHostRunSidecar(path string) ([]byte, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > 4096 {
+		return nil, fmt.Errorf("invalid host run sidecar")
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	data, err := io.ReadAll(io.LimitReader(file, 4097))
+	if len(data) > 4096 {
+		return nil, fmt.Errorf("host run sidecar exceeds limit")
+	}
+	return data, err
 }

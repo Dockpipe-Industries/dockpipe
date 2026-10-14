@@ -6,7 +6,7 @@ inbound shell endpoint or automatic Git operation is involved. Source delivery i
 bounded snapshot; it does not synchronize an entire checkout.
 
 The launcher exposes remote setup and pairing in **Machines**, delivery in **Workflows**,
-and results in **Activity**. The current single-operator implementation has Linux loopback
+and results in **Executions → Runs & logs → Remote jobs**. The current single-operator implementation has Linux loopback
 and local UI test evidence. Darwin builds and launchd manifests alone do not establish
 complete native Mac pairing, sleep/wake or end-to-end provider acceptance.
 Remote broker initialization, workers, and provider setup currently require Linux or macOS;
@@ -161,10 +161,10 @@ automatically after approval and reports service startup separately from pairing
 If startup fails, pairing is preserved; use **Start worker service** to retry.
 Existing paired computers can use that button without pairing again.
 For CLI pairing, start `dockpipe remote service --role worker` on the worker, or
-`dockpipe remote worker` for foreground execution. View remote job progress in Activity on the computer
+`dockpipe remote worker` for foreground execution. View remote job progress in **Executions → Runs & logs → Remote jobs** on the computer
 that manages the broker. Pairing authorizes a worker to receive workflows; it does
 not give that worker permission to list, submit, cancel or download broker jobs.
-A receive-only worker normally has no `operator.json`. Its Activity view explains
+A receive-only worker normally has no `operator.json`. Its remote jobs view explains
 this role instead of requesting broker-wide jobs. Enrollment or successful service
 installation does not prove that a workflow has executed; submit a job from the
 managing computer and inspect its result to verify delivery.
@@ -404,3 +404,14 @@ Removing machine access retains its record. Pairing again with the same name req
 fresh worker credential and a newly approved verification code. An explicit `remote pair`
 rotates a saved revoked credential; the background worker never re-enrolls itself. Old
 credentials remain unable to authenticate after replacement.
+
+## Optional machine monitoring
+
+Updated workers can opt into sharing system/process or Docker inventory snapshots
+with their existing broker using `dockpipe remote monitoring --system --docker`.
+Use the worker's existing `--state` directory; `--disable` revokes both categories.
+This does not change pairing or workflow-delivery permission. Updated operators
+can select that machine in **Executions → System** or **Containers**, or run
+`dockpipe remote observe --node <name>`. Remote Docker is read-only inventory and
+topology. See [Execution Explorer and telemetry](execution-observability.md#overall-resources-and-remote-machines)
+for platform support, freshness, privacy and resource limits.

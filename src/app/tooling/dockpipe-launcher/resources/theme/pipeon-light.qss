@@ -1,3 +1,20 @@
+/* Quiet, consistent controls across platforms. */
+QWidget#executionExplorerPage { background: #f3f5f9; }
+QFrame#systemMetricCard { background: #ffffff; border: 1px solid #cdd4df; border-radius: 8px; }
+QFrame#systemMetricCard QLabel { background: transparent; border: none; }
+QLabel#systemMetricTitle { color: #53657c; }
+QFrame#systemMetricCard QProgressBar { background: #e2e9f2; border: none; border-radius: 4px; }
+QFrame#systemMetricCard QProgressBar::chunk { background: #307bbd; border-radius: 4px; }
+QDialog { background-color: #f7f8fb; }
+QPushButton { background-color: #ffffff; border-color: #cdd4df; color: #263449; }
+QPushButton:hover { background-color: #edf2f8; border-color: #9aabbe; }
+QPushButton:pressed { background-color: #e4ebf4; }
+QPushButton:disabled { background-color: #f7f8fb; border-color: #cdd4df; color: #8993a1; }
+QWidget#studioInspector, QWidget#studioSidebar,
+QScrollArea#studioInspectorScroll, QScrollArea#studioInspectorScroll > QWidget { background: #f7f8fb; }
+QWidget#workflowStudio QPlainTextEdit { background: #ffffff; border-color: #cdd4df; }
+QPushButton#applyStep { background: #e9f2fc; border-color: #bdd4ed; }
+
 /* Explicit foregrounds keep scheme changes independent of Qt's cached widget palettes. */
 QWidget {
     color: #25344a;
@@ -47,8 +64,8 @@ QLabel#statusBadge[status="running"] {
 }
 
 QLabel#statusBadge[status="stopped"] {
-    background-color: #cfcfcf;
-    color: #1a1a1a;
+    background-color: #e6edf5;
+    color: #3c526d;
 }
 
 QLabel#statusBadge[status="failed"] {
@@ -226,7 +243,7 @@ QTableWidget::item:selected {
 
 QLabel#dockerMetric {
     padding: 8px 12px;
-    border-radius: 999px;
+    border-radius: 10px;
     background-color: #eef2f7;
     border: 1px solid #d3d7de;
     color: #1b2230;
@@ -235,7 +252,7 @@ QLabel#dockerMetric {
 
 QLabel#dockerStatusPill {
     padding: 4px 10px;
-    border-radius: 999px;
+    border-radius: 10px;
     font-weight: 700;
 }
 
@@ -310,8 +327,9 @@ QTabBar::tab {
 }
 
 QTabBar::tab:selected {
-    background-color: #0d6fd1;
-    color: #ffffff;
+    background-color: #e6eef9;
+    border-color: #bacde5;
+    color: #284c79;
 }
 
 QTabBar::tab:hover:!selected {
@@ -435,4 +453,57 @@ QPushButton#secondaryButton:disabled,
 QPushButton#remoteSetupNavigation:disabled, QPushButton#reviewRemoteSetup:disabled, QPushButton#checkRemoteConnection:disabled, QPushButton#quietButton:disabled {
     color: #8591a2;
     background: transparent;
+}
+
+QFrame[canvasOverlay="true"] { background: #ffffff; border: 1px solid #d3dae5; border-radius: 10px; }
+QFrame[canvasOverlay="true"] QLabel { background: transparent; border: none; }
+QFrame#canvasDocumentControls QPushButton, QFrame#canvasViewControls QPushButton { background: transparent; border: none; }
+QFrame#canvasDocumentControls QPushButton:hover, QFrame#canvasViewControls QPushButton:hover { background: #d3dae5; }
+
+QFrame[canvasOverlay="true"] { background: #ffffff; border-color: #cdd6e3; }
+QFrame#canvasDocumentControls QPushButton:hover,
+QFrame#canvasViewControls QPushButton:hover { background: #edf2f8; }
+QFrame#canvasViewControls QPushButton:checked { background: #e0f1ec; border: 1px solid #8fbeb0; }
+QFrame#canvasViewControls QPushButton:disabled { background: transparent; border: none; }
+QFrame#canvasControlDivider { background: #dce3ec; border: none; }
+QFrame[canvasWindow="true"] { border-color: #b9c8db; }
+QMenu { background: #ffffff; border: 1px solid #ccd5e1; color: #28394f; }
+QMenu::item:selected { background: #e8eff9; }
+QMenu::separator { background: #dce3ec; }
+
+QDialog[launcherChrome="true"] { background: #fafbfd; border: 1px solid #c9d3e1; }
+QLabel#dialogHeading { color: #243449; }
+QToolButton#windowControl:hover { background: #e5ebf3; }
+QToolButton#windowControl:pressed { background: #d2dce9; }
+QDialog QPushButton:default, QDialog QPushButton[dialogPrimary="true"] {
+    background: #126dce; border: 1px solid #126dce; color: #ffffff;
+}
+QDialog QPushButton:default:hover, QDialog QPushButton[dialogPrimary="true"]:hover { background: #0d60b8; }
+QDialog QPushButton:disabled { background: #edf1f6; color: #929fb0; border-color: #d6deea; }
+QScrollBar::handle:vertical, QScrollBar::handle:horizontal { background: #bdc8d8; }
+QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover { background: #98a8be; }
+
+ResourceCanvas QGraphicsView { background: #f6f8fc; }
+QWidget#resourceDetailContent { background: #fafbfd; }
+QFrame#workflowPreviewPanel { background: #edf2f8; border: 1px solid #d5dfeb; border-radius: 12px; }
+QScrollArea#workflowPreviewScroll, QLabel#workflowPreview { background: #edf2f8; border: none; }
+
+QPushButton[canvasLayerFilter="true"] { background: #f7f9fc; color: #63768c; border: 1px solid #ced9e6; padding: 6px 10px; }
+QPushButton[canvasLayerFilter="true"]:checked { background: #e0edf9; color: #244c72; border-color: #9cbdda; }
+
+QPlainTextEdit#dockerSelectedLogs { background: #ffffff; color: #28384c; border: 1px solid #cdd7e5; border-radius: 10px; padding: 10px; }
+QScrollArea#dockerDetailsScroll, QLabel#dockerReadableDetails { background: #ffffff; color: #28384c; border: none; }
+
+QWidget#runHistoryPage {
+    background: #f6f8fc;
+}
+QLabel#runCount, QLabel#runStatus {
+    color: #63768c;
+}
+QWidget#runHistoryPage QTableWidget {
+    background: #ffffff;
+    alternate-background-color: #edf2f8;
+    color: #28384c;
+    selection-background-color: #e0edf9;
+    selection-color: #244c72;
 }

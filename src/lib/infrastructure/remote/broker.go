@@ -34,6 +34,7 @@ type BrokerState struct {
 }
 
 type Broker struct {
+	monitoring       map[string]MachineSnapshot
 	mutex            sync.Mutex
 	path             string
 	state            BrokerState
@@ -106,6 +107,9 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	limit := int64(contract.MaxBody)
+	if r.URL.Path == "/v1/monitor-publish" {
+		limit = MaxMonitoringBytes
+	}
 	if r.URL.Path == "/v1/pairing-request" {
 		limit = 1024
 	}
@@ -185,6 +189,8 @@ func (b *Broker) pair(raw []byte) (any, error) {
 
 func (b *Broker) operator(path string, raw []byte) (any, error) {
 	switch path {
+	case "/v1/observe":
+		return b.observeMachine(raw)
 	case "/v1/pairing-open", "/v1/pairing-close", "/v1/pairings", "/v1/approve", "/v1/deny":
 		return b.pairingOperator(path, raw)
 	case "/v1/nodes":
@@ -261,6 +267,7 @@ func (b *Broker) operator(path string, raw []byte) (any, error) {
 			}
 			node.Revoked = true
 			b.state.Nodes[request.ID] = node
+			delete(b.monitoring, request.ID)
 			return map[string]string{"revoked": request.ID}, b.save()
 		}
 		job, ok := b.state.Jobs[request.ID]
@@ -280,6 +287,8 @@ func (b *Broker) operator(path string, raw []byte) (any, error) {
 
 func (b *Broker) worker(node, path string, raw []byte) (any, error) {
 	switch path {
+	case "/v1/monitor-publish":
+		return b.publishMonitoring(node, raw)
 	case "/v1/next":
 		var request struct {
 			Session string `json:"session"`

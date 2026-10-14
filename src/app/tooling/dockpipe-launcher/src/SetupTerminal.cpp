@@ -12,7 +12,7 @@ QString shellQuote(QString value)
 }
 }
 
-bool openSetupTerminal(const QString &program, const QStringList &arguments, QString *error)
+static bool openTerminal(const QString &program, const QStringList &arguments, QString *error, bool dockpipeSetup)
 {
 #ifdef Q_OS_MACOS
     QStringList command{shellQuote(program)};
@@ -37,7 +37,7 @@ bool openSetupTerminal(const QString &program, const QStringList &arguments, QSt
     QStringList command{program};
     command.append(arguments);
     const bool flatpak = QFileInfo::exists(QStringLiteral("/.flatpak-info"));
-    if (flatpak) {
+    if (flatpak && dockpipeSetup) {
         QSettings info(QStringLiteral("/.flatpak-info"), QSettings::IniFormat);
         const QString application = info.value(QStringLiteral("Application/name")).toString();
         if (application.isEmpty()) {
@@ -49,7 +49,7 @@ bool openSetupTerminal(const QString &program, const QStringList &arguments, QSt
     }
     QStringList terminalArgs{QStringLiteral("-c"), terminalScript, QStringLiteral("dockpipe-terminal"),
                             QStringLiteral("sh"), QStringLiteral("-c"),
-                            QStringLiteral("\"$@\"; result=$?; printf '\\nSetup exited with status %s. Press Enter to close.\\n' \"$result\"; read reply; exit \"$result\""),
+                            QStringLiteral("\"$@\"; result=$?; printf '\\nCommand exited with status %s. Press Enter to close.\\n' \"$result\"; read reply; exit \"$result\""),
                             QStringLiteral("dockpipe-setup")};
     terminalArgs.append(command);
     if (flatpak) {
@@ -60,10 +60,27 @@ bool openSetupTerminal(const QString &program, const QStringList &arguments, QSt
     } else if (QProcess::startDetached(QStringLiteral("sh"), terminalArgs)) {
         return true;
     }
+#elif defined(Q_OS_WIN)
+    if (!dockpipeSetup) {
+        QStringList terminalArgs{"-w", "new", "--", program};
+        terminalArgs.append(arguments);
+        if (QProcess::startDetached("wt.exe", terminalArgs))
+            return true;
+    }
 #else
     Q_UNUSED(program);
     Q_UNUSED(arguments);
 #endif
-    *error = QStringLiteral("Could not open a terminal for remote setup. Remote services currently support Linux and macOS.");
+    *error = QStringLiteral("Could not open a supported terminal. Install a desktop terminal on Linux, use Terminal on macOS, or Windows Terminal on Windows.");
     return false;
+}
+
+bool openSetupTerminal(const QString &program, const QStringList &arguments, QString *error)
+{
+    return openTerminal(program, arguments, error, true);
+}
+
+bool openCommandTerminal(const QString &program, const QStringList &arguments, QString *error)
+{
+    return openTerminal(program, arguments, error, false);
 }

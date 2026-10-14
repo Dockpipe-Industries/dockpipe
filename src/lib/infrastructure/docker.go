@@ -324,8 +324,11 @@ func DockerPull(image string) error {
 
 // RunOpts is passed to RunContainer.
 type RunOpts struct {
-	Image       string
-	WorkdirHost string
+	// Observation context uses host paths before container mount translation.
+	ObservationWorkdir string
+	ObservationEnv     []string
+	Image              string
+	WorkdirHost        string
 	// WorkdirVolume mounts a Docker named volume at /work instead of bind-mounting WorkdirHost.
 	// When WorkdirHost is set, the runner overlays host -> volume before the container run and
 	// volume -> host after it so runtime-owned Git checkpoints can still operate on the host worktree.
@@ -615,7 +618,16 @@ func RunContainer(o RunOpts, argv []string) (int, error) {
 		var errBuf bytes.Buffer
 		cmd.Stderr = io.MultiWriter(stderr, &errBuf)
 		_, err := RunOperationWithResultOptions(stderr, "run.container.start", "Starting container…", dockerRunOperationIDs(o.Image, "detach", ""), OperationOptions{Spinner: false, ProgressEvery: 5 * time.Second}, func() error {
-			return cmd.Run()
+			startErr := cmd.Start()
+			observation := ObserveExecution("", cmd, o.observationEnv(), o.observationWorkdir(), "docker", "")
+			if startErr != nil {
+				observation.Finish(cmd, startErr)
+				return startErr
+			}
+			waitErr := cmd.Wait()
+			observation.record.Container = strings.TrimSpace(cidBuf.String())
+			observation.Finish(cmd, waitErr)
+			return waitErr
 		})
 		if err != nil {
 			printDockerRunFailureHints(stderr, errBuf.String())
@@ -658,9 +670,14 @@ func RunContainer(o RunOpts, argv []string) (int, error) {
 	cmd.Stderr = io.MultiWriter(stderr, &runErrBuf)
 	result, err := RunOperationWithResultOptions(stderr, "run.container.start", "Starting container…", dockerRunOperationIDs(o.Image, "attach", cid), OperationOptions{Spinner: false, ProgressEvery: 5 * time.Second}, func() error {
 		if err := cmd.Start(); err != nil {
+			observation := ObserveExecution("", cmd, o.observationEnv(), o.observationWorkdir(), "docker", cid)
+			observation.Finish(cmd, err)
 			return err
 		}
-		return waitCommandWithSignalForward(cmd)
+		observation := ObserveExecution("", cmd, o.observationEnv(), o.observationWorkdir(), "docker", cid)
+		err := waitCommandWithSignalForward(cmd)
+		observation.Finish(cmd, err)
+		return err
 	})
 	rc := 0
 	if err != nil {
@@ -895,4 +912,18 @@ func dockerHelperContainerName(unit string) string {
 	unit = strings.ReplaceAll(unit, "_", "-")
 	unit = strings.ReplaceAll(unit, "/", "-")
 	return fmt.Sprintf("dockpipe-helper-%s-%d-%d", unit, os.Getpid(), timeNowDockerFn().UnixNano()%1e9)
+}
+
+func (options RunOpts) observationEnv() []string {
+	if options.ObservationEnv != nil {
+		return options.ObservationEnv
+	}
+	return options.ExtraEnv
+}
+
+func (options RunOpts) observationWorkdir() string {
+	if options.ObservationWorkdir != "" {
+		return options.ObservationWorkdir
+	}
+	return options.WorkdirHost
 }
