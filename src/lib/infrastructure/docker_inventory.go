@@ -19,7 +19,7 @@ type inventoryOutput struct{ bytes.Buffer }
 
 func (output *inventoryOutput) Write(data []byte) (int, error) {
 	if len(data) > 512*1024-output.Len() {
-		return 0, errors.New("Docker inventory exceeds 512 KiB")
+		return 0, errors.New("docker inventory exceeds 512 KiB")
 	}
 	return output.Buffer.Write(data)
 }
@@ -33,7 +33,7 @@ func dockerInventoryCommand(ctx context.Context, args ...string) ([]byte, error)
 	command.Stdout = output
 	command.Stderr = io.Discard
 	if err := process.Run(command); err != nil {
-		return nil, errors.New("Docker inventory unavailable or query limit exceeded")
+		return nil, errors.New("docker inventory unavailable or query limit exceeded")
 	}
 	return output.Bytes(), nil
 }
