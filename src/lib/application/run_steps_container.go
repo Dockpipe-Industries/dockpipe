@@ -123,6 +123,8 @@ func buildStepContainer(o *runStepsOpts, i, n int, step domain.Step, envMap, doc
 	}
 
 	runOpts = infrastructure.RunOpts{
+		ObservationWorkdir:      runStepsWorkdir(o),
+		ObservationEnv:          infrastructure.ExecutionMetadataEnv(envMap),
 		Image:                   image,
 		WorkdirHost:             workHost,
 		WorkdirVolume:           envMap["DOCKPIPE_SESSION_VOLUME"],
