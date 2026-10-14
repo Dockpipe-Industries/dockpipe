@@ -642,6 +642,27 @@ func TestBacklogValidationInputContractIsCompleteBoundedAndFailClosed(t *testing
 		}
 	})
 
+	t.Run("maximum file count", func(t *testing.T) {
+		repo := writeBacklogTestRepo(t)
+		paths := make([]string, backlogValidationInputMaxFiles)
+		for index := range paths {
+			paths[index] = fmt.Sprintf("input-%03d.go", index)
+			writeBacklogTestFile(t, filepath.Join(repo, paths[index]), "package fixture\n")
+		}
+		raw, err := json.Marshal(paths)
+		if err != nil {
+			t.Fatal(err)
+		}
+		root, err := compile(t, repo, string(raw))
+		if err != nil {
+			t.Fatal(err)
+		}
+		manifest := mapValue(readJSONMap(filepath.Join(root, "remote-request.json"))["validation_input_manifest"])
+		if intFromAny(manifest["file_count"]) != backlogValidationInputMaxFiles {
+			t.Fatalf("manifest file count = %v", manifest["file_count"])
+		}
+	})
+
 	t.Run("count cap", func(t *testing.T) {
 		repo := writeBacklogTestRepo(t)
 		paths := make([]string, backlogValidationInputMaxFiles+1)

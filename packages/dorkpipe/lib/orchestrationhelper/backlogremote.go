@@ -43,7 +43,7 @@ const (
 	backlogValidationReceiptFixtureContract = "dorkpipe.validation-receipt-observation-fixture/v2"
 	backlogValidationReceiptContract        = "dorkpipe.validation-receipt/v2"
 	backlogPatchBoundaryContract            = "dorkpipe.patch-boundary/v2"
-	backlogValidationInputMaxFiles          = 256
+	backlogValidationInputMaxFiles          = 512
 	backlogValidationInputMaxBytes          = 8 * 1024 * 1024
 )
 
