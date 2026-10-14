@@ -399,6 +399,43 @@ func TestResolveWorkflowScriptPrefersCompiledResolverTarball(t *testing.T) {
 	}
 }
 
+func TestResolveWorkflowScriptUsesGloballyInstalledDependency(t *testing.T) {
+	for _, kind := range []string{"workflow", "resolver"} {
+		t.Run(kind, func(t *testing.T) {
+			project, bundle := t.TempDir(), t.TempDir()
+			t.Setenv("DOCKPIPE_GLOBAL_ROOT", t.TempDir())
+			store, err := GlobalPackagesRoot()
+			if err != nil {
+				t.Fatal(err)
+			}
+			source := t.TempDir()
+			script := filepath.Join("assets", "scripts", "installed.sh")
+			if err := os.MkdirAll(filepath.Join(source, filepath.Dir(script)), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(source, script), []byte("installed dependency"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			directory := filepath.Join(store, kind+"s")
+			if err := os.MkdirAll(directory, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			archive := filepath.Join(directory, "dockpipe-"+kind+"-example-1.0.0.tar.gz")
+			if _, err := packagebuild.WriteDirTarGzWithPrefix(source, archive, kind+"s/example"); err != nil {
+				t.Fatal(err)
+			}
+			resolved := ResolveWorkflowScript("scripts/example/installed.sh", "/wf", bundle, project)
+			data, err := os.ReadFile(resolved)
+			if err != nil || string(data) != "installed dependency" {
+				t.Fatalf("installed dependency script not resolved: %s, %v", resolved, err)
+			}
+			if !strings.HasPrefix(resolved, filepath.ToSlash(TarballExtractCacheRoot(project))+"/") {
+				t.Fatalf("extraction is outside the requesting project: %s", resolved)
+			}
+		})
+	}
+}
+
 // TestResolveResolverFilePathFailsWhenProfileOnlyInRuntimes verifies resolver profiles are not read
 // from templates/core/runtimes/ (taxonomy boundary).
 func TestResolveResolverFilePathFailsWhenProfileOnlyInRuntimes(t *testing.T) {

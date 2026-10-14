@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"dockpipe/src/lib/domain"
+	"dockpipe/src/lib/infrastructure/engineversion"
 	"dockpipe/src/lib/infrastructure/packagebuild"
 )
 
@@ -34,7 +36,8 @@ type Catalog struct {
 
 // Client owns request policy; callers supply no transport options through catalog data.
 type Client struct {
-	http *http.Client
+	http          *http.Client
+	engineVersion string
 }
 
 func NewClient() *Client {
@@ -45,7 +48,7 @@ func NewClient() *Client {
 		}
 		return nil
 	}
-	return &Client{http: client}
+	return &Client{http: client, engineVersion: engineversion.Current()}
 }
 
 func parseURL(raw string) (*url.URL, error) {
@@ -177,6 +180,9 @@ func (c *Client) Load(ctx context.Context, remote, platform string) (Catalog, er
 }
 
 func validateEntry(entry Entry) error {
+	if err := domain.ValidateMinimumDockpipeVersion(entry.MinDockpipeVersion); err != nil {
+		return err
+	}
 	if !safeToken.MatchString(entry.Name) || !safeToken.MatchString(entry.Version) || strings.Contains(entry.Name, "..") {
 		return fmt.Errorf("invalid package name or version")
 	}

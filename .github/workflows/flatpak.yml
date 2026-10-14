@@ -49,10 +49,20 @@ jobs:
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
           flatpak install --user --noninteractive --assumeyes flathub org.kde.Sdk//6.10 org.kde.Platform//6.10
       - name: Build CLI and required core only
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          version="${DOCKPIPE_FLATPAK_VERSION:-$(cat VERSION)}"
+          version="${DOCKPIPE_FLATPAK_VERSION:-}"
+          if [[ -z "$version" ]]; then
+            # Use the same numeric candidate identity as release dry runs.
+            # VERSION is a release-line baseline, not the current engine version.
+            tags="$RUNNER_TEMP/dockpipe-qualification-tags.txt"
+            gh api --paginate "repos/$GITHUB_REPOSITORY/tags?per_page=100" --jq '.[].name' > "$tags"
+            python3 release/packaging/release-version.py --base "$(cat VERSION)" --tags "$tags" > "$RUNNER_TEMP/dockpipe-qualification-version.txt"
+            version="$(sed -n 's/^version=//p' "$RUNNER_TEMP/dockpipe-qualification-version.txt")"
+          fi
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           printf '%s\n' "$version" > VERSION
           export CGO_ENABLED=0

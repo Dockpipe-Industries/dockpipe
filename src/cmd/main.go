@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"dockpipe/src/lib/application"
+	"dockpipe/src/lib/infrastructure/engineversion"
 
 	"golang.org/x/term"
 )
@@ -166,6 +167,7 @@ func ensureDockpipeGitignore(projectDir string) (bool, error) {
 }
 
 func main() {
+	engineversion.Configure(versionString())
 	argv := os.Args[1:]
 	if len(argv) == 1 {
 		switch argv[0] {

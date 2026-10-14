@@ -62,6 +62,9 @@ func ValidatePackageManifest(m *PackageManifest) error {
 	if err := ValidatePackageVersion(m.Version); err != nil {
 		return err
 	}
+	if err := ValidateMinimumDockpipeVersion(m.MinDockpipeVersion); err != nil {
+		return err
+	}
 	if err := ValidateNamespace(m.Namespace); err != nil {
 		return err
 	}

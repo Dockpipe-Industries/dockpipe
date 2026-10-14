@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"dockpipe/src/lib/domain"
+	"dockpipe/src/lib/infrastructure/engineversion"
 	"dockpipe/src/lib/infrastructure/packagebuild"
 )
 
@@ -170,9 +172,25 @@ func ValidateResolvedWorkflowYAML(absPath string) error {
 		return fmt.Errorf("schema compile: %w", err)
 	}
 	if err := sch.Validate(raw); err != nil {
+		var validation *jsonschema.ValidationError
+		if errors.As(err, &validation) && hasUnsupportedWorkflowFields(validation) {
+			return fmt.Errorf("workflow uses fields unsupported by Dockpipe %s. Update Dockpipe, including the desktop app if you use it, then retry. If you already have the required version, check the field names in the workflow: %w", engineversion.Current(), err)
+		}
 		return fmt.Errorf("schema: %w", err)
 	}
 	return nil
+}
+
+func hasUnsupportedWorkflowFields(err *jsonschema.ValidationError) bool {
+	if strings.HasSuffix(err.KeywordLocation, "/additionalProperties") {
+		return true
+	}
+	for _, cause := range err.Causes {
+		if hasUnsupportedWorkflowFields(cause) {
+			return true
+		}
+	}
+	return false
 }
 
 // ValidateWorkflowYAML parses and validates a workflow file (YAML structure + JSON Schema).

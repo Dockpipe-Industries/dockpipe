@@ -49,3 +49,25 @@ func TestInvalidateTarballExtractCacheForPackageRemovesMarkerAndLegacyEntries(t 
 		t.Fatalf("unrelated cache removed: %v", err)
 	}
 }
+
+func TestInvalidateTarballExtractCacheRetainsOnlyActiveSource(t *testing.T) {
+	workdir := t.TempDir()
+	cacheRoot := TarballExtractCacheRoot(workdir)
+	source := filepath.Join(cacheRoot, "active", "workflows", "example")
+	stale := filepath.Join(cacheRoot, "stale", "workflows", "example")
+	for _, dir := range []string{source, stale} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	removed, err := InvalidateTarballExtractCacheExceptSource(workdir, "workflow", "example", source)
+	if err != nil || removed != 1 {
+		t.Fatalf("removed %d entries: %v", removed, err)
+	}
+	if _, err := os.Stat(source); err != nil {
+		t.Fatalf("active source removed: %v", err)
+	}
+	if _, err := os.Stat(stale); !os.IsNotExist(err) {
+		t.Fatalf("stale cache retained: %v", err)
+	}
+}
