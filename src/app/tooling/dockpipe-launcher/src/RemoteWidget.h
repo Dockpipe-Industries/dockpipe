@@ -4,6 +4,7 @@
 #include "WorkflowCatalog.h"
 #include <QWidget>
 
+class ResourceCanvas;
 class QJsonObject;
 class QLabel;
 class QComboBox;
@@ -41,6 +42,9 @@ private:
     void updateSetup();
     void run(const QStringList &arguments, RemoteCommand::Completion completion = {}, int timeoutMs = 30000);
     void decidePairing(bool approve);
+    ResourceCanvas *m_canvas = nullptr;
+    QString m_graphRemoteEndpoint;
+    void updateMachineGraph();
     QString m_workdir;
     QVector<ResolverMeta> m_resolvers;
     QComboBox *m_resolver = nullptr;

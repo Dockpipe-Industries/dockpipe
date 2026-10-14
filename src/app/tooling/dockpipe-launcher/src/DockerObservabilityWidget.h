@@ -2,8 +2,13 @@
 
 #include <QFutureWatcher>
 #include <QWidget>
+#include <QJsonArray>
+#include "ResourceCanvas.h"
+#include "RemoteCommand.h"
 
 class QLabel;
+class DockerResourceInspector;
+class QDialog;
 class QLineEdit;
 class QPlainTextEdit;
 class QSplitter;
@@ -11,11 +16,13 @@ class QTabWidget;
 class QTableWidget;
 class QTimer;
 class QWidget;
+class MonitoringMachineSelector;
 
 class DockerObservabilityWidget : public QWidget {
     Q_OBJECT
 public:
     explicit DockerObservabilityWidget(QWidget *parent = nullptr);
+    void setNodes(const QStringList &nodes);
 
 public slots:
     void refresh();
@@ -34,6 +41,13 @@ private slots:
     void onStopSelectedContainer();
 
 private:
+    void changeMachine();
+    void refreshRemote();
+    void applyRemoteSnapshot(const QJsonObject &snapshot);
+    MonitoringMachineSelector *m_machine = nullptr;
+    RemoteCommand m_remoteCommand;
+    quint64 m_generation = 0;
+    quint64 m_localRefreshGeneration = 0;
     struct ContainerRowData {
         QString id;
         QString name;
@@ -64,6 +78,8 @@ private:
     };
 
     struct DockerSnapshot {
+        QJsonArray topology;
+        QString topologyNotice;
         bool containersOk = false;
         QString containersError;
         QVector<ContainerRowData> containers;
@@ -89,11 +105,23 @@ private:
     };
 
     void buildUi();
+    void selectResource(const QString &key);
+    void updateInspector();
+    void openExec(const QString &shell);
+    void runContainerAction(const QString &action);
+    DockerResourceInspector *m_inspector = nullptr;
+    QDialog *m_inventory = nullptr;
+    QString m_selectedResource;
+    DockerSnapshot m_snapshot;
+    bool m_monitorPaused = false;
+    bool m_containerActionBusy = false;
+    void updateGraph(const DockerSnapshot &snapshot);
+    ResourceCanvas *m_canvas = nullptr;
     QWidget *buildContainersPage();
     QWidget *buildNetworksPage();
     QWidget *buildVolumesPage();
 
-    static CommandResult runDocker(const QStringList &args);
+    static CommandResult runDocker(const QStringList &args, bool mergeOutput = false);
     static DockerSnapshot collectDockerSnapshot();
     void setStatus(const QString &text);
     void refreshQuietly();

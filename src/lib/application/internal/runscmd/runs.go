@@ -20,6 +20,12 @@ func Run(argv []string) error {
 			return nil
 		}
 	}
+	if len(argv) > 0 && argv[0] == "associate" {
+		return associate(argv[1:])
+	}
+	if len(argv) > 0 && argv[0] == "observe" {
+		return observe(argv[1:])
+	}
 	sub := "list"
 	if len(argv) > 0 {
 		sub = argv[0]
@@ -33,7 +39,10 @@ func Run(argv []string) error {
 	if publicSub == "decisions" {
 		publicSub = "policy"
 	}
-	rest := argv[1:]
+	rest := []string{}
+	if len(argv) > 0 {
+		rest = argv[1:]
+	}
 	workdir := ""
 	eventLog := ""
 	eventIndex := ""
@@ -190,6 +199,8 @@ workdir/bin/.dockpipe/runs/policy/.
 
 Usage:
   dockpipe runs list [--workdir <path>]
+  dockpipe runs observe [--workdir <path> | --global] [--system] [--resources] [--json]
+  dockpipe runs observe --workdir <path> --resources --container <associated-id>
   dockpipe runs events --event-log <path> [--json]
   dockpipe runs events --event-log <path> --index [<path>] [--json]
   dockpipe runs policy [--workdir <path>] [--workflow <name>] [--step <id>] [--json]

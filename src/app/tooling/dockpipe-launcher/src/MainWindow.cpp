@@ -3,6 +3,9 @@
 #include "BasicModeWidget.h"
 #include "RemoteWidget.h"
 #include "ActivityWidget.h"
+#include <QTabWidget>
+#include <QTabBar>
+#include "ExecutionExplorer.h"
 #include "RemoteRunDialog.h"
 #include <QComboBox>
 #include "ContextRowWidget.h"
@@ -15,9 +18,12 @@
 #include "PromptDialog.h"
 #include "SettingsDialog.h"
 #include "WorkflowLaunchDialog.h"
+#include "WorkflowEditorWidget.h"
+#include "CanvasIcons.h"
 #include "WorkflowCatalog.h"
 
 #include <QActionGroup>
+#include <QToolButton>
 #include <QApplication>
 #include <QCloseEvent>
 #include <QCoreApplication>
@@ -46,6 +52,8 @@
 #include <QPushButton>
 #include <QScrollBar>
 #include <QSet>
+#include <QSettings>
+#include <QSignalBlocker>
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QStatusBar>
@@ -58,6 +66,7 @@
 #include <QtConcurrent>
 
 #include <functional>
+#include <algorithm>
 
 namespace {
 
@@ -390,6 +399,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     outer->setSpacing(0);
 
     m_stack = new QStackedWidget;
+    m_stack->setObjectName("workspacePages");
     m_basicWidget = new BasicModeWidget(this);
     m_advancedPage = new QWidget;
     setupAdvancedPage(m_advancedPage);
@@ -399,15 +409,35 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     m_remoteWidget = new RemoteWidget;
     m_activityWidget = new ActivityWidget(m_sessions, m_store);
     m_stack->addWidget(m_remoteWidget);
-    m_stack->addWidget(m_activityWidget);
     m_dockerWidget = new DockerObservabilityWidget;
     m_stack->addWidget(m_dockerWidget);
+    m_executionExplorer = new ExecutionExplorer;
+    m_executionTabs = new QTabWidget;
+    m_executionTabs->setObjectName("executionTabs");
+    m_executionTabs->setDocumentMode(true);
+    m_executionTabs->tabBar()->setDrawBase(false);
+    m_executionTabs->addTab(m_executionExplorer, tr("Processes && resources"));
+    m_executionTabs->addTab(m_activityWidget, tr("Runs && logs"));
+    connect(m_activityWidget, &ActivityWidget::browseWorkflowsRequested, this, [this]() {
+        m_navigation->setCurrentRow(1);
+    });
+    m_stack->addWidget(m_executionTabs);
+    connect(m_executionTabs, &QTabWidget::currentChanged, this, [this](int tab) {
+        m_executionExplorer->setActive(m_stack->currentWidget() == m_executionTabs && tab == 0);
+        if (tab == 1)
+            m_activityWidget->refreshLocal();
+    });
+    connect(&m_sessions, &SessionManager::sessionStarted, m_executionExplorer, &ExecutionExplorer::refresh);
+    connect(&m_sessions, &SessionManager::sessionStopped, m_executionExplorer, &ExecutionExplorer::refresh);
+    connect(&m_sessions, &SessionManager::sessionFailed, m_executionExplorer, &ExecutionExplorer::refresh);
 
     auto *shell = new QHBoxLayout;
     shell->setSpacing(0);
     auto *rail = new QFrame;
+    m_navigationRail = rail;
     rail->setObjectName(QStringLiteral("navigationRail"));
     rail->setFixedWidth(196);
+    rail->setVisible(m_settings.sidebarVisible);
     auto *railLayout = new QVBoxLayout(rail);
     railLayout->setContentsMargins(16, 24, 16, 16);
     railLayout->setSpacing(12);
@@ -419,7 +449,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     railLayout->addWidget(tagline);
     m_navigation = new QListWidget;
     m_navigation->setObjectName(QStringLiteral("workspaceNavigation"));
-    m_navigation->addItems({tr("Apps"), tr("Workflows"), tr("Machines"), tr("Activity"), tr("Docker")});
+    for (const auto *action : m_pageActions)
+        m_navigation->addItem(action->text());
     m_navigation->setSpacing(6);
     m_navigation->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     for (int i = 0; i < m_navigation->count(); ++i)
@@ -436,6 +467,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     workspace->setContentsMargins(0, 0, 0, 0);
     workspace->setSpacing(0);
     auto *workspaceBar = new QFrame;
+    m_workspaceBar = workspaceBar;
     workspaceBar->setObjectName(QStringLiteral("workspaceBar"));
     auto *workspaceLayout = new QHBoxLayout(workspaceBar);
     workspaceLayout->setContentsMargins(28, 12, 28, 12);
@@ -472,9 +504,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
         if (page < 0)
             return;
         m_stack->setCurrentIndex(page);
-        m_dockerWidget->setActive(page == 4);
-        m_actBasic->setChecked(page == 0);
-        m_actAdvanced->setChecked(page == 1);
+        m_workspaceBar->setVisible(page == 0);
+        m_dockerWidget->setActive(page == 3);
+        m_executionExplorer->setWorkdir(m_settings.projectFolder);
+        m_executionExplorer->setActive(page == 4 && m_executionTabs->currentIndex() == 0);
+        m_pageActions[page]->setChecked(true);
         m_actIcons->setEnabled(page == 0);
         m_actList->setEnabled(page == 0);
         if (page == 0) {
@@ -488,9 +522,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
         } else if (page == 2) {
             m_remoteWidget->setWorkdir(m_settings.projectFolder);
             m_remoteWidget->refresh();
-        } else if (page == 3) {
+        } else if (page == 3 || page == 4) {
             m_activityWidget->setWorkdir(m_settings.projectFolder);
             m_activityWidget->refreshLocal();
+            m_remoteWidget->setWorkdir(m_settings.projectFolder);
+            m_remoteWidget->refresh();
         }
     });
     connect(m_remoteWidget, &RemoteWidget::installProviderRequested, this, [this]() {
@@ -504,13 +540,24 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
         startWorkflowCatalogDiscovery();
     });
     connect(m_remoteWidget, &RemoteWidget::nodesChanged, this, [this](const QStringList &nodes) {
+        m_executionExplorer->setNodes(nodes);
+        m_dockerWidget->setNodes(nodes);
+        const QSignalBlocker blocker(m_runTarget);
+        const QSignalBlocker pickerBlocker(m_pickerTarget);
         const QString selected = m_runTarget->currentData().toString();
         m_runTarget->clear();
-        m_runTarget->addItem(tr("This computer"), QString());
+        m_runTarget->addItem(CanvasIcons::icon(CanvasIcons::Symbol::Monitor), tr("This computer"), QString());
         for (const auto &node : nodes)
-            m_runTarget->addItem(node, node);
-        const int index = m_runTarget->findData(selected);
-        m_runTarget->setCurrentIndex(index < 0 ? 0 : index);
+            m_runTarget->addItem(CanvasIcons::icon(CanvasIcons::Symbol::Monitor), node, node);
+        int index = m_runTarget->findData(selected);
+        if (index < 0) {
+            m_runTarget->addItem(selected + tr(" — unavailable"), selected);
+            index = m_runTarget->count() - 1;
+            m_runTarget->setItemData(index, true, Qt::UserRole + 1);
+        }
+        m_runTarget->setCurrentIndex(index);
+        m_pickerTarget->setCurrentIndex(index);
+        updateWorkflowPreview();
     });
     connect(m_stack, &QStackedWidget::currentChanged, this, [this](int index) {
         if (m_navigation->currentRow() != index)
@@ -612,18 +659,53 @@ void MainWindow::setupMenuBar()
     file->addAction(tr("Open project folder…"), this, &MainWindow::onFileOpenProject, QKeySequence::Open);
     file->addAction(tr("Refresh app list"), this, &MainWindow::onRefreshAppList, QKeySequence::Refresh);
     file->addSeparator();
-    file->addAction(tr("Quit"), qApp, &QApplication::quit, QKeySequence::Quit);
+    file->addAction(tr("Quit"), this, &MainWindow::quitLauncher, QKeySequence::Quit);
 
     QMenu *view = menuBar()->addMenu(tr("View"));
+    view->setObjectName("workspaceViewMenu");
     auto *modeGroup = new QActionGroup(this);
-    m_actBasic = view->addAction(tr("Apps"));
-    m_actBasic->setCheckable(true);
-    modeGroup->addAction(m_actBasic);
-    m_actAdvanced = view->addAction(tr("Workflows"));
-    m_actAdvanced->setCheckable(true);
-    modeGroup->addAction(m_actAdvanced);
-    connect(m_actBasic, &QAction::triggered, this, &MainWindow::onViewBasic);
-    connect(m_actAdvanced, &QAction::triggered, this, &MainWindow::onViewAdvanced);
+    const QStringList pages{tr("Apps"), tr("Workflows"), tr("Machines"), tr("Containers"), tr("Executions")};
+    for (int page = 0; page < pages.size(); ++page) {
+        auto *action = view->addAction(pages[page]);
+        action->setCheckable(true);
+        modeGroup->addAction(action);
+        m_pageActions.append(action);
+        connect(action, &QAction::triggered, this, [this, page]() {
+            m_navigation->setCurrentRow(page);
+        });
+    }
+    view->addSeparator();
+    m_actSidebar = view->addAction(tr("Show sidebar"));
+    m_actSidebar->setObjectName("toggleSidebarAction");
+    m_actSidebar->setCheckable(true);
+    m_actSidebar->setChecked(m_settings.sidebarVisible);
+    m_actSidebar->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_B));
+    m_actSidebar->setIcon(CanvasIcons::icon(CanvasIcons::Symbol::Sidebar));
+    auto *sidebarToggle = new QToolButton;
+    sidebarToggle->setObjectName("toggleSidebarButton");
+    sidebarToggle->setAutoRaise(true);
+    sidebarToggle->setDefaultAction(m_actSidebar);
+    sidebarToggle->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    sidebarToggle->setIconSize(QSize(20, 20));
+    sidebarToggle->setFixedSize(32, 32);
+    const auto updateSidebarHint = [this, sidebarToggle]() {
+        const QString label = m_actSidebar->isChecked() ? tr("Hide sidebar") : tr("Show sidebar");
+        sidebarToggle->setAccessibleName(label);
+        sidebarToggle->setToolTip(label + " (" + m_actSidebar->shortcut().toString(QKeySequence::NativeText) + ")");
+    };
+    updateSidebarHint();
+    auto *sidebarControl = new QWidget;
+    sidebarControl->setObjectName("sidebarControl");
+    auto *sidebarControlLayout = new QHBoxLayout(sidebarControl);
+    sidebarControlLayout->setContentsMargins(12, 4, 16, 4);
+    sidebarControlLayout->addWidget(sidebarToggle);
+    menuBar()->setCornerWidget(sidebarControl, Qt::TopLeftCorner);
+    connect(m_actSidebar, &QAction::toggled, this, [this, updateSidebarHint](bool visible) {
+        m_navigationRail->setVisible(visible);
+        m_settings.sidebarVisible = visible;
+        m_settings.save();
+        updateSidebarHint();
+    });
 
     QMenu *settingsMenu = menuBar()->addMenu(tr("Settings"));
     settingsMenu->addAction(tr("Preferences…"), this, &MainWindow::onOpenSettings);
@@ -673,174 +755,14 @@ void MainWindow::onAbout()
     box.exec();
 }
 
-void MainWindow::setupAdvancedPage(QWidget *page)
-{
-    auto *root = new QVBoxLayout(page);
-    root->setSpacing(14);
-    root->setContentsMargins(28, 24, 28, 24);
-
-    auto *header = new QFrame;
-    header->setObjectName(QStringLiteral("workflowHeader"));
-    auto *headLay = new QVBoxLayout(header);
-    headLay->setSpacing(12);
-    headLay->setContentsMargins(0, 0, 0, 0);
-
-    auto *title = new QLabel(tr("Workflows"));
-    title->setObjectName(QStringLiteral("appTitle"));
-    auto *subtitle = new QLabel(tr("Choose what to run, choose a machine, and follow its progress in Activity."));
-    subtitle->setObjectName(QStringLiteral("appSubtitle"));
-    subtitle->setWordWrap(true);
-    headLay->addWidget(title);
-    headLay->addWidget(subtitle);
-
-    auto *primaryRow = new QHBoxLayout;
-    primaryRow->setSpacing(8);
-    auto addPrimary = [this, primaryRow](const QString &text, void (MainWindow::*slot)(), const char *objName) {
-        auto *b = new QPushButton(text);
-        b->setObjectName(QString::fromUtf8(objName));
-        connect(b, &QPushButton::clicked, this, slot);
-        primaryRow->addWidget(b);
-    };
-    auto *targetLabel = new QLabel(tr("Run on"));
-    primaryRow->addWidget(targetLabel);
-    m_runTarget = new QComboBox;
-    m_runTarget->setObjectName(QStringLiteral("runTarget"));
-    m_runTarget->addItem(tr("This computer"), QString());
-    m_runTarget->setMinimumWidth(180);
-    primaryRow->addWidget(m_runTarget);
-    addPrimary(tr("Run selected"), &MainWindow::onLaunch, "primaryButton");
-    addPrimary(tr("Stop"), &MainWindow::onStop, "quietButton");
-    addPrimary(tr("Logs"), &MainWindow::onOpenLogs, "quietButton");
-    primaryRow->addStretch(1);
-    headLay->addLayout(primaryRow);
-
-    root->addWidget(header);
-    auto *contextsPage = new QWidget(page);
-    auto *contextsRoot = new QVBoxLayout(contextsPage);
-    contextsRoot->setContentsMargins(0, 0, 0, 0);
-    contextsRoot->setSpacing(14);
-
-    m_hint = new QLabel(tr("Workflows below are discovered from the current project folder. Right-click a row for actions."));
-    m_hint->setObjectName(QStringLiteral("hintText"));
-    m_hint->setWordWrap(true);
-    contextsRoot->addWidget(m_hint);
-
-    m_search = new QLineEdit(page);
-    m_search->setObjectName(QStringLiteral("surfaceSearch"));
-    m_search->setClearButtonEnabled(true);
-    m_search->setPlaceholderText(tr("Search workflows by label, folder, workflow, resolver…"));
-    connect(m_search, &QLineEdit::textChanged, this, &MainWindow::onAdvancedSearchChanged);
-    contextsRoot->addWidget(m_search);
-
-    m_advancedSearchTimer = new QTimer(this);
-    m_advancedSearchTimer->setSingleShot(true);
-    m_advancedSearchTimer->setInterval(120);
-    connect(m_advancedSearchTimer, &QTimer::timeout, this, &MainWindow::applyAdvancedContextFilter);
-
-    m_basicLaunchingTimer = new QTimer(this);
-    m_basicLaunchingTimer->setInterval(1000);
-    connect(m_basicLaunchingTimer, &QTimer::timeout, this, [this]() {
-        if (m_basicLaunchingContextId.isEmpty()) {
-            m_basicLaunchingTimer->stop();
-            return;
-        }
-        const bool stillRunning = m_sessions.isRunning(m_basicLaunchingContextId);
-        const SessionInfo si = m_sessions.info(m_basicLaunchingContextId);
-        if (!stillRunning || si.ready || si.status == SessionStatus::Failed || si.status == SessionStatus::Stopped) {
-            m_basicLaunchingContextId.clear();
-            m_basicLaunchingWorkflowId.clear();
-            m_basicLaunchingTimer->stop();
-            refreshSessionUi();
-        }
-    });
-
-    auto *splitter = new QSplitter(Qt::Vertical, page);
-    splitter->setChildrenCollapsible(false);
-
-    auto *listPanel = new QFrame;
-    listPanel->setObjectName(QStringLiteral("listPanel"));
-    auto *listOuter = new QVBoxLayout(listPanel);
-    listOuter->setContentsMargins(0, 0, 0, 0);
-
-    m_list = new QListWidget(page);
-    m_list->setFrameShape(QFrame::NoFrame);
-    m_list->setSpacing(2);
-    m_list->setUniformItemSizes(true);
-    m_list->setContextMenuPolicy(Qt::CustomContextMenu);
-    listOuter->addWidget(m_list, 1);
-
-    m_emptyState = new QFrame;
-    m_emptyState->setObjectName(QStringLiteral("emptyState"));
-    auto *emptyLay = new QVBoxLayout(m_emptyState);
-    emptyLay->setContentsMargins(28, 36, 28, 36);
-    emptyLay->setSpacing(8);
-    m_emptyTitle = new QLabel(tr("No workflows yet"));
-    m_emptyTitle->setObjectName(QStringLiteral("emptyTitle"));
-    m_emptyTitle->setAlignment(Qt::AlignCenter);
-    m_emptyBody = new QLabel(
-        tr("Open a project folder with File → Open project folder."));
-    m_emptyBody->setObjectName(QStringLiteral("emptyBody"));
-    m_emptyBody->setWordWrap(true);
-    m_emptyBody->setAlignment(Qt::AlignCenter);
-    emptyLay->addWidget(m_emptyTitle);
-    emptyLay->addWidget(m_emptyBody);
-
-    listOuter->addWidget(m_emptyState, 1);
-    listOuter->addWidget(m_list, 1);
-    m_emptyState->hide();
-    m_list->hide();
-
-    splitter->addWidget(listPanel);
-
-    auto *consolePanel = new QFrame;
-    consolePanel->setObjectName(QStringLiteral("inlineConsolePanel"));
-    auto *consoleLay = new QVBoxLayout(consolePanel);
-    consoleLay->setContentsMargins(12, 12, 12, 12);
-    consoleLay->setSpacing(8);
-
-    m_consoleTitle = new QLabel(tr("Run output"));
-    m_consoleTitle->setObjectName(QStringLiteral("consoleTitle"));
-    m_consoleMeta = new QLabel(tr("Select a workflow row, then launch it to see output here."));
-    m_consoleMeta->setObjectName(QStringLiteral("consoleMeta"));
-    m_consoleMeta->setWordWrap(true);
-
-    m_console = new QPlainTextEdit(consolePanel);
-    m_console->setObjectName(QStringLiteral("inlineConsole"));
-    m_console->setReadOnly(true);
-    m_console->setPlaceholderText(tr("Command output will appear here."));
-    m_console->setLineWrapMode(QPlainTextEdit::NoWrap);
-    m_console->setMinimumHeight(120);
-    m_console->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
-
-    consoleLay->addWidget(m_consoleTitle);
-    consoleLay->addWidget(m_consoleMeta);
-    consoleLay->addWidget(m_console, 1);
-    splitter->addWidget(consolePanel);
-    splitter->setStretchFactor(0, 3);
-    splitter->setStretchFactor(1, 2);
-    splitter->setSizes({360, 240});
-    contextsRoot->addWidget(splitter, 1);
-
-    root->addWidget(contextsPage, 1);
-
-    connect(m_list, &QListWidget::customContextMenuRequested, this, [this](const QPoint &p) {
-        if (QListWidgetItem *it = m_list->itemAt(p))
-            applyContextMenu(it, m_list->mapToGlobal(p));
-    });
-    connect(m_list, &QListWidget::itemSelectionChanged, this, &MainWindow::onAdvancedSelectionChanged);
-}
-
 void MainWindow::applyUiMode()
 {
-    m_actBasic->blockSignals(true);
-    m_actAdvanced->blockSignals(true);
     m_actIcons->blockSignals(true);
     m_actList->blockSignals(true);
 
     m_stack->setCurrentIndex(m_settings.isAdvanced() ? 1 : 0);
     m_navigation->setCurrentRow(m_stack->currentIndex());
-    m_actBasic->setChecked(!m_settings.isAdvanced());
-    m_actAdvanced->setChecked(m_settings.isAdvanced());
+    m_pageActions[m_stack->currentIndex()]->setChecked(true);
     const bool basic = !m_settings.isAdvanced();
     m_actIcons->setEnabled(basic);
     m_actList->setEnabled(basic);
@@ -857,8 +779,6 @@ void MainWindow::applyUiMode()
             m_basicWidget->showWorkspacePage();
     }
 
-    m_actBasic->blockSignals(false);
-    m_actAdvanced->blockSignals(false);
     m_actIcons->blockSignals(false);
     m_actList->blockSignals(false);
 
@@ -922,6 +842,8 @@ void MainWindow::onFileOpenProject()
     const QString d = QFileDialog::getExistingDirectory(this, tr("Open project folder"), m_settings.projectFolder);
     if (d.isEmpty())
         return;
+    if (!setWorkflowWorkspace(QDir::cleanPath(d)))
+        return;
     m_settings.projectFolder = QDir::cleanPath(d);
     m_settings.addRecentProject(m_settings.projectFolder);
     m_settings.save();
@@ -943,6 +865,8 @@ void MainWindow::onBasicOpenRecent(const QString &absPath)
 {
     if (absPath.isEmpty())
         return;
+    if (!setWorkflowWorkspace(QDir::cleanPath(absPath)))
+        return;
     m_settings.projectFolder = QDir::cleanPath(absPath);
     m_settings.addRecentProject(m_settings.projectFolder);
     m_settings.save();
@@ -959,6 +883,8 @@ void MainWindow::onBasicContinueLast()
         folder = m_settings.recentProjectFolders.first();
     if (folder.isEmpty())
         return;
+    if (!setWorkflowWorkspace(QDir::cleanPath(folder)))
+        return;
     m_settings.projectFolder = QDir::cleanPath(folder);
     m_settings.addRecentProject(m_settings.projectFolder);
     m_settings.save();
@@ -970,6 +896,8 @@ void MainWindow::onBasicContinueLast()
 
 void MainWindow::activateHome()
 {
+    if (!setWorkflowWorkspace(QString()))
+        return;
     m_settings.uiMode = QStringLiteral("basic");
     m_settings.projectFolder.clear();
     m_settings.save();
@@ -998,11 +926,17 @@ void MainWindow::updateBasicPage()
     if (folder.isEmpty())
         workspaceName = tr("Open a project");
     m_workspaceButton->setText(workspaceName);
+    m_workflowEditor->setWorkspaceMenu(workspaceName, m_workspaceButton->menu());
     m_workspaceButton->setToolTip(folder);
     m_workspacePath->setText(folder);
     m_workspacePath->setToolTip(folder);
     m_remoteWidget->setWorkdir(m_settings.projectFolder);
     m_activityWidget->setWorkdir(m_settings.projectFolder);
+    m_executionExplorer->setWorkdir(m_settings.projectFolder);
+    if (m_workflowActivity) {
+        m_workflowActivity->setWorkdir(m_settings.projectFolder);
+        m_workflowActivity->refreshLocal();
+    }
     if (m_settings.projectFolder.isEmpty()) {
         m_basicAppsLoading = false;
         m_basicApps.clear();
@@ -1140,6 +1074,15 @@ Context *MainWindow::ensureBasicWorkflowContext(const QString &workflowId)
 
 WorkflowMeta MainWindow::findWorkflowMeta(const QString &workdir, const QString &workflowId, const QString &workflowFile) const
 {
+    if (QDir::cleanPath(workdir) == QDir::cleanPath(m_settings.projectFolder)) {
+        for (const WorkflowMeta &meta : m_workspaceWorkflows) {
+            if (!workflowFile.isEmpty() && QDir::cleanPath(meta.configPath) == QDir::cleanPath(workflowFile))
+                return meta;
+            if (!workflowId.isEmpty() && meta.workflowId == workflowId)
+                return meta;
+        }
+        return WorkflowMeta{};
+    }
     if (!workflowId.trimmed().isEmpty()) {
         for (const WorkflowMeta &meta : m_basicApps) {
             QString metaWorkflowId = meta.workflowId;
@@ -1235,7 +1178,7 @@ void MainWindow::setupTray()
     auto *menu = new QMenu(this);
     menu->addAction(tr("Show"), this, [this]() { show(); raise(); activateWindow(); });
     menu->addSeparator();
-    menu->addAction(tr("Quit"), qApp, &QApplication::quit);
+    menu->addAction(tr("Quit"), this, &MainWindow::quitLauncher);
     m_tray->setContextMenu(menu);
     connect(m_tray, &QSystemTrayIcon::activated, this, &MainWindow::onTrayActivate);
     m_tray->show();
@@ -1258,6 +1201,10 @@ void MainWindow::closeEvent(QCloseEvent *event)
 {
     if (m_tray && m_tray->isVisible() && QSystemTrayIcon::isSystemTrayAvailable()) {
         hide();
+        event->ignore();
+        return;
+    }
+    if (m_workflowEditor && !m_workflowEditor->confirmDiscardChanges()) {
         event->ignore();
         return;
     }
@@ -1321,13 +1268,22 @@ void MainWindow::applyAdvancedContextFilter()
     }
 
     int restoreRow = -1;
-    for (Context c : m_advancedSourceContexts) {
+    QVector<Context> ordered = m_advancedSourceContexts;
+    const auto recentRank = [this](const Context &context) {
+        const int index = m_recentWorkflowKeys.indexOf(contextDisplayKey(context));
+        return index < 0 ? m_recentWorkflowKeys.size() : index;
+    };
+    std::stable_sort(ordered.begin(), ordered.end(), [&](const Context &left, const Context &right) {
+        return recentRank(left) < recentRank(right);
+    });
+    for (Context c : ordered) {
         if (Context *stored = findStoredContextForDisplay(c)) {
             c = *stored;
         } else if (c.dockpipeBinary.trimmed().isEmpty()) {
             c.dockpipeBinary = DockpipeChoices::preferredDockpipeBinary(c.workdir);
         }
-        if (!contextMatchesFilter(c, filter))
+        const WorkflowMeta meta = findWorkflowMeta(c.workdir, c.workflow, c.workflowFile);
+        if (!contextMatchesFilter(c, filter) && !meta.description.contains(filter.trimmed(), Qt::CaseInsensitive))
             continue;
         ++visibleCount;
         m_advancedContexts.append(c);
@@ -1352,10 +1308,11 @@ void MainWindow::applyAdvancedContextFilter()
     const bool empty = visibleCount == 0;
     m_emptyState->setVisible(empty);
     m_list->setVisible(!empty);
-    if (restoreRow >= 0)
-        m_list->setCurrentRow(restoreRow);
+    if (!empty)
+        m_list->setCurrentRow(restoreRow >= 0 ? restoreRow : 0);
     if (m_list)
         m_list->setUpdatesEnabled(true);
+    updateWorkflowPreview();
 }
 
 void MainWindow::rebuildUi()
@@ -1398,6 +1355,7 @@ void MainWindow::startWorkflowCatalogDiscovery()
         m_advancedDiscoveryLoading = false;
         m_basicAppsLoading = false;
         m_advancedSourceContexts.clear();
+        m_workspaceWorkflows.clear();
         m_basicApps.clear();
         applyAdvancedContextFilter();
         updateBasicPage();
@@ -1407,6 +1365,8 @@ void MainWindow::startWorkflowCatalogDiscovery()
     const QString previousRequested = QDir::cleanPath(m_workflowCatalogRequestedWorkdir);
     const bool projectChanged = previousRequested != workdir;
     if (projectChanged) {
+        m_workspaceWorkflows.clear();
+        m_advancedSourceContexts.clear();
         m_remoteWidget->setResolvers({});
         m_remoteWidget->setWorkdir(workdir);
     }
@@ -1432,11 +1392,13 @@ void MainWindow::startWorkflowCatalogDiscovery()
     m_basicAppsRunningWorkdir = workdir;
     if (projectChanged) {
         m_advancedSourceContexts.clear();
+        m_workspaceWorkflows.clear();
         m_basicApps.clear();
     }
     if (projectChanged || m_advancedSourceContexts.isEmpty()) {
         const WorkflowCatalogData shellCatalog = fastWorkflowShellCatalog(workdir);
         if (!shellCatalog.workflows.isEmpty()) {
+            m_workspaceWorkflows = shellCatalog.workflows;
             m_advancedSourceContexts = contextsFromCatalog(workdir, QString(), shellCatalog);
             m_basicApps = appWorkflowsFromCatalog(shellCatalog);
         }
@@ -1464,6 +1426,7 @@ void MainWindow::applyWorkflowCatalogResult(const AsyncWorkflowCatalogResult &re
             catalog.workflows = fallback.workflows;
     }
     m_remoteWidget->setResolvers(catalog.resolverDetails);
+    m_workspaceWorkflows = catalog.workflows;
     m_advancedSourceContexts = contextsFromCatalog(result.workdir, result.repoRoot, catalog);
     m_basicApps = appWorkflowsFromCatalog(catalog);
     m_advancedDiscoveryLoading = false;
@@ -1480,11 +1443,6 @@ void MainWindow::onAdvancedSearchChanged(const QString &)
         m_advancedSearchTimer->start();
     else
         applyAdvancedContextFilter();
-}
-
-void MainWindow::onAdvancedSelectionChanged()
-{
-    refreshInlineConsole();
 }
 
 void MainWindow::onSessionOutput(const QString &contextId, const QString &text)
@@ -1606,7 +1564,7 @@ Context *MainWindow::currentAdvancedDisplayContext()
 
 Context *MainWindow::currentContext()
 {
-    Context *display = currentAdvancedDisplayContext();
+    Context *display = m_outputContext.id.isEmpty() ? activeWorkflowContext() : &m_outputContext;
     if (!display)
         return nullptr;
     return findStoredContextForDisplay(*display);
@@ -1626,10 +1584,20 @@ bool MainWindow::hasContext(const Context &c) const
 
 void MainWindow::onLaunch()
 {
-    Context *display = currentAdvancedDisplayContext();
+    Context *display = activeWorkflowContext();
     if (!display)
         return;
-    Context *c = ensureStoredContextForDisplay(*display);
+    launchWorkflow(*display);
+}
+
+bool MainWindow::launchWorkflow(const Context &display)
+{
+    if (m_runTarget->currentData(Qt::UserRole + 1).toBool()) {
+        QMessageBox::information(this, tr("Run target unavailable"),
+            tr("Choose another computer or reconnect this machine before running."));
+        return false;
+    }
+    Context *c = ensureStoredContextForDisplay(display);
     const WorkflowMeta meta = findWorkflowMeta(c->workdir, c->workflow, c->workflowFile);
     const QString node = m_runTarget->currentData().toString();
     if (!node.isEmpty()) {
@@ -1638,32 +1606,41 @@ void MainWindow::onLaunch()
             remoteContext.workflowFile = meta.configPath;
         if (remoteContext.workflowFile.isEmpty()) {
             QMessageBox::information(this, tr("Workflow source required"), tr("Remote delivery requires a discovered workflow source file."));
-            return;
+            return false;
         }
         if (!c->envFile.isEmpty() || !c->extraDockpipeEnv.isEmpty() || !c->resolver.isEmpty() || !c->runtime.isEmpty() || !c->strategy.isEmpty()) {
             QMessageBox::information(this, tr("Local launch overrides"),
                 tr("This launch has local environment or execution overrides. Remote delivery uses the workflow YAML. "
                    "Clear local overrides and put non-secret execution settings in the workflow before sending it."));
-            return;
+            return false;
         }
         RemoteRunDialog dialog(remoteContext, node, this);
         if (dialog.exec() == QDialog::Accepted) {
-            m_navigation->setCurrentRow(3);
-            m_activityWidget->refreshRemote();
+            m_navigation->setCurrentRow(m_stack->indexOf(m_executionTabs));
+            m_executionTabs->setCurrentWidget(m_activityWidget);
+            m_activityWidget->showRemoteJobs();
+            rememberWorkflowRun(display);
+            return true;
         }
-        return;
+        return false;
     }
-    if (!configureContextForWorkflow(*c, meta, false))
-        return;
-    if (m_sessions.launch(*c, ContextStore::logsDir()))
+    if (!meta.workflowId.isEmpty() && !configureContextForWorkflow(*c, meta, false))
+        return false;
+    if (m_sessions.launch(*c, ContextStore::logsDir())) {
+        m_outputContext = *c;
+        rememberWorkflowRun(display);
+        setWorkflowConsoleVisible(true);
         refreshSessionUi();
-    else if (!m_sessions.isRunning(c->id))
+        return true;
+    } else if (!m_sessions.isRunning(c->id)) {
         QMessageBox::warning(this, tr("Dockpipe Launcher"), tr("Could not start dockpipe (see stderr)."));
+    }
+    return false;
 }
 
 void MainWindow::onRelaunch()
 {
-    Context *display = currentAdvancedDisplayContext();
+    Context *display = activeWorkflowContext();
     if (!display)
         return;
     Context *c = ensureStoredContextForDisplay(*display);
@@ -1774,12 +1751,14 @@ void MainWindow::refreshInlineConsole()
     if (!m_console || !m_consoleTitle || !m_consoleMeta)
         return;
 
-    Context *display = currentAdvancedDisplayContext();
+    Context *display = activeWorkflowContext();
     Context *c = currentContext();
+    if (auto *input = m_consolePanel->findChild<QLineEdit *>("workflowRunInput"))
+        input->setEnabled(c && m_sessions.isRunning(c->id));
     if (!display && !c) {
         m_consoleContextId.clear();
         m_consoleTitle->setText(tr("Run output"));
-        m_consoleMeta->setText(tr("Select a workflow row, then launch it to see output here."));
+        m_consoleMeta->setText(tr("Run a workflow to follow its output here."));
         m_console->setPlainText(QString());
         return;
     }
@@ -1788,16 +1767,23 @@ void MainWindow::refreshInlineConsole()
     m_consoleContextId = c ? c->id : QString();
     m_consoleTitle->setText(metaContext->label.isEmpty() ? tr("Run output") : metaContext->label);
     m_consoleMeta->setText(currentContextCommandLine());
+    m_consoleMeta->setToolTip(m_consoleMeta->text());
 
     const SessionInfo si = c ? m_sessions.info(c->id) : SessionInfo{};
     QString text;
     if (!si.logPath.isEmpty()) {
         QFile f(si.logPath);
-        if (f.open(QIODevice::ReadOnly | QIODevice::Text))
-            text = QString::fromLocal8Bit(f.readAll());
+        if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            constexpr qint64 previewBytes = 1024 * 1024;
+            if (f.size() > previewBytes) {
+                f.seek(f.size() - previewBytes);
+                text = tr("[Showing the last 1 MiB. Open full logs for earlier output.]\n");
+            }
+            text += QString::fromLocal8Bit(f.read(previewBytes));
+        }
     }
     if (text.isEmpty()) {
-        text = tr("# No output yet.\n# Launch this row to run dockpipe inline here.");
+        text = tr("Ready when you are. Run this workflow to stream its output here.");
     }
     m_console->setPlainText(text);
     auto *bar = m_console->verticalScrollBar();
@@ -1809,21 +1795,34 @@ void MainWindow::appendInlineConsole(const QString &text)
 {
     if (!m_console || text.isEmpty())
         return;
-    m_console->moveCursor(QTextCursor::End);
-    m_console->insertPlainText(text);
+    // A live preview retains at most 1 Mi characters, including long lines.
+    // Complete output remains in the session log owned by SessionManager.
+    constexpr int previewCharacters = 1024 * 1024;
     auto *bar = m_console->verticalScrollBar();
-    if (bar)
-        bar->setValue(bar->maximum());
+    const bool follow = bar->value() >= bar->maximum() - 2;
+    const int scrollPosition = bar->value();
+    QTextCursor cursor(m_console->document());
+    cursor.movePosition(QTextCursor::End);
+    cursor.insertText(text.right(previewCharacters));
+    const int excess = m_console->document()->characterCount() - previewCharacters;
+    if (excess > 0) {
+        const QString notice = tr("[Earlier output omitted. Open full logs.]\n");
+        cursor.movePosition(QTextCursor::Start);
+        cursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, excess + notice.size());
+        cursor.removeSelectedText();
+        cursor.insertText(notice);
+    }
+    bar->setValue(follow ? bar->maximum() : scrollPosition);
 }
 
 QString MainWindow::currentContextCommandLine() const
 {
-    Context *display = const_cast<MainWindow *>(this)->currentAdvancedDisplayContext();
-    if (!display)
-        return tr("Select a workflow row, then launch it to see output here.");
+    Context *display = const_cast<MainWindow *>(this)->activeWorkflowContext();
     const Context *c = const_cast<MainWindow *>(this)->currentContext();
     if (!c)
         c = display;
+    if (!c)
+        return tr("Run a workflow to follow its output here.");
 
     SessionInfo si = m_sessions.info(c->id);
     QString program = si.program;
@@ -1840,4 +1839,14 @@ QString MainWindow::currentContextCommandLine() const
     for (const QString &arg : args)
         parts.append(shellQuote(arg));
     return parts.join(QLatin1Char(' '));
+}
+
+void MainWindow::rememberWorkflowRun(const Context &context)
+{
+    const QString key = contextDisplayKey(context);
+    m_recentWorkflowKeys.removeAll(key);
+    m_recentWorkflowKeys.prepend(key);
+    // A compact recent list is a navigation aid, not execution history.
+    m_recentWorkflowKeys = m_recentWorkflowKeys.mid(0, 12);
+    QSettings().setValue("workflowStudio/recentWorkflows", m_recentWorkflowKeys);
 }

@@ -81,10 +81,12 @@ func RunHostScript(scriptPath string, env []string) error {
 	if err != nil {
 		return fmt.Errorf("host script path: %w", err)
 	}
+	parentExecutionID := envGet(env, "DOCKPIPE_RUN_ID")
 	runID, runFile, env, err := BeginHostRun(envGet(env, "DOCKPIPE_WORKDIR"), env)
 	if err != nil {
 		return fmt.Errorf("host run registry: %w", err)
 	}
+	env = upsertEnv(env, "DOCKPIPE_PARENT_EXECUTION_ID", parentExecutionID)
 	env = applyInteractivePromptMode(env)
 	env = prepareHostBashEnv(env, bashExe)
 	cmd := exec.Command(bashExe, bashPath)
@@ -107,8 +109,11 @@ func RunHostScript(scriptPath string, env []string) error {
 		RemoveHostRunArtifacts(runFile)
 	}()
 	if err := cmd.Start(); err != nil {
+		observation := ObserveExecution(runID, cmd, env, envGet(env, "DOCKPIPE_WORKDIR"), "host", "")
+		observation.Finish(cmd, err)
 		return fmt.Errorf("host script start %s: %w", scriptPath, err)
 	}
+	observation := ObserveExecution(runID, cmd, env, envGet(env, "DOCKPIPE_WORKDIR"), "host", "")
 	stopSpinnerOnce := func() {}
 	if hostScriptSpinnerEnabled(env) {
 		stopSpin := StartLineSpinner(os.Stderr, hostScriptSpinnerLabel(scriptPath))
@@ -120,11 +125,19 @@ func RunHostScript(scriptPath string, env []string) error {
 	go streamHostScriptPipe(stderrPipe, os.Stderr, stopSpinnerOnce, &copyWG)
 	if err := WriteHostRunRecord(runFile, runID, cmd.Process.Pid, envGet(env, "DOCKPIPE_WORKDIR"), scriptPath); err != nil {
 		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		observation.Finish(cmd, err)
 		stopSpinnerOnce()
 		copyWG.Wait()
 		return fmt.Errorf("host run registry write: %w", err)
 	}
 	err = waitHostScriptWithSignalForward(cmd)
+	observation.record.Container = ReadHostRunContainerSidecar(runFile)
+	observation.record.Resource = readExecutionResource(envGet(env, "DOCKPIPE_WORKDIR"), runID)
+	if observation.record.Resource != nil {
+		observation.record.Resource.State = "historical"
+	}
+	observation.Finish(cmd, err)
 	stopSpinnerOnce()
 	copyWG.Wait()
 	if err != nil {

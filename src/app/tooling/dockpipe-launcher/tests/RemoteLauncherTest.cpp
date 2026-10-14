@@ -8,8 +8,15 @@
 #include "PackageManagerDialog.h"
 #include "LauncherSettings.h"
 #include "Theme.h"
+#include "ResourceLinkItem.h"
+#include <QPainter>
 
 #include <QApplication>
+#include <QGraphicsView>
+#include <QGraphicsObject>
+#include <QPointer>
+#include <QGraphicsScene>
+#include <QGraphicsPathItem>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDir>
@@ -19,6 +26,8 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMessageBox>
+#include <QMenu>
+#include <QMenuBar>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QStyle>
@@ -28,8 +37,11 @@
 #include <QTemporaryDir>
 #include <QThread>
 #include <QTimer>
+#include <QToolButton>
 #include <functional>
 #include <cstdio>
+
+int verifySystemMonitoring(const QString &directory);
 
 static bool waitUntil(const std::function<bool()> &predicate)
 {
@@ -51,6 +63,42 @@ static QPushButton *button(QWidget *parent, const QString &text)
             return candidate;
     }
     return nullptr;
+}
+
+// Render fixed phases without sleeping or depending on the event-loop timer.
+bool connectionFramesChange()
+{
+    QGraphicsScene scene;
+    auto *link = new ResourceLinkItem;
+    QPainterPath path(QPointF(10, 20));
+    path.cubicTo(QPointF(100, 20), QPointF(180, 80), QPointF(290, 80));
+    link->setPath(path);
+    link->setFlowPath(path);
+    link->setPen(QPen(QColor("#798ba8"), 1.6, Qt::DashLine));
+    link->setFlowColor(QColor("#a4c7f2"));
+    scene.addItem(link);
+    const auto render = [&](qreal zoom = 1.0) {
+        QImage image(320, 110, QImage::Format_ARGB32_Premultiplied);
+        image.fill(QColor("#10151c"));
+        QPainter painter(&image);
+        painter.scale(zoom, zoom);
+        scene.render(&painter, QRectF(0, 0, 320, 110), QRectF(0, 0, 320, 110));
+        return image;
+    };
+    link->setMotionEnabled(true);
+    link->setPhase(0);
+    const QImage first = render();
+    link->setPhase(8);
+    if (first == render())
+        return false;
+    const QImage overview = render(0.25);
+    link->setPhase(0);
+    if (overview != render(0.25))
+        return false;
+    link->setMotionEnabled(false);
+    const QImage paused = render();
+    link->setPhase(8);
+    return paused == render();
 }
 
 int main(int argc, char **argv)
@@ -78,9 +126,19 @@ remote:info)
     echo '{"broker":{"mode":"local","endpoint":"https://remote.example.com","resolver":{"name":"example.tunnel","title":"Example Tunnel","version":"1.2.0"}}}'
   fi ;;
 remote:jobs)
+  if [ -f "$DOCKPIPE_TEST_ROOT/jobs-fail" ]; then
+    echo 'Could not reach fixture broker' >&2
+    exit 1
+  fi
   echo called >> "$DOCKPIPE_TEST_ROOT/jobs-calls"
   echo '[{"id":"build-1","node":"mac-mini","status":"completed"}]' ;;
+remote:cancel)
+  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/cancel-job-args"
+  echo '{}' ;;
 remote:nodes) echo '[{"node":"mac-mini","status":"paired"},{"node":"studio-invite","status":"invited"}]' ;;
+remote:observe)
+  if [ -f "$DOCKPIPE_TEST_ROOT/monitor-delay" ]; then sleep 0.2; fi
+  cat "$DOCKPIPE_TEST_ROOT/monitor.json" ;;
 remote:pairings) echo '[{"node":"studio","code":"ABCD-1234-5678","status":"pending","expires_at":"2026-10-09T07:00:00Z"}]' ;;
 remote:pair)
   echo called >> "$DOCKPIPE_TEST_ROOT/pair-calls"
@@ -117,16 +175,49 @@ esac
         return 18;
     docker.write(R"SH(#!/bin/sh
 case "$1:$2" in
-container:ls) echo '{"ID":"fixture","Names":"pipeon","State":"running","Status":"Up 2 hours","Image":"example/pipeon:test","Ports":"127.0.0.1:8080->8080/tcp"}' ;;
+container:ls)
+    echo '{"ID":"fixture","Names":"pipeon","State":"running","Status":"Up 2 hours","Image":"example/pipeon:test","Ports":"127.0.0.1:8080->8080/tcp"}'
+    echo '{"ID":"database","Names":"database","State":"running","Status":"Up 2 hours (unhealthy)","Image":"postgres:test"}'
+    echo '{"ID":"stopped","Names":"old-worker","State":"exited","Status":"Exited (0) 2 hours ago","Image":"example/worker:test"}' ;;
+container:inspect)
+    echo '{"Id":"fixture","Name":"/pipeon","Labels":{"com.docker.compose.project":"demo","com.docker.compose.service":"web","com.docker.compose.depends_on":"db:service_healthy:false"},"Networks":{"workspace":{}},"Mounts":[{"Type":"volume","Name":"data","Destination":"/data"}]}'
+    echo '{"Id":"database","Name":"/database","Labels":{"com.docker.compose.project":"demo","com.docker.compose.service":"db"},"Networks":{"workspace":{}},"Mounts":[]}'
+    echo '{"Id":"stopped","Name":"/old-worker","Labels":{},"Networks":{"workspace":{}},"Mounts":[]}' ;;
+inspect:*) echo '[{"Id":"fixture","Name":"/pipeon"}]' ;;
+start:*) echo 'Fixture start rejected' >&2; exit 1 ;;
+logs:*) echo 'Fixture logs ready'; echo 'Fixture error stream' >&2 ;;
+network:inspect) echo '[{"Name":"workspace","Driver":"bridge"}]' ;;
 network:ls) echo '{"ID":"network","Name":"workspace","Driver":"bridge","Scope":"local"}' ;;
-volume:ls) ;;
+volume:ls) echo '{"Name":"data","Driver":"local"}' ;;
+volume:inspect) echo '[{"Name":"data","Mountpoint":"/fixture/data"}]' ;;
 *) echo 'Unexpected Docker fixture command' >&2; exit 1 ;;
 esac
 )SH");
     docker.close();
     docker.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+    QFile terminal(directory.filePath("xdg-terminal-exec"));
+    if (!terminal.open(QIODevice::WriteOnly))
+        return 58;
+    terminal.write("#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$DOCKPIPE_TEST_ROOT/exec-terminal-args\"\n");
+    terminal.close();
+    terminal.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+    // Exercise Flatpak's host-terminal routing without contacting the real host
+    // service. The forwarded command still runs the isolated terminal fixture.
+    QFile terminalBridge(directory.filePath("flatpak-spawn"));
+    if (!terminalBridge.open(QIODevice::WriteOnly))
+        return 70;
+    terminalBridge.write(R"SH(#!/bin/sh
+if [ "$1" != "--host" ]; then exit 1; fi
+printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/terminal-bridge-args"
+shift
+exec "$@"
+)SH");
+    terminalBridge.close();
+    terminalBridge.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
     qputenv("PATH", directory.path().toUtf8() + ":" + qgetenv("PATH"));
     QApplication app(argc, argv);
+    if (!connectionFramesChange())
+        return 55;
     QApplication::setApplicationName("dockpipe-launcher-test");
     applyDockpipeLauncherTheme(app);
     if (qEnvironmentVariable("DOCKPIPE_TEST_THEME") == "light") {
@@ -154,7 +245,8 @@ esac
     auto *apps = window.findChild<BasicModeWidget *>();
     if (!apps || !apps->findChildren<QTabWidget *>().isEmpty()
         || window.findChildren<DockerObservabilityWidget *>().size() != 1
-        || navigation->count() != 5 || navigation->item(4)->text() != "Docker")
+        || navigation->count() != 5 || navigation->item(3)->text() != "Containers"
+        || navigation->item(4)->text() != "Executions")
         return 13;
     navigation->setCurrentRow(0);
     if (!waitUntil([&]() { return button(apps, "Open app") != nullptr; }))
@@ -228,7 +320,7 @@ esac
     if (packageRequests != 1)
         return 17;
     capture("-apps-empty");
-    navigation->setCurrentRow(4);
+    navigation->setCurrentRow(3);
     auto *dockerPage = window.findChild<DockerObservabilityWidget *>();
     if (!waitUntil([&]() {
         for (auto *table : dockerPage->findChildren<QTableWidget *>()) {
@@ -239,6 +331,167 @@ esac
     }))
         return 20;
     capture("-docker");
+    auto *graph = dockerPage->findChild<QGraphicsView *>("dockerGraph");
+    int dependencies = 0;
+    int attachments = 0;
+    QGraphicsItem *containerCard = nullptr;
+    for (auto *item : graph->scene()->items()) {
+        if (item->toolTip().startsWith("Depends on db"))
+            ++dependencies;
+        if (item->toolTip().startsWith("Network attachment") || item->toolTip().startsWith("Mounted at"))
+            ++attachments;
+        if (item->data(0).toString() == "container:fixture")
+            containerCard = item;
+    }
+    if (dependencies != 1 || attachments != 4 || !containerCard)
+        return 40;
+    containerCard->setSelected(true);
+    if (!dockerPage->findChild<QWidget *>("dockerDetailsPanel")->isVisible())
+        return 41;
+    auto *logs = dockerPage->findChild<QPlainTextEdit *>("dockerSelectedLogs");
+    if (!waitUntil([&]() { return logs->toPlainText().contains("Fixture logs ready")
+        && logs->toPlainText().contains("Fixture error stream"); }))
+        return 59;
+    for (auto *table : dockerPage->findChildren<QTableWidget *>()) {
+        if (table->isVisible())
+            return 60;
+    }
+    capture("-docker-details");
+    auto *related = dockerPage->findChild<QLabel *>("dockerRelatedResources");
+    if (!related->text().contains("network%3Anetwork") || !related->text().contains("volume%3Adata"))
+        return 61;
+    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "network%3Anetwork"));
+    auto *resourceTitle = dockerPage->findChild<QLabel *>("dockerResourceTitle");
+    if (resourceTitle->text() != "workspace")
+        return 62;
+    capture("-docker-network-inspector");
+    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "container%3Afixture"));
+    if (resourceTitle->text() != "pipeon")
+        return 63;
+    auto *exec = dockerPage->findChild<QPushButton *>("dockerExec");
+    if (!exec->isEnabled())
+        return 64;
+    exec->menu()->actions().first()->trigger();
+    const QString terminalArgs = directory.filePath("exec-terminal-args");
+    if (!waitUntil([&]() { return QFile::exists(terminalArgs); })) {
+        std::fprintf(stderr, "Container shell did not reach the terminal fixture\n");
+        return 65;
+    }
+    QFile arguments(terminalArgs);
+    if (!arguments.open(QIODevice::ReadOnly)
+        || !arguments.readAll().endsWith("docker\nexec\n-it\nfixture\n/bin/sh\n"))
+        return 66;
+    arguments.close();
+    if (QFile::exists("/.flatpak-info")) {
+        QFile bridgeArguments(directory.filePath("terminal-bridge-args"));
+        if (!bridgeArguments.open(QIODevice::ReadOnly)
+            || !bridgeArguments.readAll().startsWith("--host\nsh\n-c\n"))
+            return 71;
+    }
+    auto *networksToggle = dockerPage->findChild<QPushButton *>("dockerFilter_network");
+    auto *volumesToggle = dockerPage->findChild<QPushButton *>("dockerFilter_volume");
+    auto *stoppedToggle = dockerPage->findChild<QPushButton *>("dockerFilter_inactive");
+    auto *dependenciesToggle = dockerPage->findChild<QPushButton *>("dockerFilter_dependencies");
+    const auto resource = [&](const QString &id) -> QGraphicsItem * {
+        for (auto *item : graph->scene()->items()) {
+            if (item->data(0).toString() == id)
+                return item;
+        }
+        return nullptr;
+    };
+    auto *stoppedCard = resource("container:stopped");
+    if (!stoppedCard || !stoppedCard->data(4).toBool()
+        || !(stoppedCard->flags() & QGraphicsItem::ItemIsSelectable)
+        || !stoppedCard->toolTip().contains("Stopped")
+        || !resource("container:fixture")->toolTip().contains("Running")
+        || !resource("container:database")->toolTip().contains("Unhealthy"))
+        return 43;
+    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "container%3Astopped"));
+    if (exec->isEnabled() || resourceTitle->text() != "old-worker")
+        return 67;
+    auto *start = dockerPage->findChild<QPushButton *>("dockerStart");
+    start->click();
+    if (start->isEnabled())
+        return 68;
+    if (!waitUntil([&]() { return dockerPage->findChild<QLabel *>("dockerInspectorStatus")->text()
+        .contains("Fixture start rejected") && start->isEnabled(); }))
+        return 69;
+    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "container%3Afixture"));
+    auto *motion = dockerPage->findChild<QPushButton *>("dockerFilter_motion");
+    auto *animation = dockerPage->findChild<QTimer *>("dependencyAnimationTimer");
+    if (!motion || !animation || !animation->isActive())
+        return 48;
+    motion->setChecked(false);
+    if (animation->isActive())
+        return 49;
+    motion->setChecked(true);
+    if (!animation->isActive())
+        return 50;
+    int stationaryLinks = 0;
+    int movingLinks = 0;
+    for (auto *item : graph->scene()->items()) {
+        if (auto *link = dynamic_cast<ResourceLinkItem *>(item)) {
+            if (link->motionEnabled())
+                ++movingLinks;
+            else
+                ++stationaryLinks;
+        }
+    }
+    if (stationaryLinks != 1 || movingLinks != 4)
+        return 57;
+    dependenciesToggle->setChecked(false);
+    if (!animation->isActive())
+        return 56;
+    dependenciesToggle->setChecked(true);
+    const QPointF networkPosition = resource("network:network")->pos();
+    networksToggle->setChecked(false);
+    volumesToggle->setChecked(false);
+    stoppedToggle->setChecked(false);
+    dependenciesToggle->setChecked(false);
+    if (animation->isActive())
+        return 51;
+    for (auto *item : graph->scene()->items()) {
+        if (dynamic_cast<QGraphicsPathItem *>(item) && item->isVisible())
+            return 44;
+    }
+    if (stoppedCard->isVisible() || resource("network:network")->isVisible()
+        || resource("volume:data")->isVisible() || !containerCard->isVisible())
+        return 45;
+    dockerPage->findChild<QWidget *>("dockerDetailsPanel")->hide();
+    capture("-docker-filtered");
+    const QPointF movedPosition = containerCard->pos() + QPointF(25, 35);
+    containerCard->setPos(movedPosition);
+    const QTransform graphTransform = graph->transform();
+    QPointer<QGraphicsObject> previousCard = dynamic_cast<QGraphicsObject *>(containerCard);
+    dockerPage->refresh();
+    if (!waitUntil([&]() {
+        if (previousCard)
+            return false;
+        for (auto *item : graph->scene()->items()) {
+            if (item->data(0).toString() == "container:fixture")
+                return item->pos() == movedPosition && item->isSelected()
+                    && graph->transform() == graphTransform;
+        }
+        return false;
+    }))
+        return 42;
+    if (resource("container:stopped")->isVisible() || resource("network:network")->isVisible())
+        return 46;
+    networksToggle->setChecked(true);
+    volumesToggle->setChecked(true);
+    stoppedToggle->setChecked(true);
+    dependenciesToggle->setChecked(true);
+    if (!resource("container:stopped")->isVisible()
+        || resource("network:network")->pos() != networkPosition)
+        return 47;
+    if (!animation->isActive())
+        return 52;
+    navigation->setCurrentRow(2);
+    if (animation->isActive())
+        return 53;
+    navigation->setCurrentRow(3);
+    if (!animation->isActive())
+        return 54;
     navigation->setCurrentRow(2);
     if (!waitUntil([&]() { return target->findData("mac-mini") >= 0 && button(remote, "Refresh")->isEnabled(); })) {
         std::fprintf(stderr, "Machine discovery failed\n");
@@ -247,6 +500,7 @@ esac
     // All screenshots use isolated fixture data, never a live account or broker.
     if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE"))
         window.grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + "-machines.png");
+    remote->findChild<QPushButton *>("machinesDetailsButton")->click();
     auto *machinePages = remote->findChild<QStackedWidget *>("machinePages");
     auto *machineDetails = remote->findChild<QPlainTextEdit *>("machineDetails");
     auto *machines = remote->findChild<QTableWidget *>("managedMachines");
@@ -256,7 +510,7 @@ esac
         return 22;
     window.resize(1800, 1800);
     capture("-machines-tall");
-    if (machines->mapTo(&window, QPoint()).y() > 500)
+    if (!remote->findChild<QWidget *>("machinesDetailsPanel")->isVisible())
         return 23;
     window.resize(1180, 780);
     auto *summary = remote->findChild<QLabel *>("remoteConnectionSummary");
@@ -442,13 +696,70 @@ esac
     QFile submitted(directory.filePath("submit-args"));
     if (!submitted.open(QIODevice::ReadOnly) || !submitted.readAll().contains("--expected-digest\nabc123\n"))
         return 11;
-    auto *activity = window.findChild<ActivityWidget *>();
-    if (!activity)
+    navigation->setCurrentRow(4);
+    auto *executionTabs = window.findChild<QTabWidget *>("executionTabs");
+    if (!executionTabs || !executionTabs->isVisible() || executionTabs->count() != 2)
         return 42;
-    activity->refreshRemote();
-    auto *download = button(activity, "Download result & logs");
-    if (!waitUntil([&]() { return download->isEnabled(); }))
+    auto *activity = executionTabs->findChild<ActivityWidget *>();
+    if (!activity || executionTabs->widget(1) != activity)
+        return 127;
+    executionTabs->setCurrentIndex(1);
+    if (!activity->isVisible() || !button(activity, "Open logs")->isVisible()
+        || !button(activity, "Stop selected run")->isVisible())
+        return 128;
+    auto *emptyRuns = activity->findChild<QWidget *>("localRunsEmpty");
+    auto *localRuns = activity->findChild<QTableWidget *>("localActivityRuns");
+    if (!emptyRuns || !emptyRuns->isVisible() || localRuns->isVisible()
+        || button(activity, "Open logs")->isEnabled() || button(activity, "Stop selected run")->isEnabled())
+        return 134;
+    capture("-execution-local-runs");
+    const QSize normalSize = window.size();
+    window.resize(1910, 1040);
+    capture("-execution-local-wide");
+    window.resize(normalSize);
+    button(activity, "Browse workflows")->click();
+    if (navigation->currentRow() != 1)
+        return 135;
+    navigation->setCurrentRow(4);
+    activity->showRemoteJobs();
+    auto *download = button(activity, "Download results");
+    auto *jobTable = activity->findChild<QTableWidget *>("remoteJobs");
+    if (!waitUntil([&]() { return jobTable->rowCount() == 1 && button(activity, "Refresh jobs")->isEnabled(); }))
         return 43;
+    if (download->isEnabled() || activity->findChild<QPlainTextEdit *>("detailConsole")->isVisible())
+        return 136;
+    if (!download->isVisible())
+        return 129;
+    if (!jobTable || jobTable->rowCount() != 1)
+        return 130;
+    jobTable->selectRow(0);
+    if (!download->isEnabled())
+        return 137;
+    button(activity, "Cancel selected job")->click();
+    if (!waitUntil([&]() { return download->isEnabled(); }))
+        return 131;
+    QFile cancelJobArgs(directory.filePath("cancel-job-args"));
+    if (!cancelJobArgs.open(QIODevice::ReadOnly)
+        || cancelJobArgs.readAll() != "remote\ncancel\n--id\nbuild-1\n")
+        return 132;
+    capture("-execution-remote-jobs");
+    QFile jobsFailure(directory.filePath("jobs-fail"));
+    if (!jobsFailure.open(QIODevice::WriteOnly))
+        return 139;
+    jobsFailure.close();
+    activity->refreshRemote();
+    auto *diagnostics = activity->findChild<QPlainTextEdit *>("detailConsole");
+    if (!waitUntil([&]() { return diagnostics->isVisible()
+        && diagnostics->toPlainText().contains("Could not reach fixture broker"); })
+        || download->isEnabled() || button(activity, "Cancel selected job")->isEnabled())
+        return 140;
+    jobsFailure.remove();
+    activity->refreshRemote();
+    if (!waitUntil([&]() { return download->isEnabled(); }) || diagnostics->isVisible())
+        return 141;
+    executionTabs->setCurrentIndex(0);
+    if (activity->isVisible() || !executionTabs->widget(0)->isVisible())
+        return 133;
     QFile jobsCalls(directory.filePath("jobs-calls"));
     if (!jobsCalls.open(QIODevice::ReadOnly))
         return 44;
@@ -520,6 +831,56 @@ esac
         return 64;
     serviceCalls.close();
 
+    auto *viewMenu = window.findChild<QMenu *>("workspaceViewMenu");
+    auto *sidebarToggle = window.findChild<QToolButton *>("toggleSidebarButton");
+    auto *sidebarAction = window.findChild<QAction *>("toggleSidebarAction");
+    auto *rail = window.findChild<QFrame *>("navigationRail");
+    auto *pages = window.findChild<QStackedWidget *>("workspacePages");
+    if (!viewMenu || !sidebarToggle || !sidebarAction || !rail || !pages)
+        return 120;
+    for (const QSize size : {QSize(1180, 780), QSize(1910, 1040)}) {
+        window.resize(size);
+        QApplication::processEvents();
+        const QRect toggleRect(sidebarToggle->mapTo(window.menuBar(), QPoint()), sidebarToggle->size());
+        const QRect fileRect = window.menuBar()->actionGeometry(window.menuBar()->actions().first());
+        if (toggleRect.left() < 10 || fileRect.left() - toggleRect.right() < 12
+            || toggleRect.intersects(fileRect))
+            return 138;
+    }
+    window.resize(1180, 780);
+    for (int index = 0; index < navigation->count(); ++index) {
+        auto *action = viewMenu->actions()[index];
+        if (action->text() != navigation->item(index)->text())
+            return 121;
+        action->trigger();
+        if (navigation->currentRow() != index || !action->isChecked())
+            return 122;
+        navigation->setCurrentRow((index + 1) % navigation->count());
+        if (action->isChecked())
+            return 123;
+    }
+    navigation->setCurrentRow(1);
+    QApplication::processEvents();
+    const int expandedPageWidth = pages->width();
+    sidebarToggle->click();
+    QApplication::processEvents();
+    if (!rail->isHidden() || sidebarAction->isChecked() || !sidebarToggle->isVisible()
+        || pages->width() <= expandedPageWidth || LauncherSettings::current().sidebarVisible)
+        return 124;
+    capture("-sidebar-hidden");
+    viewMenu->actions()[4]->trigger();
+    if (navigation->currentRow() != 4 || !rail->isHidden())
+        return 125;
+    sidebarAction->trigger();
+    if (rail->isHidden() || !LauncherSettings::current().sidebarVisible)
+        return 126;
+    navigation->setCurrentRow(1);
+    viewMenu->popup(window.menuBar()->mapToGlobal(QPoint(40, window.menuBar()->height())));
+    QApplication::processEvents();
+    if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE"))
+        viewMenu->grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + "-view-menu.png");
+    viewMenu->hide();
+
     // The offscreen platform has no tray. Closing must really close the window,
     // rather than pretending an unavailable tray can reopen it.
     if (QSystemTrayIcon::isSystemTrayAvailable() || window.findChild<QSystemTrayIcon *>())
@@ -527,5 +888,7 @@ esac
     window.close();
     if (window.isVisible())
         return 32;
+    if (const int monitoringResult = verifySystemMonitoring(directory.path()))
+        return monitoringResult;
     return 0;
 }

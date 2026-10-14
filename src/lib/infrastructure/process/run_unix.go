@@ -12,7 +12,7 @@ import (
 
 // Run requires a command created with exec.CommandContext. Descendants share a
 // process group and are stopped on cancellation and when the command finishes.
-func Run(command *exec.Cmd) error {
+func run(command *exec.Cmd, started func()) error {
 	if command.Cancel == nil {
 		return errors.New("process tree requires a context-bound command")
 	}
@@ -35,6 +35,7 @@ func Run(command *exec.Cmd) error {
 	if err := command.Start(); err != nil {
 		return err
 	}
+	started()
 	defer func() { _ = syscall.Kill(-command.Process.Pid, syscall.SIGKILL) }()
 	return command.Wait()
 }
