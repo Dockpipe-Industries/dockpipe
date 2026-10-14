@@ -201,6 +201,19 @@ esac
     terminal.write("#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$DOCKPIPE_TEST_ROOT/exec-terminal-args\"\n");
     terminal.close();
     terminal.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+    // Exercise Flatpak's host-terminal routing without contacting the real host
+    // service. The forwarded command still runs the isolated terminal fixture.
+    QFile terminalBridge(directory.filePath("flatpak-spawn"));
+    if (!terminalBridge.open(QIODevice::WriteOnly))
+        return 70;
+    terminalBridge.write(R"SH(#!/bin/sh
+if [ "$1" != "--host" ]; then exit 1; fi
+printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/terminal-bridge-args"
+shift
+exec "$@"
+)SH");
+    terminalBridge.close();
+    terminalBridge.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
     qputenv("PATH", directory.path().toUtf8() + ":" + qgetenv("PATH"));
     QApplication app(argc, argv);
     if (!connectionFramesChange())
@@ -360,13 +373,21 @@ esac
         return 64;
     exec->menu()->actions().first()->trigger();
     const QString terminalArgs = directory.filePath("exec-terminal-args");
-    if (!waitUntil([&]() { return QFile::exists(terminalArgs); }))
+    if (!waitUntil([&]() { return QFile::exists(terminalArgs); })) {
+        std::fprintf(stderr, "Container shell did not reach the terminal fixture\n");
         return 65;
+    }
     QFile arguments(terminalArgs);
     if (!arguments.open(QIODevice::ReadOnly)
         || !arguments.readAll().endsWith("docker\nexec\n-it\nfixture\n/bin/sh\n"))
         return 66;
     arguments.close();
+    if (QFile::exists("/.flatpak-info")) {
+        QFile bridgeArguments(directory.filePath("terminal-bridge-args"));
+        if (!bridgeArguments.open(QIODevice::ReadOnly)
+            || !bridgeArguments.readAll().startsWith("--host\nsh\n-c\n"))
+            return 71;
+    }
     auto *networksToggle = dockerPage->findChild<QPushButton *>("dockerFilter_network");
     auto *volumesToggle = dockerPage->findChild<QPushButton *>("dockerFilter_volume");
     auto *stoppedToggle = dockerPage->findChild<QPushButton *>("dockerFilter_inactive");
