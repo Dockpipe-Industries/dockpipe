@@ -77,6 +77,14 @@ jobs:
           set -euo pipefail
           export CGO_ENABLED=0 PIPEON_BUILD_DESKTOP=0
           export DOCKPIPE_BIN="$RUNNER_TEMP/dockpipe"
+          # Standalone qualification uses VERSION only as a numeric bundle label.
+          # Compile current source packages with a development compiler, rather
+          # than treating that release-line baseline as the running engine version.
+          # Release callers retain the real allocated version and its checks.
+          if [[ -z "${DOCKPIPE_FLATPAK_VERSION:-}" ]]; then
+            export DOCKPIPE_BIN="$RUNNER_TEMP/dockpipe-qualification-compiler"
+            go build -trimpath -ldflags "-s -w -X main.Version=dev" -o "$DOCKPIPE_BIN" ./src/cmd
+          fi
           export DOCKPIPE_PACKAGES_ROOT="$RUNNER_TEMP/native-packages"
           export XDG_STATE_HOME="$RUNNER_TEMP/dockpipe-state"
           export XDG_CACHE_HOME="$RUNNER_TEMP/dockpipe-cache"
