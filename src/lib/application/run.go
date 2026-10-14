@@ -266,7 +266,11 @@ func Run(argv []string, baseEnviron []string) error {
 			}
 		}
 		if strings.HasPrefix(wfConfig, "tar://") {
-			wfRoot = filepath.Join(infrastructure.WorkflowsRootDir(repoRoot), opts.Workflow)
+			configOnDisk, extractErr := infrastructure.WorkflowConfigOnDiskPath(effWd, wfConfig)
+			if extractErr != nil {
+				return extractErr
+			}
+			wfRoot = filepath.Dir(configOnDisk)
 		} else {
 			wfRoot = filepath.Dir(wfConfig)
 		}

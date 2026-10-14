@@ -110,7 +110,7 @@ func validateCompileOutputsScoped(workdir string, requireWorkflowNamespace bool,
 					continue
 				}
 				if !known[dep] {
-					return fmt.Errorf("package %q depends on %q, which is not present in the compiled store — run dockpipe build so dependencies exist first", pm.Name, dep)
+					return fmt.Errorf("package %q requires missing package %q. Reinstall the parent package from its package catalog to install its dependencies; source-checkout authors can run dockpipe build", pm.Name, dep)
 				}
 			}
 		}

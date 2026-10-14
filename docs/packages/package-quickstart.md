@@ -41,8 +41,8 @@ For Flatpak, replace `dockpipe` with
 `flatpak run --command=dockpipe com.dockpipe.Dockpipe`.
 For reproducible installation, use an immutable release/store manifest URL from
 the selected catalog and add `--sha256 DIGEST` with that entry's checksum.
-Dependencies are installed separately; inspect the package's requirements before
-running it.
+Required package dependencies are installed from the same catalog automatically.
+External host tools still follow the workflow dependency preflight and approval flow.
 
 ## Run an installed workflow
 

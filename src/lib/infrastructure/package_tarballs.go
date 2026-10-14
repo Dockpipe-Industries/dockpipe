@@ -25,6 +25,23 @@ type tarballExtractCacheMarker struct {
 // Newer cache entries carry a tarball marker. Older cache entries are matched by the archive root
 // they contain, so a rebuild also clears stale pre-marker extractions.
 func InvalidateTarballExtractCacheForPackage(workdir, kind, name string) (int, error) {
+	return InvalidateTarballExtractCacheExceptSource(workdir, kind, name, "")
+}
+
+// InvalidateTarballExtractCacheExceptSource retains the extraction containing an
+// active compiler source. Callers may still read that source after compilation.
+// Extractions are content-addressed, so a changed archive gets a different cache.
+func InvalidateTarballExtractCacheExceptSource(workdir, kind, name, source string) (int, error) {
+	if source != "" {
+		resolved, err := filepath.EvalSymlinks(source)
+		if err != nil {
+			return 0, err
+		}
+		source, err = filepath.Abs(resolved)
+		if err != nil {
+			return 0, err
+		}
+	}
 	token := packagebuild.SafeTarballToken(name)
 	var tarPrefix, archiveRoot string
 	switch kind {
@@ -51,6 +68,20 @@ func InvalidateTarballExtractCacheForPackage(workdir, kind, name string) (int, e
 			continue
 		}
 		dir := filepath.Join(cacheRoot, entry.Name())
+		if source != "" {
+			resolved, err := filepath.EvalSymlinks(dir)
+			if err != nil {
+				return removed, err
+			}
+			absolute, err := filepath.Abs(resolved)
+			if err != nil {
+				return removed, err
+			}
+			relative, err := filepath.Rel(absolute, source)
+			if err == nil && filepath.IsLocal(relative) {
+				continue
+			}
+		}
 		if tarballCacheEntryMatchesPackage(dir, tarPrefix, archiveRoot) {
 			if err := os.RemoveAll(dir); err != nil {
 				return removed, err

@@ -302,7 +302,7 @@ func compileSingleResolverDir(workdir, destRoot, from, name string, defaultNames
 			}
 		}
 		if rebuild {
-			if n, err := infrastructure.InvalidateTarballExtractCacheForPackage(workdir, "resolver", name); err != nil {
+			if n, err := infrastructure.InvalidateTarballExtractCacheExceptSource(workdir, "resolver", name, from); err != nil {
 				return err
 			} else if n > 0 {
 				opIDs["cache_invalidated"] = strconv.Itoa(n)
