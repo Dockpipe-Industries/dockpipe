@@ -47,7 +47,11 @@ func (collector NativeCollector) Inspect(ctx context.Context, pid int) (Process,
 	if err != nil {
 		return Process{}, err
 	}
-	process, err := parseStat(string(data), uint64(os.Getpagesize()))
+	pageSize := os.Getpagesize()
+	if pageSize <= 0 {
+		return Process{}, errors.New("invalid system page size")
+	}
+	process, err := parseStat(string(data), uint64(pageSize))
 	if err != nil {
 		return Process{}, err
 	}

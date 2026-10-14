@@ -11,8 +11,8 @@ import (
 )
 
 func TestMonitoringRequiresLocalWorkerAndExplicitChoice(t *testing.T) {
-	root := t.TempDir()
-	if err := os.Chmod(root, 0700); err != nil {
+	root := filepath.Join(t.TempDir(), "remote")
+	if err := remoteio.PrivateDirectory(root); err != nil {
 		t.Fatal(err)
 	}
 	if configureMonitoring(root, true, true, false) == nil {
