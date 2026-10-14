@@ -1,4 +1,5 @@
 #include "Theme.h"
+#include "WindowChrome.h"
 
 #include <QApplication>
 #include <QColor>
@@ -202,6 +203,7 @@ void applyLauncherFont(QApplication &app)
 
 void applyDockpipeLauncherTheme(QApplication &app)
 {
+    installLauncherWindowChrome(app);
     QStyle *st = app.style();
     const bool dark = isDarkUi();
 

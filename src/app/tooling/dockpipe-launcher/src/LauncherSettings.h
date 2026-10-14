@@ -19,6 +19,7 @@ public:
     QStringList recentProjectFolders;
     /// When true, the status-bar third-party disclaimer is hidden until restored from Help.
     bool thirdPartyDisclaimerDismissed = false;
+    bool sidebarVisible = true;
 
     bool load();
     bool save() const;

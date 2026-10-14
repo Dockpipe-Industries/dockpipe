@@ -2210,6 +2210,13 @@ vmimage_write_pid_sidecar() {
   local run_file="${DOCKPIPE_RUN_FILE:-}"
   [[ -n "$run_file" ]] || return 0
   printf '%s\n' "$pid" > "${run_file%.json}.pid"
+  if [[ "${DOCKPIPE_OBSERVABILITY:-}" != "off" ]]; then
+    local helper
+    helper="$(dockpipe_sdk get dockpipe_bin 2>/dev/null || true)"
+    if [[ -z "$helper" ]] || ! "$helper" runs associate qemu "dockpipe-vm-${DOCKPIPE_RUN_ID:-vm}" "$pid" >/dev/null 2>&1; then
+      vmimage_log "Host process association unavailable; VM execution continues."
+    fi
+  fi
 }
 
 vmimage_collect_env_exports_bash() {

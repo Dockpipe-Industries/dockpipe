@@ -59,7 +59,7 @@ while IFS= read -r validation_input; do
   mkdir -p "$application_consumer/$(dirname "$validation_input")"
   cp "$validation_source" "$application_consumer/$validation_input"
 done <"$fixture_root/validation-input-files.json"
-test "$validation_input_file_count" -eq 240
+test "$validation_input_file_count" -eq 263
 cp -R "$application_consumer" "$application_pristine"
 cp -R "$application_consumer" "$application_expected"
 printf '%s\n' '# Fixture package' 'Untrusted remote fixture change.' >"$application_expected/packages/dorkpipe/README.md"
@@ -155,7 +155,10 @@ for required_input in VERSION assets/entrypoint.sh embed.go go.mod go.sum go.wor
 done
 while IFS= read -r required_input; do
   required_input="${required_input#./}"
-  grep -Fq "\"$required_input\"" "$fixture_root/validation-input-files.json"
+  if ! grep -Fq "\"$required_input\"" "$fixture_root/validation-input-files.json"; then
+    printf 'Missing validation fixture input: %s\n' "$required_input" >&2
+    exit 1
+  fi
 done < <(
   cd "$REPO_ROOT"
   find packages/dorkpipe/lib/orchestrationhelper -maxdepth 1 -type f -name '*.go' -print
@@ -163,6 +166,7 @@ done < <(
     src/lib/infrastructure/sourcemtime src/lib/domain/secretenv \
     src/lib/infrastructure/envfile src/lib/infrastructure/filepublication \
     src/lib/infrastructure/engineversion \
+    src/lib/infrastructure/telemetry src/lib/infrastructure/process \
     packages/dorkpipe/lib/orchestrationhelper/internal/cloudusage \
     -type f -name '*.go' ! -name '*_test.go' -print
   find src/lib/domain src/lib/infrastructure/packagebuild -maxdepth 1 -type f -name '*.go' ! -name '*_test.go' -print

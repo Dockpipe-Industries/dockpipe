@@ -7,7 +7,7 @@ import (
 	"os/exec"
 )
 
-func Run(command *exec.Cmd) error {
+func run(command *exec.Cmd, started func()) error {
 	return errors.New("process tree containment is unavailable on this platform")
 }
 

@@ -73,9 +73,11 @@ The workflow writes under the normal `backlog-remote` artifact scope:
 - Every validation input is an exact sorted repository-relative regular file with a SHA-256 and byte
   count. Directories, globs, inferred walks, duplicates, unsorted declarations, absolute/drive/
   traversal/backslash paths, linked or reparse-point ancestors, root escapes, generated locations,
-  secrets, Git internals, and provider-private paths fail closed. The complete list is capped at 256
+  secrets, Git internals, and provider-private paths fail closed. The complete list is capped at 512
   files and 8 MiB aggregate. `validation_input_manifest` records `complete_list` semantics, count,
   aggregate bytes, and a canonical fingerprint over the entire ordered list.
+  The file allowance accommodates the helper's complete source-validation dependency set,
+  including process telemetry; the aggregate byte budget remains unchanged.
 - `remote-adapter-compatibility.json` binds the inspected adapter/CLI contract to that request
   fingerprint and the explicit environment/branch refs. It records required commands, documented
   inputs, receipt/task-ID support, the compatibility status and exact fail-closed reason, enabled

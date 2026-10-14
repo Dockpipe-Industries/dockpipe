@@ -36,6 +36,16 @@ func RunWorker(ctx context.Context, root, executable string, config contract.Wor
 		return err
 	}
 	defer client.HTTP.CloseIdleConnections()
+	monitorContext, stopMonitoring := context.WithCancel(ctx)
+	monitorDone := make(chan struct{})
+	go func() {
+		defer close(monitorDone)
+		RunMonitoring(monitorContext, root, config.Node, client)
+	}()
+	defer func() {
+		stopMonitoring()
+		<-monitorDone
+	}()
 	session, err := Secret()
 	if err != nil {
 		return err

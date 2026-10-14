@@ -1,4 +1,5 @@
 #include "RemoteWidget.h"
+#include "ResourceCanvas.h"
 #include "DockpipeChoices.h"
 #include "SetupTerminal.h"
 
@@ -149,6 +150,22 @@ RemoteWidget::RemoteWidget(QWidget *parent) : QWidget(parent), m_command(this)
             refreshPairings();
     });
     updateActions();
+    auto *detailsPanel = new QWidget;
+    detailsPanel->setLayout(root);
+    m_canvas = new ResourceCanvas("machines", tr("Machines"),
+        tr("Pairing and access relationships · Connection health is not checked here"), detailsPanel, this);
+    auto *canvasLayout = new QVBoxLayout(this);
+    canvasLayout->setContentsMargins(0, 0, 0, 0);
+    canvasLayout->addWidget(m_canvas);
+    connect(m_canvas, &ResourceCanvas::resourceSelected, this, [this](const QString &id) {
+        showPage(0);
+        for (int row = 0; row < m_nodes->rowCount(); ++row) {
+            if (m_nodes->item(row, 0)->text() == id)
+                m_nodes->selectRow(row);
+        }
+    });
+    updateMachineGraph();
+
 }
 
 QWidget *RemoteWidget::buildOverview()
@@ -552,7 +569,8 @@ void RemoteWidget::refreshNodes()
         if (!ok) {
             m_overviewHint->setText(tr("Couldn't load managed machines. Retry, or use Connect this computer to join a machine you've already set up."));
             m_review->hide();
-            emit nodesChanged({});
+            updateMachineGraph();
+        emit nodesChanged({});
             return;
         }
         const auto nodes = QJsonDocument::fromJson(data).array();
@@ -588,6 +606,7 @@ void RemoteWidget::refreshNodes()
         m_nodes->setFixedHeight(qBound(90, 42 + nodes.size() * 48, 260));
         m_overviewHint->setText(nodes.isEmpty() ? tr("No machines added yet. Choose Add another machine to get started.")
                                                : tr("Add a computer here, then choose it when launching a workflow."));
+        updateMachineGraph();
         emit nodesChanged(paired);
         updateActions();
         refreshPairings();
@@ -729,6 +748,7 @@ void RemoteWidget::refresh()
         const auto worker = info.value("worker").toObject();
         m_existingConnection->hide();
         if (!broker.isEmpty()) {
+            m_graphRemoteEndpoint.clear();
             const auto resolver = broker.value("resolver").toObject();
             QString provider = resolver.value("title").toString();
             const QString name = resolver.value("name").toString();
@@ -756,6 +776,7 @@ void RemoteWidget::refresh()
             refreshNodes();
             return;
         }
+        m_graphRemoteEndpoint = worker.value("endpoint").toString();
         m_connectionSummary->setText(worker.isEmpty()
             ? tr("No remote connection configured. Set up remote access, or connect this computer to an existing broker.")
             : tr("This computer is paired as %1\nRemote address: %2\nThe provider is configured on the managing computer.")
@@ -767,7 +788,30 @@ void RemoteWidget::refresh()
         m_nodes->hide();
         m_review->hide();
         m_overviewHint->setText(tr("No broker is managed from this computer."));
+        updateMachineGraph();
         emit nodesChanged({});
         updateActions();
     });
+}
+
+void RemoteWidget::updateMachineGraph()
+{
+    if (!m_canvas)
+        return;
+    QVector<ResourceNode> nodes;
+    QVector<ResourceEdge> edges;
+    nodes.append({"@local", "computer", tr("This computer"), m_connectionSummary->text(),
+                  m_brokerAvailable ? tr("Manages pairing") : tr("Remote setup"), 0});
+    if (!m_brokerAvailable && !m_graphRemoteEndpoint.isEmpty()) {
+        nodes.append({"@broker", "broker", tr("Managing broker"), m_graphRemoteEndpoint,
+                      tr("Configured address"), 1});
+        edges.append({"@local", "@broker", tr("Worker configured for this broker; connectivity not verified"), false});
+    }
+    for (int row = 0; row < m_nodes->rowCount(); ++row) {
+        const QString name = m_nodes->item(row, 0)->text();
+        const QString access = m_nodes->item(row, 1)->text();
+        nodes.append({name, "machine", name, m_nodes->item(row, 2)->text(), access, 1});
+        edges.append({"@local", name, tr("Access relationship: %1").arg(access), false});
+    }
+    m_canvas->setGraph(nodes, edges);
 }

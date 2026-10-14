@@ -38,6 +38,7 @@ set(DOCKPIPE_LAUNCHER_SOURCES
     src/FlatpakTerminal.cpp
     src/SingleInstanceGuard.cpp
     src/Theme.cpp
+    src/WindowChrome.cpp
     src/Context.cpp
     src/ContextStore.cpp
     src/GitHelper.cpp
@@ -54,7 +55,15 @@ set(DOCKPIPE_LAUNCHER_SOURCES
     src/LogViewerDialog.cpp
     src/PromptDialog.cpp
     src/WorkflowLaunchDialog.cpp
+    src/CanvasIcons.cpp
+    src/CanvasPanel.cpp
+    src/WorkflowCanvas.cpp
+    src/WorkflowEditorWidget.cpp
     src/DockerObservabilityWidget.cpp
+    src/DockerRemoteMonitoring.cpp
+    src/DockerResourceInspector.cpp
+    src/ResourceCanvas.cpp
+    src/ResourceLinkItem.cpp
     src/ContextRowWidget.cpp
     src/EditContextDialog.cpp
     src/SetupTerminal.cpp
@@ -62,7 +71,11 @@ set(DOCKPIPE_LAUNCHER_SOURCES
     src/RemoteWidget.cpp
     src/RemoteRunDialog.cpp
     src/ActivityWidget.cpp
+    src/ExecutionExplorer.cpp
+    src/ExecutionMetricChart.cpp
+    src/SystemResourceOverview.cpp
     src/MainWindow.cpp
+    src/MainWindowWorkflows.cpp
     dockpipe-launcher.qrc
 )
 
@@ -126,7 +139,7 @@ if(BUILD_TESTING AND UNIX)
     add_test(NAME global-root-inherited COMMAND global-root-test --inherited)
     add_executable(package-manager-test
         tests/PackageManagerTest.cpp src/PackageManagerDialog.cpp src/PackageCommand.cpp
-        src/DockpipeChoices.cpp src/WorkflowCatalog.cpp src/LauncherSettings.cpp
+        src/DockpipeChoices.cpp src/WorkflowCatalog.cpp src/LauncherSettings.cpp src/ContextStore.cpp src/Context.cpp
         src/ContextStore.cpp src/Context.cpp)
     target_include_directories(package-manager-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(package-manager-test PRIVATE Qt6::Widgets)
@@ -152,9 +165,36 @@ endif()
 if(BUILD_TESTING AND UNIX)
     set(REMOTE_LAUNCHER_TEST_SOURCES ${DOCKPIPE_LAUNCHER_SOURCES})
     list(REMOVE_ITEM REMOTE_LAUNCHER_TEST_SOURCES src/main.cpp)
-    add_executable(remote-launcher-test tests/RemoteLauncherTest.cpp ${REMOTE_LAUNCHER_TEST_SOURCES})
+    add_executable(remote-launcher-test tests/RemoteLauncherTest.cpp tests/SystemMonitoringTest.cpp ${REMOTE_LAUNCHER_TEST_SOURCES})
     target_include_directories(remote-launcher-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(remote-launcher-test PRIVATE Qt6::Widgets Qt6::Network Qt6::Concurrent)
+    add_executable(workflow-workspace-test tests/WorkflowWorkspaceTest.cpp ${REMOTE_LAUNCHER_TEST_SOURCES})
+    target_include_directories(workflow-workspace-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(workflow-workspace-test PRIVATE Qt6::Widgets Qt6::Network Qt6::Concurrent)
+    add_test(NAME workflow-workspace COMMAND workflow-workspace-test)
+    set_tests_properties(workflow-workspace PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
     add_test(NAME remote-launcher COMMAND remote-launcher-test)
     set_tests_properties(remote-launcher PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(workflow-studio-test
+        tests/WorkflowStudioTest.cpp src/CanvasIcons.cpp src/CanvasPanel.cpp src/WorkflowCanvas.cpp src/WorkflowEditorWidget.cpp
+        src/Theme.cpp src/WindowChrome.cpp dockpipe-launcher.qrc)
+    target_include_directories(workflow-studio-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(workflow-studio-test PRIVATE Qt6::Widgets)
+    add_test(NAME workflow-studio COMMAND workflow-studio-test)
+    set_tests_properties(workflow-studio PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(execution-explorer-test
+        tests/ExecutionExplorerTest.cpp src/ExecutionExplorer.cpp src/ExecutionMetricChart.cpp src/SystemResourceOverview.cpp
+        src/RemoteCommand.cpp src/DockpipeChoices.cpp src/WorkflowCatalog.cpp src/LauncherSettings.cpp src/ContextStore.cpp src/Context.cpp
+        src/ResourceCanvas.cpp src/ResourceLinkItem.cpp src/CanvasPanel.cpp src/CanvasIcons.cpp
+        src/Theme.cpp src/WindowChrome.cpp dockpipe-launcher.qrc)
+    target_include_directories(execution-explorer-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(execution-explorer-test PRIVATE Qt6::Widgets)
+    add_test(NAME execution-explorer COMMAND execution-explorer-test)
+    set_tests_properties(execution-explorer PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
 endif()
