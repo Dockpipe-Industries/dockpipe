@@ -3,6 +3,7 @@
 #include <QFrame>
 
 class CanvasPanel : public QFrame {
+    Q_OBJECT
 public:
     explicit CanvasPanel(const QString &identity, QWidget *parent = nullptr);
     void setDragHandle(QWidget *handle);

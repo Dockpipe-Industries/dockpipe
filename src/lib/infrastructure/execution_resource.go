@@ -32,8 +32,8 @@ func RegisterExecutionResource(ctx context.Context, workdir, runID, runtimeName,
 		return err
 	}
 	data, err := io.ReadAll(io.LimitReader(file, 8193))
-	file.Close()
-	if err != nil || len(data) > 8192 {
+	readCloseErr := file.Close()
+	if err != nil || readCloseErr != nil || len(data) > 8192 {
 		return errors.New("host run metadata unavailable")
 	}
 	var host HostRunRecord
