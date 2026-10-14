@@ -108,7 +108,16 @@ func Execute(ctx context.Context, executable string, profile contract.Profile) c
 	}
 	command.Env = append(command.Env, "DOCKPIPE_REMOTE_WORKER=1")
 	command.WaitDelay = 2 * time.Second
-	err := process.Run(command)
+	err := process.RunObserved(command, func(command *exec.Cmd) func(error) {
+		metadata := []string{"DOCKPIPE_WORKFLOW_NAME=" + profile.Workflow}
+		observation := infrastructure.ObserveExecution("", command, metadata, profile.Workdir, "host", "")
+		return func(err error) {
+			if ctx.Err() != nil {
+				err = ctx.Err()
+			}
+			observation.Finish(command, err)
+		}
+	})
 	if command.ProcessState != nil {
 		result.ExitCode = command.ProcessState.ExitCode()
 	}

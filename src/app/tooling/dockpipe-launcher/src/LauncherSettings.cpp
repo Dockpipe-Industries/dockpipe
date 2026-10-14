@@ -22,6 +22,7 @@ bool LauncherSettings::load()
     extraWorkflowRoots.clear();
     packageRemotes = {QStringLiteral("https://packages.dockpipe.com")};
     thirdPartyDisclaimerDismissed = false;
+    sidebarVisible = true;
     recentProjectFolders.clear();
 
     QFile f(filePath());
@@ -32,6 +33,7 @@ bool LauncherSettings::load()
     if (!doc.isObject())
         return true;
     const QJsonObject o = doc.object();
+    sidebarVisible = o.value(QStringLiteral("sidebarVisible")).toBool(true);
     const QString um = o.value(QStringLiteral("uiMode")).toString();
     if (um == QStringLiteral("basic") || um == QStringLiteral("advanced"))
         uiMode = um;
@@ -91,6 +93,7 @@ bool LauncherSettings::save() const
 {
     QJsonObject o;
     o.insert(QStringLiteral("version"), 1);
+    o.insert(QStringLiteral("sidebarVisible"), sidebarVisible);
     o.insert(QStringLiteral("uiMode"), uiMode);
     o.insert(QStringLiteral("basicView"), basicView);
     o.insert(QStringLiteral("projectFolder"), projectFolder);

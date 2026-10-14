@@ -170,7 +170,7 @@ orchestration-helper commands:
   checkout copies, links/reparse points, root escapes, generated paths, secrets, Git internals, or
   provider-private paths. Every file and ancestor is inspected fail-closed; each entry records path,
   SHA-256, and bytes; and the request records complete-list semantics, count, aggregate bytes, and a
-  canonical aggregate fingerprint. The contract caps the list at 256 files and 8 MiB.
+  canonical aggregate fingerprint. The contract caps the list at 512 files and 8 MiB.
 - `backlog.dispatch` is fixture-only. It writes `remote-task.json` with one opaque task ID, request
   and compatibility fingerprints, environment/branch refs, deterministic fixture time, and adapter
   identity. The artifact records `provider_invoked: false` and no status, diff, result, apply,

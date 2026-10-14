@@ -861,3 +861,29 @@ package expose stable field paths and editor help while still exporting the env 
 ### Secret environment selection
 
 Top-level `vault: environment` loads the named resolver-backed environment selected by `--secret-environment NAME` or `secrets.environment` in project configuration. `vault: op` retains template injection; `vault: none` disables both. Bindings explicitly select which variables enter the workflow. Configuration and provider examples are in [Secret environments](../runtime/vault.md).
+
+## Visual authoring and the document bridge
+
+The Qt launcher's **Workflows → Workflow studio** edits ordinary workflow YAML. Its
+first canvas supports ordered commands, script commands, packaged workflow calls,
+and explicit async groups. The YAML tab retains advanced settings; saving uses
+`dockpipe workflow validate` and running uses the launcher's existing session path.
+Canvas coordinates are local editor preferences and have no execution meaning.
+
+`dockpipe workflow document` is a non-executing stdin/stdout tooling bridge. It reads
+one JSON object containing `source` (the YAML string) and optional `edits`, returning
+`source` and a JSON `document` projection. With no edits, source bytes are unchanged.
+It never saves files, resolves imports, launches commands, or substitutes validation.
+
+Each edit has `operation` and `path` (an array of mapping keys/decimal sequence indices).
+`set` replaces an existing value or adds a mapping key; `append` adds to a sequence;
+`remove` removes a key/item; `move` relocates an item to `destination` in the same
+sequence. `set` and `append` supply a JSON `value`. Unedited YAML nodes and comments
+are retained. Root replacement, duplicate/non-string keys, anchors/aliases, and
+multiple YAML documents are rejected rather than silently transformed.
+
+The interactive bridge accepts at most 1 MiB of source, 128 edits, 8192 YAML nodes,
+and 64 nesting levels, within a 6 MiB JSON request. These are editor capacity limits,
+not new workflow execution limits. Parsing or editing errors produce no successful
+response and change no file. The launcher bounds responses to 8 MiB and cancels
+CLI operations after 30 seconds or on explicit cancellation.
