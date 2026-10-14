@@ -156,7 +156,7 @@ func compileWorkflowOne(workdir, srcAbs, name string, force bool) error {
 			}
 		}
 		if rebuild {
-			if n, err := infrastructure.InvalidateTarballExtractCacheForPackage(workdir, "workflow", pkgName); err != nil {
+			if n, err := infrastructure.InvalidateTarballExtractCacheExceptSource(workdir, "workflow", pkgName, srcAbs); err != nil {
 				return err
 			} else if n > 0 {
 				opIDs["cache_invalidated"] = strconv.Itoa(n)

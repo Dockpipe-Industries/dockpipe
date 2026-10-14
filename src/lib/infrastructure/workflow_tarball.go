@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"dockpipe/src/lib/domain"
+	"dockpipe/src/lib/infrastructure/engineversion"
 	"dockpipe/src/lib/infrastructure/packagebuild"
 
 	"gopkg.in/yaml.v3"
@@ -17,6 +19,16 @@ const tarWorkflowSep = "##"
 
 func loadWorkflowFromTarball(tarPath, entry string) (*domain.Workflow, error) {
 	entry = filepath.ToSlash(entry)
+	manifestPath := filepath.ToSlash(filepath.Join(filepath.Dir(entry), PackageManifestFilename))
+	metadata, err := packagebuild.ReadFileFromTarGzLimit(tarPath, manifestPath, maxCompatibilityMetadataBytes)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
+	if err == nil {
+		if err := checkPackageEngineManifest(metadata, engineversion.Current()); err != nil {
+			return nil, err
+		}
+	}
 	data, err := packagebuild.ReadFileFromTarGz(tarPath, entry)
 	if err != nil {
 		return nil, err

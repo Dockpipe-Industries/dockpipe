@@ -68,7 +68,7 @@ func cmdPackageRemote(args []string, install bool) error {
 		if err != nil {
 			return err
 		}
-		installed, err := client.Install(ctx, catalog, entry, root)
+		installed, err := client.InstallWithDependencies(ctx, catalog, entry, root)
 		if err != nil {
 			return err
 		}

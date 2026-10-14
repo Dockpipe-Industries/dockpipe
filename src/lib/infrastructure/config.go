@@ -19,6 +19,9 @@ func LoadWorkflow(path string) (*domain.Workflow, error) {
 		}
 		return loadWorkflowFromTarball(tarPath, entry)
 	}
+	if err := checkPackageEngineFile(path); err != nil {
+		return nil, err
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
