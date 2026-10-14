@@ -331,6 +331,11 @@ func Run(argv []string, baseEnviron []string) error {
 	}
 
 	envMap := domain.EnvironToMap(baseEnviron)
+	workflowRunID, identityErr := infrastructure.NewWorkflowRunID()
+	if identityErr != nil {
+		return identityErr
+	}
+	envMap["DOCKPIPE_WORKFLOW_RUN_ID"] = workflowRunID
 	if gitSession != nil {
 		envMap["DOCKPIPE_WORKSPACE_ID"] = gitSession.WorkspaceID
 		envMap["DOCKPIPE_SESSION_ID"] = gitSession.SessionID

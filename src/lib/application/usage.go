@@ -78,7 +78,7 @@ var mainUsageSections = []usageSection{
 			{"test [package|workflow]", "Run package-owned tests and workflow-local tests for the current project/workdir"},
 			{"compile", "Same as dockpipe package compile (core, resolvers, workflows)"},
 			{"release upload", "Upload a file to S3-compatible storage (self-hosted; uses aws CLI)"},
-			{"workflow validate|list", "Validate YAML or print the Dockpipe-resolved workflow catalog"},
+			{"workflow validate|list|document", "Validate YAML, list workflows, or edit a YAML document through JSON"},
 			{"session list|inspect|switch|publish", "Inspect and publish runtime-owned Git session workspaces"},
 			{"remote setup|serve|pair|worker|submit", "Pair outbound nodes and execute approved local workflows"},
 			{"catalog list", "Print the Dockpipe-owned launcher/tooling catalog (workflows, resolvers, strategies, runtimes)"},

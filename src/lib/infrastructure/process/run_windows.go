@@ -15,7 +15,7 @@ import (
 // Run attaches the suspended command to a private job before allowing it to
 // launch descendants. Closing the job also cleans up children after normal exit.
 // https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects
-func Run(command *exec.Cmd) error {
+func run(command *exec.Cmd, started func()) error {
 	if command.Cancel == nil {
 		return errors.New("process tree requires a context-bound command")
 	}
@@ -43,6 +43,7 @@ func Run(command *exec.Cmd) error {
 	if err := command.Start(); err != nil {
 		return err
 	}
+	started()
 	if err := attachAndResume(job, uint32(command.Process.Pid)); err != nil {
 		_ = command.Process.Kill()
 		_ = command.Wait()

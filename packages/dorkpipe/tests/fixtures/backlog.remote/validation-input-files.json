@@ -151,6 +151,7 @@
   "src/lib/domain/strategy.go",
   "src/lib/domain/vault_mode.go",
   "src/lib/domain/workflow.go",
+  "src/lib/domain/workflow_document.go",
   "src/lib/domain/workflow_imports.go",
   "src/lib/domain/workflow_inject.go",
   "src/lib/domain/workflow_runtime_values.go",

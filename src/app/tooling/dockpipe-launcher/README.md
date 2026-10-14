@@ -133,7 +133,7 @@ That includes **file prompts**: when a package or runtime emits `dockpipe_sdk pr
 
 ## Workspace navigation
 
-The sidebar provides **Apps**, **Workflows**, **Machines**, **Activity**, and **Docker**.
+The sidebar provides **Apps**, **Workflows**, **Machines**, **Containers**, and **Executions**.
 The workspace selector above every page opens a folder or switches to a recent project.
 That folder is passed to Dockpipe as `--workdir`.
 
@@ -143,9 +143,9 @@ That folder is passed to Dockpipe as `--workdir`.
   the package manager. **Refresh** or **F5** reloads the catalog.
 - **Workflows** shows the complete project catalog, a **Run on** machine selector, and run output.
   Right-click a workflow for additional actions.
-- **Docker** is a single independent page with Containers, Networks, and Volumes tabs. It shows
-  local engine objects and refreshes while selected. Container context menus provide
-  Inspect, Start, Stop, and Refresh.
+- **Containers** shows containers, networks, and volumes on a resource canvas and
+  refreshes while selected. Local container controls provide Inspect, Start, Stop,
+  and Refresh; remote inventory is read-only.
 
 The existing `basic` / `advanced` settings values remain compatible with Apps / Workflows.
 
@@ -180,7 +180,7 @@ Per design: the launcher only **controls** sessions. It does **not** replace **D
 
 ## Workflow workspace and remote machines
 
-The sidebar exposes Apps, Workflows, Machines, Activity, and Docker. Apps continue to use
+The sidebar exposes Apps, Workflows, Machines, Containers, and Executions. Apps continue to use
 `category: app` metadata and the existing local execution path. Workflows show a
 **Run on** selector: this computer, or machines reported as paired by the configured
 broker. Paired is an enrollment state, not a live-presence claim.
@@ -217,8 +217,180 @@ selection invalidates approval; changing source contents makes the CLI reject
 submission. Runtime/resolver settings come from the delivered YAML. Local launch
 overrides are not silently dropped or sent. Credentials must never be included.
 
-Activity shows launcher-owned local sessions and broker jobs. Remote jobs refresh
-while the Remote tab is visible after the first successful refresh. Cancellation
+**Executions → Runs & logs** shows launcher-owned local sessions and broker jobs. Remote jobs refresh
+while Remote jobs is selected after the first successful refresh. Cancellation
 uses the broker's existing cancellation request, and result downloads contain the
 workflow log and requested artifacts. A submitted job is queued, not completed.
 Local history is limited to this launcher session; remote history is broker-owned.
+Use the location selector to switch between this computer and remote jobs. Empty
+history has a Browse workflows shortcut. Select a run to enable its available
+actions; successful refreshes keep transport output hidden, while failures show
+diagnostic details.
+
+## Workflow studio
+
+Application dialogs share rounded surfaces, an in-app draggable heading, clear
+primary actions, and slim scrollbars. Confirmation dialogs retain their existing
+default and escape actions. Native file pickers keep platform/portal integration.
+On Linux and Windows the main window has a single menu/header row with minimize,
+maximize/restore, and close controls; drag empty header space to move it and
+double-click to maximize. Window edges use the platform's interactive resize.
+macOS retains its native traffic lights and global menu.
+
+**Workflows** is the canvas workspace. It starts with a blank workflow each time the
+launcher opens, with properties and output collapsed. The **Workflows ▾** picker
+(Ctrl/Cmd+P) searches discovered workflows and previews their descriptions, inputs,
+and run target. **Run** launches directly without replacing your canvas draft;
+**Edit on canvas** opens the source. Recent runs sort first and the last run target
+is remembered. An unavailable saved target must be changed before running. The
+picker can also open a UTF-8 YAML file. **⋯ → New workflow** starts
+another blank canvas. Navigating to another page keeps your current draft; changing
+workspaces, opening another workflow, or quitting checks for unsaved changes.
+
+The canvas
+supports ordered host/container commands, script commands, packaged workflow calls,
+and one level of parallel groups. Select a group before adding a command or workflow
+to add a parallel task. Select the canvas background to add another ordered step.
+
+Drag cards to arrange the lined grid, drag its background to pan, scroll to zoom,
+and use the lower-left **Fit canvas** control to see the whole workflow. Connections display the existing
+YAML execution order; **Move earlier/later** changes that order. Dragging cards never
+changes execution. Layout is stored in local launcher preferences with a source
+fingerprint, separate from the workflow file.
+
+Select a card to edit its command, working directory, environment, outputs, and
+applicable runtime/resolver or package settings. **Apply changes** updates the YAML
+preview; unapplied inspector changes block selection changes and saving. Use secret
+references rather than embedding credentials. Script selection produces an editable
+command using `sh`, `python3`, `node`, or `pwsh -File`; the interpreter must exist on
+the execution machine. Review relative script paths before sharing a workflow.
+
+The **Toggle YAML source** icon opens the full YAML source editor. Canvas changes preserve unedited fields and
+comments, though YAML formatting may be normalized. Anchors/aliases and single-flow
+workflows remain available in YAML; they are not rewritten into an approximate graph.
+The lower-left **Undo** control restores previous canvas edits; the YAML editor has normal text
+undo. The visual editor supports files up to 1 MiB and 256 visible cards; larger
+workflows can still be authored with an external editor and run through Dockpipe.
+
+**Save** validates through the same CLI workflow validator, then atomically writes the
+file. External changes cause a conflict instead of an overwrite. **Run** saves and
+validates, then uses the launcher's existing session/configuration path. Local runs
+keep the canvas open and reveal a floating output panel. **Output** or Ctrl/Cmd+`
+toggles that panel; it includes stop, full logs, and input for the running workflow.
+This is a workflow console, not a separate system shell. Its preview is bounded;
+full logs remain available. **Run on** keeps the existing remote source-preview and
+submission flow, with remote results in **Executions → Runs & logs → Remote jobs**.
+
+The lower-left **Properties** control toggles the inspector; selecting a card opens
+it. Ctrl/Cmd+S saves. The keyboard icon lists the shortcuts. **+ Add** groups step types
+in a menu at the upper right. Workspace and workflow selection float at the upper
+left; the editor has no full-width toolbar, tab strip, or footer. Properties and
+output overlay the grid without resizing or shifting it. Drag either panel by its
+header, resize from its edges or lower-right grip, and click to bring it forward.
+Panel placement persists in local launcher preferences; shrinking the app keeps
+panels within reach. Use **⋯ → Reset panel layout** to restore their default placement.
+Canvas controls use scalable vector icons with tooltips, keyboard focus, and
+selected/disabled states. The zoom percentage resets the view to 100% when clicked.
+This uses the same YAML and execution
+engine and does not automatically install host tools. Live status overlays, arbitrary
+dependency wiring, and package-step selectors remain follow-up work. Native
+macOS/Windows UI qualification is separate from local Linux/offscreen tests.
+
+The matching CLI must support `workflow document`; older CLIs leave the draft intact
+and display upgrade guidance. To exercise the real CLI/editor integration locally:
+
+```bash
+DOCKPIPE_STUDIO_TEST_CLI=/absolute/path/to/current/dockpipe \
+  ctest --test-dir src/app/tooling/dockpipe-launcher/build -R 'workflow-(studio|workspace)' --output-on-failure
+```
+
+
+### Resource views and activity
+
+**Containers** opens a resource canvas showing containers, networks, and named volumes.
+Solid arrows show dependencies declared in Compose labels (scoped to the Compose
+project); dashed links show network membership or volume mounts. Sharing a network
+does not imply a dependency. Select a resource to open its movable, resizable
+**Inspector**. Containers open directly to their last 200 log lines, including stdout
+and stderr. Logs refresh every four seconds while Docker is active; **Pause updates**
+freezes automatic refresh, and Refresh remains available. Scrolling up keeps your
+place. **Details** shows readable metadata; **Raw inspect** retains complete Docker
+inspect output, including bind mounts. The inspector contains no inventory tables.
+**All resources…** opens the complete inventory separately when needed.
+
+Related network and volume links select and center those cards; network and volume
+inspectors link back to attached containers. **Start** and **Stop** run asynchronously.
+**Exec** opens `/bin/sh` or `/bin/bash` in a real terminal for the selected running
+container, using its ID. The shell must exist in that image. Stopped/paused containers
+cannot exec. Linux uses a desktop terminal; Flatpak opens the host Docker CLI through
+the host terminal. macOS uses Terminal; Windows requires Windows Terminal. Native
+macOS/Windows terminal behavior still needs platform qualification. Search dims unmatched cards. Drag
+cards to arrange them, scroll to zoom, and use Fit graph or Reset layout as needed.
+Periodic refresh preserves current positions, selection, and zoom.
+Floating **Containers**, **Networks**, **Volumes**, **Stopped**, and **Dependencies**
+toggles control visible layers and remember your choices. Hiding an object hides its
+links too; the full inventory remains under Inspector → All resources…. Fit graph fits only
+visible cards. Running containers have green status indicators, unhealthy containers
+red, and paused/restarting containers amber. Stopped or not-yet-started containers
+use muted cards with square indicators and stay selectable for inspection/actions.
+The **Motion** toggle adds a slow travelling highlight to all graph connections,
+including network and storage links when no Compose dependencies are declared.
+Links touching stopped, not-started, paused, restarting, or unknown-state containers
+stay static. Running containers can animate even when unhealthy; health is still
+shown explicitly on the card. Highlights fade between 85% and 35% zoom and disappear
+below 35%, keeping overview lines steady. Dependency arrows stay green and attachment
+links stay blue/dashed. This is a
+decorative direction cue, not traffic or execution telemetry. The preference is
+remembered; animation pauses on hidden or minimized canvases and when all links
+are filtered out. A single 20 fps timer
+updates visible links without making additional Docker requests.
+Lifecycle labels use Docker's reported state; health text does not turn a stopped
+or paused container into a running one.
+
+Relationship discovery inspects up to 256 containers per snapshot. Rendering is
+limited to 1,024 objects and 4,096 links; warnings explain incomplete discovery or
+rendering, and the inventory remains available under Inspector → All resources…. Docker command
+output is bounded to 32 MiB and each command has a 15-second deadline.
+
+**Machines** uses the same canvas for local, broker, and paired-machine relationships.
+Cards report pairing/access state; they do not claim a paired computer is online.
+Pairing, remote setup, and access controls remain in Details & actions.
+
+**Executions → Runs & logs** provides the global run list. The Workflows canvas
+also has a **Runs & logs** button opening a movable panel: local runs are filtered to the current workspace,
+while its Remote jobs view explicitly shows all broker jobs. Existing log, stop, cancel,
+and result-download actions remain available. Apps keeps its card library.
+
+### Execution Explorer
+
+**Executions → Processes & resources** provides a Managed canvas and a separate
+searchable System process view. **Runs & logs** contains local run logs and stop
+controls, plus remote job cancellation and result downloads. Select an execution for lifecycle records, duration, optional CPU/memory
+metrics and its existing log reference. The shared movable/resizable inspector
+keeps the selected resource prominent. Monitoring can be paused; graph, table,
+queue and metric history are bounded. Missing measurements remain unavailable.
+
+See [execution observability](../../../../docs/runtime/execution-observability.md)
+for the CLI contract, runtime associations, privacy model, configuration and honest
+platform/remote support matrix. Native process metrics currently require Linux;
+macOS and Windows lifecycle paths still require native qualification.
+
+### System resources and remote monitoring
+
+In **Executions → System**, resource cards show total CPU, memory, swap, root disk
+capacity, network activity and uptime/load alongside the process list. The
+**System** and **Containers** machine selectors reuse paired machines from **Machines**.
+On a paired worker, `dockpipe remote monitoring --system --docker` enables sharing;
+`--disable` revokes it. Both worker and broker must be updated. Linux supports
+native system metrics; other platforms report unavailable measurements. Remote
+Docker currently shares read-only inventory/topology, with local container
+controls and raw logs remaining local. See the
+[monitoring contract](../../../../docs/runtime/execution-observability.md).
+
+### Navigation and workspace space
+
+The **View** menu lists the same five pages as the left sidebar and tracks the
+current selection. Use the sidebar icon at the top-left, **View → Show sidebar**,
+or **Ctrl+B** to hide/show the sidebar without leaving the current page. The
+visibility preference is saved with the existing launcher settings; the View
+menu remains available while the sidebar is hidden.

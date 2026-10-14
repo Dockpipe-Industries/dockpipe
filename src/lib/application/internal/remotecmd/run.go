@@ -34,6 +34,9 @@ const usage = `dockpipe remote <command> [options]
   pair    --invite <file> --allow-delivery        Trust this broker to send workflows
           [--profiles <json-file>]                Or approve installed profiles
   worker                                         Run the outbound worker
+  monitoring --system --docker                    Opt in locally on a paired worker
+             --disable                           Stop sharing machine snapshots
+  observe --node <name>                          Read the latest authorized machine snapshot
   submit  --node <name> --profile <name> --id <id> Submit once; same ID is idempotent
   submit  --node <name> --workflow-file <path> --id <id>  Deliver local sources
           [--include <path>] [--dependency <package-dir>] [--artifact <path>]
@@ -70,6 +73,9 @@ func Run(args []string, checkDependencies func(string) error) error {
 	invite := flags.String("invite", "", "pairing file")
 	profiles := flags.String("profiles", "", "locally approved profiles file")
 	allowDelivery := flags.Bool("allow-delivery", false, "approve execution of operator-supplied code as this user")
+	monitorSystem := flags.Bool("system", false, "share system resources and process identities with this worker's broker")
+	monitorDocker := flags.Bool("docker", false, "share read-only Docker inventory with this worker's broker")
+	disableMonitoring := flags.Bool("disable", false, "disable worker monitoring")
 	timeout := flags.Int("timeout", 3600, "worker-local delivery timeout in seconds")
 	workflow := flags.String("workflow-file", "", "local workflow to deliver with its source directory")
 	workdir := flags.String("workdir", ".", "source project directory")
@@ -89,6 +95,9 @@ func Run(args []string, checkDependencies func(string) error) error {
 	}
 	if *replaceService && command != "service" {
 		return errors.New("--replace is supported only by remote service")
+	}
+	if (*monitorSystem || *monitorDocker || *disableMonitoring) && command != "monitoring" {
+		return errors.New("--system, --docker and --disable are supported only by remote monitoring")
 	}
 	if flags.NArg() != 0 {
 		return errors.New("unexpected remote positional arguments")
@@ -119,6 +128,10 @@ func Run(args []string, checkDependencies func(string) error) error {
 	options := infrastructure.OperationOptions{Spinner: command != "setup" && command != "pair"}
 	return infrastructure.RunOperationWithOptions(os.Stderr, "remote."+command, "Remote "+command, nil, options, func() error {
 		switch command {
+		case "monitoring":
+			return configureMonitoring(root, *monitorSystem, *monitorDocker, *disableMonitoring)
+		case "observe":
+			return observeRemote(ctx, root, *node)
 		case "info":
 			info, err := describeRemote(root)
 			if err != nil {

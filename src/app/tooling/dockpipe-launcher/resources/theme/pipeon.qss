@@ -79,7 +79,7 @@ QFrame#basicHero,
 QFrame#headerBar,
 QFrame#dockerHero {
     border: none;
-    border-radius: 18px;
+    border-radius: 12px;
     padding: 6px;
 }
 
@@ -91,7 +91,7 @@ QFrame#emptyState,
 QFrame#launchOverlayCard,
 QFrame#promptDialogCard,
 QFrame#promptActionPanel {
-    border-radius: 18px;
+    border-radius: 12px;
 }
 
 QWidget#launchOverlay {
@@ -224,9 +224,9 @@ QLabel#consoleTitle {
 }
 
 QLabel#statusBadge {
-    min-width: 80px;
+    min-width: 56px;
     padding: 5px 11px;
-    border-radius: 999px;
+    border-radius: 10px;
     font-size: 11px;
     font-weight: 700;
 }
@@ -247,12 +247,25 @@ QGroupBox::title {
     padding: 0 6px;
 }
 
+/* Shared controls should not fall back to tiny platform-native bevel buttons. */
+QPushButton {
+    min-height: 26px;
+    padding: 5px 12px;
+    border: 1px solid palette(midlight);
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+QPushButton:focus {
+    border: 1px solid palette(highlight);
+}
+
 QPushButton#primaryButton,
 QPushButton#installRemoteProvider,
 QPushButton#secondaryButton,
 QPushButton#dangerButton {
     min-height: 26px;
-    border-radius: 12px;
+    border-radius: 8px;
     font-weight: 600;
 }
 
@@ -280,7 +293,7 @@ QTextBrowser,
 QPlainTextEdit,
 QTableWidget,
 QAbstractScrollArea {
-    border-radius: 12px;
+    border-radius: 8px;
 }
 
 QLineEdit,
@@ -326,6 +339,45 @@ QTextBrowser#detailBrowser {
     selection-background-color: palette(highlight);
 }
 
+QToolButton#toggleSidebarButton {
+    border: none;
+    border-radius: 6px;
+    padding: 0;
+    background: transparent;
+}
+
+QToolButton#toggleSidebarButton:hover {
+    background: palette(midlight);
+}
+
+QTabWidget#executionTabs::pane {
+    border: none;
+}
+
+QTabWidget#executionTabs QTabBar::tab {
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    padding: 14px 20px;
+    margin: 0 4px;
+}
+
+QTabWidget#executionTabs QTabBar::tab:selected {
+    border-bottom: 2px solid palette(highlight);
+    background: transparent;
+}
+
+QLabel#runEmptyTitle {
+    font-size: 22px;
+    font-weight: 600;
+}
+
+QWidget#runHistoryPage QTableWidget {
+    border: none;
+    border-radius: 8px;
+}
+
 QFrame#emptyState {
     border: none;
 }
@@ -343,15 +395,16 @@ QLabel#emptyBody {
 QTabWidget#surfaceTabs::pane,
 QTabWidget::pane {
     border: 1px solid palette(midlight);
-    border-radius: 18px;
+    border-radius: 12px;
     top: -1px;
     background: palette(base);
 }
 
 QTabBar::tab {
+    border: 1px solid transparent;
     padding: 9px 15px;
     margin-right: 6px;
-    border-radius: 11px;
+    border-radius: 7px;
     background: palette(alternate-base);
     font-weight: 600;
 }
@@ -379,7 +432,7 @@ QScrollBar::handle:vertical,
 QScrollBar::handle:horizontal {
     min-height: 28px;
     min-width: 28px;
-    border-radius: 999px;
+    border-radius: 4px;
 }
 
 QScrollBar::add-line,
@@ -501,3 +554,104 @@ QScrollArea#machineScroll QScrollBar::add-line:vertical,
 QScrollArea#machineScroll QScrollBar::sub-line:vertical {
     height: 0;
 }
+
+/* Studio toolbar and inspector share the launcher's spacing and state language. */
+QWidget#workflowStudio QPushButton {
+    min-height: 28px;
+}
+QWidget#workflowStudio QPushButton#primaryButton {
+    padding: 7px 16px;
+}
+QWidget#studioInspector QLabel#sectionTitle {
+    font-size: 11px;
+    letter-spacing: 1px;
+}
+QWidget#studioInspector QLineEdit,
+QWidget#studioInspector QComboBox {
+    padding: 6px 10px;
+}
+QWidget#studioInspector QPlainTextEdit {
+    padding: 8px 10px;
+}
+QPushButton#applyStep {
+    font-weight: 600;
+}
+
+/* Canvas workspace: compact chrome leaves the graph as the primary surface. */
+QLabel#studioFilename { font-weight: 600; padding: 0 6px; }
+QFrame#workflowCanvasBar QPushButton, QFrame#workflowTerminalPanel QPushButton {
+    padding: 5px 10px;
+    min-height: 22px;
+}
+QFrame#workflowCanvasBar { border-top: 1px solid palette(mid); }
+QFrame#workflowTerminalPanel { border-top: 1px solid palette(mid); }
+QWidget#workflowStudio QTabWidget::pane { border: none; }
+QWidget#workflowStudio QGraphicsView { border: none; border-radius: 0; }
+
+QFrame#canvasDocumentControls QPushButton, QFrame#canvasRunControls QPushButton,
+QFrame#canvasViewControls QPushButton {
+    padding: 4px 8px;
+    min-height: 24px;
+    border-radius: 6px;
+}
+QFrame#canvasViewControls QPushButton { padding: 0; font-size: 16px; }
+QFrame#canvasDocumentControls QPushButton::menu-indicator { width: 0; }
+QPlainTextEdit#workflowYaml { padding: 76px 24px 70px 24px; }
+QTabWidget#canvasDocument::pane { border: 0; }
+
+QPushButton#canvasCloseProperties { min-width: 0; min-height: 0; padding: 0; font-size: 18px; border: none; background: transparent; }
+
+/* Canvas controls use one density, icon scale, and focus treatment. */
+QFrame[canvasOverlay="true"] { border-radius: 12px; }
+QFrame#canvasDocumentControls QPushButton,
+QFrame#canvasRunControls QPushButton,
+QFrame#workflowCanvasBar QPushButton {
+    min-height: 28px;
+    padding: 4px 10px;
+    font-size: 12px;
+    border-radius: 7px;
+}
+QFrame#canvasViewControls QPushButton { min-height: 34px; min-width: 34px; padding: 0; }
+QFrame#canvasViewControls QPushButton#canvasZoomLevel {
+    min-height: 24px;
+    font-size: 10px;
+    font-weight: 500;
+}
+QPushButton#canvasMoreButton, QPushButton#workflowShortcuts { padding: 4px; min-width: 24px; }
+QWidget#workflowStudio QPushButton:focus { border: 1px solid #64adce; }
+QMenu { padding: 6px; border-radius: 9px; }
+QMenu::item { padding: 9px 26px 9px 30px; border-radius: 5px; }
+QMenu::icon { padding-left: 5px; }
+QMenu::separator { height: 1px; margin: 5px 8px; }
+
+/* Shared application window chrome and dialog rhythm. */
+QDialog[launcherChrome="true"] { border-radius: 14px; }
+QLabel#dialogHeading { font-size: 19px; font-weight: 600; background: transparent; }
+QWidget#dialogHeader { background: transparent; }
+QToolButton#windowControl, QToolButton#windowClose {
+    border: none;
+    border-radius: 6px;
+    padding: 0;
+    min-width: 36px;
+    min-height: 32px;
+    background: transparent;
+}
+QToolButton#windowControl:focus, QToolButton#windowClose:focus { border: 1px solid #64adce; }
+QToolButton#windowClose:hover { background: #c74550; }
+QToolButton#windowClose:pressed { background: #a83340; }
+QDialog QPushButton { padding: 8px 16px; min-height: 20px; border-radius: 8px; }
+QDialogButtonBox { dialogbuttonbox-buttons-have-icons: 0; }
+QDialog QDialogButtonBox { margin-top: 8px; }
+QDialog QLabel#qt_msgbox_label { font-size: 14px; line-height: 1.5; }
+QDialog QLabel#qt_msgbox_informativelabel { font-size: 12px; }
+QDialog#workflowPicker QLineEdit#surfaceSearch { padding: 12px 16px; min-height: 22px; }
+QDialog#workflowPicker QFrame#listPanel { border: none; }
+QDialog#workflowPicker QListWidget { padding: 4px; border: none; }
+QScrollBar:vertical { width: 10px; margin: 4px 2px; background: transparent; }
+QScrollBar:horizontal { height: 10px; margin: 2px 4px; background: transparent; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }
+QScrollBar::up-arrow, QScrollBar::down-arrow,
+QScrollBar::left-arrow, QScrollBar::right-arrow { width: 0; height: 0; background: none; }
+QScrollBar::handle:vertical { min-height: 32px; min-width: 0; border-radius: 3px; }
+QScrollBar::handle:horizontal { min-width: 32px; min-height: 0; border-radius: 3px; }

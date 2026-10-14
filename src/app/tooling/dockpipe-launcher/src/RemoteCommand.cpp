@@ -28,8 +28,11 @@ RemoteCommand::~RemoteCommand()
     m_completion = {};
     m_process.disconnect(this);
     if (m_process.state() != QProcess::NotRunning) {
-        m_process.kill();
-        m_process.waitForFinished(1000);
+        m_process.terminate();
+        if (!m_process.waitForFinished(1000)) {
+            m_process.kill();
+            m_process.waitForFinished(1000);
+        }
     }
 }
 

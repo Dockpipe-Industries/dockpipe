@@ -19,6 +19,7 @@ class QLineEdit;
 class QPlainTextEdit;
 class QFrame;
 class QStackedWidget;
+class QTabWidget;
 class QAction;
 class QActionGroup;
 class BasicModeWidget;
@@ -28,6 +29,10 @@ class QTimer;
 class QComboBox;
 class RemoteWidget;
 class ActivityWidget;
+class ExecutionExplorer;
+class WorkflowEditorWidget;
+class QDialog;
+class QSplitter;
 
 struct AsyncWorkflowCatalogResult {
     QString workdir;
@@ -72,13 +77,23 @@ private slots:
     void onDismissThirdPartyDisclaimer();
     void onRestoreThirdPartyDisclaimer();
     void onAdvancedSearchChanged(const QString &text);
-    void onAdvancedSelectionChanged();
     void onSessionOutput(const QString &contextId, const QString &text);
     void onSessionPrompt(const QString &contextId, const QString &payload);
 
 private:
     void setupMenuBar();
     void setupAdvancedPage(QWidget *page);
+    void setupWorkflowPicker();
+    void openWorkflowPicker();
+    void openPickedWorkflow();
+    void runPickedWorkflow();
+    void updateWorkflowPreview();
+    bool launchWorkflow(const Context &display);
+    void rememberWorkflowRun(const Context &context);
+    void setWorkflowConsoleVisible(bool visible);
+    bool setWorkflowWorkspace(const QString &workdir);
+    void quitLauncher();
+    Context *activeWorkflowContext();
     void applyUiMode();
     void clearContextList();
     void rebuildAdvancedContextList();
@@ -112,9 +127,12 @@ private:
     LauncherSettings m_settings;
 
     QListWidget *m_navigation = nullptr;
+    QFrame *m_navigationRail = nullptr;
     QComboBox *m_runTarget = nullptr;
     RemoteWidget *m_remoteWidget = nullptr;
     ActivityWidget *m_activityWidget = nullptr;
+    ExecutionExplorer *m_executionExplorer = nullptr;
+    QTabWidget *m_executionTabs = nullptr;
     QStackedWidget *m_stack = nullptr;
     BasicModeWidget *m_basicWidget = nullptr;
     QWidget *m_advancedPage = nullptr;
@@ -122,6 +140,21 @@ private:
     QLabel *m_workspacePath = nullptr;
     DockerObservabilityWidget *m_dockerWidget = nullptr;
 
+    WorkflowEditorWidget *m_workflowEditor = nullptr;
+    QDialog *m_workflowPicker = nullptr;
+    QWidget *m_consolePanel = nullptr;
+    QPushButton *m_consoleToggle = nullptr;
+    QWidget *m_workspaceBar = nullptr;
+    Context m_canvasContext;
+    Context m_outputContext;
+    QWidget *m_workflowActivityPanel = nullptr;
+    ActivityWidget *m_workflowActivity = nullptr;
+    QLabel *m_workflowPreview = nullptr;
+    QPushButton *m_pickerRun = nullptr;
+    QPushButton *m_pickerEdit = nullptr;
+    QComboBox *m_pickerTarget = nullptr;
+    QStringList m_recentWorkflowKeys;
+    QVector<WorkflowMeta> m_workspaceWorkflows;
     QListWidget *m_list = nullptr;
     QLabel *m_hint = nullptr;
     QLineEdit *m_search = nullptr;
@@ -135,8 +168,8 @@ private:
     QLabel *m_emptyBody = nullptr;
     QSystemTrayIcon *m_tray = nullptr;
 
-    QAction *m_actBasic = nullptr;
-    QAction *m_actAdvanced = nullptr;
+    QVector<QAction *> m_pageActions;
+    QAction *m_actSidebar = nullptr;
     QAction *m_actIcons = nullptr;
     QAction *m_actList = nullptr;
 
