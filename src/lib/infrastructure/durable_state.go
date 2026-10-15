@@ -61,11 +61,15 @@ func DurableStateRoot() (string, error) {
 		}
 		home = resolvedHome
 	}
-	return durableStateRootFor(runtime.GOOS, map[string]string{
+	root, err := durableStateRootFor(runtime.GOOS, map[string]string{
 		"HOME":           home,
 		"XDG_STATE_HOME": os.Getenv("XDG_STATE_HOME"),
 		"LOCALAPPDATA":   os.Getenv("LOCALAPPDATA"),
 	})
+	if err != nil {
+		return "", err
+	}
+	return canonicalDurableStateRoot(root, runtime.GOOS)
 }
 
 func durableStateRootFor(goos string, env map[string]string) (string, error) {

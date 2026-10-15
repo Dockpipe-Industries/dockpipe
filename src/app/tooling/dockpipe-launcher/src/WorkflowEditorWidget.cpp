@@ -1,4 +1,7 @@
 #include "WorkflowEditorWidget.h"
+#include "WorkflowScriptPath.h"
+#include "ProjectFilesWidget.h"
+#include "SourceEditor.h"
 #include "WorkflowCanvas.h"
 #include "CanvasIcons.h"
 #include "CanvasPanel.h"
@@ -30,6 +33,7 @@
 #include <QSet>
 #include <QScrollArea>
 #include <QSettings>
+#include <QShortcut>
 #include <QSignalBlocker>
 #include <QSplitter>
 #include <QTabWidget>
@@ -68,11 +72,23 @@ WorkflowEditorWidget::WorkflowEditorWidget(const QString &workdir, const QString
     m_tabs->tabBar()->hide();
     m_canvas = new WorkflowCanvas;
     m_canvas->setObjectName("workflowCanvas");
-    m_yaml = new QPlainTextEdit;
+    m_yaml = new SourceEditor;
+    static_cast<SourceEditor *>(m_yaml)->setFileName("config.yml");
     m_yaml->setObjectName("workflowYaml");
     m_yaml->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
     m_tabs->addTab(m_canvas, tr("Canvas"));
     m_tabs->addTab(m_yaml, tr("YAML"));
+    m_files = new ProjectFilesWidget;
+    m_tabs->addTab(m_files, tr("Files"));
+    connect(m_files, &ProjectFilesWidget::workflowSaveRequested, this, [this]() { saveWorkflow(false); });
+    connect(m_files, &ProjectFilesWidget::workflowOpenRequested, this, [this](const QString &path) {
+        if (path == m_path) {
+            m_files->closeGraph();
+            m_tabs->setCurrentIndex(0);
+        } else {
+            openWorkflow(path);
+        }
+    });
 
     auto floatingPanel = [this](const QString &name) {
         auto *panel = new QFrame(this);
@@ -99,6 +115,13 @@ WorkflowEditorWidget::WorkflowEditorWidget(const QString &workdir, const QString
     browse->setIcon(CanvasIcons::icon(Symbol::Workflow));
     browse->setToolTip(tr("Open a workflow (Ctrl+P / ⌘P)"));
     actions->addWidget(browse);
+    m_filesToggle = new QPushButton(CanvasIcons::icon(Symbol::Folder), tr("Files"));
+    m_filesToggle->setObjectName("workflowFilesToggle");
+    m_filesToggle->setCheckable(true);
+    actions->addWidget(m_filesToggle);
+    connect(m_filesToggle, &QPushButton::clicked, this, [this]() {
+        m_tabs->setCurrentIndex(m_tabs->currentIndex() == 2 ? 0 : 2);
+    });
     connect(browse, &QPushButton::clicked, this, &WorkflowEditorWidget::browseRequested);
     m_filename = new QLabel(tr("Untitled"));
     m_filename->setObjectName("studioFilename");
@@ -155,10 +178,22 @@ WorkflowEditorWidget::WorkflowEditorWidget(const QString &workdir, const QString
     add->setMenu(addMenu);
     palette->addWidget(add);
     auto *save = new QPushButton(tr("Save"));
+    save->setObjectName("canvasSaveButton");
     save->setIcon(CanvasIcons::icon(Symbol::Save));
-    save->setShortcut(QKeySequence::Save);
+    auto *saveShortcut = new QShortcut(QKeySequence::Save, m_tabs);
+    saveShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(m_tabs, &QTabWidget::currentChanged, saveShortcut, [saveShortcut](int index) { saveShortcut->setEnabled(index != 2); });
+    connect(saveShortcut, &QShortcut::activated, this, [this]() {
+        if (m_tabs->currentIndex() != 2)
+            saveWorkflow(false);
+    });
     save->setToolTip(tr("Save workflow (%1)").arg(QKeySequence(QKeySequence::Save).toString(QKeySequence::NativeText)));
-    connect(save, &QPushButton::clicked, this, [this]() { saveWorkflow(false); });
+    connect(save, &QPushButton::clicked, this, [this]() {
+        if (m_tabs->currentIndex() == 2)
+            m_files->saveFile();
+        else
+            saveWorkflow(false);
+    });
     palette->addWidget(save);
     auto *run = new QPushButton(tr("Run"));
     run->setObjectName("primaryButton");
@@ -292,7 +327,9 @@ WorkflowEditorWidget::WorkflowEditorWidget(const QString &workdir, const QString
     m_command->setPlaceholderText(tr("Command or application to run"));
     stepForm->addRow(tr("Command"), m_command);
     m_cwd = stepLine(tr("Working directory"), "stepCwd");
-    m_cwd->setPlaceholderText(tr("repo, artifacts, or a path"));
+    m_cwd->setPlaceholderText(tr("repo or artifacts (default: repo)"));
+    m_cwd->setToolTip(tr("repo uses the selected workspace; artifacts uses this workflow's output directory. "
+                        "For a subdirectory, use cd in the command. File paths are not accepted here."));
     m_runtime = stepLine(tr("Runtime profile (container)"), "stepRuntime");
     m_resolver = stepLine(tr("Tool integration (container)"), "stepResolver");
     m_package = stepLine(tr("Package namespace"), "stepPackage");
@@ -380,11 +417,19 @@ WorkflowEditorWidget::WorkflowEditorWidget(const QString &workdir, const QString
             QSignalBlocker blocker(m_tabs);
             m_tabs->setCurrentIndex(0);
             m_yamlToggle->setChecked(false);
+            m_filesToggle->setChecked(false);
             return;
         }
         if (index == 0 && !m_refreshing)
             refreshCanvas();
         m_yamlToggle->setChecked(index == 1);
+        m_filesToggle->setChecked(index == 2);
+        m_viewControls->setVisible(index != 2);
+        m_palette->findChild<QPushButton *>("canvasAddButton")->setVisible(index != 2);
+        m_palette->findChild<QPushButton *>("canvasSaveButton")->setVisible(index != 2);
+        if (index == 2)
+            m_properties->setChecked(false);
+        arrangeOverlays();
         m_palette->findChild<QPushButton *>("canvasAddButton")->setEnabled(index == 0 && !m_busy && m_canvasReady);
         m_inspector->setEnabled(index == 0 && !m_busy && m_canvasReady);
     });
@@ -397,6 +442,10 @@ WorkflowEditorWidget::WorkflowEditorWidget(const QString &workdir, const QString
 
 WorkflowEditorWidget::~WorkflowEditorWidget()
 {
+    // Scene teardown emits selection changes while QWidget deletes children.
+    // Disconnect before our document/inspector state members are destroyed.
+    for (auto *child : findChildren<QObject *>())
+        QObject::disconnect(child, nullptr, this, nullptr);
     if (m_process->state() != QProcess::NotRunning) {
         m_process->disconnect(this);
         m_process->kill();
@@ -512,6 +561,8 @@ void WorkflowEditorWidget::newWorkflow()
     m_properties->setChecked(false);
     m_savedSource = "name: my-workflow\ndescription: \"\"\ndocker_preflight: false\nsteps: []\n";
     m_yaml->setPlainText(m_savedSource);
+    m_files->setRoot({});
+    m_files->setWorkflowDocument({}, m_yaml->document());
     m_refreshing = true;
     m_tabs->setCurrentIndex(0);
     m_refreshing = false;
@@ -553,6 +604,8 @@ bool WorkflowEditorWidget::openWorkflow(const QString &path)
     m_savedSource = source;
     m_history.clear();
     m_yaml->setPlainText(source);
+    m_files->setRoot(QFileInfo(m_path).absolutePath());
+    m_files->setWorkflowDocument(m_path, m_yaml->document());
     updateDocumentTitle();
     emit documentChanged(m_path);
     refreshCanvas();
@@ -734,10 +787,20 @@ void WorkflowEditorWidget::addStep(const QString &type)
     const QString identifier = "step-" + QString::number(number);
     QJsonObject step{{"id", identifier}, {"kind", "host"}, {"cmd", "echo ready"}, {"cwd", "repo"}};
     if (type == "Script") {
-        const QString script = QFileDialog::getOpenFileName(this, tr("Choose a script"), m_workdir);
+        // Browse the granted workspace directly in Flatpak, so an older portal
+        // cannot turn every selected script into an unrelated document mount.
+        QFileDialog::Options options;
+        if (qEnvironmentVariableIsSet("FLATPAK_ID") || QFile::exists("/.flatpak-info"))
+            options |= QFileDialog::DontUseNativeDialog;
+        const QString script = QFileDialog::getOpenFileName(this, tr("Choose a script"), m_workdir, {}, nullptr, options);
         if (script.isEmpty())
             return;
-        const QString relative = QDir(m_workdir).relativeFilePath(script);
+        const auto resolved = WorkflowScriptPath::resolve(m_workdir, script);
+        if (!resolved.error.isEmpty()) {
+            showStatus(resolved.error, true);
+            return;
+        }
+        const QString relative = resolved.relativePath;
         const QString suffix = QFileInfo(script).suffix().toLower();
         QString interpreter = "sh";
         if (suffix == "py")
@@ -867,6 +930,8 @@ void WorkflowEditorWidget::validateSource(const QString &directory, const std::f
 
 void WorkflowEditorWidget::saveWorkflow(bool run)
 {
+    if (run && m_files->hasUnsavedChanges() && !m_files->saveFile())
+        return;
     if (!requireAppliedInspector())
         return;
     QString destination = m_path;
@@ -910,6 +975,8 @@ void WorkflowEditorWidget::saveWorkflow(bool run)
             return;
         }
         m_path = destination;
+        m_files->setRoot(QFileInfo(destination).absolutePath());
+        m_files->setWorkflowDocument(destination, m_yaml->document());
         m_diskBytes = source;
         m_savedSource = QString::fromUtf8(source);
         QSettings settings;
@@ -939,7 +1006,7 @@ bool WorkflowEditorWidget::confirmDiscardChanges()
         showStatus(tr("Cancel the current operation before switching workflows or closing."));
         return false;
     }
-    return discardChanges();
+    return m_files->confirmLeave() && discardChanges();
 }
 
 bool WorkflowEditorWidget::setWorkspace(const QString &workdir, const QString &binary)
@@ -1035,7 +1102,7 @@ void WorkflowEditorWidget::arrangeOverlays()
     if (!m_notice)
         return;
     const int margin = 16;
-    m_tabs->setGeometry(rect());
+    m_tabs->setGeometry(m_tabs->currentIndex() == 2 ? rect().adjusted(0, 64, 0, -56) : rect());
     if (m_activityPanel)
         static_cast<CanvasPanel *>(m_activityPanel)->placeDefault(QRect(76, 90, qMin(850, width() - 108), height() - 180));
     m_palette->adjustSize();

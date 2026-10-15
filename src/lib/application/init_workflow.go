@@ -18,7 +18,7 @@ const dockpipeProjectReadme = `# Dockpipe project
 - **workflows/** — Default home for named workflows (**config.yml** per folder); **dockpipe init &lt;name&gt;** creates **workflows/&lt;name&gt;/** (override with **--workflows-dir** or **DOCKPIPE_WORKFLOWS_DIR**).
 - **Compiled packages** — Workflows, resolvers, and core slices are expected to come from **compile** / **install** flows now rather than a copied **templates/core/** scaffold.
 - **templates/&lt;name&gt;/** — Legacy named workflows; still resolved if **workflows/** does not define the same name.
-- **.env.vault.template.example** — Example **op://** mapping for **op inject** (install the **op** CLI from 1Password). Copy to **.env.vault.template** and see **docs/runtime/vault.md** for **secrets.vault** and workflow **vault:**. For a vendor-neutral path, use **secretstore** + **dotenv** and **.env.secretstore**.
+- **Secrets (optional)** — No vault is configured by default. Add a named secret environment or vault template only when your workflow needs it; see **docs/runtime/vault.md** in the Dockpipe documentation.
 - **dockpipe.config.json** (optional) — Repo-root JSON: **compile** source lists and optional **secrets** (**vault_template** preferred; **op_inject_template** is legacy). Omit to use built-in compile defaults when you add a config file later.
 `
 
@@ -50,9 +50,6 @@ func ensureProjectScaffold(repoRoot, projectDir string) error {
 		if err := os.WriteFile(dc, append(b, '\n'), 0o644); err != nil {
 			return err
 		}
-	}
-	if err := infrastructure.WriteVaultTemplateExampleIfMissing(projectDir); err != nil {
-		return fmt.Errorf("vault template example: %w", err)
 	}
 	return nil
 }

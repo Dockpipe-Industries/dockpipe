@@ -2,6 +2,8 @@
 
 Dockpipe can load an explicitly selected secret environment before workflow steps. Provider adapters live in the `secrets` package; the engine only knows the resolver exchange. Existing `op://` vault templates continue to work.
 
+New projects created with `dockpipe init` have no vault template or secret provider configured. Add the configuration below only when a workflow needs secrets. Running `init` again preserves existing configuration. In a project created by an older version, remove the generated `secrets.vault_template` entry if you do not use a vault; existing projects are not migrated automatically.
+
 ## Named environments
 
 Install/build the `secrets` package and install the chosen vendor CLI on the host. Infisical can sign in through your browser during an interactive run; other providers require an existing CLI login. Configure references, never credentials, in your private project's `dockpipe.config.json`. Public repositories must use placeholders for account, environment and vault identifiers; see the [public repository boundary](../public-repository-boundary.md):
@@ -129,6 +131,24 @@ Both hooks are checked for package path containment. Cancellation stops their
 process trees. No provider-specific login behavior is built into the engine.
 
 ## Legacy vault templates
+
+To opt in, create a template containing only secret references, for example `.env.vault.template`:
+
+```dotenv
+TOKEN=op://your-vault/your-item/token
+```
+
+Add the template path to your existing `dockpipe.config.json`:
+
+```json
+{
+  "schema": 1,
+  "secrets": {
+    "vault_template": ".env.vault.template",
+    "vault": "op"
+  }
+}
+```
 
 **`dockpipe.config.json`** points at an env **template** (**`secrets.vault_template`**, legacy **`op_inject_template`**) — often **`.env.template`** (agnostic name). With **`secrets.vault: op`**, lines use **`op://…`** for 1Password. Before workflow steps, Dockpipe runs **`op inject`** (requires **[1Password CLI](https://developer.1password.com/docs/cli/)**’s **`op`** on **`PATH`**) unless **`DOCKPIPE_OP_INJECT=0`** or **`--no-op-inject`**.
 

@@ -63,6 +63,7 @@ jobs:
             ripgrep \
             shellcheck \
             qt6-base-dev \
+            libqt6opengl6-dev \
             libgl1-mesa-dev \
             libegl1-mesa-dev
 

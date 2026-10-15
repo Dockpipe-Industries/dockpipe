@@ -6,6 +6,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QSaveFile>
 
 QString LauncherSettings::filePath()
 {
@@ -23,6 +24,7 @@ bool LauncherSettings::load()
     packageRemotes = {QStringLiteral("https://packages.dockpipe.com")};
     thirdPartyDisclaimerDismissed = false;
     sidebarVisible = true;
+    cockpit = {};
     recentProjectFolders.clear();
 
     QFile f(filePath());
@@ -33,6 +35,14 @@ bool LauncherSettings::load()
     if (!doc.isObject())
         return true;
     const QJsonObject o = doc.object();
+    const auto cockpitObject = o.value("cockpit").toObject();
+    cockpit.enabled = cockpitObject.value("enabled").toBool(false);
+    cockpit.appControl = cockpitObject.value("appControl").toBool(false);
+    cockpit.orbitalMotion = cockpitObject.value("orbitalMotion").toBool(true);
+    cockpit.controller = cockpitObject.value("controller").toBool(false);
+    cockpit.showShip = cockpitObject.value("showShip").toBool(true);
+    cockpit.voiceCommands = cockpitObject.value("voiceCommands").toBool(false);
+    cockpit.hardwareAcceleration = cockpitObject.value("hardwareAcceleration").toBool(true);
     sidebarVisible = o.value(QStringLiteral("sidebarVisible")).toBool(true);
     const QString um = o.value(QStringLiteral("uiMode")).toString();
     if (um == QStringLiteral("basic") || um == QStringLiteral("advanced"))
@@ -93,6 +103,10 @@ bool LauncherSettings::save() const
 {
     QJsonObject o;
     o.insert(QStringLiteral("version"), 1);
+    o.insert("cockpit", QJsonObject{{"enabled", cockpit.enabled}, {"appControl", cockpit.appControl},
+        {"orbitalMotion", cockpit.orbitalMotion}, {"controller", cockpit.controller},
+        {"showShip", cockpit.showShip}, {"voiceCommands", cockpit.voiceCommands},
+        {"hardwareAcceleration", cockpit.hardwareAcceleration}});
     o.insert(QStringLiteral("sidebarVisible"), sidebarVisible);
     o.insert(QStringLiteral("uiMode"), uiMode);
     o.insert(QStringLiteral("basicView"), basicView);
@@ -119,12 +133,11 @@ bool LauncherSettings::save() const
         o.insert(QStringLiteral("recentProjectFolders"), a);
     }
 
-    QFile f(filePath());
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+    QSaveFile f(filePath());
+    if (!f.open(QIODevice::WriteOnly))
         return false;
-    f.write(QJsonDocument(o).toJson(QJsonDocument::Indented));
-    f.close();
-    return true;
+    const auto bytes = QJsonDocument(o).toJson(QJsonDocument::Indented);
+    return f.write(bytes) == bytes.size() && f.commit();
 }
 
 LauncherSettings LauncherSettings::current()
