@@ -113,16 +113,10 @@ func ResolveVaultTemplatePath(cfg *DockpipeProjectConfig, repoRoot string) (stri
 // Paths are repo-relative; compile skips any that do not exist on disk.
 func DefaultDockpipeProjectConfigBytes() ([]byte, error) {
 	wf := []string{"workflows"}
-	vaultT := ".env.vault.template"
-	notes := "Vault env template (op:// references resolved via op inject — 1Password CLI today). Keep references here; do not commit plaintext secrets."
 	cfg := DockpipeProjectConfig{
 		Schema: 1,
 		Compile: DockpipeCompileConfig{
 			Workflows: &wf,
-		},
-		Secrets: DockpipeSecretsConfig{
-			VaultTemplate: &vaultT,
-			Notes:         &notes,
 		},
 	}
 	return json.MarshalIndent(cfg, "", "  ")

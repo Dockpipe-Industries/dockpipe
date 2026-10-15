@@ -42,13 +42,33 @@ submission (including source/assets/package delivery with `--workflow-file`), ca
 Workers explicitly opt in with `remote pair --allow-delivery`; existing profiles remain supported. See [Remote nodes](runtime/remote-nodes.md) for the
 Cloudflare resolver, local profiles, credentials, recovery, and current qualification limits.
 
+## Project Git
+
+The desktop **Git** page operates on the repository containing the selected project
+folder. Its CLI adapter is `dockpipe git --request <file.json>`. A read request is
+`{"workdir":"/path/to/project","action":"status"}`. The response includes the root,
+branch, HEAD, changed paths, review text and a `snapshot` fingerprint.
+
+Human-requested write actions supply that fingerprint as `snapshot`: `commit` also
+requires `paths` (exact selected paths) and `message`; `pull` requires a clean tree
+and uses fast-forward only; `push` sends the current branch to the same branch on
+origin without force. Commit includes the selected files' saved contents and keeps
+unselected staged changes. A changed review is rejected until refreshed. A failed
+commit can leave selected files staged; refresh before retrying. Git identity and
+credentials use the existing local Git configuration; interactive terminal prompts
+are disabled. Review output is limited to 8 MiB and 2048 changed files; an operation
+has a two-minute deadline. JSON goes to stdout and operation diagnostics to stderr.
+
+This adapter serves explicit human actions in an existing project. Autonomous
+agents continue to use the managed [session lifecycle](runtime/git-runtime-sessions.md).
+
 ## `dockpipe init`
 
 Local project setup only: **no `git clone`**, no treating **`init`** as a remote bootstrap. Everything runs in the **current working directory**.
 
 | Command | Purpose |
 |---------|---------|
-| `dockpipe init` | Create the **minimal project scaffold**: **`workflows/`**, **`README.md`**, **`dockpipe.config.json`**, and **`.env.vault.template.example`** when missing. If no Dockpipe workflows exist yet, also create **`workflows/example/config.yml`** as a starter. It does **not** copy **`templates/core/`**, **`scripts/`**, or **`images/`** into the project. |
+| `dockpipe init` | Create the **minimal project scaffold**: **`workflows/`**, **`README.md`**, and **`dockpipe.config.json`** when missing. If no Dockpipe workflows exist yet, also create **`workflows/example/config.yml`** as a starter. Secrets are opt-in: no vault template or provider is configured. It does **not** copy **`templates/core/`**, **`scripts/`**, or **`images/`** into the project. |
 | `dockpipe init <name>` | Create **`workflows/<name>/config.yml`** as a **minimal empty workflow** (name + description only). Does **not** copy the bundled **`init`** template unless you pass **`--from init`**. If **`workflows/`** already exists but has no **`*/config.yml`** trees, the CLI prints a **warning** (often a conflict with GitHub Actions). |
 | `dockpipe init <name> --workflows-dir <path>` | Put the new workflow under **`<path>/<name>/`** instead of **`workflows/`** (repo-relative or absolute). Same as env **`DOCKPIPE_WORKFLOWS_DIR`** for **`dockpipe run`**. |
 | `dockpipe init <name> --from <source>` | Copy into **`workflows/<name>/`** (or **`--workflows-dir`**): **`--from`** may be **`blank`**, **`init`**, another **bundled** name (resolved under **`templates/&lt;name&gt;`** or the bundled workflows root), or a **filesystem path** (e.g. **`workflows/&lt;name&gt;`** in a dockpipe checkout). Not a Git URL. |

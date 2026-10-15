@@ -157,8 +157,8 @@ func TestCmdInitDoesNotCreateGitDir(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(project, ".git")); err == nil {
 		t.Fatal("init must not create .git (no clone/bootstrap)")
 	}
-	if _, err := os.Stat(filepath.Join(project, ".env.vault.template.example")); err != nil {
-		t.Fatalf("expected .env.vault.template.example from init scaffold: %v", err)
+	if _, err := os.Stat(filepath.Join(project, ".env.vault.template.example")); !os.IsNotExist(err) {
+		t.Fatalf("init must not create vault scaffolding without opt-in: %v", err)
 	}
 }
 
@@ -189,6 +189,55 @@ func TestCmdInitSeedsDerivedPackagesNamespace(t *testing.T) {
 	}
 	if cfg.Packages.Namespace == nil || *cfg.Packages.Namespace != "uh-workflows" {
 		t.Fatalf("expected derived packages.namespace uh-workflows, got %+v", cfg.Packages.Namespace)
+	}
+}
+
+func TestInitScaffoldDoesNotRequestVault(t *testing.T) {
+	project := t.TempDir()
+	if err := ensureProjectScaffold(testRepoRoot(t), project); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("DOCKPIPE_VAULT_INJECT", "1")
+	oldLook := opLookPathFn
+	t.Cleanup(func() { opLookPathFn = oldLook })
+	opLookPathFn = func(string) (string, error) {
+		t.Fatal("a fresh project must not look for a vault provider")
+		return "", nil
+	}
+	output := captureStderr(t, func() {
+		workflow := &domain.Workflow{Name: "hello"}
+		if err := mergeOpInjectFromProjectIfEnabled(map[string]string{}, &CliOpts{Workdir: project}, "", project, workflow); err != nil {
+			t.Fatalf("fresh project secret setup: %v", err)
+		}
+	})
+	if output != "" {
+		t.Fatalf("fresh project must not warn about vault setup: %s", output)
+	}
+}
+
+func TestInitScaffoldPreservesExplicitVaultConfiguration(t *testing.T) {
+	project := t.TempDir()
+	files := map[string]string{
+		domain.DockpipeProjectConfigFileName: `{"schema":1,"secrets":{"vault_template":".env.vault.template","vault":"op"}}`,
+		".env.vault.template":                "TOKEN=op://example/item/token\n",
+		".env.vault.template.example":        "# My existing example\n",
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(project, name), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := ensureProjectScaffold(testRepoRoot(t), project); err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range files {
+		got, err := os.ReadFile(filepath.Join(project, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(got) != want {
+			t.Fatalf("init changed existing %s", name)
+		}
 	}
 }
 

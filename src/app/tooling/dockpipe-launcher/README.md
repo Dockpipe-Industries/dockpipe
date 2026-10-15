@@ -7,7 +7,7 @@ This tree lives under **`src/app/tooling/dockpipe-launcher/`** as first-party Do
 ## Requirements
 
 - **CMake** 3.16+
-- **Qt 6** (`Widgets` + **`Network`**) — install dev packages (e.g. `qt6-base-dev` on Debian/Ubuntu) or use the [Qt Online Installer](https://www.qt.io/download) and set **`CMAKE_PREFIX_PATH`** to the Qt 6 prefix.
+- **Qt 6** (`Widgets`, `Network`, `Concurrent`, `OpenGLWidgets`) — install dev packages (e.g. `qt6-base-dev` and `libqt6opengl6-dev` on Debian/Ubuntu) or use the [Qt Online Installer](https://www.qt.io/download) and set **`CMAKE_PREFIX_PATH`** to the Qt 6 prefix.
 - **OpenGL / EGL development libraries** — Qt 6 Gui pulls in **WrapOpenGL**. On Ubuntu/Pop!_OS, if CMake says `WrapOpenGL could not be found` or `Qt6Gui_FOUND` is FALSE, install **`libgl1-mesa-dev`** and **`libegl1-mesa-dev`** (see Build section below).
 - **`dockpipe`** on **`PATH`** (or set **dockpipe binary** in each context’s settings).
 - Host tools Dockpipe already needs: **`bash`**, **`docker`**, **`git`** — see [docs/install.md](../../../../docs/install.md).
@@ -72,7 +72,7 @@ development display identity.
 
 ```bash
 cd ~/source/dockpipe
-sudo apt install cmake build-essential qt6-base-dev   # Pop!_OS / Ubuntu: Qt 6 Widgets + dev tools
+sudo apt install cmake build-essential qt6-base-dev libqt6opengl6-dev
 cmake -S src/app/tooling/dockpipe-launcher -B src/app/tooling/dockpipe-launcher/build
 cmake --build src/app/tooling/dockpipe-launcher/build
 ./src/app/tooling/dockpipe-launcher/build/dockpipe-launcher
@@ -133,7 +133,7 @@ That includes **file prompts**: when a package or runtime emits `dockpipe_sdk pr
 
 ## Workspace navigation
 
-The sidebar provides **Apps**, **Workflows**, **Machines**, **Containers**, and **Executions**.
+The sidebar provides **Apps**, **Workflows**, **Machines**, **Containers**, **Executions**, **Files**, and **Git**.
 The workspace selector above every page opens a folder or switches to a recent project.
 That folder is passed to Dockpipe as `--workdir`.
 
@@ -180,7 +180,7 @@ Per design: the launcher only **controls** sessions. It does **not** replace **D
 
 ## Workflow workspace and remote machines
 
-The sidebar exposes Apps, Workflows, Machines, Containers, and Executions. Apps continue to use
+The sidebar exposes Apps, Workflows, Machines, Containers, Executions, Files, and Git. Apps continue to use
 `category: app` metadata and the existing local execution path. Workflows show a
 **Run on** selector: this computer, or machines reported as paired by the configured
 broker. Paired is an enrollment state, not a live-presence claim.
@@ -270,7 +270,59 @@ comments, though YAML formatting may be normalized. Anchors/aliases and single-f
 workflows remain available in YAML; they are not rewritten into an approximate graph.
 The lower-left **Undo** control restores previous canvas edits; the YAML editor has normal text
 undo. The visual editor supports files up to 1 MiB and 256 visible cards; larger
-workflows can still be authored with an external editor and run through Dockpipe.
+workflows can still run through Dockpipe. The launcher never opens a default external text editor.
+
+**Files** inside the workflow editor browses only the folder containing that workflow's
+YAML. Save a new workflow first to establish this folder. The active workflow YAML
+shares its document with the canvas/YAML view and uses the same validation/save path.
+Scripts and supporting text files can be created and edited here.
+
+The separate sidebar **Files** page works across the selected project directory.
+Both views use the same native editor: custom vector explorer icons, a file header,
+on-demand find (Ctrl/Cmd+F, Enter/Shift+Enter to navigate), line numbers, current-line
+emphasis, indentation, undo, zoom (Ctrl+plus/minus/0) and save (Ctrl/Cmd+S).
+The status bar shows language, encoding, line endings and cursor position.
+Rename, reload and delete live in the file actions menu.
+
+Syntax highlighting uses the offline KSyntaxHighlighting engine with bundled
+language definitions, including C, C++, C#, Java, Go, Rust, Python, JavaScript/Node.js,
+Ruby, PipeLang, R, shell, Kotlin and PHP, plus YAML, JSON, TypeScript, Markdown and
+other common formats. Multiline comments/strings use grammar state. Unknown file
+types remain plain text. Highlighting is not a compiler, autocomplete or a language
+server. Lines over 16,384 characters stay editable with highlighting skipped to
+keep generated/minified lines responsive. The compressed grammar data is about
+1.5 MiB and ships separately with its license notices; no web runtime or downloads
+are needed. See `third_party/ksyntaxhighlighting/NOTICE.md` for provenance.
+ New file, new folder, rename and delete
+operate inside that view's root. File editing supports UTF-8 up to 1 MiB and
+preserves UTF-8 BOM and CRLF line endings. Binary files, linked paths outside the
+root and Git metadata are not editable. Unsaved changes prompt before switching
+files, projects or closing. External disk changes block overwrites; keep a copy of
+the draft before choosing Reload. Rename the active workflow from project Files,
+then reopen it in Workflows.
+
+The **Git** page shows a changed-file list with selection checkboxes and status
+badges, one selected file's highlighted review, and a separate commit panel.
+Reviewing a file is a read-only, snapshot-checked CLI action; arbitrary filenames
+are passed literally. Untracked text is shown as source; tracked files use diff
+highlighting. A staged-only difference is labelled when the working file matches
+HEAD. Committing still uses saved working files.
+
+The sidebar **Git** page belongs to the project repository, never an individual
+workflow. Refresh reviews saved changes, select files, enter a commit message and
+choose Commit selected. Unselected staged changes remain staged. Pull requires a
+clean checkout and fast-forwards only; Push to origin pushes the current branch
+without force. Git uses existing identity/credentials and must be available to the
+CLI (including inside Flatpak). Save editor buffers before reviewing Git. A stale
+review is rejected; refresh after failures or cancellation to reconcile state.
+This initial surface excludes branch management and merge-conflict editing.
+
+Git actions use the generic runtime-owned `dockpipe git --request` adapter. They
+have a two-minute deadline, cancellation, an 8 MiB review/output budget and a
+2048 changed-file limit. They do not grant managed agents arbitrary Git authority.
+For a real CLI/UI integration test in a disposable repository, set
+`DOCKPIPE_GIT_TEST_CLI` to the newly built CLI and run `ctest -R project-git` in the
+launcher build directory. Without that variable the Git integration test is skipped.
 
 **Save** validates through the same CLI workflow validator, then atomically writes the
 file. External changes cause a conflict instead of an overwrite. **Run** saves and
@@ -394,3 +446,439 @@ current selection. Use the sidebar icon at the top-left, **View → Show sidebar
 or **Ctrl+B** to hide/show the sidebar without leaving the current page. The
 visibility preference is saved with the existing launcher settings; the View
 menu remains available while the sidebar is hidden.
+
+### Workspace graph
+
+Open **Files → Graph** to explore the selected folder (or the project root). The
+same control is available in a workflow's scoped Files view. Graph opens only on
+request. It shows the root and immediate children, then expands directories when
+you double-click them or choose **Expand**. Double-click a regular file to open it
+in the existing editor; unsaved drafts retain the usual save/discard protection.
+**Editor** returns to the file browser. Leaving Files closes the graph.
+
+Drag the background to pan, scroll to zoom, drag nodes to arrange them, and use
+**Focus** or **Fit** to navigate. Right-click a folder for **Explore this folder**,
+**Refresh branch**, or **Show in explorer**. **Root** returns to the workspace root;
+**Options → Reset layout** restores the deterministic tree positions. Files keep
+the existing editor's CRUD commands rather than adding separate graph mutations.
+
+Switch **2D / 3D** in the graph header for a circuit-board city. Files become
+chips whose height reflects file size, folders become teal blocks, and symbolic links/unavailable
+entries use amber. Connections follow circuit traces, while labels stay upright.
+At city-wide zoom, silhouettes replace tiny labels and pins; zoom in for details.
+Folder depth sets the district height. **Middle-mouse drag**, **Shift + drag**, or **Rotate** orbits the
+camera. Background drag pans, scrolling zooms, and **Reset camera** restores the
+initial angle. **Focus** makes the selected card readable; **Fit** shows the loaded
+set. Cards can occlude each other from some angles; orbit or return to 2D to
+separate them. Switching modes preserves loaded branches and manual 2D positions.
+The 3D view uses native orthographic projection with a fixed-size floor grid,
+without a continuous frame loop. Camera movement
+projects only the already-visible nodes and never reads the filesystem.
+
+The selected chip's label floats above all geometry at a readable screen size,
+including when zoomed out. Selecting a different chip restores normal depth order
+for the previous label; chip bodies retain their spatial order.
+
+3D automatically tries a hardware OpenGL viewport when opened. The **GPU** or
+**Software** indicator describes the active renderer in its tooltip. Disable
+**Options → Hardware acceleration (3D)** for raster rendering, or launch with
+`DOCKPIPE_GRAPH_SOFTWARE=1` to default to software. Offscreen displays, failed
+contexts and detected software OpenGL drivers use the raster fallback. Returning
+to 2D or closing the graph releases its OpenGL viewport. These checks cannot recover
+from an operating-system graphics-driver crash. Hardware acceleration affects
+painting; file reads and graph projection retain their existing bounds.
+
+In normal **3D**, clicking a node sends a small drone to hover above it. Opening a
+file lands the drone before opening the built-in editor; double-clicking a folder
+opens its hangar and moves into that directory. **Parent** returns one level and
+**Root** returns to the workspace. The explicit **Expand/Collapse** controls still
+manage branches in place. **Options → Animate drone navigation** disables the
+short transitions. Selection settles after 360 ms; entry/landing takes 650 ms.
+Changing selection, switching modes or hiding the graph cancels pending navigation.
+There is no idle hover animation or rotor loop.
+
+After enabling **Settings → Cockpit mode**, **Options → Drone flight · Cockpit
+mode** enters an optional first-person city.
+Files become size-based, stepped and beveled towers with facade lights and roof
+machinery. Teal folder hangars have signs, runway lights and proximity shutters.
+Approach the front opening at simulation altitude 30–210 and fly through to load
+that folder's immediate children as a new world. **Backspace / Parent** returns
+one level; **N / Next page** replaces the current district with the next page.
+**R** retries a failed read or refreshes the current directory. Empty folders and
+read errors are shown in the cockpit. Failed reads preserve the previous world.
+Links are scenery only, never portals or editable targets.
+
+Double-click a folder hangar to fly inside automatically. Autopilot rises above
+the current directory, crosses to the doorway and descends before entering.
+**Space** arrives immediately; **Escape** cancels travel. Losing focus or hiding
+flight also cancels folder travel. A missing or unreadable folder leaves the
+current directory visible with an error and a retry option.
+
+Aim the crosshair at a file and **left-click / Space** to fire a targeting pulse.
+The first structure under the crosshair blocks the shot; folders explain how to
+enter, and regular files open in a translucent **FILE LINK** cockpit overlay.
+This mounts the same editor pane used by Files, with syntax highlighting, find,
+undo, **Ctrl+S**, workflow document sharing and the existing save/conflict checks.
+It creates no second editor document or filesystem model. Flight pauses while
+editing. **Escape / Return to flight** dismisses the HUD and preserves unsaved
+text and undo history in the normal editor. Exiting flight or closing the graph
+also restores that same pane. Opening another file still asks about dirty edits.
+Binary/non-UTF-8 files, files above 1 MiB, linked files and paths outside the root
+remain rejected by the existing editor. Firing never saves or executes a file.
+
+**WASD** moves, **Q/E** descends/ascends, **right-drag** or **arrow keys** looks
+around, and **Shift** boosts. Buildings and altitude limits constrain movement.
+**Escape / Exit flight** cancels loading and returns to the preserved graph.
+The 16 ms movement tick runs only while controls are held and stops on release, focus
+loss, hiding or exiting. Doors respond to movement, with no idle animation loop.
+Graphics use the same hardware/software choice as the graph. Geometry is
+procedural, detailed only within 1,800 simulation units, and clipped to the
+viewport before drawing to avoid Qt coordinate overflow.
+
+Flight retains one page of at most 150 structures, replacing it on navigation or
+pagination. It uses the existing cancellable directory helper, with no recursive
+scan, prefetch, retained ancestor worlds, texture downloads or game engine. The
+normal graph remains bounded separately to 500 nodes and is restored on exit.
+
+File height uses a logarithmic scale, capped to keep large files navigable. Empty
+files still have visible thickness. The label shows the reported file size and
+the tooltip includes the exact byte count. Size comes from cached file metadata
+for the current page, without reading contents or summing folder descendants.
+Folder heights remain fixed. Use **Refresh branch** after files change to update
+the size snapshot; camera motion and view toggles do not poll the filesystem.
+
+Each expansion loads at most 150 entries. **Load more** appears when entries remain.
+The default visible limit is 500 nodes, including the root. **Options → Node limits**
+can lower either limit for the current view. At the limit, collapse branches or
+explore a smaller folder. Collapsing removes descendants and their metadata;
+there is no hidden-node cache. Paths have a separate 4 MiB metadata budget and
+helper responses are capped at 2 MiB. Symbolic links, including broken links, are
+shown but never expanded or opened through the graph. Git metadata is excluded.
+**Show dotfiles** is on by default, matching Files. Like the current file browser,
+the graph does not interpret `.gitignore` or run Git to filter its inventory.
+
+Directory reads run in a transient instance of the native launcher, using its
+read-only `--workspace-graph-page` mode before GUI initialization. There is at most
+one helper across graph views, with one replaceable navigation request. Closing,
+cancelling, or navigating away kills the old read; no GUI thread waits on filesystem
+I/O. The helper streams one directory and retains only the next sorted page, never
+a recursive tree. Deterministic name ordering requires rescanning that immediate
+directory for each additional page; memory stays bounded even for huge directories.
+Directory timestamps detect changes between pages and prompt a branch refresh.
+The helper has a 20-second enumeration budget and a 25-second parent deadline.
+An OS filesystem call may take time to respond to termination; another helper is
+not started while it is still stopping.
+
+The graph reuses the existing native canvas pan/zoom/grid surface and vector icons.
+Scene updates add only new nodes/edges, keep existing positions, and use Qt's scene
+index and viewport culling. There is no continuous layout, animation, indexing,
+filesystem watcher, dependency parser or Git scan owned by this view. Imports,
+symbol references and other relationship overlays remain future work.
+
+`workspace-graph-test` covers lazy expansion, pagination, node limits, stale pages,
+links/cycles, denied/deleted directories, deep/Unicode paths, cancellation, timeout,
+rapid navigation, editor routing and repeated cleanup. It reports fixture latency,
+layout time, 500-node camera projection/render time, idle CPU and Linux memory samples.
+It also checks 2D position restoration and mouse orbit without new reads.
+Set `DOCKPIPE_GRAPH_SCREENSHOT` to
+capture the real widgets; `DOCKPIPE_TEST_THEME=light` selects the light fixture.
+`DOCKPIPE_GRAPH_GPU_SMOKE=1` runs the explicit native-display GPU fixture, including
+viewport readback, software switching and flight entry/exit. It is separate from
+offscreen tests and requires a working hardware OpenGL desktop.
+
+### Workflow files and experimental app billboards
+
+The built-in editor, including its flight HUD, offers **Open as workflow** for
+`.yml` and `.yaml` files. This opens Workflow Studio for review; its existing
+**Run** action validates and saves the workflow before using the normal launcher
+session and input controls. `workflows/<name>/config.yml` is the usual workflow
+entry point; other workflow YAML paths also work. Opening or shooting a file does
+not execute it. Shell and other source scripts remain editor-only in this view.
+
+Enable **Settings → Cockpit mode → App control · Experimental** first.
+Before entering drone flight, enable **Options → App billboards · Experimental
+(next flight)**, then choose up to three open application windows. The option is
+off by default and window selections are never saved. Selected windows appear as
+live billboards near the entry plaza in each directory world. Select once for a camera-facing holographic preview; select again to
+bring one into a front-facing native control panel inside Dockpipe. Mouse and
+keyboard operate the real app there; flight is paused. **Return to flight**
+restores the window to the desktop. Use that button rather than Escape, which
+belongs to the embedded app. Turning the option off stops sharing immediately.
+
+This first backend requires a native Linux X11 session with XComposite/XRender.
+Wayland, Windows, macOS, and Flatpak show an unavailable explanation; their capture
+and input integrations are not implemented. Some applications, their popups, or
+window-manager behaviors may not embed correctly. Window-manager handoff is asynchronous, cancellable, and limited to two seconds.
+A failed handoff restores the selected window. The active native app pane is
+opaque and front-facing; only the preview is mapped onto the 3D billboard. Flight
+keeps its existing GPU viewport while a native app is connected. The app HUD owns
+an isolated native surface, so attaching an app does not promote the cockpit's
+ancestors to native windows or rebuild the renderer on return.
+
+Capture is local and limited to selected billboard windows or the three leading
+open apps on the Apps planet or unambiguous assigned room apps after enabling
+App control. The owner performs
+two captures per second total, round-robin, scaled on the X server to at most
+1280 × 720 pixels each (up to 10.6 MiB of retained preview pixels). It retains at most three preview images, reads no larger
+than an 8K source surface, and stops capturing while a file HUD or app control
+panel is active. Three successive capture failures stop that stream until the
+next flight. Hiding or closing flight releases all streams and restores the
+active window. There is no input injection API, recording, network streaming,
+or background capture outside the flight owner. X save-set registration protects
+the foreign window if the Dockpipe process exits unexpectedly.
+
+CMake enables the optional backend when X11, XComposite, XRender and XCB development
+libraries are available; `-DDOCKPIPE_APP_BILLBOARDS=OFF` builds the unavailable stub.
+`desktop-app-window-test` skips in offscreen CI. On an X11 desktop it creates only
+its own disposable app and checks bounded capture, native focus/input, detach,
+closed-window handling and survival of an embedded host crash. The graph's native
+smoke uses `DOCKPIPE_BILLBOARD_FIXTURE=/absolute/path/to/desktop-app-window-test`
+and optional `DOCKPIPE_GRAPH_SCREENSHOT=/tmp/preview` to check actual GPU drawing,
+shooting, panel resize, and hide cleanup. These tests do not select user apps.
+
+`cockpit-test --native-handoff` runs a disposable GPU app through nested launcher
+layout and first-person room handoffs. It checks wall previews before control,
+unchanged GPU viewport ownership, visible return frames, fullscreen, hide/show,
+ambiguous-window suppression and app-closure recovery. It skips offscreen; run it
+on the X11 desktop. Set `DOCKPIPE_SPATIAL_SCREENSHOT=/tmp/handoff` for fixture-only
+screenshots. `DOCKPIPE_SPATIAL_FIXTURE` may select the raster test executable instead.
+
+Flight has a **Fullscreen · F11** control. Fullscreen hides surrounding workspace
+chrome without moving the flight or native app to another window. F11 or Escape
+while flying restores the previous window state and workspace panels. The app
+control panel has its own **Fullscreen / Exit fullscreen** button, which stays
+visible while keyboard input belongs to the app. Its content uses the real app
+at the available panel resolution; HD billboard previews are only for navigation.
+
+### Cockpit workspace (experimental)
+
+**Settings → Cockpit mode → Enable Cockpit mode** unlocks this optional bonus
+workspace. It is **off by default**, including for existing installations. While
+off, Cockpit is hidden from the sidebar and View menu, the Files graph's flight
+entry is hidden, and the cockpit is not constructed at startup. The ordinary
+Files graph remains available in 2D and 3D.
+
+App control, orbital motion, controller input, local voice commands, spaceship
+visibility and hardware acceleration are nested under **Cockpit mode** in the
+same app settings. Child controls are disabled while the master switch is off.
+Settings take effect on **OK** and persist in the `cockpit` object in
+`launcher.json`; **Cancel** leaves the active settings unchanged. Turning the mode
+off leaves flight, releases app control/capture, and stops controller and voice
+input without deleting workspace layouts, HUD positions or file drafts. Child
+preferences are retained for the next time it is enabled. **Ship controls →
+Cockpit settings…** opens the same settings form.
+
+Once enabled, **Cockpit** is a standalone sidebar/View destination. Start in a ship overlooking
+planets for Filesystem, Apps, Workflows, Containers, Settings, Machines and
+Executions. Pilot with WASD, Q/E, right-drag/arrows and Shift. Hold the middle
+mouse button and drag to look around the 3D cabin independently of steering;
+release to face forward. Planets have bounded sphere and ring geometry. Flying
+into the atmosphere or selecting a planet starts an approach and surface descent.
+Only the destination world is loaded. The visible **Back** cockpit button,
+Backspace, and return portals go back one level: a nested folder returns to its
+parent, and a planet surface returns to orbit. Planet exits float in the sky;
+folder exits stand in the arrival apron. Fly through a gate or click its opening.
+The original file-explorer drone returns to its parent, or exits at its root.
+F11 fills the screen. The original spatial file explorer remains available.
+
+Click directly on a file or open-app building to raise its camera-facing hologram;
+select it again (or click its hologram) to edit or control it. Space and controller
+selection use the crosshair. Mouse selection uses the pointer, including when
+looking around the cabin. Previews stay anchored above the selected building and
+turn toward the camera; they do not follow the ship to unrelated locations.
+The windshield shows selection hints even when the navigation panels are closed.
+
+Filesystem uses the same built-in editor, scoped to a chosen root. Workflows,
+containers, machines and execution panels reuse their existing Dockpipe controls;
+workflow buildings open Workflow Studio without executing a script or bypassing
+its Run action. Closing a panel returns the original screen to its sidebar slot.
+Unsaved file drafts stay in the editor when navigating between planets.
+
+The Apps planet contains open windows and installed desktop applications. Enable
+**Settings → Cockpit mode → App control · Experimental** to show live wall previews for the first three open
+apps before taking control. Open apps occupy the front rows, ahead of the installed
+catalog. Only visible previews update; turning App control off releases them.
+Click an open app building
+for a live hologram, select it again for HUD control, or fly through its hangar
+for fullscreen control. Installed Linux
+applications launch through GIO using their desktop entries. Automatic connection
+requires one exact window-class match; ambiguous or unmatched windows must be
+selected from Apps after refreshing. App control is off by default; selecting a
+planet while it is off does not capture windows.
+The X11/Flatpak/Wayland limitations of app billboards still apply.
+
+App control verifies that the native window is visible inside Dockpipe's window
+hierarchy and synchronizes its native position and size to the HUD before
+considering the connection established. Moving/resizing the panel and the existing
+500 ms health check correct apps that restore their old desktop geometry.
+A two-second handoff
+deadline and the existing reduced-rate health check detect an app that refuses
+embedding, closes, or returns to the desktop. Flight then resumes, the original
+desktop window is restored when available, and the preview shows a persistent
+failure explanation. The renderer preference survives leaving or hiding app
+control. Some applications can preview successfully while rejecting native
+embedding; a working preview does not establish control compatibility.
+
+Containers, Machines, Executions, Workflow studio and Settings also use the
+first-click hologram, second-click HUD flow. Their previews take one bounded
+768 × 432 snapshot without showing the underlying page or activating its monitors.
+Individual workflows preview a bounded YAML excerpt before opening the studio;
+previewing never runs a workflow. Installed-app buildings show a launch card first.
+Cockpit Settings uses the existing preferences form embedded in the HUD.
+
+**Navigation** and **Ship controls** toggle their windshield panels so the
+flight view can stay clear. **Arrange HUD** unlocks drag handles and resize grips. Lock the layout to resume
+piloting. Positions are remembered locally and clamped to the windshield on
+resize; **Reset HUD layout** recovers the default arrangement. App interaction
+still uses a front-facing native surface rather than perspective-warped input.
+
+Enable **Settings → Cockpit mode → Enable local voice commands** to use
+**Hold to talk · Local**. It records only while pressed, for at most eight seconds.
+Recognition runs in an isolated helper with a 15-second cancellation deadline;
+no audio is written to disk or sent over the network. Native Linux currently uses
+Python 3, `libpocketsphinx.so.3`, `libsphinxbase.so.3`, `libpulse-simple.so.0` and the
+English model at `/usr/share/pocketsphinx/model/en-us` (commonly provided by
+`libpocketsphinx3`, `pocketsphinx-en-us`, and `libpulse0`). The optional packages
+are not automatically installed or downloaded. Missing dependencies show a
+status message; other platforms and Flatpak do not yet have this voice backend.
+Commands are: “open files/apps/workflows/containers/settings/machines/executions”,
+“return to orbit”, “close panel”, “full screen”, “exit full screen”, “reset HUD”.
+Voice navigates and opens controls; it cannot execute arbitrary commands.
+
+**Settings → Cockpit mode → Enable controller** loads the optional SDL2 runtime and uses its normalized game
+controller mappings: left stick movement, right stick look, triggers altitude,
+A open, B back, Start fullscreen, left shoulder boost and right shoulder
+push-to-talk. A deadzone prevents drift. Input is released on focus loss,
+disconnection and leaving the cockpit. A physical controller is required to
+qualify device behavior; keyboard/axis fixture coverage alone is not that proof.
+
+Idle scenes do not continuously animate. Controller polling is limited to 30 Hz
+while enabled, world geometry to 150 structures, app-window matching to ten
+seconds, and installed-app inventory to 1,000 metadata entries / 8 MiB / 500 apps.
+The Apps city shows up to 150 structures; its searchable launch panel includes the
+remaining catalog entries. No hidden world or app-capture cache is retained.
+
+Selected files and open apps project a camera-facing hologram above their roof.
+The sprite stays upright while its anchor follows the building through the 3D
+view. File previews use the same syntax-highlighting definitions as the editor,
+read at most 8 KiB / 18 lines through a cancellable 2.5-second helper, and label
+excerpts. Binary/non-UTF-8 files show an explanation. Links and Git metadata stay
+excluded; previewing never executes a file. Select the file again to open the
+normal editor. One 768 × 432 file preview is retained; switching worlds or hiding
+flight clears it. App holograms reuse the existing opt-in, reduced-rate capture.
+
+The flight deck has a structural canopy, angled physical instrument displays,
+and a destination console. Its radar plots the current world; heading, pitch,
+altitude and navigation state reflect the ship. Deck buttons engage autopilot
+from orbit and switch destinations on the surface. Planet labels are clickable.
+Middle-drag still looks around the physical cabin independently of steering.
+
+Destinations revolve around a central sun on visible orbital paths. Outer orbits
+move more slowly using the radius-to-the-three-halves period relationship, with
+compressed distances and time for navigation rather than an astronomical model.
+The sun determines each planet's illuminated side. Autopilot locks the moving
+destination, turns smoothly, and arcs above the sun when the direct route would
+cross it. **Space** skips the trip and **Escape** cancels it.
+
+**Settings → Cockpit mode → Orbital motion** pauses or resumes the solar system and remembers
+the preference. Orbit animation runs at roughly 30 updates per second while the
+visible orbital view is active, and pauses during travel and editing. Hidden
+views stop the timer. Surface flight and interiors retain their input-driven
+rendering without an idle loop.
+
+The scene uses perspective-projected 3D geometry with the existing optional
+OpenGL-backed Qt painter. It is a bounded workspace world, not a streaming game
+engine: planetary entry swaps to the selected city during a short atmospheric
+transition. Editors and native app controls remain readable front-facing HUD
+surfaces. No mic or controller hardware qualification is implied by fixture tests.
+
+Flight performance: static building meshes are generated once per bounded world
+page, with detailed and distant variants. Flight culls offscreen buildings and
+back-facing solid surfaces before projection; fully visible polygons bypass
+edge clipping. Convex building faces use Qt's convex polygon path, avoiding general
+tessellation per face. Mouse-look coalesces high-rate input into one repaint request
+per 16 ms while retaining the latest orientation. Only hangar shutters regenerate
+during movement. Movement and travel use a 16 ms precise timer while active, with
+sub-millisecond integration. Orbit has a black starfield and ten cached 256 × 256
+procedural planet surfaces (2.5 MiB), ten 128 × 128 atmosphere maps (0.625 MiB),
+33 illumination phases (2.0625 MiB), and one 512 × 512 sun sprite (1 MiB).
+The fixed 6.1875 MiB image cache is prepared on first orbit entry and shared across
+worlds. Sun-facing illumination selects and rotates a cached phase, with no bloom,
+blur, downloads or per-frame image creation.
+
+For a repeatable rendering check, run `cockpit-test --flight-performance` on the
+native desktop, optionally with `DOCKPIPE_PERF_FULLSCREEN=1`. The fixture rotates
+150-/500-building cities and a seven-planet orbit, reporting CPU draw median/p95
+separately from input/repaint/presentation time, plus measured straight-flight
+cadence, frame interval p95/max, gaps over 25 ms and idle repaint count. It uses synthetic buildings
+and does not open user files or capture user applications.
+
+### Persistent custom workspaces
+
+In **Cockpit → Navigation → Custom workspaces**, add a planet and choose an ocean,
+desert or forest theme. Select it to add a named building with a hangar, tower or
+pavilion style and a position. **Save layout** persists changes; closing the edit
+panel discards unsaved drafts, and **Restore saved** reloads the file. Removing a
+planet or building asks for confirmation. The existing Applications planet and
+all conventional pages remain available.
+
+Use **Travel now**, the navigation workspace selector, or manual flight to reach a
+workspace. **Fly to selection** approaches a planet or building; Space skips travel
+and Escape cancels it. Click a building or enter its front entrance to go inside.
+Rooms use WASD to walk, right-drag to look, Shift to move faster, E to interact,
+and Escape or Back to return outside. The controller uses the existing left/right
+sticks, boost, A and B mappings; altitude input is ignored while walking. Rooms
+have a fixed eye height, wall collision and a marked exit behind the arrival point.
+**Settings → Cockpit mode → Show spaceship** is optional; interiors always use first person.
+The existing local voice helper also accepts “open workspace” and “next workspace”.
+
+In edit mode, select a building and **Add display**. Choose a running window or an
+installed catalogue application, a wall, horizontal offset, centre height, width
+and height. **Edit** changes placement or size, **Remove** removes the reference,
+and **Save layout** validates the wall and exit clearance. Positions snap to
+20-unit increments. The installed-app catalogue also has **Place in a custom
+workspace** to preselect an application for placement.
+
+Placing or restoring a layout never launches or controls applications. App control
+defaults to disabled and remembers the saved preference. With
+**Settings → Cockpit mode → App control · Experimental** enabled, entering a room
+connects up to three assigned apps for wall previews when each has exactly one
+matching open window. Selecting a wall then opens its native control HUD.
+Multiple matching windows require an explicit choice before preview or control.
+If an installed application is not running, launching it requires
+confirmation. Missing applications remain editable references with an explanation.
+Use **Return to flight** in the HUD to resume the room and wall preview. Leaving a
+room, deleting a display or closing Dockpipe releases control and preserves the
+application process. Input belongs only to the explicitly active HUD target. Native
+embedding retains the existing X11 and application-compatibility limitations.
+
+Layouts live in version 1 of `spatial-workspaces.json` in the same application
+configuration directory as `launcher.json`. UUIDs identify planets, buildings and
+displays. Application references store desktop entry IDs, window classes and
+catalogue labels, never window titles, native handles, commands, captured pixels,
+textures or application contents. Window classes are not unique process identities:
+ambiguous windows must be selected again after restarting. Saves are atomic and
+reject conflicting writes from another instance. Malformed, oversized and future
+versions remain untouched; restore a supported file before saving.
+
+Capacity is 24 custom planets, 64 buildings per planet, 24 displays per room,
+256 buildings and 2,048 displays in total, and a 2 MiB configuration file. These
+limits bound the launcher-sized universe and metadata load. Only the active world
+has geometry; inactive rooms retain configuration only. One room uses at most
+three distinct streams and the existing total rate of two captures per second.
+Repeated references share the selected stream; out-of-view displays suspend
+capture and an active native HUD gets the existing health/geometry check instead.
+Hiding or exiting the scene stops input, capture and rendering and releases pixels.
+Procedural geometry needs no asynchronous external assets; filesystem previews
+retain their existing cancellable helper. This extends the Qt painter/OpenGL
+renderer without introducing a game engine, instancing layer or package SDK.
+
+`spatial-workspace` tests versioned persistence, corruption, conflict protection,
+aggregate capacity and failed-save retry. `cockpit-test --spatial` exercises editing,
+walking, navigation, permission gates, process restart, idle activity and bounded
+scene performance. Set `DOCKPIPE_SPATIAL_FIXTURE` to the built
+`desktop-app-window-test` executable for disposable native input/capture/lifecycle
+checks. `DOCKPIPE_SPATIAL_SCREENSHOT` saves only fixture screenshots. Physical
+controller/microphone behavior and compatibility with each real application still
+need device/application-specific testing. GPU memory is reported only when the
+host exposes a per-process allocation; unavailable measurements are not zero.

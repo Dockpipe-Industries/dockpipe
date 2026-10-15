@@ -38,6 +38,10 @@ Dockpipe separates project build outputs, user installs, system installs and pub
 | **Global** | **`DOCKPIPE_GLOBAL_ROOT`** or the OS user data directory | User-wide installed core, resolver/workflow packages, global image artifact metadata, global download cache. |
 | **Published remote** | Static origin / package registry / OCI registry | Versioned package tarballs and OCI image refs. |
 
+The OS-selected durable storage base may use a filesystem alias, such as
+`/home` pointing to `/var/home`. Dockpipe resolves that base before creating its
+state directory. Links inside the Dockpipe-owned state directory remain rejected.
+
 Use the public `dockpipe scope` commands or package SDK helpers when scripts need
 state paths; do not hardcode another user's cache or state location.
 

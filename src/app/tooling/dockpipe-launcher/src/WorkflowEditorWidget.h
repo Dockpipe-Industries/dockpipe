@@ -6,6 +6,7 @@
 #include <functional>
 
 class WorkflowCanvas;
+class ProjectFilesWidget;
 class QLineEdit;
 class QFormLayout;
 class QPlainTextEdit;
@@ -81,6 +82,8 @@ private:
     WorkflowCanvas *m_canvas = nullptr;
     QTabWidget *m_tabs = nullptr;
     QPlainTextEdit *m_yaml = nullptr;
+    ProjectFilesWidget *m_files = nullptr;
+    QPushButton *m_filesToggle = nullptr;
     QWidget *m_actions = nullptr;
     QWidget *m_palette = nullptr;
     QWidget *m_inspector = nullptr;
