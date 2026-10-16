@@ -889,4 +889,4 @@ not new workflow execution limits. Parsing or editing errors produce no successf
 response and change no file. The launcher bounds responses to 8 MiB and cancels
 CLI operations after 30 seconds or on explicit cancellation.
 
-`dockpipe scope resolver <name> assets-dir` resolves an existing directory-style resolver's package-owned assets using the normal resolver lookup and archive compatibility checks. It fails for missing assets or legacy flat profiles. Callers should use this path instead of reconstructing extraction-cache locations.
+`dockpipe scope resolver <name> assets-dir` resolves package-owned assets from installed resolver directories/archives or configured authoring trees. A resolver may supply `config.yml` and assets without an execution `profile`; auth/config fields still require a profile. Package engine compatibility is checked before archive extraction or asset access. Unsafe resolver names, missing assets and legacy flat profiles fail. Callers should use this path instead of reconstructing extraction-cache locations.

@@ -6,6 +6,9 @@ file(SHA256 "${archive}" archive_hash)
 if(NOT archive_hash STREQUAL "6f8ccacebd0dc9ce050b2b23b715750c97938b3336fbbb80967920cb8c1dfaa7")
     message(FATAL_ERROR "KSyntaxHighlighting source archive checksum mismatch")
 endif()
+# Upstream syntax fixtures contain deliberately invalid Go examples. Keep this
+# generated C++ dependency outside the parent Go module scan.
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/go.mod" "module dockpipe.local/generated-syntax\n")
 set(upstream "${CMAKE_CURRENT_BINARY_DIR}/syntax-highlighting-5.116.0")
 if(NOT EXISTS "${upstream}/src/lib/repository.cpp")
     file(ARCHIVE_EXTRACT INPUT "${archive}" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")

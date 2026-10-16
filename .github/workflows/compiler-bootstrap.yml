@@ -38,6 +38,7 @@ jobs:
         run: |
           go test ./src/lib/application/internal/packagecompile ./src/lib/infrastructure/packagebuild ./src/lib/infrastructure/packagecatalog
           go test ./src/lib/application -run TestResolverAssetsScope -count=1
+          go test ./src/lib/infrastructure -run TestResolveResolverAssetsDir -count=1
           python3 -B -m unittest discover -s release/packaging/compiler-bootstrap -p 'test_*.py' -v
       - name: Read shared version allocation history
         env:
