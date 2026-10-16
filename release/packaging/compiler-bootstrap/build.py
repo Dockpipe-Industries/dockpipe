@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -75,6 +76,13 @@ def verify_compiler(cli, version, root):
                 raise ValueError('Produced resolver asset changed')
 
 
+    # A neighboring hyphenated identity must never shadow the requested package.
+    sibling = store / 'dockpipe-resolver-assets-only-neighbor-1.0.0.tar.gz'
+    with tarfile.open(sibling, 'w:gz') as package:
+        member = tarfile.TarInfo('resolvers/assets-only-neighbor/assets/payload.txt')
+        member.size = len(payload)
+        package.addfile(member, io.BytesIO(payload))
+
     consumer = root / 'consumer'
     consumer.mkdir()
     (consumer / 'dockpipe.config.json').write_text(json.dumps({
@@ -144,7 +152,7 @@ def build(tags_path, output):
         'schema': 1, 'release_scope': 'compiler-bootstrap', 'version': identity['version'],
         'release_tag': identity['tag'], 'source_sha': source_sha, 'platform': 'linux-amd64',
         'archive': {'name': archive.name, 'sha256': digest(archive), 'bytes': archive.stat().st_size},
-        'qualification': {'asset_only_resolver_archive': True, 'asset_only_resolver_scope': True, 'hidden_metadata': True},
+        'qualification': {'asset_only_resolver_archive': True, 'asset_only_resolver_scope': True, 'exact_resolver_identity': True, 'hidden_metadata': True},
     }
     manifest_path = output / 'compiler-bootstrap.json'
     manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')

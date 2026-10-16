@@ -2,6 +2,7 @@
 #include "WorkspaceFiles.h"
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QCryptographicHash>
 #include <QElapsedTimer>
 #include <QFileInfo>
 #include <QFile>
@@ -79,9 +80,6 @@ QJsonObject WorkspaceGraphPage::read(const QJsonObject &request)
     const auto timestamp = std::filesystem::last_write_time(nativeDirectory, error);
     if (error)
         return failure(QStringLiteral("Cannot inspect this directory. Check permissions and retry."));
-    const QString stamp = QString::number(timestamp.time_since_epoch().count());
-    if (!request.value("stamp").toString().isEmpty() && request.value("stamp").toString() != stamp)
-        return failure(QStringLiteral("Directory changed between pages. Refresh this branch before loading more."));
     const QString canonical = before.canonicalFilePath();
     std::filesystem::directory_iterator iterator(nativeDirectory, error);
     if (error)
@@ -93,8 +91,14 @@ QJsonObject WorkspaceGraphPage::read(const QJsonObject &request)
     QElapsedTimer elapsed;
     elapsed.start();
     quint64 scanned = 0;
+    QByteArray nameFingerprint(32, '\0');
     while (iterator != std::filesystem::directory_iterator()) {
         const QString name = fileName(iterator->path());
+        // Directory timestamps can have coarse resolution. Bind pagination to
+        // the full entry-name set while retaining only constant fingerprint state.
+        const QByteArray digest = QCryptographicHash::hash(name.toUtf8(), QCryptographicHash::Sha256);
+        for (int index = 0; index < nameFingerprint.size(); ++index)
+            nameFingerprint[index] = nameFingerprint.at(index) ^ digest.at(index);
         if (name != ".git" && (hidden || !name.startsWith('.')) && name > after) {
             if (names.size() < static_cast<size_t>(limit + 1)) {
                 names.push(name);
@@ -114,6 +118,10 @@ QJsonObject WorkspaceGraphPage::read(const QJsonObject &request)
     if (error || !current.exists() || current.isSymLink() || current.canonicalFilePath() != canonical
         || afterTimestamp != timestamp)
         return failure(QStringLiteral("Directory changed while loading. Refresh to start a new listing."));
+    const QString stamp = QString::number(timestamp.time_since_epoch().count())
+        + ':' + QString::number(scanned) + ':' + QString::fromLatin1(nameFingerprint.toHex());
+    if (!request.value("stamp").toString().isEmpty() && request.value("stamp").toString() != stamp)
+        return failure(QStringLiteral("Directory changed between pages. Refresh this branch before loading more."));
     const bool more = names.size() > static_cast<size_t>(limit);
     if (more)
         names.pop();
