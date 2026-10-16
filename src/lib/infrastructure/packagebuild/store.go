@@ -33,6 +33,7 @@ type StoreArtifact struct {
 	Title                string   `json:"title,omitempty"`
 	Description          string   `json:"description,omitempty"`
 	CatalogType          string   `json:"catalog_type,omitempty"`
+	Hidden               bool     `json:"hidden,omitempty"`
 	Categories           []string `json:"categories,omitempty"`
 	Name                 string   `json:"name"`
 	Version              string   `json:"version"`
@@ -139,6 +140,7 @@ type packageManifestMeta struct {
 	Title                string
 	Description          string
 	CatalogType          string
+	Hidden               bool
 	Categories           []string
 	Version              string
 	Provider             string
@@ -161,6 +163,7 @@ func readPackageManifestMeta(dir, fallback string) packageManifestMeta {
 	out.Title = strings.TrimSpace(pm.Title)
 	out.Description = strings.TrimSpace(pm.Description)
 	out.CatalogType = pm.CatalogType
+	out.Hidden = pm.Hidden
 	out.Categories = append([]string(nil), pm.Categories...)
 	out.Provider = strings.TrimSpace(pm.Provider)
 	out.Capability = strings.TrimSpace(pm.Capability)
@@ -189,6 +192,7 @@ func buildOrCopyCoreArtifact(coreDir, outDir, fallback string) (*StoreArtifact, 
 		Title:              meta.Title,
 		Description:        meta.Description,
 		CatalogType:        meta.CatalogType,
+		Hidden:             meta.Hidden,
 		Categories:         meta.Categories,
 		Name:               "core",
 		Version:            ver,
@@ -234,6 +238,7 @@ func buildOrCopyWorkflowArtifacts(root, outDir, fallback string) ([]StoreArtifac
 			Title:                meta.Title,
 			Description:          meta.Description,
 			CatalogType:          meta.CatalogType,
+			Hidden:               meta.Hidden,
 			Categories:           meta.Categories,
 			Name:                 name,
 			Version:              ver,
@@ -282,6 +287,7 @@ func buildOrCopyResolverArtifacts(root, outDir, fallback string) ([]StoreArtifac
 			Title:              meta.Title,
 			Description:        meta.Description,
 			CatalogType:        meta.CatalogType,
+			Hidden:             meta.Hidden,
 			Categories:         meta.Categories,
 			Name:               name,
 			Version:            ver,
@@ -318,6 +324,7 @@ func copyTarballArtifact(srcPath, outDir, fallback string, kind tarballKind) (*S
 		Title:                meta.Title,
 		Description:          meta.Description,
 		CatalogType:          meta.CatalogType,
+		Hidden:               meta.Hidden,
 		Categories:           meta.Categories,
 		Name:                 name,
 		Version:              meta.Version,
@@ -355,6 +362,7 @@ func readPackageManifestMetaFromTarball(tarGzPath, fallback string, kind tarball
 	out.Title = strings.TrimSpace(pm.Title)
 	out.Description = strings.TrimSpace(pm.Description)
 	out.CatalogType = pm.CatalogType
+	out.Hidden = pm.Hidden
 	out.Categories = append([]string(nil), pm.Categories...)
 	out.Provider = strings.TrimSpace(pm.Provider)
 	out.Capability = strings.TrimSpace(pm.Capability)
@@ -448,6 +456,7 @@ func (a *StoreArtifact) UnmarshalJSON(data []byte) error {
 		Title                string   `json:"title,omitempty"`
 		Description          string   `json:"description,omitempty"`
 		CatalogType          string   `json:"catalog_type,omitempty"`
+		Hidden               bool     `json:"hidden,omitempty"`
 		Categories           []string `json:"categories,omitempty"`
 		Name                 string   `json:"name"`
 		Version              string   `json:"version"`
@@ -467,6 +476,7 @@ func (a *StoreArtifact) UnmarshalJSON(data []byte) error {
 	a.Title = x.Title
 	a.Description = x.Description
 	a.CatalogType = x.CatalogType
+	a.Hidden = x.Hidden
 	a.Categories = x.Categories
 	a.Name = x.Name
 	a.Version = x.Version

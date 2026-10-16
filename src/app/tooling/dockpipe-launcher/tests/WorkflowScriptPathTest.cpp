@@ -46,8 +46,8 @@ int main()
     if (!grantFile.open(QIODevice::WriteOnly))
         return 8;
     grantFile.close();
-    const QByteArray originalScript = QFile::encodeName("/home/example/OBS/" + name);
-    const QByteArray originalWorkspace = QFile::encodeName("/home/example/OBS");
+    const QByteArray originalScript = QFile::encodeName("/home/developer/OBS/" + name);
+    const QByteArray originalWorkspace = QFile::encodeName("/home/developer/OBS");
     if (setxattr(QFile::encodeName(grant).constData(), "user.document-portal.host-path",
             originalScript.constData(), originalScript.size() + 1, 0) != 0
         || setxattr(QFile::encodeName(workspace).constData(), "user.document-portal.host-path",
