@@ -49,6 +49,8 @@ int main(int argc, char **argv)
     editor.setFileName("sample.cpp");
     editor.setPlainText("/* begin\ninside comment\n*/ int value = 1;");
     auto *highlighter = editor.document()->findChild<SourceHighlighter *>();
+    // Exercise both explicit themes regardless of the host startup palette.
+    highlighter->updateTheme(true);
     highlighter->rehighlight();
     const auto comment = editor.document()->findBlockByNumber(1).layout()->formats();
     if (comment.isEmpty())

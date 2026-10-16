@@ -37,6 +37,7 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <cstdio>
+#include <filesystem>
 #include <cstring>
 #include <ctime>
 #include <functional>
@@ -414,7 +415,15 @@ int main(int argc, char **argv)
     CHECK(!QJsonDocument(first).toJson().contains("hidden-from-root"));
     auto filtered = WorkspaceGraphPage::read({{"root", base}, {"directory", base}, {"limit", 150}, {"hidden", false}});
     CHECK(filtered.value("entries").toArray().size() == 3);
+#ifdef Q_OS_WIN
+    const auto directoryPath = std::filesystem::path(base.toStdWString());
+#else
+    const auto directoryPath = std::filesystem::path(QFile::encodeName(base).constData());
+#endif
+    const auto originalTimestamp = std::filesystem::last_write_time(directoryPath);
     CHECK(write(root.filePath("new-file.txt")));
+    // Reproduce filesystems where entry mutations share one timestamp tick.
+    std::filesystem::last_write_time(directoryPath, originalTimestamp);
     CHECK(page(base, base, 2, first.value("after").toString(), first.value("stamp").toString()).contains("error"));
     CHECK(QFile::remove(root.filePath("new-file.txt")));
     CHECK(page(base, QDir(base).filePath(".."), 2).contains("error"));

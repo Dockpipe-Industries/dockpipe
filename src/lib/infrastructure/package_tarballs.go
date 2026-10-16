@@ -10,6 +10,8 @@ import (
 
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure/packagebuild"
+
+	"golang.org/x/mod/semver"
 )
 
 // TarballExtractCacheRoot is where full tarballs are extracted for tools that need real paths (scripts, resolver profiles).
@@ -250,11 +252,34 @@ func findLatestGlob(pattern string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(matches) == 0 {
+	// A prefix glob also matches other packages with hyphenated names. Only
+	// accept the requested identity followed by a complete semantic version.
+	prefix, suffix, found := strings.Cut(filepath.Base(pattern), "*")
+	if !found || suffix != ".tar.gz" {
+		return "", fmt.Errorf("invalid package tarball pattern %q", pattern)
+	}
+	var candidates []string
+	for _, match := range matches {
+		name := filepath.Base(match)
+		version := strings.TrimSuffix(strings.TrimPrefix(name, prefix), suffix)
+		normalized := "v" + strings.TrimPrefix(version, "v")
+		core := strings.SplitN(strings.SplitN(normalized, "+", 2)[0], "-", 2)[0]
+		if !semver.IsValid(normalized) || strings.Count(core, ".") != 2 {
+			continue
+		}
+		info, err := os.Stat(match)
+		if err != nil {
+			return "", err
+		}
+		if info.Mode().IsRegular() {
+			candidates = append(candidates, match)
+		}
+	}
+	if len(candidates) == 0 {
 		return "", nil
 	}
-	sort.Strings(matches)
-	return matches[len(matches)-1], nil
+	sort.Strings(candidates)
+	return candidates[len(candidates)-1], nil
 }
 
 // RemoveGlob removes files matching pattern (no directories).

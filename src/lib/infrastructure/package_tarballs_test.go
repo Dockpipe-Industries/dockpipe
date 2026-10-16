@@ -71,3 +71,87 @@ func TestInvalidateTarballExtractCacheRetainsOnlyActiveSource(t *testing.T) {
 		t.Fatalf("stale cache retained: %v", err)
 	}
 }
+
+func TestFindLatestPackageTarballRejectsHyphenatedNameCollisions(t *testing.T) {
+	for _, kind := range []string{"resolver", "workflow"} {
+		t.Run(kind, func(t *testing.T) {
+			root := t.TempDir()
+			t.Setenv("DOCKPIPE_PACKAGES_ROOT", filepath.Join(root, "store"))
+			t.Setenv("DOCKPIPE_GLOBAL_ROOT", filepath.Join(root, "global"))
+			t.Setenv("DOCKPIPE_SYSTEM_ROOT", filepath.Join(root, "system"))
+			directory := filepath.Join(root, "store", kind+"s")
+			if err := os.MkdirAll(directory, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			names := []string{
+				"agent-self-analysis-stack-proxy-9.9.9",
+				"agent-orchestrator-99.0.0",
+				"agent-invalid",
+				"agent-0.6",
+				"agent-0.6.3",
+				"agent-0.6.4-staging.123.1.abcdef",
+			}
+			for _, name := range names {
+				path := filepath.Join(directory, "dockpipe-"+kind+"-"+name+".tar.gz")
+				if err := os.WriteFile(path, []byte("fixture"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			// A glob-matching directory is not an installable archive.
+			if err := os.Mkdir(filepath.Join(directory, "dockpipe-"+kind+"-agent-9.9.9.tar.gz"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			find := FindLatestResolverTarball
+			if kind == "workflow" {
+				find = FindLatestWorkflowTarball
+			}
+			got, err := find(root, "agent")
+			want := filepath.Join(directory, "dockpipe-"+kind+"-agent-0.6.4-staging.123.1.abcdef.tar.gz")
+			if err != nil || got != want {
+				t.Fatalf("got %q, %v; want exact package %q", got, err, want)
+			}
+			for _, version := range []string{"0.6.3", "0.6.4-staging.123.1.abcdef"} {
+				if err := os.Remove(filepath.Join(directory, "dockpipe-"+kind+"-agent-"+version+".tar.gz")); err != nil {
+					t.Fatal(err)
+				}
+			}
+			got, err = find(root, "agent")
+			if err != nil || got != "" {
+				t.Fatalf("colliding packages must not satisfy missing identity: %q, %v", got, err)
+			}
+		})
+	}
+}
+
+func TestFindLatestPackageTarballRetainsStorePriority(t *testing.T) {
+	root := t.TempDir()
+	project := filepath.Join(root, "project-store")
+	global := filepath.Join(root, "global")
+	t.Setenv("DOCKPIPE_PACKAGES_ROOT", project)
+	t.Setenv("DOCKPIPE_GLOBAL_ROOT", global)
+	t.Setenv("DOCKPIPE_SYSTEM_ROOT", filepath.Join(root, "system"))
+	for _, directory := range []string{filepath.Join(project, "resolvers"), filepath.Join(global, "packages", "resolvers")} {
+		if err := os.MkdirAll(directory, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(directory, "dockpipe-resolver-agent-other-99.0.0.tar.gz"), []byte("collision"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want := filepath.Join(global, "packages", "resolvers", "dockpipe-resolver-agent-0.6.3.tar.gz")
+	if err := os.WriteFile(want, []byte("global"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := FindLatestResolverTarball(root, "agent")
+	if err != nil || got != want {
+		t.Fatalf("project collision must not shadow global identity: %q, %v", got, err)
+	}
+	want = filepath.Join(project, "resolvers", "dockpipe-resolver-agent-0.6.2.tar.gz")
+	if err := os.WriteFile(want, []byte("project"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err = FindLatestResolverTarball(root, "agent")
+	if err != nil || got != want {
+		t.Fatalf("project identity must keep store priority: %q, %v", got, err)
+	}
+}

@@ -36,6 +36,7 @@ if arguments[:4] == ['scope', 'resolver', 'assets-only', 'assets-dir']:
     configuration = json.loads((consumer / 'dockpipe.config.json').read_text())
     source = configuration['packages']['sources'][0]
     assert source['kind'] == 'tarball_dir'
+    assert (Path(source['path']) / 'dockpipe-resolver-assets-only-neighbor-1.0.0.tar.gz').is_file()
     package = Path(source['path']) / 'dockpipe-resolver-assets-only-1.0.0.tar.gz'
     with tarfile.open(package, 'r:gz') as archive:
         data = archive.extractfile('resolvers/assets-only/assets/payload.txt').read()
