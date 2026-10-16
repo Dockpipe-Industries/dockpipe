@@ -75,6 +75,21 @@ def verify_compiler(cli, version, root):
                 raise ValueError('Produced resolver asset changed')
 
 
+    consumer = root / 'consumer'
+    consumer.mkdir()
+    (consumer / 'dockpipe.config.json').write_text(json.dumps({
+        'schema': 1, 'compile': {'workflows': []},
+        'packages': {'sources': [{'kind': 'tarball_dir', 'path': str(store)}]},
+    }) + '\n')
+    scope = subprocess.run(
+        [str(cli), 'scope', 'resolver', 'assets-only', 'assets-dir', '--workdir', str(consumer)],
+        env=environment, check=True, timeout=120, capture_output=True, text=True,
+    )
+    assets = Path(scope.stdout.strip())
+    if not assets.is_absolute() or not assets.is_dir() or (assets / 'payload.txt').read_bytes() != payload:
+        raise ValueError('Produced compiler cannot consume the archived asset-only resolver')
+
+
 def build(tags_path, output):
     root = Path(__file__).resolve().parents[3]
     source_sha = os.environ.get('GITHUB_SHA', '')
@@ -129,7 +144,7 @@ def build(tags_path, output):
         'schema': 1, 'release_scope': 'compiler-bootstrap', 'version': identity['version'],
         'release_tag': identity['tag'], 'source_sha': source_sha, 'platform': 'linux-amd64',
         'archive': {'name': archive.name, 'sha256': digest(archive), 'bytes': archive.stat().st_size},
-        'qualification': {'asset_only_resolver_archive': True, 'hidden_metadata': True},
+        'qualification': {'asset_only_resolver_archive': True, 'asset_only_resolver_scope': True, 'hidden_metadata': True},
     }
     manifest_path = output / 'compiler-bootstrap.json'
     manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')

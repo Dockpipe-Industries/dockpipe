@@ -14,7 +14,7 @@ spec.loader.exec_module(bootstrap)
 
 class CompilerQualificationTests(unittest.TestCase):
     def test_real_command_contract_and_rejected_deliveries(self):
-        for scenario in ['valid', 'skipped', 'missing', 'hidden', 'minimum', 'checksum', 'payload']:
+        for scenario in ['valid', 'skipped', 'missing', 'hidden', 'minimum', 'checksum', 'payload', 'scope']:
             with self.subTest(scenario=scenario), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 cli = root / 'fixture-cli'
@@ -30,6 +30,21 @@ import tarfile
 arguments = sys.argv[1:]
 if arguments[:3] == ['package', 'compile', 'resolvers']:
     assert '--force' in arguments and '--from' in arguments
+    sys.exit(0)
+if arguments[:4] == ['scope', 'resolver', 'assets-only', 'assets-dir']:
+    consumer = Path(arguments[arguments.index('--workdir') + 1])
+    configuration = json.loads((consumer / 'dockpipe.config.json').read_text())
+    source = configuration['packages']['sources'][0]
+    assert source['kind'] == 'tarball_dir'
+    package = Path(source['path']) / 'dockpipe-resolver-assets-only-1.0.0.tar.gz'
+    with tarfile.open(package, 'r:gz') as archive:
+        data = archive.extractfile('resolvers/assets-only/assets/payload.txt').read()
+    assets = consumer / 'extracted-assets'
+    assets.mkdir()
+    if os.environ['FIXTURE_SCENARIO'] == 'scope':
+        data = b'wrong scoped payload'
+    (assets / 'payload.txt').write_bytes(data)
+    print(assets)
     sys.exit(0)
 assert arguments[:3] == ['package', 'build', 'store']
 assert arguments[arguments.index('--only') + 1] == 'resolvers'
