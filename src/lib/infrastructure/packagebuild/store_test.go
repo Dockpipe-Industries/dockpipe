@@ -33,6 +33,7 @@ kind: core
 	}
 	if err := os.WriteFile(filepath.Join(wf, "package.yml"), []byte(`schema: 1
 name: demo
+hidden: true
 version: 0.0.1
 min_dockpipe_version: 0.6.14
 title: Demo
@@ -60,7 +61,7 @@ requires_capabilities: [cli.codex]
 	if len(m.Packages.Workflows) != 1 || m.Packages.Workflows[0].Name != "demo" || m.Packages.Workflows[0].Provider != "cloudflare" {
 		t.Fatalf("workflows: %+v", m.Packages.Workflows)
 	}
-	if m.Packages.Workflows[0].MinDockpipeVersion != "0.6.14" {
+	if !m.Packages.Workflows[0].Hidden || m.Packages.Workflows[0].MinDockpipeVersion != "0.6.14" {
 		t.Fatal("compiled store lost the minimum engine version")
 	}
 	b, err := os.ReadFile(filepath.Join(out, "packages-store-manifest.json"))
@@ -71,7 +72,7 @@ requires_capabilities: [cli.codex]
 	if err := json.Unmarshal(b, &dec); err != nil {
 		t.Fatal(err)
 	}
-	if dec.Packages.Workflows[0].MinDockpipeVersion != "0.6.14" {
+	if !dec.Packages.Workflows[0].Hidden || dec.Packages.Workflows[0].MinDockpipeVersion != "0.6.14" {
 		t.Fatal("catalog JSON lost the minimum engine version")
 	}
 	var fields map[string]json.RawMessage

@@ -34,7 +34,7 @@ Workflow scope paths resolve under a named workflow artifact root. Use this when
 workflow needs to read artifacts from another workflow.
 
 Resolver scope fields are read from the resolver profile:
-  auth-dir, container-auth-dir, auth-mount-mode, config-file, container-config-file
+  auth-dir, container-auth-dir, auth-mount-mode, config-file, container-config-file, assets-dir
 
 Examples:
   dockpipe scope
@@ -263,7 +263,7 @@ func resolveScopeRoot(scope, workdir string) (string, error) {
 
 func resolverScopeValue(workdir string, args []string) (string, error) {
 	if len(args) < 2 {
-		return "", fmt.Errorf("usage: dockpipe scope resolver <name> <auth-dir|container-auth-dir|auth-mount-mode|config-file|container-config-file>")
+		return "", fmt.Errorf("usage: dockpipe scope resolver <name> <auth-dir|container-auth-dir|auth-mount-mode|config-file|container-config-file|assets-dir>")
 	}
 	resolverName := strings.TrimSpace(args[0])
 	field := normalizeGetField(args[1])
@@ -276,6 +276,18 @@ func resolverScopeValue(workdir string, args []string) (string, error) {
 		return "", err
 	}
 	switch field {
+	case "assets_dir":
+		// Directory-style resolvers own their assets beside the profile. Resolution
+		// above handles installed archives and compatibility checks uniformly.
+		if filepath.Base(profilePath) != "profile" {
+			return "", fmt.Errorf("resolver %q has no package-owned assets directory", resolverName)
+		}
+		assets := filepath.Join(filepath.Dir(profilePath), "assets")
+		info, err := os.Stat(assets)
+		if err != nil || !info.IsDir() {
+			return "", fmt.Errorf("resolver %q assets directory is unavailable", resolverName)
+		}
+		return filepath.Abs(assets)
 	case "auth_dir":
 		return resolveResolverHostPath(profile, "DOCKPIPE_RESOLVER_AUTH_DIR_ENV", "DOCKPIPE_RESOLVER_AUTH_DIR")
 	case "container_auth_dir":

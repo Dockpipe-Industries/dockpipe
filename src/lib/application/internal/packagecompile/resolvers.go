@@ -190,27 +190,49 @@ func collectResolverPackRoots(srcRoot string) []string {
 	return out
 }
 
-// hasNestedResolverPackLayout reports whether dir looks like a grouped resolver tree (at least one
-// immediate child directory has no profile/ — recurse into group folders until profile/ is found).
-func hasNestedResolverPackLayout(dir string) bool {
+// resolverSourceDirectory recognizes both tool profiles and asset-only resolver
+// packages. Group directories have neither marker and must be traversed.
+func resolverSourceDirectory(dir string) (bool, error) {
+	for _, marker := range []string{"profile", "config.yml"} {
+		info, err := os.Stat(filepath.Join(dir, marker))
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return false, err
+		}
+		if info.Mode().IsRegular() || marker == "profile" && info.IsDir() {
+			return true, nil
+		}
+		return false, fmt.Errorf("resolver marker %s has an invalid file type", marker)
+	}
+	return false, nil
+}
+
+// hasNestedResolverPackLayout identifies group directories among source leaves.
+func hasNestedResolverPackLayout(dir string) (bool, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return false
+		return false, err
 	}
 	for _, e := range entries {
 		if !e.IsDir() || strings.HasPrefix(e.Name(), ".") {
 			continue
 		}
-		if _, err := os.Stat(filepath.Join(dir, e.Name(), "profile")); err != nil {
-			return true
+		leaf, err := resolverSourceDirectory(filepath.Join(dir, e.Name()))
+		if err != nil {
+			return false, err
+		}
+		if !leaf {
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 // mergeChildPackages packs each immediate child directory from srcRoot into
 // dockpipe-resolver-<name>-<ver>.tar.gz under destRoot (no expanded trees).
-// For resolvers, when the tree is grouped (child dirs without profile/), we descend until profile/ is found.
+// For grouped resolver trees, descend until a profile/ or config.yml leaf is found.
 //
 // Resolver authoring can be flat (srcRoot/resolvers) or nested under any compile root-provided tree.
 // Each resolver child still becomes its own dockpipe-resolver-<name>-*.tar.gz for the store.
@@ -407,7 +429,13 @@ func mergeChildPackagesWalk(workdir, srcRoot, destRoot string, kind string, defa
 	if err != nil {
 		return 0, err
 	}
-	nestedPack := kind == "resolver" && hasNestedResolverPackLayout(srcRoot)
+	nestedPack := false
+	if kind == "resolver" {
+		nestedPack, err = hasNestedResolverPackLayout(srcRoot)
+		if err != nil {
+			return 0, err
+		}
+	}
 	n := 0
 	for _, e := range entries {
 		if !e.IsDir() {
@@ -419,7 +447,11 @@ func mergeChildPackagesWalk(workdir, srcRoot, destRoot string, kind string, defa
 		}
 		from := filepath.Join(srcRoot, name)
 		if nestedPack {
-			if _, err := os.Stat(filepath.Join(from, "profile")); err != nil {
+			leaf, err := resolverSourceDirectory(from)
+			if err != nil {
+				return n, err
+			}
+			if !leaf {
 				sub, err := mergeChildPackagesWalk(workdir, from, destRoot, kind, defaultNamespace, defaultVersion, force)
 				if err != nil {
 					return n, err

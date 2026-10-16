@@ -40,12 +40,13 @@ bin/.dockpipe/internal/packages/resolvers/<name>/ (later --from wins on name cla
 
 Defaults: compile.workflows roots, plus
 src/core/resolvers and templates/core/resolvers when those directories exist.
-Dirs with profile/ under each root become resolver tarballs.
+Dirs with profile or config.yml under each root become resolver tarballs.
 
 Pack roots:
   - <from>/resolvers/... for a flat vendor tree
   - Any nested directory named resolvers/ under a declared compile root
-Each immediate child with profile/ becomes one store tarball.
+Each source leaf with profile or config.yml becomes one store tarball.
+Directories without either marker are groups, traversed for resolver sources.
 
 Optional resolver.yaml next to each profile may set namespace: <label> (same rules as workflow namespace).
 
