@@ -31,6 +31,25 @@ QString fileName(const std::filesystem::path &path)
     return QFile::decodeName(path.filename().native().c_str());
 #endif
 }
+template <typename Integer>
+QString timestampText(Integer ticks)
+{
+    // libc++ can use a 128-bit file clock. Preserve every digit, including
+    // the minimum signed value, without narrowing or negating the whole value.
+    const bool negative = ticks < 0;
+    QString text;
+    do {
+        int digit = static_cast<int>(ticks % 10);
+        if (digit < 0)
+            digit = -digit;
+        text.prepend(QLatin1Char(static_cast<char>('0' + digit)));
+        ticks /= 10;
+    } while (ticks != 0);
+    if (negative)
+        text.prepend(QLatin1Char('-'));
+    return text;
+}
+
 QJsonObject failure(const QString &message)
 {
     return {{"error", message}};
@@ -118,7 +137,7 @@ QJsonObject WorkspaceGraphPage::read(const QJsonObject &request)
     if (error || !current.exists() || current.isSymLink() || current.canonicalFilePath() != canonical
         || afterTimestamp != timestamp)
         return failure(QStringLiteral("Directory changed while loading. Refresh to start a new listing."));
-    const QString stamp = QString::number(timestamp.time_since_epoch().count())
+    const QString stamp = timestampText(timestamp.time_since_epoch().count())
         + ':' + QString::number(scanned) + ':' + QString::fromLatin1(nameFingerprint.toHex());
     if (!request.value("stamp").toString().isEmpty() && request.value("stamp").toString() != stamp)
         return failure(QStringLiteral("Directory changed between pages. Refresh this branch before loading more."));
