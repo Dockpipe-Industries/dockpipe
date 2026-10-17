@@ -9,6 +9,9 @@ version="${1:?release version}"
 # the selected release version while preserving the authored release-line baseline.
 authored_version="$(mktemp)"
 wrapper_work="$(mktemp -d)"
+# macOS exposes its temporary directory through /var, a system symlink. Use
+# the physical path for this owned workspace so pinned inputs remain link-free.
+wrapper_work="$(cd "$wrapper_work" && pwd -P)"
 cp VERSION "$authored_version"
 cleanup() {
   cp "$authored_version" VERSION
