@@ -5,7 +5,7 @@ go 1.25
 toolchain go1.26.9
 
 require (
-	github.com/mattn/go-shellwords v1.0.12
+	github.com/mattn/go-shellwords v1.0.16
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	golang.org/x/mod v0.31.0
 	golang.org/x/term v0.27.0
