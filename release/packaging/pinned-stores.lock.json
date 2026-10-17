@@ -1,0 +1,213 @@
+{
+  "schema": 1,
+  "baselines": {
+    "linux-amd64": {
+      "url": "https://github.com/Dockpipe-Industries/dockpipe/releases/download/v0.6.16-staging.38567355491.1.70d207f11d1f/dockpipe-packages_0.6.16_linux-amd64.tar.gz",
+      "sha256": "3d367887e3ef04db27a1df76f1623e64056c017874695515651e86f8f9e0ac44",
+      "size_bytes": 393580684,
+      "manifest_sha256": "57402cd65d204ea34635839b63470c3173831833f0788fd7cb9bdc3b1617be51"
+    },
+    "linux-arm64": {
+      "url": "https://github.com/Dockpipe-Industries/dockpipe/releases/download/v0.6.16-staging.38567355491.1.70d207f11d1f/dockpipe-packages_0.6.16_linux-arm64.tar.gz",
+      "sha256": "dc779eab8c7ec30e5330b0f0fbcae086c045e5c0d7c8a27f2186a6a34c4afe7b",
+      "size_bytes": 366360099,
+      "manifest_sha256": "43a47330ba1113cf6d17d4fde20a2b36a07e81d5102f5f70cb12f715c46e206a"
+    },
+    "darwin-amd64": {
+      "url": "https://github.com/Dockpipe-Industries/dockpipe/releases/download/v0.6.16-staging.38567355491.1.70d207f11d1f/dockpipe-packages_0.6.16_darwin-amd64.tar.gz",
+      "sha256": "de019718c1ba5534626a72fb4998e071944e071910eee7248db44602293c7a7b",
+      "size_bytes": 438186638,
+      "manifest_sha256": "79409102787a50bd627cae5e625af438a7b71b19431b828d46e11522dc31343e"
+    },
+    "darwin-arm64": {
+      "url": "https://github.com/Dockpipe-Industries/dockpipe/releases/download/v0.6.16-staging.38567355491.1.70d207f11d1f/dockpipe-packages_0.6.16_darwin-arm64.tar.gz",
+      "sha256": "52e1d35a0fa4567e43ad8b71afdabd9eaee457b748596e72952e46752af163f8",
+      "size_bytes": 412433013,
+      "manifest_sha256": "8b3b9a589eff40cfbc732f50639afedd788839b781f27dfb8ef81483641ec829"
+    },
+    "windows-amd64": {
+      "url": "https://github.com/Dockpipe-Industries/dockpipe/releases/download/v0.6.16-staging.38567355491.1.70d207f11d1f/dockpipe-packages_0.6.16_windows-amd64.tar.gz",
+      "sha256": "1edb9c421dd164abe687f8a559acaeef07691199b72291a1d43c16a25312dc94",
+      "size_bytes": 439183862,
+      "manifest_sha256": "5006ae7a118a74e96077e2b2f20a02e625c932f62fa213499c01c8f485884c90"
+    }
+  },
+  "linux_candidates": {
+    "dorkpipe": {
+      "version": "0.6.5",
+      "owned": [
+        [
+          "resolver",
+          "compliance-handoff"
+        ],
+        [
+          "resolver",
+          "dorkpipe"
+        ],
+        [
+          "resolver",
+          "dorkpipe-orchestrator"
+        ],
+        [
+          "resolver",
+          "dorkpipe-self-analysis"
+        ],
+        [
+          "resolver",
+          "dorkpipe-self-analysis-host"
+        ],
+        [
+          "resolver",
+          "dorkpipe-self-analysis-stack"
+        ],
+        [
+          "resolver",
+          "dorkpipe-self-analysis-stack-proxy"
+        ],
+        [
+          "resolver",
+          "user-insight-process"
+        ],
+        [
+          "workflow",
+          "backlog.remote"
+        ],
+        [
+          "workflow",
+          "cas.01.app-server"
+        ],
+        [
+          "workflow",
+          "codex.cli.update"
+        ],
+        [
+          "workflow",
+          "compliance-handoff"
+        ],
+        [
+          "workflow",
+          "docs.optimize-orchestrate"
+        ],
+        [
+          "workflow",
+          "docs.orchestrate"
+        ],
+        [
+          "workflow",
+          "dorkpipe"
+        ],
+        [
+          "workflow",
+          "dorkpipe-orchestrator"
+        ],
+        [
+          "workflow",
+          "dorkpipe-self-analysis"
+        ],
+        [
+          "workflow",
+          "dorkpipe-self-analysis-host"
+        ],
+        [
+          "workflow",
+          "dorkpipe-self-analysis-stack"
+        ],
+        [
+          "workflow",
+          "dorkpipe-self-analysis-stack-proxy"
+        ],
+        [
+          "workflow",
+          "example.brain"
+        ],
+        [
+          "workflow",
+          "orchestrate.stack"
+        ],
+        [
+          "workflow",
+          "orchestrator"
+        ],
+        [
+          "workflow",
+          "skills.render"
+        ],
+        [
+          "workflow",
+          "software.dev"
+        ],
+        [
+          "workflow",
+          "user-insight-process"
+        ]
+      ],
+      "artifact": {
+        "url": "https://packages.staging.dockpipe.com/packages/standalone/dorkpipe/candidates/0.6.5-staging.cc31cf0aa848/dorkpipe-packages-0.6.5-linux-amd64.tar.gz",
+        "sha256": "e00a93057b3e1afedfd13d01c951f16c261ddbd4ea677584ff34b347d5140955",
+        "size_bytes": 19418995,
+        "manifest_sha256": "464aec661eed0eea756599d08a6e98a4261fffe7d53a5c2aff28fb38d74c2438"
+      }
+    },
+    "pipeon": {
+      "version": "0.6.6",
+      "owned": [
+        [
+          "resolver",
+          "pipeon"
+        ],
+        [
+          "resolver",
+          "pipeon-dev-stack"
+        ],
+        [
+          "workflow",
+          "pipeon"
+        ],
+        [
+          "workflow",
+          "pipeon-dev-stack"
+        ],
+        [
+          "workflow",
+          "pipeon-dev-stack-status"
+        ],
+        [
+          "workflow",
+          "pipeon-dev-stack-stop"
+        ]
+      ],
+      "artifact": {
+        "url": "https://packages.staging.dockpipe.com/packages/standalone/pipeon/candidates/0.6.6-staging.aa57b250fb8a/pipeon-packages-0.6.6-linux-amd64.tar.gz",
+        "sha256": "f9310d5dc46081c220bb10e76348c144853bf3ce095da364a9d00ea7fff2fe5e",
+        "size_bytes": 33006215,
+        "manifest_sha256": "2a207ad8b70c45371ca84644592b12e7267845156c985996907724eadc0fc3ab"
+      }
+    }
+  },
+  "hidden_identities": [
+    [
+      "resolver",
+      "pipeon"
+    ],
+    [
+      "resolver",
+      "pipeon-dev-stack"
+    ],
+    [
+      "workflow",
+      "pipeon"
+    ],
+    [
+      "workflow",
+      "pipeon-dev-stack"
+    ],
+    [
+      "workflow",
+      "pipeon-dev-stack-status"
+    ],
+    [
+      "workflow",
+      "pipeon-dev-stack-stop"
+    ]
+  ]
+}

@@ -25,7 +25,7 @@ func cmdPackageRemote(args []string, install bool) error {
 	remote := flags.String("remote", "", "HTTPS latest, release, or store manifest URL (required)")
 	kind := flags.String("kind", "", "package kind: core, workflow, resolver (install only)")
 	name := flags.String("name", "", "package name (install only)")
-	checksum := flags.String("sha256", "", "expected catalog checksum; rejects a changed selection (install only)")
+	checksum := flags.String("sha256", "", "expected package archive SHA-256; rejects a changed selection (install only)")
 	includeHidden := false
 	if !install {
 		flags.BoolVar(&includeHidden, "include-hidden", false, "include packages hidden from discovery")

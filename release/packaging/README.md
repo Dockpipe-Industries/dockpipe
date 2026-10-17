@@ -35,10 +35,34 @@ The manifest is checked-in source metadata, not a resolved/generated payload.
 `go test .` independently checks every formerly visible authored asset byte and
 validates the filesystem interface. Release preparation checks membership too.
 
-`prepare-embedded-dorkpipe-assets.sh prepare` still produces the three intentional
-Linux tools (`dockpipe`, `dorkpipe`, `mcpd`). It now creates one ignored, exact
-`embed_release_generated.go` declaration for those paths only. The root filesystem
-merges their directory entries without copying their payloads into a new heap map.
-Cleanup validates that declaration before removing its own generated file through
-the existing cleanup hook. It does not modify `embed_assets.go`. No ignored Tauri,
-Cargo, npm or incidental neighboring binary becomes a release input.
+DorkPipe, DorkPipe MCP, and Pipeon are independently published packages and are
+excluded from the main binary's embed declaration. Native releases compile only
+core, then assemble a complete store from checksum-pinned public package bundles.
+Flatpak adapts and qualifies the pinned Linux amd64 store inside its runtime.
+The main build does not run the former embedded DorkPipe preparation hook.
+
+The repository-quality workflow stays in the main repository as a thin caller.
+Native packaging compiles that wrapper into a separate main-owned store and
+replaces its older baseline archive by exact package identity. Its source lock
+binds each supported platform to an immutable catalog, package kind and version,
+archive checksum and size, and the checksum of DorkPipe's owned summary script.
+The wrapper verifies those bytes, caches the archive in its disposable package
+runtime, and executes only that script. Other installed versions cannot replace
+its selection. The package-owned documentation orchestration workflows instead
+ship with DorkPipe. These explicit first-party pins do not implement the proposed
+general project/package lock or package-manager version-selection model.
+The five frozen 0.6.16 platform baselines retain their published GitHub release
+URLs. New standalone Linux amd64 candidates are fetched from the package host:
+`https://packages.staging.dockpipe.com/packages/standalone/<owner>/candidates/<version>-staging.<producer-sha12>/<owner>-packages-<version>-linux-amd64.tar.gz`.
+Stable releases use
+`https://packages.dockpipe.com/packages/standalone/<owner>/releases/<version>/<owner>-packages-<version>-linux-amd64.tar.gz`.
+The lock records exact archive size, archive SHA-256, and nested store manifest
+SHA-256. Candidate downloads reject redirects; paths using credentials, queries,
+mutable selectors, or another owner/version cannot satisfy the lock. Public
+package delivery does not change the visibility of the owning source repositories.
+The trusted `pinned-stores.lock.json` also lists package identities hidden from
+catalog discovery. The six Pipeon resolver and workflow entries remain available
+for explicit installation and dependency resolution. This applies to the new
+Linux amd64 Pipeon archive and to the retained 0.6.3 archives on the other four
+native platforms. Hiding changes composed catalog metadata only; the pinned
+archive bytes, versions, and source manifest checksums stay unchanged.

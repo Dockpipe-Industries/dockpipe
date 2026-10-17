@@ -35,8 +35,6 @@ if [[ -n "${DOCKPIPE_RELEASE_BINARY:-}" ]]; then
 else
 (
   cd "${REPO_ROOT}"
-  bash ./release/packaging/prepare-embedded-dorkpipe-assets.sh prepare
-  trap 'bash ./release/packaging/prepare-embedded-dorkpipe-assets.sh clean' EXIT
   GOOS=linux GOARCH="${GOARCH}" CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.Version=${VERSION}" -o "${BUILD_DIR}/usr/bin/dockpipe" ./src/cmd
 )
 fi

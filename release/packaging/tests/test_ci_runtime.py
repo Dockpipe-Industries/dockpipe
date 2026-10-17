@@ -61,7 +61,7 @@ class RuntimeCITests(unittest.TestCase):
     def test_json_vulnerability_findings_fail_the_host_gate(self):
         ci = yaml.load((REPOSITORY / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)
         scan = next(step["run"] for step in ci["jobs"]["test"]["steps"]
-                    if step.get("name") == "govulncheck + gosec + DorkPipe CI signal bundle")
+                    if step.get("name") == "govulncheck + gosec")
         commands = scan[scan.index("set +e"):scan.index('"$GOBIN/gosec"')]
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -88,8 +88,7 @@ class RuntimeCITests(unittest.TestCase):
                 for step in job.get("steps", []):
                     if step.get("uses", "").startswith("actions/setup-go@"):
                         self.assertEqual(step["with"]["go-version"], "1.26.9")
-        for filename in ("go.mod", "packages/dorkpipe-mcp/go.mod"):
-            self.assertIn("toolchain go1.26.9", (REPOSITORY / filename).read_text())
+        self.assertIn("toolchain go1.26.9", (REPOSITORY / "go.mod").read_text())
 
         nested = yaml.load((REPOSITORY / "workflows/ci/test/config.yml").read_text(), Loader=yaml.BaseLoader)
         for step in nested["steps"]:

@@ -39,7 +39,8 @@ func TestLegacyV0001Compatibility(t *testing.T) {
 	methodCount := 0
 
 	for _, rel := range paths {
-		src, err := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(rel)))
+		sourcePath := legacySourcePath(repoRoot, rel)
+		src, err := os.ReadFile(sourcePath)
 		if err != nil {
 			t.Fatalf("read %s: %v", rel, err)
 		}
@@ -141,9 +142,66 @@ func frozenInventory(t *testing.T, repoRoot string) []string {
 	return paths
 }
 
+// These two logical paths moved out of the authored package tree. Their accepted
+// source remains in the same frozen corpus as every other legacy compatibility input.
+var retiredLegacyModels = []string{
+	"packages/dorkpipe/workflows/orchestrate.stack/models/IOrchestrateStackConfig.pipe",
+	"packages/dorkpipe/workflows/orchestrate.stack/models/OrchestrateStackConfig.pipe",
+}
+
+func legacySourcePath(repoRoot, logicalPath string) string {
+	return filepath.Join(repoRoot, "tests", "pipelangcompat", "fixtures", "legacy-v0.0.0.1", filepath.FromSlash(logicalPath))
+}
+
+// Current authored models have evolved since the accepted frozen corpus. Verify
+// their real consumer compilation separately without rewriting compatibility goldens.
+func TestCurrentAuthoredLegacyModelsCompile(t *testing.T) {
+	repoRoot := repositoryRoot(t)
+	groups := map[string]map[string][]byte{}
+	classNames := map[string][]string{}
+	for _, logicalPath := range authoredPipeLangPaths(t, repoRoot) {
+		sourcePath := filepath.Join(repoRoot, filepath.FromSlash(logicalPath))
+		if _, err := os.Lstat(sourcePath); os.IsNotExist(err) {
+			sourcePath = legacySourcePath(repoRoot, logicalPath)
+		}
+		source, err := os.ReadFile(sourcePath)
+		if err != nil {
+			t.Fatalf("read current model %s: %v", logicalPath, err)
+		}
+		program, err := pipelang.Parse(source)
+		if err != nil {
+			t.Fatalf("parse current model %s: %v", logicalPath, err)
+		}
+		directory := filepath.ToSlash(filepath.Dir(logicalPath))
+		if groups[directory] == nil {
+			groups[directory] = map[string][]byte{}
+		}
+		groups[directory][logicalPath] = source
+		for _, class := range program.Classes {
+			if class.Visibility == pipelang.VisibilityPublic {
+				classNames[directory] = append(classNames[directory], class.Name)
+			}
+		}
+	}
+	for _, directory := range sortedKeys(groups) {
+		sort.Strings(classNames[directory])
+		for _, className := range classNames[directory] {
+			if _, err := pipelang.CompileFiles(groups[directory], className); err != nil {
+				t.Errorf("compile current model %s/%s: %v", directory, className, err)
+			}
+		}
+	}
+}
+
 func authoredPipeLangPaths(t *testing.T, repoRoot string) []string {
 	t.Helper()
 	var paths []string
+	for _, logicalPath := range retiredLegacyModels {
+		if _, err := os.Lstat(filepath.Join(repoRoot, filepath.FromSlash(logicalPath))); !os.IsNotExist(err) {
+			t.Fatalf("retired legacy package source remains or cannot be inspected: %s", logicalPath)
+		}
+		paths = append(paths, logicalPath)
+	}
 	for _, root := range []string{"packages", filepath.Join("src", "core", "workflows"), "workflows"} {
 		err := filepath.WalkDir(filepath.Join(repoRoot, root), func(path string, entry fs.DirEntry, err error) error {
 			if err != nil {

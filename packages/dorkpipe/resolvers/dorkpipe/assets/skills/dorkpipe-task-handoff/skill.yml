@@ -1,3 +1,0 @@
-name: dorkpipe-task-handoff
-description: Carry an active DorkPipe objective into one fresh task after the user requests a handoff, preserving scope, completed proof, repository state, and the next productive step without replaying chronology or creating new authority.
-short_description: Hand off an active objective

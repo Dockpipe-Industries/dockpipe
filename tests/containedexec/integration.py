@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import sys
 from campaign import Campaign, InputGuard, atomic_json, fingerprint, host_identity
-from verification import StageRunner, POLICY, source_paths, toolchain_identity, dependency_guard, ROOT
+from verification import StageRunner, POLICY, source_paths, toolchain_identity, dependency_guard, ROOT, editor_source
 from job import verify_job
 
 CHECKS = [('core', './src/lib/pipelang/coreir'), ('hir', './src/lib/pipelang/hir'),
@@ -53,7 +53,7 @@ def main():
             row = stage.run([name], command)
             rows.append(row)
         editor = StageRunner(campaign, 'editor', identity, ['editor'], args.cache, inputs)
-        editor_row = editor.run(['editor'], [str(args.node), '--test', 'extension.test.js'], cwd=ROOT / 'src/app/tooling/vscode-extensions/dockpipe-language-support')
+        editor_row = editor.run(['editor'], [str(args.node), '--test', 'extension.test.js'], cwd=editor_source())
         editor_result = editor.finish()
         result = stage.finish()
         result['editor'] = editor_result

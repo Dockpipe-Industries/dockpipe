@@ -10,6 +10,7 @@ vars:
   RELEASE_SETUP_REPOSITORY: "" # Required: owner/repository receiving the scoped secrets.
   RELEASE_SETUP_ENVIRONMENT: "release"
   RELEASE_SETUP_APPLY: "0"
+  RELEASE_SETUP_UPLOAD_ONLY: "0" # Standalone uploads need no APT signing key.
   R2_ENDPOINT_URL: "" # Required: your HTTPS S3-compatible endpoint.
   DOCKPIPE_RELEASE_BUCKET: "" # Required: your publication bucket.
   R2_PREFIX: "packages"

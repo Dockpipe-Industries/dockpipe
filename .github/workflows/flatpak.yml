@@ -48,7 +48,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends flatpak python3-yaml
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
           flatpak install --user --noninteractive --assumeyes flathub org.kde.Sdk//6.10 org.kde.Platform//6.10
-      - name: Build CLI and required core only
+      - name: Build CLI, core and pinned native store
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -71,6 +71,21 @@ jobs:
           go build -trimpath -ldflags "-s -w -X main.Version=$version" -o "$RUNNER_TEMP/dockpipe" ./src/cmd
           "$RUNNER_TEMP/dockpipe" package compile core --workdir "$GITHUB_WORKSPACE"
           "$RUNNER_TEMP/dockpipe" package build store --workdir "$GITHUB_WORKSPACE" --only core --out "$RUNNER_TEMP/core-store"
+          wrapper_source="$GITHUB_WORKSPACE/workflows/ci/dockpipe-repo-quality"
+          wrapper_work="$RUNNER_TEMP/main-owned"
+          wrapper_target="$wrapper_work/workflows/dockpipe-repo-quality"
+          mkdir -p "$wrapper_target/assets/flatpak" "$wrapper_target/assets/scripts"
+          cp "$wrapper_source/config.yml" "$wrapper_source/package.yml" "$wrapper_target/"
+          cp "$wrapper_source/assets/source-lock.json" "$wrapper_target/assets/"
+          cp "$wrapper_source/assets/flatpak/package.json" "$wrapper_target/assets/flatpak/"
+          cp "$wrapper_source/assets/scripts/repo-quality-pinned.py" "$wrapper_target/assets/scripts/"
+          env -u DOCKPIPE_PACKAGES_ROOT "$RUNNER_TEMP/dockpipe" package compile workflows --workdir "$wrapper_work" --from "$wrapper_work/workflows" --force
+          env -u DOCKPIPE_PACKAGES_ROOT "$RUNNER_TEMP/dockpipe" package build store --workdir "$wrapper_work" --only workflows --out "$RUNNER_TEMP/main-store" --version "$version"
+          python3 release/packaging/ingest-pinned-stores.py \
+            --lock release/packaging/pinned-stores.lock.json \
+            --platform linux-amd64 --core-store "$RUNNER_TEMP/core-store" \
+            --main-store "$RUNNER_TEMP/main-store" \
+            --out "$RUNNER_TEMP/native-store"
       - name: Build and test Flatpak desktop and optional bundled dependency
         shell: bash
         run: |
@@ -81,21 +96,6 @@ jobs:
         run: |
           docker pull debian:12
           python3 release/packaging/desktop/flatpak/container-smoke.py "$RUNNER_TEMP/flatpak/app"
-      - name: Prepare complete optional package inputs
-        shell: bash
-        run: |
-          set -euo pipefail
-          export CGO_ENABLED=0 PIPEON_BUILD_DESKTOP=0
-          export DOCKPIPE_BIN="$RUNNER_TEMP/dockpipe"
-          export DOCKPIPE_PACKAGES_ROOT="$RUNNER_TEMP/native-packages"
-          export XDG_STATE_HOME="$RUNNER_TEMP/dockpipe-state"
-          export XDG_CACHE_HOME="$RUNNER_TEMP/dockpipe-cache"
-          "$DOCKPIPE_BIN" package compile all --workdir "$GITHUB_WORKSPACE" --force
-          for package in secrets remote pipeon; do
-            "$DOCKPIPE_BIN" package build source --workdir "$GITHUB_WORKSPACE" --only "$package"
-          done
-          # Source compilation invalidates consumers of the replaced resolvers.
-          "$DOCKPIPE_BIN" package compile workflows --workdir "$GITHUB_WORKSPACE" --from workflows
       - name: Build and qualify optional Flatpak catalog
         shell: bash
         run: |
@@ -104,7 +104,7 @@ jobs:
           python3 release/packaging/desktop/flatpak/prepare-package-tools.py "$RUNNER_TEMP/package-tools" \
             --cache "$RUNNER_TEMP/package-downloads" --app "$RUNNER_TEMP/flatpak/app"
           python3 release/packaging/desktop/flatpak/build-catalog.py "$RUNNER_TEMP/flatpak/app" \
-            "$RUNNER_TEMP/native-packages" "$RUNNER_TEMP/package-tools" "$RUNNER_TEMP/flatpak-catalog"
+            "$RUNNER_TEMP/native-store" "$RUNNER_TEMP/package-tools" "$RUNNER_TEMP/flatpak-catalog"
       - name: Stage tested release artifacts
         if: inputs.version != ''
         shell: bash

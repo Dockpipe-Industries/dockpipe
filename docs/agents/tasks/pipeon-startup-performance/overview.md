@@ -1,6 +1,15 @@
 # TASK-012 Pipeon Startup, Provisioning, And Provider Pools
 
-## Goal
+## Direction Update — 2026-10-17
+
+Pipeon remains hidden and paused. The user is considering retirement in favor of
+DorkPipe chat inside DockPipe and a DockPipe/PipeLang editor integration. This is
+not an approved retirement or instruction to continue the startup work below.
+Retain existing packages, settings, sessions and migration evidence. The
+[direction review](../agentic-app-ui/direction-review.md) gates implementation and
+any removal; the remaining document records the previous design and evidence.
+
+## Historical Goal
 
 Make Pipeon open quickly from a normal developer machine while preserving the current local-first,
 offline-capable stack.

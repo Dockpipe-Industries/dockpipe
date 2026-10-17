@@ -15,7 +15,7 @@ tasks:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-008
-    topic: ForgePipe agentic app UI
+    topic: DorkPipe AI features in DockPipe
     path: docs/agents/tasks/agentic-app-ui/index.yaml
     dispatch:
       readiness: unclassified
@@ -30,8 +30,8 @@ tasks:
     topic: Declarative dependency install UX
     path: docs/agents/tasks/declarative-dependency-install-ux/index.yaml
     dispatch:
-      readiness: unclassified
-      ownership: unclaimed
+      readiness: ready
+      ownership: active-objective
   - id: TASK-011
     topic: Local Windows CI VM parity and guest tooling
     path: docs/agents/tasks/local-windows-ci-vm-parity/index.yaml
@@ -180,6 +180,55 @@ tasks:
   - id: TASK-036
     topic: Provider-neutral workflow delivery and browser-authorized remote onboarding
     path: docs/agents/tasks/remote-node-onboarding/index.yaml
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
+
+  - id: TASK-037
+    topic: ForgePipe engine and spatial ecosystem extraction
+    path: docs/agents/tasks/forgepipe/index.yaml
+    dispatch:
+      readiness: ready
+      ownership: active-objective
+
+  - id: TASK-038
+    topic: Native Terraform MCP Executor with Scoped Authorization
+    path: docs/agents/tasks/standalone-terraform-mcp-executor/index.yaml
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
+
+  - id: TASK-039
+    topic: Unified DockPipe MCP Gateway and Native Capabilities
+    path: docs/agents/tasks/unified-mcp-gateway/index.yaml
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
+
+  - id: TASK-040
+    topic: Third-Party MCP Import Through the Unified Gateway
+    path: docs/agents/tasks/third-party-mcp-import/index.yaml
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
+
+  - id: TASK-041
+    topic: Optional DockPipe Cloud MCP Approvals
+    path: docs/agents/tasks/cloud-mcp-approvals/index.yaml
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
+
+  - id: TASK-042
+    topic: Provider-Agnostic OIDC Workload Federation
+    path: docs/agents/tasks/oidc-workload-federation/index.yaml
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
+
+  - id: TASK-043
+    topic: Configurable Networking, Ingress and Egress
+    path: docs/agents/tasks/configurable-networking/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed

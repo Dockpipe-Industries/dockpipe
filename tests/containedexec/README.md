@@ -57,6 +57,15 @@ accept `--mode fresh|resume`. Matrix accepts either `--fixtures DIR` or
 supports explicit `--selection-file` logical-case samples, always reported as
 partial proof, and `--build-store` / `--native-build-cache` persistent paths.
 
+Integration also requires `DORKPIPE_EDITOR_TEST_SOURCE` to name an absolute,
+extracted DorkPipe language-support editor test SDK outside this checkout. Obtain
+and extract the exact private release asset before starting the contained job.
+The source-controlled `release/editor-source.lock.json` pins its DorkPipe commit,
+curated source digest, editor version and manifest checksum. Admission rejects
+missing, linked, added or changed SDK files. The editor stage runs the SDK's
+actual `extension.test.js` through the declared Node executable; both the SDK
+and lock participate in integration input fingerprints and resume invalidation.
+
 Campaign schema `pipelang-campaign-v1` uses checksummed manifests and receipts,
 fsync/rename publication, immutable manifest revisions, exclusive kernel writer
 locks and linked attempts. A successful receipt requires complete case selection,

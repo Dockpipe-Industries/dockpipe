@@ -19,8 +19,23 @@ func TestBundledAuthoredCompatibility(t *testing.T) {
 		t.Fatal(err)
 	}
 	expected := map[string]bool{}
+	externalPackages := []string{
+		"packages/dorkpipe/",
+		"packages/dorkpipe-mcp/",
+		"packages/pipeon/",
+	}
 	for _, name := range strings.Split(string(out), "\x00") {
 		if name != "VERSION" && name != "assets/entrypoint.sh" && !strings.HasPrefix(name, "src/core/") && !strings.HasPrefix(name, "packages/") && !strings.HasPrefix(name, "workflows/") {
+			continue
+		}
+		external := false
+		for _, prefix := range externalPackages {
+			if strings.HasPrefix(name, prefix) {
+				external = true
+				break
+			}
+		}
+		if external {
 			continue
 		}
 		hidden := false
@@ -64,11 +79,13 @@ func TestBundledAuthoredCompatibility(t *testing.T) {
 			return nil
 		}
 		count++
-		if !expected[name] {
-			prefix := "packages/dorkpipe/resolvers/dorkpipe/assets/tooling/bin/linux/"
-			if name != prefix+"dockpipe" && name != prefix+"dorkpipe" && name != prefix+"mcpd" {
-				t.Errorf("undeclared bundled input: %s", name)
+		for _, prefix := range externalPackages {
+			if strings.HasPrefix(name, prefix) {
+				t.Errorf("external package embedded: %s", name)
 			}
+		}
+		if !expected[name] {
+			t.Errorf("undeclared bundled input: %s", name)
 		}
 		return nil
 	})
