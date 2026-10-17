@@ -42,6 +42,19 @@ public:
     {
         return CanvasIcons::icon(file.isDir() ? CanvasIcons::Symbol::Folder : CanvasIcons::Symbol::Code);
     }
+
+    QString type(const QFileInfo &file) const override
+    {
+        const QString displayType = QFileIconProvider::type(file);
+        if (!displayType.isEmpty())
+            return displayType;
+
+        // Qt 6.2 needs a nonempty type to insert newly discovered file rows.
+        if (file.isDir())
+            return QCoreApplication::translate("ProjectFilesWidget", "Folder");
+        return QCoreApplication::translate("ProjectFilesWidget", "File");
+    }
+
     QIcon icon(IconType type) const override
     {
         return CanvasIcons::icon(type == Folder ? CanvasIcons::Symbol::Folder : CanvasIcons::Symbol::Code);
