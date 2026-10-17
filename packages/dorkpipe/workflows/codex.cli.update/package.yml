@@ -11,6 +11,7 @@ license: Apache-2.0
 repository: https://github.com/Dockpipe-Industries/dockpipe
 tags: [workflow, dorkpipe, codex, dependency, update]
 depends: [dorkpipe]
+requires_resolvers: [dorkpipe]
 platforms: [windows, deb, macos]
 dependencies:
   host:

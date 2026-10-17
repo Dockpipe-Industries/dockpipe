@@ -1,0 +1,7 @@
+schema: 1
+kind: workflow
+name: dockpipe-repo-quality
+version: 0.6.0
+namespace: dockpipeproject
+license: Apache-2.0
+requires_resolvers: [dockpipe]

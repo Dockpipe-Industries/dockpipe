@@ -1,0 +1,6 @@
+schema: 1
+kind: resolver
+name: dorkpipe
+version: 0.6.2
+namespace: dockpipeproject
+license: Apache-2.0

@@ -1,0 +1,7 @@
+schema: 1
+kind: resolver
+name: dockpipe.cloudflare.r2upload
+version: 0.6.3
+namespace: dockpipe-cloudflare
+license: Apache-2.0
+requires_resolvers: [dockpipe]
