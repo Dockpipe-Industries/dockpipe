@@ -1,7 +1,7 @@
 #include "SourceHighlighter.h"
 #include <definition.h>
 #include <repository.h>
-#include <theme.h>
+#include <KSyntaxHighlighting/Theme>
 #include <QApplication>
 #include <QDir>
 #include <QResource>
