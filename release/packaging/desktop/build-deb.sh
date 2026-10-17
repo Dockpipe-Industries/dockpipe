@@ -12,6 +12,9 @@ mkdir -p "$stage/root/usr/bin" "$stage/root/usr/share/applications" "$stage/root
 mkdir -p "$stage/root/usr/share/doc/dockpipe-desktop"
 cp "$root/LICENSE" "$stage/root/usr/share/doc/dockpipe-desktop/copyright"
 install -m 755 "$launcher" "$stage/root/usr/bin/dockpipe-launcher"
+syntax_dir="$(dirname "$launcher")"
+install -D -m644 "$syntax_dir/dockpipe-syntax.rcc" "$stage/root/usr/share/dockpipe/launcher/dockpipe-syntax.rcc"
+cp -R "$syntax_dir/syntax-licenses" "$stage/root/usr/share/dockpipe/launcher/"
 cp "$root/release/packaging/desktop/dockpipe-launcher.desktop" "$stage/root/usr/share/applications/"
 cp -R "$root/src/app/tooling/dockpipe-launcher/resources/icons/hicolor" "$stage/root/usr/share/icons/"
 # Let the native distribution determine ABI constraints rather than guessing Qt names/versions.

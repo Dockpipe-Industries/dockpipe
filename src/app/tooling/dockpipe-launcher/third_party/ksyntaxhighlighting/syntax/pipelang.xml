@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE language SYSTEM "language.dtd">
+<!-- SPDX-License-Identifier: Apache-2.0
+     Dockpipe grammar, aligned with the repository's PipeLang tmLanguage. -->
+<language name="PipeLang" version="1" kateversion="5.62" section="Sources" extensions="*.pipe;*.pipelang" mimetype="text/x-pipelang" author="Dockpipe contributors" license="Apache-2.0">
+  <highlighting>
+    <list name="keywords"><item>public</item><item>private</item><item>Interface</item><item>Class</item><item>Struct</item><item>Record</item><item>Enum</item><item>new</item><item>return</item><item>if</item><item>else</item><item>mutable</item></list>
+    <list name="types"><item>string</item><item>int</item><item>bool</item><item>float</item><item>List</item><item>Result</item><item>ArithmeticError</item><item>Optional</item><item>IComparable</item></list>
+    <list name="constants"><item>true</item><item>false</item></list>
+    <list name="builtins"><item>some</item><item>none</item><item>has_value</item><item>value_or</item><item>empty_list</item><item>list</item><item>count</item><item>append</item><item>at</item><item>find_by</item><item>filter_by</item><item>filter</item><item>contains_casefolded</item><item>filter_contains_casefolded</item><item>filter_joined_contains_casefolded</item><item>sort_by_ordinal</item><item>ascending</item><item>descending</item><item>propagate</item><item>match</item><item>trim</item><item>ok</item><item>err</item><item>is_ok</item><item>success_or</item><item>failure_or</item></list>
+    <contexts>
+      <context name="Normal" attribute="Normal" lineEndContext="#stay">
+        <Detect2Chars char="/" char1="/" attribute="Comment" context="Comment"/>
+        <DetectChar char="&quot;" attribute="String" context="String"/>
+        <keyword String="keywords" attribute="Keyword" context="#stay"/>
+        <keyword String="types" attribute="Type" context="#stay"/>
+        <keyword String="constants" attribute="Constant" context="#stay"/>
+        <keyword String="builtins" attribute="Builtin" context="#stay"/>
+        <Float attribute="Number" context="#stay"/>
+        <Int attribute="Number" context="#stay"/>
+        <RegExpr String="\b[A-Z][A-Za-z0-9_]*\b" attribute="Type" context="#stay"/>
+      </context>
+      <context name="Comment" attribute="Comment" lineEndContext="#pop"/>
+      <context name="String" attribute="String" lineEndContext="#stay">
+        <HlCStringChar attribute="Escape" context="#stay"/>
+        <DetectChar char="&quot;" attribute="String" context="#pop"/>
+      </context>
+    </contexts>
+    <itemDatas>
+      <itemData name="Normal" defStyleNum="dsNormal"/>
+      <itemData name="Keyword" defStyleNum="dsKeyword"/>
+      <itemData name="Type" defStyleNum="dsDataType"/>
+      <itemData name="Constant" defStyleNum="dsConstant"/>
+      <itemData name="Builtin" defStyleNum="dsBuiltIn"/>
+      <itemData name="Comment" defStyleNum="dsComment"/>
+      <itemData name="String" defStyleNum="dsString"/>
+      <itemData name="Escape" defStyleNum="dsSpecialChar"/>
+      <itemData name="Number" defStyleNum="dsDecVal"/>
+    </itemDatas>
+  </highlighting>
+  <general><comments><comment name="singleLine" start="//"/></comments></general>
+</language>

@@ -31,8 +31,11 @@ class RemoteWidget;
 class ActivityWidget;
 class ExecutionExplorer;
 class WorkflowEditorWidget;
+class ProjectFilesWidget;
+class ProjectGitWidget;
 class QDialog;
 class QSplitter;
+class CockpitWidget;
 
 struct AsyncWorkflowCatalogResult {
     QString workdir;
@@ -82,6 +85,9 @@ private slots:
 
 private:
     void setupMenuBar();
+    void ensureCockpit();
+    void applyCockpitAvailability();
+    bool saveSettings(const LauncherSettings &settings);
     void setupAdvancedPage(QWidget *page);
     void setupWorkflowPicker();
     void openWorkflowPicker();
@@ -141,6 +147,9 @@ private:
     DockerObservabilityWidget *m_dockerWidget = nullptr;
 
     WorkflowEditorWidget *m_workflowEditor = nullptr;
+    ProjectFilesWidget *m_projectFiles = nullptr;
+    ProjectGitWidget *m_projectGit = nullptr;
+    CockpitWidget *m_cockpit = nullptr;
     QDialog *m_workflowPicker = nullptr;
     QWidget *m_consolePanel = nullptr;
     QPushButton *m_consoleToggle = nullptr;

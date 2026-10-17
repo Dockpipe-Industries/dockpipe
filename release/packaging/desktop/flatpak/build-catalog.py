@@ -6,12 +6,15 @@ Platform, packaged dependencies and required release payloads. Host application
 authentication, live provider operations and VM boot remain separate tests.
 """
 import argparse
+import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import platform
 import shlex
 import shutil
+import stat
 import subprocess
 import tarfile
 import tempfile
@@ -34,6 +37,23 @@ TOOLS = {
 RUNTIME_COMMANDS = {"bash", "curl", "docker", "git", "python3", "ssh"}
 HOST_COMMANDS = {"op", "code", "cursor", "codex", "claude", "npm", "systemctl", "loginctl",
                  "pkexec", "nvidia-smi", "nvidia-ctk", "qemu-img", "qemu-system-x86_64"}
+MAX_COMPILED_ARCHIVE_BYTES = 512 * 1024 * 1024
+
+
+def compiled_archive_checksum(path):
+    """Hash a compiled package; its bundled tools can exceed one tool input."""
+    digest = hashlib.sha256()
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    with os.fdopen(descriptor, "rb") as archive:
+        if not stat.S_ISREG(os.fstat(archive.fileno()).st_mode):
+            raise ValueError(f"Invalid compiled package archive: {path}")
+        total_bytes = 0
+        while chunk := archive.read(1024 * 1024):
+            total_bytes += len(chunk)
+            if total_bytes > MAX_COMPILED_ARCHIVE_BYTES:
+                raise ValueError(f"Compiled package archive exceeds capacity: {path}")
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def profiles(root):
@@ -193,7 +213,7 @@ def main():
             target.parent.mkdir(parents=True, exist_ok=True)
             with tarfile.open(target, "w:gz", format=tarfile.PAX_FORMAT, compresslevel=3) as archive:
                 archive.add(package, arcname=f"{kind}s/{name}")
-            digest = helpers.checksum(target)
+            digest = compiled_archive_checksum(target)
             target.with_name(target.name + ".sha256").write_text(f"{digest}  {target.name}\n")
             receipts.append({"kind": kind, "name": name, "compiled_sha256": digest,
                              "profile": str(profile_path.relative_to(root)),
