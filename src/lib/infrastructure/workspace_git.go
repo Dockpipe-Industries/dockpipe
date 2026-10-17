@@ -49,7 +49,7 @@ type workspaceGitBuffer struct{ bytes.Buffer }
 
 func (buffer *workspaceGitBuffer) Write(data []byte) (int, error) {
 	if len(data) > workspaceGitBytes-buffer.Len() {
-		return 0, errors.New("Git output exceeds the 8 MiB review limit")
+		return 0, errors.New("git output exceeds the 8 MiB review limit")
 	}
 	return buffer.Buffer.Write(data)
 }
@@ -116,11 +116,11 @@ func readWorkspaceGitSnapshot(ctx context.Context, workdir string) (*WorkspaceGi
 			continue
 		}
 		if len(entry) < 4 || !utf8.Valid(entry) {
-			return nil, errors.New("Git returned an unsupported filename or status")
+			return nil, errors.New("git returned an unsupported filename or status")
 		}
 		change := WorkspaceGitChange{Status: string(entry[:2]), Path: string(entry[3:])}
 		if len(result.Changes) >= 2048 {
-			return nil, errors.New("Git review exceeds 2048 changed files; narrow the change set first")
+			return nil, errors.New("git review exceeds 2048 changed files; narrow the change set first")
 		}
 		result.Changes = append(result.Changes, change)
 		if change.Status != "??" {
@@ -215,7 +215,7 @@ func RunWorkspaceGit(ctx context.Context, request WorkspaceGitRequest) (*Workspa
 		return current, nil
 	}
 	if current.Branch == "" {
-		return nil, errors.New("Git is in detached HEAD state; select a branch before writing")
+		return nil, errors.New("git is in detached HEAD state; select a branch before writing")
 	}
 	var args []string
 	switch request.Action {
@@ -259,7 +259,7 @@ func RunWorkspaceGit(ctx context.Context, request WorkspaceGitRequest) (*Workspa
 		return nil, fmt.Errorf("unsupported project Git action %q", request.Action)
 	}
 	if _, err := workspaceGitCommand(ctx, current.Root, args...); err != nil {
-		return nil, fmt.Errorf("%w\nRefresh to inspect the current state before retrying. A failed commit may leave selected files staged.", err)
+		return nil, fmt.Errorf("%w; refresh to inspect the current state before retrying; a failed commit may leave selected files staged", err)
 	}
 	updated, err := readWorkspaceGitSnapshot(ctx, current.Root)
 	if err != nil {
@@ -285,7 +285,7 @@ func workspaceGitUntracked(root, path string, budget *int) ([]byte, error) {
 		return nil, errors.Join(readErr, closeErr)
 	}
 	if len(content) > *budget {
-		return nil, errors.New("Git file content exceeds the 8 MiB review limit")
+		return nil, errors.New("git file content exceeds the 8 MiB review limit")
 	}
 	*budget -= len(content)
 	if !utf8.Valid(content) || bytes.ContainsRune(content, '\x00') {
