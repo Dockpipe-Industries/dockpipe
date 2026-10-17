@@ -7,6 +7,7 @@ finite manifest entries and ownership set bound composition work.
 """
 import argparse
 import copy
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -21,6 +22,18 @@ MAX_MANIFEST_BYTES = 8 << 20
 TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]*$")
 SHA256 = re.compile(r"^[0-9a-fA-F]{64}$")
 KINDS = {"workflow": "workflows", "resolver": "resolvers"}
+
+# Win32 constants are independent of the POSIX flags exposed by Python's os.
+FILE_ATTRIBUTE_DIRECTORY = 0x10
+FILE_ATTRIBUTE_DEVICE = 0x40
+FILE_ATTRIBUTE_REPARSE_POINT = 0x400
+GENERIC_READ = 0x80000000
+FILE_SHARE_READ = 0x1
+OPEN_EXISTING = 3
+FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000
+FILE_FLAG_BACKUP_SEMANTICS = 0x02000000
+FILE_TYPE_DISK = 1
+FILE_ATTRIBUTE_TAG_INFO_CLASS = 9
 
 
 def require_bounded_json(document):
@@ -171,6 +184,99 @@ def read_json(path):
     return json.loads(data, object_pairs_hook=reject_duplicate_keys)
 
 
+def reject_archive_links(path):
+    # lstat also identifies Windows junctions and other reparse points which
+    # Path.is_symlink() does not classify as symbolic links on older Python.
+    for component in (path, *path.parents):
+        info = component.lstat()
+        if stat.S_ISLNK(info.st_mode):
+            raise ValueError('Store archive path contains a link')
+        if os.name == 'nt':
+            if not hasattr(info, 'st_file_attributes'):
+                raise ValueError('Windows file attributes are unavailable')
+            if info.st_file_attributes & FILE_ATTRIBUTE_REPARSE_POINT:
+                raise ValueError('Store archive path contains a reparse link')
+
+
+def windows_archive_descriptor(path):
+    """Transfer one validated, non-reparse disk handle to the Python runtime."""
+    import ctypes
+    import msvcrt
+
+    class FileAttributeTagInfo(ctypes.Structure):
+        _fields_ = [('attributes', ctypes.c_uint32), ('reparse_tag', ctypes.c_uint32)]
+
+    try:
+        kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+        create_file = kernel.CreateFileW
+        create_file.argtypes = [ctypes.c_wchar_p, ctypes.c_uint32, ctypes.c_uint32,
+                                ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint32,
+                                ctypes.c_void_p]
+        create_file.restype = ctypes.c_void_p
+        file_type = kernel.GetFileType
+        file_type.argtypes = [ctypes.c_void_p]
+        file_type.restype = ctypes.c_uint32
+        file_information = kernel.GetFileInformationByHandleEx
+        file_information.argtypes = [ctypes.c_void_p, ctypes.c_int,
+                                     ctypes.c_void_p, ctypes.c_uint32]
+        file_information.restype = ctypes.c_int
+        close_handle = kernel.CloseHandle
+        close_handle.argtypes = [ctypes.c_void_p]
+        close_handle.restype = ctypes.c_int
+    except AttributeError as error:
+        raise ValueError('Windows secure file API is unavailable') from error
+
+    # OPEN_REPARSE_POINT opens the final component itself. BACKUP_SEMANTICS
+    # permits inspecting directories so their handles can be rejected below.
+    # Share only reads: writers and deletion cannot race the owned read handle.
+    handle = create_file(str(path), GENERIC_READ, FILE_SHARE_READ, None, OPEN_EXISTING,
+                         FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, None)
+    if handle is None or handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        if file_type(handle) != FILE_TYPE_DISK:
+            raise ValueError('Store archive must be a regular disk file')
+        info = FileAttributeTagInfo()
+        if not file_information(handle, FILE_ATTRIBUTE_TAG_INFO_CLASS, ctypes.byref(info), ctypes.sizeof(info)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        if info.attributes & FILE_ATTRIBUTE_REPARSE_POINT or info.reparse_tag:
+            raise ValueError('Store archive handle is a reparse link')
+        if info.attributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_DEVICE):
+            raise ValueError('Store archive must be a regular disk file')
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY | os.O_NOINHERIT)
+        handle = None  # open_osfhandle transfers ownership to the descriptor.
+        return descriptor
+    finally:
+        if handle is not None and not close_handle(handle):
+            raise ctypes.WinError(ctypes.get_last_error())
+
+
+def archive_descriptor(path):
+    if os.name == 'nt':
+        return windows_archive_descriptor(path)
+    if os.name != 'posix':
+        raise ValueError('Secure store archive opening is unsupported on this platform')
+    if not hasattr(os, 'O_NOFOLLOW') or not hasattr(os, 'O_NONBLOCK'):
+        raise ValueError('Secure store archive opening requires no-follow and nonblocking support')
+    return os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+
+
+@contextmanager
+def open_archive(path):
+    reject_archive_links(path)
+    descriptor = archive_descriptor(path)
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise ValueError('Store archive must be a regular file')
+        with os.fdopen(descriptor, 'rb', closefd=False) as reader:
+            # Recheck parent junctions/links after acquisition; all reads and
+            # bounds use this owned descriptor rather than reopening the path.
+            reject_archive_links(path)
+            yield reader
+    finally:
+        os.close(descriptor)
+
+
 def assemble(base, candidate, owned, baseline_root, candidate_root, output, max_bytes):
     """Stage a complete immutable store, retaining verified unrelated archives.
 
@@ -194,13 +300,8 @@ def assemble(base, candidate, owned, baseline_root, candidate_root, output, max_
         for identity, entry in sorted(entries.items()):
             source_root = candidate_root if identity in ownership else baseline_root
             source = source_root / entry['tarball']
-            if any(path.is_symlink() for path in (source, *source.parents)):
-                raise ValueError('Store archive path contains a link')
-            descriptor = os.open(source, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-            with os.fdopen(descriptor, 'rb') as reader:
+            with open_archive(source) as reader:
                 info = os.fstat(reader.fileno())
-                if not stat.S_ISREG(info.st_mode):
-                    raise ValueError('Store archive must be a regular file')
                 if info.st_size <= 0 or info.st_size > max_bytes - total:
                     raise ValueError('Store archives exceed the declared byte budget')
                 expected_size = entry.get('size_bytes', info.st_size)
