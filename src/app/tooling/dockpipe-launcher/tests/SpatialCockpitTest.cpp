@@ -109,6 +109,13 @@ int spatialCockpitTest()
     cockpit.editWorkspaces();
     auto *editor = cockpit.findChild<SpatialWorkspaceEditor *>();
     VERIFY(editor);
+#if defined(Q_OS_LINUX)
+    const QString applicationChoice = "Installed · Spatial Test App";
+#else
+    // Other platforms have no installed-app inventory; use a durable fixture reference.
+    editor->preferApplication({"spatial-fixture.desktop", windowClass, "Spatial Test App"});
+    const QString applicationChoice = "Current · Spatial Test App";
+#endif
     QTimer::singleShot(0, []() {
         auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
         if (dialog) {
@@ -125,39 +132,60 @@ int spatialCockpitTest()
         }
     });
     editor->findChild<QPushButton *>("spatialAddBuilding")->click();
-    QTimer::singleShot(0, []() {
+    bool firstDisplaySelected = false;
+    QTimer::singleShot(0, [&]() {
         auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
         if (!dialog)
             return;
         auto *apps = dialog->findChild<QComboBox *>("spatialApplication");
-        const int index = apps->findText("Installed · Spatial Test App");
+        const int index = apps ? apps->findText(applicationChoice) : -1;
         if (index >= 0) {
             apps->setCurrentIndex(index);
+            firstDisplaySelected = true;
             dialog->accept();
         } else {
             dialog->reject();
         }
     });
     editor->findChild<QPushButton *>("spatialAddDisplay")->click();
-    QTimer::singleShot(0, []() {
+    VERIFY(firstDisplaySelected);
+    bool displayEdited = false;
+    QTimer::singleShot(0, [&]() {
         auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
         if (!dialog)
             return;
-        dialog->findChild<QDoubleSpinBox *>("spatialWidth")->setValue(400);
-        dialog->findChild<QDoubleSpinBox *>("spatialOffset")->setValue(-160);
-        dialog->accept();
+        auto *width = dialog->findChild<QDoubleSpinBox *>("spatialWidth");
+        auto *offset = dialog->findChild<QDoubleSpinBox *>("spatialOffset");
+        if (width && offset) {
+            width->setValue(400);
+            offset->setValue(-160);
+            displayEdited = true;
+            dialog->accept();
+        } else {
+            dialog->reject();
+        }
     });
     editor->findChild<QPushButton *>("spatialEdit")->click();
-    QTimer::singleShot(0, []() {
+    VERIFY(displayEdited);
+    bool secondDisplaySelected = false;
+    QTimer::singleShot(0, [&]() {
         auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
         if (!dialog)
             return;
         auto *apps = dialog->findChild<QComboBox *>("spatialApplication");
-        apps->setCurrentIndex(apps->findText("Installed · Spatial Test App"));
-        dialog->findChild<QComboBox *>("spatialWall")->setCurrentText("east");
-        dialog->accept();
+        auto *wall = dialog->findChild<QComboBox *>("spatialWall");
+        const int index = apps ? apps->findText(applicationChoice) : -1;
+        if (index >= 0 && wall) {
+            apps->setCurrentIndex(index);
+            wall->setCurrentText("east");
+            secondDisplaySelected = true;
+            dialog->accept();
+        } else {
+            dialog->reject();
+        }
     });
     editor->findChild<QPushButton *>("spatialAddDisplay")->click();
+    VERIFY(secondDisplaySelected);
     editor->findChild<QPushButton *>("spatialSave")->click();
     VERIFY(cockpit.spatialWorkspace().planets.size() == 1);
     const QString editorScreenshot = qEnvironmentVariable("DOCKPIPE_SPATIAL_SCREENSHOT");
