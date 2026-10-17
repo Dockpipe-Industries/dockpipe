@@ -70,31 +70,17 @@ install-dockpipe-launcher-global: install-dockpipe-launcher
 		> "$$HOME/.local/share/applications/dockpipe-launcher.desktop"
 	if command -v update-desktop-database >/dev/null 2>&1; then update-desktop-database "$$HOME/.local/share/applications" >/dev/null 2>&1 || true; fi
 
-# Package Dockpipe language support extension (.vsix).
+# Editor source and VSIX delivery belong to the public DorkPipe repository.
+# An explicit source root is a maintainer convenience, never a base-build dependency.
 package-dockpipe-language-support:
-	mkdir -p bin/.dockpipe/extensions
-	cd src/app/tooling/vscode-extensions/dockpipe-language-support && if [ ! -x node_modules/.bin/vsce ]; then NPM_CONFIG_CACHE=$$(pwd)/../../../../../bin/.dockpipe/build/npm-cache npm ci --no-audit --no-fund; fi && NPM_CONFIG_CACHE=$$(pwd)/../../../../../bin/.dockpipe/build/npm-cache node node_modules/@vscode/vsce/vsce package --no-dependencies -o ../../../../../bin/.dockpipe/extensions/dockpipe-language-support-$$(node -p "require('./package.json').version").vsix
+	@test -n "$(DORKPIPE_EDITOR_SOURCE)" || { echo "Set DORKPIPE_EDITOR_SOURCE to DorkPipe's tooling/vscode-extensions directory." >&2; exit 1; }
+	bash "$(DORKPIPE_EDITOR_SOURCE)/scripts/build.sh" "$(CURDIR)/bin/.dockpipe/extensions"
 
-# Back-compat alias.
 package-vscode-language-support: package-dockpipe-language-support
 
-# Build + install Dockpipe language support into Cursor (fallback: VS Code CLI).
-install-dockpipe-language-support: package-dockpipe-language-support
-	VSIX="$$(ls -1t bin/.dockpipe/extensions/dockpipe-language-support-*.vsix | head -n1)"; \
-	INSTALLED=0; \
-	if command -v cursor >/dev/null 2>&1; then \
-	  echo "[dockpipe] installing Dockpipe language support into Cursor: $$VSIX"; \
-	  cursor --install-extension "$$VSIX" --force; \
-	  INSTALLED=1; \
-	fi; \
-	if command -v code >/dev/null 2>&1; then \
-	  echo "[dockpipe] installing Dockpipe language support into VS Code: $$VSIX"; \
-	  code --install-extension "$$VSIX" --force; \
-	  INSTALLED=1; \
-	fi; \
-	if [ "$$INSTALLED" -eq 0 ]; then \
-	  echo "[dockpipe] no editor CLI found. Install manually from VSIX: $$VSIX"; \
-	fi
+install-dockpipe-language-support:
+	@test -f "$(DOCKPIPE_LANGUAGE_VSIX)" || { echo "Set DOCKPIPE_LANGUAGE_VSIX to the reviewed versioned VSIX, then install it with your editor's Install from VSIX action." >&2; exit 1; }
+	code --install-extension "$(DOCKPIPE_LANGUAGE_VSIX)"
 
 # Install pre-built binary to a local PATH directory (~/.local/bin, %USERPROFILE%\\bin, …). Does not run go build.
 install:

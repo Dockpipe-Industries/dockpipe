@@ -5,6 +5,12 @@ Primitive first: run in container, optionally act after. Keep the core minimal.
 Follow the [coding style and reliability standard](docs/coding-style.md) for readable
 responsibilities, resource bounds, cancellation, recovery and failure-path tests.
 
+DorkPipe packages, its MCP bridge, Pipeon, and the Dockpipe language-support
+extension are maintained in the separate [DorkPipe](https://github.com/Dockpipe-Industries/dorkpipe)
+and [Pipeon](https://github.com/Dockpipe-Industries/pipeon) source repositories.
+Run their package, editor, and desktop build tests there. This repository builds
+Dockpipe core and ingests exact published package bundles for release qualification.
+
 **Security:** do not file public issues for undisclosed vulnerabilities — see **[SECURITY.md](SECURITY.md)**.
 
 **Issues** for bugs and ideas. **PRs** for code/docs; see [AGENTS.md](AGENTS.md). Prefer **feature branch** or **fork** → **PR → `staging`** (integration). **Do not push directly** to **`staging`** / **`master`** if those branches are protected. The maintainer ships by **PR `staging` → `master`** with updated **`release/releasenotes/<VERSION>.md`** for the selected release line (the workflow generates patch numbers) — that merge runs **Release**. **CI** (**`govulncheck`**, **`gosec`**, tests, **`make`**, **`.deb`**, **`tests/run_tests.sh`**, **`tests/integration-tests/run.sh`**) runs on PRs to **`staging`** and **`master`**; the **VERSION / release-notes gate** runs only on PRs **into `master`**. **CodeQL** runs in the same **`.github/workflows/ci.yml`** as the **`codeql`** job. Details: [release/docs/branching.md](release/docs/branching.md). **Tests:** `bash tests/run_tests.sh` (unit); integration: `bash tests/integration-tests/run.sh`.

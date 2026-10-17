@@ -68,7 +68,7 @@ Prefer composition over new infrastructure:
 - scoped filesystem access plus separate apply and publish boundaries
 - operation-result events, logs, artifacts, and run inspection
 - skills rendering and durable project guidance
-- ForgePipe's planned YAML-backed UI and approval surface from [TASK-008](../agentic-app-ui/overview.md)
+- The agentic app package's planned YAML-backed UI and approval surface from [TASK-008](../agentic-app-ui/overview.md)
 - the shipped generic software-development workflow and task-pack contract from
   [TASK-007](../closed/generic-software-dev-workflow.md), where applicable
 
@@ -153,7 +153,7 @@ over.
 - [TASK-007 Generic Software Dev Workflow](../closed/generic-software-dev-workflow.md) is a shipped
   foundation for governed planning, implementation, verification, approval, apply, and targeted
   follow-up work. Reuse it rather than duplicating its contract.
-- [TASK-008 ForgePipe Agentic App UI](../agentic-app-ui/overview.md) owns the general YAML-backed UI, approvals,
+- [TASK-008 DockPipe AI Package](../agentic-app-ui/overview.md) owns the general YAML-backed UI, approvals,
   artifacts, logs, and run-inspection surface. The Unreal panel must stay a thin domain adapter.
 - [TASK-009 Sandbox Toolchain Determinism](../sandbox-toolchain-determinism/overview.md) owns the broader
   resolver/preflight problem for reliable host tooling.
@@ -187,3 +187,10 @@ over.
   generation workflow is implemented.
 - Define the measurements and direct-worker baseline used to prove the workflow clears the value
   bar.
+
+## Related Native Engine Direction
+
+[ForgePipe (TASK-037)](../forgepipe/overview.md) records the
+authorized native engine extraction grounded in Cockpit's playable scenes and reusable tooling.
+This task keeps its Unreal-first guided-development scope. Shared governed workflows can be
+considered after native scene reuse and authoring requirements are proven.

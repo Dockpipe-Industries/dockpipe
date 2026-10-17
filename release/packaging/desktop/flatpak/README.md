@@ -136,7 +136,8 @@ shared library, including dependency preflight and package-scoped `PATH` selecti
 
 First-party packages additionally own `assets/flatpak/package.json` profiles naming
 exact artifacts, extra bundled tools, host integrations and required release
-payloads. The catalog builder rejects missing, duplicate or unowned artifacts and
+payloads. Each pinned native archive must carry a profile declaring its own
+identity. The catalog builder rejects missing, duplicate or unowned artifacts and
 unknown dependencies. It rebuilds archives with their runtime-specific dependencies,
 executes dependency/preflight checks in the Platform, then exports a complete store
 with checksums and a qualification receipt. Generated Flatpak metadata preserves the
@@ -147,15 +148,16 @@ python3 release/packaging/desktop/flatpak/prepare-package-tools.py \
   /absolute/path/new-tools --cache /absolute/path/download-cache \
   --app /absolute/path/output/app
 python3 release/packaging/desktop/flatpak/build-catalog.py \
-  /absolute/path/output/app /absolute/path/compiled-release-packages \
+  /absolute/path/output/app /absolute/path/composed-linux-amd64-native-store \
   /absolute/path/new-tools /absolute/path/new-catalog
 ```
 
-Prepare release inputs with the normal source-build hooks first. Pipeon restores
-its status/stop consumers after replacing its stack archive; release packaging also
-restores top-level workflow consumers invalidated by resolver compilation. The
-catalog's inventory comparison catches missing artifacts instead of publishing a
-partial store. Optional dependency locks currently target Linux amd64 only.
+The native input store is assembled from the new core, the checksum-pinned
+baseline, and the independently published DorkPipe and Pipeon archives. The
+catalog verifies every archive against that native store, then qualifies each
+adapted package inside the Flatpak Platform. Its inventory comparison catches
+missing profiles or artifacts instead of publishing a partial store. Optional
+dependency locks currently target Linux amd64 only.
 
 ## Release integration and proof limits
 

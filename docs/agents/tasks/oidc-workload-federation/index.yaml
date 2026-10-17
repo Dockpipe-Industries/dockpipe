@@ -1,0 +1,34 @@
+# TASK-042 Provider-Agnostic OIDC Workload Federation
+schema: 1
+id: TASK-042
+topic: "Provider-Agnostic OIDC Workload Federation"
+entrypoint: overview.md
+
+dispatch:
+  readiness: unclassified
+  ownership: unclaimed
+
+routes:
+  orientation:
+    read:
+      - overview.md
+  architecture:
+    read:
+      - overview.md
+      - ../unified-mcp-gateway/cli-first-management.md
+      - design-request.md
+  implementation:
+    read:
+      - overview.md
+      - ../unified-mcp-gateway/cli-first-management.md
+      - design-request.md
+
+documents:
+  - path: overview.md
+    role: shared federation requirements, architecture assessment, dependencies and acceptance criteria
+  - path: design-request.md
+    role: full user federation request; backlog refinement, not implementation authorization
+
+maintenance:
+  - Resolve document paths relative to this index.
+  - Keep task narrative in overview.md and dispatch metadata synchronized with docs/agents/task-index.yaml.

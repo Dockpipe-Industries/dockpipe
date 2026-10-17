@@ -1,6 +1,6 @@
 # Tooling Surfaces
 
-Read when changing Dockpipe Language Support, the DorkPipe/Pipeon VS Code extension, ForgePipe,
+Read when changing Dockpipe Language Support, the DorkPipe/Pipeon VS Code extension, DockPipe AI,
 model browser, template designer, run inspector, or any editor/app-facing workflow UX.
 
 ## Contract Rule
@@ -8,8 +8,9 @@ model browser, template designer, run inspector, or any editor/app-facing workfl
 Workflow YAML is the durable contract. Tooling may make it easier to author, inspect, or launch, but
 must not create a second durable workflow system.
 
-ForgePipe follows the same rule. It is a modern control surface over YAML, package-owned catalogs,
-launcher context, operation-result events, and artifacts. It does not own a separate execution or
+DockPipe AI is an unbuilt optional first-party package backlog. Its planned UI
+uses YAML, package-owned catalogs, launcher context, operation-result events and
+artifacts as its contracts. It does not own a separate execution or
 configuration model.
 
 ## Layers
@@ -18,17 +19,17 @@ configuration model.
 | --- | --- |
 | Dockpipe Language Support | YAML/schema completions, hovers, diagnostics, snippets. |
 | DorkPipe/Pipeon extension | Chat, designer, model browser, run inspector, draft UI state. |
-| ForgePipe | Launcher-context workflow control, YAML-backed authoring, run inspection, approvals, artifact/log views, diff preview. |
+| DockPipe AI | Launcher-context workflow control, YAML-backed authoring, run inspection, approvals, artifact/log views, diff preview. |
 | DorkPipe package | Agent orchestration, model escalation, skills, artifacts, package-owned catalogs. |
 | Dockpipe engine | Generic workflow/package/runtime/resolver execution primitives. |
 
-## ForgePipe
+## DockPipe AI (backlog)
 
-ForgePipe should be invoked by the Dockpipe launcher, using the same context-passing model as Pipeon.
+DockPipe AI should be invoked by the Dockpipe launcher, using the same context-passing model as Pipeon.
 The launcher provides the current repo/workspace, selected workflow or package, session
 identity, artifact root, allowed scopes, model/resolver lanes, and MCP connector availability.
 
-ForgePipe should focus on governed workflow work, not full IDE replacement:
+DockPipe AI should focus on governed workflow work, not full IDE replacement:
 
 - create and edit workflows, agents, tasks, MCP connectors, model-lane policy, approval/apply
   policy, and package workflow references
@@ -68,7 +69,7 @@ through operation-result events, and backed by YAML/package config rather than U
   assets explicitly.
 - If the YAML surface changes, update Dockpipe Language Support in the same change.
 - If the rich extension UX changes, document how it maps back to YAML and package-owned catalogs.
-- If ForgePipe UX changes, document the launcher context, YAML mapping, event stream, and
+- If DockPipe AI UX changes, document the launcher context, YAML mapping, event stream, and
   artifact/run-inspection behavior.
 
 ## Validation

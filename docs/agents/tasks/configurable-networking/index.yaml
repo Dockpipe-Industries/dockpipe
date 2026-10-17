@@ -1,0 +1,26 @@
+schema: 1
+id: TASK-043
+topic: Configurable Networking, Ingress and Egress
+entrypoint: overview.md
+
+dispatch:
+  readiness: unclassified
+  ownership: unclaimed
+
+routes:
+  orientation:
+    read: [overview.md]
+  architecture:
+    read: [overview.md, design-request.md, ../unified-mcp-gateway/cli-first-management.md]
+  implementation:
+    read: [overview.md, design-request.md, ../unified-mcp-gateway/cli-first-management.md]
+
+documents:
+  - path: overview.md
+    role: networking ownership, reuse inventory, audit dependencies and acceptance
+  - path: design-request.md
+    role: full user networking proposal; examples are conceptual, not shipped contracts
+
+maintenance:
+  - Resolve document paths relative to this index.
+  - Keep dispatch metadata synchronized with docs/agents/task-index.yaml.
