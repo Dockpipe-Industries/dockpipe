@@ -36,6 +36,12 @@ it, or the host lacks that UI.
 
 ## Task Routing
 
+Default agent execution uses `gpt-6.1-sol` with Medium reasoning. Delegate bounded,
+independent work when its expected value exceeds coordination and context cost.
+Prefer one stronger direct worker when that is cheaper overall; reserve escalation
+for difficult architecture, security, or repeated repair. Keep ownership and checks
+explicit, and avoid overlapping edits or automatic fanout.
+
 | Task | Read first | Recommended skills |
 | --- | --- | --- |
 | Engine or CLI behavior | `docs/agents/core/engine-boundary.md`, `docs/agents/core/architecture.md`, `docs/agents/core/validation-commands.md` | `dorkpipe-core-review` |

@@ -1,8 +1,0 @@
-name: pipeon
-title: Pipeon support assets
-catalog_type: integration
-categories: [development]
-namespace: dockpipeproject
-platforms: [windows, deb]
-description: Shared scripts and resources used by Pipeon workflows; this package is not a standalone application.
-steps: []

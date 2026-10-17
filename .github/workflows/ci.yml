@@ -44,12 +44,6 @@ jobs:
         with:
           go-version: "1.26.9"
 
-      - name: Verify MCP module without workspace resolution
-        working-directory: packages/dorkpipe-mcp
-        env:
-          GOWORK: "off"
-        run: go test -mod=readonly ./...
-
       - name: Public repository configuration boundary
         run: python3 release/packaging/check-public-content.py
 
@@ -63,23 +57,23 @@ jobs:
             ripgrep \
             shellcheck \
             qt6-base-dev \
+            libqt6opengl6-dev \
             libgl1-mesa-dev \
             libegl1-mesa-dev
 
+      # Flatpak qualification owns the native desktop build and tests.
       - name: Build CLI (Bash tests use src/bin/dockpipe)
-        run: make
+        run: make build-core
 
-      - name: govulncheck + gosec + DorkPipe CI signal bundle
+      - name: govulncheck + gosec
         env:
           DOCKPIPE_WORKDIR: ${{ github.workspace }}
           DOCKPIPE_WORKFLOW_NAME: ci
         run: |
           set -euo pipefail
           CI_RAW_DIR="$(./src/bin/dockpipe scope artifacts ci-raw --workdir "$DOCKPIPE_WORKDIR")"
-          CI_ANALYSIS_DIR="$(./src/bin/dockpipe scope artifacts ci-analysis --workdir "$DOCKPIPE_WORKDIR")"
           export DOCKPIPE_CI_RAW_DIR="$CI_RAW_DIR"
-          export DOCKPIPE_CI_ANALYSIS_DIR="$CI_ANALYSIS_DIR"
-          rm -rf "$CI_RAW_DIR" "$CI_ANALYSIS_DIR"
+          rm -rf "$CI_RAW_DIR"
           mkdir -p "$CI_RAW_DIR"
           GOBIN="$(go env GOPATH)/bin"
           go install honnef.co/go/tools/cmd/staticcheck@v0.7.0
@@ -97,7 +91,6 @@ jobs:
           "$GOBIN/gosec" -conf .gosec.json -fmt json -out="$CI_RAW_DIR/gosec.json" -exclude-dir=.gomodcache -exclude-dir=bin/.dockpipe -exclude-dir=testdata ./...
           GC=$?
           set -e
-          bash packages/dorkpipe/resolvers/dorkpipe/assets/scripts/normalize-ci-scans.sh
           echo "::group::gosec stats (JSON)"
           jq '.Stats // empty' "$CI_RAW_DIR/gosec.json" || true
           echo "::endgroup::"
@@ -112,6 +105,9 @@ jobs:
 
       - name: Runtime Go tests (PipeLang uses separate containment qualification)
         run: bash release/packaging/test-runtime.sh
+
+      - name: Pinned repository workflow tests
+        run: python3 -B -m unittest discover -s workflows/ci/dockpipe-repo-quality/tests -p 'test_*.py'
 
       - name: Staticcheck
         run: staticcheck ./...
@@ -195,14 +191,13 @@ jobs:
         if: ${{ env.ACT != 'true' }}
         run: bash tests/integration-tests/run.sh
 
-      - name: Upload DorkPipe CI analysis bundle
+      - name: Upload CI scan receipts
         if: always()
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
-          name: dockpipe-ci-analysis-${{ github.run_id }}-${{ github.run_attempt }}
+          name: dockpipe-ci-scans-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            bin/.dockpipe/workflows/ci/artifacts/ci-analysis/
             bin/.dockpipe/workflows/ci/artifacts/ci-raw/
 
   # Windows: Go + bash scripts that mirror host pre-script behavior (Git Bash on the runner).

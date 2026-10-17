@@ -2,6 +2,8 @@
 
 #include "DockpipeChoices.h"
 #include "WorkflowEditorWidget.h"
+#include "ProjectFilesWidget.h"
+#include "ProjectGitWidget.h"
 #include "CanvasIcons.h"
 #include "CanvasPanel.h"
 #include "ActivityWidget.h"
@@ -26,6 +28,7 @@
 #include <QScrollArea>
 #include <QSignalBlocker>
 #include <QSplitter>
+#include <QStatusBar>
 #include <QTimer>
 #include <QVBoxLayout>
 
@@ -388,12 +391,29 @@ Context *MainWindow::activeWorkflowContext()
 
 bool MainWindow::setWorkflowWorkspace(const QString &workdir)
 {
-    return !m_workflowEditor || m_workflowEditor->setWorkspace(workdir, DockpipeChoices::preferredDockpipeBinary(workdir));
+    if (m_projectGit && m_projectGit->busy()) {
+        statusBar()->showMessage(tr("Wait for the Git action to finish, or cancel it in Git before changing projects."), 8000);
+        return false;
+    }
+    if (m_projectFiles && !m_projectFiles->confirmLeave())
+        return false;
+    if (m_workflowEditor && !m_workflowEditor->setWorkspace(workdir, DockpipeChoices::preferredDockpipeBinary(workdir)))
+        return false;
+    if (m_projectFiles)
+        m_projectFiles->setRoot(workdir);
+    if (m_projectGit)
+        m_projectGit->setWorkdir(workdir);
+    return true;
 }
 
 void MainWindow::quitLauncher()
 {
-    if (!m_workflowEditor || m_workflowEditor->confirmDiscardChanges())
+    if (m_projectGit && m_projectGit->busy()) {
+        statusBar()->showMessage(tr("Wait for the Git action to finish, or cancel it in Git before quitting."), 8000);
+        return;
+    }
+    if ((!m_projectFiles || m_projectFiles->confirmLeave())
+        && (!m_workflowEditor || m_workflowEditor->confirmDiscardChanges()))
         qApp->quit();
 }
 

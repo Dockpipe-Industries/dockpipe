@@ -369,3 +369,56 @@ func TestResolveDockpipeBinForChildProcessPrefersCurrentExecutable(t *testing.T)
 		t.Fatalf("resolveDockpipeBinForChildProcess() = %q want %q", got, currentExe)
 	}
 }
+
+func TestResolverAssetsScope(t *testing.T) {
+	workdir := t.TempDir()
+	t.Setenv("DOCKPIPE_WORKDIR", workdir)
+	resolver := filepath.Join(workdir, "packages", "fixture", "resolvers", "asset-fixture")
+	assets := filepath.Join(resolver, "assets")
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(workdir, "dockpipe.config.json"), []byte(`{"schema":1,"compile":{"workflows":["packages"]}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(resolver, "profile"), []byte("# Package-owned assets\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := resolverScopeValue(workdir, []string{"asset-fixture", "assets-dir"})
+	if err != nil || got != assets {
+		t.Fatalf("assets-dir = %q, %v; want %q", got, err, assets)
+	}
+	if err := os.Remove(assets); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := resolverScopeValue(workdir, []string{"asset-fixture", "assets-dir"}); err == nil {
+		t.Fatal("missing assets directory must fail")
+	}
+	if _, err := resolverScopeValue(workdir, []string{"missing-fixture", "assets-dir"}); err == nil {
+		t.Fatal("missing resolver must fail")
+	}
+}
+
+func TestResolverAssetsScopeWithoutExecutionProfile(t *testing.T) {
+	workdir := t.TempDir()
+	t.Setenv("DOCKPIPE_GLOBAL_ROOT", t.TempDir())
+	t.Setenv("DOCKPIPE_SYSTEM_ROOT", t.TempDir())
+	resolver := filepath.Join(workdir, "authoring", "assets-only")
+	assets := filepath.Join(resolver, "assets")
+	if err := os.MkdirAll(assets, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(workdir, "dockpipe.config.json"), []byte(`{"schema":1,"compile":{"workflows":["authoring"]}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(resolver, "config.yml"), []byte("name: assets-only\nsteps: []\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := resolverScopeValue(workdir, []string{"assets-only", "assets-dir"})
+	if err != nil || got != assets {
+		t.Fatalf("asset-only scope = %q, %v; want %q", got, err, assets)
+	}
+	if _, err := resolverScopeValue(workdir, []string{"assets-only", "auth-dir"}); err == nil {
+		t.Fatal("auth fields must still require an execution profile")
+	}
+}

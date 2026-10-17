@@ -1,11 +1,13 @@
 #include "WorkflowCanvas.h"
 #include "WorkflowEditorWidget.h"
+#include "ProjectFilesWidget.h"
 #include "Theme.h"
 
 #include <QApplication>
 #include <QAction>
 #include <QElapsedTimer>
 #include <QFile>
+#include <QFileDialog>
 #include <QGraphicsItem>
 #include <QGraphicsScene>
 #include <QLabel>
@@ -16,6 +18,7 @@
 #include <QStyle>
 #include <QTemporaryDir>
 #include <QThread>
+#include <QTimer>
 #include <cstdio>
 #include <functional>
 
@@ -170,6 +173,27 @@ steps:
     const QString screenshot = qEnvironmentVariable("DOCKPIPE_STUDIO_SCREENSHOT");
     if (!screenshot.isEmpty())
         editor.grab().save(screenshot);
+    auto *workflowFiles = editor.findChild<ProjectFilesWidget *>();
+    auto *filesToggle = editor.findChild<QPushButton *>("workflowFilesToggle");
+    filesToggle->click();
+    if (!workflowFiles->isVisible() || !workflowFiles->openFile(path))
+        return 36;
+    const QString filesScreenshot = qEnvironmentVariable("DOCKPIPE_WORKFLOW_FILES_SCREENSHOT");
+    if (!filesScreenshot.isEmpty()) {
+        QApplication::processEvents();
+        editor.grab().save(filesScreenshot);
+    }
+    int fileRouteRuns = 0;
+    QObject::connect(&editor, &WorkflowEditorWidget::runRequested, &editor,
+        [&](const QString &) { ++fileRouteRuns; });
+    auto *openWorkflow = workflowFiles->findChild<QPushButton *>("fileOpenWorkflow");
+    if (!openWorkflow || !openWorkflow->isVisible())
+        return 43;
+    openWorkflow->click();
+    if (fileRouteRuns != 0 || !view->isVisible() || editor.workflowPath() != path)
+        return 44;
+    if (!waitUntil([&]() { return button(&editor, "Save")->isEnabled(); }) || !selectCard(view, {"steps", "0"}))
+        return 37;
     editor.resize(1000, 700);
     QApplication::processEvents();
     if (editor.width() > 1020 || !editor.findChild<QPushButton *>("applyStep")->isVisible())
@@ -232,6 +256,43 @@ steps:
     button(&editor, "Save")->click();
     if (!containsLabel(&editor, "changed on disk") || saves != 2)
         return 18;
+
+    // Flatpak authoring browses the workspace instead of creating a separate
+    // document grant for the script. Exercise the actual picker and YAML edit.
+    QFile script(temporary.filePath("convert obs.sh"));
+    if (!script.open(QIODevice::WriteOnly))
+        return 30;
+    script.write("echo ready\n");
+    script.close();
+    WorkflowEditorWidget scriptEditor(temporary.path(), cli);
+    scriptEditor.show();
+    if (!waitUntil([&]() { return button(&scriptEditor, "Save")->isEnabled(); }))
+        return 31;
+    const QByteArray previousFlatpak = qgetenv("FLATPAK_ID");
+    qputenv("FLATPAK_ID", "com.dockpipe.PathTest");
+    bool workspacePicker = false;
+    QTimer::singleShot(0, &scriptEditor, [&]() {
+        auto *dialog = scriptEditor.findChild<QFileDialog *>();
+        if (!dialog)
+            return;
+        workspacePicker = dialog->testOption(QFileDialog::DontUseNativeDialog);
+        dialog->selectFile(script.fileName());
+        QMetaObject::invokeMethod(dialog, "accept", Qt::DirectConnection);
+    });
+    QTimer::singleShot(2000, &scriptEditor, [&]() {
+        if (auto *dialog = scriptEditor.findChild<QFileDialog *>())
+            dialog->reject();
+    });
+    scriptEditor.findChild<QAction *>("addScript")->trigger();
+    if (previousFlatpak.isNull())
+        qunsetenv("FLATPAK_ID");
+    else
+        qputenv("FLATPAK_ID", previousFlatpak);
+    auto *scriptYaml = scriptEditor.findChild<QPlainTextEdit *>("workflowYaml");
+    if (!workspacePicker || !waitUntil([&]() { return scriptYaml->toPlainText().contains("convert obs.sh"); }))
+        return 32;
+    if (scriptYaml->toPlainText().contains(temporary.path()))
+        return 33;
     std::puts("Workflow studio real-CLI editing, comment preservation, save, validation, conflict and run routing passed.");
     return 0;
 }

@@ -8,5 +8,8 @@
   ],
   "tools": [],
   "host_commands": [],
-  "required_files": []
+  "required_files": [
+    "assets/scripts/repo-quality-pinned.py",
+    "assets/source-lock.json"
+  ]
 }

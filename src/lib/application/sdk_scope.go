@@ -33,8 +33,8 @@ segments, prints a path under that package scope.
 Workflow scope paths resolve under a named workflow artifact root. Use this when a
 workflow needs to read artifacts from another workflow.
 
-Resolver scope fields are read from the resolver profile:
-  auth-dir, container-auth-dir, auth-mount-mode, config-file, container-config-file
+Resolver auth/config fields are read from the resolver profile; assets-dir resolves package assets:
+  auth-dir, container-auth-dir, auth-mount-mode, config-file, container-config-file, assets-dir
 
 Examples:
   dockpipe scope
@@ -263,10 +263,13 @@ func resolveScopeRoot(scope, workdir string) (string, error) {
 
 func resolverScopeValue(workdir string, args []string) (string, error) {
 	if len(args) < 2 {
-		return "", fmt.Errorf("usage: dockpipe scope resolver <name> <auth-dir|container-auth-dir|auth-mount-mode|config-file|container-config-file>")
+		return "", fmt.Errorf("usage: dockpipe scope resolver <name> <auth-dir|container-auth-dir|auth-mount-mode|config-file|container-config-file|assets-dir>")
 	}
 	resolverName := strings.TrimSpace(args[0])
 	field := normalizeGetField(args[1])
+	if field == "assets_dir" {
+		return infrastructure.ResolveResolverAssetsDir(workdir, resolverName)
+	}
 	profilePath, err := infrastructure.ResolveResolverFilePath(workdir, resolverName)
 	if err != nil {
 		return "", err

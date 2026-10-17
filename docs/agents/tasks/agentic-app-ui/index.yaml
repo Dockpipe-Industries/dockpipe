@@ -1,7 +1,7 @@
-# TASK-008 ForgePipe agentic app UI
+# TASK-008 DorkPipe AI features in DockPipe
 schema: 1
 id: TASK-008
-topic: ForgePipe agentic app UI
+topic: DorkPipe AI features in DockPipe
 entrypoint: overview.md
 
 dispatch:
@@ -11,12 +11,16 @@ dispatch:
 routes:
   orientation:
     read: [overview.md]
+  direction_audit:
+    read: [overview.md, direction-review.md]
   product_and_ux:
     read: [overview.md, product-ux.md]
   delivery_and_open_work:
-    read: [overview.md, delivery.md]
+    read: [overview.md, delivery.md, direction-review.md]
 
 documents:
+  - path: direction-review.md
+    role: pre-implementation direction audit, conflicts and user review decisions
   - path: overview.md
     role: goal, decisions, product shape, and contract rule
   - path: product-ux.md

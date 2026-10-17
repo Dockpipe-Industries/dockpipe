@@ -28,15 +28,3 @@ updates:
         patterns:
           - "*"
 
-  - package-ecosystem: "cargo"
-    directory: "/packages/pipeon/apps/pipeon-desktop/src-tauri"
-    target-branch: "dev"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-    groups:
-      pipeon-desktop:
-        patterns:
-          - "*"

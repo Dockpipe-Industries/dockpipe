@@ -5,39 +5,135 @@ Each result is an assets/tooling/bin tree. Packages copy only the tools declared
 by their own recipe; none of these trees belongs in the base desktop bundle.
 """
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
+import os
 from pathlib import Path, PurePosixPath
 import platform
+import re
 import shutil
+import signal
+import stat
 import subprocess
+import sys
 import tarfile
+import tempfile
+import time
 import urllib.request
 import zipfile
 
 
+MAX_TOOL_ARCHIVE_BYTES = 128 * 1024 * 1024
+DOWNLOAD_TIMEOUT_SECONDS = 120
+INPUT_TIMEOUT_SECONDS = 180
+
+
 def checksum(path):
     digest = hashlib.sha256()
-    with path.open("rb") as source:
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    with os.fdopen(descriptor, "rb") as source:
+        if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
+            raise ValueError(f"Invalid optional tool archive: {path}")
+        total_bytes = 0
         while chunk := source.read(1024 * 1024):
+            total_bytes += len(chunk)
+            if total_bytes > MAX_TOOL_ARCHIVE_BYTES:
+                raise ValueError(f"Optional tool archive exceeds capacity: {path}")
             digest.update(chunk)
-    return digest.hexdigest()
+    return digest.hexdigest(), total_bytes
+
+
+def require_unlinked_cache(cache, path):
+    for directory in (cache, *cache.parents):
+        if directory.is_symlink():
+            raise ValueError(f"Linked optional tool cache parent: {directory}")
+    if not cache.is_dir():
+        raise ValueError(f"Optional tool cache is not a directory: {cache}")
+    if path.is_symlink():
+        raise ValueError(f"Linked optional tool cache file: {path}")
+
+
+def report_mismatch(name, observed, size_bytes, expected):
+    print(
+        f"Checksum mismatch for {name}: observed sha256={observed}, bytes={size_bytes}; "
+        f"expected sha256={expected}",
+        file=sys.stderr,
+    )
+
+
+@contextmanager
+def input_deadline():
+    previous_handler = signal.getsignal(signal.SIGALRM)
+    previous_delay, previous_interval = signal.getitimer(signal.ITIMER_REAL)
+    started = time.monotonic()
+
+    def expired(_signum, _frame):
+        raise TimeoutError("Optional tool input exceeded its wall time limit")
+
+    signal.signal(signal.SIGALRM, expired)
+    delay = min(INPUT_TIMEOUT_SECONDS, previous_delay) if previous_delay else INPUT_TIMEOUT_SECONDS
+    signal.setitimer(signal.ITIMER_REAL, delay)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
+        if previous_delay:
+            remaining = max(previous_delay - (time.monotonic() - started), 0.000001)
+            signal.setitimer(signal.ITIMER_REAL, remaining, previous_interval)
 
 
 def verified_input(name, source, cache):
+    with input_deadline():
+        return fetch_verified_input(name, source, cache)
+
+
+def fetch_verified_input(name, source, cache):
+    if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.+-]{0,254}", name):
+        raise ValueError("Invalid optional tool filename")
+    expected = source["sha256"]
+    if not isinstance(expected, str) or not re.fullmatch(r"[0-9a-f]{64}", expected):
+        raise ValueError("Invalid optional tool checksum")
+    cache = Path(os.path.abspath(cache))
     path = cache / name
-    if not path.exists():
-        temporary = cache / (name + ".download")
+    require_unlinked_cache(cache, path)
+    if path.exists():
+        observed, size_bytes = checksum(path)
+        if observed == expected:
+            return path
+        report_mismatch(name, observed, size_bytes, expected)
+
+    for _attempt in range(2):
+        path.unlink(missing_ok=True)
+        temporary = None
         try:
-            with urllib.request.urlopen(source["url"], timeout=60) as response:
-                with temporary.open("wb") as output:
-                    shutil.copyfileobj(response, output)
-            temporary.replace(path)
+            with tempfile.NamedTemporaryFile(
+                mode="wb", prefix=f".{name}-", suffix=".download", dir=cache, delete=False,
+            ) as output:
+                temporary = Path(output.name)
+                deadline = time.monotonic() + DOWNLOAD_TIMEOUT_SECONDS
+                with urllib.request.urlopen(source["url"], timeout=60) as response:
+                    total_bytes = 0
+                    while chunk := response.read1(1024 * 1024):
+                        if time.monotonic() > deadline:
+                            raise ValueError(f"Optional tool download exceeded time limit: {name}")
+                        total_bytes += len(chunk)
+                        if total_bytes > MAX_TOOL_ARCHIVE_BYTES:
+                            raise ValueError(f"Optional tool archive exceeds capacity: {name}")
+                        output.write(chunk)
+                if time.monotonic() > deadline:
+                    raise ValueError(f"Optional tool download exceeded time limit: {name}")
+            observed, size_bytes = checksum(temporary)
+            if observed == expected:
+                temporary.replace(path)
+                return path
+            report_mismatch(name, observed, size_bytes, expected)
         finally:
-            temporary.unlink(missing_ok=True)
-    if checksum(path) != source["sha256"]:
-        raise ValueError(f"Checksum mismatch: {path}")
-    return path
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
+
+    raise ValueError(f"Checksum mismatch after a fresh retry: {path}")
 
 
 def safe_relative(name):

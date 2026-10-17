@@ -55,6 +55,47 @@ public:
         };
         using S = CanvasIcons::Symbol;
         switch (m_symbol) {
+        case S::Branch:
+            painter->drawEllipse(QPointF(6, 5), 2, 2);
+            painter->drawEllipse(QPointF(6, 19), 2, 2);
+            painter->drawEllipse(QPointF(18, 6), 2, 2);
+            line(6, 7, 6, 17);
+            path({{18, 8}, {18, 11}, {6, 15}});
+            break;
+        case S::Refresh:
+            painter->drawArc(QRectF(4, 4, 16, 16), 35 * 16, 280 * 16);
+            path({{16, 3}, {21, 7}, {16, 9}});
+            break;
+        case S::Upload:
+        case S::Download: {
+            const bool up = m_symbol == S::Upload;
+            line(12, 4, 12, 17);
+            path(up ? std::initializer_list<QPointF>{{7, 9}, {12, 4}, {17, 9}}
+                    : std::initializer_list<QPointF>{{7, 12}, {12, 17}, {17, 12}});
+            path({{4, 17}, {4, 21}, {20, 21}, {20, 17}});
+            break;
+        }
+        case S::Search:
+            painter->drawEllipse(QRectF(3, 3, 12, 12));
+            line(14, 14, 21, 21);
+            break;
+        case S::Trash:
+            path({{5, 7}, {7, 21}, {17, 21}, {19, 7}});
+            line(3, 7, 21, 7);
+            path({{8, 7}, {8, 3}, {16, 3}, {16, 7}});
+            line(10, 10, 10, 17);
+            line(14, 10, 14, 17);
+            break;
+        case S::Rename:
+            path({{4, 16}, {16, 4}, {20, 8}, {8, 20}, {3, 21}, {4, 16}});
+            line(14, 6, 18, 10);
+            break;
+        case S::ChevronRight:
+            path({{9, 5}, {16, 12}, {9, 19}});
+            break;
+        case S::ChevronDown:
+            path({{5, 9}, {12, 16}, {19, 9}});
+            break;
         case S::Add:
             line(12, 5, 12, 19);
             line(5, 12, 19, 12);

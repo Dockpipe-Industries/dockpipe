@@ -7,8 +7,11 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
 ROOTS = ('src/core/', 'workflows/', 'packages/')
-RELEASE = tuple('packages/dorkpipe/resolvers/dorkpipe/assets/tooling/bin/linux/' + name
-                for name in ('dockpipe', 'dorkpipe', 'mcpd'))
+EXTERNAL_PACKAGE_PREFIXES = (
+    'packages/dorkpipe/',
+    'packages/dorkpipe-mcp/',
+    'packages/pipeon/',
+)
 
 
 def authored(root):
@@ -16,6 +19,7 @@ def authored(root):
     deleted = set(subprocess.check_output(['git', 'ls-files', '--deleted', '-z'], cwd=root).decode().split('\0'))
     # Match the former Go directory walk: dot/underscore entries were omitted.
     selected = sorted(p for p in set(paths) - deleted if (p in ('VERSION', 'assets/entrypoint.sh') or p.startswith(ROOTS))
+                      and not p.startswith(EXTERNAL_PACKAGE_PREFIXES)
                       and not any(part.startswith(('.', '_')) for part in p.split('/'))
                       and not any((parent / 'go.mod').is_file() for parent in (root / p).parents if parent != root and parent.is_relative_to(root)))
     for name in selected:
@@ -38,17 +42,9 @@ def main():
     parser.add_argument('--release', action='store_true')
     args = parser.parse_args()
     if args.release:
-        for name in RELEASE:
-            path = ROOT / name
-            if not path.is_file() or any(p.is_symlink() for p in [path, *path.parents]) or not path.stat().st_size:
-                parser.error('missing regular release input: ' + name)
-        path = ROOT / 'embed_release_generated.go'
-        content = render(RELEASE, 'preparedReleaseFS') + '\nfunc init() { releaseFS = preparedReleaseFS }\n'
-        if path.exists() and path.read_text() != content:
-            parser.error('refusing to overwrite a different release embed declaration')
-    else:
-        path = ROOT / 'embed_assets.go'
-        content = render(authored(ROOT), 'authoredFS')
+        parser.error('external packages are no longer embedded in Dockpipe releases')
+    path = ROOT / 'embed_assets.go'
+    content = render(authored(ROOT), 'authoredFS')
     if args.check:
         if not path.exists() or path.read_text() != content:
             parser.error('embedded file manifest is stale; regenerate and review it')

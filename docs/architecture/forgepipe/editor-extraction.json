@@ -1,0 +1,201 @@
+{
+  "schema": 1,
+  "source_inventory": [
+    {
+      "source": "src/app/tooling/vscode-extensions/dockpipe-language-support/LICENSE",
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "source": "src/app/tooling/vscode-extensions/dockpipe-language-support/README.md",
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/README.md",
+      "sha256": "d9cb94fa668f3ae50d53f502dc8ce6d9bb8771828ed5a0f9f07b34d246398192"
+    },
+    {
+      "source": "src/app/tooling/vscode-extensions/dockpipe-language-support/extension.js",
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/extension.js",
+      "sha256": "743b9d18a2c59695202d4919ae56d5a8a7000df944fbd2fd09b629ac672c4a20"
+    },
+    {
+      "source": "src/app/tooling/vscode-extensions/dockpipe-language-support/extension.test.js",
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/extension.test.js",
+      "sha256": "e0db2fdddca4db51dbe2586b4b3349f374253981004cb5eec36d3d1c2678861c"
+    },
+    {
+      "source": "src/app/tooling/vscode-extensions/dockpipe-language-support/images/icon.png",
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/images/icon.png",
+      "sha256": "d9b4daaf20c60a74867288bbefee57a57205597aef0b6a1a34097d4895c7c714"
+    },
+    {
+      "source": "src/app/tooling/vscode-extensions/dockpipe-language-support/language-configuration.json",
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/language-configuration.json",
+      "sha256": "088e951ee44aa9fbdf022b5ad77b17ffebf9673ae46a473104d8498310911d30"
+    },
+    {
+      "source": "src/app/tooling/vscode-extensions/dockpipe-language-support/package-lock.json",
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/package-lock.json",
+      "sha256": "b3e3732a89d63f8587be60310664031e2cd0e95cd8571057422aa75a3a3ad398"
+    },
+    {
+      "source": "src/app/tooling/vscode-extensions/dockpipe-language-support/package.json",
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/package.json",
+      "sha256": "12417e68e19d389c19fe75e88b280378e72b0fc624e1ba47ad9ce89ce93e1e35"
+    },
+    {
+      "source": "src/app/tooling/vscode-extensions/dockpipe-language-support/snippets/pipelang.json",
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/snippets/pipelang.json",
+      "sha256": "d48bdce0b8ba126810a440d1db49655407f2dc1f33c94660e62d4993f09cc0d8"
+    },
+    {
+      "source": "src/app/tooling/vscode-extensions/dockpipe-language-support/syntaxes/pipelang.tmLanguage.json",
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/syntaxes/pipelang.tmLanguage.json",
+      "sha256": "76d8f0c6aeece32f8ae9aa65bbb08b9986ddf2a91e2230d4157da7b357fc3bf3"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/.gitignore",
+      "destination": "tooling/vscode-extensions/pipeon/.gitignore",
+      "sha256": "1fab25432c620314cfc4ea6b00a1154d72b9ae55bdc41b19196f49ef6b2242e6"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/Dockerfile.code-server",
+      "destination": "tooling/vscode-extensions/pipeon/Dockerfile.code-server",
+      "sha256": "696284d536042984066427e9aec7817980f6649d46e1c76b79776a4c9a79c866"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/LICENSE",
+      "destination": "tooling/vscode-extensions/pipeon/LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/README.md",
+      "destination": "tooling/vscode-extensions/pipeon/README.md",
+      "sha256": "dd290ab9ba6605a9bdbcd8d8762be023b50b04c80e289373a5f9bde29e8cd182"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/code-server-user-settings.json",
+      "destination": "tooling/vscode-extensions/pipeon/code-server-user-settings.json",
+      "sha256": "1b37502a9baf6bcec88e888d899040ba4a699b08db9421a77c46ae0e2f5be9e4"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/images/dorkpipe-activity.svg",
+      "destination": "tooling/vscode-extensions/pipeon/images/dorkpipe-activity.svg",
+      "sha256": "ede9fc037581f4502e012cbd82710f6d6e8a67f010754e7a5c2f5411df3495ae"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/images/dorkpipe-icon.png",
+      "destination": "tooling/vscode-extensions/pipeon/images/dorkpipe-icon.png",
+      "sha256": "398f88db88c25fbce6336703af9bdf489c11e0019c4c3b607f4f0faf7243175b"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/images/favicon-dark-support.svg",
+      "destination": "tooling/vscode-extensions/pipeon/images/favicon-dark-support.svg",
+      "sha256": "2a4a5e6dd9610df94b36839ef7d7c2b5b594d4a3a9020be753f4f4bd8a64e5bf"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/images/favicon.ico",
+      "destination": "tooling/vscode-extensions/pipeon/images/favicon.ico",
+      "sha256": "08e12226a51fc5bf1b9a048d5f67c959071602b6acd2f719e55ae96e24203e68"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/images/favicon.svg",
+      "destination": "tooling/vscode-extensions/pipeon/images/favicon.svg",
+      "sha256": "2a4a5e6dd9610df94b36839ef7d7c2b5b594d4a3a9020be753f4f4bd8a64e5bf"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/images/icon.png",
+      "destination": "tooling/vscode-extensions/pipeon/images/icon.png",
+      "sha256": "9fe47377769de75aba4deb5a56af8e8c2624092b1c4652aae61c88fd45a5eaa5"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/images/pipeon-192.png",
+      "destination": "tooling/vscode-extensions/pipeon/images/pipeon-192.png",
+      "sha256": "964ed43d91d4eb7e3acea8766f35fce6520b786cb31836e2ee2cb1183de5a93f"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/images/pipeon-512.png",
+      "destination": "tooling/vscode-extensions/pipeon/images/pipeon-512.png",
+      "sha256": "9fe47377769de75aba4deb5a56af8e8c2624092b1c4652aae61c88fd45a5eaa5"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/package-lock.json",
+      "destination": "tooling/vscode-extensions/pipeon/package-lock.json",
+      "sha256": "b6dbf08dc23e0b872b41dd0e5f4d1e9a5f3bedf71336e82c48f3b4331d061c8b"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/package.json",
+      "destination": "tooling/vscode-extensions/pipeon/package.json",
+      "sha256": "847cf4a47f0e2cddd41da9d3c5933fb6a51e2a0db816ac8f22f120398e19257f"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/scripts/webview-smoke.js",
+      "destination": "tooling/vscode-extensions/pipeon/scripts/webview-smoke.js",
+      "sha256": "6f445514f4eb7582271778679ab0e5a81193cda495d0052a5e90d81173adcc67"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/src/extension.ts",
+      "destination": "tooling/vscode-extensions/pipeon/src/extension.ts",
+      "sha256": "653baac833637a10d4d220585c109414526d312ed7cab63335d4132679500c23"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/src/webview/canary.ts",
+      "destination": "tooling/vscode-extensions/pipeon/src/webview/canary.ts",
+      "sha256": "77d3245829e32f66284698dfc5a0589e422951f1249f1d85a67b1831627619ea"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/src/webview/chat.ts",
+      "destination": "tooling/vscode-extensions/pipeon/src/webview/chat.ts",
+      "sha256": "c7fcfc8392e35eb682b4a81ff2569dbfd1a82faf091ccc03d5cfd589813e72a2"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/tsconfig.json",
+      "destination": "tooling/vscode-extensions/pipeon/tsconfig.json",
+      "sha256": "b01cb52c7ad8b100aab3ca05143551b7895adb675110acda3a5fb54530981c25"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/types/webview-globals.d.ts",
+      "destination": "tooling/vscode-extensions/pipeon/types/webview-globals.d.ts",
+      "sha256": "08b273f60bda8bb5858b5dd0ea4fff4e22dfcbf10d320281cd8b27c0554cc336"
+    },
+    {
+      "source": "packages/pipeon/resolvers/pipeon/vscode-extension/webview/chat.css",
+      "destination": "tooling/vscode-extensions/pipeon/webview/chat.css",
+      "sha256": "5626ffcf4ec466624de76000e26178b5a7c922589a1476613782b6e2e62f0294"
+    }
+  ],
+  "retired_source_files": [
+    "src/app/tooling/vscode-extensions/dockpipe-language-support/LICENSE",
+    "src/app/tooling/vscode-extensions/dockpipe-language-support/README.md",
+    "src/app/tooling/vscode-extensions/dockpipe-language-support/extension.js",
+    "src/app/tooling/vscode-extensions/dockpipe-language-support/extension.test.js",
+    "src/app/tooling/vscode-extensions/dockpipe-language-support/images/icon.png",
+    "src/app/tooling/vscode-extensions/dockpipe-language-support/language-configuration.json",
+    "src/app/tooling/vscode-extensions/dockpipe-language-support/package-lock.json",
+    "src/app/tooling/vscode-extensions/dockpipe-language-support/package.json",
+    "src/app/tooling/vscode-extensions/dockpipe-language-support/snippets/pipelang.json",
+    "src/app/tooling/vscode-extensions/dockpipe-language-support/syntaxes/pipelang.tmLanguage.json",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/README.md",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/package-lock.json",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/package.json",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/scripts/webview-smoke.js",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/src/extension.ts",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/src/webview/canary.ts",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/src/webview/chat.ts",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/tsconfig.json",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/types/webview-globals.d.ts",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/webview/chat.css"
+  ],
+  "retained_pipeon_packaging_assets": [
+    "packages/pipeon/resolvers/pipeon/vscode-extension/Dockerfile.code-server",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/LICENSE",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/code-server-user-settings.json",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/images/dorkpipe-activity.svg",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/images/dorkpipe-icon.png",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/images/favicon-dark-support.svg",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/images/favicon.ico",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/images/favicon.svg",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/images/icon.png",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/images/pipeon-192.png",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/images/pipeon-512.png",
+    "packages/pipeon/resolvers/pipeon/vscode-extension/.gitignore"
+  ]
+}

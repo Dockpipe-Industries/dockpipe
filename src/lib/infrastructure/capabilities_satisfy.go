@@ -128,6 +128,13 @@ func CheckWorkflowResolverScriptDependencies(workdir, repoRoot string, wf *domai
 	if len(required) == 0 {
 		return nil
 	}
+	direct, _, err := directWorkflowResolverDeclarations(wf, wfRoot, wfConfigPath)
+	if err != nil {
+		return err
+	}
+	if resolverScriptDomainsDeclared(required, direct) {
+		return nil
+	}
 	declared, err := declaredWorkflowResolvers(repoRoot, workdir, wf, wfRoot, wfConfigPath)
 	if err != nil {
 		return err
@@ -203,6 +210,71 @@ func logicalResolverScriptDomain(workdir, repoRoot, rel string) (string, bool) {
 
 func declaredWorkflowResolvers(repoRoot, workdir string, wf *domain.Workflow, wfRoot, wfConfigPath string) (map[string]bool, error) {
 	out := make(map[string]bool)
+	states := make(map[string]uint8)
+	if err := collectDeclaredWorkflowResolvers(repoRoot, workdir, wf, wfRoot, wfConfigPath, out, states); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func resolverScriptDomainsDeclared(required, declared map[string]bool) bool {
+	for name := range required {
+		if !declared[name] {
+			return false
+		}
+	}
+	return true
+}
+
+const maxResolverDependencyWorkflows = 128
+
+// collectDeclaredWorkflowResolvers follows only declared workflow dependencies. An installed
+// resolver by itself never grants permission to use a logical resolver script path.
+func collectDeclaredWorkflowResolvers(repoRoot, workdir string, wf *domain.Workflow, wfRoot, wfConfigPath string, out map[string]bool, states map[string]uint8) error {
+	if states[wfConfigPath] == 1 {
+		return fmt.Errorf("workflow dependency cycle at %s", wfConfigPath)
+	}
+	if states[wfConfigPath] == 2 {
+		return nil
+	}
+	if len(states) >= maxResolverDependencyWorkflows {
+		return fmt.Errorf("workflow dependency closure exceeds %d workflows", maxResolverDependencyWorkflows)
+	}
+	states[wfConfigPath] = 1
+
+	direct, dependencies, err := directWorkflowResolverDeclarations(wf, wfRoot, wfConfigPath)
+	if err != nil {
+		return err
+	}
+	for name := range direct {
+		out[name] = true
+	}
+	for _, rawName := range dependencies {
+		name := strings.TrimSpace(rawName)
+		if name == "" {
+			continue
+		}
+		dependencyPath, err := ResolveWorkflowConfigPathWithWorkdir(repoRoot, workdir, name)
+		if err != nil {
+			if resolverProfileExists(repoRoot, workdir, name) {
+				continue
+			}
+			return fmt.Errorf("workflow dependency %q from %s: %w", name, wfConfigPath, err)
+		}
+		dependencyWorkflow, err := LoadWorkflow(dependencyPath)
+		if err != nil {
+			return fmt.Errorf("load workflow dependency %q: %w", name, err)
+		}
+		if err := collectDeclaredWorkflowResolvers(repoRoot, workdir, dependencyWorkflow, filepath.Dir(dependencyPath), dependencyPath, out, states); err != nil {
+			return err
+		}
+	}
+	states[wfConfigPath] = 2
+	return nil
+}
+
+func directWorkflowResolverDeclarations(wf *domain.Workflow, wfRoot, wfConfigPath string) (map[string]bool, []string, error) {
+	out := make(map[string]bool)
 	add := func(name string) {
 		name = strings.TrimSpace(name)
 		if name == "" {
@@ -223,14 +295,21 @@ func declaredWorkflowResolvers(repoRoot, workdir string, wf *domain.Workflow, wf
 	}
 	pm, err := readWorkflowPackageManifestForDependencyChecks(wfRoot, wfConfigPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	var dependencies []string
 	if pm != nil {
 		for _, name := range pm.RequiresResolvers {
 			add(name)
 		}
+		dependencies = append(dependencies, pm.Depends...)
 	}
-	return out, nil
+	for _, injection := range wf.Inject {
+		if name := injection.WorkflowManifestName(); name != "" {
+			dependencies = append(dependencies, name)
+		}
+	}
+	return out, dependencies, nil
 }
 
 func readWorkflowPackageManifestForDependencyChecks(wfRoot, wfConfigPath string) (*domain.PackageManifest, error) {

@@ -1,4 +1,5 @@
 #include "BuildVersion.h"
+#include "WorkspaceGraphPage.h"
 #include "DockpipeChoices.h"
 #include "FlatpakTerminal.h"
 #include "LauncherEnvironment.h"
@@ -54,6 +55,8 @@ static QIcon dockpipeLauncherIcon()
 
 int main(int argc, char *argv[])
 {
+    if (argc == 2 && std::strcmp(argv[1], "--workspace-graph-page") == 0)
+        return WorkspaceGraphPage::run(argc, argv);
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--version") == 0) {
             QTextStream(stdout) << DOCKPIPE_RELEASE_VERSION << '\n';

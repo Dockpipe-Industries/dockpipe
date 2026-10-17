@@ -10,6 +10,7 @@ import time
 from campaign import Campaign, atomic_json, digest, file_identity, fingerprint, host_identity, provenance
 from job import verify_job
 from support_inputs import SupportInputs
+from editor_source_sdk import verify_editor_source
 
 ROOT = Path(__file__).resolve().parents[2]
 RUNNER = Path(__file__).with_name('run.py')
@@ -36,6 +37,13 @@ def bundle_paths():
     return sorted(paths)
 
 
+def editor_source():
+    source = Path(os.environ.get('DORKPIPE_EDITOR_TEST_SOURCE', ''))
+    if not source.is_absolute():
+        raise ValueError('Set DORKPIPE_EDITOR_TEST_SOURCE to an absolute extracted editor SDK path')
+    return verify_editor_source(source, ROOT / 'release/editor-source.lock.json')
+
+
 def source_paths(stage='suite'):
     # All local Go packages/assets rather than only the compiler snapshot. Extra
     # invalidation is deliberate until narrower closure is independently proven.
@@ -44,7 +52,7 @@ def source_paths(stage='suite'):
     paths.append(Path(sys.executable).resolve())
     paths.append(RUNNER.parent)  # runner, split discovery and nested transport helpers
     if stage == 'integration':
-        paths.append(ROOT / 'src/app/tooling/vscode-extensions/dockpipe-language-support')
+        paths.extend([editor_source(), ROOT / 'release/editor-source.lock.json'])
     return paths
 
 
