@@ -50,6 +50,29 @@ func TestInvalidateTarballExtractCacheForPackageRemovesMarkerAndLegacyEntries(t 
 	}
 }
 
+func TestInvalidateTarballExtractCachePreservesCollidingPackage(t *testing.T) {
+	for _, kind := range []string{"workflow", "resolver"} {
+		t.Run(kind, func(t *testing.T) {
+			workdir := t.TempDir()
+			cache := filepath.Join(TarballExtractCacheRoot(workdir), "other")
+			if err := os.MkdirAll(cache, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			marker := `{"tarball":"dockpipe-` + kind + `-dorkpipe-self-analysis-0.6.4.tar.gz"}`
+			if err := os.WriteFile(filepath.Join(cache, ".dockpipe-extracted-package.json"), []byte(marker), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			removed, err := InvalidateTarballExtractCacheForPackage(workdir, kind, "dorkpipe")
+			if err != nil || removed != 0 {
+				t.Fatalf("removed %d colliding %s cache entries: %v", removed, kind, err)
+			}
+			if _, err := os.Stat(cache); err != nil {
+				t.Fatalf("colliding %s cache was removed: %v", kind, err)
+			}
+		})
+	}
+}
+
 func TestInvalidateTarballExtractCacheRetainsOnlyActiveSource(t *testing.T) {
 	workdir := t.TempDir()
 	cacheRoot := TarballExtractCacheRoot(workdir)
