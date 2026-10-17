@@ -13,6 +13,11 @@ set(upstream "${CMAKE_CURRENT_BINARY_DIR}/syntax-highlighting-5.116.0")
 if(NOT EXISTS "${upstream}/src/lib/repository.cpp")
     file(ARCHIVE_EXTRACT INPUT "${archive}" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 endif()
+# Keep the public theme header distinct from the launcher's Theme.h on
+# case-insensitive filesystems, matching upstream's namespaced header surface.
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/KSyntaxHighlighting")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/KSyntaxHighlighting/Theme"
+    "#include \"${upstream}/src/lib/theme.h\"\n")
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/ksyntaxhighlighting_export.h" "#pragma once\n#define KSYNTAXHIGHLIGHTING_EXPORT\n#define KSYNTAXHIGHLIGHTING_NO_EXPORT\n#define KSYNTAXHIGHLIGHTING_ENABLE_DEPRECATED_SINCE(a,b) 0\n#define KSYNTAXHIGHLIGHTING_BUILD_DEPRECATED_SINCE(a,b) 0\n")
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/ksyntaxhighlighting_version.h" "#pragma once\n#define SyntaxHighlighting_VERSION_MAJOR 5\n#define SyntaxHighlighting_VERSION_MINOR 116\n")
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/ksyntaxhighlighting_logging.h" "#pragma once\n#include <QLoggingCategory>\nnamespace KSyntaxHighlighting { Q_DECLARE_LOGGING_CATEGORY(Log) }\n")
