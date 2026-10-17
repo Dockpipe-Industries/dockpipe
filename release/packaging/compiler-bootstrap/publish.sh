@@ -28,4 +28,4 @@ fi
 gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$source_sha" \
   --prerelease --latest=false --title "Compiler bootstrap $version (Linux amd64 only)" \
   --notes-file "$output/RELEASE_NOTES.md" \
-  "$output/$archive" "$manifest" "$output/SHA256SUMS.txt"
+  "$output/$archive" "$manifest" "$output/SHA256SUMS.txt" "$output/LICENSE.txt"

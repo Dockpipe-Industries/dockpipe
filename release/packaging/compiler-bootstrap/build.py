@@ -148,15 +148,22 @@ def build(tags_path, output):
         if version_output.stdout.strip() != identity['version']:
             raise ValueError('Delivered CLI reports a different version')
         verify_compiler(executable, identity['version'], work / 'qualification')
+    with (root / 'LICENSE').open('rb') as source:
+        license_data = source.read((64 << 10) + 1)
+    if not license_data or len(license_data) > 64 << 10:
+        raise ValueError('Compiler license notice is missing or exceeds 64 KiB')
+    license_path = output / 'LICENSE.txt'
+    license_path.write_bytes(license_data)
     manifest = {
         'schema': 1, 'release_scope': 'compiler-bootstrap', 'version': identity['version'],
         'release_tag': identity['tag'], 'source_sha': source_sha, 'platform': 'linux-amd64',
+        'license': {'name': license_path.name, 'sha256': digest(license_path), 'bytes': license_path.stat().st_size},
         'archive': {'name': archive.name, 'sha256': digest(archive), 'bytes': archive.stat().st_size},
         'qualification': {'asset_only_resolver_archive': True, 'asset_only_resolver_scope': True, 'exact_resolver_identity': True, 'hidden_metadata': True},
     }
     manifest_path = output / 'compiler-bootstrap.json'
     manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
-    (output / 'SHA256SUMS.txt').write_text(''.join(f'{digest(path)}  {path.name}\n' for path in [archive, manifest_path]))
+    (output / 'SHA256SUMS.txt').write_text(''.join(f'{digest(path)}  {path.name}\n' for path in [archive, manifest_path, license_path]))
     (output / 'RELEASE_NOTES.md').write_text(
         f"Compiler bootstrap {identity['candidate']}\n\n"
         'Linux amd64 CLI only, verified through its delivered archive. This prerelease '

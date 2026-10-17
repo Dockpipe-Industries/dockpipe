@@ -44,14 +44,11 @@ func InvalidateTarballExtractCacheExceptSource(workdir, kind, name, source strin
 			return 0, err
 		}
 	}
-	token := packagebuild.SafeTarballToken(name)
-	var tarPrefix, archiveRoot string
+	var archiveRoot string
 	switch kind {
 	case "workflow":
-		tarPrefix = "dockpipe-workflow-" + token + "-"
 		archiveRoot = filepath.Join("workflows", name)
 	case "resolver":
-		tarPrefix = "dockpipe-resolver-" + token + "-"
 		archiveRoot = filepath.Join("resolvers", name)
 	default:
 		return 0, fmt.Errorf("unknown package cache kind %q", kind)
@@ -84,7 +81,7 @@ func InvalidateTarballExtractCacheExceptSource(workdir, kind, name, source strin
 				continue
 			}
 		}
-		if tarballCacheEntryMatchesPackage(dir, tarPrefix, archiveRoot) {
+		if tarballCacheEntryMatchesPackage(dir, kind, name, archiveRoot) {
 			if err := os.RemoveAll(dir); err != nil {
 				return removed, err
 			}
@@ -94,11 +91,11 @@ func InvalidateTarballExtractCacheExceptSource(workdir, kind, name, source strin
 	return removed, nil
 }
 
-func tarballCacheEntryMatchesPackage(dir, tarPrefix, archiveRoot string) bool {
+func tarballCacheEntryMatchesPackage(dir, kind, name, archiveRoot string) bool {
 	markerPath := filepath.Join(dir, ".dockpipe-extracted-package.json")
 	if b, err := os.ReadFile(markerPath); err == nil {
 		var marker tarballExtractCacheMarker
-		if json.Unmarshal(b, &marker) == nil && strings.HasPrefix(filepath.Base(marker.Tarball), tarPrefix) {
+		if json.Unmarshal(b, &marker) == nil && packagebuild.MatchesVersionedTarball(marker.Tarball, kind, name) {
 			return true
 		}
 	}

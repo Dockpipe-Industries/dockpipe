@@ -116,10 +116,13 @@ func compileWorkflowOne(workdir, srcAbs, name string, force bool) error {
 			return err
 		}
 		tarGlob := filepath.Join(pw, fmt.Sprintf("dockpipe-workflow-%s-*.tar.gz", packagebuild.SafeTarballToken(pkgName)))
+		matches, err := compiledTarballsForPackage(tarGlob, "workflow", pkgName)
+		if err != nil {
+			return err
+		}
 		legacyDir := filepath.Join(pw, pkgName)
 		rebuild := force
 		if !force {
-			matches, _ := filepath.Glob(tarGlob)
 			if len(matches) > 0 {
 				latestTar := infrastructure.PickLatestModTimePath(matches)
 				if latestTar == "" {
@@ -161,7 +164,9 @@ func compileWorkflowOne(workdir, srcAbs, name string, force bool) error {
 			} else if n > 0 {
 				opIDs["cache_invalidated"] = strconv.Itoa(n)
 			}
-			_ = infrastructure.RemoveGlob(tarGlob)
+			if err := removeCompiledTarballs(matches); err != nil {
+				return err
+			}
 			_ = os.RemoveAll(legacyDir)
 		}
 		staging, err := mkdirCompileStagingDir(workdir, "dockpipe-compile-wf-*")

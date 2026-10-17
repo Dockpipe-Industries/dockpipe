@@ -2,6 +2,10 @@
   "schema": 1,
   "artifacts": [
     {
+      "kind": "resolver",
+      "name": "compliance-handoff"
+    },
+    {
       "kind": "workflow",
       "name": "compliance-handoff"
     }
