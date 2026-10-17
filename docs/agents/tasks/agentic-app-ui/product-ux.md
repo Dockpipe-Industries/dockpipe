@@ -1,6 +1,26 @@
+## Direction Review Gate
+
+The [current direction review](direction-review.md) governs chat, editor consolidation
+and Pipeon retirement. Earlier extension/standalone-client proposals below are historical
+where they conflict. No implementation or migration before user review.
+
+## DockPipe Chat
+
+DorkPipe contributes chat inside the existing DockPipe application. Show active project,
+selected provider/model, included knowledge sources and available tool permissions.
+Support streaming, cancel, resumable sessions, errors and explicit escalation to governed
+workflows through shared CLI/API operations. Make context inclusion inspectable and keep
+secrets out of transcripts. Chat and editor use the same domain implementation;
+opening a conversation does not authorize tools, file changes or infrastructure work.
+Basic DockPipe/PipeLang editor support remains usable without AI activation.
+
 ## Launcher Integration
 
-The app should launch from Dockpipe using the same context-passing approach as Pipeon.
+DorkPipe contributes AI views inside the existing DockPipe app using its selected
+project/package context. A separate AI application launch is not the target.
+The [active ownership decision](overview.md#product-naming-and-ownership) supersedes
+older standalone-app and mandatory local-stack proposals in this document. Remote
+and mobile clients remain optional future scope over the same CLI/API boundary.
 
 Expected launcher context:
 
@@ -82,12 +102,13 @@ Authoring should expose YAML contracts through purpose-built views:
 
 The app should make it easy to switch between guided UI and raw YAML for advanced users.
 
-## Extension UX Scope
+## Preserved Extension Context (Pipeon paused)
 
-Until ForgePipe owns richer authoring, the Pipeon VS Code extension should:
+Until DockPipe AI owns richer authoring, the Pipeon VS Code extension should:
 
 - expose a provider/model selector for direct chat
-- route Ollama chat through DorkPipe MCP and the local stack
+- evaluate Ollama through package-owned provider adapters and the unified gateway;
+  the historical local stack is not a required deployment model
 - route Codex chat through host `codex exec` with Codex workspace sandboxing and default host
   config model selection, resuming the same Codex transcript for each Pipeon session
 - route Claude chat only through a guarded DorkPipe sandbox gate; do not run raw Claude directly
@@ -100,7 +121,7 @@ Until ForgePipe owns richer authoring, the Pipeon VS Code extension should:
 - avoid extension-local model-lane or workflow-authoring state that cannot round-trip through
   workflow/package-owned contracts
 
-Future ForgePipe work can add rich model-lane and workflow authoring once it is backed by durable
+Future DockPipe AI work can add rich model-lane and workflow authoring once it is backed by durable
 YAML, package catalogs, validation, and CLI/MCP execution.
 
 ## Review UX

@@ -42,6 +42,11 @@ If a role must stay on one worker class, declare `worker_policy.mode: require`; 
 
 ## Hard Rules
 
+- Default interactive execution is `gpt-6.1-sol` with Medium reasoning. This is
+  repository guidance, not an engine default or an automatic model switch.
+- Compare total task cost, including context transfer, coordination, verification
+  and retries. Use bounded subagents for independent work only when they improve
+  that outcome; one stronger direct worker may cost less than several cheaper ones.
 - Local models such as Ollama can be cheap/default attempt lanes.
 - Cloud-backed lanes such as Codex/Claude need budget ledgers and halt markers.
 - Escalate by work class, not provider habit: inventory/extraction can be cheap only when the lane

@@ -44,3 +44,13 @@ and GitHub responses are withheld. A GitHub failure can leave partial configurat
 read it back before retrying. This workflow publishes no artifacts and changes no
 Cloudflare infrastructure. For staging use `release-staging` and separate scoped
 credentials, a staging publication bucket, and private state configuration.
+
+## Standalone package uploads
+
+For a standalone publisher that does not maintain APT, set
+`RELEASE_SETUP_UPLOAD_ONLY=1`. This mode validates and copies only
+`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, plus the three public R2 settings.
+It never reads, validates or copies an APT signing key or signing fingerprint.
+Use the staging credentials with `release-staging`, and production credentials
+with `release`. Keep branch policies and repository visibility independent of
+package distribution; this setup starts no publication workflow.

@@ -41,11 +41,6 @@ if [[ -n "${NFPM_BIN:-}" ]]; then
 fi
 LDFLAGS="-s -w -X main.Version=${VERSION}"
 
-if [[ -z "${DOCKPIPE_RELEASE_BINARY:-}" ]]; then
-  bash "${REPO_ROOT}/release/packaging/prepare-embedded-dorkpipe-assets.sh" prepare
-  trap 'bash "${REPO_ROOT}/release/packaging/prepare-embedded-dorkpipe-assets.sh" clean' EXIT
-fi
-
 architectures=(amd64 arm64)
 if [[ -n "${3:-}" ]]; then
   [[ "$3" == amd64 || "$3" == arm64 ]] || exit 1

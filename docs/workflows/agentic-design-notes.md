@@ -4,6 +4,35 @@ This page preserves repository examples and design direction. It is not a
 setup guide or a claim that every described tooling surface is available.
 For installed-user guidance, see [AI workflows](agentic-workflows.md).
 
+## Proposed Agent Bootstrap and Knowledge Routing
+
+Backlog direction recorded 2026-10-17; not implemented. Keep repository `AGENTS.md`
+as a small, versioned bootstrap containing project identity, essential invariant rules,
+the configured DockPipe MCP connection/reference and safe offline instructions. Do not
+embed credentials or assume every agent host can follow the same connection procedure.
+
+The unified DockPipe MCP gateway authenticates and routes knowledge/context requests
+to the selected DorkPipe package. DorkPipe owns retrieval, ranking, decisions, task
+state, provenance and supersession. Core owns generic transport, authorization and
+package dispatch; MCP does not replace the execution engine or CLI/API domain operations.
+
+Return bounded context with source references/revisions, project scope, freshness and
+conflict information. Enforce source permissions before search, snippets and graph traversal;
+private material must not leak into public answers, generated docs or shared caches.
+Retrieved documents are evidence, not authority to override bootstrap/repository rules,
+change policy or approve tools. Knowledge writes and promotion require explicit ownership
+and authorization; model-generated assertions must not become accepted decisions silently.
+
+Markdown remains an input/export format and versioned specs remain useful. Migrate
+incrementally with preserved history, backups and reviewable exports. Do not delete the
+current guidance tree or shorten working AGENTS files until replacement behavior and host
+compatibility are qualified. On MCP failure, use minimal local guidance, report unavailable
+context and stop work that requires missing policy; never infer permission from absence.
+
+See the [direction audit](../agents/tasks/agentic-app-ui/direction-review.md) before
+implementation. The older stack and file-routing examples below are reuse/history evidence,
+not a requirement for a separate local AI service stack.
+
 ## First tracked agent package
 
 The repository now has a tracked first-party `packages/agent/` package.
@@ -89,8 +118,9 @@ have a trusted host sandbox and escalation path; safe host actions may run direc
 sandbox, while privileged actions still require escalation. Both modes must produce the same event
 stream so CLI, UI, logs, and artifacts stay consistent.
 
-ForgePipe should sit on top of that same stream. It is launched through Dockpipe, inherits
-Pipeon-style launcher context, and surfaces workflow/agent/MCP/model-lane YAML through a modern UI.
+DorkPipe should contribute AI views inside the existing DockPipe application over that same
+stream and selected project/package context. These views surface workflow/agent/MCP/model-lane
+YAML without a separate DockPipe AI package, application or mandatory local container stack.
 It can run workflows, inspect artifacts/logs, show approvals, preview diffs and conflicts, and map
 agents to markdown guidance without becoming a full IDE.
 
@@ -116,7 +146,7 @@ planes.
 - The DorkPipe/Pipeon VS Code extension may provide richer chat, model browser, template designer,
   and run inspector surfaces, but those surfaces should read/write or import/export workflow YAML
   and package-owned catalogs.
-- ForgePipe may provide the primary workflow control surface, but it should still
+- DockPipe AI may provide the primary workflow control surface, but it should still
   read/write YAML-backed contracts and subscribe to the same operation-result/event stream as CLI
   runs.
 - The template designer should be a visual editor for `model_policy`, `steps[].agent`,

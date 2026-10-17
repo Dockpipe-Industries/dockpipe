@@ -1,7 +1,0 @@
-schema: 1
-kind: resolver
-name: dorkpipe-self-analysis-stack-proxy
-version: 0.6.2
-namespace: dockpipeproject
-license: Apache-2.0
-requires_resolvers: [dorkpipe]

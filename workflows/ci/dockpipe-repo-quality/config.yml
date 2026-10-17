@@ -1,8 +1,9 @@
-# Host-only: surface DorkPipe CI signals after a CI run writes ci-analysis artifacts.
+# Host-only: run the exact reviewed DorkPipe CI summary after a CI run writes artifacts.
 # Pair with workflows/ci/ci-emulate for the GitHub Actions-shaped local CI chain.
 name: dockpipe-repo-quality
 description: >-
-  Print a short summary of DorkPipe-normalized CI scans. Run after ci-emulate or GitHub CI scan steps.
+  Print a short summary of DorkPipe-normalized CI scans using a verified package
+  archive. Run after ci-emulate or GitHub CI scan steps.
 platforms: [windows, deb, macos]
 dependencies:
   host:
@@ -13,6 +14,13 @@ dependencies:
         windows: winget install Git.Git
         deb: sudo apt-get update && sudo apt-get install -y bash
         macos: brew install bash
+    - id: python3
+      command: python3
+      description: Verifies the pinned catalog, resolver archive and summary script.
+      install:
+        windows: winget install Python.Python.3.13
+        deb: sudo apt-get update && sudo apt-get install -y python3
+        macos: brew install python
 
 docker_preflight: false
 # Host-only step — no workflow-level runtime (substrate is per step when you add container steps).
@@ -25,4 +33,4 @@ steps:
       source: repo
       artifacts: artifacts
     run:
-      - scripts/dockpipe/repo-ci-summary.sh
+      - assets/scripts/repo-quality-pinned.py
