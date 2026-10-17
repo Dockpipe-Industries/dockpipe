@@ -1,13 +1,17 @@
 """Offline shared-store ownership and immutable metadata composition checks."""
 import copy
+import ctypes
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
+from unittest import mock
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "compose-package-store.py"
@@ -202,7 +206,12 @@ class ArchiveAssemblyTests(unittest.TestCase):
         path.unlink()
         with self.assertRaises(FileNotFoundError):
             self.assemble()
-        path.symlink_to(self.baseline_root / self.other['tarball'])
+        try:
+            path.symlink_to(self.baseline_root / self.other['tarball'])
+        except OSError as error:
+            if os.name == 'nt' and error.winerror == 1314:
+                self.skipTest('Windows symbolic-link privilege is unavailable')
+            raise
         with self.assertRaisesRegex(ValueError, 'link'):
             self.assemble()
         path.unlink()
@@ -216,6 +225,207 @@ class ArchiveAssemblyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'fresh output'):
             self.assemble()
         self.assertEqual(marker.read_bytes(), b'user bytes')
+
+
+class SecureArchiveOpenTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.archive = self.root / 'archive'
+        self.archive.write_bytes(b'verified regular archive')
+
+    def test_regular_archive_is_readable_and_descriptor_is_closed(self):
+        with composer.open_archive(self.archive) as reader:
+            descriptor = reader.fileno()
+            self.assertEqual(reader.read(), b'verified regular archive')
+            self.assertFalse(os.get_inheritable(descriptor))
+        with self.assertRaises(OSError):
+            os.fstat(descriptor)
+
+    def test_directory_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, 'regular'):
+            with composer.open_archive(self.root):
+                self.fail('Directory was exposed as an archive')
+
+    def test_links_are_rejected_even_when_the_target_bytes_match(self):
+        link = self.root / 'link'
+        try:
+            link.symlink_to(self.archive)
+        except OSError as error:
+            if os.name == 'nt' and error.winerror == 1314:
+                self.skipTest('Windows symbolic-link privilege is unavailable')
+            raise
+        with self.assertRaisesRegex(ValueError, 'link'):
+            with composer.open_archive(link):
+                self.fail('Link was exposed as an archive')
+
+    def test_descriptor_is_closed_when_post_open_validation_fails(self):
+        original = composer.archive_descriptor
+        opened = []
+        def capture_descriptor(path):
+            descriptor = original(path)
+            opened.append(descriptor)
+            return descriptor
+        with mock.patch.object(composer, 'archive_descriptor', side_effect=capture_descriptor), \
+                mock.patch.object(composer, 'reject_archive_links', side_effect=[None, ValueError('changed link')]):
+            with self.assertRaisesRegex(ValueError, 'changed link'):
+                with composer.open_archive(self.archive):
+                    self.fail('Changed path was exposed')
+        self.assertEqual(len(opened), 1)
+        with self.assertRaises(OSError):
+            os.fstat(opened[0])
+
+    @unittest.skipUnless(os.name == 'posix', 'POSIX no-follow acquisition')
+    def test_link_swap_during_open_fails_without_following(self):
+        original = composer.archive_descriptor
+        def replace_before_open(path):
+            path.unlink()
+            path.symlink_to(self.root / 'target')
+            return original(path)
+        (self.root / 'target').write_bytes(b'verified regular archive')
+        with mock.patch.object(composer, 'archive_descriptor', side_effect=replace_before_open):
+            with self.assertRaises(OSError):
+                with composer.open_archive(self.archive):
+                    self.fail('Racing symbolic link was followed')
+
+    @unittest.skipUnless(os.name == 'posix', 'POSIX nonblocking acquisition')
+    def test_fifo_is_rejected_without_waiting_for_a_writer(self):
+        self.archive.unlink()
+        os.mkfifo(self.archive)
+        with self.assertRaisesRegex(ValueError, 'regular'):
+            with composer.open_archive(self.archive):
+                self.fail('FIFO was exposed as an archive')
+
+    @unittest.skipUnless(os.name == 'posix', 'POSIX security capability check')
+    def test_missing_no_follow_support_fails_closed(self):
+        with mock.patch.object(os, 'O_NOFOLLOW'):
+            del os.O_NOFOLLOW
+            with self.assertRaisesRegex(ValueError, 'requires no-follow'):
+                composer.archive_descriptor(self.archive)
+
+    def test_unsupported_platform_fails_closed(self):
+        with mock.patch.object(os, 'name', 'unsupported'):
+            with self.assertRaisesRegex(ValueError, 'unsupported'):
+                composer.archive_descriptor(self.archive)
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows native reparse-handle rejection')
+    def test_native_windows_reparse_handle_is_rejected_without_path_precheck(self):
+        link = self.root / 'native-link'
+        try:
+            link.symlink_to(self.archive)
+        except OSError as error:
+            if error.winerror == 1314:
+                self.skipTest('Windows symbolic-link privilege is unavailable')
+            raise
+        with self.assertRaisesRegex(ValueError, 'reparse link'):
+            composer.windows_archive_descriptor(link)
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows native sharing protection')
+    def test_native_windows_handle_denies_write_and_delete_until_closed(self):
+        with composer.open_archive(self.archive) as reader:
+            with self.assertRaises(OSError):
+                self.archive.write_bytes(b'changed')
+            with self.assertRaises(OSError):
+                self.archive.unlink()
+            self.assertEqual(reader.read(), b'verified regular archive')
+        self.archive.write_bytes(b'after close')
+        self.archive.unlink()
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows native junction rejection')
+    def test_native_windows_parent_junction_is_rejected(self):
+        junction = self.root / 'junction'
+        result = subprocess.run(['cmd', '/c', 'mklink', '/J', str(junction), str(self.root)],
+                                capture_output=True, text=True, timeout=10)
+        if result.returncode:
+            self.skipTest('Windows directory junction creation is unavailable')
+        try:
+            with self.assertRaisesRegex(ValueError, 'reparse link'):
+                with composer.open_archive(junction / self.archive.name):
+                    self.fail('Parent junction was followed')
+        finally:
+            junction.rmdir()
+
+
+class WindowsArchiveHandleTests(unittest.TestCase):
+    """Exercise Win32 validation and ownership even on the POSIX development host."""
+    def setUp(self):
+        self.kernel = types.SimpleNamespace(
+            CreateFileW=mock.Mock(return_value=0x100000001),
+            GetFileType=mock.Mock(return_value=1),
+            GetFileInformationByHandleEx=mock.Mock(side_effect=self.file_information),
+            CloseHandle=mock.Mock(return_value=1),
+        )
+        self.attributes = 0x80
+        self.reparse_tag = 0
+        self.crt = types.SimpleNamespace(open_osfhandle=mock.Mock(return_value=42))
+        self.patches = [
+            mock.patch.object(ctypes, 'WinDLL', return_value=self.kernel, create=True),
+            mock.patch.dict(sys.modules, {'msvcrt': self.crt}),
+            mock.patch.object(os, 'O_BINARY', 0x8000, create=True),
+            mock.patch.object(os, 'O_NOINHERIT', 0x80, create=True),
+            mock.patch.object(ctypes, 'get_last_error', return_value=5, create=True),
+            mock.patch.object(ctypes, 'WinError', return_value=OSError('Win32 error'), create=True),
+        ]
+        for patch in self.patches:
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def file_information(self, handle, information_class, pointer, size):
+        self.assertEqual(information_class, 9)
+        self.assertEqual(size, 8)
+        pointer._obj.attributes = self.attributes
+        pointer._obj.reparse_tag = self.reparse_tag
+        return 1
+
+    def test_secure_flags_and_full_width_handle_transfer(self):
+        self.assertEqual(composer.windows_archive_descriptor('archive'), 42)
+        args = self.kernel.CreateFileW.call_args.args
+        self.assertEqual(args[1:3], (0x80000000, 0x1))
+        self.assertEqual(args[4:6], (3, 0x00200000 | 0x02000000))
+        self.assertIs(self.kernel.CreateFileW.restype, ctypes.c_void_p)
+        self.crt.open_osfhandle.assert_called_once_with(0x100000001, os.O_RDONLY | os.O_BINARY | os.O_NOINHERIT)
+        self.kernel.CloseHandle.assert_not_called()
+
+    def test_non_disk_directory_device_and_reparse_handles_are_closed(self):
+        scenarios = [(2, 0x80, 0), (1, 0x10, 0), (1, 0x40, 0),
+                     (1, 0x400, 0), (1, 0x80, 0xA000000C)]
+        for file_type, attributes, tag in scenarios:
+            with self.subTest(file_type=file_type, attributes=attributes, tag=tag):
+                self.kernel.GetFileType.return_value = file_type
+                self.attributes = attributes
+                self.reparse_tag = tag
+                self.kernel.CloseHandle.reset_mock()
+                with self.assertRaises(ValueError):
+                    composer.windows_archive_descriptor('archive')
+                self.kernel.CloseHandle.assert_called_once_with(0x100000001)
+                self.crt.open_osfhandle.assert_not_called()
+
+    def test_attribute_query_and_crt_transfer_failures_close_native_handle(self):
+        self.kernel.GetFileInformationByHandleEx.side_effect = None
+        self.kernel.GetFileInformationByHandleEx.return_value = 0
+        with self.assertRaisesRegex(OSError, 'Win32'):
+            composer.windows_archive_descriptor('archive')
+        self.kernel.CloseHandle.assert_called_once_with(0x100000001)
+        self.kernel.CloseHandle.reset_mock()
+        self.kernel.GetFileInformationByHandleEx.side_effect = self.file_information
+        self.crt.open_osfhandle.side_effect = OSError('CRT transfer failed')
+        with self.assertRaisesRegex(OSError, 'CRT transfer'):
+            composer.windows_archive_descriptor('archive')
+        self.kernel.CloseHandle.assert_called_once_with(0x100000001)
+
+    def test_invalid_native_handle_is_never_transferred_or_closed(self):
+        self.kernel.CreateFileW.return_value = ctypes.c_void_p(-1).value
+        with self.assertRaisesRegex(OSError, 'Win32'):
+            composer.windows_archive_descriptor('archive')
+        self.kernel.CloseHandle.assert_not_called()
+        self.crt.open_osfhandle.assert_not_called()
+
+    def test_missing_windows_api_fails_closed(self):
+        del self.kernel.GetFileInformationByHandleEx
+        with self.assertRaisesRegex(ValueError, 'secure file API'):
+            composer.windows_archive_descriptor('archive')
+        self.kernel.CreateFileW.assert_not_called()
 
 
 if __name__ == "__main__":
