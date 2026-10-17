@@ -49,7 +49,7 @@ func dependencyFixture(t *testing.T, manifests ...domain.PackageManifest) (*Clie
 		archive := buffer.Bytes()
 		digest := sha256.Sum256(archive)
 		entry := Entry{StoreArtifact: packagebuild.StoreArtifact{
-			Name: manifest.Name, Version: manifest.Version,
+			Name: manifest.Name, Version: manifest.Version, Hidden: manifest.Hidden,
 			Tarball: "dockpipe-" + manifest.Kind + "-" + manifest.Name + "-1.0.0.tar.gz",
 			SHA256:  hex.EncodeToString(digest[:]), SizeBytes: int64(len(archive)),
 		}, Kind: manifest.Kind}

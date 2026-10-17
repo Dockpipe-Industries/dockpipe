@@ -2,6 +2,10 @@
   "schema": 1,
   "artifacts": [
     {
+      "kind": "resolver",
+      "name": "dorkpipe-self-analysis"
+    },
+    {
       "kind": "workflow",
       "name": "dorkpipe-self-analysis"
     }

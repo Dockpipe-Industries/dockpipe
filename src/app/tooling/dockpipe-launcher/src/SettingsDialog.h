@@ -6,6 +6,7 @@
 
 class QLineEdit;
 class QPlainTextEdit;
+class QCheckBox;
 
 class SettingsDialog : public QDialog {
     Q_OBJECT
@@ -27,4 +28,11 @@ private:
     QPlainTextEdit *m_extraWorkflowRoots = nullptr;
     QPlainTextEdit *m_packageRemotes = nullptr;
     LauncherSettings m_settings;
+    QCheckBox *m_cockpitEnabled = nullptr;
+    QCheckBox *m_appControl = nullptr;
+    QCheckBox *m_orbitalMotion = nullptr;
+    QCheckBox *m_controller = nullptr;
+    QCheckBox *m_showShip = nullptr;
+    QCheckBox *m_voiceCommands = nullptr;
+    QCheckBox *m_hardwareAcceleration = nullptr;
 };

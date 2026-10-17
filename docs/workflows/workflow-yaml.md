@@ -277,6 +277,7 @@ without hardcoding provider-specific environment names:
 dockpipe scope resolver codex auth-dir
 dockpipe scope resolver codex container-auth-dir
 dockpipe scope resolver codex auth-mount-mode
+dockpipe scope resolver codex assets-dir
 ```
 
 DorkPipe agent orchestration also accepts full-string scope references in path lists such as
@@ -887,3 +888,5 @@ and 64 nesting levels, within a 6 MiB JSON request. These are editor capacity li
 not new workflow execution limits. Parsing or editing errors produce no successful
 response and change no file. The launcher bounds responses to 8 MiB and cancels
 CLI operations after 30 seconds or on explicit cancellation.
+
+`dockpipe scope resolver <name> assets-dir` resolves package-owned assets from installed resolver directories/archives or configured authoring trees. A resolver may supply `config.yml` and assets without an execution `profile` when its `package.yml` explicitly declares `kind: resolver`; `config.yml` alone does not identify a resolver, even under `resolvers/`. Auth/config fields still require a profile. Package engine compatibility is checked before archive extraction or asset access. Unsafe resolver names, missing assets and legacy flat profiles fail. Callers should use this path instead of reconstructing extraction-cache locations.

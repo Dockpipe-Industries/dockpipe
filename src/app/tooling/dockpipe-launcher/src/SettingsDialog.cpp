@@ -9,6 +9,9 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include <QCheckBox>
+#include <QGroupBox>
+#include <QScrollArea>
 
 namespace {
 
@@ -31,9 +34,16 @@ SettingsDialog::SettingsDialog(const LauncherSettings &settings, QWidget *parent
     : QDialog(parent), m_settings(settings)
 {
     setWindowTitle(tr("Settings"));
-    resize(760, 520);
+    resize(760, 720);
 
-    auto *layout = new QVBoxLayout(this);
+    auto *outer = new QVBoxLayout(this);
+    auto *scroll = new QScrollArea;
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+    auto *content = new QWidget;
+    scroll->setWidget(content);
+    outer->addWidget(scroll, 1);
+    auto *layout = new QVBoxLayout(content);
     layout->setContentsMargins(14, 14, 14, 14);
     layout->setSpacing(10);
 
@@ -56,11 +66,13 @@ SettingsDialog::SettingsDialog(const LauncherSettings &settings, QWidget *parent
     m_extraWorkflowRoots = new QPlainTextEdit(joinLines(m_settings.extraWorkflowRoots));
     m_extraWorkflowRoots->setPlaceholderText(tr("One workflow root per line"));
     m_extraWorkflowRoots->setTabChangesFocus(true);
+    m_extraWorkflowRoots->setMaximumHeight(80);
     form->addRow(tr("Extra Workflow Roots"), m_extraWorkflowRoots);
 
     m_packageRemotes = new QPlainTextEdit(joinLines(m_settings.packageRemotes));
     m_packageRemotes->setPlaceholderText(tr("One HTTPS catalog URL per line; empty disables Marketplace"));
     m_packageRemotes->setTabChangesFocus(true);
+    m_packageRemotes->setMaximumHeight(80);
     form->addRow(tr("Package Remotes"), m_packageRemotes);
     auto *remotePresets = new QHBoxLayout;
     auto *production = new QPushButton(tr("Use production"));
@@ -82,10 +94,49 @@ SettingsDialog::SettingsDialog(const LauncherSettings &settings, QWidget *parent
     notes->setWordWrap(true);
     layout->addWidget(notes);
 
+    auto *cockpit = new QGroupBox(tr("Cockpit mode"));
+    cockpit->setObjectName("cockpitSettingsGroup");
+    auto *cockpitLayout = new QVBoxLayout(cockpit);
+    m_cockpitEnabled = new QCheckBox(tr("Enable Cockpit mode"));
+    m_cockpitEnabled->setObjectName("settingsCockpitEnabled");
+    m_cockpitEnabled->setChecked(m_settings.cockpit.enabled);
+    cockpitLayout->addWidget(m_cockpitEnabled);
+    auto *description = new QLabel(tr("An optional bonus workspace for flying and exploring rooms. Off by default. Disabling it stops flight, app capture, controller input and voice control."));
+    description->setWordWrap(true);
+    cockpitLayout->addWidget(description);
+    auto *options = new QWidget;
+    options->setObjectName("cockpitSettingsOptions");
+    auto *optionsLayout = new QVBoxLayout(options);
+    optionsLayout->setContentsMargins(24, 4, 0, 4);
+    const auto option = [&](const QString &label, const QString &name, bool checked, const QString &hint) {
+        auto *checkbox = new QCheckBox(label);
+        checkbox->setObjectName(name);
+        checkbox->setChecked(checked);
+        checkbox->setToolTip(hint);
+        optionsLayout->addWidget(checkbox);
+        return checkbox;
+    };
+    m_appControl = option(tr("App control · Experimental"), "settingsCockpitAppControl", m_settings.cockpit.appControl,
+        tr("Allow local app previews and native control on supported X11 desktops. Entering a room can preview up to three uniquely matched assigned apps."));
+    m_orbitalMotion = option(tr("Orbital motion"), "settingsCockpitOrbitalMotion", m_settings.cockpit.orbitalMotion,
+        tr("Revolve planets around the sun while the orbital view is visible."));
+    m_controller = option(tr("Enable controller"), "settingsCockpitController", m_settings.cockpit.controller,
+        tr("Use an SDL-compatible controller while the cockpit is visible."));
+    m_voiceCommands = option(tr("Enable local voice commands"), "settingsCockpitVoice", m_settings.cockpit.voiceCommands,
+        tr("Enable hold-to-talk in the cockpit. The microphone starts only while you hold the button."));
+    m_showShip = option(tr("Show spaceship"), "settingsCockpitShowShip", m_settings.cockpit.showShip,
+        tr("Show the cockpit canopy and instrument deck."));
+    m_hardwareAcceleration = option(tr("Hardware acceleration"), "settingsCockpitHardware", m_settings.cockpit.hardwareAcceleration,
+        tr("Use the GPU when supported. Fall back to software rendering if unavailable."));
+    options->setEnabled(m_cockpitEnabled->isChecked());
+    connect(m_cockpitEnabled, &QCheckBox::toggled, options, &QWidget::setEnabled);
+    cockpitLayout->addWidget(options);
+    layout->addWidget(cockpit);
+
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    layout->addWidget(buttons);
+    outer->addWidget(buttons);
 }
 
 LauncherSettings SettingsDialog::updatedSettings() const
@@ -95,6 +146,9 @@ LauncherSettings SettingsDialog::updatedSettings() const
     out.globalRootOverride = m_globalRootOverride->text().trimmed();
     out.extraWorkflowRoots = splitLines(m_extraWorkflowRoots->toPlainText());
     out.packageRemotes = splitLines(m_packageRemotes->toPlainText());
+    out.cockpit = {m_cockpitEnabled->isChecked(), m_appControl->isChecked(), m_orbitalMotion->isChecked(),
+        m_controller->isChecked(), m_showShip->isChecked(), m_voiceCommands->isChecked(),
+        m_hardwareAcceleration->isChecked()};
     return out;
 }
 

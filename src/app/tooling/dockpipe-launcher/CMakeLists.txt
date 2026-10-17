@@ -29,7 +29,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(OpenGL REQUIRED)
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Network Concurrent)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network Concurrent OpenGLWidgets)
+add_subdirectory(third_party/ksyntaxhighlighting)
 
 set(DOCKPIPE_LAUNCHER_SOURCES
     src/main.cpp
@@ -59,6 +60,11 @@ set(DOCKPIPE_LAUNCHER_SOURCES
     src/CanvasPanel.cpp
     src/WorkflowCanvas.cpp
     src/WorkflowEditorWidget.cpp
+    src/WorkflowScriptPath.cpp
+    src/ProjectFilesWidget.cpp
+    src/ProjectGitWidget.cpp
+    src/SourceEditor.cpp
+    src/SourceHighlighter.cpp
     src/DockerObservabilityWidget.cpp
     src/DockerRemoteMonitoring.cpp
     src/DockerResourceInspector.cpp
@@ -186,12 +192,29 @@ endif()
 
 if(BUILD_TESTING)
     add_executable(workflow-studio-test
-        tests/WorkflowStudioTest.cpp src/CanvasIcons.cpp src/CanvasPanel.cpp src/WorkflowCanvas.cpp src/WorkflowEditorWidget.cpp
+        tests/WorkflowStudioTest.cpp src/CanvasIcons.cpp src/CanvasPanel.cpp src/WorkflowCanvas.cpp src/WorkflowEditorWidget.cpp src/WorkflowScriptPath.cpp src/ProjectFilesWidget.cpp src/SourceEditor.cpp src/SourceHighlighter.cpp
         src/Theme.cpp src/WindowChrome.cpp dockpipe-launcher.qrc)
     target_include_directories(workflow-studio-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(workflow-studio-test PRIVATE Qt6::Widgets)
     add_test(NAME workflow-studio COMMAND workflow-studio-test)
     set_tests_properties(workflow-studio PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+    add_executable(workflow-script-path-test tests/WorkflowScriptPathTest.cpp src/WorkflowScriptPath.cpp)
+    target_include_directories(workflow-script-path-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(workflow-script-path-test PRIVATE Qt6::Core)
+    add_test(NAME workflow-script-path COMMAND workflow-script-path-test)
+    add_executable(project-files-test tests/ProjectFilesTest.cpp src/ProjectFilesWidget.cpp src/CanvasIcons.cpp src/SourceEditor.cpp src/SourceHighlighter.cpp
+        src/Theme.cpp src/WindowChrome.cpp dockpipe-launcher.qrc)
+    target_include_directories(project-files-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(project-files-test PRIVATE Qt6::Widgets)
+    add_test(NAME project-files COMMAND project-files-test)
+    set_tests_properties(project-files PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    add_executable(project-git-test tests/ProjectGitTest.cpp src/ProjectGitWidget.cpp src/SourceEditor.cpp src/SourceHighlighter.cpp
+        src/RemoteCommand.cpp src/DockpipeChoices.cpp src/WorkflowCatalog.cpp src/LauncherSettings.cpp src/ContextStore.cpp src/Context.cpp
+        src/CanvasIcons.cpp src/Theme.cpp src/WindowChrome.cpp dockpipe-launcher.qrc)
+    target_include_directories(project-git-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(project-git-test PRIVATE Qt6::Widgets)
+    add_test(NAME project-git COMMAND project-git-test)
+    set_tests_properties(project-git PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45 SKIP_RETURN_CODE 77)
 endif()
 
 if(BUILD_TESTING)
@@ -204,4 +227,114 @@ if(BUILD_TESTING)
     target_link_libraries(execution-explorer-test PRIVATE Qt6::Widgets)
     add_test(NAME execution-explorer COMMAND execution-explorer-test)
     set_tests_properties(execution-explorer PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(source-editor-test tests/SourceEditorTest.cpp src/SourceEditor.cpp src/SourceHighlighter.cpp
+        src/Theme.cpp src/WindowChrome.cpp dockpipe-launcher.qrc)
+    target_include_directories(source-editor-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(source-editor-test PRIVATE Qt6::Widgets dockpipe-syntax)
+    add_test(NAME source-editor COMMAND source-editor-test)
+    set_tests_properties(source-editor PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+endif()
+
+# Native editor dependency; no web runtime or language servers.
+foreach(editor_target dockpipe-launcher remote-launcher-test workflow-workspace-test workflow-studio-test project-files-test project-git-test)
+    if(TARGET ${editor_target})
+        target_link_libraries(${editor_target} PRIVATE dockpipe-syntax)
+        if(APPLE AND editor_target STREQUAL "dockpipe-launcher")
+            add_custom_command(TARGET ${editor_target} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DOCKPIPE_SYNTAX_RESOURCE}" "$<TARGET_FILE_DIR:${editor_target}>/dockpipe-syntax.rcc"
+                COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_BINARY_DIR}/syntax-licenses" "$<TARGET_FILE_DIR:${editor_target}>/syntax-licenses")
+        endif()
+    endif()
+endforeach()
+
+# Workspace graph is a lazily created view over the existing Files scope.
+set(WORKSPACE_GRAPH_SOURCES
+    src/SpatialWorkspace.cpp src/SpatialWorkspaceStore.cpp src/SpatialWorkspaceEditor.cpp
+    src/CockpitWorkspaces.cpp src/ContextStore.cpp src/Context.cpp
+    src/SpatialInteriorGeometry.cpp src/WorkspaceFlightInterior.cpp src/SpatialDisplayDialog.cpp
+    src/WorkspaceGraphWidget.cpp src/WorkspaceGraphNode.cpp
+    src/WorkspaceGraphReader.cpp src/WorkspaceGraphPage.cpp src/WorkspaceGraphView.cpp
+    src/WorkspaceFlightView.cpp src/WorkspaceFlightOrbit.cpp src/WorkspaceFlightCockpit.cpp src/FlightPlanetArt.cpp
+    src/CockpitWidget.cpp src/CockpitCommandDeck.cpp src/CockpitHudPanel.cpp src/CockpitVoice.cpp src/CockpitController.cpp src/DesktopAppCatalog.cpp)
+foreach(graph_target dockpipe-launcher remote-launcher-test workflow-workspace-test workflow-studio-test project-files-test)
+    if(TARGET ${graph_target})
+        target_sources(${graph_target} PRIVATE ${WORKSPACE_GRAPH_SOURCES})
+        target_link_libraries(${graph_target} PRIVATE Qt6::OpenGLWidgets)
+    endif()
+endforeach()
+
+if(BUILD_TESTING)
+    add_executable(workspace-graph-test tests/WorkspaceGraphTest.cpp ${WORKSPACE_GRAPH_SOURCES}
+        src/ProjectFilesWidget.cpp src/SourceEditor.cpp src/SourceHighlighter.cpp src/CanvasIcons.cpp
+        src/Theme.cpp src/WindowChrome.cpp dockpipe-launcher.qrc)
+    target_include_directories(workspace-graph-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(workspace-graph-test PRIVATE Qt6::Widgets Qt6::OpenGLWidgets dockpipe-syntax)
+    add_test(NAME workspace-graph COMMAND workspace-graph-test)
+    set_tests_properties(workspace-graph PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 90)
+endif()
+
+# Optional native app streaming; other platforms retain an explanatory UI stub.
+option(DOCKPIPE_APP_BILLBOARDS "Build the experimental X11 app billboard backend" ON)
+if(DOCKPIPE_APP_BILLBOARDS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    find_package(X11 QUIET)
+    find_library(DOCKPIPE_XCB_LIBRARY xcb)
+endif()
+foreach(graph_target dockpipe-launcher remote-launcher-test workflow-workspace-test workflow-studio-test project-files-test workspace-graph-test)
+    if(TARGET ${graph_target})
+        target_sources(${graph_target} PRIVATE src/DesktopAppWindow.cpp src/FlightAppBillboards.cpp)
+        if(DOCKPIPE_APP_BILLBOARDS AND X11_Xcomposite_FOUND AND X11_Xrender_FOUND AND DOCKPIPE_XCB_LIBRARY)
+            target_compile_definitions(${graph_target} PRIVATE DOCKPIPE_X11_BILLBOARDS)
+            target_link_libraries(${graph_target} PRIVATE X11::X11 X11::Xcomposite X11::Xrender ${DOCKPIPE_XCB_LIBRARY})
+        endif()
+    endif()
+endforeach()
+
+if(BUILD_TESTING)
+    add_executable(desktop-app-window-test tests/DesktopAppWindowTest.cpp src/DesktopAppWindow.cpp)
+    target_include_directories(desktop-app-window-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(desktop-app-window-test PRIVATE Qt6::Widgets)
+    if(DOCKPIPE_APP_BILLBOARDS AND X11_Xcomposite_FOUND AND X11_Xrender_FOUND AND DOCKPIPE_XCB_LIBRARY)
+        target_compile_definitions(desktop-app-window-test PRIVATE DOCKPIPE_X11_BILLBOARDS)
+        target_link_libraries(desktop-app-window-test PRIVATE X11::X11 X11::Xcomposite X11::Xrender ${DOCKPIPE_XCB_LIBRARY})
+    endif()
+    add_test(NAME desktop-app-window COMMAND desktop-app-window-test)
+    set_tests_properties(desktop-app-window PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45 SKIP_RETURN_CODE 77)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(launcher-settings-test tests/LauncherSettingsTest.cpp
+        src/LauncherSettings.cpp src/SettingsDialog.cpp src/ContextStore.cpp src/Context.cpp)
+    target_include_directories(launcher-settings-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(launcher-settings-test PRIVATE Qt6::Widgets)
+    add_test(NAME launcher-settings COMMAND launcher-settings-test)
+    set_tests_properties(launcher-settings PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
+    add_executable(cockpit-test tests/CockpitTest.cpp tests/SpatialCockpitTest.cpp tests/NativeHandoffTest.cpp ${WORKSPACE_GRAPH_SOURCES}
+        src/ProjectFilesWidget.cpp src/SourceEditor.cpp src/SourceHighlighter.cpp src/CanvasIcons.cpp
+        src/DesktopAppWindow.cpp src/FlightAppBillboards.cpp src/Theme.cpp src/WindowChrome.cpp dockpipe-launcher.qrc)
+    target_include_directories(cockpit-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(cockpit-test PRIVATE Qt6::Widgets Qt6::OpenGLWidgets dockpipe-syntax)
+    if(DOCKPIPE_APP_BILLBOARDS AND X11_Xcomposite_FOUND AND X11_Xrender_FOUND AND DOCKPIPE_XCB_LIBRARY)
+        target_compile_definitions(cockpit-test PRIVATE DOCKPIPE_X11_BILLBOARDS)
+        target_link_libraries(cockpit-test PRIVATE X11::X11 X11::Xcomposite X11::Xrender ${DOCKPIPE_XCB_LIBRARY})
+    endif()
+    add_test(NAME cockpit COMMAND cockpit-test)
+    set_tests_properties(cockpit PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
+    add_test(NAME native-handoff COMMAND cockpit-test --native-handoff)
+    set_tests_properties(native-handoff PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60 SKIP_RETURN_CODE 77)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(spatial-workspace-test tests/SpatialWorkspaceTest.cpp
+        src/SpatialWorkspace.cpp src/SpatialWorkspaceStore.cpp src/ContextStore.cpp src/Context.cpp)
+    target_include_directories(spatial-workspace-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(spatial-workspace-test PRIVATE Qt6::Core)
+    add_test(NAME spatial-workspace COMMAND spatial-workspace-test)
+endif()
+
+if(TARGET cockpit-test)
+    add_test(NAME spatial-cockpit COMMAND cockpit-test --spatial)
+    set_tests_properties(spatial-cockpit PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
 endif()

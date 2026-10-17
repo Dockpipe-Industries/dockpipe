@@ -13,6 +13,9 @@ QPushButton:disabled { background-color: #191d24; border-color: #363f4c; color: 
 QWidget#studioInspector, QWidget#studioSidebar,
 QScrollArea#studioInspectorScroll, QScrollArea#studioInspectorScroll > QWidget { background: #191d24; }
 QWidget#workflowStudio QPlainTextEdit { background: #141920; border-color: #363f4c; }
+QWidget#projectFiles, QWidget#projectGit { background: #191d24; }
+QWidget#projectFiles QPlainTextEdit, QWidget#projectGit QPlainTextEdit { background: #141920; color: #dce5f0; border-color: #363f4c; }
+QWidget#projectFiles QTreeView, QWidget#projectGit QListWidget { background: #191d24; color: #dce5f0; border: none; }
 QPushButton#applyStep { background: #263c50; border-color: #3d5a75; }
 
 /* Explicit foregrounds keep scheme changes independent of Qt's cached widget palettes. */
@@ -522,3 +525,23 @@ QWidget#runHistoryPage QTableWidget {
     selection-background-color: #273d50;
     selection-color: #edf5ff;
 }
+
+/* Shared project/workflow editor and source control. */
+QWidget#editorWorkspace { background: #141920; border: 1px solid #303a48; border-radius: 10px; }
+QWidget#projectFiles QPlainTextEdit { border: none; border-radius: 0px; }
+QLabel#editorSectionLabel { color: #94a3b8; font-size: 10px; font-weight: 700; letter-spacing: 1px; }
+QLabel#editorMuted, QLabel#editorStatus { color: #94a3b8; font-size: 11px; }
+QLabel#editorEmptyTitle { color: #dce5f0; font-size: 20px; font-weight: 600; }
+QToolButton#editorIconButton { background: transparent; border: none; border-radius: 6px; padding: 6px; }
+QToolButton#editorIconButton:hover { background: #202a36; }
+QToolButton#editorIconButton::menu-indicator { image: none; }
+QTreeView#fileTree { outline: none; padding: 2px; }
+QTreeView#fileTree::item { height: 30px; padding: 0px 6px; border-radius: 5px; }
+QTreeView#fileTree::item:hover { background: #202a36; }
+QTreeView#fileTree::item:selected { background: #243e51; color: #dce5f0; }
+QPushButton#editorSave { padding: 6px 14px; min-height: 18px; }
+QLabel#gitHeading { font-size: 22px; font-weight: 600; }
+QLabel#gitBranch { color: #dce5f0; background: #202a36; border: 1px solid #303a48; border-radius: 6px; padding: 7px 12px; }
+QListWidget#gitChangedFiles { outline: none; }
+QListWidget#gitChangedFiles::item { border-radius: 6px; }
+QWidget#gitCommitPanel { background: #141920; border: 1px solid #303a48; border-radius: 8px; }

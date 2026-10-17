@@ -38,6 +38,10 @@ Dockpipe separates project build outputs, user installs, system installs and pub
 | **Global** | **`DOCKPIPE_GLOBAL_ROOT`** or the OS user data directory | User-wide installed core, resolver/workflow packages, global image artifact metadata, global download cache. |
 | **Published remote** | Static origin / package registry / OCI registry | Versioned package tarballs and OCI image refs. |
 
+The OS-selected durable storage base may use a filesystem alias, such as
+`/home` pointing to `/var/home`. Dockpipe resolves that base before creating its
+state directory. Links inside the Dockpipe-owned state directory remain rejected.
+
 Use the public `dockpipe scope` commands or package SDK helpers when scripts need
 state paths; do not hardcode another user's cache or state location.
 
@@ -59,6 +63,29 @@ For a reproducible setup, use an immutable manifest URL and the selected package
 checksum. When authoring your own packages, keep YAML, scripts and assets together
 and declare dependencies so another user can run them without your source tree.
 
+### Hidden packages
+
+Set `hidden: true` in an installable workflow, resolver, or core `package.yml`
+to omit it from normal catalog discovery and the launcher's Marketplace.
+The default is `false`. Each installable slice has its own flag; an umbrella
+`kind: package` manifest does not apply it to child slices.
+
+```yaml
+schema: 1
+kind: workflow
+name: experimental-tool
+hidden: true
+```
+
+Use `dockpipe package catalog --remote <HTTPS manifest URL> --include-hidden`
+to inspect every entry. Explicit installation by kind/name and dependency
+resolution still include hidden entries. Existing installations remain listed
+and usable. Recompile and publish the updated catalog for this setting to reach
+remote users; older clients may still list the entries.
+
+This is a discovery preference, not access control or a licensing restriction.
+A hidden artifact on a public origin remains downloadable.
+
 ## Authoring vs execution (two modes, both supported)
 
 | Mode | What you run | Friction | Notes |
@@ -76,10 +103,10 @@ A **workflow** is primarily **`config.yml`** (plus assets next to it). In that f
 | Concern | Where definitions usually live | What the workflow YAML does |
 |--------|--------------------------------|-----------------------------|
 | **Runtime** (substrate) | **Only in core:** **`templates/core/runtimes/<name>/`** (or bundled **`src/core/runtimes/`**) — substrates are an **engine** concept. | **`runtime`** references an existing profile **name**. Top-level **`runtime`** sets the workflow default; a step may override it. Workflows **do not** define or override substrate types; adding a new runtime is a **core** change. |
-| **Resolver** (tool / env profile) | **`templates/core/resolvers/<name>/`** or maintainer trees listed under **`compile.workflows`** (e.g. nested **`…/resolvers/codex/`** with **`profile/`**) | **`resolver`** names the profile. Top-level **`resolver`** sets the workflow default; a step may override it. Package metadata may still declare **`capability`**, but normal workflow authoring should lead with **`resolver`**. |
+| **Resolver** (tool / env profile) | **`templates/core/resolvers/<name>/`** or maintainer trees listed under **`compile.workflows`** (e.g. nested **`…/resolvers/codex/`** with **`profile`**) | **`resolver`** names the profile. Top-level **`resolver`** sets the workflow default; a step may override it. Package metadata may still declare **`capability`**, but normal workflow authoring should lead with **`resolver`**. |
 | **Security policy** | **Core-owned presets** plus engine defaults, compiled into the effective runtime manifest. | Workflow YAML may select `security.profile` and apply bounded `network`, `filesystem`, and `process` overrides. It does **not** expose raw Docker flags or define a second runtime system. |
 | **Strategy** (lifecycle wrapper) | **`templates/core/strategies/<name>/`** | **`strategy`**, **`strategies:`** select host before/after scripts. |
-| **Package-owned workflows** | Same as workflows: **`config.yml`** under e.g. **`dockpipe/dorkpipe/`** or nested under **`dockpipe/<group>/resolvers/<name>/`** (resolver-shaped trees include **`profile/`** + workflow assets) | **`scripts/…`** resolves via compiled **`dockpipe-workflow-*`** tarballs first, then source trees. |
+| **Package-owned workflows** | Same as workflows: **`config.yml`** under e.g. **`dockpipe/dorkpipe/`** or nested under **`dockpipe/<group>/resolvers/<name>/`** (resolver-shaped trees include **`profile`** + workflow assets) | **`scripts/…`** resolves via compiled **`dockpipe-workflow-*`** tarballs first, then source trees. |
 
 So **one repo** can ship **workflows**, **resolvers**, and **runtimes** / **strategies** / the rest of the spine via **`compile core`** ( **`templates/core`** or **`src/core`** ): list **`compile.workflows`** as the entry point. Resolver packaging uses the same roots as workflows plus flat **`src/core/resolvers`** and **`templates/core/resolvers`** when those exist. **Runtimes** still live under **core**; workflows only select them. **Compile** emits **`dockpipe-workflow-*`**, **`dockpipe-resolver-*`**, and **`core`** tarballs while **`package.yml`** records **`depends`**, **`namespace`**, and metadata. Step-by-step keys: **[../workflows/workflow-yaml.md](../workflows/workflow-yaml.md)**.
 
@@ -105,7 +132,7 @@ If **`dockpipe.config.json`** is **missing**, compile uses built-in defaults for
 Compile steps:
 
 1. **`compile core`** — copies **`src/core`** (default when **`src/core/runtimes`** exists) or **`templates/core`**, or **`compile.core_from`** / **`--from`**, into **`packages/core/`** and writes **`package.yml`** (`kind: core`). **Omits** top-level **`resolvers/`**, **`bundles/`**, and **`workflows/`** from that copy so those slices stay separate packages.
-2. **`compile resolvers`** — repeatable **`--from`**; default roots are **`compile.workflows`**, **`src/core/resolvers`**, and **`templates/core/resolvers`** when those directories exist. **Pack roots** under each **`--from`** directory include: **`resolvers/`** (flat); **`packages/<group>/resolvers/`**; **`dockpipe/<group>/resolvers/`** (e.g. dockpipe repo: **`agent`**, **`ide`**, **`secrets`**, **`cloud/storage`**, …). Every immediate child of each pack root that contains **`profile/`** becomes **one** tarball (**`dockpipe-resolver-<name>-…`**) — the **store** still lists **separate** installable resolvers. **`src/core/resolvers`** stays a flat list (no nested **`resolvers/resolvers/`**). **Strategies** and **runtimes** are not packed from the same vendor folder as resolvers; keep lifecycle slices in **`compile core`** until a follow-up convention exists.
+2. **`compile resolvers`** — repeatable **`--from`**; default roots are **`compile.workflows`**, **`src/core/resolvers`**, and **`templates/core/resolvers`** when those directories exist. **Pack roots** under each **`--from`** directory include: **`resolvers/`** (flat); **`packages/<group>/resolvers/`**; **`dockpipe/<group>/resolvers/`** (e.g. dockpipe repo: **`agent`**, **`ide`**, **`secrets`**, **`cloud/storage`**, …). Every source leaf under each pack root that contains **`profile`** or **`config.yml`** becomes **one** tarball (**`dockpipe-resolver-<name>-…`**) — the **store** still lists **separate** installable resolvers. Asset-only resolver packages may omit **`profile`**; grouping directories without either marker are traversed. **`src/core/resolvers`** stays a flat list (no nested **`resolvers/resolvers/`**). **Strategies** and **runtimes** are not packed from the same vendor folder as resolvers; keep lifecycle slices in **`compile core`** until a follow-up convention exists.
 3. **`compile workflows`** — every **`config.yml`** under each **`--from`** root (recursive walk). With no config, the default is **`workflows/`** when present. List maintainer roots (for example **`packages/`**) in **`compile.workflows`** when you want them compiled. **`dockpipe package compile bundles`** is an alias for **`compile workflows`**. Optional **`compile_hooks:`** in workflow/resolver `config.yml` is a list of **shell** strings run against the staged package copy **after** validation and **before** the tarball is written; Dockpipe exports **`DOCKPIPE_COMPILE_WORKDIR`**, **`DOCKPIPE_COMPILE_SOURCE_DIR`**, **`DOCKPIPE_COMPILE_STAGING_DIR`**, and **`DOCKPIPE_COMPILE_KIND`** so hooks can read source-only inputs while writing packaged outputs into the staged tree (e.g. **`go build`**, codegen, asset bundling).
 4. **`compile all`** — runs **core → resolvers → workflows** and emits compiled runtime/security/image manifests, but does not run Docker builds.
 5. **`dockpipe build`** — runs **compile all --force**, then prebuilds Dockerfile-backed image artifacts by default and records materialized receipts under **`bin/.dockpipe/internal/images/by-fingerprint/`**. **`dockpipe run`** can reuse those receipts before deciding whether a Docker build is needed. Use **`dockpipe build --no-images`** when you want manifest/package materialization only. **`dockpipe clean --dry-run`** previews the exact checkout-local **`bin/.dockpipe/`** tree and logical bytes; ordinary **`dockpipe clean`** removes that complete disposable tree. **`dockpipe rebuild`** separately resets the resolved compiled store, including `DOCKPIPE_PACKAGES_ROOT`, through guarded target validation before building; ordinary clean never follows that override outside the checkout.
@@ -244,7 +271,7 @@ still the compiler's source; changed archives use distinct content-addressed cac
 Package dependencies should remain package-shaped:
 
 - **`depends`** names other package ids. A name matching multiple package kinds is rejected; use **`requires_resolvers`** to identify a required resolver explicitly.
-- **`requires_resolvers`** names resolver profile ids that must be available project-locally, globally, or from the install closure. Workflows that use logical resolver script ids such as **`scripts/dorkpipe/...`** should declare the owning resolver here instead of relying on workflow-package fallback.
+- **`requires_resolvers`** names resolver profile ids that must be available project-locally, globally, or from the install closure. Workflows that use logical resolver script ids such as **`scripts/dorkpipe/...`** should declare the owning resolver here. A declared **`depends`** or workflow **`inject`** edge to another workflow that declares the resolver also satisfies this check through the workflow dependency closure. Merely having an unrelated resolver installed does not. Direct declarations remain the clearest choice for new workflows and allow source compilation before workflow dependencies are available.
 - **`requires_capabilities`** names dotted capability ids for catalog/search and dependency checks.
 - **`platforms`** declares which host platforms the package supports, and **`dependencies.host`** names required external executables with OS-specific install commands. Core preflights these before workflow execution. Tools bundled under the selected package’s `assets/tooling/bin` take precedence over host executables during preflight and in host-script `PATH`. Flatpak packages declare `platforms: [flatpak]` and supply runtime-compatible dependencies; native distribution installers are disabled in Flatpak.
 - **`image`** may point at a normal OCI reference, ideally digest-pinned, but Docker layers remain in Docker/OCI registries rather than Dockpipe package tarballs.

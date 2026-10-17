@@ -23,8 +23,11 @@ func TestDefaultDockpipeProjectConfigBytesRoundTrip(t *testing.T) {
 	if c.Compile.Workflows == nil || len(*c.Compile.Workflows) < 1 {
 		t.Fatal("expected compile.workflows")
 	}
-	if c.Secrets.VaultTemplate == nil || *c.Secrets.VaultTemplate == "" {
-		t.Fatal("expected secrets.vault_template in default")
+	if path, enabled := ResolveVaultTemplatePath(&c, t.TempDir()); enabled {
+		t.Fatalf("new projects must not enable a vault template: %s", path)
+	}
+	if c.Secrets.Vault != nil || c.Secrets.Environment != "" || len(c.Secrets.Environments) != 0 {
+		t.Fatal("new projects must leave secret environments opt-in")
 	}
 }
 

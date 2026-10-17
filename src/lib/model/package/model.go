@@ -7,6 +7,8 @@ import modeldependency "dockpipe/src/lib/model/dependency"
 // Stored as package.yml next to the package contents. Schema may evolve; extra YAML keys are ignored by the parser.
 // Rich fields support store discovery, authoring, and dependency hints (workflows vs resolver packs).
 type PackageManifest struct {
+	// Hidden omits this installable package from discovery, without blocking installation.
+	Hidden      bool     `yaml:"hidden,omitempty"`
 	Schema      int      `yaml:"schema"`
 	Name        string   `yaml:"name"`
 	Version     string   `yaml:"version"`

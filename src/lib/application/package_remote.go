@@ -26,6 +26,10 @@ func cmdPackageRemote(args []string, install bool) error {
 	kind := flags.String("kind", "", "package kind: core, workflow, resolver (install only)")
 	name := flags.String("name", "", "package name (install only)")
 	checksum := flags.String("sha256", "", "expected catalog checksum; rejects a changed selection (install only)")
+	includeHidden := false
+	if !install {
+		flags.BoolVar(&includeHidden, "include-hidden", false, "include packages hidden from discovery")
+	}
 	if err := flags.Parse(args); err != nil {
 		if err == flag.ErrHelp {
 			return nil
@@ -55,7 +59,7 @@ func cmdPackageRemote(args []string, install bool) error {
 		return err
 	}
 	if !install {
-		return json.NewEncoder(os.Stdout).Encode(catalog)
+		return json.NewEncoder(os.Stdout).Encode(catalog.Discovery(includeHidden))
 	}
 	for _, entry := range catalog.Packages {
 		if entry.Kind != *kind || entry.Name != *name {
