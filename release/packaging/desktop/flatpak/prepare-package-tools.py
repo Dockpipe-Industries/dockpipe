@@ -90,8 +90,8 @@ def verified_input(name, source, cache):
 
 
 def fetch_verified_input(name, source, cache):
-    if not re.fullmatch(r"[a-z0-9_-]+", name):
-        raise ValueError("Invalid optional tool name")
+    if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.+-]{0,254}", name):
+        raise ValueError("Invalid optional tool filename")
     expected = source["sha256"]
     if not isinstance(expected, str) or not re.fullmatch(r"[0-9a-f]{64}", expected):
         raise ValueError("Invalid optional tool checksum")

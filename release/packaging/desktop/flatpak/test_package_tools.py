@@ -2,6 +2,7 @@
 import importlib.util
 import hashlib
 import io
+import json
 from pathlib import Path
 import signal
 import tarfile
@@ -17,6 +18,31 @@ spec.loader.exec_module(tools)
 
 
 class DependencyArchiveTests(unittest.TestCase):
+    def test_all_pinned_wheel_filenames_admit_verified_cached_inputs(self):
+        lock = json.loads(Path(__file__).with_name("azure-wheels.lock.json").read_text())
+        payload = b"verified wheel fixture"
+        source = {"sha256": hashlib.sha256(payload).hexdigest()}
+        with tempfile.TemporaryDirectory() as temporary:
+            cache = Path(temporary)
+            for wheel in lock["wheels"]:
+                with self.subTest(filename=wheel["file"]):
+                    path = cache / wheel["file"]
+                    path.write_bytes(payload)
+                    self.assertEqual(tools.verified_input(wheel["file"], source, cache), path)
+
+    def test_cache_filename_rejects_escape_and_unbounded_names_before_download(self):
+        names = ("", ".", "..", "../wheel.whl", "/wheel.whl", "sub/wheel.whl",
+                 "sub\\wheel.whl", ".hidden", "a" * 256, "wheel\x00.whl")
+        with tempfile.TemporaryDirectory() as temporary:
+            cache = Path(temporary)
+            with patch.object(tools.urllib.request, "urlopen") as download:
+                for name in names:
+                    with self.subTest(filename=name):
+                        with self.assertRaisesRegex(ValueError, "Invalid optional tool filename"):
+                            tools.verified_input(name, {}, cache)
+                download.assert_not_called()
+            self.assertEqual(list(cache.iterdir()), [])
+
     def test_tar_rejects_escape_and_never_materializes_links(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
