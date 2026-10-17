@@ -68,7 +68,7 @@ jobs:
             libegl1-mesa-dev
 
       - name: Build CLI (Bash tests use src/bin/dockpipe)
-        run: make
+        run: make build-core
 
       - name: govulncheck + gosec + DorkPipe CI signal bundle
         env:
