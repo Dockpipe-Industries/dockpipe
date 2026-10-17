@@ -254,7 +254,6 @@ func TestCmdInitCreatesWorkspaceAndMinimalWorkflow(t *testing.T) {
 	checks := []string{
 		filepath.Join(project, "README.md"),
 		filepath.Join(project, domain.DockpipeProjectConfigFileName),
-		filepath.Join(project, ".env.vault.template.example"),
 		filepath.Join(project, "workflows"),
 		filepath.Join(project, "workflows", "demo", "config.yml"),
 	}
@@ -685,7 +684,6 @@ func TestCmdInitBareCreatesMinimalScaffold(t *testing.T) {
 	markers := []string{
 		filepath.Join(project, "README.md"),
 		filepath.Join(project, domain.DockpipeProjectConfigFileName),
-		filepath.Join(project, ".env.vault.template.example"),
 		filepath.Join(project, "workflows"),
 		filepath.Join(project, "workflows", "example", "config.yml"),
 	}

@@ -26,7 +26,7 @@ Read when touching package resolution, compile/install flows, state paths, or bi
 ## `dockpipe init`
 
 - Bare `dockpipe init` creates a minimal project scaffold in the current directory.
-- It creates `workflows/`, `README.md`, `dockpipe.config.json`, and `.env.vault.template.example` when missing.
+- It creates `workflows/`, `README.md`, and `dockpipe.config.json` when missing. Vault templates and secret providers are opt-in.
 - If no workflows exist yet, it seeds `workflows/example/config.yml`.
 - `dockpipe init <name>` creates `workflows/<name>/config.yml` as a minimal workflow.
 - `dockpipe init <name> --from <template>` copies a bundled/filesystem workflow tree.

@@ -69,13 +69,14 @@ def normalize_signing_key(value):
     return "\n".join(lines) + "\n"
 
 
-def configure(apply, environment="release"):
+def configure(apply, environment="release", upload_only=False):
     if environment not in ("release", "release-staging"):
         raise ValueError("Expected release or release-staging environment")
     repository = os.environ.get("RELEASE_SETUP_REPOSITORY", "").strip()
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
         raise ValueError("Set RELEASE_SETUP_REPOSITORY to the intended owner/repository")
-    values = {name: os.environ.get(name, "") for name in (*SECRETS, *VARIABLES)}
+    secret_names = SECRETS[:2] if upload_only else SECRETS
+    values = {name: os.environ.get(name, "") for name in (*secret_names, *VARIABLES)}
     missing = [name for name, value in values.items() if not value]
     if missing:
         raise ValueError("Missing release settings: " + ", ".join(missing))
@@ -83,17 +84,22 @@ def configure(apply, environment="release"):
     if (endpoint.scheme != "https" or not endpoint.hostname or endpoint.username
             or endpoint.password or endpoint.query or endpoint.fragment):
         raise ValueError("R2_ENDPOINT_URL must be an HTTPS endpoint without embedded credentials")
-    values["APT_SIGNING_KEY"] = normalize_signing_key(values["APT_SIGNING_KEY"])
-    fingerprint = signing_fingerprint(values["APT_SIGNING_KEY"])
-    print(f"Validated APT signing fingerprint: {fingerprint}")
+    fingerprint = None
+    if not upload_only:
+        values["APT_SIGNING_KEY"] = normalize_signing_key(values["APT_SIGNING_KEY"])
+        fingerprint = signing_fingerprint(values["APT_SIGNING_KEY"])
+        print(f"Validated APT signing fingerprint: {fingerprint}")
     print(f"Target: {repository}, GitHub environment: {environment}")
     print(f"Publication bucket: {values['DOCKPIPE_RELEASE_BUCKET']}, endpoint: {values['R2_ENDPOINT_URL']}")
     if not apply:
-        print("Checks passed. Set RELEASE_SETUP_APPLY=1 to copy the three scoped secrets and public settings.")
+        print(f"Checks passed. Set RELEASE_SETUP_APPLY=1 to copy {len(secret_names)} scoped secrets and public settings.")
         return
-    for name in SECRETS:
+    for name in secret_names:
         run(["gh", "secret", "set", name, "--repo", repository, "--env", environment], value=values[name])
-    for name, value in {**{name: values[name] for name in VARIABLES}, "APT_SIGNING_FINGERPRINT": fingerprint}.items():
+    public_settings = {name: values[name] for name in VARIABLES}
+    if fingerprint is not None:
+        public_settings["APT_SIGNING_FINGERPRINT"] = fingerprint
+    for name, value in public_settings.items():
         run(["gh", "variable", "set", name, "--repo", repository, "--env", environment, "--body", value])
     print("Configured the GitHub release environment. No release was started.")
 
@@ -101,9 +107,11 @@ def configure(apply, environment="release"):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--upload-only", action="store_true",
+                        help="Configure package uploads without an APT signing key")
     parser.add_argument("--environment", choices=("release", "release-staging"), default="release")
     arguments = parser.parse_args()
     try:
-        configure(arguments.apply, arguments.environment)
+        configure(arguments.apply, arguments.environment, arguments.upload_only)
     except (ValueError, RuntimeError, OSError) as error:
         parser.exit(1, f"{error}\n")

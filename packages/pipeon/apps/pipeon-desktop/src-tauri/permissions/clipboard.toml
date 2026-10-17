@@ -1,4 +1,0 @@
-[[permission]]
-identifier = "clipboard-bridge"
-description = "Read and write clipboard text for the explicitly trusted local editor."
-commands.allow = ["read_clipboard_text", "write_clipboard_text"]

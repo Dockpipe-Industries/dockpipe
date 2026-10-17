@@ -26,6 +26,9 @@ func TestCompiledCatalogMetadataRoundTrip(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(source, "config.yml"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(source, "package.yml"), []byte("schema: 1\nname: editor\nkind: workflow\nhidden: true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if err := compileWorkflowOne(root, source, "", true); err != nil {
 		t.Fatal(err)
 	}
@@ -41,11 +44,11 @@ func TestCompiledCatalogMetadataRoundTrip(t *testing.T) {
 	if err := json.Unmarshal(publishedJSON, &decoded); err != nil {
 		t.Fatal(err)
 	}
-	if decoded.Packages.Workflows[0].Title != manifest.Packages.Workflows[0].Title || decoded.Packages.Workflows[0].CatalogType != "app" {
+	if !decoded.Packages.Workflows[0].Hidden || decoded.Packages.Workflows[0].Title != manifest.Packages.Workflows[0].Title || decoded.Packages.Workflows[0].CatalogType != "app" {
 		t.Fatal("published JSON lost discovery metadata")
 	}
 	entry := manifest.Packages.Workflows[0]
-	if entry.Name != "editor" || entry.Title != "Friendly editor" || entry.CatalogType != "app" || entry.Description != "Opens a development workspace." || len(entry.Categories) != 1 {
+	if !entry.Hidden || entry.Name != "editor" || entry.Title != "Friendly editor" || entry.CatalogType != "app" || entry.Description != "Opens a development workspace." || len(entry.Categories) != 1 {
 		t.Fatalf("compiled store lost metadata: %+v", entry)
 	}
 	inventory, err := infrastructure.ListInstalledPackages(root)
@@ -76,7 +79,7 @@ func TestCompiledCatalogMetadataRejectsInvalidAuthorOverride(t *testing.T) {
 	if err := os.WriteFile(configPath, []byte("catalog_type: app\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	for _, metadata := range []string{"catalog_type: 7\n", "categories: [ai, ai]\n", "categories: invalid\n"} {
+	for _, metadata := range []string{"hidden: invalid\n", "hidden: 7\n", "catalog_type: 7\n", "categories: [ai, ai]\n", "categories: invalid\n"} {
 		content := []byte("schema: 1\nname: editor\nkind: workflow\n" + metadata)
 		if err := os.WriteFile(manifestPath, content, 0o644); err != nil {
 			t.Fatal(err)

@@ -2,6 +2,7 @@
 
 #include <QString>
 #include <QStringList>
+#include "CockpitSettings.h"
 
 /// Dockpipe Launcher UI preferences (Basic vs Advanced, project folder, view mode). Stored in `launcher.json` under the app config dir.
 class LauncherSettings {
@@ -20,6 +21,7 @@ public:
     /// When true, the status-bar third-party disclaimer is hidden until restored from Help.
     bool thirdPartyDisclaimerDismissed = false;
     bool sidebarVisible = true;
+    CockpitSettings cockpit;
 
     bool load();
     bool save() const;

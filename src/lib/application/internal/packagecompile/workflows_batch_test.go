@@ -50,3 +50,34 @@ func TestWorkflowBatchPrunesByDeclaredIdentity(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkflowBatchPreservesNamesSharingPrefix(t *testing.T) {
+	root := t.TempDir()
+	sources := filepath.Join(root, "sources")
+	for _, name := range []string{"codex-pav", "codex-security", "codex"} {
+		directory := filepath.Join(sources, name)
+		if err := os.MkdirAll(directory, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		config := []byte("name: " + name + "\nsteps: []\n")
+		if err := os.WriteFile(filepath.Join(directory, "config.yml"), config, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	destination, err := infrastructure.PackagesWorkflowsDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for attempt := 0; attempt < 2; attempt++ {
+		if err := cmdPackageCompileWorkflowsBatch([]string{"--workdir", root, "--from", sources, "--force", "--prune-stale"}); err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range []string{"codex-pav", "codex-security", "codex"} {
+			archive := filepath.Join(destination, "dockpipe-workflow-"+name+"-0.0.0.tar.gz")
+			if _, err := packagebuild.ReadFileFromTarGz(archive, "workflows/"+name+"/config.yml"); err != nil {
+				t.Fatalf("workflow %q lost on attempt %d: %v", name, attempt, err)
+			}
+		}
+	}
+}

@@ -1,4 +1,7 @@
 #include "MainWindow.h"
+#include "ProjectFilesWidget.h"
+#include "CockpitWidget.h"
+#include "ProjectGitWidget.h"
 
 #include "BasicModeWidget.h"
 #include "RemoteWidget.h"
@@ -422,8 +425,23 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
         m_navigation->setCurrentRow(1);
     });
     m_stack->addWidget(m_executionTabs);
+    m_projectFiles = new ProjectFilesWidget;
+    m_projectFiles->setRoot(m_settings.projectFolder);
+    connect(m_projectFiles, &ProjectFilesWidget::workflowOpenRequested, this, [this](const QString &path) {
+        if (m_workflowEditor->openWorkflow(path))
+            m_navigation->setCurrentRow(1);
+    });
+    m_stack->addWidget(m_projectFiles);
+    m_projectGit = new ProjectGitWidget;
+    m_projectGit->setWorkdir(m_settings.projectFolder);
+    m_stack->addWidget(m_projectGit);
+    // Keep the optional cockpit unconstructed until the enabled entry is opened.
+    auto *cockpitPlaceholder = new QWidget;
+    cockpitPlaceholder->setObjectName("cockpitDisabledPlaceholder");
+    m_stack->addWidget(cockpitPlaceholder);
     connect(m_executionTabs, &QTabWidget::currentChanged, this, [this](int tab) {
-        m_executionExplorer->setActive(m_stack->currentWidget() == m_executionTabs && tab == 0);
+        m_executionExplorer->setActive((m_stack->currentWidget() == m_executionTabs
+            || (m_cockpit && m_cockpit->activePanel() == "executions")) && tab == 0);
         if (tab == 1)
             m_activityWidget->refreshLocal();
     });
@@ -503,8 +521,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     connect(m_navigation, &QListWidget::currentRowChanged, this, [this](int page) {
         if (page < 0)
             return;
+        if (page == 7) {
+            if (!m_settings.cockpit.enabled) {
+                m_navigation->setCurrentRow(0);
+                return;
+            }
+            ensureCockpit();
+        }
         m_stack->setCurrentIndex(page);
-        m_workspaceBar->setVisible(page == 0);
+        m_workspaceBar->setVisible(page == 0 || page == 5 || page == 6);
         m_dockerWidget->setActive(page == 3);
         m_executionExplorer->setWorkdir(m_settings.projectFolder);
         m_executionExplorer->setActive(page == 4 && m_executionTabs->currentIndex() == 0);
@@ -527,6 +552,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
             m_activityWidget->refreshLocal();
             m_remoteWidget->setWorkdir(m_settings.projectFolder);
             m_remoteWidget->refresh();
+        } else if (page == 6) {
+            m_projectGit->refresh();
+        } else if (page == 7) {
+            m_cockpit->setWorkspace(m_settings.projectFolder);
         }
     });
     connect(m_remoteWidget, &RemoteWidget::installProviderRequested, this, [this]() {
@@ -567,6 +596,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     setCentralWidget(central);
 
     setupDisclaimerBar();
+    applyCockpitAvailability();
 
     connect(m_basicWidget, &BasicModeWidget::packagesRequested, this, &MainWindow::onManagePackages);
     connect(m_basicWidget, &BasicModeWidget::openProjectRequested, this, &MainWindow::onFileOpenProject);
@@ -664,7 +694,7 @@ void MainWindow::setupMenuBar()
     QMenu *view = menuBar()->addMenu(tr("View"));
     view->setObjectName("workspaceViewMenu");
     auto *modeGroup = new QActionGroup(this);
-    const QStringList pages{tr("Apps"), tr("Workflows"), tr("Machines"), tr("Containers"), tr("Executions")};
+    const QStringList pages{tr("Apps"), tr("Workflows"), tr("Machines"), tr("Containers"), tr("Executions"), tr("Files"), tr("Git"), tr("Cockpit")};
     for (int page = 0; page < pages.size(); ++page) {
         auto *action = view->addAction(pages[page]);
         action->setCheckable(true);
@@ -824,10 +854,114 @@ void MainWindow::onOpenSettings()
     SettingsDialog dialog(m_settings, this);
     if (dialog.exec() != QDialog::Accepted)
         return;
-    m_settings = dialog.updatedSettings();
-    m_settings.save();
+    saveSettings(dialog.updatedSettings());
+}
+
+void MainWindow::ensureCockpit()
+{
+    if (m_cockpit || !m_settings.cockpit.enabled)
+        return;
+    m_cockpit = new CockpitWidget;
+    m_cockpit->setWorkspace(m_settings.projectFolder);
+    QWidget *placeholder = m_stack->widget(7);
+    m_stack->removeWidget(placeholder);
+    m_stack->insertWidget(7, m_cockpit);
+    delete placeholder;
+    m_cockpit->applySettings(m_settings.cockpit);
+    connect(m_cockpit, &CockpitWidget::settingsRequested, this, &MainWindow::onOpenSettings);
+    m_cockpit->pageProvider = [this](const QString &key) -> QWidget * {
+        if (key == "workflows")
+            return m_advancedPage;
+        if (key == "containers")
+            return m_dockerWidget;
+        if (key == "executions")
+            return m_executionTabs;
+        if (key == "machines")
+            return m_remoteWidget;
+        if (key == "settings") {
+            auto *preferences = m_cockpit->findChild<SettingsDialog *>("cockpitPreferences");
+            if (!preferences) {
+                preferences = new SettingsDialog(m_settings, m_cockpit);
+                preferences->setObjectName("cockpitPreferences");
+                preferences->setParent(m_cockpit, Qt::Widget);
+                preferences->hide();
+                connect(preferences, &QDialog::finished, m_cockpit, [this, preferences](int result) {
+                    const auto updated = preferences->updatedSettings();
+                    m_cockpit->closePanel();
+                    if (result == QDialog::Accepted)
+                        saveSettings(updated);
+                    preferences->deleteLater();
+                }, Qt::QueuedConnection);
+            }
+            return preferences;
+        }
+        return nullptr;
+    };
+    m_cockpit->worldProvider = [this](const QString &key) {
+        QVector<WorkspaceFlightBuilding> buildings;
+        if (key == "workflows") {
+            for (const auto &workflow : m_workspaceWorkflows) {
+                if (buildings.size() == 149)
+                    break;
+                if (!workflow.configPath.isEmpty())
+                    buildings.append({workflow.displayName, 95, true, false, "workflow:" + workflow.configPath});
+            }
+            buildings.append({tr("Workflow studio"), 110, true, false, "panel:workflows"});
+        }
+        return buildings;
+    };
+    m_cockpit->workflowOpener = [this](const QString &path) { return m_workflowEditor->openWorkflow(path); };
+    connect(m_cockpit, &CockpitWidget::exitRequested, this, [this]() {
+        if (m_cockpit->confirmLeave())
+            m_navigation->setCurrentRow(0);
+    });
+    connect(m_cockpit, &CockpitWidget::panelActivityChanged, this, [this](const QString &key, bool active) {
+        if (key == "containers")
+            m_dockerWidget->setActive(active || m_stack->currentWidget() == m_dockerWidget);
+        else if (key == "executions") {
+            m_executionExplorer->setWorkdir(m_settings.projectFolder);
+            m_executionExplorer->setActive((active || m_stack->currentWidget() == m_executionTabs) && m_executionTabs->currentIndex() == 0);
+            if (active)
+                m_activityWidget->refreshLocal();
+        } else if (key == "machines" && active) {
+            m_remoteWidget->setWorkdir(m_settings.projectFolder);
+            m_remoteWidget->refresh();
+        } else if (key == "workflows" && active) {
+            startAdvancedContextDiscovery();
+        }
+    });
+}
+
+void MainWindow::applyCockpitAvailability()
+{
+    const bool enabled = m_settings.cockpit.enabled;
+    for (auto *files : findChildren<ProjectFilesWidget *>())
+        files->applyCockpitSettings(m_settings.cockpit);
+    if (!enabled && m_stack->currentIndex() == 7) {
+        if (m_cockpit)
+            m_cockpit->closePanel();
+        m_navigation->setCurrentRow(0);
+    }
+    m_pageActions[7]->setEnabled(enabled);
+    m_pageActions[7]->setVisible(enabled);
+    m_navigation->item(7)->setHidden(!enabled);
+    if (m_cockpit) {
+        m_cockpit->applySettings(m_settings.cockpit);
+        m_cockpit->setEnabled(enabled);
+    }
+}
+
+bool MainWindow::saveSettings(const LauncherSettings &settings)
+{
+    if (!settings.save()) {
+        QMessageBox::warning(this, tr("Settings not saved"), tr("Could not save app settings. Your previous settings remain active."));
+        return false;
+    }
+    m_settings = settings;
+    applyCockpitAvailability();
     applyGlobalRootDefault(m_settings.globalRootOverride);
     rebuildUi();
+    return true;
 }
 
 void MainWindow::onManagePackages()
@@ -1204,7 +1338,14 @@ void MainWindow::closeEvent(QCloseEvent *event)
         event->ignore();
         return;
     }
-    if (m_workflowEditor && !m_workflowEditor->confirmDiscardChanges()) {
+    if (m_projectGit && m_projectGit->busy()) {
+        statusBar()->showMessage(tr("Wait for the Git action to finish, or cancel it in Git before closing."), 8000);
+        event->ignore();
+        return;
+    }
+    if ((m_cockpit && !m_cockpit->confirmLeave())
+        || (m_projectFiles && !m_projectFiles->confirmLeave())
+        || (m_workflowEditor && !m_workflowEditor->confirmDiscardChanges())) {
         event->ignore();
         return;
     }

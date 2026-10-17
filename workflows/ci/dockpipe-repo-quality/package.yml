@@ -1,0 +1,9 @@
+schema: 1
+kind: workflow
+name: dockpipe-repo-quality
+version: 0.6.17
+min_dockpipe_version: 0.6.17
+namespace: dockpipeproject
+license: Apache-2.0
+# The wrapper verifies one exact DorkPipe package archive from source-lock.json.
+# Its reusable archive cache lives in disposable package runtime, not durable state.

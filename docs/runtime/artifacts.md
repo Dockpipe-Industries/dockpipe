@@ -1,27 +1,25 @@
 # Maintainer Artifacts
 
-Generated files used as **context** for humans and AI — not a second orchestrator. Refresh via workflows / **`make ci`** / **`make self-analysis*`** when you need current data.
+Generated files used as **context** for humans and AI. Refresh the Dockpipe CI scans before relying on them; DorkPipe self-analysis is maintained in its own repository.
 
 ## Governance and security questions
 
 When asked *“compliance issues?”* or *“security posture?”*:
 
 1. Read **`AGENTS.md`**.
-2. If present, load CI findings from `dockpipe scope workflow ci ci-analysis/findings.json`. Treat DorkPipe run metadata as disposable package-runtime evidence exposed by the DorkPipe package, not as a durable public package-scope file. Do **not** invent scan output.
+2. Inspect current raw govulncheck and gosec receipts from `dockpipe scope artifacts ci-raw --workdir .`. If DorkPipe supplied a separately qualified analysis, identify its source and version. Do **not** invent scan output.
 3. If artifacts are missing or stale vs `HEAD`, say so — do **not** claim “clean” without evidence.
 4. This is **not** a certified compliance verdict (SOC2, ISO, etc.).
 
-**Local summary:** `make compliance-handoff` or `./src/bin/dockpipe --workflow compliance-handoff --workdir . --`
+The `compliance-handoff` workflow is owned and qualified by the separately published DorkPipe package.
 
 ## CI scan bundle
 
-**govulncheck** / **gosec** feed workflow-scoped `ci-raw/` artifacts → normalized `ci-analysis/findings.json` (schema: **`src/schemas/dockpipe-ci-findings.schema.json`**). **`dorkpipe ci normalize-scans`** is the canonical implementation; **`packages/dorkpipe/resolvers/dorkpipe/assets/scripts/normalize-ci-scans.sh`** is the compatibility wrapper. **`make ci`** reproduces the GitHub Actions test job locally through **`act`**.
+Dockpipe CI keeps the original govulncheck and gosec JSON receipts under its `ci-raw` workflow artifact directory. It runs the tools and enforces their exit status. DorkPipe owns any separately published normalization or analysis of those receipts. **`make ci`** reproduces the GitHub Actions test job locally through **`act`**.
 
 | Path | Role |
 |------|------|
-| `dockpipe scope workflow ci ci-analysis/findings.json` | Canonical merged findings |
-| `dockpipe scope workflow ci ci-analysis/SUMMARY.md` | Short counts / provenance |
-| `dockpipe scope workflow ci ci-raw` | Original tool JSON directory |
+| `dockpipe scope artifacts ci-raw --workdir .` | Original tool JSON directory |
 
 ## User insight queue
 

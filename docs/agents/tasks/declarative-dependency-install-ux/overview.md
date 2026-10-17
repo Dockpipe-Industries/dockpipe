@@ -15,6 +15,24 @@
 
 - Package installation now prepares and verifies transitive `depends` and `requires_resolvers` archives from the same platform catalog before publishing. Engine minimums are enforced at install/load boundaries, with explicit update guidance. Missing/cyclic/ambiguous dependencies fail without replacing installed packages during preparation; host executable installation still uses the separate approval flow.
 
+## Exact package selection objective
+
+The user also needs explicit version selection for projects, package-owned
+dependency scopes, and a package manager that shows installed, selected, active,
+and required-by state. The [canonical proposal](../../../packages/version-pinning.md)
+records those semantics and the current 0.6.17 boundary. It is ready for a
+bounded implementation slice; the lock format, workflow call syntax, history
+index, and UI actions are not published behavior yet. Ordinary installs can
+assert a resolved catalog checksum, but they do not persist project/package
+version selections or bind execution to those exact versions.
+
+Package-owned workflows must move with their package. Root workflows should
+remain as callers that select the package exactly. This includes migrating the
+two docs orchestration workflows into DorkPipe while retaining a thin pinned
+repository-quality workflow in the root project. Do not remove those published
+catalog identities or source workflows before their replacement capabilities
+and exact-call path are qualified.
+
 ## Still Open
 
 - Define trusted install command policy by OS/package manager (`winget`, `brew`, apt/dnf/pacman,

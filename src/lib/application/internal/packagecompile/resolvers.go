@@ -190,30 +190,59 @@ func collectResolverPackRoots(srcRoot string) []string {
 	return out
 }
 
-// hasNestedResolverPackLayout reports whether dir looks like a grouped resolver tree (at least one
-// immediate child directory has no profile/ — recurse into group folders until profile/ is found).
-func hasNestedResolverPackLayout(dir string) bool {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return false
-	}
-	for _, e := range entries {
-		if !e.IsDir() || strings.HasPrefix(e.Name(), ".") {
-			continue
+// resolverSourceDirectory recognizes an explicitly typed resolver or a legacy
+// profile-backed resolver. A config.yml, including one under resolvers/, can
+// describe a workflow and is not resolver authority by itself.
+func resolverSourceDirectory(dir string) (bool, error) {
+	manifest := filepath.Join(dir, infrastructure.PackageManifestFilename)
+	if _, err := os.Stat(manifest); err == nil {
+		parsed, err := domain.ParsePackageManifest(manifest)
+		if err != nil {
+			return false, err
 		}
-		if _, err := os.Stat(filepath.Join(dir, e.Name(), "profile")); err != nil {
-			return true
+		switch parsed.Kind {
+		case "workflow":
+			return false, nil
+		case "resolver":
+			if err := validateResolverConfigMarker(dir); err != nil {
+				return false, err
+			}
+			return true, nil
 		}
+	} else if !os.IsNotExist(err) {
+		return false, err
 	}
-	return false
+
+	profile := filepath.Join(dir, "profile")
+	if info, err := os.Stat(profile); err == nil {
+		if !info.Mode().IsRegular() && !info.IsDir() {
+			return false, fmt.Errorf("resolver marker %s has an invalid file type", profile)
+		}
+		if err := validateResolverConfigMarker(dir); err != nil {
+			return false, err
+		}
+		return true, nil
+	} else if !os.IsNotExist(err) {
+		return false, err
+	}
+	return false, nil
 }
 
-// mergeChildPackages packs each immediate child directory from srcRoot into
-// dockpipe-resolver-<name>-<ver>.tar.gz under destRoot (no expanded trees).
-// For resolvers, when the tree is grouped (child dirs without profile/), we descend until profile/ is found.
-//
-// Resolver authoring can be flat (srcRoot/resolvers) or nested under any compile root-provided tree.
-// Each resolver child still becomes its own dockpipe-resolver-<name>-*.tar.gz for the store.
+func validateResolverConfigMarker(dir string) error {
+	config := filepath.Join(dir, "config.yml")
+	if info, err := os.Stat(config); err == nil {
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("resolver marker %s has an invalid file type", config)
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
+// mergeChildPackages discovers resolvers from named resolver trees and from
+// explicit resolver manifests or profiles elsewhere in the supplied source root.
+// Each leaf becomes a dockpipe-resolver-<name>-<ver>.tar.gz archive.
 func mergeChildPackages(workdir, srcRoot, destRoot string, kind string, defaultNamespace string, defaultVersion string, force bool) (int, error) {
 	if kind == "resolver" {
 		roots := collectResolverPackRoots(srcRoot)
@@ -228,7 +257,10 @@ func mergeChildPackages(workdir, srcRoot, destRoot string, kind string, defaultN
 					return total, err
 				}
 			}
-			return total, nil
+			// An explicitly typed resolver or profile may also live outside a
+			// resolvers/ tree. Skip those already compiled from named roots.
+			n, err := mergeChildPackagesWalkFiltered(workdir, srcRoot, destRoot, kind, defaultNamespace, defaultVersion, force, true)
+			return total + n, err
 		}
 	}
 	return mergeChildPackagesWalk(workdir, srcRoot, destRoot, kind, defaultNamespace, defaultVersion, force)
@@ -262,10 +294,13 @@ func compileSingleResolverDir(workdir, destRoot, from, name string, defaultNames
 			return fmt.Errorf("validate resolver %s: %w", name, err)
 		}
 		tarGlob := filepath.Join(destRoot, fmt.Sprintf("dockpipe-resolver-%s-*.tar.gz", packagebuild.SafeTarballToken(name)))
+		matches, err := compiledTarballsForPackage(tarGlob, "resolver", name)
+		if err != nil {
+			return err
+		}
 		legacyDir := filepath.Join(destRoot, name)
 		rebuild := force
 		if !force {
-			matches, _ := filepath.Glob(tarGlob)
 			if len(matches) > 0 {
 				latestTar := infrastructure.PickLatestModTimePath(matches)
 				if latestTar == "" {
@@ -307,7 +342,9 @@ func compileSingleResolverDir(workdir, destRoot, from, name string, defaultNames
 			} else if n > 0 {
 				opIDs["cache_invalidated"] = strconv.Itoa(n)
 			}
-			_ = infrastructure.RemoveGlob(tarGlob)
+			if err := removeCompiledTarballs(matches); err != nil {
+				return err
+			}
 			_ = os.RemoveAll(legacyDir)
 		}
 		staging, err := mkdirCompileStagingDir(workdir, "dockpipe-compile-"+kind+"-*")
@@ -403,38 +440,47 @@ func compileSingleResolverDir(workdir, destRoot, from, name string, defaultNames
 }
 
 func mergeChildPackagesWalk(workdir, srcRoot, destRoot string, kind string, defaultNamespace string, defaultVersion string, force bool) (int, error) {
+	return mergeChildPackagesWalkFiltered(workdir, srcRoot, destRoot, kind, defaultNamespace, defaultVersion, force, false)
+}
+
+func mergeChildPackagesWalkFiltered(workdir, srcRoot, destRoot string, kind string, defaultNamespace string, defaultVersion string, force bool, skipResolverTrees bool) (int, error) {
+	if kind != "resolver" {
+		return 0, fmt.Errorf("mergeChildPackages: unknown kind %q", kind)
+	}
 	entries, err := os.ReadDir(srcRoot)
 	if err != nil {
 		return 0, err
 	}
-	nestedPack := kind == "resolver" && hasNestedResolverPackLayout(srcRoot)
-	n := 0
-	for _, e := range entries {
-		if !e.IsDir() {
+	total := 0
+	for _, entry := range entries {
+		if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
 			continue
 		}
-		name := e.Name()
-		if strings.HasPrefix(name, ".") {
+		switch entry.Name() {
+		case "node_modules", "target":
 			continue
-		}
-		from := filepath.Join(srcRoot, name)
-		if nestedPack {
-			if _, err := os.Stat(filepath.Join(from, "profile")); err != nil {
-				sub, err := mergeChildPackagesWalk(workdir, from, destRoot, kind, defaultNamespace, defaultVersion, force)
-				if err != nil {
-					return n, err
-				}
-				n += sub
+		case "resolvers":
+			if skipResolverTrees {
 				continue
 			}
 		}
-		if kind != "resolver" {
-			return n, fmt.Errorf("mergeChildPackages: unknown kind %q", kind)
+		from := filepath.Join(srcRoot, entry.Name())
+		leaf, err := resolverSourceDirectory(from)
+		if err != nil {
+			return total, err
 		}
-		if err := compileSingleResolverDir(workdir, destRoot, from, name, defaultNamespace, defaultVersion, force); err != nil {
-			return n, err
+		if leaf {
+			if err := compileSingleResolverDir(workdir, destRoot, from, entry.Name(), defaultNamespace, defaultVersion, force); err != nil {
+				return total, err
+			}
+			total++
+			continue
 		}
-		n++
+		count, err := mergeChildPackagesWalkFiltered(workdir, from, destRoot, kind, defaultNamespace, defaultVersion, force, skipResolverTrees)
+		total += count
+		if err != nil {
+			return total, err
+		}
 	}
-	return n, nil
+	return total, nil
 }

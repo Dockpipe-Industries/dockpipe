@@ -425,3 +425,69 @@ steps:
 		t.Fatalf("expected project script override to bypass resolver dependency check, got %v", err)
 	}
 }
+
+func TestValidateResolvedWorkflowYAML_DeclaredWorkflowResolverClosure(t *testing.T) {
+	cases := []struct {
+		name           string
+		parentDepends  string
+		parentRequires string
+		aliasDepends   string
+		aliasRequires  string
+		wantError      string
+	}{
+		{name: "transitive resolver", parentDepends: "alias", aliasRequires: "tool"},
+		{name: "direct resolver before workflow dependency exists", parentDepends: "missing", parentRequires: "tool"},
+		{name: "undeclared resolver", parentDepends: "alias", wantError: "require an explicit resolver dependency"},
+		{name: "unrelated installed resolver", parentDepends: "other", aliasRequires: "tool", wantError: "require an explicit resolver dependency"},
+		{name: "missing workflow dependency", parentDepends: "missing", wantError: "workflow dependency"},
+		{name: "workflow dependency cycle", parentDepends: "alias", aliasDepends: "consumer", aliasRequires: "tool", wantError: "workflow dependency cycle"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			t.Setenv("DOCKPIPE_REPO_ROOT", root)
+			config := `{"schema":1,"compile":{"workflows":["workflows","packages"]}}`
+			if err := os.WriteFile(filepath.Join(root, domain.DockpipeProjectConfigFileName), []byte(config), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			resolverProfile := filepath.Join(root, "packages", "tool", "resolvers", "tool", "profile")
+			if err := os.MkdirAll(resolverProfile, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			writeWorkflow := func(name, depends, requires, run string) string {
+				t.Helper()
+				dir := filepath.Join(root, "workflows", name)
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				manifest := "schema: 1\nname: " + name + "\nversion: 0.1.0\nkind: workflow\n"
+				if depends != "" {
+					manifest += "depends: [" + depends + "]\n"
+				}
+				if requires != "" {
+					manifest += "requires_resolvers: [" + requires + "]\n"
+				}
+				if err := os.WriteFile(filepath.Join(dir, "package.yml"), []byte(manifest), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				workflow := "name: " + name + "\nsteps:\n  - kind: host\n    run: " + run + "\n"
+				path := filepath.Join(dir, "config.yml")
+				if err := os.WriteFile(path, []byte(workflow), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				return path
+			}
+			writeWorkflow("alias", tc.aliasDepends, tc.aliasRequires, "scripts/core/noop.sh")
+			writeWorkflow("other", "", "other", "scripts/core/noop.sh")
+			path := writeWorkflow("consumer", tc.parentDepends, tc.parentRequires, "scripts/tool/run.sh")
+			err := ValidateResolvedWorkflowYAML(path)
+			if tc.wantError == "" {
+				if err != nil {
+					t.Fatalf("declared transitive resolver rejected: %v", err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tc.wantError) {
+				t.Fatalf("expected %q, got %v", tc.wantError, err)
+			}
+		})
+	}
+}

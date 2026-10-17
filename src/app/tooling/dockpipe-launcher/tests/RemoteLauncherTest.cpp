@@ -9,6 +9,8 @@
 #include "LauncherSettings.h"
 #include "Theme.h"
 #include "ResourceLinkItem.h"
+#include "CockpitWidget.h"
+#include "SettingsDialog.h"
 #include <QPainter>
 
 #include <QApplication>
@@ -245,7 +247,7 @@ exec "$@"
     auto *apps = window.findChild<BasicModeWidget *>();
     if (!apps || !apps->findChildren<QTabWidget *>().isEmpty()
         || window.findChildren<DockerObservabilityWidget *>().size() != 1
-        || navigation->count() != 5 || navigation->item(3)->text() != "Containers"
+        || navigation->count() != 8 || navigation->item(3)->text() != "Containers"
         || navigation->item(4)->text() != "Executions")
         return 13;
     navigation->setCurrentRow(0);
@@ -852,6 +854,11 @@ exec "$@"
         auto *action = viewMenu->actions()[index];
         if (action->text() != navigation->item(index)->text())
             return 121;
+        if (navigation->item(index)->isHidden()) {
+            if (action->isVisible() || action->isEnabled())
+                return 153;
+            continue;
+        }
         action->trigger();
         if (navigation->currentRow() != index || !action->isChecked())
             return 122;
@@ -880,6 +887,62 @@ exec "$@"
     if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE"))
         viewMenu->grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + "-view-menu.png");
     viewMenu->hide();
+
+    if (window.findChild<CockpitWidget *>() || !navigation->item(7)->isHidden())
+        return 145;
+    navigation->setCurrentRow(7);
+    if (navigation->currentRow() == 7 || window.findChild<CockpitWidget *>())
+        return 146;
+    QTimer::singleShot(0, &window, [&]() {
+        auto *dialog = qobject_cast<SettingsDialog *>(QApplication::activeModalWidget());
+        if (!dialog)
+            return;
+        dialog->findChild<QCheckBox *>("settingsCockpitEnabled")->setChecked(true);
+        dialog->findChild<QCheckBox *>("settingsCockpitOrbitalMotion")->setChecked(false);
+        dialog->accept();
+    });
+    QMetaObject::invokeMethod(&window, "onOpenSettings", Qt::DirectConnection);
+    if (!LauncherSettings::current().cockpit.enabled || navigation->item(7)->isHidden()
+        || window.findChild<CockpitWidget *>())
+        return 147;
+    navigation->setCurrentRow(7);
+    auto *cockpit = window.findChild<CockpitWidget *>();
+    if (!cockpit)
+        return 140;
+    if (cockpit->flight()->orbitMotion())
+        return 148;
+    cockpit->visit("settings");
+    cockpit->flight()->fire();
+    auto *preferences = cockpit->findChild<SettingsDialog *>("cockpitPreferences");
+    if (!preferences || preferences->isVisible() || preferences->isWindow()
+        || cockpit->flight()->previewImage().isNull())
+        return 141;
+    cockpit->flight()->fire();
+    if (!preferences->isVisible() || preferences->isWindow() || !cockpit->flight()->editorActive())
+        return 142;
+    preferences->reject();
+    if (!waitUntil([&]() { return !cockpit->flight()->editorActive(); }))
+        return 143;
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    if (cockpit->findChild<SettingsDialog *>("cockpitPreferences"))
+        return 144;
+    cockpit->visit("settings");
+    cockpit->flight()->fire();
+    cockpit->flight()->fire();
+    preferences = cockpit->findChild<SettingsDialog *>("cockpitPreferences");
+    if (!preferences)
+        return 149;
+    preferences->findChild<QCheckBox *>("settingsCockpitEnabled")->setChecked(false);
+    preferences->accept();
+    if (!waitUntil([&]() { return navigation->currentRow() == 0; }))
+        return 150;
+    if (LauncherSettings::current().cockpit.enabled || !navigation->item(7)->isHidden()
+        || cockpit->isVisible() || cockpit->flight()->orbitAnimating() || cockpit->flight()->appControlling())
+        return 151;
+    navigation->setCurrentRow(7);
+    if (navigation->currentRow() == 7)
+        return 152;
+    navigation->setCurrentRow(1);
 
     // The offscreen platform has no tray. Closing must really close the window,
     // rather than pretending an unavailable tray can reopen it.

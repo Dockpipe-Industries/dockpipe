@@ -88,7 +88,7 @@ tasks:
       - docs/packages/package-model.md
       - docs/workflows/workflow-yaml.md
       - src/lib/infrastructure/schema/workflow.schema.json
-      - src/app/tooling/vscode-extensions/dockpipe-language-support/extension.js
+      - docs/packages/editor-extensions.md
     skills:
       - dorkpipe-core-review
       - dorkpipe-token-optimization
@@ -115,7 +115,7 @@ tasks:
     optional:
       - docs/workflows/workflow-yaml.md
       - src/lib/infrastructure/schema/workflow.schema.json
-      - src/app/tooling/vscode-extensions/dockpipe-language-support/extension.js
+      - docs/packages/editor-extensions.md
     skills:
       - dorkpipe-yaml-workflows
       - dorkpipe-token-optimization
@@ -136,7 +136,7 @@ tasks:
       - src/core/assets/scripts/README.md
       - src/lib/application/sdk_cmd.go
       - src/lib/infrastructure/schema/workflow.schema.json
-      - src/app/tooling/vscode-extensions/dockpipe-language-support/extension.js
+      - docs/packages/editor-extensions.md
     skills:
       - dorkpipe-yaml-workflows
       - dorkpipe-package-authoring
@@ -257,10 +257,7 @@ tasks:
       - docs/workflows/agentic-workflows.md
       - docs/workflows/workflow-yaml.md
       - docs/agents/tasks/agentic-app-ui/index.yaml
-      - src/app/tooling/vscode-extensions/dockpipe-language-support/extension.js
-      - packages/pipeon/resolvers/pipeon/vscode-extension/README.md
-      - packages/pipeon/resolvers/pipeon/vscode-extension/src/extension.ts
-      - packages/pipeon/resolvers/pipeon/vscode-extension/src/webview/chat.ts
+      - docs/packages/editor-extensions.md
     skills:
       - dorkpipe-agentic-yaml
       - dorkpipe-yaml-workflows

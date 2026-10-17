@@ -5,6 +5,7 @@ package infrastructure
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"syscall"
 	"testing"
 )
@@ -97,6 +98,67 @@ func TestDurableStateRejectsSymlinkBoundaries(t *testing.T) {
 	}
 	if _, err := JoinStatePath(selectedRoot, "sessions/one.json"); err == nil {
 		t.Fatal("linked suffix boundary unexpectedly passed validation")
+	}
+}
+
+func TestDurableStateAcceptsHomeAliasWithoutFollowingOwnedLinks(t *testing.T) {
+	base := t.TempDir()
+	realHome := filepath.Join(base, "var", "home", "user")
+	if err := os.MkdirAll(realHome, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(base, "home")
+	if err := os.Symlink(filepath.Dir(realHome), alias); err != nil {
+		t.Fatal(err)
+	}
+	stateBase := filepath.Join(alias, "user", ".local", "state")
+	t.Setenv("XDG_STATE_HOME", stateBase)
+	root, err := canonicalDurableStateRoot(filepath.Join(stateBase, "dockpipe"), "linux")
+	if err != nil {
+		t.Fatal(err)
+	}
+	canonicalBase, err := filepath.EvalSymlinks(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(canonicalBase, "var", "home", "user", ".local", "state", "dockpipe")
+	if root != want {
+		t.Fatalf("root = %q, want %q", root, want)
+	}
+	if runtime.GOOS == "linux" {
+		actual, err := DurableStateRoot()
+		if err != nil || actual != want {
+			t.Fatalf("OS root = %q, %v; want %q", actual, err, want)
+		}
+	}
+	project := t.TempDir()
+	if _, err := projectStateRootAt(project, root); err != nil {
+		t.Fatalf("first run through home alias: %v", err)
+	}
+	if err := os.RemoveAll(root); err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	if err := os.Symlink(outside, root); err != nil {
+		t.Fatal(err)
+	}
+	root, err = canonicalDurableStateRoot(filepath.Join(stateBase, "dockpipe"), "linux")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := projectStateRootAt(project, root); err == nil {
+		t.Fatal("Dockpipe-owned root symlink was followed")
+	}
+}
+
+func TestCanonicalDurableStateRootRejectsDanglingBase(t *testing.T) {
+	base := t.TempDir()
+	link := filepath.Join(base, "state")
+	if err := os.Symlink(filepath.Join(base, "missing"), link); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := canonicalDurableStateRoot(filepath.Join(link, "dockpipe"), "linux"); err == nil {
+		t.Fatal("dangling OS base accepted")
 	}
 }
 

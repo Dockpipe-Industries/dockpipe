@@ -53,6 +53,19 @@ workflow intent
 
 ## Public Interface
 
+### Human project controls
+
+The desktop's project-level Git view uses `dockpipe git --request <file.json>` for
+explicit human review, selected-file commits, fast-forward pulls and non-force pushes
+to origin. The runtime infrastructure owns these operations in the user's selected
+repository; they do not create an agent session or grant autonomous Git authority.
+Writes require a fresh review fingerprint, and unsaved editor buffers are excluded.
+This simpler human UI is separate from the strict session checkpoint/publication
+request and receipt contracts below. See [CLI reference](../cli-reference.md#project-git)
+for its request fields and limits.
+
+### Managed sessions
+
 The public interface should be provider-neutral. The local CLI now exposes the human-facing review
 loop:
 

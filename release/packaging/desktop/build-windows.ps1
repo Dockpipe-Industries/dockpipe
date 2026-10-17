@@ -34,6 +34,8 @@ try {
     Copy-Item -LiteralPath (Join-Path $root "LICENSE") -Destination (Join-Path $StageDir "licenses/DockPipe-LICENSE.txt")
     $launcher = Join-Path $StageDir "dockpipe-launcher.exe"
     Copy-Item -LiteralPath (Join-Path $build "dockpipe-launcher.exe") -Destination $launcher
+    Copy-Item -LiteralPath (Join-Path $build "dockpipe-syntax.rcc") -Destination $StageDir
+    Copy-Item -LiteralPath (Join-Path $build "syntax-licenses") -Destination $StageDir -Recurse
     windeployqt --release --compiler-runtime --dir $StageDir $launcher
     if ($LASTEXITCODE -ne 0) {
         throw "Qt deployment failed"
@@ -46,7 +48,7 @@ try {
         throw "Visual C++ redistributable CRT directory is missing"
     }
     Get-ChildItem -LiteralPath $crt.FullName -Filter "*.dll" | Copy-Item -Destination $StageDir
-    foreach ($required in @("Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "platforms/qwindows.dll", "vcruntime140.dll", "msvcp140.dll")) {
+    foreach ($required in @("Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6OpenGL.dll", "Qt6OpenGLWidgets.dll", "platforms/qwindows.dll", "vcruntime140.dll", "msvcp140.dll")) {
         if (-not (Test-Path -LiteralPath (Join-Path $StageDir $required))) {
             throw "Incomplete desktop runtime: $required"
         }

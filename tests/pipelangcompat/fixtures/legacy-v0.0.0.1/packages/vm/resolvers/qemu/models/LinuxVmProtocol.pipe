@@ -1,0 +1,19 @@
+/// <summary>Mutually pinned guest-agent protocol material.</summary>
+public Class LinuxVmProtocol
+{
+    /// <summary>Path to the per-instance controller public key.</summary>
+    [EnvName = "DOCKPIPE_VM_CONTROLLER_PUBLIC_KEY"]
+    [Control = "file"]
+    [FileMode = "open-file"]
+    public string ControllerPublicKey = "";
+
+    /// <summary>Path to the per-instance guest public key.</summary>
+    [EnvName = "DOCKPIPE_VM_GUEST_PUBLIC_KEY"]
+    [Control = "file"]
+    [FileMode = "open-file"]
+    public string GuestPublicKey = "";
+
+    /// <summary>Expected SHA-256 of the qualification harness binary.</summary>
+    [EnvName = "DOCKPIPE_VM_HARNESS_SHA256"]
+    public string HarnessSha256 = "";
+}

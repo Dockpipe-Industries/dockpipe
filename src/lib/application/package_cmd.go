@@ -268,7 +268,7 @@ bin/.dockpipe/internal/packages/ by default (see docs/packages/package-model.md)
 
 Usage:
   dockpipe package list [--workdir <path>] [--format text|json]
-  dockpipe package catalog --remote <HTTPS manifest URL>
+  dockpipe package catalog --remote <HTTPS manifest URL> [--include-hidden]
   dockpipe package install --remote <HTTPS manifest URL> --kind <kind> --name <name> [--sha256 <digest>]
   dockpipe package uninstall --path <absolute user package archive>
   dockpipe package images [--workdir <path>]
@@ -280,7 +280,7 @@ Usage:
   list      Find package.yml under bin/.dockpipe/internal/packages and print rel path, name, version, provider, capability, requires_capabilities (comma-separated), description.
   images    List compiled/planned and materialized Docker image artifacts.
   manifest  Print an example package.yml schema to stdout.
-  catalog   --remote <HTTPS manifest URL>: list remote packages as JSON for this platform.
+  catalog   --remote <HTTPS manifest URL> [--include-hidden]: list discoverable remote packages as JSON for this platform.
   install   --remote <URL> --kind <kind> --name <name> [--sha256 <digest>]: install into the user store.
   uninstall --path <archive>: remove one optional user package; retain data and settings.
   build     core: templates-core tarball + install-manifest; source: package-owned authoring-tree builds; store: gzip tar per compiled package + packages-store-manifest.json.
