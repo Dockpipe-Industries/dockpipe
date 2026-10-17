@@ -47,7 +47,7 @@ When changing scope semantics, update together:
 - `src/lib/application/sdk_cmd.go`
 - `src/lib/infrastructure/schema/workflow.schema.json`
 - `docs/workflows/workflow-yaml.md`
-- `src/app/tooling/vscode-extensions/dockpipe-language-support/extension.js`
+- `docs/packages/editor-extensions.md`
 - affected package workflows/resolver profiles/tests
 
 ## Checks

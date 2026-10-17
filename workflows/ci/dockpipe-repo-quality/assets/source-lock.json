@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "targets": {
+    "darwin-amd64": {
+      "catalog_url": "https://packages.staging.dockpipe.com/packages/candidates/0.6.16-staging.38567355491.1.70d207f11d1f/stores/darwin-amd64/packages-store-manifest.json",
+      "catalog_sha256": "79409102787a50bd627cae5e625af438a7b71b19431b828d46e11522dc31343e",
+      "kind": "workflow",
+      "version": "0.6.2",
+      "archive_sha256": "8e504cdbfc058784e1e9294f49174d98ffad2e3ba7c2ea1b2ffe63908d34154b",
+      "archive_size_bytes": 134898740,
+      "script_sha256": "82b8ecefad3b6b7dee5caa087919f46492b5853671f87657b6b541669255a767"
+    },
+    "darwin-arm64": {
+      "catalog_url": "https://packages.staging.dockpipe.com/packages/candidates/0.6.16-staging.38567355491.1.70d207f11d1f/stores/darwin-arm64/packages-store-manifest.json",
+      "catalog_sha256": "8b3b9a589eff40cfbc732f50639afedd788839b781f27dfb8ef81483641ec829",
+      "kind": "workflow",
+      "version": "0.6.2",
+      "archive_sha256": "3c260421e0987328d2b1c8d2a49abeb1c62c1150dd43cb3963eca345fced4d48",
+      "archive_size_bytes": 126772262,
+      "script_sha256": "82b8ecefad3b6b7dee5caa087919f46492b5853671f87657b6b541669255a767"
+    },
+    "linux-amd64": {
+      "catalog_url": "https://packages.staging.dockpipe.com/packages/standalone/dorkpipe/candidates/0.6.5-staging.cc31cf0aa848/packages/packages-store-manifest.json",
+      "catalog_sha256": "464aec661eed0eea756599d08a6e98a4261fffe7d53a5c2aff28fb38d74c2438",
+      "kind": "resolver",
+      "version": "0.6.5",
+      "archive_sha256": "6d063a887c3ed27864b24b55de5baff778e249153a7467fbc1d6902bb989c2ae",
+      "archive_size_bytes": 19245748,
+      "script_sha256": "82b8ecefad3b6b7dee5caa087919f46492b5853671f87657b6b541669255a767"
+    },
+    "linux-amd64-flatpak-org.kde.Platform-6.10": {
+      "catalog_url": "https://packages.staging.dockpipe.com/packages/candidates/0.6.16-staging.38567355491.1.70d207f11d1f/stores/linux-amd64-flatpak-org.kde.Platform-6.10/packages-store-manifest.json",
+      "catalog_sha256": "ad6ff728f544c28733b08ee2891956ff8efd19e87cb3da9e9fd35843be5be059",
+      "kind": "workflow",
+      "version": "0.6.2",
+      "archive_sha256": "c0976ad3f875e51b55e90c829875accf86760d5828f3d046e062c150b527e7d6",
+      "archive_size_bytes": 160233922,
+      "script_sha256": "82b8ecefad3b6b7dee5caa087919f46492b5853671f87657b6b541669255a767"
+    },
+    "linux-arm64": {
+      "catalog_url": "https://packages.staging.dockpipe.com/packages/candidates/0.6.16-staging.38567355491.1.70d207f11d1f/stores/linux-arm64/packages-store-manifest.json",
+      "catalog_sha256": "43a47330ba1113cf6d17d4fde20a2b36a07e81d5102f5f70cb12f715c46e206a",
+      "kind": "workflow",
+      "version": "0.6.2",
+      "archive_sha256": "5ea9950e8d421f25e0446322bb4fa14208ee56955b45cc2d9c0edea3b580956b",
+      "archive_size_bytes": 84093087,
+      "script_sha256": "82b8ecefad3b6b7dee5caa087919f46492b5853671f87657b6b541669255a767"
+    },
+    "windows-amd64": {
+      "catalog_url": "https://packages.staging.dockpipe.com/packages/candidates/0.6.16-staging.38567355491.1.70d207f11d1f/stores/windows-amd64/packages-store-manifest.json",
+      "catalog_sha256": "5006ae7a118a74e96077e2b2f20a02e625c932f62fa213499c01c8f485884c90",
+      "kind": "workflow",
+      "version": "0.6.2",
+      "archive_sha256": "faf16752a018249b0ee4a7c2f3c8cf0df9f824e018a30c3fbdd24a7346f49287",
+      "archive_size_bytes": 135312053,
+      "script_sha256": "82b8ecefad3b6b7dee5caa087919f46492b5853671f87657b6b541669255a767"
+    }
+  }
+}

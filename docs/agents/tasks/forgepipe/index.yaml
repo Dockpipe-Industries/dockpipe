@@ -1,0 +1,20 @@
+schema: 1
+id: TASK-037
+topic: ForgePipe engine and spatial ecosystem extraction
+entrypoint: overview.md
+
+dispatch:
+  readiness: ready
+  ownership: active-objective
+
+routes:
+  orientation:
+    read: [overview.md]
+
+documents:
+  - path: overview.md
+    role: authorized extraction objective and canonical migration evidence
+
+maintenance:
+  - Keep dispatch metadata synchronized with docs/agents/task-index.yaml.
+  - Implementation is authorized within the recorded objective; publication and Git mutations remain separate.

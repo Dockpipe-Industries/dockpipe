@@ -1,0 +1,2939 @@
+{
+  "repository": "Dockpipe-Industries/dorkpipe",
+  "files": [
+    {
+      "source": "packages/dorkpipe-mcp/README.md",
+      "destination": "packages/dorkpipe-mcp/README.md",
+      "sha256": "4a80419cc92dbe6160c631de8edba3f9da29657db4dc95f2599458dd72bcdb8c",
+      "bytes": 3700
+    },
+    {
+      "source": "packages/dorkpipe-mcp/assets/scripts/build-source.sh",
+      "destination": "packages/dorkpipe-mcp/assets/scripts/build-source.sh",
+      "sha256": "522e24c93be9b4cee9d7b5d49a27f8dcd544640a99d26400122d5485f1d5bcb6",
+      "bytes": 800
+    },
+    {
+      "source": "packages/dorkpipe-mcp/bin/mcpd",
+      "destination": "packages/dorkpipe-mcp/bin/mcpd",
+      "sha256": "ef56c28396c5508db0ac042d47f2916e1a61c4f766bc35ad4c77fb2aa8f2e513",
+      "bytes": 1217
+    },
+    {
+      "source": "packages/dorkpipe-mcp/cmd/mcpd/main.go",
+      "destination": "packages/dorkpipe-mcp/cmd/mcpd/main.go",
+      "sha256": "e62e05d10949d0ec0df49906454e152dc98be36d22f1642ff8e3d51f505dfbc2",
+      "bytes": 3432
+    },
+    {
+      "source": "packages/dorkpipe-mcp/examples/mcp-capabilities.bootstrap.json",
+      "destination": "packages/dorkpipe-mcp/examples/mcp-capabilities.bootstrap.json",
+      "sha256": "91a1efd3f826d885bcebfed5bcacd403bee885e7f098fa29029ffa43f8d74d66",
+      "bytes": 496
+    },
+    {
+      "source": "packages/dorkpipe-mcp/examples/mcp-http-key-tiers.json",
+      "destination": "packages/dorkpipe-mcp/examples/mcp-http-key-tiers.json",
+      "sha256": "b4c472c62a9dc3574a63d37daad75d6f4fe57449dbedc2e989a2e541b789d574",
+      "bytes": 220
+    },
+    {
+      "source": "packages/dorkpipe-mcp/go.mod",
+      "destination": "packages/dorkpipe-mcp/go.mod",
+      "sha256": "b416515f7f7839a4813509cd6bfd0fdbaf06b748a6785c747c5f464f87fbb1c7",
+      "bytes": 414
+    },
+    {
+      "source": "packages/dorkpipe-mcp/go.sum",
+      "destination": "packages/dorkpipe-mcp/go.sum",
+      "sha256": "1a6a195ef5f6fb070e90436fd10c492c58a8e1c4b06292e8a909b6bce4a59d59",
+      "bytes": 1020
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/README.md",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/README.md",
+      "sha256": "a2608c25922c8e6a39f197745b31ec9f0d8490cb59014c9daee440aeafafa154",
+      "bytes": 4442
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/approval_transport.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/approval_transport.go",
+      "sha256": "18990c93e7e7997d7f9738a02e8b06049cc550facb9661332c36a7ca554ecb4f",
+      "bytes": 9568
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/approval_transport_test.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/approval_transport_test.go",
+      "sha256": "c525ffd879ad03cc85968f27e8c47458ec3d40ee1931e89ef2be1b456adc1ec1",
+      "bytes": 16065
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/auth.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/auth.go",
+      "sha256": "1e5ff32ec9a334b77fb90ef3254cd5279823d07a9f9d413fd54b6eaccc0dc38c",
+      "bytes": 1186
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/auth_test.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/auth_test.go",
+      "sha256": "f75d4a6fbf07e1a4d2217d24d24f64eccc89338bd296cc7cc7227f05d3bd580e",
+      "bytes": 1339
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/cancellation_transport.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/cancellation_transport.go",
+      "sha256": "28fe220c30638e5e15cc6854ccc40fbd656ac1f161ef1fd4292513b8c221d704",
+      "bytes": 7677
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/cancellation_transport_test.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/cancellation_transport_test.go",
+      "sha256": "ae06c60751ec236fceaf2fe4e516a2fce23c876dd7d0c30528a83a6431f19bed",
+      "bytes": 18021
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/catalog.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/catalog.go",
+      "sha256": "1cb26b2b481727d5063e8d4292b858fab401c31979d745260b9b6c00ba452871",
+      "bytes": 12079
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/codex_session_test.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/codex_session_test.go",
+      "sha256": "1f9a51f4180ff9a55c18d8fa39e0421046c14ac45f06790004be1677e9029bfd",
+      "bytes": 2051
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/discovery.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/discovery.go",
+      "sha256": "f106b543f4a2278d6d090b86f3cbf8f54e21191a81234b35905d3dcf778668cb",
+      "bytes": 452
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/dockpipe_run.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/dockpipe_run.go",
+      "sha256": "7fcc42a5e7f965804e163065dcbeebe6123cd5500924b96ea2e4e7a9d533fe32",
+      "bytes": 1412
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/dockpipe_run_test.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/dockpipe_run_test.go",
+      "sha256": "e05cdf8e7b8e5155163de9ea6b2eec11f9fecfcb412cf451886c7ac49d46b717",
+      "bytes": 1286
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/exec.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/exec.go",
+      "sha256": "c6c3beae6d9eb4c7217fc6bd9253834495ae98898b700b1e50d5acb0cca80434",
+      "bytes": 34743
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/exec_workdir_test.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/exec_workdir_test.go",
+      "sha256": "f9c6fac1a2e0a2b6fd6308f030514b0e9891dff6162c05501ddc1e64f044e776",
+      "bytes": 5083
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/http_key_tiers.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/http_key_tiers.go",
+      "sha256": "e1356b935ca264f8913d6c54275d6d6b3daf3a44efbde82f81307f85ebf9057f",
+      "bytes": 1922
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/http_key_tiers_test.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/http_key_tiers_test.go",
+      "sha256": "fc1d03a26a4edb3b968bc7089ef0af7b43b0757d550a62f1618580a439c887bf",
+      "bytes": 951
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/http_server.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/http_server.go",
+      "sha256": "ca48adf536475aa66ac605d24a4371a7e84da5b9a0e124e8750a1b52fb125aee",
+      "bytes": 7166
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/http_server_test.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/http_server_test.go",
+      "sha256": "b34bf2f491622c9a6607ff72b695a87371b116c4833741dd2d4dadfb6ea2cde1",
+      "bytes": 10413
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/protocol.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/protocol.go",
+      "sha256": "04c5a35fc5d74070a4daf20d99e26f35de8648f7098ac41fcceb6d8c1d7f836d",
+      "bytes": 1025
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/readonly_repo.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/readonly_repo.go",
+      "sha256": "830b564eaf922c8cc5d6816d53e059fd44f8fc5c68e7b5a708b0397c54b16570",
+      "bytes": 4845
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/readonly_repo_test.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/readonly_repo_test.go",
+      "sha256": "cb08b1f3e9e9d85558cdc0ae13262e1b480967f8c4380b0009fef2926ae2bb0a",
+      "bytes": 1901
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/secure_paths.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/secure_paths.go",
+      "sha256": "65614f809fc143f8d7dae6f2b0a1803b0e8d9482ec7986d6b0762ff161e50299",
+      "bytes": 2820
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/secure_paths_test.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/secure_paths_test.go",
+      "sha256": "fab108efa8a817812a081d3f9022f614cf6d49b1d64c6a48cbe227e3759e2e8b",
+      "bytes": 920
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/server.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/server.go",
+      "sha256": "8736728f20b30f4bcfd42d772139cc47c3dd165965c7356a251d69abe2c201a5",
+      "bytes": 31777
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/server_test.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/server_test.go",
+      "sha256": "2108632aeb2e20d7b34126486faddcd70340833802c6680976bdb3ca68e45b61",
+      "bytes": 13955
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/tier.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/tier.go",
+      "sha256": "c2ab07a492067393152fc78dac2507be524a6c692255b05a32d95021df2b5961",
+      "bytes": 5342
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/tier_context.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/tier_context.go",
+      "sha256": "d8e71666f5c21e2a3730ef42e75706a44cf5e32fc4287b2bcef65eafc80f95fe",
+      "bytes": 697
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/tier_test.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/tier_test.go",
+      "sha256": "a9109b7adf5c5017edb3b87f3d9be66eb1fa5dd5fd528d6a907c866f687c0586",
+      "bytes": 3162
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/transport.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/transport.go",
+      "sha256": "ded6825b34cd24eb8292d5af1f0f37c1c819b30bf879a08bf0ee11dea59c74ed",
+      "bytes": 1267
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/transport_test.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/transport_test.go",
+      "sha256": "0aeb9e50661778787917a378a8a57d8efe8ad6238c0124c2b24691c005f5ab4a",
+      "bytes": 824
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/user_input_transport.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/user_input_transport.go",
+      "sha256": "78b534b30a17f7cc0efef08a860af43101e7a9f481aa87321cbe341ed30edc8d",
+      "bytes": 15307
+    },
+    {
+      "source": "packages/dorkpipe-mcp/mcpbridge/user_input_transport_test.go",
+      "destination": "packages/dorkpipe-mcp/mcpbridge/user_input_transport_test.go",
+      "sha256": "c24008ae79b4aa1e876fc9928c25bce55c2ccad653e68ec0f01f47589a77297c",
+      "bytes": 28230
+    },
+    {
+      "source": "packages/dorkpipe-mcp/package.yml",
+      "destination": "packages/dorkpipe-mcp/package.yml",
+      "sha256": "af78a95ae2c03c24b9db39ef787c804f60df4ff54372dd13817b01b3368cdd35",
+      "bytes": 651
+    },
+    {
+      "source": "packages/dorkpipe-mcp/tests/README.md",
+      "destination": "packages/dorkpipe-mcp/tests/README.md",
+      "sha256": "083ef37936848c678eaa73441cff9b98f9d90b8674cbacd5a597b5bf1dafd931",
+      "bytes": 122
+    },
+    {
+      "source": "packages/dorkpipe-mcp/tests/run.sh",
+      "destination": "packages/dorkpipe-mcp/tests/run.sh",
+      "sha256": "3f703a61dd320c95aace7bd4ac366fdf9ad988804dda83779d115610110e2050",
+      "bytes": 757
+    },
+    {
+      "source": "packages/dorkpipe-mcp/tests/test_build_source_operation_results.sh",
+      "destination": "packages/dorkpipe-mcp/tests/test_build_source_operation_results.sh",
+      "sha256": "9ef8b1f5e6ddedc7789e9fa527de77a0d5cc7f1aabba454d6abee576ad592839",
+      "bytes": 575
+    },
+    {
+      "source": "packages/dorkpipe/README-dorkpipe-workflows.md",
+      "destination": "packages/dorkpipe/README-dorkpipe-workflows.md",
+      "sha256": "a307077aeb8453a24e79da7723cd76ad33c90fb0d5cf3216d4559b8dd2a786e2",
+      "bytes": 276
+    },
+    {
+      "source": "packages/dorkpipe/README.md",
+      "destination": "packages/dorkpipe/README.md",
+      "sha256": "798e04b2121dae8a0f09be05d32d2f116286dc598d61dffb6e769611c7f084f6",
+      "bytes": 8389
+    },
+    {
+      "source": "packages/dorkpipe/assets/images/icon.png",
+      "destination": "packages/dorkpipe/assets/images/icon.png",
+      "sha256": "398f88db88c25fbce6336703af9bdf489c11e0019c4c3b607f4f0faf7243175b",
+      "bytes": 43522
+    },
+    {
+      "source": "packages/dorkpipe/assets/scripts/build-source.sh",
+      "destination": "packages/dorkpipe/assets/scripts/build-source.sh",
+      "sha256": "1e5ca05edcd1c1dd13d7949759b3f4b83c07535a24f29356cecda73efe5515f5",
+      "bytes": 1150
+    },
+    {
+      "source": "packages/dorkpipe/lib/README.md",
+      "destination": "packages/dorkpipe/lib/README.md",
+      "sha256": "db2b59002dd4f42cebb738f60b27656d06e0aaec5387d35fa5baa1f790f94e8c",
+      "bytes": 3950
+    },
+    {
+      "source": "packages/dorkpipe/lib/aggregator/aggregator.go",
+      "destination": "packages/dorkpipe/lib/aggregator/aggregator.go",
+      "sha256": "43ebfd4b69a79dbd800e9dca2763b949a2f5c2e8af5f5a0acc016af084223bec",
+      "bytes": 907
+    },
+    {
+      "source": "packages/dorkpipe/lib/aggregator/merge.go",
+      "destination": "packages/dorkpipe/lib/aggregator/merge.go",
+      "sha256": "176ab9bea58e01a3140db7a5c94046eab683abf14015450eb9b004c680e0f670",
+      "bytes": 2795
+    },
+    {
+      "source": "packages/dorkpipe/lib/aggregator/merge_test.go",
+      "destination": "packages/dorkpipe/lib/aggregator/merge_test.go",
+      "sha256": "4d35c9dc6ccd66483e1e37138d93a620b3c86cd9ee22b7c40194490d0a28c313",
+      "bytes": 1599
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/approval.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/approval.go",
+      "sha256": "1c6dd677b1c5a01c9b5b350d17d166c5597941bcc27ca0cda4933574bb13aea4",
+      "bytes": 25920
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/approval_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/approval_test.go",
+      "sha256": "0a94cc42720ee2c6580dc5e2d62e6239530c5e82a435c3f877abf2467dc24f0e",
+      "bytes": 42475
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/audit.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/audit.go",
+      "sha256": "1896963a6574b88e151a966090096b1a5a49c5db8cf86d2815fc57e1df1c7f95",
+      "bytes": 17128
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/audit_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/audit_test.go",
+      "sha256": "d4e2097b9b167cad8d2e245066666e2f90d17dd26448e4fd41ca671b3770a830",
+      "bytes": 5737
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/cancellation.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/cancellation.go",
+      "sha256": "a11a8d033a685722528709056c842bb0a2ae549fd96f73b0b97fbdf0b4232d0c",
+      "bytes": 8576
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/cancellation_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/cancellation_test.go",
+      "sha256": "a1bdbeffd95671d3906dd6aed44efbf12b78c8c46829bb582e7c2738858c6f3e",
+      "bytes": 14066
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/cas13_integration_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/cas13_integration_test.go",
+      "sha256": "893a83d7c9c01f3d8db697136a265058f12013ab1a2426e7a1ca1abd31e35b6c",
+      "bytes": 74893
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/consumer_dispatch_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/consumer_dispatch_test.go",
+      "sha256": "49293e45373e4a881ed5557212d31eb5f1e40e63d05a55d1416b2ffe9a4233dc",
+      "bytes": 3911
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/contract_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/contract_test.go",
+      "sha256": "9ae48bcc21def6c63f45c015085a425dbcb68254e7531dc8d8b2260cc017997d",
+      "bytes": 6357
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/events.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/events.go",
+      "sha256": "314e4fe53b25bc28794a244313d0db2bd7b3879c718d7e46e01a0114cde35d17",
+      "bytes": 25953
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/events_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/events_test.go",
+      "sha256": "65d269948899d22a138e780ac892f4257ec7863284e7c471667ca0268428f8c7",
+      "bytes": 12447
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/hardening.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/hardening.go",
+      "sha256": "08b9d97f41e8f9c5943356e7846bcc5f39fda75829a7871cb2c73f00250f2b3d",
+      "bytes": 2809
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/hardening_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/hardening_test.go",
+      "sha256": "3b52f8da49e7bedad68514f49633552094980e0ee87c782dba31d7b74055792f",
+      "bytes": 5209
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/lifecycle.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/lifecycle.go",
+      "sha256": "9e379004fdeea3c983ff9864373479b7315fa54a3e9ef70998f8cc72ad471ca4",
+      "bytes": 25486
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/lifecycle_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/lifecycle_test.go",
+      "sha256": "3084a5287b62b5e5da215829aad6f4905e5a39fdb40668a3fba97518ad39ecd7",
+      "bytes": 33346
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/model_policy.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/model_policy.go",
+      "sha256": "46ddccf2e60af619d214e8a91bf6f32d4ea4e959306f51fdc8d335596a6bb7d6",
+      "bytes": 34113
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/model_policy_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/model_policy_test.go",
+      "sha256": "410c9326e0ace476c64def5991bbcf9ecda4935d6b8c79b66e68ec545b4d2270",
+      "bytes": 35344
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/pre_initialization_capability.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/pre_initialization_capability.go",
+      "sha256": "3a092fc4111552c3355e26d9cce95fd9d9e313160aa4077acc6001d558b9339a",
+      "bytes": 7746
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/pre_initialization_capability_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/pre_initialization_capability_test.go",
+      "sha256": "b2972862b5e01e129dd6f4df74ad272d07fe2f6a581e551fa8ad3f8ecd3f7b64",
+      "bytes": 11552
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/protocol.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/protocol.go",
+      "sha256": "039650cf4168f4fe71207efab7681069cb66d370a63be13e5f871d39847a283d",
+      "bytes": 13892
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/protocol_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/protocol_test.go",
+      "sha256": "4937ad2cb3c5c4f9d94050d4a6c69f3662ea8235e1045864c6679e45988fc6ff",
+      "bytes": 9963
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/recovery.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/recovery.go",
+      "sha256": "2f7504b55bf770d4e31926eb89c562b62141791b00524f99b787a486617b6abc",
+      "bytes": 15434
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/recovery_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/recovery_test.go",
+      "sha256": "d6d26b025da21069ffa38952b387c7b29b2ba4c73d7aaf28f2a5b73424030d32",
+      "bytes": 19428
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/cgo_disabled_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/cgo_disabled_test.go",
+      "sha256": "3c4e7139101aaaf4acd8de8e0ba74323e73ae5316058e14525e05dcfc43bf63f",
+      "bytes": 74
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/cgo_enabled_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/cgo_enabled_test.go",
+      "sha256": "5f1ef7d3d8cbe1b7c7ab337d37f16d7df2c528deed205aa4883378705e364a70",
+      "bytes": 72
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/host_linux_distribution_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/host_linux_distribution_test.go",
+      "sha256": "3c13449217f461be62a24ede1ec418f4e45580703b6cd6f4252df1b5a51f7525",
+      "bytes": 1980
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/host_linux_mount_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/host_linux_mount_test.go",
+      "sha256": "17d9d0b46bd291f3476be25725cc87bc2540e2e32286300270f426254a5060f4",
+      "bytes": 8958
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/host_linux_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/host_linux_test.go",
+      "sha256": "2d50e8544becc642192feaa1325ea050f9c8c067b63582e883125b742d653fbe",
+      "bytes": 23674
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/host_other_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/host_other_test.go",
+      "sha256": "06fa3d5e84c88263041773f89f3211a6d00f37823dcecef8511e382209f32582",
+      "bytes": 545
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/host_windows_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/host_windows_test.go",
+      "sha256": "67032bbfbc39202f9a2faa5ecfa66c7f5e34cc34ea903f08e60328b1e58643bf",
+      "bytes": 7713
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/linux_contention_cohort_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/linux_contention_cohort_test.go",
+      "sha256": "c28fded5fa93acd3e5883edf7e06618b55bc1d0edec03fe7945580ba56faa7a4",
+      "bytes": 36014
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/linux_failure_boundary_matrix_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/linux_failure_boundary_matrix_test.go",
+      "sha256": "1f0ca0ed63c7819c1addef9b1ef3bb5239434d3b32c3970028b45fdd0708998a",
+      "bytes": 55166
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/linux_publication_cohort_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/linux_publication_cohort_test.go",
+      "sha256": "9a29aca5a0c0dc2f6a4fe3ad17a409159177054aff1a63c5cb8e9223f0d2f1c3",
+      "bytes": 28260
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/linux_smoke_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/linux_smoke_test.go",
+      "sha256": "973fc35390cf7fd4b47ec9720915764ee717ca3bce42cb3c0ffa7977ae1a7095",
+      "bytes": 7627
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/linux_vm_durability_harness_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/linux_vm_durability_harness_test.go",
+      "sha256": "09e6a52a8cad5904e22a30e9035218a2933cdc966d0dbff34e33bcec4dee2c98",
+      "bytes": 16667
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/publication_cohort_orchestration_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/publication_cohort_orchestration_test.go",
+      "sha256": "e44b9a2b90de9941277c39d09055bae8ed0f730dacb245b33863a1648aab7740",
+      "bytes": 2395
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/sqlite_smoke_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/sqlite_smoke_test.go",
+      "sha256": "72c1f9d4353592630b48c9920375a912b9728dfa6c0df86228156b34780b1950",
+      "bytes": 35396
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/windows_contention_cohort_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/windows_contention_cohort_test.go",
+      "sha256": "560d7ed57940e120b367c1e4a639e2b05db68fe2a5a751ccd13463eb36dfa6f9",
+      "bytes": 31040
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/windows_failure_boundary_matrix_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/windows_failure_boundary_matrix_test.go",
+      "sha256": "e15d602c8945a0852a6c388702c8242dfce0a9c9e17959caf4f7a18d9b933077",
+      "bytes": 46753
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/windows_publication_cohort_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/sqliteevidence/windows_publication_cohort_test.go",
+      "sha256": "aa47e3cce194b6d73bb047410ece280b49b24ccb81573001a31e4b63228b9d32",
+      "bytes": 25943
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/supervisor.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/supervisor.go",
+      "sha256": "9b5f1450ee404b449204f9d128b0526b958a0114859bc0aa2b621ae1bfeb1a75",
+      "bytes": 23569
+    },
+    {
+      "source": "packages/dorkpipe/lib/appserversupervisor/supervisor_test.go",
+      "destination": "packages/dorkpipe/lib/appserversupervisor/supervisor_test.go",
+      "sha256": "72160285f9d101982139071d172f6509e33d04bd6ebad3da74540345b89959e9",
+      "bytes": 10292
+    },
+    {
+      "source": "packages/dorkpipe/lib/cianalysis/normalize.go",
+      "destination": "packages/dorkpipe/lib/cianalysis/normalize.go",
+      "sha256": "81897065788a127b4534ed1fd090f2ea335172d2be0fd49fb357dd8ce53ff82c",
+      "bytes": 13721
+    },
+    {
+      "source": "packages/dorkpipe/lib/cianalysis/normalize_test.go",
+      "destination": "packages/dorkpipe/lib/cianalysis/normalize_test.go",
+      "sha256": "f2281d756aed1243c64f52b55ab7281e0da9e7b38c142ff50879d3d0cb5b94fb",
+      "bytes": 4840
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/dorkpipe/artifact_persistence_test.go",
+      "destination": "packages/dorkpipe/lib/cmd/dorkpipe/artifact_persistence_test.go",
+      "sha256": "79505597d226398b8bf61654731dfb0763883e0f22160e0c89d45339873be83d",
+      "bytes": 1493
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/dorkpipe/edit.go",
+      "destination": "packages/dorkpipe/lib/cmd/dorkpipe/edit.go",
+      "sha256": "c8f449e823c08ff664289780108f95fd9237231def787103685bdad6d6eb6058",
+      "bytes": 125624
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/dorkpipe/edit_test.go",
+      "destination": "packages/dorkpipe/lib/cmd/dorkpipe/edit_test.go",
+      "sha256": "48a53627ce106740291a67a687d5a5ce5f20aef94075b6255e9f856e31ad8a14",
+      "bytes": 16936
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/dorkpipe/main.go",
+      "destination": "packages/dorkpipe/lib/cmd/dorkpipe/main.go",
+      "sha256": "bef4ad9d706c19b8fa88447fa1458e0aa7cf4d4eceb073943a90e59ed39e4dc1",
+      "bytes": 13488
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/dorkpipe/main_test.go",
+      "destination": "packages/dorkpipe/lib/cmd/dorkpipe/main_test.go",
+      "sha256": "a8329189e4a6b151f530c925e711ec2905f05ef2ae764c408df84f7b6bafa360",
+      "bytes": 1554
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/dorkpipe/mcp_client.go",
+      "destination": "packages/dorkpipe/lib/cmd/dorkpipe/mcp_client.go",
+      "sha256": "71cb5550a4cb6d00487569cad01496f46eb3790cac68b3341aa0845ff5504076",
+      "bytes": 12334
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/dorkpipe/provider_pool.go",
+      "destination": "packages/dorkpipe/lib/cmd/dorkpipe/provider_pool.go",
+      "sha256": "6f913865c113973a70e603d43b66efa5ac659ecd983d0902724032831818e877",
+      "bytes": 161021
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/dorkpipe/provider_pool_app_server_aggregate.go",
+      "destination": "packages/dorkpipe/lib/cmd/dorkpipe/provider_pool_app_server_aggregate.go",
+      "sha256": "28aa687c109f2762d4cfa651f1776b452e96859ee7689b36fbdedb284afd9ec5",
+      "bytes": 12198
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/dorkpipe/provider_pool_app_server_aggregate_test.go",
+      "destination": "packages/dorkpipe/lib/cmd/dorkpipe/provider_pool_app_server_aggregate_test.go",
+      "sha256": "a565294203f628df13591a36c02438ac7f5bfd9835ae9080b615948b02c43ee0",
+      "bytes": 18258
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/dorkpipe/provider_pool_test.go",
+      "destination": "packages/dorkpipe/lib/cmd/dorkpipe/provider_pool_test.go",
+      "sha256": "620d45f391693f7955b63b2de17e77d8293d3ec346301ce7aa454b569e66c222",
+      "bytes": 163255
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/dorkpipe/reasoning_runtime.go",
+      "destination": "packages/dorkpipe/lib/cmd/dorkpipe/reasoning_runtime.go",
+      "sha256": "d91122ec026f76fc7f7308f7509944ba71cd8f84a79197b01dd2e5dbbf66f392",
+      "bytes": 14118
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/dorkpipe/reasoning_runtime_test.go",
+      "destination": "packages/dorkpipe/lib/cmd/dorkpipe/reasoning_runtime_test.go",
+      "sha256": "95bc3ae38fab7d84c9560bca690f9ccc6c04154042bf6e47f615457f0f326408",
+      "bytes": 1328
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/dorkpipe/request.go",
+      "destination": "packages/dorkpipe/lib/cmd/dorkpipe/request.go",
+      "sha256": "c125e457c6390be28952865d4e866b996f4f38158bf1dbdc26adac29fc3c5c0d",
+      "bytes": 103622
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/dorkpipe/request_test.go",
+      "destination": "packages/dorkpipe/lib/cmd/dorkpipe/request_test.go",
+      "sha256": "052c8d438e42f34e24293c837d48654764a53e8d9fbdd78e6522b007e8d147af",
+      "bytes": 37611
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/dorkpipe/runtime_paths.go",
+      "destination": "packages/dorkpipe/lib/cmd/dorkpipe/runtime_paths.go",
+      "sha256": "b96ffcb024d4f32df65494f64be5672262648279879ac01d76b54614e9184f4f",
+      "bytes": 1935
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/dorkpipe/structured_trace.go",
+      "destination": "packages/dorkpipe/lib/cmd/dorkpipe/structured_trace.go",
+      "sha256": "a2f60728492f23e16cbb3397d70e99333ee3f10d10b379ccfa697193db430a31",
+      "bytes": 26788
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/dorkpipe/timeutil.go",
+      "destination": "packages/dorkpipe/lib/cmd/dorkpipe/timeutil.go",
+      "sha256": "69b217afa95257dacce5a19f3ea59e1283201e6a8ed6c7ffb510a1e8c38807f0",
+      "bytes": 140
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/orchestrate-helper/main.go",
+      "destination": "packages/dorkpipe/lib/cmd/orchestrate-helper/main.go",
+      "sha256": "0728818dd100aa8cc89bb3371e8ea0a44c0e8c26fd7a17d5574033e475e56bfc",
+      "bytes": 395
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/skills-render/main.go",
+      "destination": "packages/dorkpipe/lib/cmd/skills-render/main.go",
+      "sha256": "249e9c8995fb49f535e3c6263bbce1ea503a03b9a1074837e2a1defec6278382",
+      "bytes": 381
+    },
+    {
+      "source": "packages/dorkpipe/lib/cmd/test-assert/main.go",
+      "destination": "packages/dorkpipe/lib/cmd/test-assert/main.go",
+      "sha256": "87810a1109d5dc6272883771cbddec0392690df2e49fc5ee576e6d40510fecce",
+      "bytes": 19311
+    },
+    {
+      "source": "packages/dorkpipe/lib/composegen/composegen.go",
+      "destination": "packages/dorkpipe/lib/composegen/composegen.go",
+      "sha256": "0c829f278836ba2376ee6d69de533b959dd6f6b0a7c7336ba6f6e0893cc8b40a",
+      "bytes": 1969
+    },
+    {
+      "source": "packages/dorkpipe/lib/composegen/composegen_test.go",
+      "destination": "packages/dorkpipe/lib/composegen/composegen_test.go",
+      "sha256": "5c4cb028870443eadcf891e7b79b18383831c292af47772b49a8784aea10a7e7",
+      "bytes": 458
+    },
+    {
+      "source": "packages/dorkpipe/lib/confidence/harmonic_test.go",
+      "destination": "packages/dorkpipe/lib/confidence/harmonic_test.go",
+      "sha256": "589af1dddc854b8af1783cd801ab57872f6bdbdbdfc15fb4915f511f5734d7fd",
+      "bytes": 237
+    },
+    {
+      "source": "packages/dorkpipe/lib/confidence/vector.go",
+      "destination": "packages/dorkpipe/lib/confidence/vector.go",
+      "sha256": "3813a303b89ebd0dbea8c1ffba8c52afadb89fc21add28151cc4c99ad0704911",
+      "bytes": 1198
+    },
+    {
+      "source": "packages/dorkpipe/lib/engine/branch.go",
+      "destination": "packages/dorkpipe/lib/engine/branch.go",
+      "sha256": "019d1bb2715946ce997d61ef85fa0733c4ba1b7546ca3dbde7893739a4c45ecd",
+      "bytes": 562
+    },
+    {
+      "source": "packages/dorkpipe/lib/engine/parallel.go",
+      "destination": "packages/dorkpipe/lib/engine/parallel.go",
+      "sha256": "540afa5ccf37ca37b9c8c0db0c5302288492217315d7bfbce3993edf1b5ae89d",
+      "bytes": 1355
+    },
+    {
+      "source": "packages/dorkpipe/lib/engine/provenance.go",
+      "destination": "packages/dorkpipe/lib/engine/provenance.go",
+      "sha256": "3e2f888dd77ee4d4f4c8beba5c476f5b22778477b99c2ec10b3ba5f82c4c1d2d",
+      "bytes": 4035
+    },
+    {
+      "source": "packages/dorkpipe/lib/engine/provenance_test.go",
+      "destination": "packages/dorkpipe/lib/engine/provenance_test.go",
+      "sha256": "c04370c3ff5d8f21548d845be99b09a7687b90d18134917c42e13ec97a5e0a6d",
+      "bytes": 1434
+    },
+    {
+      "source": "packages/dorkpipe/lib/engine/run.go",
+      "destination": "packages/dorkpipe/lib/engine/run.go",
+      "sha256": "cb32533fa4cf4af9df4e15158dfbf411d257a0ad07cddcccb77c5b9aa09054b3",
+      "bytes": 5496
+    },
+    {
+      "source": "packages/dorkpipe/lib/eval/eval.go",
+      "destination": "packages/dorkpipe/lib/eval/eval.go",
+      "sha256": "76462f0406842e4a8cd7607b1473e4096233442235eadaca5a862269782c65aa",
+      "bytes": 1661
+    },
+    {
+      "source": "packages/dorkpipe/lib/eval/eval_test.go",
+      "destination": "packages/dorkpipe/lib/eval/eval_test.go",
+      "sha256": "a7143ae1bfc0fac0811bd8830933381f743ecdda87edf4e8d15e5f01cb62de94",
+      "bytes": 765
+    },
+    {
+      "source": "packages/dorkpipe/lib/examples/full-bar.yaml",
+      "destination": "packages/dorkpipe/lib/examples/full-bar.yaml",
+      "sha256": "03b32cd240979a47ece83aa8a91c95206e6cf6bda0637295e702f9ed5136d633",
+      "bytes": 907
+    },
+    {
+      "source": "packages/dorkpipe/lib/go.mod",
+      "destination": "packages/dorkpipe/lib/go.mod",
+      "sha256": "87a37b0cbc4c5090c3169b4f8465c4948352f5e54c34b1928abef6a43f2d3205",
+      "bytes": 757
+    },
+    {
+      "source": "packages/dorkpipe/lib/go.sum",
+      "destination": "packages/dorkpipe/lib/go.sum",
+      "sha256": "b426dc8754abc50973fbae78d32642746de09cc6c6b6485a24727572cbf610a9",
+      "bytes": 5338
+    },
+    {
+      "source": "packages/dorkpipe/lib/handoff/compliance.go",
+      "destination": "packages/dorkpipe/lib/handoff/compliance.go",
+      "sha256": "a3a937c0c30bd579863e6bfcb5b626a8059478de8f412ce4b41424e1c2a295d3",
+      "bytes": 5138
+    },
+    {
+      "source": "packages/dorkpipe/lib/handoff/compliance_test.go",
+      "destination": "packages/dorkpipe/lib/handoff/compliance_test.go",
+      "sha256": "d40aa2aa006a709028f63c876325b80f5580fafa3d2576cba6bb4d82fc54b135",
+      "bytes": 2042
+    },
+    {
+      "source": "packages/dorkpipe/lib/handoff/cursor.go",
+      "destination": "packages/dorkpipe/lib/handoff/cursor.go",
+      "sha256": "7701d1672d879192ea647ecc14f5d6f69b1296bf55ae7567462ca398fbfa2390",
+      "bytes": 15864
+    },
+    {
+      "source": "packages/dorkpipe/lib/handoff/cursor_test.go",
+      "destination": "packages/dorkpipe/lib/handoff/cursor_test.go",
+      "sha256": "e484fc924c9ca2c3810436760a2a25a4eefa166f2ac77539e9cb8ab5761fde29",
+      "bytes": 2367
+    },
+    {
+      "source": "packages/dorkpipe/lib/modelclient/modelclient.go",
+      "destination": "packages/dorkpipe/lib/modelclient/modelclient.go",
+      "sha256": "1338e429b70bd96a5966fcf42d4c6c57f137eb19f512f47ac2c3f79be96949c3",
+      "bytes": 11069
+    },
+    {
+      "source": "packages/dorkpipe/lib/modelclient/modelclient_test.go",
+      "destination": "packages/dorkpipe/lib/modelclient/modelclient_test.go",
+      "sha256": "44b75c90ab54be785182633fe83ba9753637749bc670400d2f884e654c56230c",
+      "bytes": 946
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/atomic_json.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/atomic_json.go",
+      "sha256": "141b2734014f36274081e0fea042b01388f330fd602d98c2f4e00ba1261109bf",
+      "bytes": 800
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/atomic_json_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/atomic_json_test.go",
+      "sha256": "12006b8d6ad1cc6a1ae1df49b05a3ebe870b5ed2310084846f3a2f9bf524dfb0",
+      "bytes": 2038
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/backlogcheckoutapplication.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/backlogcheckoutapplication.go",
+      "sha256": "86af593792c58e1a42a3918bc0cb76951c47f8c3a0c178ca9c416feab4952615",
+      "bytes": 33705
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/backlogcheckoutapplication_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/backlogcheckoutapplication_test.go",
+      "sha256": "493c3a0ca62c31713ff84bc20e853cdf429ee886a44f0087cc760e50c98d1e41",
+      "bytes": 29138
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/backlogcheckoutcheckpoint.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/backlogcheckoutcheckpoint.go",
+      "sha256": "4dbfad12066da6c08dcfbc69fd5b2b4ace41c7a8e19e2632502d2179e91968a3",
+      "bytes": 25360
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/backlogcheckoutcheckpoint_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/backlogcheckoutcheckpoint_test.go",
+      "sha256": "2ec7a112a019e10c441be670ab5667a2b775f0c5d1041704c23b5951744a0084",
+      "bytes": 12727
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/backlogcheckoutpublication.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/backlogcheckoutpublication.go",
+      "sha256": "f0e4ebc8fc3b7bc6a35bcb17dfd7a2f0ef4fd7ba3fa84e39309d499e2b5e0e3d",
+      "bytes": 19875
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/backlogcheckoutpublication_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/backlogcheckoutpublication_test.go",
+      "sha256": "2ea1636204d1fabc5bdc050c4e1a6721e56b178a436442b4ef3f72c1a3cb71aa",
+      "bytes": 11783
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/backlogpatchapplication.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/backlogpatchapplication.go",
+      "sha256": "b97c8be179e5a43258a5089093e6bf3865b6bdcf5bc55175f0041f0ab58bb37d",
+      "bytes": 18264
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/backlogpatchapplication_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/backlogpatchapplication_test.go",
+      "sha256": "3fdbc81d08d8a4696e72c2dee65f12c650469210ddb9eb6f0cc706844a736351",
+      "bytes": 18015
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/backlogremote.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/backlogremote.go",
+      "sha256": "5377fcf3a534792b1ccc52334d567ee1be61745c6fc55333bf08f965ddeabd30",
+      "bytes": 134518
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/backlogremote_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/backlogremote_test.go",
+      "sha256": "1355f1b92c3e1d911e49f016096804976a5411cbb2d2975098a5ea046200ca85",
+      "bytes": 116247
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/backlogsemanticreview.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/backlogsemanticreview.go",
+      "sha256": "08f7e7e449e3209438813a2155a125682833ae597bbbacd7df546ff385dc0b58",
+      "bytes": 23420
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/backlogsemanticreview_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/backlogsemanticreview_test.go",
+      "sha256": "31c2b369038859713f871d6f63e68df935eb3bfce302afc5e989008bd4fea87e",
+      "bytes": 15955
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/backlogvalidationexecution.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/backlogvalidationexecution.go",
+      "sha256": "ca0967557a3536f82671be16f8a13d9d13b6dd7505c7d1d884b095e089ce5336",
+      "bytes": 25173
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/backlogvalidationexecution_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/backlogvalidationexecution_test.go",
+      "sha256": "bb9d86f3b522e413f64e803c5b12fe3c48ae5794caef85b8201f70f8b590c059",
+      "bytes": 20311
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/cloud_usage.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/cloud_usage.go",
+      "sha256": "66a931437c5f264265f35b2fd439f217ea4f6d6b8f39e10fe6d13dea223c4730",
+      "bytes": 1211
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/cloud_usage_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/cloud_usage_test.go",
+      "sha256": "4e024b355e1737cdbc4406f90a66c328a3394200c088e7a4747c28fa62b3c936",
+      "bytes": 2953
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/internal/cloudusage/ledger.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/internal/cloudusage/ledger.go",
+      "sha256": "ec320b54856e9a24c44b78b8f9ed42a4aa952739a454e26ca299f17e0d685932",
+      "bytes": 1432
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/internal/cloudusage/ledger_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/internal/cloudusage/ledger_test.go",
+      "sha256": "b51a8018d910a5d4e3338ee85e53d82ec6a0dc85540eccf64534845e68a41664",
+      "bytes": 2142
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnector.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnector.go",
+      "sha256": "9216c9003bec9772df1f5ca30e130de3f08567a25c5ad4169513b443be9e684b",
+      "bytes": 15060
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnector_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnector_test.go",
+      "sha256": "ad7bed2592fcff12dc97a4cf40b4fa95857ae5a962891b226fcaba71145fa566",
+      "bytes": 15971
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorcloudflaretunnel.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorcloudflaretunnel.go",
+      "sha256": "bb2022c9d3b724d1be793710c4c5537c0de4e734193208be63da4aba9bef638f",
+      "bytes": 20121
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorcloudflaretunnel_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorcloudflaretunnel_test.go",
+      "sha256": "0dbeb65bee510a98be873f1b3bcfd972a6f80164fa345b45ab415b56f57f61d5",
+      "bytes": 37586
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectordirecttls.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectordirecttls.go",
+      "sha256": "e93c3f497110cdda3920aa4b6ee5e83a5ab8ee6dc8efcac19508c449eeb4fbaa",
+      "bytes": 9746
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectordirecttls_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectordirecttls_test.go",
+      "sha256": "ab69d42f91c4b17dcc699928b6c64b8084bb4bdbf848765331f8743e83e86c53",
+      "bytes": 26671
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorduplex.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorduplex.go",
+      "sha256": "074295c3ac028b4671e5e3491d902988621454377a53f30cdfe3bea78fa75fa2",
+      "bytes": 25720
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorduplex_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorduplex_test.go",
+      "sha256": "0bfd2dc8fb514d437e44191bf99158bfb786e59741a6fc520d2ac2c3fa5c5e08",
+      "bytes": 24046
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorinventorysnapshot.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorinventorysnapshot.go",
+      "sha256": "46386e8d26911677caba012de47b39119f7475a039787a3af04958f4bbe5a80b",
+      "bytes": 38616
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorinventorysnapshot_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorinventorysnapshot_test.go",
+      "sha256": "83b226611e4bb17185cede6d8b77c77d4f73b84c55c7d994a44f17349c0fb1c9",
+      "bytes": 37113
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormanagedbrokerpreview.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormanagedbrokerpreview.go",
+      "sha256": "4a76510eeb382ca9326ca6cc2ccb8a4e33eb3c022cc93a73bc493fae0ad8be76",
+      "bytes": 33995
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormanagedbrokerpreview_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormanagedbrokerpreview_test.go",
+      "sha256": "006df59d574a737447d25252a2e44df162a1a730b8300164c66a9c0474a764af",
+      "bytes": 15122
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormultitargetrepair.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormultitargetrepair.go",
+      "sha256": "a8637e00a87c2fb89825646c241d86b21b3e99c3ea858d9b55406640bbf13ecb",
+      "bytes": 25083
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormultitargetrepair_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormultitargetrepair_test.go",
+      "sha256": "d1baa2dba5207e20be8df217352a51c311ad08f7e482466bc0e3a2cbef62382d",
+      "bytes": 23186
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormultitargetvalidation.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormultitargetvalidation.go",
+      "sha256": "a94cd344b1a70128e28ce8561acf83b275f9f0789e8d8c2e2fec1ea5fca685b7",
+      "bytes": 27026
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormultitargetvalidation_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormultitargetvalidation_test.go",
+      "sha256": "33088c104c1bef2e38e387e9981b14fa1a2880c4c4d08d2bf3811a5b1ea08504",
+      "bytes": 24861
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementdecision.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementdecision.go",
+      "sha256": "c734c09a4541288b63ce8a039a1c0053869c5c9b1517f99187a3df38cfe28d8f",
+      "bytes": 29105
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementdecision_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementdecision_test.go",
+      "sha256": "48ae4db197607db4fa7b3a70fb14969536f1b69c2f1ae4e8a203dbf56fe643d7",
+      "bytes": 26318
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementdispatchdecision.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementdispatchdecision.go",
+      "sha256": "dc868cb8fdb37f6a0abfda11cf4ea80191cb47acf5da1571b82365aaedaefc0b",
+      "bytes": 36511
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementdispatchdecision_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementdispatchdecision_test.go",
+      "sha256": "f4b927eb18bbad765b71f74dc32b3573042429a859adbb05bddba32d0cf06ddf",
+      "bytes": 27994
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementdispatchsubmission.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementdispatchsubmission.go",
+      "sha256": "10ad3d06bae55fba36adead13b8e0bd45ed0a47c1dee48967b5304159920a189",
+      "bytes": 32842
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementdispatchsubmission_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementdispatchsubmission_test.go",
+      "sha256": "dca2762f7e87084d1a187c2352a4520c1da78a452d5ba8897942f36ff7bbbf5f",
+      "bytes": 30617
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiondelivery.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiondelivery.go",
+      "sha256": "61103fff3b17817628de6ef6f1d75783732c9e6aa631a1003d5051401a17b156",
+      "bytes": 43028
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiondelivery_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiondelivery_test.go",
+      "sha256": "6ee920f6a24ba573dad1a6d9e094d95320cd8136106df288e39cc26448ba09c8",
+      "bytes": 28410
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphdependencytransitionexecutor.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphdependencytransitionexecutor.go",
+      "sha256": "66748a91f075a967c6465f8f9fab5cdc0dec4425b8da9d77818062895e0ebd15",
+      "bytes": 28617
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphdependencytransitionexecutor_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphdependencytransitionexecutor_test.go",
+      "sha256": "ca0b0e67324df7fa7368749f2f763f3c2a6ef42da0d0bba91c0d0229fe6c5faa",
+      "bytes": 30256
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphdependencytransitionpolicy.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphdependencytransitionpolicy.go",
+      "sha256": "1d223b20cec65522e620ea6a1d084eabb6a59f0401344354e2d777a1001f58b0",
+      "bytes": 42861
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphdependencytransitionpolicy_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphdependencytransitionpolicy_test.go",
+      "sha256": "dda3b92dab26c63b6b46a42a5c6dcf472555282fd690f35d84a4c7654f36a7fe",
+      "bytes": 31245
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphfinalization.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphfinalization.go",
+      "sha256": "320650a774c13e96c5650ae4e907ba90e4e1b0d99954179d83d8aa8bb26550ae",
+      "bytes": 25434
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphfinalization_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphfinalization_test.go",
+      "sha256": "8df812532b5aa727ee59907892ab532f7dec4ef1553b76d2177feeabc326fef4",
+      "bytes": 13238
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphfinalstateprojection.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphfinalstateprojection.go",
+      "sha256": "3103d7f65a1d124668bedfcba94e54b4bf67098958e2935e3f7fc3909e1eb539",
+      "bytes": 34313
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphfinalstateprojection_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphfinalstateprojection_test.go",
+      "sha256": "05aacd8b82154222885eedf4dc2e81798dbc97aac99a860cddfdbc575c645f0f",
+      "bytes": 17957
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphlifecycleexecutor.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphlifecycleexecutor.go",
+      "sha256": "aacb6e56df3d58bf709d738b0d194e839b4d6f13f550db61a30e4351c4bd5e01",
+      "bytes": 24936
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphlifecycleexecutor_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphlifecycleexecutor_test.go",
+      "sha256": "67e073f129c90bb897190c1db8c154a8e4ea63797086e2d23c49a9832485339a",
+      "bytes": 26506
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphlifecycleexecutorpolicy.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphlifecycleexecutorpolicy.go",
+      "sha256": "da0faa29b332769b71bb349841de0a4778a08f43fc30fbd7f7222ba717e7c8e7",
+      "bytes": 42176
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphlifecycleexecutorpolicy_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphlifecycleexecutorpolicy_test.go",
+      "sha256": "d7eaaee83c9470a101c19e5f8e7dacda959e6a2a9933f9387cb4f022c5a8b2ad",
+      "bytes": 24070
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttasklaunchexecutionauthorizationpolicy.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttasklaunchexecutionauthorizationpolicy.go",
+      "sha256": "e6440c60ac5a5453a6f2f0102e8793984e4ecf136bf29750ce14e9035f7e754a",
+      "bytes": 41652
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttasklaunchexecutionauthorizationpolicy_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttasklaunchexecutionauthorizationpolicy_test.go",
+      "sha256": "b6c801ca0632f4890952931d209b1d32d16401baa335f57f5ab2197d39d9d272",
+      "bytes": 36605
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttasklaunchexecutionexecutor.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttasklaunchexecutionexecutor.go",
+      "sha256": "c73e64bb03db7f33e9133bc5929dd9dd73838d264c2b8fc0961c7de3a99b3e23",
+      "bytes": 32322
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttasklaunchexecutionexecutor_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttasklaunchexecutionexecutor_test.go",
+      "sha256": "0083365645765e6a3230bd94e99106257dcc7cc70c880583568d0d247b423702",
+      "bytes": 42345
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationexecutor.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationexecutor.go",
+      "sha256": "355adccfe0f9fc953e8200480e3aebab41d40eba9c0d15976515ea641f87d059",
+      "bytes": 36352
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationexecutor_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationexecutor_test.go",
+      "sha256": "699a8ac8d1ed62430cf524d77bd025723e28c09efc7acbc42c0af4537033873c",
+      "bytes": 29953
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryacknowledgementreconciliationexecutor.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryacknowledgementreconciliationexecutor.go",
+      "sha256": "d30d3ff3050e83a37ba9e41f63defff3f90eda4aec87aa14fe58e809f24e9ffb",
+      "bytes": 52325
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryacknowledgementreconciliationexecutor_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryacknowledgementreconciliationexecutor_test.go",
+      "sha256": "73ed001181f3143ee6be1a1ca98452c96cd981c19a9ff43967a99f0118089a35",
+      "bytes": 52544
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryacknowledgementreconciliationpolicy.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryacknowledgementreconciliationpolicy.go",
+      "sha256": "ad77c7403a191ea4a33295e50d1c20e22843b046f157cdee3858f30590a67404",
+      "bytes": 72423
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryacknowledgementreconciliationpolicy_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryacknowledgementreconciliationpolicy_test.go",
+      "sha256": "9e0fb15dfd5a957338a361ff7462752259692d3b9e77d51fd847bbb17f77d7a9",
+      "bytes": 40796
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryacknowledgementreconciliationpostexecutor.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryacknowledgementreconciliationpostexecutor.go",
+      "sha256": "3b4bf21b62ccc15cc44aa3ee51a07f21f4f114689aacd4b3a42cfd8c2ccfa1b0",
+      "bytes": 46058
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryacknowledgementreconciliationpostexecutor_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryacknowledgementreconciliationpostexecutor_test.go",
+      "sha256": "bc923b52e4f40aade90f6b9cf781917b592e78e3be5faca7a0a3af811c21cc96",
+      "bytes": 42298
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryacknowledgementreconciliationpostpolicy.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryacknowledgementreconciliationpostpolicy.go",
+      "sha256": "3d8e30026f43102a9a7c63697cce5c738ce3766f59bbd9e7c0aea5835b4153e7",
+      "bytes": 71834
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryacknowledgementreconciliationpostpolicy_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryacknowledgementreconciliationpostpolicy_test.go",
+      "sha256": "b77712d53857709d673d719d99a7bf6f13b752e38595e3a76503437258167041",
+      "bytes": 40298
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryexecutor.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryexecutor.go",
+      "sha256": "851f76f0bc1c726a96949494d7a90693bf68f201e9429bde92fbacb8d224148f",
+      "bytes": 45394
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryexecutor_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryexecutor_test.go",
+      "sha256": "7a6cc618d6cd752e21c7a23fe1acb5006efadd88cf493b1a6a15e43cb9e03579",
+      "bytes": 52469
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliverypolicy.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliverypolicy.go",
+      "sha256": "8a39524eff8af99bb97cc82d9048214d987ead521dc57476d68fa77266ed5337",
+      "bytes": 59038
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliverypolicy_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliverypolicy_test.go",
+      "sha256": "387faaba6d92174820b7fef7cc8efa7f2836fbb77578178ebe9180627b7b9491",
+      "bytes": 48304
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputexecutor.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputexecutor.go",
+      "sha256": "f880a5e701a2ab38f56058f28ee45c2ebd6e3f188deae34c20b7f80c58078b38",
+      "bytes": 37223
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputexecutor_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputexecutor_test.go",
+      "sha256": "fe405e95a093daa53ce5b96fc4ccf961277e1f8bec62967048225968474c7e25",
+      "bytes": 43288
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputpolicy.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputpolicy.go",
+      "sha256": "287e3fb84d4a21f4390ae361b53c83904d1be43802b9d1e51caa9c155e187170",
+      "bytes": 46294
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputpolicy_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputpolicy_test.go",
+      "sha256": "fb0390c9f024641b7d871d071a65d0eec222ee158b7008c02f2f4e3a083cec52",
+      "bytes": 38051
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationpolicy.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationpolicy.go",
+      "sha256": "65323f1db533e945ba727c331372fd1695986225d1ab5cbcfc369c67d57f09e2",
+      "bytes": 48086
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationpolicy_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationpolicy_test.go",
+      "sha256": "4d7df3c61f7f98f105b7c923b37989bd8f86ec50a8ee1adce280584c7182374d",
+      "bytes": 38213
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultreconciliation.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultreconciliation.go",
+      "sha256": "66c2e19fd487ed7a5c2ee62a4ba49fc8c9f12adfb7a459182efc965294d8187a",
+      "bytes": 44485
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultreconciliation_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultreconciliation_test.go",
+      "sha256": "d447a8922610570af2413e75d4711a534a2f7e4a7851580fc9604df72f801506",
+      "bytes": 38527
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskschedulingexecutor.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskschedulingexecutor.go",
+      "sha256": "6229d4eacdafeae93547b872cedb7a63b8389fc4658c97c6fe0c18196fc08539",
+      "bytes": 27597
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskschedulingexecutor_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskschedulingexecutor_test.go",
+      "sha256": "5f5a443b373ce2b42eb985228a75e9412b08c73864610ee4ae1cd6d5ec696eef",
+      "bytes": 30337
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskschedulingpolicy.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskschedulingpolicy.go",
+      "sha256": "de783aa7c9ae9d1cac1e1b899c7be9c462c9e6c70b84c191b5113cc5f8ae8389",
+      "bytes": 40546
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskschedulingpolicy_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskschedulingpolicy_test.go",
+      "sha256": "56e20765d957a794f8018a49545a1a78135c69d7b25ebeff6d5ab1fc4983a8bf",
+      "bytes": 31365
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphreconciliation.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphreconciliation.go",
+      "sha256": "3910f4bd34bb5b02eff014b28ceadf7e1c4314eea028f964ba6f5eac18b87de2",
+      "bytes": 25088
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphreconciliation_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphreconciliation_test.go",
+      "sha256": "6e23eb0bf82b2554e36cb3e19c3b44b0b0520f44e86bb14aaf4584c7533e4d2d",
+      "bytes": 26473
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutionhandoff.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutionhandoff.go",
+      "sha256": "a11a627182cd8218bbcbd14d07dfdac89eb226820973887a00989f15be65308f",
+      "bytes": 48575
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutionhandoff_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutionhandoff_test.go",
+      "sha256": "612fb0ca9842f0a4cc6522f895c82f378111de5e2b562354b530a05c102f629a",
+      "bytes": 27891
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutionreconciliation.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutionreconciliation.go",
+      "sha256": "737a5d5b76d93bce064690de1d0067a676430fd6b370b61a424fcc9add8d8f42",
+      "bytes": 37204
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutionreconciliation_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutionreconciliation_test.go",
+      "sha256": "5d6a824732c537d76c011764155aade2739427a607389284d7d46dd165331c0c",
+      "bytes": 27377
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorservicelifecycle.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorservicelifecycle.go",
+      "sha256": "993e9f0dbbc5eb6457d8f550664a154aded895b1f7ee797b4c9442d31fa147c3",
+      "bytes": 30381
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorservicelifecycle_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorservicelifecycle_test.go",
+      "sha256": "b0f7f9758470bbb5241b5e51564833c444039ef050c1844cd0e79fb865b7c458",
+      "bytes": 31171
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorsession.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorsession.go",
+      "sha256": "9aed2d0b47668fa8d81a938b70a34e23f81d2fc91f6caddb2ddcabe8b460e459",
+      "bytes": 43799
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorsession_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorsession_test.go",
+      "sha256": "ea3175d36c38bb0bd452ef247f6d91c19eb6f571ecebe099cbff0884ae985f29",
+      "bytes": 47433
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectortransport.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectortransport.go",
+      "sha256": "4a4050574c4e0cb2cb1b193e645b183f0f801d9fc30ba95b682051d6f52e1e7a",
+      "bytes": 20478
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectortransport_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectortransport_test.go",
+      "sha256": "457ab1504fed06b8de2d147804583865b112d3d13c84e13ee06cfd3a8fd1d695",
+      "bytes": 27085
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorwire.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorwire.go",
+      "sha256": "41a8f5219fdeb5ad8593be0035ea1a4d1a6a60d62050a4d30204295e83d258c3",
+      "bytes": 32422
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorwire_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorwire_test.go",
+      "sha256": "05de2e7e84d021c91647836724aabba9d002a94efe402b0e06a0d97d3af5aa8b",
+      "bytes": 39704
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeexecution.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeexecution.go",
+      "sha256": "af0f9f4d646ff50d03b2629cbf7b7baa0681b4fa8168bd26dc7b1ef45349918c",
+      "bytes": 54475
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/nodeexecution_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/nodeexecution_test.go",
+      "sha256": "b43a34d30c84f50773c7fa4a52f587b41edd5f3a0edcf6f552d281556238c260",
+      "bytes": 28861
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/orchestrationhelper.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/orchestrationhelper.go",
+      "sha256": "f329e1e06110f08152a3c081c9e38c56f99f644e5371b32dee68f2d227669055",
+      "bytes": 208411
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/orchestrationhelper_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/orchestrationhelper_test.go",
+      "sha256": "cb006f492feb64fa789e277128a27c73335f82d55bf244105d8874004041f7f2",
+      "bytes": 133356
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/planner_proposal.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/planner_proposal.go",
+      "sha256": "c084c53cf5e61a4256354279c7975a834f9026774bd94044492b8e712ac600a4",
+      "bytes": 15136
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/promotion.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/promotion.go",
+      "sha256": "297acb309c11ea294a8ddac3e7298fe0a12c678cd3c52a0b1ec5c6d710dddbef",
+      "bytes": 51549
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/promotion_candidate.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/promotion_candidate.go",
+      "sha256": "657a64f85c70f6c4956b36501637f03fa45e73f47f16280e8f81abd7ad8ad9b9",
+      "bytes": 8785
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/promotion_candidate_policy.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/promotion_candidate_policy.go",
+      "sha256": "0ed3328ffb85806f8d6ce66b038f8cea1eea36ffab6c284bb8bc9296532ba107",
+      "bytes": 14519
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/promotion_test.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/promotion_test.go",
+      "sha256": "7e730a264a2a85c882f5e78d28f1ee8e25d36e3e81371f815ec6bdddd393d05c",
+      "bytes": 21982
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/softwaredev_artifacts.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/softwaredev_artifacts.go",
+      "sha256": "208ada39ac32896c5dc2694f47cbb44e967abe6855f9722b8d162844bfbea1bf",
+      "bytes": 11796
+    },
+    {
+      "source": "packages/dorkpipe/lib/orchestrationhelper/taskpack_contract.go",
+      "destination": "packages/dorkpipe/lib/orchestrationhelper/taskpack_contract.go",
+      "sha256": "0f5102c5f2865759b7d459778cca0128da50d15ef5996f6f63a745da9bb99a29",
+      "bytes": 29648
+    },
+    {
+      "source": "packages/dorkpipe/lib/planner/planner.go",
+      "destination": "packages/dorkpipe/lib/planner/planner.go",
+      "sha256": "81ff5594b8583ce63eae28ac5c2d0955b4b6575e6b90dbd851058744f87e3325",
+      "bytes": 3613
+    },
+    {
+      "source": "packages/dorkpipe/lib/planner/planner_test.go",
+      "destination": "packages/dorkpipe/lib/planner/planner_test.go",
+      "sha256": "b34a1f25b10c472cad1a035ef1b1cce43f097de1d1eccc00b498703c45cd0426",
+      "bytes": 1429
+    },
+    {
+      "source": "packages/dorkpipe/lib/promotion/promotion.go",
+      "destination": "packages/dorkpipe/lib/promotion/promotion.go",
+      "sha256": "fd6cf597f2ee1e5c731f8ccf8ca78d8e45424becfa39891f8ef943a9d469d051",
+      "bytes": 2766
+    },
+    {
+      "source": "packages/dorkpipe/lib/providersession/contract.go",
+      "destination": "packages/dorkpipe/lib/providersession/contract.go",
+      "sha256": "151c62002b33134152cf9266f04deda3a2f35f046e6351af2fdd8ec3c7b3c11e",
+      "bytes": 22813
+    },
+    {
+      "source": "packages/dorkpipe/lib/providersession/contract_test.go",
+      "destination": "packages/dorkpipe/lib/providersession/contract_test.go",
+      "sha256": "ae62b1861a31deb9b4822bb2e8eeed6af9361951a9ca48bda2a3d06f58ab435c",
+      "bytes": 11622
+    },
+    {
+      "source": "packages/dorkpipe/lib/reasoning/artifact.go",
+      "destination": "packages/dorkpipe/lib/reasoning/artifact.go",
+      "sha256": "b744076265c7df93529fc93b1679d8eda96dfdf397a3e24aed5378dd3080f864",
+      "bytes": 6228
+    },
+    {
+      "source": "packages/dorkpipe/lib/reasoning/evidence.go",
+      "destination": "packages/dorkpipe/lib/reasoning/evidence.go",
+      "sha256": "6f1e526e1ced5ff9165458cfbdb8319c85ebb192ac1cb2e22ce908441f58597d",
+      "bytes": 7055
+    },
+    {
+      "source": "packages/dorkpipe/lib/reasoning/trace.go",
+      "destination": "packages/dorkpipe/lib/reasoning/trace.go",
+      "sha256": "b0b1f18ca0c0ed1c902f4fa4d6803bdae5557cef14e95e315d18d295399ffcd1",
+      "bytes": 809
+    },
+    {
+      "source": "packages/dorkpipe/lib/scheduler/escalation.go",
+      "destination": "packages/dorkpipe/lib/scheduler/escalation.go",
+      "sha256": "74127ac12837b3196b8f36135a042ece983d62225e9a813a17e5ee39ce29ab31",
+      "bytes": 1302
+    },
+    {
+      "source": "packages/dorkpipe/lib/scheduler/scheduler.go",
+      "destination": "packages/dorkpipe/lib/scheduler/scheduler.go",
+      "sha256": "f5965abd247bae8d52d8214fa39a8a96cdc61f6a07e6843c4b4f0f34d326d4ab",
+      "bytes": 1788
+    },
+    {
+      "source": "packages/dorkpipe/lib/scheduler/scheduler_test.go",
+      "destination": "packages/dorkpipe/lib/scheduler/scheduler_test.go",
+      "sha256": "18dcb6d5ee60faa39bb164273c0d4c4dff7bb16b1b8b9de702a1dc664270ee01",
+      "bytes": 1112
+    },
+    {
+      "source": "packages/dorkpipe/lib/skillsrender/instruction_overrides.go",
+      "destination": "packages/dorkpipe/lib/skillsrender/instruction_overrides.go",
+      "sha256": "414ffd4bf8bd8d6bd8de8faa523c7a73d9d6ac61d27cf7402eb284c93b8ba7f5",
+      "bytes": 2912
+    },
+    {
+      "source": "packages/dorkpipe/lib/skillsrender/instruction_overrides_test.go",
+      "destination": "packages/dorkpipe/lib/skillsrender/instruction_overrides_test.go",
+      "sha256": "e82636533d827530167faa350b6379a4c59cac1169fa7deb911141ea39f0955d",
+      "bytes": 3753
+    },
+    {
+      "source": "packages/dorkpipe/lib/skillsrender/skillsrender.go",
+      "destination": "packages/dorkpipe/lib/skillsrender/skillsrender.go",
+      "sha256": "826d16c8c54d3f35c26b2c2e3f4aa0b06265951077459f20cd9c5aa21cbf6fd8",
+      "bytes": 13772
+    },
+    {
+      "source": "packages/dorkpipe/lib/skillsrender/skillsrender_test.go",
+      "destination": "packages/dorkpipe/lib/skillsrender/skillsrender_test.go",
+      "sha256": "2444f77dff2de897702101b4a6416a28280b4eebf20ba5cb12ad92150844ab43",
+      "bytes": 5992
+    },
+    {
+      "source": "packages/dorkpipe/lib/spec/spec.go",
+      "destination": "packages/dorkpipe/lib/spec/spec.go",
+      "sha256": "f93fced6181edd2708581d8f151360e33e33224477a665afa63964bf9e59b003",
+      "bytes": 6382
+    },
+    {
+      "source": "packages/dorkpipe/lib/statepaths/learning_authority_migration.go",
+      "destination": "packages/dorkpipe/lib/statepaths/learning_authority_migration.go",
+      "sha256": "ae30ae25b03d4e157f5323ce6077a0b016f28f99147dba4bfbd83d7aeff09324",
+      "bytes": 5043
+    },
+    {
+      "source": "packages/dorkpipe/lib/statepaths/learning_authority_migration_test.go",
+      "destination": "packages/dorkpipe/lib/statepaths/learning_authority_migration_test.go",
+      "sha256": "5e46d5b2f96daacbf3843f582511ebf143fd43e6f1b931e9322dc01c2b8cd6e6",
+      "bytes": 14025
+    },
+    {
+      "source": "packages/dorkpipe/lib/statepaths/learning_authority_migration_unix_test.go",
+      "destination": "packages/dorkpipe/lib/statepaths/learning_authority_migration_unix_test.go",
+      "sha256": "aa61dcd352337adcdb540a5ce74ec55c0c2aac60400031e8cf5116a8e10a7cb9",
+      "bytes": 1164
+    },
+    {
+      "source": "packages/dorkpipe/lib/statepaths/provider_recovery_migration.go",
+      "destination": "packages/dorkpipe/lib/statepaths/provider_recovery_migration.go",
+      "sha256": "0457610bb067ac2de1c767c3096aad493f972bb9c29a8a649467f3b865fa9b74",
+      "bytes": 39572
+    },
+    {
+      "source": "packages/dorkpipe/lib/statepaths/provider_recovery_migration_test.go",
+      "destination": "packages/dorkpipe/lib/statepaths/provider_recovery_migration_test.go",
+      "sha256": "210696a750de951972b8d3f6d78dffcd2f92cc8fa9e2669b0ae93441c05ffa7c",
+      "bytes": 13398
+    },
+    {
+      "source": "packages/dorkpipe/lib/statepaths/provider_recovery_migration_unix.go",
+      "destination": "packages/dorkpipe/lib/statepaths/provider_recovery_migration_unix.go",
+      "sha256": "2e8c3474eabe1999cd3b1e1e16daa2de9c9c2aff7aa45af4bbd2ce917090f1b7",
+      "bytes": 2152
+    },
+    {
+      "source": "packages/dorkpipe/lib/statepaths/provider_recovery_migration_unix_test.go",
+      "destination": "packages/dorkpipe/lib/statepaths/provider_recovery_migration_unix_test.go",
+      "sha256": "38a211b6fad3f72f583f7e4ecc78d6ae7566d227c54cbeb10eba4f60b6991dff",
+      "bytes": 675
+    },
+    {
+      "source": "packages/dorkpipe/lib/statepaths/provider_recovery_migration_windows.go",
+      "destination": "packages/dorkpipe/lib/statepaths/provider_recovery_migration_windows.go",
+      "sha256": "ec52822f8859f91b65d7eb4638fff8e10d7954d3ddb35e0599e428502c2c49dd",
+      "bytes": 4027
+    },
+    {
+      "source": "packages/dorkpipe/lib/statepaths/statepaths.go",
+      "destination": "packages/dorkpipe/lib/statepaths/statepaths.go",
+      "sha256": "c3af8545ff928165cd43d266f806f9f6ff7ae1e005dacd0ece17318726c21432",
+      "bytes": 5548
+    },
+    {
+      "source": "packages/dorkpipe/lib/statepaths/statepaths_test.go",
+      "destination": "packages/dorkpipe/lib/statepaths/statepaths_test.go",
+      "sha256": "83b1032efc164803beda39fa853ca94beb19173c25abf23547f130262e9db1db",
+      "bytes": 5730
+    },
+    {
+      "source": "packages/dorkpipe/lib/userinsight/rules.json",
+      "destination": "packages/dorkpipe/lib/userinsight/rules.json",
+      "sha256": "bd0afcbe0c021da283d54e863eccbcb7c4523092eb7505987ff2a366cf8109a9",
+      "bytes": 1330
+    },
+    {
+      "source": "packages/dorkpipe/lib/userinsight/userinsight.go",
+      "destination": "packages/dorkpipe/lib/userinsight/userinsight.go",
+      "sha256": "f90d476c772fdfc03088eb75d86959b09d15ac353f037d35106182bace75964e",
+      "bytes": 18236
+    },
+    {
+      "source": "packages/dorkpipe/lib/userinsight/userinsight_test.go",
+      "destination": "packages/dorkpipe/lib/userinsight/userinsight_test.go",
+      "sha256": "92ce8f01f4c885f584305cc8f9867f3dbb94d517a3e8be912e7a9a2365e17a07",
+      "bytes": 5534
+    },
+    {
+      "source": "packages/dorkpipe/lib/workers/workers.go",
+      "destination": "packages/dorkpipe/lib/workers/workers.go",
+      "sha256": "3489112d16df07339d9fd2b1c687718a338ee1d186aaba6f84b3fa843bb618a3",
+      "bytes": 8307
+    },
+    {
+      "source": "packages/dorkpipe/package.yml",
+      "destination": "packages/dorkpipe/package.yml",
+      "sha256": "3a64b8e724e64102b586a5d6ff85d83f0f57cb9e3dd471271148a886ad672085",
+      "bytes": 2036
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/compliance-handoff/README.md",
+      "destination": "packages/dorkpipe/resolvers/compliance-handoff/README.md",
+      "sha256": "82a05c75e82d6b0e7279a13c4da44a9d72ff0632516d5538c6f3668e6cc245c0",
+      "bytes": 911
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/compliance-handoff/assets/flatpak/package.json",
+      "destination": "packages/dorkpipe/resolvers/compliance-handoff/assets/flatpak/package.json",
+      "sha256": "4633cb382a65b8681d69c24fb314cad5bd00e393e5028bbbe321f823aca3405a",
+      "bytes": 175
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/compliance-handoff/config.yml",
+      "destination": "packages/dorkpipe/resolvers/compliance-handoff/config.yml",
+      "sha256": "263d6ad44d9e21c253607cdb194334cd1c00a5c09475a173ea77f42740fa5bc4",
+      "bytes": 1117
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-orchestrator/README.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-orchestrator/README.md",
+      "sha256": "a1c242c957db10c2694b5503c69997da05e563e7dcc931656056d7b133b642e4",
+      "bytes": 1751
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-orchestrator/assets/flatpak/package.json",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-orchestrator/assets/flatpak/package.json",
+      "sha256": "99a86abb6750e0ab6714d3e076c57181be60fa45d0bccff5ec860dcd2258c393",
+      "bytes": 178
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-orchestrator/assets/scripts/run-orchestrator.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-orchestrator/assets/scripts/run-orchestrator.sh",
+      "sha256": "29f7755b54721783dec7adca387627de22c95fc1707165a89d9de29c934249f9",
+      "bytes": 750
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-orchestrator/config.yml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-orchestrator/config.yml",
+      "sha256": "79c06db60ed2ade783c301ce4912854d4b16decc90891f977ccda90066c26367",
+      "bytes": 863
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-orchestrator/spec.example.yaml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-orchestrator/spec.example.yaml",
+      "sha256": "9e27671e123e0b174a34843a5d60535e60a2d0ac2660fb081524075d2ad04cf8",
+      "bytes": 1271
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-self-analysis-host/README.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-self-analysis-host/README.md",
+      "sha256": "4605daa8a08469d10973eb708201622743c6fa1be1f130a0eeb6eed79776a626",
+      "bytes": 387
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-self-analysis-host/assets/flatpak/package.json",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-self-analysis-host/assets/flatpak/package.json",
+      "sha256": "6433729c92926995e2d28ad16b2fd6d11fba27913716a5f1d62494a8bde92e44",
+      "bytes": 184
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-self-analysis-host/config.yml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-self-analysis-host/config.yml",
+      "sha256": "debf7c59cf398248c11750bd2bc3b11ff1b422f78be216e7b46710e495a157a5",
+      "bytes": 813
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-self-analysis-stack-proxy/README.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-self-analysis-stack-proxy/README.md",
+      "sha256": "8898ab3335a6c4f654ab36cbba8551a4c9271359c0810091036982d0c4dc7c2d",
+      "bytes": 2172
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-self-analysis-stack-proxy/assets/flatpak/package.json",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-self-analysis-stack-proxy/assets/flatpak/package.json",
+      "sha256": "31f5669bf0fd989cd825045bd1065f5f0716f21524ba3140ac3ad930d6beab04",
+      "bytes": 191
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-self-analysis-stack-proxy/config.yml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-self-analysis-stack-proxy/config.yml",
+      "sha256": "dd37926d9e9ac3a3dc1d74986b4b8d441241fbccec66693ba30b256cba960ca3",
+      "bytes": 2260
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-self-analysis-stack/README.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-self-analysis-stack/README.md",
+      "sha256": "9039d56f3e59f8848c08197f238739eea4b4513d602f34e4129e3031ef578d0f",
+      "bytes": 2439
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-self-analysis-stack/assets/flatpak/package.json",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-self-analysis-stack/assets/flatpak/package.json",
+      "sha256": "f93e1346ecda3ccb5417ff1b9bae9323c02b2ea7a97a49d455c3da2425b48641",
+      "bytes": 185
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-self-analysis-stack/config.yml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-self-analysis-stack/config.yml",
+      "sha256": "1d294e306f7cea1170f3667ef52c00995f09c3883b08f983edc52be688ba1188",
+      "bytes": 1948
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-self-analysis/README.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-self-analysis/README.md",
+      "sha256": "8c9d47e3f21b14729f3b368bb6470dccda006754ebb55fd784c778c4d98679e6",
+      "bytes": 4098
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-self-analysis/assets/flatpak/package.json",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-self-analysis/assets/flatpak/package.json",
+      "sha256": "f7a3ab1494386e0d77806b723126643100b515f27f6ef96d07aa8d68a3678583",
+      "bytes": 179
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-self-analysis/config.yml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-self-analysis/config.yml",
+      "sha256": "75d7e5da751487816409becef36270110f0254bc277b5dd8fef4d176fcfd9922",
+      "bytes": 987
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-self-analysis/spec.combined.yaml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-self-analysis/spec.combined.yaml",
+      "sha256": "47736162e8f506fae300ca980e462764d82fd5ec12980a2fa7313d813f803d2e",
+      "bytes": 2545
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe-self-analysis/spec.yaml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe-self-analysis/spec.yaml",
+      "sha256": "1290719e8a2fb9cc0fa051016d3013fe850abc79589a85f07b73b414fdba88eb",
+      "bytes": 748
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/cas01/app_server.go",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/cas01/app_server.go",
+      "sha256": "93f26037ea8563f8b6122b5634b67f005ab1d84a2fe086976f32336e1ee6706a",
+      "bytes": 27807
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/cas01/fixtures/fixtures.json",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/cas01/fixtures/fixtures.json",
+      "sha256": "7e737976e02aede6aa5e797e65a61c4d862fde0cb48aed85c70c674a40330b0e",
+      "bytes": 3627
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/compose/Dockerfile.dorkpipe-stack",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/compose/Dockerfile.dorkpipe-stack",
+      "sha256": "230ca248f8154998a7a6f82c3a4a7b34f68b2cdc8fb593ea96ff00316248bd59",
+      "bytes": 482
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/compose/Dockerfile.dorkpipe-stack.dockerignore",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/compose/Dockerfile.dorkpipe-stack.dockerignore",
+      "sha256": "ebcf7a295f976c085482939c7b40ff156b45c80f3b9c482742f3693a28599d2e",
+      "bytes": 173
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/compose/docker-compose.yml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/compose/docker-compose.yml",
+      "sha256": "4beb103a9664010f671932d348c08cc4f61cd4a5f4ef515de1658c436ae1fedd",
+      "bytes": 4045
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/compose/policy-proxy.js",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/compose/policy-proxy.js",
+      "sha256": "077d0c60014eb9aacb4f4dcdfd341221843f67ec4f206693c944bca855ec1c82",
+      "bytes": 5592
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/compliance-ai-handoff.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/compliance-ai-handoff.md",
+      "sha256": "bbcd4b896c12b0e16316b42587ef8f631a423c44a8e22d8f0cb2b48b8f97150c",
+      "bytes": 144
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/edit-artifact.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/edit-artifact.md",
+      "sha256": "5e06ddac2ca45b318a3f53287ecf38ebc72a0b2cba336692da2066eee8c45a98",
+      "bytes": 2939
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/example-brain/baseline-rules.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/example-brain/baseline-rules.md",
+      "sha256": "80d909c4c6e5910acf1ddc2e53b8e6b0cc6442a2482b0a75a92c95883130b54c",
+      "bytes": 2063
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/example-brain/high-value-patterns.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/example-brain/high-value-patterns.md",
+      "sha256": "4c92bde59f9c179f282361420a1c9a4921f23b908fe3943c0e98453aa659b143",
+      "bytes": 1492
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/example-brain/index.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/example-brain/index.md",
+      "sha256": "abf69d714ee7800989e4f1afca0e19f443bacfd70385a25018a83f11b15f62af",
+      "bytes": 1031
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/example-brain/todo-pattern.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/example-brain/todo-pattern.md",
+      "sha256": "a9e7948e21fbaf8cff2548d41de4ac2542f886f5ab15ae366a99e3c56725286f",
+      "bytes": 1042
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/orchestration-contract.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/orchestration-contract.md",
+      "sha256": "e7bea51d9bbe5d8441d8a8a989062aec0ef52be754736d9b4b2330d17f4340fa",
+      "bytes": 19286
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/provider-session-contract.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/provider-session-contract.md",
+      "sha256": "dffaaf81f29d2266743d79e09629516c15a74437c8b0546112956d3788842efd",
+      "bytes": 61495
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/request-contract.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/request-contract.md",
+      "sha256": "5f4dd51ffd285af18c7127715fe21216a4dc5400de31f4d42da13b5632db45e4",
+      "bytes": 2170
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/user-insight-queue.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/docs/user-insight-queue.md",
+      "sha256": "e99035c3874cfbaee0a45e365689eba49e3514e82448278a34f1d8c1e9032639",
+      "bytes": 176
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/fixtures/backlog-remote-codex-cli/codex-cloud-exec-help.txt",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/fixtures/backlog-remote-codex-cli/codex-cloud-exec-help.txt",
+      "sha256": "46902e3ab03ca09a65652cdd77b99f136e9fd4681b99873d721abd6ac2b6acb8",
+      "bytes": 1224
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/fixtures/backlog-remote-codex-cli/codex-cloud-help.txt",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/fixtures/backlog-remote-codex-cli/codex-cloud-help.txt",
+      "sha256": "04045d5887091ad42971ff123c21eee8c45b222d5ffbc9b2fefcd459eccca687",
+      "bytes": 1240
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/fixtures/backlog-remote-codex-cli/codex-version.txt",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/fixtures/backlog-remote-codex-cli/codex-version.txt",
+      "sha256": "94a47f9404ab2a59e43382c7fb34fcdf97deb3fb10ca762aac23daa699f0db5c",
+      "bytes": 18
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/fixtures/backlog-remote-codex-cli/contract.json",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/fixtures/backlog-remote-codex-cli/contract.json",
+      "sha256": "ab63900432a657aa20ab17fa30accf8782124a61ad61c04e659ce15805407dad",
+      "bytes": 1056
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/fixtures/backlog-remote-dispatch.json",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/fixtures/backlog-remote-dispatch.json",
+      "sha256": "25bd8a117698386f79f07ed2975ad5aa8d0254949ebc4020d5874efeba7667b5",
+      "bytes": 201
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/flatpak/package.json",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/flatpak/package.json",
+      "sha256": "db63c4471bbdd61ca1681c468a26f8afb9d33f86b421678490c939ecea93e3fc",
+      "bytes": 239
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/model-lanes/baseline-policy.yml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/model-lanes/baseline-policy.yml",
+      "sha256": "3102c40b9dce18f4d611702c7253e8596ea4f435a95454b817b9733ade524471",
+      "bytes": 2938
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/model-lanes/catalog.yml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/model-lanes/catalog.yml",
+      "sha256": "09efe4f31d135b9a8dbb20c4d47890adebe2338e36cd9515178c31b7e32c11b1",
+      "bytes": 2767
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/prompts/conflict-resolver.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/prompts/conflict-resolver.md",
+      "sha256": "376a01285e3498b8577dec939e0ad39a1e64bef77bf28bac83d96165f363ee23",
+      "bytes": 288
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/prompts/final-synthesis.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/prompts/final-synthesis.md",
+      "sha256": "5992ccc1db23c0689e29e0efce40704258548fb71fd6a065e50a8355c7452040",
+      "bytes": 207
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/prompts/planner-router.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/prompts/planner-router.md",
+      "sha256": "fa38cecdf9982bc5dcaa16adca98b3251830bb1d6c4f37538561ef38be247a1b",
+      "bytes": 259
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/prompts/verifier-judge.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/prompts/verifier-judge.md",
+      "sha256": "1e9a92cf68f86e98575824f585aad05a38561b94b5b8adb9694a0530ee9961e9",
+      "bytes": 326
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/prompts/worker-general.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/prompts/worker-general.md",
+      "sha256": "12524eff62c5e9834014c77a5bbdd8893220c74c818fadaa4603cea65726998e",
+      "bytes": 317
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/prompts/worker-logic.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/prompts/worker-logic.md",
+      "sha256": "a61716442ab0acf2cbd96fb880ff614866c9c28ac367f4fea640058e0e1fe4dd",
+      "bytes": 267
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/provider-pools/catalog.yml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/provider-pools/catalog.yml",
+      "sha256": "16459de50cd91a2d27714a4305aecbe44eaea78f0a81c06530e6d1345922c49e",
+      "bytes": 2252
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/README.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/README.md",
+      "sha256": "63e77044cab074b49edd7a13ceb3268507e3df4aad4d911e5bad73fd6b78b7b5",
+      "bytes": 1061
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/aggregate-reasoning-context.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/aggregate-reasoning-context.sh",
+      "sha256": "d9072684e87cb8c38073be98f312205e0b0d833682473d5fa8d6159192f5b74a",
+      "bytes": 459
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/apply-unified-patch.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/apply-unified-patch.sh",
+      "sha256": "6503154f9f1de8d3058430d7e6845062bdc9951abbf61f34ac23994b29b8141f",
+      "bytes": 273
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/backlog-remote.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/backlog-remote.sh",
+      "sha256": "267a2b661dd3752055fa8de06926334fb5722d3854e79de531c03d2a67ffbd68",
+      "bytes": 22328
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/build-cursor-handoff.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/build-cursor-handoff.sh",
+      "sha256": "bd551b1d13d94d53a6a1c3950165b6bb559310e4158f8ebb6f1333ffe8023ff9",
+      "bytes": 266
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/cas01-app-server.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/cas01-app-server.sh",
+      "sha256": "983a6624a8c7631cccc6929fa51bb9ae1a45693876e890e8fc03aa30056c6d52",
+      "bytes": 851
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/codex-cli-update.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/codex-cli-update.sh",
+      "sha256": "2cf53bbc52a707e2f39534b084b6cea210e45a3c6bd90b1c946660980d14e636",
+      "bytes": 1261
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/compliance-handoff.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/compliance-handoff.sh",
+      "sha256": "6bb4f303e2b0e4b98bcdda6c024b09b04f5cdbd4553086fbcca962d95e1a1907",
+      "bytes": 262
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/dev-stack-ensure-up.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/dev-stack-ensure-up.sh",
+      "sha256": "44bb420b42ee1cbcbabbdb74043d6449cc3940c647bb0d306a4c965d09460b5c",
+      "bytes": 281
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/dev-stack-lib.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/dev-stack-lib.sh",
+      "sha256": "115494ea73816f6bc9d926895c8a64ab32bcb04af738a5b24bef70d9e02571d8",
+      "bytes": 29715
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/dev-stack-maybe-down.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/dev-stack-maybe-down.sh",
+      "sha256": "a73988bfe59f9fd755126bb1478c62c18018f1c8e12e3f931a4243e2d27a087b",
+      "bytes": 451
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/dev-stack.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/dev-stack.sh",
+      "sha256": "2f0185a04f8c5e542e705163d0dddd2f78e98235d71ced7607acfda83b844dca",
+      "bytes": 7026
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/edit-collect-candidates.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/edit-collect-candidates.sh",
+      "sha256": "2d5620c2b876cdff35e5f88b8c7c77db9f87351f5676c8bb6bb9fe8e01cf8759",
+      "bytes": 1886
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/edit-validate-applied.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/edit-validate-applied.sh",
+      "sha256": "f22c22096d4eba2a82e35258907b46b8582e7dc0506d0818cc78a7c4be89347c",
+      "bytes": 823
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/inspect-callers.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/inspect-callers.sh",
+      "sha256": "410db2b03e4446fa48d8c8ae0a33f13bb225c1c9e99608a2943b1f9bdbcac31a",
+      "bytes": 1219
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/inspect-callstack.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/inspect-callstack.sh",
+      "sha256": "435d27c79676e9b0fd9f2a5364695d9a855bf7dfd3d7d95e6428230e8ded7a70",
+      "bytes": 2430
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/inspect-heap.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/inspect-heap.sh",
+      "sha256": "fa33d587a269d0af0d87ad300d19bb342907ed7bf0591c803281bf35e3b96f1f",
+      "bytes": 1477
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/inspect-references.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/inspect-references.sh",
+      "sha256": "1b9d716913ef12fd9aef4428eb8eb9cfe8f9945d3019a81d104f5e75a3d4fb19",
+      "bytes": 992
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/inspect-symbol.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/inspect-symbol.sh",
+      "sha256": "7b5e30ff14d580f6591f412529be1e785e8b156662b7dfae60e6dba3e8261aa8",
+      "bytes": 2427
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/lib/dorkpipe-cli.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/lib/dorkpipe-cli.sh",
+      "sha256": "6c51787328570cd798f1e433b60b159788072002fff1c7c6d15f138154da1210",
+      "bytes": 3358
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/mcp-proxy.js",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/mcp-proxy.js",
+      "sha256": "dd5ce6b912fc495e864e3bef346fa24c5aa257cb2d266c645e0cfd07603c9bba",
+      "bytes": 2045
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/merge-paste-prompt.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/merge-paste-prompt.sh",
+      "sha256": "7dc7609c799c236b5443f2b94091a89f89bd4574121b095fd4303547be5ddbe8",
+      "bytes": 1074
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/normalize-ci-scans.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/normalize-ci-scans.sh",
+      "sha256": "8ba688a33d173e6139e20d11b55e6b37235f4fd9874b103d09c6c4fe0d673861",
+      "bytes": 388
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-apply-results.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-apply-results.sh",
+      "sha256": "84460903bd68f176818761c402e858f289b241b765cf7594bebee18a4d296db4",
+      "bytes": 1590
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-approve.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-approve.sh",
+      "sha256": "22359708eb97008a47f53410d58e84eae7c6593712c0ec2cff52f4795b183207",
+      "bytes": 2069
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-auth-preflight.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-auth-preflight.sh",
+      "sha256": "e9bc9cc09769064893cdac727cd34af05f6dfba6dc920726dc9b90cd45637ac5",
+      "bytes": 1399
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-common.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-common.sh",
+      "sha256": "8a86e26faa115e7180556d0f4dd4ab0f8356ef5a07f26730b9e271fde0b142fa",
+      "bytes": 69313
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-merge-results.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-merge-results.sh",
+      "sha256": "600fcfe4d2fba7a32d5405d48d1dcf82e747a2f739de50dc0c2290ba363685bd",
+      "bytes": 2154
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-optimize.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-optimize.sh",
+      "sha256": "c839749b399d9b7ed16e388ef6a775184ec1760d6b98de87dd2193345dc10596",
+      "bytes": 8378
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-plan.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-plan.sh",
+      "sha256": "a49f0c668db0ebcd4bffc0174ae4419c0a2ac39a9d78910dad83b732a31089ff",
+      "bytes": 3168
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-run-task.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-run-task.sh",
+      "sha256": "4a42d208584b30eb3da7afe8dda122468112da096c2e1982d80794b73fcffce0",
+      "bytes": 21491
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-run-tasks.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-run-tasks.sh",
+      "sha256": "9dc549ad6c70f859c75a33e0880a49cb88263b90334cca022131171e2e305e7f",
+      "bytes": 413
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-verify-results.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrate-verify-results.sh",
+      "sha256": "5e01e47f61bef2bf1627e3e222ff9eaf7e35299463ded419fe1c6beae557defa",
+      "bytes": 2943
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrator-prompt.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/orchestrator-prompt.sh",
+      "sha256": "a41e1133a32ce5989bca7aa238d9baa722292ee82a253e1a2c7ccd76fa783690",
+      "bytes": 1262
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/package-consumer-artifacts.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/package-consumer-artifacts.sh",
+      "sha256": "8c76caa20fae3b6513a79b4c9120da4dc9f61e0dcac0bea2264327f97054459e",
+      "bytes": 3245
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/r2-publish.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/r2-publish.sh",
+      "sha256": "969067f0aa827fb80dfb5d6d5f819ab253d7106a1009d8275e037c788aad5b5b",
+      "bytes": 8468
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/rank-candidate-files.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/rank-candidate-files.sh",
+      "sha256": "dd27809e65fd8f25c8f6daceb25503ea7d08e8b4ff19e34672bcb9369fcef175",
+      "bytes": 321
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/repo-ci-summary.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/repo-ci-summary.sh",
+      "sha256": "82b8ecefad3b6b7dee5caa087919f46492b5853671f87657b6b541669255a767",
+      "bytes": 825
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/run-self-analysis.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/run-self-analysis.sh",
+      "sha256": "b6a64561bbc8ef135380d02e5ff8325394ce7194cd88c042403ab39955edde57",
+      "bytes": 3465
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/secretstore-exec.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/secretstore-exec.sh",
+      "sha256": "27091ada9ce7ab53b83977f494e7457139ae08a4c51f86a98ca0c83d3ce67505",
+      "bytes": 1420
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/self-analysis-prep.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/self-analysis-prep.sh",
+      "sha256": "9a8e8701a555b2b042f24698b3a91e010d1b1ace860c75c8f4e4bfb9056cc14d",
+      "bytes": 2123
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/self-analysis-signals.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/self-analysis-signals.sh",
+      "sha256": "4786b191b080055bc34a54028d08d7a47ce152af16cd8b5f5c5fe3fff1728ee1",
+      "bytes": 2314
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/skills-render.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/skills-render.sh",
+      "sha256": "3d856adfee45379b1fd74fdbb70f12999134a3b1fe5ec620f060276b32fcd36d",
+      "bytes": 1465
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/software-dev-orchestrate.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/software-dev-orchestrate.sh",
+      "sha256": "d06f81e3ba1a6027dcfe8eba2ed3218fa2e9b465b4e9a472e66df59d148bdc0e",
+      "bytes": 4557
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/user-insight-enqueue.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/user-insight-enqueue.sh",
+      "sha256": "611aa2546b463c413a25fc2386e4a4073d883fe09900b5dcb9da506ae6e45104",
+      "bytes": 256
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/user-insight-export-by-category.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/user-insight-export-by-category.sh",
+      "sha256": "07a9b53a6b120c32398575f60fed3ab04f95c614d989c55b64f9c59c78bc12d1",
+      "bytes": 278
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/user-insight-mark-stale.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/user-insight-mark-stale.sh",
+      "sha256": "aa66a5b072666b5774248d9a048c472787b22a1d1d103ff1d278df0352186bc6",
+      "bytes": 262
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/user-insight-process.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/user-insight-process.sh",
+      "sha256": "7ae1303d513b0d80777f0ef552da52d900dff86874fa7932ca6280afa91cb1c3",
+      "bytes": 256
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/user-insight-review.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/user-insight-review.sh",
+      "sha256": "6f9b483b596230a037aa1a7d72fd230dd4644107c166ac69dc571405c0a50031",
+      "bytes": 254
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/user-insight-supersede.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/user-insight-supersede.sh",
+      "sha256": "bdf3ce518ea98de486037191084c5e938a1abee3c0a160d7ff6ec298c3e6258d",
+      "bytes": 260
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/verify-patch-applies.sh",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/scripts/verify-patch-applies.sh",
+      "sha256": "55af1c694c0b756ac35d63792bee29d4f034b702b4d3ae4ed13cac5985fbc4bc",
+      "bytes": 167
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-agentic-yaml/instructions.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-agentic-yaml/instructions.md",
+      "sha256": "5c20123836f34a0b3fae8b1cb69383a809807334c98713172f69bba7f883164e",
+      "bytes": 2849
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-agentic-yaml/skill.yml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-agentic-yaml/skill.yml",
+      "sha256": "668416b8ab68d7f6fb99dc20b92d512bdf17767cb86b468ef2d426a14aa6120e",
+      "bytes": 268
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-core-review/instructions.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-core-review/instructions.md",
+      "sha256": "5d927e3d029b07184e62eebbef8c33f19850ec9908bda9dd26eb82c58efcf189",
+      "bytes": 1066
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-core-review/skill.yml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-core-review/skill.yml",
+      "sha256": "1405221e9e46eb1d5374f6803a2e037108c7352bac1069e9cfaebe2cabfdb04a",
+      "bytes": 270
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-objective-execution/instructions.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-objective-execution/instructions.md",
+      "sha256": "97f79e38ccb6a7c3a6270d58982190570ebe06082d9eb9d5a60a891817bf7a19",
+      "bytes": 9827
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-objective-execution/skill.yml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-objective-execution/skill.yml",
+      "sha256": "fb431f653f3619902af9b43d2a2eedfc0fae0018aa1ef8230d5ef62701b966ed",
+      "bytes": 366
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-package-authoring/instructions.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-package-authoring/instructions.md",
+      "sha256": "927e511bf7391b0264ce063724cf5b4c8f1295a259c22042199282f8fc960161",
+      "bytes": 819
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-package-authoring/skill.yml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-package-authoring/skill.yml",
+      "sha256": "4a08f64e0a9b02521a1056e61452ea76b90c13a6cf19783be8698a1f12657826",
+      "bytes": 253
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-task-handoff/instructions.claude.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-task-handoff/instructions.claude.md",
+      "sha256": "b938b252c549e2fff365c231c0fe31937eb00e062a635d1f93bf281f1670cc05",
+      "bytes": 1220
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-task-handoff/instructions.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-task-handoff/instructions.md",
+      "sha256": "edd118c5da92b99288ae33aa69f5842230c0dd0b964730b83b12046c0911574e",
+      "bytes": 4918
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-task-handoff/skill.yml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-task-handoff/skill.yml",
+      "sha256": "6f295029f7a234548a40a7c525798068ba6f7226500d57a7e6edecd75e9cbed2",
+      "bytes": 317
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-token-optimization/instructions.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-token-optimization/instructions.md",
+      "sha256": "24f13b8e398f3e607a9590fc4a43776b0bb3bed01ac7c688b549e40a67067ec3",
+      "bytes": 2205
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-token-optimization/skill.yml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-token-optimization/skill.yml",
+      "sha256": "7eee6e388f4b2c851b095ca34a95a7deb9b4a9c8ec8c49cec69014a3d5fd019f",
+      "bytes": 382
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-yaml-workflows/instructions.md",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-yaml-workflows/instructions.md",
+      "sha256": "c8d6c3029c3ff5ac38517f6e05b5011894afb9b2c8875a9e0b30ba0c83cf11ed",
+      "bytes": 807
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-yaml-workflows/skill.yml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/assets/skills/dorkpipe-yaml-workflows/skill.yml",
+      "sha256": "3e0c0605f6d941954f9732d3ecef87e6048ae51b702c1e07e414ac4eebea9bec",
+      "bytes": 263
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/dorkpipe/config.yml",
+      "destination": "packages/dorkpipe/resolvers/dorkpipe/config.yml",
+      "sha256": "b40f1431819a1536b5adf006420630cdb26e971f616123fb8fee227e597d6ec7",
+      "bytes": 373
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/user-insight-process/README.md",
+      "destination": "packages/dorkpipe/resolvers/user-insight-process/README.md",
+      "sha256": "5ecb011d9370927cf6a70d8008d94678c2955c7b5b8069d561166bb217cbc9ce",
+      "bytes": 1041
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/user-insight-process/assets/flatpak/package.json",
+      "destination": "packages/dorkpipe/resolvers/user-insight-process/assets/flatpak/package.json",
+      "sha256": "3106a24706f676acae12df1c7f2ca9409c592191a4b1c85dc0bc1c9759218a76",
+      "bytes": 177
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/user-insight-process/config.yml",
+      "destination": "packages/dorkpipe/resolvers/user-insight-process/config.yml",
+      "sha256": "5c7da8e9e7db4aa7bdc3b78de4512a01bc4b5474b1512aaa8102e9d3345e760c",
+      "bytes": 1012
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/user-insight-process/examples/README.md",
+      "destination": "packages/dorkpipe/resolvers/user-insight-process/examples/README.md",
+      "sha256": "4a7069b78a3840ac3d9208477d7fadd5b7218b26fbb370914e180c333ad79824",
+      "bytes": 224
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/user-insight-process/examples/insights.example.json",
+      "destination": "packages/dorkpipe/resolvers/user-insight-process/examples/insights.example.json",
+      "sha256": "bec6c6498983f4b21a95b5464100f5c980637c3a51891b0b89b1b9d5cd14c137",
+      "bytes": 2632
+    },
+    {
+      "source": "packages/dorkpipe/resolvers/user-insight-process/examples/queue.example.json",
+      "destination": "packages/dorkpipe/resolvers/user-insight-process/examples/queue.example.json",
+      "sha256": "1f35c6dfd193a574f6ec830eb286eb293022b91ce6ed995730d04659f696123b",
+      "bytes": 671
+    },
+    {
+      "source": "packages/dorkpipe/tests/README.md",
+      "destination": "packages/dorkpipe/tests/README.md",
+      "sha256": "23374275c68b64c5f414c116a527312cd6a07566566d98b3da0a1d654bed57b4",
+      "bytes": 357
+    },
+    {
+      "source": "packages/dorkpipe/tests/cas01/README.md",
+      "destination": "packages/dorkpipe/tests/cas01/README.md",
+      "sha256": "3bddab5951d148248740491153104cd4b0bf8ddb4c9d3ff920f80d7acce4383c",
+      "bytes": 224
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/application-consumer/packages/dorkpipe/README.md",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/application-consumer/packages/dorkpipe/README.md",
+      "sha256": "093064940716cca6c696d697c6b2fb4cf600fece0e6b5b4d045639ba9bdbe7fd",
+      "bytes": 18
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/checkout-application-approval.json",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/checkout-application-approval.json",
+      "sha256": "c4156e3e7f9c20ce64409870048b3c90741b75d3f798bf8ceb8218c39c2693f2",
+      "bytes": 2611
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/checkout-checkpoint-approval.json",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/checkout-checkpoint-approval.json",
+      "sha256": "fad2c855f1edc266f560dc8a84c8bb18b7b5e2822112b37688d831e5ac1986d4",
+      "bytes": 2778
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/checkout-publication-approval.json",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/checkout-publication-approval.json",
+      "sha256": "0b1f4985d94415ee6535d7aded044db3f3915434f195971746a0f0a7397b6c42",
+      "bytes": 1333
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/completion-candidate.json",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/completion-candidate.json",
+      "sha256": "578ed9c774e98dd0089ede1f154fd7e086817a77817b1d529ff38f044f10ece9",
+      "bytes": 633
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/consumer/AGENTS.md",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/consumer/AGENTS.md",
+      "sha256": "6e2d3c90bb041391bd4ca1a36d883f29f473f64d8eb9f4b4db2955c4feceafa1",
+      "bytes": 71
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/consumer/docs/agents/packages/package-authoring.md",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/consumer/docs/agents/packages/package-authoring.md",
+      "sha256": "bc93bbad35e5b4709516d09d89d88ad922743e0e61ea301b84e2a05131fc784a",
+      "bytes": 58
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/consumer/docs/agents/task-index.yaml",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/consumer/docs/agents/task-index.yaml",
+      "sha256": "d21ab31d2bc375ac6d2cdb67c48df1a396d22c3910e33214c652d51ba67eb503",
+      "bytes": 275
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/consumer/docs/agents/tasks/backlog-driven-remote-tasks.md",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/consumer/docs/agents/tasks/backlog-driven-remote-tasks.md",
+      "sha256": "da5358efbbd84912d34fb33067313331466026e000103164a62a2eb1ffeb500f",
+      "bytes": 211
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/consumer/docs/agents/workflows/yaml-workflows.md",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/consumer/docs/agents/workflows/yaml-workflows.md",
+      "sha256": "ddbcf6be3a9b0130b84161384847d1918d2a7717eab86d8f907b59bd94404a0d",
+      "bytes": 73
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/consumer/embed_assets.go.txt",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/consumer/embed_assets.go.txt",
+      "sha256": "2cfa2c06b6d08a43a5095060a6adb2c04b4bd5a67008902136c4c7608e22f9b8",
+      "bytes": 293
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/consumer/packages/dorkpipe/README.md",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/consumer/packages/dorkpipe/README.md",
+      "sha256": "9508f9ca29210ae785ec8e36a4f2810db895d01093e655c2ec7a8e534449ae0d",
+      "bytes": 95
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/dispatch.json",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/dispatch.json",
+      "sha256": "25bd8a117698386f79f07ed2975ad5aa8d0254949ebc4020d5874efeba7667b5",
+      "bytes": 201
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/remote-diff.json",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/remote-diff.json",
+      "sha256": "d4f69f8387c085ec42b15afec59f2f5e2240e2e1a9fea9aa9db9ff74229f8eb3",
+      "bytes": 1061
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/remote-diff.patch",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/remote-diff.patch",
+      "sha256": "4027895ace152e2d66d11143b9e7841adb68e8d625977b7c123508f221114b1b",
+      "bytes": 236
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/remote-result.json",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/remote-result.json",
+      "sha256": "b731a259c74261acd0b27ac78e8fdb2ec102a0bee4ed5c6c5b2ac7f62ec03eba",
+      "bytes": 1279
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/remote-status.json",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/remote-status.json",
+      "sha256": "7ea164fc4e50ea9012a66772ba1e701dc30501ab7d0384839868b93c6d3e2092",
+      "bytes": 803
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/semantic-review-decision.json",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/semantic-review-decision.json",
+      "sha256": "5ebf231acea27701b68dbdd6ccb001eca414688bb54b930bbf1f1252e4b04c1b",
+      "bytes": 2239
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/validation-input-files.json",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/validation-input-files.json",
+      "sha256": "75f51ae7a6a54f2482b588e9b785c79b0ae80ae69494a4da53fbeee80a7a922f",
+      "bytes": 17884
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/backlog.remote/validation-receipt.json",
+      "destination": "packages/dorkpipe/tests/fixtures/backlog.remote/validation-receipt.json",
+      "sha256": "d220d805ba5292c3e4d6ba1d8e5e4e308d9fa7554d3d3c882b5e4777286e2953",
+      "bytes": 1801
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/software.dev/agents.yml",
+      "destination": "packages/dorkpipe/tests/fixtures/software.dev/agents.yml",
+      "sha256": "ecf8ee41c41f819b6c59b1bb647d2443b5ff7846835bb04f3fbded76316e18fd",
+      "bytes": 108
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/software.dev/invalid/authority-widening.yml",
+      "destination": "packages/dorkpipe/tests/fixtures/software.dev/invalid/authority-widening.yml",
+      "sha256": "015287c4d8357831ca73279698dd850990b875d7dfa909391a809d937f840b6d",
+      "bytes": 322
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/software.dev/invalid/invalid-dependency.yml",
+      "destination": "packages/dorkpipe/tests/fixtures/software.dev/invalid/invalid-dependency.yml",
+      "sha256": "787f82f539db71b1f60fabbd2fcf9c9173e91d4424b37e171d1f2faaecdc38c7",
+      "bytes": 319
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/software.dev/invalid/malformed.yml",
+      "destination": "packages/dorkpipe/tests/fixtures/software.dev/invalid/malformed.yml",
+      "sha256": "a6fb08fda1acb957b6116bd37811a1fe41a01611c0631edbf786d6889a27a55c",
+      "bytes": 2
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/software.dev/invalid/missing-output-floor.yml",
+      "destination": "packages/dorkpipe/tests/fixtures/software.dev/invalid/missing-output-floor.yml",
+      "sha256": "40b8e1290d98912bcfbe4708ba0f16b2f454cf6c4aaf302d49ba70d4a500327f",
+      "bytes": 128
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/software.dev/invalid/narrated.yml",
+      "destination": "packages/dorkpipe/tests/fixtures/software.dev/invalid/narrated.yml",
+      "sha256": "173e25564765ee523c61fea743277f01eae8a3e39d7bdebc6a5a9dccaf1fa677",
+      "bytes": 71
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/software.dev/invalid/structural.yml",
+      "destination": "packages/dorkpipe/tests/fixtures/software.dev/invalid/structural.yml",
+      "sha256": "62fc416277a0a5860a960735a72e3e3a8e376a5088cf46023b59f9f435eca537",
+      "bytes": 27
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/software.dev/invalid/unknown-role.yml",
+      "destination": "packages/dorkpipe/tests/fixtures/software.dev/invalid/unknown-role.yml",
+      "sha256": "868715d33e15984c6f6cc8dae597624e3e3ebb1fda0ea887cd513305192752cb",
+      "bytes": 289
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/software.dev/task-pack.yml",
+      "destination": "packages/dorkpipe/tests/fixtures/software.dev/task-pack.yml",
+      "sha256": "fba756912cacbd1daa79e1507a0fb18aa77dc443c3f077e0e7b7d00b94b906b6",
+      "bytes": 4016
+    },
+    {
+      "source": "packages/dorkpipe/tests/fixtures/software.dev/valid-proposal.yml",
+      "destination": "packages/dorkpipe/tests/fixtures/software.dev/valid-proposal.yml",
+      "sha256": "98c4a992dcd083c4d368aead29be53f534ba9bc02ca630c12dd8efa770653dd6",
+      "bytes": 1321
+    },
+    {
+      "source": "packages/dorkpipe/tests/lib/bind-backlog-fixture.py",
+      "destination": "packages/dorkpipe/tests/lib/bind-backlog-fixture.py",
+      "sha256": "075da91e01f847e42651bbc576c34b4b43bb6b54c64a544b3f9cd83ec5bb8a66",
+      "bytes": 2721
+    },
+    {
+      "source": "packages/dorkpipe/tests/lib/test-tools.sh",
+      "destination": "packages/dorkpipe/tests/lib/test-tools.sh",
+      "sha256": "e62f0df3cb781e3dae2c67b9db681b8b333a56f697828fae8199d829f5b0b86e",
+      "bytes": 1160
+    },
+    {
+      "source": "packages/dorkpipe/tests/run.sh",
+      "destination": "packages/dorkpipe/tests/run.sh",
+      "sha256": "9776fe9115bab1fd2c8319de67b31b797dc8b3f1d6a0a22967243d1efa003828",
+      "bytes": 3452
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_backlog_remote_workflow.sh",
+      "destination": "packages/dorkpipe/tests/test_backlog_remote_workflow.sh",
+      "sha256": "9807071c793df6847960671066211f6811d26cfc6e1b0a8636ee522f56f17b8f",
+      "bytes": 64318
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_build_source_operation_results.sh",
+      "destination": "packages/dorkpipe/tests/test_build_source_operation_results.sh",
+      "sha256": "fc8428b1808be6681afcc4850a77a17080dce323258aba040f685d8e1c2d322e",
+      "bytes": 711
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_cas01_app_server.sh",
+      "destination": "packages/dorkpipe/tests/test_cas01_app_server.sh",
+      "sha256": "2c12e6fefd45e9b6d885289cc496e536e93e284e45e0eea7ceb8fb23ae473ae3",
+      "bytes": 1066
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_cloud_usage_failure.sh",
+      "destination": "packages/dorkpipe/tests/test_cloud_usage_failure.sh",
+      "sha256": "d3114bdb16e6f2b2a44308369054c524a228c04e88c5eb160f04a69bf0e94f89",
+      "bytes": 1181
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_codex_cli_update.sh",
+      "destination": "packages/dorkpipe/tests/test_codex_cli_update.sh",
+      "sha256": "9d2b5a6ebde83ee5500443a98aabc926e6fa4de8390971d58c5671e102aa449a",
+      "bytes": 1594
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_dev_stack_gpu_policy.sh",
+      "destination": "packages/dorkpipe/tests/test_dev_stack_gpu_policy.sh",
+      "sha256": "2d3be28e0e4863946faeae72d6e847a75c9ff2ad7545b46d17c3b472f11a19d6",
+      "bytes": 5647
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_disposable_package_runtime.sh",
+      "destination": "packages/dorkpipe/tests/test_disposable_package_runtime.sh",
+      "sha256": "760d8f83c4dbdcd03e615ddf50ac8dbd44982bedd5d8878edbd70003d3dc9c3d",
+      "bytes": 1609
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_durable_training_metrics.sh",
+      "destination": "packages/dorkpipe/tests/test_durable_training_metrics.sh",
+      "sha256": "7293caa47f2cd73915d01fad7235dd47444a30acfbf5a9946e537b11aedf1ecc",
+      "bytes": 1372
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_example_brain_contract.sh",
+      "destination": "packages/dorkpipe/tests/test_example_brain_contract.sh",
+      "sha256": "452dda9ebb38d49b608c5353515b0fcec9d6b3458e3f5f724a469e9bf4f2ecf2",
+      "bytes": 638
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_normalize_ci_scans.sh",
+      "destination": "packages/dorkpipe/tests/test_normalize_ci_scans.sh",
+      "sha256": "f228205ef20ea4456e593e5e17fb5951d5f3ca6f374c2096619300202405ced7",
+      "bytes": 1659
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_orchestration_approval_operation_results.sh",
+      "destination": "packages/dorkpipe/tests/test_orchestration_approval_operation_results.sh",
+      "sha256": "d21bcdd76c31e32f12fa08b489ca03770401a794ea911ecddd3ba8c31504cd86",
+      "bytes": 2321
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_orchestration_container_auth.sh",
+      "destination": "packages/dorkpipe/tests/test_orchestration_container_auth.sh",
+      "sha256": "a21f7f986fa2d7538a1af82e17fd13b3eb630d4a53322a26a38ed5b42e496d4d",
+      "bytes": 21066
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_orchestration_lanes.sh",
+      "destination": "packages/dorkpipe/tests/test_orchestration_lanes.sh",
+      "sha256": "7e4ddd4b9469a125a40dee7dff09ba4a444d44978d85bb1d23ab6252ff26d490",
+      "bytes": 4939
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_orchestration_optimize.sh",
+      "destination": "packages/dorkpipe/tests/test_orchestration_optimize.sh",
+      "sha256": "f645683708988078734e1bd29c0901e3a9848f96a86ff530d4efa7570b367a70",
+      "bytes": 6942
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_orchestration_verify_status.sh",
+      "destination": "packages/dorkpipe/tests/test_orchestration_verify_status.sh",
+      "sha256": "26f46caea3bdf81c8b54a85797c6832162ef03f01bd6731554018a9ec9778950",
+      "bytes": 2019
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_repo_tools.sh",
+      "destination": "packages/dorkpipe/tests/test_repo_tools.sh",
+      "sha256": "94a6454175a82badab3446d1c896019f965804ebdfa82baf18a048feb3a56aaa",
+      "bytes": 2002
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_runner_cleanup.sh",
+      "destination": "packages/dorkpipe/tests/test_runner_cleanup.sh",
+      "sha256": "c7d886a53e135c64594ed1e1e720e69dd213f20bb03d7b5f09a834a5479f892d",
+      "bytes": 2969
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_self_analysis_durable_metrics.sh",
+      "destination": "packages/dorkpipe/tests/test_self_analysis_durable_metrics.sh",
+      "sha256": "033af1e6b6c8034a24c446fd48d56a88e430d6ddfc7fa8001ea327ec315e907c",
+      "bytes": 1282
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_software_dev_workflow.sh",
+      "destination": "packages/dorkpipe/tests/test_software_dev_workflow.sh",
+      "sha256": "eede2ff042ad5c040f7393a327cd8aa6e85226f0a0ac21eb41dbec3c237ab7fa",
+      "bytes": 18395
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_task_skill_lifecycle.sh",
+      "destination": "packages/dorkpipe/tests/test_task_skill_lifecycle.sh",
+      "sha256": "2173c0a01b028ab8e4bb194c69d20af654127fac3351de600e0142970929f361",
+      "bytes": 4178
+    },
+    {
+      "source": "packages/dorkpipe/tests/test_user_insight_queue.sh",
+      "destination": "packages/dorkpipe/tests/test_user_insight_queue.sh",
+      "sha256": "81a284cae1acc28362cdcf9306621571d080aff3363afebdd048b5b37b31754c",
+      "bytes": 1975
+    },
+    {
+      "source": "packages/dorkpipe/workflows/backlog.remote/README.md",
+      "destination": "packages/dorkpipe/workflows/backlog.remote/README.md",
+      "sha256": "cc2b2e8ac672466d8e3246315117eaac57f16bca466716d56086366564109d2e",
+      "bytes": 23567
+    },
+    {
+      "source": "packages/dorkpipe/workflows/backlog.remote/assets/flatpak/package.json",
+      "destination": "packages/dorkpipe/workflows/backlog.remote/assets/flatpak/package.json",
+      "sha256": "c2575dab675c76e0ee7cd0ef402ea497c25f43aaf744ba25389eb0a066277b64",
+      "bytes": 171
+    },
+    {
+      "source": "packages/dorkpipe/workflows/backlog.remote/config.yml",
+      "destination": "packages/dorkpipe/workflows/backlog.remote/config.yml",
+      "sha256": "7306c5520a04b15d22f0c8660814c77aa61dda9eb098a4d167419ca5252d0b0a",
+      "bytes": 4077
+    },
+    {
+      "source": "packages/dorkpipe/workflows/cas.01.app-server/assets/flatpak/package.json",
+      "destination": "packages/dorkpipe/workflows/cas.01.app-server/assets/flatpak/package.json",
+      "sha256": "ba199d246506b64abd04f2df34f71f6a689c3475f4e2a05135e4c6527c814fdf",
+      "bytes": 174
+    },
+    {
+      "source": "packages/dorkpipe/workflows/cas.01.app-server/config.yml",
+      "destination": "packages/dorkpipe/workflows/cas.01.app-server/config.yml",
+      "sha256": "cb7f2142d818373e3c0e22430d35160bd331a55e88687aaaa3cc35e8e6a70b67",
+      "bytes": 806
+    },
+    {
+      "source": "packages/dorkpipe/workflows/cas.01.app-server/package.yml",
+      "destination": "packages/dorkpipe/workflows/cas.01.app-server/package.yml",
+      "sha256": "a272666e33c8c2bd39842462c63101f86248e501bd754dab7da9d383573f3830",
+      "bytes": 766
+    },
+    {
+      "source": "packages/dorkpipe/workflows/codex.cli.update/assets/flatpak/package.json",
+      "destination": "packages/dorkpipe/workflows/codex.cli.update/assets/flatpak/package.json",
+      "sha256": "ed4e019a417e7754977d094c47e1cc8561970380fbdbb45efa63695e35e9f9e9",
+      "bytes": 199
+    },
+    {
+      "source": "packages/dorkpipe/workflows/codex.cli.update/config.yml",
+      "destination": "packages/dorkpipe/workflows/codex.cli.update/config.yml",
+      "sha256": "a365fd93d73cf0b94a32ae4a30959fa37eeb53ac138705f1b82c6bbf8901e7ee",
+      "bytes": 1246
+    },
+    {
+      "source": "packages/dorkpipe/workflows/codex.cli.update/package.yml",
+      "destination": "packages/dorkpipe/workflows/codex.cli.update/package.yml",
+      "sha256": "bc52e5d30a7d1a78ef4d77c74d463a29f32d7f188f4f2a3502dd6710adb44681",
+      "bytes": 1361
+    },
+    {
+      "source": "packages/dorkpipe/workflows/example.brain/README.md",
+      "destination": "packages/dorkpipe/workflows/example.brain/README.md",
+      "sha256": "9f197bdb188522ca3bca148d8e1b073ad3b4c89d89fe7eb93f4cd682db5a5cdc",
+      "bytes": 2388
+    },
+    {
+      "source": "packages/dorkpipe/workflows/example.brain/agents.yml",
+      "destination": "packages/dorkpipe/workflows/example.brain/agents.yml",
+      "sha256": "1fbf39111e88e81beeddea59392c48b74a9539ca7906634e3337b533ed0f1fc4",
+      "bytes": 1557
+    },
+    {
+      "source": "packages/dorkpipe/workflows/example.brain/assets/flatpak/package.json",
+      "destination": "packages/dorkpipe/workflows/example.brain/assets/flatpak/package.json",
+      "sha256": "3c0fc21a36b8b5907eb2269694ed7a88833d49499493dfce546234e864b60abe",
+      "bytes": 170
+    },
+    {
+      "source": "packages/dorkpipe/workflows/example.brain/config.yml",
+      "destination": "packages/dorkpipe/workflows/example.brain/config.yml",
+      "sha256": "0a652063a5ee5ae99d12a88746837694b5cf3ad728650c27f454b3a5291be707",
+      "bytes": 9878
+    },
+    {
+      "source": "packages/dorkpipe/workflows/example.brain/package.yml",
+      "destination": "packages/dorkpipe/workflows/example.brain/package.yml",
+      "sha256": "b619bfdbb3b7b297931d3668e3bd0df1f9d85a00c5eaf526bfd68516a995b7d8",
+      "bytes": 1496
+    },
+    {
+      "source": "packages/dorkpipe/workflows/orchestrate.stack/assets/flatpak/package.json",
+      "destination": "packages/dorkpipe/workflows/orchestrate.stack/assets/flatpak/package.json",
+      "sha256": "310b7f4f3d22b52f13379411e8a71459f33868d68a118c6557fec90d82e85350",
+      "bytes": 174
+    },
+    {
+      "source": "packages/dorkpipe/workflows/orchestrate.stack/config.yml",
+      "destination": "packages/dorkpipe/workflows/orchestrate.stack/config.yml",
+      "sha256": "5ac7158de900f8b5f83954ede9562d5c2a549326c2eeeec405976f2dd4611c03",
+      "bytes": 2383
+    },
+    {
+      "source": "packages/dorkpipe/workflows/orchestrate.stack/models/IOrchestrateStackConfig.pipe",
+      "destination": "packages/dorkpipe/workflows/orchestrate.stack/models/IOrchestrateStackConfig.pipe",
+      "sha256": "7e29deb2e828ba875bb4c330736de2011b082dee27d205effe172a897419b781",
+      "bytes": 3525
+    },
+    {
+      "source": "packages/dorkpipe/workflows/orchestrate.stack/models/OrchestrateStackConfig.pipe",
+      "destination": "packages/dorkpipe/workflows/orchestrate.stack/models/OrchestrateStackConfig.pipe",
+      "sha256": "8a3e9ebb8fbc7e6e51ab5d4df512b8b07ff8daad2c0a7d79f21daba36cc7cd88",
+      "bytes": 2833
+    },
+    {
+      "source": "packages/dorkpipe/workflows/orchestrate.stack/package.yml",
+      "destination": "packages/dorkpipe/workflows/orchestrate.stack/package.yml",
+      "sha256": "09cbf9c50e887e151a61f8453d32278f6d5e0bd6e8e2909ae894b4cc8b6032d0",
+      "bytes": 1499
+    },
+    {
+      "source": "packages/dorkpipe/workflows/orchestrator/assets/flatpak/package.json",
+      "destination": "packages/dorkpipe/workflows/orchestrator/assets/flatpak/package.json",
+      "sha256": "c9898ef773883b2ea8c7578a33051ba99730ffa6860c466d8ab485421ac79767",
+      "bytes": 169
+    },
+    {
+      "source": "packages/dorkpipe/workflows/orchestrator/config.yml",
+      "destination": "packages/dorkpipe/workflows/orchestrator/config.yml",
+      "sha256": "f5add697adf49281b35c0242b13d4b4f0b85d379caa888f1b9a32eea8184741a",
+      "bytes": 1063
+    },
+    {
+      "source": "packages/dorkpipe/workflows/orchestrator/package.yml",
+      "destination": "packages/dorkpipe/workflows/orchestrator/package.yml",
+      "sha256": "0b4d9b07e45a242d69b9952cecebc48627874303802a62d53ef133066cb22e23",
+      "bytes": 1128
+    },
+    {
+      "source": "packages/dorkpipe/workflows/skills.render/assets/flatpak/package.json",
+      "destination": "packages/dorkpipe/workflows/skills.render/assets/flatpak/package.json",
+      "sha256": "2c257eb181d71f704c9dad911cad23b89a4378d3eeceef9528d869f002d8cd57",
+      "bytes": 170
+    },
+    {
+      "source": "packages/dorkpipe/workflows/skills.render/config.yml",
+      "destination": "packages/dorkpipe/workflows/skills.render/config.yml",
+      "sha256": "e7a5b4dbcaf805518e604ae4b9a68be6f569dff9092519070d47c24ae98db5a2",
+      "bytes": 945
+    },
+    {
+      "source": "packages/dorkpipe/workflows/skills.render/package.yml",
+      "destination": "packages/dorkpipe/workflows/skills.render/package.yml",
+      "sha256": "422f54de6be79d0d13cc8021910548ec84e1a9e257e74cb3ad3d26c272a1c3e0",
+      "bytes": 1088
+    },
+    {
+      "source": "packages/dorkpipe/workflows/software.dev/README.md",
+      "destination": "packages/dorkpipe/workflows/software.dev/README.md",
+      "sha256": "85a29987b93240618b1291e0f25717aee8a502f0e906b71399b03a0aab0f187f",
+      "bytes": 6947
+    },
+    {
+      "source": "packages/dorkpipe/workflows/software.dev/assets/flatpak/package.json",
+      "destination": "packages/dorkpipe/workflows/software.dev/assets/flatpak/package.json",
+      "sha256": "0b9d6bfd8d0e67cd5a652c7159d4eb4e0c2ff5114e8f2f0564601014f7f94b48",
+      "bytes": 169
+    },
+    {
+      "source": "packages/dorkpipe/workflows/software.dev/config.yml",
+      "destination": "packages/dorkpipe/workflows/software.dev/config.yml",
+      "sha256": "6189984ef71762f28f27e12acaeb05e173881cc45acf5ee22f9d9212408e17af",
+      "bytes": 7619
+    },
+    {
+      "source": "packages/dorkpipe/workflows/software.dev/package.yml",
+      "destination": "packages/dorkpipe/workflows/software.dev/package.yml",
+      "sha256": "c974986f79b35be7f96ee7071e17c395cd95480771bc0d25b1cd6f51f1154c9d",
+      "bytes": 991
+    }
+  ]
+}

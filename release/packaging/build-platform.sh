@@ -8,14 +8,12 @@ version="${1:?release version}"
 # Core compilation reads the workspace VERSION. Keep every generated payload on
 # the selected release version while preserving the authored release-line baseline.
 authored_version="$(mktemp)"
+wrapper_work="$(mktemp -d)"
 cp VERSION "$authored_version"
-embedded_prepared=false
 cleanup() {
   cp "$authored_version" VERSION
   rm -f "$authored_version"
-  if [[ "$embedded_prepared" == true ]]; then
-    bash release/packaging/prepare-embedded-dorkpipe-assets.sh clean
-  fi
+  rm -rf "$wrapper_work"
 }
 trap cleanup EXIT
 printf '%s\n' "$version" > VERSION
@@ -23,21 +21,29 @@ platform="$(go env GOHOSTOS)-$(go env GOHOSTARCH)"
 exe="$(go env GOEXE)"
 out="$root/release/artifacts"
 store="$out/stores/$platform"
-mkdir -p "$store" "$root/src/bin"
+core_store="$out/core-stores/$platform"
+mkdir -p "$out" "$root/src/bin"
+[[ ! -e "$store" && ! -L "$store" ]] || { echo 'Final store must be fresh' >&2; exit 1; }
+[[ ! -e "$core_store" && ! -L "$core_store" ]] || { echo 'Core store must be fresh' >&2; exit 1; }
 export DOCKPIPE_BIN="$root/src/bin/dockpipe$exe"
-# Release packages contain the Pipeon resolver/extension, not its optional desktop app.
-export PIPEON_BUILD_DESKTOP=0
 export CGO_ENABLED=0
 go build -trimpath -ldflags "-s -w -X main.Version=$version" -o "$DOCKPIPE_BIN" ./src/cmd
-embedded_prepared=true
-bash release/packaging/prepare-embedded-dorkpipe-assets.sh prepare
-go build -trimpath -ldflags "-s -w -X main.Version=$version" -o "$DOCKPIPE_BIN" ./src/cmd
 "$DOCKPIPE_BIN" --version
-"$DOCKPIPE_BIN" build --workdir "$root" --no-images
-# Resolver compilation invalidates top-level workflow consumers. Restore the
-# authored top-level workflows without recompiling prepared package payloads.
-"$DOCKPIPE_BIN" package compile workflows --workdir "$root" --from workflows
-"$DOCKPIPE_BIN" package build store --workdir "$root" --out "$store" --version "$version"
+"$DOCKPIPE_BIN" package compile core --workdir "$root" --from "$root/src/core" --force
+"$DOCKPIPE_BIN" package build store --workdir "$root" --only core --out "$core_store" --version "$version"
+wrapper_source="$root/workflows/ci/dockpipe-repo-quality"
+wrapper_target="$wrapper_work/workflows/dockpipe-repo-quality"
+wrapper_store="$wrapper_work/store"
+mkdir -p "$wrapper_target/assets/flatpak" "$wrapper_target/assets/scripts"
+cp "$wrapper_source/config.yml" "$wrapper_source/package.yml" "$wrapper_target/"
+cp "$wrapper_source/assets/source-lock.json" "$wrapper_target/assets/"
+cp "$wrapper_source/assets/flatpak/package.json" "$wrapper_target/assets/flatpak/"
+cp "$wrapper_source/assets/scripts/repo-quality-pinned.py" "$wrapper_target/assets/scripts/"
+"$DOCKPIPE_BIN" package compile workflows --workdir "$wrapper_work" --from "$wrapper_work/workflows" --force
+"$DOCKPIPE_BIN" package build store --workdir "$wrapper_work" --only workflows --out "$wrapper_store" --version "$version"
+python3 release/packaging/ingest-pinned-stores.py \
+  --lock release/packaging/pinned-stores.lock.json \
+  --platform "$platform" --core-store "$core_store" --main-store "$wrapper_store" --out "$store"
 python3 release/packaging/release-artifacts.py verify-store "$store"
 tar -C "$store" -czf "$out/dockpipe-packages_${version}_${platform}.tar.gz" .
 

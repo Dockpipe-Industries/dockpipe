@@ -1,0 +1,26 @@
+# TASK-041 Optional DockPipe Cloud MCP Approvals
+schema: 1
+id: TASK-041
+topic: "Optional DockPipe Cloud MCP Approvals"
+entrypoint: overview.md
+
+dispatch:
+  readiness: unclassified
+  ownership: unclaimed
+
+routes:
+  orientation:
+    read:
+      - overview.md
+  implementation:
+    read:
+      - overview.md
+      - ../unified-mcp-gateway/cli-first-management.md
+
+documents:
+  - path: overview.md
+    role: active task requirements, dependencies and acceptance criteria
+
+maintenance:
+  - Resolve document paths relative to this index.
+  - Keep task narrative in overview.md and dispatch metadata synchronized with docs/agents/task-index.yaml.

@@ -186,6 +186,11 @@ replace an immutable release solely to refresh its description.
 
 ## Remote catalogs and user installation
 
+The [exact package selection proposal](version-pinning.md) distinguishes the
+current checksum-asserted install from future project/package version locks and
+runtime selection. Its lock and workflow-call formats are not implemented in
+0.6.17.
+
 `dockpipe package catalog --remote <HTTPS manifest URL>` returns JSON for the current
 execution platform (OS/architecture and, inside Flatpak, runtime identity). It accepts a latest pointer, release catalog, or explicit platform
 store manifest. Latest pointers use origin-relative `manifest` paths; release catalogs
@@ -212,9 +217,12 @@ Other versions remain installed, and existing runtime resolution precedence stil
 
 These checks establish integrity against the chosen HTTPS catalog; they are not independent
 publisher signatures. Configure origins you trust to supply executable packages. Installation
-does not execute package code, modify the system/Brew store, resolve dependencies automatically,
-or fetch anything during ordinary workflow resolution. Required resolvers must already be
-installed or installed separately. Normal installers supply only core; optional packages are selected explicitly from the remote catalog.
+does not execute package code, modify the system/Brew store, or fetch anything
+during ordinary workflow resolution. Explicit package install prepares declared
+`depends` and `requires_resolvers` from the selected platform catalog before
+publishing them; host executable installation uses a separate approval flow.
+Normal installers supply only core; optional packages are selected explicitly
+from the remote catalog.
 The complete store is a separate opt-in download.
 
 `dockpipe package list --format json` returns `packages`, `warnings`, and `install_root`,

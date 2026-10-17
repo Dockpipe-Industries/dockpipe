@@ -56,19 +56,54 @@ def compiled_archive_checksum(path):
     return digest.hexdigest()
 
 
-def profiles(root):
+def profiles(archives):
+    """Read each author's Flatpak contract from its pinned package archive."""
     result = {}
-    for base in (root / "packages", root / "workflows", root / "src/core/resolvers"):
-        for path in base.rglob("assets/flatpak/package.json"):
-            profile = json.loads(path.read_text())
-            if profile.get("schema") != 1:
-                raise ValueError(f"Unknown profile schema: {path}")
-            for artifact in profile["artifacts"]:
-                key = (artifact["kind"], artifact["name"])
-                if key in result:
-                    raise ValueError(f"Duplicate Flatpak profile: {key}")
-                result[key] = (profile, path)
+    for archive in archives:
+        identity = artifact_identity(archive)
+        expected_root = f"{identity[0]}s/{identity[1]}/"
+        matching_profiles = []
+        with tarfile.open(archive) as source:
+            for member in source:
+                if (not member.name.startswith(expected_root)
+                        or not member.name.endswith("/assets/flatpak/package.json")):
+                    continue
+                if not member.isfile() or member.size > 65536:
+                    raise ValueError(f"Invalid Flatpak profile: {archive.name}")
+                profile = json.load(source.extractfile(member))
+                if profile.get("schema") != 1 or not isinstance(profile.get("artifacts"), list):
+                    raise ValueError(f"Unknown Flatpak profile schema: {archive.name}")
+                declared = {(item["kind"], item["name"]) for item in profile["artifacts"]}
+                if identity in declared:
+                    matching_profiles.append((profile, f"{archive.name}:{member.name}"))
+        if len(matching_profiles) != 1:
+            raise ValueError(f"Archive needs one own Flatpak profile: {archive.name}")
+        result[identity] = matching_profiles[0]
     return result
+
+
+def pinned_inputs(store):
+    manifest = json.loads((store / "packages-store-manifest.json").read_text())
+    if manifest.get("platform") != "linux-amd64":
+        raise ValueError("Flatpak qualification requires a Linux amd64 native store")
+    entries = [*manifest["packages"]["resolvers"], *manifest["packages"]["workflows"]]
+    archives = []
+    for entry in entries:
+        archive = store / entry["tarball"]
+        if archive.name != entry["tarball"] or archive.is_symlink() or not archive.is_file():
+            raise ValueError(f"Unsafe or missing pinned archive: {entry['tarball']}")
+        if archive.stat().st_size != entry["size_bytes"]:
+            raise ValueError(f"Pinned archive size differs: {archive.name}")
+        digest = hashlib.sha256()
+        with archive.open("rb") as stream:
+            for block in iter(lambda: stream.read(1 << 20), b""):
+                digest.update(block)
+        if digest.hexdigest() != entry["sha256"]:
+            raise ValueError(f"Pinned archive checksum differs: {archive.name}")
+        archives.append(archive)
+    if len(archives) != len(set(archives)):
+        raise ValueError("Duplicate optional archive")
+    return sorted(archives)
 
 
 def artifact_identity(path):
@@ -171,7 +206,7 @@ def qualify(app, stage, package, commands, bundles, host_commands):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("app", type=Path)
-    parser.add_argument("compiled", type=Path, help="fresh native release inputs, including source-build hooks")
+    parser.add_argument("compiled", type=Path, help="complete verified Linux amd64 native store")
     parser.add_argument("tools", type=Path)
     parser.add_argument("output", type=Path)
     args = parser.parse_args()
@@ -181,7 +216,8 @@ def main():
     spec = importlib.util.spec_from_file_location("package_tools", Path(__file__).with_name("prepare-package-tools.py"))
     helpers = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(helpers)
-    profile_map = profiles(root)
+    inputs = pinned_inputs(args.compiled)
+    profile_map = profiles(inputs)
     default_namespace = json.loads((root / "dockpipe.config.json").read_text())["packages"]["namespace"]
     if args.output.exists():
         raise SystemExit("Use a fresh catalog output directory")
@@ -189,14 +225,13 @@ def main():
     output = args.output.resolve()
     app = args.app.resolve()
     prepared_tools = args.tools.resolve()
-    inputs = sorted(path for kind in ("resolvers", "workflows") for path in (args.compiled / kind).glob("*.tar.gz"))
     identities = {artifact_identity(path) for path in inputs}
     if identities != set(profile_map):
         raise ValueError(f"Catalog/profile mismatch: missing={set(profile_map) - identities}, unowned={identities - set(profile_map)}")
     receipts = []
     for source in inputs:
         kind, name = artifact_identity(source)
-        profile, profile_path = profile_map[(kind, name)]
+        profile, profile_source = profile_map[(kind, name)]
         print(f"Qualifying {kind} {name}", flush=True)
         with tempfile.TemporaryDirectory(prefix="package-", dir=output) as temporary:
             stage = Path(temporary)
@@ -216,7 +251,7 @@ def main():
             digest = compiled_archive_checksum(target)
             target.with_name(target.name + ".sha256").write_text(f"{digest}  {target.name}\n")
             receipts.append({"kind": kind, "name": name, "compiled_sha256": digest,
-                             "profile": str(profile_path.relative_to(root)),
+                             "profile": profile_source,
                              "bundled_tools": sorted(bundles), "host_requirements": sorted(host_commands),
                              "proof": "Platform dependency execution and package preflight"})
     # Core is platform neutral and was checksum-verified by the desktop builder.
