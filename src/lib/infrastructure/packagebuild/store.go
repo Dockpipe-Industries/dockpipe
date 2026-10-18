@@ -27,22 +27,37 @@ type StoreBuildManifest struct {
 	} `json:"packages"`
 }
 
-// StoreArtifact names one gzip tarball built from a compiled package directory.
+// ArchiveVariant names another encoding of the same complete tar byte stream.
+// Decoder commands are local operator configuration and never catalog data.
+type ArchiveVariant struct {
+	Codec            string `json:"codec"`
+	Tarball          string `json:"tarball"`
+	SHA256           string `json:"sha256"`
+	SizeBytes        int64  `json:"size_bytes"`
+	DecodedSHA256    string `json:"decoded_sha256"`
+	DecodedSizeBytes int64  `json:"decoded_size_bytes"`
+}
+
+// StoreArtifact retains the legacy gzip fields so older consumers keep working.
 type StoreArtifact struct {
-	MinDockpipeVersion   string   `json:"min_dockpipe_version,omitempty"`
-	Title                string   `json:"title,omitempty"`
-	Description          string   `json:"description,omitempty"`
-	CatalogType          string   `json:"catalog_type,omitempty"`
-	Hidden               bool     `json:"hidden,omitempty"`
-	Categories           []string `json:"categories,omitempty"`
-	Name                 string   `json:"name"`
-	Version              string   `json:"version"`
-	Tarball              string   `json:"tarball"`
-	SHA256               string   `json:"sha256"`
-	SizeBytes            int64    `json:"size_bytes,omitempty"`
-	Provider             string   `json:"provider,omitempty"`
-	Capability           string   `json:"capability,omitempty"`
-	RequiresCapabilities []string `json:"requires_capabilities,omitempty"`
+	MinDockpipeVersion   string           `json:"min_dockpipe_version,omitempty"`
+	Title                string           `json:"title,omitempty"`
+	Description          string           `json:"description,omitempty"`
+	CatalogType          string           `json:"catalog_type,omitempty"`
+	Hidden               bool             `json:"hidden,omitempty"`
+	Categories           []string         `json:"categories,omitempty"`
+	Name                 string           `json:"name"`
+	Version              string           `json:"version"`
+	Tarball              string           `json:"tarball"`
+	SHA256               string           `json:"sha256"`
+	SizeBytes            int64            `json:"size_bytes,omitempty"`
+	Codec                string           `json:"codec,omitempty"`
+	DecodedSHA256        string           `json:"decoded_sha256,omitempty"`
+	DecodedSizeBytes     int64            `json:"decoded_size_bytes,omitempty"`
+	Variants             []ArchiveVariant `json:"variants,omitempty"`
+	Provider             string           `json:"provider,omitempty"`
+	Capability           string           `json:"capability,omitempty"`
+	RequiresCapabilities []string         `json:"requires_capabilities,omitempty"`
 }
 
 // BuildCompiledStore writes dockpipe-*.tar.gz (+ .sha256) for each slice under packagesRoot and
@@ -452,22 +467,26 @@ func listPackageSubdirs(root string) ([]string, error) {
 // UnmarshalJSON accepts legacy "primitive" / "requires_primitives" keys for older packages-store-manifest.json.
 func (a *StoreArtifact) UnmarshalJSON(data []byte) error {
 	var x struct {
-		MinDockpipeVersion   string   `json:"min_dockpipe_version,omitempty"`
-		Title                string   `json:"title,omitempty"`
-		Description          string   `json:"description,omitempty"`
-		CatalogType          string   `json:"catalog_type,omitempty"`
-		Hidden               bool     `json:"hidden,omitempty"`
-		Categories           []string `json:"categories,omitempty"`
-		Name                 string   `json:"name"`
-		Version              string   `json:"version"`
-		Tarball              string   `json:"tarball"`
-		SHA256               string   `json:"sha256"`
-		SizeBytes            int64    `json:"size_bytes,omitempty"`
-		Provider             string   `json:"provider,omitempty"`
-		Capability           string   `json:"capability,omitempty"`
-		RequiresCapabilities []string `json:"requires_capabilities,omitempty"`
-		Primitive            string   `json:"primitive,omitempty"`
-		RequiresPrimitives   []string `json:"requires_primitives,omitempty"`
+		MinDockpipeVersion   string           `json:"min_dockpipe_version,omitempty"`
+		Title                string           `json:"title,omitempty"`
+		Description          string           `json:"description,omitempty"`
+		CatalogType          string           `json:"catalog_type,omitempty"`
+		Hidden               bool             `json:"hidden,omitempty"`
+		Categories           []string         `json:"categories,omitempty"`
+		Name                 string           `json:"name"`
+		Version              string           `json:"version"`
+		Tarball              string           `json:"tarball"`
+		SHA256               string           `json:"sha256"`
+		SizeBytes            int64            `json:"size_bytes,omitempty"`
+		Codec                string           `json:"codec,omitempty"`
+		DecodedSHA256        string           `json:"decoded_sha256,omitempty"`
+		DecodedSizeBytes     int64            `json:"decoded_size_bytes,omitempty"`
+		Variants             []ArchiveVariant `json:"variants,omitempty"`
+		Provider             string           `json:"provider,omitempty"`
+		Capability           string           `json:"capability,omitempty"`
+		RequiresCapabilities []string         `json:"requires_capabilities,omitempty"`
+		Primitive            string           `json:"primitive,omitempty"`
+		RequiresPrimitives   []string         `json:"requires_primitives,omitempty"`
 	}
 	if err := json.Unmarshal(data, &x); err != nil {
 		return err
@@ -483,6 +502,10 @@ func (a *StoreArtifact) UnmarshalJSON(data []byte) error {
 	a.Tarball = x.Tarball
 	a.SHA256 = x.SHA256
 	a.SizeBytes = x.SizeBytes
+	a.Codec = x.Codec
+	a.DecodedSHA256 = x.DecodedSHA256
+	a.DecodedSizeBytes = x.DecodedSizeBytes
+	a.Variants = x.Variants
 	a.Provider = x.Provider
 	a.Capability = strings.TrimSpace(x.Capability)
 	if a.Capability == "" {

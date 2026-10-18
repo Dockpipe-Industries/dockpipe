@@ -39,7 +39,7 @@ product proposals were not discarded merely because they are old.
 | --- | --- |
 | TASK-003 | Retained-volume inspection/pruning and additional failure cleanup |
 | TASK-004 | Measured Qt/extension build budgets and invalidation improvements |
-| TASK-008 | ForgePipe product implementation and acceptance |
+| TASK-008 | DockPipe AI product implementation and acceptance |
 | TASK-009 | General tool resolver/preflight beyond existing test-helper fixes |
 | TASK-010 | Trusted installer policy, install-time checks and dependency coverage |
 | TASK-011 | Windows guest bootstrap and local CI usability |

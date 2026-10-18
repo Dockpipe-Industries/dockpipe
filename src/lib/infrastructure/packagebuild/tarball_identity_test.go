@@ -24,3 +24,25 @@ func TestMatchesVersionedTarballRequiresExactIdentity(t *testing.T) {
 		}
 	}
 }
+
+func TestPackageArchiveIdentityAcceptsFormatsWithoutCodecProvider(t *testing.T) {
+	for _, extension := range []string{".tar.gz", ".tar.zst", ".tar.nucleon"} {
+		filename := "dockpipe-workflow-docs-review-1.2.3-staging.4" + extension
+		name, version, ok := PackageArchiveIdentity(filename, "workflow")
+		if !ok || name != "docs-review" || version != "1.2.3-staging.4" {
+			t.Fatalf("identity for %s: %q, %q, %t", filename, name, version, ok)
+		}
+		if !MatchesVersionedTarball(filename, "workflow", "docs-review") {
+			t.Fatalf("missing exact identity for %s", filename)
+		}
+	}
+	for _, filename := range []string{
+		"dockpipe-workflow-docs-review-1.2.tar.zst",
+		"dockpipe-workflow-docs-review-1.2.3.tar.GZ",
+		"dockpipe-workflow-docs-review-1.2.3.tar.gz.sha256",
+	} {
+		if IsPackageArchivePath(filename, "workflow") {
+			t.Fatalf("accepted malformed archive filename %q", filename)
+		}
+	}
+}

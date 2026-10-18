@@ -43,15 +43,18 @@ func validateCompileOutputsScoped(workdir string, requireWorkflowNamespace bool,
 		var pattern string
 		switch kind {
 		case "workflows":
-			pattern = filepath.Join(pkgs, "workflows", "dockpipe-workflow-*.tar.gz")
+			pattern = filepath.Join(pkgs, "workflows", "dockpipe-workflow-*.tar.*")
 		case "resolvers":
-			pattern = filepath.Join(pkgs, "resolvers", "dockpipe-resolver-*.tar.gz")
+			pattern = filepath.Join(pkgs, "resolvers", "dockpipe-resolver-*.tar.*")
 		}
 		matches, err := filepath.Glob(pattern)
 		if err != nil {
 			return err
 		}
 		for _, tgz := range matches {
+			if !packagebuild.IsPackageArchivePath(tgz, strings.TrimSuffix(kind, "s")) {
+				continue
+			}
 			if !shouldValidateCompiledTarball(kind, tgz, workflowNames, resolverNames) {
 				continue
 			}
@@ -183,26 +186,27 @@ func mergeCompiledPackageNamesFromInstalledSources(out map[string]bool) {
 }
 
 func shouldValidateCompiledTarball(kind, tgz string, workflowNames, resolverNames map[string]bool) bool {
-	base := filepath.Base(tgz)
 	switch kind {
 	case "workflows":
 		if len(workflowNames) == 0 {
 			return true
 		}
-		name := strings.TrimSuffix(strings.TrimPrefix(base, "dockpipe-workflow-"), ".tar.gz")
-		if idx := strings.LastIndex(name, "-"); idx > 0 {
-			name = name[:idx]
+		for name := range workflowNames {
+			if packagebuild.MatchesVersionedTarball(tgz, "workflow", name) {
+				return true
+			}
 		}
-		return workflowNames[name]
+		return false
 	case "resolvers":
 		if len(resolverNames) == 0 {
 			return true
 		}
-		name := strings.TrimSuffix(strings.TrimPrefix(base, "dockpipe-resolver-"), ".tar.gz")
-		if idx := strings.LastIndex(name, "-"); idx > 0 {
-			name = name[:idx]
+		for name := range resolverNames {
+			if packagebuild.MatchesVersionedTarball(tgz, "resolver", name) {
+				return true
+			}
 		}
-		return resolverNames[name]
+		return false
 	default:
 		return true
 	}
@@ -309,7 +313,7 @@ func effectiveResolverNamespaceFromTar(pm *domain.PackageManifest, tgz string, m
 
 func compiledPackageNamesFromTarballs(pkgsRoot string) map[string]bool {
 	out := make(map[string]bool)
-	coreMatches, _ := filepath.Glob(filepath.Join(pkgsRoot, "core", "dockpipe-core-*.tar.gz"))
+	coreMatches, _ := filepath.Glob(filepath.Join(pkgsRoot, "core", "dockpipe-core-*.tar.*"))
 	sort.Strings(coreMatches)
 	if len(coreMatches) > 0 {
 		coreTar := coreMatches[len(coreMatches)-1]
@@ -325,12 +329,15 @@ func compiledPackageNamesFromTarballs(pkgsRoot string) map[string]bool {
 		var pattern string
 		switch kind {
 		case "workflows":
-			pattern = filepath.Join(pkgsRoot, "workflows", "dockpipe-workflow-*.tar.gz")
+			pattern = filepath.Join(pkgsRoot, "workflows", "dockpipe-workflow-*.tar.*")
 		case "resolvers":
-			pattern = filepath.Join(pkgsRoot, "resolvers", "dockpipe-resolver-*.tar.gz")
+			pattern = filepath.Join(pkgsRoot, "resolvers", "dockpipe-resolver-*.tar.*")
 		}
 		matches, _ := filepath.Glob(pattern)
 		for _, tgz := range matches {
+			if !packagebuild.IsPackageArchivePath(tgz, strings.TrimSuffix(kind, "s")) {
+				continue
+			}
 			members, err := packagebuild.ListTarGzMemberPaths(tgz)
 			if err != nil {
 				continue
@@ -374,9 +381,9 @@ func compiledPackageNamesFromTarballs(pkgsRoot string) map[string]bool {
 func compiledPackageNamesFromTarballDir(dir string) map[string]bool {
 	out := make(map[string]bool)
 	for _, pattern := range []string{
-		"dockpipe-core-*.tar.gz",
-		"dockpipe-workflow-*.tar.gz",
-		"dockpipe-resolver-*.tar.gz",
+		"dockpipe-core-*.tar.*",
+		"dockpipe-workflow-*.tar.*",
+		"dockpipe-resolver-*.tar.*",
 	} {
 		matches, _ := filepath.Glob(filepath.Join(dir, pattern))
 		for _, tgz := range matches {

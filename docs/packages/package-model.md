@@ -205,6 +205,87 @@ subdirectory. `DOCKPIPE_GLOBAL_ROOT` selects another user root. The command prin
 its installed `path`. Use the catalog response's resolved manifest URL and `--sha256 <digest>`
 to pin a selection; a changed checksum is rejected before downloading the archive.
 
+### Alternate archive encodings
+
+Gzip remains the default and the store builder continues to emit its existing
+`.tar.gz` archives. A publisher may additionally attach `variants` to a schema-1
+store entry. Older clients ignore this optional field and keep installing gzip.
+Each variant describes the same complete, uncompressed tar stream:
+
+```json
+{
+  "codec": "zstd",
+  "tarball": "dockpipe-workflow-example-1.2.3.tar.zst",
+  "sha256": "<SHA-256 of the encoded archive>",
+  "size_bytes": 1234,
+  "decoded_sha256": "<SHA-256 of the complete tar stream>",
+  "decoded_size_bytes": 5678
+}
+```
+
+Entries with variants also declare `decoded_sha256` and `decoded_size_bytes` on
+the canonical gzip entry. These values must agree across every encoding; installation
+checks the selected archive's actual decoded bytes against them.
+
+Use `dockpipe package install --remote <URL> --kind workflow --name example
+--codec zstd` to select an alternative explicitly. `--sha256` then binds the
+selected encoding's digest. The selected package must publish that encoding;
+dependencies prefer it when available and otherwise use their canonical archive.
+A corrupt alternative or unavailable decoder fails installation without silently
+retrying another encoding. Marketplace continues to use the canonical gzip
+selection. These options do not change package version resolution.
+
+The store retains the exact downloaded bytes, with a separate filename and
+SHA-keyed extraction cache per encoding. Existing versions and gzip artifacts
+coexist. Readers, listing and optional-package removal support these archives;
+same-version discovery prefers gzip, then Zstd, then other codec IDs in lexical
+order. Runtime package reads remain local.
+
+Gzip and Zstd decoding are built into the runtime. Additional decoders are
+explicit operator configuration: set `DOCKPIPE_ARCHIVE_DECODERS` to an absolute
+JSON file path. A catalog can supply codec IDs and integrity metadata, never
+decoder executables, arguments, environment variables or download instructions.
+For example, a locally trusted provider can be registered with:
+
+```json
+{
+  "schema": 1,
+  "providers": {
+    "example": {
+      "executable": "/absolute/path/to/decoder",
+      "sha256": "<executable SHA-256>",
+      "args": ["decode"],
+      "files": [
+        {
+          "path": "/absolute/path/to/libdecoder.so",
+          "sha256": "<library SHA-256>",
+          "name": "lib/libdecoder.so"
+        }
+      ]
+    }
+  }
+}
+```
+
+Such an archive uses `.tar.example`. The runtime verifies and stages the pinned
+executable and dependencies in a private temporary directory, supplies encoded
+bytes on stdin and accepts decoded tar bytes on stdout. It runs a supervised
+process without a shell, with a bounded diagnostic stream and a ten-minute
+deadline. Decoder failure, cancellation and output overflow prevent publication
+and clean up temporary files. This is permission to execute the operator-selected
+decoder; the downloaded package cannot register a provider. Private SDKs can stay
+inside their owning package's distribution and setup workflows.
+
+Catalog downloads remain limited to 512 MiB per archive and decoded tar streams
+to 2 GiB. The built-in Zstd reader accepts windows up to 64 MiB. Provider
+configuration is limited to 1 MiB and staged decoder files to
+64 MiB in total. A provider may impose a smaller supported input or output size;
+publish gzip or Zstd for packages outside that provider's supported range. Decoder
+memory use and temporary-file I/O are part of the consumer cost and must be
+included in real installation measurements.
+
+### Installation verification
+
 Installation requires HTTPS, restricts catalog references and redirects to the selected
 origin, bounds manifest/download/expanded sizes, and verifies SHA-256 and archive metadata.
 Catalog paths cannot traverse directories. Archives may contain only files and directories
