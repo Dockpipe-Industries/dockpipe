@@ -31,7 +31,7 @@ When changing authored workflow/config surfaces, update in the same change:
 
 - Go domain structs and validation
 - JSON schema at `src/lib/infrastructure/schema/workflow.schema.json`
-- Dockpipe Language Support at `src/app/tooling/vscode-extensions/dockpipe-language-support/extension.js`
+- Dockpipe Language Support at `docs/packages/editor-extensions.md`
 - docs near `docs/workflows/workflow-yaml.md`
 - package/workflow examples affected by the change
 

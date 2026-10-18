@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"dockpipe/src/lib/domain"
+	"dockpipe/src/lib/infrastructure/archivecodec"
 	"dockpipe/src/lib/infrastructure/engineversion"
 	"dockpipe/src/lib/infrastructure/packagebuild"
 )
@@ -193,12 +194,50 @@ func validateEntry(entry Entry) error {
 	if entry.Kind != "core" && entry.Kind != "workflow" && entry.Kind != "resolver" {
 		return fmt.Errorf("invalid package kind %q", entry.Kind)
 	}
-	if entry.Tarball != prefix+entry.Version+".tar.gz" || path.Base(entry.Tarball) != entry.Tarball {
+	codec, err := archivecodec.CodecForPath(entry.Tarball)
+	if err != nil {
+		return fmt.Errorf("invalid package archive format: %w", err)
+	}
+	extension, err := archivecodec.Extension(codec)
+	if err != nil || entry.Tarball != prefix+entry.Version+extension || path.Base(entry.Tarball) != entry.Tarball {
 		return fmt.Errorf("package filename does not match identity: %q", entry.Tarball)
+	}
+	if entry.Codec != "" && entry.Codec != codec {
+		return fmt.Errorf("package codec does not match its filename")
 	}
 	digest, err := hex.DecodeString(entry.SHA256)
 	if err != nil || len(digest) != 32 {
 		return fmt.Errorf("package %s needs a SHA-256 checksum", entry.Name)
+	}
+	if entry.SizeBytes < 0 || entry.SizeBytes > maxArchiveBytes {
+		return fmt.Errorf("package archive size exceeds installation limits")
+	}
+	if codec != "gzip" || len(entry.Variants) > 0 || entry.DecodedSHA256 != "" || entry.DecodedSizeBytes != 0 {
+		digest, err := hex.DecodeString(entry.DecodedSHA256)
+		if err != nil || len(digest) != 32 || entry.DecodedSizeBytes <= 0 || entry.DecodedSizeBytes > maxExpandedBytes {
+			return fmt.Errorf("package alternative needs a decoded tar checksum and bounded size")
+		}
+	}
+	if len(entry.Variants) > 16 {
+		return fmt.Errorf("package declares too many archive variants")
+	}
+	seen := map[string]bool{codec: true}
+	decodedDigest := entry.DecodedSHA256
+	decodedSize := entry.DecodedSizeBytes
+	for _, variant := range entry.Variants {
+		if seen[variant.Codec] || variant.Codec == "" || variant.SizeBytes <= 0 {
+			return fmt.Errorf("invalid or duplicate package archive variant %q", variant.Codec)
+		}
+		seen[variant.Codec] = true
+		candidate := withVariant(entry, variant)
+		if err := validateEntry(candidate); err != nil {
+			return err
+		}
+		if decodedDigest != "" && (!strings.EqualFold(decodedDigest, variant.DecodedSHA256) || decodedSize != variant.DecodedSizeBytes) {
+			return fmt.Errorf("package variants must encode the same complete tar")
+		}
+		decodedDigest = variant.DecodedSHA256
+		decodedSize = variant.DecodedSizeBytes
 	}
 	return nil
 }

@@ -233,7 +233,7 @@ func collectPlannedImageArtifactsFromPackages(workdir string) ([]domain.ImageArt
 	if err != nil {
 		return nil, err
 	}
-	matches, err := filepath.Glob(filepath.Join(workflowDir, "dockpipe-workflow-*.tar.gz"))
+	matches, err := packagebuild.ListPackageArchivePaths(workflowDir, "workflow")
 	if err != nil {
 		return nil, err
 	}

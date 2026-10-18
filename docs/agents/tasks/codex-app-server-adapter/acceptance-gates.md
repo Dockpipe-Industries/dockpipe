@@ -25,5 +25,5 @@ bounded implementation action and can be called complete only after all of the f
 CAS-15 cannot begin merely because CAS-14 is implemented or the default route exists. It requires
 CAS-14 to be complete, a reviewed first-consumer evidence packet with rollback exercised, and a new
 explicit maintainer decision naming exactly one additional compatible consumer. CAS-16 fallback
-surface, CAS-17 operations guidance, ForgePipe, and remaining provider-pool work stay deferred.
+surface, CAS-17 operations guidance, DockPipe AI, and remaining provider-pool work stay deferred.
 

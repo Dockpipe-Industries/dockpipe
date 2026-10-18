@@ -18,7 +18,7 @@ func prebuildCompiledImageArtifacts(workdir string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	matches, err := filepath.Glob(filepath.Join(workflowDir, "dockpipe-workflow-*.tar.gz"))
+	matches, err := packagebuild.ListPackageArchivePaths(workflowDir, "workflow")
 	if err != nil {
 		return 0, err
 	}

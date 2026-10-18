@@ -26,6 +26,10 @@ func cmdPackageRemote(args []string, install bool) error {
 	kind := flags.String("kind", "", "package kind: core, workflow, resolver (install only)")
 	name := flags.String("name", "", "package name (install only)")
 	checksum := flags.String("sha256", "", "expected package archive SHA-256; rejects a changed selection (install only)")
+	codec := "gzip"
+	if install {
+		flags.StringVar(&codec, "codec", "gzip", "archive codec: gzip, zstd, or a locally registered decoder (install only)")
+	}
 	includeHidden := false
 	if !install {
 		flags.BoolVar(&includeHidden, "include-hidden", false, "include packages hidden from discovery")
@@ -65,6 +69,10 @@ func cmdPackageRemote(args []string, install bool) error {
 		if entry.Kind != *kind || entry.Name != *name {
 			continue
 		}
+		entry, err = packagecatalog.SelectArchive(entry, codec)
+		if err != nil {
+			return err
+		}
 		if *checksum != "" && !strings.EqualFold(*checksum, entry.SHA256) {
 			return fmt.Errorf("selected package changed in the remote; refresh the catalog before installing")
 		}
@@ -72,7 +80,7 @@ func cmdPackageRemote(args []string, install bool) error {
 		if err != nil {
 			return err
 		}
-		installed, err := client.InstallWithDependencies(ctx, catalog, entry, root)
+		installed, err := client.InstallWithDependenciesUsingCodec(ctx, catalog, entry, root, codec)
 		if err != nil {
 			return err
 		}
