@@ -55,6 +55,45 @@ public:
         };
         using S = CanvasIcons::Symbol;
         switch (m_symbol) {
+        case S::Apps:
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(color);
+            for (int row = 0; row < 3; ++row) {
+                for (int column = 0; column < 3; ++column)
+                    painter->drawRoundedRect(QRectF(3 + column * 7, 3 + row * 7, 4, 4), 1, 1);
+            }
+            break;
+        case S::Settings:
+            path({{10, 2}, {14, 2}, {14.5, 5}, {17, 6.5}, {20, 5.5},
+                  {22, 9}, {19.5, 11}, {19.5, 13}, {22, 15}, {20, 18.5},
+                  {17, 17.5}, {14.5, 19}, {14, 22}, {10, 22}, {9.5, 19},
+                  {7, 17.5}, {4, 18.5}, {2, 15}, {4.5, 13}, {4.5, 11},
+                  {2, 9}, {4, 5.5}, {7, 6.5}, {9.5, 5}, {10, 2}});
+            painter->drawEllipse(QPointF(12, 12), 3.25, 3.25);
+            break;
+        case S::Back:
+        case S::Forward: {
+            const bool back = m_symbol == S::Back;
+            line(4, 12, 20, 12);
+            path(back ? std::initializer_list<QPointF>{{10, 6}, {4, 12}, {10, 18}}
+                      : std::initializer_list<QPointF>{{14, 6}, {20, 12}, {14, 18}});
+            break;
+        }
+        case S::Globe:
+            painter->drawEllipse(QRectF(3, 3, 18, 18));
+            painter->drawEllipse(QRectF(8, 3, 8, 18));
+            line(3, 12, 21, 12);
+            break;
+        case S::Extensions:
+            path({{4, 5}, {9, 5}, {9, 3}, {11, 2}, {13, 3}, {13, 5}, {19, 5},
+                  {19, 10}, {21, 10}, {22, 12}, {21, 14}, {19, 14}, {19, 20},
+                  {13, 20}, {13, 18}, {11, 17}, {9, 18}, {9, 20}, {4, 20}, {4, 5}});
+            break;
+        case S::External:
+            path({{14, 3}, {21, 3}, {21, 10}});
+            line(10, 14, 21, 3);
+            path({{10, 5}, {3, 5}, {3, 21}, {19, 21}, {19, 14}});
+            break;
         case S::Branch:
             painter->drawEllipse(QPointF(6, 5), 2, 2);
             painter->drawEllipse(QPointF(6, 19), 2, 2);

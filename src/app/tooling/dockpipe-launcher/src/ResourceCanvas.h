@@ -3,6 +3,7 @@
 #include <QGraphicsView>
 #include <QElapsedTimer>
 #include <QMap>
+#include <QJsonObject>
 #include <QVector>
 #include <QWidget>
 
@@ -48,6 +49,7 @@ public:
     void addKindFilter(const QString &kind, const QString &label);
     void addInactiveFilter(const QString &label = QString());
     void addDependencyFilter();
+    QJsonObject snapshot() const { return m_snapshot; }
 
 signals:
     void resourceSelected(const QString &id);
@@ -90,4 +92,5 @@ private:
     int m_filterCount = 0;
     bool m_fitted = false;
     bool m_userAdjusted = false;
+    QJsonObject m_snapshot;
 };

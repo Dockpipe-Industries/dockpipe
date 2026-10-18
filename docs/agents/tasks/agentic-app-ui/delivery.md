@@ -46,6 +46,10 @@ the task crosses the value bar for orchestration.
 
 ## Still Open
 
+- Keep [optional DorkPipe browser assistance](browser-integration.md) deferred:
+  define reusable contribution and authorization APIs before AI page control,
+  summaries, annotated requests or explicitly granted history access. Ordinary
+  browser settings and extension-based password/autofill remain independent.
 - Deliver AI contributions from the existing DorkPipe repository and package pipeline;
   coordinate generic registration and selected-version lifecycle with TASK-039.
 - Define the launcher context payload shared with Pipeon-style app launches.

@@ -195,7 +195,7 @@ steps:
     auto *properties = window.findChild<QPushButton *>("workflowPropertiesButton");
     if (!editor || editor->isWindow() || !output || !toggle || !properties)
         return 4;
-    if (!waitUntil([&]() { return containsLabel(editor, "0 steps") && navigation->currentRow() == 1; }))
+    if (!waitUntil([&]() { return containsLabel(editor, "0 steps") && navigation->currentRow() == 2; }))
         return 5;
     if (output->isVisible() || properties->isChecked() || !editor->workflowPath().isEmpty())
         return 6;
@@ -294,7 +294,7 @@ steps:
     button(editor, "Run")->click();
     if (!waitUntil([&]() { return output->toPlainText().contains("Application ready"); }))
         return 11;
-    if (navigation->currentRow() != 1 || !output->isVisible() || editor->workflowPath() != path)
+    if (navigation->currentRow() != 2 || !output->isVisible() || editor->workflowPath() != path)
         return 12;
     capture("-output");
     window.resize(1180, 780);
@@ -362,8 +362,8 @@ steps:
     panel->resetPlacement();
     outputPanel->resetPlacement();
     properties->click();
-    navigation->setCurrentRow(0);
     navigation->setCurrentRow(1);
+    navigation->setCurrentRow(2);
     if (editor->workflowPath() != path)
         return 14;
 

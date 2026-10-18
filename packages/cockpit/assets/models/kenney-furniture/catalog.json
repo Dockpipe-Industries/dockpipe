@@ -1,0 +1,1562 @@
+[
+  {
+    "id": "kenney-bathroomCabinet",
+    "name": "Bathroom cabinet",
+    "category": "Bathroom",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      57.5,
+      97.5,
+      32.5
+    ],
+    "faces": 108
+  },
+  {
+    "id": "kenney-bathroomCabinetDrawer",
+    "name": "Bathroom cabinet drawer",
+    "category": "Bathroom",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      107.5,
+      117.9395,
+      80.0
+    ],
+    "faces": 768
+  },
+  {
+    "id": "kenney-bathroomMirror",
+    "name": "Bathroom mirror",
+    "category": "Bathroom",
+    "family": "model",
+    "mount": "wall",
+    "size": [
+      75.335,
+      108.6562,
+      36.1
+    ],
+    "faces": 144
+  },
+  {
+    "id": "kenney-bathroomSink",
+    "name": "Bathroom sink",
+    "category": "Bathroom",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      85.0,
+      140.0,
+      72.5
+    ],
+    "faces": 632
+  },
+  {
+    "id": "kenney-bathroomSinkSquare",
+    "name": "Bathroom sink square",
+    "category": "Bathroom",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      107.5,
+      145.0,
+      75.0
+    ],
+    "faces": 468
+  },
+  {
+    "id": "kenney-bathtub",
+    "name": "Bathtub",
+    "category": "Bathroom",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      297.5,
+      105.0,
+      140.0
+    ],
+    "faces": 1204
+  },
+  {
+    "id": "kenney-bear",
+    "name": "Bear",
+    "category": "Decor",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      97.4278,
+      112.5,
+      61.875
+    ],
+    "faces": 268
+  },
+  {
+    "id": "kenney-bedBunk",
+    "name": "Bed bunk",
+    "category": "Bedroom",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      142.75,
+      212.5,
+      273.75
+    ],
+    "faces": 932
+  },
+  {
+    "id": "kenney-bedDouble",
+    "name": "Bed double",
+    "category": "Bedroom",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      239.0,
+      93.75,
+      281.25
+    ],
+    "faces": 364
+  },
+  {
+    "id": "kenney-bedSingle",
+    "name": "Bed single",
+    "category": "Bedroom",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      142.75,
+      93.75,
+      281.25
+    ],
+    "faces": 314
+  },
+  {
+    "id": "kenney-bench",
+    "name": "Bench",
+    "category": "Seating",
+    "family": "chair",
+    "mount": "floor",
+    "size": [
+      100.0,
+      117.5,
+      50.0
+    ],
+    "faces": 340
+  },
+  {
+    "id": "kenney-benchCushion",
+    "name": "Bench cushion",
+    "category": "Seating",
+    "family": "chair",
+    "mount": "floor",
+    "size": [
+      100.0,
+      115.0,
+      50.0
+    ],
+    "faces": 392
+  },
+  {
+    "id": "kenney-benchCushionLow",
+    "name": "Bench cushion low",
+    "category": "Seating",
+    "family": "chair",
+    "mount": "floor",
+    "size": [
+      105.0,
+      50.0,
+      55.0
+    ],
+    "faces": 276
+  },
+  {
+    "id": "kenney-bookcaseClosed",
+    "name": "Bookcase closed",
+    "category": "Storage",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      100.0,
+      212.5,
+      62.5
+    ],
+    "faces": 744
+  },
+  {
+    "id": "kenney-bookcaseClosedDoors",
+    "name": "Bookcase closed doors",
+    "category": "Storage",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      100.0,
+      212.5,
+      62.5
+    ],
+    "faces": 536
+  },
+  {
+    "id": "kenney-bookcaseClosedWide",
+    "name": "Bookcase closed wide",
+    "category": "Storage",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      200.0,
+      197.5,
+      62.5
+    ],
+    "faces": 744
+  },
+  {
+    "id": "kenney-bookcaseOpen",
+    "name": "Bookcase open",
+    "category": "Storage",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      100.0,
+      220.0,
+      62.5
+    ],
+    "faces": 640
+  },
+  {
+    "id": "kenney-bookcaseOpenLow",
+    "name": "Bookcase open low",
+    "category": "Storage",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      100.0,
+      100.0,
+      62.5
+    ],
+    "faces": 368
+  },
+  {
+    "id": "kenney-books",
+    "name": "Books",
+    "category": "Decor",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      37.6119,
+      25.9756,
+      23.625
+    ],
+    "faces": 124
+  },
+  {
+    "id": "kenney-cabinetBed",
+    "name": "Cabinet bed",
+    "category": "Storage",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      66.5,
+      58.3,
+      53.75
+    ],
+    "faces": 116
+  },
+  {
+    "id": "kenney-cabinetBedDrawer",
+    "name": "Cabinet bed drawer",
+    "category": "Storage",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      66.5,
+      65.8,
+      54.325
+    ],
+    "faces": 294
+  },
+  {
+    "id": "kenney-cabinetBedDrawerTable",
+    "name": "Cabinet bed drawer table",
+    "category": "Storage",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      66.5,
+      65.8,
+      54.325
+    ],
+    "faces": 236
+  },
+  {
+    "id": "kenney-cabinetTelevision",
+    "name": "Cabinet television",
+    "category": "Storage",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      200.0,
+      77.5,
+      62.5
+    ],
+    "faces": 308
+  },
+  {
+    "id": "kenney-cabinetTelevisionDoors",
+    "name": "Cabinet television doors",
+    "category": "Storage",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      200.0,
+      77.5,
+      65.0
+    ],
+    "faces": 364
+  },
+  {
+    "id": "kenney-cardboardBoxClosed",
+    "name": "Cardboard box closed",
+    "category": "Storage",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      53.125,
+      70.25,
+      53.125
+    ],
+    "faces": 120
+  },
+  {
+    "id": "kenney-cardboardBoxOpen",
+    "name": "Cardboard box open",
+    "category": "Storage",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      92.9688,
+      70.25,
+      53.125
+    ],
+    "faces": 120
+  },
+  {
+    "id": "kenney-ceilingFan",
+    "name": "Ceiling fan",
+    "category": "Lighting",
+    "family": "model",
+    "mount": "ceiling",
+    "size": [
+      113.6839,
+      33.4295,
+      131.2709
+    ],
+    "faces": 428
+  },
+  {
+    "id": "kenney-chair",
+    "name": "Chair",
+    "category": "Seating",
+    "family": "chair",
+    "mount": "floor",
+    "size": [
+      50.0,
+      117.5,
+      50.0
+    ],
+    "faces": 340
+  },
+  {
+    "id": "kenney-chairCushion",
+    "name": "Chair cushion",
+    "category": "Seating",
+    "family": "chair",
+    "mount": "floor",
+    "size": [
+      50.0,
+      115.0,
+      50.0
+    ],
+    "faces": 396
+  },
+  {
+    "id": "kenney-chairDesk",
+    "name": "Chair desk",
+    "category": "Seating",
+    "family": "chair",
+    "mount": "floor",
+    "size": [
+      83.7375,
+      151.9,
+      78.5747
+    ],
+    "faces": 656
+  },
+  {
+    "id": "kenney-chairModernCushion",
+    "name": "Chair modern cushion",
+    "category": "Seating",
+    "family": "chair",
+    "mount": "floor",
+    "size": [
+      50.0,
+      115.0,
+      50.0
+    ],
+    "faces": 184
+  },
+  {
+    "id": "kenney-chairModernFrameCushion",
+    "name": "Chair modern frame cushion",
+    "category": "Seating",
+    "family": "chair",
+    "mount": "floor",
+    "size": [
+      50.0,
+      115.0,
+      50.0
+    ],
+    "faces": 568
+  },
+  {
+    "id": "kenney-chairRounded",
+    "name": "Chair rounded",
+    "category": "Seating",
+    "family": "chair",
+    "mount": "floor",
+    "size": [
+      50.0,
+      113.75,
+      50.0
+    ],
+    "faces": 560
+  },
+  {
+    "id": "kenney-coatRack",
+    "name": "Coat rack",
+    "category": "Decor",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      112.0,
+      70.0,
+      33.6
+    ],
+    "faces": 264
+  },
+  {
+    "id": "kenney-coatRackStanding",
+    "name": "Coat rack standing",
+    "category": "Decor",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      68.2,
+      192.5,
+      68.2
+    ],
+    "faces": 380
+  },
+  {
+    "id": "kenney-computerKeyboard",
+    "name": "Computer keyboard",
+    "category": "Tech",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      70.55,
+      6.889,
+      29.548
+    ],
+    "faces": 64
+  },
+  {
+    "id": "kenney-computerMouse",
+    "name": "Computer mouse",
+    "category": "Tech",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      12.425,
+      5.893,
+      21.2759
+    ],
+    "faces": 142
+  },
+  {
+    "id": "kenney-computerScreen",
+    "name": "Computer screen",
+    "category": "Tech",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      98.172,
+      73.5713,
+      26.001
+    ],
+    "faces": 144
+  },
+  {
+    "id": "kenney-desk",
+    "name": "Desk",
+    "category": "Tables",
+    "family": "table",
+    "mount": "floor",
+    "size": [
+      183.6189,
+      96.1019,
+      98.075
+    ],
+    "faces": 352
+  },
+  {
+    "id": "kenney-deskCorner",
+    "name": "Desk corner",
+    "category": "Tables",
+    "family": "table",
+    "mount": "floor",
+    "size": [
+      243.6189,
+      96.1019,
+      243.6189
+    ],
+    "faces": 456
+  },
+  {
+    "id": "kenney-dryer",
+    "name": "Dryer",
+    "category": "Bathroom",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      97.5,
+      117.5,
+      95.0
+    ],
+    "faces": 440
+  },
+  {
+    "id": "kenney-hoodLarge",
+    "name": "Hood large",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "wall",
+    "size": [
+      107.5,
+      92.3829,
+      71.225
+    ],
+    "faces": 72
+  },
+  {
+    "id": "kenney-hoodModern",
+    "name": "Hood modern",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "wall",
+    "size": [
+      107.5,
+      99.8829,
+      71.225
+    ],
+    "faces": 56
+  },
+  {
+    "id": "kenney-kitchenBar",
+    "name": "Kitchen bar",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      107.5,
+      105.0,
+      52.5
+    ],
+    "faces": 152
+  },
+  {
+    "id": "kenney-kitchenBarEnd",
+    "name": "Kitchen bar end",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      25.3906,
+      105.0,
+      52.5
+    ],
+    "faces": 304
+  },
+  {
+    "id": "kenney-kitchenBlender",
+    "name": "Kitchen blender",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      33.9566,
+      56.88,
+      27.2797
+    ],
+    "faces": 286
+  },
+  {
+    "id": "kenney-kitchenCabinet",
+    "name": "Kitchen cabinet",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      107.5,
+      112.5,
+      112.5
+    ],
+    "faces": 188
+  },
+  {
+    "id": "kenney-kitchenCabinetCornerInner",
+    "name": "Kitchen cabinet corner inner",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      115.0,
+      112.5,
+      115.0
+    ],
+    "faces": 108
+  },
+  {
+    "id": "kenney-kitchenCabinetCornerRound",
+    "name": "Kitchen cabinet corner round",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      112.5,
+      112.5,
+      112.5
+    ],
+    "faces": 388
+  },
+  {
+    "id": "kenney-kitchenCabinetDrawer",
+    "name": "Kitchen cabinet drawer",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      107.5,
+      112.5,
+      112.5
+    ],
+    "faces": 252
+  },
+  {
+    "id": "kenney-kitchenCabinetUpper",
+    "name": "Kitchen cabinet upper",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "wall",
+    "size": [
+      107.5,
+      97.5,
+      55.0
+    ],
+    "faces": 124
+  },
+  {
+    "id": "kenney-kitchenCabinetUpperCorner",
+    "name": "Kitchen cabinet upper corner",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "wall",
+    "size": [
+      53.75,
+      97.5,
+      52.5
+    ],
+    "faces": 408
+  },
+  {
+    "id": "kenney-kitchenCabinetUpperDouble",
+    "name": "Kitchen cabinet upper double",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "wall",
+    "size": [
+      107.5,
+      97.5,
+      55.0
+    ],
+    "faces": 396
+  },
+  {
+    "id": "kenney-kitchenCabinetUpperLow",
+    "name": "Kitchen cabinet upper low",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "wall",
+    "size": [
+      107.5,
+      48.75,
+      55.0
+    ],
+    "faces": 92
+  },
+  {
+    "id": "kenney-kitchenCoffeeMachine",
+    "name": "Kitchen coffee machine",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      47.385,
+      44.3723,
+      60.0418
+    ],
+    "faces": 272
+  },
+  {
+    "id": "kenney-kitchenFridge",
+    "name": "Kitchen fridge",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      107.5,
+      230.0,
+      72.9835
+    ],
+    "faces": 316
+  },
+  {
+    "id": "kenney-kitchenFridgeBuiltIn",
+    "name": "Kitchen fridge built in",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      107.5,
+      217.1869,
+      112.5
+    ],
+    "faces": 352
+  },
+  {
+    "id": "kenney-kitchenFridgeLarge",
+    "name": "Kitchen fridge large",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      130.0,
+      230.0,
+      101.3875
+    ],
+    "faces": 584
+  },
+  {
+    "id": "kenney-kitchenFridgeSmall",
+    "name": "Kitchen fridge small",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      107.5,
+      150.0616,
+      72.9835
+    ],
+    "faces": 196
+  },
+  {
+    "id": "kenney-kitchenMicrowave",
+    "name": "Kitchen microwave",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      72.5,
+      45.0,
+      57.5
+    ],
+    "faces": 256
+  },
+  {
+    "id": "kenney-kitchenSink",
+    "name": "Kitchen sink",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      107.5,
+      122.5,
+      112.5
+    ],
+    "faces": 596
+  },
+  {
+    "id": "kenney-kitchenStove",
+    "name": "Kitchen stove",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      107.5,
+      112.5,
+      112.5
+    ],
+    "faces": 1604
+  },
+  {
+    "id": "kenney-kitchenStoveElectric",
+    "name": "Kitchen stove electric",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      107.5,
+      112.5,
+      112.5
+    ],
+    "faces": 676
+  },
+  {
+    "id": "kenney-lampRoundFloor",
+    "name": "Lamp round floor",
+    "category": "Lighting",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      38.0099,
+      215.0,
+      43.89
+    ],
+    "faces": 152
+  },
+  {
+    "id": "kenney-lampRoundTable",
+    "name": "Lamp round table",
+    "category": "Lighting",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      38.0099,
+      78.5625,
+      43.89
+    ],
+    "faces": 152
+  },
+  {
+    "id": "kenney-lampSquareCeiling",
+    "name": "Lamp square ceiling",
+    "category": "Lighting",
+    "family": "model",
+    "mount": "ceiling",
+    "size": [
+      30.0,
+      57.5,
+      30.0
+    ],
+    "faces": 120
+  },
+  {
+    "id": "kenney-lampSquareFloor",
+    "name": "Lamp square floor",
+    "category": "Lighting",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      30.0,
+      215.0,
+      30.0
+    ],
+    "faces": 120
+  },
+  {
+    "id": "kenney-lampSquareTable",
+    "name": "Lamp square table",
+    "category": "Lighting",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      30.0,
+      72.5,
+      30.0
+    ],
+    "faces": 120
+  },
+  {
+    "id": "kenney-lampWall",
+    "name": "Lamp wall",
+    "category": "Lighting",
+    "family": "model",
+    "mount": "wall",
+    "size": [
+      56.6588,
+      23.2,
+      37.584
+    ],
+    "faces": 84
+  },
+  {
+    "id": "kenney-laptop",
+    "name": "Laptop",
+    "category": "Tech",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      66.0,
+      40.4523,
+      60.0163
+    ],
+    "faces": 136
+  },
+  {
+    "id": "kenney-loungeChair",
+    "name": "Lounge chair",
+    "category": "Seating",
+    "family": "couch",
+    "mount": "floor",
+    "size": [
+      122.5,
+      115.0,
+      102.5
+    ],
+    "faces": 256
+  },
+  {
+    "id": "kenney-loungeChairRelax",
+    "name": "Lounge chair relax",
+    "category": "Seating",
+    "family": "couch",
+    "mount": "floor",
+    "size": [
+      122.5,
+      157.5,
+      168.6732
+    ],
+    "faces": 376
+  },
+  {
+    "id": "kenney-loungeDesignChair",
+    "name": "Lounge design chair",
+    "category": "Seating",
+    "family": "couch",
+    "mount": "floor",
+    "size": [
+      182.3988,
+      100.0,
+      102.5
+    ],
+    "faces": 232
+  },
+  {
+    "id": "kenney-loungeDesignSofa",
+    "name": "Lounge design sofa",
+    "category": "Seating",
+    "family": "couch",
+    "mount": "floor",
+    "size": [
+      280.0,
+      100.0,
+      102.5
+    ],
+    "faces": 232
+  },
+  {
+    "id": "kenney-loungeDesignSofaCorner",
+    "name": "Lounge design sofa corner",
+    "category": "Seating",
+    "family": "couch",
+    "mount": "floor",
+    "size": [
+      337.457,
+      100.0,
+      337.457
+    ],
+    "faces": 342
+  },
+  {
+    "id": "kenney-loungeSofa",
+    "name": "Lounge sofa",
+    "category": "Seating",
+    "family": "couch",
+    "mount": "floor",
+    "size": [
+      245.0,
+      115.0,
+      102.5
+    ],
+    "faces": 256
+  },
+  {
+    "id": "kenney-loungeSofaCorner",
+    "name": "Lounge sofa corner",
+    "category": "Seating",
+    "family": "couch",
+    "mount": "floor",
+    "size": [
+      245.0,
+      115.0,
+      245.0
+    ],
+    "faces": 380
+  },
+  {
+    "id": "kenney-loungeSofaLong",
+    "name": "Lounge sofa long",
+    "category": "Seating",
+    "family": "couch",
+    "mount": "floor",
+    "size": [
+      245.0,
+      115.0,
+      205.0
+    ],
+    "faces": 372
+  },
+  {
+    "id": "kenney-loungeSofaOttoman",
+    "name": "Lounge sofa ottoman",
+    "category": "Seating",
+    "family": "couch",
+    "mount": "floor",
+    "size": [
+      109.9571,
+      57.5,
+      112.5
+    ],
+    "faces": 168
+  },
+  {
+    "id": "kenney-pillow",
+    "name": "Pillow",
+    "category": "Bedroom",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      57.5,
+      55.5407,
+      22.1209
+    ],
+    "faces": 100
+  },
+  {
+    "id": "kenney-pillowBlue",
+    "name": "Pillow blue",
+    "category": "Bedroom",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      57.5,
+      32.1281,
+      15.8475
+    ],
+    "faces": 100
+  },
+  {
+    "id": "kenney-pillowBlueLong",
+    "name": "Pillow blue long",
+    "category": "Bedroom",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      129.1439,
+      55.5407,
+      22.1209
+    ],
+    "faces": 100
+  },
+  {
+    "id": "kenney-pillowLong",
+    "name": "Pillow long",
+    "category": "Bedroom",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      96.6439,
+      55.5407,
+      22.1209
+    ],
+    "faces": 100
+  },
+  {
+    "id": "kenney-plantSmall1",
+    "name": "Plant small 1",
+    "category": "Nature",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      23.6652,
+      35.0,
+      23.6652
+    ],
+    "faces": 204
+  },
+  {
+    "id": "kenney-plantSmall2",
+    "name": "Plant small 2",
+    "category": "Nature",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      23.6652,
+      35.0,
+      23.6652
+    ],
+    "faces": 316
+  },
+  {
+    "id": "kenney-plantSmall3",
+    "name": "Plant small 3",
+    "category": "Nature",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      24.5,
+      36.25,
+      21.2176
+    ],
+    "faces": 196
+  },
+  {
+    "id": "kenney-pottedPlant",
+    "name": "Potted plant",
+    "category": "Nature",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      53.0148,
+      163.5042,
+      60.3655
+    ],
+    "faces": 104
+  },
+  {
+    "id": "kenney-radio",
+    "name": "Radio",
+    "category": "Tech",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      78.75,
+      57.0478,
+      24.375
+    ],
+    "faces": 864
+  },
+  {
+    "id": "kenney-rugDoormat",
+    "name": "Rug doormat",
+    "category": "Rugs",
+    "family": "rug",
+    "mount": "floor",
+    "size": [
+      107.325,
+      2.5,
+      59.2522
+    ],
+    "faces": 408
+  },
+  {
+    "id": "kenney-rugRectangle",
+    "name": "Rug rectangle",
+    "category": "Rugs",
+    "family": "rug",
+    "mount": "floor",
+    "size": [
+      392.5,
+      2.5,
+      230.0
+    ],
+    "faces": 56
+  },
+  {
+    "id": "kenney-rugRound",
+    "name": "Rug round",
+    "category": "Rugs",
+    "family": "rug",
+    "mount": "floor",
+    "size": [
+      230.0,
+      2.5,
+      230.0
+    ],
+    "faces": 376
+  },
+  {
+    "id": "kenney-rugRounded",
+    "name": "Rug rounded",
+    "category": "Rugs",
+    "family": "rug",
+    "mount": "floor",
+    "size": [
+      392.5,
+      2.5,
+      230.0
+    ],
+    "faces": 408
+  },
+  {
+    "id": "kenney-rugSquare",
+    "name": "Rug square",
+    "category": "Rugs",
+    "family": "rug",
+    "mount": "floor",
+    "size": [
+      226.0815,
+      2.5,
+      230.0
+    ],
+    "faces": 56
+  },
+  {
+    "id": "kenney-shower",
+    "name": "Shower",
+    "category": "Bathroom",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      140.448,
+      273.5083,
+      145.448
+    ],
+    "faces": 1600
+  },
+  {
+    "id": "kenney-showerRound",
+    "name": "Shower round",
+    "category": "Bathroom",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      140.448,
+      273.5083,
+      140.448
+    ],
+    "faces": 1232
+  },
+  {
+    "id": "kenney-sideTable",
+    "name": "Side table",
+    "category": "Tables",
+    "family": "table",
+    "mount": "floor",
+    "size": [
+      133.6189,
+      96.1019,
+      55.0
+    ],
+    "faces": 236
+  },
+  {
+    "id": "kenney-sideTableDrawers",
+    "name": "Side table drawers",
+    "category": "Tables",
+    "family": "table",
+    "mount": "floor",
+    "size": [
+      133.6189,
+      96.1019,
+      55.575
+    ],
+    "faces": 388
+  },
+  {
+    "id": "kenney-speaker",
+    "name": "Speaker",
+    "category": "Tech",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      37.0,
+      159.1,
+      37.0
+    ],
+    "faces": 456
+  },
+  {
+    "id": "kenney-speakerSmall",
+    "name": "Speaker small",
+    "category": "Tech",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      37.0,
+      74.4949,
+      33.3
+    ],
+    "faces": 440
+  },
+  {
+    "id": "kenney-stoolBar",
+    "name": "Stool bar",
+    "category": "Seating",
+    "family": "stool",
+    "mount": "floor",
+    "size": [
+      66.36,
+      108.75,
+      57.4694
+    ],
+    "faces": 352
+  },
+  {
+    "id": "kenney-stoolBarSquare",
+    "name": "Stool bar square",
+    "category": "Seating",
+    "family": "stool",
+    "mount": "floor",
+    "size": [
+      38.375,
+      101.25,
+      36.906
+    ],
+    "faces": 284
+  },
+  {
+    "id": "kenney-table",
+    "name": "Table",
+    "category": "Tables",
+    "family": "table",
+    "mount": "floor",
+    "size": [
+      210.372,
+      81.6835,
+      111.8433
+    ],
+    "faces": 240
+  },
+  {
+    "id": "kenney-tableCloth",
+    "name": "Table cloth",
+    "category": "Tables",
+    "family": "table",
+    "mount": "floor",
+    "size": [
+      210.372,
+      81.6835,
+      111.8433
+    ],
+    "faces": 288
+  },
+  {
+    "id": "kenney-tableCoffee",
+    "name": "Table coffee",
+    "category": "Tables",
+    "family": "table",
+    "mount": "floor",
+    "size": [
+      165.249,
+      57.5,
+      100.0
+    ],
+    "faces": 248
+  },
+  {
+    "id": "kenney-tableCoffeeGlass",
+    "name": "Table coffee glass",
+    "category": "Tables",
+    "family": "table",
+    "mount": "floor",
+    "size": [
+      165.249,
+      57.5,
+      100.0
+    ],
+    "faces": 280
+  },
+  {
+    "id": "kenney-tableCoffeeGlassSquare",
+    "name": "Table coffee glass square",
+    "category": "Tables",
+    "family": "table",
+    "mount": "floor",
+    "size": [
+      100.0,
+      57.5,
+      100.0
+    ],
+    "faces": 280
+  },
+  {
+    "id": "kenney-tableCoffeeSquare",
+    "name": "Table coffee square",
+    "category": "Tables",
+    "family": "table",
+    "mount": "floor",
+    "size": [
+      100.0,
+      57.5,
+      100.0
+    ],
+    "faces": 248
+  },
+  {
+    "id": "kenney-tableCross",
+    "name": "Table cross",
+    "category": "Tables",
+    "family": "table",
+    "mount": "floor",
+    "size": [
+      213.03,
+      86.8533,
+      111.8433
+    ],
+    "faces": 356
+  },
+  {
+    "id": "kenney-tableCrossCloth",
+    "name": "Table cross cloth",
+    "category": "Tables",
+    "family": "table",
+    "mount": "floor",
+    "size": [
+      213.03,
+      86.8533,
+      111.8433
+    ],
+    "faces": 404
+  },
+  {
+    "id": "kenney-tableGlass",
+    "name": "Table glass",
+    "category": "Tables",
+    "family": "table",
+    "mount": "floor",
+    "size": [
+      210.372,
+      81.6835,
+      111.8433
+    ],
+    "faces": 288
+  },
+  {
+    "id": "kenney-tableRound",
+    "name": "Table round",
+    "category": "Tables",
+    "family": "table",
+    "mount": "floor",
+    "size": [
+      173.2051,
+      91.6835,
+      200.0
+    ],
+    "faces": 160
+  },
+  {
+    "id": "kenney-televisionAntenna",
+    "name": "Television antenna",
+    "category": "Tech",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      66.1319,
+      25.6836,
+      20.0
+    ],
+    "faces": 88
+  },
+  {
+    "id": "kenney-televisionModern",
+    "name": "Television modern",
+    "category": "Tech",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      171.2,
+      113.6875,
+      32.1
+    ],
+    "faces": 144
+  },
+  {
+    "id": "kenney-televisionVintage",
+    "name": "Television vintage",
+    "category": "Tech",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      102.5,
+      67.5,
+      67.5
+    ],
+    "faces": 560
+  },
+  {
+    "id": "kenney-toaster",
+    "name": "Toaster",
+    "category": "Kitchen",
+    "family": "model",
+    "mount": "surface",
+    "size": [
+      46.9959,
+      32.5,
+      25.0
+    ],
+    "faces": 440
+  },
+  {
+    "id": "kenney-toilet",
+    "name": "Toilet",
+    "category": "Bathroom",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      78.1375,
+      112.7413,
+      119.2942
+    ],
+    "faces": 440
+  },
+  {
+    "id": "kenney-toiletSquare",
+    "name": "Toilet square",
+    "category": "Bathroom",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      75.905,
+      112.7413,
+      96.7942
+    ],
+    "faces": 428
+  },
+  {
+    "id": "kenney-trashcan",
+    "name": "Trashcan",
+    "category": "Decor",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      51.9234,
+      106.9665,
+      58.5311
+    ],
+    "faces": 136
+  },
+  {
+    "id": "kenney-washer",
+    "name": "Washer",
+    "category": "Bathroom",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      97.5,
+      117.5,
+      97.5
+    ],
+    "faces": 892
+  },
+  {
+    "id": "kenney-washerDryerStacked",
+    "name": "Washer dryer stacked",
+    "category": "Bathroom",
+    "family": "model",
+    "mount": "floor",
+    "size": [
+      97.5,
+      235.0,
+      97.5
+    ],
+    "faces": 1352
+  }
+]

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RemoteCommand.h"
+#include "ProjectGitClient.h"
 #include <QJsonObject>
 #include <QWidget>
 
@@ -25,9 +25,7 @@ private:
     void updateCommitState();
     QString m_workdir;
     QJsonObject m_snapshot;
-    QByteArray m_diagnostics;
-    RemoteCommand m_command;
-    QTemporaryFile *m_request = nullptr;
+    ProjectGitClient m_command;
     QLabel *m_heading;
     QLabel *m_status;
     QListWidget *m_files;

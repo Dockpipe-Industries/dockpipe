@@ -1,4 +1,5 @@
 #include "ResourceCanvas.h"
+#include <QJsonArray>
 #include "CanvasView.h"
 #include "ResourceLinkItem.h"
 #include "CanvasPanel.h"
@@ -220,6 +221,8 @@ ResourceCanvas::ResourceCanvas(const QString &identity, const QString &title, co
 
 void ResourceCanvas::setGraph(const QVector<ResourceNode> &nodes, const QVector<ResourceEdge> &edges, const QString &notice)
 {
+    QJsonArray snapshotNodes;
+    QJsonArray snapshotEdges;
     QMap<QString, QPointF> positions;
     QString selected;
     for (auto it = m_nodes.begin(); it != m_nodes.end(); ++it) {
@@ -251,6 +254,10 @@ void ResourceCanvas::setGraph(const QVector<ResourceNode> &nodes, const QVector<
         card->setSelected(node.id == selected);
         card->moved = [this]() { updateEdges(); };
         m_nodes.insert(node.id, card);
+        snapshotNodes.append(QJsonObject{{"id", node.id}, {"kind", node.kind},
+            {"title", node.title.left(512)}, {"detail", node.detail.left(2048)},
+            {"state", node.state.left(512)}, {"status", int(node.status)},
+            {"active", node.motionEligible && node.status == ResourceStatus::Running}});
     }
     for (const auto &edge : edges) {
         if (m_edges.size() >= maximumEdges)
@@ -258,6 +265,8 @@ void ResourceCanvas::setGraph(const QVector<ResourceNode> &nodes, const QVector<
         if (!m_nodes.contains(edge.from) || !m_nodes.contains(edge.to))
             continue;
         m_edges.append(edge);
+        snapshotEdges.append(QJsonObject{{"from", edge.from}, {"to", edge.to},
+            {"label", edge.label.left(512)}, {"dependency", edge.dependency}});
         auto *path = new ResourceLinkItem;
         path->setFlowColor(QColor(edge.dependency ? "#a0e4ce" : "#a4c7f2"));
         m_view->scene()->addItem(path);
@@ -271,6 +280,7 @@ void ResourceCanvas::setGraph(const QVector<ResourceNode> &nodes, const QVector<
     if (nodes.isEmpty() && message.isEmpty())
         message = tr("No resources to display. Open Details & actions to refresh or get started.");
     m_notice->setText(message);
+    m_snapshot = QJsonObject{{"nodes", snapshotNodes}, {"edges", snapshotEdges}, {"notice", message.left(2048)}};
     m_notice->setVisible(!message.isEmpty());
     updateEdges();
     updateVisibility();

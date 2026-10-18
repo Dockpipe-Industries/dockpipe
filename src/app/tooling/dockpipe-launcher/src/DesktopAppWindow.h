@@ -1,10 +1,12 @@
 #pragma once
 
 #include <QImage>
+#include <QIcon>
 #include <QRect>
 #include <QString>
 #include <QVector>
 #include <memory>
+#include <optional>
 
 class QWidget;
 
@@ -14,7 +16,7 @@ struct DesktopAppChoice {
     QString applicationClass;
 };
 
-// Local, explicitly selected X11 windows only. The owner must release control
+// Local, explicitly selected supported desktop windows. The owner must release control
 // before its native container is destroyed. No input injection or persistence.
 class DesktopAppWindow final {
 public:
@@ -25,6 +27,8 @@ public:
     DesktopAppWindow(const DesktopAppWindow &) = delete;
     DesktopAppWindow &operator=(const DesktopAppWindow &) = delete;
     QString title() const { return m_choice.title; }
+    DesktopAppChoice choice() const { return m_choice; }
+    std::optional<DesktopAppChoice> replacement(QString &error) const;
     QImage capture(QString &error);
     bool prepareControl(QString &error);
     bool controlReady() const;
@@ -32,8 +36,10 @@ public:
     bool controlAttached() const;
     bool syncControlGeometry();
     bool focusControl();
+    bool requestClose(QString &error);
     void releaseControl();
     bool alive() const;
+    QIcon applicationIcon() const;
 private:
     struct Native;
     std::unique_ptr<Native> m_native;
