@@ -1,0 +1,13 @@
+schema: 1
+kind: package
+name: native-sdk
+version: 0.1.0
+title: Native SDK artifact verification
+author: Dockpipe
+license: Apache-2.0
+repository: https://github.com/Dockpipe-Industries/dockpipe
+platforms: [deb]
+description: Explicit native binary export auditing, private debug separation and authenticated artifact verification for SDK publishers.
+tags: [sdk, release, verification]
+test:
+  script: tests/run.sh

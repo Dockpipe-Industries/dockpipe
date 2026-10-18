@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"dockpipe/src/lib/domain"
+	"dockpipe/src/lib/infrastructure/archivecodec"
 	"dockpipe/src/lib/infrastructure/packagebuild"
 
 	"golang.org/x/mod/semver"
@@ -105,27 +106,27 @@ func tarballCacheEntryMatchesPackage(dir, kind, name, archiveRoot string) bool {
 	return false
 }
 
-// FindLatestCoreTarball returns the newest matching dockpipe-core-*.tar.gz under packages/core (then global packages/core), or "" if none.
+// FindLatestCoreTarball returns the newest matching dockpipe-core-*.tar.<codec> under packages/core (then global packages/core), or "" if none.
 func FindLatestCoreTarball(workdir string) (string, error) {
 	projectRoot, _ := domain.FindProjectRootWithDockpipeConfig(workdir)
 	d, err := PackagesCoreDir(workdir)
 	if err != nil {
 		return "", err
 	}
-	if p, err := findLatestGlob(filepath.Join(d, "dockpipe-core-*.tar.gz")); err != nil {
+	if p, err := findLatestGlob(filepath.Join(d, "dockpipe-core-*.tar.*")); err != nil {
 		return "", err
 	} else if p != "" {
 		return p, nil
 	}
 	for _, root := range configuredPackageStoreRoots(projectRoot) {
-		if p, err := findLatestGlob(filepath.Join(root, "core", "dockpipe-core-*.tar.gz")); err != nil {
+		if p, err := findLatestGlob(filepath.Join(root, "core", "dockpipe-core-*.tar.*")); err != nil {
 			return "", err
 		} else if p != "" {
 			return p, nil
 		}
 	}
 	for _, dir := range configuredPackageTarballDirs(projectRoot) {
-		if p, err := findLatestGlob(filepath.Join(dir, "dockpipe-core-*.tar.gz")); err != nil {
+		if p, err := findLatestGlob(filepath.Join(dir, "dockpipe-core-*.tar.*")); err != nil {
 			return "", err
 		} else if p != "" {
 			return p, nil
@@ -135,13 +136,13 @@ func FindLatestCoreTarball(workdir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if p, err := findLatestGlob(filepath.Join(gp, "core", "dockpipe-core-*.tar.gz")); err != nil {
+	if p, err := findLatestGlob(filepath.Join(gp, "core", "dockpipe-core-*.tar.*")); err != nil {
 		return "", err
 	} else if p != "" {
 		return p, nil
 	}
 	for _, root := range SystemPackagesCoreDirs() {
-		if p, err := findLatestGlob(filepath.Join(root, "dockpipe-core-*.tar.gz")); err != nil {
+		if p, err := findLatestGlob(filepath.Join(root, "dockpipe-core-*.tar.*")); err != nil {
 			return "", err
 		} else if p != "" {
 			return p, nil
@@ -150,7 +151,7 @@ func FindLatestCoreTarball(workdir string) (string, error) {
 	return "", nil
 }
 
-// FindLatestWorkflowTarball returns the newest dockpipe-workflow-<name>-*.tar.gz under packages/workflows (then global).
+// FindLatestWorkflowTarball returns the newest dockpipe-workflow-<name>-*.tar.<codec> under packages/workflows (then global).
 func FindLatestWorkflowTarball(workdir, name string) (string, error) {
 	projectRoot, _ := domain.FindProjectRootWithDockpipeConfig(workdir)
 	d, err := PackagesWorkflowsDir(workdir)
@@ -158,21 +159,21 @@ func FindLatestWorkflowTarball(workdir, name string) (string, error) {
 		return "", err
 	}
 	tok := packagebuild.SafeTarballToken(name)
-	pattern := filepath.Join(d, fmt.Sprintf("dockpipe-workflow-%s-*.tar.gz", tok))
+	pattern := filepath.Join(d, fmt.Sprintf("dockpipe-workflow-%s-*.tar.*", tok))
 	if p, err := findLatestGlob(pattern); err != nil {
 		return "", err
 	} else if p != "" {
 		return p, nil
 	}
 	for _, root := range configuredPackageStoreRoots(projectRoot) {
-		if p, err := findLatestGlob(filepath.Join(root, "workflows", fmt.Sprintf("dockpipe-workflow-%s-*.tar.gz", tok))); err != nil {
+		if p, err := findLatestGlob(filepath.Join(root, "workflows", fmt.Sprintf("dockpipe-workflow-%s-*.tar.*", tok))); err != nil {
 			return "", err
 		} else if p != "" {
 			return p, nil
 		}
 	}
 	for _, dir := range configuredPackageTarballDirs(projectRoot) {
-		if p, err := findLatestGlob(filepath.Join(dir, fmt.Sprintf("dockpipe-workflow-%s-*.tar.gz", tok))); err != nil {
+		if p, err := findLatestGlob(filepath.Join(dir, fmt.Sprintf("dockpipe-workflow-%s-*.tar.*", tok))); err != nil {
 			return "", err
 		} else if p != "" {
 			return p, nil
@@ -182,13 +183,13 @@ func FindLatestWorkflowTarball(workdir, name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if p, err := findLatestGlob(filepath.Join(gp, "workflows", fmt.Sprintf("dockpipe-workflow-%s-*.tar.gz", tok))); err != nil {
+	if p, err := findLatestGlob(filepath.Join(gp, "workflows", fmt.Sprintf("dockpipe-workflow-%s-*.tar.*", tok))); err != nil {
 		return "", err
 	} else if p != "" {
 		return p, nil
 	}
 	for _, root := range SystemPackagesWorkflowsDirs() {
-		if p, err := findLatestGlob(filepath.Join(root, fmt.Sprintf("dockpipe-workflow-%s-*.tar.gz", tok))); err != nil {
+		if p, err := findLatestGlob(filepath.Join(root, fmt.Sprintf("dockpipe-workflow-%s-*.tar.*", tok))); err != nil {
 			return "", err
 		} else if p != "" {
 			return p, nil
@@ -197,7 +198,7 @@ func FindLatestWorkflowTarball(workdir, name string) (string, error) {
 	return "", nil
 }
 
-// FindLatestResolverTarball returns the newest dockpipe-resolver-<name>-*.tar.gz under packages/resolvers (then global).
+// FindLatestResolverTarball returns the newest dockpipe-resolver-<name>-*.tar.<codec> under packages/resolvers (then global).
 func FindLatestResolverTarball(workdir, name string) (string, error) {
 	projectRoot, _ := domain.FindProjectRootWithDockpipeConfig(workdir)
 	d, err := PackagesResolversDir(workdir)
@@ -205,21 +206,21 @@ func FindLatestResolverTarball(workdir, name string) (string, error) {
 		return "", err
 	}
 	tok := packagebuild.SafeTarballToken(name)
-	pattern := filepath.Join(d, fmt.Sprintf("dockpipe-resolver-%s-*.tar.gz", tok))
+	pattern := filepath.Join(d, fmt.Sprintf("dockpipe-resolver-%s-*.tar.*", tok))
 	if p, err := findLatestGlob(pattern); err != nil {
 		return "", err
 	} else if p != "" {
 		return p, nil
 	}
 	for _, root := range configuredPackageStoreRoots(projectRoot) {
-		if p, err := findLatestGlob(filepath.Join(root, "resolvers", fmt.Sprintf("dockpipe-resolver-%s-*.tar.gz", tok))); err != nil {
+		if p, err := findLatestGlob(filepath.Join(root, "resolvers", fmt.Sprintf("dockpipe-resolver-%s-*.tar.*", tok))); err != nil {
 			return "", err
 		} else if p != "" {
 			return p, nil
 		}
 	}
 	for _, dir := range configuredPackageTarballDirs(projectRoot) {
-		if p, err := findLatestGlob(filepath.Join(dir, fmt.Sprintf("dockpipe-resolver-%s-*.tar.gz", tok))); err != nil {
+		if p, err := findLatestGlob(filepath.Join(dir, fmt.Sprintf("dockpipe-resolver-%s-*.tar.*", tok))); err != nil {
 			return "", err
 		} else if p != "" {
 			return p, nil
@@ -229,13 +230,13 @@ func FindLatestResolverTarball(workdir, name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if p, err := findLatestGlob(filepath.Join(gp, "resolvers", fmt.Sprintf("dockpipe-resolver-%s-*.tar.gz", tok))); err != nil {
+	if p, err := findLatestGlob(filepath.Join(gp, "resolvers", fmt.Sprintf("dockpipe-resolver-%s-*.tar.*", tok))); err != nil {
 		return "", err
 	} else if p != "" {
 		return p, nil
 	}
 	for _, root := range SystemPackagesResolversDirs() {
-		if p, err := findLatestGlob(filepath.Join(root, fmt.Sprintf("dockpipe-resolver-%s-*.tar.gz", tok))); err != nil {
+		if p, err := findLatestGlob(filepath.Join(root, fmt.Sprintf("dockpipe-resolver-%s-*.tar.*", tok))); err != nil {
 			return "", err
 		} else if p != "" {
 			return p, nil
@@ -249,22 +250,23 @@ func findLatestGlob(pattern string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// A prefix glob also matches other packages with hyphenated names. Only
-	// accept the requested identity followed by a complete semantic version.
 	prefix, suffix, found := strings.Cut(filepath.Base(pattern), "*")
-	if !found || suffix != ".tar.gz" {
-		return "", fmt.Errorf("invalid package tarball pattern %q", pattern)
+	if !found || suffix != ".tar.*" {
+		return "", fmt.Errorf("invalid package archive pattern %q", pattern)
 	}
 	var candidates []string
 	for _, match := range matches {
-		name := filepath.Base(match)
-		version := strings.TrimSuffix(strings.TrimPrefix(name, prefix), suffix)
+		stem, ok := archivecodec.StripExtension(filepath.Base(match))
+		if !ok || !strings.HasPrefix(stem, prefix) {
+			continue
+		}
+		version := strings.TrimPrefix(stem, prefix)
 		normalized := "v" + strings.TrimPrefix(version, "v")
 		core := strings.SplitN(strings.SplitN(normalized, "+", 2)[0], "-", 2)[0]
 		if !semver.IsValid(normalized) || strings.Count(core, ".") != 2 {
 			continue
 		}
-		info, err := os.Stat(match)
+		info, err := os.Lstat(match)
 		if err != nil {
 			return "", err
 		}
@@ -275,8 +277,17 @@ func findLatestGlob(pattern string) (string, error) {
 	if len(candidates) == 0 {
 		return "", nil
 	}
-	sort.Strings(candidates)
-	return candidates[len(candidates)-1], nil
+	sort.Slice(candidates, func(i, j int) bool {
+		leftStem, _ := archivecodec.StripExtension(filepath.Base(candidates[i]))
+		rightStem, _ := archivecodec.StripExtension(filepath.Base(candidates[j]))
+		leftVersion := strings.TrimPrefix(leftStem, prefix)
+		rightVersion := strings.TrimPrefix(rightStem, prefix)
+		if leftVersion != rightVersion {
+			return semver.Compare("v"+strings.TrimPrefix(leftVersion, "v"), "v"+strings.TrimPrefix(rightVersion, "v")) > 0
+		}
+		return packagebuild.ArchiveCodecPriority(candidates[i]) < packagebuild.ArchiveCodecPriority(candidates[j])
+	})
+	return candidates[0], nil
 }
 
 // RemoveGlob removes files matching pattern (no directories).

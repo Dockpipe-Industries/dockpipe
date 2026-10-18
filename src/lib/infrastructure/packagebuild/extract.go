@@ -2,36 +2,37 @@ package packagebuild
 
 import (
 	"archive/tar"
-	"compress/gzip"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"dockpipe/src/lib/infrastructure/archivecodec"
 )
 
-// ExtractTarGzToDir extracts all regular files from a gzip tar into destDir (paths are relative to archive root).
+// ExtractTarGzToDir extracts all regular files from a supported package archive into destDir.
 // Rejects member paths containing ".." after cleaning.
-func ExtractTarGzToDir(tarGzPath, destDir string) error {
+func ExtractTarGzToDir(tarGzPath, destDir string) (err error) {
 	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return err
 	}
-	f, err := os.Open(tarGzPath)
+	decoded, err := archivecodec.OpenFile(context.Background(), tarGzPath, maxPackageArchiveDecodedBytes)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	gz, err := gzip.NewReader(f)
-	if err != nil {
-		return err
-	}
-	defer gz.Close()
-	tr := tar.NewReader(gz)
+	defer func() {
+		err = errors.Join(err, decoded.Close())
+	}()
+	tr := tar.NewReader(decoded)
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
-			return nil
+			_, err := io.Copy(io.Discard, decoded)
+			return err
 		}
 		if err != nil {
 			return err

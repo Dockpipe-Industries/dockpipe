@@ -2,19 +2,31 @@ package packagebuild
 
 import (
 	"archive/tar"
-	"compress/gzip"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"dockpipe/src/lib/infrastructure/archivecodec"
 )
 
+const maxPackageArchiveDecodedBytes int64 = 2 << 30
+
 // ReadFileFromTarGz returns the uncompressed body of the first tar member whose path equals entryName.
+// The historical function name remains compatible with callers; archivecodec selects the decoder.
 // entryName uses forward slashes (e.g. workflows/demo/config.yml). Does not extract to disk — suitable
 // for workflow resolution (dockpipe run) without extracting the archive.
 func ReadFileFromTarGz(tarGzPath, entryName string) ([]byte, error) {
-	return readFileFromTarGz(tarGzPath, entryName, 0)
+	return readFileFromTarGz(context.Background(), tarGzPath, entryName, 0)
+}
+
+// ReadFileFromTarGzContext reads one package member while propagating the
+// caller's cancellation to its decoder, including an external codec provider.
+func ReadFileFromTarGzContext(ctx context.Context, tarPath, entryName string) ([]byte, error) {
+	return readFileFromTarGz(ctx, tarPath, entryName, 0)
 }
 
 // ReadFileFromTarGzLimit bounds allocation when reading package metadata.
@@ -22,25 +34,28 @@ func ReadFileFromTarGzLimit(tarGzPath, entryName string, maxBytes int64) ([]byte
 	if maxBytes <= 0 {
 		return nil, fmt.Errorf("tar member size limit must be positive")
 	}
-	return readFileFromTarGz(tarGzPath, entryName, maxBytes)
+	return readFileFromTarGz(context.Background(), tarGzPath, entryName, maxBytes)
 }
 
-func readFileFromTarGz(tarGzPath, entryName string, maxBytes int64) ([]byte, error) {
+func readFileFromTarGz(ctx context.Context, tarGzPath, entryName string, maxBytes int64) (data []byte, err error) {
+	if ctx == nil {
+		return nil, fmt.Errorf("package archive context is nil")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	entryName = filepath.ToSlash(strings.TrimSpace(entryName))
 	if entryName == "" || strings.Contains(entryName, "..") {
 		return nil, fmt.Errorf("invalid entry path %q", entryName)
 	}
-	f, err := os.Open(tarGzPath)
+	decoded, err := archivecodec.OpenFile(ctx, tarGzPath, maxPackageArchiveDecodedBytes)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	gz, err := gzip.NewReader(f)
-	if err != nil {
-		return nil, err
-	}
-	defer gz.Close()
-	tr := tar.NewReader(gz)
+	defer func() {
+		err = errors.Join(err, decoded.Close())
+	}()
+	tr := tar.NewReader(decoded)
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
@@ -59,25 +74,32 @@ func readFileFromTarGz(tarGzPath, entryName string, maxBytes int64) ([]byte, err
 			if maxBytes > 0 && hdr.Size > maxBytes {
 				return nil, fmt.Errorf("tar member %q exceeds size limit", entryName)
 			}
-			return io.ReadAll(tr)
+			limit := maxPackageArchiveDecodedBytes
+			if maxBytes > 0 && maxBytes < limit {
+				limit = maxBytes
+			}
+			data, err := io.ReadAll(io.LimitReader(tr, limit+1))
+			if err != nil {
+				return nil, err
+			}
+			if int64(len(data)) > limit {
+				return nil, fmt.Errorf("tar member %q exceeds size limit", entryName)
+			}
+			return data, nil
 		}
 	}
 }
 
-// ListTarGzMemberPaths returns regular-file member paths (forward slashes) in a gzip tar.
-func ListTarGzMemberPaths(tarGzPath string) ([]string, error) {
-	f, err := os.Open(tarGzPath)
+// ListTarGzMemberPaths returns regular-file member paths from a supported package archive.
+func ListTarGzMemberPaths(tarGzPath string) (out []string, err error) {
+	decoded, err := archivecodec.OpenFile(context.Background(), tarGzPath, maxPackageArchiveDecodedBytes)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	gz, err := gzip.NewReader(f)
-	if err != nil {
-		return nil, err
-	}
-	defer gz.Close()
-	tr := tar.NewReader(gz)
-	var out []string
+	defer func() {
+		err = errors.Join(err, decoded.Close())
+	}()
+	tr := tar.NewReader(decoded)
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
@@ -102,6 +124,9 @@ func ListTarGzMemberPaths(tarGzPath string) ([]string, error) {
 		if _, err := io.Copy(io.Discard, tr); err != nil {
 			return nil, err
 		}
+	}
+	if _, err := io.Copy(io.Discard, decoded); err != nil {
+		return nil, err
 	}
 	return out, nil
 }
