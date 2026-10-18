@@ -10,10 +10,16 @@ dispatch:
 routes:
   orientation:
     read: [overview.md]
+  product_composition:
+    read:
+      - overview.md
+      - ../../../architecture/forgepipe/product-package-boundaries.md
 
 documents:
   - path: overview.md
     role: authorized extraction objective and canonical migration evidence
+  - path: ../../../architecture/forgepipe/product-package-boundaries.md
+    role: shared runtime packages, standalone products, optional game integration and built-in browser
 
 maintenance:
   - Keep dispatch metadata synchronized with docs/agents/task-index.yaml.

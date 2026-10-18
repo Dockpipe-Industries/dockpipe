@@ -9,7 +9,7 @@ class QPlainTextEdit;
 class QLabel;
 class QTextDocument;
 class QStackedWidget;
-class WorkspaceGraphWidget;
+class LauncherFileSurface;
 class QSplitter;
 class QPushButton;
 
@@ -78,6 +78,6 @@ private:
     QWidget *m_workspace;
     QWidget *m_flightHud = nullptr;
     QList<int> m_splitterSizes;
-    WorkspaceGraphWidget *m_graph = nullptr;
+    LauncherFileSurface *m_graph = nullptr;
     CockpitSettings m_cockpitSettings;
 };

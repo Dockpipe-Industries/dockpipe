@@ -7,7 +7,7 @@ This tree lives under **`src/app/tooling/dockpipe-launcher/`** as first-party Do
 ## Requirements
 
 - **CMake** 3.16+
-- **Qt 6** (`Widgets`, `Network`, `Concurrent`, `OpenGLWidgets`) — install dev packages (e.g. `qt6-base-dev` and `libqt6opengl6-dev` on Debian/Ubuntu) or use the [Qt Online Installer](https://www.qt.io/download) and set **`CMAKE_PREFIX_PATH`** to the Qt 6 prefix.
+- **Qt 6** (`Widgets`, `Network`, `Concurrent`, `OpenGLWidgets`, `WebEngineWidgets`) — install development packages and the matching WebEngine renderer (see below), or use the [Qt Online Installer](https://www.qt.io/download) and set **`CMAKE_PREFIX_PATH`** to the Qt 6 prefix.
 - **OpenGL / EGL development libraries** — Qt 6 Gui pulls in **WrapOpenGL**. On Ubuntu/Pop!_OS, if CMake says `WrapOpenGL could not be found` or `Qt6Gui_FOUND` is FALSE, install **`libgl1-mesa-dev`** and **`libegl1-mesa-dev`** (see Build section below).
 - **`dockpipe`** on **`PATH`** (or set **dockpipe binary** in each context’s settings).
 - Host tools Dockpipe already needs: **`bash`**, **`docker`**, **`git`** — see [docs/install.md](../../../../docs/install.md).
@@ -16,6 +16,306 @@ On macOS, Finder launches append the standard Homebrew binary directories to the
 Docker uses the user's saved context or inherited endpoint settings, including a Colima Docker
 profile. The launcher does not start or switch container providers. See
 [Colima setup](../../../../docs/install.md#containers-with-colima).
+
+## Browser
+
+Open **Browser** in the sidebar or **View → Browser** for ordinary web browsing.
+The desktop includes this page without installing or enabling Cockpit or any
+spatial package. It provides tabs, address/search entry and compact navigation
+controls. **Annotate** opens a page capture for drawing and notes. **Downloads**
+shows progress and lets you pause, resume, cancel, reveal saved folders or clear
+finished entries without deleting files. Browser settings select a download folder
+and whether to ask where each file should be saved.
+
+The **More** menu includes find in page, printing, zoom, viewport-width previews,
+screenshots, session history, clear browsing data and browser settings. Viewport
+previews change layout width, not the browser's device identity. User-initiated
+new-window links open in a new tab.
+
+Browser settings are saved and shared between the top-level Browser and spatial
+**Live page** in the existing launcher configuration. Web links opened by DockPipe
+can use the system browser or the DockPipe browser, with a separate choice for
+localhost and loopback development sites. File and folder links keep their normal
+desktop behavior. The address display can show the site alone or the full URL;
+editing always reveals the full address. JavaScript and image loading can also
+be configured.
+
+For HTTP(S) sites, camera, microphone, location and notifications
+have **Ask**, **Allow** or **Block** defaults and exact-origin overrides (scheme,
+host and port). Ask prompts appear only for the selected, visible live page;
+background spatial content cannot prompt. Remembering a prompt decision is
+optional. Unsupported permissions are denied. These settings do not grant AI
+access or provide AI controls.
+
+**Extensions** can load and enable unpacked Manifest V3 extensions on Qt WebEngine
+6.10+ builds with extension support enabled. There is no Chrome Web Store installer
+or built-in password vault. Password storage and autofill require a compatible
+extension; password-manager compatibility has not been verified.
+
+The named browser profile uses isolated temporary storage removed on normal
+shutdown. Cookies, website data, extensions and history are session-only; saved
+downloads and captures remain on disk. **Clear browsing data** closes tabs,
+cancels downloads and resets the session. Saved browser settings and remembered
+site policies remain separate from session cookies and history.
+
+The Browser is created on first selection and retains its tabs when you return
+to another desktop section. It uses the shared browser runtime, while spatial
+extraction and world presentation remain in the optional package. The headless
+Dockpipe CLI has no Qt or browser dependency.
+
+Ordinary browser settings belong to DockPipe. Optional DorkPipe assistance for
+page summaries, annotated requests and approved browser actions is
+[deferred TASK-008 scope](../../../../docs/agents/tasks/agentic-app-ui/browser-integration.md).
+It is not implemented by installing the Browser or enabling browser extensions;
+browsing remains available without the DorkPipe package.
+
+## Terminal
+
+Open **Terminal** below Browser in the sidebar, or add a **Terminal** widget to a
+dashboard. Both use the same session service, with at most eight open terminal
+sessions across the desktop. The terminal display uses locally bundled xterm.js
+6.0 through the desktop's existing Qt WebEngine dependency; it does not fetch a
+terminal frontend from a CDN. Renderer delivery waits for acknowledgement of each
+32 KiB chunk. Each session retains its latest 256 KiB for replay; older unread
+output can be discarded if a view falls behind, with a visible notice. Each display
+keeps 2,000 scrollback lines by default (configurable from 100 to 10,000). Hidden
+views stop rendering.
+
+Use the **Terminal settings** sliders button on the Terminal page, or right-click
+inside a dashboard terminal and choose **Terminal settings**, for shared themes
+(DockPipe, Amber, Green, Paper, Midnight), monospace font and size, cursor style,
+cursor blinking, scrollback, opacity, and optional static scanlines/text glow.
+Save applies to open terminal pages and widgets without restarting their shells.
+Preferences use the existing launcher settings store. Transparency is **off by
+default** (100% opacity), and theme changes never enable it. Lower opacity reveals
+the selected **Transparency reveals** target: the DockPipe canvas and panels
+underneath a floating terminal (default), the panel background, or the desktop
+behind DockPipe. Transparency selects Qt software rendering for terminal and
+browser views at startup so foreground panels cover them correctly. First enabling
+transparency requires a restart; until then terminal views remain opaque with an
+explanation. Set opacity to 100% and restart to return to accelerated rendering.
+An explicit QT_QUICK_BACKEND override is respected. The native Linux fixture checks
+focused opacity and overlap pixels; the local browser switching and idle checks
+passed with the fallback. This does not qualify video or 3D-heavy browsing.
+Canvas mode removes the terminal panel's solid fill; tiled groups retain their
+own background. Desktop mode clears only the terminal viewport and keeps text and
+app controls opaque. Enabling Desktop requires restarting DockPipe to allocate a
+composited window surface; no screen capture or wallpaper copy is used. It requires
+a compositing desktop and has been qualified on Linux/X11. Wayland and macOS still
+need native qualification; foreign embedded application surfaces may remain opaque.
+Text glow has **strength** (0–100%) and **spread** (0–8 px) sliders. Effects are off
+by default; there is no animated CRT simulation or background effect loop.
+
+The Unix backend connects a real shell to a pseudoterminal, including terminal
+input and resizing. Linux and macOS source implementations are included; native
+macOS qualification is pending. The Windows terminal backend is unsupported in
+this slice and reports that limitation. The native Linux fixture verifies real
+keyboard input, rendering, selected-session delivery, layout retention, bounded
+output and cleanup. Native macOS and Windows qualification remain outstanding.
+
+The dashboard **Send input** widget selects one terminal session and sends the
+entered text followed by Enter. This executes input in that selected shell; it
+does not broadcast to other terminals. Check the selected session before sending.
+Terminal sessions are live desktop state rather than saved shell processes.
+On the Terminal page, choose **New terminal** to start a shell. A dashboard terminal
+starts its own shell when first shown, without an extra toolbar or close button.
+Hidden widgets that have never been shown do not start shells. Switching dashboard
+environments preserves the shell; removing its panel stops only that widget's
+owned session. Right-click a stopped widget to start a replacement session.
+The Terminal page's **Close** button stops its selected session for every view.
+Application exit stops the desktop's shells. New sessions use the current project directory;
+changing projects does not move a running shell.
+
+Future package-contributed destinations, including DorkPipe, belong to the
+[TASK-008 integration backlog](../../../../docs/agents/tasks/agentic-app-ui/browser-integration.md#future-send-input-targets).
+There are no AI targets or AI controls in this terminal implementation.
+
+## Custom dashboards
+
+Everyone has a built-in **Dashboard** above Apps in the sidebar. Its name is fixed
+and it cannot be removed. Turn off **Settings → Show Dashboard above Apps in the
+sidebar** to hide it without losing its widgets or layout. It is loaded only when
+opened.
+
+Choose **+ Dashboard** in the sidebar or **View → New dashboard…** to create up to
+12 additional dashboards, then use **+ Add widget**. Custom dashboards appear below
+Terminal and above Cockpit.
+The cog beside Full screen opens dashboard settings, including Rename and Remove.
+
+Widgets are compact views of system resources, workflows, executions, session
+logs, containers, files, Git status and machines. **Open full view** takes you to
+the corresponding sidebar page. Workflow launches use the existing configuration
+and execution flow. Read-only status widgets share their data sources and pause
+polling while hidden. The Browser widget uses the ordinary browser component,
+including its settings, permissions, downloads and annotations.
+
+**Canvas** and **Tiling** are independent environments with separate panels and
+arrangements. Canvas lets you move, resize and overlap DockPipe panels; it never
+captures desktop applications. Tiling arranges its own panels into draggable splits
+and tab groups. Drag a tab onto another panel: the edges split, and the center or
+tab strip creates a tab group. Right-click a tab or panel edge for arrangement,
+removal and full-view actions. Floating panels can overlap tiles.
+
+Dashboard panel controls use DockPipe's own circular coral close and teal
+expand/restore artwork, with visible symbols and keyboard focus indicators. The
+outer application and dialogs retain their regular window controls.
+
+The dashboard **File manager** defaults to the selected project in Canvas and the
+full filesystem, starting in Home, in Tiling. Each environment keeps its own open
+folder. Changing the selected project updates project-scoped views; full-system
+views keep their current location. The **Project · Change** button on Canvas uses
+the normal project-change flow, including unsaved-editor handling. Dashboard
+settings let you independently select **Selected project** or **Full system —
+start in Home** for each environment. Existing dashboards inherit these defaults
+when no explicit scope preference was saved.
+
+File browsing is lazy and read-only. Full-system views remain subject to normal OS
+permissions and open files in their default applications. Project-scoped views
+keep files inside the selected root and open them in DockPipe's project editor.
+**Open folder** opens the current directory in the system file manager.
+
+Each panel has close, minimize-to-dock, and expand controls on the left. Minimized
+panels keep their live sessions and return when selected in the dock.
+
+Tiling is compact by default: full-width title/tab strips, no gaps or borders, and no extra widget
+footers. Dashboard settings can increase spacing, show or hide canvas/floating
+title bars, and change the shared Canvas/Tiling background. The default matches the other canvas
+pages' grid; Plain, Dusk, Ocean, a local image and Desktop background are also available. Images are
+limited to 20 MiB and 16 megapixels and cached for painting, without a background
+refresh loop. Settings and both environments survive a restart; live widget
+instances stay open while switching environments.
+
+New dashboards offer a three-step tour covering the independent workspaces,
+appearance and optional Tiling-only app takeover. **Finish** applies choices;
+**Dismiss**, Escape or closing the tour leaves the dashboard unchanged. Completing
+the tour or checking **Do not show this tour again** stops automatic tours on future
+dashboard creation. Dismissing without that checkbox offers it on the next new
+dashboard, not every app launch. **Replay dashboard tour** in dashboard settings
+always remains available. Tour preferences share the existing `launcher.json` store.
+
+**Desktop background** inherits a local static wallpaper image and refreshes when
+either workspace is shown again. Lookup runs off the UI thread, without continuous polling;
+unchanged images reuse the paint cache. GNOME/Pop/Cinnamon settings and static
+Plasma configuration are supported on Linux; Windows uses its wallpaper API and
+macOS uses NSWorkspace's main-screen wallpaper. Video/dynamic backgrounds,
+unsupported formats and ambiguous per-monitor/activity settings report a reason
+and retain the current dashboard background (the grid after a fresh start). Selecting
+an image manually remains available. This never captures the desktop or changes
+system wallpaper. Native Windows/macOS wallpaper behavior still requires platform
+qualification.
+
+The dock's app-grid button opens **Apps and workflows**. Canvas lists project app
+workflows; Tiling also lists installed desktop applications. Opening an app uses
+the platform launcher or DockPipe's existing workflow launch flow. Installed apps
+reserve a Tiling panel before launch. On X11, apps with a declared window class
+(including Brave) are attached automatically when one matching new window appears.
+A single existing matching window is brought straight into Tiling without launching
+another copy. Multiple
+matches require explicit selection; unrelated windows are never selected by title.
+Discovery stops after 15 seconds or when you close the panel. Switching to Canvas
+keeps the pending launch; native attachment resumes when Tiling is shown. A
+short desktop appearance is still possible because discovery follows window mapping.
+Apps without reliable window identity and other platforms use the existing window
+picker. Wayland/macOS retain system consent and view-only sharing. Local app
+workflows still offer manual window selection; remote workflows do not create a
+local window panel. Native application icons are used
+when available, with a generic icon fallback. Running panel shortcuts activate
+only panels in the current environment.
+
+**Bring open desktop apps into Tiling when I enter it** is off by default. On
+supported X11/Windows desktops it acquires eligible windows, within the dashboard
+panel limits. These panels remain attached for the DockPipe session, including
+while Canvas or another page is shown. Closing a panel in this managed mode
+requests that its OS window close, respecting the app's save prompts and cancellation.
+Quitting DockPipe returns apps to the desktop; disabling automatic takeover releases
+automatically acquired panels. Cancelling selection or closing an app removes its tile and lets
+the remaining panels fill the space. Native window identities are never saved
+across restarts.
+Saved layouts discard old empty desktop-window placeholders. Wayland and
+macOS require their system consent pickers and do not support automatic takeover.
+None of these options changes the desktop's window manager.
+
+The dock auto-hides and overlays the workspace by default. Move to the bottom edge
+or press **Ctrl+Shift+D** to reveal it. Turn off **Automatically hide the dock**
+in dashboard settings to keep it visible below the workspace.
+
+Use **Full screen** or **F11** for the compact dashboard top bar, clock and dock.
+The **DockPipe** button opens a navigation menu without resizing the workspace. Leaving fullscreen
+restores the previous window state and sidebar preference. The dock has no
+continuous animation; the clock updates once a minute only while visible.
+
+Names, widget identities and layouts are saved atomically in `dashboards.json`
+alongside the existing launcher configuration. Browser sessions, native window
+identities and sharing grants are not saved. Reopening the app restores the
+arrangement; select external windows again. Existing shared-mode dashboards migrate
+ordinary widgets into their last selected environment, retaining widget identities.
+External windows are selected afresh in Tiling. Corrupt or conflicting settings are reported
+instead of overwritten. Limits are 12 dashboards, 16 widgets per dashboard across
+both environments, and 64 widgets overall, including temporary automatic panels.
+
+**Desktop window** is experimental. The window picker opens when adding a panel.
+There is no inline Choose or Release toolbar; right-click an empty panel to choose
+or reconnect a window. With automatic app management off, closing the panel returns
+the app to the desktop. With management enabled, it requests a normal OS window close;
+it never forcibly terminates the application. Linux X11 uses the same native window support as Cockpit,
+now shared by the desktop UI library. External native surfaces can have
+platform-specific stacking behavior when panels overlap. Windows uses a Win32
+foreign-window backend and only accepts compatible windows from the same user
+and session; elevated, unresponsive and incompatible-DPI windows are excluded.
+The Windows backend requires Windows build and native testing before qualification.
+
+Wayland uses the desktop's consent dialog to select one **window**, with a
+view-only preview. It does not embed or control native Wayland apps. Leaving Tiling,
+cancel or widget removal closes the sharing session; no reusable permission
+token is saved. The optional build needs Qt DBus; the running desktop needs its
+ScreenCast portal, PipeWire, `gst-launch-1.0`, and the GStreamer PipeWire,
+video-conversion/scaling/rate, JPEG and file-descriptor sink plugins. Missing
+dependencies or denied sharing are shown in the widget. Preview output is capped
+at 1280 × 720 and 15 frames per second. Bazzite requires a native desktop test;
+Linux X11 or mock-portal tests do not establish that qualification.
+
+macOS 14 and later uses **ScreenCaptureKit** and Apple's system content-sharing
+picker for a single-window, view-only preview. Grant the requested window through
+that picker; this implementation does not request Accessibility access or inject
+input. Use the original app for interaction. One macOS window share is supported
+at a time. Frames are capped at 1280 × 720 and 15 fps. Older OS/SDK builds report
+that sharing is unavailable. The macOS backend still needs a native build and
+tests of grant, cancel, revocation, layout changes and release on a Mac.
+
+Hidden panels preserve their sharing grant. After a short debounce, Wayland's
+owned capture helper suspends and resumes when shown; macOS capture throttles to
+1 fps without copying hidden frames. Native window monitoring also pauses while
+hidden, including inactive tabs, Canvas, and other pages. Switching away keeps
+apps attached and out of the desktop; returning shows the same Tiling panels.
+Removing a panel, deleting its dashboard, disabling automatic acquisition for an
+automatically acquired app, or quitting DockPipe releases it. Hidden apps do not
+retain keyboard focus over Canvas. Removal stops capture asynchronously without
+waiting on the UI thread. Wayland/macOS sharing remains view-only and does not
+hide the original desktop window.
+
+Performance regressions cover 1, 8 and 16 retained widgets, shared polling,
+unchanged large log tails, process cancellation, and a real local browser page
+with seven additional compact widgets. `dashboard-performance-test` checks
+layout response; `dashboard-page-test` checks independent environments and bounded
+switching with retained panels; `dashboard-browser-performance-test` reports native event-loop
+response, parent-process idle CPU/RSS, retained renderer/DOM/input, and bounded
+object/process growth. Their gates are p95 below 100 ms, maximum below 500 ms,
+and less than 32 MiB of warmed parent RSS growth across 50 browser mode-switch
+pairs. These are UI-response and retention checks, not GPU frame-rate or
+cross-platform performance certification.
+
+For Windows qualification, build `desktop-app-window-win-test` and run
+`ctest -R desktop-app-window-win --output-on-failure` from the configured build
+directory in an interactive desktop session. The test creates its own disposable
+window and checks embedding, mode changes and restoration. For Linux X11, build
+`desktop-window-widget-test` and `desktop-app-window-test`, then run
+`desktop-window-widget-test --native` in the graphical session. Native fixtures
+must never select an unrelated user's window. The Wayland mock-portal tests
+exercise cancellation and session cleanup without opening a real sharing dialog.
+
+Optional DorkPipe chat input and output widgets remain future package
+contributions, with separate arrangeable panels. Dashboard use does not require
+DorkPipe or enable AI access to browser pages or external windows.
 
 ## Package remotes
 
@@ -55,6 +355,10 @@ networking, integrity checks, and installation to `dockpipe package`; see the
 
 ## Build
 
+Single-configuration builds default to optimized `Release` when no build type is
+selected. Use `-DCMAKE_BUILD_TYPE=Debug` explicitly when debugging; unoptimized
+builds are not representative of interactive rendering performance.
+
 Development builds show `dev+<12-character-commit>` and append `.dirty` for uncommitted
 changes. The identity is captured at build time, refreshed during incremental builds,
 and shown by `--version`, Help → About, and the development window title. Git-free
@@ -72,7 +376,8 @@ development display identity.
 
 ```bash
 cd ~/source/dockpipe
-sudo apt install cmake build-essential qt6-base-dev libqt6opengl6-dev
+sudo apt install cmake build-essential qt6-base-dev libqt6opengl6-dev \
+  qt6-webengine-dev qt6-webengine-dev-tools libqt6webenginecore6-bin
 cmake -S src/app/tooling/dockpipe-launcher -B src/app/tooling/dockpipe-launcher/build
 cmake --build src/app/tooling/dockpipe-launcher/build
 ./src/app/tooling/dockpipe-launcher/build/dockpipe-launcher
@@ -318,8 +623,8 @@ review is rejected; refresh after failures or cancellation to reconcile state.
 This initial surface excludes branch management and merge-conflict editing.
 
 Git actions use the generic runtime-owned `dockpipe git --request` adapter. They
-have a two-minute deadline, cancellation, an 8 MiB review/output budget and a
-2048 changed-file limit. They do not grant managed agents arbitrary Git authority.
+have a two-minute deadline, cancellation, an 8 MiB per-command output budget, a
+256 MiB streamed content-hashing budget and a 2048 changed-file limit. They do not grant managed agents arbitrary Git authority.
 For a real CLI/UI integration test in a disposable repository, set
 `DOCKPIPE_GIT_TEST_CLI` to the newly built CLI and run `ctest -R project-git` in the
 launcher build directory. Without that variable the Git integration test is skipped.
@@ -652,6 +957,11 @@ at the available panel resolution; HD billboard previews are only for navigation
 
 ### Cockpit workspace (experimental)
 
+The **Git** planet provides local Working Changes review with opposing code walls,
+focused selectable diffs, staged/unstaged comparisons, review progress and index
+actions. See the [Git Planet guide](../../../../packages/cockpit/docs/git-review.md)
+for controls, bounds and the current PR-provider limitation.
+
 **Settings → Cockpit mode → Enable Cockpit mode** unlocks this optional bonus
 workspace. It is **off by default**, including for existing installations. While
 off, Cockpit is hidden from the sidebar and View menu, the Files graph's flight
@@ -732,7 +1042,9 @@ piloting. Positions are remembered locally and clamped to the windshield on
 resize; **Reset HUD layout** recovers the default arrangement. App interaction
 still uses a front-facing native surface rather than perspective-warped input.
 
-Enable **Settings → Cockpit mode → Enable local voice commands** to use
+Voice commands are experimental and off by default, including when an older
+installation had voice enabled. Opt in under **Settings → Cockpit mode →
+Experimental → Enable local voice commands** to use
 **Hold to talk · Local**. It records only while pressed, for at most eight seconds.
 Recognition runs in an isolated helper with a 15-second cancellation deadline;
 no audio is written to disk or sent over the network. Native Linux currently uses
@@ -747,8 +1059,17 @@ Voice navigates and opens controls; it cannot execute arbitrary commands.
 
 **Settings → Cockpit mode → Enable controller** loads the optional SDL2 runtime and uses its normalized game
 controller mappings: left stick movement, right stick look, triggers altitude,
-A open, B back, Start fullscreen, left shoulder boost and right shoulder
-push-to-talk. A deadzone prevents drift. Input is released on focus loss,
+A interact and B back. **Start / F1** opens the shared command menu: navigation,
+item spawning, room editing, preview scrolling, flight modes and fullscreen.
+D-pad / left stick or arrow keys choose; A / Enter selects; B / Esc goes back.
+The selected item's description explains its action. HUD and furnishing hints
+switch with the most recent keyboard/mouse or controller input. Controller input
+cannot move or roll the craft while the menu is open; sticks must return to neutral
+after closing. **View / P** pauses/resumes preview scrolling outside furnishing;
+View finishes furnishing while that mode is active. In Explorer, LB boosts and RB
+is push-to-talk. In Pilot, LB/RB roll, L3 boosts and R3 is push-to-talk. Y / F switches
+modes; fullscreen remains available in the menu and through F11.
+A deadzone prevents drift. Input is released on focus loss,
 disconnection and leaving the cockpit. A physical controller is required to
 qualify device behavior; keyboard/axis fixture coverage alone is not that proof.
 
@@ -761,11 +1082,14 @@ remaining catalog entries. No hidden world or app-capture cache is retained.
 Selected files and open apps project a camera-facing hologram above their roof.
 The sprite stays upright while its anchor follows the building through the 3D
 view. File previews use the same syntax-highlighting definitions as the editor,
-read at most 8 KiB / 18 lines through a cancellable 2.5-second helper, and label
+read at most 8 KiB / 128 lines through a cancellable 2.5-second helper, and label
 excerpts. Binary/non-UTF-8 files show an explanation. Links and Git metadata stay
 excluded; previewing never executes a file. Select the file again to open the
-normal editor. One 768 × 432 file preview is retained; switching worlds or hiding
-flight clears it. App holograms reuse the existing opt-in, reduced-rate capture.
+normal editor. Overflowing text pauses for three seconds, scrolls at 10 pixels
+per second, pauses at the bottom, then loops; short text stays still. One 768 × 432
+file preview and a bounded 736 × 4096 text raster are retained. Animation crops
+cached pixels instead of re-highlighting text. Switching worlds or hiding flight
+clears both. App holograms reuse the existing opt-in, reduced-rate capture.
 
 The flight deck has a structural canopy, angled physical instrument displays,
 and a destination console. Its radar plots the current world; heading, pitch,
@@ -829,7 +1153,8 @@ Rooms use WASD to walk, right-drag to look, Shift to move faster, E to interact,
 and Escape or Back to return outside. The controller uses the existing left/right
 sticks, boost, A and B mappings; altitude input is ignored while walking. Rooms
 have a fixed eye height, wall collision and a marked exit behind the arrival point.
-**Settings → Cockpit mode → Show spaceship** is optional; interiors always use first person.
+**Settings → Cockpit mode → Show spaceship** is optional; saved workspace interiors use first person.
+Spatial Web can also use its flight and driving controls.
 The existing local voice helper also accepts “open workspace” and “next workspace”.
 
 In edit mode, select a building and **Add display**. Choose a running window or an
@@ -882,3 +1207,118 @@ checks. `DOCKPIPE_SPATIAL_SCREENSHOT` saves only fixture screenshots. Physical
 controller/microphone behavior and compatibility with each real application still
 need device/application-specific testing. GPU memory is reported only when the
 host exposes a per-process allocation; unavailable measurements are not zero.
+
+
+### Spatial web preview inside Cockpit mode
+
+Enable **Settings → Cockpit mode** and enter **Cockpit → Web**. The start screen
+has an **Explore GitHub repositories** button and a real prefilled address; press
+**Go** to use that address, or replace it with any HTTP or HTTPS address.
+Web occupies the main cockpit view; **Back to cockpit** restores flight.
+Dockpipe loads the actual website and its JavaScript in Qt WebEngine behind the
+opaque start screen or current world. Navigation automatically builds the next
+walkable room of up to twelve destinations. Geometry and signs appear first;
+image sprites arrive individually without resetting your position. **Build space**
+refreshes the interpretation. WASD moves and right-drag looks. Approach a destination
+while facing its entrance, or select its display with a click / E, to follow its
+link in the same browser. Walking past a destination does not open it. The current world
+stays visible during loading, then a short phase effect reveals the next world.
+Browser back/forward navigate real history.
+**Live page** returns to the original interactive page for forms, authentication,
+provider controls and content the spatial projection cannot represent.
+
+The projection separates content meaning from construction. A hub/collection/
+destination graph feeds a bounded planner using reusable parts, transforms,
+materials, interaction anchors and traversal connections. The layout selector can
+rebuild the same content as branching paths, a loop, a promenade or a layered
+flight network without reloading the page. Page evidence supplies independent
+starting style parameters. Products use image sprites and prices on fixtures;
+they are not reconstructed as detailed 3D models.
+
+Vehicle listings with structured Vehicle/Car markup or model-specific automotive
+links become physical cars. Walk up to a car, aim at its body and press **E** (or
+controller **A**) to enter. **W/S** accelerates/reverses, **A/D** steers, **Space**
+brakes, and right-drag looks independently. **E**, **Esc** or controller **B** exits
+at a clear spot beside the car; the vehicle stays parked where you left it.
+Its separate sign still opens the original listing. Showrooms start on foot;
+selecting **Drive** enters a nearby car. Leaving Web pauses movement.
+
+These are explicitly **approximate procedural models**, with pickup, SUV, coupe,
+sedan and van proportions inferred from the listing. Model names and years come
+from page content; a year does not imply exact factory geometry. This slice does
+not import manufacturer GLB/glTF files or reconstruct meshes from photographs.
+The ground layouts retain the vehicles; the elevated flight layout presents their
+listing surfaces instead. There is no suspension, terrain following or crash simulation.
+
+The cinema retains a specialized shared-screen layout. Selecting a video poster
+plays the real browser video on its central screen without leaving the theatre.
+**Play / pause** and **Stop film** control that stream. Playback depends on the
+site's consent/login requirements and the installed browser's codec/DRM support.
+**Live page** remains available for provider controls.
+
+Construction validates resource limits, content bindings, interaction visibility
+and connected unobstructed routes before publishing. A simpler validated layout
+is used if a proposal fails. Geometry is cached once; no cloud model, generation
+or asset downloads run during movement. The 420 ms phase effect preserves the
+current world while loading. Empty or failed destinations preserve that world.
+See [construction architecture and current limits](../../../../packages/cockpit/docs/spatial-world-construction.md).
+
+The browser is created only on entering Web. **Live page** uses the same tabbed
+browser component as the top-level Browser, including annotations, downloads,
+extensions and page tools. Its isolated temporary profile imports no existing
+browser cookies, and disabling Cockpit mode destroys the session. Switching tabs
+preserves the current world and camera; **Build space** projects the selected
+HTTP(S) page. Extension pages are not spatial content. Inactive tabs are muted
+and suspended. Background loading is muted; the browser freezes once image sprites
+finish arriving. **Live page**, navigation and rebuilding reactivate it. Only an
+explicit **Live page** action reveals the website. Leaving the Web view also
+cancels conversion and stops loads. Returning to an existing world keeps its
+browser frozen. Spatial extraction
+uses an isolated JavaScript world, walks at most 5,000 elements, returns at most
+96 KiB of metadata and retains twelve shared 512 × 320 textures (7.5 MiB).
+Each world has at most 96 primitive solids (up to 768 faces), twelve textured
+surfaces and 512 vertices / 256 faces of additional polygon geometry.
+Vehicle scenes add at most twelve cached models with 224 faces each. Only a moving
+vehicle updates its transform; the rest stays cached. Collision tests the complete
+rotated footprint against solids, room bounds and other vehicles, with movement
+steps no longer than 15 units or 0.03 radians.
+World geometry is cached once; frames project/cull/sort it only while the view
+needs painting. Static worlds have no idle animation or recurring capture. Explicit video
+playback samples one 512 × 288 stream at up to twelve captures per second.
+Conversion has
+a 15-second deadline; navigation, hiding and teardown invalidate pending callbacks.
+Spatial projection accepts only HTTP(S) destinations without embedded credentials.
+Live page shares the ordinary browser's downloads, user-initiated tabs and saved
+site permission policies. Ask prompts are confined to its selected visible page;
+background spatial content cannot request an interactive permission decision.
+Unsupported permissions are denied. Browser TLS validation and Chromium sandboxing
+retain their defaults.
+
+Build the optional [Cockpit package](../../../../packages/cockpit/README.md) with
+`DOCKPIPE_SPATIAL_WEB=ON` for the spatial view. The normal launcher includes Qt
+WebEngine for its top-level Browser but does not include spatial extraction or
+world rendering. Use an up-to-date Qt WebEngine distribution for release builds; this
+local host's Qt 6.2 browser does not establish modern-site or production security
+qualification. Cross-platform browser packaging and codec/DRM coverage remain
+unqualified. The native fixture is `cockpit-test --spatial-web`; the pure model
+checks run as `cockpit-test --spatial-web-model`. Vehicle geometry and movement
+checks run as `cockpit-test --spatial-vehicles`; set `DOCKPIPE_WEB_TEST_VEHICLES=1`
+for the native browser vehicle fixture, optionally with `DOCKPIPE_WEB_LIVE_URL`.
+
+### Optional Cockpit package
+
+Cockpit implementation, spatial browser resources, voice helper and feature tests now live
+in `packages/cockpit`. Settings installs the resolver package on first enable using
+the configured HTTPS catalog and the CLI's checksum-verified package installer.
+The switch is not saved as enabled until loading succeeds; failed downloads leave
+it off with a retry action. Cancel stops the in-flight package operation. The
+normal launcher has no link dependency on the spatial renderer. Ordinary browsing
+uses its built-in shared browser runtime and Qt WebEngine. Shared file
+editing remains in the small `dockpipe-launcher-ui` library shipped with desktop.
+See the package README for native bundle compatibility and development builds.
+
+With **Bring open desktop apps into Tiling** enabled, a desktop panel's close
+button sends the OS window a normal close request. Unsaved-work prompts and
+cancelled requests keep the panel alive. With management off, closing the panel
+only releases the window. Disabling management or quitting DockPipe releases
+apps without requesting that they close.

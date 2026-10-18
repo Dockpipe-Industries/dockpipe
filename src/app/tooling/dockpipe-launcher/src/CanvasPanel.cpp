@@ -7,8 +7,8 @@
 #include <QPainter>
 #include <QSettings>
 
-CanvasPanel::CanvasPanel(const QString &identity, QWidget *parent)
-    : QFrame(parent), m_settingsKey("workflowStudio/panels/" + identity)
+CanvasPanel::CanvasPanel(const QString &identity, QWidget *parent, bool persistent)
+    : QFrame(parent), m_persistent(persistent), m_settingsKey("workflowStudio/panels/" + identity)
 {
     setProperty("canvasOverlay", true);
     setProperty("canvasWindow", true);
@@ -18,7 +18,7 @@ CanvasPanel::CanvasPanel(const QString &identity, QWidget *parent)
     shadow->setOffset(0, 6);
     shadow->setColor(QColor(0, 0, 0, 65));
     setGraphicsEffect(shadow);
-    const QRect stored = QSettings().value(m_settingsKey).toRect();
+    const QRect stored = m_persistent ? QSettings().value(m_settingsKey).toRect() : QRect();
     if (stored.isValid()) {
         m_preferredGeometry = stored;
         m_customPlacement = true;
@@ -61,7 +61,8 @@ void CanvasPanel::resetPlacement()
 {
     finishInteraction();
     m_customPlacement = false;
-    QSettings().remove(m_settingsKey);
+    if (m_persistent)
+        QSettings().remove(m_settingsKey);
 }
 
 void CanvasPanel::finishInteraction()
@@ -75,19 +76,22 @@ void CanvasPanel::finishInteraction()
     if (m_handle)
         m_handle->setCursor(Qt::OpenHandCursor);
     m_preferredGeometry = geometry();
-    QSettings().setValue(m_settingsKey, m_preferredGeometry);
+    if (m_persistent)
+        QSettings().setValue(m_settingsKey, m_preferredGeometry);
+    emit placementChanged();
 }
 
 bool CanvasPanel::eventFilter(QObject *object, QEvent *event)
 {
     auto *target = qobject_cast<QWidget *>(object);
-    if (!target || !isVisible())
+    if (!target || !isVisible() || !m_interactionEnabled)
         return QFrame::eventFilter(object, event);
     if (event->type() == QEvent::WindowDeactivate && (m_dragging || m_resizeEdges))
         finishInteraction();
     const bool inside = target == this || isAncestorOf(target);
     if (event->type() == QEvent::MouseButtonPress && inside) {
         raise();
+        emit activated();
         auto *mouse = static_cast<QMouseEvent *>(event);
         if (mouse->button() != Qt::LeftButton)
             return false;
@@ -159,6 +163,8 @@ bool CanvasPanel::eventFilter(QObject *object, QEvent *event)
 void CanvasPanel::paintEvent(QPaintEvent *event)
 {
     QFrame::paintEvent(event);
+    if (!m_interactionEnabled)
+        return;
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setPen(QPen(palette().color(QPalette::PlaceholderText), 1));
@@ -170,4 +176,13 @@ void CanvasPanel::hideEvent(QHideEvent *event)
 {
     finishInteraction();
     QFrame::hideEvent(event);
+}
+
+void CanvasPanel::setInteractionEnabled(bool enabled)
+{
+    finishInteraction();
+    m_interactionEnabled = enabled;
+    if (m_handle)
+        m_handle->setCursor(enabled ? Qt::OpenHandCursor : Qt::ArrowCursor);
+    update();
 }

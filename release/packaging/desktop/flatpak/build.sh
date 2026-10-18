@@ -53,6 +53,7 @@ flatpak build --filesystem="$source_dir:ro" --filesystem="$out" "$app" \
 flatpak build --filesystem="$out" --env=QT_QPA_PLATFORM=offscreen "$app" \
   ctest --test-dir "$out/qt-build" --output-on-failure
 install -m755 "$out/qt-build/dockpipe-launcher" "$app/files/libexec/dockpipe/dockpipe-launcher"
+cp -a "$out/qt-build"/libdockpipe-launcher-ui.so* "$app/files/libexec/dockpipe/"
 install -m644 "$out/qt-build/dockpipe-syntax.rcc" "$app/files/libexec/dockpipe/dockpipe-syntax.rcc"
 cp -R "$out/qt-build/syntax-licenses" "$app/files/libexec/dockpipe/"
 mkdir -p "$app/files/share/applications" "$app/files/share/icons/hicolor/256x256/apps" \

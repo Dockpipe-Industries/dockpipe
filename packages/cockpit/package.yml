@@ -1,0 +1,19 @@
+schema: 1
+kind: package
+name: cockpit
+version: 0.1.0
+title: Cockpit spatial workspace
+author: Dockpipe
+license: Apache-2.0
+repository: https://github.com/Dockpipe-Industries/dockpipe
+platforms: [deb]
+description: Optional spatial workspace, filesystem flight, rooms, app control and spatial web. Loaded by the desktop launcher only when enabled.
+tags: [desktop, spatial, browser]
+includes_resolvers: [cockpit]
+script_contract:
+  inject: [workdir, package_root, assets_dir, dockpipe_bin]
+build:
+  source:
+    script: assets/scripts/build.sh
+test:
+  script: tests/run.sh

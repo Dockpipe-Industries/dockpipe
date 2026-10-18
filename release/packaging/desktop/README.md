@@ -4,6 +4,12 @@ Desktop means **launcher plus CLI**. Headless servers and CI continue to use the
 CLI packages. See [the installation guide](../../../docs/install.md) for user
 choices.
 
+The desktop includes the top-level Browser and Qt WebEngine independently of the
+optional Cockpit package. Native DEBs resolve the Qt libraries through
+`dpkg-shlibdeps` and explicitly depend on the renderer helper package;
+macOS/Windows deployment tools bundle the matching helper, resources and locales.
+Flatpak uses the WebEngine runtime supplied by its matching KDE Platform.
+
 | Target | Desktop artifact | Contents |
 | --- | --- | --- |
 | macOS arm64 / amd64 | `dockpipe-desktop_VERSION_darwin_ARCH.dmg` | Apple Installer package: `/Applications/DockPipe.app` plus `/usr/local/bin/dockpipe` symlink |
@@ -24,13 +30,18 @@ then checks its sibling CLI before falling back to PATH.
 First run `bash release/packaging/build-platform.sh VERSION` on the target host.
 On Linux, run `bash release/packaging/desktop/build-linux.sh VERSION release/artifacts`.
 It requires Docker and builds natively in Ubuntu 22.04 with distribution Qt 6.2,
-CMake, OpenGL development files and Debian packaging tools. This fixes the minimum
+CMake, OpenGL and WebEngine development files, the WebEngine renderer helper and
+Debian packaging tools. This fixes the minimum
 ABI independently of the CI runner image; do not build release DEBs against newer
 host Qt libraries. `dpkg-shlibdeps` still derives the actual runtime dependencies.
 On macOS, run `bash release/packaging/desktop/build-unix.sh VERSION release/artifacts`
-with CMake and Qt 6.8.3, with deployment target macOS 13.
+with CMake and Qt 6.8.3 including WebEngine, WebChannel and Positioning modules,
+with deployment target macOS 13.
 Windows uses `build-windows.ps1` with Visual
-Studio 2022, Qt 6.8.3 and `windeployqt`, then the existing WiX MSI builder.
+Studio 2022, the same Qt modules and `windeployqt`, then the existing WiX MSI builder.
+The native deployment scripts reject missing WebEngine helper/resources/locales.
+macOS signs the renderer with Qt's supplied entitlements and preserves them when
+signing the enclosing app, following [Qt's WebEngine deployment guide](https://doc.qt.io/qt-6.8/qtwebengine-deploying.html).
 
 `smoke.py` runs the installed launcher's `--check-installation` diagnostic outside
 the checkout, with isolated user directories and no injected CLI override. It

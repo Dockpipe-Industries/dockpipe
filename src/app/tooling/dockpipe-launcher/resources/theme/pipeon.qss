@@ -603,6 +603,7 @@ QPushButton#canvasCloseProperties { min-width: 0; min-height: 0; padding: 0; fon
 
 /* Canvas controls use one density, icon scale, and focus treatment. */
 QFrame[canvasOverlay="true"] { border-radius: 12px; }
+QFrame[canvasWindow="true"][canvasPanelTransparent="true"] { background: transparent; }
 QFrame#canvasDocumentControls QPushButton,
 QFrame#canvasRunControls QPushButton,
 QFrame#workflowCanvasBar QPushButton {
@@ -639,6 +640,11 @@ QToolButton#windowControl, QToolButton#windowClose {
 QToolButton#windowControl:focus, QToolButton#windowClose:focus { border: 1px solid #64adce; }
 QToolButton#windowClose:hover { background: #c74550; }
 QToolButton#windowClose:pressed { background: #a83340; }
+QToolButton[roundWindowControl="true"] {
+    border: none;
+    padding: 0;
+    background: transparent;
+}
 QDialog QPushButton { padding: 8px 16px; min-height: 20px; border-radius: 8px; }
 QDialogButtonBox { dialogbuttonbox-buttons-have-icons: 0; }
 QDialog QDialogButtonBox { margin-top: 8px; }
@@ -655,3 +661,30 @@ QScrollBar::up-arrow, QScrollBar::down-arrow,
 QScrollBar::left-arrow, QScrollBar::right-arrow { width: 0; height: 0; background: none; }
 QScrollBar::handle:vertical { min-height: 32px; min-width: 0; border-radius: 3px; }
 QScrollBar::handle:horizontal { min-width: 32px; min-height: 0; border-radius: 3px; }
+
+/* Dashboard tiles have one compact tab strip and edge-to-edge content. */
+QTabWidget#dashboardTabGroup::pane {
+    border: 0;
+    border-radius: 0;
+    top: 0;
+}
+QTabBar#dashboardTabBar::tab {
+    padding: 3px 7px;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    min-height: 24px;
+}
+QTabBar#dashboardTabBar::close-button {
+    width: 14px;
+    height: 14px;
+    margin: 0 2px;
+}
+QFrame[canvasWindow="true"][dashboardTile="true"] {
+    border: 0;
+    border-radius: 0;
+}
+QSplitter#dashboardSplit[dashboardCompact="true"]::handle:horizontal { width: 0px; background: transparent; }
+QSplitter#dashboardSplit[dashboardCompact="true"]::handle:vertical { height: 0px; background: transparent; }
+QSplitter#dashboardSplit[dashboardCompact="false"]::handle:horizontal { width: 7px; }
+QSplitter#dashboardSplit[dashboardCompact="false"]::handle:vertical { height: 7px; }

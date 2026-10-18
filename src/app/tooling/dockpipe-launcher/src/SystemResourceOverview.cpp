@@ -27,11 +27,11 @@ bool measured(const QJsonObject &object, const QString &key)
 }
 }
 
-SystemResourceOverview::SystemResourceOverview(QWidget *parent) : QWidget(parent)
+SystemResourceOverview::SystemResourceOverview(QWidget *parent, bool compact) : QWidget(parent), m_compact(compact)
 {
     setObjectName("systemResourceOverview");
     auto *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(20, 0, 20, 0);
+    layout->setContentsMargins(compact ? 0 : 20, 0, compact ? 0 : 20, 0);
     auto *grid = new QGridLayout;
     const QStringList titles{tr("CPU"), tr("Memory"), tr("Swap"), tr("Disk · /"), tr("Network"), tr("Uptime & load")};
     for (int index = 0; index < titles.size(); ++index) {
@@ -50,7 +50,7 @@ SystemResourceOverview::SystemResourceOverview(QWidget *parent) : QWidget(parent
         m_values[index]->setTextFormat(Qt::PlainText);
         m_values[index]->setWordWrap(true);
         auto valueFont = m_values[index]->font();
-        valueFont.setPointSize(13);
+        valueFont.setPointSize(compact ? 11 : 13);
         m_values[index]->setFont(valueFont);
         cardLayout->addWidget(m_values[index]);
         if (index < 4) {
@@ -60,7 +60,8 @@ SystemResourceOverview::SystemResourceOverview(QWidget *parent) : QWidget(parent
             m_bars[index]->setMaximumHeight(8);
             cardLayout->addWidget(m_bars[index]);
         }
-        grid->addWidget(card, index / 3, index % 3);
+        const int columns = compact ? 2 : 3;
+        grid->addWidget(card, index / columns, index % columns);
     }
     m_values[3]->setToolTip(tr("Capacity of the root filesystem visible to this collector. Includes reserved space in used capacity."));
     m_values[4]->setToolTip(tr("Sum of non-loopback interfaces. Bridges, VPNs and virtual interfaces may count the same traffic more than once."));
@@ -68,6 +69,7 @@ SystemResourceOverview::SystemResourceOverview(QWidget *parent) : QWidget(parent
     m_chart = new ExecutionMetricChart;
     m_chart->setCaption(tr("System CPU · all cores = 100% · last 60 samples"));
     layout->addWidget(m_chart);
+    m_chart->setVisible(!compact);
     clear();
 }
 
@@ -112,7 +114,7 @@ void SystemResourceOverview::applySnapshot(const QJsonObject &snapshot)
     else if (measured(resources, "cpu_total"))
         cpuText = tr("Waiting for measurements");
     m_values[0]->setText(cpuText);
-    m_chart->setVisible(measured(resources, "cpu_total"));
+    m_chart->setVisible(!m_compact && measured(resources, "cpu_total"));
     m_bars[0]->setEnabled(cpu.has_value());
     m_bars[0]->setValue(cpu ? qRound(*cpu) : 0);
     m_chart->append(cpu);

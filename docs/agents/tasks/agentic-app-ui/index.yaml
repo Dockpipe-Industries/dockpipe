@@ -15,10 +15,14 @@ routes:
     read: [overview.md, direction-review.md]
   product_and_ux:
     read: [overview.md, product-ux.md]
+  browser_integration:
+    read: [overview.md, browser-integration.md]
   delivery_and_open_work:
     read: [overview.md, delivery.md, direction-review.md]
 
 documents:
+  - path: browser-integration.md
+    role: deferred optional browser assistance, shared contribution gaps and authorization boundaries
   - path: direction-review.md
     role: pre-implementation direction audit, conflicts and user review decisions
   - path: overview.md
