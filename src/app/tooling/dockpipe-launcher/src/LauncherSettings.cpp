@@ -6,7 +6,41 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonParseError>
+#include <QLockFile>
 #include <QSaveFile>
+
+namespace {
+// Launcher preferences are small structured configuration, not an artifact
+// store. Allow ample room for bounded browser permissions and existing roots.
+constexpr qint64 maximumSettingsBytes = 4 * 1024 * 1024;
+
+bool readSettingsObject(QJsonObject &settings)
+{
+    QFile file(LauncherSettings::filePath());
+    if (!file.exists())
+        return true;
+    if (!file.open(QIODevice::ReadOnly) || file.size() > maximumSettingsBytes)
+        return false;
+    QJsonParseError error;
+    const QJsonDocument document = QJsonDocument::fromJson(file.read(maximumSettingsBytes + 1), &error);
+    if (error.error != QJsonParseError::NoError || !document.isObject())
+        return false;
+    settings = document.object();
+    return true;
+}
+
+bool writeSettingsObject(const QJsonObject &settings)
+{
+    const QByteArray bytes = QJsonDocument(settings).toJson(QJsonDocument::Indented);
+    if (bytes.size() > maximumSettingsBytes)
+        return false;
+    QSaveFile file(LauncherSettings::filePath());
+    if (!file.open(QIODevice::WriteOnly))
+        return false;
+    return file.write(bytes) == bytes.size() && file.commit();
+}
+}
 
 QString LauncherSettings::filePath()
 {
@@ -24,6 +58,7 @@ bool LauncherSettings::load()
     packageRemotes = {QStringLiteral("https://packages.dockpipe.com")};
     thirdPartyDisclaimerDismissed = false;
     sidebarVisible = true;
+    defaultDashboardVisible = true;
     cockpit = {};
     recentProjectFolders.clear();
 
@@ -41,9 +76,12 @@ bool LauncherSettings::load()
     cockpit.orbitalMotion = cockpitObject.value("orbitalMotion").toBool(true);
     cockpit.controller = cockpitObject.value("controller").toBool(false);
     cockpit.showShip = cockpitObject.value("showShip").toBool(true);
-    cockpit.voiceCommands = cockpitObject.value("voiceCommands").toBool(false);
+    // Voice requires a fresh opt-in after moving behind the experimental gate.
+    // The former top-level preference must not silently enable the experiment.
+    cockpit.voiceCommands = cockpitObject.value("experimental").toObject().value("voiceCommands").toBool(false);
     cockpit.hardwareAcceleration = cockpitObject.value("hardwareAcceleration").toBool(true);
     sidebarVisible = o.value(QStringLiteral("sidebarVisible")).toBool(true);
+    defaultDashboardVisible = o.value(QStringLiteral("defaultDashboardVisible")).toBool(true);
     const QString um = o.value(QStringLiteral("uiMode")).toString();
     if (um == QStringLiteral("basic") || um == QStringLiteral("advanced"))
         uiMode = um;
@@ -101,13 +139,19 @@ void LauncherSettings::addRecentProject(const QString &path)
 
 bool LauncherSettings::save() const
 {
+    QLockFile lock(filePath() + QStringLiteral(".lock"));
+    if (!lock.tryLock())
+        return false;
     QJsonObject o;
+    if (!readSettingsObject(o))
+        return false;
     o.insert(QStringLiteral("version"), 1);
     o.insert("cockpit", QJsonObject{{"enabled", cockpit.enabled}, {"appControl", cockpit.appControl},
         {"orbitalMotion", cockpit.orbitalMotion}, {"controller", cockpit.controller},
-        {"showShip", cockpit.showShip}, {"voiceCommands", cockpit.voiceCommands},
+        {"showShip", cockpit.showShip}, {"experimental", QJsonObject{{"voiceCommands", cockpit.voiceCommands}}},
         {"hardwareAcceleration", cockpit.hardwareAcceleration}});
     o.insert(QStringLiteral("sidebarVisible"), sidebarVisible);
+    o.insert(QStringLiteral("defaultDashboardVisible"), defaultDashboardVisible);
     o.insert(QStringLiteral("uiMode"), uiMode);
     o.insert(QStringLiteral("basicView"), basicView);
     o.insert(QStringLiteral("projectFolder"), projectFolder);
@@ -133,11 +177,61 @@ bool LauncherSettings::save() const
         o.insert(QStringLiteral("recentProjectFolders"), a);
     }
 
-    QSaveFile f(filePath());
-    if (!f.open(QIODevice::WriteOnly))
+    return writeSettingsObject(o);
+}
+
+bool LauncherSettings::loadBrowserSettings(QJsonObject &settings)
+{
+    QJsonObject root;
+    if (!readSettingsObject(root))
         return false;
-    const auto bytes = QJsonDocument(o).toJson(QJsonDocument::Indented);
-    return f.write(bytes) == bytes.size() && f.commit();
+    const QJsonValue browser = root.value(QStringLiteral("browser"));
+    if (!browser.isUndefined() && !browser.isObject())
+        return false;
+    settings = browser.toObject();
+    return true;
+}
+
+bool LauncherSettings::saveBrowserSettings(const QJsonObject &settings)
+{
+    QLockFile lock(filePath() + QStringLiteral(".lock"));
+    if (!lock.tryLock())
+        return false;
+    QJsonObject root;
+    if (!readSettingsObject(root))
+        return false;
+    const QJsonValue previous = root.value(QStringLiteral("browser"));
+    if (!previous.isUndefined() && !previous.isObject())
+        return false;
+    root.insert(QStringLiteral("browser"), settings);
+    return writeSettingsObject(root);
+}
+
+bool LauncherSettings::loadTerminalSettings(QJsonObject &settings)
+{
+    QJsonObject root;
+    if (!readSettingsObject(root))
+        return false;
+    const QJsonValue terminal = root.value(QStringLiteral("terminal"));
+    if (!terminal.isUndefined() && !terminal.isObject())
+        return false;
+    settings = terminal.toObject();
+    return true;
+}
+
+bool LauncherSettings::saveTerminalSettings(const QJsonObject &settings)
+{
+    QLockFile lock(filePath() + QStringLiteral(".lock"));
+    if (!lock.tryLock())
+        return false;
+    QJsonObject root;
+    if (!readSettingsObject(root))
+        return false;
+    const QJsonValue previous = root.value(QStringLiteral("terminal"));
+    if (!previous.isUndefined() && !previous.isObject())
+        return false;
+    root.insert(QStringLiteral("terminal"), settings);
+    return writeSettingsObject(root);
 }
 
 LauncherSettings LauncherSettings::current()
@@ -145,4 +239,44 @@ LauncherSettings LauncherSettings::current()
     LauncherSettings s;
     s.load();
     return s;
+}
+
+bool LauncherSettings::loadDashboardTourState(bool &completed, bool &doNotShowAgain)
+{
+    QJsonObject root;
+    if (!readSettingsObject(root))
+        return false;
+    const QJsonValue value = root.value("dashboardTour");
+    if (!value.isUndefined() && !value.isObject())
+        return false;
+    const QJsonObject state = value.toObject();
+    for (const QString &key : {QString("completed"), QString("doNotShowAgain")}) {
+        if (state.contains(key) && !state.value(key).isBool())
+            return false;
+    }
+    completed = state.value("completed").toBool();
+    doNotShowAgain = state.value("doNotShowAgain").toBool();
+    return true;
+}
+
+bool LauncherSettings::saveDashboardTourState(bool completed, bool doNotShowAgain)
+{
+    QLockFile lock(filePath() + QStringLiteral(".lock"));
+    if (!lock.tryLock())
+        return false;
+    QJsonObject root;
+    if (!readSettingsObject(root))
+        return false;
+    const QJsonValue previous = root.value("dashboardTour");
+    if (!previous.isUndefined() && !previous.isObject())
+        return false;
+    QJsonObject state = previous.toObject();
+    for (const QString &key : {QString("completed"), QString("doNotShowAgain")}) {
+        if (state.contains(key) && !state.value(key).isBool())
+            return false;
+    }
+    state.insert("completed", completed || state.value("completed").toBool());
+    state.insert("doNotShowAgain", doNotShowAgain);
+    root.insert("dashboardTour", state);
+    return writeSettingsObject(root);
 }

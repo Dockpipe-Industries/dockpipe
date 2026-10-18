@@ -1,0 +1,9 @@
+schema: 1
+kind: resolver
+name: cockpit
+version: 0.1.0
+title: Cockpit spatial workspace
+description: Optional desktop workspace with spatial browsing, filesystem flight, rooms and vehicle controls. Requires the matching Dockpipe desktop launcher and Qt ABI.
+catalog_type: integration
+categories: [desktop]
+platforms: [deb]

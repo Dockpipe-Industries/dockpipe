@@ -15,6 +15,8 @@
 #include <QTableWidget>
 #include <QTemporaryDir>
 
+#define SNAPSHOT_CHECK(value) do { if (!(value)) return 90; } while (false)
+
 int main(int argc, char **argv)
 {
     QTemporaryDir temporary;
@@ -29,6 +31,13 @@ int main(int argc, char **argv)
         app.setPalette(app.style()->standardPalette());
         app.setStyleSheet(QString::fromUtf8(base.readAll() + light.readAll()));
     }
+    ResourceCanvas exported("operationsFixture", "Fixture", "Fixture", new QLabel("Details"));
+    exported.setGraph({{"network", "network", "Network"}, {"container", "container", "Container", "", "Running", 1, ResourceStatus::Running}},
+        {{"network", "container", "attachment"}, {"missing", "container", "invalid"}});
+    SNAPSHOT_CHECK(exported.snapshot().value("nodes").toArray().size() == 2);
+    SNAPSHOT_CHECK(exported.snapshot().value("edges").toArray().size() == 1);
+    SNAPSHOT_CHECK(exported.snapshot().value("nodes").toArray()[1].toObject().value("active").toBool());
+
     ExecutionExplorer explorer;
     explorer.resize(1600, 1000);
     explorer.show();

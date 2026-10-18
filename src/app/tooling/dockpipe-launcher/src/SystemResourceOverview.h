@@ -9,11 +9,12 @@ class ExecutionMetricChart;
 
 class SystemResourceOverview : public QWidget {
 public:
-    explicit SystemResourceOverview(QWidget *parent = nullptr);
+    explicit SystemResourceOverview(QWidget *parent = nullptr, bool compact = false);
     void applySnapshot(const QJsonObject &snapshot);
     void clear();
 
 private:
+    bool m_compact = false;
     QLabel *m_values[6];
     QProgressBar *m_bars[4];
     ExecutionMetricChart *m_chart;

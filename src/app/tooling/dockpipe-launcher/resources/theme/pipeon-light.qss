@@ -9,6 +9,9 @@ QDialog { background-color: #f7f8fb; }
 QPushButton { background-color: #ffffff; border-color: #cdd4df; color: #263449; }
 QPushButton:hover { background-color: #edf2f8; border-color: #9aabbe; }
 QPushButton:pressed { background-color: #e4ebf4; }
+QPushButton#dashboardCanvasMode:checked, QPushButton#dashboardTilingMode:checked {
+    background-color: #dcefe8; border-color: #86b7a5; color: #204d40;
+}
 QPushButton:disabled { background-color: #f7f8fb; border-color: #cdd4df; color: #8993a1; }
 QWidget#studioInspector, QWidget#studioSidebar,
 QScrollArea#studioInspectorScroll, QScrollArea#studioInspectorScroll > QWidget { background: #f7f8fb; }
@@ -530,3 +533,44 @@ QLabel#gitBranch { color: #25374a; background: #f0f5fa; border: 1px solid #d7e0e
 QListWidget#gitChangedFiles { outline: none; }
 QListWidget#gitChangedFiles::item { border-radius: 6px; }
 QWidget#gitCommitPanel { background: #ffffff; border: 1px solid #d7e0e9; border-radius: 8px; }
+
+/* Fullscreen dashboard menu bar: quiet controls, clear mode selection. */
+QFrame#dashboardTopBar {
+    background: #f3f5f7;
+    border: none;
+    border-bottom: 1px solid #d9dfe5;
+    border-radius: 0;
+}
+QFrame#dashboardTopBar QPushButton {
+    background: transparent;
+    color: #23303e;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 9px;
+    min-height: 22px;
+    font-size: 13px;
+    font-weight: 500;
+}
+QFrame#dashboardTopBar QPushButton:hover { background: #e3e8ed; }
+QFrame#dashboardTopBar QPushButton:focus { border: 1px solid #6dbaa9; }
+QFrame#dashboardTopBar QPushButton#dashboardFullscreenSidebar { font-weight: 700; }
+QFrame#dashboardTopBar QLabel#dashboardTitle {
+    color: #607080; font-size: 13px; font-weight: 500; padding: 0 8px;
+}
+QFrame#dashboardTopBar QLabel#dashboardClock {
+    color: #23303e; font-size: 12px; font-weight: 500; padding: 0 10px;
+}
+QFrame#dashboardTopBar QFrame#dashboardModeSwitch {
+    background: #e0e6ec; border: none; border-radius: 8px;
+}
+QFrame#dashboardTopBar QFrame#dashboardModeSwitch QPushButton {
+    padding: 2px 13px; min-height: 20px; color: #607080;
+}
+QFrame#dashboardTopBar QFrame#dashboardModeSwitch QPushButton:checked {
+    background: #ffffff; color: #23303e; font-weight: 600;
+}
+QFrame#dashboardTopBar QPushButton#dashboardCanvasProject { color: #607080; }
+
+/* Full-width dashboard title strips share the canvas panel palette. */
+QTabBar#dashboardTabBar::tab { background: #eef2f6; color: #273544; }
+QTabBar#dashboardTabBar::tab:selected { background: #eef2f6; color: #273544; border: 0; }

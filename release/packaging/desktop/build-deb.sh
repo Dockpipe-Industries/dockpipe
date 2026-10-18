@@ -13,13 +13,16 @@ mkdir -p "$stage/root/usr/share/doc/dockpipe-desktop"
 cp "$root/LICENSE" "$stage/root/usr/share/doc/dockpipe-desktop/copyright"
 install -m 755 "$launcher" "$stage/root/usr/bin/dockpipe-launcher"
 syntax_dir="$(dirname "$launcher")"
+mkdir -p "$stage/root/usr/lib/dockpipe"
+cp -a "$syntax_dir"/libdockpipe-launcher-ui.so* "$stage/root/usr/lib/dockpipe/"
 install -D -m644 "$syntax_dir/dockpipe-syntax.rcc" "$stage/root/usr/share/dockpipe/launcher/dockpipe-syntax.rcc"
 cp -R "$syntax_dir/syntax-licenses" "$stage/root/usr/share/dockpipe/launcher/"
 cp "$root/release/packaging/desktop/dockpipe-launcher.desktop" "$stage/root/usr/share/applications/"
 cp -R "$root/src/app/tooling/dockpipe-launcher/resources/icons/hicolor" "$stage/root/usr/share/icons/"
 # Let the native distribution determine ABI constraints rather than guessing Qt names/versions.
 printf 'Source: dockpipe-desktop\nMaintainer: dockpipe maintainers\n\nPackage: dockpipe-desktop\nArchitecture: any\n' > "$stage/debian/control"
-dependencies="$(cd "$stage" && dpkg-shlibdeps -O "$stage/root/usr/bin/dockpipe-launcher")"
+printf 'libdockpipe-launcher-ui 1 dockpipe-desktop (= %s)\n' "$version" > "$stage/debian/shlibs.local"
+dependencies="$(cd "$stage" && dpkg-shlibdeps -O -xdockpipe-desktop -l"$stage/root/usr/lib/dockpipe" "$stage/root/usr/bin/dockpipe-launcher" "$stage/root/usr/lib/dockpipe/libdockpipe-launcher-ui.so.1")"
 dependencies="${dependencies#shlibs:Depends=}"
 cat > "$stage/root/DEBIAN/control" <<EOF
 Package: dockpipe-desktop
@@ -28,7 +31,7 @@ Architecture: $arch
 Maintainer: dockpipe maintainers
 Section: devel
 Priority: optional
-Depends: dockpipe (= $version), $dependencies, qt6-qpa-plugins
+Depends: dockpipe (= $version), $dependencies, qt6-qpa-plugins, libqt6webenginecore6-bin
 Description: Dockpipe desktop launcher
  Desktop launcher and application menu entry for Dockpipe workflows.
 EOF

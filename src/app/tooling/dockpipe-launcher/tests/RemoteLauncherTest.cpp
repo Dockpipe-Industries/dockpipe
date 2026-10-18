@@ -1,5 +1,14 @@
 #include "MainWindow.h"
 #include "BasicModeWidget.h"
+#include "BrowserWidget.h"
+#include "TerminalWidget.h"
+#include "TerminalHub.h"
+#include "DashboardWidgetFactory.h"
+#include "DashboardPage.h"
+#include "DashboardWorkspace.h"
+#include "DashboardStore.h"
+#include "DashboardAppsDialog.h"
+#include "ProjectGitWidget.h"
 #include "AppCardWidget.h"
 #include "DockerObservabilityWidget.h"
 #include "RemoteWidget.h"
@@ -9,7 +18,9 @@
 #include "LauncherSettings.h"
 #include "Theme.h"
 #include "ResourceLinkItem.h"
+#ifdef DOCKPIPE_TEST_COCKPIT
 #include "CockpitWidget.h"
+#endif
 #include "SettingsDialog.h"
 #include <QPainter>
 
@@ -25,6 +36,7 @@
 #include <QElapsedTimer>
 #include <QFile>
 #include <QLabel>
+#include <QInputDialog>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMessageBox>
@@ -36,10 +48,14 @@
 #include <QTableWidget>
 #include <QTabWidget>
 #include <QStackedWidget>
+#include <QStatusBar>
 #include <QTemporaryDir>
 #include <QThread>
 #include <QTimer>
+#include <QTcpServer>
+#include <QTcpSocket>
 #include <QToolButton>
+#include <QWebEngineView>
 #include <functional>
 #include <cstdio>
 
@@ -105,6 +121,7 @@ bool connectionFramesChange()
 
 int main(int argc, char **argv)
 {
+    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
     QTemporaryDir directory;
     qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
     qputenv("DOCKPIPE_GLOBAL_ROOT", directory.filePath("global").toUtf8());
@@ -237,20 +254,83 @@ exec "$@"
     settings.uiMode = "advanced";
     settings.thirdPartyDisclaimerDismissed = true;
     settings.save();
+    // Tour interaction is covered by DashboardTourDialogTest; keep navigation
+    // and lifecycle checks free of an unattended first-run modal.
+    if (!LauncherSettings::saveDashboardTourState(true, false))
+        return 236;
     MainWindow window;
     window.show();
     auto *navigation = window.findChild<QListWidget *>("workspaceNavigation");
     auto *target = window.findChild<QComboBox *>("runTarget");
     auto *remote = window.findChild<RemoteWidget *>();
-    if (!navigation || !target || !remote || !waitUntil([&]() { return navigation->currentRow() == 1; }))
+    if (!navigation || !target || !remote || !waitUntil([&]() { return navigation->currentRow() == 2; }))
         return 2;
     auto *apps = window.findChild<BasicModeWidget *>();
     if (!apps || !apps->findChildren<QTabWidget *>().isEmpty()
         || window.findChildren<DockerObservabilityWidget *>().size() != 1
-        || navigation->count() != 8 || navigation->item(3)->text() != "Containers"
-        || navigation->item(4)->text() != "Executions")
+        || navigation->count() != 11 || navigation->item(4)->text() != "Containers"
+        || navigation->item(5)->text() != "Executions"
+        || navigation->item(8)->text() != "Browser"
+        || navigation->item(9)->text() != "Terminal"
+        || navigation->item(9)->data(Qt::UserRole).toInt() != 9
+        || window.findChild<TerminalWidget *>()
+        || window.findChild<BrowserWidget *>())
         return 13;
+    if (navigation->item(0)->text() != "Dashboard" || navigation->item(1)->text() != "Apps"
+        || navigation->item(0)->data(Qt::UserRole + 1).toString() != DashboardStore::defaultDashboardId()
+        || window.findChild<DashboardPage *>())
+        return 232;
     navigation->setCurrentRow(0);
+    auto *defaultDashboard = window.findChild<DashboardPage *>();
+    if (!defaultDashboard)
+        return 233;
+    defaultDashboard->removeRequested();
+    defaultDashboard->renameRequested();
+    if (window.findChild<QMessageBox *>("dashboardRemoveConfirmation")
+        || window.findChild<QInputDialog *>("dashboardRenameDialog"))
+        return 234;
+    for (bool visible : {false, true}) {
+        QTimer::singleShot(0, &window, [visible]() {
+            auto *dialog = qobject_cast<SettingsDialog *>(QApplication::activeModalWidget());
+            if (!dialog)
+                return;
+            dialog->findChild<QCheckBox *>("settingsDefaultDashboardVisible")->setChecked(visible);
+            dialog->accept();
+        });
+        QMetaObject::invokeMethod(&window, "onOpenSettings", Qt::DirectConnection);
+        if (navigation->item(0)->isHidden() == visible
+            || LauncherSettings::current().defaultDashboardVisible != visible
+            || defaultDashboard->snapshot().id != DashboardStore::defaultDashboardId())
+            return 235;
+    }
+    navigation->setCurrentRow(8);
+    auto *browser = window.findChild<BrowserWidget *>();
+    auto *workspacePages = window.findChild<QStackedWidget *>("workspacePages");
+    if (!browser || !workspacePages || workspacePages->currentWidget() != browser
+        || navigation->item(8)->isHidden() || !navigation->item(10)->isHidden()
+        || LauncherSettings::current().cockpit.enabled)
+        return 160;
+    navigation->setCurrentRow(9);
+    auto *terminalPage = window.findChild<TerminalWidget *>();
+    auto *dashboardFactory = window.findChild<DashboardWidgetFactory *>();
+    if (!terminalPage || !dashboardFactory || workspacePages->currentWidget() != terminalPage
+        || !dashboardFactory->terminals().sessionIds().isEmpty())
+        return 230;
+    navigation->setCurrentRow(8);
+    navigation->setCurrentRow(9);
+    if (window.findChild<TerminalWidget *>() != terminalPage || workspacePages->currentWidget() != terminalPage
+        || !dashboardFactory->terminals().sessionIds().isEmpty())
+        return 231;
+    navigation->setCurrentRow(1);
+    navigation->setCurrentRow(8);
+    if (workspacePages->currentWidget() != browser
+        || window.findChildren<BrowserWidget *>().size() != 1)
+        return 161;
+    if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE")) {
+        QApplication::processEvents();
+        window.grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + "-browser.png");
+    }
+    navigation->setCurrentRow(1);
     if (!waitUntil([&]() { return button(apps, "Open app") != nullptr; }))
         return 14;
     const auto capture = [&](const QString &suffix) {
@@ -322,7 +402,7 @@ exec "$@"
     if (packageRequests != 1)
         return 17;
     capture("-apps-empty");
-    navigation->setCurrentRow(3);
+    navigation->setCurrentRow(4);
     auto *dockerPage = window.findChild<DockerObservabilityWidget *>();
     if (!waitUntil([&]() {
         for (auto *table : dockerPage->findChildren<QTableWidget *>()) {
@@ -488,13 +568,13 @@ exec "$@"
         return 47;
     if (!animation->isActive())
         return 52;
-    navigation->setCurrentRow(2);
+    navigation->setCurrentRow(3);
     if (animation->isActive())
         return 53;
-    navigation->setCurrentRow(3);
+    navigation->setCurrentRow(4);
     if (!animation->isActive())
         return 54;
-    navigation->setCurrentRow(2);
+    navigation->setCurrentRow(3);
     if (!waitUntil([&]() { return target->findData("mac-mini") >= 0 && button(remote, "Refresh")->isEnabled(); })) {
         std::fprintf(stderr, "Machine discovery failed\n");
         return 3;
@@ -661,7 +741,7 @@ exec "$@"
     if (!waitUntil([&]() { return hasRemoteStatus("Worker service started."); })
         || !pairCalls.open(QIODevice::ReadOnly) || pairCalls.readAll() != completedPairCalls)
         return 56;
-    navigation->setCurrentRow(1);
+    navigation->setCurrentRow(2);
     target->setCurrentIndex(target->findData("mac-mini"));
     QApplication::processEvents();
     if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE"))
@@ -698,7 +778,7 @@ exec "$@"
     QFile submitted(directory.filePath("submit-args"));
     if (!submitted.open(QIODevice::ReadOnly) || !submitted.readAll().contains("--expected-digest\nabc123\n"))
         return 11;
-    navigation->setCurrentRow(4);
+    navigation->setCurrentRow(5);
     auto *executionTabs = window.findChild<QTabWidget *>("executionTabs");
     if (!executionTabs || !executionTabs->isVisible() || executionTabs->count() != 2)
         return 42;
@@ -720,9 +800,9 @@ exec "$@"
     capture("-execution-local-wide");
     window.resize(normalSize);
     button(activity, "Browse workflows")->click();
-    if (navigation->currentRow() != 1)
+    if (navigation->currentRow() != 2)
         return 135;
-    navigation->setCurrentRow(4);
+    navigation->setCurrentRow(5);
     activity->showRemoteJobs();
     auto *download = button(activity, "Download results");
     auto *jobTable = activity->findChild<QTableWidget *>("remoteJobs");
@@ -791,7 +871,7 @@ exec "$@"
     if (!staleService.open(QIODevice::WriteOnly))
         return 57;
     staleService.close();
-    navigation->setCurrentRow(2);
+    navigation->setCurrentRow(3);
     button(remote, "← Machines")->click();
     remote->refresh();
     auto *repair = button(remote, "Update broker service…");
@@ -866,7 +946,7 @@ exec "$@"
         if (action->isChecked())
             return 123;
     }
-    navigation->setCurrentRow(1);
+    navigation->setCurrentRow(2);
     QApplication::processEvents();
     const int expandedPageWidth = pages->width();
     sidebarToggle->click();
@@ -875,23 +955,24 @@ exec "$@"
         || pages->width() <= expandedPageWidth || LauncherSettings::current().sidebarVisible)
         return 124;
     capture("-sidebar-hidden");
-    viewMenu->actions()[4]->trigger();
-    if (navigation->currentRow() != 4 || !rail->isHidden())
+    viewMenu->actions()[5]->trigger();
+    if (navigation->currentRow() != 5 || !rail->isHidden())
         return 125;
     sidebarAction->trigger();
     if (rail->isHidden() || !LauncherSettings::current().sidebarVisible)
         return 126;
-    navigation->setCurrentRow(1);
+    navigation->setCurrentRow(2);
     viewMenu->popup(window.menuBar()->mapToGlobal(QPoint(40, window.menuBar()->height())));
     QApplication::processEvents();
     if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE"))
         viewMenu->grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + "-view-menu.png");
     viewMenu->hide();
 
-    if (window.findChild<CockpitWidget *>() || !navigation->item(7)->isHidden())
+#ifdef DOCKPIPE_TEST_COCKPIT
+    if (window.findChild<CockpitWidget *>() || !navigation->item(10)->isHidden())
         return 145;
-    navigation->setCurrentRow(7);
-    if (navigation->currentRow() == 7 || window.findChild<CockpitWidget *>())
+    navigation->setCurrentRow(10);
+    if (navigation->currentRow() == 10 || window.findChild<CockpitWidget *>())
         return 146;
     QTimer::singleShot(0, &window, [&]() {
         auto *dialog = qobject_cast<SettingsDialog *>(QApplication::activeModalWidget());
@@ -902,48 +983,273 @@ exec "$@"
         dialog->accept();
     });
     QMetaObject::invokeMethod(&window, "onOpenSettings", Qt::DirectConnection);
-    if (!LauncherSettings::current().cockpit.enabled || navigation->item(7)->isHidden()
+    if (!LauncherSettings::current().cockpit.enabled || navigation->item(10)->isHidden()
         || window.findChild<CockpitWidget *>())
         return 147;
-    navigation->setCurrentRow(7);
-    auto *cockpit = window.findChild<CockpitWidget *>();
+    navigation->setCurrentRow(8);
+    QList<int> cockpitPageChanges;
+    const auto cockpitPageConnection = QObject::connect(pages, &QStackedWidget::currentChanged,
+        &window, [&](int page) { cockpitPageChanges.append(page); });
+    navigation->setCurrentRow(10);
+    QObject::disconnect(cockpitPageConnection);
+    if (cockpitPageChanges != QList<int>{8})
+        return 162;
+    QPointer<CockpitWidget> cockpit = window.findChild<CockpitWidget *>();
     if (!cockpit)
         return 140;
     if (cockpit->flight()->orbitMotion())
         return 148;
     cockpit->visit("settings");
-    cockpit->flight()->fire();
-    auto *preferences = cockpit->findChild<SettingsDialog *>("cockpitPreferences");
-    if (!preferences || preferences->isVisible() || preferences->isWindow()
-        || cockpit->flight()->previewImage().isNull())
+    if (cockpit->destination() != "orbit")
         return 141;
-    cockpit->flight()->fire();
-    if (!preferences->isVisible() || preferences->isWindow() || !cockpit->flight()->editorActive())
+    cockpit->visit("containers");
+    if (!cockpit->flight()->walking() || cockpit->resourceSection() != "containers")
         return 142;
-    preferences->reject();
-    if (!waitUntil([&]() { return !cockpit->flight()->editorActive(); }))
+    cockpit->flight()->destinationActivated("display:operations:controls", false);
+    if (!cockpit->flight()->editorActive() || cockpit->activePanel() != "containers")
         return 143;
-    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
-    if (cockpit->findChild<SettingsDialog *>("cockpitPreferences"))
+    cockpit->closePanel();
+    if (cockpit->flight()->editorActive() || cockpit->resourceSection() != "containers")
         return 144;
-    cockpit->visit("settings");
-    cockpit->flight()->fire();
-    cockpit->flight()->fire();
-    preferences = cockpit->findChild<SettingsDialog *>("cockpitPreferences");
-    if (!preferences)
-        return 149;
-    preferences->findChild<QCheckBox *>("settingsCockpitEnabled")->setChecked(false);
-    preferences->accept();
-    if (!waitUntil([&]() { return navigation->currentRow() == 0; }))
-        return 150;
-    if (LauncherSettings::current().cockpit.enabled || !navigation->item(7)->isHidden()
-        || cockpit->isVisible() || cockpit->flight()->orbitAnimating() || cockpit->flight()->appControlling())
-        return 151;
-    navigation->setCurrentRow(7);
-    if (navigation->currentRow() == 7)
-        return 152;
     navigation->setCurrentRow(1);
+    if (!cockpit->resourceSection().isEmpty())
+        return 149;
+    navigation->setCurrentRow(10);
+    if (cockpit->resourceSection() != "containers")
+        return 153;
+    QTimer::singleShot(0, &window, [&]() {
+        auto *dialog = qobject_cast<SettingsDialog *>(QApplication::activeModalWidget());
+        if (!dialog)
+            return;
+        dialog->findChild<QCheckBox *>("settingsCockpitEnabled")->setChecked(false);
+        dialog->accept();
+    });
+    QMetaObject::invokeMethod(&window, "onOpenSettings", Qt::DirectConnection);
+    if (!waitUntil([&]() { return navigation->currentRow() == 1; }))
+        return 150;
+    if (LauncherSettings::current().cockpit.enabled || !navigation->item(10)->isHidden()
+        || (cockpit && (cockpit->isVisible() || cockpit->flight()->orbitAnimating() || cockpit->flight()->appControlling())))
+        return 151;
+    navigation->setCurrentRow(10);
+    if (navigation->currentRow() == 10)
+        return 152;
+    navigation->setCurrentRow(2);
 
+#endif
+    auto *addDashboard = window.findChild<QPushButton *>("addDashboardButton");
+    if (!addDashboard || !addDashboard->isEnabled())
+        return 170;
+    addDashboard->click();
+    auto *nameDialog = window.findChild<QInputDialog *>("dashboardNameDialog");
+    if (!nameDialog)
+        return 171;
+    nameDialog->setTextValue("Temporary dashboard");
+    nameDialog->accept();
+    auto *temporaryDashboard = qobject_cast<DashboardPage *>(workspacePages->currentWidget());
+    if (!temporaryDashboard)
+        return 179;
+    addDashboard->click();
+    nameDialog = window.findChild<QInputDialog *>("dashboardNameDialog");
+    // The first accepted dialog is deleted on the next event turn.
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    nameDialog = window.findChild<QInputDialog *>("dashboardNameDialog");
+    if (!nameDialog)
+        return 180;
+    nameDialog->setTextValue("Operations dashboard");
+    nameDialog->accept();
+    if (!waitUntil([&]() { return navigation->count() == 13; })
+        || navigation->item(8)->text() != "Browser"
+        || navigation->item(11)->text() != "Operations dashboard"
+        || navigation->item(12)->text() != "Cockpit")
+        return 172;
+    auto *dashboard = qobject_cast<DashboardPage *>(workspacePages->currentWidget());
+    if (!dashboard || !dashboard->addWidgetKind("browser") || !dashboard->addWidgetKind("logs")
+        || !dashboard->addWidgetKind("workflows"))
+        return 173;
+    window.statusBar()->clearMessage();
+    if (!waitUntil([&]() { return window.statusBar()->isHidden(); }))
+        return 210;
+    const QPoint dashboardBottom = dashboard->mapTo(&window, QPoint(0, dashboard->height()));
+    if (dashboardBottom.y() != window.height()) {
+        std::fprintf(stderr, "Dashboard bottom %d does not reach window bottom %d\n", dashboardBottom.y(), window.height());
+        return 211;
+    }
+    window.statusBar()->showMessage("A real dashboard notice");
+    if (!waitUntil([&]() { return window.statusBar()->isVisible(); }))
+        return 212;
+    window.statusBar()->clearMessage();
+    if (!waitUntil([&]() { return window.statusBar()->isHidden(); }))
+        return 213;
+    auto *dashboardWorkflows = dashboard->findChild<QListWidget *>("dashboardWorkflowList");
+    auto *dashboardLaunch = dashboard->findChild<QPushButton *>("dashboardLaunchWorkflow");
+    if (!dashboardWorkflows || !dashboardLaunch)
+        return 194;
+    bool foundBuild = false;
+    for (int row = 0; row < dashboardWorkflows->count(); ++row) {
+        if (dashboardWorkflows->item(row)->data(Qt::UserRole).toString() == "build") {
+            dashboardWorkflows->setCurrentRow(row);
+            foundBuild = true;
+            break;
+        }
+    }
+    if (!foundBuild)
+        return 195;
+    // The previous service fixture intentionally switched this machine into
+    // receive-only worker mode. Restore its broker role before testing delivery.
+    workerConnection.remove();
+    remote->refresh();
+    if (!waitUntil([&]() {
+        const int nodeIndex = target->findData("mac-mini");
+        return nodeIndex >= 0 && !target->itemData(nodeIndex, Qt::UserRole + 1).toBool();
+    }))
+        return 202;
+    target->setCurrentIndex(target->findData("mac-mini"));
+    bool sawDashboardRunReview = false;
+    QTimer dismissDashboardRun;
+    dismissDashboardRun.setInterval(20);
+    QObject::connect(&dismissDashboardRun, &QTimer::timeout, &window, [&]() {
+        if (auto *review = qobject_cast<RemoteRunDialog *>(QApplication::activeModalWidget())) {
+            sawDashboardRunReview = button(review, "Run on mac-mini") != nullptr;
+            review->reject();
+            dismissDashboardRun.stop();
+        } else if (auto *unexpected = qobject_cast<QDialog *>(QApplication::activeModalWidget())) {
+            std::fprintf(stderr, "Unexpected dashboard launch dialog: %s (%s)\n",
+                qPrintable(unexpected->windowTitle()), unexpected->metaObject()->className());
+            unexpected->reject();
+            dismissDashboardRun.stop();
+        }
+    });
+    dismissDashboardRun.start();
+    dashboardLaunch->click();
+    dismissDashboardRun.stop();
+    if (!sawDashboardRunReview)
+        return 196;
+    QPointer<BrowserWidget> dashboardBrowser = dashboard->findChild<BrowserWidget *>();
+    auto *dashboardLayout = dashboard->findChild<DashboardWorkspace *>();
+    if (!dashboardBrowser || !dashboardLayout)
+        return 174;
+    QTcpServer dashboardSite;
+    if (!dashboardSite.listen(QHostAddress::LocalHost, 0))
+        return 181;
+    QObject::connect(&dashboardSite, &QTcpServer::newConnection, &dashboardSite, [&]() {
+        while (auto *socket = dashboardSite.nextPendingConnection()) {
+            QObject::connect(socket, &QTcpSocket::readyRead, socket, [socket]() {
+                socket->readAll();
+                const QByteArray body = "<!doctype html><title>Dashboard fixture</title><input id='note' value='original'>";
+                socket->write("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\nContent-Length: "
+                    + QByteArray::number(body.size()) + "\r\n\r\n" + body);
+                socket->disconnectFromHost();
+            });
+            QObject::connect(socket, &QTcpSocket::disconnected, socket, &QObject::deleteLater);
+        }
+    });
+    auto *retainedPage = dashboardBrowser->activeView()->page();
+    bool dashboardSiteLoaded = false;
+    const auto dashboardLoadConnection = QObject::connect(retainedPage, &QWebEnginePage::loadFinished, &window,
+        [&](bool ok) { dashboardSiteLoaded = ok; });
+    dashboardBrowser->navigate(QUrl(QString("http://127.0.0.1:%1/").arg(dashboardSite.serverPort())));
+    if (!waitUntil([&]() { return dashboardSiteLoaded; }))
+        return 182;
+    QObject::disconnect(dashboardLoadConnection);
+    bool noteSet = false;
+    retainedPage->runJavaScript("document.getElementById('note').value = 'retained input'", [&](const QVariant &) { noteSet = true; });
+    if (!waitUntil([&]() { return noteSet; }))
+        return 183;
+    dashboardLayout->setMode("tiling");
+    if (!dashboardBrowser || dashboard->findChild<BrowserWidget *>() != dashboardBrowser)
+        return 175;
+    if (!qEnvironmentVariableIsEmpty("DOCKPIPE_DASHBOARD_CAPTURE")) {
+        QApplication::processEvents();
+        window.grab().save(qEnvironmentVariable("DOCKPIPE_DASHBOARD_CAPTURE") + "-tiling.png");
+    }
+    dashboardLayout->setMode("canvas");
+    bool noteRead = false;
+    QString retainedNote;
+    retainedPage->runJavaScript("document.getElementById('note').value", [&](const QVariant &value) {
+        retainedNote = value.toString();
+        noteRead = true;
+    });
+    if (dashboardBrowser->activeView()->page() != retainedPage
+        || !waitUntil([&]() { return noteRead; }) || retainedNote != "retained input")
+        return 184;
+    if (!qEnvironmentVariableIsEmpty("DOCKPIPE_DASHBOARD_CAPTURE")) {
+        QApplication::processEvents();
+        window.grab().save(qEnvironmentVariable("DOCKPIPE_DASHBOARD_CAPTURE") + "-canvas.png");
+    }
+    auto *dockBrowser = dashboard->findChild<QToolButton *>("dashboardDockPinned_browser");
+    auto *fullscreen = dashboard->findChild<QPushButton *>("dashboardFullscreenButton");
+    auto *fullscreenSidebar = dashboard->findChild<QPushButton *>("dashboardFullscreenSidebar");
+    if (!dockBrowser || !fullscreen || !fullscreenSidebar)
+        return 197;
+    dockBrowser->click();
+    if (dashboard->snapshot().panels.size() != 3 || dashboard->findChild<BrowserWidget *>() != dashboardBrowser)
+        return 198;
+    auto *dockApps = dashboard->findChild<QToolButton *>("dashboardDockApps");
+    if (!dockApps)
+        return 203;
+    dockApps->click();
+    auto *appPicker = dashboard->findChild<DashboardAppsDialog *>();
+    if (!appPicker)
+        return 204;
+    auto *appChoices = appPicker->findChild<QListWidget *>("dashboardAppList");
+    auto *appSearch = appPicker->findChild<QLineEdit *>("dashboardAppSearch");
+    appSearch->setText("Project editor");
+    bool hasAppWorkflow = false;
+    for (int row = 0; row < appChoices->count(); ++row) {
+        const auto *item = appChoices->item(row);
+        hasAppWorkflow = hasAppWorkflow || (item->data(Qt::UserRole) == "workflow"
+            && item->data(Qt::UserRole + 1) == "editor");
+    }
+    if (!hasAppWorkflow)
+        return 205;
+    appPicker->reject();
+    fullscreen->click();
+    if (!waitUntil([&]() { return window.isFullScreen() && fullscreenSidebar->isVisible(); })
+        || navigation->isVisible() || window.menuBar()->isVisible()
+        || !dashboard->findChild<QLabel *>("dashboardClock")->isVisible())
+        return 199;
+    fullscreenSidebar->click();
+    auto *fullscreenNavigation = dashboard->findChild<QMenu *>("dashboardNavigationMenu");
+    if (!fullscreenNavigation || !fullscreenNavigation->isVisible()
+        || fullscreenNavigation->actions().size() != navigation->count() || navigation->isVisible())
+        return 200;
+    fullscreenNavigation->close();
+    QApplication::processEvents();
+    if (!window.isFullScreen()) {
+        std::fprintf(stderr, "Fullscreen lost after layout: size=%dx%d minimum=%dx%d toolbar=%dx%d\n",
+            window.width(), window.height(), window.minimumWidth(), window.minimumHeight(),
+            dashboard->findChild<QFrame *>("dashboardTopBar")->minimumSizeHint().width(),
+            dashboard->findChild<QFrame *>("dashboardTopBar")->minimumSizeHint().height());
+        return 206;
+    }
+    if (!qEnvironmentVariableIsEmpty("DOCKPIPE_DASHBOARD_CAPTURE"))
+        window.grab().save(qEnvironmentVariable("DOCKPIPE_DASHBOARD_CAPTURE") + "-fullscreen.png");
+    fullscreen->click();
+    if (!waitUntil([&]() { return !window.isFullScreen(); }) || !window.menuBar()->isVisible())
+        return 201;
+    dashboard->renameRequested();
+    auto *renameDialog = window.findChild<QInputDialog *>("dashboardRenameDialog");
+    if (!renameDialog)
+        return 185;
+    renameDialog->setTextValue("Daily work");
+    renameDialog->accept();
+    if (navigation->item(11)->text() != "Daily work")
+        return 186;
+    temporaryDashboard->removeRequested();
+    auto *removeDialog = window.findChild<QMessageBox *>("dashboardRemoveConfirmation");
+    if (!removeDialog)
+        return 187;
+    removeDialog->done(QMessageBox::Yes);
+    if (navigation->count() != 12 || navigation->item(10)->text() != "Daily work"
+        || navigation->item(11)->text() != "Cockpit")
+        return 188;
+    navigation->setCurrentRow(8);
+    if (workspacePages->currentWidget() != browser)
+        return 176;
+    navigation->setCurrentRow(10);
+    if (workspacePages->currentWidget() != dashboard || !dashboardBrowser)
+        return 177;
+    // Closing immediately after rearranging must flush the debounce save.
     // The offscreen platform has no tray. Closing must really close the window,
     // rather than pretending an unavailable tray can reopen it.
     if (QSystemTrayIcon::isSystemTrayAvailable() || window.findChild<QSystemTrayIcon *>())
@@ -951,6 +1257,59 @@ exec "$@"
     window.close();
     if (window.isVisible())
         return 32;
+    DashboardStore dashboardStore;
+    QVector<DashboardDefinition> restoredDashboards;
+    QString dashboardError;
+    if (!dashboardStore.load(restoredDashboards, dashboardError) || restoredDashboards.size() != 2
+        || restoredDashboards.last().name != "Daily work"
+        || restoredDashboards.last().panels.size() != 3 || restoredDashboards.last().layout.value("mode") != "canvas")
+        return 178;
+    MainWindow reopened;
+    reopened.show();
+    auto *reopenedNavigation = reopened.findChild<QListWidget *>("workspaceNavigation");
+    if (!reopenedNavigation || !waitUntil([&]() { return reopenedNavigation->count() == 12; }))
+        return 189;
+    reopenedNavigation->setCurrentRow(10);
+    auto *reopenedDashboard = reopened.findChild<DashboardPage *>();
+    if (!reopenedDashboard || reopenedDashboard->snapshot().panels.size() != 3
+        || reopenedDashboard->snapshot().name != "Daily work")
+        return 190;
+    auto *reopenedStudio = reopened.findChild<QWidget *>("workflowStudio");
+    auto *cancelStudioOperation = button(reopenedStudio, "Cancel operation");
+    if (!waitUntil([&]() {
+        return !reopened.findChild<ProjectGitWidget *>()->busy()
+            && cancelStudioOperation && cancelStudioOperation->isHidden();
+    }))
+        return 207;
+    restoredDashboards.last().name = "Externally saved dashboard";
+    if (!dashboardStore.save(restoredDashboards, dashboardError))
+        return 191;
+    reopenedDashboard->setEnvironment("tiling");
+    bool cancelledConflictClose = false;
+    QTimer::singleShot(0, &reopened, [&]() {
+        if (auto *dialog = reopened.findChild<QMessageBox *>("dashboardUnsavedClose")) {
+            cancelledConflictClose = true;
+            dialog->done(QMessageBox::Cancel);
+        }
+    });
+    reopened.close();
+    if (!reopened.isVisible() || !cancelledConflictClose) {
+        std::fprintf(stderr, "Conflict close failed: visible=%d saw_prompt=%d git_busy=%d pending=%d status=%s\n",
+            reopened.isVisible(), cancelledConflictClose, reopened.findChild<ProjectGitWidget *>()->busy(),
+            reopenedDashboard->hasPendingChanges(), qPrintable(reopened.statusBar()->currentMessage()));
+        return 192;
+    }
+    bool discardedConflictClose = false;
+    QTimer::singleShot(0, &reopened, [&]() {
+        if (auto *dialog = reopened.findChild<QMessageBox *>("dashboardUnsavedClose")) {
+            discardedConflictClose = true;
+            dialog->done(QMessageBox::Discard);
+        }
+    });
+    reopened.close();
+    if (reopened.isVisible() || !discardedConflictClose || !dashboardStore.load(restoredDashboards, dashboardError)
+        || restoredDashboards.last().name != "Externally saved dashboard")
+        return 193;
     if (const int monitoringResult = verifySystemMonitoring(directory.path()))
         return monitoringResult;
     return 0;

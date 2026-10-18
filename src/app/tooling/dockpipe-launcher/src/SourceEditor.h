@@ -5,8 +5,10 @@
 class SourceEditor : public QPlainTextEdit {
 public:
     explicit SourceEditor(QWidget *parent = nullptr);
+    void setPlainText(const QString &text);
     void setFileName(const QString &path);
     QString languageName() const;
+    void setLineMapping(const QVector<int> &lines);
 protected:
     void resizeEvent(QResizeEvent *event) override;
     bool eventFilter(QObject *object, QEvent *event) override;

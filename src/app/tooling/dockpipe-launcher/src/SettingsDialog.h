@@ -13,6 +13,7 @@ class SettingsDialog : public QDialog {
 public:
     explicit SettingsDialog(const LauncherSettings &settings, QWidget *parent = nullptr);
 
+    ~SettingsDialog() override;
     LauncherSettings updatedSettings() const;
 
 private slots:
@@ -28,6 +29,8 @@ private:
     QPlainTextEdit *m_extraWorkflowRoots = nullptr;
     QPlainTextEdit *m_packageRemotes = nullptr;
     LauncherSettings m_settings;
+    bool m_installPending = false;
+    QCheckBox *m_defaultDashboardVisible = nullptr;
     QCheckBox *m_cockpitEnabled = nullptr;
     QCheckBox *m_appControl = nullptr;
     QCheckBox *m_orbitalMotion = nullptr;

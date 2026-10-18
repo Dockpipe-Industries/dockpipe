@@ -6,6 +6,9 @@
 #include <QWindow>
 #include <QPointer>
 #include <QPainter>
+#include <QPixmap>
+#include <QSet>
+#include <cstring>
 
 #if defined(DOCKPIPE_X11_BILLBOARDS) && QT_CONFIG(xcb)
 #include <QtGui/qguiapplication_platform.h>
@@ -56,7 +59,7 @@ private:
     static inline XErrorHandler s_previous = nullptr;
 };
 
-QByteArray property(Display *display, Window window, const char *name, Atom type, long words)
+QByteArray property(Display *display, Window window, const char *name, Atom type, long words, bool *valid = nullptr)
 {
     Atom actual = 0;
     int format = 0;
@@ -66,6 +69,8 @@ QByteArray property(Display *display, Window window, const char *name, Atom type
     const int result = XGetWindowProperty(display, window, XInternAtom(display, name, False),
         0, words, False, type, &actual, &format, &count, &remaining, &data);
     QByteArray value;
+    if (valid)
+        *valid = result == Success && actual == type && format == 32 && !remaining;
     if (result == Success && actual == type && !remaining && data) {
         const int itemBytes = format == 32 ? sizeof(long) : format / 8;
         value = QByteArray(reinterpret_cast<char *>(data), int(count) * itemBytes);
@@ -83,6 +88,61 @@ unsigned long processId(Display *display, Window window)
         memcpy(&pid, bytes.constData(), sizeof(pid));
     return pid;
 }
+
+QByteArray processStart(unsigned long pid)
+{
+    QFile stat(QStringLiteral("/proc/%1/stat").arg(pid));
+    if (!pid || !stat.open(QIODevice::ReadOnly))
+        return {};
+    const auto data = stat.read(4096);
+    if (data.size() == 4096)
+        return {};
+    const int commandEnd = data.lastIndexOf(')');
+    if (commandEnd < 0)
+        return {};
+    const auto fields = data.mid(commandEnd + 2).simplified().split(' ');
+    // Fields after the parenthesized command start at field 3; starttime is 22.
+    return fields.value(19);
+}
+
+struct DesktopProperty {
+    Atom name = None;
+    Atom type = None;
+    QByteArray data;
+};
+
+bool desktopProperties(Display *display, Window window, QVector<DesktopProperty> &properties)
+{
+    // Only the ICCCM/EWMH hints affected by embedding. Fixed protocol sizes
+    // bound each read; lists allow at most 32 atoms, never arbitrary app data.
+    const struct { const char *name; long words; } hints[] = {
+        {"_MOTIF_WM_HINTS", 5}, {"WM_NORMAL_HINTS", 18},
+        {"WM_TRANSIENT_FOR", 1}, {"_NET_WM_WINDOW_TYPE", 32},
+        {"_NET_WM_STATE", 32}, {"_NET_WM_DESKTOP", 1}
+    };
+    properties.clear();
+    for (const auto &hint : hints) {
+        DesktopProperty saved;
+        saved.name = XInternAtom(display, hint.name, False);
+        int format = 0;
+        unsigned long count = 0;
+        unsigned long remaining = 0;
+        unsigned char *data = nullptr;
+        const int status = XGetWindowProperty(display, window, saved.name, 0,
+            hint.words, False, AnyPropertyType, &saved.type, &format, &count, &remaining, &data);
+        const bool valid = status == Success && !remaining && (saved.type == None || format == 32);
+        if (valid && data && saved.type != None)
+            saved.data = QByteArray(reinterpret_cast<char *>(data), count * sizeof(long));
+        if (data)
+            XFree(data);
+        if (!valid) {
+            properties.clear();
+            return false;
+        }
+        properties.append(saved);
+    }
+    return true;
+}
 }
 #endif
 
@@ -91,7 +151,11 @@ struct DesktopAppWindow::Native {
     Display *display = nullptr;
     bool redirected = false;
     unsigned long pid = 0;
+    QByteArray processStart;
+    QString applicationClass;
+    QSet<quint64> existingWindows;
     QRect originalGeometry;
+    QVector<DesktopProperty> originalProperties;
     QPointer<QWindow> foreign;
     QPointer<QWidget> container;
     bool saved = false;
@@ -134,9 +198,10 @@ QVector<DesktopAppChoice> DesktopAppWindow::availableWindows(QString &error)
     {
         XErrorScope errors(display);
         // The picker is intentionally bounded; never recursively inspect windows.
-        const auto clients = property(display, DefaultRootWindow(display), "_NET_CLIENT_LIST", XA_WINDOW, 256);
-        if (clients.isEmpty())
-            error = QObject::tr("No selectable windows, or the desktop window list exceeds 256 entries.");
+        bool validClients = false;
+        const auto clients = property(display, DefaultRootWindow(display), "_NET_CLIENT_LIST", XA_WINDOW, 256, &validClients);
+        if (!validClients || errors.failed())
+            error = QObject::tr("Cannot read the desktop window list, or it exceeds 256 entries.");
         for (int offset = 0; offset + int(sizeof(Window)) <= clients.size(); offset += sizeof(Window)) {
             Window window = 0;
             memcpy(&window, clients.constData() + offset, sizeof(window));
@@ -157,11 +222,16 @@ QVector<DesktopAppChoice> DesktopAppWindow::availableWindows(QString &error)
             }
             if (!normalWindow)
                 continue;
-            const auto title = property(display, window, "_NET_WM_NAME", XInternAtom(display, "UTF8_STRING", False), 256);
+            QString title = QString::fromUtf8(property(display, window, "_NET_WM_NAME",
+                XInternAtom(display, "UTF8_STRING", False), 256)).simplified();
+            // Older X11 clients (including RetroArch) only publish ICCCM WM_NAME.
+            // Keep the same 1 KiB property limit and prefer the modern UTF-8 title.
+            if (title.isEmpty())
+                title = QString::fromLatin1(property(display, window, "WM_NAME", XA_STRING, 256)).simplified();
             if (!title.isEmpty()) {
                 const auto windowClass = property(display, window, "WM_CLASS", XA_STRING, 256).split('\0');
                 const QString applicationClass = windowClass.size() > 1 ? QString::fromUtf8(windowClass[1]) : QString();
-                choices.append({window, QString::fromUtf8(title).simplified(), applicationClass});
+                choices.append({window, title, applicationClass});
             }
         }
     }
@@ -179,8 +249,57 @@ DesktopAppWindow::DesktopAppWindow(const DesktopAppChoice &choice)
         if (m_native->display) {
             XErrorScope errors(m_native->display);
             m_native->pid = processId(m_native->display, choice.id);
+            m_native->processStart = processStart(m_native->pid);
+            const auto classes = property(m_native->display, choice.id, "WM_CLASS", XA_STRING, 256).split('\0');
+            m_native->applicationClass = QString::fromUtf8(classes.value(1));
+            const auto clients = property(m_native->display, DefaultRootWindow(m_native->display),
+                "_NET_CLIENT_LIST", XA_WINDOW, 256);
+            for (int offset = 0; offset + int(sizeof(Window)) <= clients.size(); offset += sizeof(Window)) {
+                Window window = 0;
+                memcpy(&window, clients.constData() + offset, sizeof(window));
+                m_native->existingWindows.insert(window);
+            }
         }
     }
+#endif
+}
+
+std::optional<DesktopAppChoice> DesktopAppWindow::replacement(QString &error) const
+{
+    error.clear();
+#if defined(DOCKPIPE_X11_BILLBOARDS) && QT_CONFIG(xcb)
+    if (!m_native->display || m_native->processStart.isEmpty()
+        || processStart(m_native->pid) != m_native->processStart) {
+        error = QObject::tr("The selected application has exited.");
+        return {};
+    }
+    if (alive())
+        return {};
+    if (m_native->applicationClass.isEmpty()) {
+        error = QObject::tr("The application has no window identity. Select its new window manually.");
+        return {};
+    }
+    const auto windows = availableWindows(error);
+    if (!error.isEmpty())
+        return {};
+    std::optional<DesktopAppChoice> match;
+    for (const auto &candidate : windows) {
+        if (candidate.id == m_choice.id || m_native->existingWindows.contains(candidate.id)
+            || candidate.applicationClass.compare(m_native->applicationClass, Qt::CaseInsensitive) != 0)
+            continue;
+        XErrorScope errors(m_native->display);
+        if (processId(m_native->display, candidate.id) != m_native->pid || errors.failed())
+            continue;
+        if (match) {
+            error = QObject::tr("Several replacement windows match. Select the application's window manually.");
+            return {};
+        }
+        match = candidate;
+    }
+    return match;
+#else
+    error = unavailableReason();
+    return {};
 #endif
 }
 
@@ -326,6 +445,7 @@ bool DesktopAppWindow::prepareControl(QString &error)
         XErrorScope errors(m_native->display);
         if (!XGetWindowAttributes(m_native->display, m_choice.id, &attributes)
             || !XTranslateCoordinates(m_native->display, m_choice.id, DefaultRootWindow(m_native->display), 0, 0, &x, &y, &child)
+            || !desktopProperties(m_native->display, m_choice.id, m_native->originalProperties)
             || errors.failed()) {
             error = QObject::tr("Cannot read the selected window.");
             return false;
@@ -494,31 +614,88 @@ void DesktopAppWindow::releaseControl()
 #if defined(DOCKPIPE_X11_BILLBOARDS) && QT_CONFIG(xcb)
     if (!m_native->saved)
         return;
-    // Detach before destroying the container, including cancellation while the
-    // window manager is still processing withdrawal.
-    if (m_native->foreign)
-        m_native->foreign->setParent(nullptr);
     auto *native = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
     auto *connection = native->connection();
-    const auto geometry = m_native->originalGeometry;
-    auto *failure = xcb_request_check(connection, xcb_reparent_window_checked(connection,
-        m_choice.id, DefaultRootWindow(m_native->display), geometry.x(), geometry.y()));
-    free(failure); // BadWindow is expected when the application has closed.
+    // Keep the client unmapped until its desktop hints are restored. Reparenting
+    // a mapped client can let the WM frame it with Qt's temporary embed hints.
+    auto *failure = xcb_request_check(connection, xcb_unmap_window_checked(connection, m_choice.id));
+    free(failure);
+    if (m_native->foreign)
+        m_native->foreign->setParent(nullptr);
     delete m_native->container.data();
     m_native->container = nullptr;
     // Some Qt versions retain wrapper ownership after native detachment.
-    // QPointer handles either ownership outcome without deleting it twice.
     delete m_native->foreign.data();
     m_native->foreign = nullptr;
+
+    // The checked request also orders Qt's teardown before our separate Xlib
+    // connection restores properties. An absent original property must remain
+    // absent, not inherit a default written by the foreign QWindow wrapper.
+    const auto geometry = m_native->originalGeometry;
+    failure = xcb_request_check(connection, xcb_reparent_window_checked(connection,
+        m_choice.id, DefaultRootWindow(m_native->display), geometry.x(), geometry.y()));
+    free(failure); // BadWindow is expected when the application has closed.
     {
         XErrorScope errors(m_native->display);
-        const auto geometry = m_native->originalGeometry;
+        for (const auto &saved : m_native->originalProperties) {
+            if (saved.type == None) {
+                XDeleteProperty(m_native->display, m_choice.id, saved.name);
+            } else {
+                XChangeProperty(m_native->display, m_choice.id, saved.name, saved.type, 32,
+                    PropModeReplace, reinterpret_cast<const unsigned char *>(saved.data.constData()),
+                    saved.data.size() / sizeof(long));
+            }
+        }
         XMoveResizeWindow(m_native->display, m_choice.id, geometry.x(), geometry.y(), geometry.width(), geometry.height());
         XMapWindow(m_native->display, m_choice.id);
     }
     failure = xcb_request_check(connection, xcb_change_save_set_checked(connection, XCB_SET_MODE_DELETE, m_choice.id));
     free(failure); // BadWindow is expected if the user closed the embedded app.
     m_native->saved = false;
+    m_native->originalProperties.clear();
+#endif
+}
+
+bool DesktopAppWindow::requestClose(QString &error)
+{
+    error.clear();
+#if defined(DOCKPIPE_X11_BILLBOARDS) && QT_CONFIG(xcb)
+    if (!alive()) {
+        error = QObject::tr("The desktop window is no longer available.");
+        return false;
+    }
+    XErrorScope errors(m_native->display);
+    const Atom deleteWindow = XInternAtom(m_native->display, "WM_DELETE_WINDOW", False);
+    // Query only the bounded protocol property; never terminate the process if
+    // the app does not support a cooperative window-close request.
+    bool validProtocols = false;
+    const QByteArray protocols = property(m_native->display, m_choice.id, "WM_PROTOCOLS", XA_ATOM, 256, &validProtocols);
+    bool supportsClose = false;
+    for (qsizetype offset = 0; offset + qsizetype(sizeof(Atom)) <= protocols.size(); offset += sizeof(Atom)) {
+        Atom protocol = 0;
+        std::memcpy(&protocol, protocols.constData() + offset, sizeof(Atom));
+        supportsClose |= protocol == deleteWindow;
+    }
+    if (!validProtocols || !supportsClose) {
+        error = QObject::tr("This app does not support a normal window-close request. Close it using its own controls.");
+        return false;
+    }
+    XEvent event{};
+    event.xclient.type = ClientMessage;
+    event.xclient.window = m_choice.id;
+    event.xclient.message_type = XInternAtom(m_native->display, "WM_PROTOCOLS", False);
+    event.xclient.format = 32;
+    event.xclient.data.l[0] = deleteWindow;
+    event.xclient.data.l[1] = CurrentTime;
+    const bool sent = XSendEvent(m_native->display, m_choice.id, False, NoEventMask, &event);
+    if (!sent || errors.failed()) {
+        error = QObject::tr("Could not send a close request to this desktop window.");
+        return false;
+    }
+    return true;
+#else
+    error = unavailableReason();
+    return false;
 #endif
 }
 
@@ -537,4 +714,51 @@ bool DesktopAppWindow::focusControl()
 #else
     return false;
 #endif
+}
+
+QIcon DesktopAppWindow::applicationIcon() const
+{
+#if defined(DOCKPIPE_X11_BILLBOARDS) && QT_CONFIG(xcb)
+    if (!alive())
+        return {};
+    XErrorScope errors(m_native->display);
+    // Limit untrusted icon properties to 1 MiB of wire-format CARDINAL data.
+    const auto bytes = property(m_native->display, m_choice.id, "_NET_WM_ICON", XA_CARDINAL, 262144);
+    if (!errors.failed() && bytes.size() % sizeof(unsigned long) == 0) {
+        const qsizetype count = bytes.size() / sizeof(unsigned long);
+        const auto word = [&](qsizetype index) {
+            unsigned long value = 0;
+            memcpy(&value, bytes.constData() + index * sizeof(value), sizeof(value));
+            return value;
+        };
+        qsizetype offset = 0;
+        QImage best;
+        while (offset + 2 <= count) {
+            const unsigned long width = word(offset++);
+            const unsigned long height = word(offset++);
+            if (!width || !height || width > 512 || height > 512
+                || width * height > static_cast<unsigned long>(count - offset))
+                break;
+            if (best.isNull() || (width >= 32 && width < static_cast<unsigned long>(best.width()))
+                || (best.width() < 32 && width > static_cast<unsigned long>(best.width()))) {
+                QImage candidate(int(width), int(height), QImage::Format_ARGB32);
+                if (candidate.isNull())
+                    break;
+                for (unsigned long y = 0; y < height; ++y) {
+                    auto *line = reinterpret_cast<QRgb *>(candidate.scanLine(int(y)));
+                    for (unsigned long x = 0; x < width; ++x)
+                        line[x] = QRgb(word(offset + qsizetype(y * width + x)));
+                }
+                best = candidate;
+            }
+            offset += qsizetype(width * height);
+        }
+        if (!best.isNull())
+            return QIcon(QPixmap::fromImage(best));
+    }
+#endif
+    QIcon icon = QIcon::fromTheme(m_choice.applicationClass);
+    if (icon.isNull())
+        icon = QIcon::fromTheme(m_choice.applicationClass.toLower());
+    return icon;
 }

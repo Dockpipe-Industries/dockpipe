@@ -1,5 +1,4 @@
 #include "ProjectGitWidget.h"
-#include "DockpipeChoices.h"
 #include "CanvasIcons.h"
 #include "SourceEditor.h"
 
@@ -12,14 +11,12 @@
 #include <QTimer>
 #include <QHBoxLayout>
 #include <QJsonArray>
-#include <QJsonDocument>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSplitter>
-#include <QTemporaryFile>
 #include <QVBoxLayout>
 
 namespace {
@@ -172,17 +169,14 @@ ProjectGitWidget::ProjectGitWidget(QWidget *parent) : QWidget(parent), m_command
     cancel->hide();
     footer->addWidget(cancel);
     layout->addLayout(footer);
-    connect(cancel, &QPushButton::clicked, &m_command, &RemoteCommand::cancel);
-    connect(&m_command, &RemoteCommand::busyChanged, this, [this, cancel](bool busy) {
+    connect(cancel, &QPushButton::clicked, &m_command, &ProjectGitClient::cancel);
+    connect(&m_command, &ProjectGitClient::busyChanged, this, [this, cancel](bool busy) {
         m_controls->setEnabled(!busy);
         m_commitPanel->setEnabled(!busy);
         m_files->setEnabled(!busy);
         cancel->setVisible(busy);
     });
-    connect(&m_command, &RemoteCommand::output, this, [this](const QString &text) {
-        if (m_diagnostics.size() < 8192)
-            m_diagnostics += text.toUtf8().left(8192 - m_diagnostics.size());
-    });
+
 }
 
 void ProjectGitWidget::setWorkdir(const QString &workdir)
@@ -233,31 +227,16 @@ void ProjectGitWidget::runAction(const QString &action)
         request["paths"] = paths;
         request["message"] = m_message->text();
     }
-    m_request = new QTemporaryFile(this);
-    const QByteArray bytes = QJsonDocument(request).toJson(QJsonDocument::Compact);
-    if (!m_request->open() || m_request->write(bytes) != bytes.size() || !m_request->flush()) {
-        m_status->setText(tr("Cannot prepare the Git action."));
-        delete m_request;
-        m_request = nullptr;
-        return;
-    }
-    m_request->close();
-    m_diagnostics.clear();
     m_status->setText(tr("%1…").arg(action));
-    m_command.run(DockpipeChoices::preferredDockpipeBinary(m_workdir), {"git", "--request", m_request->fileName()},
-        [this, action, reviewedPath](bool ok, const QByteArray &output) {
-            delete m_request;
-            m_request = nullptr;
-            QJsonParseError error;
-            const auto document = QJsonDocument::fromJson(output, &error);
-            if (!ok || error.error != QJsonParseError::NoError || !document.isObject()) {
+    m_command.run(m_workdir, request,
+        [this, action, reviewedPath](bool ok, const QJsonObject &snapshot, const QString &error) {
+            if (!ok) {
                 m_snapshot = {};
                 updateCommitState();
-                m_status->setText(tr("Git action did not finish successfully. Refresh before retrying.\n%1").arg(QString::fromUtf8(m_diagnostics)));
+                m_status->setText(error);
                 return;
             }
             if (action == "diff") {
-                const auto snapshot = document.object();
                 static_cast<SourceEditor *>(m_diff)->setFileName(m_files->currentItem()->data(Qt::UserRole + 1).toString() == "??"
                     ? reviewedPath : "review.diff");
                 m_diff->setPlainText(snapshot.value("diff").toString());
@@ -266,8 +245,8 @@ void ProjectGitWidget::runAction(const QString &action)
             }
             if (action == "commit")
                 m_message->clear();
-            render(document.object());
-        }, 125000);
+            render(snapshot);
+        });
 }
 
 void ProjectGitWidget::render(const QJsonObject &snapshot)

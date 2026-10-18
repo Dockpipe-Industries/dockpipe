@@ -57,6 +57,9 @@ jobs:
             ripgrep \
             shellcheck \
             qt6-base-dev \
+            qt6-webengine-dev \
+            qt6-webengine-dev-tools \
+            libqt6webenginecore6-bin \
             libqt6opengl6-dev \
             libgl1-mesa-dev \
             libegl1-mesa-dev

@@ -1,0 +1,23 @@
+html, body, #terminal {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    color-scheme: dark;
+}
+html, body { background: transparent; }
+#terminal { background: #171c24; }
+.xterm { padding: 6px; }
+/* xterm ships a black viewport fallback; let our themed body show through. */
+.xterm .xterm-viewport { background-color: transparent; }
+/* Static overlays do not run an animation loop or intercept terminal input. */
+body.scanlines::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(transparent 0 2px, rgba(0, 0, 0, 0.12) 2px 3px);
+}
+body.glow .xterm-screen {
+    filter: drop-shadow(0 0 var(--terminal-glow-spread) var(--terminal-glow));
+}
