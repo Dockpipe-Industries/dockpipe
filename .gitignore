@@ -94,6 +94,9 @@ __pycache__/
 *.tfstate
 *.tfstate.*
 
+# Local VS Code workspace preferences
+/.vscode/settings.json
+
 # VS Code extension (packed / dev)
 packages/pipeon/resolvers/pipeon/vscode-extension/node_modules/
 packages/pipeon/resolvers/pipeon/vscode-extension/*.vsix

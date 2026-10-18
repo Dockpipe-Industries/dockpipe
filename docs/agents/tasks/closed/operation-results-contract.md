@@ -1,5 +1,9 @@
 # TASK-001 Operation Results Contract Rollout — Closed
 
+Historical naming: references to the proposed ForgePipe workflow UI in this completed
+record now refer to [DockPipe AI (TASK-008)](../agentic-app-ui/overview.md).
+ForgePipe is the native engine. Original verification history is retained below.
+
 Completed: 2026-07-11
 
 ## Shipped

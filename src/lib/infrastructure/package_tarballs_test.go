@@ -178,3 +178,38 @@ func TestFindLatestPackageTarballRetainsStorePriority(t *testing.T) {
 		t.Fatalf("project identity must keep store priority: %q, %v", got, err)
 	}
 }
+
+func TestFindLatestPackageTarballMixedFormats(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("DOCKPIPE_PACKAGES_ROOT", filepath.Join(root, "store"))
+	t.Setenv("DOCKPIPE_GLOBAL_ROOT", filepath.Join(root, "global"))
+	t.Setenv("DOCKPIPE_SYSTEM_ROOT", filepath.Join(root, "system"))
+	directory := filepath.Join(root, "store", "resolvers")
+	if err := os.MkdirAll(directory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, filename := range []string{
+		"dockpipe-resolver-agent-1.2.3.tar.gz",
+		"dockpipe-resolver-agent-1.2.3.tar.zst",
+		"dockpipe-resolver-agent-1.2.3.tar.nucleon",
+		"dockpipe-resolver-agent-other-9.9.9.tar.zst",
+		"dockpipe-resolver-agent-1.2.tar.zst",
+	} {
+		if err := os.WriteFile(filepath.Join(directory, filename), []byte("fixture"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := FindLatestResolverTarball(root, "agent")
+	want := filepath.Join(directory, "dockpipe-resolver-agent-1.2.3.tar.gz")
+	if err != nil || got != want {
+		t.Fatalf("same-version gzip precedence: got %q, %v; want %q", got, err, want)
+	}
+	newer := filepath.Join(directory, "dockpipe-resolver-agent-1.2.4.tar.zst")
+	if err := os.WriteFile(newer, []byte("fixture"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err = FindLatestResolverTarball(root, "agent")
+	if err != nil || got != newer {
+		t.Fatalf("newer zstd version: got %q, %v; want %q", got, err, newer)
+	}
+}

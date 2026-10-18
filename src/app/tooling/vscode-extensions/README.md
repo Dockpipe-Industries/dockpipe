@@ -1,5 +1,5 @@
-# `src/app/tooling/vscode-extensions/`
+# Editor extensions moved
 
-First-party Dockpipe editor tooling lives here.
-
-- **`dockpipe-language-support/`** — Dockpipe Language Support VS Code / Cursor extension
+The editor extension implementations now live in the private DorkPipe repository.
+See [editor extension ownership and build contracts](../../../../docs/packages/editor-extensions.md).
+Generated local dependency caches in this former source directory are not package inputs.

@@ -2,7 +2,8 @@ package infrastructure
 
 import (
 	"archive/tar"
-	"compress/gzip"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -12,6 +13,9 @@ import (
 	"strings"
 
 	"dockpipe/src/lib/domain"
+	"dockpipe/src/lib/infrastructure/archivecodec"
+	"dockpipe/src/lib/infrastructure/packagebuild"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -86,7 +90,9 @@ func ListInstalledPackages(workdir string) (PackageInventory, error) {
 			if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 {
 				return nil
 			}
-			archive := strings.HasPrefix(entry.Name(), "dockpipe-") && strings.HasSuffix(entry.Name(), ".tar.gz")
+			archive := packagebuild.IsPackageArchivePath(entry.Name(), "core") ||
+				packagebuild.IsPackageArchivePath(entry.Name(), "workflow") ||
+				packagebuild.IsPackageArchivePath(entry.Name(), "resolver")
 			if !archive && entry.Name() != PackageManifestFilename {
 				return nil
 			}
@@ -144,13 +150,19 @@ func inventoryArchiveManifest(filename string) (*domain.PackageManifest, error) 
 	return inventoryArchiveManifestReader(file, filename)
 }
 
-func inventoryArchiveManifestReader(reader io.Reader, filename string) (*domain.PackageManifest, error) {
-	gz, err := gzip.NewReader(reader)
+func inventoryArchiveManifestReader(reader io.Reader, filename string) (result *domain.PackageManifest, err error) {
+	codec, err := archivecodec.CodecForPath(filename)
 	if err != nil {
 		return nil, err
 	}
-	defer gz.Close()
-	archive := tar.NewReader(io.LimitReader(gz, 2<<30))
+	decoded, err := archivecodec.Open(context.Background(), reader, codec, 2<<30)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		err = errors.Join(err, decoded.Close())
+	}()
+	archive := tar.NewReader(decoded)
 	for count := 0; count < 100000; count++ {
 		header, err := archive.Next()
 		if err != nil {
@@ -182,8 +194,8 @@ func inventoryArchiveManifestReader(reader io.Reader, filename string) (*domain.
 				prefix += manifest.Name + "-"
 			}
 			basename := filepath.Base(filename)
-			if strings.HasPrefix(basename, prefix) && strings.HasSuffix(basename, ".tar.gz") {
-				version := strings.TrimSuffix(strings.TrimPrefix(basename, prefix), ".tar.gz")
+			if stem, ok := archivecodec.StripExtension(basename); ok && strings.HasPrefix(stem, prefix) {
+				version := strings.TrimPrefix(stem, prefix)
 				if domain.ValidatePackageVersion(version) == nil {
 					manifest.Version = version
 				}
