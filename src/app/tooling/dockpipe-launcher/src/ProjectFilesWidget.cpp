@@ -2,8 +2,7 @@
 #include "CanvasIcons.h"
 #include "SourceEditor.h"
 #include "WorkspaceFiles.h"
-#include "WorkspaceGraphWidget.h"
-#include "WorkspaceFlightView.h"
+#include "WorkspacePackageManager.h"
 #include <QHideEvent>
 
 #include <QDir>
@@ -320,13 +319,13 @@ ProjectFilesWidget::~ProjectFilesWidget()
 
 void ProjectFilesWidget::openFlightEditor(const QString &path)
 {
-    auto *flight = m_graph ? m_graph->flightView() : nullptr;
+    auto *flight = m_graph ? m_graph->flightWidget() : nullptr;
     if (!flight || m_flightHud)
         return;
-    flight->setEditorActive(true);
+    m_graph->pauseFlight(true);
     if (!openFile(path)) {
         m_status->show();
-        flight->setEditorActive(false);
+        m_graph->pauseFlight(false);
         flight->setFocus();
         return;
     }
@@ -380,9 +379,9 @@ void ProjectFilesWidget::openFlightEditor(const QString &path)
 
 void ProjectFilesWidget::positionFlightEditor()
 {
-    if (!m_flightHud || !m_graph || !m_graph->flightView())
+    if (!m_flightHud || !m_graph || !m_graph->flightWidget())
         return;
-    auto *flight = m_graph->flightView();
+    auto *flight = m_graph->flightWidget();
     m_flightHud->setGeometry(flight->rect());
     const int horizontal = qMax(12, (flight->width() - 1100) / 2);
     const int top = qBound(12, flight->height() / 14, 48);
@@ -392,7 +391,7 @@ void ProjectFilesWidget::positionFlightEditor()
 
 bool ProjectFilesWidget::eventFilter(QObject *object, QEvent *event)
 {
-    if (m_flightHud && m_graph && object == m_graph->flightView() && event->type() == QEvent::Resize)
+    if (m_flightHud && m_graph && object == m_graph->flightWidget() && event->type() == QEvent::Resize)
         positionFlightEditor();
     return QWidget::eventFilter(object, event);
 }
@@ -403,7 +402,7 @@ void ProjectFilesWidget::closeFlightEditor()
         return;
     auto *hud = m_flightHud;
     m_flightHud = nullptr;
-    auto *flight = m_graph ? m_graph->flightView() : nullptr;
+    auto *flight = m_graph ? m_graph->flightWidget() : nullptr;
     if (flight)
         flight->removeEventFilter(this);
     m_workspace->hide();
@@ -416,7 +415,7 @@ void ProjectFilesWidget::closeFlightEditor()
     hud->hide();
     hud->deleteLater();
     if (flight) {
-        flight->setEditorActive(false);
+        m_graph->pauseFlight(false);
         flight->setFocus();
     }
     // Unsaved text and undo history remain in the same editor when flight resumes.
@@ -666,6 +665,8 @@ void ProjectFilesWidget::updateEditorStatus()
 void ProjectFilesWidget::applyCockpitSettings(const CockpitSettings &settings)
 {
     m_cockpitSettings = settings;
+    if (!settings.enabled)
+        closeGraph();
     if (m_graph)
         m_graph->applyCockpitSettings(settings);
 }
@@ -674,31 +675,39 @@ void ProjectFilesWidget::openGraph()
 {
     if (m_graph || m_root.isEmpty())
         return;
+    if (!m_cockpitSettings.enabled) {
+        m_status->setText(tr("Enable Cockpit mode in Settings to use the spatial workspace."));
+        return;
+    }
     QString directory = m_root;
     const auto selected = m_tree->currentIndex();
     if (selected.isValid()) {
         const QString path = m_model->filePath(selected);
         directory = m_model->isDir(selected) ? path : QFileInfo(path).absolutePath();
     }
-    m_graph = new WorkspaceGraphWidget(m_root, directory, this);
+    m_graph = WorkspacePackageManager::instance().createFiles(m_root, directory, this);
+    if (!m_graph) {
+        m_status->setText(tr("Enable Cockpit mode in Settings to install the spatial workspace package."));
+        return;
+    }
     m_graph->applyCockpitSettings(m_cockpitSettings);
     m_splitter->hide();
     m_status->hide();
     static_cast<QVBoxLayout *>(layout())->insertWidget(0, m_graph, 1);
-    connect(m_graph, &WorkspaceGraphWidget::closeRequested, this, &ProjectFilesWidget::closeGraph);
-    connect(m_graph, &WorkspaceGraphWidget::flightFileRequested, this, &ProjectFilesWidget::openFlightEditor);
-    connect(m_graph, &WorkspaceGraphWidget::flightClosing, this, &ProjectFilesWidget::closeFlightEditor);
-    connect(m_graph, &WorkspaceGraphWidget::flightRendererChanged, this, [this]() {
+    m_graph->requestClose = [this]() { closeGraph(); };
+    m_graph->requestFlightFile = [this](const QString &path) { openFlightEditor(path); };
+    m_graph->flightWillClose = [this]() { closeFlightEditor(); };
+    m_graph->rendererChanged = [this]() {
         if (m_flightHud)
             m_flightHud->raise();
-    });
-    connect(m_graph, &WorkspaceGraphWidget::openFileRequested, this, [this](const QString &path) {
+    };
+    m_graph->requestOpenFile = [this](const QString &path) {
         if (openFile(path))
             closeGraph();
         else
             m_status->show();
-    });
-    connect(m_graph, &WorkspaceGraphWidget::revealRequested, this, [this](const QString &path) {
+    };
+    m_graph->requestReveal = [this](const QString &path) {
         const QModelIndex index = m_model->index(path);
         if (index.isValid()) {
             m_tree->setCurrentIndex(index);
@@ -707,7 +716,7 @@ void ProjectFilesWidget::openGraph()
                 m_tree->expand(index);
         }
         closeGraph();
-    });
+    };
     m_graph->show();
 }
 

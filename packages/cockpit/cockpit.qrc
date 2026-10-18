@@ -1,0 +1,13 @@
+<RCC>
+  <qresource prefix="/web">
+    <file alias="extract.js">resources/extract.js</file>
+    <file alias="media.js">resources/media.js</file>
+  </qresource>
+  <qresource prefix="/cockpit">
+    <file alias="branding/dockpipe-industries.png">resources/branding/dockpipe-industries.png</file>
+    <file alias="neural/worker.py">neural/worker.py</file>
+    <file alias="neural/install.py">neural/install.py</file>
+    <file alias="neural/models.json">neural/models.json</file>
+    <file alias="local_voice.py">voice/local_voice.py</file>
+  </qresource>
+</RCC>

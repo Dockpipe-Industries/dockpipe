@@ -6,7 +6,8 @@ namespace CanvasIcons {
 enum class Symbol {
     Add, Minus, Fit, Undo, Code, Properties, More, Folder, Workflow,
     Play, Save, Terminal, Keyboard, Monitor, Script, Parallel, Close, Check, Sidebar,
-    Branch, Refresh, Upload, Download, Search, Trash, Rename, ChevronRight, ChevronDown
+    Branch, Refresh, Upload, Download, Search, Trash, Rename, ChevronRight, ChevronDown,
+    Back, Forward, Globe, Extensions, External, Apps, Settings
 };
 
 // Stroke icons share a 24-unit grid and render at the requested device resolution.

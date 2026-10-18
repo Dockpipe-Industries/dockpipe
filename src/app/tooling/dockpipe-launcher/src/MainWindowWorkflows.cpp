@@ -413,7 +413,8 @@ void MainWindow::quitLauncher()
         return;
     }
     if ((!m_projectFiles || m_projectFiles->confirmLeave())
-        && (!m_workflowEditor || m_workflowEditor->confirmDiscardChanges()))
+        && (!m_workflowEditor || m_workflowEditor->confirmDiscardChanges())
+        && confirmDashboardClose())
         qApp->quit();
 }
 

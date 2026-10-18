@@ -1,6 +1,5 @@
 <RCC>
   <qresource prefix="/">
-    <file alias="cockpit/local_voice.py">resources/cockpit/local_voice.py</file>
     <file alias="icon.png">resources/images/dockpipe-launcher.png</file>
     <file alias="icons/hicolor/16x16/apps/dockpipe-launcher.png">resources/icons/hicolor/16x16/apps/dockpipe-launcher.png</file>
     <file alias="icons/hicolor/24x24/apps/dockpipe-launcher.png">resources/icons/hicolor/24x24/apps/dockpipe-launcher.png</file>

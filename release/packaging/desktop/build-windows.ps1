@@ -36,6 +36,7 @@ try {
     Copy-Item -LiteralPath (Join-Path $build "dockpipe-launcher.exe") -Destination $launcher
     Copy-Item -LiteralPath (Join-Path $build "dockpipe-syntax.rcc") -Destination $StageDir
     Copy-Item -LiteralPath (Join-Path $build "syntax-licenses") -Destination $StageDir -Recurse
+    Copy-Item -LiteralPath (Join-Path $build "dockpipe-launcher-ui.dll") -Destination $StageDir
     windeployqt --release --compiler-runtime --dir $StageDir $launcher
     if ($LASTEXITCODE -ne 0) {
         throw "Qt deployment failed"
@@ -48,7 +49,13 @@ try {
         throw "Visual C++ redistributable CRT directory is missing"
     }
     Get-ChildItem -LiteralPath $crt.FullName -Filter "*.dll" | Copy-Item -Destination $StageDir
-    foreach ($required in @("Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6OpenGL.dll", "Qt6OpenGLWidgets.dll", "platforms/qwindows.dll", "vcruntime140.dll", "msvcp140.dll")) {
+    foreach ($required in @(
+        "Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6OpenGL.dll", "Qt6OpenGLWidgets.dll",
+        "Qt6WebEngineCore.dll", "Qt6WebEngineWidgets.dll", "QtWebEngineProcess.exe",
+        "resources/icudtl.dat", "resources/qtwebengine_resources.pak", "translations/qtwebengine_locales/en-US.pak",
+        "resources/qtwebengine_resources_100p.pak", "resources/qtwebengine_resources_200p.pak",
+        "platforms/qwindows.dll", "vcruntime140.dll", "msvcp140.dll"
+    )) {
         if (-not (Test-Path -LiteralPath (Join-Path $StageDir $required))) {
             throw "Incomplete desktop runtime: $required"
         }
