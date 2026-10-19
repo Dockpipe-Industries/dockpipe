@@ -275,6 +275,8 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.platform }}
+          # Zero preserves the repository default for every non-staging run.
+          retention-days: ${{ inputs.staging && github.event_name == 'push' && github.ref == 'refs/heads/staging' && 3 || 0 }}
           path: release/artifacts/
           if-no-files-found: error
 
@@ -386,6 +388,8 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: release-windows-amd64
+          # Zero preserves the repository default for every non-staging run.
+          retention-days: ${{ inputs.staging && github.event_name == 'push' && github.ref == 'refs/heads/staging' && 3 || 0 }}
           path: release/artifacts/
           if-no-files-found: error
 
@@ -394,6 +398,7 @@ jobs:
     uses: ./.github/workflows/flatpak.yml
     with:
       version: ${{ needs.meta.outputs.version }}
+      staging: ${{ inputs.staging == true }}
     permissions:
       contents: read
 
@@ -476,6 +481,8 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: dockpipe-release-prepared-${{ needs.meta.outputs.version }}
+          # Zero preserves the repository default for every non-staging run.
+          retention-days: ${{ inputs.staging && github.event_name == 'push' && github.ref == 'refs/heads/staging' && 7 || 0 }}
           path: release/artifacts/
           if-no-files-found: error
 

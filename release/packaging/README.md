@@ -66,3 +66,22 @@ for explicit installation and dependency resolution. This applies to the new
 Linux amd64 Pipeon archive and to the retained 0.6.3 archives on the other four
 native platforms. Hiding changes composed catalog metadata only; the pinned
 archive bytes, versions, and source manifest checksums stay unchanged.
+
+### CI artifact retention
+
+Staging release calls from a push to `refs/heads/staging` retain platform
+intermediates (`release-*`, including Flatpak) for 3 days and the assembled
+`dockpipe-release-prepared-*` bundle for 7 days. The caller must explicitly set
+`staging: true`; a branch name alone does not select this policy. Other uploads
+keep their existing retention. The conditional uploads use `0` outside staging
+so GitHub continues to apply the repository default (currently 90 days), including
+production and manual dry runs. Compiler bootstrap and security evidence are
+unchanged.
+
+Rerunning assembly requires intermediates within 3 days; rerunning publication
+requires the assembled bundle within 7 days. After expiry, start a fresh complete
+staging run; do not rely on expired partial-run artifacts. Published candidate
+archives and production builds retain their existing lifecycle. Changing upload
+retention does not change existing artifacts: historical cleanup requires a
+separate reviewed manifest and explicit permanent-deletion approval, with active
+runs, promotions, pinned consumers and unverified archives protected.
