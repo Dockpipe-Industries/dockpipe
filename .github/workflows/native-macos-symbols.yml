@@ -68,18 +68,3 @@ jobs:
         run: |
           ctest --test-dir "$RUNNER_TEMP/dockpipe-native-symbols" --verbose \
             -R '^dashboard-(workspace|browser-performance)$'
-      - name: Compare native Cocoa layout response
-        if: always()
-        env:
-          QT_QPA_PLATFORM: cocoa
-          QT_LOGGING_RULES: qt.webenginecontext.debug=true
-        shell: bash
-        run: |
-          python3 - <<'PYTHON'
-          import os
-          from pathlib import Path
-          import subprocess
-
-          binary = Path(os.environ["RUNNER_TEMP"]) / "dockpipe-native-symbols/dashboard-browser-performance-test"
-          subprocess.run([str(binary)], check=True, timeout=45)
-          PYTHON

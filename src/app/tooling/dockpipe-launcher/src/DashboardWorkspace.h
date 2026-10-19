@@ -73,6 +73,7 @@ private:
         bool footerInitiallyHidden = false;
         WindowControlButton *expand = nullptr;
         QToolButton *tileActions = nullptr;
+        QPointer<QWidget> tabPage;
     };
     QWidget *buildTree(const QJsonObject &node, QWidget *parent);
     QJsonObject captureTree(QWidget *widget) const;
@@ -84,6 +85,8 @@ private:
     void showFocusedTileMenu();
     void applyMinimizedPanels();
     QString panelId(QWidget *frame) const;
+    QWidget *panelTabPage(const QString &id) const;
+    void materializePanel(const QString &id);
     void rememberGeometry();
     void showPanelMenu(const QString &id, const QPoint &position);
     QSize minimumPanelSize(const QString &id) const;
