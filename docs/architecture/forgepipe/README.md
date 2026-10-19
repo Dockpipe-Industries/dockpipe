@@ -242,3 +242,27 @@ package host using compiler 0.6.17. Pipeon 0.6.6 is also published and verified.
 The frozen pair passes local Linux composition and all 69 KDE 6.10 Flatpak
 dependency/preflight profiles, including final store export. Main source retirement
 and hosted staging qualification remain pending; no production release is implied.
+
+### Protected staging delivery (2026-10-19)
+
+The user approved releasing the ForgePipe SDK and integrating Cockpit into the
+current Dockpipe staging candidate. This approval covers the audited native SDK
+artifact; it does not publish the private engine repository or alter inherited
+Apache-2.0, material or Qt license obligations.
+
+The native SDK now restricts dynamic definitions to 32 reviewed API symbols.
+Optimized Release builds produce matching private diagnostics before stripping;
+public SDKs exclude debug sections, static symbol tables, implementation source
+and unapproved headers. The publisher checks a fixed 20-file SDK inventory and
+attests both the immutable archive and source-bound metadata. Cockpit verifies
+those attestations and exact size/digest/source/Qt pins before extraction.
+Matching diagnostic build IDs and hashes must be read back from durable private
+storage before this SDK is publicly delivered. Stripping and restricted exports
+reduce disclosure; they do not make native binaries impossible to reverse engineer.
+
+Native Linux amd64 packaging uses Qt 6.10.3 on the Ubuntu 22.04 ABI baseline.
+Cockpit 0.1.1 is composed into the optional resolver catalog only after its native
+and packaged rendering checks; unrelated pinned store entries remain unchanged.
+ARM64 retains its existing distribution Qt lane and does not establish native
+ForgePipe/Cockpit compatibility. Hosted release and installed-catalog readback
+remain required before this delivery is called complete.
