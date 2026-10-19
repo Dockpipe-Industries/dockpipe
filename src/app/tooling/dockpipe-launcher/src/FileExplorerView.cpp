@@ -174,6 +174,7 @@ FileExplorerView::FileExplorerView(QWidget *parent) : QWidget(parent)
     m_icons->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_icons->setSelectionMode(QAbstractItemView::SingleSelection);
     m_icons->setMouseTracking(true);
+    m_icons->installEventFilter(this);
     m_icons->setItemDelegate(new FolderCardDelegate(m_icons));
     layout->addWidget(m_icons, 1);
 
@@ -252,11 +253,11 @@ void FileExplorerView::updateVisibility()
 
 bool FileExplorerView::eventFilter(QObject *watched, QEvent *event)
 {
-    if (watched == m_tree && event->type() == QEvent::KeyPress) {
+    if ((watched == m_tree || watched == m_icons) && event->type() == QEvent::KeyPress) {
         auto *key = static_cast<QKeyEvent *>(event);
         if ((key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter)
-            && m_tree->currentIndex().isValid()) {
-            emit activated(m_tree->currentIndex());
+            && currentIndex().isValid()) {
+            emit activated(currentIndex());
             return true;
         }
     }

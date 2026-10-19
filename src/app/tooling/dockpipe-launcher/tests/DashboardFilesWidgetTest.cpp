@@ -22,6 +22,7 @@
 #include <QStyle>
 #include <QMessageBox>
 #include <QTimer>
+#include <QStandardItemModel>
 
 class DashboardFilesWidgetTest final : public QObject {
     Q_OBJECT
@@ -32,6 +33,9 @@ private slots:
     void folderViewUsesSharedIcons_data();
     void folderViewUsesSharedIcons();
     void filesPageUsesSharedExplorer();
+    void symbolicParentUsesCanonicalNavigation();
+    void enterActivatesBothViews_data();
+    void enterActivatesBothViews();
 };
 
 void DashboardFilesWidgetTest::projectNavigationAndClearing()
@@ -123,12 +127,12 @@ void DashboardFilesWidgetTest::linksAndFileOpening()
     QVERIFY(tree->uniformRowHeights());
     QSignalSpy opened(&files, &DashboardFilesWidget::openFileRequested);
     QModelIndex fileIndex;
-    QTRY_VERIFY((fileIndex = filter->mapFromSource(model->index(document.fileName()))).isValid());
+    QTRY_VERIFY((fileIndex = filter->mapFromSource(model->index(QFileInfo(document.fileName()).canonicalFilePath()))).isValid());
     QMetaObject::invokeMethod(tree, "doubleClicked", Q_ARG(QModelIndex, fileIndex));
     QCOMPARE(opened.size(), 1);
     QCOMPARE(opened.first().first().toString(), QFileInfo(document).canonicalFilePath());
     QModelIndex directoryIndex;
-    QTRY_VERIFY((directoryIndex = filter->mapFromSource(model->index(root + "/inside"))).isValid());
+    QTRY_VERIFY((directoryIndex = filter->mapFromSource(model->index(QFileInfo(root + "/inside").canonicalFilePath()))).isValid());
     QMetaObject::invokeMethod(tree, "doubleClicked", Q_ARG(QModelIndex, directoryIndex));
     QCOMPARE(files.currentDirectory(), QFileInfo(root + "/inside").canonicalFilePath());
 #ifndef Q_OS_WIN
@@ -214,7 +218,7 @@ void DashboardFilesWidgetTest::folderViewUsesSharedIcons()
         QVERIFY(QDir().mkpath(images));
         QVERIFY(files.grab().save(QDir(images).filePath("dashboard-tree-" + theme + ".png")));
     }
-    const auto fileIndex = filter->mapFromSource(model->index(root.filePath("README.md")));
+    const auto fileIndex = filter->mapFromSource(model->index(QFileInfo(root.filePath("README.md")).canonicalFilePath()));
     tree->setCurrentIndex(fileIndex);
     QTest::mouseClick(files.findChild<QToolButton *>("explorerFoldersMode"), Qt::LeftButton);
     QVERIFY(tree->isHidden());
@@ -228,7 +232,7 @@ void DashboardFilesWidgetTest::folderViewUsesSharedIcons()
     if (!images.isEmpty()) {
         QVERIFY(files.grab().save(QDir(images).filePath("dashboard-folders-" + theme + ".png")));
     }
-    const auto folderIndex = filter->mapFromSource(model->index(root.filePath("Documents")));
+    const auto folderIndex = filter->mapFromSource(model->index(QFileInfo(root.filePath("Documents")).canonicalFilePath()));
     grid->setCurrentIndex(folderIndex);
     QTest::keyClick(grid, Qt::Key_Return);
     QCOMPARE(files.currentDirectory(), QFileInfo(root.filePath("Documents")).canonicalFilePath());
@@ -265,15 +269,15 @@ void DashboardFilesWidgetTest::filesPageUsesSharedExplorer()
     const QString draft = editor->toPlainText();
     QTest::mouseClick(files.findChild<QToolButton *>("explorerFoldersMode"), Qt::LeftButton);
     QTRY_VERIFY(grid->isVisible());
-    const auto directory = model->index(root.filePath("nested"));
-    QTRY_VERIFY(directory.isValid());
+    QModelIndex directory;
+    QTRY_VERIFY((directory = model->index(QFileInfo(root.filePath("nested")).canonicalFilePath())).isValid());
     grid->setCurrentIndex(directory);
     grid->setFocus();
     QTest::keyClick(grid, Qt::Key_Return);
     QCOMPARE(grid->rootIndex(), directory);
     QCOMPARE(editor->toPlainText(), draft);
-    QTRY_VERIFY(model->index(root.filePath("nested/other.txt")).isValid());
-    grid->setCurrentIndex(model->index(root.filePath("nested/other.txt")));
+    QTRY_VERIFY(model->index(QFileInfo(root.filePath("nested/other.txt")).canonicalFilePath()).isValid());
+    grid->setCurrentIndex(model->index(QFileInfo(root.filePath("nested/other.txt")).canonicalFilePath()));
     QTimer::singleShot(0, []() {
         for (auto *widget : QApplication::topLevelWidgets()) {
             if (auto *dialog = qobject_cast<QMessageBox *>(widget))
@@ -284,8 +288,92 @@ void DashboardFilesWidgetTest::filesPageUsesSharedExplorer()
     QCOMPARE(files.currentPath(), root.filePath("README.md"));
     QCOMPARE(editor->toPlainText(), draft);
     files.findChild<QToolButton *>("fileExplorerRoot")->click();
-    QCOMPARE(grid->rootIndex(), model->index(root.path()));
+    QCOMPARE(grid->rootIndex(), model->index(QFileInfo(root.path()).canonicalFilePath()));
     QVERIFY(files.hasUnsavedChanges());
+}
+
+void DashboardFilesWidgetTest::symbolicParentUsesCanonicalNavigation()
+{
+#ifdef Q_OS_WIN
+    QSKIP("Directory symlinks require host-specific Windows privileges.");
+#else
+    QTemporaryDir directory;
+    const QString realRoot = directory.filePath("project");
+    QTemporaryDir aliases;
+    const QString parentAlias = aliases.filePath("parent");
+    const QString aliasRoot = parentAlias + "/project";
+    QVERIFY(QDir().mkpath(realRoot + "/nested"));
+    QFile document(realRoot + "/README.md");
+    QVERIFY(document.open(QIODevice::WriteOnly));
+    document.write("fixture");
+    document.close();
+    // macOS /var is an alias of /private/var: reproduce a linked ancestor,
+    // while retaining the editor policy against directly linked root entries.
+    QVERIFY(QFile::link(directory.path(), parentAlias));
+    const QString canonicalRoot = QFileInfo(realRoot).canonicalFilePath();
+
+    DashboardFilesWidget dashboard;
+    dashboard.setContext("project", aliasRoot);
+    QCOMPARE(dashboard.currentDirectory(), canonicalRoot);
+    auto *dashboardTree = dashboard.findChild<QTreeView *>("dashboardFiles");
+    auto *filter = qobject_cast<QSortFilterProxyModel *>(dashboardTree->model());
+    auto *dashboardModel = dashboard.findChild<QFileSystemModel *>();
+    QModelIndex documentIndex;
+    QTRY_VERIFY((documentIndex = filter->mapFromSource(dashboardModel->index(
+        canonicalRoot + "/README.md"))).isValid());
+    QSignalSpy opened(&dashboard, &DashboardFilesWidget::openFileRequested);
+    QMetaObject::invokeMethod(dashboardTree, "doubleClicked", Q_ARG(QModelIndex, documentIndex));
+    QCOMPARE(opened.size(), 1);
+    QCOMPARE(opened.first().first().toString(), canonicalRoot + "/README.md");
+    QVERIFY(!dashboard.navigateTo(".."));
+
+    ProjectFilesWidget files;
+    QVERIFY(files.setRoot(aliasRoot));
+    auto *explorer = files.findChild<FileExplorerView *>();
+    auto *model = files.findChild<QFileSystemModel *>();
+    auto *up = files.findChild<QToolButton *>("fileExplorerUp");
+    QVERIFY(up);
+    QVERIFY(!up->isEnabled());
+    QCOMPARE(model->filePath(explorer->treeView()->rootIndex()), canonicalRoot);
+    explorer->setMode(FileExplorerView::Mode::Folders);
+    QModelIndex nested;
+    QTRY_VERIFY((nested = model->index(canonicalRoot + "/nested")).isValid());
+    explorer->iconView()->setCurrentIndex(nested);
+    QTest::keyClick(explorer->iconView(), Qt::Key_Return);
+    QCOMPARE(model->filePath(explorer->iconView()->rootIndex()), canonicalRoot + "/nested");
+    QVERIFY(up->isEnabled());
+    up->click();
+    QCOMPARE(model->filePath(explorer->iconView()->rootIndex()), canonicalRoot);
+    QVERIFY(!up->isEnabled());
+#endif
+}
+
+void DashboardFilesWidgetTest::enterActivatesBothViews_data()
+{
+    QTest::addColumn<bool>("folders");
+    QTest::addColumn<int>("key");
+    QTest::newRow("tree-return") << false << int(Qt::Key_Return);
+    QTest::newRow("tree-enter") << false << int(Qt::Key_Enter);
+    QTest::newRow("folders-return") << true << int(Qt::Key_Return);
+    QTest::newRow("folders-enter") << true << int(Qt::Key_Enter);
+}
+
+void DashboardFilesWidgetTest::enterActivatesBothViews()
+{
+    QFETCH(bool, folders);
+    QFETCH(int, key);
+    QStandardItemModel model;
+    model.appendRow(new QStandardItem("document.md"));
+    FileExplorerView explorer;
+    explorer.setModel(&model);
+    explorer.setMode(folders ? FileExplorerView::Mode::Folders : FileExplorerView::Mode::Tree);
+    QAbstractItemView *view = folders ? static_cast<QAbstractItemView *>(explorer.iconView())
+                                     : static_cast<QAbstractItemView *>(explorer.treeView());
+    view->setCurrentIndex(model.index(0, 0));
+    QSignalSpy activated(&explorer, &FileExplorerView::activated);
+    QTest::keyClick(view, Qt::Key(key));
+    QCOMPARE(activated.size(), 1);
+    QCOMPARE(qvariant_cast<QModelIndex>(activated.first().first()), model.index(0, 0));
 }
 
 QTEST_MAIN(DashboardFilesWidgetTest)

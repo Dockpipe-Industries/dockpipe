@@ -545,7 +545,7 @@ bool ProjectFilesWidget::navigateExplorer(const QString &directory)
     const auto index = m_model->setRootPath(m_explorerDirectory);
     m_explorer->setRootIndex(index);
     m_explorer->setAvailable(index.isValid());
-    const QString relative = QDir(m_root).relativeFilePath(m_explorerDirectory);
+    const QString relative = QDir(QFileInfo(m_root).canonicalFilePath()).relativeFilePath(m_explorerDirectory);
     m_explorerLocation->setText(relative == "." ? tr("Root") : QFileInfo(m_explorerDirectory).fileName());
     m_explorerLocation->setToolTip(QDir::toNativeSeparators(m_explorerDirectory));
     m_explorerUp->setEnabled(relative != ".");
@@ -648,6 +648,9 @@ bool ProjectFilesWidget::saveFile()
         showMessage(tr("This file changed on disk. Your edits are preserved; keep a copy, then Reload to read the disk version."));
         return false;
     }
+    // Windows readers do not share delete access. Release the conflict-check
+    // handle before atomically replacing the destination.
+    current.close();
     QSaveFile file(m_path);
     if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit()) {
         showMessage(tr("Cannot save: %1").arg(file.errorString()));

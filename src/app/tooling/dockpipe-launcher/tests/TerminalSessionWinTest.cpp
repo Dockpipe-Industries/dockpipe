@@ -21,6 +21,25 @@
 #include <windows.h>
 
 namespace {
+HANDLE testDiagnosticHandle = nullptr;
+
+// QtTest's stdout logger is not visible in every Windows console-subsystem
+// configuration. Write bounded test milestones through the original captured
+// stderr handle so a CTest timeout still identifies its active case and phase.
+void writeDiagnostic(const QString &message)
+{
+    const QByteArray bytes = (QStringLiteral("ConPTY fixture: ") + message.left(2048) + QLatin1Char('\n')).toUtf8();
+    DWORD written = 0;
+    if (testDiagnosticHandle && testDiagnosticHandle != INVALID_HANDLE_VALUE)
+        WriteFile(testDiagnosticHandle, bytes.constData(), DWORD(bytes.size()), &written, nullptr);
+}
+
+void reportSession(const TerminalSession &terminal, qsizetype outputBytes, int finishedCount)
+{
+    writeDiagnostic(QStringLiteral("state running=%1 output-bytes=%2 finished-count=%3 error=%4")
+        .arg(terminal.running()).arg(outputBytes).arg(finishedCount).arg(terminal.error().left(512)));
+}
+
 bool writeChild(const QByteArray &bytes)
 {
     DWORD count = 0;
@@ -106,13 +125,31 @@ int terminalChild(const QStringList &arguments)
 class TerminalSessionWinTest final : public QObject {
     Q_OBJECT
 private slots:
+    void init();
+    void cleanup();
     void inputResizeArgumentsAndExit();
     void commandProcessorShell();
     void invalidStartAndInputBounds();
     void asynchronousLaunchFailure();
     void floodAndDescendantCleanup();
     void callbackRestartAndDestruction();
+
+private:
+    QElapsedTimer m_caseTimer;
 };
+
+void TerminalSessionWinTest::init()
+{
+    m_caseTimer.start();
+    writeDiagnostic(QStringLiteral("BEGIN %1").arg(QString::fromLatin1(QTest::currentTestFunction())));
+}
+
+void TerminalSessionWinTest::cleanup()
+{
+    writeDiagnostic(QStringLiteral("END %1 failed=%2 elapsed-ms=%3")
+        .arg(QString::fromLatin1(QTest::currentTestFunction()))
+        .arg(QTest::currentTestFailed()).arg(m_caseTimer.elapsed()));
+}
 
 void TerminalSessionWinTest::inputResizeArgumentsAndExit()
 {
@@ -122,15 +159,18 @@ void TerminalSessionWinTest::inputResizeArgumentsAndExit()
     QByteArray output;
     connect(&terminal, &TerminalSession::output, this, [&](const QByteArray &bytes) { output += bytes; });
     QSignalSpy finished(&terminal, &TerminalSession::finished);
+    const auto sessionDiagnostics = qScopeGuard([&] { reportSession(terminal, output.size(), finished.size()); });
     terminal.resize(117, 41);
     const QStringList special = {QStringLiteral(""), QStringLiteral("two words"), QStringLiteral("quote\"value"),
         QStringLiteral("trailing\\"), QStringLiteral("before\\\"quote"), QString::fromUtf8("Unicode-\xc3\xa9")};
     QStringList arguments{QStringLiteral("--terminal-child")};
     arguments.append(special);
     const QString environmentValue = QString::fromUtf8("space and Unicode-\xc3\xa9");
+    writeDiagnostic(QStringLiteral("starting structured argv child"));
     QVERIFY(terminal.start(directory.path(), QCoreApplication::applicationFilePath(), arguments,
         {{QStringLiteral("DOCKPIPE_TERMINAL_FIXTURE"), environmentValue}}));
     QTRY_VERIFY_WITH_TIMEOUT(output.contains("READY"), 5000);
+    writeDiagnostic(QStringLiteral("child READY received"));
     QJsonArray expected;
     for (const QString &argument : special)
         expected.append(argument);
@@ -138,6 +178,7 @@ void TerminalSessionWinTest::inputResizeArgumentsAndExit()
     QVERIFY(output.contains(QDir::fromNativeSeparators(directory.path()).toUtf8()));
     QTRY_VERIFY_WITH_TIMEOUT(output.contains("SIZE:117:41"), 5000);
     QVERIFY2(output.contains("ENVIRONMENT:" + environmentValue.toUtf8()), output.constData());
+    writeDiagnostic(QStringLiteral("requesting resize"));
     terminal.resize(92, 29);
     // The worker serializes resize and close. Wait for the new dimensions to
     // arrive through the actual child console API, rather than inspecting state.
@@ -147,6 +188,7 @@ void TerminalSessionWinTest::inputResizeArgumentsAndExit()
     sizeProbe.start();
     QTRY_VERIFY_WITH_TIMEOUT(output.contains("SIZE:92:29"), 3000);
     sizeProbe.stop();
+    writeDiagnostic(QStringLiteral("resize observed; requesting child exit"));
     QVERIFY(terminal.send("exit\r"));
     QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 5000);
     QCOMPARE(finished.front().front().toInt(), 7);
@@ -162,14 +204,18 @@ void TerminalSessionWinTest::commandProcessorShell()
     QByteArray output;
     connect(&terminal, &TerminalSession::output, this, [&](const QByteArray &bytes) { output += bytes; });
     QSignalSpy finished(&terminal, &TerminalSession::finished);
+    const auto sessionDiagnostics = qScopeGuard([&] { reportSession(terminal, output.size(), finished.size()); });
+    writeDiagnostic(QStringLiteral("starting command processor"));
     QVERIFY(terminal.start(directory.path())); // Actual cmd.exe fallback.
     // The echoed input contains %PREFIX%, not CMD_READY. Only a running shell
     // can expand this marker, so terminal input echo cannot satisfy the oracle.
     QVERIFY(terminal.send("set PREFIX=CMD_\r"));
     QVERIFY(terminal.send("echo %PREFIX%READY\r"));
     QTRY_VERIFY_WITH_TIMEOUT(output.contains("CMD_READY"), 5000);
+    writeDiagnostic(QStringLiteral("command processor READY received"));
     QVERIFY(terminal.send("echo %CD%\r"));
     QTRY_VERIFY_WITH_TIMEOUT(output.contains(QDir::toNativeSeparators(directory.path()).toUtf8()), 5000);
+    writeDiagnostic(QStringLiteral("command processor working directory observed; requesting exit"));
     QVERIFY(terminal.send("echo %PREFIX%TAIL\r"));
     QVERIFY(terminal.send("exit 11\r"));
     QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 5000);
@@ -207,6 +253,8 @@ void TerminalSessionWinTest::asynchronousLaunchFailure()
     invalidProgram.close();
     TerminalSession terminal;
     QSignalSpy finished(&terminal, &TerminalSession::finished);
+    const auto sessionDiagnostics = qScopeGuard([&] { reportSession(terminal, 0, finished.size()); });
+    writeDiagnostic(QStringLiteral("starting invalid executable asynchronously"));
     QVERIFY(terminal.start(directory.path(), invalidProgram.fileName(), {}));
     QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 5000);
     QVERIFY(!terminal.running());
@@ -224,8 +272,8 @@ void TerminalSessionWinTest::floodAndDescendantCleanup()
     QElapsedTimer elapsed;
     elapsed.start();
     const auto diagnostics = qScopeGuard([&] {
-        qInfo() << "ConPTY flood diagnostics bytes" << total << "largest batch" << largest
-                << "elapsed ms" << elapsed.elapsed() << "heartbeat ticks" << ticks;
+        writeDiagnostic(QStringLiteral("flood output-bytes=%1 largest-batch=%2 elapsed-ms=%3 heartbeat-ticks=%4 error=%5")
+            .arg(total).arg(largest).arg(elapsed.elapsed()).arg(ticks).arg(terminal.error().left(512)));
     });
     connect(&terminal, &TerminalSession::output, this, [&](const QByteArray &bytes) {
         total += bytes.size();
@@ -236,6 +284,7 @@ void TerminalSessionWinTest::floodAndDescendantCleanup()
     terminal.resize(160, 60);
     QVERIFY(terminal.start({}, QCoreApplication::applicationFilePath(), {QStringLiteral("--terminal-child")}));
     QTRY_VERIFY_WITH_TIMEOUT(prefix.contains("READY"), 5000);
+    writeDiagnostic(QStringLiteral("flood child READY received; requesting descendant"));
     QVERIFY(terminal.send("descendant\r"));
     const QRegularExpression descendantPattern(QStringLiteral("DESCENDANT:(\\d+);END"));
     QTRY_VERIFY_WITH_TIMEOUT(descendantPattern.match(QString::fromUtf8(prefix)).hasMatch(), 5000);
@@ -244,8 +293,10 @@ void TerminalSessionWinTest::floodAndDescendantCleanup()
     const HANDLE descendant = OpenProcess(SYNCHRONIZE, FALSE, match.captured(1).toULong());
     QVERIFY(descendant != nullptr);
     const auto closeDescendant = qScopeGuard([&] { CloseHandle(descendant); });
+    writeDiagnostic(QStringLiteral("descendant handle opened; requesting flood"));
     QVERIFY(terminal.send("flood\r"));
     QTRY_VERIFY_WITH_TIMEOUT(total >= 256 * 1024, 3000);
+    writeDiagnostic(QStringLiteral("flood threshold reached"));
     QTimer heartbeat;
     heartbeat.setInterval(10);
     connect(&heartbeat, &QTimer::timeout, this, [&] { ++ticks; });
@@ -257,6 +308,7 @@ void TerminalSessionWinTest::floodAndDescendantCleanup()
     QVERIFY(largest <= 64 * 1024);
     QElapsedTimer stopTime;
     stopTime.start();
+    writeDiagnostic(QStringLiteral("stopping flood session"));
     terminal.stop();
     QVERIFY(stopTime.elapsed() < 200);
     QVERIFY(!terminal.running());
@@ -276,10 +328,12 @@ void TerminalSessionWinTest::callbackRestartAndDestruction()
             return;
         readyOutput.clear();
         if (!restarted) {
+            writeDiagnostic(QStringLiteral("callback stopping and restarting child"));
             restarted = true;
             terminal->stop();
             QVERIFY(terminal->start({}, QCoreApplication::applicationFilePath(), {QStringLiteral("--terminal-child")}));
         } else {
+            writeDiagnostic(QStringLiteral("callback deleting restarted terminal"));
             delete terminal;
             destroyed = true;
         }
@@ -302,8 +356,20 @@ int main(int argc, char **argv)
     QCoreApplication application(argc, argv);
     if (application.arguments().value(1) == QStringLiteral("--terminal-child"))
         return terminalChild(application.arguments());
+    const HANDLE currentProcess = GetCurrentProcess();
+    const bool ownsDiagnosticHandle = DuplicateHandle(currentProcess, GetStdHandle(STD_ERROR_HANDLE), currentProcess,
+        &testDiagnosticHandle, 0, FALSE, DUPLICATE_SAME_ACCESS);
+    if (!ownsDiagnosticHandle)
+        testDiagnosticHandle = GetStdHandle(STD_ERROR_HANDLE);
+    const auto closeDiagnostics = qScopeGuard([ownsDiagnosticHandle] {
+        if (ownsDiagnosticHandle)
+            CloseHandle(testDiagnosticHandle);
+    });
+    writeDiagnostic(QStringLiteral("test process started"));
     TerminalSessionWinTest tests;
-    return QTest::qExec(&tests, argc, argv);
+    const int result = QTest::qExec(&tests, argc, argv);
+    writeDiagnostic(QStringLiteral("test process finished result=%1").arg(result));
+    return result;
 }
 
 #include "TerminalSessionWinTest.moc"
