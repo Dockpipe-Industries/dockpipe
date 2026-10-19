@@ -6,8 +6,32 @@ version="${1:?version}"
 out="${2:?output directory}"
 mkdir -p "$out"
 out="$(cd "$out" && pwd)"
-build="$(mktemp -d)"
-trap 'rm -rf "$build"' EXIT
+if [[ -n "${DOCKPIPE_PRIVATE_DEBUG_DIR:-}" ]]; then
+  private_debug="$(python3 - "$DOCKPIPE_PRIVATE_DEBUG_DIR" <<'PY'
+from pathlib import Path
+import sys
+
+print(Path(sys.argv[1]).resolve())
+PY
+  )"
+  [[ "$private_debug/" != "$out/"* ]] || {
+    echo 'Private build diagnostics must be outside release artifacts.' >&2
+    exit 1
+  }
+  mkdir -p "$private_debug"
+  build="$(mktemp -d "$private_debug/native-build.XXXXXX")"
+else
+  build="$(mktemp -d)"
+fi
+cleanup_build() {
+  local status=$?
+  if [[ "$status" == 0 || -z "${DOCKPIPE_PRIVATE_DEBUG_DIR:-}" ]]; then
+    rm -rf "$build"
+  else
+    echo "Build failed; private diagnostics retained at $build" >&2
+  fi
+}
+trap cleanup_build EXIT
 args=(-S "$root/src/app/tooling/dockpipe-launcher" -B "$build" -DCMAKE_BUILD_TYPE=Release
       "-DDOCKPIPE_RELEASE_VERSION=$version")
 if [[ "$(uname -s)" == Darwin ]]; then

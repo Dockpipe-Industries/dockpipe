@@ -189,10 +189,18 @@ int spatialCockpitTest()
     QKeyEvent release(QEvent::KeyRelease, Qt::Key_D, Qt::NoModifier);
     QApplication::sendEvent(cockpit.flight(), &release);
     VERIFY(cockpit.flight()->cameraPosition().x() > before.x());
-    cockpit.flight()->setPilotInput({1, 0, 0}, {}, true);
+    // The return portal can be placed beside the arrival point. Keep the wall
+    // collision check in a fresh room and strafe away from that valid exit.
+    cockpit.visit("building:" + buildingId);
+    VERIFY(cockpit.destination() == "building:" + buildingId && cockpit.flight()->walking());
+    const float strafeDirection = cockpit.flight()->returnPortalPosition().x()
+        >= cockpit.flight()->cameraPosition().x() ? -1.f : 1.f;
+    cockpit.flight()->setPilotInput({strafeDirection, 0, 0}, {}, true);
     settle(1200);
     cockpit.flight()->setPilotInput({}, {}, false);
+    VERIFY(cockpit.destination() == "building:" + buildingId && cockpit.flight()->walking());
     VERIFY(cockpit.flight()->cameraPosition().x() <= 575);
+    VERIFY(cockpit.flight()->cameraPosition().x() >= -575);
     settle(60);
     const quint64 idleFrames = cockpit.flight()->renderedFrames();
     settle(100);
@@ -305,6 +313,10 @@ int spatialCockpitTest()
         }
         std::printf("gpu_memory=%s\n", qPrintable(gpuMemory));
     }
+    // Hide/back is an independent navigation phase, including offscreen runs
+    // where no native-window fixture branch restored the room above.
+    cockpit.visit("building:" + buildingId);
+    VERIFY(cockpit.destination() == "building:" + buildingId && cockpit.flight()->walking());
     const std::clock_t idleStart = std::clock();
     cockpit.hide();
     settle(50);
