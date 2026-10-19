@@ -58,10 +58,10 @@ func readWorkspaceGitSnapshot(ctx context.Context, workdir string) (*WorkspaceGi
 			continue
 		}
 		if len(entry) < 4 || !utf8.Valid(entry) {
-			return nil, errors.New("Git returned an unsupported filename or status")
+			return nil, errors.New("git returned an unsupported filename or status")
 		}
 		if len(result.Changes) >= 2048 {
-			return nil, errors.New("Git review exceeds 2048 changed files; narrow the change set first")
+			return nil, errors.New("git review exceeds 2048 changed files; narrow the change set first")
 		}
 		change := WorkspaceGitChange{Status: string(entry[:2]), Path: string(entry[3:])}
 		if strings.ContainsAny(change.Status, "RC") {
@@ -89,7 +89,10 @@ func readWorkspaceGitSnapshot(ctx context.Context, workdir string) (*WorkspaceGi
 }
 
 func workspaceGitSafePath(root, path string) (string, error) {
-	if path == "" || strings.ContainsRune(path, '\x00') || filepath.IsAbs(path) || filepath.Clean(path) != filepath.FromSlash(path) || path == ".." || strings.HasPrefix(path, "../") {
+	// Git reports slash-separated roots on Windows; filepath.Dir returns native
+	// separators. Keep both sides of the parent walk in the same lexical form.
+	root = filepath.Clean(filepath.FromSlash(root))
+	if path == "" || strings.ContainsRune(path, '\x00') || !filepath.IsLocal(path) || filepath.Clean(path) != filepath.FromSlash(path) || path == ".." || strings.HasPrefix(path, "../") {
 		return "", errors.New("invalid repository path")
 	}
 	absolute := filepath.Join(root, filepath.FromSlash(path))
@@ -157,7 +160,7 @@ func workspaceGitContentIdentity(ctx context.Context, root, path string, remaini
 		}
 		n, readErr := file.Read(buffer)
 		if int64(n) > *remaining {
-			return "", 0, false, errors.New("Git review exceeds the 256 MiB content-hashing budget")
+			return "", 0, false, errors.New("git review exceeds the 256 MiB content-hashing budget")
 		}
 		*remaining -= int64(n)
 		size += int64(n)

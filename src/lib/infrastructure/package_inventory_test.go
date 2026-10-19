@@ -70,6 +70,9 @@ func writeZstdInventoryPackage(t *testing.T, root, name string) string {
 	if err := compressed.Close(); err != nil {
 		t.Fatal(err)
 	}
+	if err := input.Close(); err != nil {
+		t.Fatal(err)
+	}
 	zstdPath := strings.TrimSuffix(gzipPath, ".gz") + ".zst"
 	output, err := os.Create(zstdPath)
 	if err != nil {
@@ -109,10 +112,18 @@ func TestInstalledPackageInventoryAndUninstallZstd(t *testing.T) {
 		t.Fatalf("unexpected inventory: %+v", inventory)
 	}
 	entry := inventory.Packages[0]
-	if entry.Name != "zstd-tool" || entry.Path != selected || !entry.Removable {
+	selectedInfo, err := os.Stat(selected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entryInfo, err := os.Stat(entry.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if entry.Name != "zstd-tool" || !os.SameFile(selectedInfo, entryInfo) || !entry.Removable {
 		t.Fatalf("zstd package identity: %+v", entry)
 	}
-	if err := UninstallUserPackage(selected); err != nil {
+	if err := UninstallUserPackage(entry.Path); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(selected); !os.IsNotExist(err) {

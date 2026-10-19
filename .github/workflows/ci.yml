@@ -234,11 +234,49 @@ jobs:
       - name: clone-worktree include script (bash + git)
         run: bash tests/unit-tests/test_clone_worktree_include.sh
 
+  cockpit-native:
+    name: Cockpit native SDK and rendering
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      attestations: read
+    env:
+      DOCKPIPE_COCKPIT_NATIVE_TEST: '1'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.9'
+      - name: Install matching native SDK prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build python3-venv xvfb xauth \
+            libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev libxkbcommon-x11-0 \
+            libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-render-util0 libxcb-shape0 libxcb-xkb1 libx11-dev \
+            libxcomposite-dev libxrender-dev libxres-dev libxext-dev libxcb1-dev \
+            libnss3 libasound2t64 libsdl2-2.0-0
+      - name: Install pinned Qt ABI
+        run: |
+          bash release/packaging/desktop/install-linux-qt.sh "$RUNNER_TEMP/Qt"
+          echo "DOCKPIPE_QT_ROOT=$RUNNER_TEMP/Qt/6.10.3/gcc_64" >> "$GITHUB_ENV"
+      - name: Build repository CLI
+        run: make build-core
+      - name: Verify SDK publisher and qualify Cockpit
+        run: bash packages/cockpit/tests/run.sh
+
   staging-release:
-    needs: [test, test-windows]
+    needs: [test, test-windows, cockpit-native]
     if: github.event_name == 'push' && github.ref == 'refs/heads/staging' && vars.DOCKPIPE_RELEASE_ENABLED == 'true'
     permissions:
       contents: write
+      # Reusable workflows cannot declare permissions absent from the caller.
+      # Release jobs narrow these again; SDK signing itself is manual-only.
+      id-token: write
+      attestations: write
     uses: ./.github/workflows/release.yml
     # GitHub requires inheritance to resolve the called job's environment secrets.
     # https://github.com/actions/runner/issues/4453

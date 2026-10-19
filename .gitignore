@@ -19,6 +19,9 @@ packages/*/bin/*.exe
 packages/dorkpipe/resolvers/dorkpipe/assets/tooling/bin/
 
 # Build output
+# aqt writes here when invoked directly from the checkout. Prefer the scoped
+# Qt installer working directory documented in the launcher README.
+/aqtinstall.log
 # Repo-root local build and packaging output
 /bin/
 /src/cmd/dockpipe_windows_amd64.syso

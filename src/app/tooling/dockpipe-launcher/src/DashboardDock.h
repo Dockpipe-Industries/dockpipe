@@ -68,6 +68,7 @@ private:
     QPointer<QWidget> m_overlayArea;
     QPointer<QWidget> m_revealEdge;
     QTimer *m_hideTimer = nullptr;
+    QTimer *m_hoverTimer = nullptr;
     QPropertyAnimation *m_slide = nullptr;
     bool m_revealed = false;
     bool m_keyboardFocus = false;

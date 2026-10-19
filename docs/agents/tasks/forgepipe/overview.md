@@ -109,3 +109,12 @@ Browser polish verification: five focused browser/annotation/extension/launcher/
 Native browser checks cover PNG/PDF export and session reset; native spatial fixtures cover shared
 tabs, media-controller disposal, preserved worlds/cameras, image extraction, corridors and theatre
 playback. Password-manager compatibility and cross-platform extension builds remain unverified.
+
+## Protected SDK and Cockpit staging delivery (2026-10-19)
+
+The user explicitly approved including a protected ForgePipe SDK release and
+Cockpit integration in the current Dockpipe staging build. The canonical migration
+record describes the fixed public SDK inventory, private diagnostic retention,
+publisher attestation and native Qt ABI gates. Current implementation advances
+this delivery; hosted qualification and final staging catalog readback remain
+open. This does not complete the wider standalone product extraction objective.

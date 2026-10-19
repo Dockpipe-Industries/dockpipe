@@ -53,6 +53,7 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 public:
     explicit MainWindow(QWidget *parent = nullptr);
+    ~MainWindow() override;
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -105,6 +106,7 @@ private:
     QVector<DashboardDefinition> dashboardSnapshots() const;
     bool persistDashboards();
     bool confirmDashboardClose();
+    void releaseDashboardWindows();
     void toggleDashboardFullscreen();
     void updateDashboardFullscreen();
     void updateDashboardStatusBar();

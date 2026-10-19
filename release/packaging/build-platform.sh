@@ -3,6 +3,42 @@
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root"
+if [[ "${1:-}" == --finalize-cockpit ]]; then
+  version="${2:?release version}"
+  cockpit_store="${3:?qualified Cockpit resolver store}"
+  [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Expected numeric release version' >&2; exit 1; }
+  [[ "$(go env GOHOSTOS)-$(go env GOHOSTARCH)" == linux-amd64 ]] || { echo 'Cockpit finalization supports Linux amd64 only.' >&2; exit 1; }
+  out="$root/release/artifacts"
+  store="$out/stores/linux-amd64"
+  archive="$out/dockpipe-packages_${version}_linux-amd64.tar.gz"
+  [[ -d "$store" && ! -L "$store" && -f "$archive" && ! -L "$archive" ]] || { echo 'Initial release store and archive are required.' >&2; exit 1; }
+  work="$(mktemp -d "$out/.cockpit-finalization.XXXXXX")"
+  finalized=0
+  cleanup_finalization() {
+    if [[ "$finalized" != 1 ]]; then
+      if [[ -d "$work/previous-store" ]]; then
+        rm -rf -- "$store"
+        mv "$work/previous-store" "$store" || return
+      fi
+      if [[ -f "$work/previous-archive.tar.gz" ]]; then
+        mv "$work/previous-archive.tar.gz" "$archive" || return
+      fi
+    fi
+    rm -rf -- "$work"
+  }
+  trap cleanup_finalization EXIT
+  python3 release/packaging/ingest-pinned-stores.py --finalize-cockpit \
+    --base-store "$store" --cockpit-store "$cockpit_store" --version "$version" --out "$work/store"
+  python3 release/packaging/release-artifacts.py verify-store "$work/store"
+  tar -C "$work/store" -czf "$work/packages.tar.gz" .
+  mv "$store" "$work/previous-store"
+  mv "$archive" "$work/previous-archive.tar.gz"
+  mv "$work/store" "$store"
+  mv "$work/packages.tar.gz" "$archive"
+  finalized=1
+  echo "Finalized Linux amd64 release catalog with qualified Cockpit 0.1.1."
+  exit 0
+fi
 version="${1:?release version}"
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Expected numeric release version' >&2; exit 1; }
 # Core compilation reads the workspace VERSION. Keep every generated payload on

@@ -135,7 +135,7 @@ TerminalSettingsDialog::TerminalSettingsDialog(QWidget *parent) : QDialog(parent
     connect(m_glow, &QCheckBox::toggled, strengthRow, &QWidget::setEnabled);
     connect(m_glow, &QCheckBox::toggled, spreadRow, &QWidget::setEnabled);
     bodyLayout->addLayout(form);
-    bodyLayout->addWidget(description(tr("Opacity is 100% by default (transparency off). Lower opacity reveals the selected background; text stays opaque. Transparency uses software rendering for terminal and browser views so overlapping panels stack correctly. Restart DockPipe after first enabling transparency, or to return to accelerated rendering after setting opacity to 100%. Desktop mode also requires window compositing. No screen capture is used.")));
+    bodyLayout->addWidget(description(tr("Opacity is 100% by default (transparency off). Lower opacity reveals the selected background; text stays opaque. Transparency uses software rendering for terminal and browser views so overlapping panels stack correctly. This disables WebGL: websites that require it may appear blank or fail to start. Set opacity to 100% and restart DockPipe to restore accelerated browsing. First enabling transparency also requires a restart. Desktop mode requires window compositing. No screen capture is used.")));
     m_preview = new QPlainTextEdit;
     m_preview->setObjectName("terminalSettingsPreview");
     m_preview->setAccessibleName(tr("Terminal font and color preview"));

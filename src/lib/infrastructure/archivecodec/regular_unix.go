@@ -15,7 +15,7 @@ func openRegular(path string) (*os.File, error) {
 	}
 	info, err := file.Stat()
 	if err != nil || !info.Mode().IsRegular() {
-		file.Close()
+		_ = file.Close()
 		return nil, fmt.Errorf("archive decoder input must be a regular file: %s", path)
 	}
 	return file, nil

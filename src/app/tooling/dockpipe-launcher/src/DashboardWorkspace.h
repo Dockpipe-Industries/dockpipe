@@ -15,6 +15,8 @@ class QMimeData;
 class QScrollArea;
 class QSplitter;
 class QTabWidget;
+class QTimer;
+class QToolButton;
 class WindowControlButton;
 
 // Native widgets are reparented between layouts, never rendered through a proxy.
@@ -46,11 +48,13 @@ public:
 signals:
     void layoutChanged();
     void panelCloseRequested(const QString &id);
+    void panelReleaseRequested(const QString &id);
 
 protected:
     bool eventFilter(QObject *object, QEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
     void showEvent(QShowEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
     void paintEvent(QPaintEvent *event) override;
     void dragEnterEvent(QDragEnterEvent *event) override;
     void dragMoveEvent(QDragMoveEvent *event) override;
@@ -66,12 +70,16 @@ private:
         QWidget *footer = nullptr;
         bool footerInitiallyHidden = false;
         WindowControlButton *expand = nullptr;
+        QToolButton *tileActions = nullptr;
     };
     QWidget *buildTree(const QJsonObject &node, QWidget *parent);
     QJsonObject captureTree(QWidget *widget) const;
     void rebuild();
     void applyPanelChrome(const QString &id, bool tiled);
     void applyTilingChrome();
+    void updateTileActions();
+    void updateTileActionsPolling();
+    void showFocusedTileMenu();
     void applyMinimizedPanels();
     QString panelId(QWidget *frame) const;
     void rememberGeometry();
@@ -129,6 +137,7 @@ private:
     bool m_restoredGeometryPending = false;
     bool m_compactTiling = true;
     bool m_showPanelHeaders = true;
+    QTimer *m_tileActionsTimer = nullptr;
     QString m_backgroundKind = QStringLiteral("grid");
     QString m_backgroundPath;
     QPixmap m_backgroundImage;
