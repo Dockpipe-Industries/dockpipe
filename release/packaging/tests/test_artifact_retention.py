@@ -49,7 +49,7 @@ class ArtifactRetentionTests(unittest.TestCase):
     def test_flatpak_staging_input_is_explicit_and_defaults_to_false(self):
         release = yaml.load((ROOT / '.github/workflows/release.yml').read_text(), Loader=yaml.BaseLoader)
         flatpak = yaml.load((ROOT / '.github/workflows/flatpak.yml').read_text(), Loader=yaml.BaseLoader)
-        self.assertEqual(release['jobs']['build-flatpak']['with']['staging'], '${{ inputs.staging }}')
+        self.assertEqual(release['jobs']['build-flatpak']['with']['staging'], '${{ inputs.staging == true }}')
         value = flatpak['on']['workflow_call']['inputs']['staging']
         self.assertEqual(value['type'], 'boolean')
         self.assertEqual(value['default'], 'false')
