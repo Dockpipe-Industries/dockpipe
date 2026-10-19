@@ -63,6 +63,8 @@ class NativeSymbolBoundaryTests(unittest.TestCase):
                         if failure == "debug":
                             return "segname __DWARF\nsectname __debug_info\n"
                         return "segname __TEXT\nsectname __text\n"
+                    if "-m" in arguments:
+                        return "0000000100000010 (__TEXT,__text) non-external _private_function\n"
                     if "-g" in arguments:
                         return "_changed_export\n" if failure == "abi" and binary in stripped else "_required_export\n"
                     return "_required_export\n_private_function\n" if failure == "local" else "_required_export\n"
@@ -83,6 +85,19 @@ class NativeSymbolBoundaryTests(unittest.TestCase):
                         self.assertEqual(len(audit["owned_binaries"]), 2)
                         self.assertTrue(all(item["exported_symbols"] == 1 for item in audit["owned_binaries"]))
                         self.assertTrue(all(item["private_defined_symbols"] == 0 for item in audit["owned_binaries"]))
+
+    def test_private_symbol_diagnostics_are_typed_and_bounded(self):
+        symbols = protector.Counter({"_private_%02d" % index: 1 for index in range(20)})
+        listing = "\n".join(
+            "0000000100000010 (__TEXT,__text) non-external " + name for name in symbols
+        )
+        with patch.object(protector, "run_tool", return_value=listing):
+            diagnostic = json.loads(protector.describe_private_symbols(self.launcher, symbols))
+        self.assertEqual(diagnostic["count"], 20)
+        self.assertEqual(len(diagnostic["samples"]), 8)
+        self.assertTrue(all("non-external" in item["type"] for item in diagnostic["samples"]))
+        self.assertEqual(diagnostic["samples"][0]["name"], "_private_00")
+        self.assertNotIn("_private_19", json.dumps(diagnostic))
 
     @unittest.skipUnless(sys.platform == "darwin" and shutil.which("clang"), "Requires native Apple Mach-O tools")
     def test_strips_real_macho_debug_and_local_symbols_without_losing_exports(self):
