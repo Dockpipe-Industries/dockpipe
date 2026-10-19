@@ -90,7 +90,7 @@ void ProjectFilesGraphTest::firstClickLoadsInstalledPackageAndCloseRestoresTree(
     QVERIFY(surface);
     QVERIFY(surface->isVisible());
     QCOMPARE(surface->property("fixtureRoot").toString(), root.path());
-    QCOMPARE(surface->property("fixtureDirectory").toString(), root.path());
+    QCOMPARE(surface->property("fixtureDirectory").toString(), QFileInfo(root.path()).canonicalFilePath());
     QVERIFY(surface->property("fixtureCockpitEnabled").toBool());
     QVERIFY(!tree->isVisible());
     auto *close = surface->findChild<QPushButton *>("fixtureCloseFiles");

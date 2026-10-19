@@ -65,6 +65,7 @@ private slots:
     void previewRendersDraftWithoutSaving_data();
     void previewRendersDraftWithoutSaving();
     void switchingFilesAndRootsClearsPreview();
+    void repeatedSavesReleaseConflictCheckHandle();
     void previewDoesNotLoadResourcesOrFollowUnsafeLinks();
     void oversizedDraftHasVisibleLimit();
     void mermaidFencesRenderWithoutChangingDraft();
@@ -133,6 +134,24 @@ void ProjectFilesMarkdownTest::previewRendersDraftWithoutSaving()
     QTest::mouseClick(toggle, Qt::LeftButton);
     QVERIFY(preview->isHidden());
     QVERIFY(editor->toPlainText().contains("Live update"));
+}
+
+void ProjectFilesMarkdownTest::repeatedSavesReleaseConflictCheckHandle()
+{
+    QTemporaryDir root;
+    ProjectFilesWidget files;
+    QVERIFY(files.setRoot(root.path()));
+    QVERIFY(files.createFile("notes.md"));
+    auto *editor = files.findChild<QPlainTextEdit *>("fileTextEditor");
+    for (const QString &text : {QString("First draft"), QString("Second draft")}) {
+        editor->setPlainText(text);
+        editor->document()->setModified(true);
+        QVERIFY(files.saveFile());
+        QVERIFY(!files.hasUnsavedChanges());
+        QFile disk(root.filePath("notes.md"));
+        QVERIFY(disk.open(QIODevice::ReadOnly));
+        QCOMPARE(disk.readAll(), text.toUtf8());
+    }
 }
 
 void ProjectFilesMarkdownTest::switchingFilesAndRootsClearsPreview()

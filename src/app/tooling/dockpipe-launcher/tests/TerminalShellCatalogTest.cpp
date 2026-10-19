@@ -55,6 +55,7 @@ private slots:
     void cleanup();
     void discoversInstalledWindowsVersionsWithoutLaunchingThem();
     void discoversUnixShellsAndDeduplicatesPaths();
+    void preservesInvokedShellAliasesWhileDeduplicatingCanonicalIdentity();
     void parsesWslNamesAsStructuredArguments();
     void flatpakUsesOnlyHostProfiles();
     void rejectsIncompleteAndOversizedProbeOutput_data();
@@ -131,8 +132,48 @@ void TerminalShellCatalogTest::discoversUnixShellsAndDeduplicatesPaths()
     catalog.refresh();
     QVERIFY(catalog.error().isEmpty());
     QCOMPARE(catalog.profiles().size(), 2);
-    QCOMPARE(catalog.profiles().first().program, QFileInfo(shell).canonicalFilePath());
+    QCOMPARE(catalog.profiles().first().program, QDir::cleanPath(QFileInfo(shell).absoluteFilePath()));
     QCOMPARE(catalog.profiles().last().label, QString("PowerShell"));
+#endif
+}
+
+void TerminalShellCatalogTest::preservesInvokedShellAliasesWhileDeduplicatingCanonicalIdentity()
+{
+#ifdef Q_OS_WIN
+    QSKIP("Unix symbolic-link and argv[0] fixture.");
+#else
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const QString target = directory.filePath("bin/bash");
+    const QString alias = directory.filePath("aliases/bash");
+    const QString shAlias = directory.filePath("bin/sh");
+    QVERIFY(writeExecutable(target));
+    QVERIFY(QDir().mkpath(QFileInfo(alias).absolutePath()));
+    QVERIFY(QFile::link(target, alias));
+    QVERIFY(QFile::link(target, shAlias));
+    QCOMPARE(QFileInfo(alias).canonicalFilePath(), QFileInfo(target).canonicalFilePath());
+    QCOMPARE(QFileInfo(shAlias).canonicalFilePath(), QFileInfo(target).canonicalFilePath());
+
+    TerminalShellCatalog::Discovery discovery;
+    discovery.loginShell = alias;
+    discovery.searchDirectories = {directory.filePath("bin")};
+    discovery.shellsFile = directory.filePath("shells");
+    QFile list(discovery.shellsFile);
+    QVERIFY(list.open(QIODevice::WriteOnly));
+    QVERIFY(list.write((target + "\n" + alias + "\n" + shAlias + "\n").toUtf8()) > 0);
+    list.close();
+
+    TerminalShellCatalog catalog(discovery);
+    catalog.refresh();
+    QVERIFY(catalog.error().isEmpty());
+    // The two Bash paths share an identity, but invoking the same binary as sh
+    // has different shell semantics and must remain a separate profile.
+    QCOMPARE(catalog.profiles().size(), 2);
+    QCOMPARE(catalog.profiles().first().program, alias);
+    QCOMPARE(catalog.profiles().last().program, shAlias);
+    QCOMPARE(catalog.profiles().first().label, QString("bash"));
+    QCOMPARE(catalog.profiles().last().label, QString("sh"));
+    QVERIFY(catalog.profiles().first().id != catalog.profiles().last().id);
 #endif
 }
 
