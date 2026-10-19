@@ -62,6 +62,16 @@ source/version/scope selection and safe host rendering; UI/MCP consume those ope
 See [the deferred audit scope](direction-review.md#deferred-skills-manager). Skills do not
 grant runtime authority and this work does not gate networking, MCP or knowledge delivery.
 
+## Deferred Browser Assistance
+
+DorkPipe may add optional page summaries, annotated requests and explicitly
+approved browser control through shared DockPipe operations. History access and
+site permissions require separate, visible scope. The
+[browser integration backlog](browser-integration.md) records contribution API
+gaps, headless authorization and disable/uninstall acceptance. No AI implementation
+is requested now. Ordinary browser settings remain DockPipe work; password storage
+and autofill use compatible user-selected extensions.
+
 ## Current Decisions
 
 - DorkPipe is the optional, independently versioned package owner. Do not create a separate

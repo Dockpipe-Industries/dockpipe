@@ -1,5 +1,4 @@
 #include "BuildVersion.h"
-#include "WorkspaceGraphPage.h"
 #include "DockpipeChoices.h"
 #include "FlatpakTerminal.h"
 #include "LauncherEnvironment.h"
@@ -7,6 +6,7 @@
 #include "MainWindow.h"
 #include "SingleInstanceGuard.h"
 #include "Theme.h"
+#include "TerminalPreferences.h"
 
 #include <QApplication>
 #include <QIcon>
@@ -55,8 +55,6 @@ static QIcon dockpipeLauncherIcon()
 
 int main(int argc, char *argv[])
 {
-    if (argc == 2 && std::strcmp(argv[1], "--workspace-graph-page") == 0)
-        return WorkspaceGraphPage::run(argc, argv);
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--version") == 0) {
             QTextStream(stdout) << DOCKPIPE_RELEASE_VERSION << '\n';
@@ -75,11 +73,17 @@ int main(int argc, char *argv[])
 #endif
 
     installLauncherDiagnostics();
+    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("dockpipe-launcher"));
     QApplication::setApplicationVersion(QStringLiteral(DOCKPIPE_RELEASE_VERSION));
     QApplication::setApplicationDisplayName(QStringLiteral("Dockpipe Launcher"));
     QApplication::setOrganizationName(QStringLiteral("dockpipe"));
+    // Transparent WebEngine surfaces otherwise bypass normal widget stacking.
+    // Select the compatible compositor before constructing any browser views.
+    if (TerminalPreferences::instance()->settings().opacity < 100
+        && qEnvironmentVariableIsEmpty("QT_QUICK_BACKEND"))
+        qputenv("QT_QUICK_BACKEND", "software");
     app.setDesktopFileName(qEnvironmentVariableIsSet("FLATPAK_ID")
         ? qEnvironmentVariable("FLATPAK_ID") : QStringLiteral("dockpipe-launcher"));
     app.setWindowIcon(dockpipeLauncherIcon());

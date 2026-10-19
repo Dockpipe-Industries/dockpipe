@@ -1,4 +1,7 @@
 #include "SettingsDialog.h"
+#include "WorkspacePackageManager.h"
+#include <QProgressBar>
+#include <QSignalBlocker>
 
 #include <QDialogButtonBox>
 #include <QFileDialog>
@@ -46,6 +49,12 @@ SettingsDialog::SettingsDialog(const LauncherSettings &settings, QWidget *parent
     auto *layout = new QVBoxLayout(content);
     layout->setContentsMargins(14, 14, 14, 14);
     layout->setSpacing(10);
+
+    m_defaultDashboardVisible = new QCheckBox(tr("Show Dashboard above Apps in the sidebar"));
+    m_defaultDashboardVisible->setObjectName("settingsDefaultDashboardVisible");
+    m_defaultDashboardVisible->setChecked(settings.defaultDashboardVisible);
+    m_defaultDashboardVisible->setToolTip(tr("Hiding the built-in Dashboard keeps its widgets and layout."));
+    layout->addWidget(m_defaultDashboardVisible);
 
     auto *intro = new QLabel(
         tr("Configure launcher defaults for package sources and repo discovery. Environment variables still win, and opening a folder inside a repo continues to override the repo-root fallback automatically."));
@@ -101,7 +110,7 @@ SettingsDialog::SettingsDialog(const LauncherSettings &settings, QWidget *parent
     m_cockpitEnabled->setObjectName("settingsCockpitEnabled");
     m_cockpitEnabled->setChecked(m_settings.cockpit.enabled);
     cockpitLayout->addWidget(m_cockpitEnabled);
-    auto *description = new QLabel(tr("An optional bonus workspace for flying and exploring rooms. Off by default. Disabling it stops flight, app capture, controller input and voice control."));
+    auto *description = new QLabel(tr("An optional workspace for flying, exploring rooms and the spatial web. Enabling it downloads the Cockpit package. Off by default. Disabling it stops flight, app capture, controller input and voice control."));
     description->setWordWrap(true);
     cockpitLayout->addWidget(description);
     auto *options = new QWidget;
@@ -122,14 +131,32 @@ SettingsDialog::SettingsDialog(const LauncherSettings &settings, QWidget *parent
         tr("Revolve planets around the sun while the orbital view is visible."));
     m_controller = option(tr("Enable controller"), "settingsCockpitController", m_settings.cockpit.controller,
         tr("Use an SDL-compatible controller while the cockpit is visible."));
-    m_voiceCommands = option(tr("Enable local voice commands"), "settingsCockpitVoice", m_settings.cockpit.voiceCommands,
-        tr("Enable hold-to-talk in the cockpit. The microphone starts only while you hold the button."));
     m_showShip = option(tr("Show spaceship"), "settingsCockpitShowShip", m_settings.cockpit.showShip,
         tr("Show the cockpit canopy and instrument deck."));
     m_hardwareAcceleration = option(tr("Hardware acceleration"), "settingsCockpitHardware", m_settings.cockpit.hardwareAcceleration,
         tr("Use the GPU when supported. Fall back to software rendering if unavailable."));
+    auto *experimental = new QGroupBox(tr("Experimental"));
+    experimental->setObjectName("cockpitExperimentalSettingsGroup");
+    auto *experimentalLayout = new QVBoxLayout(experimental);
+    m_voiceCommands = new QCheckBox(tr("Enable local voice commands"));
+    m_voiceCommands->setObjectName("settingsCockpitVoice");
+    m_voiceCommands->setChecked(m_settings.cockpit.voiceCommands);
+    m_voiceCommands->setToolTip(tr("Experimental and off by default. Opt in to hold-to-talk; disabling this hides voice controls and stops any active microphone session."));
+    experimentalLayout->addWidget(m_voiceCommands);
+    optionsLayout->addWidget(experimental);
     options->setEnabled(m_cockpitEnabled->isChecked());
-    connect(m_cockpitEnabled, &QCheckBox::toggled, options, &QWidget::setEnabled);
+    auto *packageStatus = new QLabel;
+    packageStatus->setObjectName("cockpitPackageStatus");
+    packageStatus->setWordWrap(true);
+    auto *packageProgress = new QProgressBar;
+    packageProgress->setRange(0, 0);
+    packageProgress->hide();
+    auto *retry = new QPushButton(tr("Retry download"));
+    retry->setObjectName("cockpitPackageRetry");
+    retry->hide();
+    cockpitLayout->addWidget(packageStatus);
+    cockpitLayout->addWidget(packageProgress);
+    cockpitLayout->addWidget(retry);
     cockpitLayout->addWidget(options);
     layout->addWidget(cockpit);
 
@@ -137,16 +164,73 @@ SettingsDialog::SettingsDialog(const LauncherSettings &settings, QWidget *parent
     connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     outer->addWidget(buttons);
+    auto &packages = WorkspacePackageManager::instance();
+    const auto finishInstall = [this, options, buttons, packageProgress](bool enabled) {
+        m_installPending = false;
+        const QSignalBlocker blocker(m_cockpitEnabled);
+        m_cockpitEnabled->setChecked(enabled);
+        m_cockpitEnabled->setEnabled(true);
+        options->setEnabled(enabled);
+        buttons->button(QDialogButtonBox::Ok)->setEnabled(true);
+        packageProgress->hide();
+    };
+    connect(&packages, &WorkspacePackageManager::prepared, this, [this, finishInstall, packageStatus, retry]() {
+        if (!m_installPending)
+            return;
+        finishInstall(true);
+        packageStatus->setText(tr("Cockpit is installed and ready."));
+        retry->hide();
+    });
+    connect(&packages, &WorkspacePackageManager::failed, this, [this, finishInstall, packageStatus, retry](const QString &message) {
+        if (!m_installPending)
+            return;
+        finishInstall(false);
+        packageStatus->setText(message);
+        retry->show();
+    });
+    connect(&packages, &WorkspacePackageManager::progress, this, [this, packageStatus](const QString &message) {
+        if (m_installPending)
+            packageStatus->setText(message);
+    });
+    connect(m_cockpitEnabled, &QCheckBox::toggled, this,
+        [this, options, buttons, packageProgress, packageStatus, retry](bool enabled) {
+            options->setEnabled(false);
+            retry->hide();
+            if (!enabled) {
+                packageStatus->clear();
+                return;
+            }
+            m_installPending = true;
+            m_cockpitEnabled->setEnabled(false);
+            buttons->button(QDialogButtonBox::Ok)->setEnabled(false);
+            packageProgress->show();
+            auto requested = updatedSettings();
+            WorkspacePackageManager::instance().prepare(requested);
+        });
+    connect(retry, &QPushButton::clicked, this, [this]() { m_cockpitEnabled->setChecked(true); });
+    connect(this, &QDialog::finished, this, [this]() {
+        if (m_installPending) {
+            m_installPending = false;
+            WorkspacePackageManager::instance().cancel();
+        }
+    });
+}
+
+SettingsDialog::~SettingsDialog()
+{
+    if (m_installPending)
+        WorkspacePackageManager::instance().cancel();
 }
 
 LauncherSettings SettingsDialog::updatedSettings() const
 {
     LauncherSettings out = m_settings;
+    out.defaultDashboardVisible = m_defaultDashboardVisible->isChecked();
     out.repoRootOverride = m_repoRootOverride->text().trimmed();
     out.globalRootOverride = m_globalRootOverride->text().trimmed();
     out.extraWorkflowRoots = splitLines(m_extraWorkflowRoots->toPlainText());
     out.packageRemotes = splitLines(m_packageRemotes->toPlainText());
-    out.cockpit = {m_cockpitEnabled->isChecked(), m_appControl->isChecked(), m_orbitalMotion->isChecked(),
+    out.cockpit = {m_cockpitEnabled->isChecked() && !m_installPending, m_appControl->isChecked(), m_orbitalMotion->isChecked(),
         m_controller->isChecked(), m_showShip->isChecked(), m_voiceCommands->isChecked(),
         m_hardwareAcceleration->isChecked()};
     return out;

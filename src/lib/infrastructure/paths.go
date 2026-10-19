@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"dockpipe/src/lib/domain"
+	"dockpipe/src/lib/infrastructure/archivecodec"
 	"dockpipe/src/lib/infrastructure/packagebuild"
 )
 
@@ -182,11 +183,13 @@ func relFromCoreNamespace(rest string) (string, bool) {
 		return "", false
 	}
 	n := len(parts)
-	// foo.tar.gz under dotted path
-	if n >= 3 && parts[n-2] == "tar" && parts[n-1] == "gz" {
-		file := parts[n-3] + ".tar.gz"
-		dir := parts[:n-3]
-		return filepath.Join(append(dir, file)...), true
+	// Preserve a supported package archive suffix in a dotted asset path.
+	if n >= 3 && parts[n-2] == "tar" {
+		file := parts[n-3] + ".tar." + parts[n-1]
+		if _, err := archivecodec.CodecForPath(file); err == nil {
+			dir := parts[:n-3]
+			return filepath.Join(append(dir, file)...), true
+		}
 	}
 	if n >= 2 && commonExtSegment(parts[n-1]) {
 		file := parts[n-2] + "." + parts[n-1]
@@ -250,8 +253,7 @@ func workflowAssetPathFromWorkflowTarballs(projectRoot, pkgDir, rel string) (str
 	if projectRoot == "" {
 		return "", false
 	}
-	pattern := filepath.Join(pkgDir, "dockpipe-workflow-*.tar.gz")
-	matches, _ := filepath.Glob(pattern)
+	matches, _ := packagebuild.ListPackageArchivePaths(pkgDir, "workflow")
 	for _, tgz := range matches {
 		root, err := packagebuild.EnsureTarballExtractedCache(tgz, TarballExtractCacheRoot(projectRoot))
 		if err != nil {
@@ -326,15 +328,14 @@ func resolveCoreNamespacedAsset(repoRoot, projectRoot, rest string) (string, boo
 	return "", false
 }
 
-// scriptPathFromResolverTarballs resolves paths under compiled resolver tarballs (dockpipe-resolver-*.tar.gz).
+// scriptPathFromResolverTarballs resolves paths under compiled resolver tarballs (dockpipe-resolver-*.tar.<codec>).
 // For rest like "dorkpipe/run.sh" it tries resolvers/dorkpipe/run.sh then
 // resolvers/dorkpipe/assets/scripts/run.sh (canonical resolver layout).
 func scriptPathFromResolverTarballs(projectRoot, pkgDir, rest string) (string, bool) {
 	if projectRoot == "" {
 		return "", false
 	}
-	pattern := filepath.Join(pkgDir, "dockpipe-resolver-*.tar.gz")
-	matches, _ := filepath.Glob(pattern)
+	matches, _ := packagebuild.ListPackageArchivePaths(pkgDir, "resolver")
 	for _, tgz := range matches {
 		root, err := packagebuild.EnsureTarballExtractedCache(tgz, TarballExtractCacheRoot(projectRoot))
 		if err != nil {
@@ -359,7 +360,7 @@ func scriptPathFromResolverTarballs(projectRoot, pkgDir, rest string) (string, b
 }
 
 // scriptPathFromWorkflowTarballs resolves scripts/<domain>/tail to workflows/<domain>/assets/scripts/tail
-// inside dockpipe-workflow-*.tar.gz (compiled store).
+// inside dockpipe-workflow-*.tar.<codec> (compiled store).
 func scriptPathFromWorkflowTarballs(projectRoot, pkgDir, rest string) (string, bool) {
 	if projectRoot == "" {
 		return "", false
@@ -372,8 +373,7 @@ func scriptPathFromWorkflowTarballs(projectRoot, pkgDir, rest string) (string, b
 		return "", false
 	}
 	rel := filepath.ToSlash(filepath.Join("workflows", first, "assets", "scripts", after))
-	pattern := filepath.Join(pkgDir, "dockpipe-workflow-*.tar.gz")
-	matches, _ := filepath.Glob(pattern)
+	matches, _ := packagebuild.ListPackageArchivePaths(pkgDir, "workflow")
 	for _, tgz := range matches {
 		root, err := packagebuild.EnsureTarballExtractedCache(tgz, TarballExtractCacheRoot(projectRoot))
 		if err != nil {

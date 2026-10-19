@@ -299,13 +299,13 @@ func listCatalogResolvers(projectRoot, workdir string) []string {
 	}
 	collectDirectResolverConfigs(filepath.Join(infrastructure.CoreDir(projectRoot), "resolvers"), add)
 	if localResolvers, err := infrastructure.PackagesResolversDir(workdir); err == nil {
-		collectTarballLeafNames(localResolvers, "dockpipe-resolver-*.tar.gz", "dockpipe-resolver-", add)
+		collectTarballLeafNames(localResolvers, "dockpipe-resolver-*.tar.*", "dockpipe-resolver-", add)
 	}
 	if globalResolvers, err := infrastructure.GlobalPackagesResolversDir(); err == nil {
-		collectTarballLeafNames(globalResolvers, "dockpipe-resolver-*.tar.gz", "dockpipe-resolver-", add)
+		collectTarballLeafNames(globalResolvers, "dockpipe-resolver-*.tar.*", "dockpipe-resolver-", add)
 	}
 	for _, systemResolvers := range infrastructure.SystemPackagesResolversDirs() {
-		collectTarballLeafNames(systemResolvers, "dockpipe-resolver-*.tar.gz", "dockpipe-resolver-", add)
+		collectTarballLeafNames(systemResolvers, "dockpipe-resolver-*.tar.*", "dockpipe-resolver-", add)
 	}
 	return sortedCatalogSet(set)
 }
@@ -374,12 +374,9 @@ func collectTarballLeafNames(root, pattern, prefix string, add func(string)) {
 	}
 	for _, match := range matches {
 		base := filepath.Base(match)
-		if !strings.HasPrefix(base, prefix) || !strings.HasSuffix(base, ".tar.gz") {
+		name, _, ok := packagebuild.PackageArchiveIdentity(base, "resolver")
+		if !ok || !strings.HasPrefix(base, prefix) {
 			continue
-		}
-		name := strings.TrimSuffix(strings.TrimPrefix(base, prefix), ".tar.gz")
-		if idx := strings.LastIndex(name, "-"); idx > 0 {
-			name = name[:idx]
 		}
 		add(name)
 	}

@@ -49,6 +49,7 @@ Outputs:
 - `bin\.dockpipe\build\windows-msi\launcher-build\` (local launcher build output)
 - `bin\.dockpipe\build\windows-msi\launcher-stage\` (Qt-deployed launcher payload used to build the MSI)
 - `bin\.dockpipe\build\windows-msi\dockpipe.exe` (local CLI binary used to build the MSI)
+- `bin\.dockpipe\build\windows-msi\logs\qt-install\aqtinstall.log` (Qt SDK installer log)
 - `bin\.dockpipe\tmp\windows-msi\wix314\` (downloaded/extracted WiX toolset cache for local builds)
 
 ## CI

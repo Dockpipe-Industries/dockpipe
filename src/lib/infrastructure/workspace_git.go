@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -21,16 +20,23 @@ import (
 // WorkspaceGitRequest is a human-driven project action, separate from managed
 // agent sessions. Writes bind to the exact snapshot last reviewed in the UI.
 type WorkspaceGitRequest struct {
-	Workdir  string   `json:"workdir"`
-	Action   string   `json:"action"`
-	Snapshot string   `json:"snapshot,omitempty"`
-	Paths    []string `json:"paths,omitempty"`
-	Message  string   `json:"message,omitempty"`
+	Workdir    string   `json:"workdir"`
+	Action     string   `json:"action"`
+	Snapshot   string   `json:"snapshot,omitempty"`
+	Paths      []string `json:"paths,omitempty"`
+	Message    string   `json:"message,omitempty"`
+	Comparison string   `json:"comparison,omitempty"`
+	Context    int      `json:"context,omitempty"`
+	Confirm    bool     `json:"confirm,omitempty"`
 }
 
 type WorkspaceGitChange struct {
-	Path   string `json:"path"`
-	Status string `json:"status"`
+	Path         string `json:"path"`
+	Status       string `json:"status"`
+	OriginalPath string `json:"original_path,omitempty"`
+	Revision     string `json:"revision"`
+	Bytes        int64  `json:"bytes,omitempty"`
+	Binary       bool   `json:"binary,omitempty"`
 }
 
 type WorkspaceGitSnapshot struct {
@@ -41,6 +47,8 @@ type WorkspaceGitSnapshot struct {
 	Changes  []WorkspaceGitChange `json:"changes"`
 	Diff     string               `json:"diff"`
 	Notice   string               `json:"notice,omitempty"`
+	Review   *WorkspaceGitReview  `json:"review,omitempty"`
+	Catalog  *WorkspaceGitCatalog `json:"catalog,omitempty"`
 }
 
 const workspaceGitBytes = 8 * 1024 * 1024 // Maximum review and command output, in bytes.
@@ -70,84 +78,6 @@ func workspaceGitCommand(ctx context.Context, root string, args ...string) ([]by
 	return stdout.Bytes(), nil
 }
 
-func readWorkspaceGitSnapshot(ctx context.Context, workdir string) (*WorkspaceGitSnapshot, error) {
-	rootBytes, err := workspaceGitCommand(ctx, workdir, "rev-parse", "--show-toplevel")
-	if err != nil {
-		return nil, err
-	}
-	root := strings.TrimSuffix(string(rootBytes), "\n")
-	branch, branchErr := workspaceGitCommand(ctx, root, "symbolic-ref", "--quiet", "--short", "HEAD")
-	if branchErr != nil && !workspaceGitMissingRef(branchErr) {
-		return nil, branchErr
-	}
-	head, headErr := workspaceGitCommand(ctx, root, "rev-parse", "--verify", "--quiet", "HEAD")
-	if headErr != nil && !workspaceGitMissingRef(headErr) {
-		return nil, headErr
-	}
-	status, err := workspaceGitCommand(ctx, root, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--no-renames")
-	if err != nil {
-		return nil, err
-	}
-	result := &WorkspaceGitSnapshot{Root: root, Branch: strings.TrimSpace(string(branch)), Head: strings.TrimSpace(string(head)), Changes: []WorkspaceGitChange{}}
-	args := []string{"diff", "--no-ext-diff", "--no-textconv", "--binary", "--no-renames"}
-	if headErr == nil {
-		args = append(args, "HEAD")
-	}
-	diff, err := workspaceGitCommand(ctx, root, append(args, "--")...)
-	if err != nil {
-		return nil, err
-	}
-	var review workspaceGitBuffer
-	if _, err := review.Write(diff); err != nil {
-		return nil, err
-	}
-	staged, err := workspaceGitCommand(ctx, root, "diff", "--cached", "--no-ext-diff", "--no-textconv", "--binary", "--")
-	if err != nil {
-		return nil, err
-	}
-	if len(staged) > 0 {
-		if _, err := review.Write(append([]byte("\n--- Staged changes ---\n"), staged...)); err != nil {
-			return nil, err
-		}
-	}
-	untrackedBudget := workspaceGitBytes - review.Len()
-	for _, entry := range bytes.Split(status, []byte{0}) {
-		if len(entry) == 0 {
-			continue
-		}
-		if len(entry) < 4 || !utf8.Valid(entry) {
-			return nil, errors.New("git returned an unsupported filename or status")
-		}
-		change := WorkspaceGitChange{Status: string(entry[:2]), Path: string(entry[3:])}
-		if len(result.Changes) >= 2048 {
-			return nil, errors.New("git review exceeds 2048 changed files; narrow the change set first")
-		}
-		result.Changes = append(result.Changes, change)
-		if change.Status != "??" {
-			continue
-		}
-		content, err := workspaceGitUntracked(root, change.Path, &untrackedBudget)
-		if err != nil {
-			return nil, err
-		}
-
-		if _, err := review.Write([]byte("\n--- Untracked: " + change.Path + " ---\n")); err != nil {
-			return nil, err
-		}
-		if _, err := review.Write(content); err != nil {
-			return nil, err
-		}
-	}
-	result.Diff = strings.ToValidUTF8(review.String(), "�")
-	digest := sha256.New()
-	for _, value := range []string{root, result.Branch, result.Head, string(status), review.String()} {
-		digest.Write([]byte(value))
-		digest.Write([]byte{0})
-	}
-	result.Snapshot = hex.EncodeToString(digest.Sum(nil))
-	return result, nil
-}
-
 func workspaceGitMissingRef(err error) bool {
 	var exitError *exec.ExitError
 	return errors.As(err, &exitError) && exitError.ExitCode() == 1
@@ -163,11 +93,21 @@ func RunWorkspaceGit(ctx context.Context, request WorkspaceGitRequest) (*Workspa
 	if err != nil {
 		return nil, err
 	}
-	if request.Action == "status" {
+	if request.Action == "status" || request.Action == "review-status" {
 		return current, nil
+	}
+	if request.Action == "catalog" {
+		current.Catalog, err = readWorkspaceGitCatalog(ctx, current)
+		return current, err
 	}
 	if request.Snapshot == "" || request.Snapshot != current.Snapshot {
 		return nil, errors.New("the project changed since review; refresh before continuing")
+	}
+	if request.Action == "compare" {
+		return compareWorkspaceGit(ctx, current, request)
+	}
+	if request.Action == "stage" || request.Action == "unstage" || request.Action == "discard" || request.Action == "commit-index" {
+		return mutateWorkspaceGitIndex(ctx, current, request)
 	}
 	if request.Action == "diff" {
 		if len(request.Paths) != 1 {
@@ -224,6 +164,7 @@ func RunWorkspaceGit(ctx context.Context, request WorkspaceGitRequest) (*Workspa
 			return nil, errors.New("select files and enter a commit message of at most 4096 bytes")
 		}
 		selected := map[string]bool{}
+		commitPaths := append([]string{}, request.Paths...)
 		for _, path := range request.Paths {
 			if selected[path] {
 				return nil, errors.New("duplicate selected path")
@@ -232,6 +173,9 @@ func RunWorkspaceGit(ctx context.Context, request WorkspaceGitRequest) (*Workspa
 			for _, change := range current.Changes {
 				if change.Path == path {
 					found = true
+					if change.OriginalPath != "" {
+						commitPaths = append(commitPaths, change.OriginalPath)
+					}
 				}
 			}
 			if !found {
@@ -240,6 +184,15 @@ func RunWorkspaceGit(ctx context.Context, request WorkspaceGitRequest) (*Workspa
 			selected[path] = true
 		}
 		for _, change := range current.Changes {
+			if selected[change.Path] && change.OriginalPath != "" && !selected[change.OriginalPath] {
+				original, pathErr := workspaceGitSafePath(current.Root, change.OriginalPath)
+				if pathErr != nil {
+					return nil, pathErr
+				}
+				if _, statErr := os.Lstat(original); !os.IsNotExist(statErr) {
+					return nil, errors.New("the rename source has been recreated; review and select both paths before committing saved files")
+				}
+			}
 			if strings.Contains(change.Status, "U") || change.Status == "AA" || change.Status == "DD" {
 				return nil, errors.New("resolve Git conflicts before committing")
 			}
@@ -247,7 +200,7 @@ func RunWorkspaceGit(ctx context.Context, request WorkspaceGitRequest) (*Workspa
 		if _, err := workspaceGitCommand(ctx, current.Root, append([]string{"add", "--all", "--"}, request.Paths...)...); err != nil {
 			return nil, err
 		}
-		args = append([]string{"commit", "--only", "--message", request.Message, "--"}, request.Paths...)
+		args = append([]string{"commit", "--only", "--message", request.Message, "--"}, commitPaths...)
 	case "pull":
 		if len(current.Changes) != 0 {
 			return nil, errors.New("commit or set aside local changes before pulling")

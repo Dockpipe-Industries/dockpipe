@@ -24,6 +24,7 @@ func initGitSessionTestRepo(t *testing.T) string {
 	git("init")
 	git("config", "user.email", "test@example.invalid")
 	git("config", "user.name", "Dockpipe Test")
+	git("config", "core.autocrlf", "false")
 	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("hello\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -735,5 +736,76 @@ func gitRemoveWorktree(t *testing.T, repo, workspace string) {
 	out, err := exec.Command("git", "-C", repo, "worktree", "remove", "--force", workspace).CombinedOutput()
 	if err != nil {
 		t.Fatalf("git worktree remove: %v\n%s", err, out)
+	}
+}
+
+func TestBindSessionSelectsInitialBranchWithoutChangingFilesOrIndex(t *testing.T) {
+	repo := t.TempDir()
+	if output, err := exec.Command("git", "-C", repo, "init", "--initial-branch=seed").CombinedOutput(); err != nil {
+		t.Fatalf("init fixture: %v: %s", err, output)
+	}
+	path := filepath.Join(repo, "source.txt")
+	if err := os.WriteFile(path, []byte("staged\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if output, err := exec.Command("git", "-C", repo, "add", "source.txt").CombinedOutput(); err != nil {
+		t.Fatalf("stage fixture: %v: %s", err, output)
+	}
+	indexBefore, err := os.ReadFile(filepath.Join(repo, ".git", "index"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("working\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := ensureBindSessionBranch(repo, "work/topic", "HEAD"); err != nil {
+		t.Fatal(err)
+	}
+	branch, err := GitBranchShowCurrent(repo)
+	if err != nil || branch != "work/topic" {
+		t.Fatalf("branch = %q: %v", branch, err)
+	}
+	indexAfter, err := os.ReadFile(filepath.Join(repo, ".git", "index"))
+	if err != nil || string(indexAfter) != string(indexBefore) {
+		t.Fatalf("index changed: %v", err)
+	}
+	content, err := os.ReadFile(path)
+	if err != nil || string(content) != "working\n" {
+		t.Fatalf("working file changed: %v", err)
+	}
+}
+
+func TestBindSessionInitialBranchRejectsInvalidNameAndMissingBase(t *testing.T) {
+	for _, fixture := range []struct{ branch, base string }{
+		{"work/../invalid", "HEAD"},
+		{"work/topic", "missing-base"},
+	} {
+		t.Run(fixture.branch+fixture.base, func(t *testing.T) {
+			repo := t.TempDir()
+			if output, err := exec.Command("git", "-C", repo, "init", "--initial-branch=seed").CombinedOutput(); err != nil {
+				t.Fatalf("init fixture: %v: %s", err, output)
+			}
+			if err := ensureBindSessionBranch(repo, fixture.branch, fixture.base); err == nil {
+				t.Fatal("expected rejected branch selection")
+			}
+			branch, err := GitBranchShowCurrent(repo)
+			if err != nil || branch != "seed" {
+				t.Fatalf("branch changed to %q: %v", branch, err)
+			}
+		})
+	}
+}
+
+func TestBindSessionDoesNotTreatAnOrphanAsAnEmptyRepository(t *testing.T) {
+	repo := initGitSessionTestRepo(t)
+	if output, err := exec.Command("git", "-C", repo, "checkout", "--orphan", "orphan").CombinedOutput(); err != nil {
+		t.Fatalf("create orphan fixture: %v: %s", err, output)
+	}
+	if err := ensureBindSessionBranch(repo, "work/topic", "HEAD"); err == nil {
+		t.Fatal("an existing repository needs an explicit valid base")
+	}
+	branch, err := GitBranchShowCurrent(repo)
+	if err != nil || branch != "orphan" {
+		t.Fatalf("orphan branch changed to %q: %v", branch, err)
 	}
 }

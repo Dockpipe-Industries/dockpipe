@@ -9,9 +9,11 @@ import (
 	"strings"
 
 	"dockpipe/src/lib/domain"
+	"dockpipe/src/lib/infrastructure/archivecodec"
 	"dockpipe/src/lib/infrastructure/engineversion"
 	"dockpipe/src/lib/infrastructure/packagebuild"
 
+	"golang.org/x/mod/semver"
 	"gopkg.in/yaml.v3"
 )
 
@@ -41,7 +43,7 @@ func loadWorkflowFromTarball(tarPath, entry string) (*domain.Workflow, error) {
 }
 
 // tryResolveWorkflowTarballURI returns a tar workflow URI when no on-disk config exists but a
-// dockpipe-workflow-<name>-*.tar.gz exists under the packages store workflows dir (first), then
+// dockpipe-workflow-<name>-*.tar.<codec> exists under the packages store workflows dir (first), then
 // packages.tarball_dir or release/artifacts. The archive must contain workflows/<name>/config.yml.
 // When dockpipe.config.json sets packages.namespace, the workflow namespace in that file must match.
 func tryResolveWorkflowTarballURI(repoRoot, workdir, name string) (string, error) {
@@ -73,15 +75,26 @@ func tryResolveWorkflowTarballURI(repoRoot, workdir, name string) (string, error
 	}
 	entry := filepath.ToSlash(filepath.Join("workflows", name, "config.yml"))
 	for _, dir := range searchDirs {
-		pattern := filepath.Join(dir, fmt.Sprintf("dockpipe-workflow-%s-*.tar.gz", name))
+		pattern := filepath.Join(dir, fmt.Sprintf("dockpipe-workflow-%s-*.tar.*", packagebuild.SafeTarballToken(name)))
 		matches, err := filepath.Glob(pattern)
 		if err != nil || len(matches) == 0 {
 			continue
 		}
-		sort.Strings(matches)
-		// Prefer highest version suffix (lexicographic works for semver-like names).
-		for i := len(matches) - 1; i >= 0; i-- {
-			tarPath := matches[i]
+		prefix := "dockpipe-workflow-" + packagebuild.SafeTarballToken(name) + "-"
+		sort.Slice(matches, func(i, j int) bool {
+			leftStem, _ := archivecodec.StripExtension(filepath.Base(matches[i]))
+			rightStem, _ := archivecodec.StripExtension(filepath.Base(matches[j]))
+			leftVersion := strings.TrimPrefix(leftStem, prefix)
+			rightVersion := strings.TrimPrefix(rightStem, prefix)
+			if leftVersion != rightVersion {
+				return semver.Compare("v"+strings.TrimPrefix(leftVersion, "v"), "v"+strings.TrimPrefix(rightVersion, "v")) > 0
+			}
+			return packagebuild.ArchiveCodecPriority(matches[i]) < packagebuild.ArchiveCodecPriority(matches[j])
+		})
+		for _, tarPath := range matches {
+			if !packagebuild.MatchesVersionedTarball(tarPath, "workflow", name) {
+				continue
+			}
 			b, err := packagebuild.ReadFileFromTarGz(tarPath, entry)
 			if err != nil {
 				continue

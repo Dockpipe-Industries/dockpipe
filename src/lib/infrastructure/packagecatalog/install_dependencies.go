@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"dockpipe/src/lib/domain"
+	"dockpipe/src/lib/infrastructure/archivecodec"
 	"dockpipe/src/lib/infrastructure/packagebuild"
 	"gopkg.in/yaml.v3"
 )
@@ -24,6 +25,20 @@ const maxInstallBytes int64 = 2 << 30
 // staging store before publishing dependencies first and the requested package last.
 // Dependency references never choose another remote or execute package scripts.
 func (c *Client) InstallWithDependencies(ctx context.Context, catalog Catalog, requested Entry, storeRoot string) (installedPath string, resultErr error) {
+	codec, err := archivecodec.CodecForPath(requested.Tarball)
+	if err != nil {
+		return "", err
+	}
+	return c.InstallWithDependenciesUsingCodec(ctx, catalog, requested, storeRoot, codec)
+}
+
+// InstallWithDependenciesUsingCodec requires the selected package's encoding.
+// Dependencies prefer it when published, otherwise retain their canonical archive.
+func (c *Client) InstallWithDependenciesUsingCodec(ctx context.Context, catalog Catalog, requested Entry, storeRoot, codec string) (installedPath string, resultErr error) {
+	requested, err := SelectArchive(requested, codec)
+	if err != nil {
+		return "", err
+	}
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
@@ -81,7 +96,7 @@ func (c *Client) InstallWithDependencies(ctx context.Context, catalog Catalog, r
 		if entry.Kind != "core" {
 			prefix = entry.Kind + "s/" + entry.Name
 		}
-		data, err := packagebuild.ReadFileFromTarGz(installed, prefix+"/package.yml")
+		data, err := packagebuild.ReadFileFromTarGzContext(ctx, installed, prefix+"/package.yml")
 		if err != nil {
 			return err
 		}
@@ -102,6 +117,14 @@ func (c *Client) InstallWithDependencies(ctx context.Context, catalog Catalog, r
 			dependency, err := resolveInstallDependency(catalog, name, resolverNames[name])
 			if err != nil {
 				return fmt.Errorf("package %s: %w", key, err)
+			}
+			// Absence is a declared compatibility fallback. Corruption or a missing
+			// local decoder after selection remains an installation error.
+			for _, variant := range dependency.Variants {
+				if variant.Codec == codec {
+					dependency = withVariant(dependency, variant)
+					break
+				}
 			}
 			if err := visit(dependency, depth+1); err != nil {
 				return err

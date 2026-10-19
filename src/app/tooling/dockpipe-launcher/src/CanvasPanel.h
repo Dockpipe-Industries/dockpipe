@@ -5,10 +5,15 @@
 class CanvasPanel : public QFrame {
     Q_OBJECT
 public:
-    explicit CanvasPanel(const QString &identity, QWidget *parent = nullptr);
+    explicit CanvasPanel(const QString &identity, QWidget *parent = nullptr, bool persistent = true);
     void setDragHandle(QWidget *handle);
     void placeDefault(const QRect &geometry);
     void resetPlacement();
+    void setInteractionEnabled(bool enabled);
+
+signals:
+    void placementChanged();
+    void activated();
 
 protected:
     bool eventFilter(QObject *object, QEvent *event) override;
@@ -19,6 +24,8 @@ private:
     QSize minimumPanelSize(const QSize &available) const;
     QRect constrained(const QRect &geometry) const;
     void finishInteraction();
+    bool m_persistent = true;
+    bool m_interactionEnabled = true;
     QString m_settingsKey;
     QWidget *m_handle = nullptr;
     QRect m_startGeometry;

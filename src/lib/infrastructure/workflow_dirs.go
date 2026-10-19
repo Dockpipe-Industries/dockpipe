@@ -27,7 +27,7 @@ func ResolveWorkflowConfigPathWithWorkdir(repoRoot, workdir, name string) (strin
 		return "", fmt.Errorf("workflow name is empty")
 	}
 	// Order: (1) engine workflows tree + nested compile roots, (2) project <workdir>/<workflowsRel>/ authoring,
-	// (3) dockpipe-workflow-*.tar.gz as tar:// (read from archive — no duplicate tree), (4) legacy templates,
+	// (3) dockpipe-workflow-*.tar.<codec> as tar:// (read from archive — no duplicate tree), (4) legacy templates,
 	// (5) resolver delegate.
 	// When repoRoot is the bundled/materialized cache and a project workdir is present, prefer the
 	// project's compiled workflow tarball before the embedded bundled workflow so maintainer/dev runs
@@ -307,7 +307,7 @@ func ListWorkflowNamesInRepoRoot(repoRoot string) ([]string, error) {
 	return out, nil
 }
 
-// ListWorkflowNamesInPackagesStore returns workflow names from dockpipe-workflow-*.tar.gz under packages/workflows (streamable blobs only).
+// ListWorkflowNamesInPackagesStore returns workflow names from dockpipe-workflow-*.tar.<codec> under packages/workflows (streamable blobs only).
 func ListWorkflowNamesInPackagesStore(workdir string) ([]string, error) {
 	root, err := PackagesWorkflowsDir(workdir)
 	if err != nil {
@@ -317,11 +317,12 @@ func ListWorkflowNamesInPackagesStore(workdir string) ([]string, error) {
 }
 
 func listWorkflowNamesFromTarballDir(root string) ([]string, error) {
-	matches, err := filepath.Glob(filepath.Join(root, "dockpipe-workflow-*.tar.gz"))
+	matches, err := packagebuild.ListPackageArchivePaths(root, "workflow")
 	if err != nil {
 		return nil, err
 	}
 	var out []string
+	seen := make(map[string]bool)
 	for _, tgz := range matches {
 		members, err := packagebuild.ListTarGzMemberPaths(tgz)
 		if err != nil {
@@ -331,13 +332,20 @@ func listWorkflowNamesFromTarballDir(root string) ([]string, error) {
 		if err != nil {
 			continue
 		}
+		if !packagebuild.MatchesVersionedTarball(tgz, "workflow", name) {
+			continue
+		}
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
 		out = append(out, name)
 	}
 	sort.Strings(out)
 	return out, nil
 }
 
-// ListWorkflowNamesInGlobalPackagesStore lists workflows from dockpipe-workflow-*.tar.gz under the global packages/workflows dir.
+// ListWorkflowNamesInGlobalPackagesStore lists workflows from dockpipe-workflow-*.tar.<codec> under the global packages/workflows dir.
 func ListWorkflowNamesInGlobalPackagesStore() ([]string, error) {
 	root, err := GlobalPackagesWorkflowsDir()
 	if err != nil {
@@ -346,7 +354,7 @@ func ListWorkflowNamesInGlobalPackagesStore() ([]string, error) {
 	return listWorkflowNamesFromTarballDir(root)
 }
 
-// ListWorkflowNamesInSystemPackagesStores lists workflows from dockpipe-workflow-*.tar.gz under system-shared packages/workflows dirs.
+// ListWorkflowNamesInSystemPackagesStores lists workflows from dockpipe-workflow-*.tar.<codec> under system-shared packages/workflows dirs.
 func ListWorkflowNamesInSystemPackagesStores() ([]string, error) {
 	var out []string
 	for _, root := range SystemPackagesWorkflowsDirs() {

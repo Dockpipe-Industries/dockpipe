@@ -1,5 +1,9 @@
 # TASK-015 Backlog-Driven Remote Tasks And Multi-Machine Execution — Closed
 
+Historical naming: references to the proposed ForgePipe workflow UI in this completed
+record now refer to [DockPipe AI (TASK-008)](../agentic-app-ui/overview.md).
+ForgePipe is the native engine. Original verification history is retained below.
+
 Status: Closed
 
 Completed: 2026-08-02

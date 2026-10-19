@@ -43,9 +43,9 @@ func cmdWorkspaceGit(args []string) error {
 		return fmt.Errorf("project Git request: %w", err)
 	}
 	switch request.Action {
-	case "status", "diff", "commit", "pull", "push":
+	case "status", "diff", "commit", "pull", "push", "review-status", "compare", "catalog", "stage", "unstage", "discard", "commit-index":
 	default:
-		return errors.New("project Git action must be status, diff, commit, pull or push")
+		return errors.New("unsupported project Git action")
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

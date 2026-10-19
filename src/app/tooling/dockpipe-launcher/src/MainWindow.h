@@ -5,6 +5,7 @@
 #include "LauncherSettings.h"
 #include "SessionManager.h"
 #include "WorkflowCatalog.h"
+#include "DashboardStore.h"
 
 #include <QFutureWatcher>
 #include <QMainWindow>
@@ -23,6 +24,11 @@ class QTabWidget;
 class QAction;
 class QActionGroup;
 class BasicModeWidget;
+class BrowserWidget;
+class TerminalWidget;
+class BrowserLinkRouter;
+class DashboardPage;
+class DashboardWidgetFactory;
 class QPushButton;
 class DockerObservabilityWidget;
 class QTimer;
@@ -35,7 +41,7 @@ class ProjectFilesWidget;
 class ProjectGitWidget;
 class QDialog;
 class QSplitter;
-class CockpitWidget;
+class LauncherWorkspaceSurface;
 
 struct AsyncWorkflowCatalogResult {
     QString workdir;
@@ -47,9 +53,12 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 public:
     explicit MainWindow(QWidget *parent = nullptr);
+    ~MainWindow() override;
 
 protected:
+    void paintEvent(QPaintEvent *event) override;
     void closeEvent(QCloseEvent *event) override;
+    void changeEvent(QEvent *event) override;
 
 private slots:
     void onLaunch();
@@ -85,6 +94,24 @@ private slots:
 
 private:
     void setupMenuBar();
+    void selectPage(int page);
+    int selectedPage() const;
+    void setupDashboards();
+    void applyDefaultDashboardVisibility();
+    void createDashboard();
+    void addDashboardNavigation(const DashboardDefinition &definition);
+    void ensureDashboard(int page);
+    void renameDashboard(const QString &id);
+    void removeDashboard(const QString &id);
+    QVector<DashboardDefinition> dashboardSnapshots() const;
+    bool persistDashboards();
+    bool confirmDashboardClose();
+    void releaseDashboardWindows();
+    void toggleDashboardFullscreen();
+    void updateDashboardFullscreen();
+    void updateDashboardStatusBar();
+    void ensureBrowser();
+    void ensureTerminal();
     void ensureCockpit();
     void applyCockpitAvailability();
     bool saveSettings(const LauncherSettings &settings);
@@ -141,6 +168,20 @@ private:
     QTabWidget *m_executionTabs = nullptr;
     QStackedWidget *m_stack = nullptr;
     BasicModeWidget *m_basicWidget = nullptr;
+    BrowserWidget *m_browserWidget = nullptr;
+    TerminalWidget *m_terminalWidget = nullptr;
+    BrowserLinkRouter *m_browserLinks = nullptr;
+    DashboardWidgetFactory *m_dashboardFactory = nullptr;
+    DashboardStore m_dashboardStore;
+    QVector<DashboardDefinition> m_dashboards;
+    QMap<QString, QPointer<DashboardPage>> m_dashboardPages;
+    QPushButton *m_addDashboard = nullptr;
+    QAction *m_addDashboardAction = nullptr;
+    QActionGroup *m_pageGroup = nullptr;
+    bool m_dashboardStoreReady = false;
+    bool m_dashboardDirty = false;
+    bool m_fullscreenWasMaximized = false;
+    QAction *m_fullscreenAction = nullptr;
     QWidget *m_advancedPage = nullptr;
     QPushButton *m_workspaceButton = nullptr;
     QLabel *m_workspacePath = nullptr;
@@ -149,7 +190,7 @@ private:
     WorkflowEditorWidget *m_workflowEditor = nullptr;
     ProjectFilesWidget *m_projectFiles = nullptr;
     ProjectGitWidget *m_projectGit = nullptr;
-    CockpitWidget *m_cockpit = nullptr;
+    LauncherWorkspaceSurface *m_cockpit = nullptr;
     QDialog *m_workflowPicker = nullptr;
     QWidget *m_consolePanel = nullptr;
     QPushButton *m_consoleToggle = nullptr;
