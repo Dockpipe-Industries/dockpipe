@@ -121,10 +121,14 @@ BrowserExtensionStore *BrowserExtensionStore::forProfile(QWebEngineProfile *prof
 
 QString BrowserExtensionStore::storedId(const QString &id) const
 {
+    if (!validId(id))
+        return QString();
     if (m_entries.contains(id))
         return id;
 #ifdef DOCKPIPE_EXTENSION_STORE_AVAILABLE
-    if (m_profile) {
+    // Chromium extension services are unavailable to off-the-record profiles.
+    // Some Qt distributions trap rather than return an empty manager here.
+    if (m_profile && !m_profile->isOffTheRecord()) {
         for (const auto &extension : m_profile->extensionManager()->extensions()) {
             if (extension.id() != id)
                 continue;
