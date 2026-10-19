@@ -2,7 +2,9 @@
 
 #include <QByteArray>
 #include <QObject>
+#include <QMap>
 #include <QString>
+#include <QStringList>
 #include <memory>
 
 // Session-only local interactive shell. DockPipe does not persist terminal bytes;
@@ -12,7 +14,8 @@ class TerminalSession final : public QObject {
 public:
     explicit TerminalSession(QObject *parent = nullptr);
     ~TerminalSession() override;
-    bool start(QString workdir);
+    bool start(QString workdir, const QString &program = {}, const QStringList &arguments = {},
+        const QMap<QString, QString> &environment = {});
     bool send(QByteArray data);
     void resize(int columns, int rows);
     void stop();

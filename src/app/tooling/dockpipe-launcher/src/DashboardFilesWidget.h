@@ -11,6 +11,7 @@ class QModelIndex;
 class QPushButton;
 class QTreeView;
 class DashboardFilesFilter;
+class FileExplorerView;
 
 class DOCKPIPE_LAUNCHER_UI_EXPORT DashboardFilesWidget final : public QWidget {
     Q_OBJECT
@@ -29,12 +30,14 @@ private:
     void updateControls();
     void clearProject();
     void showFilesystem();
+    void showStatus(const QString &message);
     QString m_scope = QStringLiteral("project");
     QString m_projectRoot;
     QString m_directory;
     QFileSystemModel *m_model;
     DashboardFilesFilter *m_filter;
     QTreeView *m_tree;
+    FileExplorerView *m_explorer;
     QLineEdit *m_location;
     QPushButton *m_up;
     QPushButton *m_home;

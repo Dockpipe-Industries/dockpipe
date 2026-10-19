@@ -143,8 +143,12 @@ int main(int argc, char **argv)
         QThread::msleep(10);
     }
     if (!tree->rootIndex().isValid() || model->filePath(tree->rootIndex()) != root.filePath("workflow")
-        || model->rowCount(tree->rootIndex()) != 1)
+        || model->rowCount(tree->rootIndex()) != 1) {
+        std::fprintf(stderr, "Explorer root mismatch: actual=%s expected=%s rows=%d\n",
+            model->filePath(tree->rootIndex()).toUtf8().constData(),
+            root.filePath("workflow").toUtf8().constData(), model->rowCount(tree->rootIndex()));
         return 19;
+    }
     const QString screenshot = qEnvironmentVariable("DOCKPIPE_FILES_SCREENSHOT");
     if (!screenshot.isEmpty()) {
         QDir().mkdir(root.filePath("workflow/scripts"));

@@ -67,7 +67,7 @@ set(DOCKPIPE_LAUNCHER_SOURCES
     src/WorkflowCanvas.cpp
     src/WorkflowEditorWidget.cpp
     src/WorkflowScriptPath.cpp
-    src/ProjectFilesWidget.cpp
+    src/ProjectFilesWidget.cpp src/FileExplorerView.cpp src/FileExplorerIcons.cpp src/MarkdownPreview.cpp src/MermaidRenderer.cpp
     src/ProjectGitWidget.cpp
     src/ProjectGitClient.cpp
     src/SourceEditor.cpp
@@ -207,7 +207,7 @@ endif()
 
 if(BUILD_TESTING)
     add_executable(workflow-studio-test
-        tests/WorkflowStudioTest.cpp src/CanvasIcons.cpp src/CanvasPanel.cpp src/WorkflowCanvas.cpp src/WorkflowEditorWidget.cpp src/WorkflowScriptPath.cpp src/ProjectFilesWidget.cpp src/SourceEditor.cpp src/SourceHighlighter.cpp
+        tests/WorkflowStudioTest.cpp src/CanvasIcons.cpp src/CanvasPanel.cpp src/WorkflowCanvas.cpp src/WorkflowEditorWidget.cpp src/WorkflowScriptPath.cpp src/ProjectFilesWidget.cpp src/FileExplorerView.cpp src/FileExplorerIcons.cpp src/MarkdownPreview.cpp src/MermaidRenderer.cpp src/SourceEditor.cpp src/SourceHighlighter.cpp
         src/Theme.cpp src/WindowChrome.cpp dockpipe-launcher.qrc)
     target_include_directories(workflow-studio-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(workflow-studio-test PRIVATE Qt6::Widgets)
@@ -217,7 +217,7 @@ if(BUILD_TESTING)
     target_include_directories(workflow-script-path-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(workflow-script-path-test PRIVATE Qt6::Core)
     add_test(NAME workflow-script-path COMMAND workflow-script-path-test)
-    add_executable(project-files-test tests/ProjectFilesTest.cpp src/ProjectFilesWidget.cpp src/CanvasIcons.cpp src/SourceEditor.cpp src/SourceHighlighter.cpp
+    add_executable(project-files-test tests/ProjectFilesTest.cpp src/ProjectFilesWidget.cpp src/FileExplorerView.cpp src/FileExplorerIcons.cpp src/MarkdownPreview.cpp src/MermaidRenderer.cpp src/CanvasIcons.cpp src/SourceEditor.cpp src/SourceHighlighter.cpp
         src/Theme.cpp src/WindowChrome.cpp dockpipe-launcher.qrc)
     target_include_directories(project-files-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(project-files-test PRIVATE Qt6::Widgets)
@@ -269,8 +269,10 @@ endforeach()
 # Shared host UI SDK. Optional packages reuse file editors, layout primitives,
 # app context and native desktop capture without a spatial or browser dependency.
 set(DOCKPIPE_UI_SOURCES
+    src/GitCommitQueueModel.cpp src/GitHistoryWidget.cpp src/GitRepositoryWidget.cpp src/GitConflictWidget.cpp
+    src/LauncherStatusBar.cpp
     src/ProjectGitClient.cpp src/RemoteCommand.cpp
-    src/ProjectFilesWidget.cpp src/SourceEditor.cpp src/SourceHighlighter.cpp
+    src/ProjectFilesWidget.cpp src/FileExplorerView.cpp src/FileExplorerIcons.cpp src/MarkdownPreview.cpp src/MermaidRenderer.cpp src/SourceEditor.cpp src/SourceHighlighter.cpp
     src/CanvasIcons.cpp src/Theme.cpp src/WindowChrome.cpp src/WindowControlButton.cpp src/Context.cpp
     src/ContextStore.cpp src/DockpipeChoices.cpp src/WorkflowCatalog.cpp
     src/LauncherSettings.cpp src/BrowserPreferences.cpp src/BrowserLinkRouter.cpp
@@ -360,11 +362,17 @@ foreach(ui_target IN LISTS launcher_targets)
 endforeach()
 # Ordinary desktop browsing has no dependency on any optional workspace package.
 # Compile the shared renderer policy into its consumers without another shipped ABI.
+set(DOCKPIPE_TERMINAL_SOURCES src/TerminalSession.cpp src/TerminalHostLaunch.cpp)
+if(WIN32)
+    list(APPEND DOCKPIPE_TERMINAL_SOURCES src/TerminalSessionWin.cpp)
+endif()
 add_library(dockpipe-browser STATIC
-    src/BrowserRuntime.cpp src/BrowserWidget.cpp src/BrowserWidgetTools.cpp src/BrowserWidgetPermissions.cpp
+    src/WebMermaidRenderer.cpp src/WebMermaidRenderer.h mermaid.qrc
+    src/BrowserTabBar.cpp src/BrowserRuntime.cpp src/BrowserWidget.cpp src/BrowserWidgetTools.cpp src/BrowserWidgetPermissions.cpp
     src/BrowserSettingsDialog.cpp
+    src/BrowserExtensionPackage.cpp src/BrowserExtensionCrx.cpp src/BrowserExtensionStore.cpp
     src/BrowserDownloads.cpp src/BrowserAnnotationDialog.cpp src/BrowserExtensionsDialog.cpp
-    src/TerminalSession.cpp src/TerminalHub.cpp src/TerminalWidget.cpp src/TerminalBridge.h src/TerminalPreferences.cpp src/TerminalSettingsDialog.cpp
+    ${DOCKPIPE_TERMINAL_SOURCES} src/TerminalShellCatalog.cpp src/TerminalHub.cpp src/TerminalWidget.cpp src/TerminalBridge.h src/TerminalPreferences.cpp src/TerminalSettingsDialog.cpp
     src/SendInputWidget.cpp terminal.qrc)
 target_include_directories(dockpipe-browser PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 target_link_libraries(dockpipe-browser PUBLIC Qt6::WebEngineWidgets Qt6::PrintSupport Qt6::WebChannel dockpipe-launcher-ui)
@@ -383,13 +391,31 @@ if(BUILD_TESTING)
     target_link_libraries(terminal-preferences-test PRIVATE dockpipe-browser Qt6::Test)
     add_test(NAME terminal-preferences COMMAND terminal-preferences-test)
     set_tests_properties(terminal-preferences PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
-    add_executable(terminal-session-test tests/TerminalSessionTest.cpp src/TerminalSession.cpp)
+    add_executable(terminal-shell-catalog-test tests/TerminalShellCatalogTest.cpp src/TerminalShellCatalog.cpp)
+    target_include_directories(terminal-shell-catalog-test PRIVATE src)
+    target_link_libraries(terminal-shell-catalog-test PRIVATE Qt6::Test Qt6::Core)
+    add_test(NAME terminal-shell-catalog COMMAND terminal-shell-catalog-test)
+    set_tests_properties(terminal-shell-catalog PROPERTIES TIMEOUT 30)
+    add_executable(terminal-host-launch-test tests/TerminalHostLaunchTest.cpp src/TerminalHostLaunch.cpp)
+    target_include_directories(terminal-host-launch-test PRIVATE src)
+    target_link_libraries(terminal-host-launch-test PRIVATE Qt6::Test Qt6::Core)
+    add_test(NAME terminal-host-launch COMMAND terminal-host-launch-test)
+    set_tests_properties(terminal-host-launch PROPERTIES TIMEOUT 45)
+    add_executable(terminal-session-test tests/TerminalSessionTest.cpp ${DOCKPIPE_TERMINAL_SOURCES})
     target_include_directories(terminal-session-test PRIVATE src)
     target_link_libraries(terminal-session-test PRIVATE Qt6::Test Qt6::Core)
     if(APPLE)
         target_link_libraries(terminal-session-test PRIVATE proc)
     endif()
     add_test(NAME terminal-session COMMAND terminal-session-test)
+    set_tests_properties(terminal-session PROPERTIES TIMEOUT 60)
+    if(WIN32)
+        add_executable(terminal-session-win-test tests/TerminalSessionWinTest.cpp ${DOCKPIPE_TERMINAL_SOURCES})
+        target_include_directories(terminal-session-win-test PRIVATE src)
+        target_link_libraries(terminal-session-win-test PRIVATE Qt6::Test Qt6::Core)
+        add_test(NAME terminal-session-win COMMAND terminal-session-win-test)
+        set_tests_properties(terminal-session-win PROPERTIES TIMEOUT 60)
+    endif()
     add_executable(terminal-widget-test tests/TerminalWidgetTest.cpp dockpipe-launcher.qrc)
     target_link_libraries(terminal-widget-test PRIVATE dockpipe-browser Qt6::Test)
     add_test(NAME terminal-widget COMMAND terminal-widget-test)
@@ -425,7 +451,11 @@ if(BUILD_TESTING)
     target_link_libraries(dashboard-widgets-test PRIVATE dockpipe-browser dockpipe-launcher-ui Qt6::Test)
     add_test(NAME dashboard-widgets COMMAND dashboard-widgets-test)
     set_tests_properties(dashboard-widgets PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
-    add_executable(dashboard-files-test tests/DashboardFilesWidgetTest.cpp)
+    add_executable(launcher-status-bar-test tests/LauncherStatusBarTest.cpp)
+    target_link_libraries(launcher-status-bar-test PRIVATE dockpipe-launcher-ui Qt6::Test)
+    add_test(NAME launcher-status-bar COMMAND launcher-status-bar-test)
+    set_tests_properties(launcher-status-bar PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
+    add_executable(dashboard-files-test tests/DashboardFilesWidgetTest.cpp dockpipe-launcher.qrc)
     target_link_libraries(dashboard-files-test PRIVATE dockpipe-launcher-ui Qt6::Test)
     add_test(NAME dashboard-files COMMAND dashboard-files-test)
     set_tests_properties(dashboard-files PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
@@ -448,6 +478,8 @@ if(BUILD_TESTING)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND X11_Xcomposite_FOUND AND X11_Xrender_FOUND AND DOCKPIPE_DESKTOP_XCB_LIBRARY)
         target_link_libraries(dashboard-page-test PRIVATE X11::X11)
     endif()
+    add_test(NAME dashboard-file-views COMMAND dashboard-page-test fileScopesAndCanvasProjectPicker)
+    set_tests_properties(dashboard-file-views PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
     add_test(NAME dashboard-page COMMAND dashboard-page-test)
     set_tests_properties(dashboard-page PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
     add_executable(dashboard-browser-performance-test tests/DashboardBrowserPerformanceTest.cpp
@@ -520,6 +552,29 @@ if(BUILD_TESTING)
     set_tests_properties(workspace-package PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;DOCKPIPE_WORKSPACE_PACKAGE=${CMAKE_CURRENT_BINARY_DIR}/workspace-fixture"
         TIMEOUT 30 SKIP_RETURN_CODE 77)
+    add_executable(workspace-package-manager-test tests/WorkspacePackageManagerTest.cpp)
+    target_link_libraries(workspace-package-manager-test PRIVATE dockpipe-launcher-ui Qt6::Test)
+    add_dependencies(workspace-package-manager-test workspace-package-fixture)
+    add_test(NAME workspace-package-manager COMMAND workspace-package-manager-test)
+    set_tests_properties(workspace-package-manager PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;DOCKPIPE_WORKSPACE_PACKAGE=${CMAKE_CURRENT_BINARY_DIR}/workspace-fixture"
+        TIMEOUT 30)
+    add_executable(web-mermaid-renderer-test tests/WebMermaidRendererTest.cpp dockpipe-launcher.qrc)
+    target_link_libraries(web-mermaid-renderer-test PRIVATE dockpipe-browser Qt6::Test)
+    add_test(NAME web-mermaid-renderer COMMAND web-mermaid-renderer-test)
+    set_tests_properties(web-mermaid-renderer PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu" TIMEOUT 120)
+    add_executable(project-files-markdown-test tests/ProjectFilesMarkdownTest.cpp dockpipe-launcher.qrc)
+    target_link_libraries(project-files-markdown-test PRIVATE dockpipe-launcher-ui Qt6::Test)
+    add_test(NAME project-files-markdown COMMAND project-files-markdown-test)
+    set_tests_properties(project-files-markdown PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    add_executable(project-files-graph-test tests/ProjectFilesGraphTest.cpp dockpipe-launcher.qrc)
+    target_link_libraries(project-files-graph-test PRIVATE dockpipe-launcher-ui Qt6::Test)
+    add_dependencies(project-files-graph-test workspace-package-fixture)
+    add_test(NAME project-files-graph COMMAND project-files-graph-test)
+    set_tests_properties(project-files-graph PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;DOCKPIPE_WORKSPACE_PACKAGE=${CMAKE_CURRENT_BINARY_DIR}/workspace-fixture"
+        TIMEOUT 45)
     add_executable(launcher-settings-test tests/LauncherSettingsTest.cpp src/SettingsDialog.cpp)
     target_link_libraries(launcher-settings-test PRIVATE dockpipe-launcher-ui)
     add_test(NAME launcher-settings COMMAND launcher-settings-test)
@@ -539,4 +594,67 @@ if(DOCKPIPE_COCKPIT_SOURCE)
         set_tests_properties(remote-launcher launcher-settings PROPERTIES ENVIRONMENT
             "QT_QPA_PLATFORM=offscreen;DOCKPIPE_WORKSPACE_PACKAGE=${CMAKE_CURRENT_BINARY_DIR}/cockpit-package/assets;DOCKPIPE_COCKPIT_READER=$<TARGET_FILE:cockpit-reader>")
     endif()
+endif()
+
+if(BUILD_TESTING)
+    add_executable(git-commit-queue-test tests/GitCommitQueueModelTest.cpp)
+    target_link_libraries(git-commit-queue-test PRIVATE dockpipe-launcher-ui Qt6::Test)
+    target_include_directories(git-commit-queue-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    add_test(NAME git-commit-queue COMMAND git-commit-queue-test)
+    set_tests_properties(git-commit-queue PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    add_executable(git-repository-conflict-test tests/GitRepositoryConflictTest.cpp dockpipe-launcher.qrc)
+    target_link_libraries(git-repository-conflict-test PRIVATE dockpipe-launcher-ui Qt6::Test)
+    target_include_directories(git-repository-conflict-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    add_test(NAME git-repository-conflict COMMAND git-repository-conflict-test)
+    set_tests_properties(git-repository-conflict PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(git-history-widget-test tests/GitHistoryWidgetTest.cpp dockpipe-launcher.qrc)
+    target_link_libraries(git-history-widget-test PRIVATE dockpipe-launcher-ui Qt6::Test)
+    target_include_directories(git-history-widget-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    add_test(NAME git-history-widget COMMAND git-history-widget-test)
+    set_tests_properties(git-history-widget PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(browser-extension-package-test tests/BrowserExtensionPackageTest.cpp)
+    target_link_libraries(browser-extension-package-test PRIVATE dockpipe-browser Qt6::Test)
+    add_test(NAME browser-extension-package COMMAND browser-extension-package-test)
+    set_tests_properties(browser-extension-package PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    add_executable(browser-extension-store-test tests/BrowserExtensionStoreTest.cpp)
+    target_link_libraries(browser-extension-store-test PRIVATE dockpipe-browser Qt6::Test)
+    add_test(NAME browser-extension-store COMMAND browser-extension-store-test)
+    set_tests_properties(browser-extension-store PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(browser-extension-crx-test tests/BrowserExtensionCrxTest.cpp)
+    target_link_libraries(browser-extension-crx-test PRIVATE dockpipe-browser Qt6::Test)
+    add_test(NAME browser-extension-crx COMMAND browser-extension-crx-test)
+    set_tests_properties(browser-extension-crx PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(browser-extension-compatibility-test tests/BrowserExtensionCompatibilityTest.cpp)
+    target_link_libraries(browser-extension-compatibility-test PRIVATE dockpipe-browser)
+    add_test(NAME browser-extension-compatibility COMMAND browser-extension-compatibility-test)
+    set_tests_properties(browser-extension-compatibility PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 100 SKIP_RETURN_CODE 77)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(canvas-widget-presentation-test tests/CanvasWidgetPresentationTest.cpp
+        src/DashboardWidgetFactory.cpp src/DashboardWidgetViews.cpp src/DashboardLogWidget.cpp
+        src/SessionManager.cpp src/SystemResourceOverview.cpp src/ExecutionMetricChart.cpp)
+    target_link_libraries(canvas-widget-presentation-test PRIVATE dockpipe-browser dockpipe-launcher-ui Qt6::Test)
+    add_test(NAME canvas-widget-presentation COMMAND canvas-widget-presentation-test)
+    set_tests_properties(canvas-widget-presentation PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+endif()
+
+if(BUILD_TESTING)
+    add_test(NAME browser-canvas-mode COMMAND browser-test canvasViewportIsContextScoped
+        tearOutRetainsLivePageAndSessionAfterSourceCloses tabTearOutGestureIsCanvasOnly)
+    set_tests_properties(browser-canvas-mode PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
+    add_test(NAME dashboard-canvas-widgets COMMAND dashboard-page-test canvasGadgetsAndBrowserTearOut)
+    set_tests_properties(dashboard-canvas-widgets PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
 endif()

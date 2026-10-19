@@ -3,6 +3,7 @@
 #include <QWidget>
 #include <QJsonObject>
 #include <QPointer>
+#include <QStringList>
 
 class QAction;
 class TerminalHub;
@@ -11,6 +12,7 @@ class QLabel;
 class QPushButton;
 class QWebEngineView;
 class QTimer;
+class QMenu;
 
 class TerminalWidget final : public QWidget {
     Q_OBJECT
@@ -40,6 +42,8 @@ protected:
 
 private:
     void refreshSessions();
+    void refreshShells();
+    void createTerminal(const QString &shellProfileId = {});
     void selectSession(const QString &id);
     void ensureRenderer();
     void applyAppearance();
@@ -53,11 +57,14 @@ private:
     QPointer<TerminalHub> m_hubGuard;
     const Mode m_mode;
     QString m_ownedSessionId;
+    QStringList m_ownedSessionIds;
     bool m_dashboardStarted = false;
     QAction *m_restart = nullptr;
     QString m_workdir;
     QString m_sessionId;
     QComboBox *m_sessions;
+    QComboBox *m_shells;
+    QMenu *m_shellMenu = nullptr;
     QPushButton *m_close;
     QLabel *m_status;
     QLabel *m_transparencyHint;

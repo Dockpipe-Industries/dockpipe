@@ -172,6 +172,15 @@ WorkflowCatalogData WorkflowCatalog::discoverCatalog(const QString &hintWorkdir)
         meta.category = o.value(QStringLiteral("category")).toString().trimmed();
         meta.iconPath = o.value(QStringLiteral("icon_path")).toString().trimmed();
         meta.configPath = o.value(QStringLiteral("config_path")).toString().trimmed();
+        meta.source = o.value("source").toString();
+        meta.sourceKind = o.value("source_kind").toString();
+        meta.sourcePath = o.value("source_path").toString();
+        meta.sourceName = o.value("source_name").toString();
+        meta.cloneable = o.value("cloneable").toBool();
+        meta.supported = o.value("supported").toBool(true);
+        meta.unsupportedReason = o.value("unsupported_reason").toString();
+        for (const auto &warning : o.value("warnings").toArray())
+            meta.warnings.append(warning.toString());
         const QJsonArray inputs = o.value(QStringLiteral("inputs")).toArray();
         for (const QJsonValue &iv : inputs) {
             if (!iv.isObject())
@@ -233,7 +242,8 @@ QVector<WorkflowMeta> WorkflowCatalog::discoverAppWorkflows(const QString &repoR
     for (const WorkflowMeta &m : all) {
         if (m.category.compare(QStringLiteral("app"), Qt::CaseInsensitive) != 0)
             continue;
-        const QString displayKey = m.displayName.trimmed().toLower();
+        const QString displayKey = m.source == "vscode" ? m.workflowId
+            : m.displayName.trimmed().toLower();
         if (!displayKey.isEmpty() && seenDisplayNames.contains(displayKey))
             continue;
         out.append(m);
@@ -241,4 +251,31 @@ QVector<WorkflowMeta> WorkflowCatalog::discoverAppWorkflows(const QString &repoR
             seenDisplayNames.append(displayKey);
     }
     return out;
+}
+
+QString WorkflowMeta::sourceLabel() const
+{
+    if (source != QStringLiteral("vscode"))
+        return QString();
+    return sourceKind == QStringLiteral("launch") ? QStringLiteral("VS Code · launch.json")
+                                                  : QStringLiteral("VS Code · tasks.json");
+}
+
+QString WorkflowMeta::catalogTitle() const
+{
+    const QString title = displayName.isEmpty() ? workflowId : displayName;
+    return sourceLabel().isEmpty() ? title : title + QStringLiteral(" · ") + sourceLabel();
+}
+
+QString WorkflowMeta::catalogDescription() const
+{
+    QStringList details;
+    if (!description.isEmpty())
+        details.append(description);
+    if (!sourceLabel().isEmpty())
+        details.append(sourceLabel() + QStringLiteral(" — ") + sourcePath);
+    if (!supported && !unsupportedReason.isEmpty())
+        details.append(unsupportedReason);
+    details.append(warnings);
+    return details.join(QLatin1Char('\n'));
 }

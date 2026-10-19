@@ -15,6 +15,7 @@ class CanvasPanel;
 class QLabel;
 class QMimeData;
 class QScrollArea;
+class QShortcut;
 class QSplitter;
 class QTabWidget;
 class QTimer;
@@ -26,6 +27,7 @@ class DOCKPIPE_LAUNCHER_UI_EXPORT DashboardWorkspace final : public QWidget {
     Q_OBJECT
 public:
     explicit DashboardWorkspace(const QString &dashboardId, QWidget *parent = nullptr);
+    ~DashboardWorkspace() override;
     bool addPanel(const QString &id, const QString &title, QWidget *content);
     void removePanel(const QString &id);
     void setMode(const QString &mode);
@@ -42,6 +44,7 @@ public:
     // These also back the panel menu and drag/drop operations.
     bool dockPanel(const QString &id, const QString &targetId, const QString &position);
     bool floatPanel(const QString &id);
+    bool placePanelAt(const QString &id, const QPoint &position);
     bool minimizePanel(const QString &id);
     bool activatePanel(const QString &id);
     bool togglePanelExpanded(const QString &id);
@@ -96,7 +99,10 @@ private:
     void placePendingPanels();
     QString panelAt(const QPoint &position) const;
     QString dropPosition(const QString &targetId, const QPoint &position) const;
+    QString panelDropTarget(const QString &source, const QString &target, const QString &position) const;
     void showDropPreview(const QString &targetId, const QString &position);
+    void hideDropPreview();
+    void finishPanelDrag(bool cancelClick = true);
     bool acceptsDrag(const QMimeData *mime) const;
     void restoreExpandedPanel();
     void updateExpansionControls();
@@ -145,9 +151,12 @@ private:
     quint64 m_presentationRevision = 0;
     QWidget *m_parking = nullptr;
     QLabel *m_empty = nullptr;
-    QWidget *m_dropPreview = nullptr;
+    QList<QWidget *> m_dropPreviewEdges;
     QPoint m_dragStart;
     QString m_dragPanel;
+    QPointer<QWidget> m_dragHandle;
+    QShortcut *m_cancelDrag = nullptr;
+    bool m_dragging = false;
     bool m_rebuilding = false;
     bool m_restoredGeometryPending = false;
     bool m_compactTiling = true;

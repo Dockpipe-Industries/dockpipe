@@ -111,7 +111,7 @@ new execution or authorization path.
 | Host CPU and resident memory | Implemented | Unavailable | Unavailable |
 | Selected Docker resource metrics | Docker CLI; fixture-qualified | Same CLI contract; native unqualified | Same CLI contract; native unqualified |
 | QEMU host association/start verification | Existing VM runtime adapter | VM runtime unsupported | Association unavailable without native start identity |
-| Whole-system resources | CPU, memory, swap, root disk, network, uptime/load | Unavailable | Unavailable |
+| Whole-system resources | CPU, memory, swap, root disk, network, uptime/load | Unavailable | CPU, physical memory, system-volume capacity, network and uptime; native qualification pending |
 | Opted-in remote monitoring | Outbound snapshots | Docker inventory; native resources unavailable | Worker runtime unsupported |
 
 Remote worker execution uses the same local recorder on the worker. Existing
@@ -129,6 +129,14 @@ collector's mount namespace. Network rates sum non-loopback interfaces, includin
 virtual interfaces; bridge/VPN traffic may be counted at multiple interfaces.
 The CPU chart retains 60 samples. CPU and network rates need two measurements;
 reboots, counter resets and machine changes reset their baselines.
+
+On Windows, whole-system measurements use native Windows APIs through the same
+CLI snapshot contract. CPU and network rates appear after two samples. Disk
+capacity describes the Windows system volume. Unix load average and swap are
+unavailable; Windows commit capacity is not reported as physical swap. This does
+not add Windows per-process discovery or per-process CPU/memory metrics.
+Whole-system CPU counters require a single processor group; on machines with
+multiple groups, CPU stays unavailable rather than showing a partial total.
 
 Click any process-table column header to sort ascending or descending. PID,
 parent PID, memory and CPU sort by numeric values; unavailable metrics stay last.

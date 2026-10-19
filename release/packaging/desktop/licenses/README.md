@@ -1,11 +1,11 @@
-Dockpipe's macOS and Windows desktop distributions dynamically link Qt 6.8.3
+Dockpipe's macOS and Windows desktop distributions dynamically link Qt 6.10.3
 (Core, Gui, Widgets, Network, Concurrent and runtime plugins). Qt is copyright
 The Qt Company Ltd. and other contributors, and is used under the GNU Lesser
 General Public License version 3. The LGPL and referenced GPL version 3 texts
 are included here.
 
 The corresponding Qt source is available at:
-https://download.qt.io/archive/qt/6.8/6.8.3/single/
+https://download.qt.io/archive/qt/6.10/6.10.3/single/
 
 Dockpipe does not modify Qt. These shared libraries may be replaced with
 compatible builds; debugging modifications to the LGPL libraries is permitted.

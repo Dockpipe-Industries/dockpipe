@@ -72,7 +72,8 @@ QStringList SessionManager::dockpipeArguments(const Context &ctx)
         const QString t = line.trimmed();
         if (t.isEmpty())
             continue;
-        args << QStringLiteral("--env") << t;
+        const QString key = t.section(QLatin1Char('='), 0, 0);
+        args << QStringLiteral("--env") << (key.startsWith("DOCKPIPE_VSCODE_INPUT_") ? line : t);
     }
     return args;
 }
@@ -110,6 +111,8 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     env.insert(QStringLiteral("DOCKPIPE_WORKDIR"), wd);
     env.insert(QStringLiteral("DOCKPIPE_SDK_PROMPT_MODE"), QStringLiteral("json"));
+    for (auto input = ctx.transientLaunchEnv.cbegin(); input != ctx.transientLaunchEnv.cend(); ++input)
+        env.insert(input.key(), input.value());
     proc->setProcessEnvironment(env);
     proc->setWorkingDirectory(wd);
 

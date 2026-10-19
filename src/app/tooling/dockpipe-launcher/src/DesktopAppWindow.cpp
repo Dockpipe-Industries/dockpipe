@@ -168,6 +168,18 @@ QByteArray processStart(unsigned long pid)
     return fields.value(19);
 }
 
+bool isIconicWindow(Display *display, Window window)
+{
+    const Atom stateAtom = XInternAtom(display, "WM_STATE", False);
+    bool valid = false;
+    const auto bytes = property(display, window, "WM_STATE", stateAtom, 2, &valid);
+    if (!valid || bytes.size() != 2 * int(sizeof(unsigned long)))
+        return false;
+    unsigned long state = WithdrawnState;
+    memcpy(&state, bytes.constData(), sizeof(state));
+    return state == IconicState;
+}
+
 struct DesktopProperty {
     Atom name = None;
     Atom type = None;
@@ -222,6 +234,7 @@ struct DesktopAppWindow::Native {
     QPointer<QWindow> foreign;
     QPointer<QWidget> container;
     bool saved = false;
+    bool originallyIconic = false;
     XSyncCounter frameCounter = None;
     quint64 lastAcknowledgedFrame = 0;
     QPointer<QTimer> frameTimer;
@@ -249,7 +262,7 @@ QString DesktopAppWindow::unavailableReason()
 #endif
 }
 
-QVector<DesktopAppChoice> DesktopAppWindow::availableWindows(QString &error)
+QVector<DesktopAppChoice> DesktopAppWindow::availableWindows(QString &error, quint64 onlyWindowId)
 {
     error = unavailableReason();
     QVector<DesktopAppChoice> choices;
@@ -271,9 +284,15 @@ QVector<DesktopAppChoice> DesktopAppWindow::availableWindows(QString &error)
         for (int offset = 0; offset + int(sizeof(Window)) <= clients.size(); offset += sizeof(Window)) {
             Window window = 0;
             memcpy(&window, clients.constData() + offset, sizeof(window));
+            if (onlyWindowId && window != onlyWindowId)
+                continue;
             XWindowAttributes attributes{};
-            if (!XGetWindowAttributes(display, window, &attributes) || attributes.map_state != IsViewable
+            if (!XGetWindowAttributes(display, window, &attributes)
                 || attributes.override_redirect || attributes.c_class != InputOutput)
+                continue;
+            // Managed minimized apps remain eligible. Merely unmapped windows
+            // (withdrawn clients, tray helpers and stale entries) do not.
+            if (attributes.map_state != IsViewable && !isIconicWindow(display, window))
                 continue;
             const auto pid = processId(display, window);
             if (!pid || pid == static_cast<unsigned long>(QCoreApplication::applicationPid()))
@@ -303,6 +322,7 @@ QVector<DesktopAppChoice> DesktopAppWindow::availableWindows(QString &error)
     }
     XCloseDisplay(display);
 #endif
+    Q_UNUSED(onlyWindowId);
     return choices;
 }
 
@@ -509,6 +529,7 @@ bool DesktopAppWindow::prepareControl(QString &error)
     Window child = 0;
     {
         XErrorScope errors(m_native->display);
+        m_native->originallyIconic = isIconicWindow(m_native->display, m_choice.id);
         if (!XGetWindowAttributes(m_native->display, m_choice.id, &attributes)
             || !XTranslateCoordinates(m_native->display, m_choice.id, DefaultRootWindow(m_native->display), 0, 0, &x, &y, &child)
             || !desktopProperties(m_native->display, m_choice.id, m_native->originalProperties)
@@ -824,10 +845,13 @@ void DesktopAppWindow::releaseControl()
         }
         XMoveResizeWindow(m_native->display, m_choice.id, geometry.x(), geometry.y(), geometry.width(), geometry.height());
         XMapWindow(m_native->display, m_choice.id);
+        if (m_native->originallyIconic)
+            XIconifyWindow(m_native->display, m_choice.id, DefaultScreen(m_native->display));
     }
     failure = xcb_request_check(connection, xcb_change_save_set_checked(connection, XCB_SET_MODE_DELETE, m_choice.id));
     free(failure); // BadWindow is expected if the user closed the embedded app.
     m_native->saved = false;
+    m_native->originallyIconic = false;
     m_native->originalProperties.clear();
 #endif
 }

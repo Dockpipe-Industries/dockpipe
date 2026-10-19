@@ -45,6 +45,26 @@ belong to DockPipe. Send input currently addresses one selected terminal session
 and sends text followed by Enter. It does not broadcast, and this ordinary shell
 input path does not imply an AI package API or authorize AI execution.
 
+The ordinary terminal follow-up adds a Windows ConPTY transport and a bounded
+installed-shell catalog shared by the Terminal page and dashboard context menu.
+Profiles carry structured executable, arguments, directory options and fixed
+environment overrides. New profiles open independent sessions; a dashboard
+panel owns and closes only its own sessions. macOS retains its Unix PTY and
+login-shell fallback; Flatpak selects explicit host profiles and a host-session
+supervisor. These remain local UI facilities and add no AI target or engine API.
+See the launcher README for supported shells and platform qualification limits.
+
+Terminal follow-up verification: the Linux launcher builds, four focused CTests
+pass, and shell-picker plus existing renderer/session regressions pass. The real
+KDE 6.10 Flatpak runtime passes the public TerminalSession input/directory/resize/
+exit test and host PTY/job-control plus graceful/abrupt cleanup tests. The local
+boundary fixture also covers newline-containing process names and malformed,
+oversized or timed-out inventories. Native Windows C++ compilation/runtime and
+macOS runtime remain pending; native CI now includes Windows ConPTY and shell
+discovery plus both macOS terminal/session targets. No workflow was dispatched.
+Receipts remain under `/tmp/dockpipe-terminal-platform-results.json` and the
+linked test logs; generated builds and test executables remain under `/tmp`.
+
 Future package contributions may register other explicitly selected destinations,
 including DorkPipe conversations or runs. Keep target identity, supported input
 types, destination preview, authorization, cancellation and delivery outcomes in

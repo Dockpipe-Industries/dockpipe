@@ -30,7 +30,7 @@ param(
     [switch]$SkipLauncher,
     [switch]$CleanLauncher,
     [string]$QtRoot = "",
-    [string]$QtVersion = "6.8.3",
+    [string]$QtVersion = "6.10.3",
     [string]$QtInstallRoot = "C:\Qt"
 )
 

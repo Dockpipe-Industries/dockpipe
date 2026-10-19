@@ -7,6 +7,10 @@
 #include "CanvasIcons.h"
 #include "CanvasPanel.h"
 #include "ActivityWidget.h"
+#include "RemoteCommand.h"
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <memory>
 
 #include <QApplication>
 #include <QComboBox>
@@ -330,6 +334,14 @@ void MainWindow::setupWorkflowPicker()
     buttons->addWidget(refresh);
     buttons->addStretch();
     buttons->addWidget(cancel);
+    m_pickerClone = new QPushButton(tr("Clone to workflows"));
+    m_pickerClone->setObjectName("clonePickedWorkflow");
+    m_pickerClone->setAutoDefault(false);
+    buttons->addWidget(m_pickerClone);
+    connect(m_pickerClone, &QPushButton::clicked, this, [this]() {
+        if (const auto *selected = currentAdvancedDisplayContext())
+            cloneWorkflow(selected->workflow);
+    });
     buttons->addWidget(open);
     buttons->addWidget(m_pickerRun);
     pickerLayout->addLayout(buttons);
@@ -366,6 +378,10 @@ void MainWindow::openPickedWorkflow()
         return;
     const Context context = *selected;
     const WorkflowMeta meta = findWorkflowMeta(context.workdir, context.workflow, context.workflowFile);
+    if (meta.source == "vscode") {
+        cloneWorkflow(meta.workflowId);
+        return;
+    }
     const QString path = context.workflowFile.isEmpty() ? meta.configPath : context.workflowFile;
     if (path.isEmpty()) {
         QMessageBox::information(m_workflowPicker, tr("Workflow source unavailable"),
@@ -395,6 +411,8 @@ bool MainWindow::setWorkflowWorkspace(const QString &workdir)
         statusBar()->showMessage(tr("Wait for the Git action to finish, or cancel it in Git before changing projects."), 8000);
         return false;
     }
+    if (m_projectGit && !m_projectGit->confirmLeave())
+        return false;
     if (m_projectFiles && !m_projectFiles->confirmLeave())
         return false;
     if (m_workflowEditor && !m_workflowEditor->setWorkspace(workdir, DockpipeChoices::preferredDockpipeBinary(workdir)))
@@ -412,7 +430,8 @@ void MainWindow::quitLauncher()
         statusBar()->showMessage(tr("Wait for the Git action to finish, or cancel it in Git before quitting."), 8000);
         return;
     }
-    if ((!m_projectFiles || m_projectFiles->confirmLeave())
+    if ((!m_projectGit || m_projectGit->confirmLeave())
+        && (!m_projectFiles || m_projectFiles->confirmLeave())
         && (!m_workflowEditor || m_workflowEditor->confirmDiscardChanges())
         && confirmDashboardClose())
         qApp->quit();
@@ -425,15 +444,21 @@ void MainWindow::updateWorkflowPreview()
     const Context *selected = currentAdvancedDisplayContext();
     const bool unavailable = m_runTarget->currentData(Qt::UserRole + 1).toBool();
     m_pickerRun->setEnabled(selected && !unavailable && !m_advancedDiscoveryLoading);
-    m_pickerEdit->setEnabled(selected != nullptr);
+    const WorkflowMeta selectedMeta = selected
+        ? findWorkflowMeta(selected->workdir, selected->workflow, selected->workflowFile) : WorkflowMeta{};
+    m_pickerRun->setEnabled(m_pickerRun->isEnabled() && selectedMeta.supported);
+    m_pickerRun->setToolTip(selectedMeta.catalogDescription());
+    m_pickerEdit->setEnabled(selected && selectedMeta.source != "vscode");
+    m_pickerClone->setVisible(selected && selectedMeta.cloneable);
+    m_pickerClone->setEnabled(!m_workflowCloneBusy);
     if (!selected) {
         m_workflowPreview->setText(tr("<h3>Select a workflow</h3><p>Review its purpose and inputs here, then choose Run or Edit on canvas.</p>"));
         return;
     }
     const WorkflowMeta meta = findWorkflowMeta(selected->workdir, selected->workflow, selected->workflowFile);
     const QString title = meta.displayName.isEmpty() ? selected->label : meta.displayName;
-    const QString description = meta.description.isEmpty() ? tr("No description provided.") : meta.description;
-    QString text = "<h2>" + title.toHtmlEscaped() + "</h2><p>" + description.toHtmlEscaped() + "</p>";
+    const QString description = meta.catalogDescription().isEmpty() ? tr("No description provided.") : meta.catalogDescription();
+    QString text = "<h2>" + title.toHtmlEscaped() + "</h2><p>" + description.toHtmlEscaped().replace(QLatin1Char('\n'), QStringLiteral("<br>")) + "</p>";
     text += "<p><b>" + tr("Inputs") + "</b></p>";
     if (meta.inputs.isEmpty()) {
         text += "<p>" + tr("No declared inputs. The workflow may prompt while running.") + "</p>";
@@ -464,4 +489,40 @@ void MainWindow::runPickedWorkflow()
     if (launchWorkflow(context))
         m_workflowPicker->accept();
     updateWorkflowPreview();
+}
+
+void MainWindow::cloneWorkflow(const QString &workflowId)
+{
+    if (m_workflowCloneBusy)
+        return;
+    const QString workdir = m_settings.projectFolder;
+    const WorkflowMeta meta = findWorkflowMeta(workdir, workflowId, QString());
+    if (!meta.cloneable)
+        return;
+    m_workflowCloneBusy = true;
+    updateWorkflowPreview();
+    auto *command = new RemoteCommand(this);
+    auto diagnostics = std::make_shared<QString>();
+    connect(command, &RemoteCommand::output, this, [diagnostics](const QString &text) {
+        constexpr qsizetype maximumDiagnosticCharacters = 65536;
+        if (diagnostics->size() < maximumDiagnosticCharacters)
+            diagnostics->append(text.left(maximumDiagnosticCharacters - diagnostics->size()));
+    });
+    const QStringList arguments{"workflow", "clone", workflowId, "--workdir", workdir, "--format", "json"};
+    command->run(DockpipeChoices::preferredDockpipeBinary(workdir), arguments,
+        [this, command, workdir, diagnostics](bool success, const QByteArray &output) {
+            command->deleteLater();
+            m_workflowCloneBusy = false;
+            const QJsonDocument document = QJsonDocument::fromJson(output);
+            const QString path = document.object().value("config_path").toString();
+            if (!success || path.isEmpty()) {
+                QMessageBox::warning(this, tr("Clone failed"),
+                    diagnostics->isEmpty() ? tr("Dockpipe could not clone this workflow.") : *diagnostics);
+            } else {
+                statusBar()->showMessage(tr("Cloned workflow to %1").arg(path), 10000);
+                if (m_settings.projectFolder == workdir)
+                    startWorkflowCatalogDiscovery();
+            }
+            updateWorkflowPreview();
+        });
 }
