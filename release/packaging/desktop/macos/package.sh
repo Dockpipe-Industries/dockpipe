@@ -40,6 +40,9 @@ for required in \
   Resources/qtwebengine_locales/en-US.pak; do
   [[ -f "$webengine/$required" ]] || { echo "Incomplete WebEngine runtime: $required" >&2; exit 1; }
 done
+# Verify our final native payload explicitly; macdeployqt only logs strip failures.
+python3 "$root/release/packaging/desktop/macos/protect-owned-binaries.py" \
+  "$app" "$resources/dockpipe-native-symbol-audit.json"
 # A Developer ID identity can be supplied from an already provisioned keychain.
 # Ad-hoc signing makes local/staging builds runnable on Apple Silicon, not trusted by Gatekeeper.
 identity="${DOCKPIPE_MAC_APP_IDENTITY:--}"

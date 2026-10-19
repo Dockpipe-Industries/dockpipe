@@ -1,5 +1,7 @@
 #pragma once
 
+#include "LauncherUiExport.h"
+
 #include <QWidget>
 
 class QFileSystemModel;
@@ -10,7 +12,7 @@ class QPushButton;
 class QTreeView;
 class DashboardFilesFilter;
 
-class DashboardFilesWidget final : public QWidget {
+class DOCKPIPE_LAUNCHER_UI_EXPORT DashboardFilesWidget final : public QWidget {
     Q_OBJECT
 public:
     explicit DashboardFilesWidget(QWidget *parent = nullptr);
