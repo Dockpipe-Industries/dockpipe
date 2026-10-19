@@ -101,6 +101,9 @@ prerequisites or install the resulting app on the build machine.
 The build bundles checksum-pinned libXRes 1.2.3 for X11 process identification,
 including RustDesk windows that omit their process ID property. Its license is
 included in the app. Qt WebEngine comes from the matching BaseApp.
+Build-time browser tests disable Chromium's inner sandbox because BaseApp cannot
+spawn nested Flatpak instances during a build. Installed apps retain browser
+sandboxing. BaseApp development headers and build metadata are removed after tests.
 
 ```bash
 bash release/packaging/desktop/flatpak/build.sh VERSION /absolute/path/dockpipe \

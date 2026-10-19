@@ -144,6 +144,9 @@ func TestWorkspaceGitReviewRenameBinaryLimitsAndDiscard(t *testing.T) {
 		}
 	}
 	mustGitOutput(t, root, "commit", "-m", "Rename fixture")
+	// Discard restores the index through Git's checkout filters. Exercise CRLF
+	// conversion on every host rather than inheriting the runner's Git defaults.
+	mustGitOutput(t, root, "config", "core.autocrlf", "true")
 	if err := os.WriteFile(filepath.Join(root, "renamed.md"), []byte("staged\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -163,9 +166,15 @@ func TestWorkspaceGitReviewRenameBinaryLimitsAndDiscard(t *testing.T) {
 	if _, err := RunWorkspaceGit(ctx, request); err != nil {
 		t.Fatal(err)
 	}
-	content, _ := os.ReadFile(filepath.Join(root, "renamed.md"))
-	if string(content) != "staged\n" {
-		t.Fatal("discard did not restore the index version")
+	content, err := os.ReadFile(filepath.Join(root, "renamed.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(content) != "staged\r\n" {
+		t.Fatalf("discard did not restore the index through checkout filters: %q", content)
+	}
+	if index := mustGitOutput(t, root, "show", ":renamed.md"); index != "staged\n" {
+		t.Fatalf("discard changed the staged blob: %q", index)
 	}
 }
 
