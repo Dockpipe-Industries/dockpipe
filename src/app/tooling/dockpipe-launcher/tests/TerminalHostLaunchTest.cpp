@@ -297,6 +297,27 @@ void TerminalHostLaunchTest::keepsArgumentsSeparate()
     QVERIFY(plan.arguments.contains("--directory=/tmp/a b"));
     QCOMPARE(plan.arguments.last(), QString("literal; $(not-a-command)"));
     QVERIFY(!plan.arguments.at(8).contains("/tmp/a b"));
+
+    const QByteArray originalFlatpakId = qgetenv("FLATPAK_ID");
+    const bool hadFlatpakId = qEnvironmentVariableIsSet("FLATPAK_ID");
+    const auto restoreFlatpakId = qScopeGuard([&] {
+        if (hadFlatpakId)
+            qputenv("FLATPAK_ID", originalFlatpakId);
+        else
+            qunsetenv("FLATPAK_ID");
+    });
+    qputenv("FLATPAK_ID", "org.example.TerminalContextFixture");
+#ifdef Q_OS_LINUX
+    QVERIFY(TerminalHostLaunch::required());
+#endif
+    QVERIFY(!TerminalHostLaunch::required(TerminalLaunchContext::Local));
+    const auto local = TerminalHostLaunch::prepare("/bin/sh", {"-i", "literal; value"}, "/tmp/a b", {},
+        TerminalLaunchContext::Local);
+    QVERIFY(!local.host);
+    QVERIFY(local.error.isEmpty());
+    QCOMPARE(local.program, QString("/bin/sh"));
+    QCOMPARE(local.arguments, QStringList({"-i", "literal; value"}));
+    QCOMPARE(local.workingDirectory, QString("/tmp/a b"));
 }
 
 void TerminalHostLaunchTest::rejectsInvalidLaunch()
@@ -316,8 +337,9 @@ void TerminalHostLaunchTest::hostPtyJobControlAndResize()
 
 void TerminalHostLaunchTest::nativeFlatpakHostPty()
 {
-    if (!TerminalHostLaunch::required())
-        QSKIP("Actual Flatpak portal proof requires execution inside a Flatpak sandbox.");
+    if (qEnvironmentVariableIntValue("DOCKPIPE_TEST_FLATPAK_HOST_NATIVE") != 1)
+        QSKIP("Installed Flatpak host proof is enabled explicitly by its integration lane.");
+    QVERIFY2(TerminalHostLaunch::required(), "Native host integration requires a real Flatpak sandbox.");
     exerciseHostPty("/usr/bin/flatpak-spawn");
 }
 
@@ -331,6 +353,8 @@ void TerminalHostLaunchTest::exerciseHostPty(const QString &bridge)
     const QMap<QString, QString> environment{{"PS1", "DOCKPIPE_HOST_PROMPT> "}, {"HISTFILE", "/dev/null"}};
     const auto plan = TerminalHostLaunch::forHost("/bin/bash", {"--noprofile", "--norc", "-i"}, "/tmp", bridge, environment);
     QVERIFY2(terminal.start(plan), qPrintable(terminal.process.errorString()));
+    QVERIFY(terminal.send("PS1='DOCKPIPE_HOST_PROMPT> '; printf '__%s__\\n' INITIALIZED\n"));
+    QTRY_VERIFY2_WITH_TIMEOUT(terminal.contains("__INITIALIZED__\r\n"), terminal.output.constData(), 3000);
     QTRY_VERIFY2_WITH_TIMEOUT(terminal.contains("DOCKPIPE_HOST_PROMPT> "), terminal.output.constData(), 3000);
     QVERIFY(terminal.send("trap 'printf \"__WINCH__\\n\"' WINCH; printf '__HOST_READY__\\n'\n"));
     QTRY_VERIFY2_WITH_TIMEOUT(terminal.contains("__HOST_READY__\r\n"), terminal.output.constData(), 3000);
@@ -381,8 +405,9 @@ void TerminalHostLaunchTest::nativeFlatpakHostCleanup_data()
 
 void TerminalHostLaunchTest::nativeFlatpakHostCleanup()
 {
-    if (!TerminalHostLaunch::required())
-        QSKIP("Actual Flatpak cleanup proof requires execution inside a Flatpak sandbox.");
+    if (qEnvironmentVariableIntValue("DOCKPIPE_TEST_FLATPAK_HOST_NATIVE") != 1)
+        QSKIP("Installed Flatpak cleanup proof is enabled explicitly by its integration lane.");
+    QVERIFY2(TerminalHostLaunch::required(), "Native host integration requires a real Flatpak sandbox.");
     QFETCH(bool, abrupt);
     exerciseHostCleanup(abrupt, "/usr/bin/flatpak-spawn");
 }
@@ -398,6 +423,8 @@ void TerminalHostLaunchTest::exerciseHostCleanup(bool abrupt, const QString &bri
     const auto plan = TerminalHostLaunch::forHost("/bin/bash", {"--noprofile", "--norc", "-i"}, "/tmp", bridge,
         {{"PS1", "DOCKPIPE_HOST_PROMPT> "}, {"HISTFILE", "/dev/null"}});
     QVERIFY(terminal.start(plan));
+    QVERIFY(terminal.send("PS1='DOCKPIPE_HOST_PROMPT> '; printf '__%s__\\n' INITIALIZED\n"));
+    QTRY_VERIFY2_WITH_TIMEOUT(terminal.contains("__INITIALIZED__\r\n"), terminal.output.constData(), 3000);
     QTRY_VERIFY2_WITH_TIMEOUT(terminal.contains("DOCKPIPE_HOST_PROMPT> "), terminal.output.constData(), 3000);
     QVERIFY(terminal.send("sh -c 'trap \"\" HUP TERM; printf \"__BACKGROUND__%s\\n\" $$; exec sleep 30' &\n"));
     QRegularExpression identity("__BACKGROUND__(\\d+)\\r?\\n");

@@ -1,6 +1,7 @@
 #include "TerminalHub.h"
 #include "TerminalSession.h"
 #include "TerminalShellCatalog.h"
+#include "TerminalHostLaunch.h"
 
 #include <QFileInfo>
 #include <QDir>
@@ -13,7 +14,15 @@ constexpr qsizetype renderChunkLimit = 32 * 1024;
 constexpr int sessionLimit = 8;
 }
 
-TerminalHub::TerminalHub(QObject *parent) : QObject(parent), m_shellCatalog(new TerminalShellCatalog(this))
+TerminalHub::TerminalHub(QObject *parent)
+    : TerminalHub(TerminalLaunchContext::Automatic, parent)
+{
+}
+
+TerminalHub::TerminalHub(TerminalLaunchContext context, QObject *parent)
+    : QObject(parent),
+      m_shellCatalog(new TerminalShellCatalog(TerminalShellCatalog::systemDiscovery(context), this)),
+      m_launchContext(context)
 {
     m_shellCatalog->refresh();
 }
@@ -41,7 +50,7 @@ QString TerminalHub::createSession(const QString &workdir, const QString &shellP
             m_creationError = tr("This shell is no longer available. Refresh the shell list and try again.");
             return {};
         }
-    } else if (!qEnvironmentVariable("FLATPAK_ID").isEmpty() || QFileInfo::exists("/.flatpak-info")) {
+    } else if (TerminalHostLaunch::required(m_launchContext)) {
         if (profiles.isEmpty()) {
             m_creationError = m_shellCatalog->discovering()
                 ? tr("Discovering installed host shells…") : tr("No host shells are available. Check Flatpak host access and refresh the shell list.");
@@ -54,7 +63,7 @@ QString TerminalHub::createSession(const QString &workdir, const QString &shellP
         selected = profiles.first();
 #endif
     const QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    auto *session = new TerminalSession(this);
+    auto *session = new TerminalSession(m_launchContext, this);
     Entry entry;
     entry.session = session;
     const QString directory = workdir.isEmpty() ? QDir::homePath() : workdir;

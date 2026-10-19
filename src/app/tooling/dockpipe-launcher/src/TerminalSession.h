@@ -1,5 +1,7 @@
 #pragma once
 
+#include "TerminalLaunchContext.h"
+
 #include <QByteArray>
 #include <QObject>
 #include <QMap>
@@ -13,6 +15,7 @@ class TerminalSession final : public QObject {
     Q_OBJECT
 public:
     explicit TerminalSession(QObject *parent = nullptr);
+    explicit TerminalSession(TerminalLaunchContext context, QObject *parent = nullptr);
     ~TerminalSession() override;
     bool start(QString workdir, const QString &program = {}, const QStringList &arguments = {},
         const QMap<QString, QString> &environment = {});

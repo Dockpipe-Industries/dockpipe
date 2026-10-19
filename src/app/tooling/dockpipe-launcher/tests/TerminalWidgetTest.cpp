@@ -57,7 +57,7 @@ void TerminalWidgetTest::shellChoicesPreserveExistingSessions()
     QSKIP("Shell-selection integration uses the local Unix shell; Windows has its native ConPTY fixture.");
 #else
     QTemporaryDir directory;
-    TerminalHub hub;
+    TerminalHub hub(TerminalLaunchContext::Local);
     TerminalWidget managed(hub, directory.path());
     auto *shells = managed.findChild<QComboBox *>("terminalShells");
     auto *create = managed.findChild<QPushButton *>("terminalNew");
@@ -126,7 +126,7 @@ void TerminalWidgetTest::canvasTransparencyAndStacking()
     settings.backgroundTarget = "canvas";
     QVERIFY(TerminalPreferences::instance()->save(settings));
     QTemporaryDir directory;
-    TerminalHub hub;
+    TerminalHub hub(TerminalLaunchContext::Local);
     DashboardWorkspace workspace("terminal-stacking-fixture");
     workspace.resize(900, 650);
     auto *underlay = new QWidget(&workspace);
@@ -185,7 +185,7 @@ void TerminalWidgetTest::compactPanelOwnsOnlyItsSession()
     QVERIFY(TerminalPreferences::instance()->save(TerminalSettings()));
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
-    TerminalHub hub;
+    TerminalHub hub(TerminalLaunchContext::Local);
     const QString separate = hub.createSession(directory.path());
     QTRY_VERIFY(hub.running(separate));
     DashboardWorkspace workspace("compact-terminal-fixture");
@@ -270,7 +270,7 @@ void TerminalWidgetTest::terminalAndComposer()
 #else
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
-    TerminalHub hub;
+    TerminalHub hub(TerminalLaunchContext::Local);
     QWidget desktopUnderlay;
     desktopUnderlay.setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::BypassWindowManagerHint);
     desktopUnderlay.setAutoFillBackground(true);

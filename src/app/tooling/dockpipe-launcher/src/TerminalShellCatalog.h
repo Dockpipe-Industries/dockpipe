@@ -1,5 +1,7 @@
 #pragma once
 
+#include "TerminalLaunchContext.h"
+
 #include <QObject>
 #include <QMap>
 #include <QStringList>
@@ -45,7 +47,7 @@ public:
     void refresh();
     void cancel();
 
-    static Discovery systemDiscovery();
+    static Discovery systemDiscovery(TerminalLaunchContext context = TerminalLaunchContext::Automatic);
 
 signals:
     void profilesChanged();

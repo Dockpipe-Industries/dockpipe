@@ -141,8 +141,10 @@ bool validArgument(const QString &argument)
 }
 }
 
-bool TerminalHostLaunch::required()
+bool TerminalHostLaunch::required(TerminalLaunchContext context)
 {
+    if (context == TerminalLaunchContext::Local)
+        return false;
 #ifdef Q_OS_LINUX
     return QFileInfo::exists(QStringLiteral("/.flatpak-info")) || !qEnvironmentVariable("FLATPAK_ID").isEmpty();
 #else
@@ -151,9 +153,10 @@ bool TerminalHostLaunch::required()
 }
 
 TerminalHostLaunch::Plan TerminalHostLaunch::prepare(const QString &shell,
-    const QStringList &arguments, const QString &workingDirectory, const QMap<QString, QString> &environment)
+    const QStringList &arguments, const QString &workingDirectory, const QMap<QString, QString> &environment,
+    TerminalLaunchContext context)
 {
-    if (required())
+    if (required(context))
         return forHost(shell, arguments, workingDirectory, QStringLiteral("/usr/bin/flatpak-spawn"), environment);
     return {shell, arguments, workingDirectory, {}, false};
 }
