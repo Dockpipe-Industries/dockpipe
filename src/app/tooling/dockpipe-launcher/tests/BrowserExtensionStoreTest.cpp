@@ -73,6 +73,9 @@ int main(int argc, char **argv)
         BrowserExtensionStore store(&privateProfile, nullptr, root);
         CHECK_STORE(BrowserExtensionStore::forProfile(&privateProfile) == &store);
         CHECK_STORE(!store.owns("../outside"));
+        // A syntactically valid unknown ID must not request private extension services.
+        CHECK_STORE(!store.owns(QString(32, QLatin1Char('a'))));
+        CHECK_STORE(!store.enabled(QString(32, QLatin1Char('a'))));
         CHECK_STORE(!store.setEnabled("../outside", true, &error));
         CHECK_STORE(!store.remove("../outside", &error));
     }
