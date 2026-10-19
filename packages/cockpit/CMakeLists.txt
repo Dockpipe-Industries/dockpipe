@@ -131,7 +131,15 @@ add_dependencies(dockpipe-cockpit cockpit-reader)
 
 if(BUILD_TESTING)
     add_executable(cockpit-package-rendering-test tests/PackageRenderingTest.cpp)
+    add_library(cockpit-rendering-viewport-fixture SHARED tests/RenderingViewportFixture.cpp)
+    target_link_libraries(cockpit-rendering-viewport-fixture PRIVATE Qt6::OpenGLWidgets)
+    set_target_properties(cockpit-rendering-viewport-fixture PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+    target_compile_definitions(cockpit-package-rendering-test PRIVATE
+        DOCKPIPE_TEST_GL_FACTORY_PATH="$<TARGET_FILE:cockpit-rendering-viewport-fixture>")
     target_link_libraries(cockpit-package-rendering-test PRIVATE dockpipe-launcher-ui)
+    add_dependencies(cockpit-package-rendering-test cockpit-rendering-viewport-fixture)
     set_target_properties(cockpit-package-rendering-test PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
     add_dependencies(cockpit-package-rendering-test dockpipe-cockpit)
     add_test(NAME cockpit-package-rendering COMMAND cockpit-package-rendering-test)
