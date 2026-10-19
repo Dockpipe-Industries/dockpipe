@@ -61,7 +61,9 @@ func TestJSONCDependenciesVariablesAndPlatform(t *testing.T) {
 		t.Fatalf("commands: %+v", plan.Commands)
 	}
 	command := plan.Commands[1]
-	if command.Executable != "linux-tool" || command.Shell || command.CWD != filepath.Join(root, "sub") {
+	// JSON-authored forward slashes remain valid on Windows. Compare the cwd
+	// as a native path without changing the adapter's process arguments.
+	if command.Executable != "linux-tool" || command.Shell || filepath.Clean(command.CWD) != filepath.Join(root, "sub") {
 		t.Fatalf("command: %+v", command)
 	}
 	if command.Env["GLOBAL"] != "base" || command.Env["PLATFORM"] != "yes" || command.Env["TOKEN"] != "sensitive" {
@@ -139,8 +141,11 @@ func TestLaunchApplicationsAndPreLaunchTask(t *testing.T) {
 				t.Fatal(command)
 			}
 		case 3:
-			if command.Executable != "dotnet" || command.Args[0] != filepath.Join(root, "app.dll") {
+			if command.Executable != "dotnet" || filepath.Clean(command.Args[0]) != filepath.Join(root, "app.dll") {
 				t.Fatal(command)
+			}
+			if command.Args[0] != root+"/app.dll" {
+				t.Fatalf("launch argv rewrote the source path spelling: %q", command.Args[0])
 			}
 		}
 	}
