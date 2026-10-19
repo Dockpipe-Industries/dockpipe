@@ -37,6 +37,13 @@ if [[ "$arch" == amd64 ]]; then
 else
   install -m 755 "$launcher" "$stage/root/usr/bin/dockpipe-launcher"
   cp -a "$syntax_dir"/libdockpipe-launcher-ui.so* "$stage/root/usr/lib/dockpipe/"
+  for binary in "$stage/root/usr/bin/dockpipe-launcher" "$stage/root/usr/lib/dockpipe"/libdockpipe-launcher-ui.so*; do
+    strip --strip-unneeded "$binary"
+    if readelf --wide --sections "$binary" | grep -E '\.(z?debug[_.]|symtab[[:space:]]|gnu_debugdata[[:space:]]|gdb_index[[:space:]])' >/dev/null; then
+      echo "Private symbol sections remain in public desktop binary: $binary" >&2
+      exit 1
+    fi
+  done
   printf 'libdockpipe-launcher-ui 1 dockpipe-desktop (= %s)\n' "$version" > "$stage/debian/shlibs.local"
   dependencies="$(cd "$stage" && dpkg-shlibdeps -O -xdockpipe-desktop -l"$stage/root/usr/lib/dockpipe" "$stage/root/usr/bin/dockpipe-launcher" "$stage/root/usr/lib/dockpipe/libdockpipe-launcher-ui.so.1")"
   qt_dependencies=", qt6-qpa-plugins, libqt6webenginecore6-bin"

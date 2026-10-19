@@ -75,6 +75,20 @@ flatpak build --env=FLATPAK_DEST=/app --env="FLATPAK_ARCH=$arch" "$app" \
   bash /app/cleanup-BaseApp.sh
 install -m755 "$out/qt-build/dockpipe-launcher" "$app/files/libexec/dockpipe/dockpipe-launcher"
 cp -a "$out/qt-build"/libdockpipe-launcher-ui.so* "$app/files/libexec/dockpipe/"
+# Release compilation can still inherit private symbol/debug sections from
+# linked objects. Enforce the public payload contract after deployment.
+# Variables in this script belong to the Flatpak build environment.
+# shellcheck disable=SC2016
+flatpak build "$app" bash -c '
+  set -euo pipefail
+  for binary in /app/libexec/dockpipe/dockpipe-launcher /app/libexec/dockpipe/libdockpipe-launcher-ui.so* /app/lib/libXRes.so*; do
+    strip --strip-unneeded "$binary"
+    if readelf --wide --sections "$binary" | grep -E "\\.(z?debug[_.]|symtab[[:space:]]|gnu_debugdata[[:space:]]|gdb_index[[:space:]])" >/dev/null; then
+      echo "Private symbol sections remain in public Flatpak binary: $binary" >&2
+      exit 1
+    fi
+  done
+'
 install -m644 "$out/qt-build/dockpipe-syntax.rcc" "$app/files/libexec/dockpipe/dockpipe-syntax.rcc"
 cp -R "$out/qt-build/syntax-licenses" "$app/files/libexec/dockpipe/"
 mkdir -p "$app/files/share/applications" "$app/files/share/icons/hicolor/256x256/apps" \
