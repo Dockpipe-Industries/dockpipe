@@ -20,7 +20,7 @@ class NativeSymbolBoundaryTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="dockpipe native symbols ")
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = Path(temporary.name).resolve()
         self.app = self.root / "DockPipe.app"
         self.launcher = self.app / "Contents/MacOS/DockPipe"
         self.library = self.app / "Contents/Frameworks/libdockpipe-launcher-ui.1.dylib"
@@ -92,8 +92,12 @@ class NativeSymbolBoundaryTests(unittest.TestCase):
             "int exported_api(int n) { return private_impl(n); }\n"
             "int main(void) { return exported_api(1); }\n"
         )
-        subprocess.run(["clang", "-O0", "-g", str(source), "-o", str(self.launcher)], check=True)
-        subprocess.run(["clang", "-O0", "-g", "-dynamiclib", str(source), "-o", str(self.library)], check=True)
+        # Keep the debug object private. Passing -g while linking would make
+        # clang create an automatic dSYM bundle beside the public fixture.
+        debug_object = self.root / "fixture.o"
+        subprocess.run(["clang", "-O0", "-g", "-c", str(source), "-o", str(debug_object)], check=True)
+        subprocess.run(["clang", str(debug_object), "-o", str(self.launcher)], check=True)
+        subprocess.run(["clang", "-dynamiclib", str(debug_object), "-o", str(self.library)], check=True)
         protector.protect(self.app, self.receipt)
         self.assertEqual(len(json.loads(self.receipt.read_text())["owned_binaries"]), 2)
 
