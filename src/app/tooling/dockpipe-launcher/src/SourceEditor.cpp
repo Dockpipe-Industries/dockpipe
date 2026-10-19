@@ -1,7 +1,7 @@
 #include "SourceEditor.h"
 #include "SourceHighlighter.h"
 #include <definition.h>
-#include <theme.h>
+#include <KSyntaxHighlighting/Theme>
 #include <QFontDatabase>
 #include <QPainter>
 #include <QPaintEvent>

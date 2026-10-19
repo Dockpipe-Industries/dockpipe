@@ -1,6 +1,7 @@
 #include "WindowControlButton.h"
 
 #include <QPainter>
+#include <QVariant>
 
 WindowControlButton::WindowControlButton(Action action, QWidget *parent)
     : QToolButton(parent), m_action(action)
