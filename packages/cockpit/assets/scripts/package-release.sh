@@ -33,8 +33,11 @@ python3 "$script_dir/protect-runtime.py" \
   --private-debug "$debug/cockpit-$version-amd64" --repo-root "$repo_root"
 python3 "$script_dir/protect-runtime.py" --verify-runtime "$resolver/assets" \
   --build "$build" --qt "$qt_root" --sdk "$sdk" --repo-root "$repo_root"
+# The launcher owns QPA and XCB GL-integration plugins. Select that matching
+# host plugin catalog while keeping the package's library closure isolated.
 timeout 90 xvfb-run -a env QT_QPA_PLATFORM=xcb LIBGL_ALWAYS_SOFTWARE=1 SDL_AUDIODRIVER=dummy \
-  "LD_LIBRARY_PATH=$resolver/assets/lib:$build" "DOCKPIPE_WORKSPACE_PACKAGE=$resolver/assets" \
+  "QT_PLUGIN_PATH=$qt_root/plugins" "LD_LIBRARY_PATH=$resolver/assets/lib:$build" \
+  "DOCKPIPE_WORKSPACE_PACKAGE=$resolver/assets" \
   "$build/cockpit-package-rendering-test"
 export DOCKPIPE_PACKAGES_ROOT="$work/compiled"
 "$dockpipe_bin" package compile resolvers --workdir "$repo_root" --from "$work/source" --force
