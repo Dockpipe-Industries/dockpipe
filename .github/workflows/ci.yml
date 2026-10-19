@@ -258,7 +258,7 @@ jobs:
             libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
             libxcb-render-util0 libxcb-shape0 libxcb-xkb1 libx11-dev \
             libxcomposite-dev libxrender-dev libxres-dev libxext-dev libxcb1-dev \
-            libnss3 libasound2t64
+            libnss3 libasound2t64 libsdl2-2.0-0
       - name: Install pinned Qt ABI
         run: |
           bash release/packaging/desktop/install-linux-qt.sh "$RUNNER_TEMP/Qt"

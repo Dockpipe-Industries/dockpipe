@@ -32,8 +32,9 @@ if [[ "$arch" == amd64 ]]; then
   mapfile -t binaries < "$stage/binaries"
   dependencies="$(cd "$stage" && dpkg-shlibdeps -O -xdockpipe-desktop \
     -l"$stage/root/usr/lib/dockpipe/lib" "${binaries[@]}")"
-  # Qt's OpenSSL backend loads these libraries at runtime; ldd cannot discover them.
-  qt_dependencies=", libssl3, ca-certificates"
+  # Qt's OpenSSL backend and Cockpit's SDL audio/controller support load these
+  # libraries at runtime; ldd cannot discover them.
+  qt_dependencies=", libssl3, ca-certificates, libsdl2-2.0-0"
 else
   install -m 755 "$launcher" "$stage/root/usr/bin/dockpipe-launcher"
   cp -a "$syntax_dir"/libdockpipe-launcher-ui.so* "$stage/root/usr/lib/dockpipe/"
