@@ -1,5 +1,7 @@
 #pragma once
 
+#include "LauncherUiExport.h"
+
 #include "CockpitSettings.h"
 #include <QWidget>
 
@@ -15,7 +17,7 @@ class QPushButton;
 
 // Reused with a project root or a single workflow directory. Never opens an
 // external editor, and never traverses a link outside the selected root.
-class ProjectFilesWidget : public QWidget {
+class DOCKPIPE_LAUNCHER_UI_EXPORT ProjectFilesWidget : public QWidget {
     Q_OBJECT
 public:
     explicit ProjectFilesWidget(QWidget *parent = nullptr);

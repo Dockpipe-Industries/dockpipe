@@ -1,4 +1,6 @@
 #pragma once
+
+#include "LauncherUiExport.h"
 #include "LauncherWorkspacePackage.h"
 #include "LauncherSettings.h"
 #include "PackageCommand.h"
@@ -6,7 +8,7 @@
 #include <QProcess>
 #include <QTimer>
 
-class WorkspacePackageManager final : public QObject {
+class DOCKPIPE_LAUNCHER_UI_EXPORT WorkspacePackageManager final : public QObject {
     Q_OBJECT
 public:
     static WorkspacePackageManager &instance();

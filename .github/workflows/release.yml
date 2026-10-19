@@ -243,7 +243,9 @@ jobs:
       - name: Build native macOS desktop installers
         if: runner.os == 'macOS'
         shell: bash
-        run: bash release/packaging/desktop/build-unix.sh "${{ needs.meta.outputs.version }}" release/artifacts
+        run: |
+          python3 -m unittest discover -s release/packaging/tests -p test_native_symbol_boundaries.py -v
+          bash release/packaging/desktop/build-unix.sh "${{ needs.meta.outputs.version }}" release/artifacts
       - name: Install and test Linux desktop on Ubuntu 22.04 and 24.04
         if: runner.os == 'Linux'
         shell: bash

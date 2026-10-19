@@ -1,5 +1,7 @@
 #pragma once
 
+#include "LauncherUiExport.h"
+
 #include <QMap>
 #include <QObject>
 #include <QString>
@@ -17,7 +19,7 @@ struct BrowserSettings {
     QMap<QString, QMap<QString, QString>> sitePermissions;
 };
 
-class BrowserPreferences final : public QObject {
+class DOCKPIPE_LAUNCHER_UI_EXPORT BrowserPreferences final : public QObject {
     Q_OBJECT
 public:
     static BrowserPreferences *instance();

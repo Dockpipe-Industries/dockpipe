@@ -23,6 +23,8 @@ private slots:
     void terminalInputResizeAndExit();
     void rejectsInvalidInputAndDirectory();
     void outputFloodDoesNotBlockEventLoop();
+    void outputCallbackCanRestartSession();
+    void outputCallbackCanDestroySession();
     void stopCleansForegroundJobWithoutBlocking_data();
     void stopCleansForegroundJobWithoutBlocking();
     void immediateDestructionReapsStartingShell();
@@ -99,13 +101,62 @@ void TerminalSessionTest::outputFloodDoesNotBlockEventLoop()
     timer.start();
     QVERIFY(terminal.start({}));
     QVERIFY(terminal.send("stty -echo; yes terminal-output-fixture\n"));
-    QTRY_VERIFY_WITH_TIMEOUT(total >= 256 * 1024 && ticks >= 3, 3000);
+    QTRY_VERIFY_WITH_TIMEOUT(total >= 256 * 1024, 3000);
+    ticks = 0;
+    QTest::qWait(350);
+    qInfo() << "Terminal flood heartbeat ticks" << ticks << "bytes" << total;
+    QVERIFY(ticks >= 10);
     QVERIFY(largest <= 64 * 1024);
     QElapsedTimer stopTime;
     stopTime.start();
     terminal.stop();
     QVERIFY2(stopTime.elapsed() < 200, "Terminal output flood blocked shutdown");
     QVERIFY(!terminal.running());
+}
+
+void TerminalSessionTest::outputCallbackCanRestartSession()
+{
+    TerminalSession terminal;
+    qint64 total = 0;
+    bool restarted = false;
+    QByteArray nextSessionOutput;
+    connect(&terminal, &TerminalSession::output, this, [&](const QByteArray &bytes) {
+        if (restarted) {
+            nextSessionOutput += bytes;
+            return;
+        }
+        total += bytes.size();
+        if (total < 256 * 1024)
+            return;
+        terminal.stop();
+        restarted = true;
+        QVERIFY(terminal.start({}));
+        QVERIFY(terminal.send("stty -echo; printf '\\nRESTART_%s\\n' ready\n"));
+    });
+    QVERIFY(terminal.start({}));
+    QVERIFY(terminal.send("stty -echo; yes old-session-output-fixture\n"));
+    QTRY_VERIFY_WITH_TIMEOUT(restarted && nextSessionOutput.contains("RESTART_ready"), 3000);
+    QVERIFY(!nextSessionOutput.contains("old-session-output-fixture"));
+    QVERIFY(terminal.running());
+    terminal.stop();
+    const auto finalOutput = nextSessionOutput;
+    QTest::qWait(30);
+    QCOMPARE(nextSessionOutput, finalOutput);
+}
+
+void TerminalSessionTest::outputCallbackCanDestroySession()
+{
+    QPointer<TerminalSession> terminal = new TerminalSession;
+    qint64 total = 0;
+    connect(terminal, &TerminalSession::output, this, [&](const QByteArray &bytes) {
+        total += bytes.size();
+        if (total >= 256 * 1024)
+            delete terminal.data();
+    });
+    QVERIFY(terminal->start({}));
+    QVERIFY(terminal->send("stty -echo; yes destroyed-session-output-fixture\n"));
+    QTRY_VERIFY_WITH_TIMEOUT(!terminal, 3000);
+    QTest::qWait(30);
 }
 
 void TerminalSessionTest::stopCleansForegroundJobWithoutBlocking_data()
