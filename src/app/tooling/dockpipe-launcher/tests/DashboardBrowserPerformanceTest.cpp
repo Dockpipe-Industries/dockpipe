@@ -310,12 +310,8 @@ int main(int argc, char **argv)
         CHECK_BROWSER_PERF(workspace.addPanel(QString::number(index), kinds[index], factory.create(kinds[index])));
     workspace.show();
     workspace.setMode("tiling");
-    for (auto *group : workspace.findChildren<QTabWidget *>()) {
-        for (int index = 0; index < group->count(); ++index) {
-            if (group->widget(index)->isAncestorOf(browser))
-                group->setCurrentIndex(index);
-        }
-    }
+    CHECK_BROWSER_PERF(workspace.activatePanel("browser"));
+    CHECK_BROWSER_PERF(originalView->isVisible());
     workspace.setMode("canvas");
     auto *browserPanel = workspace.findChild<CanvasPanel *>("dashboardPanel_browser");
     CHECK_BROWSER_PERF(browserPanel);

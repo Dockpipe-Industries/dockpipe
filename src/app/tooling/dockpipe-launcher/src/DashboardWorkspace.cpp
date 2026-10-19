@@ -4,6 +4,7 @@
 #include "CanvasIcons.h"
 
 #include <QApplication>
+#include <QSignalBlocker>
 #ifdef DOCKPIPE_PROFILE_DASHBOARD_LAYOUT
 #include <QElapsedTimer>
 #include <array>
@@ -229,6 +230,101 @@ void recordLayoutPhase(LayoutProfileTimer &timer, LayoutProfilePhase phase)
 #define PROFILE_LAYOUT_PHASE(timer, phase)
 #define PROFILE_LAYOUT_PANEL(timer, panelIndex)
 #endif
+
+class DeferredPanelPage final : public QWidget {
+public:
+    explicit DeferredPanelPage(QWidget *frame) : m_frame(frame)
+    {
+        setObjectName("dashboardDeferredTab");
+        synchronizeConstraints();
+        frame->installEventFilter(this);
+    }
+
+    QSize sizeHint() const override
+    {
+        return m_frame ? m_frame->sizeHint() : QSize();
+    }
+
+    QSize minimumSizeHint() const override
+    {
+        return m_frame ? m_frame->minimumSizeHint() : QSize();
+    }
+
+    bool hasHeightForWidth() const override
+    {
+        return m_frame && m_frame->hasHeightForWidth();
+    }
+
+    int heightForWidth(int width) const override
+    {
+        return m_frame ? m_frame->heightForWidth(width) : -1;
+    }
+
+    void synchronizeConstraints()
+    {
+        if (!m_frame)
+            return;
+        setMinimumSize(m_frame->minimumSize());
+        setMaximumSize(m_frame->maximumSize());
+        setSizePolicy(m_frame->sizePolicy());
+    }
+
+protected:
+    bool eventFilter(QObject *object, QEvent *event) override
+    {
+        if (object == m_frame && (event->type() == QEvent::LayoutRequest
+            || event->type() == QEvent::StyleChange || event->type() == QEvent::FontChange
+            || event->type() == QEvent::ContentsRectChange || event->type() == QEvent::Resize)) {
+            synchronizeConstraints();
+            updateGeometry();
+        }
+        return QWidget::eventFilter(object, event);
+    }
+
+
+private:
+    QPointer<QWidget> m_frame;
+};
+
+class DeferredPanelTabs final : public QTabWidget {
+public:
+    using QTabWidget::QTabWidget;
+
+    QSize sizeHint() const override
+    {
+        synchronizePages();
+        return QTabWidget::sizeHint();
+    }
+
+    QSize minimumSizeHint() const override
+    {
+        synchronizePages();
+        return QTabWidget::minimumSizeHint();
+    }
+
+    bool hasHeightForWidth() const override
+    {
+        synchronizePages();
+        return QTabWidget::hasHeightForWidth();
+    }
+
+    int heightForWidth(int width) const override
+    {
+        synchronizePages();
+        return QTabWidget::heightForWidth(width);
+    }
+
+private:
+    void synchronizePages() const
+    {
+        // QWidget deliberately suppresses updateGeometry notifications while
+        // explicitly hidden. Refresh before Qt reads page bounds or policies.
+        for (int index = 0; index < count(); ++index) {
+            if (auto *page = dynamic_cast<DeferredPanelPage *>(widget(index)))
+                page->synchronizeConstraints();
+        }
+    }
+};
 
 constexpr int MaximumPanels = 16;
 constexpr int MaximumCoordinate = 32768;
@@ -592,7 +688,7 @@ QWidget *DashboardWorkspace::buildTree(const QJsonObject &node, QWidget *parent)
         return nullptr;
     if (node.value("type") == "tabs") {
         PROFILE_LAYOUT_START(tabPhase);
-        auto *group = new QTabWidget(parent);
+        auto *group = new DeferredPanelTabs(parent);
         group->setObjectName("dashboardTabGroup");
         group->setDocumentMode(true);
         group->setMovable(true);
@@ -625,7 +721,13 @@ QWidget *DashboardWorkspace::buildTree(const QJsonObject &node, QWidget *parent)
             // QTabWidget owns page visibility. Showing an inactive page here
             // also maps native browser/terminal children over the selected tab.
             PROFILE_LAYOUT_PHASE(tabPhase, PreparePanelChrome);
-            const int tabIndex = group->addTab(frame, m_panels.value(id).icon, m_panels.value(id).title);
+            // Keep inactive live content with its existing owner until first
+            // selection; only its lightweight geometry stand-in enters the tab.
+            QWidget *page = frame;
+            if (id != node.value("active").toString())
+                page = new DeferredPanelPage(frame);
+            m_panels[id].tabPage = page;
+            const int tabIndex = group->addTab(page, m_panels.value(id).icon, m_panels.value(id).title);
             PROFILE_LAYOUT_PANEL(tabPhase, std::distance(m_panels.cbegin(), m_panels.constFind(id)));
             PROFILE_LAYOUT_PHASE(tabPhase, AddTab);
             // Reuse the same accessible control as the app and canvas panels.
@@ -652,8 +754,8 @@ QWidget *DashboardWorkspace::buildTree(const QJsonObject &node, QWidget *parent)
             minimize->setToolTip(tr("Minimize to dock"));
             controlLayout->addWidget(minimize);
             connect(minimize, &QToolButton::clicked, this, [this, id] { minimizePanel(id); });
-            connect(close, &QToolButton::clicked, group, [group, frame]() {
-                emit group->tabCloseRequested(group->indexOf(frame));
+            connect(close, &QToolButton::clicked, this, [this, id]() {
+                emit panelCloseRequested(id);
             });
             auto *expand = new WindowControlButton(WindowControlButton::Maximize, controls);
             expand->setObjectName("dashboardTabExpand");
@@ -669,7 +771,15 @@ QWidget *DashboardWorkspace::buildTree(const QJsonObject &node, QWidget *parent)
                 group->setCurrentWidget(frame);
             PROFILE_LAYOUT_PHASE(tabPhase, ActivateTab);
         }
-        connect(group, &QTabWidget::currentChanged, this, [this, group] {
+        auto *attachTimer = new QTimer(group);
+        attachTimer->setSingleShot(true);
+        connect(attachTimer, &QTimer::timeout, this, [this, group] {
+            materializePanel(panelId(group->currentWidget()));
+        });
+        connect(group, &QTabWidget::currentChanged, this, [this, group, attachTimer] {
+            // Qt can emit currentChanged from inside setTabVisible. Replacing
+            // the page there would invalidate Qt's in-progress tab operation.
+            attachTimer->start(0);
             if (m_rebuilding)
                 return;
             if (!m_expandedPanel.isEmpty() && m_expandedGroup == group) {
@@ -718,12 +828,11 @@ QJsonObject DashboardWorkspace::captureTree(QWidget *widget) const
     QJsonArray ids;
     QString active;
     for (int index = 0; index < group->count(); ++index) {
-        for (auto iterator = m_panels.cbegin(); iterator != m_panels.cend(); ++iterator) {
-            if (iterator.value().frame == group->widget(index)) {
-                ids.append(iterator.key());
-                if (index == group->currentIndex())
-                    active = iterator.key();
-            }
+        const QString id = panelId(group->widget(index));
+        if (!id.isEmpty()) {
+            ids.append(id);
+            if (index == group->currentIndex())
+                active = id;
         }
     }
     if (active.isEmpty() && !ids.isEmpty())
@@ -942,6 +1051,12 @@ void DashboardWorkspace::applyMinimizedPanels()
             split->setProperty("dashboardUnminimizedSizes", QVariant());
         }
     }
+    // A minimized current tab may make Qt select a deferred page. Finish that
+    // transfer after Qt's visibility operation, before our caller returns.
+    for (auto *group : groups) {
+        if (!group->isHidden())
+            materializePanel(panelId(group->currentWidget()));
+    }
 }
 
 bool DashboardWorkspace::activatePanel(const QString &id)
@@ -952,6 +1067,7 @@ bool DashboardWorkspace::activatePanel(const QString &id)
         restoreExpandedPanel();
     if (m_minimized.remove(id))
         applyMinimizedPanels();
+    materializePanel(id);
     auto *frame = m_panels.value(id).frame;
     for (auto *parent = frame->parentWidget(); parent && parent != this; parent = parent->parentWidget()) {
         if (auto *tabs = qobject_cast<QTabWidget *>(parent))
@@ -1176,12 +1292,8 @@ bool DashboardWorkspace::eventFilter(QObject *object, QEvent *event)
         if (tabBar) {
             auto *group = qobject_cast<QTabWidget *>(tabBar->parentWidget());
             const int index = tabBar->tabAt(mouse->position().toPoint());
-            if (group && index >= 0) {
-                for (auto iterator = m_panels.cbegin(); iterator != m_panels.cend(); ++iterator) {
-                    if (iterator.value().frame == group->widget(index))
-                        id = iterator.key();
-                }
-            }
+            if (group && index >= 0)
+                id = panelId(group->widget(index));
         }
         if (mouse->button() == Qt::LeftButton && !id.isEmpty() && !m_floating.contains(id)) {
             m_dragStart = mouse->position().toPoint();
@@ -1421,11 +1533,81 @@ void DashboardWorkspace::paintEvent(QPaintEvent *event)
 
 QString DashboardWorkspace::panelId(QWidget *frame) const
 {
+    if (!frame)
+        return {};
     for (auto iterator = m_panels.cbegin(); iterator != m_panels.cend(); ++iterator) {
-        if (iterator.value().frame == frame)
+        if (iterator.value().frame == frame || iterator.value().tabPage == frame)
             return iterator.key();
     }
     return {};
+}
+
+QWidget *DashboardWorkspace::panelTabPage(const QString &id) const
+{
+    const Panel &panel = m_panels[id];
+    return panel.tabPage ? panel.tabPage.data() : panel.frame;
+}
+
+void DashboardWorkspace::materializePanel(const QString &id)
+{
+    if (!m_tiles || !m_panels.contains(id))
+        return;
+    Panel &panel = m_panels[id];
+    QWidget *page = panel.tabPage;
+    if (!page || page == panel.frame)
+        return;
+    auto groups = m_tiles->findChildren<QTabWidget *>();
+    if (auto *group = qobject_cast<QTabWidget *>(m_tiles))
+        groups.prepend(group);
+    for (auto *group : groups) {
+        const int index = group->indexOf(page);
+        if (index < 0)
+            continue;
+        const QSignalBlocker groupSignals(group);
+        const int selectedIndex = group->currentIndex();
+        const bool hidden = group->isHidden();
+        const bool enabled = group->isTabEnabled(index);
+        const bool visible = group->isTabVisible(index);
+        const QString tooltip = group->tabToolTip(index);
+        const QString whatsThis = group->tabWhatsThis(index);
+        const QVariant data = group->tabBar()->tabData(index);
+        group->hide();
+        QWidget *buttons[2] = {nullptr, nullptr};
+        for (int side = 0; side < 2; ++side) {
+            const auto position = static_cast<QTabBar::ButtonPosition>(side);
+            buttons[side] = group->tabBar()->tabButton(index, position);
+            if (buttons[side]) {
+                group->tabBar()->setTabButton(index, position, nullptr);
+                buttons[side]->setParent(m_parking);
+            }
+        }
+        group->removeTab(index);
+        panel.tabPage = panel.frame;
+        group->insertTab(index, panel.frame, panel.icon, panel.title);
+        // QTabBar may create its built-in close control for the replacement.
+        for (int side = 0; side < 2; ++side) {
+            const auto position = static_cast<QTabBar::ButtonPosition>(side);
+            if (QWidget *generated = group->tabBar()->tabButton(index, position)) {
+                group->tabBar()->setTabButton(index, position, nullptr);
+                generated->deleteLater();
+            }
+            if (buttons[side]) {
+                buttons[side]->setParent(group->tabBar());
+                group->tabBar()->setTabButton(index, position, buttons[side]);
+                buttons[side]->show();
+            }
+        }
+        group->setTabEnabled(index, enabled);
+        group->setTabVisible(index, visible);
+        group->setTabToolTip(index, tooltip);
+        group->setTabWhatsThis(index, whatsThis);
+        group->tabBar()->setTabData(index, data);
+        group->setCurrentIndex(selectedIndex);
+        delete page;
+        if (!hidden)
+            group->show();
+        return;
+    }
 }
 
 void DashboardWorkspace::applyPanelChrome(const QString &id, bool tiled)
@@ -1569,7 +1751,7 @@ void DashboardWorkspace::setPanelTitle(const QString &id, const QString &title)
         if (auto *group = qobject_cast<QTabWidget *>(m_tiles))
             groups.append(group);
         for (auto *group : groups) {
-            const int index = group->indexOf(panel.frame);
+            const int index = group->indexOf(panelTabPage(id));
             if (index >= 0)
                 group->setTabText(index, title);
         }
@@ -1587,7 +1769,7 @@ void DashboardWorkspace::setPanelIcon(const QString &id, const QIcon &icon)
         if (auto *group = qobject_cast<QTabWidget *>(m_tiles))
             groups.append(group);
         for (auto *group : groups) {
-            const int index = group->indexOf(panel.frame);
+            const int index = group->indexOf(panelTabPage(id));
             if (index >= 0)
                 group->setTabIcon(index, icon);
         }
@@ -1667,6 +1849,7 @@ bool DashboardWorkspace::togglePanelExpanded(const QString &id)
         return true;
     }
     restoreExpandedPanel();
+    materializePanel(id);
     m_expansionLayout = saveLayout();
     m_expandedPanel = id;
     CanvasPanel *frame = m_panels.value(id).frame;
