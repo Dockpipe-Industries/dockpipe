@@ -3,6 +3,10 @@
 #include <QElapsedTimer>
 #include <QGraphicsView>
 #include <QKeyEvent>
+#include <QLibrary>
+#include <QOffscreenSurface>
+#include <QOpenGLContext>
+#include <QOpenGLFunctions>
 #include <QPushButton>
 #include <QScreen>
 #include <QTemporaryDir>
@@ -97,7 +101,45 @@ int main(int argc, char **argv)
     idle(500);
     auto *flight = surface->findChild<QGraphicsView *>("workspaceDroneFlight");
     CHECK(flight);
+    QOpenGLContext probe;
+    CHECK(probe.create());
+    QOffscreenSurface probeSurface;
+    probeSurface.setFormat(probe.format());
+    probeSurface.create();
+    CHECK(probeSurface.isValid() && probe.makeCurrent(&probeSurface));
+    const auto *rendererBytes = probe.functions()->glGetString(GL_RENDERER);
+    CHECK(rendererBytes);
+    const QString renderer = QString::fromLatin1(reinterpret_cast<const char *>(rendererBytes));
+    probe.doneCurrent();
+    const QString normalizedRenderer = renderer.toLower();
+    const bool softwareOpenGL = normalizedRenderer.contains("llvmpipe") || normalizedRenderer.contains("softpipe")
+        || normalizedRenderer.contains("software") || normalizedRenderer.contains("basic render");
+    if (softwareOpenGL) {
+        // Product policy correctly keeps CPU OpenGL on its raster fallback.
+        // This test owns a late GL viewport solely to exercise Qt's compositor
+        // after the host backing store and optional package already exist.
+        CHECK(!flight->viewport()->inherits("QOpenGLWidget"));
+        // Keep OpenGLWidgets out of this host's link dependencies. Loading the
+        // private factory now preserves the original late-import condition.
+        QLibrary factory(QStringLiteral(DOCKPIPE_TEST_GL_FACTORY_PATH));
+        factory.setLoadHints(QLibrary::PreventUnloadHint);
+        CHECK(factory.load());
+        using CreateViewport = QWidget *(*)(const QSurfaceFormat *);
+        using ValidViewport = bool (*)(const QWidget *);
+        auto createViewport = reinterpret_cast<CreateViewport>(factory.resolve("dockpipe_test_create_gl_viewport"));
+        auto validViewport = reinterpret_cast<ValidViewport>(factory.resolve("dockpipe_test_gl_viewport_valid"));
+        CHECK(createViewport && validViewport);
+        const auto format = probe.format();
+        auto *viewport = createViewport(&format);
+        CHECK(viewport);
+        flight->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+        flight->setViewport(viewport);
+        idle(500);
+        CHECK(validViewport(viewport));
+    }
     CHECK(flight->viewport()->inherits("QOpenGLWidget"));
+    std::printf("opengl_renderer=%s qualification=%s\n", qPrintable(renderer),
+        softwareOpenGL ? "software-OpenGL late compositor; product raster fallback verified" : "hardware-OpenGL late compositor");
     FrameRecorder recorder;
     flight->viewport()->installEventFilter(&recorder);
     QKeyEvent forward(QEvent::KeyPress, Qt::Key_W, Qt::NoModifier);
