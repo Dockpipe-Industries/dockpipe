@@ -64,7 +64,7 @@ try {
     Get-ChildItem -LiteralPath $crt.FullName -Filter "*.dll" | Copy-Item -Destination $StageDir
     Assert-PublicDesktopRuntime -RuntimeDirectory $StageDir
     foreach ($required in @(
-        "Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6OpenGL.dll", "Qt6OpenGLWidgets.dll",
+        "Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6OpenGL.dll",
         "Qt6WebEngineCore.dll", "Qt6WebEngineWidgets.dll", "QtWebEngineProcess.exe",
         "resources/icudtl.dat", "resources/qtwebengine_resources.pak", "translations/qtwebengine_locales/en-US.pak",
         "resources/qtwebengine_resources_100p.pak", "resources/qtwebengine_resources_200p.pak",
