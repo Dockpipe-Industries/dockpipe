@@ -40,6 +40,9 @@
 #include <QTest>
 #include <QTimer>
 #include <QToolButton>
+#include <QTabBar>
+#include <QTabWidget>
+#include <memory>
 
 #ifdef DOCKPIPE_X11_BILLBOARDS
 #include <X11/Xatom.h>
@@ -307,6 +310,38 @@ public:
         return false;
     }
 
+    quint64 parentWindow(quint64 id) const
+    {
+        Window root = 0;
+        Window parent = 0;
+        Window *children = nullptr;
+        unsigned int count = 0;
+        const bool found = XQueryTree(m_display, static_cast<Window>(id), &root, &parent, &children, &count);
+        if (children)
+            XFree(children);
+        return found ? parent : 0;
+    }
+
+    bool viewable(quint64 id) const
+    {
+        XWindowAttributes attributes{};
+        return XGetWindowAttributes(m_display, static_cast<Window>(id), &attributes)
+            && attributes.map_state == IsViewable;
+    }
+
+    bool descendantOf(quint64 id, quint64 ancestor) const
+    {
+        for (int depth = 0; depth < 32 && id; ++depth) {
+            if (id == ancestor)
+                return true;
+            const quint64 parent = parentWindow(id);
+            if (parent == id)
+                break;
+            id = parent;
+        }
+        return false;
+    }
+
     ~IsolatedClientList()
     {
         if (!m_display)
@@ -342,6 +377,7 @@ private slots:
     void repeatedSwitchesRetainContentAndObjects();
     void autoAcquireLifecycle_data();
     void autoAcquireLifecycle();
+    void retainsAndReleasesInactiveForeignWindow();
     void dockPreferenceChangesReservedSpace();
     void desktopLaunchAdmission();
     void desktopLaunchAcquisition();
@@ -670,6 +706,100 @@ void DashboardPageTest::dockPreferenceChangesReservedSpace()
     dock->reveal(true);
     QTRY_VERIFY(dock->isVisible());
     QVERIFY(captureIfRequested(page, "dock-overlay"));
+}
+
+void DashboardPageTest::retainsAndReleasesInactiveForeignWindow()
+{
+    if (qEnvironmentVariable("DOCKPIPE_ISOLATED_DESKTOP_TEST") != "1")
+        QSKIP("Desktop acquisition requires explicit opt-in on a disposable Xvfb display.");
+#ifndef DOCKPIPE_X11_BILLBOARDS
+    QSKIP("This build has no X11 native-window backend.");
+#else
+    QVERIFY2(QGuiApplication::platformName() == "xcb" && isolatedXvfbDisplay(),
+        "Refusing native acquisition: the selected display must be a verified local Xvfb server");
+    FixtureProcess fixture;
+    fixture.setProcessChannelMode(QProcess::ForwardedErrorChannel);
+    fixture.start(QCoreApplication::applicationDirPath() + "/desktop-app-window-test", {"--fixture"});
+    QVERIFY(fixture.waitForStarted(3000));
+    QByteArray output;
+    QTRY_VERIFY_WITH_TIMEOUT((output += fixture.readAllStandardOutput()).startsWith("WINDOW:")
+        && output.contains('\n'), 5000);
+    const quint64 nativeId = output.split('\n').first().mid(7).toULongLong();
+    QVERIFY(nativeId);
+    IsolatedClientList clients;
+    QVERIFY(clients.install(nativeId));
+    const quint64 originalParent = clients.parentWindow(nativeId);
+    QVERIFY(originalParent);
+    QTRY_VERIFY_WITH_TIMEOUT(clients.viewable(nativeId), 5000);
+
+    auto ownedWorkspace = std::make_unique<DashboardWorkspace>("deferred-native-regression");
+    QPointer<DashboardWorkspace> workspace = ownedWorkspace.get();
+    workspace->resize(1100, 760);
+    QPointer<DesktopWindowWidget> native = new DesktopWindowWidget;
+    QVERIFY(workspace->addPanel("native", "Native fixture", native));
+    QVERIFY(workspace->addPanel("other", "Ordinary panel", new QLabel("Retained ordinary panel")));
+    workspace->show();
+    QString error;
+    QVERIFY2(native->acquireWindow(nativeId, error), qPrintable(error));
+    QTRY_VERIFY_WITH_TIMEOUT(native->hasInteractiveWindow(), 5000);
+    QTRY_VERIFY_WITH_TIMEOUT(clients.descendantOf(nativeId, workspace->winId()), 5000);
+    workspace->setMode("tiling");
+    QVERIFY(workspace->dockPanel("native", "other", "tab"));
+    QVERIFY(workspace->activatePanel("other"));
+    workspace->setMode("canvas");
+    workspace->setMode("tiling");
+    QVERIFY(workspace->findChild<QWidget *>("dashboardDeferredTab"));
+    QVERIFY(!native->isVisible());
+    QCOMPARE(native->acquiredWindowId(), nativeId);
+    QTRY_VERIFY_WITH_TIMEOUT(!clients.viewable(nativeId), 5000);
+    auto *monitor = native->findChild<QTimer *>("desktopNativeMonitor");
+    QVERIFY(monitor);
+    QTRY_VERIFY_WITH_TIMEOUT(!monitor->isActive(), 5000);
+    QCOMPARE(fixture.state(), QProcess::Running);
+
+    auto *group = workspace->findChild<QTabWidget *>("dashboardTabGroup");
+    QVERIFY(group && group->count() == 2);
+    int nativeIndex = -1;
+    for (int index = 0; index < group->count(); ++index) {
+        if (group->tabText(index) == "Native fixture")
+            nativeIndex = index;
+    }
+    QVERIFY(nativeIndex >= 0 && nativeIndex != group->currentIndex());
+    QElapsedTimer activation;
+    activation.start();
+    QTest::mouseClick(group->tabBar(), Qt::LeftButton, {}, group->tabBar()->tabRect(nativeIndex).center());
+    QTRY_VERIFY_WITH_TIMEOUT(native->isVisible() && native->hasInteractiveWindow()
+        && clients.viewable(nativeId) && clients.descendantOf(nativeId, workspace->winId()), 5000);
+    qInfo() << "Deferred native first activation ms" << activation.elapsed();
+    QCOMPARE(native->acquiredWindowId(), nativeId);
+    QCOMPARE(fixture.state(), QProcess::Running);
+
+    for (int cycle = 0; cycle < 2; ++cycle) {
+        for (const QString &mode : {QStringLiteral("canvas"), QStringLiteral("tiling")}) {
+            workspace->setMode(mode);
+            QTRY_VERIFY_WITH_TIMEOUT(native->isVisible() && native->hasInteractiveWindow()
+                && clients.viewable(nativeId) && clients.descendantOf(nativeId, workspace->winId()), 5000);
+            QCOMPARE(native->acquiredWindowId(), nativeId);
+            QCOMPARE(fixture.state(), QProcess::Running);
+        }
+        QVERIFY(workspace->minimizePanel("native"));
+        QTRY_VERIFY_WITH_TIMEOUT(!native->isVisible() && !clients.viewable(nativeId), 5000);
+        QCOMPARE(native->acquiredWindowId(), nativeId);
+        QCOMPARE(fixture.state(), QProcess::Running);
+        QVERIFY(workspace->activatePanel("native"));
+        QTRY_VERIFY_WITH_TIMEOUT(native->isVisible() && native->hasInteractiveWindow()
+            && clients.viewable(nativeId), 5000);
+        QCOMPARE(native->acquiredWindowId(), nativeId);
+    }
+    workspace->setAttribute(Qt::WA_DeleteOnClose);
+    QVERIFY(workspace->close());
+    ownedWorkspace.release();
+    QTRY_VERIFY_WITH_TIMEOUT(workspace.isNull() && native.isNull(), 5000);
+    QTRY_VERIFY_WITH_TIMEOUT(clients.parentWindow(nativeId) == originalParent
+        && clients.viewable(nativeId), 5000);
+    QCOMPARE(fixture.state(), QProcess::Running);
+    qInfo() << "Native client survived deferred tab activation, modes, minimize/restore and workspace close";
+#endif
 }
 
 void DashboardPageTest::autoAcquireLifecycle_data()
