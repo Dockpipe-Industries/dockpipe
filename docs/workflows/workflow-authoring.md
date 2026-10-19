@@ -7,6 +7,9 @@ Use your own project folder; none of the examples require Dockpipe's source
 checkout. Start with [Your first workflow](../onboarding.md) if you have not run a
 workflow yet. For the complete key reference, see [workflow-yaml.md](workflow-yaml.md).
 
+Already have VS Code tasks or launch configurations? Dockpipe can
+[run them directly or clone them into workflows](vscode-compatibility.md).
+
 ## Mental Model
 
 | Concept | Meaning |

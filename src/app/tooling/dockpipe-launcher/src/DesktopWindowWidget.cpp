@@ -293,9 +293,18 @@ QVector<DesktopAppChoice> DesktopWindowWidget::availableWindows(QString &error)
 bool DesktopWindowWidget::acquireWindow(quint64 nativeId, QString &error)
 {
     error.clear();
-    if (nativeId && acquiredWindowId() == nativeId && m_state->native->alive())
+    if (!nativeId) {
+        error = tr("Choose a valid desktop window.");
+        return false;
+    }
+    if (acquiredWindowId() == nativeId && m_state->native->alive())
         return true;
-    const auto choices = availableWindows(error);
+    error = automaticAcquisitionUnavailableReason();
+    if (!error.isEmpty())
+        return false;
+    // Recheck this live selection, including all native eligibility checks,
+    // without repeating a whole-desktop process scan for every incoming tile.
+    const auto choices = DesktopAppWindow::availableWindows(error, nativeId);
     if (!error.isEmpty())
         return false;
     for (const auto &choice : choices) {

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise release admission and deployment isolation from the authored workflow."""
 import os
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -33,6 +34,38 @@ class ReleaseWorkflowTests(unittest.TestCase):
             expression = expression.replace(name, repr(value))
         expression = expression.replace("&&", " and ").replace("||", " or ")
         return eval(expression.strip(), {"__builtins__": {}}, {})
+
+    def test_desktop_release_and_qualification_share_extension_capable_qt(self):
+        native = yaml.load((REPOSITORY / ".github/workflows/native-macos-symbols.yml").read_text(),
+                           Loader=yaml.BaseLoader)
+        workflows = (self.workflow, native)
+        installs = []
+        for workflow in workflows:
+            for job in workflow["jobs"].values():
+                for step in job.get("steps", []):
+                    script = step.get("run", "")
+                    if "-m aqt install-qt" not in script:
+                        continue
+                    installs.append(script)
+                    self.assertIn("desktop 6.10.3 ", script)
+                    self.assertIn("/Qt/6.10.3/", script)
+                    self.assertIn("--modules qtwebengine qtwebchannel qtpositioning", script)
+        self.assertEqual(len(installs), 4)
+
+        for name in ("windows/dev-install.ps1", "msi/build-local.ps1"):
+            script = (REPOSITORY / "release/packaging" / name).read_text()
+            self.assertIn('[string]$QtVersion = "6.10.3"', script)
+        flatpak = (REPOSITORY / "release/packaging/desktop/flatpak/build.sh").read_text()
+        self.assertIn("runtime_branch=6.10", flatpak)
+        self.assertIn("io.qt.qtwebengine.BaseApp", flatpak)
+        for job in native["jobs"].values():
+            scripts = "\n".join(step.get("run", "") for step in job.get("steps", []))
+            self.assertIn("browser-extensions-test", scripts)
+            self.assertIn("browser-extension-package-test", scripts)
+            self.assertIn("browser-extension-store-test", scripts)
+            patterns = re.findall(r"-R ['\"]([^'\"]+)['\"]", scripts)
+            for test_name in ("browser-extensions", "browser-extension-package", "browser-extension-store", "browser-extension-crx"):
+                self.assertTrue(any(re.fullmatch(pattern, test_name) for pattern in patterns), test_name)
 
     def test_metadata_admits_dry_runs_and_rejects_non_master_publication(self):
         metadata = next(step for step in self.jobs["meta"]["steps"] if step.get("id") == "m")

@@ -195,7 +195,7 @@ func Run(argv []string, baseEnviron []string) error {
 		return err
 	}
 
-	if compileDepsWanted(opts) && opts.Workflow != "" && opts.WorkflowFile == "" && strings.TrimSpace(opts.Package) == "" {
+	if compileDepsWanted(opts) && opts.Workflow != "" && !isVSCodeWorkflow(opts.Workflow) && opts.WorkflowFile == "" && strings.TrimSpace(opts.Package) == "" {
 		effWd := effectiveWorkdirForWorkflowOpts(opts)
 		if err := compileClosureForWorkflow(effWd, opts.Workflow, opts.Force); err != nil {
 			return err
@@ -230,6 +230,18 @@ func Run(argv []string, baseEnviron []string) error {
 		wfConfig = wfPath
 		if len(wf.Steps) > 0 {
 			stepsMode = true
+		}
+	} else if isVSCodeWorkflow(opts.Workflow) && strings.TrimSpace(opts.Package) == "" {
+		wf, wfRoot, err = loadVSCodeWorkflow(effectiveWorkdirForWorkflowOpts(opts), opts.Workflow)
+		if err != nil {
+			return fmt.Errorf("VS Code workflow: %w", err)
+		}
+		// The adapter produces normal host steps in memory. The editor JSON is
+		// provenance, not a YAML config to parse or ship to a remote machine.
+		stepsMode = true
+		opts.Workdir = wfRoot
+		if wf.Category == "app" {
+			fmt.Fprintln(os.Stderr, "[dockpipe] VS Code launch: running without a debugger")
 		}
 	} else if opts.Workflow != "" {
 		var statErr error
@@ -376,6 +388,7 @@ func Run(argv []string, baseEnviron []string) error {
 	}
 	if stepsMode {
 		MergeExtraEnvCLIIntoSteps(envMap, opts.ExtraEnvLines, opts.VarOverrides)
+		mergeVSCodeInputEnv(envMap, opts.ExtraEnvLines, opts.VarOverrides)
 	}
 	// CLI --workdir must live in envMap, not only on envSlice: strategy pre-scripts rebuild
 	// envSlice from envMap (run.go) and would otherwise drop DOCKPIPE_WORKDIR from appendUniqueEnv.

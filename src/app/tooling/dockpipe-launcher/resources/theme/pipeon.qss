@@ -1,6 +1,7 @@
 /* Dockpipe Launcher shared layout. Color accents live in pipeon-light.qss / pipeon-dark.qss. */
 
 QWidget#mainCentral,
+QWidget#dashboardPage,
 QWidget#basicHomePage,
 QWidget#basicWorkspacePage,
 QWidget#basicAppsPage,
@@ -258,6 +259,12 @@ QPushButton {
 
 QPushButton:focus {
     border: 1px solid palette(highlight);
+}
+
+QPushButton#openWorkspaceGraph {
+    min-height: 0px;
+    padding: 7px 10px;
+    border-radius: 6px;
 }
 
 QPushButton#primaryButton,

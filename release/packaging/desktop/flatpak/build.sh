@@ -67,6 +67,8 @@ flatpak build --filesystem="$source_dir:ro" --filesystem="$out" "$app" \
   cmake --build "$out/qt-build" --parallel 2
 flatpak build --filesystem="$out" --env=QT_QPA_PLATFORM=offscreen \
   --env=QTWEBENGINEPROCESS_PATH=/app/bin/QtWebEngineProcess \
+  --env=QT_QUICK_BACKEND=software --env=QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu \
+  --env=DOCKPIPE_TEST_FLATPAK_HOST_NATIVE=0 \
   --env=QTWEBENGINE_DISABLE_SANDBOX=1 "$app" \
   ctest --test-dir "$out/qt-build" --output-on-failure
 # BaseApp cannot spawn nested Flatpak instances during a build. The environment

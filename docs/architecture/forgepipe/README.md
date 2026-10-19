@@ -256,13 +256,36 @@ public SDKs exclude debug sections, static symbol tables, implementation source
 and unapproved headers. The publisher checks a fixed 20-file SDK inventory and
 attests both the immutable archive and source-bound metadata. Cockpit verifies
 those attestations and exact size/digest/source/Qt pins before extraction.
-Matching diagnostic build IDs and hashes must be read back from durable private
-storage before this SDK is publicly delivered. Stripping and restricted exports
-reduce disclosure; they do not make native binaries impossible to reverse engineer.
+Matching diagnostic build IDs and hashes were read back from durable private
+storage before public delivery. The SDK comes from source
+`49cbfc7dbc37e65854464666245fadbf06732012` and is published as
+[forgepipe-sdk-0.1.0-staging.49cbfc7dbc37](https://github.com/Dockpipe-Industries/dockpipe/releases/tag/forgepipe-sdk-0.1.0-staging.49cbfc7dbc37).
+Its private diagnostics remain in the private ForgePipe release. Stripping and
+restricted exports reduce disclosure; they do not make native binaries impossible
+to reverse engineer.
 
 Native Linux amd64 packaging uses Qt 6.10.3 on the Ubuntu 22.04 ABI baseline.
 Cockpit 0.1.1 is composed into the optional resolver catalog only after its native
 and packaged rendering checks; unrelated pinned store entries remain unchanged.
 ARM64 retains its existing distribution Qt lane and does not establish native
-ForgePipe/Cockpit compatibility. Hosted release and installed-catalog readback
-remain required before this delivery is called complete.
+ForgePipe/Cockpit compatibility. Cockpit is qualified here only for native Linux
+amd64, not ARM64, macOS, Windows or Flatpak.
+
+The complete Dockpipe staging release is
+[`0.6.20-staging.39285769512.1.0399bb37bb7d`](https://github.com/Dockpipe-Industries/dockpipe/releases/tag/v0.6.20-staging.39285769512.1.0399bb37bb7d),
+from source `0399bb37bb7d795ca55fc240bcfa4928fe3f1c14`. All six desktop/CLI
+release lanes passed. Public downloads, immutable catalogs, GitHub asset digests,
+signed APT packages and both native Homebrew installations were read back against
+that candidate. The rebuilt [staging site](https://staging.dockpipe.com/) serves
+the same product source, catalog and Cockpit digest; all 12 public documentation
+routes passed HTTP readback. A fresh published CLI installed Cockpit 0.1.1 from
+the native Linux amd64 catalog into an isolated store; its archive matched the
+published digest.
+All 47 runtime ELF files passed the private-symbol/debug-section audit, and the
+engine matched the 32 reviewed exports and retained diagnostic build ID.
+
+The dashboard layout optimization passed the original 100 ms transition limit on
+both Mac architectures; no platform exception was added. Native Linux rendering
+qualification used the CI compositor and does not establish physical GPU gameplay
+acceptance. This delivery does not complete standalone product extraction,
+PipeLang bindings or a stable cross-toolchain SDK ABI. Production was not promoted.

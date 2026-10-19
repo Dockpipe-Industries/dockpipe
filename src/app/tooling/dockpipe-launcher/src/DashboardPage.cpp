@@ -16,6 +16,8 @@
 #include "DashboardDock.h"
 #include "DashboardAppsDialog.h"
 #include "CanvasIcons.h"
+#include "BrowserWidget.h"
+#include <QWebEngineView>
 
 #include <QApplication>
 #include <QButtonGroup>
@@ -27,9 +29,11 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QMenu>
+#include <QPainter>
 #include <QPushButton>
 #include <QTimer>
 #include <QStyle>
+#include <QStyleOption>
 #include <QStackedWidget>
 #include <QVBoxLayout>
 
@@ -219,6 +223,20 @@ DashboardPage::DashboardPage(const DashboardDefinition &definition, DashboardWid
         scheduleSave();
 }
 
+void DashboardPage::paintEvent(QPaintEvent *)
+{
+    // Own the surround between the workspace and page edges. Relying on an
+    // ancestor's backing-store fill can expose the desktop during native
+    // maximize/resize. Terminal children still clear only their own viewport.
+    QPainter painter(this);
+    QColor background = palette().color(QPalette::Window);
+    background.setAlpha(255);
+    painter.fillRect(rect(), background);
+    QStyleOption option;
+    option.initFrom(this);
+    style()->drawPrimitive(QStyle::PE_Widget, &option, &painter, this);
+}
+
 DashboardPage::~DashboardPage()
 {
     // QWidget destroys children after our value members. Window release signals
@@ -300,13 +318,43 @@ QWidget *DashboardPage::createContent(const QString &kind, const QString &mode)
     if (kind == "desktop-window")
         return new DesktopWindowWidget;
     const QString scope = mode == "tiling" ? m_definition.options.tilingFileScope : m_definition.options.canvasFileScope;
-    if (auto *widget = m_factory->create(kind, nullptr, scope))
+    if (auto *widget = m_factory->create(kind, nullptr, scope)) {
+        const bool canvas = mode == "canvas";
+        widget->setProperty("dashboardCanvasPresentation", canvas);
+        for (auto *child : widget->findChildren<QWidget *>())
+            child->setProperty("dashboardCanvasPresentation", canvas);
+        if (canvas && kind == "browser") {
+            if (auto *browser = widget->findChild<BrowserWidget *>()) {
+                connect(browser, &BrowserWidget::tabTearOutRequested, this,
+                    [this, browser](QWebEngineView *view, const QPoint &position) {
+                        tearOutBrowserTab(browser, view, position);
+                    });
+            }
+        }
         return widget;
+    }
     auto *missing = new QLabel(tr("This widget is unavailable: %1. Its saved identity is preserved.").arg(kind));
     missing->setTextFormat(Qt::PlainText);
     missing->setWordWrap(true);
     missing->setAlignment(Qt::AlignCenter);
     return missing;
+}
+
+void DashboardPage::tearOutBrowserTab(BrowserWidget *source, QWebEngineView *view, const QPoint &globalPosition)
+{
+    if (!source || !view || environment() != "canvas" || !addPanel("browser", false))
+        return;
+    const QString id = m_definition.panels.last().id;
+    auto *frame = m_canvasWorkspace->findChild<QWidget *>("dashboardPanel_" + id);
+    auto *destination = frame ? frame->findChild<BrowserWidget *>() : nullptr;
+    if (!destination || !source->moveTabTo(view, destination)) {
+        removePanel(id, m_canvasWorkspace);
+        showSaveError(tr("The browser tab could not be moved. Its original tab was kept."));
+        return;
+    }
+    m_canvasWorkspace->placePanelAt(id, m_canvasWorkspace->mapFromGlobal(globalPosition) - QPoint(60, 16));
+    m_canvasWorkspace->activatePanel(id);
+    scheduleSave();
 }
 
 bool DashboardPage::addWidgetKind(const QString &kind)
@@ -385,6 +433,7 @@ void DashboardPage::chooseApp()
         return;
     }
     auto *dialog = new DashboardAppsDialog(m_factory->workflows(), this, environment() == "tiling");
+    connect(dialog, &DashboardAppsDialog::cloneRequested, this, &DashboardPage::cloneWorkflowRequested);
     connect(dialog, &DashboardAppsDialog::workflowRequested, this, &DashboardPage::appWorkflowRequested);
     connect(dialog, &DashboardAppsDialog::desktopApplicationRequested,
         this, &DashboardPage::launchDesktopApplication);

@@ -2,6 +2,7 @@
 #include "BrowserAnnotationDialog.h"
 #include "BrowserDownloads.h"
 #include "BrowserExtensionsDialog.h"
+#include "BrowserExtensionPackage.h"
 #include "BrowserRuntime.h"
 #include "BrowserSettingsDialog.h"
 #include "BrowserPreferences.h"
@@ -112,8 +113,10 @@ QMenu *BrowserWidget::createMenu()
     });
     menu->addAction(tr("Extensions…"), this, &BrowserWidget::showExtensions);
     menu->addAction(tr("Downloads…"), this, [this]() {
-        if (m_downloads)
+        if (m_downloads) {
+            m_downloads->setHost(this);
             m_downloads->showPanel();
+        }
     });
     menu->addAction(tr("History…"), this, &BrowserWidget::showHistory);
     menu->addAction(tr("Clear browsing data…"), this, &BrowserWidget::clearBrowsingData);
@@ -208,6 +211,8 @@ void BrowserWidget::showExtensions()
             addTab(url);
     });
     dialog->show();
+    if (m_view && !BrowserExtensionPackage::extensionId(m_view->url().toString()).isEmpty())
+        dialog->addWebStoreExtension(m_view->url().toString());
 }
 
 void BrowserWidget::showSettings()
@@ -224,8 +229,10 @@ void BrowserWidget::showSettings()
     connect(dialog, &BrowserSettingsDialog::clearDataRequested, this, &BrowserWidget::clearBrowsingData);
     connect(dialog, &BrowserSettingsDialog::extensionsRequested, this, &BrowserWidget::showExtensions);
     connect(dialog, &BrowserSettingsDialog::downloadsRequested, this, [this]() {
-        if (m_downloads)
+        if (m_downloads) {
+            m_downloads->setHost(this);
             m_downloads->showPanel();
+        }
     });
     dialog->show();
 }
@@ -250,9 +257,13 @@ void BrowserWidget::clearBrowsingData()
         showStatus(tr("Wait for printing to finish before clearing browsing data."));
         return;
     }
+    if (hasSharedSession()) {
+        showStatus(tr("Detached tabs share this browsing session. Close the other browser widgets before clearing its data."));
+        return;
+    }
     QPointer<BrowserWidget> owner(this);
     const auto answer = QMessageBox::question(this, tr("Clear browsing data"),
-        tr("Close browser tabs, cancel downloads, unload extensions and clear this session's cookies, website storage, cache and history? Saved files will remain on disk."));
+        tr("Close browser tabs, cancel downloads and clear this session's cookies, website storage, cache and history? Installed extensions and saved files will remain available."));
     if (!owner || answer != QMessageBox::Yes)
         return;
     for (auto *dialog : findChildren<QDialog *>(QString(), Qt::FindDirectChildrenOnly))

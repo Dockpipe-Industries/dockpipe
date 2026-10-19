@@ -17,6 +17,7 @@ public:
         bool allowDesktopApps = true);
 signals:
     void workflowRequested(const QString &id);
+    void cloneRequested(const QString &id);
     void desktopApplicationRequested(const DesktopApplicationEntry &application);
 private:
     void rebuildList();
@@ -28,5 +29,6 @@ private:
     QListWidget *m_list;
     QLabel *m_status;
     QPushButton *m_launch;
+    QPushButton *m_clone;
     bool m_launching = false;
 };

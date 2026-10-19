@@ -9,6 +9,7 @@
 #include "CanvasView.h"
 #include "Theme.h"
 #include <QAction>
+#include <QAbstractButton>
 #include <QApplication>
 #include <QDir>
 #include <QElapsedTimer>
@@ -505,8 +506,8 @@ int main(int argc, char **argv)
     const qint64 baseline = residentKiB();
     QElapsedTimer cold;
     cold.start();
-    auto *graphButton = files.findChild<QToolButton *>("openWorkspaceGraph");
-    CHECK(graphButton);
+    auto *graphButton = files.findChild<QAbstractButton *>("openWorkspaceGraph");
+    CHECK(graphButton && graphButton->isVisible() && graphButton->isEnabled());
     graphButton->click();
     QPointer<WorkspaceGraphWidget> graph = files.findChild<WorkspaceGraphWidget *>();
     CHECK(graph && waitFor([&]() { return !graph->busy(); }));

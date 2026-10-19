@@ -12,6 +12,7 @@
 #include <QDebug>
 #include <QDialog>
 #include <QGuiApplication>
+#include <QHash>
 #include <QLabel>
 #include <QPainter>
 #include <QPixmap>
@@ -73,12 +74,30 @@ private:
     std::function<bool()> m_release;
 };
 
-bool sameUserAndUnelevated(HANDLE process)
+struct CurrentDesktopIdentity {
+    DWORD session = 0;
+    alignas(TOKEN_USER) BYTE user[sizeof(TOKEN_USER) + SECURITY_MAX_SID_SIZE]{};
+    bool valid = false;
+
+    CurrentDesktopIdentity()
+    {
+        Handle token;
+        DWORD length = 0;
+        valid = ProcessIdToSessionId(GetCurrentProcessId(), &session)
+            && OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token.value)
+            && GetTokenInformation(token.value, TokenUser, user, sizeof(user), &length);
+    }
+
+    PSID sid() const
+    {
+        return reinterpret_cast<const TOKEN_USER *>(user)->User.Sid;
+    }
+};
+
+bool sameUserAndUnelevated(HANDLE process, PSID ownUser)
 {
     Handle targetToken;
-    Handle ownToken;
-    if (!OpenProcessToken(process, TOKEN_QUERY, &targetToken.value)
-        || !OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &ownToken.value))
+    if (!OpenProcessToken(process, TOKEN_QUERY, &targetToken.value))
         return false;
     TOKEN_ELEVATION elevation{};
     DWORD length = 0;
@@ -92,31 +111,50 @@ bool sameUserAndUnelevated(HANDLE process)
     // TOKEN_USER consists of one SID pointer and one maximum-sized SID. Fixed
     // storage avoids allocations based on another process's token metadata.
     alignas(TOKEN_USER) BYTE targetUser[sizeof(TOKEN_USER) + SECURITY_MAX_SID_SIZE]{};
-    alignas(TOKEN_USER) BYTE ownUser[sizeof(TOKEN_USER) + SECURITY_MAX_SID_SIZE]{};
-    if (!GetTokenInformation(targetToken.value, TokenUser, targetUser, sizeof(targetUser), &length)
-        || !GetTokenInformation(ownToken.value, TokenUser, ownUser, sizeof(ownUser), &length))
+    if (!GetTokenInformation(targetToken.value, TokenUser, targetUser, sizeof(targetUser), &length))
         return false;
-    return EqualSid(reinterpret_cast<TOKEN_USER *>(targetUser)->User.Sid,
-        reinterpret_cast<TOKEN_USER *>(ownUser)->User.Sid);
+    return EqualSid(reinterpret_cast<TOKEN_USER *>(targetUser)->User.Sid, ownUser);
+}
+
+bool processIdentity(HWND window, DWORD &pid, FILETIME &created, const CurrentDesktopIdentity &own)
+{
+    pid = 0;
+    if (!own.valid || !IsWindow(window) || !GetWindowThreadProcessId(window, &pid)
+        || !pid || pid == GetCurrentProcessId())
+        return false;
+    DWORD targetSession = 0;
+    if (!ProcessIdToSessionId(pid, &targetSession) || targetSession != own.session)
+        return false;
+    Handle process(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid));
+    if (!process.value || !sameUserAndUnelevated(process.value, own.sid()))
+        return false;
+    FILETIME exited{}, kernel{}, user{};
+    return GetProcessTimes(process.value, &created, &exited, &kernel, &user);
 }
 
 bool processIdentity(HWND window, DWORD &pid, FILETIME &created)
 {
-    pid = 0;
-    if (!IsWindow(window) || !GetWindowThreadProcessId(window, &pid)
-        || !pid || pid == GetCurrentProcessId())
+    const CurrentDesktopIdentity own;
+    return processIdentity(window, pid, created, own);
+}
+
+bool ordinaryDesktopWindow(HWND window)
+{
+    const LONG_PTR style = GetWindowLongPtrW(window, GWL_STYLE);
+    const LONG_PTR extendedStyle = GetWindowLongPtrW(window, GWL_EXSTYLE);
+    if ((style & WS_CHILD) || (extendedStyle & WS_EX_TOOLWINDOW))
         return false;
-    DWORD targetSession = 0;
-    DWORD ownSession = 0;
-    if (!ProcessIdToSessionId(pid, &targetSession)
-        || !ProcessIdToSessionId(GetCurrentProcessId(), &ownSession)
-        || targetSession != ownSession)
-        return false;
-    Handle process(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid));
-    if (!process.value || !sameUserAndUnelevated(process.value))
-        return false;
-    FILETIME exited{}, kernel{}, user{};
-    return GetProcessTimes(process.value, &created, &exited, &kernel, &user);
+    const HWND owner = GetWindow(window, GW_OWNER);
+    if (!owner)
+        return true;
+    // Some apps give their taskbar window a hidden infrastructure owner. This
+    // differs from a dialog owned by a visible application window. Never detach
+    // a dialog, a tool window, or an owner belonging to another process.
+    DWORD pid = 0;
+    DWORD ownerPid = 0;
+    return (extendedStyle & WS_EX_APPWINDOW) && !IsWindowVisible(owner)
+        && GetWindowThreadProcessId(window, &pid)
+        && GetWindowThreadProcessId(owner, &ownerPid) && pid == ownerPid;
 }
 
 bool compatibleDpi(HWND window)
@@ -154,7 +192,17 @@ bool setParent(HWND window, HWND parent)
     return SetParent(window, parent) != nullptr || GetLastError() == ERROR_SUCCESS;
 }
 
+struct ProcessSnapshot {
+    FILETIME created{};
+    bool permitted = false;
+};
+
 struct WindowList {
+    CurrentDesktopIdentity own;
+    quint64 onlyWindowId = 0;
+    // Enumeration admits at most256 ordinary windows, hence at most256 PIDs.
+    // No cached identity survives this one snapshot; acquisition revalidates it.
+    QHash<DWORD, ProcessSnapshot> processes;
     QVector<DesktopAppChoice> choices;
     int inspected = 0;
     bool exhausted = false;
@@ -163,21 +211,32 @@ struct WindowList {
 BOOL CALLBACK collectWindow(HWND window, LPARAM data)
 {
     auto &list = *reinterpret_cast<WindowList *>(data);
-    if (!IsWindowVisible(window) || IsIconic(window) || GetWindow(window, GW_OWNER))
+    if (list.onlyWindowId
+        && list.onlyWindowId != static_cast<quint64>(reinterpret_cast<quintptr>(window)))
         return TRUE;
-    const LONG_PTR style = GetWindowLongPtrW(window, GWL_STYLE);
-    const LONG_PTR extendedStyle = GetWindowLongPtrW(window, GWL_EXSTYLE);
-    if ((style & WS_CHILD) || (extendedStyle & WS_EX_TOOLWINDOW))
+    if (!IsWindowVisible(window) || !ordinaryDesktopWindow(window))
         return TRUE;
-    // Same picker contract as X11: 256 visible ordinary top-level windows.
+    // Minimized taskbar windows remain visible desktop applications. Selection
+    // restores them inside the host, and release restores their original state.
     // Hidden Windows infrastructure HWNDs do not occupy user picker entries.
     if (++list.inspected > 256) {
         list.exhausted = true;
         return FALSE;
     }
     DWORD pid = 0;
-    FILETIME created{};
-    if (!processIdentity(window, pid, created))
+    GetWindowThreadProcessId(window, &pid);
+    if (!pid || pid == GetCurrentProcessId())
+        return TRUE;
+    auto process = list.processes.constFind(pid);
+    if (process == list.processes.cend()) {
+        ProcessSnapshot snapshot;
+        DWORD verifiedPid = 0;
+        snapshot.permitted = processIdentity(window, verifiedPid, snapshot.created, list.own)
+            && verifiedPid == pid;
+        list.processes.insert(pid, snapshot);
+        process = list.processes.constFind(pid);
+    }
+    if (!process->permitted)
         return TRUE;
     const int titleLength = GetWindowTextLengthW(window);
     if (titleLength <= 0 || titleLength > 512)
@@ -197,6 +256,7 @@ struct DesktopAppWindow::Native {
     DWORD pid = 0;
     FILETIME created{};
     HWND originalParent = nullptr;
+    HWND originalOwner = nullptr;
     LONG_PTR originalStyle = 0;
     LONG_PTR originalExtendedStyle = 0;
     WINDOWPLACEMENT originalPlacement{sizeof(WINDOWPLACEMENT)};
@@ -204,6 +264,7 @@ struct DesktopAppWindow::Native {
     QPointer<QWindow> foreign;
     QPointer<QWidget> container;
     bool saved = false;
+    bool changed = false;
     bool recoveryHosted = false;
 };
 
@@ -216,12 +277,17 @@ QString DesktopAppWindow::unavailableReason()
     return {};
 }
 
-QVector<DesktopAppChoice> DesktopAppWindow::availableWindows(QString &error)
+QVector<DesktopAppChoice> DesktopAppWindow::availableWindows(QString &error, quint64 onlyWindowId)
 {
     error = unavailableReason();
     if (!error.isEmpty())
         return {};
     WindowList list;
+    list.onlyWindowId = onlyWindowId;
+    if (!list.own.valid) {
+        error = QObject::tr("Cannot verify the current Windows user and desktop session.");
+        return {};
+    }
     if (!EnumWindows(collectWindow, reinterpret_cast<LPARAM>(&list))) {
         error = list.exhausted
             ? QObject::tr("The desktop window list exceeds the 256-window picker limit.")
@@ -271,8 +337,7 @@ bool DesktopAppWindow::prepareControl(QString &error)
         error = QObject::tr("The window closed or cannot be accessed. Elevated, sandboxed, protected, and other-user processes are not supported.");
         return false;
     }
-    if (GetParent(m_native->window) || GetWindow(m_native->window, GW_OWNER)
-        || (GetWindowLongPtrW(m_native->window, GWL_STYLE) & WS_CHILD)) {
+    if (!ordinaryDesktopWindow(m_native->window)) {
         error = QObject::tr("This is no longer an independent desktop window. Release it from its current host first.");
         return false;
     }
@@ -284,7 +349,10 @@ bool DesktopAppWindow::prepareControl(QString &error)
         error = QObject::tr("This application is not responding. Its window was left on the desktop.");
         return false;
     }
-    m_native->originalParent = GetParent(m_native->window);
+    // Every admitted HWND is top-level. GetParent would conflate its owner
+    // with a child parent, so preserve those relationships separately.
+    m_native->originalParent = nullptr;
+    m_native->originalOwner = GetWindow(m_native->window, GW_OWNER);
     m_native->originalStyle = GetWindowLongPtrW(m_native->window, GWL_STYLE);
     m_native->originalExtendedStyle = GetWindowLongPtrW(m_native->window, GWL_EXSTYLE);
     if (!GetWindowRect(m_native->window, &m_native->originalRectangle)
@@ -310,6 +378,21 @@ QWidget *DesktopAppWindow::takeControl(QWidget *parent, QString &error)
         error = QObject::tr("The selected Windows application is no longer available.");
         return nullptr;
     }
+    if (!ordinaryDesktopWindow(m_native->window)
+        || GetWindow(m_native->window, GW_OWNER) != m_native->originalOwner) {
+        m_native->saved = false;
+        error = QObject::tr("The window's ownership changed before attachment. Select it again.");
+        return nullptr;
+    }
+    // From this point a failed operation may have changed native state. Merely
+    // preparing or cancelling selection must never overwrite a desktop change.
+    m_native->changed = true;
+    if (m_native->originalOwner
+        && !setStyle(m_native->window, GWLP_HWNDPARENT, 0)) {
+        error = nativeError(QObject::tr("Cannot preserve the application window owner"));
+        releaseControl();
+        return nullptr;
+    }
     // Qt documents fromWinId specifically for foreign-window reparenting. Keep
     // all original native state because the wrapper may rewrite window styles.
     m_native->foreign = QWindow::fromWinId(static_cast<WId>(m_choice.id));
@@ -324,7 +407,7 @@ QWidget *DesktopAppWindow::takeControl(QWidget *parent, QString &error)
     // Microsoft requires WS_CHILD and no WS_POPUP before changing a desktop
     // window's parent. Do not change DPI awareness or bypass UIPI restrictions.
     const LONG_PTR childStyle = (m_native->originalStyle | WS_CHILD)
-        & ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME);
+        & ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZE | WS_MAXIMIZE);
     const HWND host = reinterpret_cast<HWND>(m_native->container->winId());
     if (!setStyle(m_native->window, GWL_STYLE, childStyle)
         || !setParent(m_native->window, host)) {
@@ -398,6 +481,43 @@ void DesktopAppWindow::releaseControl()
 {
     if (!m_native || !m_native->saved)
         return;
+    if (!m_native->changed) {
+        m_native->saved = false;
+        return;
+    }
+    const auto retainRecoveryHost = [this] {
+        if (m_native->recoveryHosted)
+            return;
+        // Do not destroy a native host while it still owns the external
+        // HWND. Keep an explicit recovery window until release succeeds or
+        // the external app closes. Retries require the user's button click.
+        m_native->recoveryHosted = true;
+        auto recovery = std::make_shared<DesktopAppWindow>(m_choice);
+        recovery->m_native = std::move(m_native);
+        m_native = std::make_unique<Native>();
+        auto *dialog = new WindowRecoveryDialog([recovery] {
+            recovery->releaseControl();
+            return !recovery->m_native->saved;
+        });
+        auto *layout = new QVBoxLayout(dialog);
+        auto *notice = new QLabel(QObject::tr("Windows could not fully restore this application to the desktop. Release recovery remains open to protect it. Retry release, or close the application itself."), dialog);
+        notice->setWordWrap(true);
+        layout->addWidget(notice);
+        if (recovery->m_native->container)
+            layout->addWidget(recovery->m_native->container);
+        auto *retry = new QPushButton(QObject::tr("Retry release"), dialog);
+        layout->addWidget(retry);
+        QObject::connect(retry, &QPushButton::clicked, dialog, &QWidget::close);
+        auto *monitor = new QTimer(dialog);
+        monitor->setInterval(500);
+        QObject::connect(monitor, &QTimer::timeout, dialog, [recovery, dialog] {
+            if (!recovery->alive())
+                dialog->close();
+        });
+        monitor->start();
+        dialog->resize(700, 500);
+        dialog->show();
+    };
     const bool exists = alive();
     if (exists) {
         if (m_native->foreign)
@@ -407,37 +527,7 @@ void DesktopAppWindow::releaseControl()
         if (!setParent(m_native->window, m_native->originalParent)
             && GetParent(m_native->window) != m_native->originalParent) {
             qWarning().noquote() << nativeError(QObject::tr("Cannot restore the external window parent"));
-            if (m_native->recoveryHosted)
-                return;
-            // Do not destroy a native host while it still owns the external
-            // HWND. Keep an explicit recovery window until release succeeds or
-            // the external app closes. Retries require the user's button click.
-            m_native->recoveryHosted = true;
-            auto recovery = std::make_shared<DesktopAppWindow>(m_choice);
-            recovery->m_native = std::move(m_native);
-            m_native = std::make_unique<Native>();
-            auto *dialog = new WindowRecoveryDialog([recovery] {
-                recovery->releaseControl();
-                return !recovery->m_native->saved;
-            });
-            auto *layout = new QVBoxLayout(dialog);
-            auto *notice = new QLabel(QObject::tr("Windows could not return this application to the desktop. Its host is kept open to protect it. Retry release, or close the application itself."), dialog);
-            notice->setWordWrap(true);
-            layout->addWidget(notice);
-            if (recovery->m_native->container)
-                layout->addWidget(recovery->m_native->container);
-            auto *retry = new QPushButton(QObject::tr("Retry release"), dialog);
-            layout->addWidget(retry);
-            QObject::connect(retry, &QPushButton::clicked, dialog, &QWidget::close);
-            auto *monitor = new QTimer(dialog);
-            monitor->setInterval(500);
-            QObject::connect(monitor, &QTimer::timeout, dialog, [recovery, dialog] {
-                if (!recovery->alive())
-                    dialog->close();
-            });
-            monitor->start();
-            dialog->resize(700, 500);
-            dialog->show();
+            retainRecoveryHost();
             return;
         }
     }
@@ -450,6 +540,22 @@ void DesktopAppWindow::releaseControl()
         const bool restoredExtendedStyle = setStyle(m_native->window, GWL_EXSTYLE, m_native->originalExtendedStyle);
         if (!restoredStyle || !restoredExtendedStyle)
             qWarning().noquote() << nativeError(QObject::tr("Cannot restore the external window styles"));
+        if (m_native->originalOwner) {
+            DWORD ownerPid = 0;
+            FILETIME ownerCreated{};
+            // The app may destroy its hidden infrastructure owner while it is
+            // embedded. Do not retry a dead or recycled owner indefinitely:
+            // leave the surviving application independent on the desktop.
+            const bool ownerAlive = processIdentity(m_native->originalOwner, ownerPid, ownerCreated)
+                && ownerPid == m_native->pid
+                && CompareFileTime(&ownerCreated, &m_native->created) == 0;
+            if (ownerAlive && !setStyle(m_native->window, GWLP_HWNDPARENT,
+                    reinterpret_cast<LONG_PTR>(m_native->originalOwner))) {
+                qWarning().noquote() << nativeError(QObject::tr("Cannot restore the external window owner"));
+                retainRecoveryHost();
+                return;
+            }
+        }
         const auto &rectangle = m_native->originalRectangle;
         const bool restoredRectangle = SetWindowPos(m_native->window, nullptr, rectangle.left, rectangle.top,
                 rectangle.right - rectangle.left, rectangle.bottom - rectangle.top,
@@ -460,6 +566,7 @@ void DesktopAppWindow::releaseControl()
         ShowWindowAsync(m_native->window, m_native->originalPlacement.showCmd);
     }
     m_native->saved = false;
+    m_native->changed = false;
 }
 
 QImage DesktopAppWindow::capture(QString &error)
