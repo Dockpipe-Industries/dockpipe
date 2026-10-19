@@ -249,7 +249,11 @@ func mutateWorkspaceGitExtended(ctx context.Context, current *WorkspaceGitSnapsh
 		if len(request.Message) > 4096 || strings.ContainsRune(request.Message, '\x00') {
 			return nil, errors.New("stash message exceeds the supported limit")
 		}
-		args = []string{"stash", "push"}
+		// This action stashes the entire workspace and accepts no file selectors.
+		// Do not pass our literal-pathspec policy into stash: newer Git versions
+		// use the magic root pathspec ":/" in an internal clean subprocess.
+		// Inheriting literal mode leaves the saved untracked files on disk.
+		args = []string{"--no-literal-pathspecs", "stash", "push"}
 		if request.IncludeUntracked {
 			args = append(args, "--include-untracked")
 		}

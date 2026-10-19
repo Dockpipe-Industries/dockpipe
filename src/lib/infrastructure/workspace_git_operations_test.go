@@ -188,7 +188,10 @@ func TestWorkspaceGitBranchesStashesAndStaleMetadata(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "new.txt"), []byte("untracked\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	gitWorkspaceAction(t, root, WorkspaceGitRequest{Action: "stash-save", Message: "Saved example", IncludeUntracked: true})
+	stashed := gitWorkspaceAction(t, root, WorkspaceGitRequest{Action: "stash-save", Message: "Saved example", IncludeUntracked: true})
+	if len(stashed.Changes) != 0 {
+		t.Fatalf("stash-save left reviewed changes in the working tree: %+v", stashed.Changes)
+	}
 	listed := gitWorkspaceAction(t, root, WorkspaceGitRequest{Action: "stash-list"})
 	if len(listed.Stashes) != 1 {
 		t.Fatalf("stash list: %+v", listed.Stashes)
@@ -211,6 +214,55 @@ func TestWorkspaceGitBranchesStashesAndStaleMetadata(t *testing.T) {
 	}
 	gitWorkspaceAction(t, root, WorkspaceGitRequest{Action: "branch-switch", Name: original.Branch})
 	gitWorkspaceAction(t, root, WorkspaceGitRequest{Action: "branch-delete", Name: "topic", Confirm: true})
+}
+
+func TestWorkspaceGitStashIncludesUntrackedWithoutWeakeningCleanGuard(t *testing.T) {
+	root := initGitSessionTestRepo(t)
+	// The command wrapper enables literal mode for file actions. Stash must
+	// disable it for its own internal root pathspec, even when inherited.
+	t.Setenv("GIT_LITERAL_PATHSPECS", "1")
+	directory := filepath.Join(root, "nested")
+	if err := os.Mkdir(directory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	untracked := filepath.Join(directory, "new [file].txt")
+	if err := os.WriteFile(untracked, []byte("saved untracked content\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	saved := gitWorkspaceAction(t, root, WorkspaceGitRequest{Action: "stash-save", IncludeUntracked: true})
+	if len(saved.Changes) != 0 {
+		t.Fatalf("stash did not remove saved untracked files: %+v", saved.Changes)
+	}
+	if _, err := os.Stat(untracked); !os.IsNotExist(err) {
+		t.Fatalf("saved untracked file still exists: %v", err)
+	}
+	listed := gitWorkspaceAction(t, root, WorkspaceGitRequest{Action: "stash-list"})
+	if len(listed.Stashes) != 1 {
+		t.Fatalf("stash list: %+v", listed.Stashes)
+	}
+	// A new user change after stashing must still block apply/pop, rather than
+	// relaxing the clean-tree guard to work around incomplete stash cleanup.
+	dirty := filepath.Join(root, "README.md")
+	if err := os.WriteFile(dirty, []byte("new user change\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, action := range []string{"stash-apply", "stash-pop"} {
+		current := gitWorkspaceStatus(t, root)
+		_, err := RunWorkspaceGit(workspaceGitTestContext(t), WorkspaceGitRequest{
+			Workdir: root, Action: action, Snapshot: current.Snapshot, Stash: listed.Stashes[0].ID,
+		})
+		if err == nil || !strings.Contains(err.Error(), "commit or stash local changes") {
+			t.Fatalf("%s accepted a dirty working tree: %v", action, err)
+		}
+	}
+	content, err := os.ReadFile(dirty)
+	if err != nil || string(content) != "new user change\n" {
+		t.Fatal("rejected stash operation changed the user's file")
+	}
+	after := gitWorkspaceAction(t, root, WorkspaceGitRequest{Action: "stash-list"})
+	if len(after.Stashes) != 1 || after.Stashes[0].ID != listed.Stashes[0].ID {
+		t.Fatal("rejected stash operation removed the saved stash")
+	}
 }
 
 func TestWorkspaceGitRejectsUnsafeCherryPickInputs(t *testing.T) {
