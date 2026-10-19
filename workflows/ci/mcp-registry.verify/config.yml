@@ -3,6 +3,14 @@ description: Verify read-only MCP registry discovery and configured-server contr
 vault: none
 docker_preflight: false
 steps:
+  - id: embedded-manifest
+    kind: host
+    cwd: repo
+    cmd: python3 release/packaging/embedded-inputs.py --check
+  - id: bundled-compatibility
+    kind: host
+    cwd: repo
+    cmd: go test . -run '^TestBundledAuthoredCompatibility$' -count=1
   - id: contracts
     kind: host
     cwd: repo
