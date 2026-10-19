@@ -748,7 +748,7 @@ void DashboardPageTest::retainsAndReleasesInactiveForeignWindow()
     QVERIFY(workspace->activatePanel("other"));
     workspace->setMode("canvas");
     workspace->setMode("tiling");
-    QVERIFY(workspace->findChild<QWidget *>("dashboardDeferredTab"));
+    QVERIFY(workspace->findChild<QWidget *>("dashboardPanelSlot"));
     QVERIFY(!native->isVisible());
     QCOMPARE(native->acquiredWindowId(), nativeId);
     QTRY_VERIFY_WITH_TIMEOUT(!clients.viewable(nativeId), 5000);
@@ -770,6 +770,7 @@ void DashboardPageTest::retainsAndReleasesInactiveForeignWindow()
     QTest::mouseClick(group->tabBar(), Qt::LeftButton, {}, group->tabBar()->tabRect(nativeIndex).center());
     QTRY_VERIFY_WITH_TIMEOUT(native->isVisible() && native->hasInteractiveWindow()
         && clients.viewable(nativeId) && clients.descendantOf(nativeId, workspace->winId()), 5000);
+    QVERIFY(group->currentWidget()->isAncestorOf(native));
     qInfo() << "Deferred native first activation ms" << activation.elapsed();
     QCOMPARE(native->acquiredWindowId(), nativeId);
     QCOMPARE(fixture.state(), QProcess::Running);
@@ -791,6 +792,10 @@ void DashboardPageTest::retainsAndReleasesInactiveForeignWindow()
             && clients.viewable(nativeId), 5000);
         QCOMPARE(native->acquiredWindowId(), nativeId);
     }
+    QVERIFY(workspace->activatePanel("other"));
+    QTRY_VERIFY_WITH_TIMEOUT(!native->isVisible() && !clients.viewable(nativeId), 5000);
+    QCOMPARE(native->acquiredWindowId(), nativeId);
+    QCOMPARE(fixture.state(), QProcess::Running);
     workspace->setAttribute(Qt::WA_DeleteOnClose);
     QVERIFY(workspace->close());
     ownedWorkspace.release();
