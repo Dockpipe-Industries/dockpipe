@@ -168,9 +168,17 @@ jobs:
           if (-not $env:VCToolsInstallDir) { throw 'The Visual Studio developer environment is incomplete.' }
           cmake -S src/app/tooling/dockpipe-launcher -B $build -G 'NMake Makefiles' -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release
           if ($LASTEXITCODE -ne 0) { throw 'Native terminal configuration failed.' }
+          # Qualify the Core-only transport before compiling the full desktop.
+          cmake --build $build --config Release --target terminal-session-win-test
+          if ($LASTEXITCODE -ne 0) { throw 'Native terminal transport compilation failed.' }
+          ctest --test-dir $build -C Release --verbose -R '^terminal-session-win$'
+          $transportExit = $LASTEXITCODE
+          $transportLog = Join-Path $build 'native-terminal-session-results.txt'
+          if (Test-Path -LiteralPath $transportLog) { Get-Content -LiteralPath $transportLog }
+          if ($transportExit -ne 0) { throw 'Native terminal transport qualification failed.' }
           cmake --build $build --config Release --target dockpipe-launcher terminal-shell-catalog-test terminal-session-win-test workspace-package-manager-test project-files-graph-test project-files-markdown-test web-mermaid-renderer-test dashboard-files-test project-files-test dashboard-page-test launcher-status-bar-test git-commit-queue-test git-repository-conflict-test git-history-widget-test project-git-test browser-extensions-test browser-extension-package-test browser-extension-store-test browser-extension-crx-test browser-extension-compatibility-test browser-test canvas-widget-presentation-test
           if ($LASTEXITCODE -ne 0) { throw 'Native terminal compilation failed.' }
-          ctest --test-dir $build -C Release --verbose -R '^(dashboard-(files|file-views)|terminal-(shell-catalog|session-win)|workspace-package-manager|project-files(-graph|-markdown)?|web-mermaid-renderer|launcher-status-bar|browser-canvas-mode|dashboard-canvas-widgets|canvas-widget-presentation|browser-extensions|browser-extension-(package|store|crx)|project-git|git-(commit-queue|repository-conflict|history-widget))$'
+          ctest --test-dir $build -C Release --verbose -R '^(dashboard-(files|file-views)|terminal-shell-catalog|workspace-package-manager|project-files(-graph|-markdown)?|web-mermaid-renderer|launcher-status-bar|browser-canvas-mode|dashboard-canvas-widgets|canvas-widget-presentation|browser-extensions|browser-extension-(package|store|crx)|project-git|git-(commit-queue|repository-conflict|history-widget))$'
           $qualificationExit = $LASTEXITCODE
           foreach ($testLog in Get-ChildItem -LiteralPath $build -Filter 'native-*-results.txt') {
             Write-Host "Qt test results: $($testLog.Name)"

@@ -7,6 +7,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QPointer>
+#include <QProcess>
 #include <QRegularExpression>
 #include <QSignalSpy>
 #include <QScopeGuard>
@@ -54,8 +55,10 @@ int terminalChild(const QStringList &arguments)
         return 0;
     }
     DWORD mode = 0;
-    if (!GetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), &mode))
-        return 101; // A redirected-pipe replacement is not a real ConPTY.
+    if (!GetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), &mode)
+        || !GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), &mode)
+        || !GetConsoleMode(GetStdHandle(STD_ERROR_HANDLE), &mode))
+        return 101; // All three handles must belong to the actual ConPTY.
     SetConsoleCP(CP_UTF8);
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), ENABLE_PROCESSED_INPUT);
@@ -131,6 +134,7 @@ private slots:
     void commandProcessorShell();
     void invalidStartAndInputBounds();
     void asynchronousLaunchFailure();
+    void redirectedParentHandlesStayOutOfPseudoConsole();
     void floodAndDescendantCleanup();
     void callbackRestartAndDestruction();
 
@@ -159,7 +163,11 @@ void TerminalSessionWinTest::inputResizeArgumentsAndExit()
     QByteArray output;
     connect(&terminal, &TerminalSession::output, this, [&](const QByteArray &bytes) { output += bytes; });
     QSignalSpy finished(&terminal, &TerminalSession::finished);
-    const auto sessionDiagnostics = qScopeGuard([&] { reportSession(terminal, output.size(), finished.size()); });
+    const auto sessionDiagnostics = qScopeGuard([&] {
+        reportSession(terminal, output.size(), finished.size());
+        if (!finished.isEmpty())
+            writeDiagnostic(QStringLiteral("child exit code=%1").arg(finished.front().front().toInt()));
+    });
     terminal.resize(117, 41);
     const QStringList special = {QStringLiteral(""), QStringLiteral("two words"), QStringLiteral("quote\"value"),
         QStringLiteral("trailing\\"), QStringLiteral("before\\\"quote"), QString::fromUtf8("Unicode-\xc3\xa9")};
@@ -260,6 +268,38 @@ void TerminalSessionWinTest::asynchronousLaunchFailure()
     QVERIFY(!terminal.running());
     QVERIFY(!terminal.error().isEmpty());
     QCOMPARE(finished.front().front().toInt(), -1);
+}
+
+void TerminalSessionWinTest::redirectedParentHandlesStayOutOfPseudoConsole()
+{
+    // QProcess deliberately supplies pipe-backed stdio, even when this fixture
+    // itself was started from an interactive console. The selected child cases
+    // require real ConPTY input/output/error handles and launch-failure cleanup.
+    QProcess redirected;
+    redirected.setProcessChannelMode(QProcess::MergedChannels);
+    QByteArray diagnostics;
+    connect(&redirected, &QProcess::readyRead, this, [&] {
+        const QByteArray bytes = redirected.readAll();
+        if (diagnostics.size() + bytes.size() > 64 * 1024) {
+            redirected.kill();
+            return;
+        }
+        diagnostics.append(bytes);
+    });
+    const auto stopFixture = qScopeGuard([&] {
+        if (redirected.state() != QProcess::NotRunning) {
+            redirected.kill();
+            redirected.waitForFinished(1000);
+        }
+    });
+    QSignalSpy finished(&redirected, qOverload<int, QProcess::ExitStatus>(&QProcess::finished));
+    writeDiagnostic(QStringLiteral("starting nested fixture with redirected standard handles"));
+    redirected.start(QCoreApplication::applicationFilePath(),
+        {QStringLiteral("inputResizeArgumentsAndExit"), QStringLiteral("asynchronousLaunchFailure")});
+    QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 15000);
+    diagnostics.append(redirected.readAll().left(64 * 1024 - diagnostics.size()));
+    QCOMPARE(redirected.exitStatus(), QProcess::NormalExit);
+    QVERIFY2(redirected.exitCode() == 0, diagnostics.constData());
 }
 
 void TerminalSessionWinTest::floodAndDescendantCleanup()
