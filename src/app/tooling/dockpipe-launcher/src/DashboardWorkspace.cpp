@@ -4,6 +4,11 @@
 #include "CanvasIcons.h"
 
 #include <QApplication>
+#ifdef DOCKPIPE_PROFILE_DASHBOARD_LAYOUT
+#include <QElapsedTimer>
+#include <array>
+#include <cstdio>
+#endif
 #include <QBuffer>
 #include <QFile>
 #include <QFileInfo>
@@ -41,6 +46,112 @@
 #include <QVBoxLayout>
 
 namespace {
+
+#ifdef DOCKPIPE_PROFILE_DASHBOARD_LAYOUT
+// Diagnostic builds only: fixed buckets, capped samples, and no output in the
+// measured loop. Buckets identify operations and panel ordinals, never content.
+enum class LayoutProfilePhase {
+    HidePanels,
+    CreateViewport,
+    BuildTree,
+    AttachViewport,
+    ShowViewport,
+    TransferCanvasPanels,
+    DeleteOldViewport,
+    FinalizeChrome,
+    CreateTabGroup,
+    PreparePanelChrome,
+    AddTab,
+    CreateTabControls,
+    ActivateTab,
+    RebuildTiling,
+    RebuildCanvas,
+    Panel0,
+    Count = Panel0 + 16
+};
+
+constexpr std::size_t LayoutProfileSampleLimit = 8192;
+struct LayoutProfileBucket {
+    std::array<qint64, LayoutProfileSampleLimit> samples{};
+    std::size_t count = 0;
+    std::size_t dropped = 0;
+    qint64 totalNanoseconds = 0;
+};
+
+class LayoutProfileTotals {
+public:
+    void record(LayoutProfilePhase phase, qint64 nanoseconds)
+    {
+        auto &bucket = m_buckets[static_cast<std::size_t>(phase)];
+        if (bucket.count == bucket.samples.size()) {
+            ++bucket.dropped;
+            return;
+        }
+        bucket.samples[bucket.count++] = nanoseconds;
+        bucket.totalNanoseconds += nanoseconds;
+    }
+
+    ~LayoutProfileTotals()
+    {
+        constexpr const char *names[] = {
+            "hide-panels", "create-viewport", "build-tree-inclusive",
+            "attach-viewport", "show-viewport", "transfer-canvas-panels",
+            "delete-old-viewport", "finalize-chrome", "create-tab-group",
+            "prepare-panel-chrome", "add-tab", "create-tab-controls",
+            "activate-tab", "rebuild-tiling", "rebuild-canvas"
+        };
+        for (std::size_t index = 0; index < m_buckets.size(); ++index) {
+            auto &bucket = m_buckets[index];
+            if (bucket.count == 0)
+                continue;
+            std::sort(bucket.samples.begin(), bucket.samples.begin() + bucket.count);
+            const auto percentile = [&bucket](std::size_t percent) {
+                const std::size_t rank = (bucket.count * percent + 99) / 100;
+                return double(bucket.samples[rank - 1]) / 1000000;
+            };
+            char panelName[32];
+            const char *name;
+            if (index < static_cast<std::size_t>(LayoutProfilePhase::Panel0)) {
+                name = names[index];
+            } else {
+                std::snprintf(panelName, sizeof(panelName), "add-tab-panel-%zu",
+                              index - static_cast<std::size_t>(LayoutProfilePhase::Panel0));
+                name = panelName;
+            }
+            std::fprintf(stderr,
+                         "dashboard-layout-profile phase=%s samples=%zu dropped=%zu average_ms=%.3f p50_ms=%.3f p95_ms=%.3f max_ms=%.3f\n",
+                         name, bucket.count, bucket.dropped,
+                         double(bucket.totalNanoseconds) / bucket.count / 1000000,
+                         percentile(50), percentile(95),
+                         double(bucket.samples[bucket.count - 1]) / 1000000);
+        }
+    }
+
+private:
+    std::array<LayoutProfileBucket, static_cast<std::size_t>(LayoutProfilePhase::Count)> m_buckets;
+};
+
+LayoutProfileTotals layoutProfileTotals;
+
+void recordLayoutPhase(QElapsedTimer &timer, LayoutProfilePhase phase)
+{
+    layoutProfileTotals.record(phase, timer.nsecsElapsed());
+    timer.restart();
+}
+
+#define PROFILE_LAYOUT_START(timer) \
+    QElapsedTimer timer; \
+    timer.start()
+#define PROFILE_LAYOUT_PHASE(timer, phase) recordLayoutPhase(timer, LayoutProfilePhase::phase)
+#define PROFILE_LAYOUT_PANEL(timer, panelIndex) \
+    layoutProfileTotals.record(static_cast<LayoutProfilePhase>( \
+        static_cast<std::size_t>(LayoutProfilePhase::Panel0) + (panelIndex)), (timer).nsecsElapsed())
+#else
+#define PROFILE_LAYOUT_START(timer)
+#define PROFILE_LAYOUT_PHASE(timer, phase)
+#define PROFILE_LAYOUT_PANEL(timer, panelIndex)
+#endif
+
 constexpr int MaximumPanels = 16;
 constexpr int MaximumCoordinate = 32768;
 const QString PanelMime = QStringLiteral("application/x-dockpipe-dashboard-panel");
@@ -402,6 +513,7 @@ QWidget *DashboardWorkspace::buildTree(const QJsonObject &node, QWidget *parent)
     if (node.isEmpty())
         return nullptr;
     if (node.value("type") == "tabs") {
+        PROFILE_LAYOUT_START(tabPhase);
         auto *group = new QTabWidget(parent);
         group->setObjectName("dashboardTabGroup");
         group->setDocumentMode(true);
@@ -424,6 +536,7 @@ QWidget *DashboardWorkspace::buildTree(const QJsonObject &node, QWidget *parent)
                 showPanelMenu(id, group->tabBar()->mapToGlobal(position));
         });
         group->tabBar()->installEventFilter(this);
+        PROFILE_LAYOUT_PHASE(tabPhase, CreateTabGroup);
         for (const QJsonValue &value : node.value("ids").toArray()) {
             const QString id = value.toString();
             CanvasPanel *frame = m_panels.value(id).frame;
@@ -433,7 +546,10 @@ QWidget *DashboardWorkspace::buildTree(const QJsonObject &node, QWidget *parent)
             m_panels.value(id).header->setToolTip(tr("Drag onto another widget: center for a tab, edge for a split"));
             // QTabWidget owns page visibility. Showing an inactive page here
             // also maps native browser/terminal children over the selected tab.
+            PROFILE_LAYOUT_PHASE(tabPhase, PreparePanelChrome);
             const int tabIndex = group->addTab(frame, m_panels.value(id).icon, m_panels.value(id).title);
+            PROFILE_LAYOUT_PANEL(tabPhase, std::distance(m_panels.cbegin(), m_panels.constFind(id)));
+            PROFILE_LAYOUT_PHASE(tabPhase, AddTab);
             // Reuse the same accessible control as the app and canvas panels.
             for (const auto side : {QTabBar::LeftSide, QTabBar::RightSide}) {
                 if (auto *previous = group->tabBar()->tabButton(tabIndex, side)) {
@@ -470,8 +586,10 @@ QWidget *DashboardWorkspace::buildTree(const QJsonObject &node, QWidget *parent)
             controlLayout->addWidget(expand);
             group->tabBar()->setTabButton(tabIndex, QTabBar::LeftSide, controls);
             connect(expand, &QToolButton::clicked, this, [this, id] { togglePanelExpanded(id); });
+            PROFILE_LAYOUT_PHASE(tabPhase, CreateTabControls);
             if (id == node.value("active").toString())
                 group->setCurrentWidget(frame);
+            PROFILE_LAYOUT_PHASE(tabPhase, ActivateTab);
         }
         connect(group, &QTabWidget::currentChanged, this, [this, group] {
             if (m_rebuilding)
@@ -615,12 +733,15 @@ void DashboardWorkspace::placePendingPanels()
 
 void DashboardWorkspace::rebuild()
 {
+    PROFILE_LAYOUT_START(rebuildTotal);
+    PROFILE_LAYOUT_START(rebuildPhase);
     m_rebuilding = true;
     QScrollArea *previousViewport = m_tileViewport;
     if (previousViewport)
         previousViewport->hide();
     for (const Panel &panel : m_panels)
         panel.frame->hide();
+    PROFILE_LAYOUT_PHASE(rebuildPhase, HidePanels);
     m_tileViewport = nullptr;
     m_tiles = nullptr;
     if (m_mode == "tiling" && !m_tree.isEmpty()) {
@@ -632,12 +753,16 @@ void DashboardWorkspace::rebuild()
         m_tileViewport->setGeometry(rect().adjusted(inset, inset, -inset, -inset));
         // Use the final parent so setWidget does not reparent and restyle
         // the entire live panel subtree a second time.
+        PROFILE_LAYOUT_PHASE(rebuildPhase, CreateViewport);
         m_tiles = buildTree(m_tree, m_tileViewport->viewport());
+        PROFILE_LAYOUT_PHASE(rebuildPhase, BuildTree);
         m_tileViewport->setWidget(m_tiles);
+        PROFILE_LAYOUT_PHASE(rebuildPhase, AttachViewport);
         m_tileViewport->setAutoFillBackground(false);
         m_tileViewport->viewport()->setAutoFillBackground(false);
         m_tiles->setAutoFillBackground(false);
         m_tileViewport->show();
+        PROFILE_LAYOUT_PHASE(rebuildPhase, ShowViewport);
     }
     for (auto iterator = m_panels.cbegin(); iterator != m_panels.cend(); ++iterator) {
         if (m_mode != "canvas" && !m_floating.contains(iterator.key()))
@@ -652,6 +777,7 @@ void DashboardWorkspace::rebuild()
         frame->show();
         frame->raise();
     }
+    PROFILE_LAYOUT_PHASE(rebuildPhase, TransferCanvasPanels);
     if (previousViewport) {
         // Valid tile/floating destinations have already taken their frames.
         // Preserve any omitted frame before destroying its old owner.
@@ -661,6 +787,7 @@ void DashboardWorkspace::rebuild()
         }
         delete previousViewport;
     }
+    PROFILE_LAYOUT_PHASE(rebuildPhase, DeleteOldViewport);
     if (m_mode == "canvas") {
         for (const QString &id : m_canvasOrder) {
             if (m_panels.contains(id))
@@ -674,6 +801,11 @@ void DashboardWorkspace::rebuild()
     m_dropPreview->hide();
     m_rebuilding = false;
     updateTileActionsPolling();
+    PROFILE_LAYOUT_PHASE(rebuildPhase, FinalizeChrome);
+#ifdef DOCKPIPE_PROFILE_DASHBOARD_LAYOUT
+    recordLayoutPhase(rebuildTotal, m_mode == "tiling"
+        ? LayoutProfilePhase::RebuildTiling : LayoutProfilePhase::RebuildCanvas);
+#endif
 }
 
 bool DashboardWorkspace::minimizePanel(const QString &id)

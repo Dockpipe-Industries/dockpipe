@@ -1,4 +1,4 @@
-name: Native macOS symbol qualification
+name: Native macOS desktop qualification
 
 on:
   workflow_dispatch:
@@ -8,6 +8,9 @@ on:
       - release/packaging/desktop/macos/protect-owned-binaries.py
       - release/packaging/desktop/macos/package.sh
       - release/packaging/tests/test_native_symbol_boundaries.py
+      - src/app/tooling/dockpipe-launcher/src/DashboardWorkspace.cpp
+      - src/app/tooling/dockpipe-launcher/tests/DashboardWorkspaceTest.cpp
+      - src/app/tooling/dockpipe-launcher/tests/DashboardBrowserPerformanceTest.cpp
 
 permissions:
   contents: read
@@ -23,7 +26,7 @@ jobs:
       matrix:
         runner: [macos-15, macos-15-intel]
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
@@ -45,12 +48,23 @@ jobs:
         run: |
           set -euo pipefail
           build="$RUNNER_TEMP/dockpipe-native-symbols"
-          # Match the macOS compiler configuration in desktop/build-unix.sh.
+          # Match the release configuration and collect bounded layout timings.
+          # Profiling is compiled out of normal product builds.
           cmake -S src/app/tooling/dockpipe-launcher -B "$build" \
-            -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+            -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON \
+            -DCMAKE_CXX_FLAGS=-DDOCKPIPE_PROFILE_DASHBOARD_LAYOUT \
             "-DDOCKPIPE_RELEASE_VERSION=$(cat VERSION)" \
             "-DCMAKE_OSX_ARCHITECTURES=$(uname -m)" -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
-          cmake --build "$build" --target dockpipe-launcher dockpipe-launcher-ui --parallel 2
+          cmake --build "$build" --parallel 2 --target \
+            dockpipe-launcher dockpipe-launcher-ui \
+            dashboard-workspace-test dashboard-browser-performance-test
           macdeployqt "$build/DockPipe.app" -always-overwrite
           python3 release/packaging/desktop/macos/protect-owned-binaries.py \
             "$build/DockPipe.app" "$RUNNER_TEMP/dockpipe-native-symbol-audit.json"
+      - name: Qualify live dashboard state and layout response
+        env:
+          QT_LOGGING_RULES: qt.webenginecontext.debug=true
+        shell: bash
+        run: |
+          ctest --test-dir "$RUNNER_TEMP/dockpipe-native-symbols" --verbose \
+            -R '^dashboard-(workspace|browser-performance)$'
