@@ -44,6 +44,9 @@ jobs:
           node-version: '24.21.0'
       - name: Install Flatpak SDK and runtime
         run: |
+          set -euo pipefail
+          export FLATPAK_USER_DIR="$RUNNER_TEMP/dockpipe-flatpak-installation"
+          printf 'FLATPAK_USER_DIR=%s\n' "$FLATPAK_USER_DIR" >> "$GITHUB_ENV"
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends flatpak python3-yaml
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
@@ -92,6 +95,14 @@ jobs:
           set -euo pipefail
           bash release/packaging/desktop/flatpak/build.sh "$(cat VERSION)" "$RUNNER_TEMP/dockpipe" "$RUNNER_TEMP/core-store" "$RUNNER_TEMP/flatpak"
           bash release/packaging/desktop/flatpak/build-package.sh "$RUNNER_TEMP/flatpak/app" release/packaging/tests/fixtures/flatpak-package "$RUNNER_TEMP/flatpak-package"
+      - name: Qualify installed Flatpak host terminals
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 release/packaging/desktop/flatpak/verify-installed-host.py \
+            --bundle "$RUNNER_TEMP/flatpak/dockpipe-desktop_$(cat VERSION)_linux_amd64.flatpak" \
+            --build-dir "$RUNNER_TEMP/flatpak/qt-build" \
+            --out "$RUNNER_TEMP/flatpak-host-qualification"
       - name: Qualify real Docker and Compose bind mounts
         run: |
           docker pull debian:12

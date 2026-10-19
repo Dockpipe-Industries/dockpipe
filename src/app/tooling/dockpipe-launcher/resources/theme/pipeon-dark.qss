@@ -367,7 +367,7 @@ QScrollBar::handle:horizontal:hover {
     background-color: #596274;
 }
 
-QWidget#mainCentral, QWidget#basicHomePage, QWidget#basicWorkspacePage, QWidget#basicAppsPage,
+QWidget#mainCentral, QWidget#dashboardPage, QWidget#basicHomePage, QWidget#basicWorkspacePage, QWidget#basicAppsPage,
 QWidget#machineContent {
     background: #191d24;
 }
@@ -535,13 +535,9 @@ QWidget#projectFiles QPlainTextEdit { border: none; border-radius: 0px; }
 QLabel#editorSectionLabel { color: #94a3b8; font-size: 10px; font-weight: 700; letter-spacing: 1px; }
 QLabel#editorMuted, QLabel#editorStatus { color: #94a3b8; font-size: 11px; }
 QLabel#editorEmptyTitle { color: #dce5f0; font-size: 20px; font-weight: 600; }
-QToolButton#editorIconButton { background: transparent; border: none; border-radius: 6px; padding: 6px; }
-QToolButton#editorIconButton:hover { background: #202a36; }
+QToolButton#editorIconButton, QToolButton#fileMarkdownPreviewButton { background: transparent; border: none; border-radius: 6px; padding: 6px; }
+QToolButton#editorIconButton:hover, QToolButton#fileMarkdownPreviewButton:hover { background: #202a36; }
 QToolButton#editorIconButton::menu-indicator { image: none; }
-QTreeView#fileTree { outline: none; padding: 2px; }
-QTreeView#fileTree::item { height: 30px; padding: 0px 6px; border-radius: 5px; }
-QTreeView#fileTree::item:hover { background: #202a36; }
-QTreeView#fileTree::item:selected { background: #243e51; color: #dce5f0; }
 QPushButton#editorSave { padding: 6px 14px; min-height: 18px; }
 QLabel#gitHeading { font-size: 22px; font-weight: 600; }
 QLabel#gitBranch { color: #dce5f0; background: #202a36; border: 1px solid #303a48; border-radius: 6px; padding: 7px 12px; }
@@ -589,3 +585,47 @@ QFrame#dashboardTopBar QPushButton#dashboardCanvasProject { color: #aab5c1; }
 /* Full-width dashboard title strips share the canvas panel palette. */
 QTabBar#dashboardTabBar::tab { background: #1c222b; color: #e5eaf0; }
 QTabBar#dashboardTabBar::tab:selected { background: #1c222b; color: #e5eaf0; border: 0; }
+
+QToolButton#fileMarkdownPreviewButton:checked { background: #243e51; }
+
+QTextBrowser#fileMarkdownPreview { background: #141920; color: #dce5f0; border: none; border-left: 1px solid #363f4c; border-radius: 0px; }
+
+/* One explorer presentation across Files and dashboard Canvas/Tiling. */
+QTreeView[dockpipeFileView="true"], QListView[dockpipeFileView="true"] {
+    background: #141920; color: #dce5f0; border: none; outline: none;
+    border-radius: 6px; padding: 4px; selection-background-color: #243e51;
+    selection-color: #dce5f0;
+}
+QTreeView[dockpipeFileView="true"]::item { height: 32px; padding: 0px 6px; border-radius: 5px; }
+QTreeView[dockpipeFileView="true"]::item:hover { background: #202a36; }
+QTreeView[dockpipeFileView="true"]::item:selected { background: #243e51; color: #dce5f0; }
+QToolButton#explorerTreeMode, QToolButton#explorerFoldersMode,
+QToolButton[fileNavigation="true"], QPushButton[fileNavigation="true"] {
+    background: transparent; color: #dce5f0; border: none; border-radius: 6px;
+    padding: 0px; min-height: 0px;
+}
+QToolButton#explorerTreeMode:hover, QToolButton#explorerFoldersMode:hover,
+QToolButton[fileNavigation="true"]:hover, QPushButton[fileNavigation="true"]:hover { background: #202a36; }
+QToolButton#explorerTreeMode:checked, QToolButton#explorerFoldersMode:checked { background: #243e51; }
+QLineEdit#dashboardFilesLocation { padding: 6px 8px; border: 1px solid #363f4c; border-radius: 6px; }
+QLabel#dashboardFilesStatus { color: #dce5f0; font-size: 11px; }
+
+QWidget#dashboardFilesWidget { background: #141920; border-radius: 6px; }
+
+/* Shared Git history, queue, branch and conflict lists. */
+QListView#gitCherryPickQueue { background: #191d24; color: #dce5f0; border: none; outline: none; }
+QListWidget#gitHistoryCommits::item, QListView#gitCherryPickQueue::item,
+QListWidget#gitRepositoryBranches::item, QListWidget#gitRepositoryStashes::item,
+QListWidget#gitConflictFiles::item { min-height: 30px; padding: 4px 8px; border-radius: 5px; }
+QListWidget#gitHistoryCommits::item:selected, QListView#gitCherryPickQueue::item:selected,
+QListWidget#gitRepositoryBranches::item:selected, QListWidget#gitRepositoryStashes::item:selected,
+QListWidget#gitConflictFiles::item:selected { background: #293e55; color: #dce5f0; }
+
+/* Dashboard canvas gadgets; tiling and ordinary pages retain their presentation. */
+QFrame[dashboardSpatial="true"] { background: #18212c; border: 1px solid #34495c; border-radius: 18px; }
+QFrame[dashboardSpatial="true"][dashboardCapsule="true"] { border-radius: 25px; }
+QFrame[dashboardSpatial="true"] QWidget#dashboardPanelHeader { background: transparent; border: none; min-height: 22px; max-height: 24px; }
+QFrame[dashboardSpatial="true"] QLabel#dashboardPanelTitle { color: #92a8bd; font-size: 10px; font-weight: 600; padding-left: 8px; background: transparent; }
+QFrame[dashboardSpatial="true"] QToolButton { border: none; border-radius: 10px; padding: 0px 6px; color: #92a8bd; background: transparent; }
+QFrame[dashboardSpatial="true"] QToolButton:hover { color: #dde9f5; background: #34495c; }
+QFrame[dashboardSpatial="true"] QWidget[dashboardKind] { background: transparent; border: none; }

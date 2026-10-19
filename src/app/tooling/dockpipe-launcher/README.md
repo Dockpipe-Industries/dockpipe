@@ -4,6 +4,12 @@ Cross-platform **Qt 6** system-tray app: save **contexts** (folder + resolver / 
 
 This tree lives under **`src/app/tooling/dockpipe-launcher/`** as first-party Dockpipe tooling. It drives the Dockpipe CLI but is not part of the engine (**`src/lib/`**, **`src/cmd/`**). The tray/window icon comes from **`resources/images/dockpipe-launcher.png`** and Linux desktop installs use the generated **`resources/icons/hicolor/`** size set.
 
+The selected project's VS Code tasks and launch configurations are also discovered
+through the CLI catalog. Tasks appear as workflows and launch configurations as
+apps, with VS Code source labels and **Clone to workflows** actions. Launch apps
+run without a debugger. See [VS Code compatibility](../../../../docs/workflows/vscode-compatibility.md)
+for supported configurations, inputs and cloning.
+
 ## Requirements
 
 - **CMake** 3.16+
@@ -47,15 +53,42 @@ background spatial content cannot prompt. Remembering a prompt decision is
 optional. Unsupported permissions are denied. These settings do not grant AI
 access or provide AI controls.
 
-**Extensions** can load and enable unpacked Manifest V3 extensions on Qt WebEngine
-6.10+ builds with extension support enabled. There is no Chrome Web Store installer
-or built-in password vault. Password storage and autofill require a compatible
-extension; password-manager compatibility has not been verified.
+**Extensions** installs Manifest V3 extensions on Qt WebEngine 6.10+ builds with
+extension support enabled. Visit a Chrome Web Store listing and choose Dockpipe's
+**Add extension** button, or open Extensions and paste its Web Store URL/ID.
+**Install package** accepts a ZIP or CRX3 file. Packages are downloaded directly
+from Google's extension servers over HTTPS; Dockpipe preserves CRX public-key
+identity when importing them. Local package imports do not verify CRX signatures.
+The disabled extension's requested API, website and content-script permissions
+are shown before **Install and enable**. Cancellation removes the pending install.
+Installed extension code and explicit enable/disable choices are saved separately
+from browsing data and restored in new browser sessions. **Uninstall** removes
+that saved installation. **Load unpacked** remains a temporary developer action.
+Extension installation is limited to 32 MiB packages, 64 MiB expanded content and
+4096 entries; archives with links, traversal or encrypted entries are rejected.
+Compatibility depends on the extension APIs provided by Qt WebEngine; Chrome-only
+services, Manifest V2 and password-manager compatibility are not guaranteed.
+Dockpipe has no built-in password vault.
+
+**Known compatibility limit:** the 1Password Chrome extension downloads and installs
+with its original ID, but its background worker fails on the current Qt 6.10.3
+runtime because `chrome.notifications` is unavailable; its popup remains blank.
+Installation success is not functional 1Password qualification. Current 1Password
+also requires Chrome 140+, while Qt 6.10.3 uses Chromium 134. Desktop-app integration
+adds native-messaging and explicit browser-trust requirements, and 1Password does
+not support desktop-app communication from Linux Flatpak browsers. Account login,
+autofill and desktop unlocking have not been qualified. See
+[1Password requirements](https://support.1password.com/system-requirements/),
+[additional browsers](https://support.1password.com/additional-browsers/) and
+[desktop connection](https://support.1password.com/connect-1password-browser-app/).
+The optional `browser-extension-compatibility-test`, with
+`DOCKPIPE_EXTENSION_COMPAT_ID` set to an explicit extension ID, reproduces download,
+installation and popup startup in temporary storage without accessing a vault.
 
 The named browser profile uses isolated temporary storage removed on normal
-shutdown. Cookies, website data, extensions and history are session-only; saved
+shutdown. Cookies, website data, unpacked developer extensions and history are session-only; saved
 downloads and captures remain on disk. **Clear browsing data** closes tabs,
-cancels downloads and resets the session. Saved browser settings and remembered
+cancels downloads and resets the session, reloading saved extension choices. Saved browser settings and remembered
 site policies remain separate from session cookies and history.
 
 The Browser is created on first selection and retains its tabs when you return
@@ -111,11 +144,29 @@ Text glow has **strength** (0–100%) and **spread** (0–8 px) sliders. Effects
 by default; there is no animated CRT simulation or background effect loop.
 
 The Unix backend connects a real shell to a pseudoterminal, including terminal
-input and resizing. Linux and macOS source implementations are included; native
-macOS qualification is pending. The Windows terminal backend is unsupported in
-this slice and reports that limitation. The native Linux fixture verifies real
+input and resizing. Windows uses the operating system's ConPTY support, available
+on Windows 10 version 1809 and later; no separate ConPTY download is needed.
+Native creation, pipe I/O, resizing and teardown run outside the GUI thread.
+Closing a Windows session terminates its contained process tree. Native macOS
+and Windows qualification is pending. The native Linux fixture verifies real
 keyboard input, rendering, selected-session delivery, layout retention, bounded
 output and cleanup. Native macOS and Windows qualification remain outstanding.
+
+Choose an installed shell beside **New terminal**. Windows discovery includes
+Windows PowerShell, side-by-side PowerShell installations, Git Bash and Bash in
+installed WSL distributions. WSL sessions receive the selected project directory;
+discovery lists distributions without starting them or installing Linux. macOS
+and Linux list the login shell, `/etc/shells` entries and common installed shells,
+including Homebrew locations on macOS. Refresh the list after installing a shell.
+New sessions preserve existing sessions. In dashboard terminals, **Shells and
+sessions** in the context menu provides the same choices and switches between
+sessions belonging to that panel. Removing the panel closes its owned sessions.
+
+Flatpak terminals discover and run host shells through the explicit host bridge.
+The host terminal retains job control, resizing and session cleanup; missing host
+access is an error, without a fallback to a sandbox shell. Actual Flatpak PTY,
+input, resize, interrupt and foreground/background cleanup tests pass on the KDE
+6.10 runtime. This does not qualify Windows or macOS native behavior.
 
 The dashboard **Send input** widget selects one terminal session and sends the
 entered text followed by Enter. This executes input in that selected shell; it
@@ -159,6 +210,12 @@ captures desktop applications. Tiling arranges its own panels into draggable spl
 and tab groups. Drag a tab onto another panel: the edges split, and the center or
 tab strip creates a tab group. Right-click a tab or panel edge for arrangement,
 removal and full-view actions. Floating panels can overlap tiles.
+For a nested desktop app, hover its tile to reveal the small **⋯** handle:
+drag that handle to split or tab, or click it for tile actions. The app's own
+title bar does not move its DockPipe tile. Dragging a selected tab to an edge of
+its own group splits it out; Escape cancels a drag.
+Native app tabs show navigation labels without duplicating the app's window
+buttons; DockPipe widgets retain their own panel controls.
 
 Dashboard panel controls use DockPipe's own circular coral close and teal
 expand/restore artwork, with visible symbols and keyboard focus indicators. The
@@ -228,7 +285,12 @@ only panels in the current environment.
 
 **Bring open desktop apps into Tiling when I enter it** is off by default. On
 supported X11/Windows desktops it acquires eligible windows, within the dashboard
-panel limits. These panels remain attached for the DockPipe session, including
+panel limits (16 across Canvas and Tiling). Managed
+minimized windows are eligible too; releasing them restores their minimized state.
+The initial arrangement splits the first four panels and places later panels in
+tabs; those apps remain acquired and can be selected from the tab strip or dock.
+Each acquisition revalidates its selected window without rescanning every other
+application's process. These panels remain attached for the DockPipe session, including
 while Canvas or another page is shown. Closing a panel in this managed mode
 requests that its OS window close, respecting the app's save prompts and cancellation.
 Closing DockPipe, including closing to the tray, returns apps to the desktop with
@@ -273,7 +335,8 @@ The Windows backend requires Windows build and native testing before qualificati
 On X11, clients that omit `_NET_WM_PID` (including RustDesk) use the X-Resource
 1.2 extension to identify their local owning process. Build with `libxres-dev`
 for this fallback; without it or a server-provided owner, those windows remain
-excluded. Minimized windows become eligible when restored to the desktop.
+excluded. An unmapped X11 window is eligible only when its valid ICCCM state
+identifies it as minimized; withdrawn clients and hidden helper windows stay excluded.
 Embedded X11 clients advertising the extended frame synchronization counter
 receive host frame acknowledgements while visible. GTK clients such as RustDesk
 otherwise stop repainting after leaving the desktop window manager. Acknowledgements
@@ -662,7 +725,31 @@ clean checkout and fast-forwards only; Push to origin pushes the current branch
 without force. Git uses existing identity/credentials and must be available to the
 CLI (including inside Flatpak). Save editor buffers before reviewing Git. A stale
 review is rejected; refresh after failures or cancellation to reconcile state.
-This initial surface excludes branch management and merge-conflict editing.
+The Changes tab can compare combined, staged or unstaged changes, stage or unstage
+the selected file, discard its unstaged changes, and commit the existing index.
+The History tab searches commit subjects and bodies by keywords, or matches a SHA
+or subject prefix, across all refs or a chosen branch. Results are paged in groups
+of 50. Inspect a commit, select several, and add them to the cherry-pick queue.
+Move, reverse or remove entries before confirming the exact order and target
+branch; a queue accepts up to 128 distinct commits. A single commit can also be
+reverted. Merge commits require a mainline choice and are rejected by this surface.
+
+Branches / stashes provides branch creation, switching, safe deletion, merging,
+fetching all remotes without pruning, and stash save/apply/pop/drop. Mutations use
+the reviewed repository snapshot and reject stale state. Branch switching, merging,
+cherry-picking and reverting require a clean working tree; there is no automatic
+stash or forced overwrite.
+
+Git's sequencer preserves an interrupted cherry-pick queue. The Conflicts tab shows
+the current commit and remaining work, opens conflicted text in the built-in Files
+editor, and guides saving and staging a manual resolution before continuing.
+Explicit use-ours, use-theirs and deletion actions cover other resolutions. Skip
+and abort require confirmation because they discard current conflict resolutions.
+Stash apply/pop conflicts use the same editor and resolution controls, retain the
+stash, and leave the resolved result staged for a normal commit.
+Unsaved conflict drafts are guarded when leaving the project or quitting. Refresh
+after a failed or cancelled operation before explicitly retrying; cancellation does
+not undo Git changes.
 
 Git actions use the generic runtime-owned `dockpipe git --request` adapter. They
 have a two-minute deadline, cancellation, an 8 MiB per-command output budget, a
@@ -794,11 +881,67 @@ or **Ctrl+B** to hide/show the sidebar without leaving the current page. The
 visibility preference is saved with the existing launcher settings; the View
 menu remains available while the sidebar is hidden.
 
+The bottom status bar appears only for an active message or the undismissed
+notice. Idle pages use the full window height; clearing or expiring a message
+releases that space on every page.
+
+### Shared file explorer
+
+Files, workflow Files and the dashboard's File manager use the same custom
+explorer, including vector file-type icons and the existing folder artwork.
+Use **Tree** for expandable rows or **Folders** for an icon grid with centred
+icons and wrapped filenames. The selected item stays selected when switching
+views. Dashboard Canvas and Tiling retain their own view and directory while
+switching layouts; this view choice lasts for the lifetime of the panel.
+
+The dashboard's compact navigation bar offers Up, Home/project root and an
+editable location. System scope also exposes filesystem roots/drives; Project
+scope continues to reject paths and links outside its project. Double-click or
+press Enter to open a folder or file in the grid. Files-page folder browsing
+retains the current draft; opening a different file still asks about unsaved
+changes. View changes do not read file contents or generate previews/thumbnails.
+
+### Markdown preview
+
+Open a `.md`, `.markdown`, `.mdown` or `.mkd` file in **Files**, then click the
+**Preview Markdown** eye beside Save and Search. The resizable preview appears
+beside the source and updates from unsaved edits. Click the eye again to hide it;
+Save and draft protection continue to use the existing editor.
+
+The first-party Qt renderer supports headings, emphasis, lists, tables and fenced
+code blocks on Windows, macOS and Linux, including Flatpak, without Cockpit.
+Plain Markdown uses Qt's text renderer. Preview uses the editor's 1 MiB UTF-8
+limit. Raw HTML is disabled and embedded Markdown images are not loaded.
+Clicking a relative file link reuses Files' root and unsaved-change checks;
+HTTP(S) links open in the system browser only when clicked. Other URL schemes
+are ignored.
+
+Fenced `mermaid` blocks render as diagrams beside the source. The desktop bundles
+Mermaid 12.2.0 and uses an isolated Qt WebEngine renderer offline; no CDN, Node.js,
+external command or Cockpit installation is needed. Flowcharts and sequence
+diagrams use the selected light/dark theme. Diagram links are inert. Invalid
+diagrams show an error with their source, and editing or hiding the preview
+cancels pending work.
+
+Live preview renders up to 16 diagrams within a 20-second document deadline and
+32 MiB decoded-image budget. Remaining diagrams stay visible as source. Each
+diagram allows 50,000 characters, 500 edges and ten seconds to render; output is
+limited to four million pixels. Standalone UI hosts without the desktop renderer
+show an explicit unavailable message and retain the diagram source. Native
+Windows/macOS checks are configured in CI; current local proof is Linux.
+
 ### Workspace graph
 
 Open **Files → Graph** to explore the selected folder (or the project root). The
 same control is available in a workflow's scoped Files view. Graph opens only on
-request. It shows the root and immediate children, then expands directories when
+request and loads the installed Cockpit package on the first click; visiting
+Cockpit first is unnecessary. The control requires Cockpit mode in Settings and
+a matching native package. Loading failures appear in Files, and leaving the
+page or changing roots cancels a pending open. The currently published Cockpit
+renderer and ForgePipe SDK support Linux amd64; Windows/macOS graph packaging
+remains unavailable until matching native packages are released.
+
+The graph shows the root and immediate children, then expands directories when
 you double-click them or choose **Expand**. Double-click a regular file to open it
 in the existing editor; unsaved drafts retain the usual save/discard protection.
 **Editor** returns to the file browser. Leaving Files closes the graph.
@@ -1364,3 +1507,29 @@ button sends the OS window a normal close request. Unsaved-work prompts and
 cancelled requests keep the panel alive. With management off, closing the panel
 only releases the window. Disabling management or quitting DockPipe releases
 apps without requesting that they close.
+
+
+### Dashboard canvas gadgets
+
+First-party widgets on the dashboard **Canvas** use compact rounded frames and a
+small drag handle/menu instead of repeated window buttons and footer actions.
+Open the widget menu for refresh, full view, expand, minimize or removal. Existing
+widget placement and resizing remain available. Tiling and top-level pages retain
+their ordinary controls.
+
+**Send input** becomes an inline target picker, growing text pill and round send
+button. Ctrl+Enter still sends only to the explicitly selected terminal; changing
+presentation neither opens a shell nor sends a draft. Status appears when there
+is an outcome or input error. System resources use compact cards and thin meters,
+retaining unavailable readings rather than inventing zero values.
+
+The canvas **Browser** starts with just a slim tab strip and the live viewport.
+Its eye button or Ctrl+L reveals normal address/navigation controls, and the same
+button returns to the viewport. Drag the small grip to move the browser widget.
+Drag a browser tab out of its strip to create a separate canvas browser widget;
+the live page, JavaScript state, navigation history, profile, extension session
+and downloads are retained. Escape cancels a tab gesture. Closing the source
+widget leaves the detached tab alive, and the shared profile is released after
+its last browser closes. Clear browsing data asks you to close detached siblings
+first so it cannot clear a session still used by another widget. Dashboard widget
+limits still apply; a rejected tear-out leaves the original tab in place.

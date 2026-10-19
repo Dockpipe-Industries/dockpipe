@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QString>
+#include <QMap>
 #include <QJsonObject>
 #include <QUuid>
 
@@ -19,6 +20,8 @@ struct Context {
     QString envFile;
     /// Each entry is one dockpipe `--env` argument, typically `KEY=value` (e.g. OPENAI_API_KEY=…).
     QStringList extraDockpipeEnv;
+    /// Per-launch sensitive inputs. Never serialized or included in command previews.
+    QMap<QString, QString> transientLaunchEnv;
 
     static Context createNew();
     static Context fromJson(const QJsonObject &o);

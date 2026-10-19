@@ -4,6 +4,11 @@
 #include <QJsonObject>
 #include <QWidget>
 
+class GitHistoryWidget;
+class GitRepositoryWidget;
+class GitConflictWidget;
+class QTabWidget;
+class QComboBox;
 class QLabel;
 class QListWidget;
 class QPlainTextEdit;
@@ -18,11 +23,19 @@ public:
     void setWorkdir(const QString &workdir);
     bool busy() const { return m_command.busy(); }
     void refresh();
+    bool confirmLeave();
 
 private:
     void runAction(const QString &action);
+    void runRequest(QJsonObject request);
     void render(const QJsonObject &snapshot);
     void updateCommitState();
+    QTabWidget *m_tabs;
+    GitHistoryWidget *m_history;
+    GitRepositoryWidget *m_repository;
+    GitConflictWidget *m_conflicts;
+    QComboBox *m_comparison;
+    QWidget *m_fileActions;
     QString m_workdir;
     QJsonObject m_snapshot;
     ProjectGitClient m_command;

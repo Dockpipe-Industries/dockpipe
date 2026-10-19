@@ -89,7 +89,8 @@ WorkspacePackageManager::~WorkspacePackageManager()
 void WorkspacePackageManager::prepare(const LauncherSettings &settings, bool download)
 {
     if (busy()) {
-        emit failed(tr("A package operation is still stopping. Please retry in a moment."));
+        m_error = tr("A package operation is still stopping. Please retry in a moment.");
+        emit failed(m_error);
         return;
     }
     if (ready()) {
@@ -136,8 +137,17 @@ bool WorkspacePackageManager::load(const QString &assets)
 #endif
     const QFileInfo directory(assets);
     const QFileInfo library(QDir(assets).filePath("ui/" + filename));
-    if (!directory.isAbsolute() || !directory.isDir() || !library.isFile()
-        || !library.canonicalFilePath().startsWith(directory.canonicalFilePath() + QDir::separator())) {
+    const QString canonicalDirectory = directory.canonicalFilePath();
+    const QString canonicalLibrary = library.canonicalFilePath();
+    // Qt canonical paths use forward slashes on Windows too. Compare path
+    // components relative to the package root, rather than appending the
+    // platform's native separator to a canonical-path string prefix.
+    const QString relativeLibrary = QDir::fromNativeSeparators(QDir(canonicalDirectory).relativeFilePath(canonicalLibrary));
+    const bool contained = !canonicalDirectory.isEmpty() && !canonicalLibrary.isEmpty()
+        && !relativeLibrary.isEmpty() && relativeLibrary != QStringLiteral(".")
+        && !QDir::isAbsolutePath(relativeLibrary)
+        && !relativeLibrary.split(QLatin1Char('/')).contains(QStringLiteral(".."));
+    if (!directory.isAbsolute() || !directory.isDir() || !library.isFile() || !contained) {
         m_error = tr("The Cockpit package is missing its native UI component. Install a package matching this launcher.");
         return false;
     }
@@ -152,7 +162,8 @@ bool WorkspacePackageManager::load(const QString &assets)
                            : tr("Cockpit could not load: %1").arg(m_loader.errorString());
         return false;
     }
-    m_package->initialize(directory.canonicalFilePath());
+    m_package->initialize(canonicalDirectory);
+    m_error.clear();
     m_active = false;
     emit prepared();
     return true;
@@ -188,6 +199,7 @@ void WorkspacePackageManager::cancel()
 
 void WorkspacePackageManager::fail(const QString &message)
 {
+    m_error = message;
     m_active = false;
     m_deadline.stop();
     emit failed(message);

@@ -6,6 +6,7 @@
 #include "MainWindow.h"
 #include "SingleInstanceGuard.h"
 #include "Theme.h"
+#include "WebMermaidRenderer.h"
 #include "TerminalPreferences.h"
 
 #include <QApplication>
@@ -109,6 +110,7 @@ int main(int argc, char *argv[])
 
     applyDockpipeLauncherTheme(app);
     connectDockpipeLauncherThemeUpdates(app);
+    installWebMermaidRenderer();
 
     app.setQuitOnLastWindowClosed(true);
 

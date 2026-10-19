@@ -38,6 +38,15 @@ by a different provider. The app requests the Flatpak host execution permission,
 home/project access, display/graphics, network and engine socket access. This is a
 development tool with approved host integrations, not an isolated viewer.
 
+Embedded terminals use that explicit host bridge too. The shell picker discovers
+installed host shells, and new sessions receive the chosen project directory and
+real PTY descriptors. The host service establishes the controlling terminal;
+Dockpipe's fixed supervisor cleans the shell's foreground and background jobs on
+close. Host `ps`, `head`, `timeout`, `sleep` and GNU `env` with
+`--default-signal` support are required for bounded cleanup and interrupt handling.
+Unavailable host access or utilities produce an error instead of opening a
+different shell inside the sandbox. No host dependency is installed automatically.
+
 The bundle also permits talking to `org.kde.StatusNotifierWatcher` for the Qt tray
 icon. It does not request unrestricted session-bus access. The launcher checks tray
 availability before registration and before hiding on close; if the tray disappears

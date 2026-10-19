@@ -39,6 +39,7 @@ public:
 signals:
     void openFullView(const QString &pageKey);
     void launchWorkflow(const QString &workflowId);
+    void cloneWorkflow(const QString &workflowId);
     void openFile(const QString &path);
     void workdirChanged(const QString &workdir);
     void workflowsChanged();

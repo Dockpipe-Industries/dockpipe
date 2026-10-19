@@ -6,6 +6,10 @@
 #include "CanvasPanel.h"
 #include <QMouseEvent>
 #include "WorkflowEditorWidget.h"
+#include "WorkflowLaunchDialog.h"
+#include <QComboBox>
+#include <QLineEdit>
+#include <QJsonDocument>
 #include "Theme.h"
 
 #include <QApplication>
@@ -94,6 +98,10 @@ int main(int argc, char **argv)
     if (!writeFile(cli, R"SH(#!/bin/sh
 case "$1:$2" in
 catalog:list)
+    if [ "$DOCKPIPE_VSCODE_CATALOG_TEST" = "1" ]; then
+        echo '{"workflows":[{"workflow_id":"vscode-task:build","display_name":"Build","source":"vscode","source_kind":"task","source_path":".vscode/tasks.json","source_name":"Build","cloneable":true,"supported":false,"unsupported_reason":"Unsupported variable","warnings":["Run only"]}]}'
+        exit 0
+    fi
     printf '{"workflows":[{"workflow_id":"demo","display_name":"Development","config_path":"%s/config.yml"}]}' "$DOCKPIPE_TEST_ROOT" ;;
 workflow:document|workflow:validate)
     if [ -n "$DOCKPIPE_STUDIO_TEST_CLI" ]; then
@@ -114,6 +122,18 @@ esac
     app.setOrganizationName("DockpipeWorkspaceTest");
     app.setApplicationName("CanvasWorkspaceTest");
     applyDockpipeLauncherTheme(app);
+    qputenv("DOCKPIPE_VSCODE_CATALOG_TEST", "1");
+    const auto importedCatalog = WorkflowCatalog::discoverCatalog(temporary.path());
+    qunsetenv("DOCKPIPE_VSCODE_CATALOG_TEST");
+    if (importedCatalog.workflows.size() != 1)
+        return 40;
+    const auto &imported = importedCatalog.workflows.first();
+    if (imported.source != "vscode" || imported.sourceKind != "task"
+        || imported.sourcePath != ".vscode/tasks.json" || imported.sourceName != "Build"
+        || !imported.cloneable || imported.supported || imported.unsupportedReason != "Unsupported variable"
+        || !imported.catalogTitle().contains("VS Code") || !imported.catalogDescription().contains("Run only"))
+        return 41;
+
     if (qEnvironmentVariable("DOCKPIPE_TEST_THEME") == "light") {
         QFile shared(":/theme/pipeon.qss");
         QFile light(":/theme/pipeon-light.qss");
@@ -123,6 +143,36 @@ esac
         app.setPalette(app.style()->standardPalette());
         app.setStyleSheet(QString::fromUtf8(shared.readAll() + light.readAll()));
     }
+    WorkflowMeta inputWorkflow;
+    inputWorkflow.source = "vscode";
+    inputWorkflow.displayName = "Imported input controls";
+    WorkflowInputMeta passwordInput;
+    passwordInput.fieldName = "password";
+    passwordInput.envName = "DOCKPIPE_VSCODE_INPUT_SECRET";
+    passwordInput.type = "string";
+    passwordInput.attributes.insert("password", "true");
+    WorkflowInputMeta choiceInput;
+    choiceInput.fieldName = "environment";
+    choiceInput.envName = "DOCKPIPE_VSCODE_INPUT_ENVIRONMENT";
+    choiceInput.type = "string";
+    choiceInput.attributes.insert("options", "[\"dev\",\"test\"]");
+    inputWorkflow.inputs = {passwordInput, choiceInput};
+    WorkflowLaunchDialog inputDialog(inputWorkflow, {}, nullptr);
+    const auto passwordEditors = inputDialog.findChildren<QLineEdit *>();
+    const auto choices = inputDialog.findChildren<QComboBox *>();
+    if (passwordEditors.size() != 1 || passwordEditors.first()->echoMode() != QLineEdit::Password
+        || choices.size() != 1 || choices.first()->count() != 2)
+        return 42;
+    passwordEditors.first()->setText(" fixture secret ");
+    choices.first()->setCurrentIndex(1);
+    if (inputDialog.values().value(passwordInput.envName) != " fixture secret "
+        || inputDialog.values().value(choiceInput.envName) != "test")
+        return 43;
+    Context secretContext = Context::createNew();
+    secretContext.transientLaunchEnv.insert(passwordInput.envName, "fixture secret");
+    if (QJsonDocument(secretContext.toJson()).toJson().contains("fixture secret")
+        || SessionManager::dockpipeArguments(secretContext).join(' ').contains("fixture secret"))
+        return 44;
     LauncherSettings settings;
     settings.projectFolder = temporary.path();
     settings.uiMode = "advanced";
@@ -299,8 +349,27 @@ steps:
     capture("-output");
     window.resize(1180, 780);
     QApplication::processEvents();
-    if (window.width() > 1180 || editor->findChild<WorkflowCanvas *>()->height() < 180)
+    if (window.width() > 1180 || editor->findChild<WorkflowCanvas *>()->height() < 180) {
+        std::fprintf(stderr, "Compact workflow size=%dx%d minimum=%dx%d canvas=%dx%d\n",
+            window.width(), window.height(), window.minimumWidth(), window.minimumHeight(),
+            canvas->width(), canvas->height());
+        for (auto *child : window.findChildren<QWidget *>()) {
+            if (child->minimumWidth() > 800 || child->minimumSizeHint().width() > 800)
+                std::fprintf(stderr, "Wide widget %s (%s) size=%dx%d minimum=%dx%d hint=%dx%d\n",
+                    qPrintable(child->objectName()), child->metaObject()->className(), child->width(), child->height(),
+                    child->minimumWidth(), child->minimumHeight(), child->minimumSizeHint().width(), child->minimumSizeHint().height());
+        }
+        if (auto *conflicts = window.findChild<QWidget *>("gitConflictGuide")) {
+            for (auto *child : conflicts->findChildren<QWidget *>()) {
+                if (child->minimumWidth() > 150 || child->minimumSizeHint().width() > 150)
+                    std::fprintf(stderr, "Conflict child %s (%s) minimum=%d hint=%d policy=%d\n",
+                        qPrintable(child->objectName()), child->metaObject()->className(), child->minimumWidth(),
+                        child->minimumSizeHint().width(), int(child->sizePolicy().horizontalPolicy()));
+            }
+        }
+        capture("-compact-failure");
         return 13;
+    }
     capture("-compact");
     properties->click();
     QApplication::processEvents();

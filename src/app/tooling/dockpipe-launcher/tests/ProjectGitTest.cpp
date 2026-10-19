@@ -1,5 +1,10 @@
 #include "ProjectGitWidget.h"
 #include "Theme.h"
+#include "GitCommitQueueModel.h"
+#include "GitHistoryWidget.h"
+#include <QTabWidget>
+#include <QMessageBox>
+#include <QTimer>
 #include <QApplication>
 #include <QStyle>
 #include <QElapsedTimer>
@@ -120,6 +125,66 @@ int main(int argc, char **argv)
     if (!rejected || !git(root.path(), {"ls-tree", "--name-only", "HEAD"}, &committed)
         || committed.trimmed() != "script.py")
         return 8;
-    std::puts("Project Git UI reviewed changes, committed selected files and rejected a stale request.");
+    widget.refresh();
+    if (!waitForGit(widget))
+        return 30;
+    widget.findChild<QPushButton *>("gitFile-stage")->click();
+    if (!waitForGit(widget))
+        return 31;
+    message->setText("Commit staged notes");
+    widget.findChild<QPushButton *>("gitCommitStaged")->click();
+    if (!waitForGit(widget) || files->count() != 0)
+        return 32;
+    QByteArray targetBranch;
+    if (!git(root.path(), {"branch", "--show-current"}, &targetBranch)
+        || !git(root.path(), {"switch", "-c", "incoming"})
+        || !writeFile(root.filePath("incoming.txt"), "Cherry-picked through the UI.\n")
+        || !git(root.path(), {"add", "incoming.txt"})
+        || !git(root.path(), {"commit", "-m", "Incoming searchable feature"})
+        || !git(root.path(), {"switch", QString::fromUtf8(targetBranch).trimmed()}))
+        return 33;
+    widget.refresh();
+    if (!waitForGit(widget))
+        return 34;
+    auto *history = widget.findChild<GitHistoryWidget *>();
+    widget.findChild<QTabWidget *>("gitTabs")->setCurrentWidget(history);
+    history->findChild<QLineEdit *>("gitHistoryQuery")->setText("Incoming searchable");
+    history->findChild<QPushButton *>("gitHistorySearch")->click();
+    auto *commits = history->findChild<QListWidget *>("gitHistoryCommits");
+    QElapsedTimer historyTimer;
+    historyTimer.start();
+    while ((commits->count() == 0 || !history->findChild<QPushButton *>("gitHistorySearch")->isEnabled())
+           && historyTimer.elapsed() < 10000) {
+        QApplication::processEvents();
+        QThread::msleep(10);
+    }
+    if (commits->count() != 1)
+        return 35;
+    commits->setCurrentRow(0);
+    historyTimer.restart();
+    auto *detail = history->findChild<QPlainTextEdit *>("gitHistoryDetail");
+    while ((!detail->toPlainText().contains("Cherry-picked through the UI")
+            || !history->findChild<QPushButton *>("gitHistorySearch")->isEnabled()) && historyTimer.elapsed() < 10000) {
+        QApplication::processEvents();
+        QThread::msleep(10);
+    }
+    if (!detail->toPlainText().contains("Cherry-picked through the UI"))
+        return 38;
+    commits->item(0)->setSelected(true);
+    history->findChild<QPushButton *>("gitHistoryAdd")->click();
+    if (history->queueModel()->rowCount() != 1)
+        return 36;
+    if (!screenshot.isEmpty())
+        widget.grab().save(screenshot + ".history.png");
+    QTimer::singleShot(0, [] {
+        if (auto *dialog = qobject_cast<QMessageBox *>(QApplication::activeModalWidget()))
+            dialog->done(QMessageBox::Yes);
+    });
+    history->findChild<QPushButton *>("gitQueueStart")->click();
+    if (!waitForGit(widget) || history->queueModel()->rowCount() != 0
+        || !git(root.path(), {"ls-tree", "--name-only", "HEAD"}, &committed)
+        || !committed.contains("incoming.txt"))
+        return 37;
+    std::puts("Project Git UI passed selected/staged commits, stale review rejection, history search and queued cherry-pick.");
     return 0;
 }

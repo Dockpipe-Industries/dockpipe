@@ -1,4 +1,5 @@
 #include "BasicModeWidget.h"
+#include <algorithm>
 #include "AppCardWidget.h"
 
 #include <QAbstractItemView>
@@ -77,9 +78,8 @@ QIcon appIconForWorkflow(const WorkflowMeta &workflow)
 
 QString workflowTooltip(const WorkflowMeta &workflow)
 {
-    QStringList lines;
-    if (!workflow.description.trimmed().isEmpty())
-        lines << workflow.description.trimmed();
+    QStringList lines{workflow.catalogDescription()};
+
     if (!workflow.inputs.isEmpty()) {
         lines << QString() << QObject::tr("Inputs:");
         int count = 0;
@@ -250,7 +250,13 @@ BasicModeWidget::BasicModeWidget(QWidget *parent) : QWidget(parent)
         if (id.isEmpty())
             return;
         QMenu menu(this);
-        menu.addAction(tr("Launch"), this, [this, id]() { emit launchRequested(id); });
+        const auto metadata = std::find_if(m_apps.cbegin(), m_apps.cend(), [&id](const WorkflowMeta &entry) {
+            return entry.workflowId == id;
+        });
+        auto *launchAction = menu.addAction(tr("Launch"), this, [this, id]() { emit launchRequested(id); });
+        launchAction->setEnabled(metadata != m_apps.cend() && metadata->supported);
+        if (metadata != m_apps.cend() && metadata->cloneable)
+            menu.addAction(tr("Clone to workflows"), this, [this, id]() { emit cloneRequested(id); });
         menu.addAction(tr("Workflow settings…"), this, [this, id]() { emit configureRequested(id); });
         menu.exec(m_list->mapToGlobal(pos));
     });
@@ -454,6 +460,7 @@ void BasicModeWidget::rebuildItemTexts()
         it->setIcon(QIcon());
         auto *card = new AppCardWidget(m, appIconForWorkflow(m), !m_iconMode, run, launching, m_list);
         connect(card, &AppCardWidget::launchRequested, this, [this, id = m.workflowId]() { emit launchRequested(id); });
+        connect(card, &AppCardWidget::cloneRequested, this, [this, id = m.workflowId]() { emit cloneRequested(id); });
         connect(card, &AppCardWidget::configureRequested, this, [this, id = m.workflowId]() { emit configureRequested(id); });
         if (auto *previous = m_list->itemWidget(it))
             previous->hide();

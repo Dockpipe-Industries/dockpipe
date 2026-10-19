@@ -1,5 +1,6 @@
 #include "BrowserRuntime.h"
 #include "BrowserWidget.h"
+#include "BrowserTabBar.h"
 #include "BrowserPreferences.h"
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
 #include <QWebEnginePermission>
@@ -19,6 +20,7 @@
 #include <QDir>
 #include <QMenu>
 #include <QTabBar>
+#include <QSignalSpy>
 #include <QTreeWidget>
 #include <QListWidget>
 #include <QLineEdit>
@@ -472,6 +474,107 @@ class BrowserTest : public QObject
     Q_OBJECT
 
 private slots:
+    void canvasViewportIsContextScoped()
+    {
+        BrowserWidget browser;
+        browser.resize(820, 600);
+        browser.show();
+        auto *address = browser.findChild<QLineEdit *>("browserAddress");
+        auto *toggle = browser.findChild<QPushButton *>("browserCanvasViewport");
+        QVERIFY(address && toggle);
+        QVERIFY(address->isVisible());
+        QVERIFY(!toggle->isVisible());
+        browser.setProperty("dashboardCanvasPresentation", true);
+        QVERIFY(browser.canvasViewportMode());
+        QVERIFY(!address->isVisible());
+        QVERIFY(toggle->isVisible());
+        toggle->click();
+        QVERIFY(!browser.canvasViewportMode());
+        QVERIFY(address->isVisible());
+        toggle->click();
+        QVERIFY(browser.canvasViewportMode());
+        browser.setProperty("dashboardCanvasPresentation", false);
+        QVERIFY(address->isVisible());
+        QVERIFY(!toggle->isVisible());
+        browser.setChromeVisible(false);
+        browser.setCanvasPresentationEnabled(true);
+        QVERIFY(!toggle->isVisible());
+        browser.setChromeVisible(true);
+        QVERIFY(toggle->isVisible());
+    }
+
+    void tearOutRetainsLivePageAndSessionAfterSourceCloses()
+    {
+        QTcpServer server;
+        QVERIFY(startBrowserServer(server));
+        auto source = std::make_unique<BrowserWidget>();
+        auto destination = std::make_unique<BrowserWidget>();
+        source->setCanvasPresentationEnabled(true);
+        destination->setCanvasPresentationEnabled(true);
+        source->show();
+        destination->show();
+        auto *view = source->activeView();
+        QPointer<QWebEnginePage> page(view->page());
+        QPointer<QWebEngineProfile> profile(page->profile());
+        source->navigate(QUrl(QString("http://127.0.0.1:%1/").arg(server.serverPort())));
+        QVERIFY(waitUntil([&]() { return view->title() == "Browser test page"; }));
+        bool seeded = false;
+        page->runJavaScript("window.tearOutState = 'retained'; sessionStorage.setItem('tearOut', 'yes'); true",
+            [&](const QVariant &) { seeded = true; });
+        QVERIFY(waitUntil([&]() { return seeded; }));
+        QVERIFY(source->moveTabTo(view, destination.get()));
+        QCOMPARE(destination->activeView(), view);
+        QCOMPARE(view->page(), page.data());
+        QCOMPARE(view->page()->profile(), profile.data());
+        QCOMPARE(destination->findChild<QTabBar *>("browserTabs")->count(), 1);
+        QVERIFY(source->activeView() != view);
+        source.reset();
+        QVERIFY(page && profile);
+        bool retained = false;
+        page->runJavaScript("window.tearOutState === 'retained' && sessionStorage.getItem('tearOut') === 'yes'",
+            [&](const QVariant &value) { retained = value.toBool(); });
+        QVERIFY(waitUntil([&]() { return retained; }));
+        QVERIFY(!destination->moveTabTo(view, destination.get()));
+        BrowserWidget ordinary;
+        QVERIFY(!destination->moveTabTo(view, &ordinary));
+        destination->setCanvasViewportMode(false);
+        destination->findChild<QPushButton *>("browserDownloads")->click();
+        QVERIFY(destination->findChild<QTreeWidget *>("browserDownloadsList"));
+        destination.reset();
+        QVERIFY(page.isNull());
+        QVERIFY(profile.isNull());
+    }
+
+    void tabTearOutGestureIsCanvasOnly()
+    {
+        BrowserTabBar tabs;
+        tabs.resize(360, 40);
+        tabs.addTab("One");
+        tabs.show();
+        QSignalSpy requests(&tabs, &BrowserTabBar::tearOutRequested);
+        const QPoint start = tabs.tabRect(0).center();
+        const QPoint outside(start.x(), 100);
+        QTest::mousePress(&tabs, Qt::LeftButton, Qt::NoModifier, start);
+        QTest::mouseRelease(&tabs, Qt::LeftButton, Qt::NoModifier, outside);
+        QCOMPARE(requests.count(), 0);
+        tabs.setTearOutEnabled(true);
+        QTest::mousePress(&tabs, Qt::LeftButton, Qt::NoModifier, start);
+        QTest::mouseMove(&tabs, outside);
+        QTest::keyClick(&tabs, Qt::Key_Escape);
+        QTest::mouseRelease(&tabs, Qt::LeftButton, Qt::NoModifier, outside);
+        QCOMPARE(requests.count(), 0);
+        QTest::mousePress(&tabs, Qt::LeftButton, Qt::NoModifier, start);
+        tabs.hide();
+        tabs.show();
+        QTest::mouseRelease(&tabs, Qt::LeftButton, Qt::NoModifier, outside);
+        QCOMPARE(requests.count(), 0);
+        QTest::mousePress(&tabs, Qt::LeftButton, Qt::NoModifier, start);
+        QTest::mouseMove(&tabs, outside);
+        QTest::mouseRelease(&tabs, Qt::LeftButton, Qt::NoModifier, outside);
+        QCOMPARE(requests.count(), 1);
+        QCOMPARE(requests.first().at(0).toInt(), 0);
+    }
+
     void navigationAndLifecycle()
     {
         QCOMPARE(runBrowserChecks(), 0);

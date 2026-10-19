@@ -47,8 +47,23 @@ BrowserDownloads::~BrowserDownloads()
     delete m_panel;
 }
 
+void BrowserDownloads::setHost(QWidget *host)
+{
+    if (m_host == host)
+        return;
+    m_host = host;
+    if (m_panel) {
+        const bool visible = m_panel->isVisible();
+        m_panel->setParent(host, Qt::Dialog);
+        if (visible)
+            m_panel->show();
+    }
+}
+
 void BrowserDownloads::showPanel()
 {
+    if (!m_host)
+        emit hostRequested();
     if (!m_host)
         return;
     if (!m_panel) {
@@ -127,6 +142,8 @@ void BrowserDownloads::showPanel()
 
 void BrowserDownloads::requestDownload(QWebEngineDownloadRequest *request)
 {
+    if (!m_host)
+        emit hostRequested();
     int activeDownloads = 0;
     for (const auto &[id, entry] : m_entries) {
         if (!entry.finished)
