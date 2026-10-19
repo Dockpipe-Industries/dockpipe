@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -61,6 +62,11 @@ func TestWorkspaceGitReviewUnbornAndStageLifecycle(t *testing.T) {
 	mustGitOutput(t, root, "init")
 	ctx := workspaceGitTestContext(t)
 	name := "new [literal]\nfile.txt"
+	if runtime.GOOS == "windows" {
+		// Windows forbids newlines in filenames. Keep literal pathspec coverage
+		// there while Unix hosts also exercise Git's NUL-delimited newline case.
+		name = "new [literal] file.txt"
+	}
 	if err := os.WriteFile(filepath.Join(root, name), []byte("first\nsecond"), 0644); err != nil {
 		t.Fatal(err)
 	}

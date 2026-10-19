@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -137,7 +138,11 @@ func TestExternalRefusesInvalidProvidersAndOutput(t *testing.T) {
 			case "traversal":
 				selected.Files = []providerFile{{Name: "../outside", Path: selected.Executable, SHA256: selected.SHA256}}
 			case "collision":
-				selected.Files = []providerFile{{Name: "decoder", Path: selected.Executable, SHA256: selected.SHA256}}
+				executableName := "decoder"
+				if runtime.GOOS == "windows" {
+					executableName += ".exe"
+				}
+				selected.Files = []providerFile{{Name: executableName, Path: selected.Executable, SHA256: selected.SHA256}}
 			case "symlink":
 				link := filepath.Join(t.TempDir(), "linked-decoder")
 				if err := os.Symlink(selected.Executable, link); err != nil {
@@ -148,6 +153,13 @@ func TestExternalRefusesInvalidProvidersAndOutput(t *testing.T) {
 			configure(t, selected)
 			directory := isolatedDecoderTemps(t)
 			reader, err := Open(context.Background(), strings.NewReader("payload"), "fixture", maximum)
+			if reader != nil {
+				t.Cleanup(func() {
+					if err := reader.Close(); err != nil {
+						t.Errorf("close unexpectedly accepted decoder: %v", err)
+					}
+				})
+			}
 			if err == nil || reader != nil {
 				t.Fatalf("accepted %s: reader=%v err=%v", variant, reader, err)
 			}

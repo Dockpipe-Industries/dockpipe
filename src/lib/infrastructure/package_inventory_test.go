@@ -70,6 +70,9 @@ func writeZstdInventoryPackage(t *testing.T, root, name string) string {
 	if err := compressed.Close(); err != nil {
 		t.Fatal(err)
 	}
+	if err := input.Close(); err != nil {
+		t.Fatal(err)
+	}
 	zstdPath := strings.TrimSuffix(gzipPath, ".gz") + ".zst"
 	output, err := os.Create(zstdPath)
 	if err != nil {

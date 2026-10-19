@@ -94,9 +94,13 @@ remain core-only; install the optional packages needed for the chosen workflow.
 
 ## Desktop build
 
-Prerequisites: Flatpak, Python 3, `org.kde.Sdk//6.10`, `org.kde.Platform//6.10`, a
+Prerequisites: Flatpak, Python 3, `org.kde.Sdk//6.10`, `org.kde.Platform//6.10`,
+`io.qt.qtwebengine.BaseApp//6.10` for the embedded browser, a
 matching static CLI and a verified core store. The builder does not install its
 prerequisites or install the resulting app on the build machine.
+The build bundles checksum-pinned libXRes 1.2.3 for X11 process identification,
+including RustDesk windows that omit their process ID property. Its license is
+included in the app. Qt WebEngine comes from the matching BaseApp.
 
 ```bash
 bash release/packaging/desktop/flatpak/build.sh VERSION /absolute/path/dockpipe \
