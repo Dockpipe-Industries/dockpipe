@@ -1,8 +1,10 @@
 #pragma once
 
+#include "LauncherUiExport.h"
+
 #include <QFrame>
 
-class CanvasPanel : public QFrame {
+class DOCKPIPE_LAUNCHER_UI_EXPORT CanvasPanel : public QFrame {
     Q_OBJECT
 public:
     explicit CanvasPanel(const QString &identity, QWidget *parent = nullptr, bool persistent = true);

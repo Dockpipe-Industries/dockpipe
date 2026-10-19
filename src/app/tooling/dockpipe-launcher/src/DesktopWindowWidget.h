@@ -1,5 +1,7 @@
 #pragma once
 
+#include "LauncherUiExport.h"
+
 #include <QWidget>
 #include "DesktopAppWindow.h"
 #include <memory>
@@ -7,7 +9,7 @@ struct DesktopApplicationEntry;
 
 // A session-only, explicitly selected desktop surface. Native window identities
 // and portal grants are never written into a dashboard layout.
-class DesktopWindowWidget final : public QWidget {
+class DOCKPIPE_LAUNCHER_UI_EXPORT DesktopWindowWidget final : public QWidget {
     Q_OBJECT
 public:
     explicit DesktopWindowWidget(QWidget *parent = nullptr);

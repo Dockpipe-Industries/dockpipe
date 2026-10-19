@@ -283,6 +283,9 @@ else()
     list(APPEND DOCKPIPE_UI_SOURCES src/DesktopAppWindow.cpp)
 endif()
 add_library(dockpipe-launcher-ui SHARED ${DOCKPIPE_UI_SOURCES})
+target_compile_definitions(dockpipe-launcher-ui
+    PRIVATE DOCKPIPE_LAUNCHER_UI_BUILD
+    INTERFACE DOCKPIPE_LAUNCHER_UI_USE)
 set_target_properties(dockpipe-launcher-ui PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON VERSION 1.0 SOVERSION 1
     BUILD_RPATH_USE_ORIGIN TRUE)
 target_include_directories(dockpipe-launcher-ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src"
@@ -507,6 +510,7 @@ if(BUILD_TESTING)
     add_library(workspace-package-fixture MODULE tests/WorkspacePackageFixture.cpp)
     target_link_libraries(workspace-package-fixture PRIVATE dockpipe-launcher-ui)
     set_target_properties(workspace-package-fixture PROPERTIES OUTPUT_NAME dockpipe-cockpit
+        SUFFIX "${CMAKE_SHARED_LIBRARY_SUFFIX}"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/workspace-fixture/ui"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/workspace-fixture/ui")
     add_executable(workspace-package-test tests/WorkspacePackageTest.cpp src/SettingsDialog.cpp)

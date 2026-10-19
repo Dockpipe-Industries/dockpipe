@@ -618,7 +618,11 @@ void DashboardWorkspace::rebuild()
     m_rebuilding = true;
     for (const Panel &panel : m_panels) {
         panel.frame->hide();
-        panel.frame->setParent(m_parking);
+        // Parking protects pages owned by the viewport we are about to delete.
+        // Canvas pages can move straight to their new tabs without a second
+        // parent change and stylesheet/layout pass over every child widget.
+        if (m_tileViewport)
+            panel.frame->setParent(m_parking);
     }
     delete m_tileViewport;
     m_tileViewport = nullptr;

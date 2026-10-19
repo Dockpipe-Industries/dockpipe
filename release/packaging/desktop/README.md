@@ -148,3 +148,16 @@ the CLI formula remains unless separately removed. All methods retain user data.
    checks before publishing the generated cask.
 
 No live tap or release update is performed by editing these source files.
+
+## Native symbol boundaries
+
+Before macOS signing, the producer explicitly strips only Dockpipe's launcher
+and host UI dylib, verifies that required external symbols remain unchanged,
+and rejects debug sections or private defined symbols. The app carries
+`Contents/Resources/dockpipe-native-symbol-audit.json`; its hashes identify the
+stripped binaries before signing changes their bytes. Third-party runtime
+libraries retain their existing deployment and licensing rules.
+
+The Windows producer rejects PDBs, object files, import libraries and other
+private compiler intermediates anywhere in the desktop stage before the MSI
+harvests it. Release builds do not enable compiler/linker debug output.

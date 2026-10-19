@@ -3,6 +3,19 @@ param(
     [Parameter(Mandatory = $true)][string]$StageDir
 )
 $ErrorActionPreference = "Stop"
+
+function Assert-PublicDesktopRuntime {
+    param([Parameter(Mandatory = $true)][string]$RuntimeDirectory)
+    # The MSI harvests the whole stage. Fail before harvesting private build state.
+    $privateExtensions = @(".pdb", ".obj", ".ilk", ".exp", ".lib", ".pch", ".iobj", ".ipdb", ".idb")
+    $privateFiles = @(Get-ChildItem -LiteralPath $RuntimeDirectory -Recurse -File | Where-Object {
+        $privateExtensions -contains $_.Extension.ToLowerInvariant()
+    })
+    if ($privateFiles.Count -ne 0) {
+        throw "Desktop runtime contains private build files: $($privateFiles.Name -join ', ')"
+    }
+}
+
 $root = (Resolve-Path (Join-Path $PSScriptRoot "../../..")).Path
 $build = Join-Path ([IO.Path]::GetTempPath()) ("dockpipe-desktop-" + [guid]::NewGuid().ToString("N"))
 if (Test-Path -LiteralPath $StageDir) {
@@ -49,6 +62,7 @@ try {
         throw "Visual C++ redistributable CRT directory is missing"
     }
     Get-ChildItem -LiteralPath $crt.FullName -Filter "*.dll" | Copy-Item -Destination $StageDir
+    Assert-PublicDesktopRuntime -RuntimeDirectory $StageDir
     foreach ($required in @(
         "Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6OpenGL.dll", "Qt6OpenGLWidgets.dll",
         "Qt6WebEngineCore.dll", "Qt6WebEngineWidgets.dll", "QtWebEngineProcess.exe",

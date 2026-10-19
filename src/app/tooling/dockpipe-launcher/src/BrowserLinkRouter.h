@@ -1,12 +1,14 @@
 #pragma once
 
+#include "LauncherUiExport.h"
+
 #include <QObject>
 #include <QUrl>
 #include <functional>
 
 // The desktop's single owner of QDesktopServices HTTP(S) handlers. Explicit
 // browser navigation and file/folder URLs do not pass through this router.
-class BrowserLinkRouter final : public QObject {
+class DOCKPIPE_LAUNCHER_UI_EXPORT BrowserLinkRouter final : public QObject {
     Q_OBJECT
 public:
     using ExternalOpener = std::function<bool(const QUrl &)>;

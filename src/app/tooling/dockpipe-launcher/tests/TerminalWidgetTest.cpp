@@ -265,7 +265,9 @@ void TerminalWidgetTest::terminalAndComposer()
     QTRY_VERIFY_WITH_TIMEOUT(QFile::exists(directory.filePath("bridge-input.txt")), 3000);
 
     QCOMPARE(TerminalPreferences::instance()->settings().opacity, 100);
-    QCOMPARE(view->page()->backgroundColor().alpha(), 255);
+    // Software rendering must allocate the alpha surface before opacity changes.
+    // The terminal DOM provides the opaque background at the default setting.
+    QCOMPARE(view->page()->backgroundColor().alpha(), 0);
     const auto scriptValue = [&](const QString &script) {
         auto result = std::make_shared<QPair<bool, QVariant>>();
         retainedPage->runJavaScript(script, [result](const QVariant &value) {
@@ -376,7 +378,7 @@ void TerminalWidgetTest::terminalAndComposer()
     appearance.opacity = 100;
     appearance.scanlines = true;
     QVERIFY(TerminalPreferences::instance()->save(appearance));
-    QCOMPARE(view->page()->backgroundColor().alpha(), 255);
+    QCOMPARE(view->page()->backgroundColor().alpha(), 0);
     QTest::qWait(150);
     QTRY_COMPARE(scriptValue("getComputedStyle(document.querySelector('.xterm-viewport')).backgroundColor").toString(),
         QString("rgba(0, 0, 0, 0)"));

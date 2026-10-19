@@ -1,5 +1,7 @@
 #pragma once
 
+#include "LauncherUiExport.h"
+
 #include <QHash>
 #include <QPointer>
 #include <QIcon>
@@ -29,7 +31,7 @@ struct DashboardDockItem {
 
 // Dashboard controls only: panel creation, application launch and activation stay
 // with DashboardPage and its existing workspace/services in either layout mode.
-class DashboardDock final : public QWidget {
+class DOCKPIPE_LAUNCHER_UI_EXPORT DashboardDock final : public QWidget {
     Q_OBJECT
 public:
     explicit DashboardDock(QWidget *parent = nullptr);
