@@ -4,6 +4,7 @@
 #include <QApplication>
 #include <QAbstractButton>
 #include <QFile>
+#include <QElapsedTimer>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QMimeData>
@@ -26,9 +27,36 @@
 #include <QTimer>
 #include <QToolButton>
 
+namespace {
+int panelTabIndex(QTabWidget *group, CanvasPanel *frame)
+{
+    const QString id = frame->objectName().mid(QString("dashboardPanel_").size());
+    for (int index = 0; index < group->count(); ++index) {
+        if (group->widget(index)->property("dashboardPanelId").toString() == id)
+            return index;
+    }
+    return -1;
+}
+
+bool selectedFrameIsVisible(QTabWidget *group, CanvasPanel *frame)
+{
+    const int index = panelTabIndex(group, frame);
+    if (index < 0 || group->currentIndex() != index)
+        return false;
+    QWidget *slot = group->currentWidget();
+    return slot->isAncestorOf(frame) && frame->isVisibleTo(group)
+        && slot->rect().contains(QRect(frame->mapTo(slot, QPoint()), frame->size()));
+}
+}
+
 class DashboardWorkspaceTest : public QObject {
     Q_OBJECT
 private slots:
+    void keepsContentOwnedContainersUnchanged();
+    void retainsTilingPresentationAcrossCanvasChanges();
+    void deferredConstraintsFollowHiddenFrameChanges();
+    void deferredTabsRetainMetadataAndAttachVisibleContent();
+    void deferredSelectionSurvivesModeChangesAndRemoval();
     void preservesLiveWidgetsAndBothArrangements();
     void replacingTileViewportPreservesMinimizedAndFloatingPanels();
     void restoresCanvasAfterStartupSizing();
@@ -49,6 +77,335 @@ private slots:
     void externalTileActionsFollowVisibilityAndTabGrouping();
 };
 
+void DashboardWorkspaceTest::keepsContentOwnedContainersUnchanged()
+{
+    DashboardWorkspace workspace("container-ownership");
+    workspace.resize(1300, 850);
+    workspace.show();
+    auto *content = new QWidget;
+    content->setFixedSize(460, 260);
+    auto *layout = new QVBoxLayout(content);
+    auto *innerTabs = new QTabWidget(content);
+    innerTabs->setObjectName("dashboardTabGroup");
+    innerTabs->setMovable(true);
+    auto *innerSplit = new QSplitter(Qt::Horizontal);
+    innerSplit->setObjectName("dashboardSplit");
+    innerSplit->setHandleWidth(13);
+    innerSplit->addWidget(new QLabel("owned left"));
+    innerSplit->addWidget(new QLabel("owned right"));
+    innerTabs->addTab(innerSplit, "Content");
+    innerTabs->addTab(new QLabel("intentionally unavailable"), "Hidden");
+    innerTabs->setTabVisible(1, false);
+    innerTabs->tabBar()->hide();
+    layout->addWidget(innerTabs);
+    auto *innerTimer = new QTimer(content);
+    innerTimer->setObjectName("dashboardPanelAttachTimer");
+    innerTimer->start(100000);
+    QVERIFY(workspace.addPanel("one", "One", content));
+    QVERIFY(workspace.addPanel("two", "Two", new QLabel("other panel")));
+    QCoreApplication::processEvents();
+    innerSplit->setSizes({120, 300});
+    const QList<int> originalSizes = innerSplit->sizes();
+    const auto verifyContent = [&]() {
+        return innerTabs->tabBar()->isHidden() && !innerTabs->isTabVisible(1)
+            && innerTabs->isMovable() && innerTabs->currentWidget() == innerSplit
+            && innerSplit->handleWidth() == 13 && innerSplit->sizes() == originalSizes
+            && !innerSplit->property("dashboardUnminimizedSizes").isValid()
+            && innerTimer->isActive();
+    };
+    QVERIFY(verifyContent());
+    for (int cycle = 0; cycle < 3; ++cycle) {
+        workspace.setMode("tiling");
+        QCoreApplication::processEvents();
+        QVERIFY(verifyContent());
+        QVERIFY(workspace.minimizePanel("two"));
+        QVERIFY(verifyContent());
+        QVERIFY(workspace.activatePanel("two"));
+        QVERIFY(verifyContent());
+        QVERIFY(workspace.togglePanelExpanded("one"));
+        QVERIFY(verifyContent());
+        QVERIFY(workspace.togglePanelExpanded("one"));
+        QVERIFY(verifyContent());
+        workspace.setMode("canvas");
+        QCoreApplication::processEvents();
+        QVERIFY(verifyContent());
+    }
+    const auto saved = workspace.saveLayout();
+    QVERIFY(workspace.restoreLayout(saved));
+    QVERIFY(verifyContent());
+}
+
+void DashboardWorkspaceTest::retainsTilingPresentationAcrossCanvasChanges()
+{
+    DashboardWorkspace workspace("retained-presentation");
+    workspace.resize(1300, 800);
+    workspace.show();
+    QPointer<QLineEdit> first = new QLineEdit("first draft");
+    QPointer<QLineEdit> second = new QLineEdit("second draft");
+    QPointer<QLineEdit> third = new QLineEdit("third draft");
+    QVERIFY(workspace.addPanel("one", "One", first));
+    QVERIFY(workspace.addPanel("two", "Two", second));
+    QVERIFY(workspace.addPanel("three", "Three", third));
+    workspace.setMode("tiling");
+    QVERIFY(workspace.dockPanel("two", "one", "tab"));
+    QVERIFY(workspace.activatePanel("one"));
+    QCoreApplication::processEvents();
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    auto *firstFrame = workspace.findChild<CanvasPanel *>("dashboardPanel_one");
+    auto *secondFrame = workspace.findChild<CanvasPanel *>("dashboardPanel_two");
+    auto *thirdFrame = workspace.findChild<CanvasPanel *>("dashboardPanel_three");
+    QPointer<QScrollArea> viewport = workspace.findChild<QScrollArea *>("dashboardTileViewport");
+    QPointer<QTabWidget> group;
+    for (auto *candidate : workspace.findChildren<QTabWidget *>()) {
+        if (panelTabIndex(candidate, firstFrame) >= 0)
+            group = candidate;
+    }
+    QVERIFY(group && viewport);
+    QPointer<QWidget> page = group->currentWidget();
+    QPointer<QWidget> controls = group->tabBar()->tabButton(group->currentIndex(), QTabBar::LeftSide);
+    const QJsonObject savedTree = workspace.saveLayout().value("tree").toObject();
+    const int objectCount = workspace.findChildren<QObject *>().size();
+    for (int cycle = 0; cycle < 5; ++cycle) {
+        workspace.setMode("canvas");
+        QVERIFY(viewport && group && page && controls);
+        QVERIFY(!viewport->isVisible());
+        QCOMPARE(firstFrame->parentWidget(), &workspace);
+        QCOMPARE(secondFrame->parentWidget(), &workspace);
+        QCOMPARE(workspace.saveLayout().value("tree").toObject(), savedTree);
+        QCoreApplication::processEvents();
+        QVERIFY(first->isVisible() && second->isVisible() && third->isVisible());
+        workspace.setMode("tiling");
+        QCOMPARE(workspace.findChild<QScrollArea *>("dashboardTileViewport"), viewport.data());
+        QCOMPARE(group->currentWidget(), page.data());
+        QCOMPARE(group->tabBar()->tabButton(group->currentIndex(), QTabBar::LeftSide), controls.data());
+        QVERIFY(selectedFrameIsVisible(group, firstFrame));
+        QVERIFY(!second->isVisible());
+        QCOMPARE(workspace.findChildren<QObject *>().size(), objectCount);
+    }
+    workspace.setMode("canvas");
+    workspace.setPanelTitle("two", "Changed while canvas");
+    QPixmap pixels(12, 12);
+    pixels.fill(Qt::cyan);
+    QIcon icon(pixels);
+    workspace.setPanelIcon("two", icon);
+    const int secondIndex = panelTabIndex(group, secondFrame);
+    QCOMPARE(group->tabText(secondIndex), QString("Changed while canvas"));
+    QCOMPARE(group->tabIcon(secondIndex).cacheKey(), icon.cacheKey());
+    workspace.setCompactTiling(false);
+    second->setMinimumSize(400, 200);
+    workspace.resize(1450, 900);
+    workspace.setMode("tiling");
+    QVERIFY(selectedFrameIsVisible(group, firstFrame));
+    QVERIFY(workspace.activatePanel("two"));
+    QVERIFY(selectedFrameIsVisible(group, secondFrame));
+    QVERIFY(second->width() >= 400 && second->height() >= 200);
+    for (auto *split : workspace.findChildren<QSplitter *>())
+        QCOMPARE(split->handleWidth(), 7);
+    const auto beforeMinimize = workspace.saveLayout().value("tree");
+    QVERIFY(workspace.minimizePanel("three"));
+    workspace.setMode("canvas");
+    QVERIFY(workspace.activatePanel("three"));
+    workspace.setMode("tiling");
+    QCoreApplication::processEvents();
+    QVERIFY(third->isVisible());
+    QVERIFY(thirdFrame->width() >= thirdFrame->minimumWidth());
+    QCOMPARE(workspace.saveLayout().value("tree"), beforeMinimize);
+    const QJsonObject layout = workspace.saveLayout();
+    workspace.setMode("canvas");
+    QVERIFY(workspace.restoreLayout(layout));
+    QVERIFY(!viewport && !group && !page && !controls);
+    QVERIFY(first && second && third);
+    QCOMPARE(first->text(), QString("first draft"));
+    QCOMPARE(second->text(), QString("second draft"));
+    QCOMPARE(third->text(), QString("third draft"));
+}
+
+void DashboardWorkspaceTest::deferredConstraintsFollowHiddenFrameChanges()
+{
+    DashboardWorkspace workspace("constraints");
+    workspace.resize(1200, 800);
+    workspace.show();
+    auto *content = new QLabel("Wrapped content tests dynamic height for width.");
+    QVERIFY(workspace.addPanel("one", "One", new QLabel("active")));
+    QVERIFY(workspace.addPanel("two", "Two", content));
+    workspace.setMode("tiling");
+    QVERIFY(workspace.dockPanel("two", "one", "tab"));
+    QVERIFY(workspace.activatePanel("one"));
+    workspace.setMode("canvas");
+    workspace.setMode("tiling");
+    auto *frame = workspace.findChild<CanvasPanel *>("dashboardPanel_two");
+    auto *group = workspace.findChild<QTabWidget *>();
+    QVERIFY(frame);
+    QVERIFY(group);
+    auto *page = group->widget(group->tabText(0) == "Two" ? 0 : 1);
+    QCoreApplication::processEvents();
+    const QSize unchangedGeometry = frame->size();
+    const QSize originalGroupMinimum = group->minimumSizeHint();
+    frame->setMinimumSize(320, 160);
+    QCoreApplication::processEvents();
+    QCOMPARE(frame->size(), unchangedGeometry);
+    QCOMPARE(group->minimumSizeHint().width(), originalGroupMinimum.width() + 40);
+    QCOMPARE(page->minimumSize(), frame->minimumSize());
+    frame->setMinimumSize(180, 80);
+    QCoreApplication::processEvents();
+    QCOMPARE(frame->size(), unchangedGeometry);
+    QCOMPARE(group->minimumSizeHint(), originalGroupMinimum);
+    QCOMPARE(page->minimumSize(), frame->minimumSize());
+
+    frame->setMaximumSize(frame->width() + 100, frame->height() + 100);
+    QCoreApplication::processEvents();
+    group->sizeHint();
+    QCOMPARE(frame->size(), unchangedGeometry);
+    QCOMPARE(page->maximumSize(), frame->maximumSize());
+    frame->setMaximumSize(frame->width() + 200, frame->height() + 200);
+    QCoreApplication::processEvents();
+    group->minimumSizeHint();
+    QCOMPARE(frame->size(), unchangedGeometry);
+    QCOMPARE(page->maximumSize(), frame->maximumSize());
+
+    frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    group->sizeHint();
+    QCOMPARE(page->sizePolicy(), frame->sizePolicy());
+    QVERIFY(!frame->hasHeightForWidth());
+    content->setWordWrap(true);
+    QCoreApplication::processEvents();
+    QVERIFY(frame->hasHeightForWidth());
+    QVERIFY(page->hasHeightForWidth());
+    QCOMPARE(page->heightForWidth(200), frame->heightForWidth(200));
+    QVERIFY(workspace.activatePanel("two"));
+    QVERIFY(content->isVisible());
+    QVERIFY(selectedFrameIsVisible(group, frame));
+    QVERIFY(frame->width() <= frame->maximumWidth());
+    QVERIFY(frame->height() <= frame->maximumHeight());
+    QVERIFY(frame->width() >= frame->minimumWidth());
+    QVERIFY(frame->height() >= frame->minimumHeight());
+}
+
+void DashboardWorkspaceTest::deferredTabsRetainMetadataAndAttachVisibleContent()
+{
+    DashboardWorkspace workspace("deferred-metadata");
+    workspace.resize(1000, 700);
+    workspace.show();
+    auto *first = new QLineEdit("first retained value");
+    auto *second = new QLineEdit("second retained value");
+    auto *third = new QLabel("Wrapped content retains its height-for-width layout contract.");
+    third->setWordWrap(true);
+    QVERIFY(workspace.addPanel("one", "One", first));
+    QVERIFY(workspace.addPanel("two", "Two", second));
+    QVERIFY(workspace.addPanel("three", "Three", third));
+    workspace.setMode("tiling");
+    QVERIFY(workspace.dockPanel("two", "one", "tab"));
+    QVERIFY(workspace.dockPanel("three", "one", "tab"));
+    QVERIFY(workspace.activatePanel("one"));
+    workspace.setMode("canvas");
+    workspace.setMode("tiling");
+    auto *group = workspace.findChild<QTabWidget *>();
+    QVERIFY(group);
+    QCOMPARE(group->count(), 3);
+    const auto tabIndex = [group](const QString &title) {
+        for (int index = 0; index < group->count(); ++index) {
+            if (group->tabText(index) == title)
+                return index;
+        }
+        return -1;
+    };
+    auto *secondFrame = workspace.findChild<CanvasPanel *>("dashboardPanel_two");
+    auto *thirdFrame = workspace.findChild<CanvasPanel *>("dashboardPanel_three");
+    QVERIFY(secondFrame);
+    QVERIFY(thirdFrame);
+    QVERIFY(!group->widget(tabIndex("Two"))->isAncestorOf(second));
+    QWidget *thirdPage = group->widget(tabIndex("Three"));
+    QCOMPARE(thirdPage->hasHeightForWidth(), thirdFrame->hasHeightForWidth());
+    QCOMPARE(thirdPage->heightForWidth(250), thirdFrame->heightForWidth(250));
+    third->setMinimumSize(420, 140);
+    QCoreApplication::processEvents();
+    QVERIFY(thirdPage->minimumSizeHint().width() >= 420);
+    QVERIFY(thirdPage->minimumSizeHint().height() >= 140);
+
+    workspace.setPanelTitle("two", "Renamed two");
+    QPixmap iconPixels(12, 12);
+    iconPixels.fill(Qt::green);
+    const QIcon icon(iconPixels);
+    workspace.setPanelIcon("two", icon);
+    int index = tabIndex("Renamed two");
+    QVERIFY(index >= 0);
+    QCOMPARE(group->tabIcon(index).cacheKey(), icon.cacheKey());
+    group->tabBar()->setTabData(index, "retained metadata");
+    group->setTabToolTip(index, "retained tooltip");
+    group->tabBar()->moveTab(index, 1);
+    index = tabIndex("Renamed two");
+    QCOMPARE(index, 1);
+    QElapsedTimer elapsed;
+    elapsed.start();
+    group->tabBar()->setCurrentIndex(index);
+    QTRY_VERIFY_WITH_TIMEOUT(second->isVisible(), 100);
+    QVERIFY2(elapsed.elapsed() < 100, "First deferred selection exceeded the response deadline");
+    QVERIFY(selectedFrameIsVisible(group, secondFrame));
+    QCOMPARE(group->tabBar()->tabData(index).toString(), QString("retained metadata"));
+    QCOMPARE(group->tabToolTip(index), QString("retained tooltip"));
+    QCOMPARE(second->text(), QString("second retained value"));
+    QVERIFY(!first->isVisible());
+    QVERIFY(!third->isVisible());
+
+    QVERIFY(workspace.minimizePanel("one"));
+    QVERIFY(workspace.minimizePanel("two"));
+    QVERIFY(workspace.minimizePanel("three"));
+    QVERIFY(workspace.activatePanel("three"));
+    QVERIFY(third->isVisible());
+    QVERIFY(selectedFrameIsVisible(group, thirdFrame));
+    QVERIFY(workspace.togglePanelExpanded("three"));
+    QCOMPARE(workspace.expandedPanel(), QString("three"));
+    QVERIFY(third->isVisible());
+    QVERIFY(workspace.togglePanelExpanded("three"));
+}
+
+void DashboardWorkspaceTest::deferredSelectionSurvivesModeChangesAndRemoval()
+{
+    DashboardWorkspace workspace("deferred-lifetime");
+    workspace.resize(1000, 700);
+    workspace.show();
+    QPointer<QLineEdit> first = new QLineEdit("first retained value");
+    QPointer<QLineEdit> second = new QLineEdit("second retained value");
+    QVERIFY(workspace.addPanel("one", "One", first));
+    QVERIFY(workspace.addPanel("two", "Two", second));
+    workspace.setMode("tiling");
+    QVERIFY(workspace.dockPanel("two", "one", "tab"));
+    QVERIFY(workspace.activatePanel("one"));
+    workspace.setMode("canvas");
+    workspace.setMode("tiling");
+    QPointer<QTabWidget> oldGroup = workspace.findChild<QTabWidget *>();
+    QVERIFY(oldGroup);
+    const int secondIndex = oldGroup->tabText(0) == "Two" ? 0 : 1;
+    oldGroup->tabBar()->setCurrentIndex(secondIndex);
+    workspace.setMode("canvas");
+    QVERIFY(oldGroup);
+    QVERIFY(!oldGroup->isVisible());
+    QCoreApplication::processEvents();
+    QVERIFY(first);
+    QVERIFY(second);
+    QVERIFY(first->isVisible());
+    QVERIFY(second->isVisible());
+    QCOMPARE(second->text(), QString("second retained value"));
+
+    workspace.setMode("tiling");
+    QVERIFY(workspace.activatePanel("one"));
+    workspace.setMode("canvas");
+    workspace.setMode("tiling");
+    auto *group = workspace.findChild<QTabWidget *>();
+    QVERIFY(group);
+    group->tabBar()->setCurrentIndex(group->tabText(0) == "Two" ? 0 : 1);
+    QSignalSpy destroyed(second, &QObject::destroyed);
+    workspace.removePanel("two");
+    QCoreApplication::processEvents();
+    QVERIFY(!oldGroup);
+    QVERIFY(!second);
+    QCOMPARE(destroyed.count(), 1);
+    QVERIFY(first);
+    QVERIFY(workspace.activatePanel("one"));
+    QVERIFY(first->isVisible());
+    QCOMPARE(first->text(), QString("first retained value"));
+}
+
 void DashboardWorkspaceTest::externalTilesFillPaneAndRetainMenuActions()
 {
     DashboardWorkspace workspace("external-tiles");
@@ -63,7 +420,7 @@ void DashboardWorkspaceTest::externalTilesFillPaneAndRetainMenuActions()
     auto *frame = workspace.findChild<CanvasPanel *>("dashboardPanel_app");
     QTabWidget *group = nullptr;
     for (auto *candidate : workspace.findChildren<QTabWidget *>()) {
-        if (candidate->indexOf(frame) >= 0)
+        if (panelTabIndex(candidate, frame) >= 0)
             group = candidate;
     }
     QVERIFY(group);
@@ -238,9 +595,9 @@ void DashboardWorkspaceTest::preservesLiveWidgetsAndBothArrangements()
     QCOMPARE(workspace.findChild<QTabWidget *>()->count(), 2);
     auto *tabs = workspace.findChild<QTabWidget *>();
     QVERIFY(workspace.activatePanel("one"));
-    QCOMPARE(tabs->currentWidget(), frame);
+    QVERIFY(selectedFrameIsVisible(tabs, frame));
     QVERIFY(workspace.activatePanel("two"));
-    QCOMPARE(tabs->currentWidget(), workspace.findChild<CanvasPanel *>("dashboardPanel_two"));
+    QVERIFY(selectedFrameIsVisible(tabs, workspace.findChild<CanvasPanel *>("dashboardPanel_two")));
     QVERIFY(!workspace.activatePanel("missing"));
     QCOMPARE(retained->text(), QString("ongoing session"));
     auto *floating = workspace.findChild<CanvasPanel *>("dashboardPanel_three");
@@ -448,7 +805,8 @@ void DashboardWorkspaceTest::tightTilesFillPanesAndMinimizeToDock()
     QCOMPARE(split->widget(1)->x(), split->widget(0)->width());
     for (auto *group : workspace.findChildren<QTabWidget *>()) {
         QCOMPARE(group->tabBar()->tabRect(0).width(), group->width());
-        auto *frame = group->currentWidget();
+        auto *frame = group->currentWidget()->findChild<CanvasPanel *>();
+        QVERIFY(frame);
         QCOMPARE(frame->width(), group->width());
         QCOMPARE(frame->layout()->contentsMargins(), QMargins());
         auto *controls = group->tabBar()->tabButton(0, QTabBar::LeftSide);
@@ -532,7 +890,7 @@ void DashboardWorkspaceTest::tiledChromeUsesOneHeaderAndRetainsActions()
     QPixmap iconImage(16, 16);
     iconImage.fill(Qt::cyan);
     workspace.setPanelIcon("one", QIcon(iconImage));
-    const int index = group->indexOf(frame);
+    const int index = panelTabIndex(group, frame);
     QCOMPARE(group->tabText(index), QString("Updated app title"));
     QVERIFY(!group->tabIcon(index).isNull());
     QSignalSpy opened(open, &QPushButton::clicked);
@@ -561,7 +919,7 @@ void DashboardWorkspaceTest::tiledChromeUsesOneHeaderAndRetainsActions()
     workspace.setCompactTiling(true);
     workspace.setMode("tiling");
     group = workspace.findChild<QTabWidget *>();
-    const int closingIndex = group->indexOf(frame);
+    const int closingIndex = panelTabIndex(group, frame);
     auto *close = group->tabBar()->tabButton(closingIndex, QTabBar::LeftSide)->findChild<QAbstractButton *>("dashboardTabClose");
     QVERIFY(close);
     QCOMPARE(close->objectName(), QString("dashboardTabClose"));
@@ -643,7 +1001,7 @@ void DashboardWorkspaceTest::droppingOnTabStripJoinsGroup()
     auto *targetFrame = workspace.findChild<CanvasPanel *>("dashboardPanel_one");
     QTabWidget *targetGroup = nullptr;
     for (auto *group : workspace.findChildren<QTabWidget *>()) {
-        if (group->indexOf(targetFrame) >= 0)
+        if (panelTabIndex(group, targetFrame) >= 0)
             targetGroup = group;
     }
     QVERIFY(targetGroup);
@@ -721,13 +1079,13 @@ void DashboardWorkspaceTest::expandsTilesWithoutReparentingLiveContent()
     QPointer<QSplitter> retainedSplit = workspace.findChild<QSplitter *>();
     QPointer<QTabWidget> retainedGroup;
     for (auto *group : workspace.findChildren<QTabWidget *>()) {
-        if (group->indexOf(frame) >= 0)
+        if (panelTabIndex(group, frame) >= 0)
             retainedGroup = group;
     }
     QVERIFY(retainedGroup);
     QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
     const int objectCount = workspace.findChildren<QObject *>().size();
-    const int index = retainedGroup->indexOf(frame);
+    const int index = panelTabIndex(retainedGroup, frame);
     auto *expand = retainedGroup->tabBar()->tabButton(index, QTabBar::LeftSide)->findChild<QAbstractButton *>("dashboardTabExpand");
     QVERIFY(expand);
     expand->click();
@@ -741,7 +1099,7 @@ void DashboardWorkspaceTest::expandsTilesWithoutReparentingLiveContent()
     QCOMPARE(workspace.saveLayout(), saved);
     QCOMPARE(workspace.findChildren<QObject *>().size(), objectCount);
     // Group tabs remain usable while expanded, including the restore control.
-    const int secondIndex = retainedGroup->indexOf(workspace.findChild<CanvasPanel *>("dashboardPanel_two"));
+    const int secondIndex = panelTabIndex(retainedGroup, workspace.findChild<CanvasPanel *>("dashboardPanel_two"));
     retainedGroup->setCurrentIndex(secondIndex);
     QCOMPARE(workspace.expandedPanel(), QString("two"));
     QVERIFY(workspace.togglePanelExpanded("two"));
@@ -778,7 +1136,7 @@ void DashboardWorkspaceTest::expansionRestoresBeforeRemovalAndLayoutChanges()
     connect(&workspace, &DashboardWorkspace::panelCloseRequested, &workspace, &DashboardWorkspace::removePanel);
     auto *frame = workspace.findChild<CanvasPanel *>("dashboardPanel_one");
     for (auto *group : workspace.findChildren<QTabWidget *>()) {
-        const int index = group->indexOf(frame);
+        const int index = panelTabIndex(group, frame);
         if (index < 0)
             continue;
         auto *close = group->tabBar()->tabButton(index, QTabBar::LeftSide)->findChild<QAbstractButton *>("dashboardTabClose");
