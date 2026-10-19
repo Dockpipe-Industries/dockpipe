@@ -23,6 +23,18 @@ timeout 90 xvfb-run -a env QT_QPA_PLATFORM=xcb LIBGL_ALWAYS_SOFTWARE=1 SDL_AUDIO
   "DOCKPIPE_WORKSPACE_PACKAGE=$build/cockpit-package/assets" "$build/cockpit-package-rendering-test"
 work="$(mktemp -d "$build/cockpit-release.XXXXXX")"
 trap 'rm -rf -- "$work"' EXIT
+printf '%s\n' "$version" > "$work/VERSION"
+# Preserve the source publisher identity without inheriting repository output
+# paths or unrelated configuration into this writable compilation workspace.
+python3 - "$repo_root/dockpipe.config.json" "$work/dockpipe.config.json" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+source = json.loads(Path(sys.argv[1]).read_text())
+namespace = source["packages"]["namespace"]
+Path(sys.argv[2]).write_text(json.dumps({"packages": {"namespace": namespace}}) + "\n")
+PY
 resolver="$work/source/resolvers/cockpit"
 mkdir -p "$resolver"
 cp "$package_root/resolvers/cockpit/package.yml" "$resolver/"
@@ -40,6 +52,6 @@ timeout 90 xvfb-run -a env QT_QPA_PLATFORM=xcb LIBGL_ALWAYS_SOFTWARE=1 SDL_AUDIO
   "DOCKPIPE_WORKSPACE_PACKAGE=$resolver/assets" \
   "$build/cockpit-package-rendering-test"
 export DOCKPIPE_PACKAGES_ROOT="$work/compiled"
-"$dockpipe_bin" package compile resolvers --workdir "$repo_root" --from "$work/source" --force
-"$dockpipe_bin" package build store --workdir "$repo_root" --only resolvers --out "$out" --version "$version"
+"$dockpipe_bin" package compile resolvers --workdir "$work" --from "$work/source" --force
+"$dockpipe_bin" package build store --workdir "$work" --only resolvers --out "$out" --version "$version"
 python3 "$script_dir/protect-runtime.py" --write-receipt "$out" --sdk "$sdk" --repo-root "$repo_root"
