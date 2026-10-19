@@ -1,5 +1,5 @@
 name: mcp-registry.verify
-description: Verify read-only MCP registry discovery and configured-server contracts.
+description: Verify MCP registry, artifact and internal supervised-session contracts.
 vault: none
 docker_preflight: false
 steps:
@@ -14,7 +14,7 @@ steps:
   - id: contracts
     kind: host
     cwd: repo
-    cmd: go test ./src/lib/infrastructure/mcpbundle ./src/lib/model/mcp ./src/lib/domain/mcp ./src/lib/infrastructure/mcpregistry ./src/lib/domain ./src/lib/model/project
+    cmd: go test ./src/lib/infrastructure/process ./src/lib/infrastructure/mcpsession ./src/lib/infrastructure/mcpbundle ./src/lib/model/mcp ./src/lib/domain/mcp ./src/lib/infrastructure/mcpregistry ./src/lib/domain ./src/lib/model/project
   - id: cli
     kind: host
     cwd: repo
@@ -22,7 +22,7 @@ steps:
   - id: vet
     kind: host
     cwd: repo
-    cmd: go vet ./src/lib/infrastructure/mcpbundle ./src/lib/model/mcp ./src/lib/domain/mcp ./src/lib/infrastructure/mcpregistry
+    cmd: go vet ./src/lib/infrastructure/mcpsession ./src/lib/infrastructure/mcpbundle ./src/lib/model/mcp ./src/lib/domain/mcp ./src/lib/infrastructure/mcpregistry
   - id: build-cli
     kind: host
     cwd: repo

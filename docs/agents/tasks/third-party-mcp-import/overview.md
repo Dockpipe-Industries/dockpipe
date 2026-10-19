@@ -13,7 +13,12 @@ business logic. Include the shared CLI/UI parity and process-lifecycle acceptanc
 Backlog; initial architecture requirement, added 2026-10-17. Depends on
 [TASK-039](../unified-mcp-gateway/overview.md) registry, authentication, profiles and lifecycle
 contracts. Implements sections 5 and 14 of the [design request](../unified-mcp-gateway/design-request.md).
-TASK-038 is a sibling, not an implementation dependency. No external server has been connected.
+TASK-038 is a sibling, not an implementation dependency. No external server has been connected
+through a configured DockPipe runtime/gateway. The internal `mcpsession` owner now
+uses the official Go SDK and existing process-tree supervision; neutral child
+fixtures verify protocol/cancellation/recovery behavior. Import authority, receipt
+reverification, runtime command adaptation and CLI/gateway exposure remain pending.
+See [the precise component boundary](../../../runtime/mcp-registry.md#internal-session-owner-and-pending-application-integration).
 
 ## Scope
 
