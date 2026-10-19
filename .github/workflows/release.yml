@@ -398,7 +398,7 @@ jobs:
     uses: ./.github/workflows/flatpak.yml
     with:
       version: ${{ needs.meta.outputs.version }}
-      staging: ${{ inputs.staging }}
+      staging: ${{ inputs.staging == true }}
     permissions:
       contents: read
 
