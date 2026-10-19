@@ -156,7 +156,7 @@ and downloading, registration, update selection, approved sessions and dedicated
 removal UX remain pending. No FreeFlight-specific package or alternate registry
 has been added.
 
-## Session and Registry installation continuation (not implemented)
+## Internal session owner and pending application integration
 
 The missing Registry-to-session path is a platform implementation gap, not a
 credential denial or an external approval failure. Local artifact installation is
@@ -169,36 +169,46 @@ validation cannot establish an installed, running server:
 | [`InstallWithDependenciesUsingCodec`](../../src/lib/infrastructure/packagecatalog/install_dependencies.go) | Stages and publishes the existing catalog dependency closure. Its dependency resolver selects DockPipe catalog entries, not npm, PyPI, or MCPB runtime requirements. Preserve this store and dependency model. |
 | [`ImageArtifactManifest`](../../src/lib/model/runtimeartifact/model.go) and [`maybeSkipDockerBuildForArtifact`](../../src/lib/application/run_image_artifact.go) | Represent and reuse materialized Docker images for compiled workflows. They are not a native MCPB installer or a long-lived upstream MCP session owner. |
 | [`CompileSecurityPolicyForWorkflow`](../../src/lib/application/internal/runtimepolicy/security.go) and [`ApplyCompiledRuntimeManifest`](../../src/lib/application/internal/runtimepolicy/runtime.go) | Compile and apply runtime security to `RunOpts`. Several controls map to container options; a host process does not acquire equivalent isolation by naming a runtime profile. |
-| [`runMCP`](../../src/lib/application/mcp_cmd.go), [`mcp` models](../../src/lib/model/mcp/model.go) and [domain validation](../../src/lib/domain/mcp/config.go) | Read Registry metadata and validate authored server contracts. Local bundle artifact inspection/installation is implemented; upstream initialization, tool discovery, invocation, restart and shutdown remain absent. |
+| [`runMCP`](../../src/lib/application/mcp_cmd.go), [`mcp` models](../../src/lib/model/mcp/model.go) and [domain validation](../../src/lib/domain/mcp/config.go) | Read Registry metadata and validate authored server contracts. Local bundle artifact inspection/installation is implemented; the internal `mcpsession` package supplies supervised protocol operations, but application launch authority, configured runtime adaptation and CLI/session exposure remain absent. |
 
-The smallest proposed general continuation is **one explicitly supported MCPB
-binary/stdio subset**, independent of any named server. This is proposed scope,
-not a new accepted configuration surface or an implementation claim:
+The local MCPB binary/stdio adapter above implements bounded inspection and
+installation. Registry-selected artifact downloading and project registration are
+still pending; the existing Registry metadata remains inert.
 
-1. Select a concrete Registry version and one MCPB artifact. The
-   [Registry format](https://github.com/modelcontextprotocol/registry/blob/main/docs/reference/server-json/generic-server-json.md)
-   supplies an artifact URL through `identifier` and integrity through
-   `fileSha256`. Retain both in a reviewed installation plan; a digest verifies
-   bytes, not publisher trust or execution authority.
-2. Add a bounded MCPB artifact adapter beneath the existing package/artifact
-   lifecycle. Stage verified bytes using existing path/store ownership helpers;
-   validate ZIP members, expansion size, duplicates, traversal and links before
-   atomic publication. Never execute installation hooks or bundle contents during
-   inspection. Keep provenance, selected platform and digest in the install receipt;
-   use the existing update/removal lifecycle rather than a second registry/store.
-3. Interpret a deliberately limited version of the
-   [MCPB manifest](https://github.com/anthropics/mcpb/blob/main/MANIFEST.md).
-   Validate platform compatibility and binary architecture separately; platform
-   labels alone do not prove architecture. Resolve only a contained binary entry
-   point and reviewed literal arguments. Reject unsupported interpolation,
-   external commands and runtime installation requirements in this first subset.
-   Map the resulting absolute path and working directory into existing
-   `mcp.servers`; retain secrets as references. Installation must not start it.
-4. Add a shared runtime-owned stdio session primitive with explicit startup,
-   bounded framing/queues/deadlines, MCP initialization and tool discovery,
-   cancellation, descendant cleanup, shutdown and controlled recovery. CLI and
-   later gateway/desktop consumers must call the same implementation. Do not
-   introduce gateway forwarding as a side effect of installing a bundle.
+[`mcpsession`](../../src/lib/infrastructure/mcpsession/session.go) now supplies an
+**internal protocol owner**, not a CLI launch command or gateway:
+
+- The official MIT-licensed [Go SDK v1.8.0](https://github.com/modelcontextprotocol/go-sdk/releases/tag/v1.8.0)
+  negotiates 2026-07-28 discovery with legacy initialization fallback. Dependency
+  versions and module checksums are pinned in `go.mod`/`go.sum`.
+- An application-supplied command factory must prepare an already authorized,
+  context-bound command with explicit environment, absolute executable/cwd and
+  unassigned stdio. Existing `process.RunObserved` owns Unix process groups and
+  Windows kill-on-close jobs. This API does not approve a host process or apply a
+  configured runtime by itself.
+- Startup and requests have 30-second deadlines. Frames are bounded at 16 MiB;
+  aggregate discovery and retained SDK tool metadata at 8 MiB, with 1,024 tools,
+  pages and retained cursor slots. One operation runs at a time; concurrent
+  submissions fail instead of queueing. Cache exhaustion requires an explicit
+  reviewed reconnect. Stderr is discarded rather than retained or forwarded.
+- Discovery returns sorted tool metadata and its SHA256. Calls require the
+  caller's reviewed digest and recheck fresh metadata; upstream TTL hints cannot
+  silently bypass that check. No tool annotations, roots, sampling, elicitation,
+  secrets or Registry description grants execution authority.
+- Stop closes protocol pipes, allows up to three seconds per shutdown phase,
+  and forces process-tree cancellation when needed (nine seconds maximum).
+  Crashes fail outstanding calls. Recovery requires a fresh explicit Start;
+  no mutation or prior request is replayed. Request cancellation is not proof
+  that a remote side effect was rolled back.
+
+The exact next integration point is `runMCP` plus the existing runtime policy
+compiler/application path: validate the selected project server and install
+receipt, reverify launch bytes, bind an import-specific authority record, prepare
+an enforceable runtime command, then call `mcpsession.Start`. The shipped runtime
+profiles currently provide container/VM/package execution; there is no approved
+native-host adapter for an imported bundle. Do not silently ignore the configured
+runtime or manufacture a host grant. CLI start/invoke/stop/restart and gateway
+forwarding remain unavailable until that adapter and approval linkage exist.
 
 Authorization must bind the selected artifact digest/version, effective launch
 arguments, workspace access, runtime policy fingerprint and per-import secret
@@ -221,6 +231,10 @@ only its owned artifacts. Negative cases must reject digest/platform mismatches,
 unsafe ZIP entries, unsupported configuration, stale approval and secret leakage.
 Run the supported OS matrix. Contract fixtures alone cannot satisfy this gate;
 **no Registry installation/session end-to-end evidence exists in this PR**.
+The internal owner is tested with neutral child-process fixtures for exact tool
+results, explicit environment isolation, stale tool metadata, bounded caching,
+request cancellation, crash/no replay, explicit replacement and idempotent stop.
+These are component tests, not configured-runtime or gateway acceptance.
 
 ## Development verification
 
