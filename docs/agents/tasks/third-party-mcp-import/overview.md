@@ -90,6 +90,16 @@ and this task's existing security/acceptance requirements remain intact. Backlog
 The scoped registry foundation adds CLI search/version metadata and
 validation of `mcp.servers` in the existing project configuration. See
 [the public contract](../../../runtime/mcp-registry.md) for exact behavior, bounds,
-verification and remaining gaps. It does not install, connect, launch, authorize or
+verification and remaining gaps. Registry discovery does not install, connect, launch, authorize or
 expose imported servers. TASK-040's gateway, process lifecycle, policy, desktop and
 federated-import acceptance gates remain open; no external server is connected.
+
+
+## Local artifact milestone
+
+The generic `mcp bundle inspect/install` CLI now verifies and materializes a limited
+MCPB 0.3 native binary subset under the existing project artifact cache. Tests cover
+identity/architecture, traversal/alias rejection, unsupported launch contracts,
+checksum mismatch, cancellation, staging cleanup and no overwrite. This does not
+complete TASK-040: Registry URL selection, configured registration, execution grants,
+shared upstream sessions, lifecycle controls and gateway forwarding remain pending.

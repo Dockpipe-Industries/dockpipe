@@ -2,8 +2,9 @@
 
 DockPipe can read the public Official MCP Registry and validate selected local or
 remote server configuration. This is a bounded foundation for TASK-040, **not a
-running gateway or server importer**. No package is installed, no process or remote
-MCP connection starts, and no tools or authority are granted by these commands.
+running gateway or server importer**. Discovery does not install anything. The
+explicit local MCPB artifact commands below inspect or materialize a limited native
+bundle subset; no process or remote MCP connection starts and no authority is granted.
 
 ## CLI
 
@@ -103,7 +104,7 @@ adds no network, process or persistent service dependency.
 
 ## Remaining TASK-039/040 work
 
-Not implemented here: installation, runtime/dependency resolution, trust approval,
+Not implemented here: Registry-selected installation, runtime/dependency resolution, trust approval,
 managed process lifecycle, MCP initialization/tool discovery or forwarding, protocol
 compatibility tests against actual servers, namespace collision with native tools,
 capability profiles, authentication exchange, restart/reconnect, schema-change
@@ -116,11 +117,50 @@ substitute for that missing capability. This change preserves existing engine,
 model/domain/infrastructure/application ownership and adds no package registry,
 package type, bucket, daemon, or configuration store.
 
-## Installation and session continuation (not implemented)
+## Local MCPB artifact adapter
 
-The missing installation/session path is a platform implementation gap, not a
-credential denial or an external approval failure. This PR proves discovery and
-configuration validation only. The following inspected APIs explain why passing
+```sh
+dockpipe mcp bundle inspect --path server.mcpb --sha256 <reviewed-digest> --platform linux --arch amd64
+dockpipe mcp bundle install --workdir /path/to/project --path server.mcpb --sha256 <reviewed-digest> --platform linux --arch amd64
+```
+
+These generic commands accept a local archive and mandatory expected digest. They
+support MCPB 0.3 binary servers with an explicit compatible platform and contained
+`${__dirname}/<entry_point>` command and no runtime provisioning or environment
+injection. Arguments may be literal or one exact `${user_config.<name>}` directory
+binding. Required, non-secret, single directory fields are supported through an
+explicit operator JSON file (`--user-config bindings.json`) and `--workspace-root`.
+For example, the JSON may contain `{"workspace":"/absolute/project"}`. Directory
+values must exist and canonicalize within the canonical authorized root. Unknown
+fields, secret fields, defaults, multiple values and partial interpolation fail
+closed. The receipt binds effective arguments and the root with a configuration
+digest; this is provenance, not execution authority. Configuration changes select
+a separate immutable artifact destination. ELF64, PE and thin Mach-O headers must match
+the selected `amd64`/`arm64` target; universal Mach-O is currently rejected. Header
+validation identifies the target, not the trustworthiness or runnability of code.
+
+Archive limits match the catalog installer: 512 MiB compressed, 2 GiB expanded,
+100,000 members and 8 MiB metadata. Every member is streamed and CRC-checked;
+traversal, links, special files, case aliases and Windows-reserved paths fail closed.
+The installer first takes a private snapshot, validates it, extracts through a
+root-bounded filesystem handle, then atomically publishes a digest-addressed
+artifact beneath the existing project internal cache. It preserves the original
+archive and inspection receipt. Existing destinations are never overwritten;
+a different version/digest is a separate immutable artifact. Failed/cancelled staging
+is removed. Ordinary existing cache cleanup owns these disposable artifacts.
+
+This is artifact materialization, not an enabled import: project configuration,
+secret bindings and launch grants remain unchanged. Do not treat the returned
+executable path as proof of runtime authorization. Remote Registry artifact selection
+and downloading, registration, update selection, approved sessions and dedicated
+removal UX remain pending. No FreeFlight-specific package or alternate registry
+has been added.
+
+## Session and Registry installation continuation (not implemented)
+
+The missing Registry-to-session path is a platform implementation gap, not a
+credential denial or an external approval failure. Local artifact installation is
+tested separately; it does not establish a configured, authorized running server. The following inspected APIs explain why passing
 validation cannot establish an installed, running server:
 
 | Existing implementation | Reusable boundary and missing capability |
@@ -129,7 +169,7 @@ validation cannot establish an installed, running server:
 | [`InstallWithDependenciesUsingCodec`](../../src/lib/infrastructure/packagecatalog/install_dependencies.go) | Stages and publishes the existing catalog dependency closure. Its dependency resolver selects DockPipe catalog entries, not npm, PyPI, or MCPB runtime requirements. Preserve this store and dependency model. |
 | [`ImageArtifactManifest`](../../src/lib/model/runtimeartifact/model.go) and [`maybeSkipDockerBuildForArtifact`](../../src/lib/application/run_image_artifact.go) | Represent and reuse materialized Docker images for compiled workflows. They are not a native MCPB installer or a long-lived upstream MCP session owner. |
 | [`CompileSecurityPolicyForWorkflow`](../../src/lib/application/internal/runtimepolicy/security.go) and [`ApplyCompiledRuntimeManifest`](../../src/lib/application/internal/runtimepolicy/runtime.go) | Compile and apply runtime security to `RunOpts`. Several controls map to container options; a host process does not acquire equivalent isolation by naming a runtime profile. |
-| [`runMCP`](../../src/lib/application/mcp_cmd.go), [`mcp` models](../../src/lib/model/mcp/model.go) and [domain validation](../../src/lib/domain/mcp/config.go) | Read Registry metadata and validate authored server contracts. There is no installation command, upstream initialization, tool discovery, invocation, restart, or shutdown implementation here. |
+| [`runMCP`](../../src/lib/application/mcp_cmd.go), [`mcp` models](../../src/lib/model/mcp/model.go) and [domain validation](../../src/lib/domain/mcp/config.go) | Read Registry metadata and validate authored server contracts. Local bundle artifact inspection/installation is implemented; upstream initialization, tool discovery, invocation, restart and shutdown remain absent. |
 
 The smallest proposed general continuation is **one explicitly supported MCPB
 binary/stdio subset**, independent of any named server. This is proposed scope,
@@ -180,7 +220,7 @@ from a crash without replaying a mutation, shut down all descendants, and remove
 only its owned artifacts. Negative cases must reject digest/platform mismatches,
 unsafe ZIP entries, unsupported configuration, stale approval and secret leakage.
 Run the supported OS matrix. Contract fixtures alone cannot satisfy this gate;
-**no installation/session end-to-end evidence exists in this PR**.
+**no Registry installation/session end-to-end evidence exists in this PR**.
 
 ## Development verification
 
