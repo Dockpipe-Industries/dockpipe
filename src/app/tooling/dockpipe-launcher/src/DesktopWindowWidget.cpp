@@ -93,6 +93,7 @@ DesktopWindowWidget::DesktopWindowWidget(QWidget *parent)
     : QWidget(parent), m_state(std::make_unique<State>())
 {
     setObjectName("desktopWindowWidget");
+    setProperty("dashboardExternalApp", true);
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);

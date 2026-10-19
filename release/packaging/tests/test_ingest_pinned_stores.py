@@ -272,6 +272,86 @@ class BundleSafetyTests(unittest.TestCase):
 
 
 class CompositionTests(unittest.TestCase):
+    def cockpit_inputs(self, root):
+        baseline = root / 'baseline'
+        cockpit = root / 'cockpit'
+        baseline.mkdir()
+        cockpit.mkdir()
+        core = archive_entry('core', 'dockpipe.core', '0.6.20', b'current-core')
+        unrelated = archive_entry('workflow', 'unrelated', '1.2.3', b'preserve-unrelated')
+        old = archive_entry('resolver', 'cockpit', '0.1.0', b'old-cockpit')
+        new = archive_entry('resolver', 'cockpit', '0.1.1', b'qualified-cockpit')
+        for entry, payload in ((core, b'current-core'), (unrelated, b'preserve-unrelated'), (old, b'old-cockpit')):
+            write_archive(baseline, entry, payload)
+        write_archive(cockpit, new, b'qualified-cockpit')
+        base_manifest = {'schema': 1, 'platform': 'linux-amd64', 'packages': {
+            'core': core, 'resolvers': [old], 'workflows': [unrelated]}}
+        candidate = {'schema': 1, 'platform': 'linux-amd64', 'packages': {
+            'resolvers': [new], 'workflows': []}}
+        lock = {'artifact': {'sha256': 'a' * 64}, 'source_sha': 'b' * 40, 'public_redistribution': True}
+        receipt = {'schema': 1, 'platform': 'linux-amd64', 'qt_version': '6.10.3',
+                   'source_sha': 'd' * 40,
+                   'sdk_sha256': lock['artifact']['sha256'], 'sdk_source_sha': lock['source_sha'],
+                   'resolver': new,
+                   'checks': ['desktop-ctest', 'x11-spatial-gpu', 'x11-package-rendering', 'private-symbol-split',
+                              'bundled-runtime-closure', 'bundled-x11-package-rendering']}
+        for directory, manifest in ((baseline, base_manifest), (cockpit, candidate)):
+            (directory / 'packages-store-manifest.json').write_text(json.dumps(manifest))
+        (cockpit / 'cockpit-qualification.json').write_text(json.dumps(receipt))
+        return baseline, cockpit, base_manifest, candidate, receipt, lock
+
+    def test_cockpit_finalization_preserves_core_and_all_unowned_bytes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            baseline, cockpit, base, candidate, receipt, lock = self.cockpit_inputs(root)
+            read_json = ingest.read_json
+
+            def read(path, maximum):
+                return lock if path.name == 'forgepipe-sdk.lock.json' else read_json(path, maximum)
+
+            with mock.patch.object(ingest, 'read_json', side_effect=read), \
+                    mock.patch.dict(ingest.os.environ, {'DOCKPIPE_RELEASE_SOURCE_SHA': 'd' * 40}):
+                result = ingest.finalize_cockpit(baseline, cockpit, root / 'out', '0.6.20')
+            self.assertEqual(result['packages']['core'], base['packages']['core'])
+            self.assertEqual(result['packages']['workflows'], base['packages']['workflows'])
+            self.assertEqual(result['packages']['resolvers'], candidate['packages']['resolvers'])
+            for entry in (base['packages']['core'], base['packages']['workflows'][0]):
+                self.assertEqual((root / 'out' / entry['tarball']).read_bytes(), (baseline / entry['tarball']).read_bytes())
+            self.assertFalse((root / 'out' / base['packages']['resolvers'][0]['tarball']).exists())
+
+    def test_cockpit_finalization_rejects_wrong_owner_platform_sdk_and_modified_archive(self):
+        for failure in ('owner', 'platform', 'sdk', 'source', 'checks', 'core-version', 'archive'):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                baseline, cockpit, base, candidate, receipt, lock = self.cockpit_inputs(root)
+                version = '0.6.20'
+                if failure == 'owner':
+                    candidate['packages']['workflows'] = [base['packages']['workflows'][0]]
+                elif failure == 'platform':
+                    candidate['platform'] = 'linux-arm64'
+                elif failure == 'sdk':
+                    receipt['sdk_sha256'] = 'c' * 64
+                elif failure == 'source':
+                    receipt['source_sha'] = 'e' * 40
+                elif failure == 'checks':
+                    receipt['checks'].remove('x11-package-rendering')
+                elif failure == 'core-version':
+                    version = '0.6.21'
+                else:
+                    (cockpit / candidate['packages']['resolvers'][0]['tarball']).write_bytes(b'corrupted')
+                (cockpit / 'packages-store-manifest.json').write_text(json.dumps(candidate))
+                (cockpit / 'cockpit-qualification.json').write_text(json.dumps(receipt))
+                read_json = ingest.read_json
+
+                def read(path, maximum):
+                    return lock if path.name == 'forgepipe-sdk.lock.json' else read_json(path, maximum)
+
+                with mock.patch.object(ingest, 'read_json', side_effect=read), \
+                        mock.patch.dict(ingest.os.environ, {'DOCKPIPE_RELEASE_SOURCE_SHA': 'd' * 40}):
+                    with self.assertRaises(ValueError):
+                        ingest.finalize_cockpit(baseline, cockpit, root / 'out', version)
+                self.assertFalse((root / 'out').exists())
+
     def test_replaces_core_and_owned_identity_while_retaining_unrelated_archive(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

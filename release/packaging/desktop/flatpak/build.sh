@@ -20,10 +20,12 @@ esac
 # No implicit dependency installation or system changes in a release build.
 flatpak info "org.kde.Sdk//$runtime_branch" >/dev/null
 flatpak info "org.kde.Platform//$runtime_branch" >/dev/null
+flatpak info "io.qt.qtwebengine.BaseApp//$runtime_branch" >/dev/null
 mkdir -p "$out"
 out="$(realpath "$out")"
 app="$out/app"
-flatpak build-init "$app" "$app_id" org.kde.Sdk org.kde.Platform "$runtime_branch"
+flatpak build-init --base=io.qt.qtwebengine.BaseApp --base-version="$runtime_branch" \
+  "$app" "$app_id" org.kde.Sdk org.kde.Platform "$runtime_branch"
 mkdir -p "$app/files/bin" "$app/files/libexec/dockpipe"
 install -m755 "$cli" "$app/files/libexec/dockpipe/dockpipe"
 for command in dockpipe dockpipe-launcher; do
@@ -44,16 +46,49 @@ python3 "$root/release/packaging/release-artifacts.py" stage-core "$store" \
   --destination "$app/files/share/dockpipe"
 
 source_dir="$root/src/app/tooling/dockpipe-launcher"
+# The SDK omits libXres. Bundle it so clients without _NET_WM_PID can be
+# identified by the same X11 ownership protocol as native desktop builds.
+xres_archive="$out/libXres-1.2.3.tar.xz"
+curl --fail --location --retry 3 --connect-timeout 15 --max-time 120 --output "$xres_archive" \
+  https://xorg.freedesktop.org/archive/individual/lib/libXres-1.2.3.tar.xz
+printf '%s  %s\n' d2de8f5401d6c86a8992791654547eb8def585dfdc0c08cc16e24ef6aeeb69dc "$xres_archive" | sha256sum --check
+tar -xJf "$xres_archive" -C "$out"
+flatpak build --filesystem="$out" "$app" \
+  meson setup "$out/xres-build" "$out/libXres-1.2.3" --prefix=/app --libdir=lib -Ddefault_library=shared
+flatpak build --filesystem="$out" "$app" meson compile -C "$out/xres-build" -j 2
+flatpak build --filesystem="$out" "$app" meson install -C "$out/xres-build"
+mkdir -p "$app/files/share/licenses/libXRes"
+install -m644 "$out/libXres-1.2.3/COPYING" "$app/files/share/licenses/libXRes/COPYING"
 flatpak build --filesystem="$source_dir:ro" --filesystem="$out" "$app" \
   cmake -S "$source_dir" -B "$out/qt-build" -DCMAKE_BUILD_TYPE=Release \
-  -DDOCKPIPE_APP_BILLBOARDS=OFF \
+  -DCMAKE_PREFIX_PATH=/app \
   "-DDOCKPIPE_RELEASE_VERSION=$version"
 flatpak build --filesystem="$source_dir:ro" --filesystem="$out" "$app" \
   cmake --build "$out/qt-build" --parallel 2
-flatpak build --filesystem="$out" --env=QT_QPA_PLATFORM=offscreen "$app" \
+flatpak build --filesystem="$out" --env=QT_QPA_PLATFORM=offscreen \
+  --env=QTWEBENGINEPROCESS_PATH=/app/bin/QtWebEngineProcess \
+  --env=QTWEBENGINE_DISABLE_SANDBOX=1 "$app" \
   ctest --test-dir "$out/qt-build" --output-on-failure
+# BaseApp cannot spawn nested Flatpak instances during a build. The environment
+# above applies only to tests; installed browser processes retain sandboxing.
+flatpak build --env=FLATPAK_DEST=/app --env="FLATPAK_ARCH=$arch" "$app" \
+  bash /app/cleanup-BaseApp.sh
 install -m755 "$out/qt-build/dockpipe-launcher" "$app/files/libexec/dockpipe/dockpipe-launcher"
 cp -a "$out/qt-build"/libdockpipe-launcher-ui.so* "$app/files/libexec/dockpipe/"
+# Release compilation can still inherit private symbol/debug sections from
+# linked objects. Enforce the public payload contract after deployment.
+# Variables in this script belong to the Flatpak build environment.
+# shellcheck disable=SC2016
+flatpak build "$app" bash -c '
+  set -euo pipefail
+  for binary in /app/libexec/dockpipe/dockpipe-launcher /app/libexec/dockpipe/libdockpipe-launcher-ui.so* /app/lib/libXRes.so*; do
+    strip --strip-unneeded "$binary"
+    if readelf --wide --sections "$binary" | grep -E "\\.(z?debug[_.]|symtab[[:space:]]|gnu_debugdata[[:space:]]|gdb_index[[:space:]])" >/dev/null; then
+      echo "Private symbol sections remain in public Flatpak binary: $binary" >&2
+      exit 1
+    fi
+  done
+'
 install -m644 "$out/qt-build/dockpipe-syntax.rcc" "$app/files/libexec/dockpipe/dockpipe-syntax.rcc"
 cp -R "$out/qt-build/syntax-licenses" "$app/files/libexec/dockpipe/"
 mkdir -p "$app/files/share/applications" "$app/files/share/icons/hicolor/256x256/apps" \

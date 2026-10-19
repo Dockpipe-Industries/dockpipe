@@ -29,6 +29,7 @@ public:
     void setFullscreen(bool fullscreen);
     bool launchDesktopApplication(const DesktopApplicationEntry &application);
     void addWindowForApplication(const QString &name);
+    void releaseDesktopWindows();
     int panelCount() const { return m_definition.panels.size(); }
     QString environment() const;
     void setEnvironment(const QString &environment);

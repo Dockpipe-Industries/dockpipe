@@ -33,14 +33,18 @@ void DashboardDockTest::overlayRevealsWithoutResizingAndStopsWhenHidden()
     area.show();
     auto *edge = area.findChild<QWidget *>("dashboardDockRevealEdge");
     QVERIFY(edge);
+    QVERIFY(edge->isHidden());
+    auto *hover = dock->findChild<QTimer *>("dashboardDockHoverMonitor");
+    QVERIFY(hover && hover->isActive());
     QVERIFY(dock->isHidden());
     const QRect original = area.rect();
     QCursor::setPos(area.mapToGlobal(QPoint(20, 20)));
-    QEnterEvent enter(QPointF(2, 2), QPointF(2, 2), QPointF(edge->mapToGlobal(QPoint(2, 2))));
-    QApplication::sendEvent(edge, &enter);
+    QCursor::setPos(edge->mapToGlobal(edge->rect().center()));
     QTRY_VERIFY(dock->isVisible());
     QTRY_VERIFY(dock->geometry().bottom() < area.height());
     QCOMPARE(area.rect(), original);
+    QVERIFY(edge->isHidden());
+    QCursor::setPos(area.mapToGlobal(QPoint(20, 20)));
     dock->reveal(true);
     auto *apps = dock->findChild<QToolButton *>("dashboardDockApps");
     auto *browser = dock->findChild<QToolButton *>("dashboardDockPinned_browser");
@@ -59,9 +63,11 @@ void DashboardDockTest::overlayRevealsWithoutResizingAndStopsWhenHidden()
     QTRY_VERIFY(dock->width() <= area.width());
     area.hide();
     QVERIFY(!dock->findChild<QTimer *>("dashboardDockHideDelay")->isActive());
+    QVERIFY(!hover->isActive());
     area.show();
     QVERIFY(dock->isHidden());
     dock->setOverlayArea(nullptr);
+    QVERIFY(!hover->isActive());
     QVERIFY(!area.findChild<QWidget *>("dashboardDockRevealEdge"));
 }
 

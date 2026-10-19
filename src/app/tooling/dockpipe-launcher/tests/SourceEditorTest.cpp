@@ -63,15 +63,20 @@ int main(int argc, char **argv)
     editor.setFileName("sample.cpp");
     editor.setPlainText("/* begin\ninside comment\n*/ int value = 1;");
     auto *highlighter = editor.document()->findChild<SourceHighlighter *>();
-    highlighter->rehighlight();
+    // The platform can start in either theme. Establish the dark baseline
+    // explicitly before checking that switching to light changes comment color.
+    highlighter->updateTheme(true);
     const auto comment = editor.document()->findBlockByNumber(1).layout()->formats();
     if (comment.isEmpty())
         return 2;
     const auto darkColor = comment.first().format.foreground().color();
     highlighter->updateTheme(false);
     const auto lightColor = editor.document()->findBlockByNumber(1).layout()->formats().first().format.foreground().color();
-    if (darkColor == lightColor)
+    if (darkColor == lightColor) {
+        std::fprintf(stderr, "Dark and light syntax themes use the same comment color: %s\n",
+            qPrintable(darkColor.name()));
         return 3;
+    }
     editor.setStyleSheet("QPlainTextEdit { background: rgba(246, 251, 253, 0); color: #173e49; }");
     editor.setFileName("sample.cpp");
     if (editor.document()->findBlockByNumber(1).layout()->formats().first().format.foreground().color() != lightColor)

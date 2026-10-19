@@ -76,11 +76,24 @@ class ReleaseWorkflowTests(unittest.TestCase):
 
     def test_artifact_verification_has_no_deployment_or_production_credentials(self):
         for name, job in self.jobs.items():
-            if name in ("publish", "publish-staging", "devto"):
+            if name in ("publish", "publish-staging", "devto", "attest-forgepipe-sdk"):
                 continue
             self.assertNotIn("environment", job, name)
             self.assertNotIn("secrets.", yaml.dump(job), name)
             self.assertNotIn("write", job.get("permissions", {}).values(), name)
+
+        attestation = self.jobs["attest-forgepipe-sdk"]
+        self.assertNotIn("environment", attestation)
+        self.assertEqual(attestation["permissions"], {
+            "contents": "read", "id-token": "write", "attestations": "write",
+        })
+        self.assertNotIn("secrets.", yaml.dump(attestation))
+        self.assertIn("github.event_name == 'workflow_dispatch'", attestation["if"])
+        self.assertIn("inputs.forgepipe_sdk_tag != ''", attestation["if"])
+        self.assertIn("github.ref == 'refs/heads/js/dev'", attestation["if"])
+        self.assertIn("github.ref == 'refs/heads/staging'", attestation["if"])
+        self.assertIn("inputs.forgepipe_sdk_tag == ''", self.jobs["meta"]["if"])
+        self.assertIn("release/packaging/attest-forgepipe.py", yaml.dump(attestation))
 
         assembly = self.jobs["assemble"]
         self.assertEqual(assembly["needs"], ["meta", "build-unix", "build-msi", "build-flatpak"])
@@ -135,7 +148,13 @@ class ReleaseWorkflowTests(unittest.TestCase):
     def test_staging_call_waits_for_tests_and_publishes_only_prereleases(self):
         ci = yaml.load((REPOSITORY / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)
         call = ci["jobs"]["staging-release"]
-        self.assertEqual(call["needs"], ["test", "test-windows"])
+        self.assertEqual(call["needs"], ["test", "test-windows", "cockpit-native"])
+        native = ci["jobs"]["cockpit-native"]
+        self.assertEqual(native["runs-on"], "ubuntu-24.04")
+        self.assertEqual(native["env"]["DOCKPIPE_COCKPIT_NATIVE_TEST"], "1")
+        qt_install = next(step for step in native["steps"] if step.get("name") == "Install pinned Qt ABI")
+        self.assertIn('DOCKPIPE_QT_ROOT=$RUNNER_TEMP/Qt/6.10.3/gcc_64', qt_install["run"])
+        self.assertNotIn("DOCKPIPE_QT_ROOT", native["env"])
         self.assertEqual(call["uses"], "./.github/workflows/release.yml")
         self.assertEqual(call["with"], {"staging": "true"})
         self.assertIn("github.event_name == 'push'", call["if"])
@@ -156,6 +175,32 @@ class ReleaseWorkflowTests(unittest.TestCase):
         triggers = self.workflow["on"]
         self.assertEqual(triggers["push"]["branches"], ["master"])
         self.assertEqual(triggers["workflow_dispatch"]["inputs"]["dry_run"]["default"], "true")
+
+    def test_cockpit_catalog_waits_for_matching_native_build_and_scopes_its_environment(self):
+        job = self.jobs["build-unix"]
+        self.assertEqual(job["permissions"]["attestations"], "read")
+        steps = job["steps"]
+        by_name = {step.get("name"): index for index, step in enumerate(steps) if step.get("name")}
+        initial = by_name["Build native CLI, all package stores, and installers"]
+        prepare = by_name["Prepare the attested native Cockpit SDK"]
+        build = by_name["Build Linux desktop against Ubuntu 22.04"]
+        finalize = by_name["Finalize the qualified Linux Cockpit catalog"]
+        self.assertLess(initial, prepare)
+        self.assertLess(prepare, build)
+        self.assertLess(build, finalize)
+        self.assertEqual(steps[prepare]["if"], "matrix.platform == 'linux-amd64'")
+        self.assertNotIn("DOCKPIPE_BUILD_COCKPIT", steps[prepare]["run"])
+        self.assertEqual(steps[build]["env"]["DOCKPIPE_BUILD_COCKPIT"],
+                         "${{ matrix.platform == 'linux-amd64' && '1' || '0' }}")
+        self.assertEqual(steps[build]["env"]["DOCKPIPE_RELEASE_SOURCE_SHA"], "${{ github.sha }}")
+        self.assertEqual(steps[finalize]["if"], "matrix.platform == 'linux-amd64'")
+        self.assertEqual(steps[finalize]["env"]["DOCKPIPE_RELEASE_SOURCE_SHA"], "${{ github.sha }}")
+        self.assertIn("--finalize-cockpit", steps[finalize]["run"])
+        self.assertIn("release/artifacts/cockpit-store", steps[finalize]["run"])
+        uploads = [index for index, step in enumerate(steps)
+                   if step.get("uses", "").startswith("actions/upload-artifact@")]
+        self.assertTrue(uploads)
+        self.assertTrue(all(finalize < index for index in uploads))
 
     def test_version_generation_uses_all_tags_and_fails_on_lookup_error(self):
         step = next(step for step in self.jobs["meta"]["steps"] if step.get("id") == "version")

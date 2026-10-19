@@ -28,25 +28,28 @@ load the Cockpit package, spatial browser view, or neural models.
 
 The installed module is found with `dockpipe scope resolver cockpit assets-dir`.
 `assets/ui` contains the native module and bounded filesystem-reader executable.
-The Linux bundle includes the optional browser libraries, renderer process,
-resources and locales; base desktop Qt libraries remain provided by the matching
-launcher installation. The native interface is versioned and Qt checks module ABI
+The Linux bundle includes the matching Qt libraries, renderer process,
+resources and locales needed by its reader and browser child processes. Those
+processes use a package-local library path. The native interface is versioned and Qt checks module ABI
 compatibility. Build and distribute the package against the desktop's Qt/toolchain
 baseline. Currently only Linux packaging is implemented; other platforms must not
 advertise this package until their native runtime bundles are qualified.
 
 ## Development and validation
 
-From the checkout root:
+The native SDK contract is ForgePipe **0.1.0**, Qt **6.10.3**, Linux amd64.
+`assets/forgepipe-sdk.lock.json` pins the public archive and release metadata by
+exact size, hash and source commit. Preparation verifies both GitHub attestations
+against Dockpipe's release workflow before extracting the SDK. Private or
+unattested SDK candidates cannot satisfy this build contract.
+
+From the checkout root, with GitHub CLI authentication available for attestation
+verification:
 
 ```sh
-cmake -S src/app/tooling/dockpipe-launcher -B /tmp/dockpipe-cockpit-build \
-  -DCMAKE_PREFIX_PATH="$QT_SDK" \
-  -DDOCKPIPE_COCKPIT_SOURCE="$PWD/packages/cockpit"
-cmake --build /tmp/dockpipe-cockpit-build --parallel 2
-ctest --test-dir /tmp/dockpipe-cockpit-build --output-on-failure
-DOCKPIPE_WORKSPACE_PACKAGE=/tmp/dockpipe-cockpit-build/cockpit-package/assets \
-  /tmp/dockpipe-cockpit-build/dockpipe-launcher
+bash release/packaging/desktop/install-linux-qt.sh /tmp/dockpipe-Qt
+export DOCKPIPE_QT_ROOT=/tmp/dockpipe-Qt/6.10.3/gcc_64
+DOCKPIPE_COCKPIT_NATIVE_TEST=1 bash packages/cockpit/tests/run.sh
 ```
 
 `DOCKPIPE_WORKSPACE_PACKAGE` is an explicit development override, not a checkout
@@ -60,14 +63,14 @@ General source builds skip this optional native payload unless
 `DOCKPIPE_BUILD_COCKPIT=1` is set. The authored profile is a template, so a normal
 resolver compile cannot accidentally publish an empty Cockpit archive. Calling
 `assets/scripts/build.sh` directly builds it explicitly.
-Set `QT_SDK` to a matching Qt **6.8 or newer** desktop SDK; the local media
-regression build uses Qt 6.10.3. Launcher and Cockpit must use the same SDK.
+`DOCKPIPE_QT_ROOT` must select Qt **6.10.3** exactly. Launcher, Cockpit and
+ForgePipe expose Qt C++ types and must use the same SDK ABI. Other architectures
+and Flatpak runtime SDKs require their own qualified ForgePipe artifact.
 Qt 6.2's Chromium 90 cannot parse current website bundles (including class static
 initializers), leaving pages with placeholder images even in Live page. Changing
 the user agent does not fix that. Keep the SDK's security updates current.
-The bundler resolves qmake from the configured SDK, or `DOCKPIPE_QMAKE`, and
-rejects a mismatched system qmake. `CMAKE_PREFIX_PATH` can also be supplied as an
-environment variable to the package build script.
+The build preparer selects qmake from that SDK and rejects a mismatched version.
+It supplies the verified ForgePipe prefix and Qt prefix directly to CMake.
 
 Build dependencies include Qt Widgets, Network, OpenGLWidgets, WebEngineWidgets,
 CMake, a C++17 toolchain and Python 3. X11 capture is optional.
@@ -80,9 +83,13 @@ rejection and cancellation. `DOCKPIPE_WEB_IMAGE_PROBE=1` with
 `DOCKPIPE_WEB_LIVE_URL` diagnoses an explicitly selected public page; it prints
 bounded public image metadata and checks that source photographs reach the world.
 
-`dockpipe package test --workdir . --only cockpit` runs the package tests.
-`DOCKPIPE_COCKPIT_TEST_BUILD` can reuse a configured integration build. Native
-WebEngine/X11 tests need a real desktop and may skip on the offscreen platform.
+`dockpipe package test --workdir . --only cockpit` runs the portable Python
+contracts. The required `cockpit-native` CI job separately provisions the matching
+toolchain, verifies the SDK and runs the native package suite. Its X11 GPU and
+late-package-loading rendering checks must pass under Xvfb; exit 77 fails that
+qualification. Staging publication depends on this job.
+`DOCKPIPE_COCKPIT_TEST_BUILD` selects a configured integration build directory.
+The package-owned preparer obtains a fresh verified SDK for each native run.
 The core-only settings tests use a tiny fixture package without the heavy runtime.
 The native `cockpit-package-rendering-test` links only the launcher UI and opens
 its host window before loading Cockpit. Run it with `DOCKPIPE_WORKSPACE_PACKAGE`
@@ -91,6 +98,12 @@ and flight frame timings. It skips on the offscreen platform.
 
 The new resolver must be published in the platform catalog before ordinary users
 can download it. Authoring and local validation do not publish that catalog entry.
+The Linux amd64 release builds Cockpit in the same modern-Qt desktop CMake tree,
+runs native graphics and package-loading checks, retains private diagnostics, and
+packages the stripped runtime as Cockpit 0.1.1. The final store composer replaces
+exactly `resolver/cockpit` after validating its SDK-bound qualification receipt;
+the current core and every unrelated pinned archive remain unchanged. Other
+platform stores do not acquire this unqualified native payload.
 
 See [construction architecture](docs/spatial-world-construction.md) for the typed
 world graph, resource budgets, procedural rules and current limits.

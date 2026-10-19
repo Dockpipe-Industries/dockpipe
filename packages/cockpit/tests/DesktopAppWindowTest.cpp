@@ -17,6 +17,7 @@
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
+#include <X11/extensions/sync.h>
 #endif
 
 #define CHECK(condition) do { if (!(condition)) { std::fprintf(stderr, "App window assertion failed at line %d: %s\n", __LINE__, #condition); return __LINE__; } } while (false)
@@ -67,6 +68,214 @@ bool waitFor(const std::function<bool()> &condition)
     } while (timer.elapsed() < 5000);
     return false;
 }
+
+#ifdef DOCKPIPE_X11_BILLBOARDS
+// A separate client models GTK's extended-counter frame clock: after publishing
+// an even counter it cannot draw again until its host acknowledges that frame.
+int runFrameSyncFixture(QApplication &app, bool extendedProtocol)
+{
+    Display *display = XOpenDisplay(nullptr);
+    CHECK(display);
+    int major = 0;
+    int minor = 0;
+    CHECK(XSyncInitialize(display, &major, &minor));
+    const Window window = XCreateSimpleWindow(display, DefaultRootWindow(display),
+        40, 40, 320, 240, 0, 0, 0);
+    XStoreName(display, window, "Dockpipe isolated frame sync fixture");
+    const unsigned long processId = QCoreApplication::applicationPid();
+    XChangeProperty(display, window, XInternAtom(display, "_NET_WM_PID", False),
+        XA_CARDINAL, 32, PropModeReplace, reinterpret_cast<const unsigned char *>(&processId), 1);
+    XSelectInput(display, window, StructureNotifyMask);
+    XSyncValue value{};
+    XSyncIntToValue(&value, 0);
+    const XSyncCounter legacyCounter = XSyncCreateCounter(display, value);
+    // Exercise both halves of the protocol's 64-bit serial, not just frame 2.
+    quint64 serial = (quint64{1} << 32) + 32;
+    XSyncIntsToValue(&value, static_cast<unsigned int>(serial), static_cast<int>(serial >> 32));
+    const XSyncCounter extendedCounter = XSyncCreateCounter(display, value);
+    // Even a nonzero legacy counter must never opt a client into frame ACKs.
+    const unsigned long counters[] = {extendedProtocol ? legacyCounter : extendedCounter, extendedCounter};
+    XChangeProperty(display, window, XInternAtom(display, "_NET_WM_SYNC_REQUEST_COUNTER", False),
+        XA_CARDINAL, 32, PropModeReplace, reinterpret_cast<const unsigned char *>(counters), extendedProtocol ? 2 : 1);
+    const Atom frameDrawn = XInternAtom(display, "_NET_WM_FRAME_DRAWN", False);
+    const Atom progressProperty = XInternAtom(display, "_DOCKPIPE_TEST_FRAME_PROGRESS", False);
+    GC graphics = XCreateGC(display, window, 0, nullptr);
+    XMapWindow(display, window);
+    XFlush(display);
+
+    unsigned long acknowledgements = 0;
+    unsigned long frames = 0;
+    bool awaitingAcknowledgement = false;
+    QTimer rendering;
+    rendering.setInterval(16);
+    QObject::connect(&rendering, &QTimer::timeout, &app, [&]() {
+        for (int eventCount = 0; eventCount < 64 && XPending(display); ++eventCount) {
+            XEvent event{};
+            XNextEvent(display, &event);
+            if (event.type != ClientMessage || event.xclient.message_type != frameDrawn
+                || event.xclient.format != 32)
+                continue;
+            const quint64 acknowledgedSerial = static_cast<quint32>(event.xclient.data.l[0])
+                | (static_cast<quint64>(static_cast<quint32>(event.xclient.data.l[1])) << 32);
+            const quint64 timestamp = static_cast<quint32>(event.xclient.data.l[2])
+                | (static_cast<quint64>(static_cast<quint32>(event.xclient.data.l[3])) << 32);
+            if (awaitingAcknowledgement && acknowledgedSerial == serial && timestamp != 0) {
+                awaitingAcknowledgement = false;
+                ++acknowledgements;
+            }
+        }
+        if (awaitingAcknowledgement)
+            return;
+        XWindowAttributes attributes{};
+        if (!XGetWindowAttributes(display, window, &attributes) || attributes.map_state != IsViewable)
+            return;
+
+        ++serial;
+        XSyncIntsToValue(&value, static_cast<unsigned int>(serial), static_cast<int>(serial >> 32));
+        XSyncSetCounter(display, extendedCounter, value);
+        XSetForeground(display, graphics, frames % 2 ? 0x19a975 : 0x195a89);
+        XFillRectangle(display, window, graphics, 0, 0, attributes.width, attributes.height);
+        ++serial;
+        XSyncIntsToValue(&value, static_cast<unsigned int>(serial), static_cast<int>(serial >> 32));
+        XSyncSetCounter(display, extendedCounter, value);
+        awaitingAcknowledgement = true;
+        ++frames;
+        const unsigned long progress[] = {frames, acknowledgements,
+            static_cast<unsigned long>(attributes.width), static_cast<unsigned long>(attributes.height)};
+        XChangeProperty(display, window, progressProperty, XA_CARDINAL, 32, PropModeReplace,
+            reinterpret_cast<const unsigned char *>(progress), 4);
+        XFlush(display);
+    });
+    rendering.start();
+    std::printf("WINDOW:%llu\n", static_cast<unsigned long long>(window));
+    std::fflush(stdout);
+    QTimer::singleShot(30000, &app, &QApplication::quit);
+    const int result = app.exec();
+    rendering.stop();
+    XFreeGC(display, graphics);
+    XSyncDestroyCounter(display, extendedCounter);
+    XSyncDestroyCounter(display, legacyCounter);
+    XDestroyWindow(display, window);
+    XCloseDisplay(display);
+    return result;
+}
+
+int runFrameSyncRegression(QApplication &app, bool extendedProtocol)
+{
+    // This test deliberately has no window manager acknowledging the fixture.
+    // Keep it on the disposable X server used by the native test harness.
+    if (!qEnvironmentVariableIsSet("DOCKPIPE_ISOLATED_DESKTOP_TEST"))
+        return 0;
+    FixtureProcess fixture;
+    fixture.setProcessChannelMode(QProcess::ForwardedErrorChannel);
+    QStringList arguments{"--frame-sync-fixture"};
+    if (!extendedProtocol)
+        arguments.append("--legacy-counter");
+    fixture.start(app.applicationFilePath(), arguments);
+    CHECK(fixture.waitForStarted());
+    QByteArray output;
+    CHECK(waitFor([&]() {
+        output += fixture.readAllStandardOutput();
+        return output.startsWith("WINDOW:") && output.contains('\n');
+    }));
+    const Window id = output.split('\n').first().mid(7).toULongLong();
+    CHECK(id);
+    const auto closeDisplay = [](Display *display) { XCloseDisplay(display); };
+    std::unique_ptr<Display, decltype(closeDisplay)> connection(XOpenDisplay(nullptr), closeDisplay);
+    CHECK(connection);
+    Display *display = connection.get();
+    const Atom progressProperty = XInternAtom(display, "_DOCKPIPE_TEST_FRAME_PROGRESS", False);
+    const auto progress = [&]() {
+        Atom actual = None;
+        int format = 0;
+        unsigned long count = 0;
+        unsigned long remaining = 0;
+        unsigned char *data = nullptr;
+        QVector<unsigned long> values;
+        const int status = XGetWindowProperty(display, id, progressProperty, 0, 4,
+            False, XA_CARDINAL, &actual, &format, &count, &remaining, &data);
+        if (status == Success && actual == XA_CARDINAL && format == 32 && count == 4 && !remaining && data) {
+            const auto *items = reinterpret_cast<const unsigned long *>(data);
+            for (unsigned long index = 0; index < count; ++index)
+                values.append(items[index]);
+        }
+        if (data)
+            XFree(data);
+        return values;
+    };
+    const auto settle = []() {
+        QElapsedTimer elapsed;
+        elapsed.start();
+        waitFor([&]() { return elapsed.elapsed() >= 150; });
+    };
+    CHECK(waitFor([&]() { return progress().size() == 4; }));
+    settle();
+    CHECK(progress()[0] == 1 && progress()[1] == 0);
+
+    QWidget host;
+    host.resize(640, 480);
+    auto *layout = new QVBoxLayout(&host);
+    DesktopAppWindow selected({id, "Frame sync fixture"});
+    QString error;
+    CHECK(selected.prepareControl(error));
+    CHECK(waitFor([&]() { return selected.controlReady(); }));
+    QWidget *container = selected.takeControl(&host, error);
+    CHECK(container);
+    layout->addWidget(container);
+    host.show();
+    CHECK(waitFor([&]() { return selected.controlAttached(); }));
+    if (!extendedProtocol) {
+        settle();
+        const auto current = progress();
+        CHECK(current.size() == 4 && current[0] == 1 && current[1] == 0);
+        selected.releaseControl();
+        CHECK(selected.alive() && !selected.controlAttached());
+        fixture.terminate();
+        CHECK(fixture.waitForFinished());
+        std::puts("Legacy resize counter correctly receives no frame acknowledgements.");
+        return 0;
+    }
+    CHECK(waitFor([&]() {
+        const auto current = progress();
+        return selected.controlAttached() && current.size() == 4 && current[0] >= 4;
+    }));
+    const unsigned long framesBeforeResize = progress()[0];
+    host.resize(900, 620);
+    CHECK(waitFor([&]() {
+        selected.syncControlGeometry();
+        const auto current = progress();
+        const qreal scale = container->devicePixelRatioF();
+        return current.size() == 4 && current[0] > framesBeforeResize && current[1] >= 3
+            && current[2] == static_cast<unsigned long>(qRound(container->width() * scale))
+            && current[3] == static_cast<unsigned long>(qRound(container->height() * scale));
+    }));
+
+    host.hide();
+    settle();
+    const auto hiddenProgress = progress();
+    settle();
+    CHECK(progress() == hiddenProgress);
+    host.show();
+    CHECK(waitFor([&]() {
+        const auto current = progress();
+        return current.size() == 4 && current[0] > hiddenProgress[0];
+    }));
+
+    selected.releaseControl();
+    CHECK(selected.alive() && !selected.controlAttached());
+    // Allow one already-delivered acknowledgement to finish, then ensure the
+    // released app remains alive without the former host driving its clock.
+    settle();
+    const auto releasedProgress = progress();
+    settle();
+    CHECK(progress() == releasedProgress);
+    CHECK(fixture.state() == QProcess::Running);
+    fixture.terminate();
+    CHECK(fixture.waitForFinished());
+    std::puts("Extended frame sync redraw, resize and release checks passed.");
+    return 0;
+}
+#endif
 }
 
 int main(int argc, char **argv)
@@ -75,6 +284,12 @@ int main(int argc, char **argv)
     if (!DesktopAppWindow::unavailableReason().isEmpty())
         return 77;
 #ifdef DOCKPIPE_X11_BILLBOARDS
+    if (app.arguments().contains("--frame-sync-fixture"))
+        return runFrameSyncFixture(app, !app.arguments().contains("--legacy-counter"));
+    if (app.arguments().contains("--frame-sync-test")) {
+        CHECK(runFrameSyncRegression(app, true) == 0);
+        return runFrameSyncRegression(app, false);
+    }
     if (app.arguments().contains("--fixture")) {
         CloseAwareFixture window(app.arguments().contains("--reject-first-close"));
         // Browsers draw their own title bars. A restored client must not gain
@@ -375,6 +590,8 @@ int main(int argc, char **argv)
     selected.releaseControl();
     XCloseDisplay(display);
     std::puts("Native app preview, embedded input, detach, crash recovery and closed-window checks passed.");
+    CHECK(runFrameSyncRegression(app, true) == 0);
+    CHECK(runFrameSyncRegression(app, false) == 0);
 #endif
     return 0;
 }

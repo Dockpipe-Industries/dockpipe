@@ -32,12 +32,14 @@
 #include <QJsonDocument>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMenu>
 #include <QPointer>
 #include <QProcess>
 #include <QPushButton>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
+#include <QToolButton>
 
 #ifdef DOCKPIPE_X11_BILLBOARDS
 #include <X11/Xatom.h>
@@ -258,6 +260,53 @@ public:
         return true;
     }
 
+    void removeProcessId(quint64 id)
+    {
+        XDeleteProperty(m_display, static_cast<Window>(id), XInternAtom(m_display, "_NET_WM_PID", False));
+        XSync(m_display, False);
+    }
+
+    void setShadowMargins(quint64 id, bool invalid)
+    {
+        const unsigned long margins[] = {invalid ? 0xffffffffUL : 16, 16, 10, 32};
+        XChangeProperty(m_display, static_cast<Window>(id), XInternAtom(m_display, "_GTK_FRAME_EXTENTS", False),
+            XA_CARDINAL, 32, PropModeReplace, reinterpret_cast<const unsigned char *>(margins), 4);
+        XSync(m_display, False);
+    }
+
+    QRect geometry(quint64 id) const
+    {
+        XWindowAttributes attributes{};
+        if (!XGetWindowAttributes(m_display, static_cast<Window>(id), &attributes))
+            return {};
+        return QRect(attributes.x, attributes.y, attributes.width, attributes.height);
+    }
+
+    bool pointerTargets(quint64 id) const
+    {
+        Window current = m_root;
+        // Walk only the hit-tested ancestor chain. Match the native control,
+        // rather than QWidget visibility, to detect occlusion by the app.
+        for (int depth = 0; depth < 32; ++depth) {
+            Window root = 0;
+            Window child = 0;
+            int rootX = 0;
+            int rootY = 0;
+            int localX = 0;
+            int localY = 0;
+            unsigned int mask = 0;
+            if (!XQueryPointer(m_display, current, &root, &child,
+                    &rootX, &rootY, &localX, &localY, &mask) || !child)
+                return false;
+            if (child == static_cast<Window>(id))
+                return true;
+            if (child == current)
+                return false;
+            current = child;
+        }
+        return false;
+    }
+
     ~IsolatedClientList()
     {
         if (!m_display)
@@ -291,6 +340,7 @@ private slots:
     void independentEnvironmentsAndRoundTrip();
     void optionsAndSettingsControls();
     void repeatedSwitchesRetainContentAndObjects();
+    void autoAcquireLifecycle_data();
     void autoAcquireLifecycle();
     void dockPreferenceChangesReservedSpace();
     void desktopLaunchAdmission();
@@ -622,8 +672,22 @@ void DashboardPageTest::dockPreferenceChangesReservedSpace()
     QVERIFY(captureIfRequested(page, "dock-overlay"));
 }
 
+void DashboardPageTest::autoAcquireLifecycle_data()
+{
+    QTest::addColumn<bool>("omitProcessId");
+    QTest::addColumn<int>("shadowMode");
+    QTest::newRow("published-process-id") << false << 0;
+#ifdef DOCKPIPE_X11_RESOURCE_IDENTITIES
+    QTest::newRow("server-process-id") << true << 0;
+#endif
+    QTest::newRow("client-shadow-margins") << false << 1;
+    QTest::newRow("invalid-shadow-margins") << false << 2;
+}
+
 void DashboardPageTest::autoAcquireLifecycle()
 {
+    QFETCH(bool, omitProcessId);
+    QFETCH(int, shadowMode);
     if (qEnvironmentVariable("DOCKPIPE_ISOLATED_DESKTOP_TEST") != "1")
         QSKIP("Desktop acquisition requires explicit opt-in on a disposable Xvfb display.");
 #ifndef DOCKPIPE_X11_BILLBOARDS
@@ -643,6 +707,10 @@ void DashboardPageTest::autoAcquireLifecycle()
     QVERIFY(nativeId);
     IsolatedClientList clients;
     QVERIFY(clients.install(nativeId));
+    if (omitProcessId)
+        clients.removeProcessId(nativeId);
+    if (shadowMode)
+        clients.setShadowMargins(nativeId, shadowMode == 2);
     const auto available = [nativeId]() {
         QString error;
         const auto windows = DesktopWindowWidget::availableWindows(error);
@@ -687,11 +755,67 @@ void DashboardPageTest::autoAcquireLifecycle()
     QVERIFY(nativeContainer);
     QTRY_COMPARE(nativeContainer->size(), acquired->size());
     QCOMPARE(nativeContainer->mapTo(acquired, QPoint()), QPoint());
+    const auto expectedGeometry = [&]() {
+        const qreal scale = nativeContainer->devicePixelRatioF();
+        const QSize size(qRound(nativeContainer->width() * scale), qRound(nativeContainer->height() * scale));
+        return shadowMode == 1 ? QRect(QPoint(-16, -10), size + QSize(32, 42)) : QRect(QPoint(), size);
+    };
+    QTRY_COMPARE(clients.geometry(nativeId), expectedGeometry());
+    QVERIFY(edge->isHidden());
+    const QPoint bottomPixel = acquired->mapToGlobal(QPoint(acquired->width() / 2, acquired->height() - 2));
+    const QColor bottomColor = page.screen()->grabWindow(0, bottomPixel.x(), bottomPixel.y(), 1, 1).toImage().pixelColor(0, 0);
+    QVERIFY2(bottomColor.blue() > bottomColor.red(), "The dock hotspot must not paint a gray strip over the native app");
     auto *pane = qobject_cast<QWidget *>(acquired->parent());
     QVERIFY(pane);
     QCOMPARE(acquired->width(), pane->width());
     const QString panelId = pane->objectName().mid(QString("dashboardPanel_").size());
     auto *workspace = page.findChild<DashboardWorkspace *>("dashboardTilingWorkspace");
+    QVERIFY(page.addWidgetKind("workflows"));
+    const QString neighborId = page.snapshot().panels.last().id;
+    QTRY_COMPARE(clients.geometry(nativeId), expectedGeometry());
+    const QSize splitSize = acquired->size();
+    auto *tileActions = pane->findChild<QToolButton *>("dashboardTileActions");
+    QVERIFY(tileActions);
+    const auto openTileMenu = [&]() {
+        QCursor::setPos(pane->mapToGlobal(QPoint(pane->width() / 2, tileActions->height() / 2)));
+        QTest::mouseClick(tileActions, Qt::LeftButton);
+        return qobject_cast<QMenu *>(QApplication::activePopupWidget());
+    };
+    const auto findAction = [](QMenu *menu, const QString &text) -> QAction * {
+        if (!menu)
+            return nullptr;
+        for (QAction *action : menu->actions()) {
+            if (action->text() == text)
+                return action;
+        }
+        return nullptr;
+    };
+    QCursor::setPos(pane->mapToGlobal(QPoint(pane->width() / 2, tileActions->height() / 2)));
+    QTRY_VERIFY_WITH_TIMEOUT(tileActions->isVisible(), 1500);
+    QVERIFY(tileActions->testAttribute(Qt::WA_NativeWindow));
+    QTRY_VERIFY_WITH_TIMEOUT(clients.pointerTargets(tileActions->winId()), 1500);
+    QMenu *tileMenu = openTileMenu();
+    QVERIFY(tileMenu);
+    auto *expand = findAction(tileMenu, "Expand panel");
+    QVERIFY(expand);
+    tileMenu->close();
+    expand->trigger();
+    QTRY_VERIFY(acquired->width() > splitSize.width());
+    QTRY_COMPARE(clients.geometry(nativeId), expectedGeometry());
+    tileMenu = openTileMenu();
+    QVERIFY(tileMenu);
+    auto *restore = findAction(tileMenu, "Restore panel");
+    QVERIFY(restore);
+    tileMenu->close();
+    restore->trigger();
+    QTRY_COMPARE(acquired->size(), splitSize);
+    QTRY_COMPARE(clients.geometry(nativeId), expectedGeometry());
+    tileActions->clearFocus();
+    QCursor::setPos(acquired->mapToGlobal(acquired->rect().center()));
+    QTRY_VERIFY_WITH_TIMEOUT(tileActions->isHidden(), 1500);
+    QTRY_VERIFY_WITH_TIMEOUT(clients.pointerTargets(nativeId), 1500);
+    workspace->panelCloseRequested(neighborId);
+    QTRY_COMPARE(clients.geometry(nativeId), expectedGeometry());
     QVERIFY(workspace->minimizePanel(panelId));
     QVERIFY(!acquired->isVisible());
     QVERIFY(!available());
@@ -720,12 +844,51 @@ void DashboardPageTest::autoAcquireLifecycle()
     QCOMPARE(page.findChild<DesktopWindowWidget *>(), acquired.data());
     QTRY_VERIFY_WITH_TIMEOUT(acquired->hasInteractiveWindow(), 5000);
     QCOMPARE(acquired->acquiredWindowId(), nativeId);
-    // Navigating to another page (or minimizing to the tray) also retains it.
+    // Navigating to another page retains it. Closing the launcher explicitly
+    // releases all desktop panels before hiding or destroying the host.
     page.hide();
     QTRY_VERIFY(!monitor->isActive());
     QVERIFY(acquired && !available());
     page.show();
     QTRY_VERIFY_WITH_TIMEOUT(acquired->hasInteractiveWindow(), 5000);
+    QCursor::setPos(pane->mapToGlobal(QPoint(pane->width() / 2, tileActions->height() / 2)));
+    QTRY_VERIFY_WITH_TIMEOUT(tileActions->isVisible(), 1500);
+    QTRY_VERIFY_WITH_TIMEOUT(clients.pointerTargets(tileActions->winId()), 1500);
+    tileMenu = openTileMenu();
+    QVERIFY(tileMenu);
+    auto *release = findAction(tileMenu, "Release to desktop");
+    QVERIFY(release);
+    tileMenu->close();
+    release->trigger();
+    QTRY_VERIFY(acquired.isNull());
+    QCOMPARE(page.panelCount(), 0);
+    QTRY_VERIFY_WITH_TIMEOUT(available(), 5000);
+    QCOMPARE(fixture.state(), QProcess::Running);
+    page.setEnvironment("canvas");
+    page.setEnvironment("tiling");
+    acquired = page.findChild<DesktopWindowWidget *>();
+    QVERIFY(acquired);
+    QTRY_VERIFY_WITH_TIMEOUT(acquired->hasInteractiveWindow(), 5000);
+    QVERIFY(page.addWidgetKind("workflows"));
+    const QString retainedPanelId = page.snapshot().panels.last().id;
+    page.releaseDesktopWindows();
+    QTRY_VERIFY(acquired.isNull());
+    QCOMPARE(page.panelCount(), 1);
+    QCOMPARE(page.snapshot().panels.first().id, retainedPanelId);
+    QTRY_VERIFY_WITH_TIMEOUT(available(), 5000);
+    QCOMPARE(fixture.state(), QProcess::Running);
+    // Shutdown can reach closeEvent, aboutToQuit, and the destructor. Releasing
+    // more than once must keep the other app and ordinary dashboard panels.
+    page.releaseDesktopWindows();
+    QCOMPARE(page.panelCount(), 1);
+    QVERIFY(available());
+    page.hide();
+    page.show();
+    QTRY_COMPARE_WITH_TIMEOUT(page.panelCount(), 2, 5000);
+    acquired = page.findChild<DesktopWindowWidget *>();
+    QVERIFY(acquired);
+    QTRY_VERIFY_WITH_TIMEOUT(acquired->hasInteractiveWindow(), 5000);
+    workspace->panelCloseRequested(retainedPanelId);
     options.autoAcquireApps = false;
     QVERIFY(page.applyOptions(options));
     QTRY_VERIFY(acquired.isNull());

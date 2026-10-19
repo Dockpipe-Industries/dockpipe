@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "version": "0.1.0",
+  "platform": "linux-amd64",
+  "qt_version": "6.10.3",
+  "source_repository": "Dockpipe-Industries/forgepipe",
+  "source_sha": "49cbfc7dbc37e65854464666245fadbf06732012",
+  "public_redistribution": true,
+  "artifact": {
+    "url": "https://github.com/Dockpipe-Industries/dockpipe/releases/download/forgepipe-sdk-0.1.0-staging.49cbfc7dbc37/ForgePipe-SDK-0.1.0-Linux.tar.gz",
+    "sha256": "1f62113e954737b25f07d4a7c3d6cb52c578fb61b633861ca1ea5e6ae95e96d8",
+    "size_bytes": 106977980
+  },
+  "metadata": {
+    "url": "https://github.com/Dockpipe-Industries/dockpipe/releases/download/forgepipe-sdk-0.1.0-staging.49cbfc7dbc37/sdk-release.json",
+    "sha256": "ae5e911cefe63307b91c9c68da1f3c4ca22c261e7f117f46a2a8c5b2b0e50b9f",
+    "size_bytes": 1244
+  }
+}

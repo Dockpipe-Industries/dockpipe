@@ -9,6 +9,10 @@ chmod 700 "$TMPDIR"
 source /app/libexec/dockpipe/container-environment.sh
 case "$(basename "$0")" in
   dockpipe) exec /app/libexec/dockpipe/dockpipe "$@" ;;
-  dockpipe-launcher) exec /app/libexec/dockpipe/dockpipe-launcher "$@" ;;
+  dockpipe-launcher)
+    export QTWEBENGINEPROCESS_PATH=/app/bin/QtWebEngineProcess
+    export QTWEBENGINE_DICTIONARIES_PATH=/app/qtwebengine_dictionaries
+    exec /app/libexec/dockpipe/dockpipe-launcher "$@"
+    ;;
   *) echo 'Invalid Flatpak entrypoint' >&2; exit 2 ;;
 esac

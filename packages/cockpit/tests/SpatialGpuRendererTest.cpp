@@ -356,6 +356,13 @@ int main(int argc, char **argv)
     // check measures normal-driven lighting, not merely albedo contrast.
     CHECK_GPU(SpatialSurfaceTextures::nativeDetail(SpatialSurfaceMaterial::Plain).isNull());
     CHECK_GPU(SpatialSurfaceTextures::nativeDetail(static_cast<SpatialSurfaceMaterial>(99)).isNull());
+    // Exercise the authored 1K detail at one texture texel per framebuffer
+    // pixel. A minified photograph's lighting extrema depend on driver mip
+    // generation/filtering and cannot define a backend-independent contrast
+    // bound. Minification and terrain continuity have separate checks below.
+    const auto detailCamera = camera;
+    camera.viewport = {1024, 1024};
+    camera.focalLength = 512;
     for (const auto material : {SpatialSurfaceMaterial::Dirt, SpatialSurfaceMaterial::Grass, SpatialSurfaceMaterial::Rock}) {
         const auto detail = SpatialSurfaceTextures::nativeDetail(material);
         CHECK_GPU(detail.size() == QSize(1024, 1024));
@@ -373,6 +380,7 @@ int main(int argc, char **argv)
         CHECK_GPU(roughnessMaximum - roughnessMinimum > 30);
         auto materialFace = quad(100, 100, QColor(120, 120, 120));
         materialFace.material = material;
+        materialFace.uvs = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
         const auto unlit = render({materialFace});
         CHECK_GPU(accepted);
         materialFace.unlit = false;
@@ -380,8 +388,8 @@ int main(int argc, char **argv)
         CHECK_GPU(accepted && renderer.drawCalls() == 1);
         double minimumLight = 100;
         double maximumLight = 0;
-        for (int y = 24; y < 232; y += 3) {
-            for (int x = 24; x < 232; x += 3) {
+        for (int y = 24; y < camera.viewport.height() - 24; y += 3) {
+            for (int x = 24; x < camera.viewport.width() - 24; x += 3) {
                 const int base = qGray(unlit.pixel(x, y));
                 if (base < 40)
                     continue;
@@ -396,6 +404,8 @@ int main(int argc, char **argv)
         CHECK_GPU(maximumLight - minimumLight > .2);
         CHECK_GPU(gl->glGetError() == GL_NO_ERROR);
     }
+
+    camera = detailCamera;
 
     // World-space terrain variation must be continuous across mesh splits,
     // stable on repeated renders, and avoid repeating at one source-tile step.

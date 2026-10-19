@@ -173,6 +173,8 @@ void DashboardDock::setOverlayArea(QWidget *area)
         m_overlayArea->removeEventFilter(this);
     if (m_hideTimer)
         m_hideTimer->stop();
+    if (m_hoverTimer)
+        m_hoverTimer->stop();
     if (m_slide)
         m_slide->stop();
     delete m_revealEdge;
@@ -189,6 +191,21 @@ void DashboardDock::setOverlayArea(QWidget *area)
         m_hideTimer->setSingleShot(true);
         m_hideTimer->setInterval(550);
         connect(m_hideTimer, &QTimer::timeout, this, &DashboardDock::hideIfIdle);
+        m_hoverTimer = new QTimer(this);
+        m_hoverTimer->setObjectName("dashboardDockHoverMonitor");
+        m_hoverTimer->setInterval(100);
+        m_hoverTimer->setTimerType(Qt::CoarseTimer);
+        connect(m_hoverTimer, &QTimer::timeout, this, [this] {
+            if (!m_overlayArea || !m_overlayArea->isVisible() || window()->isMinimized())
+                return;
+            const QPoint cursor = QCursor::pos();
+            if (m_revealEdge->rect().contains(m_revealEdge->mapFromGlobal(cursor))) {
+                reveal();
+            } else if (m_revealed && !m_keyboardFocus && !m_hideTimer->isActive()
+                && !rect().contains(mapFromGlobal(cursor))) {
+                m_hideTimer->start();
+            }
+        });
         m_slide = new QPropertyAnimation(this, "pos", this);
         m_slide->setDuration(140);
         m_slide->setEasingCurve(QEasingCurve::OutCubic);
@@ -212,7 +229,11 @@ void DashboardDock::setOverlayArea(QWidget *area)
     setAttribute(Qt::WA_NativeWindow);
     m_revealEdge = new QWidget(area);
     m_revealEdge->setObjectName("dashboardDockRevealEdge");
-    m_revealEdge->setAttribute(Qt::WA_NativeWindow);
+    // A native input strip paints over foreign windows. Keep only a logical,
+    // nonpainting hotspot and poll the cursor while this dashboard is visible.
+    m_revealEdge->setAttribute(Qt::WA_TransparentForMouseEvents);
+    m_revealEdge->setAttribute(Qt::WA_NoSystemBackground);
+    m_revealEdge->hide();
     m_revealEdge->setAccessibleName(tr("Reveal dashboard dock"));
     m_revealEdge->installEventFilter(this);
     area->installEventFilter(this);
@@ -234,8 +255,13 @@ void DashboardDock::positionOverlay()
     if (m_slide->state() != QAbstractAnimation::Running)
         move(left, m_revealed ? top : m_overlayArea->height());
     m_revealEdge->setGeometry(0, qMax(0, m_overlayArea->height() - 4), m_overlayArea->width(), 4);
-    m_revealEdge->show();
-    m_revealEdge->raise();
+    // Keep this geometry-only hotspot unmapped, even if Qt promotes siblings
+    // to native windows for an embedded app. It must never cover app pixels.
+    m_revealEdge->hide();
+    if (m_overlayArea->isVisible())
+        m_hoverTimer->start();
+    else
+        m_hoverTimer->stop();
     if (m_revealed)
         raise();
 }
@@ -432,6 +458,7 @@ bool DashboardDock::eventFilter(QObject *watched, QEvent *event)
             positionOverlay();
         if (watched == m_overlayArea && event->type() == QEvent::Hide) {
             m_hideTimer->stop();
+            m_hoverTimer->stop();
             m_slide->stop();
             m_revealed = false;
             m_keyboardFocus = false;
