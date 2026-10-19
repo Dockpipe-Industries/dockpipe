@@ -89,6 +89,9 @@ func readWorkspaceGitSnapshot(ctx context.Context, workdir string) (*WorkspaceGi
 }
 
 func workspaceGitSafePath(root, path string) (string, error) {
+	// Git reports slash-separated roots on Windows; filepath.Dir returns native
+	// separators. Keep both sides of the parent walk in the same lexical form.
+	root = filepath.Clean(filepath.FromSlash(root))
 	if path == "" || strings.ContainsRune(path, '\x00') || filepath.IsAbs(path) || filepath.Clean(path) != filepath.FromSlash(path) || path == ".." || strings.HasPrefix(path, "../") {
 		return "", errors.New("invalid repository path")
 	}

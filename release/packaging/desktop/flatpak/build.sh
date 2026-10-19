@@ -20,10 +20,12 @@ esac
 # No implicit dependency installation or system changes in a release build.
 flatpak info "org.kde.Sdk//$runtime_branch" >/dev/null
 flatpak info "org.kde.Platform//$runtime_branch" >/dev/null
+flatpak info "io.qt.qtwebengine.BaseApp//$runtime_branch" >/dev/null
 mkdir -p "$out"
 out="$(realpath "$out")"
 app="$out/app"
-flatpak build-init "$app" "$app_id" org.kde.Sdk org.kde.Platform "$runtime_branch"
+flatpak build-init --base=io.qt.qtwebengine.BaseApp --base-version="$runtime_branch" \
+  "$app" "$app_id" org.kde.Sdk org.kde.Platform "$runtime_branch"
 mkdir -p "$app/files/bin" "$app/files/libexec/dockpipe"
 install -m755 "$cli" "$app/files/libexec/dockpipe/dockpipe"
 for command in dockpipe dockpipe-launcher; do
@@ -44,13 +46,27 @@ python3 "$root/release/packaging/release-artifacts.py" stage-core "$store" \
   --destination "$app/files/share/dockpipe"
 
 source_dir="$root/src/app/tooling/dockpipe-launcher"
+# The SDK omits libXres. Bundle it so clients without _NET_WM_PID can be
+# identified by the same X11 ownership protocol as native desktop builds.
+xres_archive="$out/libXres-1.2.3.tar.xz"
+curl --fail --location --retry 3 --connect-timeout 15 --max-time 120 --output "$xres_archive" \
+  https://xorg.freedesktop.org/archive/individual/lib/libXres-1.2.3.tar.xz
+printf '%s  %s\n' d2de8f5401d6c86a8992791654547eb8def585dfdc0c08cc16e24ef6aeeb69dc "$xres_archive" | sha256sum --check
+tar -xJf "$xres_archive" -C "$out"
+flatpak build --filesystem="$out" "$app" \
+  meson setup "$out/xres-build" "$out/libXres-1.2.3" --prefix=/app --libdir=lib -Ddefault_library=shared
+flatpak build --filesystem="$out" "$app" meson compile -C "$out/xres-build" -j 2
+flatpak build --filesystem="$out" "$app" meson install -C "$out/xres-build"
+mkdir -p "$app/files/share/licenses/libXRes"
+install -m644 "$out/libXres-1.2.3/COPYING" "$app/files/share/licenses/libXRes/COPYING"
 flatpak build --filesystem="$source_dir:ro" --filesystem="$out" "$app" \
   cmake -S "$source_dir" -B "$out/qt-build" -DCMAKE_BUILD_TYPE=Release \
-  -DDOCKPIPE_APP_BILLBOARDS=OFF \
+  -DCMAKE_PREFIX_PATH=/app \
   "-DDOCKPIPE_RELEASE_VERSION=$version"
 flatpak build --filesystem="$source_dir:ro" --filesystem="$out" "$app" \
   cmake --build "$out/qt-build" --parallel 2
-flatpak build --filesystem="$out" --env=QT_QPA_PLATFORM=offscreen "$app" \
+flatpak build --filesystem="$out" --env=QT_QPA_PLATFORM=offscreen \
+  --env=QTWEBENGINEPROCESS_PATH=/app/bin/QtWebEngineProcess "$app" \
   ctest --test-dir "$out/qt-build" --output-on-failure
 install -m755 "$out/qt-build/dockpipe-launcher" "$app/files/libexec/dockpipe/dockpipe-launcher"
 cp -a "$out/qt-build"/libdockpipe-launcher-ui.so* "$app/files/libexec/dockpipe/"
