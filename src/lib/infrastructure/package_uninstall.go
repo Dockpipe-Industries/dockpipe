@@ -5,6 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"dockpipe/src/lib/infrastructure/archivecodec"
+	"dockpipe/src/lib/infrastructure/packagebuild"
 )
 
 // userPackageArchivePath confines removal to individual optional-package archives.
@@ -46,7 +49,7 @@ func userPackageArchivePath(store, filename string) (string, error) {
 		return "", fmt.Errorf("only optional package archives in the user store can be uninstalled")
 	}
 	kind := strings.TrimSuffix(parts[0], "s")
-	if !strings.HasPrefix(parts[1], "dockpipe-"+kind+"-") || !strings.HasSuffix(parts[1], ".tar.gz") {
+	if !packagebuild.IsPackageArchivePath(parts[1], kind) {
 		return "", fmt.Errorf("not a compiled package archive")
 	}
 	return relative, nil
@@ -96,8 +99,9 @@ func UninstallUserPackage(filename string) error {
 	if manifest.Kind != "workflow" && manifest.Kind != "resolver" {
 		return fmt.Errorf("core packages cannot be uninstalled")
 	}
-	expected := filepath.Join(manifest.Kind+"s", "dockpipe-"+manifest.Kind+"-"+manifest.Name+"-"+manifest.Version+".tar.gz")
-	if relative != expected {
+	stem, ok := archivecodec.StripExtension(filepath.Base(relative))
+	expectedStem := "dockpipe-" + manifest.Kind + "-" + packagebuild.SafeTarballToken(manifest.Name) + "-" + manifest.Version
+	if !ok || stem != expectedStem {
 		return fmt.Errorf("package identity does not match its archive path")
 	}
 	return root.Remove(relative)

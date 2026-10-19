@@ -998,6 +998,20 @@ func ensureBindSessionBranch(workdir, branch, baseRef string) error {
 	if gitRun(workdir, "show-ref", "--verify", "--quiet", "refs/heads/"+branch) == nil {
 		return gitRun(workdir, "checkout", branch)
 	}
+	if baseRef == "HEAD" {
+		empty, err := bindSessionRepositoryIsEmpty(workdir)
+		if err != nil {
+			return err
+		}
+		if empty {
+			// An unborn repository has no commit to check out. Select its initial
+			// branch without changing the index or any authored working files.
+			if err := gitRun(workdir, "check-ref-format", "--branch", branch); err != nil {
+				return err
+			}
+			return gitRun(workdir, "symbolic-ref", "HEAD", "refs/heads/"+branch)
+		}
+	}
 	return gitRun(workdir, "checkout", "-b", branch, baseRef)
 }
 

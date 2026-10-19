@@ -11,5 +11,5 @@ Rules:
 Current contents:
 
 - **`dockpipe-launcher/`** — Qt desktop shell for launching Dockpipe-backed sessions
-- **`vscode-extensions/`** — first-party VS Code / Cursor extensions for Dockpipe authoring
+- **Editor extensions** — maintained in DorkPipe; see [ownership and build contracts](../../../docs/packages/editor-extensions.md)
 

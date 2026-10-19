@@ -30,6 +30,16 @@ for size in 16 32 128 256 512; do
 done
 iconutil -c icns "$work/DockPipe.iconset" -o "$resources/DockPipe.icns"
 macdeployqt "$app" -always-overwrite
+webengine="$app/Contents/Frameworks/QtWebEngineCore.framework"
+webengine_helper="$webengine/Helpers/QtWebEngineProcess.app"
+for required in \
+  Helpers/QtWebEngineProcess.app/Contents/MacOS/QtWebEngineProcess \
+  Helpers/QtWebEngineProcess.app/Contents/Resources/QtWebEngineProcess.entitlements \
+  Resources/icudtl.dat Resources/qtwebengine_resources.pak \
+  Resources/qtwebengine_resources_100p.pak Resources/qtwebengine_resources_200p.pak \
+  Resources/qtwebengine_locales/en-US.pak; do
+  [[ -f "$webengine/$required" ]] || { echo "Incomplete WebEngine runtime: $required" >&2; exit 1; }
+done
 # A Developer ID identity can be supplied from an already provisioned keychain.
 # Ad-hoc signing makes local/staging builds runnable on Apple Silicon, not trusted by Gatekeeper.
 identity="${DOCKPIPE_MAC_APP_IDENTITY:--}"
@@ -38,7 +48,10 @@ if [[ "$identity" != - ]]; then
   sign_args+=(--options runtime --timestamp)
 fi
 codesign "${sign_args[@]}" "$app/Contents/Helpers/dockpipe"
-codesign "${sign_args[@]}" --deep "$app"
+codesign "${sign_args[@]}" \
+  --entitlements "$webengine_helper/Contents/Resources/QtWebEngineProcess.entitlements" \
+  "$webengine_helper"
+codesign "${sign_args[@]}" --deep --preserve-metadata=entitlements "$app"
 codesign --verify --deep --strict "$app"
 if [[ -n "${DOCKPIPE_MAC_NOTARY_PROFILE:-}" ]]; then
   [[ "$identity" != - && -n "${DOCKPIPE_MAC_INSTALLER_IDENTITY:-}" ]] || { echo 'Notarization requires both Developer ID identities' >&2; exit 1; }

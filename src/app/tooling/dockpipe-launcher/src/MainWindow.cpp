@@ -1,9 +1,15 @@
+#include "ResourceCanvas.h"
 #include "MainWindow.h"
 #include "ProjectFilesWidget.h"
-#include "CockpitWidget.h"
+#include "WorkspacePackageManager.h"
 #include "ProjectGitWidget.h"
 
 #include "BasicModeWidget.h"
+#include "BrowserWidget.h"
+#include "BrowserLinkRouter.h"
+#include "DashboardWidgetFactory.h"
+#include "TerminalWidget.h"
+#include "TerminalPreferences.h"
 #include "RemoteWidget.h"
 #include "ActivityWidget.h"
 #include <QTabWidget>
@@ -53,6 +59,7 @@
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QPushButton>
+#include <QPainter>
 #include <QScrollBar>
 #include <QSet>
 #include <QSettings>
@@ -72,6 +79,10 @@
 #include <algorithm>
 
 namespace {
+
+constexpr int browserPageIndex = 7;
+constexpr int cockpitPageIndex = 8;
+constexpr int terminalPageIndex = 9;
 
 QString statusLabel(SessionManager &sm, const QString &id, bool *runningOut, bool *failedOut)
 {
@@ -366,8 +377,26 @@ WorkflowCatalogData fastWorkflowShellCatalog(const QString &workdir)
 
 } // namespace
 
+void MainWindow::paintEvent(QPaintEvent *event)
+{
+    // Alpha-capable windows have no automatic system background. Keep the app
+    // opaque; terminal views explicitly clear only their own viewport later.
+    if (testAttribute(Qt::WA_TranslucentBackground)) {
+        QPainter painter(this);
+        painter.fillRect(rect(), palette().color(QPalette::Window));
+    }
+    QMainWindow::paintEvent(event);
+}
+
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
 {
+    connect(qApp, &QCoreApplication::aboutToQuit, this, &MainWindow::releaseDashboardWindows);
+    // Allocate an alpha surface before native window creation only when opted in.
+    // Changing this Qt attribute on an already mapped window is not portable.
+    if (TerminalPreferences::instance()->settings().backgroundTarget == "desktop") {
+        setAttribute(Qt::WA_TranslucentBackground);
+        setAutoFillBackground(true);
+    }
     const QString version = QCoreApplication::applicationVersion();
     setWindowTitle(version.startsWith("dev+") ? tr("Dockpipe Launcher — %1").arg(version)
                                              : tr("Dockpipe Launcher"));
@@ -422,26 +451,33 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     m_executionTabs->addTab(m_executionExplorer, tr("Processes && resources"));
     m_executionTabs->addTab(m_activityWidget, tr("Runs && logs"));
     connect(m_activityWidget, &ActivityWidget::browseWorkflowsRequested, this, [this]() {
-        m_navigation->setCurrentRow(1);
+        selectPage(1);
     });
     m_stack->addWidget(m_executionTabs);
     m_projectFiles = new ProjectFilesWidget;
     m_projectFiles->setRoot(m_settings.projectFolder);
     connect(m_projectFiles, &ProjectFilesWidget::workflowOpenRequested, this, [this](const QString &path) {
         if (m_workflowEditor->openWorkflow(path))
-            m_navigation->setCurrentRow(1);
+            selectPage(1);
     });
     m_stack->addWidget(m_projectFiles);
     m_projectGit = new ProjectGitWidget;
     m_projectGit->setWorkdir(m_settings.projectFolder);
     m_stack->addWidget(m_projectGit);
+    auto *browserPlaceholder = new QWidget;
+    browserPlaceholder->setObjectName("browserPlaceholder");
+    m_stack->addWidget(browserPlaceholder);
     // Keep the optional cockpit unconstructed until the enabled entry is opened.
     auto *cockpitPlaceholder = new QWidget;
     cockpitPlaceholder->setObjectName("cockpitDisabledPlaceholder");
     m_stack->addWidget(cockpitPlaceholder);
+    auto *terminalPlaceholder = new QWidget;
+    terminalPlaceholder->setObjectName("terminalPlaceholder");
+    m_stack->addWidget(terminalPlaceholder);
     connect(m_executionTabs, &QTabWidget::currentChanged, this, [this](int tab) {
-        m_executionExplorer->setActive((m_stack->currentWidget() == m_executionTabs
-            || (m_cockpit && m_cockpit->activePanel() == "executions")) && tab == 0);
+        m_executionExplorer->setActive(((m_stack->currentWidget() == m_executionTabs
+            || (m_cockpit && m_cockpit->activePanel() == "executions")) && tab == 0)
+            || (m_cockpit && m_cockpit->resourceSection() == "executions"));
         if (tab == 1)
             m_activityWidget->refreshLocal();
     });
@@ -467,13 +503,21 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     railLayout->addWidget(tagline);
     m_navigation = new QListWidget;
     m_navigation->setObjectName(QStringLiteral("workspaceNavigation"));
-    for (const auto *action : m_pageActions)
-        m_navigation->addItem(action->text());
+    for (int page = 0; page < m_pageActions.size(); ++page) {
+        auto *item = new QListWidgetItem(m_pageActions[page]->text(), m_navigation);
+        item->setData(Qt::UserRole, page);
+    }
+    // Visual navigation order is independent of the stable page identities.
+    m_navigation->addItem(m_navigation->takeItem(cockpitPageIndex));
     m_navigation->setSpacing(6);
     m_navigation->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     for (int i = 0; i < m_navigation->count(); ++i)
         m_navigation->item(i)->setSizeHint(QSize(140, 42));
     railLayout->addWidget(m_navigation, 1);
+    m_addDashboard = new QPushButton(tr("+ Dashboard"));
+    m_addDashboard->setObjectName("addDashboardButton");
+    railLayout->addWidget(m_addDashboard);
+    connect(m_addDashboard, &QPushButton::clicked, this, &MainWindow::createDashboard);
     auto *packages = new QPushButton(tr("Packages"));
     auto *settings = new QPushButton(tr("Settings"));
     railLayout->addWidget(packages);
@@ -518,21 +562,30 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     workspace->addWidget(m_stack, 1);
     shell->addLayout(workspace, 1);
     outer->addLayout(shell, 1);
-    connect(m_navigation, &QListWidget::currentRowChanged, this, [this](int page) {
+    connect(m_navigation, &QListWidget::currentRowChanged, this, [this](int row) {
+        const int page = row < 0 ? -1 : m_navigation->item(row)->data(Qt::UserRole).toInt();
         if (page < 0)
             return;
-        if (page == 7) {
+        if (page == cockpitPageIndex) {
             if (!m_settings.cockpit.enabled) {
-                m_navigation->setCurrentRow(0);
+                selectPage(0);
                 return;
             }
             ensureCockpit();
         }
+        if (page == browserPageIndex)
+            ensureBrowser();
+        if (page == terminalPageIndex)
+            ensureTerminal();
+        if (page > terminalPageIndex)
+            ensureDashboard(page);
         m_stack->setCurrentIndex(page);
-        m_workspaceBar->setVisible(page == 0 || page == 5 || page == 6);
-        m_dockerWidget->setActive(page == 3);
+        updateDashboardFullscreen();
+        m_workspaceBar->setVisible(page == 0 || page == 5 || page == 6 || page == terminalPageIndex);
+        m_dockerWidget->setActive(page == 3 || (page == cockpitPageIndex && m_cockpit && m_cockpit->resourceSection() == "containers"));
         m_executionExplorer->setWorkdir(m_settings.projectFolder);
-        m_executionExplorer->setActive(page == 4 && m_executionTabs->currentIndex() == 0);
+        m_executionExplorer->setActive((page == 4 && m_executionTabs->currentIndex() == 0)
+            || (page == cockpitPageIndex && m_cockpit && m_cockpit->resourceSection() == "executions"));
         m_pageActions[page]->setChecked(true);
         m_actIcons->setEnabled(page == 0);
         m_actList->setEnabled(page == 0);
@@ -554,8 +607,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
             m_remoteWidget->refresh();
         } else if (page == 6) {
             m_projectGit->refresh();
-        } else if (page == 7) {
-            m_cockpit->setWorkspace(m_settings.projectFolder);
+        } else if (page == cockpitPageIndex) {
+            if (m_cockpit)
+                m_cockpit->setWorkspace(m_settings.projectFolder);
         }
     });
     connect(m_remoteWidget, &RemoteWidget::installProviderRequested, this, [this]() {
@@ -589,13 +643,28 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
         updateWorkflowPreview();
     });
     connect(m_stack, &QStackedWidget::currentChanged, this, [this](int index) {
-        if (m_navigation->currentRow() != index)
-            m_navigation->setCurrentRow(index);
+        if (selectedPage() != index)
+            selectPage(index);
     });
 
     setCentralWidget(central);
 
+    m_browserLinks = new BrowserLinkRouter(this);
+    connect(m_browserLinks, &BrowserLinkRouter::openInDockPipe, this, [this](const QUrl &url) {
+        ensureBrowser();
+        selectPage(browserPageIndex);
+        m_stack->setCurrentWidget(m_browserWidget);
+        m_browserWidget->navigate(url);
+        show();
+        raise();
+        activateWindow();
+    });
+    connect(m_browserLinks, &BrowserLinkRouter::failed, this, [this](const QString &message) {
+        statusBar()->showMessage(message, 10000);
+    });
+
     setupDisclaimerBar();
+    connect(statusBar(), &QStatusBar::messageChanged, this, &MainWindow::updateDashboardStatusBar);
     applyCockpitAvailability();
 
     connect(m_basicWidget, &BasicModeWidget::packagesRequested, this, &MainWindow::onManagePackages);
@@ -620,6 +689,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     trayAvailability->start(5000);
     QTimer::singleShot(0, this, [this, startHome]() {
         m_store.load();
+        setupDashboards();
         setupTray();
         if (startHome) {
             activateHome();
@@ -662,6 +732,7 @@ void MainWindow::setupDisclaimerBar()
 
     m_disclaimerContainer = wrap;
     statusBar()->addWidget(wrap, 1);
+    updateDashboardStatusBar();
 }
 
 void MainWindow::onDismissThirdPartyDisclaimer()
@@ -674,6 +745,7 @@ void MainWindow::onDismissThirdPartyDisclaimer()
     QWidget *w = m_disclaimerContainer;
     m_disclaimerContainer = nullptr;
     w->deleteLater();
+    updateDashboardStatusBar();
 }
 
 void MainWindow::onRestoreThirdPartyDisclaimer()
@@ -694,16 +766,26 @@ void MainWindow::setupMenuBar()
     QMenu *view = menuBar()->addMenu(tr("View"));
     view->setObjectName("workspaceViewMenu");
     auto *modeGroup = new QActionGroup(this);
-    const QStringList pages{tr("Apps"), tr("Workflows"), tr("Machines"), tr("Containers"), tr("Executions"), tr("Files"), tr("Git"), tr("Cockpit")};
+    m_pageGroup = modeGroup;
+    const QStringList pages{tr("Apps"), tr("Workflows"), tr("Machines"), tr("Containers"), tr("Executions"), tr("Files"), tr("Git"), tr("Browser"), tr("Cockpit"), tr("Terminal")};
     for (int page = 0; page < pages.size(); ++page) {
         auto *action = view->addAction(pages[page]);
         action->setCheckable(true);
         modeGroup->addAction(action);
         m_pageActions.append(action);
         connect(action, &QAction::triggered, this, [this, page]() {
-            m_navigation->setCurrentRow(page);
+            selectPage(page);
         });
     }
+    view->removeAction(m_pageActions[terminalPageIndex]);
+    view->insertAction(m_pageActions[cockpitPageIndex], m_pageActions[terminalPageIndex]);
+    m_addDashboardAction = view->addAction(tr("New dashboard…"), this, &MainWindow::createDashboard);
+    m_addDashboardAction->setObjectName("newDashboardAction");
+    m_fullscreenAction = view->addAction(tr("Full screen"), this, &MainWindow::toggleDashboardFullscreen);
+    m_fullscreenAction->setObjectName("dashboardFullscreenAction");
+    m_fullscreenAction->setCheckable(true);
+    m_fullscreenAction->setShortcut(QKeySequence(Qt::Key_F11));
+    addAction(m_fullscreenAction);
     view->addSeparator();
     m_actSidebar = view->addAction(tr("Show sidebar"));
     m_actSidebar->setObjectName("toggleSidebarAction");
@@ -731,8 +813,8 @@ void MainWindow::setupMenuBar()
     sidebarControlLayout->addWidget(sidebarToggle);
     menuBar()->setCornerWidget(sidebarControl, Qt::TopLeftCorner);
     connect(m_actSidebar, &QAction::toggled, this, [this, updateSidebarHint](bool visible) {
-        m_navigationRail->setVisible(visible);
         m_settings.sidebarVisible = visible;
+        updateDashboardFullscreen();
         m_settings.save();
         updateSidebarHint();
     });
@@ -791,7 +873,7 @@ void MainWindow::applyUiMode()
     m_actList->blockSignals(true);
 
     m_stack->setCurrentIndex(m_settings.isAdvanced() ? 1 : 0);
-    m_navigation->setCurrentRow(m_stack->currentIndex());
+    selectPage(m_stack->currentIndex());
     m_pageActions[m_stack->currentIndex()]->setChecked(true);
     const bool basic = !m_settings.isAdvanced();
     m_actIcons->setEnabled(basic);
@@ -857,18 +939,65 @@ void MainWindow::onOpenSettings()
     saveSettings(dialog.updatedSettings());
 }
 
+void MainWindow::ensureBrowser()
+{
+    if (m_browserWidget)
+        return;
+
+    m_browserWidget = new BrowserWidget(m_stack);
+    const QSignalBlocker blocker(m_stack);
+    QWidget *placeholder = m_stack->widget(browserPageIndex);
+    m_stack->removeWidget(placeholder);
+    m_stack->insertWidget(browserPageIndex, m_browserWidget);
+    delete placeholder;
+}
+
+void MainWindow::ensureTerminal()
+{
+    if (m_terminalWidget || !m_dashboardFactory)
+        return;
+    m_terminalWidget = new TerminalWidget(m_dashboardFactory->terminals(), m_settings.projectFolder, m_stack);
+    connect(m_dashboardFactory, &DashboardWidgetFactory::workdirChanged, m_terminalWidget, &TerminalWidget::setWorkdir);
+    const QSignalBlocker blocker(m_stack);
+    QWidget *placeholder = m_stack->widget(terminalPageIndex);
+    m_stack->removeWidget(placeholder);
+    m_stack->insertWidget(terminalPageIndex, m_terminalWidget);
+    delete placeholder;
+}
+
 void MainWindow::ensureCockpit()
 {
     if (m_cockpit || !m_settings.cockpit.enabled)
         return;
-    m_cockpit = new CockpitWidget;
+    auto &packages = WorkspacePackageManager::instance();
+    if (!packages.ready()) {
+        if (!packages.busy()) {
+            connect(&packages, &WorkspacePackageManager::prepared, this, [this]() {
+                ensureCockpit();
+                if (m_cockpit && selectedPage() == cockpitPageIndex)
+                    m_stack->setCurrentWidget(m_cockpit);
+            }, Qt::SingleShotConnection);
+            connect(&packages, &WorkspacePackageManager::failed, this, [this](const QString &message) {
+                selectPage(0);
+                statusBar()->showMessage(message, 15000);
+            }, Qt::SingleShotConnection);
+            packages.prepare(m_settings, false);
+        }
+        return;
+    }
+    m_cockpit = packages.createWorkspace(nullptr);
+    if (!m_cockpit)
+        return;
     m_cockpit->setWorkspace(m_settings.projectFolder);
-    QWidget *placeholder = m_stack->widget(7);
-    m_stack->removeWidget(placeholder);
-    m_stack->insertWidget(7, m_cockpit);
-    delete placeholder;
+    {
+        const QSignalBlocker blocker(m_stack);
+        QWidget *placeholder = m_stack->widget(cockpitPageIndex);
+        m_stack->removeWidget(placeholder);
+        m_stack->insertWidget(cockpitPageIndex, m_cockpit);
+        delete placeholder;
+    }
     m_cockpit->applySettings(m_settings.cockpit);
-    connect(m_cockpit, &CockpitWidget::settingsRequested, this, &MainWindow::onOpenSettings);
+    m_cockpit->requestSettings = [this]() { onOpenSettings(); };
     m_cockpit->pageProvider = [this](const QString &key) -> QWidget * {
         if (key == "workflows")
             return m_advancedPage;
@@ -878,49 +1007,47 @@ void MainWindow::ensureCockpit()
             return m_executionTabs;
         if (key == "machines")
             return m_remoteWidget;
-        if (key == "settings") {
-            auto *preferences = m_cockpit->findChild<SettingsDialog *>("cockpitPreferences");
-            if (!preferences) {
-                preferences = new SettingsDialog(m_settings, m_cockpit);
-                preferences->setObjectName("cockpitPreferences");
-                preferences->setParent(m_cockpit, Qt::Widget);
-                preferences->hide();
-                connect(preferences, &QDialog::finished, m_cockpit, [this, preferences](int result) {
-                    const auto updated = preferences->updatedSettings();
-                    m_cockpit->closePanel();
-                    if (result == QDialog::Accepted)
-                        saveSettings(updated);
-                    preferences->deleteLater();
-                }, Qt::QueuedConnection);
-            }
-            return preferences;
-        }
         return nullptr;
     };
-    m_cockpit->worldProvider = [this](const QString &key) {
-        QVector<WorkspaceFlightBuilding> buildings;
+    m_cockpit->resourceSnapshot = [this](const QString &key) {
+        QWidget *page = m_cockpit->pageProvider(key);
+        auto *canvas = page ? page->findChild<ResourceCanvas *>() : nullptr;
+        return canvas ? canvas->snapshot() : QJsonObject();
+    };
+    m_cockpit->resourceSelected = [this](const QString &key, const QString &id) {
+        if (key == "executions")
+            m_executionTabs->setCurrentIndex(0);
+        QWidget *page = m_cockpit->pageProvider(key);
+        auto *canvas = page ? page->findChild<ResourceCanvas *>() : nullptr;
+        if (canvas && canvas->focusResource(id))
+            canvas->showDetails();
+    };
+    m_cockpit->destinationsProvider = [this](const QString &key) {
+        QJsonArray buildings;
         if (key == "workflows") {
             for (const auto &workflow : m_workspaceWorkflows) {
                 if (buildings.size() == 149)
                     break;
                 if (!workflow.configPath.isEmpty())
-                    buildings.append({workflow.displayName, 95, true, false, "workflow:" + workflow.configPath});
+                    buildings.append(QJsonObject{{"title", workflow.displayName}, {"height", 95}, {"path", "workflow:" + workflow.configPath}});
             }
-            buildings.append({tr("Workflow studio"), 110, true, false, "panel:workflows"});
+            buildings.append(QJsonObject{{"title", tr("Workflow studio")}, {"height", 110}, {"path", "panel:workflows"}});
         }
         return buildings;
     };
     m_cockpit->workflowOpener = [this](const QString &path) { return m_workflowEditor->openWorkflow(path); };
-    connect(m_cockpit, &CockpitWidget::exitRequested, this, [this]() {
+    m_cockpit->requestExit = [this]() {
         if (m_cockpit->confirmLeave())
-            m_navigation->setCurrentRow(0);
-    });
-    connect(m_cockpit, &CockpitWidget::panelActivityChanged, this, [this](const QString &key, bool active) {
+            selectPage(0);
+    };
+    m_cockpit->panelActivity = [this](const QString &key, bool active) {
         if (key == "containers")
-            m_dockerWidget->setActive(active || m_stack->currentWidget() == m_dockerWidget);
+            m_dockerWidget->setActive(active || m_stack->currentWidget() == m_dockerWidget
+                || m_cockpit->resourceSection() == "containers");
         else if (key == "executions") {
             m_executionExplorer->setWorkdir(m_settings.projectFolder);
-            m_executionExplorer->setActive((active || m_stack->currentWidget() == m_executionTabs) && m_executionTabs->currentIndex() == 0);
+            m_executionExplorer->setActive(((active || m_stack->currentWidget() == m_executionTabs) && m_executionTabs->currentIndex() == 0)
+                || m_cockpit->resourceSection() == "executions");
             if (active)
                 m_activityWidget->refreshLocal();
         } else if (key == "machines" && active) {
@@ -929,7 +1056,7 @@ void MainWindow::ensureCockpit()
         } else if (key == "workflows" && active) {
             startAdvancedContextDiscovery();
         }
-    });
+    };
 }
 
 void MainWindow::applyCockpitAvailability()
@@ -937,27 +1064,44 @@ void MainWindow::applyCockpitAvailability()
     const bool enabled = m_settings.cockpit.enabled;
     for (auto *files : findChildren<ProjectFilesWidget *>())
         files->applyCockpitSettings(m_settings.cockpit);
-    if (!enabled && m_stack->currentIndex() == 7) {
+    if (!enabled && m_stack->currentIndex() == cockpitPageIndex) {
         if (m_cockpit)
             m_cockpit->closePanel();
-        m_navigation->setCurrentRow(0);
+        selectPage(0);
     }
-    m_pageActions[7]->setEnabled(enabled);
-    m_pageActions[7]->setVisible(enabled);
-    m_navigation->item(7)->setHidden(!enabled);
+    m_pageActions[cockpitPageIndex]->setEnabled(enabled);
+    m_pageActions[cockpitPageIndex]->setVisible(enabled);
+    for (int row = 0; row < m_navigation->count(); ++row) {
+        if (m_navigation->item(row)->data(Qt::UserRole).toInt() == cockpitPageIndex)
+            m_navigation->item(row)->setHidden(!enabled);
+    }
     if (m_cockpit) {
         m_cockpit->applySettings(m_settings.cockpit);
         m_cockpit->setEnabled(enabled);
+        if (!enabled) {
+            m_cockpit->closePanel();
+            auto *removed = m_cockpit;
+            m_cockpit = nullptr;
+            const QSignalBlocker blocker(m_stack);
+            m_stack->removeWidget(removed);
+            auto *placeholder = new QWidget;
+            placeholder->setObjectName("cockpitDisabledPlaceholder");
+            m_stack->insertWidget(cockpitPageIndex, placeholder);
+            removed->deleteLater();
+        }
     }
 }
 
 bool MainWindow::saveSettings(const LauncherSettings &settings)
 {
+    if (!settings.cockpit.enabled && m_cockpit && !m_cockpit->confirmLeave())
+        return false;
     if (!settings.save()) {
         QMessageBox::warning(this, tr("Settings not saved"), tr("Could not save app settings. Your previous settings remain active."));
         return false;
     }
     m_settings = settings;
+    applyDefaultDashboardVisibility();
     applyCockpitAvailability();
     applyGlobalRootDefault(m_settings.globalRootOverride);
     rebuildUi();
@@ -1054,6 +1198,10 @@ void MainWindow::onRefreshAppList()
 
 void MainWindow::updateBasicPage()
 {
+    if (m_dashboardFactory) {
+        m_dashboardFactory->setWorkdir(m_settings.projectFolder);
+        m_dashboardFactory->setWorkflows(m_workspaceWorkflows);
+    }
     const QString folder = QDir::toNativeSeparators(m_settings.projectFolder);
     const QString name = QFileInfo(m_settings.projectFolder).fileName();
     QString workspaceName = name.isEmpty() ? folder : name;
@@ -1334,6 +1482,8 @@ void MainWindow::onTrayActivate(QSystemTrayIcon::ActivationReason reason)
 void MainWindow::closeEvent(QCloseEvent *event)
 {
     if (m_tray && m_tray->isVisible() && QSystemTrayIcon::isSystemTrayAvailable()) {
+        persistDashboards();
+        releaseDashboardWindows();
         hide();
         event->ignore();
         return;
@@ -1345,11 +1495,18 @@ void MainWindow::closeEvent(QCloseEvent *event)
     }
     if ((m_cockpit && !m_cockpit->confirmLeave())
         || (m_projectFiles && !m_projectFiles->confirmLeave())
-        || (m_workflowEditor && !m_workflowEditor->confirmDiscardChanges())) {
+        || (m_workflowEditor && !m_workflowEditor->confirmDiscardChanges())
+        || !confirmDashboardClose()) {
         event->ignore();
         return;
     }
+    releaseDashboardWindows();
     QMainWindow::closeEvent(event);
+}
+
+MainWindow::~MainWindow()
+{
+    releaseDashboardWindows();
 }
 
 void MainWindow::clearContextList()
@@ -1757,7 +1914,7 @@ bool MainWindow::launchWorkflow(const Context &display)
         }
         RemoteRunDialog dialog(remoteContext, node, this);
         if (dialog.exec() == QDialog::Accepted) {
-            m_navigation->setCurrentRow(m_stack->indexOf(m_executionTabs));
+            selectPage(m_stack->indexOf(m_executionTabs));
             m_executionTabs->setCurrentWidget(m_activityWidget);
             m_activityWidget->showRemoteJobs();
             rememberWorkflowRun(display);

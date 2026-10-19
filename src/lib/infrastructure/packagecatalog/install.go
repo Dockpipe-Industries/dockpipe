@@ -2,11 +2,11 @@ package packagecatalog
 
 import (
 	"archive/tar"
-	"compress/gzip"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"dockpipe/src/lib/domain"
+	"dockpipe/src/lib/infrastructure/archivecodec"
 	"gopkg.in/yaml.v3"
 )
 
@@ -78,6 +79,9 @@ func (c *Client) Install(ctx context.Context, catalog Catalog, entry Entry, stor
 	if size > maxArchiveBytes {
 		return "", fmt.Errorf("package archive exceeds size limit")
 	}
+	if entry.SizeBytes > 0 && size != entry.SizeBytes {
+		return "", fmt.Errorf("package archive size does not match catalog")
+	}
 	if !strings.EqualFold(hex.EncodeToString(hash.Sum(nil)), entry.SHA256) {
 		return "", fmt.Errorf("package checksum mismatch for %s", entry.Name)
 	}
@@ -107,13 +111,22 @@ func validateArchive(ctx context.Context, reader io.Reader, entry Entry) error {
 	return validateArchiveForEngine(ctx, reader, entry, "dev")
 }
 
-func validateArchiveForEngine(ctx context.Context, reader io.Reader, entry Entry, engineVersion string) error {
-	gz, err := gzip.NewReader(reader)
+func validateArchiveForEngine(ctx context.Context, reader io.Reader, entry Entry, engineVersion string) (resultErr error) {
+	codec := "gzip"
+	if entry.Tarball != "" {
+		var err error
+		codec, err = archivecodec.CodecForPath(entry.Tarball)
+		if err != nil {
+			return err
+		}
+	}
+	decoded, err := archivecodec.Open(ctx, reader, codec, maxExpandedBytes)
 	if err != nil {
 		return err
 	}
-	defer gz.Close()
-	bounded := &io.LimitedReader{R: gz, N: maxExpandedBytes + 1}
+	defer func() { resultErr = errors.Join(resultErr, decoded.Close()) }()
+	hash := sha256.New()
+	bounded := &io.LimitedReader{R: io.TeeReader(decoded, hash), N: maxExpandedBytes + 1}
 	archive := tar.NewReader(bounded)
 	prefix := "core"
 	if entry.Kind != "core" {
@@ -170,12 +183,15 @@ func validateArchiveForEngine(ctx context.Context, reader io.Reader, entry Entry
 			foundManifest = true
 		}
 	}
-	// Read through the gzip trailer, checking both corruption and expansion limits.
+	// Complete the decoder, checking its trailer/exit status and the entire tar.
 	if _, err := io.Copy(io.Discard, bounded); err != nil {
 		return err
 	}
 	if bounded.N <= 0 {
 		return fmt.Errorf("package archive exceeds expansion limit")
+	}
+	if entry.DecodedSHA256 != "" && (!strings.EqualFold(hex.EncodeToString(hash.Sum(nil)), entry.DecodedSHA256) || maxExpandedBytes+1-bounded.N != entry.DecodedSizeBytes) {
+		return fmt.Errorf("decoded package tar checksum or size mismatch")
 	}
 	if !foundManifest {
 		return fmt.Errorf("package archive has no matching package.yml")

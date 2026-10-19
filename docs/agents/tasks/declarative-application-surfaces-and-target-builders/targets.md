@@ -85,7 +85,7 @@ Do not settle command spelling here. `dockpipe compile` already means Dockpipe p
 - [TASK-022](../go-first-pipelang-backend-services/overview.md) owns transport-neutral backend services, the
   Go-first service resolver, schemas, and generated Qt/C++ clients. This task owns consuming those
   clients in application surfaces, not backend or transport semantics.
-- [TASK-008](../agentic-app-ui/overview.md) owns ForgePipe's launcher-context control and inspection UX. It may
+- [TASK-008](../agentic-app-ui/overview.md) owns DockPipe AI's launcher-context control and inspection UX. It may
   consume the application contract but does not own the generic target builder.
 - [TASK-004](../compile-performance-qt-vscode/overview.md) owns measured Qt launcher and VS Code extension build
   performance, not target semantics or standalone artifact contracts.

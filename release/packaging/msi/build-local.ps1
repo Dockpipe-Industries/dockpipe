@@ -151,18 +151,28 @@ $pythonExe = Require-Tool -Exe "python" -Hint "Install Python or ensure it is on
 $wixRootResolved = Ensure-WixRoot -PathValue $WixRoot
 Set-MsvcEnvironment
 
+$QtInstallRoot = [IO.Path]::GetFullPath($QtInstallRoot)
 if (-not $QtRoot) {
     $QtRoot = Join-Path $QtInstallRoot "$QtVersion\msvc2022_64"
 }
 
-if (-not (Test-Path -LiteralPath (Join-Path $QtRoot "lib\cmake\Qt6\Qt6Config.cmake"))) {
+if (-not (Test-Path -LiteralPath (Join-Path $QtRoot "lib\cmake\Qt6\Qt6Config.cmake")) `
+    -or -not (Test-Path -LiteralPath (Join-Path $QtRoot "lib\cmake\Qt6WebEngineWidgets\Qt6WebEngineWidgetsConfig.cmake"))) {
     if (-not $InstallQt) {
-        throw "Qt not found at $QtRoot. Re-run with -InstallQt to download it via aqtinstall."
+        throw "Qt with WebEngine Widgets not found at $QtRoot. Re-run with -InstallQt to download it via aqtinstall."
     }
     & $pythonExe -m pip install --user aqtinstall
     if ($LASTEXITCODE -ne 0) { throw "pip install aqtinstall failed" }
-    & $pythonExe -m aqt install-qt windows desktop $QtVersion $QtArch -O $QtInstallRoot
-    if ($LASTEXITCODE -ne 0) { throw "aqt install-qt failed" }
+    # aqt writes its log in the working directory, independently of -O.
+    $qtInstallLogs = Join-Path $script:WindowsMsiRoot "logs\qt-install"
+    New-Item -ItemType Directory -Force -Path $qtInstallLogs | Out-Null
+    Push-Location -LiteralPath $qtInstallLogs
+    try {
+        & $pythonExe -m aqt install-qt windows desktop $QtVersion $QtArch -O $QtInstallRoot --modules qtwebengine qtwebchannel qtpositioning
+        if ($LASTEXITCODE -ne 0) { throw "aqt install-qt failed" }
+    } finally {
+        Pop-Location
+    }
 }
 
 $outDirResolved = [IO.Path]::GetFullPath($OutDir)

@@ -69,3 +69,52 @@ artifacts. The published compiler supports typed asset-only resolvers, bounded
 transitive dependencies and hidden metadata. Controlled standalone consumers pin
 actual qualified release assets and upgrade their version and digest together.
 Mutable latest selection and silent sibling source dependencies are forbidden.
+
+## Product composition and built-in browser (2026-10-17)
+
+Follow the [updated product/package contract](../../../architecture/forgepipe/product-package-boundaries.md).
+Complete independent SpatialPipe, MesaMoto and Spatial-Web extraction and package consumption.
+SpatialPipe exposes custom planets and spatial web without DockPipe/filesystem host integrations;
+Cockpit supplies those adapters. MesaMoto remains standalone with an optional universe adapter.
+Normal browsing becomes a built-in top-level DockPipe desktop feature, independent of Cockpit
+and spatial rendering, using the shared ordinary browser component. Headless core remains unaffected.
+The existing package-loading workaround is not catalog delivery; staging install/readback gates
+remain required. The local Browser implementation below does not establish package publication.
+
+User refinement: SpatialPipe owns a Games World populated by compatible installed game packages.
+MesaMoto is both a standalone game and an optional Games World contribution. Remove its integration
+from Spatial-Web entirely; no game dependency, track button, launch callback or bundled content in
+spatial or ordinary browsing. Future browser/game integration is deferred. See the product contract
+for migration and absence-test requirements; source extraction remains unfinished.
+
+
+Local implementation: Browser is now a lazy top-level desktop page with its own session and ordinary
+navigation/search/download controls, tabs, annotated captures and page tools. Unpacked Manifest V3
+extensions use Qt 6.10+ builds with extension support; passwords/autofill use compatible extensions,
+with no built-in vault. Shared `BrowserRuntime` owns URL policy and renderer/page setup;
+Spatial Web embeds the same `BrowserWidget` in Live page, preserving the current world across tab
+changes until Build space. The spatial browser's Moto-track button and game-launch callback
+are removed; bike runtime/content remain for extraction. Headless engine/CLI code is unchanged.
+Desktop packaging inputs now include WebEngine. Standalone extraction, Games World package discovery
+and hosted package availability are still pending.
+
+Validation for this slice: Linux native and offscreen Browser fixtures pass page loading,
+JavaScript, navigation/history, cancellation, saved/cancelled downloads, missing-runtime handling
+and page/profile cleanup. The full-window navigation regression passes with Cockpit disabled;
+spatial-web model, native spatial-web and native dirt-bike regressions pass. Desktop packaging
+scripts/workflows pass syntax checks; macOS/Windows bundles and hosted catalog delivery remain
+unverified. Test screenshots/logs are temporary local artifacts, not committed product assets.
+
+Browser polish verification: five focused browser/annotation/extension/launcher/model checks pass.
+Native browser checks cover PNG/PDF export and session reset; native spatial fixtures cover shared
+tabs, media-controller disposal, preserved worlds/cameras, image extraction, corridors and theatre
+playback. Password-manager compatibility and cross-platform extension builds remain unverified.
+
+## Protected SDK and Cockpit staging delivery (2026-10-19)
+
+The user explicitly approved including a protected ForgePipe SDK release and
+Cockpit integration in the current Dockpipe staging build. The canonical migration
+record describes the fixed public SDK inventory, private diagnostic retention,
+publisher attestation and native Qt ABI gates. Current implementation advances
+this delivery; hosted qualification and final staging catalog readback remain
+open. This does not complete the wider standalone product extraction objective.

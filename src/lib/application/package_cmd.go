@@ -8,6 +8,7 @@ import (
 
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
+	"dockpipe/src/lib/infrastructure/archivecodec"
 	"dockpipe/src/lib/infrastructure/packagebuild"
 
 	"gopkg.in/yaml.v3"
@@ -90,12 +91,12 @@ func cmdPackageList(args []string) error {
 }
 
 func walkPackageDirs(root string) error {
-	for _, tc := range []struct{ sub, glob string }{
-		{"core", "dockpipe-core-*.tar.gz"},
-		{"workflows", "dockpipe-workflow-*.tar.gz"},
-		{"resolvers", "dockpipe-resolver-*.tar.gz"},
+	for _, tc := range []struct{ sub, kind string }{
+		{"core", "core"},
+		{"workflows", "workflow"},
+		{"resolvers", "resolver"},
 	} {
-		matches, err := filepath.Glob(filepath.Join(root, tc.sub, tc.glob))
+		matches, err := packagebuild.ListPackageArchivePaths(filepath.Join(root, tc.sub), tc.kind)
 		if err != nil {
 			return err
 		}
@@ -134,7 +135,7 @@ func walkPackageDirs(root string) error {
 		if d.IsDir() {
 			return nil
 		}
-		if strings.HasSuffix(path, ".tar.gz") || strings.HasSuffix(path, ".sha256") {
+		if _, ok := archivecodec.StripExtension(path); ok || strings.HasSuffix(path, ".sha256") {
 			return nil
 		}
 		if filepath.Base(path) != infrastructure.PackageManifestFilename {
@@ -269,7 +270,7 @@ bin/.dockpipe/internal/packages/ by default (see docs/packages/package-model.md)
 Usage:
   dockpipe package list [--workdir <path>] [--format text|json]
   dockpipe package catalog --remote <HTTPS manifest URL> [--include-hidden]
-  dockpipe package install --remote <HTTPS manifest URL> --kind <kind> --name <name> [--sha256 <digest>]
+  dockpipe package install --remote <HTTPS manifest URL> --kind <kind> --name <name> [--codec <codec>] [--sha256 <digest>]
   dockpipe package uninstall --path <absolute user package archive>
   dockpipe package images [--workdir <path>]
   dockpipe package manifest
@@ -281,7 +282,7 @@ Usage:
   images    List compiled/planned and materialized Docker image artifacts.
   manifest  Print an example package.yml schema to stdout.
   catalog   --remote <HTTPS manifest URL> [--include-hidden]: list discoverable remote packages as JSON for this platform.
-  install   --remote <URL> --kind <kind> --name <name> [--sha256 <digest>]: install into the user store.
+  install   --remote <URL> --kind <kind> --name <name> [--codec <codec>] [--sha256 <digest>]: install into the user store.
   uninstall --path <archive>: remove one optional user package; retain data and settings.
   build     core: templates-core tarball + install-manifest; source: package-owned authoring-tree builds; store: gzip tar per compiled package + packages-store-manifest.json.
   test      Run package-owned tests declared as test.script in package.yml for source checkouts.

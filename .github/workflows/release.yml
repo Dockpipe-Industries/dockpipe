@@ -27,6 +27,11 @@ on:
         required: false
         default: true
         type: boolean
+      forgepipe_sdk_tag:
+        description: "Attest only the frozen, audited ForgePipe SDK prerelease selected by its committed lock"
+        required: false
+        default: ""
+        type: string
 
 concurrency:
   # Both publication channels share one allocator lock. Dry runs never reserve versions.
@@ -37,8 +42,35 @@ permissions:
   contents: read
 
 jobs:
+  attest-forgepipe-sdk:
+    if: github.event_name == 'workflow_dispatch' && inputs.forgepipe_sdk_tag != '' && (github.ref == 'refs/heads/js/dev' || github.ref == 'refs/heads/staging')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Audit the exact public SDK bytes before attestation
+        env:
+          FORGEPIPE_SDK_TAG: ${{ inputs.forgepipe_sdk_tag }}
+        run: |
+          python3 release/packaging/attest-forgepipe.py \
+            --lock packages/cockpit/assets/forgepipe-sdk.lock.json \
+            --exports release/packaging/forgepipe-public-exports.txt \
+            --tag "$FORGEPIPE_SDK_TAG" --output "$RUNNER_TEMP/forgepipe-sdk-attestation"
+      - name: Attest the audited SDK and source-bound metadata
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: |
+            ${{ runner.temp }}/forgepipe-sdk-attestation/*.tar.gz
+            ${{ runner.temp }}/forgepipe-sdk-attestation/sdk-release.json
+
   meta:
-    if: github.event_name == 'workflow_dispatch' || vars.DOCKPIPE_RELEASE_ENABLED == 'true'
+    if: (github.event_name == 'workflow_dispatch' || vars.DOCKPIPE_RELEASE_ENABLED == 'true') && inputs.forgepipe_sdk_tag == ''
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -166,6 +198,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
+      attestations: read
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -179,16 +212,34 @@ jobs:
         run: |
           python3 -m venv "$RUNNER_TEMP/aqt"
           "$RUNNER_TEMP/aqt/bin/python" -m pip install aqtinstall==3.3.0
-          "$RUNNER_TEMP/aqt/bin/python" -m aqt install-qt mac desktop 6.8.3 clang_64 --outputdir "$RUNNER_TEMP/Qt"
+          "$RUNNER_TEMP/aqt/bin/python" -m aqt install-qt mac desktop 6.8.3 clang_64 --outputdir "$RUNNER_TEMP/Qt" --modules qtwebengine qtwebchannel qtpositioning
           echo "$RUNNER_TEMP/Qt/6.8.3/macos/bin" >> "$GITHUB_PATH"
           echo "CMAKE_PREFIX_PATH=$RUNNER_TEMP/Qt/6.8.3/macos" >> "$GITHUB_ENV"
       - name: Build native CLI, all package stores, and installers
         shell: bash
         run: bash release/packaging/build-platform.sh "${{ needs.meta.outputs.version }}"
+      - name: Prepare the attested native Cockpit SDK
+        if: matrix.platform == 'linux-amd64'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 packages/cockpit/assets/scripts/prepare-forgepipe-sdk.py \
+            --lock packages/cockpit/assets/forgepipe-sdk.lock.json \
+            --output "$RUNNER_TEMP/forgepipe-sdk"
+          echo "DOCKPIPE_FORGEPIPE_SDK=$RUNNER_TEMP/forgepipe-sdk" >> "$GITHUB_ENV"
       - name: Build Linux desktop against Ubuntu 22.04
         if: runner.os == 'Linux'
+        env:
+          DOCKPIPE_BUILD_COCKPIT: ${{ matrix.platform == 'linux-amd64' && '1' || '0' }}
+          DOCKPIPE_RELEASE_SOURCE_SHA: ${{ github.sha }}
         shell: bash
         run: bash release/packaging/desktop/build-linux.sh "${{ needs.meta.outputs.version }}" release/artifacts
+      - name: Finalize the qualified Linux Cockpit catalog
+        if: matrix.platform == 'linux-amd64'
+        env:
+          DOCKPIPE_RELEASE_SOURCE_SHA: ${{ github.sha }}
+        shell: bash
+        run: bash release/packaging/build-platform.sh --finalize-cockpit "${{ needs.meta.outputs.version }}" release/artifacts/cockpit-store
       - name: Build native macOS desktop installers
         if: runner.os == 'macOS'
         shell: bash
@@ -265,7 +316,7 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install aqtinstall==3.3.0
-          python -m aqt install-qt windows desktop 6.8.3 win64_msvc2022_64 --outputdir "$env:RUNNER_TEMP/Qt"
+          python -m aqt install-qt windows desktop 6.8.3 win64_msvc2022_64 --outputdir "$env:RUNNER_TEMP/Qt" --modules qtwebengine qtwebchannel qtpositioning
           if ($LASTEXITCODE -ne 0) { throw "Qt installation failed" }
           "$env:RUNNER_TEMP/Qt/6.8.3/msvc2022_64/bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
           "CMAKE_PREFIX_PATH=$env:RUNNER_TEMP/Qt/6.8.3/msvc2022_64" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8

@@ -1,10 +1,14 @@
 #include "SourceEditor.h"
 #include "SourceHighlighter.h"
+#include <definition.h>
+#include <theme.h>
 #include <QFontDatabase>
 #include <QPainter>
 #include <QPaintEvent>
 #include <QTextBlock>
 #include <QKeyEvent>
+#include <algorithm>
+#include <QVariant>
 
 namespace {
 bool usesDarkEditorTheme(const QPalette &palette)
@@ -33,9 +37,37 @@ SourceEditor::SourceEditor(QWidget *parent) : QPlainTextEdit(parent), m_gutter(n
     document()->setModified(false);
 }
 
+void SourceEditor::setLineMapping(const QVector<int> &lines)
+{
+    // Keep optional mapping on the existing gutter object so the shared native
+    // editor class retains its ABI for already installed workspace packages.
+    m_gutter->setProperty("sourceLineMapping", QVariant::fromValue(lines));
+    m_gutter->setProperty("sourceLineMaximum", lines.isEmpty() ? 0 : *std::max_element(lines.cbegin(), lines.cend()));
+    updateGutter();
+}
+
+void SourceEditor::setPlainText(const QString &text)
+{
+    auto *highlighter = document()->findChild<SourceHighlighter *>();
+    const auto definition = highlighter ? highlighter->definition() : KSyntaxHighlighting::Definition{};
+    const auto theme = highlighter ? highlighter->theme() : KSyntaxHighlighting::Theme{};
+
+    // The syntax engine queues rehighlightBlock with QTextBlock handles. A full
+    // replacement invalidates those handles. Destroy their receiver first so Qt
+    // discards pending callbacks before the old document storage is replaced.
+    delete highlighter;
+    QPlainTextEdit::setPlainText(text);
+
+    highlighter = new SourceHighlighter(document());
+    if (theme.isValid())
+        highlighter->setTheme(theme);
+    highlighter->setDefinition(definition);
+    highlighter->rehighlight();
+}
+
 int SourceEditor::gutterWidth() const
 {
-    return 30 + fontMetrics().horizontalAdvance('9') * QString::number(qMax(1, blockCount())).size();
+    return 30 + fontMetrics().horizontalAdvance('9') * QString::number(qMax(qMax(1, blockCount()), m_gutter->property("sourceLineMaximum").toInt())).size();
 }
 
 void SourceEditor::updateGutter()
@@ -59,13 +91,15 @@ bool SourceEditor::eventFilter(QObject *object, QEvent *event)
     QPainter painter(m_gutter);
     painter.fillRect(m_gutter->rect(), palette().base());
     painter.setPen(palette().color(QPalette::PlaceholderText));
+    const auto mapping = m_gutter->property("sourceLineMapping").value<QVector<int>>();
     auto block = firstVisibleBlock();
     int top = qRound(blockBoundingGeometry(block).translated(contentOffset()).top());
     const int bottom = static_cast<QPaintEvent *>(event)->rect().bottom();
     while (block.isValid() && top <= bottom) {
         const int height = qRound(blockBoundingRect(block).height());
-        if (block.isVisible())
-            painter.drawText(0, top, m_gutter->width() - 8, fontMetrics().height(), Qt::AlignRight, QString::number(block.blockNumber() + 1));
+        const int line = mapping.isEmpty() ? block.blockNumber() + 1 : mapping.value(block.blockNumber());
+        if (block.isVisible() && line > 0)
+            painter.drawText(0, top, m_gutter->width() - 8, fontMetrics().height(), Qt::AlignRight, QString::number(line));
         top += height;
         block = block.next();
     }

@@ -7,6 +7,20 @@
 #include <QTextLayout>
 #include <cstdio>
 
+namespace {
+class HighlightCallObserver : public QObject {
+public:
+    bool delivered = false;
+protected:
+    bool eventFilter(QObject *, QEvent *event) override
+    {
+        if (event->type() == QEvent::MetaCall)
+            delivered = true;
+        return false;
+    }
+};
+}
+
 int main(int argc, char **argv)
 {
     QApplication app(argc, argv);
@@ -49,17 +63,20 @@ int main(int argc, char **argv)
     editor.setFileName("sample.cpp");
     editor.setPlainText("/* begin\ninside comment\n*/ int value = 1;");
     auto *highlighter = editor.document()->findChild<SourceHighlighter *>();
-    // Exercise both explicit themes regardless of the host startup palette.
+    // The platform can start in either theme. Establish the dark baseline
+    // explicitly before checking that switching to light changes comment color.
     highlighter->updateTheme(true);
-    highlighter->rehighlight();
     const auto comment = editor.document()->findBlockByNumber(1).layout()->formats();
     if (comment.isEmpty())
         return 2;
     const auto darkColor = comment.first().format.foreground().color();
     highlighter->updateTheme(false);
     const auto lightColor = editor.document()->findBlockByNumber(1).layout()->formats().first().format.foreground().color();
-    if (darkColor == lightColor)
+    if (darkColor == lightColor) {
+        std::fprintf(stderr, "Dark and light syntax themes use the same comment color: %s\n",
+            qPrintable(darkColor.name()));
         return 3;
+    }
     editor.setStyleSheet("QPlainTextEdit { background: rgba(246, 251, 253, 0); color: #173e49; }");
     editor.setFileName("sample.cpp");
     if (editor.document()->findBlockByNumber(1).layout()->formats().first().format.foreground().color() != lightColor)
@@ -70,6 +87,7 @@ int main(int argc, char **argv)
         return 10;
     editor.setStyleSheet(QString());
     editor.setPlainText(QString(20000, 'x') + "\nint after = 1;");
+    highlighter = editor.document()->findChild<SourceHighlighter *>();
     highlighter->rehighlight();
     if (!editor.document()->firstBlock().layout()->formats().isEmpty()
         || editor.document()->lastBlock().layout()->formats().isEmpty())
@@ -86,6 +104,22 @@ int main(int argc, char **argv)
     editor.undo();
     if (editor.toPlainText() != "    return value;")
         return 7;
-    std::puts("Native highlighting covers all 14 SDK languages, YAML, TypeScript and diffs; multiline, themes, long lines and editing verified.");
+    // KSyntaxHighlighting queues propagation with QTextBlock values. A review
+    // pane can replace the document before those queued calls are delivered.
+    editor.setFileName("sample.cpp");
+    editor.setPlainText(QString("/* comment */\nint value = 1;\n").repeated(300));
+    highlighter = editor.document()->findChild<SourceHighlighter *>();
+    HighlightCallObserver obsoleteCalls;
+    highlighter->installEventFilter(&obsoleteCalls);
+    const auto obsoleteBlock = editor.document()->findBlockByNumber(500);
+    if (!QMetaObject::invokeMethod(highlighter, "rehighlightBlock", Qt::QueuedConnection,
+            Q_ARG(QTextBlock, obsoleteBlock)))
+        return 11;
+    editor.setPlainText("int replacement = 2;");
+    QApplication::processEvents();
+    if (obsoleteCalls.delivered || editor.toPlainText() != "int replacement = 2;"
+        || editor.languageName() != "C++" || editor.document()->firstBlock().layout()->formats().isEmpty())
+        return 12;
+    std::puts("Native highlighting covers all 14 SDK languages, YAML, TypeScript and diffs; multiline, themes, long lines, editing and queued replacement verified.");
     return 0;
 }
