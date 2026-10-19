@@ -66,8 +66,13 @@ flatpak build --filesystem="$source_dir:ro" --filesystem="$out" "$app" \
 flatpak build --filesystem="$source_dir:ro" --filesystem="$out" "$app" \
   cmake --build "$out/qt-build" --parallel 2
 flatpak build --filesystem="$out" --env=QT_QPA_PLATFORM=offscreen \
-  --env=QTWEBENGINEPROCESS_PATH=/app/bin/QtWebEngineProcess "$app" \
+  --env=QTWEBENGINEPROCESS_PATH=/app/bin/QtWebEngineProcess \
+  --env=QTWEBENGINE_DISABLE_SANDBOX=1 "$app" \
   ctest --test-dir "$out/qt-build" --output-on-failure
+# BaseApp cannot spawn nested Flatpak instances during a build. The environment
+# above applies only to tests; installed browser processes retain sandboxing.
+flatpak build --env=FLATPAK_DEST=/app --env="FLATPAK_ARCH=$arch" "$app" \
+  bash /app/cleanup-BaseApp.sh
 install -m755 "$out/qt-build/dockpipe-launcher" "$app/files/libexec/dockpipe/dockpipe-launcher"
 cp -a "$out/qt-build"/libdockpipe-launcher-ui.so* "$app/files/libexec/dockpipe/"
 install -m644 "$out/qt-build/dockpipe-syntax.rcc" "$app/files/libexec/dockpipe/dockpipe-syntax.rcc"
