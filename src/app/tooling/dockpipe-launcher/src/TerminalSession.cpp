@@ -118,7 +118,6 @@ void failTerminalChild(QProcess *process, const char *message, int error)
 struct TerminalSession::State {
     QProcess *process = nullptr;
     QSocketNotifier *reader = nullptr;
-    QTimer *readResume = nullptr;
     QSocketNotifier *writer = nullptr;
     QByteArray pendingInput;
     QString error;
@@ -244,14 +243,6 @@ bool TerminalSession::start(QString workdir)
     });
     m_state->reader = new QSocketNotifier(master, QSocketNotifier::Read, this);
     m_state->reader->setEnabled(false);
-    m_state->readResume = new QTimer(this);
-    m_state->readResume->setSingleShot(true);
-    m_state->readResume->setTimerType(Qt::PreciseTimer);
-    m_state->readResume->setInterval(1);
-    connect(m_state->readResume, &QTimer::timeout, this, [this, generation] {
-        if (generation == m_state->generation && m_state->reader)
-            m_state->reader->setEnabled(true);
-    });
     m_state->writer = new QSocketNotifier(master, QSocketNotifier::Write, this);
     m_state->writer->setEnabled(false);
     connect(m_state->reader, &QSocketNotifier::activated, this, &TerminalSession::readOutput);
@@ -345,9 +336,6 @@ void TerminalSession::readOutput()
 #ifdef Q_OS_UNIX
     if (m_state->master < 0 || !m_state->reader)
         return;
-    m_state->readResume->stop();
-    m_state->reader->setEnabled(false);
-    const quint64 generation = m_state->generation;
     QByteArray bytes;
     bytes.reserve(ReadLimit);
     char buffer[8192];
@@ -365,18 +353,10 @@ void TerminalSession::readOutput()
             break;
         }
     }
-    QPointer<TerminalSession> guarded = this;
+    if (ended)
+        m_state->reader->setEnabled(false);
     if (!bytes.isEmpty())
         emit output(bytes);
-    if (!guarded || generation != m_state->generation || ended)
-        return;
-    // A continuously readable PTY can dispatch socket notifications ahead of
-    // UI timers on macOS. Yield between nonempty batches even when the writer
-    // briefly empties the PTY before reaching our per-read byte limit.
-    if (!bytes.isEmpty())
-        m_state->readResume->start();
-    else
-        m_state->reader->setEnabled(true);
 #endif
 }
 
@@ -397,11 +377,6 @@ void TerminalSession::resize(int columns, int rows)
 
 void TerminalSession::closeDescriptors()
 {
-    if (m_state->readResume) {
-        m_state->readResume->stop();
-        m_state->readResume->deleteLater();
-        m_state->readResume = nullptr;
-    }
     if (m_state->reader) {
         m_state->reader->setEnabled(false);
         m_state->reader->deleteLater();
