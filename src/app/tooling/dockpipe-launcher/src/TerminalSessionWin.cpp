@@ -199,18 +199,23 @@ struct TerminalSessionWin::State {
             requestStop(false);
             if (writer.joinable())
                 CancelSynchronousIo(reinterpret_cast<HANDLE>(writer.native_handle()));
-            // Close can wait for output drainage on older Windows versions.
-            // The reader remains alive and discards only after teardown starts.
-            if (console)
-                consoleApi().close(console);
-            console = nullptr;
+            // ConPTY duplicates these endpoints; it never takes ownership.
+            // Release them on every launch failure as well as successful starts.
             inputRead.reset();
             outputWrite.reset();
             if (writer.joinable())
                 writer.join();
+            // Input EOF must precede the output-reader join. Otherwise modern
+            // ClosePseudoConsole may return while its host still waits for input,
+            // leaving the reader waiting forever for ConPTY's output EOF.
+            inputWrite.reset();
+            // Older Windows can wait here for the final frame to be drained.
+            // Keep the reader alive until the pseudoconsole closes its output.
+            if (console)
+                consoleApi().close(console);
+            console = nullptr;
             if (reader.joinable())
                 reader.join();
-            inputWrite.reset();
             outputRead.reset();
             std::lock_guard<std::mutex> lock(mutex);
             completed = true;
@@ -251,6 +256,11 @@ struct TerminalSessionWin::State {
             const auto releaseAttributes = qScopeGuard([list] { DeleteProcThreadAttributeList(list); });
             STARTUPINFOEXW startup{};
             startup.StartupInfo.cb = sizeof(startup);
+            // Suppress Windows' implicit duplication of redirected parent stdio,
+            // even with bInheritHandles=false. Null standard handles are then
+            // initialized from the pseudoconsole instead of the launcher's pipes.
+            // https://github.com/microsoft/terminal/discussions/15814
+            startup.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
             startup.lpAttributeList = list;
             // PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE is the console handle value,
             // rather than the address of that value (Microsoft ConPTY contract).
