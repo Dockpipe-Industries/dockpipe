@@ -23,6 +23,23 @@ def defined_symbols(binary, external_only):
     return Counter(line.strip() for line in run_tool(*arguments).splitlines() if line.strip())
 
 
+def describe_private_symbols(binary, symbols):
+    # Keep hosted failure logs useful without dumping a complete symbol table.
+    maximum_samples = 8
+    maximum_field_length = 200
+    selected = sorted(symbols)[:maximum_samples]
+    descriptions = {}
+    for line in run_tool("nm", "-m", "-a", "-U", str(binary)).splitlines():
+        fields = line.rsplit(None, 1)
+        if len(fields) == 2 and fields[1] in selected:
+            descriptions[fields[1]] = fields[0].strip()[:maximum_field_length]
+    samples = [{
+        "name": name[:maximum_field_length],
+        "type": descriptions.get(name, "No matching nm type description"),
+    } for name in selected]
+    return json.dumps({"count": sum(symbols.values()), "samples": samples}, separators=(",", ":"))
+
+
 def owned_binaries(app):
     app = app.resolve(strict=True)
     launcher = app / "Contents/MacOS/DockPipe"
@@ -62,7 +79,8 @@ def protect(app, receipt):
             raise ValueError("Stripping changed the exported ABI of " + binary.name)
         local_symbols = defined_symbols(binary, external_only=False) - exported_after
         if local_symbols:
-            raise ValueError("Private defined symbols remain in " + binary.name)
+            detail = describe_private_symbols(binary, local_symbols)
+            raise ValueError("Private defined symbols remain in " + binary.name + ": " + detail)
         records.append({
             "path": binary.relative_to(app).as_posix(),
             "pre_sign_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
