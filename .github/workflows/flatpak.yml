@@ -5,6 +5,10 @@ name: Flatpak qualification
 on:
   workflow_call:
     inputs:
+      staging:
+        description: Use short retention only for the staging release caller.
+        type: boolean
+        default: false
       version:
         required: true
         type: string
@@ -119,6 +123,7 @@ jobs:
         if: inputs.version != ''
         with:
           name: release-flatpak
+          retention-days: ${{ inputs.staging && github.event_name == 'push' && github.ref == 'refs/heads/staging' && 3 || 0 }}
           path: release/artifacts/
           if-no-files-found: error
       - uses: actions/upload-artifact@v7
