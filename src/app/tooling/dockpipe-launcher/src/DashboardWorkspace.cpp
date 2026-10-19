@@ -8,6 +8,8 @@
 #include <QElapsedTimer>
 #include <array>
 #include <cstdio>
+#include <limits>
+#include <time.h>
 #endif
 #include <QBuffer>
 #include <QFile>
@@ -50,6 +52,8 @@ namespace {
 #ifdef DOCKPIPE_PROFILE_DASHBOARD_LAYOUT
 // Diagnostic builds only: fixed buckets, capped samples, and no output in the
 // measured loop. Buckets identify operations and panel ordinals, never content.
+// Each retained sample has wall time and current GUI-thread CPU time. The
+// thread clock excludes time spent preempted or waiting for other processes.
 enum class LayoutProfilePhase {
     HidePanels,
     CreateViewport,
@@ -71,24 +75,94 @@ enum class LayoutProfilePhase {
 };
 
 constexpr std::size_t LayoutProfileSampleLimit = 8192;
-struct LayoutProfileBucket {
+constexpr qint64 NanosecondsPerSecond = 1000000000;
+
+qint64 layoutThreadCpuNanoseconds()
+{
+#if defined(CLOCK_THREAD_CPUTIME_ID)
+    timespec timestamp{};
+    if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &timestamp) == 0)
+        return qint64(timestamp.tv_sec) * NanosecondsPerSecond + timestamp.tv_nsec;
+#endif
+    return -1;
+}
+
+struct LayoutProfileSample {
+    qint64 wallNanoseconds;
+    qint64 cpuNanoseconds;
+};
+
+class LayoutProfileTimer {
+public:
+    void start()
+    {
+        m_wall.start();
+        m_cpuStart = layoutThreadCpuNanoseconds();
+    }
+
+    LayoutProfileSample elapsed() const
+    {
+        const qint64 cpuEnd = layoutThreadCpuNanoseconds();
+        const qint64 cpuElapsed = m_cpuStart >= 0 && cpuEnd >= m_cpuStart
+            ? cpuEnd - m_cpuStart : -1;
+        return {m_wall.nsecsElapsed(), cpuElapsed};
+    }
+
+private:
+    QElapsedTimer m_wall;
+    qint64 m_cpuStart = -1;
+};
+
+struct LayoutProfileMetric {
     std::array<qint64, LayoutProfileSampleLimit> samples{};
     std::size_t count = 0;
-    std::size_t dropped = 0;
     qint64 totalNanoseconds = 0;
+
+    void record(qint64 nanoseconds)
+    {
+        samples[count++] = nanoseconds;
+        totalNanoseconds += nanoseconds;
+    }
+
+    double averageMilliseconds() const
+    {
+        if (count == 0)
+            return std::numeric_limits<double>::quiet_NaN();
+        return double(totalNanoseconds) / count / 1000000;
+    }
+
+    double percentileMilliseconds(std::size_t percent) const
+    {
+        if (count == 0)
+            return std::numeric_limits<double>::quiet_NaN();
+        const std::size_t rank = (count * percent + 99) / 100;
+        return double(samples[rank - 1]) / 1000000;
+    }
+
+    void sort()
+    {
+        std::sort(samples.begin(), samples.begin() + count);
+    }
+};
+
+struct LayoutProfileBucket {
+    LayoutProfileMetric wall;
+    LayoutProfileMetric cpu;
+    std::size_t dropped = 0;
 };
 
 class LayoutProfileTotals {
 public:
-    void record(LayoutProfilePhase phase, qint64 nanoseconds)
+    void record(LayoutProfilePhase phase, LayoutProfileSample sample)
     {
         auto &bucket = m_buckets[static_cast<std::size_t>(phase)];
-        if (bucket.count == bucket.samples.size()) {
+        if (bucket.wall.count == LayoutProfileSampleLimit) {
             ++bucket.dropped;
             return;
         }
-        bucket.samples[bucket.count++] = nanoseconds;
-        bucket.totalNanoseconds += nanoseconds;
+        bucket.wall.record(sample.wallNanoseconds);
+        if (sample.cpuNanoseconds >= 0)
+            bucket.cpu.record(sample.cpuNanoseconds);
     }
 
     ~LayoutProfileTotals()
@@ -102,13 +176,10 @@ public:
         };
         for (std::size_t index = 0; index < m_buckets.size(); ++index) {
             auto &bucket = m_buckets[index];
-            if (bucket.count == 0)
+            if (bucket.wall.count == 0)
                 continue;
-            std::sort(bucket.samples.begin(), bucket.samples.begin() + bucket.count);
-            const auto percentile = [&bucket](std::size_t percent) {
-                const std::size_t rank = (bucket.count * percent + 99) / 100;
-                return double(bucket.samples[rank - 1]) / 1000000;
-            };
+            bucket.wall.sort();
+            bucket.cpu.sort();
             char panelName[32];
             const char *name;
             if (index < static_cast<std::size_t>(LayoutProfilePhase::Panel0)) {
@@ -119,11 +190,18 @@ public:
                 name = panelName;
             }
             std::fprintf(stderr,
-                         "dashboard-layout-profile phase=%s samples=%zu dropped=%zu average_ms=%.3f p50_ms=%.3f p95_ms=%.3f max_ms=%.3f\n",
-                         name, bucket.count, bucket.dropped,
-                         double(bucket.totalNanoseconds) / bucket.count / 1000000,
-                         percentile(50), percentile(95),
-                         double(bucket.samples[bucket.count - 1]) / 1000000);
+                         "dashboard-layout-profile phase=%s samples=%zu dropped=%zu average_ms=%.3f p50_ms=%.3f p95_ms=%.3f max_ms=%.3f "
+                         "cpu_samples=%zu cpu_unavailable=%zu cpu_average_ms=%.3f cpu_p50_ms=%.3f cpu_p95_ms=%.3f cpu_max_ms=%.3f\n",
+                         name, bucket.wall.count, bucket.dropped,
+                         bucket.wall.averageMilliseconds(),
+                         bucket.wall.percentileMilliseconds(50),
+                         bucket.wall.percentileMilliseconds(95),
+                         bucket.wall.percentileMilliseconds(100),
+                         bucket.cpu.count, bucket.wall.count - bucket.cpu.count,
+                         bucket.cpu.averageMilliseconds(),
+                         bucket.cpu.percentileMilliseconds(50),
+                         bucket.cpu.percentileMilliseconds(95),
+                         bucket.cpu.percentileMilliseconds(100));
         }
     }
 
@@ -133,19 +211,19 @@ private:
 
 LayoutProfileTotals layoutProfileTotals;
 
-void recordLayoutPhase(QElapsedTimer &timer, LayoutProfilePhase phase)
+void recordLayoutPhase(LayoutProfileTimer &timer, LayoutProfilePhase phase)
 {
-    layoutProfileTotals.record(phase, timer.nsecsElapsed());
-    timer.restart();
+    layoutProfileTotals.record(phase, timer.elapsed());
+    timer.start();
 }
 
 #define PROFILE_LAYOUT_START(timer) \
-    QElapsedTimer timer; \
+    LayoutProfileTimer timer; \
     timer.start()
 #define PROFILE_LAYOUT_PHASE(timer, phase) recordLayoutPhase(timer, LayoutProfilePhase::phase)
 #define PROFILE_LAYOUT_PANEL(timer, panelIndex) \
     layoutProfileTotals.record(static_cast<LayoutProfilePhase>( \
-        static_cast<std::size_t>(LayoutProfilePhase::Panel0) + (panelIndex)), (timer).nsecsElapsed())
+        static_cast<std::size_t>(LayoutProfilePhase::Panel0) + (panelIndex)), (timer).elapsed())
 #else
 #define PROFILE_LAYOUT_START(timer)
 #define PROFILE_LAYOUT_PHASE(timer, phase)
