@@ -308,6 +308,19 @@ struct TerminalSessionWin::State {
             environmentBlock.push_back(L'\0');
             std::wstring mutableCommand = command.toStdWString();
             PROCESS_INFORMATION child{};
+            // Invalid PE images can open a loader error dialog inside
+            // CreateProcessW instead of returning to this asynchronous worker.
+            // Handle those errors here without changing the launcher's global
+            // error policy or leaving an invisible dialog holding this session.
+            DWORD previousErrorMode = 0;
+            if (!SetThreadErrorMode(GetThreadErrorMode() | SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX,
+                    &previousErrorMode)) {
+                fail(windowsFailure(QStringLiteral("Terminal worker error handling could not be configured"), GetLastError()));
+                return false;
+            }
+            const auto restoreErrorMode = qScopeGuard([previousErrorMode] {
+                SetThreadErrorMode(previousErrorMode, nullptr);
+            });
             const BOOL launched = CreateProcessW(reinterpret_cast<LPCWSTR>(program.utf16()), mutableCommand.data(), nullptr, nullptr,
                 FALSE, EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT, environmentBlock.data(),
                 reinterpret_cast<LPCWSTR>(directory.utf16()), &startup.StartupInfo, &child);

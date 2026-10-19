@@ -67,7 +67,9 @@ int terminalChild(const QStringList &arguments)
         encodedArguments.append(argument);
     writeChild("ARGS:" + QJsonDocument(encodedArguments).toJson(QJsonDocument::Compact) + "\r\n");
     writeChild("DIRECTORY:" + QDir::currentPath().toUtf8() + "\r\n");
-    writeChild("ENVIRONMENT:" + qgetenv("DOCKPIPE_TERMINAL_FIXTURE") + "\r\n");
+    // Windows stores the environment as UTF-16. qgetenv returns native-codepage
+    // bytes, which must not be written into this explicitly UTF-8 console stream.
+    writeChild("ENVIRONMENT:" + qEnvironmentVariable("DOCKPIPE_TERMINAL_FIXTURE").toUtf8() + "\r\n");
     writeChild("READY\r\n");
     const auto size = [] {
         CONSOLE_SCREEN_BUFFER_INFO dimensions{};
@@ -259,6 +261,8 @@ void TerminalSessionWinTest::asynchronousLaunchFailure()
     QVERIFY(invalidProgram.open(QIODevice::WriteOnly));
     QCOMPARE(invalidProgram.write("not a Windows executable"), qint64(24));
     invalidProgram.close();
+    const DWORD originalProcessErrorMode = GetErrorMode();
+    const DWORD originalThreadErrorMode = GetThreadErrorMode();
     TerminalSession terminal;
     QSignalSpy finished(&terminal, &TerminalSession::finished);
     const auto sessionDiagnostics = qScopeGuard([&] { reportSession(terminal, 0, finished.size()); });
@@ -266,8 +270,11 @@ void TerminalSessionWinTest::asynchronousLaunchFailure()
     QVERIFY(terminal.start(directory.path(), invalidProgram.fileName(), {}));
     QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 5000);
     QVERIFY(!terminal.running());
-    QVERIFY(!terminal.error().isEmpty());
+    QVERIFY2(terminal.error().contains(QStringLiteral("Windows error %1").arg(ERROR_BAD_EXE_FORMAT)),
+        qPrintable(terminal.error()));
     QCOMPARE(finished.front().front().toInt(), -1);
+    QCOMPARE(GetErrorMode(), originalProcessErrorMode);
+    QCOMPARE(GetThreadErrorMode(), originalThreadErrorMode);
 }
 
 void TerminalSessionWinTest::redirectedParentHandlesStayOutOfPseudoConsole()
