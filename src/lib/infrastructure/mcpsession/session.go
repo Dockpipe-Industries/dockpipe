@@ -85,38 +85,36 @@ func Start(ctx context.Context, prepare CommandFactory) (*Session, error) {
 	outputReader, output, err := os.Pipe()
 	if err != nil {
 		cancel()
-		input.Close()
-		inputWriter.Close()
-		return nil, err
+		return nil, errors.Join(err, input.Close(), inputWriter.Close())
 	}
 	command.Stdin, command.Stdout, command.Stderr = input, output, io.Discard
 	command.WaitDelay = shutdownTimeout
 	s := &Session{cancel: cancel, done: make(chan error, 1), operation: make(chan struct{}, 1), stopped: make(chan struct{})}
-	started := make(chan bool, 1)
+	type startResult struct {
+		running  bool
+		closeErr error
+	}
+	started := make(chan startResult, 1)
 	go func() {
 		runErr := process.RunObserved(command, func(cmd *exec.Cmd) func(error) {
 			// After Start the child owns inherited descriptors. Close parent duplicates
 			// even on startup failure, so EOF and cancellation cannot retain pipe owners.
-			input.Close()
-			output.Close()
-			started <- cmd.Process != nil
+			closeErr := errors.Join(input.Close(), output.Close())
+			started <- startResult{cmd.Process != nil, closeErr}
 			return func(error) {}
 		})
 		s.done <- runErr
 	}()
 	select {
-	case ok := <-started:
-		if !ok {
+	case result := <-started:
+		if !result.running || result.closeErr != nil {
 			cancel()
-			inputWriter.Close()
-			outputReader.Close()
-			return nil, <-s.done
+			closeErr := errors.Join(inputWriter.Close(), outputReader.Close())
+			return nil, errors.Join(<-s.done, result.closeErr, closeErr)
 		}
 	case <-lifetime.Done():
 		cancel()
-		inputWriter.Close()
-		outputReader.Close()
-		return nil, lifetime.Err()
+		return nil, errors.Join(lifetime.Err(), inputWriter.Close(), outputReader.Close())
 	}
 	client := mcp.NewClient(&mcp.Implementation{Name: "dockpipe", Version: "1"}, &mcp.ClientOptions{Capabilities: &mcp.ClientCapabilities{}})
 	client.AddSendingMiddleware(boundedToolCache())
@@ -125,13 +123,12 @@ func Start(ctx context.Context, prepare CommandFactory) (*Session, error) {
 	finish()
 	if err != nil {
 		cancel()
-		inputWriter.Close()
-		outputReader.Close()
+		closeErr := errors.Join(inputWriter.Close(), outputReader.Close())
 		select {
 		case <-s.done:
 		case <-time.After(shutdownTimeout):
 		}
-		return nil, fmt.Errorf("MCP initialization failed: %w", err)
+		return nil, fmt.Errorf("MCP initialization failed: %w", errors.Join(err, closeErr))
 	}
 	return s, nil
 }

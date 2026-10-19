@@ -9,6 +9,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -193,7 +194,11 @@ func InspectConfigured(ctx context.Context, filename, expected, platform, arch s
 		if err != nil {
 			return result, err
 		}
-		n, copyErr := copyContext(ctx, io.Discard, io.LimitReader(stream, int64(member.UncompressedSize64)+1))
+		if member.UncompressedSize64 > maxExpandedBytes {
+			return result, errors.Join(fmt.Errorf("MCPB member exceeds expansion budget"), stream.Close())
+		}
+		expectedSize := int64(member.UncompressedSize64)
+		n, copyErr := copyContext(ctx, io.Discard, io.LimitReader(stream, expectedSize+1))
 		closeErr := stream.Close()
 		if copyErr != nil {
 			return result, copyErr
@@ -201,7 +206,7 @@ func InspectConfigured(ctx context.Context, filename, expected, platform, arch s
 		if closeErr != nil {
 			return result, closeErr
 		}
-		if uint64(n) != member.UncompressedSize64 {
+		if n != expectedSize {
 			return result, fmt.Errorf("MCPB member expansion differs from metadata")
 		}
 	}

@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -55,14 +56,12 @@ func InstallConfigured(ctx context.Context, filename, expected, platform, arch, 
 	}
 	source, err := os.Open(filename)
 	if err != nil {
-		snapshot.Close()
-		return result, err
+		return result, errors.Join(err, snapshot.Close())
 	}
 	n, copyErr := copyContext(ctx, snapshot, io.LimitReader(source, MaxArchiveBytes+1))
-	source.Close()
-	closeErr := snapshot.Close()
+	closeErr := errors.Join(source.Close(), snapshot.Close())
 	if copyErr != nil {
-		return result, copyErr
+		return result, errors.Join(copyErr, closeErr)
 	}
 	if closeErr != nil {
 		return result, closeErr
@@ -117,19 +116,21 @@ func InstallConfigured(ctx context.Context, filename, expected, platform, arch, 
 		}
 		in, err := member.Open()
 		if err != nil {
-			out.Close()
-			return result, err
+			return result, errors.Join(err, out.Close())
 		}
-		n, copyErr := copyContext(ctx, out, io.LimitReader(in, int64(member.UncompressedSize64)+1))
-		in.Close()
-		closeErr := out.Close()
+		if member.UncompressedSize64 > maxExpandedBytes {
+			return result, errors.Join(fmt.Errorf("MCPB member exceeds expansion budget"), in.Close(), out.Close())
+		}
+		expectedSize := int64(member.UncompressedSize64)
+		n, copyErr := copyContext(ctx, out, io.LimitReader(in, expectedSize+1))
+		closeErr := errors.Join(in.Close(), out.Close())
 		if copyErr != nil {
-			return result, copyErr
+			return result, errors.Join(copyErr, closeErr)
 		}
 		if closeErr != nil {
 			return result, closeErr
 		}
-		if uint64(n) != member.UncompressedSize64 {
+		if n != expectedSize {
 			return result, fmt.Errorf("MCPB expansion changed")
 		}
 	}
