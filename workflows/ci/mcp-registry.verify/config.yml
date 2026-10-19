@@ -1,0 +1,27 @@
+name: mcp-registry.verify
+description: Verify read-only MCP registry discovery and configured-server contracts.
+vault: none
+docker_preflight: false
+steps:
+  - id: contracts
+    kind: host
+    cwd: repo
+    cmd: go test ./src/lib/model/mcp ./src/lib/domain/mcp ./src/lib/infrastructure/mcpregistry ./src/lib/domain ./src/lib/model/project
+  - id: cli
+    kind: host
+    cwd: repo
+    cmd: go test ./src/lib/application -run '^TestMCP'
+  - id: vet
+    kind: host
+    cwd: repo
+    cmd: go vet ./src/lib/model/mcp ./src/lib/domain/mcp ./src/lib/infrastructure/mcpregistry
+  - id: build-cli
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: |-
+      output_dir="$(dockpipe scope artifacts mcp-registry-cli)"
+      mkdir -p "$output_dir"
+      go build -o "$output_dir/" ./src/cmd

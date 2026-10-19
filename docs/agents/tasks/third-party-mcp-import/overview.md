@@ -84,3 +84,12 @@ shared domain implementations serve CLI, MCP, explicit REST and desktop, with ex
 storage and version lifecycle. Ordinary local execution stays lightweight; required privileged
 controls cannot be bypassed by selecting a lighter interface or execution mode. Domain ownership
 and this task's existing security/acceptance requirements remain intact. Backlog only.
+
+## Read-Only Registry Foundation
+
+The scoped registry foundation adds CLI search/version metadata and
+validation of `mcp.servers` in the existing project configuration. See
+[the public contract](../../../runtime/mcp-registry.md) for exact behavior, bounds,
+verification and remaining gaps. It does not install, connect, launch, authorize or
+expose imported servers. TASK-040's gateway, process lifecycle, policy, desktop and
+federated-import acceptance gates remain open; no external server is connected.

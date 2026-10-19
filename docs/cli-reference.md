@@ -300,3 +300,11 @@ dockpipe --resolver claude --repo https://github.com/you/repo.git \
 ## Secret environments
 
 Use `--secret-environment NAME` with a named entry in `dockpipe.config.json` → `secrets.environments`. `vault: environment` requires the selected/default environment; a missing selection or failed load stops execution. `--no-vault` disables both environment resolution and legacy template injection. See [Secret environments](runtime/vault.md) for 1Password, AWS Secrets Manager, Azure Key Vault, and Infisical configuration.
+
+### MCP registry and configuration (read-only)
+
+`dockpipe mcp registry search`, `versions`, and `show` read Official MCP Registry
+metadata. `dockpipe mcp config validate --workdir <project>` validates the existing
+project's `mcp.servers` configuration without resolving secrets or starting servers.
+See [MCP registry discovery](runtime/mcp-registry.md) for arguments, schemas, bounds
+and explicit limitations. These commands do not provide gateway or import execution.
