@@ -60,27 +60,10 @@ static bool waitUntil(const std::function<bool()> &predicate)
         } \
     } while (false)
 
-int main(int argc, char **argv)
+static bool startBrowserServer(QTcpServer &server)
 {
-    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
-    QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
-    QTemporaryDir testStorage;
-    qputenv("XDG_DATA_HOME", testStorage.path().toUtf8());
-    qputenv("XDG_CACHE_HOME", testStorage.path().toUtf8());
-    qputenv("XDG_CONFIG_HOME", testStorage.path().toUtf8());
-    QApplication app(argc, argv);
-    app.setStyle("Fusion");
-    applyDockpipeLauncherTheme(app);
-    CHECK_BROWSER(BrowserRuntime::allowsUrl(QUrl("https://example.com")));
-    CHECK_BROWSER(!BrowserRuntime::allowsUrl(QUrl("file:///tmp/private")));
-    CHECK_BROWSER(!BrowserRuntime::allowsUrl(QUrl("https://user:password@example.com")));
-    CHECK_BROWSER(!BrowserRuntime::allowsUrl(QUrl("javascript:alert(1)")));
-    CHECK_BROWSER(!BrowserWidget::addressUrl(" ").isValid());
-    CHECK_BROWSER(BrowserWidget::addressUrl("example.com").host() == "example.com");
-    CHECK_BROWSER(BrowserWidget::addressUrl("weather tomorrow").host() == "duckduckgo.com");
-
-    QTcpServer server;
-    CHECK_BROWSER(server.listen(QHostAddress::LocalHost));
+    if (!server.listen(QHostAddress::LocalHost))
+        return false;
     QObject::connect(&server, &QTcpServer::newConnection, &server, [&]() {
         while (server.hasPendingConnections()) {
             auto *socket = server.nextPendingConnection();
@@ -106,6 +89,21 @@ int main(int argc, char **argv)
             });
         }
     });
+    return true;
+}
+
+static int runBrowserChecks()
+{
+    CHECK_BROWSER(BrowserRuntime::allowsUrl(QUrl("https://example.com")));
+    CHECK_BROWSER(!BrowserRuntime::allowsUrl(QUrl("file:///tmp/private")));
+    CHECK_BROWSER(!BrowserRuntime::allowsUrl(QUrl("https://user:password@example.com")));
+    CHECK_BROWSER(!BrowserRuntime::allowsUrl(QUrl("javascript:alert(1)")));
+    CHECK_BROWSER(!BrowserWidget::addressUrl(" ").isValid());
+    CHECK_BROWSER(BrowserWidget::addressUrl("example.com").host() == "example.com");
+    CHECK_BROWSER(BrowserWidget::addressUrl("weather tomorrow").host() == "duckduckgo.com");
+
+    QTcpServer server;
+    CHECK_BROWSER(startBrowserServer(server));
     const QUrl first(QString("http://127.0.0.1:%1/").arg(server.serverPort()));
     QString sessionPath;
     QPointer<QWebEngineProfile> profile;
@@ -417,24 +415,7 @@ int main(int argc, char **argv)
         screenshot->trigger();
         saveScreenshot.stop();
         CHECK_BROWSER(!QImage(screenshotPath).isNull());
-        const QString pdfPath = downloads.filePath("page.pdf");
-        QTimer acceptPrint;
-        acceptPrint.setInterval(20);
-        QObject::connect(&acceptPrint, &QTimer::timeout, &browser, [&]() {
-            if (auto *dialog = browser.findChild<QPrintDialog *>()) {
-                dialog->printer()->setOutputFormat(QPrinter::PdfFormat);
-                dialog->printer()->setOutputFileName(pdfPath);
-                dialog->QDialog::done(QDialog::Accepted);
-            }
-        });
-        auto *print = actionNamed("Print…");
-        CHECK_BROWSER(print);
-        acceptPrint.start();
-        print->trigger();
-        acceptPrint.stop();
-        CHECK_BROWSER(waitUntil([&]() { return status->text().contains("sent to printer"); }));
-        QFile pdf(pdfPath);
-        CHECK_BROWSER(pdf.open(QIODevice::ReadOnly) && pdf.read(5) == "%PDF-");
+        CHECK_BROWSER(actionNamed("Print…"));
         QTimer confirmClear;
         confirmClear.setInterval(20);
         QObject::connect(&confirmClear, &QTimer::timeout, &browser, [&]() {
@@ -485,3 +466,87 @@ int main(int argc, char **argv)
     std::puts("Browser navigation, JavaScript, history, cancellation, failure and cleanup passed.");
     return 0;
 }
+
+class BrowserTest : public QObject
+{
+    Q_OBJECT
+
+private slots:
+    void navigationAndLifecycle()
+    {
+        QCOMPARE(runBrowserChecks(), 0);
+    }
+
+    void printDialogToPdf()
+    {
+#if defined(Q_OS_MACOS) || defined(Q_OS_WIN)
+        // QPrintDialog uses an OS modal panel on these platforms, even with
+        // AA_DontUseNativeDialogs. Qt documents that done() cannot close it:
+        // https://doc.qt.io/qt-6/qprintdialog.html#done
+        // The widget timer below cannot automate that native boundary.
+        QSKIP("Native OS print panels require separate interactive verification; "
+              "QDialog::done cannot accept them.");
+#else
+        QTcpServer server;
+        QVERIFY(startBrowserServer(server));
+        BrowserWidget browser;
+        browser.resize(1100, 720);
+        browser.show();
+        auto *view = browser.findChild<QWebEngineView *>("browserWebView");
+        auto *status = browser.findChild<QLabel *>("browserStatus");
+        auto *menu = browser.findChild<QMenu *>("browserMenu");
+        QVERIFY(view && status && menu);
+        bool loaded = false;
+        connect(view, &QWebEngineView::loadFinished, &browser, [&](bool success) {
+            loaded = success;
+        });
+        browser.navigate(QUrl(QString("http://127.0.0.1:%1/").arg(server.serverPort())));
+        QVERIFY(waitUntil([&]() { return loaded; }));
+
+        QAction *print = nullptr;
+        for (auto *action : menu->findChildren<QAction *>()) {
+            if (action->text() == "Print…") {
+                print = action;
+                break;
+            }
+        }
+        QVERIFY(print);
+        QTemporaryDir downloads;
+        QVERIFY(downloads.isValid());
+        const QString pdfPath = downloads.filePath("page.pdf");
+        QTimer acceptPrint;
+        acceptPrint.setInterval(20);
+        connect(&acceptPrint, &QTimer::timeout, &browser, [&]() {
+            if (auto *dialog = browser.findChild<QPrintDialog *>()) {
+                dialog->printer()->setOutputFormat(QPrinter::PdfFormat);
+                dialog->printer()->setOutputFileName(pdfPath);
+                dialog->QDialog::done(QDialog::Accepted);
+            }
+        });
+        acceptPrint.start();
+        print->trigger();
+        acceptPrint.stop();
+        QVERIFY(waitUntil([&]() { return status->text().contains("sent to printer"); }));
+        QFile pdf(pdfPath);
+        QVERIFY(pdf.open(QIODevice::ReadOnly));
+        QCOMPARE(pdf.read(5), QByteArray("%PDF-"));
+#endif
+    }
+};
+
+int main(int argc, char **argv)
+{
+    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+    QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
+    QTemporaryDir testStorage;
+    qputenv("XDG_DATA_HOME", testStorage.path().toUtf8());
+    qputenv("XDG_CACHE_HOME", testStorage.path().toUtf8());
+    qputenv("XDG_CONFIG_HOME", testStorage.path().toUtf8());
+    QApplication app(argc, argv);
+    app.setStyle("Fusion");
+    applyDockpipeLauncherTheme(app);
+    BrowserTest tests;
+    return QTest::qExec(&tests, argc, argv);
+}
+
+#include "BrowserTest.moc"

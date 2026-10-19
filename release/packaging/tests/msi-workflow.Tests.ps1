@@ -188,3 +188,5 @@ try {
     Remove-Item -LiteralPath $testRoot -Recurse -Force
 }
 Write-Host "MSI snapshot comparison and workflow parameter binding passed"
+
+& (Join-Path $PSScriptRoot 'native-symbols.Tests.ps1')

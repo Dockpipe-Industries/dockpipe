@@ -1,4 +1,6 @@
 #pragma once
+
+#include "LauncherUiExport.h"
 #include "RemoteCommand.h"
 #include <QJsonObject>
 #include <QTemporaryFile>
@@ -6,7 +8,7 @@
 
 // Shared asynchronous transport for conventional and optional project UIs.
 // All Git semantics and mutations stay in the runtime's project Git service.
-class ProjectGitClient final : public QObject {
+class DOCKPIPE_LAUNCHER_UI_EXPORT ProjectGitClient final : public QObject {
     Q_OBJECT
 public:
     using Completion = std::function<void(bool, const QJsonObject &, const QString &)>;
