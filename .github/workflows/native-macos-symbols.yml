@@ -1,4 +1,4 @@
-name: Native macOS desktop qualification
+name: Native desktop qualification
 
 on:
   workflow_dispatch:
@@ -11,6 +11,43 @@ on:
       - src/app/tooling/dockpipe-launcher/src/DashboardWorkspace.cpp
       - src/app/tooling/dockpipe-launcher/tests/DashboardWorkspaceTest.cpp
       - src/app/tooling/dockpipe-launcher/tests/DashboardBrowserPerformanceTest.cpp
+      - src/app/tooling/dockpipe-launcher/CMakeLists.txt
+      - src/app/tooling/dockpipe-launcher/src/Browser*
+      - src/app/tooling/dockpipe-launcher/tests/BrowserExtension*
+      - src/app/tooling/dockpipe-launcher/src/Terminal*
+      - src/app/tooling/dockpipe-launcher/tests/Terminal*
+      - src/app/tooling/dockpipe-launcher/resources/theme/**
+      - src/app/tooling/dockpipe-launcher/src/BrowserTabBar.*
+      - src/app/tooling/dockpipe-launcher/src/SendInputWidget.*
+      - src/app/tooling/dockpipe-launcher/src/CanvasPanel.*
+      - src/app/tooling/dockpipe-launcher/src/DashboardWidget*
+      - src/app/tooling/dockpipe-launcher/tests/CanvasWidgetPresentationTest.cpp
+      - src/app/tooling/dockpipe-launcher/tests/BrowserTest.cpp
+      - src/app/tooling/dockpipe-launcher/src/Git*
+      - src/app/tooling/dockpipe-launcher/src/ProjectGit*
+      - src/app/tooling/dockpipe-launcher/tests/Git*
+      - src/app/tooling/dockpipe-launcher/tests/ProjectGitTest.cpp
+      - src/lib/infrastructure/workspace_git*
+      - src/lib/application/workspace_git_cmd.go
+      - src/app/tooling/dockpipe-launcher/src/LauncherStatusBar.*
+      - src/app/tooling/dockpipe-launcher/src/MainWindow*
+      - src/app/tooling/dockpipe-launcher/tests/LauncherStatusBarTest.cpp
+      - src/app/tooling/dockpipe-launcher/src/ProjectFilesWidget.*
+      - src/app/tooling/dockpipe-launcher/src/FileExplorer*
+      - src/app/tooling/dockpipe-launcher/src/DashboardFilesWidget.*
+      - src/app/tooling/dockpipe-launcher/tests/DashboardFilesWidgetTest.cpp
+      - src/app/tooling/dockpipe-launcher/src/MarkdownPreview.*
+      - src/app/tooling/dockpipe-launcher/src/MermaidRenderer.*
+      - src/app/tooling/dockpipe-launcher/src/WebMermaidRenderer.*
+      - src/app/tooling/dockpipe-launcher/resources/mermaid/**
+      - src/app/tooling/dockpipe-launcher/mermaid.qrc
+      - src/app/tooling/dockpipe-launcher/tests/WebMermaidRendererTest.cpp
+      - src/app/tooling/dockpipe-launcher/src/CanvasIcons.*
+      - src/app/tooling/dockpipe-launcher/tests/ProjectFilesMarkdownTest.cpp
+      - src/app/tooling/dockpipe-launcher/src/WorkspacePackageManager.*
+      - src/app/tooling/dockpipe-launcher/tests/ProjectFilesGraphTest.cpp
+      - src/app/tooling/dockpipe-launcher/tests/WorkspacePackageManagerTest.cpp
+      - src/app/tooling/dockpipe-launcher/tests/WorkspacePackageFixture.cpp
 
 permissions:
   contents: read
@@ -31,15 +68,27 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.9'
+      - name: Qualify native Git runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test ./src/lib/infrastructure -run '^TestWorkspaceGit' -count=1
+          git_cli="$RUNNER_TEMP/dockpipe-git-runtime"
+          if [ "$RUNNER_OS" = Windows ]; then git_cli="$git_cli.exe"; fi
+          go build -trimpath -ldflags='-s -w' -o "$git_cli" ./src/cmd
+          echo "DOCKPIPE_GIT_TEST_CLI=$git_cli" >> "$GITHUB_ENV"
       - name: Install matching release Qt
         shell: bash
         run: |
           set -euo pipefail
           python3 -m venv "$RUNNER_TEMP/aqt"
           "$RUNNER_TEMP/aqt/bin/python" -m pip install aqtinstall==3.3.0
-          "$RUNNER_TEMP/aqt/bin/python" -m aqt install-qt mac desktop 6.8.3 clang_64 --outputdir "$RUNNER_TEMP/Qt" --modules qtwebengine qtwebchannel qtpositioning
-          echo "$RUNNER_TEMP/Qt/6.8.3/macos/bin" >> "$GITHUB_PATH"
-          echo "CMAKE_PREFIX_PATH=$RUNNER_TEMP/Qt/6.8.3/macos" >> "$GITHUB_ENV"
+          "$RUNNER_TEMP/aqt/bin/python" -m aqt install-qt mac desktop 6.10.3 clang_64 --outputdir "$RUNNER_TEMP/Qt" --modules qtwebengine qtwebchannel qtpositioning
+          echo "$RUNNER_TEMP/Qt/6.10.3/macos/bin" >> "$GITHUB_PATH"
+          echo "CMAKE_PREFIX_PATH=$RUNNER_TEMP/Qt/6.10.3/macos" >> "$GITHUB_ENV"
       - name: Qualify native Mach-O fixture
         shell: bash
         run: python3 -m unittest discover -s release/packaging/tests -p test_native_symbol_boundaries.py -v
@@ -57,7 +106,9 @@ jobs:
             "-DCMAKE_OSX_ARCHITECTURES=$(uname -m)" -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
           cmake --build "$build" --parallel 2 --target \
             dockpipe-launcher dockpipe-launcher-ui \
-            dashboard-workspace-test dashboard-browser-performance-test
+            dashboard-workspace-test dashboard-browser-performance-test \
+            terminal-shell-catalog-test terminal-session-test \
+            workspace-package-manager-test project-files-graph-test project-files-markdown-test web-mermaid-renderer-test dashboard-files-test project-files-test dashboard-page-test launcher-status-bar-test git-commit-queue-test git-repository-conflict-test git-history-widget-test project-git-test browser-extensions-test browser-extension-package-test browser-extension-store-test browser-extension-crx-test browser-extension-compatibility-test browser-test canvas-widget-presentation-test
           macdeployqt "$build/DockPipe.app" -always-overwrite
           python3 release/packaging/desktop/macos/protect-owned-binaries.py \
             "$build/DockPipe.app" "$RUNNER_TEMP/dockpipe-native-symbol-audit.json"
@@ -67,4 +118,54 @@ jobs:
         shell: bash
         run: |
           ctest --test-dir "$RUNNER_TEMP/dockpipe-native-symbols" --verbose \
-            -R '^dashboard-(workspace|browser-performance)$'
+            -R '^(dashboard-(workspace|browser-performance|files|file-views)|terminal-(shell-catalog|session)|workspace-package-manager|project-files(-graph|-markdown)?|web-mermaid-renderer|launcher-status-bar|browser-canvas-mode|dashboard-canvas-widgets|canvas-widget-presentation|browser-extensions|browser-extension-(package|store|crx)|project-git|git-(commit-queue|repository-conflict|history-widget))$'
+
+  windows-terminal:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.9'
+      - name: Qualify native Git runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test ./src/lib/infrastructure -run '^TestWorkspaceGit' -count=1
+          git_cli="$RUNNER_TEMP/dockpipe-git-runtime"
+          if [ "$RUNNER_OS" = Windows ]; then git_cli="$git_cli.exe"; fi
+          go build -trimpath -ldflags='-s -w' -o "$git_cli" ./src/cmd
+          echo "DOCKPIPE_GIT_TEST_CLI=$git_cli" >> "$GITHUB_ENV"
+      - name: Install matching release Qt
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -m venv "$env:RUNNER_TEMP/aqt-terminal"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not create the Qt installer environment.' }
+          $python = "$env:RUNNER_TEMP/aqt-terminal/Scripts/python.exe"
+          & $python -m pip install aqtinstall==3.3.0
+          if ($LASTEXITCODE -ne 0) { throw 'Could not install the pinned Qt installer.' }
+          & $python -m aqt install-qt windows desktop 6.10.3 win64_msvc2022_64 --outputdir "$env:RUNNER_TEMP/Qt" --modules qtwebengine qtwebchannel qtpositioning
+          if ($LASTEXITCODE -ne 0) { throw 'Could not install release Qt.' }
+          "$env:RUNNER_TEMP/Qt/6.10.3/msvc2022_64/bin" >> $env:GITHUB_PATH
+          "CMAKE_PREFIX_PATH=$env:RUNNER_TEMP/Qt/6.10.3/msvc2022_64" >> $env:GITHUB_ENV
+      - name: Build native terminal and installed-shell fixtures
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $build = "$env:RUNNER_TEMP/dockpipe-native-terminal"
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $visualStudio = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $visualStudio) { throw 'Visual Studio C++ tools are required.' }
+          $developerShell = Join-Path $visualStudio 'Common7/Tools/Launch-VsDevShell.ps1'
+          & $developerShell -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+          if (-not $env:VCToolsInstallDir) { throw 'The Visual Studio developer environment is incomplete.' }
+          cmake -S src/app/tooling/dockpipe-launcher -B $build -G 'NMake Makefiles' -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release
+          if ($LASTEXITCODE -ne 0) { throw 'Native terminal configuration failed.' }
+          cmake --build $build --config Release --target dockpipe-launcher terminal-shell-catalog-test terminal-session-win-test workspace-package-manager-test project-files-graph-test project-files-markdown-test web-mermaid-renderer-test dashboard-files-test project-files-test dashboard-page-test launcher-status-bar-test git-commit-queue-test git-repository-conflict-test git-history-widget-test project-git-test browser-extensions-test browser-extension-package-test browser-extension-store-test browser-extension-crx-test browser-extension-compatibility-test browser-test canvas-widget-presentation-test
+          if ($LASTEXITCODE -ne 0) { throw 'Native terminal compilation failed.' }
+          ctest --test-dir $build -C Release --verbose -R '^(dashboard-(files|file-views)|terminal-(shell-catalog|session-win)|workspace-package-manager|project-files(-graph|-markdown)?|web-mermaid-renderer|launcher-status-bar|browser-canvas-mode|dashboard-canvas-widgets|canvas-widget-presentation|browser-extensions|browser-extension-(package|store|crx)|project-git|git-(commit-queue|repository-conflict|history-widget))$'
+          if ($LASTEXITCODE -ne 0) { throw 'Native terminal qualification failed.' }

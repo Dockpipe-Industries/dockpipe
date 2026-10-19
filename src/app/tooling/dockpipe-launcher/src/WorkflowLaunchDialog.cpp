@@ -8,6 +8,8 @@
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QLineEdit>
 #include <QMap>
 #include <QPushButton>
@@ -28,6 +30,8 @@ bool envLooksBoolean(const WorkflowInputMeta &input)
     const QString control = inputAttribute(input, QStringLiteral("control")).toLower();
     if (control == QStringLiteral("checkbox") || control == QStringLiteral("boolean") || control == QStringLiteral("bool"))
         return true;
+    if (input.envName.startsWith("DOCKPIPE_VSCODE_INPUT_"))
+        return false;
     const QString def = input.defaultValue.trimmed().toLower();
     return def == QStringLiteral("0") || def == QStringLiteral("1") || def == QStringLiteral("true")
            || def == QStringLiteral("false") || def == QStringLiteral("yes") || def == QStringLiteral("no")
@@ -37,6 +41,8 @@ bool envLooksBoolean(const WorkflowInputMeta &input)
 
 bool envLooksSensitive(const WorkflowInputMeta &input)
 {
+    if (inputAttribute(input, "password") == "true" || inputAttribute(input, "secret") == "true")
+        return true;
     const QString env = input.envName.toUpper();
     return env.contains(QStringLiteral("PASSWORD")) || env.contains(QStringLiteral("TOKEN"))
            || env.contains(QStringLiteral("SECRET")) || env.contains(QStringLiteral("KEY"));
@@ -109,9 +115,9 @@ WorkflowLaunchDialog::WorkflowLaunchDialog(const WorkflowMeta &workflow, const Q
     layout->setContentsMargins(14, 14, 14, 14);
     layout->setSpacing(10);
 
-    auto *intro = new QLabel(workflow.description.trimmed().isEmpty()
+    auto *intro = new QLabel(workflow.catalogDescription().trimmed().isEmpty()
                                  ? tr("Provide workflow settings before launch. Values are stored for this project/workflow and passed through Dockpipe as vars/env.")
-                                 : workflow.description.trimmed());
+                                 : workflow.catalogDescription().trimmed());
     intro->setWordWrap(true);
     layout->addWidget(intro);
 
@@ -358,11 +364,13 @@ QMap<QString, QString> WorkflowLaunchDialog::values() const
             continue;
         }
         if (auto *combo = qobject_cast<QComboBox *>(it.value())) {
-            out.insert(it.key(), combo->currentData().toString().trimmed());
+            const QString value = combo->currentData().toString();
+            out.insert(it.key(), it.key().startsWith("DOCKPIPE_VSCODE_INPUT_") ? value : value.trimmed());
             continue;
         }
         if (auto *edit = qobject_cast<QLineEdit *>(it.value())) {
-            out.insert(it.key(), edit->text().trimmed());
+            out.insert(it.key(), (edit->property("workflowSecretInput").toBool() || it.key().startsWith("DOCKPIPE_VSCODE_INPUT_"))
+                ? edit->text() : edit->text().trimmed());
         }
     }
     return out;
@@ -421,7 +429,19 @@ void WorkflowLaunchDialog::addLeafInputRow(QFormLayout *form, const WorkflowInpu
     if (!form || !groupWidget)
         return;
     const QString envName = input.envName.trimmed();
-    if (envLooksBoolean(input)) {
+    const QJsonArray options = QJsonDocument::fromJson(inputAttribute(input, "options").toUtf8()).array();
+    if (!options.isEmpty()) {
+        auto *combo = new QComboBox(groupWidget);
+        for (const auto &option : options) {
+            if (option.isString())
+                combo->addItem(option.toString(), option.toString());
+        }
+        const int selected = combo->findData(value);
+        if (selected >= 0)
+            combo->setCurrentIndex(selected);
+        m_editors.insert(envName, combo);
+        form->addRow(displayNameForInput(input), combo);
+    } else if (envLooksBoolean(input)) {
         auto *check = new QCheckBox(groupWidget);
         const QString lower = value.trimmed().toLower();
         check->setChecked(lower == QStringLiteral("1") || lower == QStringLiteral("true")
@@ -430,13 +450,16 @@ void WorkflowLaunchDialog::addLeafInputRow(QFormLayout *form, const WorkflowInpu
         form->addRow(displayNameForInput(input), check);
     } else {
         auto *edit = new QLineEdit(value, groupWidget);
+        edit->setObjectName("workflowInput_" + envName);
         QString placeholder = inputAttribute(input, QStringLiteral("placeholder"));
         if (placeholder.isEmpty() && inputIsList(input))
             placeholder = tr("Separate values with ';'");
         if (!placeholder.isEmpty())
             edit->setPlaceholderText(placeholder);
-        if (envLooksSensitive(input))
-            edit->setEchoMode(QLineEdit::PasswordEchoOnEdit);
+        if (envLooksSensitive(input)) {
+            edit->setEchoMode(QLineEdit::Password);
+            edit->setProperty("workflowSecretInput", true);
+        }
         QWidget *fieldWidget = edit;
         if (envLooksPath(input)) {
             auto *row = new QWidget(groupWidget);

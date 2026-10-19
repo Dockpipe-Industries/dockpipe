@@ -1,5 +1,6 @@
 #include "TerminalWidget.h"
 #include "TerminalHub.h"
+#include "TerminalShellCatalog.h"
 #include "TerminalBridge.h"
 #include "TerminalPreferences.h"
 #include "TerminalSettingsDialog.h"
@@ -11,12 +12,14 @@
 #include <QClipboard>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QFileInfo>
 #include <QPointer>
 #include <QPainter>
 #include <QShortcut>
 #include <QHideEvent>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMenu>
 #include <QPushButton>
 #include <QShowEvent>
 #include <QSignalBlocker>
@@ -82,6 +85,17 @@ TerminalWidget::TerminalWidget(TerminalHub &hub, const QString &workdir, QWidget
     m_sessions->setMinimumContentsLength(8);
     m_sessions->setAccessibleName(tr("Terminal session"));
     toolbar->addWidget(m_sessions, 1);
+    m_shells = new QComboBox;
+    m_shells->setObjectName("terminalShells");
+    m_shells->setAccessibleName(tr("Shell for new terminal"));
+    m_shells->setToolTip(tr("Choose a shell, then open a new terminal. Existing sessions keep running."));
+    toolbar->addWidget(m_shells);
+    auto *refreshShellsButton = new QPushButton(tr("↻"));
+    refreshShellsButton->setObjectName("terminalRefreshShells");
+    refreshShellsButton->setAccessibleName(tr("Refresh installed shells"));
+    refreshShellsButton->setToolTip(tr("Refresh installed shells"));
+    toolbar->addWidget(refreshShellsButton);
+    connect(refreshShellsButton, &QPushButton::clicked, &m_hub.shellCatalog(), &TerminalShellCatalog::refresh);
     auto *create = new QPushButton(tr("New terminal"));
     create->setObjectName("terminalNew");
     toolbar->addWidget(create);
@@ -117,12 +131,7 @@ TerminalWidget::TerminalWidget(TerminalHub &hub, const QString &workdir, QWidget
     m_flushTimer->setInterval(16);
     connect(m_flushTimer, &QTimer::timeout, this, &TerminalWidget::flushOutput);
     connect(create, &QPushButton::clicked, this, [this]() {
-        const QString id = m_hub.createSession(m_workdir);
-        if (id.isEmpty()) {
-            showStatus(tr("Eight terminals are already open. Close one before opening another."));
-            return;
-        }
-        selectSession(id);
+        createTerminal(m_shells->currentData().toString());
     });
     connect(m_close, &QPushButton::clicked, this, [this]() { m_hub.closeSession(m_sessionId); });
     connect(m_sessions, &QComboBox::currentIndexChanged, this, [this]() {
@@ -148,7 +157,17 @@ TerminalWidget::TerminalWidget(TerminalHub &hub, const QString &workdir, QWidget
         m_restart->setObjectName("terminalStartAction");
         addAction(m_restart);
         connect(m_restart, &QAction::triggered, this, &TerminalWidget::startDashboardSession);
+        m_shellMenu = new QMenu(tr("Shells and sessions"), this);
+        m_shellMenu->setObjectName("terminalShellMenu");
+        addAction(m_shellMenu->menuAction());
     }
+    connect(&m_hub.shellCatalog(), &TerminalShellCatalog::profilesChanged, this, &TerminalWidget::refreshShells);
+    connect(&m_hub.shellCatalog(), &TerminalShellCatalog::discoveryFinished, this, [this] {
+        refreshShells();
+        if (m_mode == Mode::Dashboard && isVisible() && !m_dashboardStarted)
+            startDashboardSession();
+    });
+    refreshShells();
     refreshSessions();
     applyAppearance();
 }
@@ -158,8 +177,8 @@ TerminalWidget::~TerminalWidget()
     m_flushTimer->stop();
     if (m_hubGuard) {
         disconnect(m_hubGuard, nullptr, this, nullptr);
-        if (!m_ownedSessionId.isEmpty())
-            m_hubGuard->closeSession(m_ownedSessionId);
+        for (const auto &id : m_ownedSessionIds)
+            m_hubGuard->closeSession(id);
     }
 }
 
@@ -167,15 +186,66 @@ void TerminalWidget::startDashboardSession()
 {
     if (m_mode != Mode::Dashboard || !m_hubGuard || m_hub.running(m_ownedSessionId))
         return;
+    const bool flatpak = !qEnvironmentVariable("FLATPAK_ID").isEmpty() || QFileInfo::exists("/.flatpak-info");
+    if (m_hub.shellCatalog().discovering() && flatpak) {
+        showStatus(tr("Discovering installed host shells…"));
+        return;
+    }
     m_dashboardStarted = true;
     if (!m_ownedSessionId.isEmpty())
         m_hub.closeSession(m_ownedSessionId);
-    m_ownedSessionId = m_hub.createSession(m_workdir);
-    if (m_ownedSessionId.isEmpty()) {
-        showStatus(tr("Eight terminals are already open. Close one, then choose Start terminal from the context menu."));
+    createTerminal(m_shells->currentData().toString());
+}
+
+void TerminalWidget::createTerminal(const QString &shellProfileId)
+{
+    const QString id = m_hub.createSession(m_workdir, shellProfileId);
+    if (id.isEmpty()) {
+        showStatus(m_hub.creationError());
         return;
     }
-    selectSession(m_ownedSessionId);
+    if (m_mode == Mode::Dashboard) {
+        m_dashboardStarted = true;
+        m_ownedSessionId = id;
+        m_ownedSessionIds.append(id);
+    }
+    selectSession(id);
+}
+
+void TerminalWidget::refreshShells()
+{
+    const QString selected = m_shells->currentData().toString();
+    QSignalBlocker blocker(m_shells);
+    m_shells->clear();
+    m_shells->addItem(tr("Default shell"), QString());
+    const auto profiles = m_hub.shellCatalog().profiles();
+    for (const auto &profile : profiles)
+        m_shells->addItem(profile.label, profile.id);
+    m_shells->setCurrentIndex(qMax(0, m_shells->findData(selected)));
+    if (!m_shellMenu)
+        return;
+    m_shellMenu->clear();
+    auto *refresh = m_shellMenu->addAction(tr("Refresh installed shells"));
+    connect(refresh, &QAction::triggered, &m_hub.shellCatalog(), &TerminalShellCatalog::refresh);
+    m_shellMenu->addSeparator();
+    for (const auto &profile : profiles) {
+        auto *action = m_shellMenu->addAction(tr("New %1").arg(profile.label));
+        action->setData(profile.id);
+        connect(action, &QAction::triggered, this, [this, profile] { createTerminal(profile.id); });
+    }
+    if (!m_ownedSessionIds.isEmpty())
+        m_shellMenu->addSeparator();
+    for (const auto &id : m_ownedSessionIds) {
+        if (!m_hub.sessionIds().contains(id))
+            continue;
+        auto *action = m_shellMenu->addAction(m_hub.title(id));
+        action->setCheckable(true);
+        action->setChecked(id == m_sessionId);
+        connect(action, &QAction::triggered, this, [this, id] {
+            m_ownedSessionId = id;
+            selectSession(id);
+        });
+    }
 }
 
 void TerminalWidget::showSettings()
@@ -194,6 +264,8 @@ void TerminalWidget::setWorkdir(const QString &workdir) { m_workdir = workdir; }
 
 void TerminalWidget::refreshSessions()
 {
+    const auto availableSessions = m_hub.sessionIds();
+    m_ownedSessionIds.removeIf([&availableSessions](const QString &id) { return !availableSessions.contains(id); });
     QSignalBlocker blocker(m_sessions);
     m_sessions->clear();
     m_sessions->addItem(tr("Choose a terminal…"), QString());
@@ -209,6 +281,7 @@ void TerminalWidget::refreshSessions()
     m_close->setEnabled(!m_sessionId.isEmpty());
     if (m_restart)
         m_restart->setEnabled(!m_hub.running(m_ownedSessionId));
+    refreshShells();
     if (!m_sessionId.isEmpty()) {
         const QString error = m_hub.error(m_sessionId);
         QString message = error;

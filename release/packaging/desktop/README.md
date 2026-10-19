@@ -9,7 +9,12 @@ optional Cockpit package. Native amd64 DEBs bundle Qt 6.10.3, its plugins and
 WebEngine helper/resources/locales. `dpkg-shlibdeps` resolves the remaining
 distribution libraries. ARM64 DEBs retain distribution Qt and its helper package;
 macOS/Windows deployment tools bundle the matching helper, resources and locales.
-Flatpak uses the WebEngine runtime supplied by its matching KDE Platform.
+Flatpak uses the WebEngine runtime supplied by its matching KDE Platform 6.10.
+The Chrome extension API requires Qt WebEngine 6.10 or later. macOS, Windows,
+native Linux amd64 and Flatpak use that baseline; the legacy ARM64 DEB does not
+support extensions. Its Ubuntu 22.04 compatibility baseline prevents using Qt’s
+prebuilt ARM64 kit, which requires glibc 2.39. A Qt source build or a separate
+newer-runtime artifact is needed to close that gap.
 
 | Target | Desktop artifact | Contents |
 | --- | --- | --- |
@@ -60,13 +65,13 @@ read-only, and Cockpit uses the same CMake build and Qt toolchain as the launche
 Its package-owned producer qualifies native rendering and emits a separate
 `cockpit-store`; the desktop DEB still contains the launcher and runtime only.
 On macOS, run `bash release/packaging/desktop/build-unix.sh VERSION release/artifacts`
-with CMake and Qt 6.8.3 including WebEngine, WebChannel and Positioning modules,
+with CMake and Qt 6.10.3 including WebEngine, WebChannel and Positioning modules,
 with deployment target macOS 13.
 Windows uses `build-windows.ps1` with Visual
 Studio 2022, the same Qt modules and `windeployqt`, then the existing WiX MSI builder.
 The native deployment scripts reject missing WebEngine helper/resources/locales.
 macOS signs the renderer with Qt's supplied entitlements and preserves them when
-signing the enclosing app, following [Qt's WebEngine deployment guide](https://doc.qt.io/qt-6.8/qtwebengine-deploying.html).
+signing the enclosing app, following [Qt's WebEngine deployment guide](https://doc.qt.io/qt-6.10/qtwebengine-deploying.html).
 
 `smoke.py` runs the installed launcher's `--check-installation` diagnostic outside
 the checkout, with isolated user directories and no injected CLI override. It

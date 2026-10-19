@@ -8,10 +8,14 @@
 #include "SystemResourceOverview.h"
 
 #include <QComboBox>
+#include <QDynamicPropertyChangeEvent>
+#include <QAbstractItemView>
 #include <QDir>
 #include <QFileInfo>
 #include <QFileSystemModel>
 #include <QHeaderView>
+#include <QFrame>
+#include <QLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
@@ -23,6 +27,55 @@
 #include <algorithm>
 
 namespace {
+// Presentation belongs to the canvas host; the same widget keeps its normal
+// page and tiling controls when it leaves that host.
+class CanvasDashboardView final : public QWidget {
+public:
+    explicit CanvasDashboardView(QWidget *parent) : QWidget(parent)
+    {
+        setObjectName("canvasDashboardView");
+    }
+
+protected:
+    bool event(QEvent *event) override
+    {
+        if (event->type() == QEvent::DynamicPropertyChange) {
+            const auto *change = static_cast<QDynamicPropertyChangeEvent *>(event);
+            if (change->propertyName() == "dashboardCanvasPresentation") {
+                const bool canvas = property("dashboardCanvasPresentation").toBool();
+                for (auto *card : findChildren<QFrame *>("systemMetricCard")) {
+                    auto *cardLayout = card->layout();
+                    if (!cardLayout)
+                        continue;
+                    if (canvas) {
+                        cardLayout->setProperty("canvasOriginalMargins", QVariant::fromValue(cardLayout->contentsMargins()));
+                        cardLayout->setProperty("canvasOriginalSpacing", cardLayout->spacing());
+                        cardLayout->setContentsMargins(8, 6, 8, 6);
+                        cardLayout->setSpacing(4);
+                    } else if (cardLayout->property("canvasOriginalMargins").isValid()) {
+                        cardLayout->setContentsMargins(cardLayout->property("canvasOriginalMargins").value<QMargins>());
+                        cardLayout->setSpacing(cardLayout->property("canvasOriginalSpacing").toInt());
+                    }
+                }
+                setStyleSheet(canvas ? QStringLiteral(
+                    "QWidget#canvasDashboardView { background: transparent; }"
+                    "QWidget#canvasDashboardView QFrame#systemMetricCard { background: palette(base); border: none; border-radius: 14px; }"
+                    "QWidget#canvasDashboardView QLabel#systemMetricTitle { color: palette(highlight); font-size: 11px; }"
+                    "QWidget#canvasDashboardView QProgressBar { border: none; border-radius: 3px; background: palette(alternate-base); max-height: 5px; }"
+                    "QWidget#canvasDashboardView QProgressBar::chunk { border-radius: 3px; background: palette(highlight); }"
+                    "QWidget#canvasDashboardView QListWidget, QWidget#canvasDashboardView QTableWidget { background: transparent; border: none; border-radius: 10px; }"
+                    "QWidget#canvasDashboardView QListWidget::item { padding: 5px 7px; border-radius: 7px; }"
+                    "QWidget#canvasDashboardView QListWidget::item:selected { background: palette(highlight); color: palette(highlighted-text); }"
+                    "QWidget#canvasDashboardView QLineEdit { border: none; border-radius: 14px; padding: 7px 10px; background: palette(base); }"
+                    "QWidget#canvasDashboardView QPushButton { border: none; border-radius: 14px; padding: 7px 12px; background: palette(alternate-base); }"
+                    "QWidget#canvasDashboardView QPushButton:hover { background: palette(highlight); color: palette(highlighted-text); }"
+                    "QWidget#canvasDashboardView QLabel#dashboardWidgetStatus { font-size: 11px; padding: 3px; }") : QString());
+                updateGeometry();
+            }
+        }
+        return QWidget::event(event);
+    }
+};
 QLabel *notice(QWidget *parent, const QString &text = {})
 {
     auto *label = new QLabel(text, parent);
@@ -61,7 +114,7 @@ void addRow(QTableWidget *table, const QStringList &cells)
 
 QWidget *DashboardWidgetFactory::createSystem(QWidget *parent)
 {
-    auto *widget = new QWidget(parent);
+    auto *widget = new CanvasDashboardView(parent);
     auto *layout = new QVBoxLayout(widget);
     layout->setContentsMargins(0, 0, 0, 0);
     auto *overview = new SystemResourceOverview(widget, true);
@@ -83,7 +136,7 @@ QWidget *DashboardWidgetFactory::createSystem(QWidget *parent)
 
 QWidget *DashboardWidgetFactory::createExecutions(QWidget *parent)
 {
-    auto *widget = new QWidget(parent);
+    auto *widget = new CanvasDashboardView(parent);
     auto *layout = new QVBoxLayout(widget);
     layout->setContentsMargins(0, 0, 0, 0);
     auto *table = compactTable({tr("Workflow / task"), tr("State")}, widget);
@@ -124,7 +177,7 @@ QWidget *DashboardWidgetFactory::createExecutions(QWidget *parent)
 
 QWidget *DashboardWidgetFactory::createWorkflows(QWidget *parent)
 {
-    auto *widget = new QWidget(parent);
+    auto *widget = new CanvasDashboardView(parent);
     auto *layout = new QVBoxLayout(widget);
     layout->setContentsMargins(0, 0, 0, 0);
     auto *search = new QLineEdit;
@@ -139,13 +192,21 @@ QWidget *DashboardWidgetFactory::createWorkflows(QWidget *parent)
     auto *launch = new QPushButton(tr("Launch workflow"));
     launch->setObjectName("dashboardLaunchWorkflow");
     layout->addWidget(launch);
-    const auto render = [this, search, list, status, launch]() {
+    auto *clone = new QPushButton(tr("Clone to workflows"));
+    clone->setObjectName("dashboardCloneWorkflow");
+    layout->addWidget(clone);
+    const auto selectionChanged = [list, launch, clone]() {
+        const auto *item = list->currentItem();
+        launch->setEnabled(item && item->data(Qt::UserRole + 1).toBool());
+        clone->setVisible(item && item->data(Qt::UserRole + 2).toBool());
+    };
+    const auto render = [this, search, list, status, launch, selectionChanged]() {
         const QString selected = list->currentItem() ? list->currentItem()->data(Qt::UserRole).toString() : QString();
         const QSignalBlocker blocker(list);
         list->clear();
         int matching = 0;
         for (const auto &workflow : m_workflows) {
-            const QString title = workflow.displayName.isEmpty() ? workflow.workflowId : workflow.displayName;
+            const QString title = workflow.catalogTitle();
             if (!(title + " " + workflow.workflowId).contains(search->text().trimmed(), Qt::CaseInsensitive))
                 continue;
             ++matching;
@@ -155,21 +216,27 @@ QWidget *DashboardWidgetFactory::createWorkflows(QWidget *parent)
                 continue;
             auto *item = new QListWidgetItem(title, list);
             item->setData(Qt::UserRole, workflow.workflowId);
-            item->setToolTip(workflow.description);
+            item->setToolTip(workflow.catalogDescription());
+            item->setData(Qt::UserRole + 1, workflow.supported);
+            item->setData(Qt::UserRole + 2, workflow.cloneable);
             if (workflow.workflowId == selected)
                 list->setCurrentItem(item);
         }
         if (!list->currentItem() && list->count() > 0)
             list->setCurrentRow(0);
-        launch->setEnabled(list->currentItem() != nullptr);
+        selectionChanged();
         status->setText(matching == 0 ? tr("No matching workflows. Open Workflows to choose a project or refresh its catalog.")
             : tr("%1 of %2 workflows · configure before launch").arg(list->count()).arg(matching));
     };
     connect(this, &DashboardWidgetFactory::workflowsChanged, widget, render);
     connect(search, &QLineEdit::textChanged, widget, render);
-    connect(list, &QListWidget::currentRowChanged, launch, [list, launch]() { launch->setEnabled(list->currentItem() != nullptr); });
+    connect(list, &QListWidget::currentRowChanged, widget, selectionChanged);
+    connect(clone, &QPushButton::clicked, this, [this, list]() {
+        if (const auto *item = list->currentItem())
+            emit cloneWorkflow(item->data(Qt::UserRole).toString());
+    });
     const auto launchSelected = [this, list]() {
-        if (list->currentItem())
+        if (list->currentItem() && list->currentItem()->data(Qt::UserRole + 1).toBool())
             emit launchWorkflow(list->currentItem()->data(Qt::UserRole).toString());
     };
     connect(launch, &QPushButton::clicked, this, launchSelected);
@@ -180,7 +247,7 @@ QWidget *DashboardWidgetFactory::createWorkflows(QWidget *parent)
 
 QWidget *DashboardWidgetFactory::createContainers(QWidget *parent)
 {
-    auto *widget = new QWidget(parent);
+    auto *widget = new CanvasDashboardView(parent);
     auto *layout = new QVBoxLayout(widget);
     layout->setContentsMargins(0, 0, 0, 0);
     auto *table = compactTable({tr("Container"), tr("State"), tr("Image")}, widget);
@@ -225,7 +292,7 @@ QWidget *DashboardWidgetFactory::createFiles(QWidget *parent, const QString &sco
 
 QWidget *DashboardWidgetFactory::createGit(QWidget *parent)
 {
-    auto *widget = new QWidget(parent);
+    auto *widget = new CanvasDashboardView(parent);
     auto *layout = new QVBoxLayout(widget);
     layout->setContentsMargins(0, 0, 0, 0);
     auto *branch = notice(widget);
@@ -259,7 +326,7 @@ QWidget *DashboardWidgetFactory::createGit(QWidget *parent)
 
 QWidget *DashboardWidgetFactory::createMachines(QWidget *parent)
 {
-    auto *widget = new QWidget(parent);
+    auto *widget = new CanvasDashboardView(parent);
     auto *layout = new QVBoxLayout(widget);
     layout->setContentsMargins(0, 0, 0, 0);
     auto *table = compactTable({tr("Machine"), tr("Access")}, widget);

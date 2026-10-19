@@ -35,7 +35,8 @@ void CanvasPanel::setDragHandle(QWidget *handle)
 
 QSize CanvasPanel::minimumPanelSize(const QSize &available) const
 {
-    return minimumSizeHint().expandedTo(QSize(280, 180)).boundedTo(available);
+    const QSize baseline = property("dashboardSpatial").toBool() ? QSize(280, 72) : QSize(280, 180);
+    return minimumSizeHint().expandedTo(minimumSize()).expandedTo(baseline).boundedTo(available);
 }
 
 QRect CanvasPanel::constrained(const QRect &geometry) const

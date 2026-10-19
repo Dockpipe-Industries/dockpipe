@@ -41,6 +41,7 @@ class DashboardWidgetFactoryTest final : public QObject {
 private slots:
     void catalogAndCompactWorkflowActions();
     void boundedSnapshotViewsAndFailure();
+    void systemCountersWithoutUnixOnlyMetrics();
     void filesRequireProjectAndLogsAreScoped();
     void duplicateWidgetsShareObservationReaders_data();
     void duplicateWidgetsShareObservationReaders();
@@ -48,6 +49,46 @@ private slots:
     void unchangedLogTailPreservesSelectionAndRunModel();
     void terminalHasContextActionsWithoutInnerChrome();
 };
+
+void DashboardWidgetFactoryTest::systemCountersWithoutUnixOnlyMetrics()
+{
+    SessionManager sessions;
+    ContextStore store;
+    DashboardWidgetFactory factory(sessions, store);
+    std::unique_ptr<QWidget> system(factory.create("system"));
+    QJsonObject resources{{"boot_id", "windows-boot"}, {"logical_cpus", 8},
+        {"cpu_total", 1000}, {"cpu_idle", 400},
+        {"memory_total", 1000}, {"memory_available", 250},
+        {"disk_total", 2000}, {"disk_available", 500},
+        {"network_received", 1000}, {"network_sent", 2000}, {"uptime_seconds", 7200}};
+    QJsonObject snapshot{{"machine", "local"}, {"captured_at", "2026-01-01T12:00:00.000Z"},
+        {"executions", QJsonArray{}}, {"system", resources}};
+    emit factory.snapshotChanged(snapshot, {});
+    auto *cpu = system->findChild<QLabel *>("systemMetric0");
+    auto *swap = system->findChild<QLabel *>("systemMetric2");
+    auto *network = system->findChild<QLabel *>("systemMetric4");
+    auto *uptime = system->findChild<QLabel *>("systemMetric5");
+    QVERIFY(cpu->text().contains("Waiting"));
+    QCOMPARE(swap->text(), QString("Unavailable"));
+    QCOMPARE(uptime->text(), QString("2.0 h"));
+
+    resources.insert("cpu_total", 1200);
+    resources.insert("cpu_idle", 450);
+    resources.insert("network_received", 5096);
+    snapshot.insert("system", resources);
+    snapshot.insert("captured_at", "2026-01-01T12:00:04.000Z");
+    emit factory.snapshotChanged(snapshot, {});
+    QVERIFY(cpu->text().contains("75.0%"));
+    QVERIFY(network->text().contains("1.0 KiB/s"));
+    QVERIFY(system->findChild<QLabel *>("systemMetric1")->text().contains("750"));
+    QVERIFY(system->findChild<QLabel *>("systemMetric3")->text().contains("1.5 KiB"));
+
+    resources.insert("boot_id", "windows-reboot");
+    snapshot.insert("system", resources);
+    emit factory.snapshotChanged(snapshot, {});
+    QVERIFY(cpu->text().contains("Waiting"));
+    QVERIFY(!network->text().contains("/s"));
+}
 
 void DashboardWidgetFactoryTest::terminalHasContextActionsWithoutInnerChrome()
 {
@@ -112,6 +153,35 @@ void DashboardWidgetFactoryTest::catalogAndCompactWorkflowActions()
     QCOMPARE(openSpy[0][0].toString(), QString("workflows"));
     search->clear();
     QCOMPARE(list->count(), 40);
+    WorkflowMeta imported;
+    imported.workflowId = "vscode-task:build";
+    imported.displayName = "Build project";
+    imported.source = "vscode";
+    imported.sourceKind = "task";
+    imported.sourcePath = ".vscode/tasks.json";
+    imported.cloneable = true;
+    imported.supported = false;
+    imported.unsupportedReason = "Unsupported command variable";
+    QSignalSpy cloneSpy(&factory, &DashboardWidgetFactory::cloneWorkflow);
+    factory.setWorkflows({imported});
+    QCOMPARE(list->count(), 1);
+    QVERIFY(list->item(0)->text().contains("VS Code"));
+    QVERIFY(list->item(0)->toolTip().contains("Unsupported command variable"));
+    QVERIFY(!launch->isEnabled());
+    auto *clone = widget->findChild<QPushButton *>("dashboardCloneWorkflow");
+    QVERIFY(clone && !clone->isHidden());
+    clone->click();
+    QCOMPARE(cloneSpy.size(), 1);
+    QCOMPARE(cloneSpy[0][0].toString(), imported.workflowId);
+    QCOMPARE(launchSpy.size(), 1);
+    imported.sourceKind = "launch";
+    imported.sourcePath = ".vscode/launch.json";
+    imported.supported = true;
+    imported.warnings = {"Runs without a debugger"};
+    factory.setWorkflows({imported});
+    QVERIFY(launch->isEnabled());
+    QVERIFY(list->item(0)->text().contains("launch.json"));
+    QVERIFY(list->item(0)->toolTip().contains("Runs without a debugger"));
     factory.setWorkdir("/different-project");
     QCOMPARE(list->count(), 0);
     QVERIFY(!launch->isEnabled());

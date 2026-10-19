@@ -1,4 +1,5 @@
 #include "TerminalSession.h"
+#include "TerminalHostLaunch.h"
 
 #include <QElapsedTimer>
 #include <QEventLoop>
@@ -49,6 +50,8 @@ class TerminalSessionTest final : public QObject {
 private slots:
     void initTestCase();
     void terminalInputResizeAndExit();
+    void explicitProgramAndArguments();
+    void nativeFlatpakHostIntegration();
     void rejectsInvalidInputAndDirectory();
     void outputFloodDoesNotBlockEventLoop_data();
     void outputFloodDoesNotBlockEventLoop();
@@ -65,7 +68,7 @@ private:
 void TerminalSessionTest::initTestCase()
 {
 #ifndef Q_OS_UNIX
-    QSKIP("Unix PTY fixture; Windows has an explicit unsupported backend.");
+    QSKIP("Unix PTY fixture; Windows ConPTY has a dedicated native fixture.");
 #else
     m_originalShell = qgetenv("SHELL");
     qputenv("SHELL", "/bin/sh");
@@ -95,6 +98,60 @@ void TerminalSessionTest::terminalInputResizeAndExit()
     QTRY_COMPARE_WITH_TIMEOUT(exited.size(), 1, 3000);
     QCOMPARE(exited.front().front().toInt(), 7);
     QVERIFY(received.contains("FINAL_TAIL\r\n"));
+    QVERIFY(!terminal.running());
+}
+
+void TerminalSessionTest::explicitProgramAndArguments()
+{
+    TerminalSession terminal;
+    QByteArray output;
+    connect(&terminal, &TerminalSession::output, this, [&](const QByteArray &bytes) { output += bytes; });
+    QSignalSpy finished(&terminal, &TerminalSession::finished);
+    QVERIFY(terminal.start({}, QStringLiteral("/bin/sh"),
+        {QStringLiteral("-c"), QStringLiteral("printf 'EXPLICIT:%s\n' \"$1\"; exit 9"),
+            QStringLiteral("terminal-fixture"), QStringLiteral("space and 'quote' and \"double\"")}));
+    QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 3000);
+    QCOMPARE(finished.front().front().toInt(), 9);
+    QVERIFY2(output.contains("EXPLICIT:space and 'quote' and \"double\""), output.constData());
+    QVERIFY(!terminal.start({}, QStringLiteral("relative-shell"), {}));
+    finished.clear();
+    output.clear();
+    QVERIFY(terminal.start({}, QStringLiteral("/bin/sh"),
+        {QStringLiteral("-c"), QStringLiteral("printf 'ENVIRONMENT:%s' \"$DOCKPIPE_TERMINAL_FIXTURE\"")},
+        {{QStringLiteral("DOCKPIPE_TERMINAL_FIXTURE"), QStringLiteral("space and quote' and $literal")}}));
+    QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 3000);
+    QVERIFY2(output.contains("ENVIRONMENT:space and quote' and $literal"), output.constData());
+}
+
+void TerminalSessionTest::nativeFlatpakHostIntegration()
+{
+    if (!TerminalHostLaunch::required())
+        QSKIP("The public host-terminal integration requires an actual Flatpak runtime.");
+    TerminalSession terminal;
+    QByteArray output;
+    connect(&terminal, &TerminalSession::output, this, [&](const QByteArray &bytes) { output += bytes; });
+    QSignalSpy finished(&terminal, &TerminalSession::finished);
+    terminal.resize(117, 41);
+    const QMap<QString, QString> environment = {
+        {QStringLiteral("PS1"), QStringLiteral("DOCKPIPE_HOST_READY> ")},
+        {QStringLiteral("HISTFILE"), QStringLiteral("/dev/null")},
+    };
+    QVERIFY(terminal.start(QStringLiteral("/tmp"), QStringLiteral("/bin/bash"),
+        {QStringLiteral("--noprofile"), QStringLiteral("--norc"), QStringLiteral("-i")}, environment));
+    QTRY_VERIFY_WITH_TIMEOUT(output.contains("DOCKPIPE_HOST_READY>"), 5000);
+    QVERIFY(terminal.send("printf 'HOST_SIZE='; stty size\r"));
+    QTRY_VERIFY_WITH_TIMEOUT(output.contains("HOST_SIZE=41 117"), 3000);
+    QVERIFY(terminal.send("printf 'HOST_CWD='; pwd\r"));
+    QTRY_VERIFY_WITH_TIMEOUT(output.contains("HOST_CWD=/tmp"), 3000);
+    terminal.resize(92, 29);
+    QVERIFY(terminal.send("printf 'HOST_RESIZED='; stty size\r"));
+    QTRY_VERIFY_WITH_TIMEOUT(output.contains("HOST_RESIZED=29 92"), 3000);
+    // The expected marker is absent from echoed input and is assembled by the
+    // real host shell. The host supervisor must also preserve its exit status.
+    QVERIFY(terminal.send("printf 'HOST_%s\\n' 'FINAL_TAIL'; exit 7\r"));
+    QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 5000);
+    QCOMPARE(finished.front().front().toInt(), 7);
+    QVERIFY2(output.contains("HOST_FINAL_TAIL"), output.constData());
     QVERIFY(!terminal.running());
 }
 

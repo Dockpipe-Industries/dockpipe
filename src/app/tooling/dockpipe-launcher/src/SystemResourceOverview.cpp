@@ -33,7 +33,7 @@ SystemResourceOverview::SystemResourceOverview(QWidget *parent, bool compact) : 
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(compact ? 0 : 20, 0, compact ? 0 : 20, 0);
     auto *grid = new QGridLayout;
-    const QStringList titles{tr("CPU"), tr("Memory"), tr("Swap"), tr("Disk · /"), tr("Network"), tr("Uptime & load")};
+    const QStringList titles{tr("CPU"), tr("Memory"), tr("Swap"), tr("Disk"), tr("Network"), tr("Uptime & load")};
     for (int index = 0; index < titles.size(); ++index) {
         auto *card = new QFrame;
         card->setObjectName("systemMetricCard");
@@ -63,7 +63,7 @@ SystemResourceOverview::SystemResourceOverview(QWidget *parent, bool compact) : 
         const int columns = compact ? 2 : 3;
         grid->addWidget(card, index / columns, index % columns);
     }
-    m_values[3]->setToolTip(tr("Capacity of the root filesystem visible to this collector. Includes reserved space in used capacity."));
+    m_values[3]->setToolTip(tr("Capacity of the collector's root filesystem on Linux or system volume on Windows. Includes reserved space in used capacity."));
     m_values[4]->setToolTip(tr("Sum of non-loopback interfaces. Bridges, VPNs and virtual interfaces may count the same traffic more than once."));
     layout->addLayout(grid);
     m_chart = new ExecutionMetricChart;
@@ -141,9 +141,12 @@ void SystemResourceOverview::applySnapshot(const QJsonObject &snapshot)
     m_values[4]->setText(tr("↓ %1   ↑ %2").arg(rates[0], rates[1]));
     const QString uptime = measured(resources, "uptime_seconds")
         ? tr("%1 h").arg(resources.value("uptime_seconds").toDouble() / 3600, 0, 'f', 1) : tr("Unavailable");
-    const QString load = measured(resources, "load_1")
-        ? QString::number(resources.value("load_1").toDouble(), 'f', 2) : tr("Unavailable");
-    m_values[5]->setText(tr("%1 · load %2 (1 min)").arg(uptime, load));
+    if (measured(resources, "load_1")) {
+        const QString load = QString::number(resources.value("load_1").toDouble(), 'f', 2);
+        m_values[5]->setText(tr("%1 · load %2 (1 min)").arg(uptime, load));
+    } else {
+        m_values[5]->setText(uptime);
+    }
     m_previous = resources;
     m_identity = identity;
     m_sampleTime = sampleTime;

@@ -57,7 +57,8 @@ PNGs. Existing compiled package stores were not refreshed.
 ## Remaining platform boundaries
 
 Linux has native process identity, System discovery and host metrics. macOS and
-Windows retain lifecycle metadata but no native metrics collector yet. The updated remote worker can explicitly opt into system/Docker snapshots;
+Windows retain lifecycle metadata without native process discovery or per-process
+metrics. The Windows whole-system collector extension is tracked below. The updated remote worker can explicitly opt into system/Docker snapshots;
 remote job status and raw logs are available in Executions under Runs & logs. QEMU guest metrics and generic descendant ownership are
 not inferred. The bounded history is a recent-activity cache, not an audit archive.
 See the runtime guide for recommended follow-ups and exact support limits.
@@ -94,3 +95,20 @@ was rendered and visually checked in the dark theme. Receipts:
 Generated build products remain in the existing launcher build directory and
 `/tmp`; the new preview CLI is `/tmp/dockpipe-system-cli`. No commit, push,
 remote opt-in, service replacement or infrastructure mutation was performed.
+
+## Windows whole-system collector follow-up
+
+The Windows dashboard previously received the unsupported-platform resource
+fallback. A native collector now supplies CPU counters, physical memory,
+system-volume capacity, non-loopback network counters and uptime through the
+existing CLI snapshot. Kernel boot identity protects rate baselines across
+short-lived collectors. Enumeration, retries and counter arithmetic are bounded;
+individual API failures retain nullable metrics and notices. CPU is withheld on
+multiple processor groups, and commit limits are not mislabeled as swap.
+
+The dashboard regression covers two-sample Windows-style CPU/network rates,
+reboot reset, and absent Unix swap/load fields. The focused dashboard widget
+CTest and execution-observer tests pass locally. Windows CLI cross-compilation
+passes; native Windows collection and UI validation remain pending. The added
+native collector smoke test runs with the existing Windows runtime Go CI suite.
+Changes remain local with the dashboard fixes; no publication occurred.

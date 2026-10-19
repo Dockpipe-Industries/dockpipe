@@ -27,7 +27,7 @@ To include the Qt launcher in the same MSI, stage the launcher payload first and
 ```powershell
 cmake -S src/app/tooling/dockpipe-launcher -B src/app/tooling/dockpipe-launcher/build
 cmake --build src/app/tooling/dockpipe-launcher/build --config Release
-C:\Qt\6.8.3\msvc2022_64\bin\windeployqt.exe --release --compiler-runtime --dir .\bin\.dockpipe\build\windows-msi\launcher-stage .\src\app\tooling\dockpipe-launcher\build\Release\dockpipe-launcher.exe
+C:\Qt\6.10.3\msvc2022_64\bin\windeployqt.exe --release --compiler-runtime --dir .\bin\.dockpipe\build\windows-msi\launcher-stage .\src\app\tooling\dockpipe-launcher\build\Release\dockpipe-launcher.exe
 .\release\packaging\msi\build.ps1 -Version 0.6.0 -SourceExe .\dockpipe.exe -LauncherStageDir .\bin\.dockpipe\build\windows-msi\launcher-stage -OutDir .\bin\.dockpipe\build\windows-msi\msi-dist
 ```
 
@@ -58,4 +58,4 @@ The **`build-msi`** job in **`.github/workflows/release.yml`** runs on **`window
 
 That job now also runs **`smoke-test.ps1`** to verify silent per-user install, direct execution of the installed **`dockpipe.exe`**, and silent uninstall before publishing the artifact. Release builds require the launcher payload. The smoke test also verifies **`dockpipe-launcher.exe`**, **`Qt6Core.dll`**, **`platforms\qwindows.dll`**, and the Start Menu shortcut.
 
-CI now builds the native launcher with Qt 6.8.3 and `windeployqt`; a missing payload fails instead of silently producing a CLI-only MSI. Native smoke also starts the installed Qt app, checks its sibling CLI, exercises launcher feature removal/restoration, and uninstalls. Portable ZIPs remain CLI-only. These native checks must pass on Windows; PowerShell parameter tests on Linux do not qualify installation.
+CI now builds the native launcher with Qt 6.10.3 and `windeployqt`; a missing payload fails instead of silently producing a CLI-only MSI. Native smoke also starts the installed Qt app, checks its sibling CLI, exercises launcher feature removal/restoration, and uninstalls. Portable ZIPs remain CLI-only. These native checks must pass on Windows; PowerShell parameter tests on Linux do not qualify installation.

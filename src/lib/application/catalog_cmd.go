@@ -14,16 +14,24 @@ import (
 )
 
 type catalogWorkflowRecord struct {
-	WorkflowID  string                       `json:"workflow_id"`
-	DisplayName string                       `json:"display_name,omitempty"`
-	Description string                       `json:"description,omitempty"`
-	Category    string                       `json:"category,omitempty"`
-	IconPath    string                       `json:"icon_path,omitempty"`
-	ConfigPath  string                       `json:"config_path,omitempty"`
-	Vars        map[string]string            `json:"vars,omitempty"`
-	Inputs      []catalogWorkflowInputRecord `json:"inputs,omitempty"`
-	View        *catalogWorkflowViewRecord   `json:"view,omitempty"`
-	Types       []string                     `json:"types,omitempty"`
+	WorkflowID        string                       `json:"workflow_id"`
+	DisplayName       string                       `json:"display_name,omitempty"`
+	Description       string                       `json:"description,omitempty"`
+	Category          string                       `json:"category,omitempty"`
+	IconPath          string                       `json:"icon_path,omitempty"`
+	ConfigPath        string                       `json:"config_path,omitempty"`
+	Vars              map[string]string            `json:"vars,omitempty"`
+	Inputs            []catalogWorkflowInputRecord `json:"inputs,omitempty"`
+	View              *catalogWorkflowViewRecord   `json:"view,omitempty"`
+	Types             []string                     `json:"types,omitempty"`
+	Source            string                       `json:"source,omitempty"`
+	SourceKind        string                       `json:"source_kind,omitempty"`
+	SourcePath        string                       `json:"source_path,omitempty"`
+	SourceName        string                       `json:"source_name,omitempty"`
+	Cloneable         bool                         `json:"cloneable,omitempty"`
+	Supported         *bool                        `json:"supported,omitempty"`
+	UnsupportedReason string                       `json:"unsupported_reason,omitempty"`
+	Warnings          []string                     `json:"warnings,omitempty"`
 }
 
 type catalogWorkflowInputRecord struct {
@@ -208,6 +216,11 @@ func listCatalogWorkflows(projectRoot, workdir string) ([]catalogWorkflowRecord,
 			Types:       append([]string(nil), wf.Types...),
 		})
 	}
+	imported, err := catalogVSCodeWorkflows(workdir)
+	if err != nil {
+		return nil, err
+	}
+	out = append(out, imported...)
 	sort.Slice(out, func(i, j int) bool {
 		return out[i].WorkflowID < out[j].WorkflowID
 	})
@@ -393,7 +406,7 @@ func sortedCatalogSet(set map[string]struct{}) []string {
 
 func writeCatalogText(f *os.File, out catalogListOutput) error {
 	for _, wf := range out.Workflows {
-		fmt.Fprintf(f, "workflow\t%s\t%s\t%s\t%s\n", wf.WorkflowID, wf.DisplayName, wf.Category, wf.ConfigPath)
+		writeWorkflowCatalogText(f, "workflow\t", wf)
 	}
 	for _, name := range out.Resolvers {
 		fmt.Fprintf(f, "resolver\t%s\n", name)
@@ -405,4 +418,16 @@ func writeCatalogText(f *os.File, out catalogListOutput) error {
 		fmt.Fprintf(f, "runtime\t%s\n", name)
 	}
 	return nil
+}
+
+func writeWorkflowCatalogText(file *os.File, prefix string, workflow catalogWorkflowRecord) {
+	display, path := workflow.DisplayName, workflow.ConfigPath
+	if workflow.Source == "vscode" {
+		display += " [VS Code]"
+		path = workflow.SourcePath
+		if workflow.Supported != nil && !*workflow.Supported {
+			display += " [unavailable: " + workflow.UnsupportedReason + "]"
+		}
+	}
+	fmt.Fprintf(file, "%s%s\t%s\t%s\t%s\n", prefix, workflow.WorkflowID, display, workflow.Category, path)
 }

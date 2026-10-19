@@ -1,13 +1,17 @@
 #include "BrowserWidget.h"
+#include "BrowserTabBar.h"
 #include "BrowserDownloads.h"
 #include "BrowserRuntime.h"
 #include "BrowserPreferences.h"
+#include "BrowserExtensionStore.h"
+#include "BrowserExtensionPackage.h"
 #include "CanvasIcons.h"
 
 #include <QAction>
 #include <QCoreApplication>
 #include <QDir>
 #include <QEvent>
+#include <QDynamicPropertyChangeEvent>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -75,10 +79,29 @@ QPushButton *iconButton(CanvasIcons::Symbol icon, const QString &label, const QS
 }
 }
 
+// A detached live tab retains the exact Chromium profile and download manager.
+// The last browser/tab lease releases pages before releasing their profile.
+struct BrowserSession
+{
+    std::unique_ptr<QTemporaryDir> directory;
+    QWebEngineProfile *profile = nullptr;
+    BrowserDownloads *downloads = nullptr;
+    QList<QPointer<BrowserWidget>> browsers;
+
+    ~BrowserSession()
+    {
+        delete downloads;
+        delete profile;
+        if (directory && directory->isValid())
+            new SessionCleanup(std::move(directory));
+    }
+};
+
 BrowserWidget::BrowserWidget(QWidget *parent) : QWidget(parent)
 {
     setObjectName("browserWidget");
     buildChrome();
+    installEventFilter(this);
     applyPreferences();
     connect(BrowserPreferences::instance(), &BrowserPreferences::changed, this, &BrowserWidget::applyPreferences);
     createSession();
@@ -123,8 +146,9 @@ void BrowserWidget::buildChrome()
     chromeLayout->setContentsMargins(10, 4, 10, 8);
     chromeLayout->setSpacing(4);
     auto *tabRow = new QHBoxLayout;
+    tabRow->setObjectName("browserTabRow");
     tabRow->setSpacing(4);
-    m_tabs = new QTabBar;
+    m_tabs = new BrowserTabBar;
     m_tabs->setObjectName("browserTabs");
     m_tabs->setMovable(true);
     m_tabs->setDrawBase(false);
@@ -132,10 +156,28 @@ void BrowserWidget::buildChrome()
     m_tabs->setElideMode(Qt::ElideRight);
     auto *newTab = iconButton(CanvasIcons::Symbol::Add, tr("New tab (Ctrl+T)"), "browserNewTab");
     tabRow->addWidget(m_tabs);
+    m_newTabButton = newTab;
     tabRow->addWidget(newTab);
     tabRow->addStretch();
+    m_viewportButton = iconButton(CanvasIcons::Symbol::Preview,
+        tr("Show browser controls"), "browserCanvasViewport");
+    m_viewportButton->setCheckable(true);
+    m_viewportButton->hide();
+    tabRow->addWidget(m_viewportButton);
+    connect(m_viewportButton, &QPushButton::clicked, this, [this]() {
+        setCanvasViewportMode(!m_canvasViewportRequested);
+    });
+    connect(m_tabs, &BrowserTabBar::tearOutRequested, this, [this](int index, const QPoint &position) {
+        if (!m_canvasPresentationEnabled || m_printing || index < 0 || index >= m_pages->count())
+            return;
+        auto *view = m_pages->widget(index)->findChild<QWebEngineView *>();
+        if (view)
+            emit tabTearOutRequested(view, position);
+    });
     chromeLayout->addLayout(tabRow);
-    auto *toolbar = new QHBoxLayout;
+    m_toolbar = new QWidget;
+    auto *toolbar = new QHBoxLayout(m_toolbar);
+    toolbar->setContentsMargins(0, 0, 0, 0);
     toolbar->setSpacing(6);
     m_back = iconButton(CanvasIcons::Symbol::Back, tr("Back (Alt+Left)"), "browserBack");
     m_forward = iconButton(CanvasIcons::Symbol::Forward, tr("Forward (Alt+Right)"), "browserForward");
@@ -170,6 +212,12 @@ void BrowserWidget::buildChrome()
     addressLayout->addWidget(m_address, 1);
     addressLayout->addWidget(go);
     toolbar->addWidget(addressPill, 1);
+    m_installExtension = new QPushButton(tr("Add extension…"));
+    m_installExtension->setObjectName("browserInstallExtension");
+    m_installExtension->setToolTip(tr("Install this Chrome Web Store extension in Dockpipe"));
+    m_installExtension->hide();
+    toolbar->addWidget(m_installExtension);
+    connect(m_installExtension, &QPushButton::clicked, this, &BrowserWidget::showExtensions);
     auto *extensions = iconButton(CanvasIcons::Symbol::Extensions, tr("Extensions"), "browserExtensions");
     auto *downloads = iconButton(CanvasIcons::Symbol::Download, tr("Downloads"), "browserDownloads");
     m_extensionsButton = extensions;
@@ -179,7 +227,7 @@ void BrowserWidget::buildChrome()
     toolbar->addWidget(extensions);
     toolbar->addWidget(downloads);
     toolbar->addWidget(more);
-    chromeLayout->addLayout(toolbar);
+    chromeLayout->addWidget(m_toolbar);
     layout->addWidget(chrome);
     m_progress = new QProgressBar;
     m_progress->setTextVisible(false);
@@ -244,8 +292,10 @@ void BrowserWidget::buildChrome()
     connect(site, &QPushButton::clicked, this, &BrowserWidget::showSiteInfo);
     connect(extensions, &QPushButton::clicked, this, &BrowserWidget::showExtensions);
     connect(downloads, &QPushButton::clicked, this, [this]() {
-        if (m_downloads)
+        if (m_downloads) {
+            m_downloads->setHost(this);
             m_downloads->showPanel();
+        }
     });
     connect(m_findText, &QLineEdit::textChanged, this, [this]() { findText(); });
     connect(m_findText, &QLineEdit::returnPressed, this, [this]() { findText(); });
@@ -264,6 +314,8 @@ void BrowserWidget::buildChrome()
     shortcut(QKeySequence::AddTab, [this]() { addTab(); });
     shortcut(QKeySequence::Close, [this]() { closeTab(m_tabs->currentIndex()); });
     shortcut(QKeySequence(Qt::CTRL | Qt::Key_L), [this]() {
+        if (m_canvasPresentationEnabled)
+            setCanvasViewportMode(false);
         m_address->setFocus();
         m_address->selectAll();
     });
@@ -320,8 +372,9 @@ void BrowserWidget::createSession()
         updateNavigation();
         return;
     }
-    m_sessionDirectory = std::make_unique<QTemporaryDir>();
-    if (!m_sessionDirectory->isValid()) {
+    m_session = std::make_shared<BrowserSession>();
+    m_session->directory = std::make_unique<QTemporaryDir>();
+    if (!m_session->directory->isValid()) {
         showStatus(tr("Could not create browser session storage."));
         return;
     }
@@ -329,21 +382,37 @@ void BrowserWidget::createSession()
     // the existing session-only contract instead of silently retaining site data.
 #if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
     QWebEngineProfileBuilder builder;
-    builder.setPersistentStoragePath(m_sessionDirectory->path());
-    builder.setCachePath(m_sessionDirectory->filePath("cache"));
+    builder.setPersistentStoragePath(m_session->directory->path());
+    builder.setCachePath(m_session->directory->filePath("cache"));
     builder.setPersistentCookiesPolicy(QWebEngineProfile::NoPersistentCookies);
-    m_profile = builder.createProfile("DockPipeBrowser", this);
+    m_profile = builder.createProfile("DockPipeBrowser", nullptr);
 #else
-    m_profile = new QWebEngineProfile("DockPipeBrowser", this);
-    m_profile->setPersistentStoragePath(m_sessionDirectory->path());
-    m_profile->setCachePath(m_sessionDirectory->filePath("cache"));
+    m_profile = new QWebEngineProfile("DockPipeBrowser");
+    m_profile->setPersistentStoragePath(m_session->directory->path());
+    m_profile->setCachePath(m_session->directory->filePath("cache"));
     m_profile->setPersistentCookiesPolicy(QWebEngineProfile::NoPersistentCookies);
 #endif
     if (!m_profile) {
         showStatus(tr("Could not create the browser profile."));
         return;
     }
+    new BrowserExtensionStore(m_profile);
+    m_session->profile = m_profile;
     m_downloads = new BrowserDownloads(m_profile, this);
+    m_downloads->setParent(nullptr);
+    m_session->downloads = m_downloads;
+    m_session->browsers.append(this);
+    const std::weak_ptr<BrowserSession> weakSession = m_session;
+    connect(m_downloads, &BrowserDownloads::hostRequested, m_downloads, [weakSession]() {
+        if (const auto session = weakSession.lock()) {
+            for (const auto &browser : session->browsers) {
+                if (browser) {
+                    session->downloads->setHost(browser);
+                    break;
+                }
+            }
+        }
+    });
     connect(m_downloads, &BrowserDownloads::statusChanged, this, &BrowserWidget::showStatus);
     addTab();
 }
@@ -355,7 +424,8 @@ void BrowserWidget::destroySession()
         emit activeViewAboutToChange(m_view);
     m_view = nullptr;
     emit activeViewChanged(nullptr);
-    delete m_downloads;
+    if (m_downloads)
+        disconnect(m_downloads, nullptr, this, nullptr);
     m_downloads = nullptr;
     const QSignalBlocker blockTabs(m_tabs);
     while (m_pages->count()) {
@@ -364,13 +434,24 @@ void BrowserWidget::destroySession()
         delete page;
         m_tabs->removeTab(0);
     }
-    delete m_profile;
+    m_tabSessions.clear();
+    m_session.reset();
     m_profile = nullptr;
-    if (m_sessionDirectory && m_sessionDirectory->isValid())
-        new SessionCleanup(std::move(m_sessionDirectory));
-    else
-        m_sessionDirectory.reset();
     m_destroyingSession = false;
+}
+
+bool BrowserWidget::hasSharedSession() const
+{
+    QHash<const BrowserSession *, int> localLeases;
+    for (const auto &session : m_tabSessions)
+        ++localLeases[session.get()];
+    if (m_session)
+        ++localLeases[m_session.get()];
+    for (const auto &session : m_tabSessions) {
+        if (session.use_count() > localLeases.value(session.get()))
+            return true;
+    }
+    return m_session && m_session.use_count() > localLeases.value(m_session.get());
 }
 
 QWebEngineView *BrowserWidget::addTab(const QUrl &url)
@@ -385,7 +466,8 @@ QWebEngineView *BrowserWidget::addTab(const QUrl &url)
     auto *container = new QWidget;
     auto *layout = new QVBoxLayout(container);
     layout->setContentsMargins(0, 0, 0, 0);
-    auto *welcome = new QLabel(tr("Browse the web\n\nSearch or enter an address above."));
+    auto *welcome = new QLabel(canvasViewportMode() ? tr("Open a site\n\nPress Ctrl+L or show browser controls.")
+        : tr("Browse the web\n\nSearch or enter an address above."));
     welcome->setObjectName("browserWelcome");
     welcome->setAlignment(Qt::AlignCenter);
     layout->addWidget(welcome, 1);
@@ -395,8 +477,23 @@ QWebEngineView *BrowserWidget::addTab(const QUrl &url)
     view->settings()->setAttribute(QWebEngineSettings::AutoLoadImages, m_images);
     layout->addWidget(view, 1);
     view->hide();
+    m_tabSessions.insert(view, m_session);
+    attachTab(container, view);
+    if (url.isValid())
+        navigate(url);
+    else if (!canvasViewportMode())
+        m_address->setFocus();
+    return view;
+}
+
+void BrowserWidget::attachTab(QWidget *container, QWebEngineView *view)
+{
+    auto *welcome = container->findChild<QLabel *>("browserWelcome");
+    connect(view, &QObject::destroyed, this, [this, view]() { m_permissionOrigins.remove(view); });
     const int index = m_pages->addWidget(container);
-    m_tabs->addTab(CanvasIcons::icon(CanvasIcons::Symbol::Globe), tr("New tab"));
+    m_tabs->addTab(view->icon().isNull() ? CanvasIcons::icon(CanvasIcons::Symbol::Globe) : view->icon(),
+        view->title().isEmpty() ? tr("New tab") : view->title().left(100));
+    m_tabs->setTabToolTip(index, view->title().left(200));
     auto *close = iconButton(CanvasIcons::Symbol::Close, tr("Close tab"), "browserCloseTab");
     close->setFixedSize(24, 24);
     auto *closeContainer = new QWidget;
@@ -469,19 +566,14 @@ QWebEngineView *BrowserWidget::addTab(const QUrl &url)
         [this, view](const QUrl &origin, QWebEnginePage::Feature feature) {
             requestSitePermission(view, origin, feature);
         });
-    connect(view->page(), &QWebEnginePage::newWindowRequested, this, [this](QWebEngineNewWindowRequest &request) {
-        if (!request.isUserInitiated() || !BrowserRuntime::allowsNavigation(request.requestedUrl(), m_profile))
+    connect(view->page(), &QWebEnginePage::newWindowRequested, this, [this, view](QWebEngineNewWindowRequest &request) {
+        if (!request.isUserInitiated() || !BrowserRuntime::allowsNavigation(request.requestedUrl(), view->page()->profile()))
             return;
         if (auto *destination = addTab())
             request.openIn(destination->page());
     });
     m_tabs->setCurrentIndex(index);
     selectTab(index);
-    if (url.isValid())
-        navigate(url);
-    else
-        m_address->setFocus();
-    return view;
 }
 
 void BrowserWidget::closeTab(int index)
@@ -501,7 +593,9 @@ void BrowserWidget::closeTab(int index)
         const QSignalBlocker blocker(m_tabs);
         m_pages->removeWidget(page);
         m_tabs->removeTab(index);
+        auto *view = page->findChild<QWebEngineView *>();
         delete page;
+        m_tabSessions.remove(view);
     }
     if (m_tabs->count())
         selectTab(m_tabs->currentIndex());
@@ -519,6 +613,12 @@ void BrowserWidget::selectTab(int index)
         emit activeViewAboutToChange(m_view);
     m_pages->setCurrentIndex(index);
     m_view = next;
+    if (const auto session = m_tabSessions.value(next)) {
+        m_session = session;
+        m_profile = session->profile;
+        m_downloads = session->downloads;
+        m_downloads->setHost(this);
+    }
     m_address->setModified(false);
     updateNavigation();
     if (m_findBar->isVisible())
@@ -529,6 +629,8 @@ void BrowserWidget::selectTab(int index)
 
 void BrowserWidget::updateNavigation()
 {
+    if (m_installExtension)
+        m_installExtension->setVisible(m_view && !BrowserExtensionPackage::extensionId(m_view->url().toString()).isEmpty());
     if (m_destroyingSession)
         return;
     const bool loading = m_view && m_view->property("loading").toBool();
@@ -538,7 +640,7 @@ void BrowserWidget::updateNavigation()
     m_reload->setVisible(!loading);
     m_stop->setVisible(loading);
     m_stop->setEnabled(loading);
-    m_progress->setVisible(m_chromeVisible && loading);
+    m_progress->setVisible(m_chromeVisible && !canvasViewportMode() && loading);
     m_progress->setValue(m_view ? m_view->property("progress").toInt() : 0);
     if (!m_address->hasFocus() || !m_address->isModified()) {
         const QUrl url = m_view ? m_view->url() : QUrl();
@@ -553,6 +655,11 @@ void BrowserWidget::updateNavigation()
 
 bool BrowserWidget::eventFilter(QObject *object, QEvent *event)
 {
+    if (object == this && event->type() == QEvent::DynamicPropertyChange) {
+        auto *change = static_cast<QDynamicPropertyChangeEvent *>(event);
+        if (change->propertyName() == "dashboardCanvasPresentation")
+            setCanvasPresentationEnabled(property("dashboardCanvasPresentation").toBool());
+    }
     if (object == m_address && (event->type() == QEvent::FocusIn || event->type() == QEvent::FocusOut)) {
         m_address->setAlignment(event->type() == QEvent::FocusIn ? Qt::AlignLeft : Qt::AlignCenter);
         if (!m_address->isModified())
@@ -572,11 +679,114 @@ void BrowserWidget::setChromeVisible(bool visible)
     m_chromeVisible = visible;
     if (!visible)
         cancelPermissionPrompts();
-    findChild<QFrame *>("browserChrome")->setVisible(visible);
+    updatePresentation();
     if (!visible)
         m_findBar->hide();
     m_status->setVisible(visible && !m_status->text().isEmpty());
     updateNavigation();
+}
+
+bool BrowserWidget::canvasViewportMode() const
+{
+    return m_canvasPresentationEnabled && m_canvasViewportRequested;
+}
+
+void BrowserWidget::setCanvasPresentationEnabled(bool enabled)
+{
+    m_canvasPresentationEnabled = enabled;
+    updatePresentation();
+}
+
+void BrowserWidget::setCanvasViewportMode(bool enabled)
+{
+    m_canvasViewportRequested = enabled;
+    updatePresentation();
+}
+
+void BrowserWidget::updatePresentation()
+{
+    const bool viewport = canvasViewportMode();
+    auto *chrome = findChild<QFrame *>("browserChrome");
+    chrome->setVisible(m_chromeVisible);
+    auto *chromeLayout = qobject_cast<QVBoxLayout *>(chrome->layout());
+    chromeLayout->setContentsMargins(viewport ? QMargins(6, 1, 6, 1) : QMargins(10, 4, 10, 8));
+    chromeLayout->setSpacing(viewport ? 0 : 4);
+    m_toolbar->setVisible(!viewport);
+    m_viewportButton->setVisible(m_canvasPresentationEnabled);
+    m_viewportButton->setChecked(viewport);
+    m_viewportButton->setToolTip(viewport ? tr("Show browser controls (Ctrl+L)") : tr("Focus on the page"));
+    m_viewportButton->setAccessibleName(m_viewportButton->toolTip());
+    m_viewportButton->setFixedSize(viewport ? QSize(28, 28) : QSize(36, 36));
+    m_newTabButton->setFixedSize(viewport ? QSize(28, 28) : QSize(36, 36));
+    for (auto *welcome : m_pages->findChildren<QLabel *>("browserWelcome"))
+        welcome->setText(viewport ? tr("Open a site\n\nPress Ctrl+L or show browser controls.")
+            : tr("Browse the web\n\nSearch or enter an address above."));
+    m_tabs->setTearOutEnabled(m_canvasPresentationEnabled);
+    m_tabs->setStyleSheet(viewport
+        ? QStringLiteral("QTabBar::tab { padding: 4px 10px; min-width: 72px; max-width: 180px; margin: 1px 2px; border-radius: 8px; }")
+        : QString());
+    updateNavigation();
+}
+
+bool BrowserWidget::moveTabTo(QWebEngineView *view, BrowserWidget *destination)
+{
+    if (!view || !destination || destination == this || m_printing || destination->m_printing
+        || !m_canvasPresentationEnabled || !destination->m_canvasPresentationEnabled
+        || destination->m_tabs->count() >= 32)
+        return false;
+    auto *container = view->parentWidget();
+    const int index = m_pages->indexOf(container);
+    const auto session = m_tabSessions.value(view);
+    if (index < 0 || !session)
+        return false;
+
+    cancelPermissionPrompts();
+    if (view == m_view) {
+        emit activeViewAboutToChange(view);
+        m_view = nullptr;
+    }
+    disconnect(view, nullptr, this, nullptr);
+    disconnect(view->page(), nullptr, this, nullptr);
+    for (const auto action : {QWebEnginePage::Back, QWebEnginePage::Forward, QWebEnginePage::Reload})
+        disconnect(view->page()->action(action), nullptr, this, nullptr);
+    const auto permissionOrigins = m_permissionOrigins.take(view);
+    {
+        const QSignalBlocker blocker(m_tabs);
+        auto *closeButton = m_tabs->tabButton(index, QTabBar::RightSide);
+        m_tabs->setTabButton(index, QTabBar::RightSide, nullptr);
+        delete closeButton;
+        m_pages->removeWidget(container);
+        m_tabs->removeTab(index);
+    }
+    m_tabSessions.remove(view);
+    container->setParent(nullptr);
+
+    // A newly created dashboard browser has one unused welcome tab. Replace it
+    // only after retaining the incoming live tab's session.
+    QWidget *blank = nullptr;
+    if (destination->m_pages->count() == 1) {
+        auto *candidate = destination->m_pages->widget(0);
+        auto *candidateView = candidate->findChild<QWebEngineView *>();
+        if (candidateView && candidateView->url().isEmpty())
+            blank = candidate;
+    }
+    destination->m_tabSessions.insert(view, session);
+    if (!permissionOrigins.isEmpty())
+        destination->m_permissionOrigins.insert(view, permissionOrigins);
+    session->browsers.removeIf([](const QPointer<BrowserWidget> &browser) { return browser.isNull(); });
+    if (!session->browsers.contains(destination))
+        session->browsers.append(destination);
+    connect(session->downloads, &BrowserDownloads::statusChanged,
+        destination, &BrowserWidget::showStatus, Qt::UniqueConnection);
+    destination->attachTab(container, view);
+    destination->setBackgroundSuspended(destination->m_backgroundSuspended);
+    if (blank)
+        destination->closeTab(destination->m_pages->indexOf(blank));
+    if (m_tabs->count())
+        selectTab(m_tabs->currentIndex());
+    else
+        addTab();
+    return true;
 }
 
 void BrowserWidget::setBackgroundSuspended(bool suspended)

@@ -20,14 +20,25 @@ import (
 // WorkspaceGitRequest is a human-driven project action, separate from managed
 // agent sessions. Writes bind to the exact snapshot last reviewed in the UI.
 type WorkspaceGitRequest struct {
-	Workdir    string   `json:"workdir"`
-	Action     string   `json:"action"`
-	Snapshot   string   `json:"snapshot,omitempty"`
-	Paths      []string `json:"paths,omitempty"`
-	Message    string   `json:"message,omitempty"`
-	Comparison string   `json:"comparison,omitempty"`
-	Context    int      `json:"context,omitempty"`
-	Confirm    bool     `json:"confirm,omitempty"`
+	Workdir          string   `json:"workdir"`
+	Action           string   `json:"action"`
+	Snapshot         string   `json:"snapshot,omitempty"`
+	Paths            []string `json:"paths,omitempty"`
+	Message          string   `json:"message,omitempty"`
+	Comparison       string   `json:"comparison,omitempty"`
+	Context          int      `json:"context,omitempty"`
+	Confirm          bool     `json:"confirm,omitempty"`
+	Query            string   `json:"query,omitempty"`
+	Match            string   `json:"match,omitempty"`
+	Ref              string   `json:"ref,omitempty"`
+	Offset           int      `json:"offset,omitempty"`
+	Limit            int      `json:"limit,omitempty"`
+	Commit           string   `json:"commit,omitempty"`
+	Commits          []string `json:"commits,omitempty"`
+	Name             string   `json:"name,omitempty"`
+	Stash            string   `json:"stash,omitempty"`
+	StashSelector    string   `json:"stash_selector,omitempty"`
+	IncludeUntracked bool     `json:"include_untracked,omitempty"`
 }
 
 type WorkspaceGitChange struct {
@@ -40,15 +51,19 @@ type WorkspaceGitChange struct {
 }
 
 type WorkspaceGitSnapshot struct {
-	Root     string               `json:"root"`
-	Branch   string               `json:"branch"`
-	Head     string               `json:"head"`
-	Snapshot string               `json:"snapshot"`
-	Changes  []WorkspaceGitChange `json:"changes"`
-	Diff     string               `json:"diff"`
-	Notice   string               `json:"notice,omitempty"`
-	Review   *WorkspaceGitReview  `json:"review,omitempty"`
-	Catalog  *WorkspaceGitCatalog `json:"catalog,omitempty"`
+	Root         string                    `json:"root"`
+	Branch       string                    `json:"branch"`
+	Head         string                    `json:"head"`
+	Snapshot     string                    `json:"snapshot"`
+	Changes      []WorkspaceGitChange      `json:"changes"`
+	Diff         string                    `json:"diff"`
+	Notice       string                    `json:"notice,omitempty"`
+	Review       *WorkspaceGitReview       `json:"review,omitempty"`
+	Catalog      *WorkspaceGitCatalog      `json:"catalog,omitempty"`
+	History      *WorkspaceGitHistory      `json:"history,omitempty"`
+	CommitReview *WorkspaceGitCommitReview `json:"commit_review,omitempty"`
+	Stashes      []WorkspaceGitStash       `json:"stashes,omitempty"`
+	Operation    *WorkspaceGitOperation    `json:"operation,omitempty"`
 }
 
 const workspaceGitBytes = 8 * 1024 * 1024 // Maximum review and command output, in bytes.
@@ -65,7 +80,7 @@ func (buffer *workspaceGitBuffer) Write(data []byte) (int, error) {
 func workspaceGitCommand(ctx context.Context, root string, args ...string) ([]byte, error) {
 	arguments := append([]string{"--no-pager", "--literal-pathspecs", "-C", root}, args...)
 	command := exec.CommandContext(ctx, "git", arguments...)
-	command.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_OPTIONAL_LOCKS=0")
+	command.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_OPTIONAL_LOCKS=0", "GIT_EDITOR=true", "GIT_SEQUENCE_EDITOR=true")
 	command.WaitDelay = time.Second
 	var stdout, stderr workspaceGitBuffer
 	command.Stdout, command.Stderr = &stdout, &stderr
@@ -100,8 +115,17 @@ func RunWorkspaceGit(ctx context.Context, request WorkspaceGitRequest) (*Workspa
 		current.Catalog, err = readWorkspaceGitCatalog(ctx, current)
 		return current, err
 	}
+	if request.Action == "history" || request.Action == "commit-review" || request.Action == "stash-list" {
+		return readWorkspaceGitExtended(ctx, current, request)
+	}
 	if request.Snapshot == "" || request.Snapshot != current.Snapshot {
 		return nil, errors.New("the project changed since review; refresh before continuing")
+	}
+	if current.Operation != nil && request.Action != "compare" && request.Action != "diff" && request.Action != "stage" && !strings.HasPrefix(request.Action, "operation-") && !strings.HasPrefix(request.Action, "resolve-") {
+		return nil, errors.New("finish or abort the active Git operation before another write")
+	}
+	if handledWorkspaceGitAction(request.Action) {
+		return mutateWorkspaceGitExtended(ctx, current, request)
 	}
 	if request.Action == "compare" {
 		return compareWorkspaceGit(ctx, current, request)

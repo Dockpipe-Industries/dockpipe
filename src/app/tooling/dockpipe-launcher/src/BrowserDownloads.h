@@ -26,9 +26,11 @@ public:
     ~BrowserDownloads() override;
 
     void showPanel();
+    void setHost(QWidget *host);
 
 signals:
     void statusChanged(const QString &message);
+    void hostRequested();
 
 private:
     struct Entry {

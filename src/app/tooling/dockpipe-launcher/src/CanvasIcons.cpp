@@ -206,6 +206,25 @@ public:
             }
             line(7, 16, 17, 16);
             break;
+        case S::List:
+            for (int y : {6, 12, 18}) {
+                painter->drawRoundedRect(QRectF(3, y - 1, 2, 2), 0.5, 0.5);
+                line(9, y, 21, y);
+            }
+            break;
+        case S::Up:
+            path({{5, 11}, {12, 4}, {19, 11}});
+            line(12, 4, 12, 21);
+            break;
+        case S::Preview: {
+            QPainterPath outline;
+            outline.moveTo(2, 12);
+            outline.cubicTo(7, 3, 17, 3, 22, 12);
+            outline.cubicTo(17, 21, 7, 21, 2, 12);
+            painter->drawPath(outline);
+            painter->drawEllipse(QPointF(12, 12), 3, 3);
+            break;
+        }
         case S::Monitor:
             painter->drawRoundedRect(QRectF(3, 3, 18, 13), 2, 2);
             line(12, 16, 12, 21);

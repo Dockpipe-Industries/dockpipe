@@ -1,5 +1,6 @@
 #include "TerminalHub.h"
 #include "TerminalSession.h"
+#include "TerminalShellCatalog.h"
 
 #include <QFileInfo>
 #include <QDir>
@@ -12,18 +13,54 @@ constexpr qsizetype renderChunkLimit = 32 * 1024;
 constexpr int sessionLimit = 8;
 }
 
-TerminalHub::TerminalHub(QObject *parent) : QObject(parent) {}
-
-QString TerminalHub::createSession(const QString &workdir)
+TerminalHub::TerminalHub(QObject *parent) : QObject(parent), m_shellCatalog(new TerminalShellCatalog(this))
 {
-    if (m_sessions.size() >= sessionLimit)
+    m_shellCatalog->refresh();
+}
+
+TerminalShellCatalog &TerminalHub::shellCatalog() const { return *m_shellCatalog; }
+QString TerminalHub::creationError() const { return m_creationError; }
+
+QString TerminalHub::createSession(const QString &workdir, const QString &shellProfileId)
+{
+    m_creationError.clear();
+    if (m_sessions.size() >= sessionLimit) {
+        m_creationError = tr("Eight terminals are already open. Close one before opening another.");
         return {};
+    }
+    TerminalShellProfile selected;
+    const auto profiles = m_shellCatalog->profiles();
+    if (!shellProfileId.isEmpty()) {
+        for (const auto &profile : profiles) {
+            if (profile.id == shellProfileId) {
+                selected = profile;
+                break;
+            }
+        }
+        if (selected.program.isEmpty()) {
+            m_creationError = tr("This shell is no longer available. Refresh the shell list and try again.");
+            return {};
+        }
+    } else if (!qEnvironmentVariable("FLATPAK_ID").isEmpty() || QFileInfo::exists("/.flatpak-info")) {
+        if (profiles.isEmpty()) {
+            m_creationError = m_shellCatalog->discovering()
+                ? tr("Discovering installed host shells…") : tr("No host shells are available. Check Flatpak host access and refresh the shell list.");
+            return {};
+        }
+        selected = profiles.first();
+    }
+#ifdef Q_OS_WIN
+    if (shellProfileId.isEmpty() && !profiles.isEmpty())
+        selected = profiles.first();
+#endif
     const QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
     auto *session = new TerminalSession(this);
     Entry entry;
     entry.session = session;
     const QString directory = workdir.isEmpty() ? QDir::homePath() : workdir;
     entry.title = tr("Terminal %1 · %2").arg(m_nextTitle++).arg(QDir::toNativeSeparators(directory));
+    if (!selected.label.isEmpty())
+        entry.title = selected.label + QStringLiteral(" · ") + entry.title;
     m_sessions.insert(id, entry);
     m_order.append(id);
     connect(session, &TerminalSession::output, this, [this, id](const QByteArray &bytes) {
@@ -37,7 +74,12 @@ QString TerminalHub::createSession(const QString &workdir)
         emit outputAvailable(id);
     });
     connect(session, &TerminalSession::stateChanged, this, &TerminalHub::sessionsChanged);
-    session->start(workdir);
+    QStringList arguments = selected.arguments;
+    if (!selected.workingDirectoryArgument.isEmpty()) {
+        arguments.prepend(QDir::toNativeSeparators(directory));
+        arguments.prepend(selected.workingDirectoryArgument);
+    }
+    session->start(workdir, selected.program, arguments, selected.environment);
     emit sessionsChanged();
     return id;
 }

@@ -1,4 +1,5 @@
 #include "TerminalHub.h"
+#include "TerminalShellCatalog.h"
 #include "TerminalPreferences.h"
 #include "TerminalWidget.h"
 #include "SendInputWidget.h"
@@ -14,6 +15,7 @@
 #include <QProcess>
 #include <QFile>
 #include <QLabel>
+#include <QMenu>
 #include <QPlainTextEdit>
 #include <QPointer>
 #include <QPushButton>
@@ -46,7 +48,73 @@ private slots:
     void terminalAndComposer();
     void compactPanelOwnsOnlyItsSession();
     void canvasTransparencyAndStacking();
+    void shellChoicesPreserveExistingSessions();
 };
+
+void TerminalWidgetTest::shellChoicesPreserveExistingSessions()
+{
+#ifndef Q_OS_UNIX
+    QSKIP("Shell-selection integration uses the local Unix shell; Windows has its native ConPTY fixture.");
+#else
+    QTemporaryDir directory;
+    TerminalHub hub;
+    TerminalWidget managed(hub, directory.path());
+    auto *shells = managed.findChild<QComboBox *>("terminalShells");
+    auto *create = managed.findChild<QPushButton *>("terminalNew");
+    QVERIFY(shells && create);
+    const auto profiles = hub.shellCatalog().profiles();
+    QVERIFY(!profiles.isEmpty());
+    const auto profile = profiles.first();
+    shells->setCurrentIndex(shells->findData(profile.id));
+    create->click();
+    const QString first = managed.sessionId();
+    QVERIFY(!first.isEmpty());
+    QTRY_VERIFY(hub.running(first));
+    QVERIFY(hub.title(first).startsWith(profile.label));
+
+    // Selecting a shell controls a new session, never replaces a running one.
+    create->click();
+    const QString second = managed.sessionId();
+    QVERIFY(!second.isEmpty() && second != first);
+    QTRY_VERIFY(hub.running(second));
+    QVERIFY(hub.running(first));
+    QCOMPARE(hub.sessionIds().size(), 2);
+    QVERIFY(hub.createSession(directory.path(), "removed-profile").isEmpty());
+    QVERIFY(hub.creationError().contains("no longer available"));
+    QCOMPARE(hub.sessionIds().size(), 2);
+
+    QString dashboardFirst;
+    QString dashboardSecond;
+    {
+        TerminalWidget dashboard(hub, directory.path(), nullptr, TerminalWidget::Mode::Dashboard);
+        auto *menu = dashboard.findChild<QMenu *>("terminalShellMenu");
+        QVERIFY(menu);
+        const auto launchProfile = [&] {
+            for (auto *action : menu->actions()) {
+                if (action->data().toString() == profile.id) {
+                    action->trigger();
+                    return true;
+                }
+            }
+            return false;
+        };
+        QVERIFY(launchProfile());
+        dashboardFirst = dashboard.sessionId();
+        QVERIFY(launchProfile());
+        dashboardSecond = dashboard.sessionId();
+        QVERIFY(dashboardSecond != dashboardFirst);
+        QTRY_VERIFY(hub.running(dashboardFirst));
+        QTRY_VERIFY(hub.running(dashboardSecond));
+        QCOMPARE(hub.sessionIds().size(), 4);
+    }
+    QVERIFY(!hub.sessionIds().contains(dashboardFirst));
+    QVERIFY(!hub.sessionIds().contains(dashboardSecond));
+    QVERIFY(hub.running(first) && hub.running(second));
+    hub.closeSession(first);
+    hub.closeSession(second);
+    QTRY_VERIFY_WITH_TIMEOUT(QCoreApplication::instance()->findChildren<QProcess *>("terminalShell").isEmpty(), 2000);
+#endif
+}
 
 void TerminalWidgetTest::canvasTransparencyAndStacking()
 {

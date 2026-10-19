@@ -1,5 +1,6 @@
 #include "BrowserExtensionsDialog.h"
 #include "BrowserRuntime.h"
+#include "BrowserExtensionStore.h"
 #include <QWebEngineView>
 #include <memory>
 
@@ -10,6 +11,8 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QPushButton>
+#include <QMessageBox>
+#include <QTimer>
 #include <QTemporaryDir>
 #include <QThread>
 #include <QWebEnginePage>
@@ -83,6 +86,7 @@ int main(int argc, char **argv)
     std::unique_ptr<QWebEngineProfile> profileOwner(profileBuilder.createProfile("dockpipe-extension-test"));
     CHECK_EXTENSION(profileOwner);
     QWebEngineProfile &profile = *profileOwner;
+    BrowserExtensionStore store(&profile, &profile, directory.filePath("managed-extensions"));
     BrowserExtensionsDialog dialog(&profile);
     auto *list = dialog.findChild<QListWidget *>("browserExtensionsList");
     auto *toggle = dialog.findChild<QPushButton *>("browserExtensionToggle");
@@ -126,6 +130,132 @@ int main(int argc, char **argv)
     CHECK_EXTENSION(waitUntil([&]() {
         for (const auto &extension : manager->extensions()) {
             if (extension.id() == fixtureId)
+                return false;
+        }
+        return true;
+    }));
+    const QByteArray package = QByteArray::fromBase64(
+        "UEsDBBQAAAAAAMqEU12TlRj6IAEAACABAAANAAAAbWFuaWZlc3QuanNvbnsibWFuaWZlc3RfdmVyc2lvbiI6IDMsICJuYW1l"
+        "IjogIkRvY2tQaXBlIGluc3RhbGxlZCBmaXh0dXJlIiwgInZlcnNpb24iOiAiMS4wIiwgInBlcm1pc3Npb25zIjogWyJzdG9y"
+        "YWdlIl0sICJob3N0X3Blcm1pc3Npb25zIjogWyJodHRwczovL2V4YW1wbGUuaW52YWxpZC8qIl0sICJjb250ZW50X3Njcmlw"
+        "dHMiOiBbeyJtYXRjaGVzIjogWyJodHRwczovL2V4YW1wbGUuaW52YWxpZC8qIl0sICJqcyI6IFsiY29udGVudC5qcyJdfV0s"
+        "ICJhY3Rpb24iOiB7ImRlZmF1bHRfcG9wdXAiOiAicG9wdXAuaHRtbCJ9fVBLAwQUAAAAAADKhFNdpMa5jA0AAAANAAAACgAA"
+        "AGNvbnRlbnQuanMvKiBmaXh0dXJlICovUEsDBBQAAAAAAMqEU10qSgk/MwAAADMAAAAKAAAAcG9wdXAuaHRtbDwhZG9jdHlw"
+        "ZSBodG1sPjx0aXRsZT5JbnN0YWxsZWQgcG9wdXAgcmVhZHk8L3RpdGxlPlBLAQIUAxQAAAAAAMqEU12TlRj6IAEAACABAAAN"
+        "AAAAAAAAAAAAAACAAQAAAABtYW5pZmVzdC5qc29uUEsBAhQDFAAAAAAAyoRTXaTGuYwNAAAADQAAAAoAAAAAAAAAAAAAAIAB"
+        "SwEAAGNvbnRlbnQuanNQSwECFAMUAAAAAADKhFNdKkoJPzMAAAAzAAAACgAAAAAAAAAAAAAAgAGAAQAAcG9wdXAuaHRtbFBL"
+        "BQYAAAAAAwADAKsAAADbAQAAAAA=");
+    const QString packagePath = directory.filePath("fixture.zip");
+    CHECK_EXTENSION(writeFile(packagePath, package));
+    dialog.addWebStoreExtension("https://example.invalid/not-a-store");
+    CHECK_EXTENSION(status->text().contains("valid Chrome Web Store"));
+    dialog.installPackage(directory.filePath("missing.zip"));
+    CHECK_EXTENSION(status->text().contains("Could not open"));
+    bool reviewedPermissions = false;
+    QTimer reviewTimer;
+    QObject::connect(&reviewTimer, &QTimer::timeout, &dialog, [&]() {
+        auto *review = dialog.findChild<QMessageBox *>("browserExtensionPermissions");
+        if (!review)
+            return;
+        reviewedPermissions = review->textFormat() == Qt::PlainText
+            && review->defaultButton() == review->button(QMessageBox::Cancel)
+            && review->text().contains("API: storage")
+            && review->text().contains("Website: https://example.invalid/*")
+            && review->text().contains("Page content: https://example.invalid/*");
+        review->done(QMessageBox::Yes);
+    });
+    reviewTimer.start(10);
+    dialog.installPackage(packagePath);
+    CHECK_EXTENSION(waitUntil([&]() { return status->text().contains("Installed and enabled"); }));
+    reviewTimer.stop();
+    CHECK_EXTENSION(reviewedPermissions);
+    QString installedId;
+    CHECK_EXTENSION(waitUntil([&]() {
+        for (const auto &extension : manager->extensions()) {
+            if (extension.name() == "DockPipe installed fixture" && extension.isEnabled()
+                && store.owns(extension.id())) {
+                installedId = extension.id();
+                return true;
+            }
+        }
+        return false;
+    }));
+    CHECK_EXTENSION(!installedId.isEmpty() && store.owns(installedId) && store.enabled(installedId));
+    for (int row = 0; row < list->count(); ++row) {
+        if (list->item(row)->data(Qt::UserRole).toString() == installedId)
+            list->setCurrentRow(row);
+    }
+    toggle->click();
+    CHECK_EXTENSION(!store.enabled(installedId));
+    unload->click();
+    CHECK_EXTENSION(!store.owns(installedId));
+    CHECK_EXTENSION(waitUntil([&]() {
+        for (const auto &extension : manager->extensions()) {
+            if (extension.id() == installedId)
+                return false;
+        }
+        return true;
+    }));
+    bool cancelledReview = false;
+    QObject::disconnect(&reviewTimer, nullptr, &dialog, nullptr);
+    QObject::connect(&reviewTimer, &QTimer::timeout, &dialog, [&]() {
+        auto *review = dialog.findChild<QMessageBox *>("browserExtensionPermissions");
+        if (review) {
+            cancelledReview = true;
+            review->done(QMessageBox::Cancel);
+        }
+    });
+    reviewTimer.start(10);
+    dialog.installPackage(packagePath);
+    CHECK_EXTENSION(waitUntil([&]() { return cancelledReview && status->text().contains("Installation cancelled"); }));
+    reviewTimer.stop();
+    CHECK_EXTENSION(!store.owns(installedId));
+    CHECK_EXTENSION(waitUntil([&]() {
+        for (const auto &extension : manager->extensions()) {
+            if (extension.name() == "DockPipe installed fixture")
+                return false;
+        }
+        return true;
+    }));
+    // Closing the owner during the permission dialog must also roll back installation.
+    QPointer<BrowserExtensionsDialog> interruptedDialog = new BrowserExtensionsDialog(&profile);
+    bool deletedDuringReview = false;
+    QObject::disconnect(&reviewTimer, nullptr, &dialog, nullptr);
+    QObject::connect(&reviewTimer, &QTimer::timeout, &dialog, [&]() {
+        if (interruptedDialog
+            && interruptedDialog->findChild<QMessageBox *>("browserExtensionPermissions")) {
+            delete interruptedDialog.data();
+            deletedDuringReview = true;
+        }
+    });
+    reviewTimer.start(10);
+    interruptedDialog->installPackage(packagePath);
+    CHECK_EXTENSION(waitUntil([&]() { return deletedDuringReview && !interruptedDialog; }));
+    reviewTimer.stop();
+    CHECK_EXTENSION(waitUntil([&]() {
+        for (const auto &extension : manager->extensions()) {
+            if (extension.name() == "DockPipe installed fixture")
+                return false;
+        }
+        return true;
+    }));
+    // A blocked registry must not leave an enabled, unsaved extension behind.
+    const QString registry = directory.filePath("managed-extensions/registry.json");
+    CHECK_EXTENSION(QFile::remove(registry));
+    CHECK_EXTENSION(QDir().mkpath(registry));
+    QObject::disconnect(&reviewTimer, nullptr, &dialog, nullptr);
+    QObject::connect(&reviewTimer, &QTimer::timeout, &dialog, [&]() {
+        auto *review = dialog.findChild<QMessageBox *>("browserExtensionPermissions");
+        if (review)
+            review->done(QMessageBox::Yes);
+    });
+    reviewTimer.start(10);
+    dialog.installPackage(packagePath);
+    CHECK_EXTENSION(waitUntil([&]() { return status->text().contains("Could not save extension"); }));
+    reviewTimer.stop();
+    CHECK_EXTENSION(waitUntil([&]() {
+        for (const auto &extension : manager->extensions()) {
+            if (extension.name() == "DockPipe installed fixture")
                 return false;
         }
         return true;
