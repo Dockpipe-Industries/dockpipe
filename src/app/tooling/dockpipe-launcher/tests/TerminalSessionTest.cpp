@@ -1,14 +1,17 @@
 #include "TerminalSession.h"
 
 #include <QElapsedTimer>
+#include <QEventLoop>
 #include <QFile>
 #include <QPointer>
 #include <QProcess>
 #include <QRegularExpression>
 #include <QSignalSpy>
+#include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
+#include <functional>
 
 #ifdef Q_OS_UNIX
 #include <cerrno>
@@ -16,12 +19,38 @@
 #include <unistd.h>
 #endif
 
+// macOS treats manually polled processEvents differently from a running
+// application event loop. Exercise the real timer/notifier dispatcher here.
+static bool waitForTerminalEvents(const std::function<bool()> &predicate, int timeoutMs)
+{
+    if (predicate())
+        return true;
+    QEventLoop loop;
+    QElapsedTimer elapsed;
+    elapsed.start();
+    bool matched = false;
+    QTimer observer;
+    observer.setTimerType(Qt::PreciseTimer);
+    observer.setInterval(1);
+    QObject::connect(&observer, &QTimer::timeout, &loop, [&] {
+        if (elapsed.elapsed() < timeoutMs && predicate()) {
+            matched = true;
+            loop.quit();
+        }
+    });
+    QTimer::singleShot(timeoutMs, Qt::PreciseTimer, &loop, &QEventLoop::quit);
+    observer.start();
+    loop.exec();
+    return matched;
+}
+
 class TerminalSessionTest final : public QObject {
     Q_OBJECT
 private slots:
     void initTestCase();
     void terminalInputResizeAndExit();
     void rejectsInvalidInputAndDirectory();
+    void outputFloodDoesNotBlockEventLoop_data();
     void outputFloodDoesNotBlockEventLoop();
     void outputCallbackCanRestartSession();
     void outputCallbackCanDestroySession();
@@ -85,8 +114,17 @@ void TerminalSessionTest::rejectsInvalidInputAndDirectory()
     QVERIFY(!terminal.running());
 }
 
+void TerminalSessionTest::outputFloodDoesNotBlockEventLoop_data()
+{
+    QTest::addColumn<QByteArray>("command");
+    QTest::newRow("yes") << QByteArray("stty -echo; yes terminal-output-fixture\n");
+    QTest::newRow("small-writes") << QByteArray(
+        "stty -echo; while :; do printf 'terminal-output-fixture\\n'; done\n");
+}
+
 void TerminalSessionTest::outputFloodDoesNotBlockEventLoop()
 {
+    QFETCH(QByteArray, command);
     TerminalSession terminal;
     qint64 total = 0;
     qsizetype largest = 0;
@@ -99,11 +137,19 @@ void TerminalSessionTest::outputFloodDoesNotBlockEventLoop()
     timer.setInterval(10);
     connect(&timer, &QTimer::timeout, this, [&] { ++ticks; });
     timer.start();
+    QElapsedTimer elapsed;
+    elapsed.start();
+    const auto diagnostics = qScopeGuard([&] {
+        qInfo() << "Terminal flood diagnostics bytes" << total << "largest batch" << largest
+                << "elapsed ms" << elapsed.elapsed() << "heartbeat ticks" << ticks;
+    });
     QVERIFY(terminal.start({}));
-    QVERIFY(terminal.send("stty -echo; yes terminal-output-fixture\n"));
-    QTRY_VERIFY_WITH_TIMEOUT(total >= 256 * 1024, 3000);
+    QVERIFY(terminal.send(command));
+    QVERIFY(waitForTerminalEvents([&] { return total >= 256 * 1024; }, 3000));
     ticks = 0;
-    QTest::qWait(350);
+    QEventLoop heartbeatWindow;
+    QTimer::singleShot(350, Qt::PreciseTimer, &heartbeatWindow, &QEventLoop::quit);
+    heartbeatWindow.exec();
     qInfo() << "Terminal flood heartbeat ticks" << ticks << "bytes" << total;
     QVERIFY(ticks >= 10);
     QVERIFY(largest <= 64 * 1024);
@@ -120,6 +166,12 @@ void TerminalSessionTest::outputCallbackCanRestartSession()
     qint64 total = 0;
     bool restarted = false;
     QByteArray nextSessionOutput;
+    QElapsedTimer elapsed;
+    elapsed.start();
+    const auto diagnostics = qScopeGuard([&] {
+        qInfo() << "Terminal restart diagnostics bytes" << total << "elapsed ms" << elapsed.elapsed()
+                << "restarted" << restarted << "next output bytes" << nextSessionOutput.size();
+    });
     connect(&terminal, &TerminalSession::output, this, [&](const QByteArray &bytes) {
         if (restarted) {
             nextSessionOutput += bytes;
@@ -135,7 +187,9 @@ void TerminalSessionTest::outputCallbackCanRestartSession()
     });
     QVERIFY(terminal.start({}));
     QVERIFY(terminal.send("stty -echo; yes old-session-output-fixture\n"));
-    QTRY_VERIFY_WITH_TIMEOUT(restarted && nextSessionOutput.contains("RESTART_ready"), 3000);
+    QVERIFY(waitForTerminalEvents([&] {
+        return restarted && nextSessionOutput.contains("RESTART_ready");
+    }, 3000));
     QVERIFY(!nextSessionOutput.contains("old-session-output-fixture"));
     QVERIFY(terminal.running());
     terminal.stop();
@@ -148,6 +202,12 @@ void TerminalSessionTest::outputCallbackCanDestroySession()
 {
     QPointer<TerminalSession> terminal = new TerminalSession;
     qint64 total = 0;
+    QElapsedTimer elapsed;
+    elapsed.start();
+    const auto diagnostics = qScopeGuard([&] {
+        qInfo() << "Terminal destruction diagnostics bytes" << total << "elapsed ms" << elapsed.elapsed()
+                << "destroyed" << terminal.isNull();
+    });
     connect(terminal, &TerminalSession::output, this, [&](const QByteArray &bytes) {
         total += bytes.size();
         if (total >= 256 * 1024)
@@ -155,7 +215,7 @@ void TerminalSessionTest::outputCallbackCanDestroySession()
     });
     QVERIFY(terminal->start({}));
     QVERIFY(terminal->send("stty -echo; yes destroyed-session-output-fixture\n"));
-    QTRY_VERIFY_WITH_TIMEOUT(!terminal, 3000);
+    QVERIFY(waitForTerminalEvents([&] { return !terminal; }, 3000));
     QTest::qWait(30);
 }
 

@@ -486,7 +486,18 @@ void TerminalWidgetTest::terminalAndComposer()
     heartbeat.setInterval(10);
     connect(&heartbeat, &QTimer::timeout, this, [&]() { ++timerTicks; });
     heartbeat.start();
-    QTest::qWait(350);
+    // CoreFoundation handles timers differently during manual processEvents
+    // polling. Measure the application's real event loop with the same deadline.
+    QEventLoop floodLoop;
+    QTimer floodDeadline;
+    floodDeadline.setSingleShot(true);
+    floodDeadline.setTimerType(Qt::PreciseTimer);
+    connect(&floodDeadline, &QTimer::timeout, &floodLoop, &QEventLoop::quit);
+    QElapsedTimer floodElapsed;
+    floodElapsed.start();
+    floodDeadline.start(350);
+    floodLoop.exec();
+    qInfo() << "Hidden terminal flood elapsed ms" << floodElapsed.elapsed() << "heartbeat ticks" << timerTicks;
     QVERIFY(timerTicks >= 10);
     QCOMPARE(outputFrames.size(), 0);
     QVERIFY(hub.sendBytes(second, QByteArray(1, '\x03')));
