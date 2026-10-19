@@ -1,12 +1,14 @@
 #pragma once
 
+#include "LauncherUiExport.h"
+
 #include <QObject>
 #include <QProcess>
 #include <QTimer>
 #include <functional>
 
 // All remote UI actions use the CLI and its private credential store.
-class RemoteCommand : public QObject {
+class DOCKPIPE_LAUNCHER_UI_EXPORT RemoteCommand : public QObject {
     Q_OBJECT
 public:
     using Completion = std::function<void(bool, const QByteArray &)>;

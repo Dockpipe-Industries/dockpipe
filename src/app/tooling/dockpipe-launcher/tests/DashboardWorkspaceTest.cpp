@@ -18,6 +18,7 @@
 #include <QLineEdit>
 #include <QPointer>
 #include <QSignalSpy>
+#include <QScrollArea>
 #include <QShortcut>
 #include <QSplitter>
 #include <QTabWidget>
@@ -29,6 +30,7 @@ class DashboardWorkspaceTest : public QObject {
     Q_OBJECT
 private slots:
     void preservesLiveWidgetsAndBothArrangements();
+    void replacingTileViewportPreservesMinimizedAndFloatingPanels();
     void restoresCanvasAfterStartupSizing();
     void clickingContentSavesStackingOrder();
     void validatesBeforeChangingLayout();
@@ -261,6 +263,61 @@ void DashboardWorkspaceTest::preservesLiveWidgetsAndBothArrangements()
     QVERIFY(workspace.dockPanel("three", "one", "bottom"));
     QCOMPARE(workspace.findChildren<QSplitter *>().size(), 1);
     QVERIFY(workspace.saveLayout().value("floating").toArray().isEmpty());
+}
+
+void DashboardWorkspaceTest::replacingTileViewportPreservesMinimizedAndFloatingPanels()
+{
+    DashboardWorkspace workspace("viewport-lifetime");
+    workspace.resize(1100, 700);
+    workspace.show();
+    QPointer<QLineEdit> active = new QLineEdit("active draft");
+    QPointer<QLineEdit> minimized = new QLineEdit("minimized draft");
+    QPointer<QLineEdit> floating = new QLineEdit("floating draft");
+    QVERIFY(workspace.addPanel("active", "Active", active));
+    QVERIFY(workspace.addPanel("minimized", "Minimized", minimized));
+    QVERIFY(workspace.addPanel("floating", "Floating", floating));
+    workspace.setMode("tiling");
+    QVERIFY(workspace.minimizePanel("minimized"));
+    QPointer<CanvasPanel> minimizedFrame = workspace.findChild<CanvasPanel *>("dashboardPanel_minimized");
+    QPointer<CanvasPanel> floatingFrame = workspace.findChild<CanvasPanel *>("dashboardPanel_floating");
+    QPointer<QScrollArea> oldViewport = workspace.findChild<QScrollArea *>("dashboardTileViewport");
+    QVERIFY(minimizedFrame && floatingFrame && oldViewport);
+
+    QVERIFY(workspace.floatPanel("floating"));
+    QVERIFY(oldViewport.isNull());
+    QVERIFY(active && minimized && floating && minimizedFrame && floatingFrame);
+    QVERIFY(!minimizedFrame->isVisible());
+    QCOMPARE(floatingFrame->parentWidget(), &workspace);
+    const QJsonObject tiledLayout = workspace.saveLayout();
+    oldViewport = workspace.findChild<QScrollArea *>("dashboardTileViewport");
+    QVERIFY(oldViewport);
+
+    // Public layouts must account for every panel before replacing its owner.
+    QJsonObject omittedPanel = tiledLayout;
+    omittedPanel["tree"] = QJsonObject{{"type", "tabs"}, {"ids", QJsonArray{"active"}}, {"active", "active"}};
+    QVERIFY(!workspace.restoreLayout(omittedPanel));
+    QVERIFY(oldViewport && minimizedFrame);
+    QCOMPARE(workspace.saveLayout(), tiledLayout);
+
+    QJsonObject allFloating = tiledLayout;
+    allFloating["tree"] = QJsonObject{};
+    allFloating["floating"] = QJsonArray{"active", "minimized", "floating"};
+    QVERIFY(workspace.restoreLayout(allFloating));
+    QVERIFY(oldViewport.isNull());
+    QVERIFY(workspace.findChildren<QScrollArea *>("dashboardTileViewport").isEmpty());
+    QVERIFY(active && minimized && floating && minimizedFrame && floatingFrame);
+    QCOMPARE(minimizedFrame->parentWidget(), &workspace);
+    QCOMPARE(floatingFrame->parentWidget(), &workspace);
+    QVERIFY(!minimizedFrame->isVisible());
+
+    QVERIFY(workspace.restoreLayout(tiledLayout));
+    QCOMPARE(workspace.findChildren<QScrollArea *>("dashboardTileViewport").size(), 1);
+    QVERIFY(!minimizedFrame->isVisible());
+    QVERIFY(workspace.activatePanel("minimized"));
+    QVERIFY(minimizedFrame->isVisible());
+    QCOMPARE(active->text(), QString("active draft"));
+    QCOMPARE(minimized->text(), QString("minimized draft"));
+    QCOMPARE(floating->text(), QString("floating draft"));
 }
 
 void DashboardWorkspaceTest::onlySelectedTabIsVisibleAfterRebuild()

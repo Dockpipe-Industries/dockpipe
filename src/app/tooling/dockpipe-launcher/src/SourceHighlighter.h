@@ -1,7 +1,10 @@
 #pragma once
+
+#include "LauncherUiExport.h"
+
 #include <syntaxhighlighter.h>
 
-class SourceHighlighter : public KSyntaxHighlighting::SyntaxHighlighter {
+class DOCKPIPE_LAUNCHER_UI_EXPORT SourceHighlighter : public KSyntaxHighlighting::SyntaxHighlighter {
     Q_OBJECT
 public:
     explicit SourceHighlighter(QTextDocument *document);
