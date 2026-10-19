@@ -153,7 +153,10 @@ No live tap or release update is performed by editing these source files.
 
 Before macOS signing, the producer explicitly strips only Dockpipe's launcher
 and host UI dylib, verifies that required external symbols remain unchanged,
-and rejects debug sections or private defined symbols. The app carries
+and rejects debug sections or private defined symbols. Apple strip may insert
+its synthetic `radr://5614542` loader marker; the audit recognizes it only at
+symbol index zero with the exact Mach-O type, fields and indirect-symbol-table
+preconditions, and records it separately from private symbols. The app carries
 `Contents/Resources/dockpipe-native-symbol-audit.json`; its hashes identify the
 stripped binaries before signing changes their bytes. Third-party runtime
 libraries retain their existing deployment and licensing rules.
