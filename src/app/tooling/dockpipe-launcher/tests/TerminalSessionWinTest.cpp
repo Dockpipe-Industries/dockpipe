@@ -270,7 +270,11 @@ void TerminalSessionWinTest::asynchronousLaunchFailure()
     QVERIFY(terminal.start(directory.path(), invalidProgram.fileName(), {}));
     QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 5000);
     QVERIFY(!terminal.running());
-    QVERIFY2(terminal.error().contains(QStringLiteral("Windows error %1").arg(ERROR_BAD_EXE_FORMAT)),
+    // Windows versions classify this invalid image as either malformed or an
+    // incompatible machine type. Both must return through the same error path.
+    const bool invalidImage = terminal.error().contains(QStringLiteral("Windows error %1").arg(ERROR_BAD_EXE_FORMAT))
+        || terminal.error().contains(QStringLiteral("Windows error %1").arg(ERROR_EXE_MACHINE_TYPE_MISMATCH));
+    QVERIFY2(invalidImage,
         qPrintable(terminal.error()));
     QCOMPARE(finished.front().front().toInt(), -1);
     QCOMPARE(GetErrorMode(), originalProcessErrorMode);
