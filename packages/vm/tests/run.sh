@@ -85,8 +85,8 @@ if [[ "$guest_exec_files" != "tools/internal/guest/harness_linux.go" ]]; then
   exit 1
 fi
 
-executor_exec_files="$(grep -R -El 'os/exec|exec\.Command|syscall\.Exec' tools/internal/executor --include='*.go' || true)"
-expected_executor_exec_files=$'tools/internal/executor/runner_linux.go\ntools/internal/executor/gate3_runner_linux.go'
+executor_exec_files="$(grep -R -El 'os/exec|exec\.Command|syscall\.Exec' tools/internal/executor --include='*.go' | LC_ALL=C sort || true)"
+expected_executor_exec_files=$'tools/internal/executor/gate3_runner_linux.go\ntools/internal/executor/runner_linux.go'
 if [[ "$executor_exec_files" != "$expected_executor_exec_files" ]]; then
   echo "subprocess execution must exist only in the typed Linux runners: $executor_exec_files" >&2
   exit 1
