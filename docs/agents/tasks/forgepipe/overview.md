@@ -115,6 +115,11 @@ playback. Password-manager compatibility and cross-platform extension builds rem
 The user explicitly approved including a protected ForgePipe SDK release and
 Cockpit integration in the current Dockpipe staging build. The canonical migration
 record describes the fixed public SDK inventory, private diagnostic retention,
-publisher attestation and native Qt ABI gates. Current implementation advances
-this delivery; hosted qualification and final staging catalog readback remain
-open. This does not complete the wider standalone product extraction objective.
+publisher attestation and native Qt ABI gates. Protected SDK delivery and the
+complete Dockpipe staging candidate
+`0.6.20-staging.39285769512.1.0399bb37bb7d` are published and qualified, including
+fresh published-CLI installation of Cockpit 0.1.1 on native Linux amd64. See the
+[canonical delivery record](../../../architecture/forgepipe/README.md#protected-staging-delivery-2026-10-19)
+for source identities, publication readbacks and platform limits. TASK-037 remains
+executing: standalone products, PipeLang bindings, stable SDK ABI and physical GPU
+acceptance remain open. Production was not promoted.
