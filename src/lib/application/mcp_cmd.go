@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -160,7 +161,7 @@ func inspectMCPBundle(ctx context.Context, args []string, output io.Writer, inst
 			return err
 		}
 		data, err := io.ReadAll(io.LimitReader(file, (8<<20)+1))
-		file.Close()
+		err = errors.Join(err, file.Close())
 		if err != nil {
 			return err
 		}
