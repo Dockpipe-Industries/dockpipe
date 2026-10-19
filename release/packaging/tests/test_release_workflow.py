@@ -152,7 +152,9 @@ class ReleaseWorkflowTests(unittest.TestCase):
         native = ci["jobs"]["cockpit-native"]
         self.assertEqual(native["runs-on"], "ubuntu-24.04")
         self.assertEqual(native["env"]["DOCKPIPE_COCKPIT_NATIVE_TEST"], "1")
-        self.assertEqual(native["env"]["DOCKPIPE_QT_ROOT"], "${{ runner.temp }}/Qt/6.10.3/gcc_64")
+        qt_install = next(step for step in native["steps"] if step.get("name") == "Install pinned Qt ABI")
+        self.assertIn('DOCKPIPE_QT_ROOT=$RUNNER_TEMP/Qt/6.10.3/gcc_64', qt_install["run"])
+        self.assertNotIn("DOCKPIPE_QT_ROOT", native["env"])
         self.assertEqual(call["uses"], "./.github/workflows/release.yml")
         self.assertEqual(call["with"], {"staging": "true"})
         self.assertIn("github.event_name == 'push'", call["if"])
