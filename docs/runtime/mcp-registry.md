@@ -201,12 +201,50 @@ still pending; the existing Registry metadata remains inert.
   no mutation or prior request is replayed. Request cancellation is not proof
   that a remote side effect was rolled back.
 
-The exact next integration point is `runMCP` plus the existing runtime policy
+The internal [`mcpimport`](../../src/lib/application/internal/mcpimport/plan.go)
+application seam now binds a frozen server configuration, canonical workspace,
+artifact SHA256 and compiled runtime policy to request-scoped authorization. It
+accepts only the existing `dockerimage` profile with a Linux target, an exact
+registry image digest, pulls disabled, offline networking, read-only root,
+workspace-only writes, `/tmp` scratch, non-root user, no new privileges, all
+capabilities dropped and a positive PID limit. It calls the existing
+`ApplyCompiledRuntimeManifest` to produce runtime options; it does not duplicate
+Docker security flag construction.
+
+The seam has **no production authorizer or Docker executor**. Both are mandatory
+injections from trusted application owners; missing owners fail closed. Every
+start/discovery/call requires a matching, unexpired decision with an identified
+principal. A start is checked again after runtime acquisition and before process
+launch; a call is checked after fresh tool discovery immediately before sending.
+Decisions bind the exact operation, plan hash, server, workspace, runtime policy,
+artifact hash, tool metadata and arguments. No decision is persisted or inferred
+from CLI access, repository configuration or tool annotations. Stop remains
+available even after revocation so cleanup cannot be blocked by expired authority.
+
+The executor interface requires an owned runtime lease with command preparation
+and cleanup. Startup/partial-acquisition failure, cancellation, child exit and
+explicit stop all release that lease once. Cleanup receives a five-second context;
+a production executor must honor cancellation and report actual daemon-object
+removal. Neutral host fixtures test this ownership/authorization wiring only.
+They **do not prove Docker cleanup or containment**. Windows host-path mapping for
+Linux imports remains unsupported; its import-plan tests are explicitly skipped,
+while the independent cross-platform protocol-owner tests still run.
+
+The minimum next extraction from existing `RunContainer` is a bounded
+create/attach lifecycle returning an exact owned container ID and a cleanup lease.
+It must reuse existing security option rendering, verify the installed receipt
+and materialized payload immediately before launch, mount only approved paths,
+verify the existing pinned image/platform without pulling or building, and remove
+that exact container after attach-client failure. Killing the Docker client alone
+is insufficient. Real Docker cancellation/crash/cleanup tests must pass before
+connecting `runMCP` or a gateway to this seam.
+
+The remaining integration point is `runMCP` plus the existing runtime policy
 compiler/application path: validate the selected project server and install
 receipt, reverify launch bytes, bind an import-specific authority record, prepare
 an enforceable runtime command, then call `mcpsession.Start`. The shipped runtime
 profiles currently provide container/VM/package execution; there is no approved
-native-host adapter for an imported bundle. Do not silently ignore the configured
+native-host adapter or implemented Docker lease executor for an imported bundle. Do not silently ignore the configured
 runtime or manufacture a host grant. CLI start/invoke/stop/restart and gateway
 forwarding remain unavailable until that adapter and approval linkage exist.
 

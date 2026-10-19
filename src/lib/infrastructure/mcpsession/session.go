@@ -45,6 +45,7 @@ type Session struct {
 	client    *mcp.ClientSession
 	cancel    context.CancelFunc
 	done      chan error
+	exited    chan struct{}
 	operation chan struct{}
 	once      sync.Once
 	stopped   chan struct{}
@@ -89,7 +90,7 @@ func Start(ctx context.Context, prepare CommandFactory) (*Session, error) {
 	}
 	command.Stdin, command.Stdout, command.Stderr = input, output, io.Discard
 	command.WaitDelay = shutdownTimeout
-	s := &Session{cancel: cancel, done: make(chan error, 1), operation: make(chan struct{}, 1), stopped: make(chan struct{})}
+	s := &Session{cancel: cancel, done: make(chan error, 1), exited: make(chan struct{}), operation: make(chan struct{}, 1), stopped: make(chan struct{})}
 	type startResult struct {
 		running  bool
 		closeErr error
@@ -104,6 +105,7 @@ func Start(ctx context.Context, prepare CommandFactory) (*Session, error) {
 			return func(error) {}
 		})
 		s.done <- runErr
+		close(s.exited)
 	}()
 	select {
 	case result := <-started:
@@ -208,6 +210,13 @@ func (s *Session) discover(ctx context.Context) (Discovery, error) {
 // No annotations confer authority, and a failed/uncertain call is never replayed.
 // A timeout cancels the request; it does not prove the upstream operation stopped.
 func (s *Session) Call(ctx context.Context, approvedDigest, name string, arguments json.RawMessage) (*mcp.CallToolResult, error) {
+	return s.CallChecked(ctx, approvedDigest, name, arguments, nil)
+}
+
+// CallChecked invokes a trusted authorization check after fresh discovery and
+// immediately before sending the operation. A nil check retains protocol-only
+// behavior; application import owners must supply their authority boundary.
+func (s *Session) CallChecked(ctx context.Context, approvedDigest, name string, arguments json.RawMessage, check func(context.Context) error) (*mcp.CallToolResult, error) {
 	if len(approvedDigest) != 64 || name == "" || len(arguments) > maxDiscovery || !json.Valid(arguments) {
 		return nil, fmt.Errorf("MCP call requires a reviewed discovery digest, tool name and bounded JSON arguments")
 	}
@@ -237,6 +246,11 @@ func (s *Session) Call(ctx context.Context, approvedDigest, name string, argumen
 	}
 	if !found {
 		return nil, fmt.Errorf("MCP tool is absent from reviewed discovery")
+	}
+	if check != nil {
+		if err := check(bounded); err != nil {
+			return nil, err
+		}
 	}
 	return s.client.CallTool(bounded, &mcp.CallToolParams{Name: name, Arguments: arguments})
 }
@@ -307,3 +321,6 @@ func boundedToolCache() mcp.Middleware {
 		}
 	}
 }
+
+// Exited closes when the supervised process exits, including startup failure.
+func (s *Session) Exited() <-chan struct{} { return s.exited }

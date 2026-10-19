@@ -16,8 +16,10 @@ contracts. Implements sections 5 and 14 of the [design request](../unified-mcp-g
 TASK-038 is a sibling, not an implementation dependency. No external server has been connected
 through a configured DockPipe runtime/gateway. The internal `mcpsession` owner now
 uses the official Go SDK and existing process-tree supervision; neutral child
-fixtures verify protocol/cancellation/recovery behavior. Import authority, receipt
-reverification, runtime command adaptation and CLI/gateway exposure remain pending.
+fixtures verify protocol/cancellation/recovery behavior. The internal `mcpimport` seam now requires injected trusted operation authorization
+and an owned runtime lease, binding the existing compiled dockerimage policy.
+Production authorizer/Docker executor, receipt reverification and CLI/gateway
+exposure remain pending; neutral host fixtures do not establish Docker containment.
 See [the precise component boundary](../../../runtime/mcp-registry.md#internal-session-owner-and-pending-application-integration).
 
 ## Scope
