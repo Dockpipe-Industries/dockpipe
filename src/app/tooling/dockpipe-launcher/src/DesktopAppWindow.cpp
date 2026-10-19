@@ -8,6 +8,9 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QSet>
+#include <QEvent>
+#include <QTimer>
+#include <chrono>
 #include <cstring>
 
 #if defined(DOCKPIPE_X11_BILLBOARDS) && QT_CONFIG(xcb)
@@ -18,8 +21,37 @@
 #include <X11/Xutil.h>
 #include <X11/extensions/Xcomposite.h>
 #include <X11/extensions/Xrender.h>
+#include <X11/extensions/sync.h>
+#ifdef DOCKPIPE_X11_RESOURCE_IDENTITIES
+#include <X11/extensions/XRes.h>
+#endif
 
 namespace {
+// The foreign client does not receive its desktop compositor's frame replies
+// after reparenting. Service its advertised frame protocol only while visible.
+class EmbeddedFrameTimer final : public QTimer {
+public:
+    explicit EmbeddedFrameTimer(QWidget *container) : QTimer(container)
+    {
+        setObjectName("desktopEmbeddedFrameTimer");
+        setInterval(16);
+        setTimerType(Qt::PreciseTimer);
+        container->installEventFilter(this);
+        if (container->isVisible())
+            start();
+    }
+
+protected:
+    bool eventFilter(QObject *object, QEvent *event) override
+    {
+        if (event->type() == QEvent::Show)
+            start();
+        else if (event->type() == QEvent::Hide)
+            stop();
+        return QTimer::eventFilter(object, event);
+    }
+};
+
 // Xlib calls in this backend run only on the GUI thread, on our own connection.
 // Catch expected BadWindow/BadPixmap races without changing Qt's XCB handling.
 class XErrorScope {
@@ -86,6 +118,37 @@ unsigned long processId(Display *display, Window window)
     unsigned long pid = 0;
     if (bytes.size() == sizeof(pid))
         memcpy(&pid, bytes.constData(), sizeof(pid));
+#ifdef DOCKPIPE_X11_RESOURCE_IDENTITIES
+    if (pid || !window)
+        return pid;
+
+    // Some clients omit the optional EWMH PID hint. Ask the server for the
+    // owner of this one live window; never infer ownership from its title/class.
+    // XRes accepts resource IDs even after destruction while the client lives,
+    // so validate the window before using the server's client identity.
+    XWindowAttributes attributes{};
+    int eventBase = 0;
+    int errorBase = 0;
+    int major = 0;
+    int minor = 0;
+    if (!XGetWindowAttributes(display, window, &attributes)
+        || !XResQueryExtension(display, &eventBase, &errorBase)
+        || !XResQueryVersion(display, &major, &minor)
+        || major < 1 || (major == 1 && minor < 2))
+        return 0;
+
+    XResClientIdSpec specification{window, XRES_CLIENT_ID_PID_MASK};
+    long count = 0;
+    XResClientIdValue *identities = nullptr;
+    const int status = XResQueryClientIds(display, 1, &specification, &count, &identities);
+    if (status == Success && count == 1 && identities) {
+        const auto owner = XResGetClientPid(identities);
+        if (owner > 0)
+            pid = static_cast<unsigned long>(owner);
+    }
+    if (identities)
+        XResClientIdsDestroy(count, identities);
+#endif
     return pid;
 }
 
@@ -159,6 +222,9 @@ struct DesktopAppWindow::Native {
     QPointer<QWindow> foreign;
     QPointer<QWidget> container;
     bool saved = false;
+    XSyncCounter frameCounter = None;
+    quint64 lastAcknowledgedFrame = 0;
+    QPointer<QTimer> frameTimer;
 #endif
 };
 
@@ -522,13 +588,96 @@ QWidget *DesktopAppWindow::takeControl(QWidget *parent, QString &error)
         return nullptr;
     }
     m_native->container = QWidget::createWindowContainer(m_native->foreign, parent);
+    // Clip client-side shadow padding to this tile, including when the app
+    // needs a surface larger than the visible content rectangle.
+    m_native->container->setAttribute(Qt::WA_NativeWindow);
     m_native->container->setFocusPolicy(Qt::StrongFocus);
     m_native->container->setObjectName("billboardNativeApp");
+    {
+        XErrorScope errors(m_native->display);
+        int major = 0;
+        int minor = 0;
+        bool validCounters = false;
+        const auto counters = property(m_native->display, m_choice.id,
+            "_NET_WM_SYNC_REQUEST_COUNTER", XA_CARDINAL, 2, &validCounters);
+        // Only the second counter opts into the extended frame protocol. A
+        // single legacy resize counter must never receive frame acknowledgments.
+        if (validCounters && counters.size() == int(2 * sizeof(unsigned long))
+            && XSyncInitialize(m_native->display, &major, &minor)) {
+            unsigned long values[2]{};
+            memcpy(values, counters.constData(), sizeof(values));
+            XSyncValue value{};
+            const XSyncCounter counter = quint32(values[1]);
+            if (counter && XSyncQueryCounter(m_native->display, counter, &value)
+                && !errors.failed())
+                m_native->frameCounter = counter;
+        }
+    }
+    if (m_native->frameCounter) {
+        m_native->frameTimer = new EmbeddedFrameTimer(m_native->container);
+        QObject::connect(m_native->frameTimer, &QTimer::timeout, m_native->container,
+            [this] { acknowledgeControlFrame(); });
+    }
     return m_native->container;
 #else
     Q_UNUSED(parent);
     error = unavailableReason();
     return nullptr;
+#endif
+}
+
+void DesktopAppWindow::acknowledgeControlFrame()
+{
+#if defined(DOCKPIPE_X11_BILLBOARDS) && QT_CONFIG(xcb)
+    if (!m_native->saved || !m_native->container || !m_native->container->isVisible()) {
+        if (m_native->frameTimer)
+            m_native->frameTimer->stop();
+        return;
+    }
+    if (!controlAttached()) {
+        if (!alive())
+            m_native->frameTimer->stop();
+        return;
+    }
+    XErrorScope errors(m_native->display);
+    XSyncValue value{};
+    if (!XSyncQueryCounter(m_native->display, m_native->frameCounter, &value)
+        || errors.failed()) {
+        m_native->frameTimer->stop();
+        return;
+    }
+    const quint64 serial = (quint64(quint32(XSyncValueHigh32(value))) << 32)
+        | XSyncValueLow32(value);
+    // Odd values mark an unfinished frame. Never modify the client's counter,
+    // or acknowledge the same completed frame more than once.
+    if (!serial || (serial & 1) || serial == m_native->lastAcknowledgedFrame)
+        return;
+    // This backend embeds local X11 clients. Their high-resolution server time
+    // uses the same monotonic microsecond clock as the local compositor.
+    const quint64 timestamp = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+    XEvent event{};
+    event.xclient.type = ClientMessage;
+    event.xclient.display = m_native->display;
+    event.xclient.window = m_choice.id;
+    event.xclient.format = 32;
+    event.xclient.message_type = XInternAtom(m_native->display, "_NET_WM_FRAME_DRAWN", False);
+    event.xclient.data.l[0] = quint32(serial);
+    event.xclient.data.l[1] = quint32(serial >> 32);
+    event.xclient.data.l[2] = quint32(timestamp);
+    event.xclient.data.l[3] = quint32(timestamp >> 32);
+    const bool sent = XSendEvent(m_native->display, m_choice.id, False, NoEventMask, &event);
+    // Complete the timing record without claiming a physical presentation time
+    // or refresh interval that this embedding host cannot measure.
+    event.xclient.message_type = XInternAtom(m_native->display, "_NET_WM_FRAME_TIMINGS", False);
+    event.xclient.data.l[2] = 0;
+    event.xclient.data.l[3] = 0;
+    const bool timingsSent = XSendEvent(m_native->display, m_choice.id, False, NoEventMask, &event);
+    if (!sent || !timingsSent || errors.failed()) {
+        m_native->frameTimer->stop();
+        return;
+    }
+    m_native->lastAcknowledgedFrame = serial;
 #endif
 }
 
@@ -578,8 +727,8 @@ bool DesktopAppWindow::syncControlGeometry()
     QWidget *host = container->window();
     const QPoint offset = container->mapTo(host, QPoint());
     const qreal scale = host->devicePixelRatioF();
-    const int width = qMax(1, qRound(container->width() * scale));
-    const int height = qMax(1, qRound(container->height() * scale));
+    int width = qMax(1, qRound(container->width() * scale));
+    int height = qMax(1, qRound(container->height() * scale));
     XErrorScope errors(m_native->display);
     Window root = 0;
     Window parent = 0;
@@ -599,6 +748,29 @@ bool DesktopAppWindow::syncControlGeometry()
     XWindowAttributes attributes{};
     if (!XGetWindowAttributes(m_native->display, m_choice.id, &attributes))
         return false;
+    // GTK-compatible clients publish invisible resize/shadow margins in native
+    // pixels. Fit their content, rather than those margins, to the tile. Accept
+    // exactly four CARDINALs and require a positive visible area in both the
+    // current client and viewport; malformed hints never expand the surface.
+    const auto extents = property(m_native->display, m_choice.id, "_GTK_FRAME_EXTENTS", XA_CARDINAL, 4);
+    if (extents.size() == int(4 * sizeof(unsigned long))) {
+        unsigned long margins[4]{};
+        memcpy(margins, extents.constData(), sizeof(margins));
+        // Xlib stores format-32 items in longs and may sign-extend them on
+        // LP64. Decode CARDINALs before widening for the overflow-safe sums.
+        const quint64 horizontal = quint64(quint32(margins[0])) + quint32(margins[1]);
+        const quint64 vertical = quint64(quint32(margins[2])) + quint32(margins[3]);
+        // X11 ConfigureWindow dimensions are unsigned 16-bit values.
+        if (horizontal < quint64(qMin(width, attributes.width))
+            && vertical < quint64(qMin(height, attributes.height))
+            && quint64(width) + horizontal <= 65535
+            && quint64(height) + vertical <= 65535) {
+            x -= int(margins[0]);
+            y -= int(margins[2]);
+            width += int(horizontal);
+            height += int(vertical);
+        }
+    }
     // Foreign apps can restore their own desktop geometry after reparenting.
     // Keep the native surface in the HUD without creating extra native widgets.
     if (attributes.x != x || attributes.y != y || attributes.width != width || attributes.height != height)
@@ -614,6 +786,10 @@ void DesktopAppWindow::releaseControl()
 #if defined(DOCKPIPE_X11_BILLBOARDS) && QT_CONFIG(xcb)
     if (!m_native->saved)
         return;
+    delete m_native->frameTimer.data();
+    m_native->frameTimer = nullptr;
+    m_native->frameCounter = None;
+    m_native->lastAcknowledgedFrame = 0;
     auto *native = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
     auto *connection = native->connection();
     // Keep the client unmapped until its desktop hints are restored. Reparenting

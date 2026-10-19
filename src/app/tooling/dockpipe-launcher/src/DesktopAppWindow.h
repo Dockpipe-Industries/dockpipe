@@ -41,6 +41,7 @@ public:
     bool alive() const;
     QIcon applicationIcon() const;
 private:
+    void acknowledgeControlFrame();
     struct Native;
     std::unique_ptr<Native> m_native;
     DesktopAppChoice m_choice;

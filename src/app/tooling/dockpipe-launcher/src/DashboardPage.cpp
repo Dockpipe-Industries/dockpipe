@@ -187,6 +187,9 @@ DashboardPage::DashboardPage(const DashboardDefinition &definition, DashboardWid
         connect(workspace, &DashboardWorkspace::panelCloseRequested, this, [this, workspace](const QString &id) {
             closePanel(id, workspace);
         });
+        connect(workspace, &DashboardWorkspace::panelReleaseRequested, this, [this, workspace](const QString &id) {
+            removePanel(id, workspace);
+        });
     }
     // Native windows and sharing grants only belong to the current visit.
     const bool removedDesktopPanels = m_definition.panels.removeIf([](const DashboardPanelDefinition &panel) {
@@ -225,6 +228,20 @@ DashboardPage::~DashboardPage()
         window->releaseWindow();
     }
     disconnect(qApp, nullptr, this, nullptr);
+}
+
+void DashboardPage::releaseDesktopWindows()
+{
+    // Release before removing native ancestors. Qt can destroy their platform
+    // windows before the child widget destructors get a chance to detach apps.
+    for (auto *window : findChildren<DesktopWindowWidget *>())
+        window->releaseWindow();
+
+    const auto panels = m_definition.panels;
+    for (const auto &panel : panels) {
+        if (panel.kind == "desktop-window")
+            removePanel(panel.id, workspaceFor(panel.environment));
+    }
 }
 
 DashboardDefinition DashboardPage::snapshot() const

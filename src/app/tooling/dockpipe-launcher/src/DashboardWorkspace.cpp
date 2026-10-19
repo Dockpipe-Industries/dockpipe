@@ -17,6 +17,8 @@
 #include <QDragLeaveEvent>
 #include <QDropEvent>
 #include <QDynamicPropertyChangeEvent>
+#include <QCursor>
+#include <QHideEvent>
 #include <QHBoxLayout>
 #include <QJsonArray>
 #include <QLabel>
@@ -25,6 +27,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QShowEvent>
+#include <QShortcut>
 #include <QScopedValueRollback>
 #include <algorithm>
 #include <QSplitter>
@@ -34,6 +37,7 @@
 #include <QTabBar>
 #include <QTabWidget>
 #include <QToolButton>
+#include <QTimer>
 #include <QVBoxLayout>
 
 namespace {
@@ -196,6 +200,15 @@ DashboardWorkspace::DashboardWorkspace(const QString &dashboardId, QWidget *pare
     m_dropPreview->setAttribute(Qt::WA_TransparentForMouseEvents);
     m_dropPreview->setStyleSheet("background: rgba(85, 185, 165, 70); border: 2px solid #79cbb6; border-radius: 8px;");
     m_dropPreview->hide();
+    m_tileActionsTimer = new QTimer(this);
+    m_tileActionsTimer->setObjectName("dashboardTileActionsTimer");
+    // Foreign windows do not deliver QWidget hover events. Poll only while
+    // this workspace is visible, inspecting at most the 16 admitted panels.
+    m_tileActionsTimer->setInterval(100);
+    connect(m_tileActionsTimer, &QTimer::timeout, this, &DashboardWorkspace::updateTileActions);
+    auto *tileMenuShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_M), this);
+    tileMenuShortcut->setObjectName("dashboardTileMenuShortcut");
+    connect(tileMenuShortcut, &QShortcut::activated, this, &DashboardWorkspace::showFocusedTileMenu);
 }
 
 bool DashboardWorkspace::addPanel(const QString &id, const QString &title, QWidget *content)
@@ -212,6 +225,8 @@ bool DashboardWorkspace::addPanel(const QString &id, const QString &title, QWidg
     frame->setObjectName("dashboardPanel_" + id);
     frame->setMinimumSize(280, 180);
     frame->setProperty("canvasPanelTransparent", content->property("canvasPanelTransparent").toBool());
+    const bool externalApp = content->property("dashboardExternalApp").toBool();
+    frame->setProperty("dashboardExternalApp", externalApp);
     content->installEventFilter(this);
     auto *layout = new QVBoxLayout(frame);
     layout->setContentsMargins(7, 5, 7, 7);
@@ -275,7 +290,29 @@ bool DashboardWorkspace::addPanel(const QString &id, const QString &title, QWidg
         }
     });
     auto *footer = content->findChild<QWidget *>("dashboardWidgetFooter");
-    m_panels.insert(id, {frame, header, title, {}, footer, footer && footer->isHidden(), expand});
+    QToolButton *tileActions = nullptr;
+    if (externalApp) {
+        tileActions = new QToolButton(frame);
+        tileActions->setObjectName("dashboardTileActions");
+        // A native sibling can appear above an embedded application's native
+        // surface. A painted QWidget overlay alone is occluded by that surface.
+        tileActions->setAttribute(Qt::WA_NativeWindow);
+        tileActions->setText(QString::fromUtf8("⋯"));
+        tileActions->setFixedSize(30, 24);
+        tileActions->setFocusPolicy(Qt::StrongFocus);
+        tileActions->setAccessibleName(tr("Tile actions for %1").arg(title));
+        tileActions->setToolTip(tr("Tile actions · Ctrl+Alt+M when dashboard has focus"));
+        tileActions->setContextMenuPolicy(Qt::CustomContextMenu);
+        tileActions->hide();
+        connect(tileActions, &QToolButton::clicked, this, [this, id, tileActions] {
+            showPanelMenu(id, tileActions->mapToGlobal(QPoint(0, tileActions->height())));
+        });
+        connect(tileActions, &QWidget::customContextMenuRequested, this,
+                [this, id, tileActions](const QPoint &position) {
+                    showPanelMenu(id, tileActions->mapToGlobal(position));
+                });
+    }
+    m_panels.insert(id, {frame, header, title, {}, footer, footer && footer->isHidden(), expand, tileActions});
     frame->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(frame, &QWidget::customContextMenuRequested, this, [this, id, frame](const QPoint &position) {
         showPanelMenu(id, frame->mapToGlobal(position));
@@ -624,6 +661,7 @@ void DashboardWorkspace::rebuild()
     m_empty->setVisible(m_panels.isEmpty());
     m_dropPreview->hide();
     m_rebuilding = false;
+    updateTileActionsPolling();
 }
 
 bool DashboardWorkspace::minimizePanel(const QString &id)
@@ -850,9 +888,12 @@ void DashboardWorkspace::showPanelMenu(const QString &id, const QPoint &position
     if (!m_panels.contains(id))
         return;
     auto *menu = new QMenu(this);
+    menu->setObjectName("dashboardPanelMenu");
+    menu->setProperty("dashboardPanelId", id);
     menu->setAttribute(Qt::WA_DeleteOnClose);
     const QString expansionLabel = id == m_expandedPanel ? tr("Restore panel") : tr("Expand panel");
     connect(menu->addAction(expansionLabel), &QAction::triggered, this, [this, id] { togglePanelExpanded(id); });
+    connect(menu->addAction(tr("Minimize to dock")), &QAction::triggered, this, [this, id] { minimizePanel(id); });
     menu->addSeparator();
     auto *openFullView = m_panels.value(id).frame->findChild<QPushButton *>("dashboardOpenFullView");
     if (openFullView) {
@@ -880,7 +921,13 @@ void DashboardWorkspace::showPanelMenu(const QString &id, const QPoint &position
             connect(menu->addAction(tr("Return to tiles")), &QAction::triggered, this, [this, id] { dockPanel(id, {}, "tab"); });
         menu->addSeparator();
     }
-    connect(menu->addAction(tr("Remove widget")), &QAction::triggered, this, [this, id] { emit panelCloseRequested(id); });
+    if (m_panels.value(id).frame->property("dashboardExternalApp").toBool()) {
+        connect(menu->addAction(tr("Release to desktop")), &QAction::triggered, this,
+                [this, id] { emit panelReleaseRequested(id); });
+    } else {
+        connect(menu->addAction(tr("Remove widget")), &QAction::triggered, this,
+                [this, id] { emit panelCloseRequested(id); });
+    }
     menu->popup(position);
 }
 
@@ -1085,6 +1132,13 @@ void DashboardWorkspace::showEvent(QShowEvent *event)
         m_restoredGeometryPending = false;
     }
     placePendingPanels();
+    updateTileActionsPolling();
+}
+
+void DashboardWorkspace::hideEvent(QHideEvent *event)
+{
+    m_tileActionsTimer->stop();
+    QWidget::hideEvent(event);
 }
 
 void DashboardWorkspace::paintEvent(QPaintEvent *event)
@@ -1156,7 +1210,7 @@ void DashboardWorkspace::applyPanelChrome(const QString &id, bool tiled)
 {
     const Panel &panel = m_panels[id];
     panel.header->setVisible(!tiled && (m_showPanelHeaders || m_expandedPanel == id));
-    const bool compact = tiled && m_compactTiling;
+    const bool compact = tiled && (m_compactTiling || panel.frame->property("dashboardExternalApp").toBool());
     if (panel.footer)
         panel.footer->setVisible(!compact && !panel.footerInitiallyHidden);
     panel.frame->layout()->setContentsMargins(compact ? 0 : 7, compact ? 0 : 5, compact ? 0 : 7, compact ? 0 : 7);
@@ -1185,6 +1239,78 @@ void DashboardWorkspace::applyTilingChrome()
             split->style()->polish(split);
         }
     }
+    auto groups = m_tiles->findChildren<QTabWidget *>();
+    if (auto *group = qobject_cast<QTabWidget *>(m_tiles))
+        groups.append(group);
+    for (auto *group : groups) {
+        const bool singleExternalApp = group->count() == 1
+            && group->widget(0)->property("dashboardExternalApp").toBool();
+        group->tabBar()->setVisible(!singleExternalApp);
+        group->setProperty("dashboardSingleExternalApp", singleExternalApp);
+    }
+    updateTileActionsPolling();
+}
+
+void DashboardWorkspace::updateTileActionsPolling()
+{
+    bool hasExternalTile = false;
+    for (const Panel &panel : m_panels)
+        hasExternalTile |= panel.tileActions != nullptr;
+    if (isVisible() && m_mode == "tiling" && hasExternalTile)
+        m_tileActionsTimer->start();
+    else
+        m_tileActionsTimer->stop();
+    updateTileActions();
+}
+
+void DashboardWorkspace::updateTileActions()
+{
+    const QPoint cursor = QCursor::pos();
+    for (auto iterator = m_panels.cbegin(); iterator != m_panels.cend(); ++iterator) {
+        const Panel &panel = iterator.value();
+        if (!panel.tileActions)
+            continue;
+        QTabWidget *group = nullptr;
+        for (QWidget *parent = panel.frame->parentWidget(); parent && parent != this; parent = parent->parentWidget()) {
+            group = qobject_cast<QTabWidget *>(parent);
+            if (group)
+                break;
+        }
+        const bool eligible = isVisible() && m_mode == "tiling" && panel.frame->isVisible()
+            && group && group->property("dashboardSingleExternalApp").toBool();
+        const QRect revealArea(panel.frame->width() / 2 - 40, 0, 80, 32);
+        QWidget *popup = QApplication::activePopupWidget();
+        const bool menuOpen = popup && popup->property("dashboardPanelId").toString() == iterator.key();
+        const bool reveal = eligible && (revealArea.contains(panel.frame->mapFromGlobal(cursor))
+            || panel.tileActions->hasFocus() || menuOpen);
+        panel.tileActions->move((panel.frame->width() - panel.tileActions->width()) / 2, 0);
+        panel.tileActions->setVisible(reveal);
+        if (reveal)
+            panel.tileActions->raise();
+    }
+}
+
+void DashboardWorkspace::showFocusedTileMenu()
+{
+    if (m_mode != "tiling")
+        return;
+    QWidget *focus = QApplication::focusWidget();
+    QString target;
+    for (auto iterator = m_panels.cbegin(); iterator != m_panels.cend(); ++iterator) {
+        const Panel &panel = iterator.value();
+        if (!panel.tileActions || !panel.frame->isVisible() || m_floating.contains(iterator.key()))
+            continue;
+        if (focus == panel.frame || (focus && panel.frame->isAncestorOf(focus))) {
+            target = iterator.key();
+            break;
+        }
+        if (target.isEmpty() || panel.frame->rect().contains(panel.frame->mapFromGlobal(QCursor::pos())))
+            target = iterator.key();
+    }
+    if (target.isEmpty())
+        return;
+    CanvasPanel *frame = m_panels.value(target).frame;
+    showPanelMenu(target, frame->mapToGlobal(QPoint(frame->width() / 2, 24)));
 }
 
 void DashboardWorkspace::setCompactTiling(bool compact)
@@ -1213,6 +1339,8 @@ void DashboardWorkspace::setPanelTitle(const QString &id, const QString &title)
         return;
     Panel &panel = m_panels[id];
     panel.title = title;
+    if (panel.tileActions)
+        panel.tileActions->setAccessibleName(tr("Tile actions for %1").arg(title));
     panel.header->findChild<QLabel *>("dashboardPanelTitle")->setText(title);
     if (m_tiles) {
         auto groups = m_tiles->findChildren<QTabWidget *>();

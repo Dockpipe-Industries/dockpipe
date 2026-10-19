@@ -390,6 +390,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
 {
+    connect(qApp, &QCoreApplication::aboutToQuit, this, &MainWindow::releaseDashboardWindows);
     // Allocate an alpha surface before native window creation only when opted in.
     // Changing this Qt attribute on an already mapped window is not portable.
     if (TerminalPreferences::instance()->settings().backgroundTarget == "desktop") {
@@ -1482,6 +1483,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 {
     if (m_tray && m_tray->isVisible() && QSystemTrayIcon::isSystemTrayAvailable()) {
         persistDashboards();
+        releaseDashboardWindows();
         hide();
         event->ignore();
         return;
@@ -1498,7 +1500,13 @@ void MainWindow::closeEvent(QCloseEvent *event)
         event->ignore();
         return;
     }
+    releaseDashboardWindows();
     QMainWindow::closeEvent(event);
+}
+
+MainWindow::~MainWindow()
+{
+    releaseDashboardWindows();
 }
 
 void MainWindow::clearContextList()

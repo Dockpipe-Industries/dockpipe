@@ -18,9 +18,12 @@
 #include <QLineEdit>
 #include <QPointer>
 #include <QSignalSpy>
+#include <QShortcut>
 #include <QSplitter>
 #include <QTabWidget>
 #include <QTest>
+#include <QTimer>
+#include <QToolButton>
 
 class DashboardWorkspaceTest : public QObject {
     Q_OBJECT
@@ -40,7 +43,133 @@ private slots:
     void expandsTilesWithoutReparentingLiveContent();
     void expansionRestoresBeforeRemovalAndLayoutChanges();
     void restoringExpansionAfterShrinkKeepsPanelsReachable();
+    void externalTilesFillPaneAndRetainMenuActions();
+    void externalTileActionsFollowVisibilityAndTabGrouping();
 };
+
+void DashboardWorkspaceTest::externalTilesFillPaneAndRetainMenuActions()
+{
+    DashboardWorkspace workspace("external-tiles");
+    workspace.resize(1100, 700);
+    auto *content = new QWidget;
+    content->setProperty("dashboardExternalApp", true);
+    QVERIFY(workspace.addPanel("app", "External app", content));
+    QVERIFY(workspace.addPanel("other", "Other", new QLabel("Other content")));
+    workspace.setMode("tiling");
+    workspace.show();
+    QCoreApplication::processEvents();
+    auto *frame = workspace.findChild<CanvasPanel *>("dashboardPanel_app");
+    QTabWidget *group = nullptr;
+    for (auto *candidate : workspace.findChildren<QTabWidget *>()) {
+        if (candidate->indexOf(frame) >= 0)
+            group = candidate;
+    }
+    QVERIFY(group);
+    QVERIFY(group->tabBar()->isHidden());
+    QVERIFY(frame->findChild<QWidget *>("dashboardPanelHeader")->isHidden());
+    QCOMPARE(content->size(), group->size());
+    QCOMPARE(content->mapTo(group, QPoint()), QPoint());
+    const QJsonObject saved = workspace.saveLayout();
+    QWidget *originalParent = content->parentWidget();
+    auto *actions = frame->findChild<QToolButton *>("dashboardTileActions");
+    QVERIFY(actions);
+    QVERIFY(actions->testAttribute(Qt::WA_NativeWindow));
+    QSignalSpy released(&workspace, &DashboardWorkspace::panelReleaseRequested);
+    QSignalSpy closed(&workspace, &DashboardWorkspace::panelCloseRequested);
+
+    const auto openMenu = [&]() {
+        QMetaObject::invokeMethod(actions, "customContextMenuRequested", Qt::DirectConnection,
+                                  Q_ARG(QPoint, QPoint(5, 5)));
+        return qobject_cast<QMenu *>(QApplication::activePopupWidget());
+    };
+    const auto findAction = [](QMenu *menu, const QString &text) -> QAction * {
+        for (QAction *action : menu->actions()) {
+            if (action->text() == text)
+                return action;
+        }
+        return nullptr;
+    };
+    QMenu *menu = openMenu();
+    QVERIFY(menu);
+    QVERIFY(findAction(menu, "Move beside Other"));
+    QVERIFY(!findAction(menu, "Remove widget"));
+    auto *expand = findAction(menu, "Expand panel");
+    QVERIFY(expand);
+    menu->close();
+    expand->trigger();
+    QCoreApplication::processEvents();
+    QCOMPARE(workspace.expandedPanel(), QString("app"));
+    QCOMPARE(content->size(), workspace.size());
+    QCOMPARE(content->parentWidget(), originalParent);
+    QCOMPARE(workspace.saveLayout(), saved);
+
+    menu = openMenu();
+    QVERIFY(menu);
+    auto *restore = findAction(menu, "Restore panel");
+    QVERIFY(restore);
+    menu->close();
+    restore->trigger();
+    QCOMPARE(workspace.expandedPanel(), QString());
+    menu = openMenu();
+    auto *release = findAction(menu, "Release to desktop");
+    QVERIFY(release);
+    menu->close();
+    release->trigger();
+    QCOMPARE(released.count(), 1);
+    QCOMPARE(released.first().first().toString(), QString("app"));
+    QCOMPARE(closed.count(), 0);
+    menu = openMenu();
+    auto *minimize = findAction(menu, "Minimize to dock");
+    QVERIFY(minimize);
+    menu->close();
+    minimize->trigger();
+    QVERIFY(!content->isVisible());
+    QCOMPARE(content->parentWidget(), originalParent);
+    QVERIFY(workspace.activatePanel("app"));
+    QVERIFY(content->isVisible());
+    workspace.setCompactTiling(false);
+    QCOMPARE(frame->layout()->contentsMargins(), QMargins());
+}
+
+void DashboardWorkspaceTest::externalTileActionsFollowVisibilityAndTabGrouping()
+{
+    DashboardWorkspace workspace("external-actions");
+    workspace.resize(1100, 700);
+    auto *content = new QWidget;
+    content->setProperty("dashboardExternalApp", true);
+    QVERIFY(workspace.addPanel("app", "App", content));
+    QVERIFY(workspace.addPanel("other", "Other", new QLabel("Other")));
+    workspace.setMode("tiling");
+    workspace.show();
+    QCoreApplication::processEvents();
+    auto *timer = workspace.findChild<QTimer *>("dashboardTileActionsTimer");
+    auto *frame = workspace.findChild<CanvasPanel *>("dashboardPanel_app");
+    auto *actions = frame->findChild<QToolButton *>("dashboardTileActions");
+    QVERIFY(timer->isActive());
+    auto *shortcut = workspace.findChild<QShortcut *>("dashboardTileMenuShortcut");
+    QVERIFY(shortcut);
+    QVERIFY(QMetaObject::invokeMethod(shortcut, "activated", Qt::DirectConnection));
+    auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
+    QVERIFY(menu);
+    QCOMPARE(menu->property("dashboardPanelId").toString(), QString("app"));
+    menu->close();
+    QTest::mouseMove(content, QPoint(content->width() / 2, 4));
+    QTRY_VERIFY(actions->isVisible());
+    QTest::mouseMove(content, QPoint(20, content->height() / 2));
+    QTRY_VERIFY(actions->isHidden());
+    workspace.hide();
+    QVERIFY(!timer->isActive());
+    workspace.show();
+    QVERIFY(timer->isActive());
+    QVERIFY(workspace.dockPanel("other", "app", "tab"));
+    auto *group = workspace.findChild<QTabWidget *>();
+    QVERIFY(group->tabBar()->isVisible());
+    QVERIFY(actions->isHidden());
+    workspace.setMode("canvas");
+    QVERIFY(!timer->isActive());
+    QVERIFY(actions->isHidden());
+    QVERIFY(frame->findChild<QWidget *>("dashboardPanelHeader")->isVisible());
+}
 
 void DashboardWorkspaceTest::restoresCanvasAfterStartupSizing()
 {
