@@ -116,6 +116,72 @@ substitute for that missing capability. This change preserves existing engine,
 model/domain/infrastructure/application ownership and adds no package registry,
 package type, bucket, daemon, or configuration store.
 
+## Installation and session continuation (not implemented)
+
+The missing installation/session path is a platform implementation gap, not a
+credential denial or an external approval failure. This PR proves discovery and
+configuration validation only. The following inspected APIs explain why passing
+validation cannot establish an installed, running server:
+
+| Existing implementation | Reusable boundary and missing capability |
+| --- | --- |
+| [`packagecatalog.Client.Install`](../../src/lib/infrastructure/packagecatalog/install.go) | Downloads and verifies DockPipe catalog tarballs; requires the expected archive layout and matching `package.yml`. It does not accept MCPB ZIP bundles or Registry ecosystem packages. Do not relabel an upstream bundle as a DockPipe package to bypass validation. |
+| [`InstallWithDependenciesUsingCodec`](../../src/lib/infrastructure/packagecatalog/install_dependencies.go) | Stages and publishes the existing catalog dependency closure. Its dependency resolver selects DockPipe catalog entries, not npm, PyPI, or MCPB runtime requirements. Preserve this store and dependency model. |
+| [`ImageArtifactManifest`](../../src/lib/model/runtimeartifact/model.go) and [`maybeSkipDockerBuildForArtifact`](../../src/lib/application/run_image_artifact.go) | Represent and reuse materialized Docker images for compiled workflows. They are not a native MCPB installer or a long-lived upstream MCP session owner. |
+| [`CompileSecurityPolicyForWorkflow`](../../src/lib/application/internal/runtimepolicy/security.go) and [`ApplyCompiledRuntimeManifest`](../../src/lib/application/internal/runtimepolicy/runtime.go) | Compile and apply runtime security to `RunOpts`. Several controls map to container options; a host process does not acquire equivalent isolation by naming a runtime profile. |
+| [`runMCP`](../../src/lib/application/mcp_cmd.go), [`mcp` models](../../src/lib/model/mcp/model.go) and [domain validation](../../src/lib/domain/mcp/config.go) | Read Registry metadata and validate authored server contracts. There is no installation command, upstream initialization, tool discovery, invocation, restart, or shutdown implementation here. |
+
+The smallest proposed general continuation is **one explicitly supported MCPB
+binary/stdio subset**, independent of any named server. This is proposed scope,
+not a new accepted configuration surface or an implementation claim:
+
+1. Select a concrete Registry version and one MCPB artifact. The
+   [Registry format](https://github.com/modelcontextprotocol/registry/blob/main/docs/reference/server-json/generic-server-json.md)
+   supplies an artifact URL through `identifier` and integrity through
+   `fileSha256`. Retain both in a reviewed installation plan; a digest verifies
+   bytes, not publisher trust or execution authority.
+2. Add a bounded MCPB artifact adapter beneath the existing package/artifact
+   lifecycle. Stage verified bytes using existing path/store ownership helpers;
+   validate ZIP members, expansion size, duplicates, traversal and links before
+   atomic publication. Never execute installation hooks or bundle contents during
+   inspection. Keep provenance, selected platform and digest in the install receipt;
+   use the existing update/removal lifecycle rather than a second registry/store.
+3. Interpret a deliberately limited version of the
+   [MCPB manifest](https://github.com/anthropics/mcpb/blob/main/MANIFEST.md).
+   Validate platform compatibility and binary architecture separately; platform
+   labels alone do not prove architecture. Resolve only a contained binary entry
+   point and reviewed literal arguments. Reject unsupported interpolation,
+   external commands and runtime installation requirements in this first subset.
+   Map the resulting absolute path and working directory into existing
+   `mcp.servers`; retain secrets as references. Installation must not start it.
+4. Add a shared runtime-owned stdio session primitive with explicit startup,
+   bounded framing/queues/deadlines, MCP initialization and tool discovery,
+   cancellation, descendant cleanup, shutdown and controlled recovery. CLI and
+   later gateway/desktop consumers must call the same implementation. Do not
+   introduce gateway forwarding as a side effect of installing a bundle.
+
+Authorization must bind the selected artifact digest/version, effective launch
+arguments, workspace access, runtime policy fingerprint and per-import secret
+references. Reuse DockPipe's runtime policy compilation/application and existing
+approval mechanisms where applicable; add the missing import-specific approval
+record and enforcement linkage before launch. Review of metadata, installation,
+startup and individual tool authority are distinct decisions. An update that
+changes those inputs or discovered tool schemas must not silently reuse a broader
+grant. Refuse requested privileged execution when the selected runtime cannot
+enforce its filesystem, network, process or credential restrictions. In
+particular, `runtime: host` validation is not proof of a sandbox or authorization.
+This follows [TASK-040's security boundary](../agents/tasks/third-party-mcp-import/overview.md)
+and leaves gateway caller-profile enforcement outstanding.
+
+The continuation's end-to-end gate must install a neutral controlled bundle through
+the real artifact lifecycle, start it through the authorized runtime, initialize
+MCP, verify exact discovered tool/result semantics, cancel a blocked call, recover
+from a crash without replaying a mutation, shut down all descendants, and remove
+only its owned artifacts. Negative cases must reject digest/platform mismatches,
+unsafe ZIP entries, unsupported configuration, stale approval and secret leakage.
+Run the supported OS matrix. Contract fixtures alone cannot satisfy this gate;
+**no installation/session end-to-end evidence exists in this PR**.
+
 ## Development verification
 
 With the repository's pinned Go toolchain on PATH:
