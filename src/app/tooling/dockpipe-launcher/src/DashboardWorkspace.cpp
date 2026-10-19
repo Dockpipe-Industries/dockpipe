@@ -4,6 +4,13 @@
 #include "CanvasIcons.h"
 
 #include <QApplication>
+#ifdef DOCKPIPE_PROFILE_DASHBOARD_LAYOUT
+#include <QElapsedTimer>
+#include <array>
+#include <cstdio>
+#include <limits>
+#include <time.h>
+#endif
 #include <QBuffer>
 #include <QFile>
 #include <QFileInfo>
@@ -41,6 +48,287 @@
 #include <QVBoxLayout>
 
 namespace {
+
+#ifdef DOCKPIPE_PROFILE_DASHBOARD_LAYOUT
+// Diagnostic builds only: fixed buckets, capped samples, and no output in the
+// measured loop. Buckets identify operations and panel ordinals, never content.
+// Each retained sample has wall time and current GUI-thread CPU time. The
+// thread clock excludes time spent preempted or waiting for other processes.
+enum class LayoutProfilePhase {
+    HidePanels,
+    CreateViewport,
+    BuildTree,
+    AttachViewport,
+    ShowViewport,
+    TransferCanvasPanels,
+    AttachLiveFrames,
+    FinalizeChrome,
+    CreateTabGroup,
+    PreparePanelChrome,
+    AddTab,
+    CreateTabControls,
+    ActivateTab,
+    RebuildTiling,
+    RebuildCanvas,
+    Panel0,
+    Count = Panel0 + 16
+};
+
+constexpr std::size_t LayoutProfileSampleLimit = 8192;
+constexpr qint64 NanosecondsPerSecond = 1000000000;
+
+qint64 layoutThreadCpuNanoseconds()
+{
+#if defined(CLOCK_THREAD_CPUTIME_ID)
+    timespec timestamp{};
+    if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &timestamp) == 0)
+        return qint64(timestamp.tv_sec) * NanosecondsPerSecond + timestamp.tv_nsec;
+#endif
+    return -1;
+}
+
+struct LayoutProfileSample {
+    qint64 wallNanoseconds;
+    qint64 cpuNanoseconds;
+};
+
+class LayoutProfileTimer {
+public:
+    void start()
+    {
+        m_wall.start();
+        m_cpuStart = layoutThreadCpuNanoseconds();
+    }
+
+    LayoutProfileSample elapsed() const
+    {
+        const qint64 cpuEnd = layoutThreadCpuNanoseconds();
+        const qint64 cpuElapsed = m_cpuStart >= 0 && cpuEnd >= m_cpuStart
+            ? cpuEnd - m_cpuStart : -1;
+        return {m_wall.nsecsElapsed(), cpuElapsed};
+    }
+
+private:
+    QElapsedTimer m_wall;
+    qint64 m_cpuStart = -1;
+};
+
+struct LayoutProfileMetric {
+    std::array<qint64, LayoutProfileSampleLimit> samples{};
+    std::size_t count = 0;
+    qint64 totalNanoseconds = 0;
+
+    void record(qint64 nanoseconds)
+    {
+        samples[count++] = nanoseconds;
+        totalNanoseconds += nanoseconds;
+    }
+
+    double averageMilliseconds() const
+    {
+        if (count == 0)
+            return std::numeric_limits<double>::quiet_NaN();
+        return double(totalNanoseconds) / count / 1000000;
+    }
+
+    double percentileMilliseconds(std::size_t percent) const
+    {
+        if (count == 0)
+            return std::numeric_limits<double>::quiet_NaN();
+        const std::size_t rank = (count * percent + 99) / 100;
+        return double(samples[rank - 1]) / 1000000;
+    }
+
+    void sort()
+    {
+        std::sort(samples.begin(), samples.begin() + count);
+    }
+};
+
+struct LayoutProfileBucket {
+    LayoutProfileMetric wall;
+    LayoutProfileMetric cpu;
+    std::size_t dropped = 0;
+};
+
+class LayoutProfileTotals {
+public:
+    void record(LayoutProfilePhase phase, LayoutProfileSample sample)
+    {
+        auto &bucket = m_buckets[static_cast<std::size_t>(phase)];
+        if (bucket.wall.count == LayoutProfileSampleLimit) {
+            ++bucket.dropped;
+            return;
+        }
+        bucket.wall.record(sample.wallNanoseconds);
+        if (sample.cpuNanoseconds >= 0)
+            bucket.cpu.record(sample.cpuNanoseconds);
+    }
+
+    ~LayoutProfileTotals()
+    {
+        constexpr const char *names[] = {
+            "hide-panels", "create-viewport", "build-tree-inclusive",
+            "attach-viewport", "show-viewport", "transfer-canvas-panels",
+            "attach-live-frames", "finalize-chrome", "create-tab-group",
+            "prepare-panel-chrome", "add-tab", "create-tab-controls",
+            "activate-tab", "rebuild-tiling", "rebuild-canvas"
+        };
+        for (std::size_t index = 0; index < m_buckets.size(); ++index) {
+            auto &bucket = m_buckets[index];
+            if (bucket.wall.count == 0)
+                continue;
+            bucket.wall.sort();
+            bucket.cpu.sort();
+            char panelName[32];
+            const char *name;
+            if (index < static_cast<std::size_t>(LayoutProfilePhase::Panel0)) {
+                name = names[index];
+            } else {
+                std::snprintf(panelName, sizeof(panelName), "add-tab-panel-%zu",
+                              index - static_cast<std::size_t>(LayoutProfilePhase::Panel0));
+                name = panelName;
+            }
+            std::fprintf(stderr,
+                         "dashboard-layout-profile phase=%s samples=%zu dropped=%zu average_ms=%.3f p50_ms=%.3f p95_ms=%.3f max_ms=%.3f "
+                         "cpu_samples=%zu cpu_unavailable=%zu cpu_average_ms=%.3f cpu_p50_ms=%.3f cpu_p95_ms=%.3f cpu_max_ms=%.3f\n",
+                         name, bucket.wall.count, bucket.dropped,
+                         bucket.wall.averageMilliseconds(),
+                         bucket.wall.percentileMilliseconds(50),
+                         bucket.wall.percentileMilliseconds(95),
+                         bucket.wall.percentileMilliseconds(100),
+                         bucket.cpu.count, bucket.wall.count - bucket.cpu.count,
+                         bucket.cpu.averageMilliseconds(),
+                         bucket.cpu.percentileMilliseconds(50),
+                         bucket.cpu.percentileMilliseconds(95),
+                         bucket.cpu.percentileMilliseconds(100));
+        }
+    }
+
+private:
+    std::array<LayoutProfileBucket, static_cast<std::size_t>(LayoutProfilePhase::Count)> m_buckets;
+};
+
+LayoutProfileTotals layoutProfileTotals;
+
+void recordLayoutPhase(LayoutProfileTimer &timer, LayoutProfilePhase phase)
+{
+    layoutProfileTotals.record(phase, timer.elapsed());
+    timer.start();
+}
+
+#define PROFILE_LAYOUT_START(timer) \
+    LayoutProfileTimer timer; \
+    timer.start()
+#define PROFILE_LAYOUT_PHASE(timer, phase) recordLayoutPhase(timer, LayoutProfilePhase::phase)
+#define PROFILE_LAYOUT_PANEL(timer, panelIndex) \
+    layoutProfileTotals.record(static_cast<LayoutProfilePhase>( \
+        static_cast<std::size_t>(LayoutProfilePhase::Panel0) + (panelIndex)), (timer).elapsed())
+#else
+#define PROFILE_LAYOUT_START(timer)
+#define PROFILE_LAYOUT_PHASE(timer, phase)
+#define PROFILE_LAYOUT_PANEL(timer, panelIndex)
+#endif
+
+class PanelSlot final : public QWidget {
+public:
+    explicit PanelSlot(QWidget *frame) : m_frame(frame)
+    {
+        setObjectName("dashboardPanelSlot");
+        setProperty("dashboardExternalApp", frame->property("dashboardExternalApp"));
+        auto *contents = new QVBoxLayout(this);
+        contents->setContentsMargins(0, 0, 0, 0);
+        contents->setSpacing(0);
+        synchronizeConstraints();
+        frame->installEventFilter(this);
+    }
+
+    QSize sizeHint() const override
+    {
+        return m_frame ? m_frame->sizeHint() : QSize();
+    }
+
+    QSize minimumSizeHint() const override
+    {
+        return m_frame ? m_frame->minimumSizeHint() : QSize();
+    }
+
+    bool hasHeightForWidth() const override
+    {
+        return m_frame && m_frame->hasHeightForWidth();
+    }
+
+    int heightForWidth(int width) const override
+    {
+        return m_frame ? m_frame->heightForWidth(width) : -1;
+    }
+
+    void synchronizeConstraints()
+    {
+        if (!m_frame)
+            return;
+        setMinimumSize(m_frame->minimumSize());
+        setMaximumSize(m_frame->maximumSize());
+        setSizePolicy(m_frame->sizePolicy());
+    }
+
+protected:
+    bool eventFilter(QObject *object, QEvent *event) override
+    {
+        if (object == m_frame && (event->type() == QEvent::LayoutRequest
+            || event->type() == QEvent::StyleChange || event->type() == QEvent::FontChange
+            || event->type() == QEvent::ContentsRectChange || event->type() == QEvent::Resize)) {
+            synchronizeConstraints();
+            updateGeometry();
+        }
+        return QWidget::eventFilter(object, event);
+    }
+
+
+private:
+    QPointer<QWidget> m_frame;
+};
+
+class PanelTabs final : public QTabWidget {
+public:
+    using QTabWidget::QTabWidget;
+
+    QSize sizeHint() const override
+    {
+        synchronizePages();
+        return QTabWidget::sizeHint();
+    }
+
+    QSize minimumSizeHint() const override
+    {
+        synchronizePages();
+        return QTabWidget::minimumSizeHint();
+    }
+
+    bool hasHeightForWidth() const override
+    {
+        synchronizePages();
+        return QTabWidget::hasHeightForWidth();
+    }
+
+    int heightForWidth(int width) const override
+    {
+        synchronizePages();
+        return QTabWidget::heightForWidth(width);
+    }
+
+private:
+    void synchronizePages() const
+    {
+        // QWidget deliberately suppresses updateGeometry notifications while
+        // explicitly hidden. Refresh before Qt reads page bounds or policies.
+        for (int index = 0; index < count(); ++index) {
+            if (auto *page = dynamic_cast<PanelSlot *>(widget(index)))
+                page->synchronizeConstraints();
+        }
+    }
+};
+
 constexpr int MaximumPanels = 16;
 constexpr int MaximumCoordinate = 32768;
 const QString PanelMime = QStringLiteral("application/x-dockpipe-dashboard-panel");
@@ -219,6 +507,7 @@ bool DashboardWorkspace::addPanel(const QString &id, const QString &title, QWidg
     rememberGeometry();
     if (m_tiles)
         m_tree = captureTree(m_tiles);
+    invalidateTilingPresentation();
     auto *frame = new CanvasPanel(m_dashboardId + "/" + id, m_parking, false);
     // Native browser and captured-window surfaces cannot use QWidget effects.
     frame->setGraphicsEffect(nullptr);
@@ -346,6 +635,7 @@ void DashboardWorkspace::removePanel(const QString &id)
     rememberGeometry();
     if (m_tiles)
         m_tree = captureTree(m_tiles);
+    invalidateTilingPresentation();
     delete m_panels.take(id).frame;
     m_canvasGeometry.remove(id);
     m_canvasOrder.removeAll(id);
@@ -368,6 +658,16 @@ void DashboardWorkspace::setMode(const QString &mode)
     rememberGeometry();
     if (m_tiles)
         m_tree = captureTree(m_tiles);
+    if (m_tileViewport) {
+        m_retainedSplitterSizes.clear();
+        const auto &splits = m_retainedSplits;
+        for (auto *split : splits) {
+            const auto originalSizes = split->property("dashboardUnminimizedSizes").value<QList<int>>();
+            m_retainedSplitterSizes.insert(split, originalSizes.isEmpty() ? split->sizes() : originalSizes);
+        }
+        m_retainedScroll = QPoint(m_tileViewport->horizontalScrollBar()->value(),
+            m_tileViewport->verticalScrollBar()->value());
+    }
     m_mode = mode;
     rebuild();
     update();
@@ -402,7 +702,9 @@ QWidget *DashboardWorkspace::buildTree(const QJsonObject &node, QWidget *parent)
     if (node.isEmpty())
         return nullptr;
     if (node.value("type") == "tabs") {
-        auto *group = new QTabWidget(parent);
+        PROFILE_LAYOUT_START(tabPhase);
+        auto *group = new PanelTabs(parent);
+        m_retainedGroups.append(group);
         group->setObjectName("dashboardTabGroup");
         group->setDocumentMode(true);
         group->setMovable(true);
@@ -424,6 +726,7 @@ QWidget *DashboardWorkspace::buildTree(const QJsonObject &node, QWidget *parent)
                 showPanelMenu(id, group->tabBar()->mapToGlobal(position));
         });
         group->tabBar()->installEventFilter(this);
+        PROFILE_LAYOUT_PHASE(tabPhase, CreateTabGroup);
         for (const QJsonValue &value : node.value("ids").toArray()) {
             const QString id = value.toString();
             CanvasPanel *frame = m_panels.value(id).frame;
@@ -433,7 +736,15 @@ QWidget *DashboardWorkspace::buildTree(const QJsonObject &node, QWidget *parent)
             m_panels.value(id).header->setToolTip(tr("Drag onto another widget: center for a tab, edge for a split"));
             // QTabWidget owns page visibility. Showing an inactive page here
             // also maps native browser/terminal children over the selected tab.
-            const int tabIndex = group->addTab(frame, m_panels.value(id).icon, m_panels.value(id).title);
+            PROFILE_LAYOUT_PHASE(tabPhase, PreparePanelChrome);
+            // Keep inactive live content with its existing owner until first
+            // selection; only its lightweight geometry stand-in enters the tab.
+            QWidget *page = new PanelSlot(frame);
+            page->setProperty("dashboardPanelId", id);
+            m_panels[id].tabPage = page;
+            const int tabIndex = group->addTab(page, m_panels.value(id).icon, m_panels.value(id).title);
+            PROFILE_LAYOUT_PANEL(tabPhase, std::distance(m_panels.cbegin(), m_panels.constFind(id)));
+            PROFILE_LAYOUT_PHASE(tabPhase, AddTab);
             // Reuse the same accessible control as the app and canvas panels.
             for (const auto side : {QTabBar::LeftSide, QTabBar::RightSide}) {
                 if (auto *previous = group->tabBar()->tabButton(tabIndex, side)) {
@@ -458,8 +769,8 @@ QWidget *DashboardWorkspace::buildTree(const QJsonObject &node, QWidget *parent)
             minimize->setToolTip(tr("Minimize to dock"));
             controlLayout->addWidget(minimize);
             connect(minimize, &QToolButton::clicked, this, [this, id] { minimizePanel(id); });
-            connect(close, &QToolButton::clicked, group, [group, frame]() {
-                emit group->tabCloseRequested(group->indexOf(frame));
+            connect(close, &QToolButton::clicked, this, [this, id]() {
+                emit panelCloseRequested(id);
             });
             auto *expand = new WindowControlButton(WindowControlButton::Maximize, controls);
             expand->setObjectName("dashboardTabExpand");
@@ -470,12 +781,27 @@ QWidget *DashboardWorkspace::buildTree(const QJsonObject &node, QWidget *parent)
             controlLayout->addWidget(expand);
             group->tabBar()->setTabButton(tabIndex, QTabBar::LeftSide, controls);
             connect(expand, &QToolButton::clicked, this, [this, id] { togglePanelExpanded(id); });
+            PROFILE_LAYOUT_PHASE(tabPhase, CreateTabControls);
             if (id == node.value("active").toString())
-                group->setCurrentWidget(frame);
+                group->setCurrentWidget(page);
+            PROFILE_LAYOUT_PHASE(tabPhase, ActivateTab);
         }
-        connect(group, &QTabWidget::currentChanged, this, [this, group] {
-            if (m_rebuilding)
+        auto *attachTimer = new QTimer(group);
+        m_retainedAttachTimers.append(attachTimer);
+        attachTimer->setObjectName("dashboardPanelAttachTimer");
+        attachTimer->setSingleShot(true);
+        connect(attachTimer, &QTimer::timeout, this, [this, group, attachTimer] {
+            if (m_mode == "tiling" && m_tiles
+                && attachTimer->property("revision").toULongLong() == m_presentationRevision)
+                materializePanel(panelId(group->currentWidget()));
+        });
+        connect(group, &QTabWidget::currentChanged, this, [this, group, attachTimer] {
+            // Qt can emit currentChanged from inside its visibility update.
+            // Attach selected content after that operation has completed.
+            if (m_rebuilding || m_mode != "tiling" || !m_tiles)
                 return;
+            attachTimer->setProperty("revision", QVariant::fromValue(m_presentationRevision));
+            attachTimer->start(0);
             if (!m_expandedPanel.isEmpty() && m_expandedGroup == group) {
                 m_expandedPanel = panelId(group->currentWidget());
                 updateExpansionControls();
@@ -488,6 +814,7 @@ QWidget *DashboardWorkspace::buildTree(const QJsonObject &node, QWidget *parent)
     }
     const Qt::Orientation orientation = node.value("orientation") == "horizontal" ? Qt::Horizontal : Qt::Vertical;
     auto *split = new QSplitter(orientation, parent);
+    m_retainedSplits.append(split);
     split->setObjectName("dashboardSplit");
     split->setProperty("dashboardCompact", m_compactTiling);
     split->setChildrenCollapsible(false);
@@ -522,12 +849,11 @@ QJsonObject DashboardWorkspace::captureTree(QWidget *widget) const
     QJsonArray ids;
     QString active;
     for (int index = 0; index < group->count(); ++index) {
-        for (auto iterator = m_panels.cbegin(); iterator != m_panels.cend(); ++iterator) {
-            if (iterator.value().frame == group->widget(index)) {
-                ids.append(iterator.key());
-                if (index == group->currentIndex())
-                    active = iterator.key();
-            }
+        const QString id = panelId(group->widget(index));
+        if (!id.isEmpty()) {
+            ids.append(id);
+            if (index == group->currentIndex())
+                active = id;
         }
     }
     if (active.isEmpty() && !ids.isEmpty())
@@ -613,31 +939,96 @@ void DashboardWorkspace::placePendingPanels()
     emit layoutChanged();
 }
 
+void DashboardWorkspace::invalidateTilingPresentation()
+{
+    ++m_presentationRevision;
+    if (!m_retainedViewport)
+        return;
+    for (auto *timer : m_retainedAttachTimers)
+        timer->stop();
+    m_retainedViewport->hide();
+    for (const Panel &panel : m_panels) {
+        if (m_retainedViewport->isAncestorOf(panel.frame)) {
+            panel.frame->hide();
+            panel.frame->setParent(m_parking);
+        }
+    }
+    m_tiles = nullptr;
+    m_tileViewport = nullptr;
+    m_retainedGroups.clear();
+    m_retainedSplits.clear();
+    m_retainedAttachTimers.clear();
+    delete m_retainedViewport;
+    m_retainedViewport = nullptr;
+    m_retainedTiles = nullptr;
+    m_retainedSplitterSizes.clear();
+    m_retainedScroll = {};
+    m_retainedMinimized.clear();
+}
+
 void DashboardWorkspace::rebuild()
 {
+    PROFILE_LAYOUT_START(rebuildTotal);
+    PROFILE_LAYOUT_START(rebuildPhase);
     m_rebuilding = true;
-    QScrollArea *previousViewport = m_tileViewport;
-    if (previousViewport)
-        previousViewport->hide();
+    ++m_presentationRevision;
+    if (m_retainedViewport) {
+        for (auto *timer : m_retainedAttachTimers)
+            timer->stop();
+        m_retainedViewport->hide();
+    }
     for (const Panel &panel : m_panels)
         panel.frame->hide();
-    m_tileViewport = nullptr;
     m_tiles = nullptr;
+    m_tileViewport = nullptr;
+    const bool freshPresentation = !m_retainedViewport;
+    PROFILE_LAYOUT_PHASE(rebuildPhase, HidePanels);
     if (m_mode == "tiling" && !m_tree.isEmpty()) {
-        m_tileViewport = new QScrollArea(this);
-        m_tileViewport->setObjectName("dashboardTileViewport");
-        m_tileViewport->setFrameShape(QFrame::NoFrame);
-        m_tileViewport->setWidgetResizable(true);
-        const int inset = m_compactTiling ? 0 : 8;
-        m_tileViewport->setGeometry(rect().adjusted(inset, inset, -inset, -inset));
-        // Use the final parent so setWidget does not reparent and restyle
-        // the entire live panel subtree a second time.
-        m_tiles = buildTree(m_tree, m_tileViewport->viewport());
-        m_tileViewport->setWidget(m_tiles);
-        m_tileViewport->setAutoFillBackground(false);
-        m_tileViewport->viewport()->setAutoFillBackground(false);
-        m_tiles->setAutoFillBackground(false);
+        if (freshPresentation) {
+            m_retainedViewport = new QScrollArea(this);
+            m_retainedViewport->setObjectName("dashboardTileViewport");
+            m_retainedViewport->setFrameShape(QFrame::NoFrame);
+            m_retainedViewport->setWidgetResizable(true);
+            const int inset = m_compactTiling ? 0 : 8;
+            m_retainedViewport->setGeometry(rect().adjusted(inset, inset, -inset, -inset));
+            PROFILE_LAYOUT_PHASE(rebuildPhase, CreateViewport);
+            m_retainedTiles = buildTree(m_tree, m_retainedViewport->viewport());
+            PROFILE_LAYOUT_PHASE(rebuildPhase, BuildTree);
+            m_retainedViewport->setWidget(m_retainedTiles);
+            PROFILE_LAYOUT_PHASE(rebuildPhase, AttachViewport);
+            m_retainedViewport->setAutoFillBackground(false);
+            m_retainedViewport->viewport()->setAutoFillBackground(false);
+            m_retainedTiles->setAutoFillBackground(false);
+        }
+        m_tiles = m_retainedTiles;
+        m_tileViewport = m_retainedViewport;
+        for (auto iterator = m_panels.cbegin(); iterator != m_panels.cend(); ++iterator) {
+            if (m_floating.contains(iterator.key()))
+                continue;
+            iterator.value().frame->setInteractionEnabled(false);
+            applyPanelChrome(iterator.key(), true);
+            iterator.value().header->setToolTip(tr("Drag onto another widget: center for a tab, edge for a split"));
+        }
+        applyTilingChrome();
+        if (m_retainedMinimized != m_minimized)
+            applyMinimizedPanels();
+        PROFILE_LAYOUT_PHASE(rebuildPhase, FinalizeChrome);
+        const auto &groups = m_retainedGroups;
+        for (auto *group : groups) {
+            if (!group->isHidden())
+                materializePanel(panelId(group->currentWidget()));
+        }
+        PROFILE_LAYOUT_PHASE(rebuildPhase, AttachLiveFrames);
         m_tileViewport->show();
+        for (auto iterator = m_retainedSplitterSizes.cbegin(); iterator != m_retainedSplitterSizes.cend(); ++iterator) {
+            if (iterator.key()->sizes() != iterator.value()) {
+                iterator.key()->refresh();
+                iterator.key()->setSizes(iterator.value());
+            }
+        }
+        m_tileViewport->horizontalScrollBar()->setValue(m_retainedScroll.x());
+        m_tileViewport->verticalScrollBar()->setValue(m_retainedScroll.y());
+        PROFILE_LAYOUT_PHASE(rebuildPhase, ShowViewport);
     }
     for (auto iterator = m_panels.cbegin(); iterator != m_panels.cend(); ++iterator) {
         if (m_mode != "canvas" && !m_floating.contains(iterator.key()))
@@ -649,31 +1040,26 @@ void DashboardWorkspace::rebuild()
         iterator.value().header->setToolTip(tr("Drag to move · Resize from the edges or lower-right corner"));
         const auto &geometries = m_mode == "canvas" ? m_canvasGeometry : m_floatingGeometry;
         frame->setGeometry(constrainedGeometry(iterator.key(), geometries.value(iterator.key(), QRect(24, 24, 440, 300))));
-        frame->show();
+        frame->setVisible(!m_minimized.contains(iterator.key()));
         frame->raise();
     }
-    if (previousViewport) {
-        // Valid tile/floating destinations have already taken their frames.
-        // Preserve any omitted frame before destroying its old owner.
-        for (const Panel &panel : m_panels) {
-            if (previousViewport->isAncestorOf(panel.frame))
-                panel.frame->setParent(m_parking);
-        }
-        delete previousViewport;
-    }
+    PROFILE_LAYOUT_PHASE(rebuildPhase, TransferCanvasPanels);
     if (m_mode == "canvas") {
         for (const QString &id : m_canvasOrder) {
             if (m_panels.contains(id))
                 m_panels.value(id).frame->raise();
         }
     }
-    applyTilingChrome();
-    applyMinimizedPanels();
     m_empty->setGeometry(rect());
     m_empty->setVisible(m_panels.isEmpty());
     m_dropPreview->hide();
     m_rebuilding = false;
     updateTileActionsPolling();
+    PROFILE_LAYOUT_PHASE(rebuildPhase, FinalizeChrome);
+#ifdef DOCKPIPE_PROFILE_DASHBOARD_LAYOUT
+    recordLayoutPhase(rebuildTotal, m_mode == "tiling"
+        ? LayoutProfilePhase::RebuildTiling : LayoutProfilePhase::RebuildCanvas);
+#endif
 }
 
 bool DashboardWorkspace::minimizePanel(const QString &id)
@@ -698,16 +1084,12 @@ void DashboardWorkspace::applyMinimizedPanels()
     }
     if (!m_tiles)
         return;
-    QList<QSplitter *> splits = m_tiles->findChildren<QSplitter *>();
-    if (auto *split = qobject_cast<QSplitter *>(m_tiles))
-        splits.prepend(split);
+    const auto &splits = m_retainedSplits;
     for (auto *split : splits) {
         if (!split->property("dashboardUnminimizedSizes").isValid())
             split->setProperty("dashboardUnminimizedSizes", QVariant::fromValue(split->sizes()));
     }
-    QList<QTabWidget *> groups = m_tiles->findChildren<QTabWidget *>();
-    if (auto *group = qobject_cast<QTabWidget *>(m_tiles))
-        groups.append(group);
+    const auto &groups = m_retainedGroups;
     for (auto *group : groups) {
         bool visible = false;
         for (int index = 0; index < group->count(); ++index) {
@@ -732,6 +1114,13 @@ void DashboardWorkspace::applyMinimizedPanels()
             split->setProperty("dashboardUnminimizedSizes", QVariant());
         }
     }
+    // A minimized current tab may make Qt select a deferred page. Finish that
+    // transfer after Qt's visibility operation, before our caller returns.
+    for (auto *group : groups) {
+        if (!group->isHidden())
+            materializePanel(panelId(group->currentWidget()));
+    }
+    m_retainedMinimized = m_minimized;
 }
 
 bool DashboardWorkspace::activatePanel(const QString &id)
@@ -742,10 +1131,11 @@ bool DashboardWorkspace::activatePanel(const QString &id)
         restoreExpandedPanel();
     if (m_minimized.remove(id))
         applyMinimizedPanels();
+    materializePanel(id);
     auto *frame = m_panels.value(id).frame;
     for (auto *parent = frame->parentWidget(); parent && parent != this; parent = parent->parentWidget()) {
         if (auto *tabs = qobject_cast<QTabWidget *>(parent))
-            tabs->setCurrentWidget(frame);
+            tabs->setCurrentWidget(panelTabPage(id));
     }
     if (m_mode == "canvas" || m_floating.contains(id)) {
         frame->raise();
@@ -842,6 +1232,7 @@ bool DashboardWorkspace::restoreLayout(const QJsonObject &layout)
         !readGeometry(layout.value("floatingGeometry").toObject(), known, floatingGeometry))
         return false;
     restoreExpandedPanel();
+    invalidateTilingPresentation();
     m_mode = mode;
     m_canvasOrder = order;
     m_pendingPlacement.clear();
@@ -874,6 +1265,7 @@ bool DashboardWorkspace::dockPanel(const QString &id, const QString &targetId, c
             return false;
         tree = insertPanel(tree, id, targetId, position);
     }
+    invalidateTilingPresentation();
     m_tree = tree;
     m_floating.remove(id);
     rebuild();
@@ -888,6 +1280,7 @@ bool DashboardWorkspace::floatPanel(const QString &id)
     restoreExpandedPanel();
     rememberGeometry();
     m_tree = withoutPanel(m_tiles ? captureTree(m_tiles) : m_tree, id);
+    invalidateTilingPresentation();
     m_floating.insert(id);
     m_floatingGeometry[id] = defaultGeometry(id, m_floatingGeometry);
     rebuild();
@@ -966,12 +1359,8 @@ bool DashboardWorkspace::eventFilter(QObject *object, QEvent *event)
         if (tabBar) {
             auto *group = qobject_cast<QTabWidget *>(tabBar->parentWidget());
             const int index = tabBar->tabAt(mouse->position().toPoint());
-            if (group && index >= 0) {
-                for (auto iterator = m_panels.cbegin(); iterator != m_panels.cend(); ++iterator) {
-                    if (iterator.value().frame == group->widget(index))
-                        id = iterator.key();
-                }
-            }
+            if (group && index >= 0)
+                id = panelId(group->widget(index));
         }
         if (mouse->button() == Qt::LeftButton && !id.isEmpty() && !m_floating.contains(id)) {
             m_dragStart = mouse->position().toPoint();
@@ -1015,7 +1404,7 @@ QString DashboardWorkspace::panelAt(const QPoint &position) const
     for (QWidget *ancestor = child; ancestor && ancestor != this; ancestor = ancestor->parentWidget()) {
         if (auto *bar = qobject_cast<QTabBar *>(ancestor)) {
             auto *group = qobject_cast<QTabWidget *>(bar->parentWidget());
-            if (!group)
+            if (!m_retainedGroups.contains(group))
                 continue;
             const int index = bar->tabAt(bar->mapFrom(this, position));
             return panelId(index >= 0 ? group->widget(index) : group->currentWidget());
@@ -1211,11 +1600,32 @@ void DashboardWorkspace::paintEvent(QPaintEvent *event)
 
 QString DashboardWorkspace::panelId(QWidget *frame) const
 {
+    if (!frame)
+        return {};
     for (auto iterator = m_panels.cbegin(); iterator != m_panels.cend(); ++iterator) {
-        if (iterator.value().frame == frame)
+        if (iterator.value().frame == frame || iterator.value().tabPage == frame)
             return iterator.key();
     }
     return {};
+}
+
+QWidget *DashboardWorkspace::panelTabPage(const QString &id) const
+{
+    const Panel &panel = m_panels[id];
+    return panel.tabPage ? panel.tabPage.data() : panel.frame;
+}
+
+void DashboardWorkspace::materializePanel(const QString &id)
+{
+    if (m_mode != "tiling" || !m_tiles || !m_panels.contains(id))
+        return;
+    Panel &panel = m_panels[id];
+    QWidget *page = panel.tabPage;
+    if (!page || !m_tiles->isAncestorOf(page))
+        return;
+    if (panel.frame->parentWidget() != page)
+        page->layout()->addWidget(panel.frame);
+    panel.frame->show();
 }
 
 void DashboardWorkspace::applyPanelChrome(const QString &id, bool tiled)
@@ -1240,9 +1650,7 @@ void DashboardWorkspace::applyTilingChrome()
         return;
     const int inset = m_compactTiling ? 0 : 8;
     m_tileViewport->setGeometry(rect().adjusted(inset, inset, -inset, -inset));
-    auto splits = m_tiles->findChildren<QSplitter *>();
-    if (auto *split = qobject_cast<QSplitter *>(m_tiles))
-        splits.append(split);
+    const auto &splits = m_retainedSplits;
     for (auto *split : splits) {
         split->setHandleWidth(m_compactTiling ? 0 : 7);
         if (split->property("dashboardCompact").toBool() != m_compactTiling) {
@@ -1251,9 +1659,7 @@ void DashboardWorkspace::applyTilingChrome()
             split->style()->polish(split);
         }
     }
-    auto groups = m_tiles->findChildren<QTabWidget *>();
-    if (auto *group = qobject_cast<QTabWidget *>(m_tiles))
-        groups.append(group);
+    const auto &groups = m_retainedGroups;
     for (auto *group : groups) {
         const bool singleExternalApp = group->count() == 1
             && group->widget(0)->property("dashboardExternalApp").toBool();
@@ -1354,12 +1760,10 @@ void DashboardWorkspace::setPanelTitle(const QString &id, const QString &title)
     if (panel.tileActions)
         panel.tileActions->setAccessibleName(tr("Tile actions for %1").arg(title));
     panel.header->findChild<QLabel *>("dashboardPanelTitle")->setText(title);
-    if (m_tiles) {
-        auto groups = m_tiles->findChildren<QTabWidget *>();
-        if (auto *group = qobject_cast<QTabWidget *>(m_tiles))
-            groups.append(group);
+    if (m_retainedTiles) {
+        const auto &groups = m_retainedGroups;
         for (auto *group : groups) {
-            const int index = group->indexOf(panel.frame);
+            const int index = group->indexOf(panelTabPage(id));
             if (index >= 0)
                 group->setTabText(index, title);
         }
@@ -1372,12 +1776,10 @@ void DashboardWorkspace::setPanelIcon(const QString &id, const QIcon &icon)
         return;
     Panel &panel = m_panels[id];
     panel.icon = icon;
-    if (m_tiles) {
-        auto groups = m_tiles->findChildren<QTabWidget *>();
-        if (auto *group = qobject_cast<QTabWidget *>(m_tiles))
-            groups.append(group);
+    if (m_retainedTiles) {
+        const auto &groups = m_retainedGroups;
         for (auto *group : groups) {
-            const int index = group->indexOf(panel.frame);
+            const int index = group->indexOf(panelTabPage(id));
             if (index >= 0)
                 group->setTabIcon(index, icon);
         }
@@ -1457,24 +1859,21 @@ bool DashboardWorkspace::togglePanelExpanded(const QString &id)
         return true;
     }
     restoreExpandedPanel();
+    materializePanel(id);
     m_expansionLayout = saveLayout();
     m_expandedPanel = id;
     CanvasPanel *frame = m_panels.value(id).frame;
     m_expansionGeometry = frame->geometry();
     m_rebuilding = true;
     if (m_tiles) {
-        auto splitters = m_tiles->findChildren<QSplitter *>();
-        if (auto *splitter = qobject_cast<QSplitter *>(m_tiles))
-            splitters.prepend(splitter);
+        const auto &splitters = m_retainedSplits;
         for (auto *splitter : splitters)
             m_expansionSplitters.append({splitter, splitter->sizes()});
-        auto groups = m_tiles->findChildren<QTabWidget *>();
-        if (auto *group = qobject_cast<QTabWidget *>(m_tiles))
-            groups.prepend(group);
+        const auto &groups = m_retainedGroups;
         for (auto *group : groups) {
             m_expansionTabs.append({group, group->currentIndex()});
             group->setMovable(false);
-            if (group->indexOf(frame) >= 0)
+            if (group->indexOf(panelTabPage(id)) >= 0)
                 m_expandedGroup = group;
         }
     }
@@ -1493,7 +1892,7 @@ bool DashboardWorkspace::togglePanelExpanded(const QString &id)
         }
     }
     if (m_expandedGroup) {
-        m_expandedGroup->setCurrentWidget(frame);
+        m_expandedGroup->setCurrentWidget(panelTabPage(id));
         QWidget *branch = m_expandedGroup;
         for (QWidget *parent = branch->parentWidget(); parent && parent != m_tileViewport;
              branch = parent, parent = parent->parentWidget()) {
@@ -1536,11 +1935,13 @@ void DashboardWorkspace::updateExpansionControls()
     }
     if (!m_tiles)
         return;
-    for (auto *button : m_tiles->findChildren<QToolButton *>("dashboardTabExpand")) {
-        const bool expanded = button->property("dashboardPanelId").toString() == m_expandedPanel;
-        static_cast<WindowControlButton *>(button)->setExpanded(expanded);
-        button->setAccessibleName(expanded ? tr("Restore panel") : tr("Expand panel"));
-        button->setToolTip(expanded ? tr("Restore panel") : tr("Expand panel"));
+    for (auto *group : m_retainedGroups) {
+        for (auto *button : group->tabBar()->findChildren<QToolButton *>("dashboardTabExpand")) {
+            const bool expanded = button->property("dashboardPanelId").toString() == m_expandedPanel;
+            static_cast<WindowControlButton *>(button)->setExpanded(expanded);
+            button->setAccessibleName(expanded ? tr("Restore panel") : tr("Expand panel"));
+            button->setToolTip(expanded ? tr("Restore panel") : tr("Expand panel"));
+        }
     }
 }
 
