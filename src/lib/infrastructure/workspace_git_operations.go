@@ -90,7 +90,7 @@ func workspaceGitOperationState(ctx context.Context, root string, changes []Work
 				fields := strings.Fields(line)
 				if len(fields) >= 2 && (fields[0] == "pick" || fields[0] == "revert") {
 					if len(state.Remaining) >= 128 {
-						return nil, "", errors.New("Git sequencer exceeds 128 commits")
+						return nil, "", errors.New("git sequencer exceeds 128 commits")
 					}
 					if state.Kind == "" {
 						if fields[0] == "pick" {
@@ -121,7 +121,7 @@ func workspaceGitOperationState(ctx context.Context, root string, changes []Work
 		}
 		identities := strings.Fields(string(resolved))
 		if len(identities) != len(state.Remaining) {
-			return nil, "", errors.New("Git sequencer contains an unresolved commit")
+			return nil, "", errors.New("git sequencer contains an unresolved commit")
 		}
 		state.Remaining = identities
 	}
@@ -317,7 +317,7 @@ func mutateWorkspaceGitExtended(ctx context.Context, current *WorkspaceGitSnapsh
 	}
 	updated, err := readWorkspaceGitSnapshot(ctx, current.Root)
 	if err != nil {
-		return nil, fmt.Errorf("Git action ended; refresh failed: %w", err)
+		return nil, fmt.Errorf("git action ended; refresh failed: %w", err)
 	}
 	if commandErr != nil {
 		if updated.Operation != nil || hasWorkspaceGitConflicts(updated) {
@@ -431,7 +431,7 @@ func readWorkspaceGitBoundedFile(path string, limit int64) ([]byte, error) {
 		return nil, err
 	}
 	if int64(len(content)) > limit {
-		return nil, errors.New("Git review file grew beyond the supported limit; refresh")
+		return nil, errors.New("git review file grew beyond the supported limit; refresh")
 	}
 	return content, nil
 }
