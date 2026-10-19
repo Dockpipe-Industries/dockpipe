@@ -19,6 +19,19 @@ def tools(repo):
     return module
 
 
+def verify_public_sections(binary):
+    # Runtime closures include data-only DSOs such as ICU's tables. The SDK
+    # auditor's executable-.text contract remains appropriate for our engine,
+    # while imported runtime files need a complete section-name inventory.
+    output = subprocess.check_output(["readelf", "--wide", "--sections", str(binary)], text=True, timeout=60)
+    names = re.findall(r"^\s*\[\s*\d+\]\s+(\S+)\s+", output, re.MULTILINE)
+    if not names:
+        raise ValueError(f"Runtime ELF section inventory is unavailable: {binary.name}")
+    if any(name.startswith((".debug", ".zdebug")) or name in {".symtab", ".gnu_debugdata", ".gdb_index"}
+           for name in names):
+        raise ValueError(f"Private symbol sections remain in {binary.name}")
+
+
 def protect(assets, sdk, qt, private_debug, repo):
     assets = assets.resolve()
     private_debug = private_debug.resolve()
@@ -47,9 +60,7 @@ def protect(assets, sdk, qt, private_debug, repo):
         relative_lib = os.path.relpath(assets / "lib", binary.parent)
         subprocess.run(["patchelf", "--force-rpath", "--set-rpath", f"$ORIGIN/{relative_lib}", str(binary)],
                        check=True, timeout=60)
-        if any(name.startswith((".debug", ".zdebug")) or name in {".symtab", ".gnu_debugdata", ".gdb_index"}
-               for name in elf.sections(binary)):
-            raise ValueError(f"Private symbol sections remain in {binary.name}")
+        verify_public_sections(binary)
     notices = assets / "licenses"
     shutil.copytree(sdk / "share/forgepipe", notices / "forgepipe")
     shutil.copy2(repo / "LICENSE", notices / "Dockpipe-LICENSE")
