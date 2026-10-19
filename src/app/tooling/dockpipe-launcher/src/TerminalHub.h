@@ -1,5 +1,7 @@
 #pragma once
 
+#include "TerminalLaunchContext.h"
+
 #include <QByteArray>
 #include <QHash>
 #include <QObject>
@@ -13,6 +15,7 @@ class TerminalHub final : public QObject {
     Q_OBJECT
 public:
     explicit TerminalHub(QObject *parent = nullptr);
+    explicit TerminalHub(TerminalLaunchContext context, QObject *parent = nullptr);
     QString createSession(const QString &workdir, const QString &shellProfileId = {});
     TerminalShellCatalog &shellCatalog() const;
     QString creationError() const;
@@ -41,5 +44,6 @@ private:
     QStringList m_order;
     int m_nextTitle = 1;
     TerminalShellCatalog *m_shellCatalog = nullptr;
+    TerminalLaunchContext m_launchContext = TerminalLaunchContext::Automatic;
     QString m_creationError;
 };

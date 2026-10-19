@@ -115,6 +115,9 @@ jobs:
       - name: Qualify live dashboard state and layout response
         env:
           QT_LOGGING_RULES: qt.webenginecontext.debug=true
+          # These CTests use the offscreen platform, which has no native GL context.
+          QT_QUICK_BACKEND: software
+          QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu
         shell: bash
         run: |
           ctest --test-dir "$RUNNER_TEMP/dockpipe-native-symbols" --verbose \

@@ -121,6 +121,7 @@ void failTerminalChild(QProcess *process, const char *message, int error)
 }
 
 struct TerminalSession::State {
+    TerminalLaunchContext context = TerminalLaunchContext::Automatic;
 #ifdef Q_OS_WIN
     std::unique_ptr<TerminalSessionWin> windows;
     QTimer *windowsPoll = nullptr;
@@ -139,8 +140,14 @@ struct TerminalSession::State {
 };
 
 TerminalSession::TerminalSession(QObject *parent)
+    : TerminalSession(TerminalLaunchContext::Automatic, parent)
+{
+}
+
+TerminalSession::TerminalSession(TerminalLaunchContext context, QObject *parent)
     : QObject(parent), m_state(std::make_unique<State>())
 {
+    m_state->context = context;
     connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, this, [this] { stopSession(true); });
 }
 
@@ -182,7 +189,7 @@ bool TerminalSession::start(QString workdir, const QString &program, const QStri
     if (workdir.isEmpty())
         workdir = QDir::homePath();
 #ifdef Q_OS_UNIX
-    const bool hostLaunch = TerminalHostLaunch::required();
+    const bool hostLaunch = TerminalHostLaunch::required(m_state->context);
 #else
     const bool hostLaunch = false;
 #endif
@@ -281,7 +288,7 @@ bool TerminalSession::start(QString workdir, const QString &program, const QStri
         setError(tr("The terminal shell must be an existing executable with an absolute path."));
         return false;
     }
-    const auto launch = TerminalHostLaunch::prepare(shell, shellArguments, workdir, environmentOverrides);
+    const auto launch = TerminalHostLaunch::prepare(shell, shellArguments, workdir, environmentOverrides, m_state->context);
     if (!launch.error.isEmpty()) {
         setError(launch.error);
         return false;

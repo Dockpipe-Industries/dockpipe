@@ -136,10 +136,11 @@ TerminalShellCatalog::~TerminalShellCatalog()
         process->deleteLater();
 }
 
-TerminalShellCatalog::Discovery TerminalShellCatalog::systemDiscovery()
+TerminalShellCatalog::Discovery TerminalShellCatalog::systemDiscovery(TerminalLaunchContext context)
 {
     Discovery discovery;
 #ifdef Q_OS_WIN
+    Q_UNUSED(context);
     discovery.windows = true;
     discovery.windowsDirectory = qEnvironmentVariable("SystemRoot");
     for (const char *key : {"ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"}) {
@@ -157,7 +158,8 @@ TerminalShellCatalog::Discovery TerminalShellCatalog::systemDiscovery()
     discovery.searchDirectories = qEnvironmentVariable("PATH").split(';', Qt::SkipEmptyParts);
     discovery.wslProgram = QDir(discovery.windowsDirectory).filePath("System32/wsl.exe");
 #else
-    discovery.flatpak = !qEnvironmentVariableIsEmpty("FLATPAK_ID") || QFileInfo::exists("/.flatpak-info");
+    discovery.flatpak = context != TerminalLaunchContext::Local
+        && (!qEnvironmentVariableIsEmpty("FLATPAK_ID") || QFileInfo::exists("/.flatpak-info"));
     discovery.flatpakSpawnProgram = QStringLiteral("/usr/bin/flatpak-spawn");
     discovery.loginShell = qEnvironmentVariable("SHELL");
     if (!validPath(discovery.loginShell) || !QFileInfo(discovery.loginShell).isExecutable()) {
