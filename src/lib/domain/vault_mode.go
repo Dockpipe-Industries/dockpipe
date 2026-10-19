@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	mcpcfg "dockpipe/src/lib/domain/mcp"
 	"dockpipe/src/lib/domain/secretenv"
 )
 
@@ -39,6 +40,13 @@ func ValidateVaultModeString(v string) error {
 func ValidateDockpipeProjectConfig(c *DockpipeProjectConfig) error {
 	if c == nil {
 		return nil
+	}
+	environments := make(map[string]map[string]string, len(c.Secrets.Environments))
+	for name, environment := range c.Secrets.Environments {
+		environments[name] = environment.Bindings
+	}
+	if err := mcpcfg.Validate(c.MCP, environments); err != nil {
+		return err
 	}
 	if c.Secrets.Vault != nil {
 		if err := ValidateVaultModeString(*c.Secrets.Vault); err != nil {
