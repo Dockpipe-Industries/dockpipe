@@ -47,6 +47,7 @@ def bundle(build, destination):
     if not qt:
         raise RuntimeError("qmake6 is required to locate the matching WebEngine runtime")
     linked = dependencies(source / library.name)
+    qt_prefix = Path(command(qt, "-query", "QT_INSTALL_PREFIX")).resolve()
     core = linked.get("libQt6Core.so.6")
     version = command(qt, "-query", "QT_VERSION")
     if not core or not core.resolve().name.endswith(".so." + version):
@@ -69,13 +70,16 @@ exec "$runtime_dir/ui/QtWebEngineProcess.bin" "$@"
     baseline["libdockpipe-launcher-ui.so.1"] = build / "libdockpipe-launcher-ui.so.1"
     runtime = linked
     runtime.update(dependencies(helper))
+    runtime.update(dependencies(source / "cockpit-reader"))
     libraries = destination / "lib"
     libraries.mkdir()
     notices = destination / "licenses"
     notices.mkdir()
     bundled = {}
     for name, path in sorted(runtime.items()):
-        if name in baseline:
+        # Child processes cannot reuse Qt libraries loaded by the launcher.
+        # Retain the matching SDK closure for their private package-local path.
+        if name in baseline and not path.resolve().is_relative_to(qt_prefix):
             continue
         shutil.copy2(path.resolve(), libraries / name)
         bundled[name] = str(path.resolve())
