@@ -14,7 +14,7 @@ steps:
   - id: contracts
     kind: host
     cwd: repo
-    cmd: go test ./src/lib/infrastructure/process ./src/lib/infrastructure/mcpsession ./src/lib/infrastructure/mcpbundle ./src/lib/model/mcp ./src/lib/domain/mcp ./src/lib/infrastructure/mcpregistry ./src/lib/domain ./src/lib/model/project
+    cmd: go test ./src/lib/application/internal/mcpimport ./src/lib/infrastructure/process ./src/lib/infrastructure/mcpsession ./src/lib/infrastructure/mcpbundle ./src/lib/model/mcp ./src/lib/domain/mcp ./src/lib/infrastructure/mcpregistry ./src/lib/domain ./src/lib/model/project
   - id: cli
     kind: host
     cwd: repo
@@ -22,11 +22,15 @@ steps:
   - id: vet
     kind: host
     cwd: repo
-    cmd: go vet ./src/lib/infrastructure/mcpsession ./src/lib/infrastructure/mcpbundle ./src/lib/model/mcp ./src/lib/domain/mcp ./src/lib/infrastructure/mcpregistry
+    cmd: go vet ./src/lib/application/internal/mcpimport ./src/lib/infrastructure/mcpsession ./src/lib/infrastructure/mcpbundle ./src/lib/model/mcp ./src/lib/domain/mcp ./src/lib/infrastructure/mcpregistry
+  - id: staticcheck
+    kind: host
+    cwd: repo
+    cmd: go run honnef.co/go/tools/cmd/staticcheck@v0.7.0 ./src/lib/infrastructure ./src/lib/infrastructure/mcpbundle ./src/lib/infrastructure/mcpsession ./src/lib/infrastructure/mcpregistry ./src/lib/application ./src/lib/application/internal/mcpimport ./src/lib/domain/mcp ./src/lib/model/mcp
   - id: security
     kind: host
     cwd: repo
-    cmd: go run github.com/securego/gosec/v2/cmd/gosec@v2.29.0 -conf .gosec.json -quiet ./src/lib/infrastructure/mcpbundle ./src/lib/infrastructure/mcpsession ./src/lib/infrastructure/mcpregistry ./src/lib/domain/mcp ./src/lib/model/mcp ./src/lib/application
+    cmd: go run github.com/securego/gosec/v2/cmd/gosec@v2.29.0 -conf .gosec.json -quiet ./src/lib/application/internal/mcpimport ./src/lib/infrastructure/mcpbundle ./src/lib/infrastructure/mcpsession ./src/lib/infrastructure/mcpregistry ./src/lib/domain/mcp ./src/lib/model/mcp ./src/lib/application
   - id: build-cli
     kind: host
     cwd: repo
