@@ -78,6 +78,7 @@ private:
     QWidget *buildTree(const QJsonObject &node, QWidget *parent);
     QJsonObject captureTree(QWidget *widget) const;
     void rebuild();
+    void invalidateTilingPresentation();
     void applyPanelChrome(const QString &id, bool tiled);
     void applyTilingChrome();
     void updateTileActions();
@@ -133,6 +134,15 @@ private:
     QJsonObject m_tree;
     QWidget *m_tiles = nullptr;
     QScrollArea *m_tileViewport = nullptr;
+    QScrollArea *m_retainedViewport = nullptr;
+    QWidget *m_retainedTiles = nullptr;
+    QList<QTabWidget *> m_retainedGroups;
+    QList<QSplitter *> m_retainedSplits;
+    QList<QTimer *> m_retainedAttachTimers;
+    QMap<QSplitter *, QList<int>> m_retainedSplitterSizes;
+    QPoint m_retainedScroll;
+    QSet<QString> m_retainedMinimized;
+    quint64 m_presentationRevision = 0;
     QWidget *m_parking = nullptr;
     QLabel *m_empty = nullptr;
     QWidget *m_dropPreview = nullptr;
