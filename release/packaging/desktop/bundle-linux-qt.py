@@ -152,6 +152,8 @@ def deploy(launcher, qt, stage, private_debug, version):
     for directory in ("bin", "libexec"):
         (runtime / directory / "qt.conf").write_text(configuration)
     (runtime / "bin/dockpipe-syntax.rcc").symlink_to("../../../share/dockpipe/launcher/dockpipe-syntax.rcc")
+    # Preserve the launcher's adjacent CLI lookup after relocating its executable.
+    (runtime / "bin/dockpipe").symlink_to("../../../bin/dockpipe")
     (stage / "usr/bin").mkdir(parents=True, exist_ok=True)
     (stage / "usr/bin/dockpipe-launcher").symlink_to("../lib/dockpipe/bin/dockpipe-launcher")
 
