@@ -47,8 +47,8 @@ in `dpkg-shlibdeps`; bundled SONAMEs resolve to this package rather than distro 
 The installed-runtime check verifies hashes, dependency resolution, Qt isolation
 and absence of debug sections.
 
-Release builds retain optimized private symbols before stripping the public
-launcher and UI library. Set `DOCKPIPE_PRIVATE_DEBUG_DIR` to private storage
+Native Linux amd64 Release builds retain optimized private symbols before stripping
+the public launcher and UI library. Set `DOCKPIPE_PRIVATE_DEBUG_DIR` to private storage
 outside the artifact directory; the default is the sibling `ARTIFACT_DIRECTORY.private-debug`.
 Keep this directory private and retain it alongside the matching release. It is
 not an upload or publication input. Qt's vendor runtime arrives separately;
