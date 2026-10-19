@@ -26,7 +26,7 @@
 
 ## Admitted baseline
 
-Saved checkout /home/jamie/source/dockpipe, branch js/dev,
+Saved Dockpipe checkout, branch js/dev,
 HEAD c604b291d463906acf0a05ef8cfe2efc071bdbaa. No staged changes. Large protected
 worktree includes the entire untracked packages/cockpit migration and unrelated
 launcher/engine changes. Initial inventory: /tmp/cockpit-overnight-start-status.txt.
