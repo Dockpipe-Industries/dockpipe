@@ -10,6 +10,8 @@ import (
 	"os/signal"
 
 	"dockpipe/src/lib/domain"
+	"dockpipe/src/lib/infrastructure"
+	"dockpipe/src/lib/infrastructure/mcpbundle"
 	"dockpipe/src/lib/infrastructure/mcpregistry"
 	mcpmodel "dockpipe/src/lib/model/mcp"
 )
@@ -18,9 +20,13 @@ const mcpUsage = `dockpipe mcp registry search [--search text] [--cursor cursor]
 dockpipe mcp registry versions --name namespace/server
 dockpipe mcp registry show --name namespace/server [--version version|latest]
 dockpipe mcp config validate [--workdir path]
+dockpipe mcp bundle inspect --path archive.mcpb --sha256 digest --platform linux|darwin|win32 --arch amd64|arm64
+dockpipe mcp bundle install --workdir project --path archive.mcpb --sha256 digest --platform linux|darwin|win32 --arch amd64|arm64
 
-Read-only discovery and project configuration validation. No installation, server
-connection, process launch, secret resolution or gateway exposure is performed.
+Directory fields require --user-config bindings.json --workspace-root /authorized/root.
+
+Bundle inspection is inert. Explicit bundle installation only materializes verified
+artifacts; it does not register, launch, resolve secrets or expose a gateway.
 `
 
 type mcpRegistryReader interface {
@@ -42,6 +48,9 @@ func runMCP(ctx context.Context, args []string, output io.Writer, client mcpRegi
 	}
 	if len(args) < 2 {
 		return usageError(mcpUsage)
+	}
+	if args[0] == "bundle" && (args[1] == "inspect" || args[1] == "install") {
+		return inspectMCPBundle(ctx, args[2:], output, args[1] == "install")
 	}
 	if args[0] == "config" && args[1] == "validate" {
 		return validateMCPConfig(args[2:], output)
@@ -129,4 +138,57 @@ func validateMCPConfig(args []string, output io.Writer) error {
 		Count  int    `json:"configured_servers"`
 		Active bool   `json:"servers_started"`
 	}{"dockpipe.mcp.validation/v1", true, len(config.MCP.Servers), false})
+}
+
+func inspectMCPBundle(ctx context.Context, args []string, output io.Writer, install bool) error {
+	flags := flag.NewFlagSet("mcp bundle inspect", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	filename := flags.String("path", "", "local MCPB archive")
+	workdir := flags.String("workdir", ".", "existing project root")
+	configPath := flags.String("user-config", "", "operator directory bindings JSON file")
+	workspaceRoot := flags.String("workspace-root", "", "authorized directory boundary")
+	digest := flags.String("sha256", "", "expected archive digest")
+	platform := flags.String("platform", "", "selected native platform")
+	arch := flags.String("arch", "", "selected native architecture")
+	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *filename == "" || *digest == "" || *platform == "" || *arch == "" {
+		return usageError(mcpUsage)
+	}
+	bindings := mcpbundle.Bindings{WorkspaceRoot: *workspaceRoot}
+	if *configPath != "" {
+		file, err := os.Open(*configPath)
+		if err != nil {
+			return err
+		}
+		data, err := io.ReadAll(io.LimitReader(file, (8<<20)+1))
+		file.Close()
+		if err != nil {
+			return err
+		}
+		if len(data) > 8<<20 {
+			return fmt.Errorf("MCPB bindings exceed 8 MiB")
+		}
+		if err := json.Unmarshal(data, &bindings.Values); err != nil {
+			return fmt.Errorf("MCPB bindings must be a JSON object of directory strings")
+		}
+	}
+	if install {
+		project, err := domain.FindProjectRootWithDockpipeConfig(*workdir)
+		if err != nil {
+			return err
+		}
+		cache, err := infrastructure.MCPBundleCacheDir(project)
+		if err != nil {
+			return err
+		}
+		result, err := mcpbundle.InstallConfigured(ctx, *filename, *digest, *platform, *arch, cache, bindings)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(output).Encode(result)
+	}
+	result, err := mcpbundle.InspectConfigured(ctx, *filename, *digest, *platform, *arch, bindings)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(output).Encode(result)
 }
