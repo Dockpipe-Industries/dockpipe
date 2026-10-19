@@ -20,6 +20,7 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
+#include <QUuid>
 #include <QWebEnginePage>
 #include <QWebEngineView>
 #include <algorithm>
@@ -251,13 +252,15 @@ int main(int argc, char **argv)
                     socket->setProperty("request", request);
                     return;
                 }
+                const QByteArray documentIdentity = QUuid::createUuid().toByteArray(QUuid::WithoutBraces);
                 const QByteArray body = "<!doctype html><html><head><title>Dashboard browser fixture</title>"
                     "<style>body{background:#1b2836;color:#e9f0f8;font:18px sans-serif;padding:36px}"
                     "input{padding:12px;font:18px sans-serif;width:70%}section{margin-top:24px;padding:20px;"
                     "background:#263b4d;border-radius:12px}</style></head><body><h1>Live browser workspace</h1>"
                     "<input id='draft' aria-label='Retained browser draft' value='Initial draft'>"
                     "<section>One browser page remains alive through canvas and tiling.</section>"
-                    "<script>window.fixtureIdentity=crypto.randomUUID();window.fixtureReady=true;</script></body></html>";
+                    "<script>window.fixtureIdentity='" + documentIdentity
+                    + "';window.fixtureReady=true;</script></body></html>";
                 const QByteArray response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\nContent-Length: "
                     + QByteArray::number(body.size()) + "\r\n\r\n" + body;
                 socket->write(response);
@@ -358,6 +361,8 @@ int main(int argc, char **argv)
     int maximumDescendants = warmDescendants;
     QList<qint64> toTiling;
     QList<qint64> toCanvas;
+    QList<qint64> synchronousTiling;
+    QList<qint64> synchronousCanvas;
     QElapsedTimer measuredDuration;
     measuredDuration.start();
     for (int cycle = 0; cycle < MeasuredCycles; ++cycle) {
@@ -368,6 +373,11 @@ int main(int argc, char **argv)
             auto response = std::make_shared<qint64>(-1);
             QTimer::singleShot(0, &workspace, [response, elapsed]() { *response = elapsed.nsecsElapsed(); });
             workspace.setMode(mode);
+            const qint64 synchronous = elapsed.nsecsElapsed();
+            if (mode == "tiling")
+                synchronousTiling.append(synchronous);
+            else
+                synchronousCanvas.append(synchronous);
             drainEvents();
             CHECK_BROWSER_PERF(*response >= 0);
             if (mode == "tiling")
@@ -394,6 +404,10 @@ int main(int argc, char **argv)
     const auto finalMemory = sampleParent();
     const int finalObjects = workspace.findChildren<QObject *>().size();
     const int finalDescendants = descendantCount();
+    // Keep the response deadline on the zero-timer sample, including queued
+    // events. Synchronous samples distinguish rebuild cost from scheduling.
+    reportLatency("synchronous-canvas-to-tiling", synchronousTiling);
+    reportLatency("synchronous-tiling-to-canvas", synchronousCanvas);
     reportLatency("canvas-to-tiling", toTiling);
     reportLatency("tiling-to-canvas", toCanvas);
     qInfo().noquote() << QString("dashboard-browser-perf cycles=%1 elapsed_ms=%2 parent_only_warm_rss_mib=%3 parent_only_final_rss_mib=%4 parent_only_growth_mib=%5 canvas_objects_before=%6 canvas_objects_after=%7 descendants_before=%8 descendants_after=%9 descendants_peak=%10 renderer_pid_retained=true dom_retained=true input_retained=true")

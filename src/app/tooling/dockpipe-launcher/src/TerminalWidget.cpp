@@ -393,8 +393,12 @@ void TerminalWidget::applyAppearance()
     update();
     const QJsonObject theme = TerminalPreferences::theme(settings.theme);
     if (m_view) {
-        m_view->page()->setBackgroundColor(opacity == 100
-            ? QColor(theme.value("background").toString()) : QColor(Qt::transparent));
+        // Qt 6.2 chooses the WebEngine alpha surface when the renderer starts.
+        // Keep it available throughout a software-rendered session; the terminal
+        // DOM still paints an opaque background when the requested opacity is 100%.
+        const bool softwareRendering = qEnvironmentVariable("QT_QUICK_BACKEND") == "software";
+        m_view->page()->setBackgroundColor(softwareRendering
+            ? QColor(Qt::transparent) : QColor(theme.value("background").toString()));
     }
     if (!m_ready)
         return;

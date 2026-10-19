@@ -1,5 +1,7 @@
 #pragma once
 
+#include "LauncherUiExport.h"
+
 #include <QJsonObject>
 #include <QIcon>
 #include <QPixmap>
@@ -20,7 +22,7 @@ class QToolButton;
 class WindowControlButton;
 
 // Native widgets are reparented between layouts, never rendered through a proxy.
-class DashboardWorkspace final : public QWidget {
+class DOCKPIPE_LAUNCHER_UI_EXPORT DashboardWorkspace final : public QWidget {
     Q_OBJECT
 public:
     explicit DashboardWorkspace(const QString &dashboardId, QWidget *parent = nullptr);

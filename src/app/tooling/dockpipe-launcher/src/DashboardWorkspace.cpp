@@ -616,11 +616,11 @@ void DashboardWorkspace::placePendingPanels()
 void DashboardWorkspace::rebuild()
 {
     m_rebuilding = true;
-    for (const Panel &panel : m_panels) {
+    QScrollArea *previousViewport = m_tileViewport;
+    if (previousViewport)
+        previousViewport->hide();
+    for (const Panel &panel : m_panels)
         panel.frame->hide();
-        panel.frame->setParent(m_parking);
-    }
-    delete m_tileViewport;
     m_tileViewport = nullptr;
     m_tiles = nullptr;
     if (m_mode == "tiling" && !m_tree.isEmpty()) {
@@ -628,12 +628,15 @@ void DashboardWorkspace::rebuild()
         m_tileViewport->setObjectName("dashboardTileViewport");
         m_tileViewport->setFrameShape(QFrame::NoFrame);
         m_tileViewport->setWidgetResizable(true);
-        m_tiles = buildTree(m_tree, m_tileViewport);
+        const int inset = m_compactTiling ? 0 : 8;
+        m_tileViewport->setGeometry(rect().adjusted(inset, inset, -inset, -inset));
+        // Use the final parent so setWidget does not reparent and restyle
+        // the entire live panel subtree a second time.
+        m_tiles = buildTree(m_tree, m_tileViewport->viewport());
         m_tileViewport->setWidget(m_tiles);
         m_tileViewport->setAutoFillBackground(false);
         m_tileViewport->viewport()->setAutoFillBackground(false);
         m_tiles->setAutoFillBackground(false);
-        m_tileViewport->setGeometry(rect().adjusted(8, 8, -8, -8));
         m_tileViewport->show();
     }
     for (auto iterator = m_panels.cbegin(); iterator != m_panels.cend(); ++iterator) {
@@ -648,6 +651,15 @@ void DashboardWorkspace::rebuild()
         frame->setGeometry(constrainedGeometry(iterator.key(), geometries.value(iterator.key(), QRect(24, 24, 440, 300))));
         frame->show();
         frame->raise();
+    }
+    if (previousViewport) {
+        // Valid tile/floating destinations have already taken their frames.
+        // Preserve any omitted frame before destroying its old owner.
+        for (const Panel &panel : m_panels) {
+            if (previousViewport->isAncestorOf(panel.frame))
+                panel.frame->setParent(m_parking);
+        }
+        delete previousViewport;
     }
     if (m_mode == "canvas") {
         for (const QString &id : m_canvasOrder) {

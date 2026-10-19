@@ -1,12 +1,14 @@
 #pragma once
 
+#include "LauncherUiExport.h"
+
 #include <QJsonObject>
 #include <QObject>
 #include <QProcess>
 #include <QTimer>
 
 // Asynchronous adapter for the CLI package contract. It never downloads or installs itself.
-class PackageCommand : public QObject {
+class DOCKPIPE_LAUNCHER_UI_EXPORT PackageCommand : public QObject {
     Q_OBJECT
 public:
     explicit PackageCommand(QObject *parent = nullptr);

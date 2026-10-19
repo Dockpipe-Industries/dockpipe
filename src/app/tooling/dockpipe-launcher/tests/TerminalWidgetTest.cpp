@@ -265,7 +265,9 @@ void TerminalWidgetTest::terminalAndComposer()
     QTRY_VERIFY_WITH_TIMEOUT(QFile::exists(directory.filePath("bridge-input.txt")), 3000);
 
     QCOMPARE(TerminalPreferences::instance()->settings().opacity, 100);
-    QCOMPARE(view->page()->backgroundColor().alpha(), 255);
+    // Software rendering must allocate the alpha surface before opacity changes.
+    // The terminal DOM provides the opaque background at the default setting.
+    QCOMPARE(view->page()->backgroundColor().alpha(), 0);
     const auto scriptValue = [&](const QString &script) {
         auto result = std::make_shared<QPair<bool, QVariant>>();
         retainedPage->runJavaScript(script, [result](const QVariant &value) {
@@ -376,7 +378,7 @@ void TerminalWidgetTest::terminalAndComposer()
     appearance.opacity = 100;
     appearance.scanlines = true;
     QVERIFY(TerminalPreferences::instance()->save(appearance));
-    QCOMPARE(view->page()->backgroundColor().alpha(), 255);
+    QCOMPARE(view->page()->backgroundColor().alpha(), 0);
     QTest::qWait(150);
     QTRY_COMPARE(scriptValue("getComputedStyle(document.querySelector('.xterm-viewport')).backgroundColor").toString(),
         QString("rgba(0, 0, 0, 0)"));
@@ -484,7 +486,18 @@ void TerminalWidgetTest::terminalAndComposer()
     heartbeat.setInterval(10);
     connect(&heartbeat, &QTimer::timeout, this, [&]() { ++timerTicks; });
     heartbeat.start();
-    QTest::qWait(350);
+    // CoreFoundation handles timers differently during manual processEvents
+    // polling. Measure the application's real event loop with the same deadline.
+    QEventLoop floodLoop;
+    QTimer floodDeadline;
+    floodDeadline.setSingleShot(true);
+    floodDeadline.setTimerType(Qt::PreciseTimer);
+    connect(&floodDeadline, &QTimer::timeout, &floodLoop, &QEventLoop::quit);
+    QElapsedTimer floodElapsed;
+    floodElapsed.start();
+    floodDeadline.start(350);
+    floodLoop.exec();
+    qInfo() << "Hidden terminal flood elapsed ms" << floodElapsed.elapsed() << "heartbeat ticks" << timerTicks;
     QVERIFY(timerTicks >= 10);
     QCOMPARE(outputFrames.size(), 0);
     QVERIFY(hub.sendBytes(second, QByteArray(1, '\x03')));
