@@ -304,6 +304,14 @@ bool MainWindow::confirmDashboardClose()
     return dialog.exec() == QMessageBox::Discard;
 }
 
+void MainWindow::releaseDashboardWindows()
+{
+    for (const auto &page : m_dashboardPages) {
+        if (page)
+            page->releaseDesktopWindows();
+    }
+}
+
 void MainWindow::createDashboard()
 {
     if (!m_dashboardStoreReady)

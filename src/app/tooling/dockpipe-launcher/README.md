@@ -94,6 +94,10 @@ behind DockPipe. Transparency selects Qt software rendering for terminal and
 browser views at startup so foreground panels cover them correctly. First enabling
 transparency requires a restart; until then terminal views remain opaque with an
 explanation. Set opacity to 100% and restart to return to accelerated rendering.
+The software backend disables WebGL in Qt WebEngine. Websites that require WebGL,
+including the DockPipe site's Qt WebAssembly interface, can appear blank or fail
+to initialize even when their HTTP requests succeed. Use 100% terminal opacity
+and restart for those sites.
 An explicit QT_QUICK_BACKEND override is respected. The native Linux fixture checks
 focused opacity and overlap pixels; the local browser switching and idle checks
 passed with the fallback. This does not qualify video or 3D-heavy browsing.
@@ -227,7 +231,9 @@ supported X11/Windows desktops it acquires eligible windows, within the dashboar
 panel limits. These panels remain attached for the DockPipe session, including
 while Canvas or another page is shown. Closing a panel in this managed mode
 requests that its OS window close, respecting the app's save prompts and cancellation.
-Quitting DockPipe returns apps to the desktop; disabling automatic takeover releases
+Closing DockPipe, including closing to the tray, returns apps to the desktop with
+their original window controls and size. Reopening Tiling can acquire them again.
+Quitting also releases apps before native host windows are destroyed; disabling automatic takeover releases
 automatically acquired panels. Cancelling selection or closing an app removes its tile and lets
 the remaining panels fill the space. Native window identities are never saved
 across restarts.
@@ -263,6 +269,23 @@ platform-specific stacking behavior when panels overlap. Windows uses a Win32
 foreign-window backend and only accepts compatible windows from the same user
 and session; elevated, unresponsive and incompatible-DPI windows are excluded.
 The Windows backend requires Windows build and native testing before qualification.
+
+On X11, clients that omit `_NET_WM_PID` (including RustDesk) use the X-Resource
+1.2 extension to identify their local owning process. Build with `libxres-dev`
+for this fallback; without it or a server-provided owner, those windows remain
+excluded. Minimized windows become eligible when restored to the desktop.
+Embedded X11 clients advertising the extended frame synchronization counter
+receive host frame acknowledgements while visible. GTK clients such as RustDesk
+otherwise stop repainting after leaving the desktop window manager. Acknowledgements
+stop while hidden and on release; legacy resize counters are left untouched.
+
+Single external-app tiles omit Dockpipe's duplicate title/control strip. Hover at
+the tile's top centre for its actions menu: expand/restore, move, minimize, or
+release back to the desktop without closing the app. Right-click the menu button,
+or use Ctrl+Alt+M when the dashboard has keyboard focus. Groups with multiple tabs
+retain their navigation strip. Native X11 tiles clip advertised client-side shadow
+margins so app content fills the tile; the hidden dock uses a nonpainting bottom
+hotspot and does not cover the app with an input strip.
 
 Wayland uses the desktop's consent dialog to select one **window**, with a
 view-only preview. It does not embed or control native Wayland apps. Leaving Tiling,
@@ -406,6 +429,25 @@ cmake -S src/app/tooling/dockpipe-launcher -B src/app/tooling/dockpipe-launcher/
 ```
 
 Do **not** use the placeholder `/path/to/Qt/6.x/...` literally — it must be a directory that contains **`Qt6Config.cmake`** (or install `qt6-base-dev` and omit `CMAKE_PREFIX_PATH`).
+
+For a Linux SDK installed with **aqtinstall**, run the installer from a generated
+artifact directory. Its `--outputdir` controls the SDK destination, but its
+`aqtinstall.log` is written to the working directory. From the repository root,
+using a Python environment with aqtinstall installed:
+
+```bash
+qt_install_artifacts="$(./src/bin/dockpipe scope artifacts desktop/qt-install)"
+qt_sdk_root="$(pwd)/src/app/tooling/dockpipe-launcher/build/qt-sdk"
+mkdir -p "$qt_install_artifacts"
+(
+  cd "$qt_install_artifacts" || exit 1
+  python3 -m aqt install-qt linux desktop 6.10.3 linux_gcc_64 \
+    --outputdir "$qt_sdk_root" --modules qtwebengine qtwebchannel qtpositioning
+)
+```
+
+The log stays under the resolved `bin/.dockpipe/` artifact scope, which Git
+already ignores. The subshell preserves the caller's working directory.
 
 **If configuration failed earlier** (stale cache): remove the build dir and re-run CMake after installing `libgl1-mesa-dev` / `libegl1-mesa-dev`:
 
