@@ -36,7 +36,7 @@ if [[ "${1:-}" == --finalize-cockpit ]]; then
   mv "$work/store" "$store"
   mv "$work/packages.tar.gz" "$archive"
   finalized=1
-  echo "Finalized Linux amd64 release catalog with qualified Cockpit 0.1.1."
+  echo "Finalized Linux amd64 release catalog with the independently pinned qualified Cockpit runtime."
   exit 0
 fi
 version="${1:?release version}"

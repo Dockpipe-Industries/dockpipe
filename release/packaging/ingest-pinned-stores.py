@@ -271,51 +271,27 @@ MAIN_WORKFLOW_IDENTITY = ('workflow', 'dockpipe-repo-quality')
 COCKPIT_IDENTITY = ('resolver', 'cockpit')
 
 
-def finalize_cockpit(baseline_root, cockpit_root, output, version):
-    """Admit only the matching Linux amd64 build's qualified Cockpit resolver.
-
-    The complete initial store remains authoritative for core and every other
-    package. SDK identity comes from the committed consumer lock, not candidate
-    ownership supplied by the new archive.
-    """
+def finalize_cockpit(baseline_root, cockpit_root, output, version, lock_path=None):
+    """Replace only resolver/cockpit with the independently pinned public runtime."""
+    spec = importlib.util.spec_from_file_location('pinned_cockpit', Path(__file__).with_name('prepare-cockpit.py'))
+    consumer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(consumer)
+    if lock_path is None:
+        lock_path = Path(__file__).resolve().parents[2] / 'release/cockpit.lock.json'
+    lock = consumer.load_lock(lock_path)
+    candidate, _, _ = consumer.verify_store(cockpit_root, lock)
     baseline = read_json(baseline_root / 'packages-store-manifest.json', composer.MAX_MANIFEST_BYTES)
-    candidate = read_json(cockpit_root / 'packages-store-manifest.json', composer.MAX_MANIFEST_BYTES)
-    if baseline.get('platform') != 'linux-amd64' or candidate.get('platform') != 'linux-amd64':
-        raise ValueError('Cockpit qualification supports Linux amd64 only')
-    if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version):
-        raise ValueError('Cockpit finalization needs the exact numeric Dockpipe release version')
     baseline_entries, _ = composer.validate_store(baseline)
-    if baseline['packages'].get('core', {}).get('version') != version:
-        raise ValueError('Initial core does not match the selected release version')
-    entries, _ = composer.validate_store(candidate, candidate=True)
-    if set(entries) != {COCKPIT_IDENTITY} or set(candidate['packages']) - {'resolvers', 'workflows'}:
-        raise ValueError('Cockpit build must own exactly resolver/cockpit and no core')
-    entry = entries[COCKPIT_IDENTITY]
-    if entry['version'] != '0.1.1':
-        raise ValueError('Cockpit build differs from the qualified package version')
+    if (baseline.get('platform') != lock['platform']
+            or not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version)
+            or baseline['packages'].get('core', {}).get('version') != version):
+        raise ValueError('Initial core must match the selected Linux amd64 release')
     previous = baseline_entries.get(COCKPIT_IDENTITY)
     if previous:
         previous_version = previous['version']
         if (not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', previous_version)
-                or tuple(map(int, previous_version.split('.'))) > (0, 1, 1)):
+                or tuple(map(int, previous_version.split('.'))) > tuple(map(int, lock['version'].split('.')))):
             raise ValueError('Cockpit finalization cannot downgrade the existing package')
-    lock_path = Path(__file__).resolve().parents[2] / 'packages/cockpit/assets/forgepipe-sdk.lock.json'
-    lock = read_json(lock_path, MAX_LOCK_BYTES)
-    receipt = read_json(cockpit_root / 'cockpit-qualification.json', MAX_LOCK_BYTES)
-    source_sha = os.environ.get('DOCKPIPE_RELEASE_SOURCE_SHA', '')
-    if not re.fullmatch(r'[0-9a-f]{40}', source_sha) or receipt.get('source_sha') != source_sha:
-        raise ValueError('Cockpit qualification does not bind the selected Dockpipe source SHA')
-    if (receipt.get('schema') != 1 or receipt.get('platform') != 'linux-amd64'
-            or receipt.get('qt_version') != '6.10.3' or receipt.get('resolver') != entry
-            or not isinstance(lock.get('artifact'), dict)
-            or not re.fullmatch(r'[0-9a-f]{64}', lock['artifact'].get('sha256', ''))
-            or not re.fullmatch(r'[0-9a-f]{40}', lock.get('source_sha') or '')
-            or lock.get('public_redistribution') is not True
-            or receipt.get('sdk_sha256') != lock['artifact'].get('sha256')
-            or receipt.get('sdk_source_sha') != lock.get('source_sha')
-            or receipt.get('checks') != ['desktop-ctest', 'x11-spatial-gpu', 'x11-package-rendering', 'private-symbol-split',
-                                         'bundled-runtime-closure', 'bundled-x11-package-rendering']):
-        raise ValueError('Cockpit qualification receipt does not bind the committed SDK and runtime checks')
     return composer.assemble(baseline, candidate, [list(COCKPIT_IDENTITY)],
                              baseline_root, cockpit_root, output, MAX_EXPANDED_BYTES)
 
@@ -427,6 +403,7 @@ def main():
     parser.add_argument('--finalize-cockpit', action='store_true')
     parser.add_argument('--base-store', type=Path)
     parser.add_argument('--cockpit-store', type=Path)
+    parser.add_argument('--cockpit-lock', type=Path)
     parser.add_argument('--version')
     parser.add_argument('--out', type=Path, required=True)
     args = parser.parse_args()
@@ -434,7 +411,7 @@ def main():
         if args.finalize_cockpit:
             if not all((args.base_store, args.cockpit_store, args.version)):
                 parser.error('--finalize-cockpit needs --base-store, --cockpit-store and --version')
-            manifest = finalize_cockpit(args.base_store, args.cockpit_store, args.out, args.version)
+            manifest = finalize_cockpit(args.base_store, args.cockpit_store, args.out, args.version, args.cockpit_lock)
         else:
             if not all((args.lock, args.platform, args.core_store, args.main_store)):
                 parser.error('Initial ingestion needs --lock, --platform, --core-store and --main-store')

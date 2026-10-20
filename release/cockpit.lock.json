@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "product": "Cockpit",
+  "version": "0.1.2",
+  "platform": "linux-amd64",
+  "qt_version": "6.10.3",
+  "source_repository": "Dockpipe-Industries/SpatialPipe",
+  "source_sha": "25ada5f9dc26c9612fb150c8752478a73aa1917a",
+  "publisher": {
+    "repository": "Dockpipe-Industries/dockpipe",
+    "release_tag": "cockpit-0.1.2-staging.25ada5f9dc26.run39398537573.1",
+    "source_sha": "517747a588eeedf000819d952eb18aa8d8bcc02d"
+  },
+  "artifact": {
+    "url": "https://github.com/Dockpipe-Industries/dockpipe/releases/download/cockpit-0.1.2-staging.25ada5f9dc26.run39398537573.1/dockpipe-resolver-cockpit-0.1.2.tar.gz",
+    "sha256": "a09bc121f4aceca775e7fc293a02aa3c35efeefe476252ab19b4a80925da22eb",
+    "size_bytes": 192474671
+  },
+  "qualification": {
+    "url": "https://github.com/Dockpipe-Industries/dockpipe/releases/download/cockpit-0.1.2-staging.25ada5f9dc26.run39398537573.1/cockpit-qualification.json",
+    "sha256": "b969f52d3642e9b27a012478dbe8bee1d6c51eff2e49bdae2cc1eaab1b38e014",
+    "size_bytes": 3991
+  },
+  "candidate": {
+    "url": "https://github.com/Dockpipe-Industries/dockpipe/releases/download/cockpit-0.1.2-staging.25ada5f9dc26.run39398537573.1/cockpit-candidate.json",
+    "sha256": "ec230ac8c0eb6195cce6922c8fd689dffe6e3114746db99cf9402b44888a1d21",
+    "size_bytes": 6122
+  }
+}
