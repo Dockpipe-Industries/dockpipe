@@ -643,9 +643,7 @@ void DashboardPageTest::paintsOwnSurroundAfterWindowResize()
     drainEvents();
     QCOMPARE(ownMargin(), surround);
     for (const auto &theme : {QString("dark"), QString("light")}) {
-        const QString path = QFINDTESTDATA("../resources/theme/pipeon-" + theme + ".qss");
-        QVERIFY(!path.isEmpty());
-        QFile stylesheet(path);
+        QFile stylesheet(":/theme/pipeon-" + theme + ".qss");
         QVERIFY(stylesheet.open(QIODevice::ReadOnly));
         page.setStyleSheet(QString::fromUtf8(stylesheet.readAll()));
         drainEvents();
