@@ -598,17 +598,17 @@ if(BUILD_TESTING)
         "QT_QPA_PLATFORM=offscreen;DOCKPIPE_WORKSPACE_PACKAGE=${CMAKE_CURRENT_BINARY_DIR}/workspace-fixture" TIMEOUT 30)
 endif()
 
-# Explicit developer integration only. The normal launcher has no dependency on
-# the package source tree. Installed builds discover
-# the package through Dockpipe's resolver store when the user enables the feature.
-set(DOCKPIPE_COCKPIT_SOURCE "" CACHE PATH "Optional Cockpit package source for development/testing")
+# Optional package source belongs to SpatialPipe. Host qualification uses only
+# already-built assets through the same loader used by installed applications.
 if(DOCKPIPE_COCKPIT_SOURCE)
-    set(DOCKPIPE_LAUNCHER_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-    add_subdirectory("${DOCKPIPE_COCKPIT_SOURCE}" "${CMAKE_CURRENT_BINARY_DIR}/cockpit-package")
-    if(BUILD_TESTING)
-        set_tests_properties(remote-launcher launcher-settings PROPERTIES ENVIRONMENT
-            "QT_QPA_PLATFORM=offscreen;DOCKPIPE_WORKSPACE_PACKAGE=${CMAKE_CURRENT_BINARY_DIR}/cockpit-package/assets;DOCKPIPE_COCKPIT_READER=$<TARGET_FILE:cockpit-reader>")
+    message(FATAL_ERROR "DOCKPIPE_COCKPIT_SOURCE was removed; use DOCKPIPE_COCKPIT_ASSETS")
+endif()
+set(DOCKPIPE_COCKPIT_ASSETS "" CACHE PATH "Installed Cockpit assets for host loader/rendering qualification")
+if(DOCKPIPE_COCKPIT_ASSETS)
+    if(NOT BUILD_TESTING)
+        message(FATAL_ERROR "DOCKPIPE_COCKPIT_ASSETS requires BUILD_TESTING=ON")
     endif()
+    include(cmake/InstalledCockpitTest.cmake)
 endif()
 
 if(BUILD_TESTING)

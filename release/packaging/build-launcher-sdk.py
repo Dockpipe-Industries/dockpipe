@@ -155,7 +155,7 @@ def build(source, source_sha, qt, work, output, jobs):
     native_build = work / "build"
     prefix = work / "installed"
     run(["cmake", "-S", source / LAUNCHER, "-B", native_build,
-         "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_TESTING=OFF", "-DDOCKPIPE_COCKPIT_SOURCE=",
+         "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_TESTING=OFF",
          "-DDOCKPIPE_COCKPIT_ASSETS=", "-DDOCKPIPE_INSTALL_LAUNCHER_SDK=ON",
          f"-DCMAKE_PREFIX_PATH={qt}", f"-DQt6_DIR={qt}/lib/cmake/Qt6",
          f"-DCMAKE_INSTALL_PREFIX={prefix}",

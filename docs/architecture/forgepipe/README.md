@@ -35,9 +35,9 @@ flowchart TD
 | --- | --- | --- |
 | forgepipe (private) | Rendering, geometry, terrain/soil/water/weather, simulation, generic vehicle physics, camera/input/audio, engine asset and persistence foundations | Any consumer, DockPipe installation |
 | MesaMoto (private) | Bike configuration/tuning/assists, rider/race rules, tracks/RedBud, game presentation/content and standalone shell | DockPipe or SpatialPipe application |
-| SpatialPipe (private) | Offline worlds/planets, furnishing, generalized screens, portals, persistence; separate consumer application | DockPipe integrations or mandatory network identity |
+| SpatialPipe (private) | Offline worlds/planets, furnishing, generalized screens, portals, persistence; standalone application and separately packaged Cockpit host integration | DockPipe integrations or mandatory network identity in the offline runtime/application |
 | Spatial-Web (public) | Interpretation, discovery, manifests, web composition, reusable browser library and separate Spatial Browser shell | Cockpit, privileged host providers, private source access |
-| dockpipe | Optional Cockpit package, filesystem/Git/container/machine/workflow adapters, settings and installation | Any spatial dependency with Cockpit absent/disabled |
+| dockpipe | Native host SDK, generic package loading, host settings and installation; consumes optional Cockpit owned by SpatialPipe | Any spatial dependency with Cockpit absent/disabled |
 
 One implementation per capability. CMake installed package targets and versioned binary SDKs
 are the native boundary; no consumer source directory imports or sibling `add_subdirectory`.
@@ -116,7 +116,7 @@ be included in public build inputs. Public contributors need a redistributable S
 without private-repository authentication; until that artifact and terms exist, full public
 application build readiness remains blocked. Pure public model/schema tests must work without it.
 
-Existing material provenance is retained from `packages/cockpit/resources/materials/README.md`;
+Existing material provenance is retained from [SpatialPipe material provenance](https://github.com/Dockpipe-Industries/SpatialPipe/blob/dev/packages/cockpit/resources/materials/README.md);
 furniture includes Kenney CC0 notices, bike content its own Innerscene provenance. Qt module
 licenses, LGPL/commercial conditions and WebEngine/Chromium third-party notices require an
 artifact-specific distribution review. The Qt resolver commercial product is excluded.
@@ -124,7 +124,7 @@ artifact-specific distribution review. The Qt resolver commercial product is exc
 ## Acceptance evidence
 
 The admitted baseline includes the existing terrain, wheelie/race, rival, RedBud and return-portal
-validation documents in `packages/cockpit/docs`. RedBud is an approximate map study, not a
+validation documents in [SpatialPipe Cockpit docs](https://github.com/Dockpipe-Industries/SpatialPipe/blob/dev/packages/cockpit/docs). RedBud is an approximate map study, not a
 surveyed replica. Native/offscreen evidence is distinct from interactive gameplay qualification.
 Keep the existing running preview untouched.
 
@@ -289,3 +289,106 @@ both Mac architectures; no platform exception was added. Native Linux rendering
 qualification used the CI compositor and does not establish physical GPU gameplay
 acceptance. This delivery does not complete standalone product extraction,
 PipeLang bindings or a stable cross-toolchain SDK ABI. Production was not promoted.
+
+### Independent SpatialPipe and Cockpit delivery continuation (2026-10-20)
+
+SpatialPipe owns the offline scene/runtime and the separate optional
+`packages/cockpit` implementation, assets and feature tests. The root runtime
+exports `SpatialPipe::Runtime`; it does not build Cockpit or import Dockpipe host
+adapters. Cockpit consumes installed runtime and host SDKs. Its ContextStore
+adapter supplies the existing paths; version-1 persistence and saved user data
+remain unchanged. The three original dirty WorkspaceGraph source/test files are
+preserved byte for byte in the extracted initial source. The original migration
+inventory remains historical evidence, not a current source ownership override.
+
+The dependency candidates are published:
+
+- [DockPipeLauncherSDK 1.0.0](https://github.com/Dockpipe-Industries/dockpipe/releases/tag/launcher-sdk-1.0.0-staging.517747a588eeedf000819d952eb18aa8d8bcc02d),
+  source `517747a588eeedf000819d952eb18aa8d8bcc02d`. Its public publisher
+  attestation, archive/metadata pins and freshly installed inventory were verified.
+- [SpatialPipe SDK 0.1.0](https://github.com/Dockpipe-Industries/SpatialPipe/releases/tag/spatialpipe-sdk-0.1.0-staging.8b67f00a059a440665cdca93069a287fd817ad7f.39387510298.1),
+  source `8b67f00a059a440665cdca93069a287fd817ad7f`. The immutable private
+  candidate passed hosted publication and fresh authenticated archive, metadata
+  and installed-inventory readback.
+
+Both SDKs use Qt 6.10.3 and record their compiler/platform ABI. Cockpit 0.1.2
+records its own source and qualification run separately from dependency source
+commits. Cockpit publication and the published-package native consumer have now
+passed independently, as recorded below; final Dockpipe staging remains pending.
+
+Public Dockpipe consumption selects only the unchanged runtime mirror of the
+independent Cockpit candidate. `release/cockpit.lock.json` pins the resolver
+archive, original qualification receipt and original candidate metadata by exact
+SHA-256 and byte size, with an immutable public release/tag and its qualified
+LauncherSDK source target. The candidate binds the original SpatialPipe source,
+run, compiler, SDK lock snapshots and runtime allowlist. The mirror contains only
+the resolver archive, its checksum, store manifest, qualification receipt,
+candidate metadata and SHA256SUMS. Private diagnostic archives remain separate;
+public consumers neither fetch private diagnostics nor require private source.
+An older Cockpit 0.1.1 archive cannot substitute for this extracted candidate.
+
+Before original source retirement, the real published independent package must
+pass Dockpipe's local/native installed-assets loader/render consumer and the
+original source/archive preservation hashes must be rechecked. The host fixture
+loads the module after creating its window and requires X11 rendering without a
+skip pass. The source-absent change includes the binary consumer integration and
+canonically regenerated embed declaration. Normal PR/checks and final Dockpipe
+staging then qualify that resulting tree; no separate staging release is required
+before removal. Catalog composition replaces only `resolver/cockpit`, retaining
+unrelated entries and archive bytes. The headless engine remains unchanged.
+
+The rendering contract separates actual product throughput from injected
+compositor liveness. The unchanged minimum of 40 paint intervals over the fixed
+1,500 ms movement sample applies to the viewport selected by the product: raster
+fallback on software Mesa, hardware OpenGL on a hardware renderer. The host stays
+1440 × 900. Only after that performance gate passes does software Mesa receive
+the late-loaded test OpenGL viewport. Its separate fixed-duration functional
+phase requires a valid context, multiple paint intervals and completed
+`frameSwapped` signals, zero compositor errors, and another completed frame after
+hide/show. This synthetic software-GL phase is not a product frame-rate claim or
+an exception to the product throughput threshold. Phase-labeled metrics retain
+both observations; a final software-GL capture depicts the injected compositor,
+not the earlier product raster viewport. The host-owned consumer fixture must
+preserve the same distinction. Software-OpenGL liveness and product raster
+throughput evidence do not establish physical GPU gameplay or interactive desktop
+acceptance.
+
+Published Cockpit and fresh public-consumer evidence:
+
+- [Cockpit 0.1.2 candidate](https://github.com/Dockpipe-Industries/SpatialPipe/releases/tag/cockpit-0.1.2-staging.25ada5f9dc26.run39398537573.1)
+  is published from `25ada5f9dc26c9612fb150c8752478a73aa1917a`, qualifying run
+  [`39398537573`](https://github.com/Dockpipe-Industries/SpatialPipe/actions/runs/39398537573),
+  attempt 1. It uses the exact published SDK pins above.
+- The [public runtime mirror](https://github.com/Dockpipe-Industries/dockpipe/releases/tag/cockpit-0.1.2-staging.25ada5f9dc26.run39398537573.1)
+  uses the same immutable tag and preserves the six runtime files unchanged.
+  `release/cockpit.lock.json` records the exact archive, qualification receipt and
+  candidate metadata identities. The resolver archive is 192,474,671 bytes with
+  SHA-256 `a09bc121f4aceca775e7fc293a02aa3c35efeefe476252ab19b4a80925da22eb`.
+  Private diagnostics were not included in the public consumer.
+- A fresh host configure/build and required `cockpit-package-rendering` test
+  passed against those public bytes with Qt 6.10.3 and llvmpipe. The unchanged
+  product raster gate recorded 92 paint intervals in the 1,500 ms sample,
+  p95 17.32 ms and maximum 17.40 ms, with zero compositor errors. The separate
+  synthetic software-GL phase completed 93 frame swaps and one further completion
+  after hide/show, also with zero compositor errors. Its retained capture was
+  inspected and is explicitly synthetic compositor evidence, not physical GPU or
+  gameplay proof. The fixture used fresh isolated XDG paths and no saved user data.
+
+The published-package native prerequisite is satisfied. The isolated Dockpipe
+consumer workspace has now retired all 359 tracked original Cockpit files after
+rechecking all 363 original file preimages and the retained archive. The primary
+Dockpipe checkout still retains its original source and saved work. The integration
+patch applied without fuzz, and canonical embed regeneration and its membership
+check passed, removing exactly 359 original source entries. The source-absent CLI
+build passed offline using cached Go 1.26.9 with build parallelism limited to two.
+All 31 focused tests and the public-content/diff checks passed. These are bounded
+local checks; hosted development-PR checks and final Dockpipe staging remain
+pending on the source-absent consumer tree, including the actual release identity
+and catalog/install readback. The earlier Cockpit 0.1.1 staging release remains historical
+evidence and does not satisfy that final source-absent gate.
+
+Current authority covers package candidates and Dockpipe staging only. Production
+promotion and Freeflight changes are excluded; PipeLang stays in Dockpipe.
+Saved work, saved worlds and the running preview remain preserved. Standalone
+products, physical GPU gameplay and remaining browser/game extraction are still
+open and are not implied by this SDK checkpoint.
