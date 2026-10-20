@@ -85,6 +85,45 @@ public:
         }
     }
 };
+
+struct FixtureIdentity {
+    DWORD session = 0;
+    TOKEN_ELEVATION elevation{};
+    DWORD appContainer = 0;
+    alignas(TOKEN_USER) BYTE user[sizeof(TOKEN_USER) + SECURITY_MAX_SID_SIZE]{};
+
+    bool read(DWORD processId)
+    {
+        HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
+        if (!process) {
+            std::fprintf(stderr, "Fixture OpenProcess failed: error=%lu\n", GetLastError());
+            return false;
+        }
+        HANDLE token = nullptr;
+        if (!OpenProcessToken(process, TOKEN_QUERY, &token)) {
+            const DWORD error = GetLastError();
+            CloseHandle(process);
+            std::fprintf(stderr, "Fixture OpenProcessToken failed: error=%lu\n", error);
+            return false;
+        }
+        DWORD length = 0;
+        const bool valid = ProcessIdToSessionId(processId, &session)
+            && GetTokenInformation(token, TokenElevation, &elevation, sizeof(elevation), &length)
+            && GetTokenInformation(token, TokenIsAppContainer, &appContainer, sizeof(appContainer), &length)
+            && GetTokenInformation(token, TokenUser, user, sizeof(user), &length);
+        const DWORD error = valid ? ERROR_SUCCESS : GetLastError();
+        CloseHandle(token);
+        CloseHandle(process);
+        if (!valid)
+            std::fprintf(stderr, "Fixture identity query failed: error=%lu\n", error);
+        return valid;
+    }
+
+    PSID sid() const
+    {
+        return reinterpret_cast<const TOKEN_USER *>(user)->User.Sid;
+    }
+};
 }
 
 int main(int argc, char **argv)
@@ -149,6 +188,21 @@ int main(int argc, char **argv)
     const LONG_PTR originalExtendedStyle = GetWindowLongPtrW(window, GWL_EXSTYLE);
     RECT originalRectangle{};
     CHECK(GetWindowRect(window, &originalRectangle));
+    DWORD fixtureProcessId = 0;
+    CHECK(GetWindowThreadProcessId(window, &fixtureProcessId));
+    CHECK(fixtureProcessId == static_cast<DWORD>(fixture.processId()));
+    FixtureIdentity currentIdentity;
+    FixtureIdentity fixtureIdentity;
+    CHECK(currentIdentity.read(GetCurrentProcessId()));
+    CHECK(fixtureIdentity.read(fixtureProcessId));
+    const bool sameUser = EqualSid(currentIdentity.sid(), fixtureIdentity.sid());
+    std::fprintf(stderr,
+        "Windows embedding identity: parentElevated=%lu childElevated=%lu childAppContainer=%lu sameUser=%d sameSession=%d\n",
+        currentIdentity.elevation.TokenIsElevated, fixtureIdentity.elevation.TokenIsElevated,
+        fixtureIdentity.appContainer, sameUser, currentIdentity.session == fixtureIdentity.session);
+    CHECK(!currentIdentity.elevation.TokenIsElevated);
+    CHECK(!fixtureIdentity.elevation.TokenIsElevated && !fixtureIdentity.appContainer);
+    CHECK(sameUser && currentIdentity.session == fixtureIdentity.session);
     DesktopAppWindow selected({id, "Isolated Windows fixture", {}});
     CHECK(selected.alive());
     CHECK(waitFor([&] {
