@@ -1,4 +1,5 @@
 #include "WorkspaceGraphPage.h"
+#include "WorkspaceGraphTimestamp.h"
 #include "WorkspaceFiles.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
@@ -80,7 +81,7 @@ QJsonObject WorkspaceGraphPage::read(const QJsonObject &request)
     const auto timestamp = std::filesystem::last_write_time(nativeDirectory, error);
     if (error)
         return failure(QStringLiteral("Cannot inspect this directory. Check permissions and retry."));
-    const QString timestampText = QString::number(timestamp.time_since_epoch().count());
+    const QString timestampText = WorkspaceGraphTimestamp::decimalCount(timestamp.time_since_epoch().count());
     const QString requestedStamp = request.value("stamp").toString();
     if (!requestedStamp.isEmpty() && requestedStamp.section(':', 0, 0) != timestampText)
         return failure(QStringLiteral("Directory changed between pages. Refresh this branch before loading more."));
