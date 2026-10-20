@@ -37,6 +37,41 @@ bool waitFor(const std::function<bool()> &condition)
     return false;
 }
 
+class NativeFixtureWindows final {
+public:
+    ~NativeFixtureWindows()
+    {
+        for (auto iterator = m_windows.crbegin(); iterator != m_windows.crend(); ++iterator) {
+            if (IsWindow(*iterator))
+                DestroyWindow(*iterator);
+        }
+    }
+
+    HWND add(const WCHAR *title, DWORD extendedStyle, HWND owner, int show)
+    {
+        const HWND window = CreateWindowExW(extendedStyle, L"STATIC", title,
+            WS_OVERLAPPEDWINDOW, 100, 100, 480, 320, owner, nullptr,
+            GetModuleHandleW(nullptr), nullptr);
+        if (window) {
+            m_windows.append(window);
+            ShowWindow(window, show);
+        }
+        return window;
+    }
+
+private:
+    QVector<HWND> m_windows;
+};
+
+quint64 fixtureWindowId(const QByteArray &output, const QByteArray &name)
+{
+    for (const QByteArray &line : output.split('\n')) {
+        if (line.startsWith(name + ':'))
+            return line.mid(name.size() + 1).toULongLong();
+    }
+    return 0;
+}
+
 class FixtureProcess final : public QProcess {
 public:
     ~FixtureProcess() override
@@ -65,9 +100,26 @@ int main(int argc, char **argv)
         layout->addWidget(new QLabel("Only this disposable test window may be embedded", &window));
         layout->addWidget(new QLineEdit("Native keyboard input", &window));
         window.show();
-        std::printf("WINDOW:%llu\n", static_cast<unsigned long long>(window.winId()));
+        NativeFixtureWindows windows;
+        const HWND owner = windows.add(L"Hidden fixture owner", 0, nullptr, SW_HIDE);
+        const HWND minimized = windows.add(L"Minimized fixture app", WS_EX_APPWINDOW, nullptr, SW_SHOWMINNOACTIVE);
+        const HWND ownedApp = windows.add(L"Owned fixture app", WS_EX_APPWINDOW, owner, SW_SHOWNOACTIVATE);
+        const HWND dialog = windows.add(L"Owned fixture dialog", WS_EX_APPWINDOW,
+            reinterpret_cast<HWND>(window.winId()), SW_SHOWNOACTIVATE);
+        const HWND tool = windows.add(L"Fixture tool window", WS_EX_APPWINDOW | WS_EX_TOOLWINDOW,
+            nullptr, SW_SHOWNOACTIVATE);
+        const HWND extra = windows.add(L"Fourth ordinary fixture window", 0, nullptr, SW_SHOWNOACTIVATE);
+        CHECK(owner && minimized && ownedApp && dialog && tool && extra);
+        std::printf("WINDOW:%llu\nMINIMIZED:%llu\nOWNED:%llu\nOWNER:%llu\nDIALOG:%llu\nTOOL:%llu\nEXTRA:%llu\nREADY\n",
+            static_cast<unsigned long long>(window.winId()),
+            static_cast<unsigned long long>(reinterpret_cast<quintptr>(minimized)),
+            static_cast<unsigned long long>(reinterpret_cast<quintptr>(ownedApp)),
+            static_cast<unsigned long long>(reinterpret_cast<quintptr>(owner)),
+            static_cast<unsigned long long>(reinterpret_cast<quintptr>(dialog)),
+            static_cast<unsigned long long>(reinterpret_cast<quintptr>(tool)),
+            static_cast<unsigned long long>(reinterpret_cast<quintptr>(extra)));
         std::fflush(stdout);
-        QTimer::singleShot(30000, &app, &QApplication::quit);
+        QTimer::singleShot(60000, &app, &QApplication::quit);
         return app.exec();
     }
 
@@ -78,9 +130,9 @@ int main(int argc, char **argv)
     QByteArray output;
     CHECK(waitFor([&] {
         output += fixture.readAllStandardOutput();
-        return output.startsWith("WINDOW:") && output.contains('\n');
+        return output.startsWith("WINDOW:") && output.contains("READY\n");
     }));
-    const quint64 id = output.split('\n').first().mid(7).toULongLong();
+    const quint64 id = fixtureWindowId(output, "WINDOW");
     CHECK(id);
     const HWND window = reinterpret_cast<HWND>(static_cast<quintptr>(id));
     const HWND originalParent = GetParent(window);
@@ -98,6 +150,110 @@ int main(int argc, char **argv)
         }
         return false;
     }));
+
+    const quint64 minimizedId = fixtureWindowId(output, "MINIMIZED");
+    const quint64 ownedId = fixtureWindowId(output, "OWNED");
+    const quint64 dialogId = fixtureWindowId(output, "DIALOG");
+    const quint64 toolId = fixtureWindowId(output, "TOOL");
+    const quint64 extraId = fixtureWindowId(output, "EXTRA");
+    const HWND originalOwner = reinterpret_cast<HWND>(static_cast<quintptr>(fixtureWindowId(output, "OWNER")));
+    CHECK(minimizedId && ownedId && dialogId && toolId && extraId && originalOwner);
+    QString discoveryError;
+    const auto choices = DesktopAppWindow::availableWindows(discoveryError);
+    CHECK(discoveryError.isEmpty());
+    const auto contains = [&choices](quint64 target) {
+        for (const auto &choice : choices) {
+            if (choice.id == target)
+                return true;
+        }
+        return false;
+    };
+    // Four ordinary HWNDs from one process prove the picker has no three-app
+    // or one-window-per-PID limit. The minimized one remains discoverable.
+    CHECK(contains(id) && contains(minimizedId) && contains(ownedId) && contains(extraId));
+    CHECK(!contains(dialogId) && !contains(toolId));
+    const auto targeted = DesktopAppWindow::availableWindows(discoveryError, ownedId);
+    CHECK(discoveryError.isEmpty() && targeted.size() == 1 && targeted.first().id == ownedId);
+    CHECK(DesktopAppWindow::availableWindows(discoveryError, dialogId).isEmpty());
+    CHECK(!discoveryError.isEmpty());
+    DesktopAppWindow dialogWindow({dialogId, "Rejected dialog", {}});
+    CHECK(!dialogWindow.prepareControl(discoveryError));
+    CHECK(!discoveryError.isEmpty());
+    CHECK(GetWindow(reinterpret_cast<HWND>(static_cast<quintptr>(dialogId)), GW_OWNER)
+        == reinterpret_cast<HWND>(static_cast<quintptr>(id)));
+
+    {
+        DesktopAppWindow prepared({id, "Cancelled fixture preflight", {}});
+        CHECK(prepared.prepareControl(discoveryError));
+        CHECK(ShowWindowAsync(window, SW_SHOWMINNOACTIVE));
+        CHECK(waitFor([&] { return IsIconic(window); }));
+        prepared.releaseControl();
+        // No embedding happened, so cancellation must preserve the user's
+        // newer desktop state rather than replaying the preflight snapshot.
+        CHECK(IsIconic(window));
+        CHECK(ShowWindowAsync(window, SW_SHOWNOACTIVATE));
+        CHECK(waitFor([&] { return !IsIconic(window); }));
+    }
+
+    for (quint64 target : {minimizedId, ownedId}) {
+        const HWND targetWindow = reinterpret_cast<HWND>(static_cast<quintptr>(target));
+        const LONG_PTR style = GetWindowLongPtrW(targetWindow, GWL_STYLE);
+        const LONG_PTR extendedStyle = GetWindowLongPtrW(targetWindow, GWL_EXSTYLE);
+        const HWND owner = GetWindow(targetWindow, GW_OWNER);
+        WINDOWPLACEMENT placement{sizeof(WINDOWPLACEMENT)};
+        CHECK(GetWindowPlacement(targetWindow, &placement));
+        const bool minimized = IsIconic(targetWindow);
+        CHECK(minimized == (target == minimizedId));
+        CHECK(target != ownedId || owner == originalOwner);
+        DesktopAppWindow attachment({target, "Disposable fixture window", {}});
+        CHECK(attachment.prepareControl(discoveryError));
+        // Preparing or cancelling must not restore/minimize/activate an app.
+        CHECK(bool(IsIconic(targetWindow)) == minimized);
+        QWidget host;
+        host.resize(620, 400);
+        auto *layout = new QVBoxLayout(&host);
+        auto *container = attachment.takeControl(&host, discoveryError);
+        CHECK(container && discoveryError.isEmpty());
+        layout->addWidget(container);
+        host.show();
+        CHECK(waitFor([&] { return attachment.controlAttached() && !IsIconic(targetWindow); }));
+        attachment.releaseControl();
+        CHECK(waitFor([&] {
+            return attachment.alive() && GetWindow(targetWindow, GW_OWNER) == owner
+                && bool(IsIconic(targetWindow)) == minimized
+                && GetWindowLongPtrW(targetWindow, GWL_STYLE) == style
+                && GetWindowLongPtrW(targetWindow, GWL_EXSTYLE) == extendedStyle;
+        }));
+        WINDOWPLACEMENT restored{sizeof(WINDOWPLACEMENT)};
+        CHECK(GetWindowPlacement(targetWindow, &restored));
+        CHECK(EqualRect(&placement.rcNormalPosition, &restored.rcNormalPosition));
+        CHECK(placement.showCmd == restored.showCmd);
+    }
+
+    {
+        const HWND targetWindow = reinterpret_cast<HWND>(static_cast<quintptr>(ownedId));
+        DesktopAppWindow attachment({ownedId, "Disposable owner-lifecycle fixture", {}});
+        CHECK(attachment.prepareControl(discoveryError));
+        QWidget host;
+        host.resize(620, 400);
+        auto *layout = new QVBoxLayout(&host);
+        auto *container = attachment.takeControl(&host, discoveryError);
+        CHECK(container && discoveryError.isEmpty());
+        layout->addWidget(container);
+        host.show();
+        CHECK(waitFor([&] { return attachment.controlAttached(); }));
+        // Destroy only this disposable hidden owner after detachment. Its app
+        // HWND survives and must be releasable without an endless recovery host.
+        CHECK(PostMessageW(originalOwner, WM_CLOSE, 0, 0));
+        CHECK(waitFor([&] { return !IsWindow(originalOwner); }));
+        CHECK(attachment.alive());
+        attachment.releaseControl();
+        CHECK(waitFor([&] {
+            return attachment.alive() && !GetWindow(targetWindow, GW_OWNER)
+                && !(GetWindowLongPtrW(targetWindow, GWL_STYLE) & WS_CHILD);
+        }));
+        CHECK(!attachment.controlReady());
+    }
 
     DashboardWorkspace workspace("native-test");
     workspace.resize(1100, 760);

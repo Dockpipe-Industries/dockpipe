@@ -1,4 +1,5 @@
 #include "TerminalSession.h"
+#include "TerminalHostLaunch.h"
 
 #include <QElapsedTimer>
 #include <QEventLoop>
@@ -49,6 +50,8 @@ class TerminalSessionTest final : public QObject {
 private slots:
     void initTestCase();
     void terminalInputResizeAndExit();
+    void explicitProgramAndArguments();
+    void nativeFlatpakHostIntegration();
     void rejectsInvalidInputAndDirectory();
     void outputFloodDoesNotBlockEventLoop_data();
     void outputFloodDoesNotBlockEventLoop();
@@ -65,7 +68,7 @@ private:
 void TerminalSessionTest::initTestCase()
 {
 #ifndef Q_OS_UNIX
-    QSKIP("Unix PTY fixture; Windows has an explicit unsupported backend.");
+    QSKIP("Unix PTY fixture; Windows ConPTY has a dedicated native fixture.");
 #else
     m_originalShell = qgetenv("SHELL");
     qputenv("SHELL", "/bin/sh");
@@ -76,7 +79,7 @@ void TerminalSessionTest::terminalInputResizeAndExit()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
-    TerminalSession terminal;
+    TerminalSession terminal(TerminalLaunchContext::Local);
     QByteArray received;
     connect(&terminal, &TerminalSession::output, this, [&](const QByteArray &bytes) { received += bytes; });
     QSignalSpy exited(&terminal, &TerminalSession::finished);
@@ -98,9 +101,68 @@ void TerminalSessionTest::terminalInputResizeAndExit()
     QVERIFY(!terminal.running());
 }
 
+void TerminalSessionTest::explicitProgramAndArguments()
+{
+    TerminalSession terminal(TerminalLaunchContext::Local);
+    QByteArray output;
+    connect(&terminal, &TerminalSession::output, this, [&](const QByteArray &bytes) { output += bytes; });
+    QSignalSpy finished(&terminal, &TerminalSession::finished);
+    QVERIFY(terminal.start({}, QStringLiteral("/bin/sh"),
+        {QStringLiteral("-c"), QStringLiteral("printf 'EXPLICIT:%s\n' \"$1\"; exit 9"),
+            QStringLiteral("terminal-fixture"), QStringLiteral("space and 'quote' and \"double\"")}));
+    QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 3000);
+    QCOMPARE(finished.front().front().toInt(), 9);
+    QVERIFY2(output.contains("EXPLICIT:space and 'quote' and \"double\""), output.constData());
+    QVERIFY(!terminal.start({}, QStringLiteral("relative-shell"), {}));
+    finished.clear();
+    output.clear();
+    QVERIFY(terminal.start({}, QStringLiteral("/bin/sh"),
+        {QStringLiteral("-c"), QStringLiteral("printf 'ENVIRONMENT:%s' \"$DOCKPIPE_TERMINAL_FIXTURE\"")},
+        {{QStringLiteral("DOCKPIPE_TERMINAL_FIXTURE"), QStringLiteral("space and quote' and $literal")}}));
+    QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 3000);
+    QVERIFY2(output.contains("ENVIRONMENT:space and quote' and $literal"), output.constData());
+}
+
+void TerminalSessionTest::nativeFlatpakHostIntegration()
+{
+    if (qEnvironmentVariableIntValue("DOCKPIPE_TEST_FLATPAK_HOST_NATIVE") != 1)
+        QSKIP("Installed Flatpak host proof is enabled explicitly by its integration lane.");
+    QVERIFY2(TerminalHostLaunch::required(), "Native host integration requires a real Flatpak sandbox.");
+    TerminalSession terminal;
+    QByteArray output;
+    connect(&terminal, &TerminalSession::output, this, [&](const QByteArray &bytes) { output += bytes; });
+    QSignalSpy finished(&terminal, &TerminalSession::finished);
+    terminal.resize(117, 41);
+    const QMap<QString, QString> environment = {
+        {QStringLiteral("PS1"), QStringLiteral("DOCKPIPE_HOST_READY> ")},
+        {QStringLiteral("HISTFILE"), QStringLiteral("/dev/null")},
+        {QStringLiteral("DOCKPIPE_HOST_FIXTURE"), QStringLiteral("space and quote' and $literal")},
+    };
+    QVERIFY(terminal.start(QStringLiteral("/tmp"), QStringLiteral("/bin/bash"),
+        {QStringLiteral("--noprofile"), QStringLiteral("--norc"), QStringLiteral("-i")}, environment));
+    QVERIFY(terminal.send("PS1='DOCKPIPE_HOST_READY> '; printf 'HOST_%s\\n' READY\r"));
+    QTRY_VERIFY_WITH_TIMEOUT(output.contains("HOST_READY\r\n"), 5000);
+    QVERIFY(terminal.send("printf 'HOST_ENV=%s\\n' \"$DOCKPIPE_HOST_FIXTURE\"\r"));
+    QTRY_VERIFY_WITH_TIMEOUT(output.contains("HOST_ENV=space and quote' and $literal\r\n"), 3000);
+    QVERIFY(terminal.send("printf 'HOST_SIZE='; stty size\r"));
+    QTRY_VERIFY_WITH_TIMEOUT(output.contains("HOST_SIZE=41 117"), 3000);
+    QVERIFY(terminal.send("printf 'HOST_CWD='; pwd\r"));
+    QTRY_VERIFY_WITH_TIMEOUT(output.contains("HOST_CWD=/tmp"), 3000);
+    terminal.resize(92, 29);
+    QVERIFY(terminal.send("printf 'HOST_RESIZED='; stty size\r"));
+    QTRY_VERIFY_WITH_TIMEOUT(output.contains("HOST_RESIZED=29 92"), 3000);
+    // The expected marker is absent from echoed input and is assembled by the
+    // real host shell. The host supervisor must also preserve its exit status.
+    QVERIFY(terminal.send("printf 'HOST_%s\\n' 'FINAL_TAIL'; exit 7\r"));
+    QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 5000);
+    QCOMPARE(finished.front().front().toInt(), 7);
+    QVERIFY2(output.contains("HOST_FINAL_TAIL"), output.constData());
+    QVERIFY(!terminal.running());
+}
+
 void TerminalSessionTest::rejectsInvalidInputAndDirectory()
 {
-    TerminalSession terminal;
+    TerminalSession terminal(TerminalLaunchContext::Local);
     QVERIFY(!terminal.start("/a/dockpipe/fixture/that/does/not/exist"));
     QVERIFY(!terminal.error().isEmpty());
     QVERIFY(!terminal.running());
@@ -125,7 +187,7 @@ void TerminalSessionTest::outputFloodDoesNotBlockEventLoop_data()
 void TerminalSessionTest::outputFloodDoesNotBlockEventLoop()
 {
     QFETCH(QByteArray, command);
-    TerminalSession terminal;
+    TerminalSession terminal(TerminalLaunchContext::Local);
     qint64 total = 0;
     qsizetype largest = 0;
     connect(&terminal, &TerminalSession::output, this, [&](const QByteArray &bytes) {
@@ -162,7 +224,7 @@ void TerminalSessionTest::outputFloodDoesNotBlockEventLoop()
 
 void TerminalSessionTest::outputCallbackCanRestartSession()
 {
-    TerminalSession terminal;
+    TerminalSession terminal(TerminalLaunchContext::Local);
     qint64 total = 0;
     bool restarted = false;
     QByteArray nextSessionOutput;
@@ -200,7 +262,7 @@ void TerminalSessionTest::outputCallbackCanRestartSession()
 
 void TerminalSessionTest::outputCallbackCanDestroySession()
 {
-    QPointer<TerminalSession> terminal = new TerminalSession;
+    QPointer<TerminalSession> terminal = new TerminalSession(TerminalLaunchContext::Local);
     qint64 total = 0;
     QElapsedTimer elapsed;
     elapsed.start();
@@ -230,7 +292,7 @@ void TerminalSessionTest::stopCleansForegroundJobWithoutBlocking()
 {
 #ifdef Q_OS_UNIX
     QFETCH(bool, background);
-    TerminalSession terminal;
+    TerminalSession terminal(TerminalLaunchContext::Local);
     QByteArray received;
     connect(&terminal, &TerminalSession::output, this, [&](const QByteArray &bytes) { received += bytes; });
     QVERIFY(terminal.start({}));
@@ -274,7 +336,7 @@ void TerminalSessionTest::immediateDestructionReapsStartingShell()
 {
     QPointer<QProcess> shell;
     {
-        TerminalSession terminal;
+        TerminalSession terminal(TerminalLaunchContext::Local);
         QVERIFY(terminal.start({}));
         shell = terminal.findChild<QProcess *>("terminalShell");
         QVERIFY(shell);

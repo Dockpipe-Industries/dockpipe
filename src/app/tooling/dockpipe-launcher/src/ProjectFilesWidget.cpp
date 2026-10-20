@@ -3,6 +3,9 @@
 #include "SourceEditor.h"
 #include "WorkspaceFiles.h"
 #include "WorkspacePackageManager.h"
+#include "MarkdownPreview.h"
+#include "FileExplorerView.h"
+#include "FileExplorerIcons.h"
 #include <QHideEvent>
 
 #include <QDir>
@@ -28,50 +31,12 @@
 #include <QStackedWidget>
 #include <QTextDocument>
 #include <QTreeView>
+#include <QTimer>
+#include <QDesktopServices>
 #include <QVBoxLayout>
 
 namespace {
 constexpr qint64 maxFileBytes = 1024 * 1024; // Same editable-document bound as workflow YAML.
-}
-
-namespace {
-class ProjectFileIcons final : public QFileIconProvider {
-public:
-    QIcon icon(const QFileInfo &file) const override
-    {
-        return CanvasIcons::icon(file.isDir() ? CanvasIcons::Symbol::Folder : CanvasIcons::Symbol::Code);
-    }
-
-    QString type(const QFileInfo &file) const override
-    {
-        const QString displayType = QFileIconProvider::type(file);
-        if (!displayType.isEmpty())
-            return displayType;
-
-        // Qt 6.2 needs a nonempty type to insert newly discovered file rows.
-        if (file.isDir())
-            return QCoreApplication::translate("ProjectFilesWidget", "Folder");
-        return QCoreApplication::translate("ProjectFilesWidget", "File");
-    }
-
-    QIcon icon(IconType type) const override
-    {
-        return CanvasIcons::icon(type == Folder ? CanvasIcons::Symbol::Folder : CanvasIcons::Symbol::Code);
-    }
-};
-
-class ProjectFileTree final : public QTreeView {
-public:
-    using QTreeView::QTreeView;
-protected:
-    void drawBranches(QPainter *painter, const QRect &rect, const QModelIndex &index) const override
-    {
-        if (!model()->hasChildren(index))
-            return;
-        const auto symbol = isExpanded(index) ? CanvasIcons::Symbol::ChevronDown : CanvasIcons::Symbol::ChevronRight;
-        CanvasIcons::icon(symbol).paint(painter, QRect(rect.right() - 18, rect.center().y() - 7, 14, 14));
-    }
-};
 }
 
 ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
@@ -92,6 +57,7 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     m_controls->setEnabled(false);
     auto *toolbar = new QHBoxLayout(m_controls);
     toolbar->setContentsMargins(8, 0, 0, 8);
+    toolbar->setSizeConstraint(QLayout::SetMinimumSize);
     auto *heading = new QLabel(tr("EXPLORER"));
     heading->setObjectName("editorSectionLabel");
     toolbar->addWidget(heading, 1);
@@ -99,7 +65,7 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
         bool ok = false;
         const QString name = QInputDialog::getText(this, tr("New file"), tr("Path relative to this folder"), QLineEdit::Normal, {}, &ok);
         if (ok && !name.isEmpty())
-            createFile(name);
+            createFile(QDir(m_root).relativeFilePath(QDir(m_explorerDirectory).absoluteFilePath(name)));
     };
     auto addTool = [this](QHBoxLayout *row, const QString &label, CanvasIcons::Symbol symbol, const auto &action) {
         auto *button = new QToolButton;
@@ -112,51 +78,70 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
         connect(button, &QToolButton::clicked, this, action);
         return button;
     };
-    auto *graph = addTool(toolbar, tr("Workspace graph"), CanvasIcons::Symbol::Branch, [this]() { openGraph(); });
-    graph->setObjectName("openWorkspaceGraph");
-    graph->setText(tr("Graph"));
-    graph->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-    graph->setFixedSize(72, 32);
+    m_graphButton = new QPushButton(tr("Graph"));
+    m_graphButton->setObjectName("openWorkspaceGraph");
+    m_graphButton->installEventFilter(this);
+    m_graphButton->setIcon(CanvasIcons::icon(CanvasIcons::Symbol::Branch));
+    m_graphButton->setIconSize(QSize(16, 16));
+    m_graphButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    m_graphButton->setAccessibleName(tr("Workspace graph"));
+    m_graphButton->setToolTip(tr("Enable Cockpit mode in Settings to use the workspace graph."));
+    m_graphButton->setEnabled(false);
+    toolbar->addWidget(m_graphButton);
+    connect(m_graphButton, &QPushButton::clicked, this, &ProjectFilesWidget::openGraph);
     addTool(toolbar, tr("New file"), CanvasIcons::Symbol::Add, newFile);
     addTool(toolbar, tr("New folder"), CanvasIcons::Symbol::Folder, [this]() {
         bool ok = false;
         const QString name = QInputDialog::getText(this, tr("New folder"), tr("Folder name"), QLineEdit::Normal, {}, &ok);
-        const QString path = QDir(m_root).filePath(name);
+        const QString path = QDir(m_explorerDirectory).filePath(name);
         if (ok && !name.isEmpty() && (!contained(path) || !QDir().mkdir(path)))
             showMessage(tr("Cannot create that folder. Choose a new name inside this folder."));
     });
     explorerLayout->addWidget(m_controls);
     m_model = new QFileSystemModel(this);
-    // QFileSystemModel does not own a custom provider. Its lifetime exceeds the model.
-    static ProjectFileIcons fileIcons;
-    m_model->setIconProvider(&fileIcons);
+    m_model->setIconProvider(&FileExplorerIcons::instance());
     m_model->setFilter(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::NoSymLinks);
     m_model->setReadOnly(true);
-    m_tree = new ProjectFileTree;
+    m_explorer = new FileExplorerView;
+    m_explorer->setModel(m_model);
+    m_tree = m_explorer->treeView();
     m_tree->setObjectName("fileTree");
-    m_tree->setModel(m_model);
-    m_tree->setHeaderHidden(true);
-    m_tree->setUniformRowHeights(true);
-    m_tree->setIndentation(18);
-    m_tree->setIconSize(QSize(18, 18));
-    m_tree->setAnimated(false);
-    for (int column = 1; column < 4; ++column)
-        m_tree->hideColumn(column);
-    m_tree->setMinimumWidth(180);
-    m_tree->setEnabled(false);
-    m_tree->hide();
-    connect(m_model, &QFileSystemModel::directoryLoaded, this, [this]() {
-        if (m_root.isEmpty())
-            return;
-        const QModelIndex index = m_model->index(m_root);
-        if (index.isValid()) {
-            m_tree->setRootIndex(index);
-            m_tree->show();
-        }
-    });
     m_tree->setSortingEnabled(true);
     m_tree->sortByColumn(0, Qt::AscendingOrder);
-    explorerLayout->addWidget(m_tree, 1);
+    m_explorer->setMinimumWidth(180);
+    m_explorer->setAvailable(false);
+    auto *navigation = m_explorer->toolbarLayout();
+    m_explorerUp = new QToolButton;
+    m_explorerUp->setObjectName("fileExplorerUp");
+    m_explorerUp->setProperty("fileNavigation", true);
+    m_explorerUp->setIcon(CanvasIcons::icon(CanvasIcons::Symbol::Up));
+    m_explorerUp->setToolTip(tr("Up one folder"));
+    m_explorerUp->setAccessibleName(tr("Up one folder"));
+    m_explorerUp->setFixedSize(32, 32);
+    auto *rootButton = new QToolButton;
+    rootButton->setProperty("fileNavigation", true);
+    rootButton->setObjectName("fileExplorerRoot");
+    rootButton->setIcon(CanvasIcons::icon(CanvasIcons::Symbol::Folder));
+    rootButton->setToolTip(tr("Project root"));
+    rootButton->setAccessibleName(tr("Project root"));
+    rootButton->setFixedSize(32, 32);
+    m_explorerLocation = new QLabel;
+    m_explorerLocation->setObjectName("editorSectionLabel");
+    m_explorerLocation->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    navigation->insertWidget(0, m_explorerUp);
+    navigation->insertWidget(1, rootButton);
+    navigation->insertWidget(2, m_explorerLocation, 1);
+    connect(m_explorerUp, &QToolButton::clicked, this, [this]() {
+        navigateExplorer(QFileInfo(m_explorerDirectory).absolutePath());
+    });
+    connect(rootButton, &QToolButton::clicked, this, [this]() { navigateExplorer(m_root); });
+    connect(m_model, &QFileSystemModel::directoryLoaded, this, [this](const QString &directory) {
+        if (!m_root.isEmpty() && directory == m_explorerDirectory) {
+            m_explorer->setRootIndex(m_model->index(directory));
+            m_explorer->setAvailable(true);
+        }
+    });
+    explorerLayout->addWidget(m_explorer, 1);
     splitter->addWidget(explorer);
 
     auto *workspace = new QWidget;
@@ -211,6 +196,11 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
         find->setFocus();
         find->selectAll();
     };
+    m_previewButton = addTool(actions, tr("Preview Markdown"), CanvasIcons::Symbol::Preview, []() {});
+    m_previewButton->setObjectName("fileMarkdownPreviewButton");
+    m_previewButton->setCheckable(true);
+    m_previewButton->setAccessibleName(tr("Preview Markdown"));
+    connect(m_previewButton, &QToolButton::toggled, this, [this]() { updateMarkdownPreview(); });
     addTool(actions, tr("Find in file (Ctrl+F)"), CanvasIcons::Symbol::Search, showFind);
     addTool(findLayout, tr("Close search"), CanvasIcons::Symbol::Close, [this]() { m_findBar->hide(); });
     auto *more = addTool(actions, tr("File actions"), CanvasIcons::Symbol::More, []() {});
@@ -244,11 +234,8 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     m_editor->setObjectName("fileTextEditor");
     m_workflowEditor = new SourceEditor;
     m_workflowEditor->setObjectName("workflowFileTextEditor");
-    for (auto *editor : {m_editor, m_workflowEditor}) {
+    for (auto *editor : {m_editor, m_workflowEditor})
         m_documents->addWidget(editor);
-        connect(editor, &QPlainTextEdit::cursorPositionChanged, this, &ProjectFilesWidget::updateEditorStatus);
-        connect(editor, &QPlainTextEdit::textChanged, this, &ProjectFilesWidget::updateTitle);
-    }
     m_editor->setReadOnly(true);
     m_empty = new QWidget;
     m_empty->setObjectName("fileEditorEmpty");
@@ -271,7 +258,32 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     emptyLayout->addStretch();
     m_documents->addWidget(m_empty);
     m_documents->setCurrentWidget(m_empty);
-    workspaceLayout->addWidget(m_documents, 1);
+    auto *editorSplit = new QSplitter(Qt::Horizontal);
+    editorSplit->setChildrenCollapsible(false);
+    editorSplit->addWidget(m_documents);
+    m_markdownPreview = new MarkdownPreview;
+    m_markdownPreview->hide();
+    editorSplit->addWidget(m_markdownPreview);
+    editorSplit->setStretchFactor(0, 1);
+    editorSplit->setStretchFactor(1, 1);
+    workspaceLayout->addWidget(editorSplit, 1);
+    m_previewTimer = new QTimer(this);
+    m_previewTimer->setSingleShot(true);
+    m_previewTimer->setInterval(150);
+    connect(m_previewTimer, &QTimer::timeout, this, &ProjectFilesWidget::renderMarkdownPreview);
+    connect(m_editor, &QPlainTextEdit::textChanged, this, [this]() {
+        if (m_previewButton->isChecked())
+            m_previewTimer->start();
+    });
+    connect(m_markdownPreview, &QTextBrowser::anchorClicked, this, [this](const QUrl &url) {
+        if (url.isRelative() && url.path().isEmpty()) {
+            m_markdownPreview->scrollToAnchor(url.fragment());
+        } else if (url.scheme() == "https" || url.scheme() == "http") {
+            QDesktopServices::openUrl(url);
+        } else if (url.isRelative() && url.authority().isEmpty()) {
+            openFile(QDir(QFileInfo(m_path).absolutePath()).absoluteFilePath(url.path()));
+        }
+    });
     m_editorStatus = new QLabel;
     m_editorStatus->setObjectName("editorStatus");
     m_editorStatus->setMargin(10);
@@ -285,6 +297,27 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     m_status->setWordWrap(true);
     m_status->setTextFormat(Qt::PlainText);
     layout->addWidget(m_status);
+    auto &packages = WorkspacePackageManager::instance();
+    connect(&packages, &WorkspacePackageManager::progress, this, [this](const QString &message) {
+        if (m_graphRequested)
+            showMessage(message);
+    });
+    connect(&packages, &WorkspacePackageManager::prepared, this, [this] {
+        if (!m_graphRequested)
+            return;
+        m_graphRequested = false;
+        m_graphButton->setEnabled(m_cockpitSettings.enabled);
+        if (isVisible() && m_cockpitSettings.enabled && !m_root.isEmpty())
+            openGraph();
+    });
+    connect(&packages, &WorkspacePackageManager::failed, this, [this](const QString &message) {
+        if (!m_graphRequested)
+            return;
+        m_graphRequested = false;
+        m_graphButton->setEnabled(m_cockpitSettings.enabled);
+        showMessage(message);
+        m_status->show();
+    });
     connect(find, &QLineEdit::returnPressed, this, [this, find]() {
         auto *editor = qobject_cast<QPlainTextEdit *>(m_documents->currentWidget());
         if (!editor || find->text().isEmpty())
@@ -303,10 +336,24 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     auto *search = new QShortcut(QKeySequence::Find, this);
     search->setContext(Qt::WidgetWithChildrenShortcut);
     connect(search, &QShortcut::activated, this, showFind);
-    connect(m_tree, &QTreeView::clicked, this, [this](const QModelIndex &index) {
+    connect(m_explorer, &FileExplorerView::clicked, this, [this](const QModelIndex &index) {
         if (!m_model->isDir(index))
             openFile(m_model->filePath(index));
     });
+    connect(m_explorer, &FileExplorerView::activated, this, [this](const QModelIndex &index) {
+        if (m_model->isDir(index)) {
+            if (m_explorer->mode() == FileExplorerView::Mode::Folders)
+                navigateExplorer(m_model->filePath(index));
+        } else {
+            openFile(m_model->filePath(index));
+        }
+    });
+    // Reparenting the editors can rehighlight them and emit textChanged.
+    // Connect only once every pane used by these callbacks is constructed.
+    for (auto *editor : {m_editor, m_workflowEditor}) {
+        connect(editor, &QPlainTextEdit::cursorPositionChanged, this, &ProjectFilesWidget::updateEditorStatus);
+        connect(editor, &QPlainTextEdit::textChanged, this, &ProjectFilesWidget::updateTitle);
+    }
     connect(m_editor->document(), &QTextDocument::modificationChanged, this, &ProjectFilesWidget::updateTitle);
     updateTitle();
 }
@@ -391,6 +438,14 @@ void ProjectFilesWidget::positionFlightEditor()
 
 bool ProjectFilesWidget::eventFilter(QObject *object, QEvent *event)
 {
+    if (object == m_graphButton && (event->type() == QEvent::FontChange
+        || event->type() == QEvent::StyleChange || event->type() == QEvent::Polish)) {
+        // Stylesheet font changes can leave a nested toolbar's cached height
+        // unchanged. Use the polished button hint as its content minimum.
+        QTimer::singleShot(0, m_graphButton, [button = m_graphButton] {
+            button->setMinimumSize(button->sizeHint());
+        });
+    }
     if (m_flightHud && m_graph && object == m_graph->flightWidget() && event->type() == QEvent::Resize)
         positionFlightEditor();
     return QWidget::eventFilter(object, event);
@@ -450,6 +505,7 @@ bool ProjectFilesWidget::confirmLeave()
 
 void ProjectFilesWidget::clearFile()
 {
+    m_previewButton->setChecked(false);
     m_path.clear();
     m_original.clear();
     m_editor->clear();
@@ -469,18 +525,31 @@ bool ProjectFilesWidget::setRoot(const QString &root)
     closeGraph();
     m_root = root;
     clearFile();
-    m_tree->setEnabled(!root.isEmpty());
     m_controls->setEnabled(!root.isEmpty());
-    m_tree->hide();
-    if (!root.isEmpty()) {
-        const QModelIndex index = m_model->setRootPath(root);
-        if (index.isValid()) {
-            m_tree->setRootIndex(index);
-            m_tree->show();
-        }
-    }
+    m_explorer->setAvailable(false);
+    m_explorer->setRootIndex({});
+    m_explorerDirectory.clear();
+    m_explorerLocation->clear();
+    m_explorerUp->setEnabled(false);
+    if (!root.isEmpty())
+        navigateExplorer(root);
     showMessage(root.isEmpty() ? tr("Open a project or save a workflow to browse its files.") : root);
     return true;
+}
+
+bool ProjectFilesWidget::navigateExplorer(const QString &directory)
+{
+    if (!contained(directory) || !QFileInfo(directory).isDir() || !QFileInfo(directory).isReadable())
+        return false;
+    m_explorerDirectory = QFileInfo(directory).canonicalFilePath();
+    const auto index = m_model->setRootPath(m_explorerDirectory);
+    m_explorer->setRootIndex(index);
+    m_explorer->setAvailable(index.isValid());
+    const QString relative = QDir(QFileInfo(m_root).canonicalFilePath()).relativeFilePath(m_explorerDirectory);
+    m_explorerLocation->setText(relative == "." ? tr("Root") : QFileInfo(m_explorerDirectory).fileName());
+    m_explorerLocation->setToolTip(QDir::toNativeSeparators(m_explorerDirectory));
+    m_explorerUp->setEnabled(relative != ".");
+    return index.isValid();
 }
 
 void ProjectFilesWidget::setWorkflowDocument(const QString &path, QTextDocument *document)
@@ -579,6 +648,9 @@ bool ProjectFilesWidget::saveFile()
         showMessage(tr("This file changed on disk. Your edits are preserved; keep a copy, then Reload to read the disk version."));
         return false;
     }
+    // Windows readers do not share delete access. Release the conflict-check
+    // handle before atomically replacing the destination.
+    current.close();
     QSaveFile file(m_path);
     if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit()) {
         showMessage(tr("Cannot save: %1").arg(file.errorString()));
@@ -641,8 +713,37 @@ void ProjectFilesWidget::updateTitle()
     m_fileActions->setEnabled(!m_path.isEmpty());
     const QString suffix = QFileInfo(m_path).suffix().toLower();
     m_openWorkflow->setVisible(suffix == "yml" || suffix == "yaml");
+    updateMarkdownPreview();
     updateEditorStatus();
     emit dirtyChanged(hasUnsavedChanges());
+}
+
+void ProjectFilesWidget::updateMarkdownPreview()
+{
+    const QString suffix = QFileInfo(m_path).suffix().toLower();
+    const bool markdown = m_documents->currentWidget() == m_editor
+        && (suffix == "md" || suffix == "markdown" || suffix == "mdown" || suffix == "mkd");
+    m_previewButton->setVisible(markdown);
+    if (!markdown && m_previewButton->isChecked())
+        m_previewButton->setChecked(false);
+    m_markdownPreview->setVisible(markdown && m_previewButton->isChecked());
+    m_previewButton->setToolTip(m_previewButton->isChecked()
+        ? tr("Hide Markdown preview") : tr("Preview Markdown"));
+    if (markdown && m_previewButton->isChecked())
+        m_previewTimer->start();
+    else
+        m_previewTimer->stop();
+}
+
+void ProjectFilesWidget::renderMarkdownPreview()
+{
+    // Preview shares the editor's 1 MiB UTF-8 contract, including unsaved drafts.
+    const QString text = m_editor->toPlainText();
+    if (text.toUtf8().size() > maxFileBytes) {
+        m_markdownPreview->setPlainText(tr("This draft exceeds the 1 MiB Markdown preview limit."));
+        return;
+    }
+    m_markdownPreview->render(text);
 }
 
 void ProjectFilesWidget::updateEditorStatus()
@@ -669,6 +770,10 @@ void ProjectFilesWidget::applyCockpitSettings(const CockpitSettings &settings)
         closeGraph();
     if (m_graph)
         m_graph->applyCockpitSettings(settings);
+    m_graphButton->setEnabled(settings.enabled && !m_graphRequested);
+    m_graphButton->setToolTip(settings.enabled
+        ? tr("Open the workspace graph for the selected folder")
+        : tr("Enable Cockpit mode in Settings to use the workspace graph."));
 }
 
 void ProjectFilesWidget::openGraph()
@@ -677,17 +782,39 @@ void ProjectFilesWidget::openGraph()
         return;
     if (!m_cockpitSettings.enabled) {
         m_status->setText(tr("Enable Cockpit mode in Settings to use the spatial workspace."));
+        m_status->show();
         return;
     }
-    QString directory = m_root;
+    auto &packages = WorkspacePackageManager::instance();
+    if (!packages.ready()) {
+        if (m_graphRequested)
+            return;
+        if (packages.busy() && !packages.loading()) {
+            showMessage(tr("The workspace package is still stopping. Try Graph again in a moment."));
+            m_status->show();
+            return;
+        }
+        m_graphRequested = true;
+        m_graphButton->setEnabled(false);
+        showMessage(tr("Loading the installed workspace graph…"));
+        m_status->show();
+        if (!packages.busy()) {
+            auto settings = LauncherSettings::current();
+            settings.projectFolder = m_root;
+            packages.prepare(settings, false);
+        }
+        return;
+    }
+    QString directory = m_explorerDirectory.isEmpty() ? m_root : m_explorerDirectory;
     const auto selected = m_tree->currentIndex();
     if (selected.isValid()) {
         const QString path = m_model->filePath(selected);
         directory = m_model->isDir(selected) ? path : QFileInfo(path).absolutePath();
     }
-    m_graph = WorkspacePackageManager::instance().createFiles(m_root, directory, this);
+    m_graph = packages.createFiles(m_root, directory, this);
     if (!m_graph) {
-        m_status->setText(tr("Enable Cockpit mode in Settings to install the spatial workspace package."));
+        showMessage(tr("The installed Cockpit package could not create the workspace graph. Install a package matching this launcher."));
+        m_status->show();
         return;
     }
     m_graph->applyCockpitSettings(m_cockpitSettings);
@@ -722,6 +849,8 @@ void ProjectFilesWidget::openGraph()
 
 void ProjectFilesWidget::closeGraph()
 {
+    m_graphRequested = false;
+    m_graphButton->setEnabled(m_cockpitSettings.enabled);
     closeFlightEditor();
     if (!m_graph)
         return;

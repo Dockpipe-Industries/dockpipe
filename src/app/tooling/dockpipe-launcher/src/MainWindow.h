@@ -81,6 +81,7 @@ private slots:
     void onManagePackages();
     void onBasicLaunch(const QString &workflowId);
     void onBasicConfigure(const QString &workflowId);
+    void cloneWorkflow(const QString &workflowId);
     void onBasicBackHome();
     void onBasicOpenRecent(const QString &absPath);
     void onBasicContinueLast();
@@ -109,7 +110,7 @@ private:
     void releaseDashboardWindows();
     void toggleDashboardFullscreen();
     void updateDashboardFullscreen();
-    void updateDashboardStatusBar();
+    void updateStatusBarVisibility();
     void ensureBrowser();
     void ensureTerminal();
     void ensureCockpit();
@@ -202,6 +203,8 @@ private:
     QLabel *m_workflowPreview = nullptr;
     QPushButton *m_pickerRun = nullptr;
     QPushButton *m_pickerEdit = nullptr;
+    QPushButton *m_pickerClone = nullptr;
+    bool m_workflowCloneBusy = false;
     QComboBox *m_pickerTarget = nullptr;
     QStringList m_recentWorkflowKeys;
     QVector<WorkflowMeta> m_workspaceWorkflows;

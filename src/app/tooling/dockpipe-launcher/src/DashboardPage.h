@@ -5,6 +5,8 @@
 #include <QSet>
 #include <functional>
 
+class BrowserWidget;
+class QWebEngineView;
 class DashboardWidgetFactory;
 class DashboardWorkspace;
 class DashboardDock;
@@ -43,14 +45,17 @@ signals:
     void fullscreenRequested();
     void sidebarRequested();
     void appWorkflowRequested(const QString &id);
+    void cloneWorkflowRequested(const QString &id);
     void projectChangeRequested();
 
 protected:
+    void paintEvent(QPaintEvent *event) override;
     void showEvent(QShowEvent *event) override;
     void hideEvent(QHideEvent *event) override;
 
 private:
     QWidget *createContent(const QString &kind, const QString &environment);
+    void tearOutBrowserTab(BrowserWidget *source, QWebEngineView *view, const QPoint &globalPosition);
     QString panelTitle(const QString &kind) const;
     void chooseWidget();
     void scheduleSave();

@@ -48,12 +48,20 @@ DashboardAppsDialog::DashboardAppsDialog(const QVector<WorkflowMeta> &workflows,
     layout->addWidget(m_status);
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Open | QDialogButtonBox::Close);
     m_launch = buttons->button(QDialogButtonBox::Open);
+    m_clone = buttons->addButton(tr("Clone to workflows"), QDialogButtonBox::ActionRole);
+    m_clone->setObjectName("dashboardCloneApp");
+    connect(m_clone, &QPushButton::clicked, this, [this]() {
+        if (const auto *item = m_list->currentItem())
+            emit cloneRequested(item->data(Qt::UserRole + 1).toString());
+    });
     layout->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::accepted, this, &DashboardAppsDialog::launchSelected);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(m_list, &QListWidget::itemDoubleClicked, this, &DashboardAppsDialog::launchSelected);
     connect(m_list, &QListWidget::currentRowChanged, this, [this]() {
-        m_launch->setEnabled(!m_launching && m_list->currentItem());
+        const auto *item = m_list->currentItem();
+        m_launch->setEnabled(!m_launching && item && !item->data(Qt::UserRole + 2).toBool());
+        m_clone->setVisible(item && item->data(Qt::UserRole + 3).toBool());
     });
     connect(m_search, &QLineEdit::textChanged, this, &DashboardAppsDialog::rebuildList);
     rebuildList();
@@ -88,12 +96,15 @@ void DashboardAppsDialog::rebuildList()
     for (const auto &workflow : m_workflows) {
         if (workflow.category.compare("app", Qt::CaseInsensitive) != 0)
             continue;
-        const QString name = workflow.displayName.isEmpty() ? workflow.workflowId : workflow.displayName;
+        const QString name = workflow.catalogTitle();
         if (!(name + ' ' + workflow.workflowId).contains(search, Qt::CaseInsensitive))
             continue;
-        auto *item = new QListWidgetItem(CanvasIcons::icon(CanvasIcons::Symbol::Workflow), name + tr(" · DockPipe app"), m_list);
+        auto *item = new QListWidgetItem(CanvasIcons::icon(CanvasIcons::Symbol::Workflow), name + (workflow.source.isEmpty() ? tr(" · DockPipe app") : QString()), m_list);
         item->setData(Qt::UserRole, "workflow");
         item->setData(Qt::UserRole + 1, workflow.workflowId);
+        item->setData(Qt::UserRole + 2, !workflow.supported);
+        item->setData(Qt::UserRole + 3, workflow.cloneable);
+        item->setToolTip(workflow.catalogDescription());
     }
     for (int index = 0; index < m_applications.size(); ++index) {
         const auto &application = m_applications[index];
@@ -113,13 +124,15 @@ void DashboardAppsDialog::rebuildList()
     }
     if (m_list->count())
         m_list->setCurrentRow(0);
-    m_launch->setEnabled(m_list->currentItem());
+    const auto *selected = m_list->currentItem();
+    m_launch->setEnabled(selected && !selected->data(Qt::UserRole + 2).toBool());
+    m_clone->setVisible(selected && selected->data(Qt::UserRole + 3).toBool());
 }
 
 void DashboardAppsDialog::launchSelected()
 {
     const auto *item = m_list->currentItem();
-    if (!item || m_launching)
+    if (!item || m_launching || item->data(Qt::UserRole + 2).toBool())
         return;
     if (item->data(Qt::UserRole) == "workflow") {
         emit workflowRequested(item->data(Qt::UserRole + 1).toString());

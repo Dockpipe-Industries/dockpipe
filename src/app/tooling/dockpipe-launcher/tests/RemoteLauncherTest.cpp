@@ -10,6 +10,7 @@
 #include "DashboardAppsDialog.h"
 #include "ProjectGitWidget.h"
 #include "AppCardWidget.h"
+#include "WorkflowLaunchDialog.h"
 #include "DockerObservabilityWidget.h"
 #include "RemoteWidget.h"
 #include "RemoteRunDialog.h"
@@ -23,6 +24,7 @@
 #endif
 #include "SettingsDialog.h"
 #include <QPainter>
+#include <algorithm>
 
 #include <QApplication>
 #include <QGraphicsView>
@@ -133,7 +135,7 @@ int main(int argc, char **argv)
     script.write(R"SH(#!/bin/sh
 case "$1:$2" in
 catalog:list)
-  printf '{"workflows":[{"workflow_id":"build","display_name":"Build project","description":"Compile and verify the project","config_path":"%s/work/config.yml"},{"workflow_id":"editor","display_name":"Project editor","category":"app"}],"runtimes":["host"],"resolver_details":[{"name":"example.tunnel","title":"Example Tunnel","version":"1.2.0","capability":"remote.edge","remote_setup":"local"},{"name":"example.hosted","title":"Example Hosted","version":"2.0.0","capability":"remote.broker","remote_setup":"hosted"},{"name":"unrelated.tool","capability":"editor"}]}\n' "$DOCKPIPE_TEST_ROOT" ;;
+  printf '{"workflows":[{"workflow_id":"build","display_name":"Build project","description":"Compile and verify the project","config_path":"%s/work/config.yml"},{"workflow_id":"editor","display_name":"Project editor","category":"app","inputs":[{"field_name":"text","env_name":"DOCKPIPE_VSCODE_INPUT_TEXT","type":"string"},{"field_name":"empty","env_name":"DOCKPIPE_VSCODE_INPUT_EMPTY","type":"string"},{"field_name":"password","env_name":"DOCKPIPE_VSCODE_INPUT_SECRET","type":"string","attributes":{"password":"true","secret":"true"}}]},{"workflow_id":"vscode-noinputs","display_name":"No input launch","category":"app","source":"vscode","source_kind":"launch","source_path":".vscode/launch.json","cloneable":true}],"runtimes":["host"],"resolver_details":[{"name":"example.tunnel","title":"Example Tunnel","version":"1.2.0","capability":"remote.edge","remote_setup":"local"},{"name":"example.hosted","title":"Example Hosted","version":"2.0.0","capability":"remote.broker","remote_setup":"hosted"},{"name":"unrelated.tool","capability":"editor"}]}\n' "$DOCKPIPE_TEST_ROOT" ;;
 remote:info)
   if [ -f "$DOCKPIPE_TEST_ROOT/stale-service" ]; then
     echo '{"broker":{"mode":"local","endpoint":"https://remote.example.com","service":{"state":"update-required"}}}'
@@ -338,6 +340,65 @@ exec "$@"
         if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE"))
             window.grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + suffix + ".png");
     };
+    // Cloned workflows lose source provenance but retain imported input names.
+    // Configure the native fixture through the real shell and verify its durable state.
+    bool clonedInputsConfigured = false;
+    QTimer::singleShot(0, &window, [&]() {
+        auto *dialog = qobject_cast<WorkflowLaunchDialog *>(QApplication::activeModalWidget());
+        if (!dialog)
+            return;
+        auto *text = dialog->findChild<QLineEdit *>("workflowInput_DOCKPIPE_VSCODE_INPUT_TEXT");
+        auto *empty = dialog->findChild<QLineEdit *>("workflowInput_DOCKPIPE_VSCODE_INPUT_EMPTY");
+        auto *secret = dialog->findChild<QLineEdit *>("workflowInput_DOCKPIPE_VSCODE_INPUT_SECRET");
+        if (text && empty && secret) {
+            text->setText("  exact value  ");
+            empty->setText(QString());
+            secret->setText("transient fixture secret");
+            clonedInputsConfigured = true;
+            dialog->accept();
+        } else {
+            dialog->reject();
+        }
+    });
+    QMetaObject::invokeMethod(&window, "onBasicConfigure", Qt::DirectConnection, Q_ARG(QString, "editor"));
+    ContextStore clonedStore;
+    if (!clonedInputsConfigured || !clonedStore.load())
+        return 167;
+    const auto configuredClone = std::find_if(clonedStore.contexts.cbegin(), clonedStore.contexts.cend(),
+        [](const Context &context) { return context.workflow == "editor"; });
+    if (configuredClone == clonedStore.contexts.cend()
+        || !configuredClone->extraDockpipeEnv.contains("DOCKPIPE_VSCODE_INPUT_TEXT=  exact value  ")
+        || !configuredClone->extraDockpipeEnv.contains("DOCKPIPE_VSCODE_INPUT_EMPTY=")
+        || configuredClone->extraDockpipeEnv.join(' ').contains("transient fixture secret")
+        || !SessionManager::dockpipeArguments(*configuredClone).contains("DOCKPIPE_VSCODE_INPUT_TEXT=  exact value  ")
+        || !SessionManager::dockpipeArguments(*configuredClone).contains("DOCKPIPE_VSCODE_INPUT_EMPTY="))
+        return 168;
+    bool reloadedExactInputs = false;
+    QTimer::singleShot(0, &window, [&]() {
+        auto *dialog = qobject_cast<WorkflowLaunchDialog *>(QApplication::activeModalWidget());
+        if (!dialog)
+            return;
+        auto *text = dialog->findChild<QLineEdit *>("workflowInput_DOCKPIPE_VSCODE_INPUT_TEXT");
+        auto *secret = dialog->findChild<QLineEdit *>("workflowInput_DOCKPIPE_VSCODE_INPUT_SECRET");
+        reloadedExactInputs = text && text->text() == "  exact value  " && secret && secret->text().isEmpty();
+        dialog->reject();
+    });
+    QMetaObject::invokeMethod(&window, "onBasicConfigure", Qt::DirectConnection, Q_ARG(QString, "editor"));
+    if (!reloadedExactInputs)
+        return 169;
+    bool noInputInformation = false;
+    QTimer::singleShot(0, &window, [&]() {
+        auto *message = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+        if (message) {
+            noInputInformation = message->text().contains("No declared inputs")
+                && message->text().contains("Clone to workflows");
+            message->accept();
+        }
+    });
+    QMetaObject::invokeMethod(&window, "onBasicConfigure", Qt::DirectConnection,
+        Q_ARG(QString, "vscode-noinputs"));
+    if (!noInputInformation)
+        return 170;
     // Exercise the library with a representative fixture, without launching programs.
     QVector<WorkflowMeta> library;
     const QStringList names = {"Pipeon", "Project editor", "Linux workspace", "Developer console"};
@@ -348,6 +409,11 @@ exec "$@"
         meta.description = "Your tools and project, together in an isolated workspace.";
         library.append(meta);
     }
+    library[1].source = "vscode";
+    library[1].sourceKind = "launch";
+    library[1].cloneable = true;
+    library[1].supported = false;
+    library[1].unsupportedReason = "Debugger-only configuration";
     apps->setApps(library);
     apps->setRunningByWorkflow({{"pipeon", true}});
     QString launched;
@@ -363,6 +429,37 @@ exec "$@"
     button(firstCard, "Configure")->click();
     if (launched != "pipeon" || configured != "pipeon")
         return 15;
+    auto *importedCard = qobject_cast<AppCardWidget *>(appList->itemWidget(appList->item(1)));
+    if (!importedCard || button(importedCard, "Open app")->isEnabled())
+        return 162;
+    QString cloned;
+    QObject::disconnect(apps, &BasicModeWidget::cloneRequested, &window, nullptr);
+    QObject::connect(apps, &BasicModeWidget::cloneRequested, [&](const QString &id) { cloned = id; });
+    auto *cloneControl = importedCard->findChild<QPushButton *>("cloneAppWorkflow");
+    if (!cloneControl)
+        return 164;
+    cloneControl->click();
+    if (cloned != library[1].workflowId)
+        return 163;
+    WorkflowMeta importedApp = library[1];
+    importedApp.category = "app";
+    DashboardAppsDialog importedAppPicker({importedApp}, nullptr, false);
+    auto *pickerList = importedAppPicker.findChild<QListWidget *>("dashboardAppList");
+    auto *pickerClone = importedAppPicker.findChild<QPushButton *>("dashboardCloneApp");
+    if (!pickerList || pickerList->count() != 1 || !pickerList->item(0)->text().contains("VS Code")
+        || !pickerClone || pickerClone->isHidden())
+        return 165;
+    QString pickerCloned;
+    bool pickerLaunched = false;
+    QObject::connect(&importedAppPicker, &DashboardAppsDialog::cloneRequested,
+        [&](const QString &id) { pickerCloned = id; });
+    QObject::connect(&importedAppPicker, &DashboardAppsDialog::workflowRequested,
+        [&](const QString &) { pickerLaunched = true; });
+    pickerClone->click();
+    QMetaObject::invokeMethod(pickerList, "itemDoubleClicked", Qt::DirectConnection,
+        Q_ARG(QListWidgetItem *, pickerList->item(0)));
+    if (pickerCloned != importedApp.workflowId || pickerLaunched)
+        return 166;
     capture("-apps");
     {
         const QColor headingColor = window.findChild<QLabel *>("appTitle")->palette().color(QPalette::WindowText);

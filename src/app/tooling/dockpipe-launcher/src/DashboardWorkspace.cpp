@@ -4,6 +4,7 @@
 #include "CanvasIcons.h"
 
 #include <QApplication>
+#include <QAbstractButton>
 #ifdef DOCKPIPE_PROFILE_DASHBOARD_LAYOUT
 #include <QElapsedTimer>
 #include <array>
@@ -19,7 +20,6 @@
 #include <QLinearGradient>
 #include <QPaintEvent>
 #include <QPushButton>
-#include <QDrag>
 #include <QDragEnterEvent>
 #include <QDragLeaveEvent>
 #include <QDropEvent>
@@ -28,6 +28,7 @@
 #include <QHideEvent>
 #include <QHBoxLayout>
 #include <QJsonArray>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QMenu>
 #include <QMimeData>
@@ -36,6 +37,7 @@
 #include <QShowEvent>
 #include <QShortcut>
 #include <QScopedValueRollback>
+#include <QScopeGuard>
 #include <algorithm>
 #include <QSplitter>
 #include <QStyle>
@@ -484,10 +486,6 @@ DashboardWorkspace::DashboardWorkspace(const QString &dashboardId, QWidget *pare
     m_empty = new QLabel(tr("Your dashboard, your way\nAdd a widget to get started."), this);
     m_empty->setAlignment(Qt::AlignCenter);
     m_empty->setObjectName("dashboardEmptyState");
-    m_dropPreview = new QWidget(this);
-    m_dropPreview->setAttribute(Qt::WA_TransparentForMouseEvents);
-    m_dropPreview->setStyleSheet("background: rgba(85, 185, 165, 70); border: 2px solid #79cbb6; border-radius: 8px;");
-    m_dropPreview->hide();
     m_tileActionsTimer = new QTimer(this);
     m_tileActionsTimer->setObjectName("dashboardTileActionsTimer");
     // Foreign windows do not deliver QWidget hover events. Poll only while
@@ -497,12 +495,28 @@ DashboardWorkspace::DashboardWorkspace(const QString &dashboardId, QWidget *pare
     auto *tileMenuShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_M), this);
     tileMenuShortcut->setObjectName("dashboardTileMenuShortcut");
     connect(tileMenuShortcut, &QShortcut::activated, this, &DashboardWorkspace::showFocusedTileMenu);
+    m_cancelDrag = new QShortcut(QKeySequence(Qt::Key_Escape), this);
+    m_cancelDrag->setObjectName("dashboardCancelDrag");
+    m_cancelDrag->setEnabled(false);
+    connect(m_cancelDrag, &QShortcut::activated, this, [this] { finishPanelDrag(); });
+}
+
+DashboardWorkspace::~DashboardWorkspace()
+{
+    finishPanelDrag();
 }
 
 bool DashboardWorkspace::addPanel(const QString &id, const QString &title, QWidget *content)
 {
     if (!content || id.isEmpty() || id.size() > 128 || m_panels.contains(id) || m_panels.size() >= MaximumPanels)
         return false;
+    // Replacing the tile tree must not paint the background between removing
+    // its old native ancestors and attaching the replacement presentation.
+    const bool updatesWereEnabled = updatesEnabled();
+    setUpdatesEnabled(false);
+    const auto restoreUpdates = qScopeGuard([this, updatesWereEnabled] {
+        setUpdatesEnabled(updatesWereEnabled);
+    });
     restoreExpandedPanel();
     rememberGeometry();
     if (m_tiles)
@@ -516,6 +530,7 @@ bool DashboardWorkspace::addPanel(const QString &id, const QString &title, QWidg
     frame->setProperty("canvasPanelTransparent", content->property("canvasPanelTransparent").toBool());
     const bool externalApp = content->property("dashboardExternalApp").toBool();
     frame->setProperty("dashboardExternalApp", externalApp);
+    frame->setProperty("dashboardKind", content->property("dashboardKind"));
     content->installEventFilter(this);
     auto *layout = new QVBoxLayout(frame);
     layout->setContentsMargins(7, 5, 7, 7);
@@ -532,6 +547,7 @@ bool DashboardWorkspace::addPanel(const QString &id, const QString &title, QWidg
     label->setAttribute(Qt::WA_TransparentForMouseEvents);
     headerLayout->addWidget(label, 1);
     auto *menu = new QToolButton(header);
+    menu->setObjectName("dashboardPanelMenuButton");
     menu->setText(QString::fromUtf8("⋯"));
     menu->setToolTip(tr("Arrange widget"));
     menu->setAccessibleName(tr("Arrange %1").arg(title));
@@ -583,6 +599,8 @@ bool DashboardWorkspace::addPanel(const QString &id, const QString &title, QWidg
     if (externalApp) {
         tileActions = new QToolButton(frame);
         tileActions->setObjectName("dashboardTileActions");
+        tileActions->setProperty("dashboardPanelId", id);
+        tileActions->installEventFilter(this);
         // A native sibling can appear above an embedded application's native
         // surface. A painted QWidget overlay alone is occluded by that surface.
         tileActions->setAttribute(Qt::WA_NativeWindow);
@@ -590,7 +608,8 @@ bool DashboardWorkspace::addPanel(const QString &id, const QString &title, QWidg
         tileActions->setFixedSize(30, 24);
         tileActions->setFocusPolicy(Qt::StrongFocus);
         tileActions->setAccessibleName(tr("Tile actions for %1").arg(title));
-        tileActions->setToolTip(tr("Tile actions · Ctrl+Alt+M when dashboard has focus"));
+        tileActions->setToolTip(tr("Drag to arrange · Click for tile actions · Ctrl+Alt+M when dashboard has focus"));
+        tileActions->setCursor(Qt::OpenHandCursor);
         tileActions->setContextMenuPolicy(Qt::CustomContextMenu);
         tileActions->hide();
         connect(tileActions, &QToolButton::clicked, this, [this, id, tileActions] {
@@ -606,6 +625,7 @@ bool DashboardWorkspace::addPanel(const QString &id, const QString &title, QWidg
     connect(frame, &QWidget::customContextMenuRequested, this, [this, id, frame](const QPoint &position) {
         showPanelMenu(id, frame->mapToGlobal(position));
     });
+    applyPanelChrome(id, m_mode == "tiling");
     m_canvasOrder.append(id);
     m_canvasGeometry[id] = defaultGeometry(id, m_canvasGeometry);
     if (!isVisible())
@@ -654,6 +674,7 @@ void DashboardWorkspace::setMode(const QString &mode)
 {
     if ((mode != "canvas" && mode != "tiling") || mode == m_mode)
         return;
+    finishPanelDrag();
     restoreExpandedPanel();
     rememberGeometry();
     if (m_tiles)
@@ -752,35 +773,39 @@ QWidget *DashboardWorkspace::buildTree(const QJsonObject &node, QWidget *parent)
                     previous->deleteLater();
                 }
             }
-            auto *controls = new QWidget(group->tabBar());
-            auto *controlLayout = new QHBoxLayout(controls);
-            controlLayout->setContentsMargins(0, 0, 0, 0);
-            controlLayout->setSpacing(2);
-            auto *close = new WindowControlButton(WindowControlButton::Close, controls);
-            close->setObjectName("dashboardTabClose");
-            close->setFixedSize(22, 22);
-            close->setAccessibleName(tr("Close panel"));
-            close->setToolTip(tr("Close panel"));
-            controlLayout->addWidget(close);
-            auto *minimize = new WindowControlButton(WindowControlButton::Minimize, controls);
-            minimize->setObjectName("dashboardTabMinimize");
-            minimize->setFixedSize(22, 22);
-            minimize->setAccessibleName(tr("Minimize panel to dock"));
-            minimize->setToolTip(tr("Minimize to dock"));
-            controlLayout->addWidget(minimize);
-            connect(minimize, &QToolButton::clicked, this, [this, id] { minimizePanel(id); });
-            connect(close, &QToolButton::clicked, this, [this, id]() {
-                emit panelCloseRequested(id);
-            });
-            auto *expand = new WindowControlButton(WindowControlButton::Maximize, controls);
-            expand->setObjectName("dashboardTabExpand");
-            expand->setProperty("dashboardPanelId", id);
-            expand->setFixedSize(22, 22);
-            expand->setAccessibleName(tr("Expand panel"));
-            expand->setToolTip(tr("Expand panel"));
-            controlLayout->addWidget(expand);
-            group->tabBar()->setTabButton(tabIndex, QTabBar::LeftSide, controls);
-            connect(expand, &QToolButton::clicked, this, [this, id] { togglePanelExpanded(id); });
+            // External applications already own their window controls. Keep
+            // only their tab label; Dockpipe actions stay on the hover handle.
+            if (!frame->property("dashboardExternalApp").toBool()) {
+                auto *controls = new QWidget(group->tabBar());
+                auto *controlLayout = new QHBoxLayout(controls);
+                controlLayout->setContentsMargins(0, 0, 0, 0);
+                controlLayout->setSpacing(2);
+                auto *close = new WindowControlButton(WindowControlButton::Close, controls);
+                close->setObjectName("dashboardTabClose");
+                close->setFixedSize(22, 22);
+                close->setAccessibleName(tr("Close panel"));
+                close->setToolTip(tr("Close panel"));
+                controlLayout->addWidget(close);
+                auto *minimize = new WindowControlButton(WindowControlButton::Minimize, controls);
+                minimize->setObjectName("dashboardTabMinimize");
+                minimize->setFixedSize(22, 22);
+                minimize->setAccessibleName(tr("Minimize panel to dock"));
+                minimize->setToolTip(tr("Minimize to dock"));
+                controlLayout->addWidget(minimize);
+                connect(minimize, &QToolButton::clicked, this, [this, id] { minimizePanel(id); });
+                connect(close, &QToolButton::clicked, this, [this, id]() {
+                    emit panelCloseRequested(id);
+                });
+                auto *expand = new WindowControlButton(WindowControlButton::Maximize, controls);
+                expand->setObjectName("dashboardTabExpand");
+                expand->setProperty("dashboardPanelId", id);
+                expand->setFixedSize(22, 22);
+                expand->setAccessibleName(tr("Expand panel"));
+                expand->setToolTip(tr("Expand panel"));
+                controlLayout->addWidget(expand);
+                group->tabBar()->setTabButton(tabIndex, QTabBar::LeftSide, controls);
+                connect(expand, &QToolButton::clicked, this, [this, id] { togglePanelExpanded(id); });
+            }
             PROFILE_LAYOUT_PHASE(tabPhase, CreateTabControls);
             if (id == node.value("active").toString())
                 group->setCurrentWidget(page);
@@ -866,7 +891,8 @@ QSize DashboardWorkspace::minimumPanelSize(const QString &id) const
     const CanvasPanel *frame = m_panels.value(id).frame;
     if (!frame)
         return QSize(280, 180);
-    return frame->minimumSize().expandedTo(frame->minimumSizeHint()).expandedTo(QSize(280, 180));
+    const QSize baseline = frame->property("dashboardSpatial").toBool() ? QSize(280, 72) : QSize(280, 180);
+    return frame->minimumSize().expandedTo(frame->minimumSizeHint()).expandedTo(baseline);
 }
 
 QRect DashboardWorkspace::defaultGeometry(const QString &id, const QMap<QString, QRect> &occupied) const
@@ -874,7 +900,24 @@ QRect DashboardWorkspace::defaultGeometry(const QString &id, const QMap<QString,
     constexpr int gap = 16;
     const QRect bounds = rect().adjusted(8, 8, -8, -8);
     const QSize minimum = minimumPanelSize(id);
-    const QSize preferred = QSize(440, 300).expandedTo(minimum);
+    QSize natural(440, 300);
+    const auto *frame = m_panels.value(id).frame;
+    if (frame && frame->property("dashboardSpatial").toBool()) {
+        const QString kind = frame->property("dashboardKind").toString();
+        if (kind == "send-input")
+            natural = QSize(520, 96);
+        else if (kind == "system")
+            natural = QSize(420, 260);
+        else if (kind == "browser")
+            natural = QSize(680, 420);
+        else if (kind == "files")
+            natural = QSize(480, 340);
+        else if (kind == "terminal")
+            natural = QSize(520, 300);
+        else
+            natural = QSize(400, 260);
+    }
+    const QSize preferred = natural.expandedTo(minimum);
     QList<int> columns{bounds.left()};
     QList<int> rows{bounds.top()};
     for (const QRect &area : occupied) {
@@ -941,6 +984,7 @@ void DashboardWorkspace::placePendingPanels()
 
 void DashboardWorkspace::invalidateTilingPresentation()
 {
+    finishPanelDrag();
     ++m_presentationRevision;
     if (!m_retainedViewport)
         return;
@@ -1013,12 +1057,9 @@ void DashboardWorkspace::rebuild()
         if (m_retainedMinimized != m_minimized)
             applyMinimizedPanels();
         PROFILE_LAYOUT_PHASE(rebuildPhase, FinalizeChrome);
-        const auto &groups = m_retainedGroups;
-        for (auto *group : groups) {
-            if (!group->isHidden())
-                materializePanel(panelId(group->currentWidget()));
-        }
-        PROFILE_LAYOUT_PHASE(rebuildPhase, AttachLiveFrames);
+        // Showing the empty slots settles the scroll area, splitters and tab
+        // stacks first. Mapping live native children earlier exposes their old
+        // canvas or minimum geometry before Qt delivers the destination resize.
         m_tileViewport->show();
         for (auto iterator = m_retainedSplitterSizes.cbegin(); iterator != m_retainedSplitterSizes.cend(); ++iterator) {
             if (iterator.key()->sizes() != iterator.value()) {
@@ -1029,6 +1070,12 @@ void DashboardWorkspace::rebuild()
         m_tileViewport->horizontalScrollBar()->setValue(m_retainedScroll.x());
         m_tileViewport->verticalScrollBar()->setValue(m_retainedScroll.y());
         PROFILE_LAYOUT_PHASE(rebuildPhase, ShowViewport);
+        const auto &groups = m_retainedGroups;
+        for (auto *group : groups) {
+            if (!group->isHidden())
+                materializePanel(panelId(group->currentWidget()));
+        }
+        PROFILE_LAYOUT_PHASE(rebuildPhase, AttachLiveFrames);
     }
     for (auto iterator = m_panels.cbegin(); iterator != m_panels.cend(); ++iterator) {
         if (m_mode != "canvas" && !m_floating.contains(iterator.key()))
@@ -1052,7 +1099,7 @@ void DashboardWorkspace::rebuild()
     }
     m_empty->setGeometry(rect());
     m_empty->setVisible(m_panels.isEmpty());
-    m_dropPreview->hide();
+    hideDropPreview();
     m_rebuilding = false;
     updateTileActionsPolling();
     PROFILE_LAYOUT_PHASE(rebuildPhase, FinalizeChrome);
@@ -1066,6 +1113,7 @@ bool DashboardWorkspace::minimizePanel(const QString &id)
 {
     if (!m_panels.contains(id) || m_minimized.contains(id))
         return false;
+    finishPanelDrag();
     restoreExpandedPanel();
     rememberGeometry();
     m_minimized.insert(id);
@@ -1288,6 +1336,20 @@ bool DashboardWorkspace::floatPanel(const QString &id)
     return true;
 }
 
+bool DashboardWorkspace::placePanelAt(const QString &id, const QPoint &position)
+{
+    if (m_mode != "canvas" || !m_panels.contains(id))
+        return false;
+    restoreExpandedPanel();
+    auto *frame = m_panels.value(id).frame;
+    const QRect geometry = constrainedGeometry(id, QRect(position, frame->size()));
+    frame->setGeometry(geometry);
+    m_canvasGeometry[id] = geometry;
+    m_pendingPlacement.remove(id);
+    emit layoutChanged();
+    return true;
+}
+
 void DashboardWorkspace::showPanelMenu(const QString &id, const QPoint &position)
 {
     if (!m_panels.contains(id))
@@ -1301,6 +1363,12 @@ void DashboardWorkspace::showPanelMenu(const QString &id, const QPoint &position
     connect(menu->addAction(tr("Minimize to dock")), &QAction::triggered, this, [this, id] { minimizePanel(id); });
     menu->addSeparator();
     auto *openFullView = m_panels.value(id).frame->findChild<QPushButton *>("dashboardOpenFullView");
+    auto *refresh = m_panels.value(id).frame->findChild<QPushButton *>("dashboardWidgetRefresh");
+    if (refresh) {
+        auto *refreshAction = menu->addAction(tr("Refresh"));
+        refreshAction->setEnabled(refresh->isEnabled());
+        connect(refreshAction, &QAction::triggered, refresh, &QPushButton::click);
+    }
     if (openFullView) {
         auto *openAction = menu->addAction(openFullView->text());
         openAction->setEnabled(openFullView->isEnabled());
@@ -1339,6 +1407,15 @@ void DashboardWorkspace::showPanelMenu(const QString &id, const QPoint &position
 bool DashboardWorkspace::eventFilter(QObject *object, QEvent *event)
 {
     auto *header = qobject_cast<QWidget *>(object);
+    if (object == m_dragHandle && (event->type() == QEvent::Hide
+        || event->type() == QEvent::WindowDeactivate || event->type() == QEvent::UngrabMouse
+        || event->type() == QEvent::UngrabKeyboard))
+        finishPanelDrag();
+    if (object == m_dragHandle && m_dragging && event->type() == QEvent::KeyPress
+        && static_cast<QKeyEvent *>(event)->key() == Qt::Key_Escape) {
+        finishPanelDrag();
+        return true;
+    }
     if (header && event->type() == QEvent::DynamicPropertyChange) {
         auto *change = static_cast<QDynamicPropertyChangeEvent *>(event);
         auto *frame = qobject_cast<CanvasPanel *>(header->parentWidget());
@@ -1352,9 +1429,13 @@ bool DashboardWorkspace::eventFilter(QObject *object, QEvent *event)
     if (!header || m_mode != "tiling" || !m_expandedPanel.isEmpty())
         return QWidget::eventFilter(object, event);
     QString id = header->property("dashboardPanelId").toString();
-    // Dragging a tab out of its strip also permits docking it in another group.
+    // Keep ordinary tab reordering inside its strip. Leaving the strip uses
+    // the same captured gesture as the native tile handle: foreign child
+    // windows cannot be expected to accept our OLE/Xdnd MIME payload.
     auto *tabBar = qobject_cast<QTabBar *>(header);
-    if (event->type() == QEvent::MouseButtonPress) {
+    const bool tileHandleDoubleClick = event->type() == QEvent::MouseButtonDblClick
+        && m_panels.contains(id) && m_panels.value(id).tileActions == header;
+    if (event->type() == QEvent::MouseButtonPress || tileHandleDoubleClick) {
         auto *mouse = static_cast<QMouseEvent *>(event);
         if (tabBar) {
             auto *group = qobject_cast<QTabWidget *>(tabBar->parentWidget());
@@ -1363,28 +1444,83 @@ bool DashboardWorkspace::eventFilter(QObject *object, QEvent *event)
                 id = panelId(group->widget(index));
         }
         if (mouse->button() == Qt::LeftButton && !id.isEmpty() && !m_floating.contains(id)) {
-            m_dragStart = mouse->position().toPoint();
+            finishPanelDrag();
+            m_dragStart = mouse->globalPosition().toPoint();
             m_dragPanel = id;
+            m_dragHandle = header;
+            header->setFocus(Qt::MouseFocusReason);
+            // Capture while the pointer is still over our own window, which
+            // is required on Windows before crossing a foreign child surface.
+            header->grabMouse();
         }
-    } else if (event->type() == QEvent::MouseMove && !m_dragPanel.isEmpty()) {
+    } else if (event->type() == QEvent::MouseMove && object == m_dragHandle) {
         auto *mouse = static_cast<QMouseEvent *>(event);
         const bool outsideTabStrip = !tabBar || mouse->position().y() < -8 || mouse->position().y() > tabBar->height() + 8;
-        if ((mouse->buttons() & Qt::LeftButton) && outsideTabStrip &&
-            (mouse->position().toPoint() - m_dragStart).manhattanLength() >= QApplication::startDragDistance()) {
-            auto *drag = new QDrag(this);
-            auto *mime = new QMimeData;
-            mime->setData(PanelMime, m_dashboardId.toUtf8() + '\n' + m_dragPanel.toUtf8());
-            drag->setMimeData(mime);
-            drag->exec(Qt::MoveAction);
-            drag->deleteLater();
-            m_dragPanel.clear();
-            m_dropPreview->hide();
+        if (!(mouse->buttons() & Qt::LeftButton)) {
+            finishPanelDrag();
+        } else if (m_dragging || (outsideTabStrip
+            && (mouse->globalPosition().toPoint() - m_dragStart).manhattanLength() >= QApplication::startDragDistance())) {
+            if (!m_dragging) {
+                m_dragging = true;
+                m_cancelDrag->setEnabled(true);
+                // A foreign child can retain native keyboard focus after our
+                // mouse press. Capture Escape only for the active gesture.
+                header->grabKeyboard();
+            }
+            const QPoint position = mapFromGlobal(mouse->globalPosition().toPoint());
+            const QString target = panelAt(position);
+            const QString placement = dropPosition(target, position);
+            showDropPreview(panelDropTarget(m_dragPanel, target, placement).isEmpty() ? QString() : target, placement);
             return true;
         }
-    } else if (event->type() == QEvent::MouseButtonRelease) {
-        m_dragPanel.clear();
+    } else if (event->type() == QEvent::MouseButtonRelease && object == m_dragHandle) {
+        auto *mouse = static_cast<QMouseEvent *>(event);
+        if (mouse->button() != Qt::LeftButton)
+            return QWidget::eventFilter(object, event);
+        const bool dragging = m_dragging;
+        const QString source = m_dragPanel;
+        const QPoint point = mapFromGlobal(mouse->globalPosition().toPoint());
+        const QString target = panelAt(point);
+        const QString placement = dropPosition(target, point);
+        const QString destination = panelDropTarget(source, target, placement);
+        finishPanelDrag(dragging);
+        if (dragging) {
+            if (!destination.isEmpty())
+                dockPanel(source, destination, placement);
+            // dockPanel may have deleted the old tab bar. Qt requires an
+            // event filter that deletes its receiver to consume that event.
+            return true;
+        }
     }
     return QWidget::eventFilter(object, event);
+}
+
+void DashboardWorkspace::finishPanelDrag(bool cancelClick)
+{
+    QPointer<QWidget> handle = m_dragHandle;
+    m_dragHandle.clear();
+    m_dragPanel.clear();
+    m_dragging = false;
+    m_cancelDrag->setEnabled(false);
+    hideDropPreview();
+    if (!handle)
+        return;
+    if (QWidget::keyboardGrabber() == handle)
+        handle->releaseKeyboard();
+    if (QWidget::mouseGrabber() == handle)
+        handle->releaseMouse();
+    if (!cancelClick)
+        return;
+    if (auto *button = qobject_cast<QAbstractButton *>(handle.data()))
+        button->setDown(false);
+    if (qobject_cast<QTabBar *>(handle.data())) {
+        // Finish Qt's own pressed/movable-tab state even on Escape or a mode
+        // change, when a physical release may arrive at a different window.
+        const QPoint outside(-1, -1);
+        QMouseEvent release(QEvent::MouseButtonRelease, outside, handle->mapToGlobal(outside),
+            Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+        QApplication::sendEvent(handle, &release);
+    }
 }
 
 bool DashboardWorkspace::acceptsDrag(const QMimeData *mime) const
@@ -1400,7 +1536,17 @@ bool DashboardWorkspace::acceptsDrag(const QMimeData *mime) const
 
 QString DashboardWorkspace::panelAt(const QPoint &position) const
 {
+    if (!rect().contains(position))
+        return {};
     QWidget *child = childAt(position);
+    // Floating panels cover the tiles beneath them. Native children may not
+    // participate in QWidget hit testing, so also reject their visible area.
+    for (const QString &id : m_floating) {
+        const CanvasPanel *frame = m_panels.value(id).frame;
+        if (frame && frame->isVisibleTo(this)
+            && frame->rect().contains(frame->mapFrom(this, position)))
+            return {};
+    }
     for (QWidget *ancestor = child; ancestor && ancestor != this; ancestor = ancestor->parentWidget()) {
         if (auto *bar = qobject_cast<QTabBar *>(ancestor)) {
             auto *group = qobject_cast<QTabWidget *>(bar->parentWidget());
@@ -1412,7 +1558,8 @@ QString DashboardWorkspace::panelAt(const QPoint &position) const
     }
     for (auto iterator = m_panels.cbegin(); iterator != m_panels.cend(); ++iterator) {
         CanvasPanel *frame = iterator.value().frame;
-        if (!m_floating.contains(iterator.key()) && child && (child == frame || frame->isAncestorOf(child)))
+        if (!m_floating.contains(iterator.key()) && frame->isVisibleTo(this)
+            && frame->rect().contains(frame->mapFrom(this, position)))
             return iterator.key();
     }
     return {};
@@ -1426,7 +1573,8 @@ QString DashboardWorkspace::dropPosition(const QString &targetId, const QPoint &
     for (QWidget *ancestor = frame->parentWidget(); ancestor && ancestor != this; ancestor = ancestor->parentWidget()) {
         if (auto *group = qobject_cast<QTabWidget *>(ancestor)) {
             QTabBar *bar = group->tabBar();
-            if (bar->rect().contains(bar->mapFrom(this, position)))
+            if (m_retainedGroups.contains(group) && bar->isVisibleTo(this)
+                && bar->rect().contains(bar->mapFrom(this, position)))
                 return "tab";
         }
     }
@@ -1444,10 +1592,30 @@ QString DashboardWorkspace::dropPosition(const QString &targetId, const QPoint &
     return "tab";
 }
 
+QString DashboardWorkspace::panelDropTarget(const QString &source, const QString &target, const QString &position) const
+{
+    if (source != target)
+        return target;
+    if (position == "tab")
+        return {};
+    // The selected tab fills its own pane. Splitting it out needs another tab
+    // from that group as the model destination, even though it is inactive.
+    for (QTabWidget *group : m_retainedGroups) {
+        if (group->indexOf(panelTabPage(source)) < 0)
+            continue;
+        for (int index = 0; index < group->count(); ++index) {
+            const QString id = panelId(group->widget(index));
+            if (id != source && group->isTabVisible(index) && !m_minimized.contains(id))
+                return id;
+        }
+    }
+    return {};
+}
+
 void DashboardWorkspace::showDropPreview(const QString &targetId, const QString &position)
 {
     if (!m_panels.contains(targetId)) {
-        m_dropPreview->hide();
+        hideDropPreview();
         return;
     }
     QWidget *frame = m_panels.value(targetId).frame;
@@ -1460,9 +1628,43 @@ void DashboardWorkspace::showDropPreview(const QString &targetId, const QString 
         area.setHeight(area.height() / 2);
     else if (position == "bottom")
         area.setTop(area.center().y());
-    m_dropPreview->setGeometry(area.adjusted(3, 3, -3, -3));
-    m_dropPreview->show();
-    m_dropPreview->raise();
+    // Four thin native siblings keep the destination outline visible above
+    // foreign surfaces without covering the application's contents. Do not
+    // add a full-pane fill: Qt can promote it to a native sibling, where
+    // WA_TransparentForMouseEvents does not make its OS input region empty.
+    // Allocate once on the first drag; mode switches add no native work.
+    if (m_dropPreviewEdges.isEmpty()) {
+        for (int index = 0; index < 4; ++index) {
+            auto *edge = new QWidget(this);
+            edge->setObjectName("dashboardDropPreviewEdge");
+            edge->setAttribute(Qt::WA_NativeWindow);
+            edge->setAttribute(Qt::WA_TransparentForMouseEvents);
+            edge->setStyleSheet("background: #79cbb6;");
+            m_dropPreviewEdges.append(edge);
+        }
+    }
+    area = area.adjusted(3, 3, -3, -3).intersected(rect());
+    if (area.isEmpty()) {
+        hideDropPreview();
+        return;
+    }
+    const QList<QRect> borders{
+        QRect(area.left(), area.top(), area.width(), 2),
+        QRect(area.left(), area.bottom() - 1, area.width(), 2),
+        QRect(area.left(), area.top(), 2, area.height()),
+        QRect(area.right() - 1, area.top(), 2, area.height())};
+    for (int index = 0; index < m_dropPreviewEdges.size(); ++index) {
+        QWidget *edge = m_dropPreviewEdges.at(index);
+        edge->setGeometry(borders.at(index));
+        edge->show();
+        edge->raise();
+    }
+}
+
+void DashboardWorkspace::hideDropPreview()
+{
+    for (QWidget *edge : m_dropPreviewEdges)
+        edge->hide();
 }
 
 void DashboardWorkspace::dragEnterEvent(QDragEnterEvent *event)
@@ -1482,18 +1684,20 @@ void DashboardWorkspace::dragMoveEvent(QDragMoveEvent *event)
 
 void DashboardWorkspace::dragLeaveEvent(QDragLeaveEvent *event)
 {
-    m_dropPreview->hide();
+    hideDropPreview();
     event->accept();
 }
 
 void DashboardWorkspace::dropEvent(QDropEvent *event)
 {
-    m_dropPreview->hide();
+    hideDropPreview();
     if (!acceptsDrag(event->mimeData()))
         return;
     const QString id = QString::fromUtf8(event->mimeData()->data(PanelMime).split('\n').last());
     const QString target = panelAt(event->position().toPoint());
-    if (!target.isEmpty() && dockPanel(id, target, dropPosition(target, event->position().toPoint())))
+    const QString placement = dropPosition(target, event->position().toPoint());
+    const QString destination = panelDropTarget(id, target, placement);
+    if (!destination.isEmpty() && dockPanel(id, destination, placement))
         event->acceptProposedAction();
 }
 
@@ -1538,6 +1742,7 @@ void DashboardWorkspace::showEvent(QShowEvent *event)
 
 void DashboardWorkspace::hideEvent(QHideEvent *event)
 {
+    finishPanelDrag();
     m_tileActionsTimer->stop();
     QWidget::hideEvent(event);
 }
@@ -1623,21 +1828,88 @@ void DashboardWorkspace::materializePanel(const QString &id)
     QWidget *page = panel.tabPage;
     if (!page || !m_tiles->isAncestorOf(page))
         return;
+    // Establish the native destination before moving a foreign-window host.
+    // Its native ancestor chain must follow the tab stack's position and clip.
+    if (panel.frame->property("dashboardExternalApp").toBool())
+        page->setAttribute(Qt::WA_NativeWindow);
     if (panel.frame->parentWidget() != page)
         page->layout()->addWidget(panel.frame);
+    // Hidden widgets are excluded from QLayout until show(). Give the frame
+    // its destination geometry before show maps native descendants, rather
+    // than waiting for the subsequent layout request.
+    panel.frame->setGeometry(page->contentsRect());
+    panel.frame->layout()->activate();
     panel.frame->show();
 }
 
 void DashboardWorkspace::applyPanelChrome(const QString &id, bool tiled)
 {
     const Panel &panel = m_panels[id];
-    panel.header->setVisible(!tiled && (m_showPanelHeaders || m_expandedPanel == id));
+    const QString kind = panel.frame->property("dashboardKind").toString();
+    const bool spatial = m_mode == "canvas" && !kind.isEmpty()
+        && !panel.frame->property("dashboardExternalApp").toBool();
+    const bool changed = panel.frame->property("dashboardSpatial").toBool() != spatial;
+    if (changed) {
+        panel.frame->setProperty("dashboardSpatial", spatial);
+        panel.frame->setProperty("dashboardCapsule", spatial && kind == "send-input");
+        const auto widgets = panel.frame->findChildren<QWidget *>();
+        for (auto *widget : widgets)
+            widget->setProperty("dashboardCanvasPresentation", spatial);
+        if (auto *body = panel.frame->findChild<QWidget *>("dashboardWidget_" + kind)) {
+            body->setMinimumSize(spatial ? QSize(240, 40) : QSize(260, 180));
+            if (auto *bodyLayout = qobject_cast<QVBoxLayout *>(body->layout())) {
+                bodyLayout->setContentsMargins(spatial ? 3 : 10, spatial ? 0 : 10, spatial ? 3 : 10, spatial ? 3 : 8);
+                bodyLayout->setSpacing(spatial ? 3 : 8);
+                if (kind == "terminal") {
+                    bodyLayout->setContentsMargins(0, 0, 0, 0);
+                    bodyLayout->setSpacing(0);
+                }
+            }
+        }
+        panel.frame->setMinimumSize(spatial && kind == "send-input" ? QSize(340, 88) : QSize(280, 180));
+    }
+    const bool viewportBrowser = spatial && kind == "browser";
+    panel.header->setVisible(!viewportBrowser && !tiled && (m_showPanelHeaders || m_expandedPanel == id));
+    auto *menuButton = panel.frame->findChild<QToolButton *>("dashboardPanelMenuButton");
+    auto *browserTabRow = panel.frame->findChild<QHBoxLayout *>("browserTabRow");
+    auto *grip = panel.frame->findChild<QLabel *>("dashboardCanvasBrowserGrip");
+    if (viewportBrowser && menuButton && browserTabRow) {
+        if (!grip) {
+            grip = new QLabel(QString::fromUtf8("⠿"), panel.frame);
+            grip->setObjectName("dashboardCanvasBrowserGrip");
+            grip->setAccessibleName(tr("Move browser widget"));
+            grip->setAlignment(Qt::AlignCenter);
+            grip->setFixedSize(18, 24);
+            browserTabRow->insertWidget(0, grip);
+        }
+        if (menuButton->parentWidget() != browserTabRow->parentWidget())
+            browserTabRow->addWidget(menuButton);
+        grip->show();
+        menuButton->show();
+        panel.frame->setDragHandle(grip);
+    } else {
+        if (grip)
+            grip->hide();
+        if (menuButton && menuButton->parentWidget() != panel.header)
+            qobject_cast<QHBoxLayout *>(panel.header->layout())->addWidget(menuButton);
+        panel.frame->setDragHandle(panel.header);
+    }
+    for (const QString &name : {QString("dashboardPanelClose"), QString("dashboardPanelMinimize"), QString("dashboardPanelExpand")}) {
+        if (auto *control = panel.header->findChild<QWidget *>(name))
+            control->setVisible(!spatial);
+    }
     const bool compact = tiled && (m_compactTiling || panel.frame->property("dashboardExternalApp").toBool());
     if (panel.footer)
-        panel.footer->setVisible(!compact && !panel.footerInitiallyHidden);
-    panel.frame->layout()->setContentsMargins(compact ? 0 : 7, compact ? 0 : 5, compact ? 0 : 7, compact ? 0 : 7);
-    panel.frame->layout()->setSpacing(compact ? 0 : 4);
-    if (panel.frame->property("dashboardTile").toBool() != tiled) {
+        panel.footer->setVisible(!spatial && !compact && !panel.footerInitiallyHidden);
+    int sideMargin = 7;
+    if (spatial)
+        sideMargin = 10;
+    if (viewportBrowser)
+        sideMargin = 5;
+    panel.frame->layout()->setContentsMargins(compact ? 0 : sideMargin, compact ? 0 : 5,
+        compact ? 0 : sideMargin, compact ? 0 : (spatial ? 9 : 7));
+    panel.frame->layout()->setSpacing(compact ? 0 : (spatial ? 1 : 4));
+    if (panel.frame->property("dashboardTile").toBool() != tiled || changed) {
         panel.frame->setProperty("dashboardTile", tiled);
         panel.frame->style()->unpolish(panel.frame);
         panel.frame->style()->polish(panel.frame);
@@ -1695,12 +1967,12 @@ void DashboardWorkspace::updateTileActions()
                 break;
         }
         const bool eligible = isVisible() && m_mode == "tiling" && panel.frame->isVisible()
-            && group && group->property("dashboardSingleExternalApp").toBool();
+            && group && m_retainedGroups.contains(group);
         const QRect revealArea(panel.frame->width() / 2 - 40, 0, 80, 32);
         QWidget *popup = QApplication::activePopupWidget();
         const bool menuOpen = popup && popup->property("dashboardPanelId").toString() == iterator.key();
         const bool reveal = eligible && (revealArea.contains(panel.frame->mapFromGlobal(cursor))
-            || panel.tileActions->hasFocus() || menuOpen);
+            || panel.tileActions->hasFocus() || menuOpen || m_dragPanel == iterator.key());
         panel.tileActions->move((panel.frame->width() - panel.tileActions->width()) / 2, 0);
         panel.tileActions->setVisible(reveal);
         if (reveal)
@@ -1854,6 +2126,7 @@ bool DashboardWorkspace::togglePanelExpanded(const QString &id)
 {
     if (!m_panels.contains(id))
         return false;
+    finishPanelDrag();
     if (m_expandedPanel == id) {
         restoreExpandedPanel();
         return true;

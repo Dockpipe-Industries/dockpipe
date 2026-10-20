@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "LauncherStatusBar.h"
 #include "DashboardPage.h"
 #include "DashboardWidgetFactory.h"
 #include "ProjectFilesWidget.h"
@@ -44,6 +45,7 @@ void MainWindow::setupDashboards()
     m_dashboardFactory = new DashboardWidgetFactory(m_sessions, m_store, this);
     m_dashboardFactory->setWorkdir(m_settings.projectFolder);
     m_dashboardFactory->setWorkflows(m_workspaceWorkflows);
+    connect(m_dashboardFactory, &DashboardWidgetFactory::cloneWorkflow, this, &MainWindow::cloneWorkflow);
     connect(m_dashboardFactory, &DashboardWidgetFactory::launchWorkflow, this, [this](const QString &workflowId) {
         for (const auto &context : m_advancedSourceContexts) {
             if (context.workflow == workflowId) {
@@ -185,6 +187,7 @@ void MainWindow::ensureDashboard(int page)
             auto *anchor = dashboard->findChild<QPushButton *>("dashboardFullscreenSidebar");
             menu->popup(anchor->mapToGlobal(QPoint(0, anchor->height())));
         });
+        connect(dashboard, &DashboardPage::cloneWorkflowRequested, this, &MainWindow::cloneWorkflow);
         connect(dashboard, &DashboardPage::appWorkflowRequested, this, [this, dashboard](const QString &workflowId) {
             for (const auto &context : m_advancedSourceContexts) {
                 if (context.workflow != workflowId)
@@ -228,13 +231,10 @@ void MainWindow::changeEvent(QEvent *event)
         updateDashboardFullscreen();
 }
 
-void MainWindow::updateDashboardStatusBar()
+void MainWindow::updateStatusBarVisibility()
 {
-    const bool dashboard = m_stack && qobject_cast<DashboardPage *>(m_stack->currentWidget());
-    // An idle QStatusBar still reserves a row, including after its last message
-    // expires. Let dashboards reach the window edge while retaining real notices.
-    auto *bar = statusBar();
-    bar->setVisible(!dashboard || m_disclaimerContainer || !bar->currentMessage().isEmpty());
+    auto *bar = static_cast<LauncherStatusBar *>(statusBar());
+    bar->setNoticeVisible(m_disclaimerContainer != nullptr);
 }
 
 void MainWindow::updateDashboardFullscreen()
@@ -242,7 +242,7 @@ void MainWindow::updateDashboardFullscreen()
     if (!m_stack || !m_navigationRail)
         return;
     const bool dashboardFullscreen = isFullScreen() && qobject_cast<DashboardPage *>(m_stack->currentWidget());
-    updateDashboardStatusBar();
+    updateStatusBarVisibility();
     menuBar()->setVisible(!dashboardFullscreen);
     m_navigationRail->setVisible(!dashboardFullscreen && m_settings.sidebarVisible);
     for (const auto &dashboard : m_dashboardPages) {

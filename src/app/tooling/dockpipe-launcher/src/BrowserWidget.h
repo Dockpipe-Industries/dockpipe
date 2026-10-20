@@ -10,6 +10,8 @@
 #include <memory>
 
 class BrowserDownloads;
+class BrowserTabBar;
+struct BrowserSession;
 class QLabel;
 class QLineEdit;
 class QMenu;
@@ -30,12 +32,17 @@ public:
     void navigate(const QUrl &url);
     QWebEngineView *activeView() const { return m_view; }
     void setChromeVisible(bool visible);
+    void setCanvasPresentationEnabled(bool enabled);
+    void setCanvasViewportMode(bool enabled);
+    bool canvasViewportMode() const;
+    bool moveTabTo(QWebEngineView *view, BrowserWidget *destination);
     void setBackgroundSuspended(bool suspended);
     static QUrl addressUrl(const QString &text);
 
 signals:
     void activeViewAboutToChange(QWebEngineView *previous);
     void activeViewChanged(QWebEngineView *current);
+    void tabTearOutRequested(QWebEngineView *view, const QPoint &globalPosition);
 
 protected:
     bool eventFilter(QObject *object, QEvent *event) override;
@@ -51,7 +58,10 @@ private:
     void buildChrome();
     void createSession();
     void destroySession();
+    bool hasSharedSession() const;
     QWebEngineView *addTab(const QUrl &url = {});
+    void attachTab(QWidget *container, QWebEngineView *view);
+    void updatePresentation();
     void closeTab(int index);
     void selectTab(int index);
     void updateNavigation();
@@ -74,11 +84,15 @@ private:
     void setViewportWidth(int width);
     QMenu *createMenu();
 
-    std::unique_ptr<QTemporaryDir> m_sessionDirectory;
+    std::shared_ptr<BrowserSession> m_session;
+    QHash<QWebEngineView *, std::shared_ptr<BrowserSession>> m_tabSessions;
     QWebEngineProfile *m_profile = nullptr;
     BrowserDownloads *m_downloads = nullptr;
     QWebEngineView *m_view = nullptr;
-    QTabBar *m_tabs = nullptr;
+    BrowserTabBar *m_tabs = nullptr;
+    QWidget *m_toolbar = nullptr;
+    QPushButton *m_viewportButton = nullptr;
+    QPushButton *m_newTabButton = nullptr;
     QStackedWidget *m_pages = nullptr;
     QLineEdit *m_address = nullptr;
     QPushButton *m_back = nullptr;
@@ -87,6 +101,7 @@ private:
     QPushButton *m_stop = nullptr;
     QPushButton *m_annotate = nullptr;
     QPushButton *m_extensionsButton = nullptr;
+    QPushButton *m_installExtension = nullptr;
     QPushButton *m_downloadsButton = nullptr;
     QPushButton *m_goButton = nullptr;
     QLabel *m_status = nullptr;
@@ -103,6 +118,8 @@ private:
     bool m_showFullUrl = false;
     bool m_destroyingSession = false;
     bool m_chromeVisible = true;
+    bool m_canvasPresentationEnabled = false;
+    bool m_canvasViewportRequested = true;
     bool m_backgroundSuspended = false;
     bool m_suspendInactivePages = false;
 };

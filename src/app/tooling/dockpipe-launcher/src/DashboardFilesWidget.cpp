@@ -1,4 +1,7 @@
 #include "DashboardFilesWidget.h"
+#include "FileExplorerView.h"
+#include "FileExplorerIcons.h"
+#include "CanvasIcons.h"
 
 #include <QDir>
 #include <QFileInfo>
@@ -45,6 +48,16 @@ public:
     }
 
 protected:
+    bool lessThan(const QModelIndex &left, const QModelIndex &right) const override
+    {
+        const auto *files = qobject_cast<QFileSystemModel *>(sourceModel());
+        const bool leftDirectory = files->isDir(left);
+        const bool rightDirectory = files->isDir(right);
+        if (leftDirectory != rightDirectory)
+            return leftDirectory;
+        return QSortFilterProxyModel::lessThan(left, right);
+    }
+
     bool filterAcceptsRow(int row, const QModelIndex &parent) const override
     {
         if (m_system)
@@ -70,9 +83,10 @@ private:
 DashboardFilesWidget::DashboardFilesWidget(QWidget *parent) : QWidget(parent)
 {
     setObjectName("dashboardFilesWidget");
+    setAttribute(Qt::WA_StyledBackground);
     auto *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(4, 4, 4, 4);
-    layout->setSpacing(4);
+    layout->setContentsMargins(8, 8, 8, 8);
+    layout->setSpacing(8);
     auto *navigation = new QHBoxLayout;
     m_up = new QPushButton(tr("Up"));
     m_up->setObjectName("dashboardFilesUp");
@@ -83,32 +97,41 @@ DashboardFilesWidget::DashboardFilesWidget(QWidget *parent) : QWidget(parent)
     navigation->addWidget(m_up);
     navigation->addWidget(m_home);
     navigation->addWidget(m_filesystem);
-    navigation->addStretch();
-    layout->addLayout(navigation);
+
     m_location = new QLineEdit;
     m_location->setObjectName("dashboardFilesLocation");
     m_location->setAccessibleName(tr("Directory"));
     m_location->setMaxLength(4096);
-    layout->addWidget(m_location);
+    navigation->addWidget(m_location, 1);
+    layout->addLayout(navigation);
+    const QList<QPushButton *> navigationButtons{m_up, m_home, m_filesystem};
+    const QList<CanvasIcons::Symbol> navigationIcons{
+        CanvasIcons::Symbol::Up, CanvasIcons::Symbol::Folder, CanvasIcons::Symbol::Monitor};
+    for (int index = 0; index < navigationButtons.size(); ++index) {
+        auto *button = navigationButtons.at(index);
+        button->setAccessibleName(button->text());
+        button->setToolTip(button->text());
+        button->setText({});
+        button->setIcon(CanvasIcons::icon(navigationIcons.at(index)));
+        button->setProperty("fileNavigation", true);
+        button->setFixedSize(32, 32);
+    }
+    m_up->setToolTip(tr("Up one folder"));
+    m_filesystem->setToolTip(tr("Browse the filesystem and drives"));
     m_model = new QFileSystemModel(this);
     m_model->setReadOnly(true);
+    m_model->setIconProvider(&FileExplorerIcons::instance());
     m_model->setOption(QFileSystemModel::DontUseCustomDirectoryIcons, true);
     m_model->setFilter(QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot);
     m_filter = new DashboardFilesFilter(this);
     m_filter->setSourceModel(m_model);
-    m_tree = new QTreeView;
+    m_explorer = new FileExplorerView;
+    m_explorer->setModel(m_filter);
+    m_tree = m_explorer->treeView();
     m_tree->setObjectName("dashboardFiles");
-    m_tree->setModel(m_filter);
-    m_tree->setUniformRowHeights(true);
-    m_tree->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    m_tree->setSelectionMode(QAbstractItemView::SingleSelection);
     m_tree->setSortingEnabled(true);
     m_tree->sortByColumn(0, Qt::AscendingOrder);
-    m_tree->header()->setStretchLastSection(false);
-    m_tree->header()->setSectionResizeMode(0, QHeaderView::Stretch);
-    for (int column = 1; column < m_model->columnCount(); ++column)
-        m_tree->hideColumn(column);
-    layout->addWidget(m_tree, 1);
+    layout->addWidget(m_explorer, 1);
     m_status = new QLabel;
     m_status->setObjectName("dashboardFilesStatus");
     m_status->setTextFormat(Qt::PlainText);
@@ -120,14 +143,14 @@ DashboardFilesWidget::DashboardFilesWidget(QWidget *parent) : QWidget(parent)
     });
     connect(m_filesystem, &QPushButton::clicked, this, &DashboardFilesWidget::showFilesystem);
     connect(m_location, &QLineEdit::returnPressed, this, [this] { navigateTo(m_location->text()); });
-    connect(m_tree, &QTreeView::doubleClicked, this, &DashboardFilesWidget::activate);
+    connect(m_explorer, &FileExplorerView::activated, this, &DashboardFilesWidget::activate);
     clearProject();
 }
 
 void DashboardFilesWidget::setContext(const QString &scope, const QString &projectPath)
 {
     if (scope != "project" && scope != "system") {
-        m_status->setText(tr("Choose Project or System file scope."));
+        showStatus(tr("Choose Project or System file scope."));
         return;
     }
     if (scope == "system" && m_scope == "system")
@@ -148,8 +171,8 @@ void DashboardFilesWidget::setContext(const QString &scope, const QString &proje
     m_projectRoot = root;
     m_directory.clear();
     m_filter->setContext(scope == "system", root);
-    m_tree->setRootIndex({});
-    m_tree->hide();
+    m_explorer->setRootIndex({});
+    m_explorer->setAvailable(false);
     updateControls();
     navigateTo(scope == "system" ? QDir::homePath() : root);
 }
@@ -158,26 +181,26 @@ bool DashboardFilesWidget::navigateTo(const QString &path)
 {
     if (!validPath(path) || (m_scope == "project" && m_projectRoot.isEmpty())
         || (m_directory.isEmpty() && !QDir::isAbsolutePath(path))) {
-        m_status->setText(tr("Choose an existing directory."));
+        showStatus(tr("Choose an existing directory."));
         return false;
     }
     const QString candidate = QDir::isAbsolutePath(path) ? path : QDir(m_directory).absoluteFilePath(path);
     const QFileInfo entry(candidate);
     const QString canonical = entry.canonicalFilePath();
     if (canonical.isEmpty() || !entry.isDir() || !entry.isReadable()) {
-        m_status->setText(tr("This directory is missing or cannot be read."));
+        showStatus(tr("This directory is missing or cannot be read."));
         return false;
     }
     if (m_scope == "project" && !within(m_projectRoot, canonical)) {
-        m_status->setText(tr("Project scope stays inside the selected project, including symbolic links."));
+        showStatus(tr("Project scope stays inside the selected project, including symbolic links."));
         return false;
     }
     const auto rootIndex = m_model->setRootPath(canonical);
-    m_tree->setRootIndex(m_filter->mapFromSource(rootIndex));
+    m_explorer->setRootIndex(m_filter->mapFromSource(rootIndex));
     m_tree->collapseAll();
     m_directory = canonical;
-    m_tree->show();
-    m_status->clear();
+    m_explorer->setAvailable(true);
+    showStatus({});
     updateControls();
     return true;
 }
@@ -189,7 +212,7 @@ void DashboardFilesWidget::activate(const QModelIndex &index)
     const QFileInfo entry(m_model->filePath(m_filter->mapToSource(index)));
     const QString canonical = entry.canonicalFilePath();
     if (canonical.isEmpty() || (m_scope == "project" && !within(m_projectRoot, canonical))) {
-        m_status->setText(tr("This item is unavailable in the current file scope."));
+        showStatus(tr("This item is unavailable in the current file scope."));
         return;
     }
     if (entry.isDir())
@@ -203,10 +226,10 @@ void DashboardFilesWidget::clearProject()
     m_projectRoot.clear();
     m_directory.clear();
     m_filter->setContext(false, {});
-    m_tree->setRootIndex({});
-    m_tree->hide();
+    m_explorer->setRootIndex({});
+    m_explorer->setAvailable(false);
     m_model->setRootPath({});
-    m_status->setText(tr("Open a project to browse its files."));
+    showStatus(tr("Open a project to browse its files."));
     updateControls();
 }
 
@@ -229,12 +252,18 @@ void DashboardFilesWidget::showFilesystem()
         return;
 #ifdef Q_OS_WIN
     m_model->setRootPath({});
-    m_tree->setRootIndex({});
+    m_explorer->setRootIndex({});
     m_directory.clear();
-    m_tree->show();
-    m_status->setText(tr("Choose a drive."));
+    m_explorer->setAvailable(true);
+    showStatus(tr("Choose a drive."));
     updateControls();
 #else
     navigateTo(QDir::rootPath());
 #endif
+}
+
+void DashboardFilesWidget::showStatus(const QString &message)
+{
+    m_status->setText(message);
+    m_status->setVisible(!message.isEmpty());
 }

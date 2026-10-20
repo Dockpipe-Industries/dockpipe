@@ -59,6 +59,18 @@ struct WorkflowMeta {
     QString category;
     QString iconPath;
     QString configPath;
+    QString source;
+    QString sourceKind;
+    QString sourcePath;
+    QString sourceName;
+    bool cloneable = false;
+    bool supported = true;
+    QString unsupportedReason;
+    QStringList warnings;
+
+    QString sourceLabel() const;
+    QString catalogTitle() const;
+    QString catalogDescription() const;
     QVector<WorkflowInputMeta> inputs;
     WorkflowViewMeta view;
     QMap<QString, QString> vars;

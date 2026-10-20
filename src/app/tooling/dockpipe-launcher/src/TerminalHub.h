@@ -1,18 +1,24 @@
 #pragma once
 
+#include "TerminalLaunchContext.h"
+
 #include <QByteArray>
 #include <QHash>
 #include <QObject>
 #include <QStringList>
 
 class TerminalSession;
+class TerminalShellCatalog;
 
 // Process lifetime is independent of the page or dashboard displaying it.
 class TerminalHub final : public QObject {
     Q_OBJECT
 public:
     explicit TerminalHub(QObject *parent = nullptr);
-    QString createSession(const QString &workdir);
+    explicit TerminalHub(TerminalLaunchContext context, QObject *parent = nullptr);
+    QString createSession(const QString &workdir, const QString &shellProfileId = {});
+    TerminalShellCatalog &shellCatalog() const;
+    QString creationError() const;
     QStringList sessionIds() const;
     QString title(const QString &id) const;
     bool running(const QString &id) const;
@@ -37,4 +43,7 @@ private:
     QHash<QString, Entry> m_sessions;
     QStringList m_order;
     int m_nextTitle = 1;
+    TerminalShellCatalog *m_shellCatalog = nullptr;
+    TerminalLaunchContext m_launchContext = TerminalLaunchContext::Automatic;
+    QString m_creationError;
 };

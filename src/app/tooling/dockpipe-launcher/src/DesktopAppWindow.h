@@ -21,7 +21,9 @@ struct DesktopAppChoice {
 class DesktopAppWindow final {
 public:
     static QString unavailableReason();
-    static QVector<DesktopAppChoice> availableWindows(QString &error);
+    // An optional native ID revalidates one selection without inspecting every
+    // other application's process again during batch acquisition.
+    static QVector<DesktopAppChoice> availableWindows(QString &error, quint64 onlyWindowId = 0);
     explicit DesktopAppWindow(const DesktopAppChoice &choice);
     ~DesktopAppWindow();
     DesktopAppWindow(const DesktopAppWindow &) = delete;

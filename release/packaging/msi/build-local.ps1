@@ -1,6 +1,6 @@
 param(
     [string]$Version = "",
-    [string]$QtVersion = "6.8.3",
+    [string]$QtVersion = "6.10.3",
     [string]$QtArch = "win64_msvc2022_64",
     [string]$QtRoot = "",
     [string]$QtInstallRoot = "C:\Qt",
