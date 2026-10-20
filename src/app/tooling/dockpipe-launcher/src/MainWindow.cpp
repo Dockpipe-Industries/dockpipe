@@ -1,5 +1,6 @@
 #include "ResourceCanvas.h"
 #include "MainWindow.h"
+#include "LauncherStatusBar.h"
 #include "ProjectFilesWidget.h"
 #include "WorkspacePackageManager.h"
 #include "ProjectGitWidget.h"
@@ -156,7 +157,8 @@ QMap<QString, QString> parseEnvAssignments(const QStringList &lines)
         if (idx <= 0)
             continue;
         const QString key = line.left(idx).trimmed();
-        const QString value = line.mid(idx + 1);
+        const QString value = key.startsWith("DOCKPIPE_VSCODE_INPUT_")
+            ? raw.mid(raw.indexOf(QLatin1Char('=')) + 1) : line.mid(idx + 1);
         if (!key.isEmpty())
             out.insert(key, value);
     }
@@ -167,7 +169,7 @@ QStringList formatEnvAssignments(const QMap<QString, QString> &values)
 {
     QStringList out;
     for (auto it = values.begin(); it != values.end(); ++it) {
-        if (it.key().trimmed().isEmpty() || it.value().trimmed().isEmpty())
+        if (it.key().trimmed().isEmpty() || (!it.key().startsWith("DOCKPIPE_VSCODE_INPUT_") && it.value().trimmed().isEmpty()))
             continue;
         out.append(it.key() + QStringLiteral("=") + it.value());
     }
@@ -212,7 +214,7 @@ bool workflowNeedsConfigPromptInputs(const QVector<WorkflowInputMeta> &inputs, c
     for (const WorkflowInputMeta &input : inputs) {
         const QString envName = input.envName.trimmed().toUpper();
         if (!envName.isEmpty()) {
-            if (!currentValues.value(envName).trimmed().isEmpty())
+            if ((envName.startsWith("DOCKPIPE_VSCODE_INPUT_") && currentValues.contains(envName)) || !currentValues.value(envName).trimmed().isEmpty())
                 continue;
             if (!input.defaultValue.trimmed().isEmpty())
                 continue;
@@ -260,7 +262,8 @@ QVector<WorkflowMeta> appWorkflowsFromCatalog(const WorkflowCatalogData &catalog
     for (const WorkflowMeta &m : catalog.workflows) {
         if (m.category.compare(QStringLiteral("app"), Qt::CaseInsensitive) != 0)
             continue;
-        const QString displayKey = m.displayName.trimmed().toLower();
+        const QString displayKey = m.source == "vscode" ? m.workflowId
+            : m.displayName.trimmed().toLower();
         if (!displayKey.isEmpty() && seenDisplayNames.contains(displayKey))
             continue;
         out.append(m);
@@ -390,6 +393,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
 {
+    setStatusBar(new LauncherStatusBar(this));
     connect(qApp, &QCoreApplication::aboutToQuit, this, &MainWindow::releaseDashboardWindows);
     // Allocate an alpha surface before native window creation only when opted in.
     // Changing this Qt attribute on an already mapped window is not portable.
@@ -664,13 +668,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     });
 
     setupDisclaimerBar();
-    connect(statusBar(), &QStatusBar::messageChanged, this, &MainWindow::updateDashboardStatusBar);
     applyCockpitAvailability();
 
     connect(m_basicWidget, &BasicModeWidget::packagesRequested, this, &MainWindow::onManagePackages);
     connect(m_basicWidget, &BasicModeWidget::openProjectRequested, this, &MainWindow::onFileOpenProject);
     connect(m_basicWidget, &BasicModeWidget::refreshAppsRequested, this, &MainWindow::onRefreshAppList);
     connect(m_basicWidget, &BasicModeWidget::launchRequested, this, &MainWindow::onBasicLaunch);
+    connect(m_basicWidget, &BasicModeWidget::cloneRequested, this, &MainWindow::cloneWorkflow);
     connect(m_basicWidget, &BasicModeWidget::configureRequested, this, &MainWindow::onBasicConfigure);
     connect(m_basicWidget, &BasicModeWidget::recentProjectSelected, this, &MainWindow::onBasicOpenRecent);
     connect(m_basicWidget, &BasicModeWidget::continueLastRequested, this, &MainWindow::onBasicContinueLast);
@@ -732,7 +736,7 @@ void MainWindow::setupDisclaimerBar()
 
     m_disclaimerContainer = wrap;
     statusBar()->addWidget(wrap, 1);
-    updateDashboardStatusBar();
+    updateStatusBarVisibility();
 }
 
 void MainWindow::onDismissThirdPartyDisclaimer()
@@ -745,7 +749,7 @@ void MainWindow::onDismissThirdPartyDisclaimer()
     QWidget *w = m_disclaimerContainer;
     m_disclaimerContainer = nullptr;
     w->deleteLater();
-    updateDashboardStatusBar();
+    updateStatusBarVisibility();
 }
 
 void MainWindow::onRestoreThirdPartyDisclaimer()
@@ -1294,6 +1298,11 @@ void MainWindow::onBasicLaunch(const QString &workflowId)
             break;
         }
     }
+    if (!meta.supported) {
+        m_basicLaunchingWorkflowId.clear();
+        QMessageBox::information(this, tr("Workflow unavailable"), meta.catalogDescription());
+        return;
+    }
     if (m_basicLaunchingWorkflowId.isEmpty())
         m_basicLaunchingWorkflowId = effectiveWorkflowId;
     updateBasicPage();
@@ -1387,15 +1396,28 @@ WorkflowMeta MainWindow::findWorkflowMeta(const QString &workdir, const QString 
 
 bool MainWindow::configureContextForWorkflow(Context &ctx, const WorkflowMeta &meta, bool forceDialog)
 {
+    ctx.transientLaunchEnv.clear();
     if (meta.workflowId.trimmed().isEmpty())
         return false;
     if (meta.inputs.isEmpty()) {
+        if (forceDialog && meta.source == "vscode") {
+            QMessageBox::information(this, tr("VS Code workflow"),
+                tr("No declared inputs. Use Clone to workflows to edit this configuration."));
+            return false;
+        }
         if (forceDialog)
             return openWorkflowConfig(meta);
         return true;
     }
+    QSet<QString> transientNames;
+    for (const auto &input : meta.inputs) {
+        if (input.attributes.value("password") == "true" || input.attributes.value("secret") == "true")
+            transientNames.insert(input.envName);
+    }
     const QMap<QString, QString> currentValues = parseEnvAssignments(ctx.extraDockpipeEnv);
-    const QMap<QString, QString> prunedValues = pruneStaleWorkflowValues(meta, currentValues);
+    QMap<QString, QString> prunedValues = pruneStaleWorkflowValues(meta, currentValues);
+    for (const auto &name : transientNames)
+        prunedValues.remove(name);
     if (prunedValues != currentValues) {
         ctx.extraDockpipeEnv = formatEnvAssignments(prunedValues);
         m_store.save();
@@ -1408,7 +1430,12 @@ bool MainWindow::configureContextForWorkflow(Context &ctx, const WorkflowMeta &m
     QMap<QString, QString> merged = prunedValues;
     const QMap<QString, QString> edited = dialog.values();
     for (auto it = edited.begin(); it != edited.end(); ++it) {
-        if (it.value().trimmed().isEmpty())
+        if (transientNames.contains(it.key())) {
+            ctx.transientLaunchEnv.insert(it.key(), it.value());
+            merged.remove(it.key());
+            continue;
+        }
+        if (it.value().trimmed().isEmpty() && !it.key().startsWith("DOCKPIPE_VSCODE_INPUT_"))
             merged.remove(it.key());
         else
             merged.insert(it.key(), it.value());
@@ -1420,12 +1447,12 @@ bool MainWindow::configureContextForWorkflow(Context &ctx, const WorkflowMeta &m
 
 bool MainWindow::openWorkflowConfig(const WorkflowMeta &meta)
 {
-    const QString configPath = QDir::cleanPath(meta.configPath);
-    if (configPath.isEmpty()) {
+    if (meta.configPath.trimmed().isEmpty()) {
         QMessageBox::information(this, tr("Dockpipe Launcher"),
                                  tr("This workflow does not expose launcher-managed settings."));
         return false;
     }
+    const QString configPath = QDir::cleanPath(meta.configPath);
     if (!QFileInfo::exists(configPath)) {
         QMessageBox::warning(this, tr("Dockpipe Launcher"),
                              tr("The workflow file could not be found:\n%1").arg(QDir::toNativeSeparators(configPath)));
@@ -1493,7 +1520,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
         event->ignore();
         return;
     }
-    if ((m_cockpit && !m_cockpit->confirmLeave())
+    if ((m_projectGit && !m_projectGit->confirmLeave())
+        || (m_cockpit && !m_cockpit->confirmLeave())
         || (m_projectFiles && !m_projectFiles->confirmLeave())
         || (m_workflowEditor && !m_workflowEditor->confirmDiscardChanges())
         || !confirmDashboardClose()) {
@@ -1581,7 +1609,7 @@ void MainWindow::applyAdvancedContextFilter()
             c.dockpipeBinary = DockpipeChoices::preferredDockpipeBinary(c.workdir);
         }
         const WorkflowMeta meta = findWorkflowMeta(c.workdir, c.workflow, c.workflowFile);
-        if (!contextMatchesFilter(c, filter) && !meta.description.contains(filter.trimmed(), Qt::CaseInsensitive))
+        if (!contextMatchesFilter(c, filter) && !meta.catalogDescription().contains(filter.trimmed(), Qt::CaseInsensitive))
             continue;
         ++visibleCount;
         m_advancedContexts.append(c);
@@ -1599,7 +1627,11 @@ void MainWindow::applyAdvancedContextFilter()
         if (!selectedKey.isEmpty() && contextDisplayKey(c) == selectedKey)
             restoreRow = m_list->count() - 1;
 
-        auto *row = new ContextRowWidget(c, st, running, failed, m_list);
+        Context rowContext = c;
+        if (!meta.sourceLabel().isEmpty())
+            rowContext.label = meta.catalogTitle();
+        auto *row = new ContextRowWidget(rowContext, st, running, failed, m_list);
+        row->setToolTip(meta.catalogDescription());
         m_list->setItemWidget(item, row);
     }
 
@@ -1897,8 +1929,17 @@ bool MainWindow::launchWorkflow(const Context &display)
     }
     Context *c = ensureStoredContextForDisplay(display);
     const WorkflowMeta meta = findWorkflowMeta(c->workdir, c->workflow, c->workflowFile);
+    if (!meta.supported) {
+        QMessageBox::information(this, tr("Workflow unavailable"), meta.catalogDescription());
+        return false;
+    }
     const QString node = m_runTarget->currentData().toString();
     if (!node.isEmpty()) {
+        if (meta.source == "vscode") {
+            QMessageBox::information(this, tr("Clone for remote execution"),
+                tr("Clone this VS Code entry to workflows before running it on another computer."));
+            return false;
+        }
         Context remoteContext = *c;
         if (remoteContext.workflowFile.isEmpty())
             remoteContext.workflowFile = meta.configPath;

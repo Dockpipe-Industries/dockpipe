@@ -47,7 +47,9 @@ public:
     void applySettings(const CockpitSettings &settings);
     CockpitSettings settings() const { return m_preferences; }
     std::function<QVector<WorkspaceFlightBuilding>(const QString &)> worldProvider;
-    std::function<QVector<DesktopAppChoice>(QString &)> appWindowProvider = DesktopAppWindow::availableWindows;
+    std::function<QVector<DesktopAppChoice>(QString &)> appWindowProvider = [](QString &error) {
+        return DesktopAppWindow::availableWindows(error);
+    };
 signals:
     void exitRequested();
     void settingsRequested();

@@ -25,7 +25,17 @@ AppCardWidget::AppCardWidget(const WorkflowMeta &app, const QIcon &icon, bool co
     title->setTextFormat(Qt::PlainText);
     title->setObjectName(QStringLiteral("cardTitle"));
     title->setWordWrap(true);
-    heading->addWidget(title, 1);
+    auto *identity = new QVBoxLayout;
+    identity->setSpacing(2);
+    identity->addWidget(title);
+    if (!app.sourceLabel().isEmpty()) {
+        auto *provenance = new QLabel(app.sourceLabel());
+        provenance->setObjectName("cardSource");
+        provenance->setTextFormat(Qt::PlainText);
+        provenance->setToolTip(app.sourcePath);
+        identity->addWidget(provenance);
+    }
+    heading->addLayout(identity, 1);
     if (running || launching) {
         auto *status = new QLabel(launching ? tr("Starting") : tr("Running"));
         status->setObjectName(QStringLiteral("cardStatus"));
@@ -47,11 +57,20 @@ AppCardWidget::AppCardWidget(const WorkflowMeta &app, const QIcon &icon, bool co
     configure->setAccessibleName(tr("Configure %1").arg(app.displayName));
     auto *launch = new QPushButton(launching ? tr("Starting…") : tr("Open app"));
     launch->setObjectName(QStringLiteral("cardLaunchButton"));
-    launch->setEnabled(!launching);
+    launch->setEnabled(!launching && app.supported);
+    launch->setToolTip(app.catalogDescription());
     launch->setAccessibleName(tr("Open %1").arg(app.displayName));
     connect(configure, &QPushButton::clicked, this, &AppCardWidget::configureRequested);
     connect(launch, &QPushButton::clicked, this, &AppCardWidget::launchRequested);
     actions->addWidget(configure);
+    if (app.cloneable) {
+        auto *clone = new QPushButton(tr("Clone"));
+        clone->setToolTip(tr("Clone to workflows"));
+        clone->setAccessibleName(tr("Clone %1 to workflows").arg(app.displayName));
+        clone->setObjectName("cloneAppWorkflow");
+        connect(clone, &QPushButton::clicked, this, &AppCardWidget::cloneRequested);
+        actions->addWidget(clone);
+    }
     actions->addStretch();
     actions->addWidget(launch);
     if (compact) {

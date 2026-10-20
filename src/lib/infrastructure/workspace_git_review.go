@@ -261,7 +261,7 @@ func mutateWorkspaceGitIndex(ctx context.Context, current *WorkspaceGitSnapshot,
 			return nil, err
 		}
 		if workspaceGitConflict(change.Status) {
-			return nil, errors.New("resolve conflicts in conventional Git before staging or discarding")
+			return nil, errors.New("resolve and stage conflicted files before continuing")
 		}
 		paths := []string{change.Path}
 		if change.OriginalPath != "" {

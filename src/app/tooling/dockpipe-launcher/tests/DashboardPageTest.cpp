@@ -1,9 +1,17 @@
 #include "DashboardPage.h"
+#include "BrowserWidget.h"
+#include "SendInputWidget.h"
+#include <QWebEngineView>
+#include <QTcpServer>
+#include <QTcpSocket>
 #include "DashboardDock.h"
 #include <QCursor>
 #include <QScreen>
 #include "DashboardFilesWidget.h"
+#include "FileExplorerView.h"
 #include <QSignalSpy>
+#include <QShortcut>
+#include <QStyle>
 #include "DashboardTourDialog.h"
 #include "LauncherSettings.h"
 #include <QRadioButton>
@@ -17,10 +25,12 @@
 #include "Theme.h"
 #include "DesktopWindowWidget.h"
 #include "DesktopApplicationCatalog.h"
+#include "DesktopAppWindow.h"
 
 #include <QApplication>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QDebug>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
@@ -31,6 +41,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLabel>
+#include <QLibrary>
 #include <QLineEdit>
 #include <QMenu>
 #include <QPointer>
@@ -42,11 +53,15 @@
 #include <QToolButton>
 #include <QTabBar>
 #include <QTabWidget>
+#include <algorithm>
 #include <memory>
+#include <vector>
 
 #ifdef DOCKPIPE_X11_BILLBOARDS
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/keysym.h>
 #endif
 
 namespace {
@@ -202,6 +217,108 @@ private:
 #endif
 
 #ifdef DOCKPIPE_X11_BILLBOARDS
+class NativeHandleEventRecorder final : public QObject {
+public:
+    QStringList events;
+
+protected:
+    bool eventFilter(QObject *object, QEvent *event) override
+    {
+        if (events.size() < 64) {
+            if (event->type() == QEvent::MouseButtonPress)
+                events.append("MouseButtonPress");
+            else if (event->type() == QEvent::MouseButtonDblClick)
+                events.append("MouseButtonDblClick");
+            else if (event->type() == QEvent::MouseButtonRelease)
+                events.append("MouseButtonRelease");
+        }
+        return QObject::eventFilter(object, event);
+    }
+};
+
+class IsolatedNativePointer final {
+public:
+    IsolatedNativePointer() : m_library("Xtst", 6) {}
+
+    bool initialize()
+    {
+        if (!m_library.load())
+            return false;
+        m_motion = reinterpret_cast<Motion>(m_library.resolve("XTestFakeMotionEvent"));
+        m_button = reinterpret_cast<Button>(m_library.resolve("XTestFakeButtonEvent"));
+        m_key = reinterpret_cast<Key>(m_library.resolve("XTestFakeKeyEvent"));
+        auto query = reinterpret_cast<Query>(m_library.resolve("XTestQueryExtension"));
+        m_display = XOpenDisplay(nullptr);
+        int event = 0;
+        int error = 0;
+        int major = 0;
+        int minor = 0;
+        return m_display && m_motion && m_button && m_key && query
+            && query(m_display, &event, &error, &major, &minor);
+    }
+
+    bool move(const QPoint &point)
+    {
+        const bool sent = m_motion(m_display, -1, point.x(), point.y(), 0);
+        XSync(m_display, False);
+        return sent;
+    }
+
+    bool button(bool pressed)
+    {
+        const bool sent = m_button(m_display, 1, pressed, 0);
+        if (sent)
+            m_pressed = pressed;
+        XSync(m_display, False);
+        return sent;
+    }
+
+    bool escape()
+    {
+        const KeyCode code = XKeysymToKeycode(m_display, XK_Escape);
+        const bool sent = code && m_key(m_display, code, True, 0) && m_key(m_display, code, False, 0);
+        XSync(m_display, False);
+        return sent;
+    }
+
+    void focus(quint64 id)
+    {
+        XSetInputFocus(m_display, static_cast<Window>(id), RevertToParent, CurrentTime);
+        XSync(m_display, False);
+    }
+
+    quint64 focusedWindow() const
+    {
+        Window window = None;
+        int revert = 0;
+        XGetInputFocus(m_display, &window, &revert);
+        return window;
+    }
+
+    ~IsolatedNativePointer()
+    {
+        if (!m_display)
+            return;
+        if (m_pressed && m_button) {
+            m_button(m_display, 1, False, 0);
+            XSync(m_display, False);
+        }
+        XCloseDisplay(m_display);
+    }
+
+private:
+    using Motion = Bool (*)(Display *, int, int, int, unsigned long);
+    using Button = Bool (*)(Display *, unsigned int, Bool, unsigned long);
+    using Key = Bool (*)(Display *, unsigned int, Bool, unsigned long);
+    using Query = Bool (*)(Display *, int *, int *, int *, int *);
+    QLibrary m_library;
+    Display *m_display = nullptr;
+    Motion m_motion = nullptr;
+    Button m_button = nullptr;
+    Key m_key = nullptr;
+    bool m_pressed = false;
+};
+
 class IsolatedClientList final {
 public:
     bool install(quint64 nativeId)
@@ -310,6 +427,39 @@ public:
         return false;
     }
 
+    QStringList pointerHierarchy() const
+    {
+        QStringList result;
+        Window current = m_root;
+        for (int depth = 0; depth < 32; ++depth) {
+            Window root = 0;
+            Window child = 0;
+            int rootX = 0;
+            int rootY = 0;
+            int localX = 0;
+            int localY = 0;
+            unsigned int mask = 0;
+            if (!XQueryPointer(m_display, current, &root, &child,
+                    &rootX, &rootY, &localX, &localY, &mask) || !child)
+                break;
+            XWindowAttributes attributes{};
+            XGetWindowAttributes(m_display, child, &attributes);
+            int globalX = 0;
+            int globalY = 0;
+            Window translatedChild = 0;
+            XTranslateCoordinates(m_display, child, m_root, 0, 0, &globalX, &globalY, &translatedChild);
+            QWidget *widget = QWidget::find(WId(child));
+            result.append(QString("id=%1 global=%2,%3 size=%4x%5 mapped=%6 widget=%7 class=%8")
+                .arg(qulonglong(child)).arg(globalX).arg(globalY).arg(attributes.width).arg(attributes.height)
+                .arg(attributes.map_state).arg(widget ? widget->objectName() : QString("foreign"))
+                .arg(widget ? widget->metaObject()->className() : "foreign"));
+            if (child == current)
+                break;
+            current = child;
+        }
+        return result;
+    }
+
     quint64 parentWindow(quint64 id) const
     {
         Window root = 0;
@@ -342,6 +492,76 @@ public:
         return false;
     }
 
+    void setUnmappedState(quint64 id, unsigned long state, int format = 32,
+        int count = 2, Atom propertyType = None, bool unmap = true)
+    {
+        const Atom stateAtom = XInternAtom(m_display, "WM_STATE", False);
+        const unsigned long values[] = {state, None, None};
+        XChangeProperty(m_display, static_cast<Window>(id), stateAtom,
+            propertyType == None ? stateAtom : propertyType, format, PropModeReplace,
+            reinterpret_cast<const unsigned char *>(values), count);
+        if (unmap)
+            XUnmapWindow(m_display, static_cast<Window>(id));
+        XSync(m_display, False);
+    }
+
+    long managedState(quint64 id) const
+    {
+        const Atom stateAtom = XInternAtom(m_display, "WM_STATE", False);
+        Atom type = None;
+        int format = 0;
+        unsigned long count = 0;
+        unsigned long remaining = 0;
+        unsigned char *data = nullptr;
+        const int result = XGetWindowProperty(m_display, static_cast<Window>(id), stateAtom,
+            0, 2, False, stateAtom, &type, &format, &count, &remaining, &data);
+        long state = -1;
+        if (result == Success && type == stateAtom && format == 32 && count == 2 && !remaining && data)
+            state = reinterpret_cast<unsigned long *>(data)[0];
+        if (data)
+            XFree(data);
+        return state;
+    }
+
+    void setDockWindow(quint64 id)
+    {
+        const Atom type = XInternAtom(m_display, "_NET_WM_WINDOW_TYPE_DOCK", False);
+        XChangeProperty(m_display, static_cast<Window>(id),
+            XInternAtom(m_display, "_NET_WM_WINDOW_TYPE", False), XA_ATOM, 32, PropModeReplace,
+            reinterpret_cast<const unsigned char *>(&type), 1);
+        XSync(m_display, False);
+    }
+
+    void beginWindowManagerReplies()
+    {
+        // This connection only observes notifications on the verified Xvfb
+        // root. It never redirects input or manages the user's real desktop.
+        XSelectInput(m_display, m_root, SubstructureNotifyMask);
+        XSync(m_display, False);
+    }
+
+    void serviceWindowManagerReplies(const QVector<quint64> &ids)
+    {
+        const Atom changeState = XInternAtom(m_display, "WM_CHANGE_STATE", False);
+        for (int index = 0; index < 64 && XPending(m_display); ++index) {
+            XEvent event{};
+            XNextEvent(m_display, &event);
+            if (event.type == UnmapNotify && event.xunmap.send_event
+                && ids.contains(quint64(event.xunmap.window))) {
+                // XWithdrawWindow already unmapped the client. The WM acknowledgment
+                // updates its state without a second, potentially late unmap.
+                setUnmappedState(quint64(event.xunmap.window), WithdrawnState, 32, 2, None, false);
+            } else if (event.type == ClientMessage && ids.contains(quint64(event.xclient.window))
+                && event.xclient.message_type == changeState && event.xclient.format == 32
+                && event.xclient.data.l[0] == IconicState) {
+                ++m_iconifyRequests;
+                setUnmappedState(quint64(event.xclient.window), IconicState);
+            }
+        }
+    }
+
+    int iconifyRequests() const { return m_iconifyRequests; }
+
     ~IsolatedClientList()
     {
         if (!m_display)
@@ -365,6 +585,7 @@ private:
     QVector<unsigned long> m_previous;
     bool m_hadProperty = false;
     bool m_installed = false;
+    int m_iconifyRequests = 0;
 };
 #endif
 }
@@ -372,20 +593,66 @@ private:
 class DashboardPageTest final : public QObject {
     Q_OBJECT
 private slots:
+    void paintsOwnSurroundAfterWindowResize();
     void independentEnvironmentsAndRoundTrip();
     void optionsAndSettingsControls();
     void repeatedSwitchesRetainContentAndObjects();
     void autoAcquireLifecycle_data();
     void autoAcquireLifecycle();
     void retainsAndReleasesInactiveForeignWindow();
+    void discoveryIncludesMinimizedAndMoreThanThreeWindows();
+    void nativePointerArrangesForeignWindows();
     void dockPreferenceChangesReservedSpace();
     void desktopLaunchAdmission();
     void desktopLaunchAcquisition();
     void staleDesktopPanelsAreNotRestored();
     void tourLifecycle();
+    void canvasGadgetsAndBrowserTearOut();
     void fileScopesAndCanvasProjectPicker();
     void desktopBackgroundLifecycle();
 };
+
+void DashboardPageTest::paintsOwnSurroundAfterWindowResize()
+{
+    SessionManager sessions;
+    ContextStore contexts;
+    DashboardWidgetFactory factory(sessions, contexts);
+    DashboardPage page(emptyDashboard(), &factory);
+    QPalette palette = page.palette();
+    palette.setColor(QPalette::Window, QColor(34, 45, 56, 80));
+    page.setPalette(palette);
+    page.resize(900, 650);
+    page.show();
+    drainEvents();
+    QColor surround = page.palette().color(QPalette::Window);
+    surround.setAlpha(255);
+    const auto ownMargin = [&page]() {
+        QImage image(page.size(), QImage::Format_ARGB32_Premultiplied);
+        image.fill(Qt::transparent);
+        // Deliberately omit DrawWindowBackground: the page must paint its
+        // surround without an ancestor or QWidget::render supplying it.
+        page.render(&image, QPoint(), QRegion(), QWidget::DrawChildren);
+        return image.pixelColor(4, 4);
+    };
+    QCOMPARE(ownMargin(), surround);
+    page.showMaximized();
+    drainEvents();
+    QCOMPARE(ownMargin(), surround);
+    page.showNormal();
+    page.resize(1050, 720);
+    drainEvents();
+    QCOMPARE(ownMargin(), surround);
+    for (const auto &theme : {QString("dark"), QString("light")}) {
+        const QString path = QFINDTESTDATA("../resources/theme/pipeon-" + theme + ".qss");
+        QVERIFY(!path.isEmpty());
+        QFile stylesheet(path);
+        QVERIFY(stylesheet.open(QIODevice::ReadOnly));
+        page.setStyleSheet(QString::fromUtf8(stylesheet.readAll()));
+        drainEvents();
+        const QColor expected = theme == "dark" ? QColor("#191d24") : QColor("#f7f8fb");
+        QCOMPARE(ownMargin(), expected);
+    }
+}
 
 void DashboardPageTest::independentEnvironmentsAndRoundTrip()
 {
@@ -706,6 +973,434 @@ void DashboardPageTest::dockPreferenceChangesReservedSpace()
     dock->reveal(true);
     QTRY_VERIFY(dock->isVisible());
     QVERIFY(captureIfRequested(page, "dock-overlay"));
+}
+
+void DashboardPageTest::nativePointerArrangesForeignWindows()
+{
+    if (qEnvironmentVariable("DOCKPIPE_ISOLATED_DESKTOP_TEST") != "1")
+        QSKIP("Desktop acquisition requires explicit opt-in on a disposable Xvfb display.");
+#ifndef DOCKPIPE_X11_BILLBOARDS
+    QSKIP("This build has no X11 native-window backend.");
+#else
+    QVERIFY2(QGuiApplication::platformName() == "xcb" && isolatedXvfbDisplay(),
+        "Refusing native input: the selected display must be a verified local Xvfb server");
+    IsolatedNativePointer pointer;
+    QVERIFY2(pointer.initialize(), "The disposable display requires the XTEST extension and libXtst");
+    std::vector<std::unique_ptr<FixtureProcess>> fixtures;
+    QVector<quint64> ids;
+    for (int index = 0; index < 2; ++index) {
+        auto fixture = std::make_unique<FixtureProcess>();
+        fixture->setProcessChannelMode(QProcess::ForwardedErrorChannel);
+        fixture->start(QCoreApplication::applicationDirPath() + "/desktop-app-window-test", {"--fixture"});
+        QVERIFY(fixture->waitForStarted(3000));
+        QByteArray output;
+        QTRY_VERIFY_WITH_TIMEOUT((output += fixture->readAllStandardOutput()).startsWith("WINDOW:")
+            && output.contains('\n'), 5000);
+        const quint64 id = output.split('\n').first().mid(7).toULongLong();
+        QVERIFY(id);
+        ids.append(id);
+        fixtures.push_back(std::move(fixture));
+    }
+    IsolatedClientList clients;
+    QVERIFY(clients.install(ids.first()));
+    clients.replace(ids);
+    const quint64 firstParent = clients.parentWindow(ids[0]);
+    const quint64 secondParent = clients.parentWindow(ids[1]);
+    DashboardWorkspace workspace("native-pointer-arrangement");
+    workspace.resize(1200, 800);
+    QPointer<DesktopWindowWidget> first = new DesktopWindowWidget;
+    QPointer<DesktopWindowWidget> second = new DesktopWindowWidget;
+    QVERIFY(workspace.addPanel("first", "First native fixture", first));
+    QVERIFY(workspace.addPanel("second", "Second native fixture", second));
+    workspace.setMode("tiling");
+    QVERIFY(workspace.dockPanel("first", "second", "left"));
+    workspace.show();
+    workspace.activateWindow();
+    QString error;
+    QVERIFY2(first->acquireWindow(ids[0], error), qPrintable(error));
+    QVERIFY2(second->acquireWindow(ids[1], error), qPrintable(error));
+    QTRY_VERIFY_WITH_TIMEOUT(first->hasInteractiveWindow() && second->hasInteractiveWindow(), 5000);
+    QPointer<CanvasPanel> firstFrame = workspace.findChild<CanvasPanel *>("dashboardPanel_first");
+    QPointer<CanvasPanel> secondFrame = workspace.findChild<CanvasPanel *>("dashboardPanel_second");
+    QVERIFY(firstFrame && secondFrame);
+    const auto actions = [&]() {
+        return firstFrame->findChild<QToolButton *>("dashboardTileActions");
+    };
+    const auto hoverHandle = [&]() {
+        return pointer.move(firstFrame->mapToGlobal(QPoint(firstFrame->width() / 2, 12)));
+    };
+    const auto previewVisible = [&]() {
+        const auto edges = workspace.findChildren<QWidget *>("dashboardDropPreviewEdge");
+        return edges.size() == 4 && std::all_of(edges.cbegin(), edges.cend(), [](QWidget *edge) { return edge->isVisible(); });
+    };
+    const auto previewHidden = [&]() {
+        const auto edges = workspace.findChildren<QWidget *>("dashboardDropPreviewEdge");
+        return std::none_of(edges.cbegin(), edges.cend(), [](QWidget *edge) { return edge->isVisible(); });
+    };
+    const auto groupFor = [&](QWidget *content) -> QTabWidget * {
+        for (QWidget *parent = content->parentWidget(); parent && parent != &workspace; parent = parent->parentWidget()) {
+            if (auto *group = qobject_cast<QTabWidget *>(parent))
+                return group;
+        }
+        return nullptr;
+    };
+    const auto splitWithFirstOnRight = [&]() {
+        const auto tree = workspace.saveLayout().value("tree").toObject();
+        const auto children = tree.value("children").toArray();
+        return tree.value("type") == "split" && tree.value("orientation") == "horizontal"
+            && children.size() == 2
+            && children.first().toObject().value("ids").toArray() == QJsonArray{"second"}
+            && children.last().toObject().value("ids").toArray() == QJsonArray{"first"};
+    };
+
+    NativeHandleEventRecorder handleEvents;
+    QVERIFY(actions());
+    actions()->installEventFilter(&handleEvents);
+
+    // Wait for native layout propagation before starting the captured gesture.
+    // QWidget visibility alone does not establish server-side hit-test readiness.
+    QVERIFY(pointer.move(secondFrame->mapToGlobal(secondFrame->rect().center())));
+    QTRY_VERIFY_WITH_TIMEOUT(clients.pointerTargets(ids[1]), 3000);
+    const auto beforePreviewHierarchy = clients.pointerHierarchy();
+
+    // Real server input crosses the other process's client surface, not Qt's
+    // synthetic drag/drop path. The source handle must keep the pointer grab.
+    QVERIFY(hoverHandle());
+    QTRY_VERIFY2_WITH_TIMEOUT(actions() && actions()->isVisible()
+        && actions()->internalWinId() && clients.pointerTargets(actions()->internalWinId()),
+        qPrintable(clients.pointerHierarchy().join("; ")), 3000);
+    QVERIFY(pointer.button(true));
+    QTRY_VERIFY2_WITH_TIMEOUT(QWidget::mouseGrabber() == actions(),
+        qPrintable(handleEvents.events.join(", ")), 3000);
+    QVERIFY(pointer.move(secondFrame->mapToGlobal(secondFrame->rect().center())));
+    QTRY_VERIFY_WITH_TIMEOUT(previewVisible(), 3000);
+    if (!clients.pointerTargets(ids[1])) {
+        qInfo() << "Before native preview:" << beforePreviewHierarchy;
+        qInfo() << "After native preview:" << clients.pointerHierarchy();
+        qInfo() << "Native client parents" << clients.parentWindow(ids[0]) << clients.parentWindow(ids[1]);
+        const auto widgets = workspace.findChildren<QWidget *>();
+        int nativeCount = 0;
+        for (QWidget *widget : widgets) {
+            if (!widget->internalWinId())
+                continue;
+            qInfo() << "Native widget" << widget->internalWinId() << widget->metaObject()->className()
+                    << widget->objectName() << "parent" << (widget->parentWidget() ? widget->parentWidget()->internalWinId() : 0)
+                    << "geometry" << widget->geometry() << "visible" << widget->isVisible();
+            if (++nativeCount == 128)
+                break;
+        }
+    }
+    QVERIFY(clients.pointerTargets(ids[1]));
+    QVERIFY(pointer.move(secondFrame->mapToGlobal(QPoint(secondFrame->width() - 12, secondFrame->height() / 2))));
+    QVERIFY(pointer.button(false));
+    QTRY_VERIFY_WITH_TIMEOUT(splitWithFirstOnRight(), 3000);
+    QVERIFY(previewHidden());
+    QCOMPARE(first->acquiredWindowId(), ids[0]);
+    QCOMPARE(second->acquiredWindowId(), ids[1]);
+
+    const auto centerGestureDiagnostics = [&]() {
+        QString result;
+        QDebug output(&result);
+        auto *cancel = workspace.findChild<QShortcut *>("dashboardCancelDrag");
+        output << "cursor" << QCursor::pos() << "grabber" << QWidget::mouseGrabber()
+               << "grabbed source" << (QWidget::mouseGrabber() == actions())
+               << "cancel enabled" << (cancel && cancel->isEnabled())
+               << "popup" << QApplication::activePopupWidget();
+        for (CanvasPanel *frame : {firstFrame.data(), secondFrame.data()}) {
+            output << "frame" << frame->objectName()
+                   << "workspace rect" << QRect(frame->mapTo(&workspace, QPoint()), frame->size())
+                   << "global rect" << QRect(frame->mapToGlobal(QPoint()), frame->size());
+        }
+        for (QWidget *edge : workspace.findChildren<QWidget *>("dashboardDropPreviewEdge"))
+            output << "preview" << edge->internalWinId() << edge->geometry() << edge->isVisible();
+        output << "native path" << clients.pointerHierarchy();
+        return result;
+    };
+
+    // The same native handle can turn two independent clients into retained tabs.
+    QVERIFY(hoverHandle());
+    QTRY_VERIFY2_WITH_TIMEOUT(actions()->isVisible() && actions()->internalWinId()
+        && clients.pointerTargets(actions()->internalWinId()),
+        qPrintable(clients.pointerHierarchy().join("; ")), 3000);
+    QVERIFY(pointer.button(true));
+    QTRY_VERIFY2_WITH_TIMEOUT(QWidget::mouseGrabber() == actions(),
+        qPrintable(handleEvents.events.join(", ")), 3000);
+    QVERIFY(pointer.move(secondFrame->mapToGlobal(secondFrame->rect().center())));
+    QTRY_VERIFY_WITH_TIMEOUT(previewVisible(), 3000);
+    const auto beforeCenterRelease = centerGestureDiagnostics();
+    QVERIFY(pointer.button(false));
+    const auto tabbedTogether = [&]() {
+        const auto tree = workspace.saveLayout().value("tree").toObject();
+        auto *group = groupFor(first);
+        return tree.value("type") == "tabs" && tree.value("active") == "first"
+            && tree.value("ids").toArray() == QJsonArray{"second", "first"}
+            && group && group->count() == 2 && group->currentWidget()->isAncestorOf(first)
+            && first->isVisible() && !second->isVisible();
+    };
+    QElapsedTimer tabWait;
+    tabWait.start();
+    while (!tabbedTogether() && tabWait.elapsed() < 3000)
+        QTest::qWait(10);
+    if (!tabbedTogether()) {
+        qInfo() << "Before center release" << beforeCenterRelease;
+        qInfo() << "After center release" << centerGestureDiagnostics();
+        qInfo() << "Center-drop layout" << workspace.saveLayout();
+        qInfo() << "Center-drop cursor" << QCursor::pos()
+                << "first global" << QRect(firstFrame->mapToGlobal(QPoint()), firstFrame->size())
+                << "second global" << QRect(secondFrame->mapToGlobal(QPoint()), secondFrame->size());
+        qInfo() << "Center-drop native path" << clients.pointerHierarchy();
+    }
+    QVERIFY(tabbedTogether());
+    QVERIFY(first->isVisible());
+    QCOMPARE(first->acquiredWindowId(), ids[0]);
+    QCOMPARE(second->acquiredWindowId(), ids[1]);
+
+    // Leaving a visible tab label over its own pane edge splits out that tab.
+    QPointer<QTabBar> bar = groupFor(first)->tabBar();
+    const int selected = groupFor(first)->currentIndex();
+    QTRY_VERIFY_WITH_TIMEOUT(bar->isVisible() && bar->tabRect(selected).isValid()
+        && bar->rect().contains(bar->tabRect(selected).center()), 3000);
+    // The tab's left side contains its action controls. Drag the bare label,
+    // rather than accidentally pressing one of those independent buttons.
+    const QPoint labelPoint(bar->tabRect(selected).right() - 12, bar->tabRect(selected).center().y());
+    QCOMPARE(bar->tabAt(labelPoint), selected);
+    QVERIFY(!bar->childAt(labelPoint));
+    QVERIFY(pointer.move(bar->mapToGlobal(labelPoint)));
+    QElapsedTimer labelWait;
+    labelWait.start();
+    while ((!bar->internalWinId() || !clients.pointerTargets(bar->internalWinId())) && labelWait.elapsed() < 3000)
+        QTest::qWait(10);
+    if (!bar->internalWinId() || !clients.pointerTargets(bar->internalWinId())) {
+        qInfo() << "Native tab label" << bar->internalWinId() << "geometry" << bar->geometry()
+                << "selected rect" << bar->tabRect(selected) << "label point" << labelPoint
+                << "child at point" << bar->childAt(labelPoint) << "cursor" << QCursor::pos()
+                << "global rect" << QRect(bar->mapToGlobal(QPoint()), bar->size());
+        qInfo() << "Native tab label pointer path" << clients.pointerHierarchy();
+    }
+    QVERIFY(bar->internalWinId() && clients.pointerTargets(bar->internalWinId()));
+    QVERIFY(pointer.button(true));
+    QTRY_COMPARE_WITH_TIMEOUT(QWidget::mouseGrabber(), bar.data(), 3000);
+    QVERIFY(pointer.move(firstFrame->mapToGlobal(QPoint(firstFrame->width() - 12, firstFrame->height() / 2))));
+    QTRY_VERIFY_WITH_TIMEOUT(previewVisible(), 3000);
+    QVERIFY(pointer.button(false));
+    QTRY_VERIFY_WITH_TIMEOUT(splitWithFirstOnRight(), 3000);
+    QTRY_VERIFY_WITH_TIMEOUT(first->hasInteractiveWindow() && second->hasInteractiveWindow(), 5000);
+    QVERIFY(previewHidden());
+
+    // An app had keyboard focus before the gesture. Escape must still cancel
+    // the captured drag, leave both clients nested, and suppress its click menu.
+    pointer.focus(ids[1]);
+    QTRY_COMPARE_WITH_TIMEOUT(pointer.focusedWindow(), ids[1], 3000);
+    const auto beforeCancel = workspace.saveLayout().value("tree");
+    QVERIFY(hoverHandle());
+    QTRY_VERIFY2_WITH_TIMEOUT(actions()->isVisible() && actions()->internalWinId()
+        && clients.pointerTargets(actions()->internalWinId()),
+        qPrintable(clients.pointerHierarchy().join("; ")), 3000);
+    QVERIFY(pointer.button(true));
+    QTRY_VERIFY2_WITH_TIMEOUT(QWidget::mouseGrabber() == actions(),
+        qPrintable(handleEvents.events.join(", ")), 3000);
+    QVERIFY(pointer.move(secondFrame->mapToGlobal(secondFrame->rect().center())));
+    QTRY_VERIFY_WITH_TIMEOUT(previewVisible(), 3000);
+    QVERIFY(pointer.escape());
+    QTRY_VERIFY_WITH_TIMEOUT(QWidget::mouseGrabber() == nullptr && previewHidden(), 3000);
+    QVERIFY(pointer.button(false));
+    QCOMPARE(workspace.saveLayout().value("tree"), beforeCancel);
+    QVERIFY(!QApplication::activePopupWidget());
+    QVERIFY(first->hasInteractiveWindow() && second->hasInteractiveWindow());
+
+    // A click remains the existing tile menu, while hiding the workspace or
+    // deleting a dragged panel must always release native input and previews.
+    QVERIFY(hoverHandle());
+    QTRY_VERIFY2_WITH_TIMEOUT(actions()->isVisible() && actions()->internalWinId()
+        && clients.pointerTargets(actions()->internalWinId()),
+        qPrintable(clients.pointerHierarchy().join("; ")), 3000);
+    QVERIFY(pointer.button(true));
+    QVERIFY(pointer.button(false));
+    QTRY_VERIFY_WITH_TIMEOUT(QApplication::activePopupWidget(), 3000);
+    QVERIFY(pointer.escape());
+    QTRY_VERIFY_WITH_TIMEOUT(!QApplication::activePopupWidget(), 3000);
+    QVERIFY(hoverHandle());
+    QTRY_VERIFY2_WITH_TIMEOUT(actions()->isVisible() && actions()->internalWinId()
+        && clients.pointerTargets(actions()->internalWinId()),
+        qPrintable(clients.pointerHierarchy().join("; ")), 3000);
+    QVERIFY(pointer.button(true));
+    QTRY_VERIFY2_WITH_TIMEOUT(QWidget::mouseGrabber() == actions(),
+        qPrintable(handleEvents.events.join(", ")), 3000);
+    QVERIFY(pointer.move(secondFrame->mapToGlobal(secondFrame->rect().center())));
+    QTRY_VERIFY_WITH_TIMEOUT(previewVisible(), 3000);
+    workspace.hide();
+    QTRY_VERIFY_WITH_TIMEOUT(QWidget::mouseGrabber() == nullptr && previewHidden(), 3000);
+    QVERIFY(pointer.button(false));
+    workspace.show();
+    QTRY_VERIFY_WITH_TIMEOUT(first->hasInteractiveWindow() && second->hasInteractiveWindow(), 5000);
+    QVERIFY(hoverHandle());
+    QTRY_VERIFY2_WITH_TIMEOUT(actions()->isVisible() && actions()->internalWinId()
+        && clients.pointerTargets(actions()->internalWinId()),
+        qPrintable(clients.pointerHierarchy().join("; ")), 3000);
+    QVERIFY(pointer.button(true));
+    QTRY_VERIFY2_WITH_TIMEOUT(QWidget::mouseGrabber() == actions(),
+        qPrintable(handleEvents.events.join(", ")), 3000);
+    QVERIFY(pointer.move(secondFrame->mapToGlobal(secondFrame->rect().center())));
+    QTRY_VERIFY_WITH_TIMEOUT(previewVisible(), 3000);
+    workspace.removePanel("first");
+    QTRY_VERIFY_WITH_TIMEOUT(first.isNull() && QWidget::mouseGrabber() == nullptr && previewHidden(), 3000);
+    QVERIFY(pointer.button(false));
+    QTRY_VERIFY_WITH_TIMEOUT(clients.parentWindow(ids[0]) == firstParent && clients.viewable(ids[0]), 5000);
+    QVERIFY(second->hasInteractiveWindow());
+    QCOMPARE(second->acquiredWindowId(), ids[1]);
+    second->releaseWindow();
+    QTRY_VERIFY_WITH_TIMEOUT(clients.parentWindow(ids[1]) == secondParent && clients.viewable(ids[1]), 5000);
+    for (const auto &fixture : fixtures)
+        QCOMPARE(fixture->state(), QProcess::Running);
+    qInfo() << "Native XTEST handle split/tab, own-pane tab split, Escape/menu and hide/remove cleanup passed";
+#endif
+}
+
+void DashboardPageTest::discoveryIncludesMinimizedAndMoreThanThreeWindows()
+{
+    if (qEnvironmentVariable("DOCKPIPE_ISOLATED_DESKTOP_TEST") != "1")
+        QSKIP("Desktop acquisition requires explicit opt-in on a disposable Xvfb display.");
+#ifndef DOCKPIPE_X11_BILLBOARDS
+    QSKIP("This build has no X11 native-window backend.");
+#else
+    QVERIFY2(QGuiApplication::platformName() == "xcb" && isolatedXvfbDisplay(),
+        "Refusing native acquisition: the selected display must be a verified local Xvfb server");
+    std::vector<std::unique_ptr<FixtureProcess>> fixtures;
+    QVector<quint64> ids;
+    for (int index = 0; index < 7; ++index) {
+        auto fixture = std::make_unique<FixtureProcess>();
+        fixture->setProcessChannelMode(QProcess::ForwardedErrorChannel);
+        fixture->start(QCoreApplication::applicationDirPath() + "/desktop-app-window-test", {"--fixture"});
+        QVERIFY(fixture->waitForStarted(3000));
+        QByteArray output;
+        QTRY_VERIFY_WITH_TIMEOUT((output += fixture->readAllStandardOutput()).startsWith("WINDOW:")
+            && output.contains('\n'), 5000);
+        const quint64 id = output.split('\n').first().mid(7).toULongLong();
+        QVERIFY(id);
+        ids.append(id);
+        fixtures.push_back(std::move(fixture));
+    }
+    IsolatedClientList clients;
+    QVERIFY(clients.install(ids.first()));
+    clients.replace(ids);
+    QString error;
+    QTRY_COMPARE_WITH_TIMEOUT(DesktopWindowWidget::availableWindows(error).size(), 7, 5000);
+    QVERIFY2(error.isEmpty(), qPrintable(error));
+
+    const quint64 minimized = ids[4];
+    const quint64 withdrawn = ids[5];
+    const quint64 dock = ids[6];
+    const quint64 originalParent = clients.parentWindow(minimized);
+    QVERIFY(originalParent);
+    clients.setUnmappedState(minimized, IconicState);
+    clients.setUnmappedState(withdrawn, WithdrawnState);
+    clients.setDockWindow(dock);
+    QVERIFY(!clients.viewable(minimized));
+    const auto discoveredIds = [&]() {
+        QSet<quint64> result;
+        for (const auto &choice : DesktopWindowWidget::availableWindows(error))
+            result.insert(choice.id);
+        return result;
+    };
+    QSet<quint64> expected;
+    for (int index = 0; index < 5; ++index)
+        expected.insert(ids[index]);
+    QCOMPARE(discoveredIds(), expected);
+    QVERIFY2(error.isEmpty(), qPrintable(error));
+    const auto selected = DesktopAppWindow::availableWindows(error, minimized);
+    QCOMPARE(selected.size(), 1);
+    QCOMPARE(selected.first().id, minimized);
+    const auto visible = DesktopAppWindow::availableWindows(error, ids.first());
+    QCOMPARE(visible.size(), 1);
+    QCOMPARE(visible.first().id, ids.first());
+    QVERIFY(DesktopAppWindow::availableWindows(error, withdrawn).isEmpty());
+    QVERIFY(DesktopAppWindow::availableWindows(error, dock).isEmpty());
+    QVERIFY(DesktopAppWindow::availableWindows(error, 0x7fffffffULL).isEmpty());
+    QVERIFY2(error.isEmpty(), qPrintable(error));
+
+    // Unmapped metadata must be the complete, correctly typed ICCCM pair.
+    clients.setUnmappedState(withdrawn, IconicState, 32, 2, XA_CARDINAL);
+    QCOMPARE(discoveredIds(), expected);
+    QVERIFY(DesktopAppWindow::availableWindows(error, withdrawn).isEmpty());
+    clients.setUnmappedState(withdrawn, IconicState, 32, 1);
+    QCOMPARE(discoveredIds(), expected);
+    QVERIFY(DesktopAppWindow::availableWindows(error, withdrawn).isEmpty());
+    clients.setUnmappedState(withdrawn, IconicState, 32, 3);
+    QCOMPARE(discoveredIds(), expected);
+    QVERIFY(DesktopAppWindow::availableWindows(error, withdrawn).isEmpty());
+    clients.setUnmappedState(withdrawn, IconicState, 8, 2);
+    QCOMPARE(discoveredIds(), expected);
+    QVERIFY(DesktopAppWindow::availableWindows(error, withdrawn).isEmpty());
+    clients.setUnmappedState(withdrawn, WithdrawnState);
+
+    clients.beginWindowManagerReplies();
+    QTimer manager;
+    manager.setInterval(5);
+    connect(&manager, &QTimer::timeout, &manager, [&] { clients.serviceWindowManagerReplies(ids); });
+    manager.start();
+    DashboardWorkspace workspace("minimized-native-inventory");
+    workspace.resize(1000, 700);
+    auto *native = new DesktopWindowWidget;
+    QVERIFY(workspace.addPanel("native", "Minimized fixture", native));
+    workspace.show();
+    QVERIFY2(native->acquireWindow(minimized, error), qPrintable(error));
+    QTRY_VERIFY_WITH_TIMEOUT(native->hasInteractiveWindow()
+        && clients.viewable(minimized) && clients.descendantOf(minimized, workspace.winId()), 5000);
+    QCOMPARE(native->acquiredWindowId(), minimized);
+    native->releaseWindow();
+    QTRY_COMPARE_WITH_TIMEOUT(clients.iconifyRequests(), 1, 5000);
+    QTRY_VERIFY_WITH_TIMEOUT(clients.parentWindow(minimized) == originalParent
+        && !clients.viewable(minimized) && clients.managedState(minimized) == IconicState, 5000);
+    QCOMPARE(discoveredIds(), expected);
+    for (const auto &fixture : fixtures)
+        QCOMPARE(fixture->state(), QProcess::Running);
+    workspace.hide();
+
+    SessionManager sessions;
+    ContextStore contexts;
+    DashboardWidgetFactory factory(sessions, contexts);
+    auto page = std::make_unique<DashboardPage>(emptyDashboard(), &factory);
+    page->resize(1400, 1000);
+    page->show();
+    page->setEnvironment("tiling");
+    auto options = page->snapshot().options;
+    options.autoAcquireApps = true;
+    QVERIFY(page->applyOptions(options));
+    QTRY_COMPARE_WITH_TIMEOUT(page->panelCount(), 5, 5000);
+    const auto acquiredWindows = page->findChildren<DesktopWindowWidget *>();
+    QCOMPARE(acquiredWindows.size(), 5);
+    QSet<quint64> acquiredIds;
+    auto *managedWorkspace = page->findChild<DashboardWorkspace *>("dashboardTilingWorkspace");
+    QVERIFY(managedWorkspace);
+    for (auto *window : acquiredWindows) {
+        acquiredIds.insert(window->acquiredWindowId());
+        const QString panelId = window->parentWidget()->objectName().mid(QString("dashboardPanel_").size());
+        QVERIFY(managedWorkspace->activatePanel(panelId));
+        QTRY_VERIFY_WITH_TIMEOUT(window->hasInteractiveWindow(), 5000);
+        auto *status = window->findChild<QLabel *>("desktopWindowStatus");
+        QVERIFY(status && status->isHidden());
+        QVERIFY(clients.descendantOf(window->acquiredWindowId(), managedWorkspace->winId()));
+    }
+    QCOMPARE(acquiredIds, expected);
+    // Later clients may share tabs, but every eligible client remains acquired.
+    // Closing the owner while some tabs are hidden must restore every client.
+    page->hide();
+    page.reset();
+    QTRY_COMPARE_WITH_TIMEOUT(clients.iconifyRequests(), 2, 5000);
+    QTRY_VERIFY_WITH_TIMEOUT(clients.managedState(minimized) == IconicState
+        && !clients.viewable(minimized), 5000);
+    for (int index = 0; index < 5; ++index) {
+        qInfo() << "Released fixture" << index << ids[index] << "state" << clients.managedState(ids[index])
+                << "viewable" << clients.viewable(ids[index]);
+        QTRY_COMPARE_WITH_TIMEOUT(clients.parentWindow(ids[index]), originalParent, 5000);
+        if (ids[index] != minimized)
+            QTRY_VERIFY_WITH_TIMEOUT(clients.viewable(ids[index]), 5000);
+    }
+    QCOMPARE(discoveredIds(), expected);
+    for (const auto &fixture : fixtures)
+        QCOMPARE(fixture->state(), QProcess::Running);
+    qInfo() << "Seven discovered; five acquired and individually interactive; all released alive with Iconic restoration";
+#endif
 }
 
 void DashboardPageTest::retainsAndReleasesInactiveForeignWindow()
@@ -1503,11 +2198,89 @@ void DashboardPageTest::desktopBackgroundLifecycle()
 #endif
 }
 
+void DashboardPageTest::canvasGadgetsAndBrowserTearOut()
+{
+    SessionManager sessions;
+    ContextStore contexts;
+    DashboardWidgetFactory factory(sessions, contexts);
+    DashboardPage page(emptyDashboard(), &factory);
+    page.resize(1400, 1000);
+    page.show();
+    QVERIFY(page.addWidgetKind("send-input"));
+    QVERIFY(page.addWidgetKind("system"));
+    QVERIFY(page.addWidgetKind("browser"));
+    auto *canvas = page.findChild<DashboardWorkspace *>("dashboardCanvasWorkspace");
+    QVERIFY(canvas);
+    drainEvents();
+    auto *composer = canvas->findChild<SendInputWidget *>();
+    QVERIFY(composer && composer->canvasPresentationEnabled());
+    const auto definition = page.snapshot();
+    const QString composerId = definition.panels.at(0).id;
+    auto *composerFrame = canvas->findChild<CanvasPanel *>("dashboardPanel_" + composerId);
+    QVERIFY(composerFrame && composerFrame->property("dashboardCapsule").toBool());
+    QVERIFY(composerFrame->height() < 180);
+    QVERIFY(composerFrame->findChild<QWidget *>("dashboardPanelClose")->isHidden());
+    QVERIFY(composerFrame->findChild<QWidget *>("dashboardWidgetFooter")->isHidden());
+    auto *source = canvas->findChild<BrowserWidget *>();
+    QVERIFY(source && source->canvasViewportMode());
+    auto *sourceFrame = canvas->findChild<CanvasPanel *>("dashboardPanel_" + definition.panels.at(2).id);
+    QVERIFY(sourceFrame->findChild<QWidget *>("dashboardPanelHeader")->isHidden());
+    QVERIFY(sourceFrame->findChild<QWidget *>("dashboardCanvasBrowserGrip")->isVisible());
+    QVERIFY(sourceFrame->findChild<QWidget *>("dashboardPanelMenuButton")->isVisible());
+    auto *view = source->activeView();
+    QVERIFY(view);
+    auto *profile = view->page()->profile();
+    QTcpServer server;
+    QVERIFY(server.listen(QHostAddress::LocalHost));
+    connect(&server, &QTcpServer::newConnection, &server, [&server] {
+        while (auto *socket = server.nextPendingConnection()) {
+            QObject::connect(socket, &QTcpSocket::readyRead, socket, [socket] {
+                socket->readAll();
+                const QByteArray body("<title>Live canvas tab</title><p>Same live page after tear-out</p>");
+                socket->write("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\nContent-Length: "
+                    + QByteArray::number(body.size()) + "\r\n\r\n" + body);
+                socket->disconnectFromHost();
+            });
+            QObject::connect(socket, &QTcpSocket::disconnected, socket, &QObject::deleteLater);
+        }
+    });
+    source->navigate(QUrl(QString("http://127.0.0.1:%1/").arg(server.serverPort())));
+    QTRY_COMPARE(view->title(), QString("Live canvas tab"));
+    emit source->tabTearOutRequested(view, canvas->mapToGlobal(QPoint(620, 400)));
+    QCOMPARE(page.panelCount(), 4);
+    const QString detachedId = page.snapshot().panels.last().id;
+    auto *detached = canvas->findChild<CanvasPanel *>("dashboardPanel_" + detachedId);
+    auto *destination = detached ? detached->findChild<BrowserWidget *>() : nullptr;
+    QVERIFY(destination && destination != source);
+    QCOMPARE(destination->activeView(), view);
+    QCOMPARE(view->page()->profile(), profile);
+    QCOMPARE(view->title(), QString("Live canvas tab"));
+    QVERIFY(captureIfRequested(page, "canvas-spatial-widgets"));
+    page.setEnvironment("tiling");
+    QVERIFY(page.addWidgetKind("send-input"));
+    QVERIFY(page.addWidgetKind("browser"));
+    auto *tiling = page.findChild<DashboardWorkspace *>("dashboardTilingWorkspace");
+    QVERIFY(!tiling->findChild<SendInputWidget *>()->canvasPresentationEnabled());
+    QVERIFY(!tiling->findChild<BrowserWidget *>()->canvasViewportMode());
+    QVERIFY(captureIfRequested(page, "canvas-spatial-normal-tiling"));
+    page.setEnvironment("canvas");
+    const int before = page.panelCount();
+    page.setCanAddPanel([] { return false; });
+    emit source->tabTearOutRequested(source->activeView(), canvas->mapToGlobal(QPoint(400, 300)));
+    QCOMPARE(page.panelCount(), before);
+    QCOMPARE(destination->activeView(), view);
+}
+
 void DashboardPageTest::fileScopesAndCanvasProjectPicker()
 {
     QTemporaryDir firstProject;
     QTemporaryDir secondProject;
     QVERIFY(firstProject.isValid() && secondProject.isValid());
+    QVERIFY(QDir().mkpath(secondProject.filePath("Documents")));
+    QFile readme(secondProject.filePath("README.md"));
+    QVERIFY(readme.open(QIODevice::WriteOnly));
+    readme.write("# Dashboard fixture\n");
+    readme.close();
     SessionManager sessions;
     ContextStore contexts;
     DashboardWidgetFactory factory(sessions, contexts);
@@ -1521,6 +2294,9 @@ void DashboardPageTest::fileScopesAndCanvasProjectPicker()
     auto *canvasFiles = canvas->findChild<DashboardFilesWidget *>();
     QVERIFY(canvasFiles);
     QCOMPARE(canvasFiles->scope(), QString("project"));
+    auto *canvasExplorer = canvasFiles->findChild<FileExplorerView *>();
+    QVERIFY(canvasExplorer);
+    canvasExplorer->setMode(FileExplorerView::Mode::Folders);
     QCOMPARE(canvasFiles->currentDirectory(), QFileInfo(firstProject.path()).canonicalFilePath());
     auto *picker = page.findChild<QPushButton *>("dashboardCanvasProject");
     QVERIFY(picker && picker->isVisible());
@@ -1533,6 +2309,9 @@ void DashboardPageTest::fileScopesAndCanvasProjectPicker()
     auto *systemFiles = tiling->findChild<DashboardFilesWidget *>();
     QVERIFY(systemFiles);
     QCOMPARE(systemFiles->scope(), QString("system"));
+    auto *tilingExplorer = systemFiles->findChild<FileExplorerView *>();
+    QVERIFY(tilingExplorer);
+    tilingExplorer->setMode(FileExplorerView::Mode::Folders);
     QCOMPARE(systemFiles->currentDirectory(), QFileInfo(QDir::homePath()).canonicalFilePath());
     QVERIFY(systemFiles->navigateTo(firstProject.path()));
     factory.setWorkdir(secondProject.path());
@@ -1547,10 +2326,15 @@ void DashboardPageTest::fileScopesAndCanvasProjectPicker()
     QCOMPARE(systemFiles->currentDirectory(), QFileInfo(secondProject.path()).canonicalFilePath());
     QCOMPARE(canvasFiles->scope(), QString("system"));
     QCOMPARE(canvasFiles->currentDirectory(), QFileInfo(QDir::homePath()).canonicalFilePath());
+    QVERIFY(captureIfRequested(page, "file-scopes-tiling"));
+    // Capture synthetic fixture names rather than the operator's home contents.
+    QVERIFY(canvasFiles->navigateTo(secondProject.path()));
     page.setEnvironment("canvas");
     QVERIFY(picker->isVisible());
     QCOMPARE(canvas->findChild<DashboardFilesWidget *>(), canvasFiles);
     QCOMPARE(tiling->findChild<DashboardFilesWidget *>(), systemFiles);
+    QCOMPARE(canvasExplorer->mode(), FileExplorerView::Mode::Folders);
+    QCOMPARE(tilingExplorer->mode(), FileExplorerView::Mode::Folders);
     QVERIFY(captureIfRequested(page, "file-scopes"));
 }
 
@@ -1569,6 +2353,15 @@ int main(int argc, char **argv)
     applyDockpipeLauncherTheme(application);
     if (application.styleSheet().isEmpty())
         return 1;
+    if (qEnvironmentVariable("DOCKPIPE_TEST_THEME") == "light") {
+        QFile shared(":/theme/pipeon.qss");
+        QFile light(":/theme/pipeon-light.qss");
+        if (!shared.open(QIODevice::ReadOnly) || !light.open(QIODevice::ReadOnly))
+            return 1;
+        application.setStyleSheet({});
+        application.setPalette(application.style()->standardPalette());
+        application.setStyleSheet(QString::fromUtf8(shared.readAll() + light.readAll()));
+    }
     DashboardPageTest test;
     return QTest::qExec(&test, argc, argv);
 }

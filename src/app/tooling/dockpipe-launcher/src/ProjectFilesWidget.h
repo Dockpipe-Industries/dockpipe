@@ -14,6 +14,10 @@ class QStackedWidget;
 class LauncherFileSurface;
 class QSplitter;
 class QPushButton;
+class QToolButton;
+class QTimer;
+class MarkdownPreview;
+class FileExplorerView;
 
 // Reused with a project root or a single workflow directory. Never opens an
 // external editor, and never traverses a link outside the selected root.
@@ -57,6 +61,9 @@ private:
     void updateEditorStatus();
     void openFlightEditor(const QString &path);
     void positionFlightEditor();
+    void updateMarkdownPreview();
+    void renderMarkdownPreview();
+    bool navigateExplorer(const QString &directory);
     QString m_root;
     QString m_path;
     QString m_workflowPath;
@@ -65,6 +72,10 @@ private:
     bool m_bom = false;
     QFileSystemModel *m_model;
     QTreeView *m_tree;
+    FileExplorerView *m_explorer;
+    QToolButton *m_explorerUp;
+    QLabel *m_explorerLocation;
+    QString m_explorerDirectory;
     QPlainTextEdit *m_editor;
     QPlainTextEdit *m_workflowEditor;
     QStackedWidget *m_documents;
@@ -73,6 +84,10 @@ private:
     QWidget *m_controls;
     QWidget *m_fileActions;
     QPushButton *m_openWorkflow;
+    QPushButton *m_graphButton;
+    QToolButton *m_previewButton;
+    MarkdownPreview *m_markdownPreview;
+    QTimer *m_previewTimer;
     QWidget *m_findBar;
     QWidget *m_empty = nullptr;
     QLabel *m_editorStatus = nullptr;
@@ -82,4 +97,5 @@ private:
     QList<int> m_splitterSizes;
     LauncherFileSurface *m_graph = nullptr;
     CockpitSettings m_cockpitSettings;
+    bool m_graphRequested = false;
 };

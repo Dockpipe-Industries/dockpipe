@@ -15,6 +15,8 @@ public:
     explicit WorkspacePackageManager(QObject *parent = nullptr);
     ~WorkspacePackageManager() override;
     bool ready() const { return m_package != nullptr; }
+    QString error() const { return m_error; }
+    bool loading() const { return m_active; }
     bool busy() const { return m_active || m_resolver.state() != QProcess::NotRunning || m_command.busy(); }
     void prepare(const LauncherSettings &settings, bool download = true);
     void cancel();

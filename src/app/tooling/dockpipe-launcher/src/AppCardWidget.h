@@ -13,4 +13,5 @@ public:
 signals:
     void launchRequested();
     void configureRequested();
+    void cloneRequested();
 };

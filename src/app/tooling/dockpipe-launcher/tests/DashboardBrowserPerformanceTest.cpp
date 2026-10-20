@@ -219,6 +219,27 @@ int main(int argc, char **argv)
         && qEnvironmentVariableIsSet("DOCKPIPE_DASHBOARD_BROWSER_PERF_HELPER"))
         return runObservationHelper(argc, argv);
 
+    if (qEnvironmentVariable("QT_QPA_PLATFORM").section(':', 0, 0) == "offscreen") {
+        // Hosted offscreen jobs may lack a usable graphics context. Measure UI
+        // response deterministically instead of exercising their virtual GPU.
+        // Explicit renderer choices remain available for diagnostic runs.
+        if (qEnvironmentVariableIsEmpty("QT_QUICK_BACKEND"))
+            qputenv("QT_QUICK_BACKEND", "software");
+        QByteArray chromiumFlags = qgetenv("QTWEBENGINE_CHROMIUM_FLAGS");
+        const auto options = chromiumFlags.split(' ');
+        const bool graphicsSpecified = std::any_of(options.cbegin(), options.cend(), [](const QByteArray &option) {
+            return option == "--disable-gpu" || option.startsWith("--enable-gpu")
+                || option.startsWith("--use-gl") || option.startsWith("--use-angle")
+                || option.startsWith("--use-vulkan");
+        });
+        if (!graphicsSpecified) {
+            if (!chromiumFlags.isEmpty())
+                chromiumFlags.append(' ');
+            chromiumFlags.append("--disable-gpu");
+            qputenv("QTWEBENGINE_CHROMIUM_FLAGS", chromiumFlags);
+        }
+    }
+
     QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
     QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
     QTemporaryDir storage;
@@ -232,8 +253,9 @@ int main(int argc, char **argv)
     applyDockpipeLauncherTheme(application);
     qputenv("DOCKPIPE_BIN", QCoreApplication::applicationFilePath().toUtf8());
     qputenv("DOCKPIPE_DASHBOARD_BROWSER_PERF_HELPER", "1");
-    qInfo().noquote() << QString("dashboard-browser-perf platform=%1 rendering=real-webengine cpu_memory_scope=parent-only descendants_scope=process-count")
-        .arg(QApplication::platformName());
+    qInfo().noquote() << QString("dashboard-browser-perf platform=%1 rendering=real-webengine qt_quick_backend=%2 chromium_gpu_disabled=%3 cpu_memory_scope=parent-only descendants_scope=process-count")
+        .arg(QApplication::platformName(), qEnvironmentVariable("QT_QUICK_BACKEND", "default"))
+        .arg(qgetenv("QTWEBENGINE_CHROMIUM_FLAGS").split(' ').contains("--disable-gpu"));
 
     QTcpServer server;
     CHECK_BROWSER_PERF(server.listen(QHostAddress::LocalHost));

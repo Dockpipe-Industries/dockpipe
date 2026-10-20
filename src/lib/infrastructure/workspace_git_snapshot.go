@@ -84,6 +84,24 @@ func readWorkspaceGitSnapshot(ctx context.Context, workdir string) (*WorkspaceGi
 			result.Diff += fmt.Sprintf("Binary file: %d bytes, SHA256 %s\n", size, strings.Split(content, ":")[0])
 		}
 	}
+	operation, operationIdentity, err := workspaceGitOperationState(ctx, root, result.Changes)
+	if err != nil {
+		return nil, err
+	}
+	result.Operation = operation
+	// Bind actions to the branches, remote tracking refs, tags and stash they
+	// can use. Tool-private refs do not affect these actions; a malformed ref
+	// in an unrelated namespace must not disable project Git status entirely.
+	refs, err := workspaceGitCommand(ctx, root, "for-each-ref", "--format=%(objectname) %(refname)",
+		"refs/heads/", "refs/remotes/", "refs/tags/", "refs/stash")
+	if err != nil {
+		return nil, err
+	}
+	stashes, err := workspaceGitCommand(ctx, root, "stash", "list", "--format=%H%x00%gd")
+	if err != nil {
+		return nil, err
+	}
+	fmt.Fprintf(digest, "\x00%s\x00%s\x00%s", operationIdentity, refs, stashes)
 	result.Snapshot = hex.EncodeToString(digest.Sum(nil))
 	return result, nil
 }
