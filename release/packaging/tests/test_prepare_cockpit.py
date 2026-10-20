@@ -41,12 +41,12 @@ class ConsumerTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         self.store = self.root / 'store'
         self.store.mkdir()
-        self.archive_name = 'dockpipe-resolver-cockpit-0.1.2.tar.gz'
+        self.archive_name = 'dockpipe-resolver-cockpit-0.1.3.tar.gz'
         make_archive(self.store / self.archive_name, {
             'resolvers/cockpit/assets/ui/libdockpipe-cockpit.so': b'module',
-            'resolvers/cockpit/assets/ui/cockpit-reader': b'reader'})
+            'resolvers/cockpit/assets/ui/dockpipe-workspace-reader': b'reader'})
         archive = consumer.identity(self.store / self.archive_name)
-        self.entry = {'name': 'cockpit', 'version': '0.1.2', 'tarball': archive['name'],
+        self.entry = {'name': 'cockpit', 'version': '0.1.3', 'tarball': archive['name'],
                       'sha256': archive['sha256'], 'size_bytes': archive['size_bytes']}
         self.manifest = {'schema': 1, 'platform': 'linux-amd64',
                          'packages': {'resolvers': [self.entry], 'workflows': []}}
@@ -56,10 +56,11 @@ class ConsumerTests(unittest.TestCase):
         receipt_dependencies = {}
         for key, filename, product in (
                 ('launcher_sdk', 'launcher-sdk.lock.json', 'DockPipeLauncherSDK'),
-                ('spatialpipe_sdk', 'spatialpipe-sdk.lock.json', 'SpatialPipe')):
-            sdk = {'product': product, 'version': '1.0.0' if key == 'launcher_sdk' else '0.1.0',
+                ('spatialpipe_scene_sdk', 'spatialpipe-scene-sdk.lock.json', 'SpatialPipeScene'),
+                ('spatial_web_projection_sdk', 'spatialweb-projection-sdk.lock.json', 'SpatialWebProjectionSDK')):
+            sdk = {'product': product, 'version': '1.1.0' if key == 'launcher_sdk' else '0.1.0',
                    'platform': 'linux-amd64', 'qt_version': '6.10.3',
-                   'source_repository': consumer.PUBLISHER if key == 'launcher_sdk' else consumer.SOURCE,
+                   'source_repository': consumer.PUBLISHER if key == 'launcher_sdk' else ('Dockpipe-Industries/Spatial-Web' if key == 'spatial_web_projection_sdk' else consumer.SOURCE),
                    'source_sha': ('b' if key == 'launcher_sdk' else 'c') * 40, 'artifact': {'sha256': 'c' * 64, 'size_bytes': 1},
                    'metadata': {'sha256': 'd' * 64, 'size_bytes': 2}}
             self.pins[filename] = {'lock': sdk}
@@ -72,7 +73,7 @@ class ConsumerTests(unittest.TestCase):
                         'source_repository': consumer.SOURCE, 'source_sha': 'a' * 40,
                         'resolver': self.entry, 'checks': sorted(consumer.CHECKS),
                         'dependencies': receipt_dependencies, 'sdk_sha256': 'e' * 64, 'sdk_source_sha': 'f' * 40}
-        self.candidate = {'schema': 1, 'product': 'Cockpit', 'version': '0.1.2', 'platform': 'linux-amd64',
+        self.candidate = {'schema': 1, 'product': 'Cockpit', 'version': '0.1.3', 'platform': 'linux-amd64',
                           'qt_version': '6.10.3', 'source_repository': consumer.SOURCE, 'source_sha': 'a' * 40,
                           'compiler': {'id': 'GNU', 'version': '11.4.0'},
                           'channel': 'staging', 'qualification_run_id': 1, 'qualification_run_attempt': 1,
@@ -99,7 +100,7 @@ class ConsumerTests(unittest.TestCase):
     def test_verified_runtime_extracts_without_private_diagnostics(self):
         consumer.verify_store(self.store, consumer.load_lock(self.lock_path))
         assets = consumer.unpack_runtime(self.store / self.archive_name, self.root / 'package')
-        self.assertEqual((assets / 'ui/cockpit-reader').read_bytes(), b'reader')
+        self.assertEqual((assets / 'ui/dockpipe-workspace-reader').read_bytes(), b'reader')
 
     def test_prepare_requests_only_public_runtime_bytes(self):
         release = {'assets': [
@@ -151,9 +152,9 @@ class ConsumerTests(unittest.TestCase):
 
     def test_self_consistent_wrong_sdk_identities_are_rejected(self):
         for key, filename, field, value in (
-                ('spatialpipe_sdk', 'spatialpipe-sdk.lock.json', 'version', '1.0.0'),
-                ('spatialpipe_sdk', 'spatialpipe-sdk.lock.json', 'source_repository', 'owner/SpatialPipe'),
-                ('spatialpipe_sdk', 'spatialpipe-sdk.lock.json', 'source_sha', 'dev'),
+                ('spatialpipe_scene_sdk', 'spatialpipe-scene-sdk.lock.json', 'version', '1.0.0'),
+                ('spatialpipe_scene_sdk', 'spatialpipe-scene-sdk.lock.json', 'source_repository', 'owner/SpatialPipe'),
+                ('spatialpipe_scene_sdk', 'spatialpipe-scene-sdk.lock.json', 'source_sha', 'dev'),
                 ('launcher_sdk', 'launcher-sdk.lock.json', 'product', 'OtherSDK'),
                 ('launcher_sdk', 'launcher-sdk.lock.json', 'platform', 'windows-amd64'),
                 ('launcher_sdk', 'launcher-sdk.lock.json', 'qt_version', '6.8.3')):
@@ -231,7 +232,7 @@ class ConsumerTests(unittest.TestCase):
                 original_manifest = json.loads(json.dumps(self.manifest))
                 original_receipt = json.loads(json.dumps(self.receipt))
                 if failure == 'owner':
-                    self.manifest['packages']['workflows'] = [dict(self.entry, tarball='dockpipe-workflow-cockpit-0.1.2.tar.gz')]
+                    self.manifest['packages']['workflows'] = [dict(self.entry, tarball='dockpipe-workflow-cockpit-0.1.3.tar.gz')]
                 elif failure == 'platform':
                     self.manifest['platform'] = 'linux-arm64'
                 else:
@@ -274,8 +275,8 @@ class ConsumerTests(unittest.TestCase):
         self.assertIn(entries['other'], result['packages']['resolvers'])
         self.assertIn(self.entry, result['packages']['resolvers'])
         self.assertEqual((output / entries['other']['tarball']).read_bytes(), (baseline / entries['other']['tarball']).read_bytes())
-        manifest['packages']['resolvers'][1]['version'] = '0.1.3'
-        manifest['packages']['resolvers'][1]['tarball'] = 'dockpipe-resolver-cockpit-0.1.3.tar.gz'
+        manifest['packages']['resolvers'][1]['version'] = '0.1.4'
+        manifest['packages']['resolvers'][1]['tarball'] = 'dockpipe-resolver-cockpit-0.1.4.tar.gz'
         write_json(baseline / 'packages-store-manifest.json', manifest)
         with self.assertRaisesRegex(ValueError, 'downgrade'):
             ingestion.finalize_cockpit(baseline, self.store, self.root / 'downgrade', '0.6.19', self.lock_path)

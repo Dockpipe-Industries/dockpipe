@@ -1523,9 +1523,12 @@ cmake --install /absolute/path/to/host-sdk-build --component LauncherSDK
 ```
 
 An external consumer resolves the installed prefix through `CMAKE_PREFIX_PATH`
-and uses `find_package(DockPipeLauncherSDK 1.0.0 EXACT CONFIG REQUIRED)`.
-`DockPipe::LauncherUI`, `DockPipe::HostBrowser` and `DockPipe::LauncherHeaders`
-export the host UI, ordinary browser and shared headers. The config also exposes
+and uses `find_package(DockPipeLauncherSDK 1.1.0 EXACT CONFIG REQUIRED)`.
+`DockPipe::LauncherUI` and `DockPipe::LauncherHeaders` export the host UI,
+lightweight Files graph and shared headers. The compatibility-named
+`DockPipe::HostBrowser` target contains host terminal/Mermaid helpers. Ordinary
+browsing comes from the independently installed `SpatialWeb::Browser` target;
+there is no copied browser implementation in the host SDK. The config also exposes
 `DockPipeLauncherSDK_RESOURCE_DIR` and `DockPipeLauncherSDK_LIBRARY_DIR` for
 owned installed resources and bundling. This SDK includes Dockpipe host services;
 it is not a neutral standalone browser component. Its Qt 6.10.3, C++17,
@@ -1537,7 +1540,7 @@ change the headless engine.
 
 `DOCKPIPE_COCKPIT_ASSETS` is an absolute path to an independently prepared
 Cockpit `assets` directory containing `ui/libdockpipe-cockpit.so` and
-`ui/cockpit-reader`. It requires `BUILD_TESTING=ON` and Linux. It is only a test
+`ui/dockpipe-workspace-reader` (historical 0.1.2 fixtures use `ui/cockpit-reader`). It requires `BUILD_TESTING=ON` and Linux. It is only a test
 input; ordinary runtime package discovery is unchanged. The removed
 `DOCKPIPE_COCKPIT_SOURCE` source-import parameter must not be used.
 

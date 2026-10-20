@@ -19,16 +19,18 @@ claims of shipped extraction or package publication.
 
 ```mermaid
 flowchart TD
+    Qt[Qt WebEngine] --> Ordinary[SpatialWeb Browser]
+    Ordinary --> DockpipeBrowser[Dockpipe built-in Browser]
+    Ordinary --> Projection[SpatialWeb Composition and Projection]
+    ForgePipe --> Scene[SpatialPipe Runtime and Scene]
+    Scene --> Projection
     ForgePipe --> MesaMoto
-    ForgePipe --> SpatialRuntime[SpatialPipe offline runtime]
-    ForgePipe --> WebLibrary[Spatial-Web browser library]
-    SpatialRuntime --> WebLibrary
-    SpatialRuntime --> SpatialApp[SpatialPipe application]
-    WebLibrary --> SpatialApp
-    WebLibrary --> Browser[Standalone Spatial Browser]
-    ForgePipe --> Cockpit
-    SpatialRuntime --> Cockpit
-    WebLibrary --> Cockpit
+    Scene --> SpatialApp[SpatialPipe standalone application]
+    Projection --> SpatialApp
+    Projection --> WebShell[Spatial-Web standalone browser]
+    Scene --> Cockpit[Trusted Cockpit host adapters]
+    Projection --> Cockpit
+    HostSDK[Dockpipe LauncherSDK and Files graph] --> Cockpit
 ```
 
 | Repository | Owns | Must not require |
@@ -392,3 +394,58 @@ promotion and Freeflight changes are excluded; PipeLang stays in Dockpipe.
 Saved work, saved worlds and the running preview remain preserved. Standalone
 products, physical GPU gameplay and remaining browser/game extraction are still
 open and are not implied by this SDK checkpoint.
+
+## Ecosystem ownership cutover checkpoint — 2026-10-20
+
+The current isolated consumer has installed-library boundaries for the remaining native
+products. `SpatialWeb::Browser` owns ordinary browsing and requires Qt only;
+`SpatialWeb::Composition` owns document, discovery and media composition;
+`SpatialWeb::Projection` owns world planning, projected browser UI and neutral scene
+composition. The separate Browser-only producer does not require Scene or ForgePipe.
+Projection is an optional Linux SDK lane pinned to the qualified native Scene/Forge ABI.
+Both standalone browser modes reuse these libraries. Headquarters branding and trusted
+host actions remain Cockpit adapters. Neither ordinary nor spatial browsing imports MesaMoto.
+
+`SpatialPipe::Geometry` and `SpatialPipe::Scene`, installed by `SpatialPipeScene 0.1.0`,
+own neutral furnishing/room geometry and `SpatialWorldView`. Cockpit supplies host images,
+provider admission and explicit actions to that view; its filesystem flight, Git review,
+operations and desktop-window controls remain host features. The standalone universe omits
+those providers. Runtime storage still receives explicit paths, and host adapters retain
+existing saved-data paths. No real user data was migrated by this cutover.
+
+The Files graph now belongs to the Dockpipe launcher, with its own bounded
+`dockpipe-workspace-reader`. It opens directly without acquiring or enabling Cockpit.
+Its 2D/orthographic 3D views, camera controls and animated drone remain; graph flight and
+its editor overlay were removed from this host feature. The optional package retains a
+thin compatibility file-surface adapter. Page limits, workspace containment, link/Git
+metadata refusal, cancellation and stale-page checks remain in the host reader.
+
+Preserved preimages and hash manifests precede source retirement in the isolated consumer
+and extracted Cockpit package. Reusable Browser, Web composition/projection, Graph and
+neutral Scene implementations and their model/media assets have owning library targets;
+remaining forwarding headers preserve callers without compiling second implementations.
+MesaMoto owns game code/content and its importer; neutral furniture import tooling belongs
+to SpatialPipe Scene. Company branding, native app providers and local voice remain host-owned.
+
+Local checks pass installed-library build/link, Browser lifecycle/download regressions,
+Graph offscreen and actual X11 rendering, Web/civic/site/input/furnishing/folder-navigation
+fixtures, saved-world fixtures, matching-CLI Git review and retained native app handoff.
+The original renderer test passes for both preserved and extracted binaries using the CI
+private-X11 software driver. Both binaries reproduce the same NVIDIA independent-context
+pixel failure on this machine; that negative evidence remains recorded and the assertions
+remain enabled. Actual X11 Graph and native handoff rendered on NVIDIA, which does not
+establish that every native GPU or game acceptance gate passed.
+
+The retired combined Graph megafixture was archived. Folder travel, paging and reticle
+assertions moved to a narrow Cockpit fixture; relevant Graph/security checks belong to
+launcher tests. The removed Files flight/editor-overlay branches, legacy large-tree
+benchmarks, standalone preview timing and some combined pixel/composition branches were
+not all requalified. Their preservation record distinguishes archived coverage from passing
+replacement checks.
+
+Source/producer implementation and local proof are not final delivery. Exact SDK/package
+pins, compatible Browser and Projection source identities, hosted candidate qualification,
+public artifact readback, composed-catalog installation/update/disable/removal/rollback and
+final source-absent Dockpipe staging remain separate recorded gates. No production promotion
+is implied by this checkpoint. Cross-platform Browser SDK producers exist; macOS/Windows
+and ARM qualification must be read from their accepted hosted runs, not inferred from Linux.
