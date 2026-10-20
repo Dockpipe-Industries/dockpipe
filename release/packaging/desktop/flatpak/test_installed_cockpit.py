@@ -1,4 +1,8 @@
+import hashlib
 import importlib.util
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 import unittest
 
@@ -55,6 +59,43 @@ class InstalledCockpitBoundaryTest(unittest.TestCase):
                      valid.replace("recovery_completed_frames=1", "recovery_completed_frames=0")):
             with self.assertRaisesRegex(ValueError, "rendering proof"):
                 CHECK.rendering_result(text)
+
+
+class FlatpakDependencyPreservationTest(unittest.TestCase):
+    @unittest.skipUnless(all(shutil.which(tool) for tool in ("cc", "strip", "readelf", "bash")),
+                         "Native ELF tools are required for packaging qualification")
+    def test_symbol_cleanup_preserves_attested_browser_bytes(self):
+        script = Path(__file__).with_name("build.sh").read_text()
+        cleanup = script.split("flatpak build \"$app\" bash -c '\n", 1)[1].split("\n'", 1)[0]
+        with tempfile.TemporaryDirectory() as temporary:
+            app = Path(temporary) / "app"
+            library = app / "lib/libSpatialWebBrowser.so.0"
+            library.parent.mkdir(parents=True)
+            subprocess.run(
+                ["cc", "-shared", "-fPIC", "-g", "-x", "c", "-o", str(library), "-"],
+                input="int qualification_symbol(void) { return 42; }\n",
+                text=True, check=True, capture_output=True)
+            original = library.read_bytes()
+            owned = [
+                app / "libexec/dockpipe/dockpipe-launcher",
+                app / "libexec/dockpipe/dockpipe-workspace-reader",
+                app / "libexec/dockpipe/libdockpipe-launcher-ui.so.1.0",
+                app / "lib/libXRes.so.1",
+            ]
+            for binary in owned:
+                binary.parent.mkdir(parents=True, exist_ok=True)
+                binary.write_bytes(original)
+            subprocess.run(["bash", "-c", cleanup.replace("/app/", str(app) + "/")],
+                           check=True, capture_output=True, text=True)
+            self.assertEqual(hashlib.sha256(original).hexdigest(),
+                             hashlib.sha256(library.read_bytes()).hexdigest())
+            for binary in owned:
+                with self.subTest(binary=binary.name):
+                    self.assertNotEqual(original, binary.read_bytes())
+                    sections = subprocess.check_output(
+                        ["readelf", "--wide", "--sections", str(binary)], text=True)
+                    self.assertNotIn(".debug_info", sections)
+                    self.assertNotIn(".symtab", sections)
 
 
 if __name__ == "__main__":
