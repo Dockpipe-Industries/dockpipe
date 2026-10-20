@@ -261,6 +261,13 @@ jobs:
               } finally {
                   $scan.Dispose()
               }
+              Push-Location -LiteralPath $build
+              try {
+                  & (Join-Path $build 'windows-test-launcher.exe') --probe-runtime (Join-Path $build 'windows-runtime-dependencies.txt')
+                  if ($LASTEXITCODE -ne 0) { Write-Warning 'Restricted runtime access diagnostics failed; native test follows.' }
+              } finally {
+                  Pop-Location
+              }
           } catch {
               # Diagnostics must never replace the required native embedding gate.
               Write-Warning "Windows import diagnostics failed: $_"

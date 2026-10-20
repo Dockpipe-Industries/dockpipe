@@ -5,6 +5,7 @@
 
 #include <cstdio>
 #include <cwchar>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,11 @@ constexpr DWORD ChildDeadlineMilliseconds = 45000;
 constexpr DWORD CleanupDeadlineMilliseconds = 3000;
 constexpr DWORD MaximumTokenBytes = 64 * 1024;
 constexpr DWORD SelfTestChildExitCode = 23;
+// The observed desktop import graph has 273 DLLs. This diagnostic admits at
+// most 512 paths and 1 MiB of UTF-8 metadata, never an unbounded file inventory.
+constexpr DWORD MaximumRuntimeManifestBytes = 1024 * 1024;
+constexpr unsigned MaximumRuntimePaths = 512;
+constexpr DWORD MaximumWindowsPathCharacters = 32768;
 
 class Handle final {
 public:
@@ -169,6 +175,86 @@ bool absoluteExecutable(const wchar_t *argument, std::wstring &executable)
         || _wcsicmp(executable.c_str() + executable.size() - 4, L".exe") != 0)
         return error("regular Windows executable", ERROR_BAD_EXE_FORMAT);
     return true;
+}
+
+bool ownExecutable(std::wstring &executable)
+{
+    std::wstring path(MaximumWindowsPathCharacters, L'\0');
+    const DWORD length = GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
+    if (length == 0 || length >= path.size())
+        return error("GetModuleFileNameW launcher", length == 0 ? GetLastError() : ERROR_FILENAME_EXCED_RANGE);
+    path.resize(length);
+    return absoluteExecutable(path.c_str(), executable);
+}
+
+bool probeRuntimeAccess(const wchar_t *manifest)
+{
+    std::vector<wchar_t> environment(MaximumWindowsPathCharacters);
+    DWORD length = GetEnvironmentVariableW(L"PATH", environment.data(), static_cast<DWORD>(environment.size()));
+    if (length == 0 || length >= environment.size())
+        return error("restricted child PATH", length == 0 ? GetLastError() : ERROR_BUFFER_OVERFLOW);
+    std::fprintf(stdout, "Windows runtime access: restricted child PATH=%ls\n", environment.data());
+    length = GetCurrentDirectoryW(static_cast<DWORD>(environment.size()), environment.data());
+    if (length == 0 || length >= environment.size())
+        return error("restricted child working directory", length == 0 ? GetLastError() : ERROR_BUFFER_OVERFLOW);
+    std::fprintf(stdout, "Windows runtime access: restricted child cwd=%ls\n", environment.data());
+
+    Handle file(CreateFileW(manifest, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, nullptr));
+    if (!file)
+        return error("open runtime manifest");
+    BY_HANDLE_FILE_INFORMATION information{};
+    LARGE_INTEGER size{};
+    if (!GetFileInformationByHandle(file.get(), &information) || !GetFileSizeEx(file.get(), &size))
+        return error("inspect runtime manifest");
+    if (GetFileType(file.get()) != FILE_TYPE_DISK
+        || (information.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT))
+        || size.QuadPart <= 0 || size.QuadPart > MaximumRuntimeManifestBytes)
+        return error("regular bounded runtime manifest", ERROR_INVALID_DATA);
+    std::string bytes(static_cast<size_t>(size.QuadPart), '\0');
+    DWORD readBytes = 0;
+    if (!ReadFile(file.get(), bytes.data(), static_cast<DWORD>(bytes.size()), &readBytes, nullptr))
+        return error("read runtime manifest");
+    if (readBytes != bytes.size())
+        return error("complete runtime manifest", ERROR_INVALID_DATA);
+
+    std::istringstream lines(bytes);
+    std::string line;
+    unsigned pathCount = 0;
+    unsigned deniedCount = 0;
+    while (std::getline(lines, line)) {
+        if (!line.empty() && line.back() == '\r')
+            line.pop_back();
+        if (line.empty())
+            continue;
+        ++pathCount;
+        if (pathCount > MaximumRuntimePaths || line.find('\0') != std::string::npos)
+            return error("runtime manifest path capacity", ERROR_INVALID_DATA);
+        const int characters = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+            line.data(), static_cast<int>(line.size()), nullptr, 0);
+        if (characters <= 0 || static_cast<DWORD>(characters) >= MaximumWindowsPathCharacters)
+            return error("runtime manifest UTF-8 path", ERROR_INVALID_DATA);
+        std::wstring path(static_cast<size_t>(characters), L'\0');
+        if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, line.data(),
+                static_cast<int>(line.size()), path.data(), characters) != characters)
+            return error("convert runtime manifest path");
+        if (path.size() < 3 || path[1] != L':' || (path[2] != L'\\' && path[2] != L'/'))
+            return error("absolute runtime manifest path", ERROR_BAD_PATHNAME);
+        Handle dependency(CreateFileW(path.c_str(), GENERIC_READ | GENERIC_EXECUTE,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL, nullptr));
+        if (dependency) {
+            std::fprintf(stdout, "Windows runtime access: readable-executable=%ls\n", path.c_str());
+        } else {
+            const DWORD accessError = GetLastError();
+            ++deniedCount;
+            std::fprintf(stderr, "Windows runtime access: denied=%ls GetLastError=%lu\n",
+                path.c_str(), static_cast<unsigned long>(accessError));
+        }
+    }
+    std::fprintf(stdout, "Windows runtime access: checked=%u denied=%u; no DLLs loaded\n",
+        pathCount, deniedCount);
+    return std::fflush(nullptr) == 0 && pathCount != 0 && deniedCount == 0;
 }
 
 class StartupHandles final {
@@ -332,8 +418,10 @@ int wmain(int argc, wchar_t **argv)
     // of leaving an OS error dialog open until the fixture deadline.
     SetErrorMode(GetErrorMode() | SEM_FAILCRITICALERRORS
         | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
-    if (argc != 2) {
-        std::fprintf(stderr, "Usage: windows-test-launcher <absolute-test.exe> | --self-test\n");
+    const bool runtimeProbeChild = argc == 3 && std::wcscmp(argv[1], L"--probe-runtime-child") == 0;
+    const bool runtimeProbeRequest = argc == 3 && std::wcscmp(argv[1], L"--probe-runtime") == 0;
+    if (argc != 2 && !runtimeProbeChild && !runtimeProbeRequest) {
+        std::fprintf(stderr, "Usage: windows-test-launcher <absolute-test.exe> | --self-test | --probe-runtime <manifest>\n");
         return 1;
     }
     Handle ownToken;
@@ -345,6 +433,11 @@ int wmain(int argc, wchar_t **argv)
     if (!readFacts(ownToken.get(), original))
         return 1;
     reportFacts("launcher", original);
+    if (runtimeProbeChild) {
+        if (!verifiedContext(original, original))
+            return 1;
+        return probeRuntimeAccess(argv[2]) ? 0 : 1;
+    }
     const bool selfTestChild = std::wcscmp(argv[1], L"--self-test-child") == 0;
     const bool selfTestStall = std::wcscmp(argv[1], L"--self-test-stall") == 0;
     if (selfTestChild || selfTestStall) {
@@ -372,15 +465,8 @@ int wmain(int argc, wchar_t **argv)
     }
     const bool selfTest = std::wcscmp(argv[1], L"--self-test") == 0;
     std::wstring executable;
-    if (selfTest) {
-        std::wstring ownExecutable(32768, L'\0');
-        const DWORD length = GetModuleFileNameW(nullptr, ownExecutable.data(), static_cast<DWORD>(ownExecutable.size()));
-        if (length == 0 || length >= ownExecutable.size()) {
-            error("GetModuleFileNameW launcher", length == 0 ? GetLastError() : ERROR_FILENAME_EXCED_RANGE);
-            return 1;
-        }
-        ownExecutable.resize(length);
-        if (!absoluteExecutable(ownExecutable.c_str(), executable))
+    if (selfTest || runtimeProbeRequest) {
+        if (!ownExecutable(executable))
             return 1;
     } else if (!absoluteExecutable(argv[1], executable)) {
         return 1;
@@ -409,10 +495,24 @@ int wmain(int argc, wchar_t **argv)
     } else if (!verifiedContext(original, original)) {
         return 1;
     }
+    std::wstring probeArguments;
+    const wchar_t *childArgument = nullptr;
+    if (selfTest) {
+        childArgument = L"--self-test-child";
+    } else if (runtimeProbeRequest) {
+        if (std::wcschr(argv[2], L'"')) {
+            error("runtime manifest argument", ERROR_INVALID_NAME);
+            return 1;
+        }
+        probeArguments = L"--probe-runtime-child \"" + std::wstring(argv[2]) + L"\"";
+        childArgument = probeArguments.c_str();
+    }
     DWORD exitCode = 1;
-    if (!runChild(executable, selfTest ? L"--self-test-child" : nullptr,
+    if (!runChild(executable, childArgument,
             restrictedToken.get(), original, exitCode))
         return 1;
+    if (runtimeProbeRequest)
+        return exitCode == 0 ? 0 : 1;
     if (selfTest) {
         if (exitCode != SelfTestChildExitCode) {
             std::fprintf(stderr, "Windows test launcher: self-test child returned %lu, expected %lu\n",
