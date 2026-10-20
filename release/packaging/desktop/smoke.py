@@ -41,6 +41,14 @@ def check(launcher, expected_cli, inventory_system_root=None):
                      "QML2_IMPORT_PATH", "QT_QPA_PLATFORM_PLUGIN_PATH", "DYLD_FRAMEWORK_PATH",
                      "DYLD_LIBRARY_PATH", "LD_LIBRARY_PATH"):
             environment.pop(name, None)
+        reader = launcher.parent / ("dockpipe-workspace-reader.exe" if os.name == "nt" else "dockpipe-workspace-reader")
+        if not reader.is_file():
+            raise RuntimeError("Installed workspace reader is missing beside the launcher")
+        page = subprocess.run([str(reader)], input=json.dumps({"root": temporary, "directory": temporary, "limit": 16}),
+                              cwd=home, env=environment, check=True, text=True, stdout=subprocess.PIPE, timeout=30)
+        response = json.loads(page.stdout)
+        if "error" in response or not isinstance(response.get("entries"), list):
+            raise RuntimeError("Installed workspace reader could not read its isolated fixture")
         try:
             result = subprocess.run([str(launcher), "--check-installation"], cwd=home, env=environment,
                                     capture_output=True, text=True, timeout=45)

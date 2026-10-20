@@ -1,201 +1,207 @@
 #include "ProjectFilesWidget.h"
-#include "Theme.h"
+#include "WorkspaceGraphWidget.h"
+#include "WorkspaceGraphPage.h"
+#include "WorkspaceGraphReader.h"
+#include "WorkspaceGraphNode.h"
 #include "WorkspacePackageManager.h"
-
+#include "Theme.h"
+#include <QAction>
 #include <QApplication>
 #include <QDir>
 #include <QFile>
-#include <QFileInfo>
-#include <QLabel>
+#include <QGraphicsItem>
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QLayout>
 #include <QPointer>
-#include <QProcess>
+#include <QScreen>
 #include <QPushButton>
 #include <QSignalSpy>
 #include <QStyle>
 #include <QTemporaryDir>
 #include <QTest>
-#include <QThread>
 #include <QTreeView>
-#include <cstdio>
+#include <filesystem>
 
 class ProjectFilesGraphTest final : public QObject {
     Q_OBJECT
 private slots:
-    void initTestCase();
-    void firstClickLoadsInstalledPackageAndCloseRestoresTree();
-    void pendingOpenIsCancelled_data();
-    void pendingOpenIsCancelled();
-    void missingPackageShowsAccurateError();
-    void disabledGraphExplainsSettingsRequirement();
+    void builtInGraphDoesNotLoadPackage();
+    void readerSecurityAndCursor();
+    void boundedPagesProjectionAndDrone();
+    void cancelledReaderDiscardsStaleReply();
     void graphButtonFitsTextAndLargerFonts_data();
     void graphButtonFitsTextAndLargerFonts();
-
-private:
-    bool runIsolated(const QString &selector);
-    QString m_childOutput;
 };
 
-void ProjectFilesGraphTest::initTestCase()
+static bool writeFile(const QString &path)
 {
-    QVERIFY2(QFileInfo(qEnvironmentVariable("DOCKPIPE_WORKSPACE_PACKAGE")).isDir(),
-        "The test requires the workspace-package-fixture assets directory.");
+    QFile file(path);
+    return file.open(QIODevice::WriteOnly) && file.write("example\n") == 8;
 }
 
-bool ProjectFilesGraphTest::runIsolated(const QString &selector)
+void ProjectFilesGraphTest::builtInGraphDoesNotLoadPackage()
 {
-    QTemporaryDir home;
-    if (!home.isValid())
-        return false;
-    QProcess child;
-    auto environment = QProcessEnvironment::systemEnvironment();
-    environment.insert("DOCKPIPE_GRAPH_TEST_CHILD", "1");
-    environment.insert("DOCKPIPE_GRAPH_TEST_HOME", home.path());
-    child.setProcessEnvironment(environment);
-    child.setProcessChannelMode(QProcess::MergedChannels);
-    child.start(QCoreApplication::applicationFilePath(), {selector});
-    if (!child.waitForStarted(3000) || !child.waitForFinished(15000)) {
-        child.kill();
-        child.waitForFinished(1000);
-        m_childOutput = QString::fromUtf8(child.readAll());
-        return false;
-    }
-    m_childOutput = QString::fromUtf8(child.readAll());
-    return child.exitStatus() == QProcess::NormalExit && child.exitCode() == 0;
-}
-
-void ProjectFilesGraphTest::firstClickLoadsInstalledPackageAndCloseRestoresTree()
-{
-    if (qEnvironmentVariableIsEmpty("DOCKPIPE_GRAPH_TEST_CHILD")) {
-        QVERIFY2(runIsolated(QTest::currentTestFunction()), qPrintable(m_childOutput));
-        return;
-    }
     QTemporaryDir root;
-    QVERIFY(root.isValid());
+    QTemporaryDir other;
+    QVERIFY(root.isValid() && other.isValid());
     ProjectFilesWidget files;
     files.resize(1200, 760);
-    QVERIFY(files.setRoot(root.path()));
-    files.applyCockpitSettings(CockpitSettings{true});
-    files.show();
-    QCoreApplication::processEvents();
-    auto *button = files.findChild<QPushButton *>("openWorkspaceGraph");
-    auto *tree = files.findChild<QTreeView *>("fileTree");
-    QVERIFY(button && tree);
-    QVERIFY(button->isVisible() && button->isEnabled());
-    QVERIFY(tree->isVisible());
-    QVERIFY(!WorkspacePackageManager::instance().ready());
-    QTest::mouseClick(button, Qt::LeftButton);
-    QTRY_VERIFY(WorkspacePackageManager::instance().ready());
-    QPointer<QWidget> surface = files.findChild<QWidget *>("fixtureFileSurface");
-    QVERIFY(surface);
-    QVERIFY(surface->isVisible());
-    QCOMPARE(surface->property("fixtureRoot").toString(), root.path());
-    QCOMPARE(surface->property("fixtureDirectory").toString(), QFileInfo(root.path()).canonicalFilePath());
-    QVERIFY(surface->property("fixtureCockpitEnabled").toBool());
-    QVERIFY(!tree->isVisible());
-    auto *close = surface->findChild<QPushButton *>("fixtureCloseFiles");
-    QVERIFY(close);
-    QTest::mouseClick(close, Qt::LeftButton);
-    QTRY_VERIFY(surface.isNull());
-    QVERIFY(tree->isVisible());
-    QVERIFY(button->isEnabled());
-}
-
-void ProjectFilesGraphTest::pendingOpenIsCancelled_data()
-{
-    QTest::addColumn<QString>("change");
-    QTest::newRow("hide") << QString("hide");
-    QTest::newRow("root") << QString("root");
-    QTest::newRow("disable") << QString("disable");
-}
-
-void ProjectFilesGraphTest::pendingOpenIsCancelled()
-{
-    QFETCH(QString, change);
-    if (qEnvironmentVariableIsEmpty("DOCKPIPE_GRAPH_TEST_CHILD")) {
-        const QString selector = QString(QTest::currentTestFunction()) + ':' + QTest::currentDataTag();
-        QVERIFY2(runIsolated(selector), qPrintable(m_childOutput));
-        return;
-    }
-    QTemporaryDir root;
-    QTemporaryDir otherRoot;
-    QVERIFY(root.isValid() && otherRoot.isValid());
-    qputenv("DOCKPIPE_GRAPH_TEST_ASSETS", qgetenv("DOCKPIPE_WORKSPACE_PACKAGE"));
-    qunsetenv("DOCKPIPE_WORKSPACE_PACKAGE");
-    qputenv("DOCKPIPE_BIN", QCoreApplication::applicationFilePath().toUtf8());
-    ProjectFilesWidget files;
-    files.resize(1200, 760);
-    QVERIFY(files.setRoot(root.path()));
-    files.applyCockpitSettings(CockpitSettings{true});
-    files.show();
-    auto *button = files.findChild<QPushButton *>("openWorkspaceGraph");
-    QVERIFY(button);
-    QSignalSpy prepared(&WorkspacePackageManager::instance(), &WorkspacePackageManager::prepared);
-    QTest::mouseClick(button, Qt::LeftButton);
-    QVERIFY(WorkspacePackageManager::instance().busy());
-    if (change == "hide") {
-        files.hide();
-    } else if (change == "root") {
-        QVERIFY(files.setRoot(otherRoot.path()));
-    } else {
-        files.applyCockpitSettings(CockpitSettings{false});
-    }
-    QTRY_COMPARE(prepared.size(), 1);
-    QVERIFY(!files.findChild<QWidget *>("fixtureFileSurface"));
-    files.show();
-    QCoreApplication::processEvents();
-    QVERIFY(!files.findChild<QWidget *>("fixtureFileSurface"));
-    QVERIFY(files.findChild<QTreeView *>("fileTree")->isVisible());
-}
-
-void ProjectFilesGraphTest::missingPackageShowsAccurateError()
-{
-    if (qEnvironmentVariableIsEmpty("DOCKPIPE_GRAPH_TEST_CHILD")) {
-        QVERIFY2(runIsolated(QTest::currentTestFunction()), qPrintable(m_childOutput));
-        return;
-    }
-    QTemporaryDir root;
-    QVERIFY(root.isValid());
-    qputenv("DOCKPIPE_WORKSPACE_PACKAGE", root.path().toUtf8());
-    ProjectFilesWidget files;
-    files.resize(1200, 760);
-    QVERIFY(files.setRoot(root.path()));
-    files.applyCockpitSettings(CockpitSettings{true});
-    files.show();
-    auto *button = files.findChild<QPushButton *>("openWorkspaceGraph");
-    QVERIFY(button);
-    QTest::mouseClick(button, Qt::LeftButton);
-    QTRY_VERIFY(!WorkspacePackageManager::instance().busy());
-    QVERIFY(!WorkspacePackageManager::instance().ready());
-    QVERIFY(!files.findChild<QWidget *>("fixtureFileSurface"));
-    bool accurateVisibleError = false;
-    for (QLabel *label : files.findChildren<QLabel *>()) {
-        accurateVisibleError |= label->isVisible()
-            && label->text().contains("missing", Qt::CaseInsensitive)
-            && label->text().contains("native", Qt::CaseInsensitive);
-    }
-    QVERIFY(accurateVisibleError);
-    QVERIFY(button->isEnabled());
-}
-
-void ProjectFilesGraphTest::disabledGraphExplainsSettingsRequirement()
-{
-    if (qEnvironmentVariableIsEmpty("DOCKPIPE_GRAPH_TEST_CHILD")) {
-        QVERIFY2(runIsolated(QTest::currentTestFunction()), qPrintable(m_childOutput));
-        return;
-    }
-    QTemporaryDir root;
-    ProjectFilesWidget files;
     QVERIFY(files.setRoot(root.path()));
     files.applyCockpitSettings(CockpitSettings{false});
     files.show();
     auto *button = files.findChild<QPushButton *>("openWorkspaceGraph");
-    QVERIFY(button);
-    QVERIFY(button->isVisible());
-    QVERIFY(!button->isEnabled());
-    QVERIFY(button->toolTip().contains("Settings", Qt::CaseInsensitive));
-    QVERIFY(button->toolTip().contains("Cockpit", Qt::CaseInsensitive));
+    auto *tree = files.findChild<QTreeView *>("fileTree");
+    QVERIFY(button && tree && button->isEnabled());
+    QVERIFY(!WorkspacePackageManager::instance().ready());
+    QTest::mouseClick(button, Qt::LeftButton);
+    QPointer<WorkspaceGraphWidget> graph = files.findChild<WorkspaceGraphWidget *>();
+    QVERIFY(graph && graph->isVisible() && !tree->isVisible());
+    QTRY_VERIFY(!graph->busy());
+    QVERIFY(!WorkspacePackageManager::instance().ready());
     QVERIFY(!WorkspacePackageManager::instance().busy());
+    files.applyCockpitSettings(CockpitSettings{false});
+    QVERIFY(graph && graph->isVisible());
+    files.closeGraph();
+    QTRY_VERIFY(graph.isNull());
+    QVERIFY(tree->isVisible() && button->isEnabled());
+    files.openGraph();
+    QVERIFY(files.setRoot(other.path()));
+    QTRY_VERIFY(!files.findChild<WorkspaceGraphWidget *>());
+    files.openGraph();
+    files.hide();
+    QTRY_VERIFY(!WorkspaceGraphReader::helperActive());
+    QTRY_VERIFY(!files.findChild<WorkspaceGraphWidget *>());
+}
+
+void ProjectFilesGraphTest::readerSecurityAndCursor()
+{
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    QDir directory(root.path());
+    QVERIFY(directory.mkpath("nested/deep"));
+    QVERIFY(directory.mkdir(".git"));
+    QVERIFY(writeFile(directory.filePath("README.md")));
+    QVERIFY(writeFile(directory.filePath(".settings")));
+    QVERIFY(writeFile(directory.filePath("nested/deep/hidden.txt")));
+    const auto read = [&](const QString &path, int limit, const QString &after = {}, const QString &stamp = {}) {
+        return WorkspaceGraphPage::read({{"root", root.path()}, {"directory", path},
+            {"limit", limit}, {"after", after}, {"stamp", stamp}, {"hidden", true}});
+    };
+    const auto first = read(root.path(), 2);
+    QVERIFY(!first.contains("error"));
+    QCOMPARE(first.value("entries").toArray().size(), 2);
+    QVERIFY(first.value("more").toBool());
+    QVERIFY(!QJsonDocument(first).toJson().contains("hidden.txt"));
+    const auto second = read(root.path(), 2, first.value("after").toString(), first.value("stamp").toString());
+    QVERIFY(!second.contains("error"));
+    QCOMPARE(second.value("entries").toArray().size(), 1);
+    QVERIFY(read(directory.filePath(".."), 2).contains("error"));
+    QVERIFY(read(directory.filePath(".git"), 2).contains("error"));
+    QVERIFY(read(root.path(), 151).contains("error"));
+    QVERIFY(read(directory.filePath("missing"), 2).contains("error"));
+    const auto nativeDirectory = std::filesystem::u8path(root.path().toUtf8().constData());
+    const auto timestamp = std::filesystem::last_write_time(nativeDirectory);
+    QVERIFY(QFile::rename(directory.filePath("README.md"), directory.filePath("RENAMED.md")));
+    std::filesystem::last_write_time(nativeDirectory, timestamp);
+    QVERIFY(read(root.path(), 2, first.value("after").toString(), first.value("stamp").toString()).contains("error"));
+#ifdef Q_OS_UNIX
+    QVERIFY(QFile::link(root.path(), directory.filePath("cycle")));
+    QVERIFY(QFile::link(directory.filePath("missing-target"), directory.filePath("broken")));
+    QVERIFY(read(directory.filePath("cycle"), 2).contains("error"));
+    int links = 0;
+    for (const auto &entry : read(root.path(), 150).value("entries").toArray()) {
+        if (entry.toObject().value("kind") == "link")
+            ++links;
+    }
+    QCOMPARE(links, 2);
+#endif
+    const auto preview = WorkspaceGraphPage::read({{"operation", "preview"},
+        {"root", root.path()}, {"path", directory.filePath("../outside")}});
+    QVERIFY(preview.contains("error"));
+}
+
+void ProjectFilesGraphTest::cancelledReaderDiscardsStaleReply()
+{
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    WorkspaceGraphReader reader;
+    QSignalSpy replies(&reader, &WorkspaceGraphReader::completed);
+    const QJsonObject request{{"root", root.path()}, {"directory", root.path()}, {"limit", 5}};
+    reader.request(1, request);
+    reader.cancel();
+    QTRY_VERIFY(!reader.busy());
+    QCOMPARE(replies.size(), 0);
+    reader.request(2, request);
+    reader.request(3, request);
+    QTRY_VERIFY(!reader.busy());
+    QCOMPARE(replies.size(), 1);
+    QCOMPARE(replies.first().first().toULongLong(), quint64(3));
+    QVERIFY(!replies.first().at(1).toJsonObject().contains("error"));
+    QTRY_VERIFY(!WorkspaceGraphReader::helperActive());
+}
+
+void ProjectFilesGraphTest::boundedPagesProjectionAndDrone()
+{
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    QDir directory(root.path());
+    QVERIFY(directory.mkpath("branch/deep"));
+    for (int index = 0; index < 25; ++index)
+        QVERIFY(writeFile(directory.filePath(QString("file-%1.txt").arg(index, 2, 10, QChar('0')))));
+    WorkspaceGraphWidget graph(root.path(), root.path(), nullptr, {5, 12});
+    graph.resize(1200, 800);
+    graph.show();
+    QTRY_VERIFY(!graph.busy());
+    QVERIFY(graph.nodeCount() <= 6);
+    QVERIFY(graph.hasMore(root.path()));
+    graph.expand(directory.filePath("branch"));
+    QTRY_VERIFY(!graph.busy());
+    QVERIFY(graph.hasPath(directory.filePath("branch/deep")));
+    graph.collapse(directory.filePath("branch"));
+    QVERIFY(!graph.hasPath(directory.filePath("branch/deep")));
+    graph.loadMore(root.path());
+    QTRY_VERIFY(!graph.busy());
+    QVERIFY(graph.nodeCount() <= 12);
+    graph.loadMore(root.path());
+    QTRY_VERIFY(!graph.busy());
+    QVERIFY(graph.nodeCount() <= 12);
+    QVERIFY(!graph.hasPath(directory.filePath("branch/deep")));
+    QGraphicsItem *rootItem = nullptr;
+    for (auto *item : graph.canvas()->scene()->items()) {
+        if (item->data(0).toString() == root.path())
+            rootItem = item;
+    }
+    QVERIFY(rootItem);
+    rootItem->setPos(QPointF(35, 57));
+    const int loaded = graph.nodeCount();
+    graph.setSpatial(true);
+    QVERIFY(!graph.findChild<QAction *>("openGraphFlight"));
+    QVERIFY(!graph.findChild<QAction *>("enableAppBillboards"));
+    QCOMPARE(graph.nodeCount(), loaded);
+    QVERIFY(!graph.busy() && !WorkspaceGraphReader::helperActive());
+    QVERIFY(!(rootItem->flags() & QGraphicsItem::ItemIsMovable));
+    const QPointF projected = rootItem->pos();
+    graph.findChild<QPushButton *>("graphRotate")->click();
+    QVERIFY(rootItem->pos() != projected);
+    graph.selectPath(directory.filePath("branch"));
+    QTest::qWait(400);
+    QVERIFY(!graph.canvas()->viewport()->grab().isNull());
+    const QString images = qEnvironmentVariable("DOCKPIPE_GRAPH_TEST_IMAGES");
+    if (!images.isEmpty()) {
+        QVERIFY(QDir().mkpath(images));
+        QVERIFY(graph.screen()->grabWindow(graph.winId()).save(QDir(images).filePath("workspace-graph-3d-drone.png")));
+    }
+    qInfo() << "Graph renderer:" << static_cast<WorkspaceGraphView *>(graph.canvas())->rendererDescription();
+    QVERIFY(!graph.busy());
+    graph.setSpatial(false);
+    QCOMPARE(rootItem->pos(), QPointF(35, 57));
+    QVERIFY(rootItem->flags() & QGraphicsItem::ItemIsMovable);
+    graph.navigate(directory.filePath("branch"));
+    QTRY_VERIFY(!graph.busy());
+    QVERIFY(graph.hasPath(directory.filePath("branch/deep")));
+    graph.hide();
+    QTRY_VERIFY(!WorkspaceGraphReader::helperActive());
 }
 
 void ProjectFilesGraphTest::graphButtonFitsTextAndLargerFonts_data()
@@ -208,11 +214,6 @@ void ProjectFilesGraphTest::graphButtonFitsTextAndLargerFonts_data()
 void ProjectFilesGraphTest::graphButtonFitsTextAndLargerFonts()
 {
     QFETCH(QString, theme);
-    if (qEnvironmentVariableIsEmpty("DOCKPIPE_GRAPH_TEST_CHILD")) {
-        const QString selector = QString(QTest::currentTestFunction()) + ':' + QTest::currentDataTag();
-        QVERIFY2(runIsolated(selector), qPrintable(m_childOutput));
-        return;
-    }
     QFile shared(":/theme/pipeon.qss");
     QFile companion(":/theme/pipeon-" + theme + ".qss");
     QVERIFY(shared.open(QIODevice::ReadOnly));
@@ -269,22 +270,6 @@ void ProjectFilesGraphTest::graphButtonFitsTextAndLargerFonts()
 
 int main(int argc, char **argv)
 {
-    // The async package resolver fixture never initializes widgets or launches
-    // a real CLI. A delayed response makes cancellation deterministic.
-    if (argc > 1 && QByteArray(argv[1]) == "scope" && !qEnvironmentVariableIsEmpty("DOCKPIPE_GRAPH_TEST_ASSETS")) {
-        QThread::msleep(250);
-        const QByteArray assets = qgetenv("DOCKPIPE_GRAPH_TEST_ASSETS") + '\n';
-        std::fwrite(assets.constData(), 1, static_cast<size_t>(assets.size()), stdout);
-        return 0;
-    }
-    const QByteArray home = qgetenv("DOCKPIPE_GRAPH_TEST_HOME");
-    if (!home.isEmpty()) {
-        qputenv("HOME", home);
-        qputenv("USERPROFILE", home);
-        qputenv("APPDATA", home);
-        qputenv("LOCALAPPDATA", home);
-        qputenv("XDG_CONFIG_HOME", home);
-    }
     QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
     QApplication application(argc, argv);
     QCoreApplication::setApplicationName("DockpipeGraphTest");

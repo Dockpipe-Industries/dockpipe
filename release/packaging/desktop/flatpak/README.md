@@ -105,7 +105,8 @@ remain core-only; install the optional packages needed for the chosen workflow.
 
 Prerequisites: Flatpak, Python 3, `org.kde.Sdk//6.10`, `org.kde.Platform//6.10`,
 `io.qt.qtwebengine.BaseApp//6.10` for the embedded browser, a
-matching static CLI and a verified core store. The builder does not install its
+matching static CLI, a verified core store, and `DOCKPIPE_BROWSER_SDK` pointing to
+the verified public Spatial-Web Browser SDK prefix. The builder does not install its
 prerequisites or install the resulting app on the build machine.
 The build bundles checksum-pinned libXRes 1.2.3 for X11 process identification,
 including RustDesk windows that omit their process ID property. Its license is
@@ -118,6 +119,14 @@ sandboxing. BaseApp development headers and build metadata are removed after tes
 bash release/packaging/desktop/flatpak/build.sh VERSION /absolute/path/dockpipe \
   /absolute/path/core-store /absolute/path/new-output
 ```
+
+Before compiling, the builder reads back the Browser SDK against its committed
+multi-platform lock and checks actual KDE Core and BaseApp WebEngine versions
+are exactly 6.10.3. It tests the binary SDK's dependency resolution in that SDK
+and records `browser-abi.txt`. A different patch requires an independently
+qualified SDK built by Spatial-Web; Dockpipe does not embed its source. Only the
+Browser shared library, installed notices and its consumer receipt enter the app.
+The workspace-reader ships beside the launcher and is exercised by Platform smoke.
 
 The builder compiles the launcher in the SDK, runs the Qt regression tests, and checks the
 launcher, CLI, core-only inventory, workflow execution and package target selection

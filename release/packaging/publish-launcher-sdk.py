@@ -2,6 +2,7 @@
 """Publish the qualified host SDK as an immutable candidate, without channel promotion."""
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -10,9 +11,19 @@ import subprocess
 
 
 REPOSITORY = "Dockpipe-Industries/dockpipe"
-ARCHIVE = "DockPipeLauncherSDK-1.0.0-Linux-amd64.tar.gz"
+ARCHIVE = "DockPipeLauncherSDK-1.1.0-Linux-amd64.tar.gz"
 ASSETS = {ARCHIVE, "sdk-files.json", "sdk-release.json"}
 MAX_ASSET_BYTES = 512 << 20
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def browser_dependency():
+    helper_path = ROOT / "release/packaging/prepare-browser-sdk.py"
+    spec = importlib.util.spec_from_file_location("publisher_browser_preparer", helper_path)
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    lock, _ = helper.load_lock(ROOT / "release/dependencies/spatialweb-browser.lock.json", "linux-amd64")
+    return lock
 
 
 def digest(path):
@@ -49,24 +60,33 @@ def validate(directory, source_sha):
         assets[name] = {"size": path.stat().st_size, "digest": "sha256:" + digest(path)}
     metadata = json.loads((directory / "sdk-release.json").read_text())
     required = {
-        "schema": 1, "product": "DockPipeLauncherSDK", "version": "1.0.0",
+        "schema": 1, "product": "DockPipeLauncherSDK", "version": "1.1.0",
         "platform": "linux-amd64", "qt_version": "6.10.3",
         "source_repository": REPOSITORY, "source_sha": source_sha,
         "source_state": "committed-snapshot",
     }
-    if any(metadata.get(key) != value for key, value in required.items()):
+    if not isinstance(metadata, dict) or any(metadata.get(key) != value for key, value in required.items()):
         raise ValueError("SDK source and ABI identity differ from the publishing run")
+    browser = browser_dependency()
+    if (metadata.get("dependencies") != {"spatialweb_browser": browser}
+            or metadata.get("compiler") != browser["compiler"]
+            or metadata.get("abi") != {"cxx_standard": 17, "workspace_interface": "com.dockpipe.launcher.WorkspacePackage/2.0"}
+            or not isinstance(metadata.get("source_digest"), str)
+            or not re.fullmatch(r"[0-9a-f]{64}", metadata["source_digest"])):
+        raise ValueError("SDK Browser dependency, compiler or workspace interface differs from the committed ABI")
     archive = metadata.get("archive", {})
-    if (archive.get("name") != ARCHIVE
+    if (not isinstance(archive, dict) or archive.get("name") != ARCHIVE
             or archive.get("size_bytes") != assets[ARCHIVE]["size"]
             or "sha256:" + archive.get("sha256", "") != assets[ARCHIVE]["digest"]):
         raise ValueError("SDK archive differs from its qualification receipt")
     manifest = metadata.get("file_manifest", {})
-    if (manifest.get("name") != "sdk-files.json"
+    if (not isinstance(manifest, dict) or manifest.get("name") != "sdk-files.json"
             or "sha256:" + manifest.get("sha256", "") != assets["sdk-files.json"]["digest"]):
         raise ValueError("SDK inventory differs from its qualification receipt")
-    required_checks = {"sdk-component-install", "relocated-external-consumer-compile-link"}
-    if not required_checks.issubset(metadata.get("checks", [])):
+    required_checks = {"sdk-component-install", "shared-runtime-symbol-cleanup", "relocated-external-consumer-compile-link"}
+    if (not isinstance(metadata.get("checks"), list)
+            or not all(isinstance(check, str) for check in metadata["checks"])
+            or not required_checks.issubset(metadata["checks"])):
         raise ValueError("SDK install and external-consumer checks are required")
     return assets
 
@@ -132,7 +152,7 @@ def publish(directory):
             or not re.fullmatch(r"[0-9a-f]{40}", source_sha)):
         raise ValueError("SDK publication requires an exact accepted dev push")
     assets = validate(directory, source_sha)
-    tag = "launcher-sdk-1.0.0-staging." + source_sha
+    tag = "launcher-sdk-1.1.0-staging." + source_sha
     # GraphQL establishes the tag target; the REST inventory below discovers
     # drafts without treating a tag-endpoint 404 as release absence.
     query = """query($owner:String!,$name:String!,$tag:String!,$ref:String!){
@@ -159,7 +179,7 @@ def publish(directory):
         run([
             "gh", "release", "create", tag, *[str(directory / name) for name in sorted(ASSETS)],
             "--repo", REPOSITORY, "--target", source_sha, "--draft", "--prerelease",
-            "--latest=false", "--title", "Launcher SDK 1.0.0 candidate",
+            "--latest=false", "--title", "Launcher SDK 1.1.0 candidate",
             "--notes", "Qualified installed host SDK for SpatialPipe/Cockpit candidate builds. "
             "No Dockpipe application release or production channel update.",
         ])

@@ -4,7 +4,16 @@ endif()
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
     message(FATAL_ERROR "Installed Cockpit rendering qualification currently supports Linux only")
 endif()
-foreach(payload IN ITEMS ui/libdockpipe-cockpit.so ui/cockpit-reader)
+# New packages use the host-owned reader. Historical 0.1.2 fixtures retain
+# their admitted helper name; this does not select a package or alter its lock.
+set(_dockpipe_cockpit_reader "${DOCKPIPE_COCKPIT_ASSETS}/ui/dockpipe-workspace-reader")
+if(NOT EXISTS "${_dockpipe_cockpit_reader}")
+    set(_dockpipe_cockpit_reader "${DOCKPIPE_COCKPIT_ASSETS}/ui/cockpit-reader")
+endif()
+if(NOT EXISTS "${_dockpipe_cockpit_reader}")
+    message(FATAL_ERROR "Installed Cockpit assets are missing the admitted filesystem reader")
+endif()
+foreach(payload IN ITEMS ui/libdockpipe-cockpit.so)
     if(NOT EXISTS "${DOCKPIPE_COCKPIT_ASSETS}/${payload}")
         message(FATAL_ERROR "Installed Cockpit assets are missing ${payload}")
     endif()
@@ -27,6 +36,7 @@ add_test(NAME cockpit-package-rendering
     COMMAND "${DOCKPIPE_XVFB_RUN}" -a "${CMAKE_COMMAND}" -E env
         QT_QPA_PLATFORM=xcb LIBGL_ALWAYS_SOFTWARE=1 SDL_AUDIODRIVER=dummy
         "DOCKPIPE_WORKSPACE_PACKAGE=${DOCKPIPE_COCKPIT_ASSETS}"
-        "DOCKPIPE_COCKPIT_READER=${DOCKPIPE_COCKPIT_ASSETS}/ui/cockpit-reader"
+        "DOCKPIPE_WORKSPACE_READER=${_dockpipe_cockpit_reader}"
+        "DOCKPIPE_COCKPIT_READER=${_dockpipe_cockpit_reader}"
         "$<TARGET_FILE:cockpit-package-rendering-test>")
 set_tests_properties(cockpit-package-rendering PROPERTIES TIMEOUT 90)

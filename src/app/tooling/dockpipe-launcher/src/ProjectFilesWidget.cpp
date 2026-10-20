@@ -2,7 +2,7 @@
 #include "CanvasIcons.h"
 #include "SourceEditor.h"
 #include "WorkspaceFiles.h"
-#include "WorkspacePackageManager.h"
+#include "WorkspaceGraphWidget.h"
 #include "MarkdownPreview.h"
 #include "FileExplorerView.h"
 #include "FileExplorerIcons.h"
@@ -85,8 +85,8 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     m_graphButton->setIconSize(QSize(16, 16));
     m_graphButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     m_graphButton->setAccessibleName(tr("Workspace graph"));
-    m_graphButton->setToolTip(tr("Enable Cockpit mode in Settings to use the workspace graph."));
-    m_graphButton->setEnabled(false);
+    m_graphButton->setToolTip(tr("Open the workspace graph for the selected folder"));
+    m_graphButton->setEnabled(true);
     toolbar->addWidget(m_graphButton);
     connect(m_graphButton, &QPushButton::clicked, this, &ProjectFilesWidget::openGraph);
     addTool(toolbar, tr("New file"), CanvasIcons::Symbol::Add, newFile);
@@ -178,8 +178,7 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
         if ((suffix != "yml" && suffix != "yaml") || !contained(m_path) || !confirmLeave())
             return;
         const QString path = m_path;
-        closeFlightEditor();
-        emit workflowOpenRequested(path);
+            emit workflowOpenRequested(path);
     });
     auto *find = new QLineEdit;
     find->setObjectName("fileFind");
@@ -297,27 +296,6 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     m_status->setWordWrap(true);
     m_status->setTextFormat(Qt::PlainText);
     layout->addWidget(m_status);
-    auto &packages = WorkspacePackageManager::instance();
-    connect(&packages, &WorkspacePackageManager::progress, this, [this](const QString &message) {
-        if (m_graphRequested)
-            showMessage(message);
-    });
-    connect(&packages, &WorkspacePackageManager::prepared, this, [this] {
-        if (!m_graphRequested)
-            return;
-        m_graphRequested = false;
-        m_graphButton->setEnabled(m_cockpitSettings.enabled);
-        if (isVisible() && m_cockpitSettings.enabled && !m_root.isEmpty())
-            openGraph();
-    });
-    connect(&packages, &WorkspacePackageManager::failed, this, [this](const QString &message) {
-        if (!m_graphRequested)
-            return;
-        m_graphRequested = false;
-        m_graphButton->setEnabled(m_cockpitSettings.enabled);
-        showMessage(message);
-        m_status->show();
-    });
     connect(find, &QLineEdit::returnPressed, this, [this, find]() {
         auto *editor = qobject_cast<QPlainTextEdit *>(m_documents->currentWidget());
         if (!editor || find->text().isEmpty())
@@ -358,83 +336,7 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     updateTitle();
 }
 
-ProjectFilesWidget::~ProjectFilesWidget()
-{
-    // The pane is owned by this file surface, even while mounted above the flight view.
-    closeFlightEditor();
-}
-
-void ProjectFilesWidget::openFlightEditor(const QString &path)
-{
-    auto *flight = m_graph ? m_graph->flightWidget() : nullptr;
-    if (!flight || m_flightHud)
-        return;
-    m_graph->pauseFlight(true);
-    if (!openFile(path)) {
-        m_status->show();
-        m_graph->pauseFlight(false);
-        flight->setFocus();
-        return;
-    }
-    m_splitterSizes = m_splitter->sizes();
-    m_flightHud = new QWidget(flight);
-    m_flightHud->setObjectName("flightEditorHud");
-    m_flightHud->setAttribute(Qt::WA_StyledBackground);
-    const bool dark = palette().color(QPalette::Base).lightness() < 128;
-    const QString background = dark ? "rgba(14, 27, 38, 234)" : "rgba(246, 251, 253, 234)";
-    const QString text = dark ? "#e1f8f4" : "#173e49";
-    const QString editorBackground = dark ? "rgba(14, 27, 38, 0)" : "rgba(246, 251, 253, 0)";
-    m_flightHud->setStyleSheet(QStringLiteral(
-        "QWidget#flightEditorHud { background: rgba(5, 12, 22, 30); }"
-        "QWidget#flightEditorPanel { background: %1; border: 1px solid #409e9b; border-radius: 12px; }"
-        "QWidget#flightEditorPanel QWidget#editorWorkspace { background: transparent; border: none; }"
-        "QWidget#flightEditorPanel QPlainTextEdit { background: %3; color: %2; border: none; }"
-        "QWidget#flightEditorPanel QLabel { background: transparent; }"
-        "QLabel#flightEditorHeading { color: %2; font-weight: 600; }").arg(background, text, editorBackground));
-    auto *overlay = new QVBoxLayout(m_flightHud);
-    auto *panel = new QWidget;
-    panel->setObjectName("flightEditorPanel");
-    panel->setAttribute(Qt::WA_StyledBackground);
-    auto *panelLayout = new QVBoxLayout(panel);
-    panelLayout->setContentsMargins(12, 12, 12, 8);
-    panelLayout->setSpacing(4);
-    auto *header = new QHBoxLayout;
-    auto *heading = new QLabel(tr("FILE LINK  /  FLIGHT PAUSED"));
-    heading->setObjectName("flightEditorHeading");
-    header->addWidget(heading, 1);
-    auto *resume = new QPushButton(CanvasIcons::icon(CanvasIcons::Symbol::Close), tr("Return to flight · Esc"));
-    resume->setObjectName("closeFlightEditor");
-    connect(resume, &QPushButton::clicked, this, &ProjectFilesWidget::closeFlightEditor);
-    header->addWidget(resume);
-    panelLayout->addLayout(header);
-    // Move the original pane, not a copy of its document or save logic. The tree
-    // remains hidden and no new filesystem model or editor buffer is created.
-    panelLayout->addWidget(m_workspace, 1);
-    panelLayout->addWidget(m_status);
-    overlay->addWidget(panel);
-    auto *escape = new QShortcut(QKeySequence(Qt::Key_Escape), m_flightHud);
-    escape->setContext(Qt::WidgetWithChildrenShortcut);
-    connect(escape, &QShortcut::activated, this, &ProjectFilesWidget::closeFlightEditor);
-    flight->installEventFilter(this);
-    positionFlightEditor();
-    m_workspace->show();
-    m_status->show();
-    m_flightHud->show();
-    m_flightHud->raise();
-    m_documents->currentWidget()->setFocus();
-}
-
-void ProjectFilesWidget::positionFlightEditor()
-{
-    if (!m_flightHud || !m_graph || !m_graph->flightWidget())
-        return;
-    auto *flight = m_graph->flightWidget();
-    m_flightHud->setGeometry(flight->rect());
-    const int horizontal = qMax(12, (flight->width() - 1100) / 2);
-    const int top = qBound(12, flight->height() / 14, 48);
-    const int bottom = qBound(12, flight->height() / 8, 100);
-    m_flightHud->layout()->setContentsMargins(horizontal, top, horizontal, bottom);
-}
+ProjectFilesWidget::~ProjectFilesWidget() = default;
 
 bool ProjectFilesWidget::eventFilter(QObject *object, QEvent *event)
 {
@@ -446,34 +348,7 @@ bool ProjectFilesWidget::eventFilter(QObject *object, QEvent *event)
             button->setMinimumSize(button->sizeHint());
         });
     }
-    if (m_flightHud && m_graph && object == m_graph->flightWidget() && event->type() == QEvent::Resize)
-        positionFlightEditor();
     return QWidget::eventFilter(object, event);
-}
-
-void ProjectFilesWidget::closeFlightEditor()
-{
-    if (!m_flightHud)
-        return;
-    auto *hud = m_flightHud;
-    m_flightHud = nullptr;
-    auto *flight = m_graph ? m_graph->flightWidget() : nullptr;
-    if (flight)
-        flight->removeEventFilter(this);
-    m_workspace->hide();
-    m_workspace->setParent(m_splitter);
-    m_splitter->insertWidget(1, m_workspace);
-    m_splitter->setSizes(m_splitterSizes);
-    m_workspace->show();
-    static_cast<QVBoxLayout *>(layout())->addWidget(m_status);
-    m_status->setVisible(!m_graph);
-    hud->hide();
-    hud->deleteLater();
-    if (flight) {
-        m_graph->pauseFlight(false);
-        flight->setFocus();
-    }
-    // Unsaved text and undo history remain in the same editor when flight resumes.
 }
 
 bool ProjectFilesWidget::contained(const QString &path) const
@@ -765,76 +640,32 @@ void ProjectFilesWidget::updateEditorStatus()
 
 void ProjectFilesWidget::applyCockpitSettings(const CockpitSettings &settings)
 {
-    m_cockpitSettings = settings;
-    if (!settings.enabled)
-        closeGraph();
-    if (m_graph)
-        m_graph->applyCockpitSettings(settings);
-    m_graphButton->setEnabled(settings.enabled && !m_graphRequested);
-    m_graphButton->setToolTip(settings.enabled
-        ? tr("Open the workspace graph for the selected folder")
-        : tr("Enable Cockpit mode in Settings to use the workspace graph."));
+    Q_UNUSED(settings);
+    // Files are host-owned and remain available when the optional universe is disabled.
 }
 
 void ProjectFilesWidget::openGraph()
 {
     if (m_graph || m_root.isEmpty())
         return;
-    if (!m_cockpitSettings.enabled) {
-        m_status->setText(tr("Enable Cockpit mode in Settings to use the spatial workspace."));
-        m_status->show();
-        return;
-    }
-    auto &packages = WorkspacePackageManager::instance();
-    if (!packages.ready()) {
-        if (m_graphRequested)
-            return;
-        if (packages.busy() && !packages.loading()) {
-            showMessage(tr("The workspace package is still stopping. Try Graph again in a moment."));
-            m_status->show();
-            return;
-        }
-        m_graphRequested = true;
-        m_graphButton->setEnabled(false);
-        showMessage(tr("Loading the installed workspace graph…"));
-        m_status->show();
-        if (!packages.busy()) {
-            auto settings = LauncherSettings::current();
-            settings.projectFolder = m_root;
-            packages.prepare(settings, false);
-        }
-        return;
-    }
     QString directory = m_explorerDirectory.isEmpty() ? m_root : m_explorerDirectory;
     const auto selected = m_tree->currentIndex();
     if (selected.isValid()) {
         const QString path = m_model->filePath(selected);
         directory = m_model->isDir(selected) ? path : QFileInfo(path).absolutePath();
     }
-    m_graph = packages.createFiles(m_root, directory, this);
-    if (!m_graph) {
-        showMessage(tr("The installed Cockpit package could not create the workspace graph. Install a package matching this launcher."));
-        m_status->show();
-        return;
-    }
-    m_graph->applyCockpitSettings(m_cockpitSettings);
+    m_graph = new WorkspaceGraphWidget(m_root, directory, this);
     m_splitter->hide();
     m_status->hide();
     static_cast<QVBoxLayout *>(layout())->insertWidget(0, m_graph, 1);
-    m_graph->requestClose = [this]() { closeGraph(); };
-    m_graph->requestFlightFile = [this](const QString &path) { openFlightEditor(path); };
-    m_graph->flightWillClose = [this]() { closeFlightEditor(); };
-    m_graph->rendererChanged = [this]() {
-        if (m_flightHud)
-            m_flightHud->raise();
-    };
-    m_graph->requestOpenFile = [this](const QString &path) {
+    connect(m_graph, &WorkspaceGraphWidget::closeRequested, this, &ProjectFilesWidget::closeGraph);
+    connect(m_graph, &WorkspaceGraphWidget::openFileRequested, this, [this](const QString &path) {
         if (openFile(path))
             closeGraph();
         else
             m_status->show();
-    };
-    m_graph->requestReveal = [this](const QString &path) {
+    });
+    connect(m_graph, &WorkspaceGraphWidget::revealRequested, this, [this](const QString &path) {
         const QModelIndex index = m_model->index(path);
         if (index.isValid()) {
             m_tree->setCurrentIndex(index);
@@ -843,15 +674,13 @@ void ProjectFilesWidget::openGraph()
                 m_tree->expand(index);
         }
         closeGraph();
-    };
+    });
     m_graph->show();
 }
 
 void ProjectFilesWidget::closeGraph()
 {
-    m_graphRequested = false;
-    m_graphButton->setEnabled(m_cockpitSettings.enabled);
-    closeFlightEditor();
+    m_graphButton->setEnabled(true);
     if (!m_graph)
         return;
     auto *graph = m_graph;

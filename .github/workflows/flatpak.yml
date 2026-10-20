@@ -12,6 +12,11 @@ on:
   pull_request:
     paths:
       - .github/workflows/flatpak.yml
+      - release/dependencies/spatialweb-browser.lock.json
+      - release/packaging/prepare-browser-sdk.py
+      - release/packaging/desktop/browser-runtime.py
+      - release/packaging/desktop/test_browser_runtime.py
+      - release/packaging/tests/test_prepare_browser_sdk.py
       - release/packaging/desktop/flatpak/**
       - release/packaging/tests/fixtures/flatpak-package/**
       - src/lib/infrastructure/packageplatform/**
@@ -89,6 +94,13 @@ jobs:
             --platform linux-amd64 --core-store "$RUNNER_TEMP/core-store" \
             --main-store "$RUNNER_TEMP/main-store" \
             --out "$RUNNER_TEMP/native-store"
+      - name: Prepare exact attested Browser SDK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 release/packaging/prepare-browser-sdk.py --lock release/dependencies/spatialweb-browser.lock.json \
+            --platform linux-amd64 --output "$RUNNER_TEMP/browser-sdk"
+          echo "DOCKPIPE_BROWSER_SDK=$RUNNER_TEMP/browser-sdk" >> "$GITHUB_ENV"
       - name: Build and test Flatpak desktop and optional bundled dependency
         shell: bash
         run: |
