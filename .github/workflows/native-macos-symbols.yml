@@ -241,6 +241,11 @@ jobs:
           # Isolate native embedding startup before compiling every desktop test.
           cmake --build $build --config Release --target desktop-app-window-win-test
           if ($LASTEXITCODE -ne 0) { throw 'Native embedding fixture compilation failed.' }
+          # Match the installed application: standard-user fixtures use an exact
+          # app-local Browser DLL instead of depending on the SDK directory ACLs.
+          python -B release/packaging/desktop/browser-runtime.py `
+            --sdk "$env:RUNNER_TEMP/browser-sdk" --platform windows-amd64 --runtime $build
+          if ($LASTEXITCODE -ne 0) { throw 'Native test Browser runtime deployment failed.' }
           # Report effective static imports without replacing the native test gate.
           try {
               $dumpbin = (Get-Command dumpbin.exe -ErrorAction Stop).Source
