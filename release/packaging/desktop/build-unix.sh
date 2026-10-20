@@ -50,6 +50,9 @@ if [[ "$(uname -s)" == Darwin ]]; then
 else
   export DOCKPIPE_QT_ROOT="${DOCKPIPE_QT_ROOT:-/opt/Qt/6.10.3/$qt_kit}"
   [[ "$("$DOCKPIPE_QT_ROOT/bin/qmake" -query QT_VERSION)" == 6.10.3 ]]
+  # Executable RUNPATH does not resolve the installed Browser SDK's indirect Qt dependencies.
+  # Scope lookup to the verified build SDKs; packaged runtime smoke clears these paths.
+  export LD_LIBRARY_PATH="$DOCKPIPE_QT_ROOT/lib:$browser_sdk/lib"
   prefixes="$browser_sdk;$DOCKPIPE_QT_ROOT${CMAKE_PREFIX_PATH:+;$CMAKE_PREFIX_PATH}"
   args+=(
          "-DCMAKE_CXX_FLAGS_RELEASE=-O2 -g -DNDEBUG -ffile-prefix-map=$root=. -ffile-prefix-map=$build=.")

@@ -10,7 +10,8 @@ RUN apt-get update \
         libx11-dev libxcomposite-dev libxrender-dev libxres-dev libxcb1-dev \
         libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
         libxcb-render-util0 libxcb-xinerama0 libxcb-randr0 libxcb-shape0 libxcb-sync1 libxcb-xfixes0 \
-        libnss3 libnspr4 "$audio_package" libopus0 libminizip1 libxdamage1 libxrandr2 libxshmfence1 libxss1 libxtst6 \
+        libnss3 libnspr4 "$audio_package" libopus0 libminizip1 libwebpmux3 libwebpdemux2 libsnappy1v5 \
+        libxdamage1 libxrandr2 libxshmfence1 libxss1 libxtst6 \
         libx11-xcb1 libdrm2 libgbm1 libpulse0 libwayland-client0 libwayland-cursor0 \
         libwayland-egl1 libopengl0 libgtk-3-0 libssl3 \
     && rm -rf /var/lib/apt/lists/*
