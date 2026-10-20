@@ -5,6 +5,7 @@ set(_DockPipeLauncherSDK_prefix "${PACKAGE_PREFIX_DIR}")
 include(CMakeFindDependencyMacro)
 find_dependency(Qt6 6.10.3 EXACT COMPONENTS Widgets Network Concurrent
     WebEngineWidgets PrintSupport WebChannel)
+find_dependency(SpatialWebBrowser 0.1.0 EXACT CONFIG)
 set(PACKAGE_PREFIX_DIR "${_DockPipeLauncherSDK_prefix}")
 unset(_DockPipeLauncherSDK_prefix)
 

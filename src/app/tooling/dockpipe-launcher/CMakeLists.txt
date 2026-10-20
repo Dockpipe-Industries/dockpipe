@@ -35,7 +35,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(OpenGL REQUIRED)
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Network Concurrent WebEngineWidgets PrintSupport WebChannel)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network Concurrent WebEngineWidgets PrintSupport WebChannel OpenGLWidgets)
 add_subdirectory(third_party/ksyntaxhighlighting)
 
 set(DOCKPIPE_LAUNCHER_SOURCES
@@ -268,14 +268,17 @@ endforeach()
 
 # Shared host UI SDK. Optional packages reuse file editors, layout primitives,
 # app context and native desktop capture without a spatial or browser dependency.
+find_package(SpatialWebBrowser 0.1.0 EXACT CONFIG REQUIRED)
 set(DOCKPIPE_UI_SOURCES
+    src/WorkspaceGraphPage.cpp src/WorkspaceGraphReader.cpp src/WorkspaceGraphNode.cpp
+    src/WorkspaceGraphView.cpp src/WorkspaceGraphWidget.cpp
     src/GitCommitQueueModel.cpp src/GitHistoryWidget.cpp src/GitRepositoryWidget.cpp src/GitConflictWidget.cpp
     src/LauncherStatusBar.cpp
     src/ProjectGitClient.cpp src/RemoteCommand.cpp
     src/ProjectFilesWidget.cpp src/FileExplorerView.cpp src/FileExplorerIcons.cpp src/MarkdownPreview.cpp src/MermaidRenderer.cpp src/SourceEditor.cpp src/SourceHighlighter.cpp
     src/CanvasIcons.cpp src/Theme.cpp src/WindowChrome.cpp src/WindowControlButton.cpp src/Context.cpp
     src/ContextStore.cpp src/DockpipeChoices.cpp src/WorkflowCatalog.cpp
-    src/LauncherSettings.cpp src/BrowserPreferences.cpp src/BrowserLinkRouter.cpp
+    src/LauncherSettings.cpp src/LauncherBrowserServices.cpp
     src/CanvasPanel.cpp src/DashboardWorkspace.cpp src/DashboardStore.cpp src/DashboardDock.cpp src/DashboardFilesWidget.cpp
     src/DesktopWindowWidget.cpp src/DesktopApplicationCatalog.cpp src/DesktopBackground.cpp
     src/PackageCommand.cpp src/WorkspacePackageManager.cpp)
@@ -284,6 +287,8 @@ if(WIN32)
 else()
     list(APPEND DOCKPIPE_UI_SOURCES src/DesktopAppWindow.cpp)
 endif()
+add_executable(dockpipe-workspace-reader src/WorkspaceReaderMain.cpp src/WorkspaceGraphPage.cpp)
+target_link_libraries(dockpipe-workspace-reader PRIVATE Qt6::Core)
 add_library(dockpipe-launcher-ui SHARED ${DOCKPIPE_UI_SOURCES})
 target_compile_definitions(dockpipe-launcher-ui
     PRIVATE DOCKPIPE_LAUNCHER_UI_BUILD
@@ -294,8 +299,9 @@ target_include_directories(dockpipe-launcher-ui PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
     "$<BUILD_INTERFACE:$<TARGET_PROPERTY:dockpipe-syntax,INTERFACE_INCLUDE_DIRECTORIES>>"
     "$<INSTALL_INTERFACE:include/dockpipe-launcher>"
+    "$<INSTALL_INTERFACE:include>"
     "$<INSTALL_INTERFACE:include/dockpipe-launcher/syntax>")
-target_link_libraries(dockpipe-launcher-ui PUBLIC Qt6::Widgets Qt6::Network PRIVATE dockpipe-syntax Qt6::Concurrent)
+target_link_libraries(dockpipe-launcher-ui PUBLIC Qt6::Widgets Qt6::Network SpatialWeb::Browser PRIVATE dockpipe-syntax Qt6::Concurrent Qt6::OpenGLWidgets)
 if(WIN32)
     target_link_libraries(dockpipe-launcher-ui PRIVATE user32 gdi32 advapi32 shell32 ole32)
 elseif(APPLE)
@@ -353,7 +359,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND Qt6_VERSION VERSION_LESS "6.4")
 endif()
 get_property(launcher_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
 foreach(ui_target IN LISTS launcher_targets)
-    if(ui_target STREQUAL "dockpipe-launcher-ui" OR ui_target STREQUAL "dockpipe-build-version")
+    if(ui_target STREQUAL "dockpipe-launcher-ui" OR ui_target STREQUAL "dockpipe-build-version"
+            OR ui_target STREQUAL "dockpipe-workspace-reader")
         continue()
     endif()
     get_target_property(ui_sources ${ui_target} SOURCES)
@@ -371,15 +378,12 @@ if(WIN32)
 endif()
 add_library(dockpipe-browser STATIC
     src/WebMermaidRenderer.cpp src/WebMermaidRenderer.h mermaid.qrc
-    src/BrowserTabBar.cpp src/BrowserRuntime.cpp src/BrowserWidget.cpp src/BrowserWidgetTools.cpp src/BrowserWidgetPermissions.cpp
-    src/BrowserSettingsDialog.cpp
-    src/BrowserExtensionPackage.cpp src/BrowserExtensionCrx.cpp src/BrowserExtensionStore.cpp
-    src/BrowserDownloads.cpp src/BrowserAnnotationDialog.cpp src/BrowserExtensionsDialog.cpp
     ${DOCKPIPE_TERMINAL_SOURCES} src/TerminalShellCatalog.cpp src/TerminalHub.cpp src/TerminalWidget.cpp src/TerminalBridge.h src/TerminalPreferences.cpp src/TerminalSettingsDialog.cpp
     src/SendInputWidget.cpp terminal.qrc)
 target_include_directories(dockpipe-browser PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
-    "$<INSTALL_INTERFACE:include/dockpipe-launcher>")
+    "$<INSTALL_INTERFACE:include/dockpipe-launcher>"
+    "$<INSTALL_INTERFACE:include>")
 target_link_libraries(dockpipe-browser PUBLIC Qt6::WebEngineWidgets Qt6::PrintSupport Qt6::WebChannel dockpipe-launcher-ui)
 include(cmake/LauncherSDK.cmake)
 if(APPLE)
@@ -585,10 +589,10 @@ if(BUILD_TESTING)
     set_tests_properties(project-files-markdown PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
     add_executable(project-files-graph-test tests/ProjectFilesGraphTest.cpp dockpipe-launcher.qrc)
     target_link_libraries(project-files-graph-test PRIVATE dockpipe-launcher-ui Qt6::Test)
-    add_dependencies(project-files-graph-test workspace-package-fixture)
+    add_dependencies(project-files-graph-test dockpipe-workspace-reader)
     add_test(NAME project-files-graph COMMAND project-files-graph-test)
     set_tests_properties(project-files-graph PROPERTIES ENVIRONMENT
-        "QT_QPA_PLATFORM=offscreen;DOCKPIPE_WORKSPACE_PACKAGE=${CMAKE_CURRENT_BINARY_DIR}/workspace-fixture"
+        "QT_QPA_PLATFORM=offscreen;DOCKPIPE_WORKSPACE_READER=$<TARGET_FILE:dockpipe-workspace-reader>"
         TIMEOUT 45)
     add_executable(launcher-settings-test tests/LauncherSettingsTest.cpp src/SettingsDialog.cpp)
     target_link_libraries(launcher-settings-test PRIVATE dockpipe-launcher-ui)

@@ -165,3 +165,25 @@ removal. The original three dirty WorkspaceGraph files remain preserved in the
 extracted initial source; no unrelated work or saved application files may be
 removed. TASK-037 remains executing: standalone products and remaining browser/
 game ownership work are unfinished. Production was not promoted.
+
+## Native ownership cutover progress — 2026-10-20
+
+The [canonical ownership checkpoint](../../../architecture/forgepipe/README.md#ecosystem-ownership-cutover-checkpoint--2026-10-20)
+now records the extracted ordinary Browser, separate Web composition/Projection, neutral
+Scene/Geometry, standalone compositions and host Files graph. Cockpit consumes installed
+libraries through thin host adapters; headquarters/provider authority remains private to the
+host. Browser and Graph do not require Cockpit. MesaMoto code/content and neutral furniture
+import tooling have owning repositories; reusable source and assets were retired only after
+preimages and focused consumer proof were preserved.
+
+Local installed-library, Graph, Web/civic/site/input/folder navigation, persistence,
+matching-CLI Git review and native handoff checks pass. Old and new renderer fixtures pass
+the CI software-driver gate and retain an identical preexisting NVIDIA context-switch pixel
+failure. The original combined Graph fixture is archived with an explicit list of branches
+not requalified; replacement checks are not described as full legacy coverage.
+
+TASK-037 remains executing. Hosted dependency candidates, compatible immutable pins,
+public artifact/catalog readback, package lifecycle checks and final source-absent Dockpipe
+staging must complete before delivery is declared. Do not infer cross-platform or physical
+GPU gameplay acceptance from Linux/local checks. Production promotion is outside the
+current continuation; existing exclusions and saved-data safeguards remain in force.
