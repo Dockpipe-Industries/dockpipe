@@ -1,6 +1,7 @@
 #include "ProjectFilesWidget.h"
 #include "WorkspaceGraphWidget.h"
 #include "WorkspaceGraphPage.h"
+#include "WorkspaceGraphTimestamp.h"
 #include "WorkspaceGraphReader.h"
 #include "WorkspaceGraphNode.h"
 #include "WorkspacePackageManager.h"
@@ -28,6 +29,8 @@ class ProjectFilesGraphTest final : public QObject {
 private slots:
     void builtInGraphDoesNotLoadPackage();
     void readerSecurityAndCursor();
+    void timestampCountPreservesFullRange();
+    void submillisecondTimestampChangeInvalidatesCursor();
     void boundedPagesProjectionAndDrone();
     void cancelledReaderDiscardsStaleReply();
     void graphButtonFitsTextAndLargerFonts_data();
@@ -119,6 +122,57 @@ void ProjectFilesGraphTest::readerSecurityAndCursor()
     const auto preview = WorkspaceGraphPage::read({{"operation", "preview"},
         {"root", root.path()}, {"path", directory.filePath("../outside")}});
     QVERIFY(preview.contains("error"));
+}
+
+void ProjectFilesGraphTest::timestampCountPreservesFullRange()
+{
+    using WorkspaceGraphTimestamp::decimalCount;
+    QCOMPARE(decimalCount(qint64(0)), QString("0"));
+    QCOMPARE(decimalCount(qint64(-1)), QString("-1"));
+    QCOMPARE(decimalCount(std::numeric_limits<qint64>::max()), QString("9223372036854775807"));
+    QCOMPARE(decimalCount(std::numeric_limits<qint64>::min()), QString("-9223372036854775808"));
+#if defined(__SIZEOF_INT128__)
+    using WideCount = __int128;
+    const WideCount beyond64 = static_cast<WideCount>(std::numeric_limits<quint64>::max()) + 1;
+    QCOMPARE(decimalCount(beyond64), QString("18446744073709551616"));
+    QCOMPARE(decimalCount(-beyond64), QString("-18446744073709551616"));
+    QCOMPARE(decimalCount(std::numeric_limits<WideCount>::max()),
+        QString("170141183460469231731687303715884105727"));
+    QCOMPARE(decimalCount(std::numeric_limits<WideCount>::min()),
+        QString("-170141183460469231731687303715884105728"));
+#endif
+}
+
+void ProjectFilesGraphTest::submillisecondTimestampChangeInvalidatesCursor()
+{
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    QVERIFY(writeFile(QDir(root.path()).filePath("first.txt")));
+    QVERIFY(writeFile(QDir(root.path()).filePath("second.txt")));
+    const auto directory = std::filesystem::u8path(root.path().toUtf8().constData());
+    using Clock = std::filesystem::file_time_type;
+    using Duration = Clock::duration;
+    const auto original = std::filesystem::last_write_time(directory);
+    const auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(original.time_since_epoch());
+    const auto aligned = Clock(std::chrono::duration_cast<Duration>(milliseconds))
+        + std::chrono::duration_cast<Duration>(std::chrono::microseconds(100));
+    std::filesystem::last_write_time(directory, aligned);
+    const auto before = std::filesystem::last_write_time(directory);
+    const QJsonObject request{{"root", root.path()}, {"directory", root.path()}, {"limit", 1}};
+    const auto first = WorkspaceGraphPage::read(request);
+    QVERIFY(!first.contains("error"));
+    QVERIFY(first.value("more").toBool());
+    QJsonObject next = request;
+    next.insert("after", first.value("after"));
+    next.insert("stamp", first.value("stamp"));
+    QVERIFY(!WorkspaceGraphPage::read(next).contains("error"));
+    std::filesystem::last_write_time(directory,
+        before + std::chrono::duration_cast<Duration>(std::chrono::microseconds(1)));
+    const auto after = std::filesystem::last_write_time(directory);
+    QVERIFY2(after != before, "The temporary filesystem must retain a one-microsecond timestamp change.");
+    QCOMPARE(std::chrono::duration_cast<std::chrono::milliseconds>(before.time_since_epoch()).count(),
+        std::chrono::duration_cast<std::chrono::milliseconds>(after.time_since_epoch()).count());
+    QVERIFY(WorkspaceGraphPage::read(next).contains("error"));
 }
 
 void ProjectFilesGraphTest::cancelledReaderDiscardsStaleReply()
