@@ -50,8 +50,16 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "Desktop build failed"
     }
-    ctest --test-dir $build --output-on-failure
-    if ($LASTEXITCODE -ne 0) { throw "Desktop regression tests failed" }
+    $testPath = $env:PATH
+    try {
+        $env:PATH = (Join-Path $browserSdk "bin") + ";" + $testPath
+        ctest --test-dir $build --output-on-failure
+        if ($LASTEXITCODE -ne 0) {
+            throw "Desktop regression tests failed"
+        }
+    } finally {
+        $env:PATH = $testPath
+    }
     New-Item -ItemType Directory -Path $StageDir | Out-Null
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot "licenses") -Destination $StageDir -Recurse
     Copy-Item -LiteralPath (Join-Path $root "LICENSE") -Destination (Join-Path $StageDir "licenses/DockPipe-LICENSE.txt")
