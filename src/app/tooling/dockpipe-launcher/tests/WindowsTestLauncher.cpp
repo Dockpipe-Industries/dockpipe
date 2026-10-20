@@ -328,6 +328,10 @@ bool runChild(const std::wstring &executable, const wchar_t *internalArgument, H
 
 int wmain(int argc, wchar_t **argv)
 {
+    // Report unattended loader/process failures through the exit code instead
+    // of leaving an OS error dialog open until the fixture deadline.
+    SetErrorMode(GetErrorMode() | SEM_FAILCRITICALERRORS
+        | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
     if (argc != 2) {
         std::fprintf(stderr, "Usage: windows-test-launcher <absolute-test.exe> | --self-test\n");
         return 1;
@@ -423,6 +427,8 @@ int wmain(int argc, wchar_t **argv)
             static_cast<unsigned long>(exitCode));
         return std::fflush(stdout) == 0 ? 0 : 1;
     }
+    std::fprintf(stderr, "Windows test launcher: test exited with code %lu (0x%08lx)\n",
+        static_cast<unsigned long>(exitCode), static_cast<unsigned long>(exitCode));
     std::fflush(nullptr);
     ExitProcess(exitCode);
 }

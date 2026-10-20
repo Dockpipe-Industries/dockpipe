@@ -67,8 +67,10 @@ class ReleaseWorkflowTests(unittest.TestCase):
                 ctest_commands = [line for line in commands if line.startswith("ctest ")]
                 self.assertEqual(ctest_commands, [
                     "ctest --test-dir $build -C Release --verbose -R '^terminal-session-win$'",
+                    "ctest --test-dir $build -C Release --verbose -R '^desktop-app-window-win$'",
                     "ctest --test-dir $build -C Release --verbose --timeout 120 --stop-on-failure",
                 ])
+                self.assertIn("if ($LASTEXITCODE -ne 0) { throw 'Native embedding qualification failed.' }", scripts)
                 self.assertIn("if ($qualificationExit -ne 0) { throw 'Native terminal qualification failed.' }", scripts)
                 continue
             self.assertIn("browser-extensions-test", scripts)

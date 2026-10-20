@@ -24,6 +24,12 @@
 #define CHECK(condition) do { if (!(condition)) { std::fprintf(stderr, "Windows embedding assertion failed at line %d: %s\n", __LINE__, #condition); return __LINE__; } } while (false)
 
 namespace {
+void reportPhase(const char *phase)
+{
+    std::fprintf(stderr, "Windows embedding phase: pid=%lu %s\n", GetCurrentProcessId(), phase);
+    std::fflush(stderr);
+}
+
 bool waitFor(const std::function<bool()> &condition)
 {
     QElapsedTimer deadline;
@@ -128,10 +134,13 @@ struct FixtureIdentity {
 
 int main(int argc, char **argv)
 {
+    reportPhase("before QApplication");
     QApplication app(argc, argv);
+    reportPhase("after QApplication");
     if (!DesktopAppWindow::unavailableReason().isEmpty())
         return 77;
     if (app.arguments().contains("--fixture")) {
+        reportPhase("fixture window creation");
         QWidget window;
         window.setWindowTitle("DockPipe isolated Windows embedding fixture");
         window.resize(560, 360);
@@ -149,6 +158,7 @@ int main(int argc, char **argv)
             nullptr, SW_SHOWNOACTIVATE);
         const HWND extra = windows.add(L"Fourth ordinary fixture window", 0, nullptr, SW_SHOWNOACTIVATE);
         CHECK(owner && minimized && ownedApp && dialog && tool && extra);
+        reportPhase("fixture native windows ready");
         std::printf("WINDOW:%llu\nMINIMIZED:%llu\nOWNED:%llu\nOWNER:%llu\nDIALOG:%llu\nTOOL:%llu\nEXTRA:%llu\nREADY\n",
             static_cast<unsigned long long>(window.winId()),
             static_cast<unsigned long long>(reinterpret_cast<quintptr>(minimized)),
@@ -164,8 +174,11 @@ int main(int argc, char **argv)
 
     FixtureProcess fixture;
     fixture.setProcessChannelMode(QProcess::ForwardedErrorChannel);
+    reportPhase("before fixture start");
     fixture.start(app.applicationFilePath(), {"--fixture"});
+    reportPhase("before waitForStarted");
     CHECK(fixture.waitForStarted(3000));
+    reportPhase("before fixture readiness");
     QByteArray output;
     const bool fixtureReady = waitFor([&] {
         output += fixture.readAllStandardOutput();
@@ -180,6 +193,7 @@ int main(int argc, char **argv)
             output.left(4096).toHex(' ').constData());
     }
     CHECK(fixtureReady);
+    reportPhase("fixture readiness complete");
     const quint64 id = fixtureWindowId(output, "WINDOW");
     CHECK(id);
     const HWND window = reinterpret_cast<HWND>(static_cast<quintptr>(id));
