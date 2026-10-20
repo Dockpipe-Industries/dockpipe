@@ -290,8 +290,11 @@ target_compile_definitions(dockpipe-launcher-ui
     INTERFACE DOCKPIPE_LAUNCHER_UI_USE)
 set_target_properties(dockpipe-launcher-ui PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON VERSION 1.0 SOVERSION 1
     BUILD_RPATH_USE_ORIGIN TRUE)
-target_include_directories(dockpipe-launcher-ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src"
-    $<TARGET_PROPERTY:dockpipe-syntax,INTERFACE_INCLUDE_DIRECTORIES>)
+target_include_directories(dockpipe-launcher-ui PUBLIC
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
+    "$<BUILD_INTERFACE:$<TARGET_PROPERTY:dockpipe-syntax,INTERFACE_INCLUDE_DIRECTORIES>>"
+    "$<INSTALL_INTERFACE:include/dockpipe-launcher>"
+    "$<INSTALL_INTERFACE:include/dockpipe-launcher/syntax>")
 target_link_libraries(dockpipe-launcher-ui PUBLIC Qt6::Widgets Qt6::Network PRIVATE dockpipe-syntax Qt6::Concurrent)
 if(WIN32)
     target_link_libraries(dockpipe-launcher-ui PRIVATE user32 gdi32 advapi32 shell32 ole32)
@@ -374,8 +377,11 @@ add_library(dockpipe-browser STATIC
     src/BrowserDownloads.cpp src/BrowserAnnotationDialog.cpp src/BrowserExtensionsDialog.cpp
     ${DOCKPIPE_TERMINAL_SOURCES} src/TerminalShellCatalog.cpp src/TerminalHub.cpp src/TerminalWidget.cpp src/TerminalBridge.h src/TerminalPreferences.cpp src/TerminalSettingsDialog.cpp
     src/SendInputWidget.cpp terminal.qrc)
-target_include_directories(dockpipe-browser PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_include_directories(dockpipe-browser PUBLIC
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
+    "$<INSTALL_INTERFACE:include/dockpipe-launcher>")
 target_link_libraries(dockpipe-browser PUBLIC Qt6::WebEngineWidgets Qt6::PrintSupport Qt6::WebChannel dockpipe-launcher-ui)
+include(cmake/LauncherSDK.cmake)
 if(APPLE)
     target_link_libraries(dockpipe-browser PRIVATE proc)
 endif()
@@ -531,7 +537,10 @@ if(BUILD_TESTING)
     add_test(NAME browser-extensions COMMAND browser-extensions-test)
     set_tests_properties(browser-extensions PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
     add_test(NAME browser COMMAND browser-test)
-    set_tests_properties(browser PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+    # The offscreen platform has no native GL context. Keep these lifecycle
+    # tests on the software renderer without changing the product renderer.
+    set_tests_properties(browser PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software;QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu" TIMEOUT 60)
 endif()
 
 set_target_properties(dockpipe-launcher PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE INSTALL_RPATH "$ORIGIN;$ORIGIN/../lib/dockpipe")
@@ -665,7 +674,8 @@ endif()
 if(BUILD_TESTING)
     add_test(NAME browser-canvas-mode COMMAND browser-test canvasViewportIsContextScoped
         tearOutRetainsLivePageAndSessionAfterSourceCloses tabTearOutGestureIsCanvasOnly)
-    set_tests_properties(browser-canvas-mode PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
+    set_tests_properties(browser-canvas-mode PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software;QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu" TIMEOUT 45)
     add_test(NAME dashboard-canvas-widgets COMMAND dashboard-page-test canvasGadgetsAndBrowserTearOut)
     set_tests_properties(dashboard-canvas-widgets PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
 endif()
