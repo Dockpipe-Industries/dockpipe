@@ -121,7 +121,7 @@ jobs:
         shell: bash
         run: |
           ctest --test-dir "$RUNNER_TEMP/dockpipe-native-symbols" --verbose \
-            -R '^(dashboard-(workspace|browser-performance|files|file-views)|terminal-(shell-catalog|session)|workspace-package-manager|project-files(-graph|-markdown)?|web-mermaid-renderer|launcher-status-bar|browser-canvas-mode|dashboard-canvas-widgets|canvas-widget-presentation|browser-extensions|browser-extension-(package|store|crx)|project-git|git-(commit-queue|repository-conflict|history-widget))$'
+            -R '^(dashboard-(workspace|browser-performance|files|file-views)|terminal-(shell-catalog|session)|workspace-package-manager|project-files(-graph|-markdown)?|web-mermaid-renderer|launcher-status-bar|browser|browser-canvas-mode|dashboard-canvas-widgets|canvas-widget-presentation|browser-extensions|browser-extension-(package|store|crx)|project-git|git-(commit-queue|repository-conflict|history-widget))$'
 
   windows-terminal:
     runs-on: windows-latest

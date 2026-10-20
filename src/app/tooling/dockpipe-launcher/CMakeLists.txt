@@ -531,7 +531,10 @@ if(BUILD_TESTING)
     add_test(NAME browser-extensions COMMAND browser-extensions-test)
     set_tests_properties(browser-extensions PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
     add_test(NAME browser COMMAND browser-test)
-    set_tests_properties(browser PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+    # The offscreen platform has no native GL context. Keep these lifecycle
+    # tests on the software renderer without changing the product renderer.
+    set_tests_properties(browser PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software;QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu" TIMEOUT 60)
 endif()
 
 set_target_properties(dockpipe-launcher PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE INSTALL_RPATH "$ORIGIN;$ORIGIN/../lib/dockpipe")
@@ -665,7 +668,8 @@ endif()
 if(BUILD_TESTING)
     add_test(NAME browser-canvas-mode COMMAND browser-test canvasViewportIsContextScoped
         tearOutRetainsLivePageAndSessionAfterSourceCloses tabTearOutGestureIsCanvasOnly)
-    set_tests_properties(browser-canvas-mode PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
+    set_tests_properties(browser-canvas-mode PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software;QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu" TIMEOUT 45)
     add_test(NAME dashboard-canvas-widgets COMMAND dashboard-page-test canvasGadgetsAndBrowserTearOut)
     set_tests_properties(dashboard-canvas-widgets PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
 endif()
