@@ -14,20 +14,20 @@ SDK = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(SDK)
 
 
-def verify(prefix, lock_path, platform):
-    lock, lock_bytes = SDK.load_lock(lock_path, platform)
+def verify(prefix, lock_path, platform, sdk=SDK):
+    lock, lock_bytes = sdk.load_lock(lock_path, platform)
     if prefix.is_symlink() or not prefix.is_dir():
         raise ValueError("Browser SDK must be an installed regular prefix")
-    if SDK.read_regular(prefix / "consumer-lock.json", SDK.MAX_METADATA_BYTES) != lock_bytes:
+    if sdk.read_regular(prefix / "consumer-lock.json", sdk.MAX_METADATA_BYTES) != lock_bytes:
         raise ValueError("Browser SDK consumer lock differs from the committed lock")
-    metadata_bytes = SDK.read_regular(prefix / lock["metadata"]["name"], SDK.MAX_METADATA_BYTES)
-    inventory_bytes = SDK.read_regular(prefix / lock["file_manifest"]["name"], SDK.MAX_METADATA_BYTES)
+    metadata_bytes = sdk.read_regular(prefix / lock["metadata"]["name"], sdk.MAX_METADATA_BYTES)
+    inventory_bytes = sdk.read_regular(prefix / lock["file_manifest"]["name"], sdk.MAX_METADATA_BYTES)
     for key, data in (("metadata", metadata_bytes), ("file_manifest", inventory_bytes)):
         if len(data) != lock[key]["size_bytes"] or hashlib.sha256(data).hexdigest() != lock[key]["sha256"]:
             raise ValueError("Browser SDK sidecar differs from the committed pin")
-    metadata = SDK.decode_json(metadata_bytes)
-    SDK.verify_metadata(lock, metadata)
-    entries = SDK.verify_manifest(inventory_bytes, [lock[key]["name"] for key in ("artifact", "metadata", "file_manifest")])
+    metadata = sdk.decode_json(metadata_bytes)
+    sdk.verify_metadata(lock, metadata)
+    entries = sdk.verify_manifest(inventory_bytes, [lock[key]["name"] for key in ("artifact", "metadata", "file_manifest")])
     expected = set(entries) | {lock["metadata"]["name"], lock["file_manifest"]["name"],
                                "consumer-lock.json", "consumer-receipt.json"}
     actual = set()
@@ -40,13 +40,13 @@ def verify(prefix, lock_path, platform):
         raise ValueError("Browser SDK installed inventory has missing or extra files")
     for name, entry in entries.items():
         path = prefix / name
-        if not path.is_file() or path.stat().st_size != entry["bytes"] or SDK.digest(path) != entry["sha256"]:
+        if not path.is_file() or path.stat().st_size != entry["bytes"] or sdk.digest(path) != entry["sha256"]:
             raise ValueError("Browser SDK installed file differs from its admitted inventory")
-    receipt = SDK.decode_json(SDK.read_regular(prefix / "consumer-receipt.json", SDK.MAX_METADATA_BYTES))
-    identity = {key: lock[key] for key in ("source_repository", "source_sha", "qt_version", "compiler", "release")}
+    receipt = sdk.decode_json(sdk.read_regular(prefix / "consumer-receipt.json", sdk.MAX_METADATA_BYTES))
+    identity = sdk.receipt_identity(lock)
     if platform == "windows-amd64":
         identity["msvc_runtime"] = lock["msvc_runtime"]
-    expected_receipt = {"schema": 1, "product": SDK.PRODUCT, "version": SDK.VERSION,
+    expected_receipt = {"schema": 1, "product": sdk.PRODUCT, "version": sdk.VERSION,
                         "selected_platform": platform, "identity": identity,
                         "lock_sha256": hashlib.sha256(lock_bytes).hexdigest(),
                         "pins": {key: lock[key] for key in ("artifact", "metadata", "file_manifest")},
@@ -58,8 +58,8 @@ def verify(prefix, lock_path, platform):
     return receipt, entries
 
 
-def stage(prefix, lock_path, platform, runtime=None, licenses=None):
-    receipt, entries = verify(prefix, lock_path, platform)
+def stage(prefix, lock_path, platform, runtime=None, licenses=None, sdk=SDK):
+    receipt, entries = verify(prefix, lock_path, platform, sdk)
     if runtime:
         names = []
         for name in entries:
@@ -97,12 +97,19 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sdk", type=Path, required=True)
     parser.add_argument("--lock", type=Path, default=Path(__file__).resolve().parents[2] / "dependencies/spatialweb-browser.lock.json")
-    parser.add_argument("--platform", choices=sorted(SDK.PLATFORMS), required=True)
+    parser.add_argument("--profile", choices=("native", "flatpak"), default="native")
+    parser.add_argument("--platform", required=True)
     parser.add_argument("--runtime", type=Path)
     parser.add_argument("--licenses", type=Path)
     args = parser.parse_args()
+    sdk = SDK
+    if args.profile == "flatpak":
+        spec = importlib.util.spec_from_file_location(
+            "desktop_flatpak_browser_preparer", PREPARER.with_name("prepare-flatpak-browser-sdk.py"))
+        sdk = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(sdk)
     try:
-        receipt = stage(args.sdk, args.lock, args.platform, args.runtime, args.licenses)
+        receipt = stage(args.sdk, args.lock, args.platform, args.runtime, args.licenses, sdk)
     except (OSError, ValueError) as error:
         parser.exit(1, f"Browser runtime preparation failed: {error}\n")
     print(json.dumps(receipt, indent=2, sort_keys=True))

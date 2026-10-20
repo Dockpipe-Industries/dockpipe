@@ -268,7 +268,15 @@ endforeach()
 
 # Shared host UI SDK. Optional packages reuse file editors, layout primitives,
 # app context and native desktop capture without a spatial or browser dependency.
-find_package(SpatialWebBrowser 0.1.0 EXACT CONFIG REQUIRED)
+set(DOCKPIPE_BROWSER_ABI_PROFILE "native" CACHE STRING "Qualified Browser SDK ABI profile")
+set_property(CACHE DOCKPIPE_BROWSER_ABI_PROFILE PROPERTY STRINGS native flatpak-kde-6.10)
+if(DOCKPIPE_BROWSER_ABI_PROFILE STREQUAL "flatpak-kde-6.10")
+    find_package(SpatialWebFlatpakBrowser 0.1.0 EXACT CONFIG REQUIRED)
+elseif(DOCKPIPE_BROWSER_ABI_PROFILE STREQUAL "native")
+    find_package(SpatialWebBrowser 0.1.0 EXACT CONFIG REQUIRED)
+else()
+    message(FATAL_ERROR "Unsupported Browser SDK ABI profile: ${DOCKPIPE_BROWSER_ABI_PROFILE}")
+endif()
 set(DOCKPIPE_UI_SOURCES
     src/WorkspaceGraphPage.cpp src/WorkspaceGraphReader.cpp src/WorkspaceGraphNode.cpp
     src/WorkspaceGraphView.cpp src/WorkspaceGraphWidget.cpp
