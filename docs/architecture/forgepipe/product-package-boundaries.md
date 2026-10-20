@@ -18,7 +18,8 @@ set, not adding Qt/WebEngine dependencies to the headless CLI or generic executi
 
 ## Product and Artifact Map
 
-Names below describe artifact roles, not new manifest fields or a claim of completed delivery.
+Names below describe artifact roles, not new manifest fields. The dated implementation and hosted
+ownership checkpoints distinguish qualified artifacts from remaining composed-delivery gates.
 Use existing package, SDK, platform and release conventions when selecting exact public identities.
 
 | Owner/product | Reusable artifact | Application composition |
@@ -173,6 +174,13 @@ opened from the graph use the existing bounded host editor.
 
 The Web SDK owns projection and ordinary browsing; Cockpit retains its headquarters and
 explicit host adapters. Source and model/media duplication have been retired after archived
-preimages and installed-consumer proof. The current staging/package qualification is still
-in progress. See the [canonical checkpoint](README.md#ecosystem-ownership-cutover-checkpoint--2026-10-20)
-for passing checks, archived-but-unported assertions and the preserved GPU limitation.
+preimages and installed-consumer proof. Hosted MesaMoto dev/staging and Web native/Flatpak
+profiles are verified; SpatialPipe's independent app candidate and Dockpipe's LauncherSDK
+1.1.0 are also verified. SpatialPipe's final extraction passed PR 9 and its accepted-source
+Cockpit 0.1.3 candidate, then entered staging through PR 10 with an identical tree.
+Dockpipe pins the audited public runtime mirror and includes mandatory native and
+Marketplace/Settings qualification. Final staging requires the exact candidate's catalog,
+installation and rollback readback.
+See the [hosted milestone](README.md#hosted-ownership-milestone--2026-10-20) for accepted source/run
+identities and limits, and the [ownership checkpoint](README.md#ecosystem-ownership-cutover-checkpoint--2026-10-20)
+for archived-but-unported assertions and the preserved GPU limitation.

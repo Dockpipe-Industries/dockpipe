@@ -33,6 +33,22 @@ int main(int argc, char **argv)
         LauncherSettings settings;
         settings.projectFolder = workdir.path();
         settings.packageRemotes = {remote};
+        const QString action = qEnvironmentVariable("DOCKPIPE_PACKAGE_TEST_ACTION");
+        if (action == QStringLiteral("disable")) {
+            CHECK(settings.load());
+            CHECK(settings.cockpit.enabled);
+            SettingsDialog dialog(settings);
+            dialog.findChild<QCheckBox *>("settingsCockpitEnabled")->setChecked(false);
+            const auto disabled = dialog.updatedSettings();
+            CHECK(!disabled.cockpit.enabled);
+            CHECK(disabled.save());
+            LauncherSettings readback;
+            CHECK(readback.load());
+            CHECK(!readback.cockpit.enabled);
+            std::puts("Marketplace Cockpit disabled; persisted settings read back.");
+            return 0;
+        }
+        CHECK(action.isEmpty() || action == QStringLiteral("enable"));
         SettingsDialog dialog(settings);
         dialog.findChild<QCheckBox *>("settingsCockpitEnabled")->setChecked(true);
         CHECK(!dialog.updatedSettings().cockpit.enabled);
@@ -40,6 +56,12 @@ int main(int argc, char **argv)
         const QString status = dialog.findChild<QLabel *>("cockpitPackageStatus")->text();
         std::fprintf(stderr, "%s\n", qPrintable(status));
         CHECK(dialog.updatedSettings().cockpit.enabled);
+        if (action == QStringLiteral("enable")) {
+            CHECK(dialog.updatedSettings().save());
+            LauncherSettings readback;
+            CHECK(readback.load());
+            CHECK(readback.cockpit.enabled);
+        }
         auto *surface = WorkspacePackageManager::instance().createWorkspace(nullptr);
         CHECK(surface);
         surface->applySettings(CockpitSettings{true});
