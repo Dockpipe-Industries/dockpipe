@@ -20,6 +20,7 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include "WindowsTestDesktop.h"
 
 #define CHECK(condition) do { if (!(condition)) { std::fprintf(stderr, "Windows embedding assertion failed at line %d: %s\n", __LINE__, #condition); return __LINE__; } } while (false)
 
@@ -69,13 +70,22 @@ private:
     QVector<HWND> m_windows;
 };
 
-quint64 fixtureWindowId(const QByteArray &output, const QByteArray &name)
+QByteArray fixtureValue(const QByteArray &output, const QByteArray &name)
 {
     for (const QByteArray &line : output.split('\n')) {
-        if (line.startsWith(name + ':'))
-            return line.mid(name.size() + 1).toULongLong();
+        if (line.startsWith(name + ':')) {
+            QByteArray value = line.mid(name.size() + 1);
+            if (value.endsWith('\r'))
+                value.chop(1);
+            return value;
+        }
     }
-    return 0;
+    return {};
+}
+
+quint64 fixtureWindowId(const QByteArray &output, const QByteArray &name)
+{
+    return fixtureValue(output, name).toULongLong();
 }
 
 class FixtureProcess final : public QProcess {
@@ -139,6 +149,12 @@ int main(int argc, char **argv)
     reportPhase("after QApplication");
     if (!DesktopAppWindow::unavailableReason().isEmpty())
         return 77;
+    std::wstring desktopName;
+    const DWORD desktopError = WindowsTestDesktop::currentName(desktopName);
+    if (desktopError != ERROR_SUCCESS)
+        std::fprintf(stderr, "Windows fixture desktop query failed: error=%lu\n", desktopError);
+    CHECK(desktopError == ERROR_SUCCESS);
+    const QByteArray desktopUtf8 = QString::fromStdWString(desktopName).toUtf8();
     if (app.arguments().contains("--fixture")) {
         reportPhase("fixture window creation");
         QWidget window;
@@ -159,14 +175,15 @@ int main(int argc, char **argv)
         const HWND extra = windows.add(L"Fourth ordinary fixture window", 0, nullptr, SW_SHOWNOACTIVATE);
         CHECK(owner && minimized && ownedApp && dialog && tool && extra);
         reportPhase("fixture native windows ready");
-        std::printf("WINDOW:%llu\nMINIMIZED:%llu\nOWNED:%llu\nOWNER:%llu\nDIALOG:%llu\nTOOL:%llu\nEXTRA:%llu\nREADY\n",
+        std::printf("WINDOW:%llu\nMINIMIZED:%llu\nOWNED:%llu\nOWNER:%llu\nDIALOG:%llu\nTOOL:%llu\nEXTRA:%llu\nDESKTOP:%s\nREADY\n",
             static_cast<unsigned long long>(window.winId()),
             static_cast<unsigned long long>(reinterpret_cast<quintptr>(minimized)),
             static_cast<unsigned long long>(reinterpret_cast<quintptr>(ownedApp)),
             static_cast<unsigned long long>(reinterpret_cast<quintptr>(owner)),
             static_cast<unsigned long long>(reinterpret_cast<quintptr>(dialog)),
             static_cast<unsigned long long>(reinterpret_cast<quintptr>(tool)),
-            static_cast<unsigned long long>(reinterpret_cast<quintptr>(extra)));
+            static_cast<unsigned long long>(reinterpret_cast<quintptr>(extra)),
+            desktopUtf8.constData());
         std::fflush(stdout);
         QTimer::singleShot(60000, &app, &QApplication::quit);
         return app.exec();
@@ -174,6 +191,16 @@ int main(int argc, char **argv)
 
     FixtureProcess fixture;
     fixture.setProcessChannelMode(QProcess::ForwardedErrorChannel);
+    fixture.setCreateProcessArgumentsModifier([&desktopName](QProcess::CreateProcessArguments *arguments) {
+        std::fprintf(stderr,
+            "Windows fixture launch: flags=0x%08lx inheritHandles=%d originalDesktop=%ls selectedDesktop=%ls console=%p\n",
+            static_cast<unsigned long>(arguments->flags), arguments->inheritHandles,
+            arguments->startupInfo->lpDesktop ? arguments->startupInfo->lpDesktop : L"(implicit)",
+            desktopName.c_str(), static_cast<void *>(GetConsoleWindow()));
+        // The outer test launcher uses this same explicit interactive context.
+        // Keep storage alive through start() and preserve Qt's other arguments.
+        arguments->startupInfo->lpDesktop = desktopName.data();
+    });
     reportPhase("before fixture start");
     fixture.start(app.applicationFilePath(), {"--fixture"});
     reportPhase("before waitForStarted");
@@ -187,12 +214,15 @@ int main(int argc, char **argv)
             && (output.contains("\nREADY\r\n") || output.contains("\nREADY\n"));
     });
     if (!fixtureReady) {
-        std::fprintf(stderr, "Fixture readiness failed: state=%d exitStatus=%d exitCode=%d stdoutBytes=%lld stdoutHex=%s\n",
+        std::fprintf(stderr, "Fixture readiness failed: state=%d exitStatus=%d exitCode=%d exitHex=0x%08lx processError=%d error=%s stdoutBytes=%lld stdoutHex=%s\n",
             static_cast<int>(fixture.state()), static_cast<int>(fixture.exitStatus()),
-            fixture.exitCode(), static_cast<long long>(output.size()),
+            fixture.exitCode(), static_cast<unsigned long>(static_cast<DWORD>(fixture.exitCode())),
+            static_cast<int>(fixture.error()), fixture.errorString().toUtf8().constData(),
+            static_cast<long long>(output.size()),
             output.left(4096).toHex(' ').constData());
     }
     CHECK(fixtureReady);
+    CHECK(fixtureValue(output, "DESKTOP") == desktopUtf8);
     reportPhase("fixture readiness complete");
     const quint64 id = fixtureWindowId(output, "WINDOW");
     CHECK(id);
