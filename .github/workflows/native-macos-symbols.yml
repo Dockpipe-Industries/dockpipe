@@ -238,6 +238,17 @@ jobs:
           $transportLog = Join-Path $build 'native-terminal-session-results.txt'
           if (Test-Path -LiteralPath $transportLog) { Get-Content -LiteralPath $transportLog }
           if ($transportExit -ne 0) { throw 'Native terminal transport qualification failed.' }
+          # Isolate native embedding startup before compiling every desktop test.
+          cmake --build $build --config Release --target desktop-app-window-win-test
+          if ($LASTEXITCODE -ne 0) { throw 'Native embedding fixture compilation failed.' }
+          $previousPluginDiagnostics = $env:QT_DEBUG_PLUGINS
+          try {
+            $env:QT_DEBUG_PLUGINS = '1'
+            ctest --test-dir $build -C Release --verbose -R '^desktop-app-window-win$'
+            if ($LASTEXITCODE -ne 0) { throw 'Native embedding qualification failed.' }
+          } finally {
+            $env:QT_DEBUG_PLUGINS = $previousPluginDiagnostics
+          }
           cmake --build $build --config Release
           if ($LASTEXITCODE -ne 0) { throw 'Native terminal compilation failed.' }
           # Exercise the same full desktop suite that gates the Windows release.
