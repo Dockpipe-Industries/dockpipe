@@ -53,7 +53,7 @@ try {
     $testPath = $env:PATH
     try {
         $env:PATH = (Join-Path $browserSdk "bin") + ";" + $testPath
-        ctest --test-dir $build --output-on-failure
+        ctest --test-dir $build --output-on-failure --timeout 120 --stop-on-failure
         if ($LASTEXITCODE -ne 0) {
             throw "Desktop regression tests failed"
         }
