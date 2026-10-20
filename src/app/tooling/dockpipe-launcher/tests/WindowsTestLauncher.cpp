@@ -2,6 +2,7 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include "WindowsTestDesktop.h"
 
 #include <cstdio>
 #include <cwchar>
@@ -267,10 +268,9 @@ public:
 
     bool initialize()
     {
-        if (!desktopName(GetProcessWindowStation(), m_station)
-            || !desktopName(GetThreadDesktop(GetCurrentThreadId()), m_desktop))
-            return false;
-        m_desktop = m_station + L"\\" + m_desktop;
+        const DWORD desktopError = WindowsTestDesktop::currentName(m_desktop);
+        if (desktopError != ERROR_SUCCESS)
+            return error("current window station/desktop", desktopError);
         const DWORD names[] = {STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, STD_ERROR_HANDLE};
         for (unsigned index = 0; index < 3; ++index) {
             const HANDLE source = GetStdHandle(names[index]);
@@ -305,26 +305,10 @@ public:
     STARTUPINFOEXW *get() { return &m_startup; }
 
 private:
-    static bool desktopName(HANDLE object, std::wstring &name)
-    {
-        DWORD length = 0;
-        GetUserObjectInformationW(object, UOI_NAME, nullptr, 0, &length);
-        if (length == 0 || length > 4096 || length % sizeof(wchar_t) != 0)
-            return error("current window station/desktop name capacity", ERROR_INVALID_DATA);
-        name.resize(length / sizeof(wchar_t));
-        if (!GetUserObjectInformationW(object, UOI_NAME, name.data(), length, &length))
-            return error("GetUserObjectInformationW current desktop");
-        if (name.empty() || name.back() != L'\0')
-            return error("current desktop name terminator", ERROR_INVALID_DATA);
-        name.pop_back();
-        return !name.empty();
-    }
-
     Handle m_owned[3];
     HANDLE m_values[3]{};
     std::vector<BYTE> m_attributes;
     STARTUPINFOEXW m_startup{};
-    std::wstring m_station;
     std::wstring m_desktop;
     bool m_initialized = false;
 };
