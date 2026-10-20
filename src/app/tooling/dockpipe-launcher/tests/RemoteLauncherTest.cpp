@@ -19,9 +19,6 @@
 #include "LauncherSettings.h"
 #include "Theme.h"
 #include "ResourceLinkItem.h"
-#ifdef DOCKPIPE_TEST_COCKPIT
-#include "CockpitWidget.h"
-#endif
 #include "SettingsDialog.h"
 #include <QPainter>
 #include <algorithm>
@@ -1065,74 +1062,6 @@ exec "$@"
         viewMenu->grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + "-view-menu.png");
     viewMenu->hide();
 
-#ifdef DOCKPIPE_TEST_COCKPIT
-    if (window.findChild<CockpitWidget *>() || !navigation->item(10)->isHidden())
-        return 145;
-    navigation->setCurrentRow(10);
-    if (navigation->currentRow() == 10 || window.findChild<CockpitWidget *>())
-        return 146;
-    QTimer::singleShot(0, &window, [&]() {
-        auto *dialog = qobject_cast<SettingsDialog *>(QApplication::activeModalWidget());
-        if (!dialog)
-            return;
-        dialog->findChild<QCheckBox *>("settingsCockpitEnabled")->setChecked(true);
-        dialog->findChild<QCheckBox *>("settingsCockpitOrbitalMotion")->setChecked(false);
-        dialog->accept();
-    });
-    QMetaObject::invokeMethod(&window, "onOpenSettings", Qt::DirectConnection);
-    if (!LauncherSettings::current().cockpit.enabled || navigation->item(10)->isHidden()
-        || window.findChild<CockpitWidget *>())
-        return 147;
-    navigation->setCurrentRow(8);
-    QList<int> cockpitPageChanges;
-    const auto cockpitPageConnection = QObject::connect(pages, &QStackedWidget::currentChanged,
-        &window, [&](int page) { cockpitPageChanges.append(page); });
-    navigation->setCurrentRow(10);
-    QObject::disconnect(cockpitPageConnection);
-    if (cockpitPageChanges != QList<int>{8})
-        return 162;
-    QPointer<CockpitWidget> cockpit = window.findChild<CockpitWidget *>();
-    if (!cockpit)
-        return 140;
-    if (cockpit->flight()->orbitMotion())
-        return 148;
-    cockpit->visit("settings");
-    if (cockpit->destination() != "orbit")
-        return 141;
-    cockpit->visit("containers");
-    if (!cockpit->flight()->walking() || cockpit->resourceSection() != "containers")
-        return 142;
-    cockpit->flight()->destinationActivated("display:operations:controls", false);
-    if (!cockpit->flight()->editorActive() || cockpit->activePanel() != "containers")
-        return 143;
-    cockpit->closePanel();
-    if (cockpit->flight()->editorActive() || cockpit->resourceSection() != "containers")
-        return 144;
-    navigation->setCurrentRow(1);
-    if (!cockpit->resourceSection().isEmpty())
-        return 149;
-    navigation->setCurrentRow(10);
-    if (cockpit->resourceSection() != "containers")
-        return 153;
-    QTimer::singleShot(0, &window, [&]() {
-        auto *dialog = qobject_cast<SettingsDialog *>(QApplication::activeModalWidget());
-        if (!dialog)
-            return;
-        dialog->findChild<QCheckBox *>("settingsCockpitEnabled")->setChecked(false);
-        dialog->accept();
-    });
-    QMetaObject::invokeMethod(&window, "onOpenSettings", Qt::DirectConnection);
-    if (!waitUntil([&]() { return navigation->currentRow() == 1; }))
-        return 150;
-    if (LauncherSettings::current().cockpit.enabled || !navigation->item(10)->isHidden()
-        || (cockpit && (cockpit->isVisible() || cockpit->flight()->orbitAnimating() || cockpit->flight()->appControlling())))
-        return 151;
-    navigation->setCurrentRow(10);
-    if (navigation->currentRow() == 10)
-        return 152;
-    navigation->setCurrentRow(2);
-
-#endif
     auto *addDashboard = window.findChild<QPushButton *>("addDashboardButton");
     if (!addDashboard || !addDashboard->isEnabled())
         return 170;

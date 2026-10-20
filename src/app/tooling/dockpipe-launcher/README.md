@@ -1144,7 +1144,7 @@ at the available panel resolution; HD billboard previews are only for navigation
 
 The **Git** planet provides local Working Changes review with opposing code walls,
 focused selectable diffs, staged/unstaged comparisons, review progress and index
-actions. See the [Git Planet guide](../../../../packages/cockpit/docs/git-review.md)
+actions. See the [Git Planet guide](https://github.com/Dockpipe-Industries/SpatialPipe/blob/dev/packages/cockpit/docs/git-review.md)
 for controls, bounds and the current PR-provider limitation.
 
 **Settings → Cockpit mode → Enable Cockpit mode** unlocks this optional bonus
@@ -1446,7 +1446,7 @@ and connected unobstructed routes before publishing. A simpler validated layout
 is used if a proposal fails. Geometry is cached once; no cloud model, generation
 or asset downloads run during movement. The 420 ms phase effect preserves the
 current world while loading. Empty or failed destinations preserve that world.
-See [construction architecture and current limits](../../../../packages/cockpit/docs/spatial-world-construction.md).
+See [construction architecture and current limits](https://github.com/Dockpipe-Industries/SpatialPipe/blob/dev/packages/cockpit/docs/spatial-world-construction.md).
 
 The browser is created only on entering Web. **Live page** uses the same tabbed
 browser component as the top-level Browser, including annotations, downloads,
@@ -1479,7 +1479,7 @@ background spatial content cannot request an interactive permission decision.
 Unsupported permissions are denied. Browser TLS validation and Chromium sandboxing
 retain their defaults.
 
-Build the optional [Cockpit package](../../../../packages/cockpit/README.md) with
+Build the optional [Cockpit package](https://github.com/Dockpipe-Industries/SpatialPipe/blob/dev/packages/cockpit/README.md) with
 `DOCKPIPE_SPATIAL_WEB=ON` for the spatial view. The normal launcher includes Qt
 WebEngine for its top-level Browser but does not include spatial extraction or
 world rendering. Use an up-to-date Qt WebEngine distribution for release builds; this
@@ -1492,15 +1492,93 @@ for the native browser vehicle fixture, optionally with `DOCKPIPE_WEB_LIVE_URL`.
 
 ### Optional Cockpit package
 
-Cockpit implementation, spatial browser resources, voice helper and feature tests now live
-in `packages/cockpit`. Settings installs the resolver package on first enable using
+Cockpit implementation, spatial browser resources, voice helper and feature tests live
+in the separate SpatialPipe repository's `packages/cockpit` package. Dockpipe consumes
+installed package artifacts without importing that repository's source. Settings
+installs the resolver package on first enable using
 the configured HTTPS catalog and the CLI's checksum-verified package installer.
 The switch is not saved as enabled until loading succeeds; failed downloads leave
 it off with a retry action. Cancel stops the in-flight package operation. The
 normal launcher has no link dependency on the spatial renderer. Ordinary browsing
 uses its built-in shared browser runtime and Qt WebEngine. Shared file
 editing remains in the small `dockpipe-launcher-ui` library shipped with desktop.
-See the package README for native bundle compatibility and development builds.
+See the [owning package README](https://github.com/Dockpipe-Industries/SpatialPipe/blob/dev/packages/cockpit/README.md)
+for independent package builds and native bundle compatibility.
+
+#### Installed launcher SDK
+
+The optional `DOCKPIPE_INSTALL_LAUNCHER_SDK` CMake option defaults to `OFF`.
+Enable it with an explicit install prefix and matching Qt SDK; build the two
+exported libraries before installing only the `LauncherSDK` component:
+
+```sh
+cmake -S src/app/tooling/dockpipe-launcher -B /absolute/path/to/host-sdk-build \
+  -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+  -DDOCKPIPE_INSTALL_LAUNCHER_SDK=ON \
+  -DCMAKE_PREFIX_PATH=/absolute/path/to/Qt/6.10.3/gcc_64 \
+  -DCMAKE_INSTALL_PREFIX=/absolute/path/to/launcher-sdk
+cmake --build /absolute/path/to/host-sdk-build \
+  --target dockpipe-launcher-ui dockpipe-browser --parallel 2
+cmake --install /absolute/path/to/host-sdk-build --component LauncherSDK
+```
+
+An external consumer resolves the installed prefix through `CMAKE_PREFIX_PATH`
+and uses `find_package(DockPipeLauncherSDK 1.0.0 EXACT CONFIG REQUIRED)`.
+`DockPipe::LauncherUI`, `DockPipe::HostBrowser` and `DockPipe::LauncherHeaders`
+export the host UI, ordinary browser and shared headers. The config also exposes
+`DockPipeLauncherSDK_RESOURCE_DIR` and `DockPipeLauncherSDK_LIBRARY_DIR` for
+owned installed resources and bundling. This SDK includes Dockpipe host services;
+it is not a neutral standalone browser component. Its Qt 6.10.3, C++17,
+platform/compiler identity and workspace interface version must match the consumer.
+The optional component does not require building/installing the full launcher or
+change the headless engine.
+
+#### Qualify installed Cockpit assets
+
+`DOCKPIPE_COCKPIT_ASSETS` is an absolute path to an independently prepared
+Cockpit `assets` directory containing `ui/libdockpipe-cockpit.so` and
+`ui/cockpit-reader`. It requires `BUILD_TESTING=ON` and Linux. It is only a test
+input; ordinary runtime package discovery is unchanged. The removed
+`DOCKPIPE_COCKPIT_SOURCE` source-import parameter must not be used.
+
+For a published candidate, first run `release/packaging/prepare-cockpit.py prepare`
+with the reviewed `release/cockpit.lock.json` and a fresh output directory. It
+checks the exact public mirror, committed archive/receipt/candidate pins and
+runtime inventory. Use `extract` to obtain a fresh verified assets directory;
+no private diagnostic download or sibling source is required. Configure the host
+consumer against that directory:
+
+```sh
+prepared=/absolute/path/to/fresh-cockpit-download
+extracted=/absolute/path/to/fresh-cockpit-extraction
+python3 release/packaging/prepare-cockpit.py prepare \
+  --lock release/cockpit.lock.json --output "$prepared"
+assets="$(python3 release/packaging/prepare-cockpit.py extract \
+  --lock release/cockpit.lock.json --store "$prepared/store" --output "$extracted")"
+cmake -S src/app/tooling/dockpipe-launcher -B /absolute/path/to/host-consumer-build \
+  -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON \
+  -DCMAKE_PREFIX_PATH=/absolute/path/to/Qt/6.10.3/gcc_64 \
+  "-DDOCKPIPE_COCKPIT_ASSETS=$assets" \
+  -DDOCKPIPE_XVFB_RUN=/absolute/path/to/xvfb-run
+python3 release/packaging/prepare-cockpit.py verify-compiler \
+  --lock release/cockpit.lock.json --store "$prepared/store" \
+  --build /absolute/path/to/host-consumer-build
+cmake --build /absolute/path/to/host-consumer-build \
+  --target cockpit-package-rendering-test --parallel 2
+DOCKPIPE_PACKAGE_RENDER_CAPTURE=/absolute/path/to/host-capture.png \
+  ctest --test-dir /absolute/path/to/host-consumer-build --output-on-failure \
+    --no-tests=error -R '^cockpit-package-rendering$'
+```
+
+`DOCKPIPE_XVFB_RUN` selects `xvfb-run`; its matching `Xvfb` and `xauth` must be
+on PATH. CTest sets xcb, software OpenGL, dummy audio and the exact module/reader
+paths. The host links its UI SDK, creates a window and then loads Cockpit. The
+required X11 check covers late OpenGL composition, movement and compositor
+errors, failing on a skip. It does not establish physical GPU gameplay or desktop
+interaction. Package world/game tests remain in SpatialPipe. Published-package
+native proof and source/archive preservation checks precede original-source
+retirement; final Dockpipe staging qualifies the resulting source-absent tree.
+
 
 With **Bring open desktop apps into Tiling** enabled, a desktop panel's close
 button sends the OS window a normal close request. Unsaved-work prompts and

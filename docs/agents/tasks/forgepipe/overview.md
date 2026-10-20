@@ -10,7 +10,7 @@ Objective contract:
 - objective_id: forgepipe-spatial-ecosystem-extraction-2026-10-16
 - state: executing
 - execution_skill: dorkpipe-objective-execution
-- execution_authority: user-approved implementation and continuation; GitHub publication authorized 2026-10-16
+- execution_authority: user-approved implementation and continuation; current publication scope is package candidates and Dockpipe staging only
 - authorized_objective: inventory-first extraction into ForgePipe, MesaMoto, SpatialPipe,
   Spatial-Web and the existing optional Cockpit package
 - done_when: independent SDK and standalone applications, shared library consumers, packaged
@@ -123,3 +123,45 @@ fresh published-CLI installation of Cockpit 0.1.1 on native Linux amd64. See the
 for source identities, publication readbacks and platform limits. TASK-037 remains
 executing: standalone products, PipeLang bindings, stable SDK ABI and physical GPU
 acceptance remain open. Production was not promoted.
+
+
+## Independent Cockpit consumer continuation (2026-10-20)
+
+The current user instruction authorizes dependency/package candidates followed by
+Dockpipe staging only. Production promotion and Freeflight are excluded. PipeLang
+stays in Dockpipe; no PipeLang extraction is part of this continuation. Preserve
+saved work, saved data and the existing preview. This narrows the publication
+scope of the earlier objective without discarding its original inventory/history.
+
+SpatialPipe owns its offline runtime and the separate Cockpit package. Dockpipe
+exports the installed host ABI and consumes package artifacts; no sibling-source
+CMake import may replace delivery. The public LauncherSDK candidate from
+`517747a588eeedf000819d952eb18aa8d8bcc02d` and runtime SDK candidate from
+`8b67f00a059a440665cdca93069a287fd817ad7f` are published. Exact immutable tags,
+verification and platform limits are recorded in the
+[canonical continuation](../../../architecture/forgepipe/README.md#independent-spatialpipe-and-cockpit-delivery-continuation-2026-10-20).
+Dependency producer commits need not equal the Cockpit consumer commit.
+
+Cockpit 0.1.2 is now published from
+`25ada5f9dc26c9612fb150c8752478a73aa1917a`, qualifying run `39398537573`,
+under tag `cockpit-0.1.2-staging.25ada5f9dc26.run39398537573.1`. The same-tag
+public Dockpipe mirror preserves the runtime allowlist unchanged, and Dockpipe's
+exact archive/receipt/candidate pins are written. A fresh public-package native
+host consumer passed: 92 product paint intervals in 1,500 ms, 93 synthetic completed
+swaps, one recovery completion and zero compositor errors. The inspected capture is synthetic
+software-GL evidence, not physical GPU gameplay proof. See the canonical record
+for exact identities and the product-throughput/compositor-liveness distinction.
+
+The isolated Dockpipe consumer workspace has retired 359 tracked original source
+files after rechecking all 363 original file preimages and the retained archive.
+Canonical embed regeneration removed exactly 359 entries and its membership
+check passed. The source-absent CLI built offline with cached Go 1.26.9 and
+parallelism two; all 31 focused tests and public-content/diff checks passed. The
+primary Dockpipe checkout retains the original source and saved work. Hosted
+development-PR checks and final Dockpipe staging remain pending on the
+source-absent consumer tree, including its actual release and catalog/install
+readbacks. No separate earlier staging release is required before
+removal. The original three dirty WorkspaceGraph files remain preserved in the
+extracted initial source; no unrelated work or saved application files may be
+removed. TASK-037 remains executing: standalone products and remaining browser/
+game ownership work are unfinished. Production was not promoted.
