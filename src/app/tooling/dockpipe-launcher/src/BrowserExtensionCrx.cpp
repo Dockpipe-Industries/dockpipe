@@ -178,7 +178,7 @@ QByteArray BrowserExtensionCrx::extractPublicKey(const QByteArray &crx, const QS
         QByteArrayView key;
         if (!readProof(bytes, &key))
             return fail(error, QStringLiteral("The CRX3 package contains a malformed identity proof."));
-        const QByteArray digest = QCryptographicHash::hash(key, QCryptographicHash::Sha256);
+        const QByteArray digest = QCryptographicHash::hash(key.toByteArray(), QCryptographicHash::Sha256);
         if (QByteArrayView(digest).first(16) == identity)
             matchingKey = key.toByteArray();
     }

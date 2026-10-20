@@ -6,6 +6,8 @@
 #include <QCoreApplication>
 #include <QFileInfo>
 #include <QIconEngine>
+#include <QLibraryInfo>
+#include <QVersionNumber>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPalette>
@@ -86,7 +88,13 @@ public:
 
     QPixmap scaledPixmap(const QSize &size, QIcon::Mode mode, QIcon::State state, qreal scale) override
     {
-        QPixmap result = pixmap(size * scale, mode, state);
+        // Before Qt 6.8 QIcon already scales this argument to device pixels.
+        // Newer Qt passes logical pixels, so apply the requested density once.
+        static const bool receivesLogicalSize = QLibraryInfo::version() >= QVersionNumber(6, 8, 0);
+        QSize pixelSize = size;
+        if (receivesLogicalSize)
+            pixelSize *= scale;
+        QPixmap result = pixmap(pixelSize, mode, state);
         result.setDevicePixelRatio(scale);
         return result;
     }
