@@ -246,6 +246,7 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
+      attestations: read
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -285,7 +286,8 @@ jobs:
             --lock release/cockpit.lock.json --store "$RUNNER_TEMP/cockpit-runtime/store" \
             --build "$RUNNER_TEMP/cockpit-host"
           cmake --build "$RUNNER_TEMP/cockpit-host" --target cockpit-package-rendering-test --parallel 2
-          ctest --test-dir "$RUNNER_TEMP/cockpit-host" --output-on-failure -R '^cockpit-package-rendering$' --no-tests=error
+          LD_LIBRARY_PATH="$DOCKPIPE_QT_ROOT/lib:$RUNNER_TEMP/browser-sdk/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+            ctest --test-dir "$RUNNER_TEMP/cockpit-host" --output-on-failure -R '^cockpit-package-rendering$' --no-tests=error
 
   staging-release:
     needs: [test, test-windows, cockpit-native]

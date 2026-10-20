@@ -283,6 +283,9 @@ jobs:
           if-no-files-found: error
 
   build-msi:
+    permissions:
+      contents: read
+      attestations: read
     needs: [meta]
     runs-on: windows-latest
     steps:
@@ -410,6 +413,7 @@ jobs:
       version: ${{ needs.meta.outputs.version }}
     permissions:
       contents: read
+      attestations: read
 
   assemble:
     name: Assemble and verify artifacts
