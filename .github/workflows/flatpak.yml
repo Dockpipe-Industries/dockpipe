@@ -158,8 +158,19 @@ jobs:
           python3 -B -m unittest discover -s release/packaging/desktop/flatpak -p 'test_*.py'
           python3 release/packaging/desktop/flatpak/prepare-package-tools.py "$RUNNER_TEMP/package-tools" \
             --cache "$RUNNER_TEMP/package-downloads" --app "$RUNNER_TEMP/flatpak/app"
+          python3 -B release/packaging/ingest-pinned-stores.py --finalize-cockpit \
+            --base-store "$RUNNER_TEMP/native-store" \
+            --cockpit-store "$RUNNER_TEMP/flatpak-cockpit-runtime/store" \
+            --cockpit-lock release/cockpit.lock.json --version "$(cat VERSION)" \
+            --out "$RUNNER_TEMP/native-store-with-cockpit"
           python3 release/packaging/desktop/flatpak/build-catalog.py "$RUNNER_TEMP/flatpak/app" \
-            "$RUNNER_TEMP/native-store" "$RUNNER_TEMP/package-tools" "$RUNNER_TEMP/flatpak-catalog"
+            "$RUNNER_TEMP/native-store-with-cockpit" "$RUNNER_TEMP/package-tools" "$RUNNER_TEMP/flatpak-catalog"
+      - name: Qualify Marketplace-installed Cockpit lifecycle and rendering
+        run: |
+          python3 -B release/packaging/desktop/flatpak/verify-marketplace-cockpit.py \
+            --catalog "$RUNNER_TEMP/flatpak-catalog/store" --cockpit-lock release/cockpit.lock.json \
+            --test-build-dir "$RUNNER_TEMP/flatpak/qt-build" \
+            --output "$RUNNER_TEMP/flatpak-marketplace-cockpit"
       - name: Stage tested release artifacts
         if: inputs.version != ''
         shell: bash
