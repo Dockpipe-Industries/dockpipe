@@ -30,6 +30,10 @@ file(GET_RUNTIME_DEPENDENCIES
     # Windows resolves API-set contracts; they are not ordinary files on PATH.
     PRE_EXCLUDE_REGEXES "^api-ms-win-" "^ext-ms-win-")
 
+# Bind no-load access probes in the verified restricted child to this exact graph.
+string(JOIN "\n" manifest "${TEST_EXECUTABLE}" ${resolved_dependencies})
+file(WRITE "${test_directory}/windows-runtime-dependencies.txt" "${manifest}\n")
+
 foreach(dependency IN LISTS resolved_dependencies)
     message(STATUS "Windows loader scan: resolved=${dependency}")
 endforeach()
