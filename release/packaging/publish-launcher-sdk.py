@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""Publish the qualified host SDK as an immutable candidate, without channel promotion."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+
+
+REPOSITORY = "Dockpipe-Industries/dockpipe"
+ARCHIVE = "DockPipeLauncherSDK-1.0.0-Linux-amd64.tar.gz"
+ASSETS = {ARCHIVE, "sdk-files.json", "sdk-release.json"}
+MAX_ASSET_BYTES = 512 << 20
+
+
+def digest(path):
+    checksum = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1 << 20), b""):
+            checksum.update(block)
+    return checksum.hexdigest()
+
+
+def run(arguments):
+    result = subprocess.run(arguments, capture_output=True, text=True, timeout=300)
+    if result.returncode:
+        raise ValueError(f"Candidate operation failed: {arguments[0]} {arguments[1]}")
+    if len(result.stdout) > 2 << 20:
+        raise ValueError("Candidate operation response exceeds metadata capacity")
+    return result.stdout
+
+
+def validate(directory, source_sha):
+    if {path.name for path in directory.iterdir()} != ASSETS:
+        raise ValueError("SDK delivery has missing or unexpected assets")
+    assets = {}
+    for name in sorted(ASSETS):
+        path = directory / name
+        if path.is_symlink() or not path.is_file() or not 0 < path.stat().st_size <= MAX_ASSET_BYTES:
+            raise ValueError("SDK delivery requires bounded regular files")
+        if name.endswith(".json") and path.stat().st_size > 2 << 20:
+            raise ValueError("SDK metadata exceeds capacity")
+        assets[name] = {"size": path.stat().st_size, "digest": "sha256:" + digest(path)}
+    metadata = json.loads((directory / "sdk-release.json").read_text())
+    required = {
+        "schema": 1, "product": "DockPipeLauncherSDK", "version": "1.0.0",
+        "platform": "linux-amd64", "qt_version": "6.10.3",
+        "source_repository": REPOSITORY, "source_sha": source_sha,
+        "source_state": "committed-snapshot",
+    }
+    if any(metadata.get(key) != value for key, value in required.items()):
+        raise ValueError("SDK source and ABI identity differ from the publishing run")
+    archive = metadata.get("archive", {})
+    if (archive.get("name") != ARCHIVE
+            or archive.get("size_bytes") != assets[ARCHIVE]["size"]
+            or "sha256:" + archive.get("sha256", "") != assets[ARCHIVE]["digest"]):
+        raise ValueError("SDK archive differs from its qualification receipt")
+    manifest = metadata.get("file_manifest", {})
+    if (manifest.get("name") != "sdk-files.json"
+            or "sha256:" + manifest.get("sha256", "") != assets["sdk-files.json"]["digest"]):
+        raise ValueError("SDK inventory differs from its qualification receipt")
+    required_checks = {"sdk-component-install", "relocated-external-consumer-compile-link"}
+    if not required_checks.issubset(metadata.get("checks", [])):
+        raise ValueError("SDK install and external-consumer checks are required")
+    return assets
+
+
+def verify_release(release, tag, source_sha, assets):
+    if (release.get("tag_name") != tag or release.get("target_commitish") != source_sha
+            or release.get("prerelease") is not True):
+        raise ValueError("Existing candidate differs from the qualified source identity")
+    remote = release.get("assets", [])
+    if len(remote) != len(assets) or {item.get("name") for item in remote} != set(assets):
+        raise ValueError("Remote candidate inventory differs; published bytes are never replaced")
+    for item in remote:
+        if any(item.get(key) != value for key, value in assets[item["name"]].items()):
+            raise ValueError("Remote candidate bytes differ; published bytes are never replaced")
+
+
+def publish(directory):
+    source_sha = os.environ.get("GITHUB_SHA", "")
+    if (os.environ.get("GITHUB_REPOSITORY") != REPOSITORY
+            or os.environ.get("GITHUB_REF") != "refs/heads/dev"
+            or os.environ.get("GITHUB_EVENT_NAME") != "push"
+            or not re.fullmatch(r"[0-9a-f]{40}", source_sha)):
+        raise ValueError("SDK publication requires an exact accepted dev push")
+    assets = validate(directory, source_sha)
+    tag = "launcher-sdk-1.0.0-staging." + source_sha
+    # GraphQL returns null for an absent release without conflating authentication
+    # and network errors with absence.
+    query = """query($owner:String!,$name:String!,$tag:String!){
+      repository(owner:$owner,name:$name){release(tagName:$tag){tagName}}
+    }"""
+    existing = json.loads(run([
+        "gh", "api", "graphql", "-f", "query=" + query, "-f", "owner=Dockpipe-Industries",
+        "-f", "name=dockpipe", "-f", "tag=" + tag,
+    ]))
+    if existing.get("errors"):
+        raise ValueError("Could not establish whether candidate already exists")
+    if existing["data"]["repository"]["release"] is None:
+        run([
+            "gh", "release", "create", tag, *[str(directory / name) for name in sorted(ASSETS)],
+            "--repo", REPOSITORY, "--target", source_sha, "--draft", "--prerelease",
+            "--latest=false", "--title", "Launcher SDK 1.0.0 candidate",
+            "--notes", "Qualified installed host SDK for SpatialPipe/Cockpit candidate builds. "
+            "No Dockpipe application release or production channel update.",
+        ])
+    endpoint = f"repos/{REPOSITORY}/releases/tags/{tag}"
+    release = json.loads(run(["gh", "api", endpoint]))
+    verify_release(release, tag, source_sha, assets)
+    if release["draft"]:
+        run(["gh", "release", "edit", tag, "--repo", REPOSITORY,
+             "--draft=false", "--prerelease", "--latest=false"])
+    final = json.loads(run(["gh", "api", endpoint]))
+    verify_release(final, tag, source_sha, assets)
+    if final["draft"]:
+        raise ValueError("SDK candidate remains a draft")
+    print(final["html_url"])
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--directory", type=Path, required=True)
+    arguments = parser.parse_args()
+    try:
+        publish(arguments.directory)
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
+        parser.exit(1, f"SDK candidate publication failed: {error}\n")
