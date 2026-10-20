@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "version": "@DOCKPIPE_LAUNCHER_SDK_VERSION@",
+  "qt_version": "6.10.3",
+  "library_directory": "@CMAKE_INSTALL_LIBDIR@",
+  "resource_directory": "@sdk_resource_directory@",
+  "config_directory": "@sdk_config_directory@"
+}
