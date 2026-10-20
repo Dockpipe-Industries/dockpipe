@@ -4,8 +4,11 @@ on:
   pull_request:
     branches: [dev]
     paths:
+      - LICENSE
       - src/app/tooling/dockpipe-launcher/**
       - packages/native-sdk/**
+      - release/packaging/desktop/licenses/**
+      - release/packaging/desktop/install-linux-qt.sh
       - release/packaging/build-launcher-sdk.py
       - release/packaging/publish-launcher-sdk.py
       - release/packaging/tests/test_launcher_sdk_producer.py
@@ -14,8 +17,11 @@ on:
   push:
     branches: [dev]
     paths:
+      - LICENSE
       - src/app/tooling/dockpipe-launcher/**
       - packages/native-sdk/**
+      - release/packaging/desktop/licenses/**
+      - release/packaging/desktop/install-linux-qt.sh
       - release/packaging/build-launcher-sdk.py
       - release/packaging/publish-launcher-sdk.py
       - .github/workflows/launcher-sdk-candidate.yml
