@@ -128,10 +128,19 @@ int main(int argc, char **argv)
     fixture.start(app.applicationFilePath(), {"--fixture"});
     CHECK(fixture.waitForStarted(3000));
     QByteArray output;
-    CHECK(waitFor([&] {
+    const bool fixtureReady = waitFor([&] {
         output += fixture.readAllStandardOutput();
-        return output.startsWith("WINDOW:") && output.contains("READY\n");
-    }));
+        // Windows CRT text output uses CRLF; QProcess preserves the raw bytes.
+        return output.startsWith("WINDOW:")
+            && (output.contains("\nREADY\r\n") || output.contains("\nREADY\n"));
+    });
+    if (!fixtureReady) {
+        std::fprintf(stderr, "Fixture readiness failed: state=%d exitStatus=%d exitCode=%d stdoutBytes=%lld stdoutHex=%s\n",
+            static_cast<int>(fixture.state()), static_cast<int>(fixture.exitStatus()),
+            fixture.exitCode(), static_cast<long long>(output.size()),
+            output.left(4096).toHex(' ').constData());
+    }
+    CHECK(fixtureReady);
     const quint64 id = fixtureWindowId(output, "WINDOW");
     CHECK(id);
     const HWND window = reinterpret_cast<HWND>(static_cast<quintptr>(id));
