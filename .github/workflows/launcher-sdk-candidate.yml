@@ -13,6 +13,8 @@ on:
       - release/packaging/desktop/browser-runtime.py
       - release/packaging/desktop/test_browser_runtime.py
       - release/packaging/prepare-browser-sdk.py
+      - release/packaging/prepare-flatpak-browser-sdk.py
+      - release/packaging/tests/test_prepare_flatpak_browser_sdk.py
       - release/packaging/tests/test_prepare_browser_sdk.py
       - release/packaging/build-launcher-sdk.py
       - release/packaging/publish-launcher-sdk.py
@@ -31,6 +33,8 @@ on:
       - release/packaging/desktop/browser-runtime.py
       - release/packaging/desktop/test_browser_runtime.py
       - release/packaging/prepare-browser-sdk.py
+      - release/packaging/prepare-flatpak-browser-sdk.py
+      - release/packaging/tests/test_prepare_flatpak_browser_sdk.py
       - release/packaging/tests/test_prepare_browser_sdk.py
       - release/packaging/build-launcher-sdk.py
       - release/packaging/publish-launcher-sdk.py

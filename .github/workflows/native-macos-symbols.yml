@@ -107,7 +107,7 @@ jobs:
           python3 -B release/packaging/prepare-browser-sdk.py \
             --lock release/dependencies/spatialweb-browser.lock.json \
             --platform "$browser_platform" --output "$RUNNER_TEMP/browser-sdk"
-          echo "CMAKE_PREFIX_PATH=$RUNNER_TEMP/browser-sdk;$CMAKE_PREFIX_PATH" >> "$GITHUB_ENV"
+          echo "CMAKE_PREFIX_PATH=$RUNNER_TEMP/browser-sdk:$CMAKE_PREFIX_PATH" >> "$GITHUB_ENV"
       - name: Qualify native Mach-O fixture
         shell: bash
         run: python3 -m unittest discover -s release/packaging/tests -p test_native_symbol_boundaries.py -v

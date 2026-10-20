@@ -105,8 +105,10 @@ remain core-only; install the optional packages needed for the chosen workflow.
 
 Prerequisites: Flatpak, Python 3, `org.kde.Sdk//6.10`, `org.kde.Platform//6.10`,
 `io.qt.qtwebengine.BaseApp//6.10` for the embedded browser, a
-matching static CLI, a verified core store, and `DOCKPIPE_BROWSER_SDK` pointing to
-the verified public Spatial-Web Browser SDK prefix. The builder does not install its
+matching static CLI, a verified core store, and `DOCKPIPE_FLATPAK_BROWSER_SDK` pointing to
+the separately verified public Spatial-Web Flatpak Browser SDK prefix.
+`DOCKPIPE_FLATPAK_COCKPIT_ASSETS` names the freshly verified locked Cockpit
+compatibility fixture prepared by `prepare-cockpit.py`. The builder does not install its
 prerequisites or install the resulting app on the build machine.
 The build bundles checksum-pinned libXRes 1.2.3 for X11 process identification,
 including RustDesk windows that omit their process ID property. Its license is
@@ -120,18 +122,34 @@ bash release/packaging/desktop/flatpak/build.sh VERSION /absolute/path/dockpipe 
   /absolute/path/core-store /absolute/path/new-output
 ```
 
-Before compiling, the builder reads back the Browser SDK against its committed
-multi-platform lock and checks actual KDE Core and BaseApp WebEngine versions
-are exactly 6.10.3. It tests the binary SDK's dependency resolution in that SDK
-and records `browser-abi.txt`. A different patch requires an independently
-qualified SDK built by Spatial-Web; Dockpipe does not embed its source. Only the
+Before compiling, the builder reads back the Flatpak Browser SDK against
+`release/dependencies/spatialweb-flatpak-browser.lock.json`. It requires the exact
+qualified SDK, Platform and BaseApp commits, GNU 15.2.0, Qt Core/Gui/Widgets/Network/
+PrintSupport 6.10.3 and WebEngineCore/WebEngineWidgets 6.10.2. The native five-platform
+SDK lock is separate and unchanged. The builder checks actual component CMake
+packages and binary dependency resolution, recording `browser-abi.txt`.
+Different components or refs require a separately qualified Spatial-Web profile;
+Dockpipe does not embed its source. Only the
 Browser shared library, installed notices and its consumer receipt enter the app.
 The workspace-reader ships beside the launcher and is exercised by Platform smoke.
+The [Flatpak SDK consumer contract](../../prepare-flatpak-browser-sdk.md) documents
+preparation, provenance, immutable refs and the separate package identity.
 
 The builder compiles the launcher in the SDK, runs the Qt regression tests, and checks the
 launcher, CLI, core-only inventory, workflow execution and package target selection
 in the smaller Platform. Outputs include an unsigned staging `.flatpak` bundle, OSTree
 repository, app build directory and SDK/runtime commit receipts.
+
+The required installed Cockpit check reuses `PackageRenderingTest.cpp` against the
+shipped Host UI in the actual Platform sandbox. SDK-context CTest excludes its
+`installed-platform` label because this check runs after app installation, under
+its own X11 display. The hosted workflow then requires that check to pass with
+zero compositor failures, movement, software GL completion and recovery. It
+re-extracts the exact locked archive and records actual mapped Qt, Browser, Host
+UI and Cockpit paths and hashes. Bundled native Qt does not establish isolation
+inside the host process. This explicit runtime compatibility proof does not
+rewrite the native Cockpit compiler/Qt contract or qualify physical GPU behavior.
+
 
 ```bash
 flatpak install --user ./dockpipe-desktop_VERSION_linux_amd64.flatpak

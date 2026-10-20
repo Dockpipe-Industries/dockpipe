@@ -272,9 +272,9 @@ def fetch_asset(lock, asset, destination, local_assets):
         raise ValueError("Browser SDK asset differs from its pinned checksum or size")
 
 
-def verify_attestation(path, source_sha):
+def verify_attestation(path, source_sha, workflow="browser-sdk.yml"):
     command = ["gh", "attestation", "verify", str(path), "--repo", REPOSITORY,
-               "--signer-workflow", REPOSITORY + "/.github/workflows/browser-sdk.yml",
+               "--signer-workflow", REPOSITORY + "/.github/workflows/" + workflow,
                "--source-digest", source_sha, "--source-ref", "refs/heads/dev"]
     subprocess.run(command, check=True, timeout=120, stdout=sys.stderr, stderr=sys.stderr)
 
@@ -302,7 +302,7 @@ def verify_metadata(lock, metadata):
         raise ValueError("Browser SDK MSVC runtime identity differs")
 
 
-def verify_manifest(data, reserved=()):
+def verify_manifest(data, reserved=(), package="SpatialWebBrowser"):
     manifest = decode_json(data)
     if (not isinstance(manifest, dict) or manifest.get("schema") != 1 or type(manifest.get("schema")) is not int
             or manifest.get("artifact_class") != "sdk" or not isinstance(manifest.get("files"), list)
@@ -333,9 +333,9 @@ def verify_manifest(data, reserved=()):
         entries[name] = entry
         folded.add(name.casefold())
     required = {"include/SpatialWeb/Browser/BrowserWidget.h",
-                "lib/cmake/SpatialWebBrowser/SpatialWebBrowserConfig.cmake",
-                "lib/cmake/SpatialWebBrowser/SpatialWebBrowserConfigVersion.cmake",
-                "lib/cmake/SpatialWebBrowser/SpatialWebBrowserTargets.cmake"}
+                f"lib/cmake/{package}/{package}Config.cmake",
+                f"lib/cmake/{package}/{package}ConfigVersion.cmake",
+                f"lib/cmake/{package}/{package}Targets.cmake"}
     if not required.issubset(entries):
         raise ValueError("Browser SDK lacks its public header or CMake package")
     for name in entries:
@@ -344,8 +344,23 @@ def verify_manifest(data, reserved=()):
     return entries
 
 
+def receipt_identity(lock):
+    return {key: lock[key] for key in
+            ("source_repository", "source_sha", "qt_version", "compiler", "release")}
+
+
 def prepare(lock_path, platform, output, local_assets=None):
     lock, lock_bytes = load_lock(lock_path, platform)
+    return prepare_selected(lock, lock_bytes, platform, output, local_assets)
+
+
+def prepare_selected(lock, lock_bytes, platform, output, local_assets=None, *,
+                     metadata_verifier=verify_metadata, manifest_verifier=verify_manifest,
+                     attestation_verifier=None, identity_factory=receipt_identity, product=PRODUCT):
+    # A dependency profile supplies its identity validators; transport, inventory
+    # extraction and fresh-directory publication retain the same bounded rules.
+    if attestation_verifier is None:
+        attestation_verifier = verify_attestation
     if output.exists() or output.is_symlink():
         raise ValueError("Browser SDK destination must be fresh")
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -359,12 +374,12 @@ def prepare(lock_path, platform, output, local_assets=None):
             paths[key] = path
         metadata_bytes = read_regular(paths["metadata"], MAX_METADATA_BYTES)
         metadata = decode_json(metadata_bytes)
-        verify_metadata(lock, metadata)
+        metadata_verifier(lock, metadata)
         manifest_bytes = read_regular(paths["file_manifest"], MAX_METADATA_BYTES)
-        entries = verify_manifest(manifest_bytes, [asset["name"] for asset in lock.values()
+        entries = manifest_verifier(manifest_bytes, [asset["name"] for asset in lock.values()
                                                     if isinstance(asset, dict) and "name" in asset])
         for path in paths.values():
-            verify_attestation(path, lock["source_sha"])
+            attestation_verifier(path, lock["source_sha"])
         destination = root / "installed"
         destination.mkdir()
         unpack(paths["artifact"], destination, {"prefix": ""}, entries)
@@ -374,10 +389,10 @@ def prepare(lock_path, platform, output, local_assets=None):
                 raise ValueError("Browser SDK payload collides with its release sidecars")
             (destination / name).write_bytes(data)
         (destination / "consumer-lock.json").write_bytes(lock_bytes)
-        receipt = {"schema": 1, "product": PRODUCT, "version": VERSION,
+        receipt = {"schema": 1, "product": product, "version": VERSION,
                    "selected_platform": platform, "installed_prefix": str(output.resolve()),
                    "lock_sha256": hashlib.sha256(lock_bytes).hexdigest(),
-                   "identity": {key: lock[key] for key in ("source_repository", "source_sha", "qt_version", "compiler", "release")},
+                   "identity": identity_factory(lock),
                    "pins": {key: lock[key] for key in ("artifact", "metadata", "file_manifest")},
                    "attestations_verified": True, "runtime_bundled": False,
                    "files": len(entries), "installed_bytes": sum(item["bytes"] for item in entries.values())}
