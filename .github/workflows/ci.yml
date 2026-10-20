@@ -236,13 +236,11 @@ jobs:
 
   cockpit-native:
     name: Cockpit native SDK and rendering
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
     permissions:
       contents: read
-      attestations: read
     env:
-      DOCKPIPE_COCKPIT_NATIVE_TEST: '1'
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
@@ -258,15 +256,26 @@ jobs:
             libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
             libxcb-render-util0 libxcb-shape0 libxcb-xkb1 libx11-dev \
             libxcomposite-dev libxrender-dev libxres-dev libxext-dev libxcb1-dev \
-            libnss3 libasound2t64 libsdl2-2.0-0
+            libnss3 libasound2 libsdl2-2.0-0
       - name: Install pinned Qt ABI
         run: |
           bash release/packaging/desktop/install-linux-qt.sh "$RUNNER_TEMP/Qt"
           echo "DOCKPIPE_QT_ROOT=$RUNNER_TEMP/Qt/6.10.3/gcc_64" >> "$GITHUB_ENV"
       - name: Build repository CLI
         run: make build-core
-      - name: Verify SDK publisher and qualify Cockpit
-        run: bash packages/cockpit/tests/run.sh
+      - name: Verify public publisher and qualify installed Cockpit
+        run: |
+          python3 release/packaging/prepare-cockpit.py prepare \
+            --lock release/cockpit.lock.json --output "$RUNNER_TEMP/cockpit-runtime"
+          cmake -S src/app/tooling/dockpipe-launcher -B "$RUNNER_TEMP/cockpit-host" \
+            -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON \
+            -DCMAKE_PREFIX_PATH="$DOCKPIPE_QT_ROOT" \
+            -DDOCKPIPE_COCKPIT_ASSETS="$RUNNER_TEMP/cockpit-runtime/package/resolvers/cockpit/assets"
+          python3 release/packaging/prepare-cockpit.py verify-compiler \
+            --lock release/cockpit.lock.json --store "$RUNNER_TEMP/cockpit-runtime/store" \
+            --build "$RUNNER_TEMP/cockpit-host"
+          cmake --build "$RUNNER_TEMP/cockpit-host" --target cockpit-package-rendering-test --parallel 2
+          ctest --test-dir "$RUNNER_TEMP/cockpit-host" --output-on-failure -R '^cockpit-package-rendering$' --no-tests=error
 
   staging-release:
     needs: [test, test-windows, cockpit-native]

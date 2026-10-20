@@ -59,7 +59,7 @@ jobs:
           FORGEPIPE_SDK_TAG: ${{ inputs.forgepipe_sdk_tag }}
         run: |
           python3 release/packaging/attest-forgepipe.py \
-            --lock packages/cockpit/assets/forgepipe-sdk.lock.json \
+            --lock release/forgepipe-sdk.lock.json \
             --exports release/packaging/forgepipe-public-exports.txt \
             --tag "$FORGEPIPE_SDK_TAG" --output "$RUNNER_TEMP/forgepipe-sdk-attestation"
       - name: Attest the audited SDK and source-bound metadata
@@ -218,26 +218,22 @@ jobs:
       - name: Build native CLI, all package stores, and installers
         shell: bash
         run: bash release/packaging/build-platform.sh "${{ needs.meta.outputs.version }}"
-      - name: Prepare the attested native Cockpit SDK
+      - name: Prepare the pinned public Cockpit runtime
         if: matrix.platform == 'linux-amd64'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python3 packages/cockpit/assets/scripts/prepare-forgepipe-sdk.py \
-            --lock packages/cockpit/assets/forgepipe-sdk.lock.json \
-            --output "$RUNNER_TEMP/forgepipe-sdk"
-          echo "DOCKPIPE_FORGEPIPE_SDK=$RUNNER_TEMP/forgepipe-sdk" >> "$GITHUB_ENV"
+          python3 release/packaging/prepare-cockpit.py prepare \
+            --lock release/cockpit.lock.json --output "$RUNNER_TEMP/cockpit-runtime"
+          echo "DOCKPIPE_COCKPIT_PREPARED=$RUNNER_TEMP/cockpit-runtime" >> "$GITHUB_ENV"
       - name: Build Linux desktop against Ubuntu 22.04
         if: runner.os == 'Linux'
         env:
-          DOCKPIPE_BUILD_COCKPIT: ${{ matrix.platform == 'linux-amd64' && '1' || '0' }}
-          DOCKPIPE_RELEASE_SOURCE_SHA: ${{ github.sha }}
+          DOCKPIPE_QUALIFY_COCKPIT: ${{ matrix.platform == 'linux-amd64' && '1' || '0' }}
         shell: bash
         run: bash release/packaging/desktop/build-linux.sh "${{ needs.meta.outputs.version }}" release/artifacts
       - name: Finalize the qualified Linux Cockpit catalog
         if: matrix.platform == 'linux-amd64'
-        env:
-          DOCKPIPE_RELEASE_SOURCE_SHA: ${{ github.sha }}
         shell: bash
         run: bash release/packaging/build-platform.sh --finalize-cockpit "${{ needs.meta.outputs.version }}" release/artifacts/cockpit-store
       - name: Build native macOS desktop installers

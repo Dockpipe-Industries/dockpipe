@@ -14,18 +14,14 @@ image="dockpipe-desktop-builder:ubuntu22.04-qt6.10.3"
 docker build --file "$root/release/packaging/desktop/linux-builder.Dockerfile" \
   --tag "$image" "$root/release/packaging/desktop"
 package_args=()
-if [[ "${DOCKPIPE_BUILD_COCKPIT:-0}" == 1 ]]; then
-  [[ "$(uname -m)" == x86_64 ]] || { echo 'Native Cockpit SDK packaging is qualified on Linux amd64 only.' >&2; exit 1; }
-  sdk="$(realpath "${DOCKPIPE_FORGEPIPE_SDK:?Prepare and attest the native ForgePipe SDK before packaging}")"
-  [[ "${DOCKPIPE_RELEASE_SOURCE_SHA:-}" =~ ^[0-9a-f]{40}$ ]] || {
-    echo 'All-inclusive releases require the exact 40-character source commit SHA.' >&2
-    exit 1
-  }
-  [[ -f "$sdk/lib/cmake/ForgePipe/ForgePipeConfig.cmake" ]]
-  [[ -x "$root/src/bin/dockpipe" ]]
-  package_args+=(--env DOCKPIPE_BUILD_COCKPIT=1 --env DOCKPIPE_FORGEPIPE_SDK=/forgepipe-sdk
-    --env "DOCKPIPE_RELEASE_SOURCE_SHA=$DOCKPIPE_RELEASE_SOURCE_SHA"
-    --mount "type=bind,source=$sdk,target=/forgepipe-sdk,readonly")
+if [[ "${DOCKPIPE_QUALIFY_COCKPIT:-0}" == 1 ]]; then
+  [[ "$(uname -m)" == x86_64 ]] || { echo 'Cockpit qualification requires Linux amd64.' >&2; exit 1; }
+  prepared="$(realpath "${DOCKPIPE_COCKPIT_PREPARED:?Prepare the pinned public Cockpit runtime first}")"
+  python3 "$root/release/packaging/prepare-cockpit.py" verify-store \
+    --lock "$root/release/cockpit.lock.json" --store "$prepared/store"
+  package_args+=(--env DOCKPIPE_QUALIFY_COCKPIT=1
+    --env DOCKPIPE_COCKPIT_STORE=/cockpit-input/store
+    --mount "type=bind,source=$prepared,target=/cockpit-input,readonly")
 fi
 docker run --rm --user "$(id -u):$(id -g)" \
   --env HOME=/tmp --env QT_QPA_PLATFORM=offscreen \
