@@ -241,6 +241,30 @@ jobs:
           # Isolate native embedding startup before compiling every desktop test.
           cmake --build $build --config Release --target desktop-app-window-win-test
           if ($LASTEXITCODE -ne 0) { throw 'Native embedding fixture compilation failed.' }
+          # Report effective static imports without replacing the native test gate.
+          try {
+              $dumpbin = (Get-Command dumpbin.exe -ErrorAction Stop).Source
+              $cmake = (Get-Command cmake -ErrorAction Stop).Source
+              $scanScript = (Resolve-Path src/app/tooling/dockpipe-launcher/tests/WindowsRuntimeDependencies.cmake).Path
+              $scanArguments = @(
+                  "`"-DTEST_EXECUTABLE=$build/desktop-app-window-win-test.exe`"",
+                  "`"-DDUMPBIN=$dumpbin`"",
+                  '-P', "`"$scanScript`""
+              )
+              $scan = Start-Process -FilePath $cmake -ArgumentList $scanArguments -NoNewWindow -PassThru
+              try {
+                  if (-not $scan.WaitForExit(60000)) {
+                      $scan.Kill($true)
+                      throw 'Windows import diagnostics exceeded the 60-second deadline.'
+                  }
+                  if ($scan.ExitCode -ne 0) { throw 'Windows import diagnostics failed.' }
+              } finally {
+                  $scan.Dispose()
+              }
+          } catch {
+              # Diagnostics must never replace the required native embedding gate.
+              Write-Warning "Windows import diagnostics failed: $_"
+          }
           $previousPluginDiagnostics = $env:QT_DEBUG_PLUGINS
           try {
             $env:QT_DEBUG_PLUGINS = '1'
