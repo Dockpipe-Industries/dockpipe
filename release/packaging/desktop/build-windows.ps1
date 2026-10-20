@@ -50,6 +50,13 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "Desktop build failed"
     }
+    # Match the installed application before standard-user embedding fixtures run.
+    # The verified app-local copy inherits the build directory's access rights.
+    & python (Join-Path $PSScriptRoot "browser-runtime.py") --sdk $browserSdk `
+        --platform windows-amd64 --runtime $build
+    if ($LASTEXITCODE -ne 0) {
+        throw "Desktop test Browser runtime deployment failed"
+    }
     $testPath = $env:PATH
     try {
         $env:PATH = (Join-Path $browserSdk "bin") + ";" + $testPath
