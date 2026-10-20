@@ -1,6 +1,7 @@
 #include "DashboardFilesWidget.h"
 #include "ProjectFilesWidget.h"
 #include "FileExplorerView.h"
+#include "FileExplorerIcons.h"
 #include "CanvasIcons.h"
 #include "Theme.h"
 
@@ -30,6 +31,8 @@ private slots:
     void projectNavigationAndClearing();
     void independentSystemNavigation();
     void linksAndFileOpening();
+    void fileIconPixelDensity_data();
+    void fileIconPixelDensity();
     void folderViewUsesSharedIcons_data();
     void folderViewUsesSharedIcons();
     void filesPageUsesSharedExplorer();
@@ -159,6 +162,35 @@ void DashboardFilesWidgetTest::linksAndFileOpening()
     QVERIFY(files.navigateTo(root + "/outside-link"));
     QCOMPARE(files.currentDirectory(), QFileInfo(directory.path() + "/outside").canonicalFilePath());
 #endif
+}
+
+void DashboardFilesWidgetTest::fileIconPixelDensity_data()
+{
+    QTest::addColumn<QString>("filename");
+    QTest::addColumn<qreal>("scale");
+    QTest::addColumn<int>("extent");
+    const QStringList filenames{
+        "README.md", "main.cpp", "config.yml", "data.csv", "photo.png", "release.zip", "notes.txt"};
+    for (const QString &filename : filenames) {
+        for (qreal scale : {qreal(1), qreal(1.25), qreal(1.5), qreal(2), qreal(3)}) {
+            for (int extent : {18, 44}) {
+                const QByteArray row = QString("%1-%2x-%3px").arg(filename).arg(scale).arg(extent).toUtf8();
+                QTest::newRow(row.constData()) << filename << scale << extent;
+            }
+        }
+    }
+}
+
+void DashboardFilesWidgetTest::fileIconPixelDensity()
+{
+    QFETCH(QString, filename);
+    QFETCH(qreal, scale);
+    QFETCH(int, extent);
+    const QIcon icon = FileExplorerIcons::instance().icon(QFileInfo(filename));
+    const QPixmap pixmap = icon.pixmap(QSize(extent, extent), scale);
+    QCOMPARE(pixmap.devicePixelRatio(), scale);
+    QCOMPARE(pixmap.size(), QSize(extent, extent) * scale);
+    QVERIFY(!pixmap.toImage().isNull());
 }
 
 void DashboardFilesWidgetTest::folderViewUsesSharedIcons_data()
