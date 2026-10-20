@@ -6,12 +6,19 @@ browser_sdk="${1:?Verified Browser SDK prefix}"
   echo 'KDE SDK Qt patch differs from Browser SDK 6.10.3. Qualify a matching SDK in Spatial-Web; do not embed its source here.' >&2
   exit 1
 }
-for module in Qt6Core Qt6WebEngineCore; do
-  [[ "$(pkg-config --modversion "$module")" == 6.10.3 ]] || {
-    echo "KDE/BaseApp $module differs from Browser SDK 6.10.3" >&2
-    exit 1
-  }
-done
+# BaseApp ships CMake packages; it need not expose WebEngine pkg-config files.
+# Require the actual installed packages with the same exact patch contract as
+# the application. The temporary project contains no Spatial-Web source.
+probe="$(mktemp -d)"
+trap 'rm -rf "$probe"' EXIT
+cat > "$probe/CMakeLists.txt" <<'CMAKE'
+cmake_minimum_required(VERSION 3.22)
+project(BrowserSDKABI LANGUAGES CXX)
+find_package(Qt6Core 6.10.3 EXACT REQUIRED CONFIG)
+find_package(Qt6WebEngineCore 6.10.3 EXACT REQUIRED CONFIG)
+message(STATUS "KDE/BaseApp Qt Core ${Qt6Core_VERSION}; WebEngine Core ${Qt6WebEngineCore_VERSION}")
+CMAKE
+cmake -S "$probe" -B "$probe/build" -DCMAKE_PREFIX_PATH=/app
 browser="$browser_sdk/lib/libSpatialWebBrowser.so.0.1.0"
 [[ -f "$browser" ]] || { echo 'Missing Browser SDK shared library' >&2; exit 1; }
 dependencies="$(ldd "$browser")"

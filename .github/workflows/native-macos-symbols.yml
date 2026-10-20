@@ -5,6 +5,9 @@ on:
   pull_request:
     paths:
       - .github/workflows/native-macos-symbols.yml
+      - release/dependencies/spatialweb-browser.lock.json
+      - release/packaging/prepare-browser-sdk.py
+      - release/packaging/tests/test_prepare_browser_sdk.py
       - release/packaging/desktop/macos/protect-owned-binaries.py
       - release/packaging/desktop/macos/package.sh
       - release/packaging/tests/test_native_symbol_boundaries.py
@@ -51,6 +54,7 @@ on:
 
 permissions:
   contents: read
+  attestations: read
 
 concurrency:
   group: native-macos-symbols-${{ github.event.pull_request.number || github.ref }}
@@ -89,6 +93,21 @@ jobs:
           "$RUNNER_TEMP/aqt/bin/python" -m aqt install-qt mac desktop 6.10.3 clang_64 --outputdir "$RUNNER_TEMP/Qt" --modules qtwebengine qtwebchannel qtpositioning
           echo "$RUNNER_TEMP/Qt/6.10.3/macos/bin" >> "$GITHUB_PATH"
           echo "CMAKE_PREFIX_PATH=$RUNNER_TEMP/Qt/6.10.3/macos" >> "$GITHUB_ENV"
+      - name: Prepare exact attested Browser SDK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$(uname -m)" in
+            arm64) browser_platform=darwin-arm64 ;;
+            x86_64) browser_platform=darwin-amd64 ;;
+            *) echo 'Unsupported macOS Browser SDK platform' >&2; exit 1 ;;
+          esac
+          python3 -B release/packaging/prepare-browser-sdk.py \
+            --lock release/dependencies/spatialweb-browser.lock.json \
+            --platform "$browser_platform" --output "$RUNNER_TEMP/browser-sdk"
+          echo "CMAKE_PREFIX_PATH=$RUNNER_TEMP/browser-sdk;$CMAKE_PREFIX_PATH" >> "$GITHUB_ENV"
       - name: Qualify native Mach-O fixture
         shell: bash
         run: python3 -m unittest discover -s release/packaging/tests -p test_native_symbol_boundaries.py -v
@@ -155,6 +174,18 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Could not install release Qt.' }
           "$env:RUNNER_TEMP/Qt/6.10.3/msvc2022_64/bin" >> $env:GITHUB_PATH
           "CMAKE_PREFIX_PATH=$env:RUNNER_TEMP/Qt/6.10.3/msvc2022_64" >> $env:GITHUB_ENV
+      - name: Prepare exact attested Windows Browser SDK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -B release/packaging/prepare-browser-sdk.py `
+            --lock release/dependencies/spatialweb-browser.lock.json `
+            --platform windows-amd64 --output "$env:RUNNER_TEMP/browser-sdk"
+          if ($LASTEXITCODE -ne 0) { throw 'Browser SDK preparation failed.' }
+          "CMAKE_PREFIX_PATH=$env:RUNNER_TEMP/browser-sdk;$env:CMAKE_PREFIX_PATH" >> $env:GITHUB_ENV
+          "$env:RUNNER_TEMP/browser-sdk/bin" >> $env:GITHUB_PATH
       - name: Build native terminal and installed-shell fixtures
         shell: pwsh
         run: |
