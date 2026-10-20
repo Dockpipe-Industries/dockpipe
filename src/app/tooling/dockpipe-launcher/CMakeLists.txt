@@ -290,8 +290,11 @@ target_compile_definitions(dockpipe-launcher-ui
     INTERFACE DOCKPIPE_LAUNCHER_UI_USE)
 set_target_properties(dockpipe-launcher-ui PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON VERSION 1.0 SOVERSION 1
     BUILD_RPATH_USE_ORIGIN TRUE)
-target_include_directories(dockpipe-launcher-ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src"
-    $<TARGET_PROPERTY:dockpipe-syntax,INTERFACE_INCLUDE_DIRECTORIES>)
+target_include_directories(dockpipe-launcher-ui PUBLIC
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
+    "$<BUILD_INTERFACE:$<TARGET_PROPERTY:dockpipe-syntax,INTERFACE_INCLUDE_DIRECTORIES>>"
+    "$<INSTALL_INTERFACE:include/dockpipe-launcher>"
+    "$<INSTALL_INTERFACE:include/dockpipe-launcher/syntax>")
 target_link_libraries(dockpipe-launcher-ui PUBLIC Qt6::Widgets Qt6::Network PRIVATE dockpipe-syntax Qt6::Concurrent)
 if(WIN32)
     target_link_libraries(dockpipe-launcher-ui PRIVATE user32 gdi32 advapi32 shell32 ole32)
@@ -374,8 +377,11 @@ add_library(dockpipe-browser STATIC
     src/BrowserDownloads.cpp src/BrowserAnnotationDialog.cpp src/BrowserExtensionsDialog.cpp
     ${DOCKPIPE_TERMINAL_SOURCES} src/TerminalShellCatalog.cpp src/TerminalHub.cpp src/TerminalWidget.cpp src/TerminalBridge.h src/TerminalPreferences.cpp src/TerminalSettingsDialog.cpp
     src/SendInputWidget.cpp terminal.qrc)
-target_include_directories(dockpipe-browser PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_include_directories(dockpipe-browser PUBLIC
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
+    "$<INSTALL_INTERFACE:include/dockpipe-launcher>")
 target_link_libraries(dockpipe-browser PUBLIC Qt6::WebEngineWidgets Qt6::PrintSupport Qt6::WebChannel dockpipe-launcher-ui)
+include(cmake/LauncherSDK.cmake)
 if(APPLE)
     target_link_libraries(dockpipe-browser PRIVATE proc)
 endif()
@@ -592,17 +598,17 @@ if(BUILD_TESTING)
         "QT_QPA_PLATFORM=offscreen;DOCKPIPE_WORKSPACE_PACKAGE=${CMAKE_CURRENT_BINARY_DIR}/workspace-fixture" TIMEOUT 30)
 endif()
 
-# Explicit developer integration only. The normal launcher has no dependency on
-# the package source tree. Installed builds discover
-# the package through Dockpipe's resolver store when the user enables the feature.
-set(DOCKPIPE_COCKPIT_SOURCE "" CACHE PATH "Optional Cockpit package source for development/testing")
+# Optional package source belongs to SpatialPipe. Host qualification uses only
+# already-built assets through the same loader used by installed applications.
 if(DOCKPIPE_COCKPIT_SOURCE)
-    set(DOCKPIPE_LAUNCHER_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-    add_subdirectory("${DOCKPIPE_COCKPIT_SOURCE}" "${CMAKE_CURRENT_BINARY_DIR}/cockpit-package")
-    if(BUILD_TESTING)
-        set_tests_properties(remote-launcher launcher-settings PROPERTIES ENVIRONMENT
-            "QT_QPA_PLATFORM=offscreen;DOCKPIPE_WORKSPACE_PACKAGE=${CMAKE_CURRENT_BINARY_DIR}/cockpit-package/assets;DOCKPIPE_COCKPIT_READER=$<TARGET_FILE:cockpit-reader>")
+    message(FATAL_ERROR "DOCKPIPE_COCKPIT_SOURCE was removed; use DOCKPIPE_COCKPIT_ASSETS")
+endif()
+set(DOCKPIPE_COCKPIT_ASSETS "" CACHE PATH "Installed Cockpit assets for host loader/rendering qualification")
+if(DOCKPIPE_COCKPIT_ASSETS)
+    if(NOT BUILD_TESTING)
+        message(FATAL_ERROR "DOCKPIPE_COCKPIT_ASSETS requires BUILD_TESTING=ON")
     endif()
+    include(cmake/InstalledCockpitTest.cmake)
 endif()
 
 if(BUILD_TESTING)

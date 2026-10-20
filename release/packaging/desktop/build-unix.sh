@@ -42,18 +42,26 @@ elif [[ "$(uname -m)" == x86_64 ]]; then
   args+=("-DCMAKE_PREFIX_PATH=$DOCKPIPE_QT_ROOT"
          "-DCMAKE_CXX_FLAGS_RELEASE=-O2 -g -DNDEBUG -ffile-prefix-map=$root=. -ffile-prefix-map=$build=.")
 fi
-if [[ "${DOCKPIPE_BUILD_COCKPIT:-0}" == 1 ]]; then
+if [[ "${DOCKPIPE_QUALIFY_COCKPIT:-0}" == 1 ]]; then
   [[ "$(uname -s)" == Linux && "$(uname -m)" == x86_64 ]]
   export DOCKPIPE_GIT_TEST_CLI="$root/src/bin/dockpipe"
   [[ -x "$DOCKPIPE_GIT_TEST_CLI" ]]
-  args+=("-DDOCKPIPE_COCKPIT_SOURCE=$root/packages/cockpit"
-         "-DForgePipe_DIR=${DOCKPIPE_FORGEPIPE_SDK:?Verified native SDK required}/lib/cmake/ForgePipe")
+  python3 "$root/release/packaging/prepare-cockpit.py" verify-store \
+    --lock "$root/release/cockpit.lock.json" --store "${DOCKPIPE_COCKPIT_STORE:?Verified Cockpit store required}"
+  assets="$(python3 "$root/release/packaging/prepare-cockpit.py" extract \
+    --lock "$root/release/cockpit.lock.json" --store "$DOCKPIPE_COCKPIT_STORE" --output "$build/cockpit-runtime")"
+  args+=("-DDOCKPIPE_COCKPIT_ASSETS=$assets")
 fi
 cmake "${args[@]}"
+if [[ "${DOCKPIPE_QUALIFY_COCKPIT:-0}" == 1 ]]; then
+  python3 "$root/release/packaging/prepare-cockpit.py" verify-compiler \
+    --lock "$root/release/cockpit.lock.json" --store "$DOCKPIPE_COCKPIT_STORE" --build "$build"
+fi
 cmake --build "$build" --parallel 2
 ctest --test-dir "$build" --output-on-failure
-if [[ "${DOCKPIPE_BUILD_COCKPIT:-0}" == 1 ]]; then
-  bash "$root/packages/cockpit/assets/scripts/package-release.sh" "$version" "$build" "$out/cockpit-store"
+if [[ "${DOCKPIPE_QUALIFY_COCKPIT:-0}" == 1 ]]; then
+  [[ ! -e "$out/cockpit-store" ]]
+  cp -R "$DOCKPIPE_COCKPIT_STORE" "$out/cockpit-store"
 fi
 if [[ "$(uname -s)" == Darwin ]]; then
   bash "$root/release/packaging/desktop/macos/package.sh" "$version" "$build/DockPipe.app" "$out"

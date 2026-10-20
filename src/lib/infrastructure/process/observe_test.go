@@ -39,8 +39,15 @@ func TestObserverCancellationKeepsSupervision(t *testing.T) {
 	defer cancel()
 	command := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestObserverChild$")
 	command.Env = append(os.Environ(), "DOCKPIPE_OBSERVER_CHILD=1")
+	// Keep the child's read blocked until supervision cancels it. A nil Stdin
+	// supplies EOF, allowing the child to exit successfully before cancellation.
+	stdin, err := command.StdinPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stdin.Close()
 	finished := false
-	err := RunObserved(command, func(observed *exec.Cmd) func(error) {
+	err = RunObserved(command, func(observed *exec.Cmd) func(error) {
 		if observed.Process == nil {
 			t.Fatal("missing PID after start")
 		}
