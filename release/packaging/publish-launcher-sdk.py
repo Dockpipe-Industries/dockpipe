@@ -79,6 +79,21 @@ def verify_release(release, tag, source_sha, assets):
             raise ValueError("Remote candidate bytes differ; published bytes are never replaced")
 
 
+def verify_tag(reference, source_sha, *, allow_missing=False):
+    if reference is None and allow_missing:
+        return
+    target = reference.get("target") if isinstance(reference, dict) else None
+    for _ in range(3):
+        if not isinstance(target, dict):
+            break
+        if target.get("__typename") == "Commit" and target.get("oid") == source_sha:
+            return
+        if target.get("__typename") != "Tag":
+            break
+        target = target.get("target")
+    raise ValueError("Candidate tag does not resolve to the exact qualified source commit")
+
+
 def publish(directory):
     source_sha = os.environ.get("GITHUB_SHA", "")
     if (os.environ.get("GITHUB_REPOSITORY") != REPOSITORY
@@ -90,15 +105,24 @@ def publish(directory):
     tag = "launcher-sdk-1.0.0-staging." + source_sha
     # GraphQL returns null for an absent release without conflating authentication
     # and network errors with absence.
-    query = """query($owner:String!,$name:String!,$tag:String!){
-      repository(owner:$owner,name:$name){release(tagName:$tag){tagName}}
+    query = """query($owner:String!,$name:String!,$tag:String!,$ref:String!){
+      repository(owner:$owner,name:$name){
+        release(tagName:$tag){tagName}
+        ref(qualifiedName:$ref){target{
+          __typename oid ... on Tag {target{
+            __typename oid ... on Tag {target{__typename oid}}
+          }}
+        }}
+      }
     }"""
-    existing = json.loads(run([
+    query_arguments = [
         "gh", "api", "graphql", "-f", "query=" + query, "-f", "owner=Dockpipe-Industries",
-        "-f", "name=dockpipe", "-f", "tag=" + tag,
-    ]))
+        "-f", "name=dockpipe", "-f", "tag=" + tag, "-f", "ref=refs/tags/" + tag,
+    ]
+    existing = json.loads(run(query_arguments))
     if existing.get("errors"):
         raise ValueError("Could not establish whether candidate already exists")
+    verify_tag(existing["data"]["repository"]["ref"], source_sha, allow_missing=True)
     if existing["data"]["repository"]["release"] is None:
         run([
             "gh", "release", "create", tag, *[str(directory / name) for name in sorted(ASSETS)],
@@ -110,6 +134,12 @@ def publish(directory):
     endpoint = f"repos/{REPOSITORY}/releases/tags/{tag}"
     release = json.loads(run(["gh", "api", endpoint]))
     verify_release(release, tag, source_sha, assets)
+    tag_state = json.loads(run(query_arguments))
+    if tag_state.get("errors"):
+        raise ValueError("Could not verify candidate tag")
+    # GitHub may defer creating a new tag until the draft is published.
+    verify_tag(tag_state["data"]["repository"]["ref"], source_sha,
+               allow_missing=release["draft"])
     if release["draft"]:
         run(["gh", "release", "edit", tag, "--repo", REPOSITORY,
              "--draft=false", "--prerelease", "--latest=false"])
@@ -117,6 +147,10 @@ def publish(directory):
     verify_release(final, tag, source_sha, assets)
     if final["draft"]:
         raise ValueError("SDK candidate remains a draft")
+    tag_state = json.loads(run(query_arguments))
+    if tag_state.get("errors"):
+        raise ValueError("Could not verify published candidate tag")
+    verify_tag(tag_state["data"]["repository"]["ref"], source_sha)
     print(final["html_url"])
 
 
