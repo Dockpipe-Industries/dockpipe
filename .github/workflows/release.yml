@@ -63,7 +63,7 @@ jobs:
             --exports release/packaging/forgepipe-public-exports.txt \
             --tag "$FORGEPIPE_SDK_TAG" --output "$RUNNER_TEMP/forgepipe-sdk-attestation"
       - name: Attest the audited SDK and source-bound metadata
-        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
           subject-path: |
             ${{ runner.temp }}/forgepipe-sdk-attestation/*.tar.gz
@@ -272,7 +272,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends apt-utils gnupg python3-yaml
           /usr/bin/python3 -m unittest discover -s release/packaging/tests -v
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v7.0.2
         with:
           name: release-${{ matrix.platform }}
           path: release/artifacts/
@@ -383,7 +383,7 @@ jobs:
         if: needs.meta.outputs.build_msi == 'true'
         shell: pwsh
         run: Copy-Item bin/msi-dist/*.msi release/artifacts/
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v7.0.2
         with:
           name: release-windows-amd64
           path: release/artifacts/
@@ -463,7 +463,7 @@ jobs:
 
       - name: Upload dry-run artifacts
         if: needs.meta.outputs.dry_run == 'true'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: dockpipe-release-dry-run-${{ needs.meta.outputs.version }}
           path: |
@@ -473,7 +473,7 @@ jobs:
 
       - name: Upload prepared production artifacts
         if: needs.meta.outputs.dry_run == 'false'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: dockpipe-release-prepared-${{ needs.meta.outputs.version }}
           path: release/artifacts/

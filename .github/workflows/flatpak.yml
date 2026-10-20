@@ -126,13 +126,13 @@ jobs:
           cp "$RUNNER_TEMP/flatpak/"*.flatpak release/artifacts/
           cp "$RUNNER_TEMP/flatpak-catalog/store/"* "release/artifacts/stores/$target/"
           cp "$RUNNER_TEMP/flatpak-catalog/qualification.json" "release/artifacts/stores/$target/"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v7.0.2
         if: inputs.version != ''
         with:
           name: release-flatpak
           path: release/artifacts/
           if-no-files-found: error
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v7.0.2
         if: inputs.version == ''
         with:
           name: flatpak-qualification-amd64
