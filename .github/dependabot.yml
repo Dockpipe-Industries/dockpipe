@@ -1,42 +1,132 @@
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 #
 # Version updates integrate through `dev`. Security updates use the default branch
-# regardless of target-branch; maintainers retarget them to dev before qualification.
+# regardless of target-branch; qualify matching dependency fixes through dev.
 version: 2
 updates:
-  - package-ecosystem: "gomod"
-    directory: "/"
-    target-branch: "dev"
+  - package-ecosystem: gomod
+    directory: /
+    target-branch: dev
     schedule:
-      interval: "weekly"
+      interval: weekly
     open-pull-requests-limit: 5
     labels:
-      - "dependencies"
-      - "go"
-
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    target-branch: "dev"
+      - dependencies
+      - go
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
     schedule:
-      interval: "weekly"
+      interval: weekly
     open-pull-requests-limit: 5
     labels:
-      - "dependencies"
-      - "github-actions"
+      - dependencies
+      - github-actions
     groups:
       actions:
         patterns:
-          - "*"
-
-  - package-ecosystem: "cargo"
-    directory: "/packages/pipeon/apps/pipeon-desktop/src-tauri"
-    target-branch: "dev"
+          - '*'
+  - package-ecosystem: gomod
+    directory: /packages/vm/tools
+    target-branch: dev
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
+      interval: weekly
+    open-pull-requests-limit: 2
     groups:
-      pipeon-desktop:
+      minor-and-patch:
         patterns:
-          - "*"
+          - '*'
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: npm
+    directory: /release/packaging/desktop/flatpak/wrangler
+    target-branch: dev
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    groups:
+      minor-and-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: terraform
+    directory: /packages/cloud/storage/resolvers/r2/dockpipe.cloudflare.r2infra/terraform
+    target-branch: dev
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    groups:
+      minor-and-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: docker
+    directory: /packages/agent/resolvers/claude/assets/images/claude
+    target-branch: dev
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    groups:
+      minor-and-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: docker
+    directory: /packages/agent/resolvers/codex/assets/images/codex
+    target-branch: dev
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    groups:
+      minor-and-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: docker
+    directory: /release/packaging/desktop
+    target-branch: dev
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    groups:
+      minor-and-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: docker
+    directory: /src/core/assets/images/base-dev
+    target-branch: dev
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    groups:
+      minor-and-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: docker
+    directory: /src/core/assets/images/minimal
+    target-branch: dev
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    groups:
+      minor-and-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
