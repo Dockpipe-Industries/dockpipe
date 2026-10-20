@@ -1,5 +1,8 @@
 """Deterministic host SDK archives and owned installed payload boundaries."""
 import importlib.util
+import json
+import shutil
+from unittest.mock import patch
 import os
 from pathlib import Path
 import tarfile
@@ -87,6 +90,10 @@ class LauncherSDKProducerTests(unittest.TestCase):
                 "packages/native-sdk/assets/scripts/elf_artifacts.py",
                 "release/packaging/desktop/licenses/Qt-LGPL-3.txt",
                 "release/packaging/desktop/licenses/Qt-GPL-3.txt",
+                "release/packaging/build-launcher-sdk.py",
+                "release/packaging/prepare-browser-sdk.py",
+                "release/packaging/desktop/browser-runtime.py",
+                "release/dependencies/spatialweb-browser.lock.json",
             ):
                 path = root / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -96,11 +103,67 @@ class LauncherSDKProducerTests(unittest.TestCase):
             cache.parent.mkdir()
             cache.write_bytes(b"generated")
             self.assertEqual(PRODUCER.source_identity(root), before)
+            dependency = root / "release/dependencies/spatialweb-browser.lock.json"
+            dependency.write_bytes(b"changed dependency pin")
+            self.assertNotEqual(PRODUCER.source_identity(root), before)
+            dependency.write_bytes(b"authored input")
             (root / "LICENSE").write_bytes(b"changed license")
             self.assertNotEqual(PRODUCER.source_identity(root), before)
             (root / PRODUCER.LAUNCHER / "sibling").symlink_to(root, target_is_directory=True)
             with self.assertRaisesRegex(ValueError, "directory aliases"):
                 PRODUCER.source_identity(root)
+
+
+FIXTURE_SPEC = importlib.util.spec_from_file_location("host_browser_fixtures", Path(__file__).with_name("test_prepare_browser_sdk.py"))
+FIXTURES = importlib.util.module_from_spec(FIXTURE_SPEC)
+FIXTURE_SPEC.loader.exec_module(FIXTURES)
+
+
+class BrowserDependencyBindingTests(unittest.TestCase):
+    setUp = FIXTURES.BrowserSDKPreparationTest.setUp
+    tearDown = FIXTURES.BrowserSDKPreparationTest.tearDown
+    write_lock = FIXTURES.BrowserSDKPreparationTest.write_lock
+    make_candidate = FIXTURES.BrowserSDKPreparationTest.make_candidate
+    prepare = FIXTURES.BrowserSDKPreparationTest.prepare
+
+    def source_fixture(self):
+        self.prepare()
+        source = self.root / "source"
+        repository = SCRIPT.parents[2]
+        for relative in ("release/packaging/prepare-browser-sdk.py", "release/packaging/desktop/browser-runtime.py"):
+            destination = source / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(repository / relative, destination)
+        lock_path = source / "release/dependencies/spatialweb-browser.lock.json"
+        lock_path.parent.mkdir(parents=True)
+        shutil.copy2(self.lock_path, lock_path)
+        return source
+
+    def test_producer_rejects_injected_browser_file_and_forged_receipt_identity(self):
+        source = self.source_fixture()
+        dependency = PRODUCER.browser_dependency(source, self.output)
+        self.assertEqual(self.lock["platforms"]["linux-amd64"]["compiler"], dependency["compiler"])
+        extra = self.output / "lib/injected.so"
+        extra.write_bytes(b"unadmitted library")
+        with self.assertRaisesRegex(ValueError, "inventory"):
+            PRODUCER.browser_dependency(source, self.output)
+        extra.unlink()
+        receipt_path = self.output / "consumer-receipt.json"
+        receipt = json.loads(receipt_path.read_text())
+        receipt["identity"]["compiler"]["version"] = "13.3.0"
+        receipt_path.write_text(json.dumps(receipt))
+        with self.assertRaisesRegex(ValueError, "receipt"):
+            PRODUCER.browser_dependency(source, self.output)
+
+    def test_packaging_rejects_compiler_abi_mismatch_before_writing_assets(self):
+        browser = {"compiler": {"id": "GNU", "version": "11.4.0"}}
+        with patch.object(PRODUCER, "compiler_identity", return_value={"id": "GNU", "version": "13.3.0"}), \
+                patch.object(PRODUCER, "inventory") as inventory:
+            with self.assertRaisesRegex(ValueError, "Browser SDK ABI"):
+                PRODUCER.package_sdk(self.root, self.root, "a" * 40, "b" * 64, self.root, browser)
+            inventory.assert_not_called()
+        with patch.object(PRODUCER, "compiler_identity", return_value=browser["compiler"]):
+            PRODUCER.verify_browser_compiler(self.root, browser)
 
 
 if __name__ == "__main__":

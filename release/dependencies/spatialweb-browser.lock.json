@@ -1,0 +1,120 @@
+{
+  "schema": 1,
+  "product": "SpatialWebBrowserSDK",
+  "version": "0.1.0",
+  "qt_version": "6.10.3",
+  "source_repository": "Dockpipe-Industries/Spatial-Web",
+  "source_sha": "7552a56fa219deccafbd37e4a8b4ffeed59da032",
+  "release": {
+    "repository": "Dockpipe-Industries/Spatial-Web",
+    "tag": "browser-sdk-0.1.0-staging.7552a56fa219deccafbd37e4a8b4ffeed59da032"
+  },
+  "platforms": {
+    "linux-amd64": {
+      "artifact": {
+        "name": "SpatialWebBrowserSDK-0.1.0-linux-amd64.tar.gz",
+        "sha256": "b279457fc205c9b0836e5ea030a6a7bf1d62f836c258dc2f6b8fc91cf5f378d1",
+        "size_bytes": 856657
+      },
+      "metadata": {
+        "name": "SpatialWebBrowserSDK-0.1.0-linux-amd64.release.json",
+        "sha256": "02e87f86235a8ef7dab836a405a178daaf01b6e41c633020809c894e1b0cadf1",
+        "size_bytes": 979
+      },
+      "file_manifest": {
+        "name": "SpatialWebBrowserSDK-0.1.0-linux-amd64.files.json",
+        "sha256": "fb91fe4f2a4f0227e76aa0113aa9e18a028afef686eb965eae3b40af0da15c49",
+        "size_bytes": 4930
+      },
+      "compiler": {
+        "id": "GNU",
+        "version": "11.4.0"
+      }
+    },
+    "linux-arm64": {
+      "artifact": {
+        "name": "SpatialWebBrowserSDK-0.1.0-linux-arm64.tar.gz",
+        "sha256": "700318341f2e468eefdff41fc7b89f27d6604007da12eeaf910d7dced97b7e3c",
+        "size_bytes": 825135
+      },
+      "metadata": {
+        "name": "SpatialWebBrowserSDK-0.1.0-linux-arm64.release.json",
+        "sha256": "5e2b292698218e8266ebce3d29689c69ec9856e5db872fd74d86ff6427a6481b",
+        "size_bytes": 979
+      },
+      "file_manifest": {
+        "name": "SpatialWebBrowserSDK-0.1.0-linux-arm64.files.json",
+        "sha256": "e9364d2abb0d5a48d4e74faa09a2d07eb5a4dc7ab3b3dd6bcb6f84b8a3fc4f8d",
+        "size_bytes": 4930
+      },
+      "compiler": {
+        "id": "GNU",
+        "version": "13.3.0"
+      }
+    },
+    "darwin-amd64": {
+      "artifact": {
+        "name": "SpatialWebBrowserSDK-0.1.0-darwin-amd64.tar.gz",
+        "sha256": "78ec0d48a52d7b2fd8177d26d2ce30cb58a42d49fa7ade1a13831daf9e5421a9",
+        "size_bytes": 639736
+      },
+      "metadata": {
+        "name": "SpatialWebBrowserSDK-0.1.0-darwin-amd64.release.json",
+        "sha256": "20a9085a3930ab229d9e2f90fcca329bee55532f2f7890307d5621600ba7f61d",
+        "size_bytes": 998
+      },
+      "file_manifest": {
+        "name": "SpatialWebBrowserSDK-0.1.0-darwin-amd64.files.json",
+        "sha256": "2b9fe33b0cfd5cf26d3849b0e398a06177fe008a2f9024be1aec7c08f636a606",
+        "size_bytes": 4939
+      },
+      "compiler": {
+        "id": "AppleClang",
+        "version": "17.0.0.17000013"
+      }
+    },
+    "darwin-arm64": {
+      "artifact": {
+        "name": "SpatialWebBrowserSDK-0.1.0-darwin-arm64.tar.gz",
+        "sha256": "349482bfc9b3caa349843ea6a54813a424123b7dba2f8a53b7b2cb0c560a4ca0",
+        "size_bytes": 625512
+      },
+      "metadata": {
+        "name": "SpatialWebBrowserSDK-0.1.0-darwin-arm64.release.json",
+        "sha256": "98b8bb9d5c0871a5542ac1bd7ef64ca72163aed8dccc4c8dd4cded5f27666990",
+        "size_bytes": 998
+      },
+      "file_manifest": {
+        "name": "SpatialWebBrowserSDK-0.1.0-darwin-arm64.files.json",
+        "sha256": "64d95345d16356de56afd14df7aeec118ec794c49bd4f612bf1fbe7a489049a0",
+        "size_bytes": 4939
+      },
+      "compiler": {
+        "id": "AppleClang",
+        "version": "17.0.0.17000013"
+      }
+    },
+    "windows-amd64": {
+      "artifact": {
+        "name": "SpatialWebBrowserSDK-0.1.0-windows-amd64.tar.gz",
+        "sha256": "ae0f1fa2bc3bd5646ffe294713f5e4761fa4de815234c827cd3481fb90614eeb",
+        "size_bytes": 238740
+      },
+      "metadata": {
+        "name": "SpatialWebBrowserSDK-0.1.0-windows-amd64.release.json",
+        "sha256": "7b3f627d5dd1c2d3b23149e2991340102fe55dfea28a88cf63143b98df3fc693",
+        "size_bytes": 1044
+      },
+      "file_manifest": {
+        "name": "SpatialWebBrowserSDK-0.1.0-windows-amd64.files.json",
+        "sha256": "ed5db4e81f9ef2b5025ee4fa0e2bbdeaef05cb1ce0f0eb7ad8074f8864364cdf",
+        "size_bytes": 4893
+      },
+      "compiler": {
+        "id": "MSVC",
+        "version": "19.51.36260.0"
+      },
+      "msvc_runtime": "dynamic-release-/MD"
+    }
+  }
+}

@@ -6,22 +6,27 @@ version="${1:?version}"
 out="$(realpath "${2:-$root/release/artifacts}")"
 probe="$(mktemp -d)"
 trap 'rm -rf "$probe"' EXIT
-if [[ "$(uname -m)" == x86_64 ]]; then
+case "$(uname -m)" in
+  x86_64) distributions=(22.04 24.04); builder_version=22.04; qt_kit=gcc_64 ;;
+  aarch64|arm64) distributions=(24.04); builder_version=24.04; qt_kit=gcc_arm64 ;;
+  *) echo 'Unsupported Linux desktop smoke architecture' >&2; exit 1 ;;
+esac
+if [[ "$(uname -s)" == Linux ]]; then
   # This private qualification executable is never placed in the release directory.
   docker run --rm --user "$(id -u):$(id -g)" \
     --mount "type=bind,source=$root/release/packaging/desktop,target=/checks,readonly" \
     --mount "type=bind,source=$probe,target=/probe" \
-    dockpipe-desktop-builder:ubuntu22.04-qt6.10.3 bash -c '
+    "dockpipe-desktop-builder:ubuntu${builder_version}-qt6.10.3" bash -c '
       set -euo pipefail
       cd /probe
       printf "%s\n" "QT += webenginewidgets" "CONFIG += c++17 release" \
         "SOURCES = /checks/linux-browser-smoke.cpp" "TARGET = browser-smoke" \
         "QMAKE_RPATHDIR = /usr/lib/dockpipe/lib" > browser-smoke.pro
-      /opt/Qt/6.10.3/gcc_64/bin/qmake browser-smoke.pro
+      "/opt/Qt/6.10.3/$1/bin/qmake" browser-smoke.pro
       make -j2
-    '
+    ' bash "$qt_kit"
 fi
-for distribution in 22.04 24.04; do
+for distribution in "${distributions[@]}"; do
   docker run --rm --env DEBIAN_FRONTEND=noninteractive \
     --mount "type=bind,source=$out,target=/artifacts,readonly" \
     --mount "type=bind,source=$root/release/packaging/desktop,target=/checks,readonly" \
@@ -40,7 +45,7 @@ for distribution in 22.04 24.04; do
         "/artifacts/dockpipe-desktop_${version}_${arch}.deb"
       test -f /usr/share/applications/dockpipe-launcher.desktop
       test -f /usr/share/icons/hicolor/256x256/apps/dockpipe-launcher.png
-      if [[ "$arch" == amd64 ]]; then
+      if [[ "$arch" == amd64 || "$arch" == arm64 ]]; then
         python3 /checks/check-linux-runtime.py /usr/lib/dockpipe
         ! dpkg-query -W -f="\${Depends}" dockpipe-desktop | grep -E "libqt6|qt6-qpa"
         test -f /usr/share/doc/dockpipe-desktop/qt/Qt-LGPL-3.txt

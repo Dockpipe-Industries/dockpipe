@@ -12,7 +12,9 @@ import sys
 def check(runtime):
     runtime = runtime.resolve()
     manifest = json.loads((runtime / "runtime.json").read_text())
-    if manifest["qt"] != "6.10.3" or manifest["platform"] != "linux-amd64":
+    baselines = {"linux-amd64": "2.35", "linux-arm64": "2.39"}
+    if (manifest["qt"] != "6.10.3" or manifest["platform"] not in baselines
+            or manifest.get("glibc_max") != baselines[manifest["platform"]]):
         raise RuntimeError("Unexpected deployed Qt runtime identity")
     environment = dict(os.environ)
     for name in ("LD_LIBRARY_PATH", "QT_PLUGIN_PATH", "QT_QPA_PLATFORM_PLUGIN_PATH",
@@ -27,13 +29,13 @@ def check(runtime):
         output = subprocess.check_output(["ldd", str(binary)], env=environment, text=True, timeout=30)
         if "not found" in output:
             raise RuntimeError(f"Incomplete deployed dependencies: {relative}\n{output}")
-        for library, path in re.findall(r"(libQt6\S+) => (/\S+)", output):
+        for library, path in re.findall(r"(lib(?:Qt6|SpatialWebBrowser)\S+) => (/\S+)", output):
             if not Path(path).resolve().is_relative_to(runtime):
                 raise RuntimeError(f"{library} escaped the bundled runtime: {path}")
         sections = subprocess.check_output(["readelf", "-S", "--wide", str(binary)], text=True, timeout=30)
         if re.search(r"\.(?:z?debug)[_.]", sections):
             raise RuntimeError(f"Debug sections shipped in {relative}")
-    for relative in ("libexec/QtWebEngineProcess", "resources/qtwebengine_resources.pak",
+    for relative in ("bin/dockpipe-workspace-reader", "lib/libSpatialWebBrowser.so.0", "libexec/QtWebEngineProcess", "resources/qtwebengine_resources.pak",
                      "translations/qtwebengine_locales/en-US.pak", "plugins/platforms/libqxcb.so"):
         if not (runtime / relative).is_file():
             raise RuntimeError(f"Missing deployed runtime file: {relative}")

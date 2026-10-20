@@ -3,6 +3,7 @@
 // The package implementation and its feature tests remain owned by SpatialPipe.
 #include "WorkspacePackageManager.h"
 #include <QApplication>
+#include <QFile>
 #include <QElapsedTimer>
 #include <QGraphicsView>
 #include <QKeyEvent>
@@ -132,6 +133,18 @@ int main(int argc, char **argv)
     idle(500);
     auto *flight = surface->findChild<QGraphicsView *>("workspaceDroneFlight");
     CHECK(flight);
+    // Installed compatibility qualification records actual loaded providers.
+    // Ordinary rendering tests do not read or write this diagnostic.
+    const QString mapsPath = qEnvironmentVariable("DOCKPIPE_PACKAGE_RENDER_MAPS");
+    if (!mapsPath.isEmpty()) {
+        QFile mappings(QStringLiteral("/proc/self/maps"));
+        CHECK(mappings.open(QIODevice::ReadOnly));
+        const QByteArray bytes = mappings.read(1024 * 1024);
+        CHECK(mappings.atEnd());
+        QFile output(mapsPath);
+        CHECK(output.open(QIODevice::WriteOnly | QIODevice::NewOnly));
+        CHECK(output.write(bytes) == bytes.size());
+    }
     QOpenGLContext probe;
     CHECK(probe.create());
     QOffscreenSurface probeSurface;

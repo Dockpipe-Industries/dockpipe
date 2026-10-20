@@ -9,6 +9,13 @@ on:
       - packages/native-sdk/**
       - release/packaging/desktop/licenses/**
       - release/packaging/desktop/install-linux-qt.sh
+      - release/dependencies/spatialweb-browser.lock.json
+      - release/packaging/desktop/browser-runtime.py
+      - release/packaging/desktop/test_browser_runtime.py
+      - release/packaging/prepare-browser-sdk.py
+      - release/packaging/prepare-flatpak-browser-sdk.py
+      - release/packaging/tests/test_prepare_flatpak_browser_sdk.py
+      - release/packaging/tests/test_prepare_browser_sdk.py
       - release/packaging/build-launcher-sdk.py
       - release/packaging/publish-launcher-sdk.py
       - release/packaging/tests/test_launcher_sdk_producer.py
@@ -22,6 +29,13 @@ on:
       - packages/native-sdk/**
       - release/packaging/desktop/licenses/**
       - release/packaging/desktop/install-linux-qt.sh
+      - release/dependencies/spatialweb-browser.lock.json
+      - release/packaging/desktop/browser-runtime.py
+      - release/packaging/desktop/test_browser_runtime.py
+      - release/packaging/prepare-browser-sdk.py
+      - release/packaging/prepare-flatpak-browser-sdk.py
+      - release/packaging/tests/test_prepare_flatpak_browser_sdk.py
+      - release/packaging/tests/test_prepare_browser_sdk.py
       - release/packaging/build-launcher-sdk.py
       - release/packaging/publish-launcher-sdk.py
       - .github/workflows/launcher-sdk-candidate.yml
@@ -31,6 +45,9 @@ permissions:
 
 jobs:
   build:
+    permissions:
+      contents: read
+      attestations: read
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     steps:
@@ -44,18 +61,26 @@ jobs:
             build-essential cmake ninja-build python3-venv libgl1-mesa-dev \
             libegl1-mesa-dev libxkbcommon-dev libxkbcommon-x11-0 libxcb-cursor0 \
             libx11-dev libxcomposite-dev libxrender-dev libxres-dev libxext-dev \
-            libxcb1-dev libnss3 libasound2
+            libxcb1-dev libnss3 libasound2 libopus0 libminizip1
       - name: Install matching Qt SDK
         run: bash release/packaging/desktop/install-linux-qt.sh "$RUNNER_TEMP/Qt"
       - name: Qualify SDK archive producer
         run: |
+          python3 -B -m unittest discover -s release/packaging/tests -p test_prepare_browser_sdk.py -v
+          python3 -B -m unittest discover -s release/packaging/desktop -p test_browser_runtime.py -v
           python3 -B -m unittest discover -s release/packaging/tests -p test_launcher_sdk_producer.py -v
           python3 -B -m unittest discover -s release/packaging/tests -p test_publish_launcher_sdk.py -v
+      - name: Prepare the exact attested Browser SDK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 release/packaging/prepare-browser-sdk.py --lock release/dependencies/spatialweb-browser.lock.json \
+            --platform linux-amd64 --output "$RUNNER_TEMP/browser-sdk"
       - name: Build and qualify relocated SDK
         run: |
           python3 -B release/packaging/build-launcher-sdk.py \
             --source-root "$GITHUB_WORKSPACE" --source-sha "$GITHUB_SHA" \
-            --qt-root "$RUNNER_TEMP/Qt/6.10.3/gcc_64" \
+            --qt-root "$RUNNER_TEMP/Qt/6.10.3/gcc_64" --browser-sdk "$RUNNER_TEMP/browser-sdk" \
             --work-directory "$RUNNER_TEMP/launcher-sdk-build" \
             --output "$RUNNER_TEMP/launcher-sdk" --jobs 2
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
