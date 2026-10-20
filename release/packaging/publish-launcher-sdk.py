@@ -26,7 +26,11 @@ def digest(path):
 def run(arguments):
     result = subprocess.run(arguments, capture_output=True, text=True, timeout=300)
     if result.returncode:
-        raise ValueError(f"Candidate operation failed: {arguments[0]} {arguments[1]}")
+        status = re.search(r"\bHTTP ([1-5][0-9]{2})\b", result.stderr or "")
+        details = f"exit {result.returncode}"
+        if status:
+            details += f"; HTTP {status.group(1)}"
+        raise ValueError(f"Candidate operation failed: {arguments[0]} {arguments[1]} ({details})")
     if len(result.stdout) > 2 << 20:
         raise ValueError("Candidate operation response exceeds metadata capacity")
     return result.stdout
@@ -94,6 +98,32 @@ def verify_tag(reference, source_sha, *, allow_missing=False):
     raise ValueError("Candidate tag does not resolve to the exact qualified source commit")
 
 
+def find_release(tag):
+    # The tag endpoint can return 404 for an authenticated draft. The release
+    # inventory includes drafts; bind its numeric ID before reading assets.
+    for page in range(1, 6):
+        endpoint = f"repos/{REPOSITORY}/releases?per_page=100&page={page}"
+        releases = json.loads(run(["gh", "api", "--hostname", "github.com", endpoint]))
+        if (not isinstance(releases, list) or len(releases) > 100
+                or any(not isinstance(release, dict) for release in releases)):
+            raise ValueError("Candidate release inventory is invalid")
+        matches = [release for release in releases if release.get("tag_name") == tag]
+        if len(matches) > 1:
+            raise ValueError("Candidate release tag is ambiguous")
+        if matches:
+            release_id = matches[0].get("id")
+            if type(release_id) is not int or release_id <= 0:
+                raise ValueError("Candidate release ID is invalid")
+            endpoint = f"repos/{REPOSITORY}/releases/{release_id}"
+            release = json.loads(run(["gh", "api", "--hostname", "github.com", endpoint]))
+            if not isinstance(release, dict) or release.get("id") != release_id or release.get("tag_name") != tag:
+                raise ValueError("Candidate release identity changed during lookup")
+            return release
+        if len(releases) < 100:
+            return None
+    raise ValueError("Candidate release lookup exceeds capacity; no publication attempted")
+
+
 def publish(directory):
     source_sha = os.environ.get("GITHUB_SHA", "")
     if (os.environ.get("GITHUB_REPOSITORY") != REPOSITORY
@@ -103,8 +133,8 @@ def publish(directory):
         raise ValueError("SDK publication requires an exact accepted dev push")
     assets = validate(directory, source_sha)
     tag = "launcher-sdk-1.0.0-staging." + source_sha
-    # GraphQL returns null for an absent release without conflating authentication
-    # and network errors with absence.
+    # GraphQL establishes the tag target; the REST inventory below discovers
+    # drafts without treating a tag-endpoint 404 as release absence.
     query = """query($owner:String!,$name:String!,$tag:String!,$ref:String!){
       repository(owner:$owner,name:$name){
         release(tagName:$tag){tagName}
@@ -122,8 +152,10 @@ def publish(directory):
     existing = json.loads(run(query_arguments))
     if existing.get("errors"):
         raise ValueError("Could not establish whether candidate already exists")
-    verify_tag(existing["data"]["repository"]["ref"], source_sha, allow_missing=True)
-    if existing["data"]["repository"]["release"] is None:
+    release = find_release(tag)
+    verify_tag(existing["data"]["repository"]["ref"], source_sha,
+               allow_missing=release is None or release.get("draft") is True)
+    if release is None:
         run([
             "gh", "release", "create", tag, *[str(directory / name) for name in sorted(ASSETS)],
             "--repo", REPOSITORY, "--target", source_sha, "--draft", "--prerelease",
@@ -131,8 +163,10 @@ def publish(directory):
             "--notes", "Qualified installed host SDK for SpatialPipe/Cockpit candidate builds. "
             "No Dockpipe application release or production channel update.",
         ])
-    endpoint = f"repos/{REPOSITORY}/releases/tags/{tag}"
-    release = json.loads(run(["gh", "api", endpoint]))
+        release = find_release(tag)
+    if release is None:
+        raise ValueError("Created candidate draft is unavailable in the release inventory")
+    endpoint = f"repos/{REPOSITORY}/releases/{release['id']}"
     verify_release(release, tag, source_sha, assets)
     tag_state = json.loads(run(query_arguments))
     if tag_state.get("errors"):
