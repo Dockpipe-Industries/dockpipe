@@ -14,13 +14,14 @@ a separate gate from the current staging delivery.
 | DorkPipe | `check`, `build`, `test`, `test.integration`, `editor.candidate`, `sdk.candidate`, `package.candidate`, `package.compile`, `package.delivery` | Agentic package, MCP and both VS Code extensions |
 | Pipeon | `check`, `test`, `package.candidate`, `package.compile`, `package.delivery` | Paused package; six resolver/workflow discovery entries hidden |
 | Nucleon | `check`, `build`, `test`, `sdk.candidate` | Independent native compression SDK; codec/research safeguards retained |
-| MesaMoto | `check` | Local scaffold; game extraction and standalone application pending |
-| SpatialPipe | `check` | Local scaffold; offline library/application extraction pending |
-| Spatial-Web | `check` | Local scaffold; public library/browser extraction pending |
+| MesaMoto | Native checks, standalone/session qualification and candidate producer | Game implementation/content and standalone shell extracted; delivery qualification tracked separately |
+| SpatialPipe | Native runtime/Scene/app checks and independent Cockpit candidate producer | Offline runtime/Scene/application plus separate trusted host package; exact installed SDK consumers |
+| Spatial-Web | `check`, `build`, `test`; independent Browser matrix and optional Projection candidate producer | Qt-only ordinary Browser; separate composition/Projection and browser shell |
 
-MesaMoto, SpatialPipe and Spatial-Web have existing empty remote repositories and
-local scaffolds without a Git checkout connection. A scaffold check does not
-qualify an application or publish its source.
+The three product source extractions and candidate producers have advanced beyond the
+initial scaffolds. A source PR, local build or producer definition still does not qualify
+all platform binaries or prove package delivery. The canonical ownership checkpoint records
+current local proof and remaining hosted/staging gates.
 
 ## Models and ownership
 

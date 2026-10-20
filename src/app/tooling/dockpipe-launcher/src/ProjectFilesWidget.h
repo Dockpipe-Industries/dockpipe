@@ -11,7 +11,7 @@ class QPlainTextEdit;
 class QLabel;
 class QTextDocument;
 class QStackedWidget;
-class LauncherFileSurface;
+class WorkspaceGraphWidget;
 class QSplitter;
 class QPushButton;
 class QToolButton;
@@ -40,8 +40,6 @@ public:
     void applyCockpitSettings(const CockpitSettings &settings);
     void openGraph();
     void closeGraph();
-    void closeFlightEditor();
-    bool flightEditorOpen() const { return m_flightHud != nullptr; }
 
 signals:
     void workflowOpenRequested(const QString &path);
@@ -59,8 +57,6 @@ private:
     void updateTitle();
     void clearFile();
     void updateEditorStatus();
-    void openFlightEditor(const QString &path);
-    void positionFlightEditor();
     void updateMarkdownPreview();
     void renderMarkdownPreview();
     bool navigateExplorer(const QString &directory);
@@ -93,9 +89,5 @@ private:
     QLabel *m_editorStatus = nullptr;
     QSplitter *m_splitter;
     QWidget *m_workspace;
-    QWidget *m_flightHud = nullptr;
-    QList<int> m_splitterSizes;
-    LauncherFileSurface *m_graph = nullptr;
-    CockpitSettings m_cockpitSettings;
-    bool m_graphRequested = false;
+    WorkspaceGraphWidget *m_graph = nullptr;
 };

@@ -17,6 +17,14 @@ case "$arch" in
   aarch64) goarch=arm64 ;;
   *) echo "Unsupported Flatpak architecture: $arch" >&2; exit 1 ;;
 esac
+browser_sdk="$(realpath "${DOCKPIPE_FLATPAK_BROWSER_SDK:?Prepare the exact qualified Flatpak Browser SDK first}")"
+cockpit_assets="$(realpath "${DOCKPIPE_FLATPAK_COCKPIT_ASSETS:?Prepare the exact locked Cockpit compatibility fixture first}")"
+browser_platform="linux-$goarch-flatpak-kde-6.10"
+browser_lock="$root/release/dependencies/spatialweb-flatpak-browser.lock.json"
+python3 -B "$root/release/packaging/prepare-flatpak-browser-sdk.py" --lock "$browser_lock" \
+  --platform "$browser_platform" --verify-installed-refs
+python3 -B "$root/release/packaging/desktop/browser-runtime.py" --sdk "$browser_sdk" \
+  --lock "$browser_lock" --profile flatpak --platform "$browser_platform"
 # No implicit dependency installation or system changes in a release build.
 flatpak info "org.kde.Sdk//$runtime_branch" >/dev/null
 flatpak info "org.kde.Platform//$runtime_branch" >/dev/null
@@ -26,7 +34,11 @@ out="$(realpath "$out")"
 app="$out/app"
 flatpak build-init --base=io.qt.qtwebengine.BaseApp --base-version="$runtime_branch" \
   "$app" "$app_id" org.kde.Sdk org.kde.Platform "$runtime_branch"
+flatpak build --filesystem="$browser_sdk:ro" --filesystem="$root/release/packaging/desktop/flatpak:ro" "$app" \
+  bash "$root/release/packaging/desktop/flatpak/verify-browser-abi.sh" "$browser_sdk" > "$out/browser-abi.txt"
 mkdir -p "$app/files/bin" "$app/files/libexec/dockpipe"
+python3 "$root/release/packaging/desktop/browser-runtime.py" --sdk "$browser_sdk" --lock "$browser_lock" --profile flatpak --platform "$browser_platform" \
+  --runtime "$app/files/lib" --licenses "$app/files/share/licenses/SpatialWebBrowser"
 install -m755 "$cli" "$app/files/libexec/dockpipe/dockpipe"
 for command in dockpipe dockpipe-launcher; do
   install -m755 "$root/release/packaging/desktop/flatpak/entrypoint.sh" "$app/files/bin/$command"
@@ -59,31 +71,36 @@ flatpak build --filesystem="$out" "$app" meson compile -C "$out/xres-build" -j 2
 flatpak build --filesystem="$out" "$app" meson install -C "$out/xres-build"
 mkdir -p "$app/files/share/licenses/libXRes"
 install -m644 "$out/libXres-1.2.3/COPYING" "$app/files/share/licenses/libXRes/COPYING"
-flatpak build --filesystem="$source_dir:ro" --filesystem="$out" "$app" \
+flatpak build --filesystem="$source_dir:ro" --filesystem="$browser_sdk:ro" --filesystem="$cockpit_assets:ro" --filesystem="$out" "$app" \
   cmake -S "$source_dir" -B "$out/qt-build" -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_PREFIX_PATH=/app \
+  "-DCMAKE_PREFIX_PATH=$browser_sdk;/app" \
+  -DDOCKPIPE_BROWSER_ABI_PROFILE=flatpak-kde-6.10 \
+  "-DDOCKPIPE_COCKPIT_ASSETS=$cockpit_assets" \
   "-DDOCKPIPE_RELEASE_VERSION=$version"
-flatpak build --filesystem="$source_dir:ro" --filesystem="$out" "$app" \
+flatpak build --filesystem="$source_dir:ro" --filesystem="$browser_sdk:ro" --filesystem="$cockpit_assets:ro" --filesystem="$out" "$app" \
   cmake --build "$out/qt-build" --parallel 2
-flatpak build --filesystem="$out" --env=QT_QPA_PLATFORM=offscreen \
+flatpak build --filesystem="$out" --filesystem="$browser_sdk:ro" --env=QT_QPA_PLATFORM=offscreen \
   --env=QTWEBENGINEPROCESS_PATH=/app/bin/QtWebEngineProcess \
   --env=QT_QUICK_BACKEND=software --env=QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu \
   --env=DOCKPIPE_TEST_FLATPAK_HOST_NATIVE=0 \
   --env=QTWEBENGINE_DISABLE_SANDBOX=1 "$app" \
-  ctest --test-dir "$out/qt-build" --output-on-failure
+  ctest --test-dir "$out/qt-build" --output-on-failure --label-exclude installed-platform
 # BaseApp cannot spawn nested Flatpak instances during a build. The environment
 # above applies only to tests; installed browser processes retain sandboxing.
 flatpak build --env=FLATPAK_DEST=/app --env="FLATPAK_ARCH=$arch" "$app" \
   bash /app/cleanup-BaseApp.sh
 install -m755 "$out/qt-build/dockpipe-launcher" "$app/files/libexec/dockpipe/dockpipe-launcher"
 cp -a "$out/qt-build"/libdockpipe-launcher-ui.so* "$app/files/libexec/dockpipe/"
+install -m755 "$out/qt-build/dockpipe-workspace-reader" "$app/files/libexec/dockpipe/dockpipe-workspace-reader"
 # Release compilation can still inherit private symbol/debug sections from
 # linked objects. Enforce the public payload contract after deployment.
+# The attested Browser SDK is dependency-owned and must remain byte-identical.
+# Its immutable inventory is checked again after installation.
 # Variables in this script belong to the Flatpak build environment.
 # shellcheck disable=SC2016
 flatpak build "$app" bash -c '
   set -euo pipefail
-  for binary in /app/libexec/dockpipe/dockpipe-launcher /app/libexec/dockpipe/libdockpipe-launcher-ui.so* /app/lib/libXRes.so*; do
+  for binary in /app/libexec/dockpipe/dockpipe-launcher /app/libexec/dockpipe/dockpipe-workspace-reader /app/libexec/dockpipe/libdockpipe-launcher-ui.so* /app/lib/libXRes.so*; do
     strip --strip-unneeded "$binary"
     if readelf --wide --sections "$binary" | grep -E "\\.(z?debug[_.]|symtab[[:space:]]|gnu_debugdata[[:space:]]|gdb_index[[:space:]])" >/dev/null; then
       echo "Private symbol sections remain in public Flatpak binary: $binary" >&2

@@ -41,7 +41,8 @@ now exist for all seven product roots. Private DorkPipe/MCP consume a content-ad
 local Go compatibility SDK, with independent helper builds and explicit Pipeon integration
 checks. Native and editor CI entrypoints use DockPipe workflows and a pinned CLI bootstrap.
 See [repository execution](../../../architecture/forgepipe/repository-workflows.md) for
-proof and limits. Three new products remain unconnected local scaffolds.
+proof and limits. At this setup checkpoint, three new products were unconnected local scaffolds;
+the hosted ownership milestone below records their subsequent implementation and qualification.
 ForgePipe's private staging SDK is published and verified. DorkPipe 0.6.4 passed
 SDK build, all 21 shell tests, both editor builds and all 26 packages on the pinned
 DockPipe 0.6.17 compiler. Its six frozen assets and 26-package staging feed passed
@@ -163,5 +164,42 @@ source-absent consumer tree, including its actual release and catalog/install
 readbacks. No separate earlier staging release is required before
 removal. The original three dirty WorkspaceGraph files remain preserved in the
 extracted initial source; no unrelated work or saved application files may be
-removed. TASK-037 remains executing: standalone products and remaining browser/
-game ownership work are unfinished. Production was not promoted.
+removed. TASK-037 remained executing at this checkpoint; standalone product and browser/game ownership
+qualification were still open. The current hosted milestone below records their subsequent proof.
+Production was not promoted.
+
+## Native ownership cutover progress — 2026-10-20
+
+The [canonical ownership checkpoint](../../../architecture/forgepipe/README.md#ecosystem-ownership-cutover-checkpoint--2026-10-20)
+now records the extracted ordinary Browser, separate Web composition/Projection, neutral
+Scene/Geometry, standalone compositions and host Files graph. Cockpit consumes installed
+libraries through thin host adapters; headquarters/provider authority remains private to the
+host. Browser and Graph do not require Cockpit. MesaMoto code/content and neutral furniture
+import tooling have owning repositories; reusable source and assets were retired only after
+preimages and focused consumer proof were preserved.
+
+Local installed-library, Graph, Web/civic/site/input/folder navigation, persistence,
+matching-CLI Git review and native handoff checks pass. Old and new renderer fixtures pass
+the CI software-driver gate and retain an identical preexisting NVIDIA context-switch pixel
+failure. The original combined Graph fixture is archived with an explicit list of branches
+not requalified; replacement checks are not described as full legacy coverage.
+
+## Hosted ownership milestone — 2026-10-20
+
+MesaMoto's dev and staging candidates are verified, including fresh installed save/quit lifecycle.
+Spatial-Web's five native Browser SDK profiles and separate exact KDE Flatpak profile are qualified,
+and its staging artifacts are verified. SpatialPipe's independent app candidate at
+`abc9fde23b71dfb245f356419e0e3a83aeaeac8f` passed private artifact readback and relocated scene/browser
+proof. Dockpipe PR 191 passed all eleven checks and merged into dev at
+`c740d9dcefcdf04c558b93359c232a1938a01f80`; published LauncherSDK 1.1.0 is verified.
+SpatialPipe PR 9 and accepted-source Cockpit 0.1.3 qualification passed; PR 10 promoted
+the same tree to staging. Dockpipe pins the audited runtime-only public mirror.
+The [canonical hosted milestone](../../../architecture/forgepipe/README.md#hosted-ownership-milestone--2026-10-20)
+records accepted identities, ownership, private/public artifact boundaries and proof limits.
+
+TASK-037 remains executing for deferred bindings, stable ABI and broader GPU/platform acceptance.
+The consumer's native and Marketplace/Settings checks are mandatory before promotion; final
+source-absent Dockpipe staging additionally requires exact release/catalog lifecycle readback.
+Hosted raster or relocated software rendering is not physical GPU gameplay acceptance;
+separate local hardware proof does not broaden a hosted qualification claim. Production promotion
+is outside the current continuation; existing exclusions and saved-data safeguards remain in force.

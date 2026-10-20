@@ -3,6 +3,8 @@
 // The package implementation and its feature tests remain owned by SpatialPipe.
 #include "WorkspacePackageManager.h"
 #include <QApplication>
+#include <QFile>
+#include <QDir>
 #include <QElapsedTimer>
 #include <QGraphicsView>
 #include <QKeyEvent>
@@ -96,8 +98,15 @@ int main(int argc, char **argv)
         return 77;
     QTemporaryDir directory;
     CHECK(directory.isValid());
-    qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
-    qputenv("XDG_DATA_HOME", directory.path().toUtf8());
+    const bool installed = qEnvironmentVariable("DOCKPIPE_PACKAGE_RENDER_INSTALLED") == QStringLiteral("1");
+    if (installed) {
+        CHECK(qEnvironmentVariableIsEmpty("DOCKPIPE_WORKSPACE_PACKAGE"));
+        CHECK(!qEnvironmentVariableIsEmpty("DOCKPIPE_GLOBAL_ROOT"));
+    } else {
+        qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
+        qputenv("XDG_DATA_HOME", directory.path().toUtf8());
+    }
+    const QString workspace = installed ? QDir::currentPath() : directory.path();
     previousHandler = qInstallMessageHandler(recordMessage);
 
     // Link only the host SDK, never Cockpit. The host's backing store must
@@ -113,15 +122,21 @@ int main(int argc, char **argv)
 
     WorkspacePackageManager manager;
     LauncherSettings settings;
-    settings.projectFolder = directory.path();
+    settings.projectFolder = workspace;
     QElapsedTimer entry;
     entry.start();
     manager.prepare(settings, false);
+    if (installed) {
+        QElapsedTimer discovery;
+        discovery.start();
+        while (!manager.ready() && manager.busy() && discovery.elapsed() < 15000)
+            idle(10);
+    }
     CHECK(manager.ready());
     const qint64 loadMilliseconds = entry.elapsed();
     auto *surface = manager.createWorkspace(&host);
     CHECK(surface);
-    surface->setWorkspace(directory.path());
+    surface->setWorkspace(workspace);
     CockpitSettings preferences;
     preferences.enabled = true;
     preferences.orbitalMotion = false;
@@ -132,6 +147,18 @@ int main(int argc, char **argv)
     idle(500);
     auto *flight = surface->findChild<QGraphicsView *>("workspaceDroneFlight");
     CHECK(flight);
+    // Installed compatibility qualification records actual loaded providers.
+    // Ordinary rendering tests do not read or write this diagnostic.
+    const QString mapsPath = qEnvironmentVariable("DOCKPIPE_PACKAGE_RENDER_MAPS");
+    if (!mapsPath.isEmpty()) {
+        QFile mappings(QStringLiteral("/proc/self/maps"));
+        CHECK(mappings.open(QIODevice::ReadOnly));
+        const QByteArray bytes = mappings.read(1024 * 1024);
+        CHECK(mappings.atEnd());
+        QFile output(mapsPath);
+        CHECK(output.open(QIODevice::WriteOnly | QIODevice::NewOnly));
+        CHECK(output.write(bytes) == bytes.size());
+    }
     QOpenGLContext probe;
     CHECK(probe.create());
     QOffscreenSurface probeSurface;

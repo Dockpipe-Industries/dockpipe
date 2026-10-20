@@ -11,11 +11,15 @@ case "$(uname -m)" in
 esac
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
+browser_sdk="${DOCKPIPE_BROWSER_SDK:?Verified Browser SDK prefix required}"
 resources="$app/Contents/Resources"
 store="$resources/share/dockpipe"
 mkdir -p "$app/Contents/Helpers" "$resources" "$work/DockPipe.iconset"
 cp -R "$root/release/packaging/desktop/licenses" "$resources/"
 cp "$root/LICENSE" "$resources/licenses/DockPipe-LICENSE.txt"
+install -m 755 "$(dirname "$app")/dockpipe-workspace-reader" "$app/Contents/MacOS/dockpipe-workspace-reader"
+python3 "$root/release/packaging/desktop/browser-runtime.py" --sdk "$browser_sdk" --platform "darwin-$arch" \
+  --runtime "$app/Contents/Frameworks" --licenses "$resources/licenses/SpatialWebBrowser"
 install -m 755 "$root/src/bin/dockpipe" "$app/Contents/Helpers/dockpipe"
 install -m 755 "$root/release/packaging/desktop/macos/dockpipe" "$app/Contents/MacOS/dockpipe-cli"
 # The wrapper name must differ from Dockpipe even on case-insensitive APFS.
@@ -29,7 +33,7 @@ for size in 16 32 128 256 512; do
   sips -z "$double" "$double" "$icon" --out "$work/DockPipe.iconset/icon_${size}x${size}@2x.png" >/dev/null
 done
 iconutil -c icns "$work/DockPipe.iconset" -o "$resources/DockPipe.icns"
-macdeployqt "$app" -always-overwrite
+DYLD_LIBRARY_PATH="$browser_sdk/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}" macdeployqt "$app" -always-overwrite
 webengine="$app/Contents/Frameworks/QtWebEngineCore.framework"
 webengine_helper="$webengine/Helpers/QtWebEngineProcess.app"
 for required in \
@@ -51,6 +55,7 @@ if [[ "$identity" != - ]]; then
   sign_args+=(--options runtime --timestamp)
 fi
 codesign "${sign_args[@]}" "$app/Contents/Helpers/dockpipe"
+codesign "${sign_args[@]}" "$app/Contents/MacOS/dockpipe-workspace-reader"
 codesign "${sign_args[@]}" \
   --entitlements "$webengine_helper/Contents/Resources/QtWebEngineProcess.entitlements" \
   "$webengine_helper"

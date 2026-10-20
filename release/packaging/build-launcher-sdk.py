@@ -14,7 +14,7 @@ import tarfile
 import tempfile
 
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 QT_VERSION = "6.10.3"
 ARCHIVE_ROOT = f"DockPipeLauncherSDK-{VERSION}-Linux-amd64"
 MAX_FILES = 4096
@@ -84,7 +84,11 @@ def source_identity(root):
     files.extend(root / name for name in (
         "LICENSE", "packages/native-sdk/assets/scripts/elf_artifacts.py",
         "release/packaging/desktop/licenses/Qt-LGPL-3.txt",
-        "release/packaging/desktop/licenses/Qt-GPL-3.txt"))
+        "release/packaging/desktop/licenses/Qt-GPL-3.txt",
+        "release/packaging/build-launcher-sdk.py",
+        "release/packaging/prepare-browser-sdk.py",
+        "release/packaging/desktop/browser-runtime.py",
+        "release/dependencies/spatialweb-browser.lock.json"))
     if any(path.is_symlink() or not path.is_file() for path in files):
         raise ValueError("SDK attribution and tooling inputs must be regular authored files")
     identity = [{"path": path.relative_to(root).as_posix(), "bytes": path.stat().st_size,
@@ -129,10 +133,31 @@ def protect_runtime(prefix):
     if any(name.startswith((".debug", ".zdebug")) or name in {".symtab", ".gnu_debugdata", ".gdb_index"}
            for name in after["sections"]):
         raise ValueError("Private symbol sections remain in the launcher shared runtime")
+    reader = prefix / "bin/dockpipe-workspace-reader"
+    run(["strip", "--strip-unneeded", reader], 60)
+    reader_sections = subprocess.check_output(["readelf", "--wide", "--sections", str(reader)], text=True, timeout=60)
+    if re.search(r"\.(?:debug|zdebug|gnu_debugdata|gdb_index)", reader_sections):
+        raise ValueError("Private debug sections remain in the workspace reader")
     # The browser is a linkable SDK archive: its link-time symbols are required.
     run(["strip", "--strip-debug", prefix / "lib/libdockpipe-browser.a"], 60)
 
-def build(source, source_sha, qt, work, output, jobs):
+def browser_dependency(source, prefix):
+    helper_path = source / "release/packaging/desktop/browser-runtime.py"
+    spec = importlib.util.spec_from_file_location("host_sdk_browser_runtime", helper_path)
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    lock_path = source / "release/dependencies/spatialweb-browser.lock.json"
+    helper.verify(prefix, lock_path, "linux-amd64")
+    lock, _ = helper.SDK.load_lock(lock_path, "linux-amd64")
+    return lock
+
+
+def verify_browser_compiler(native_build, browser):
+    if compiler_identity(native_build) != browser["compiler"]:
+        raise ValueError("Host SDK compiler differs from its Browser SDK ABI")
+
+
+def build(source, source_sha, qt, work, output, jobs, browser_sdk):
     source = source.resolve(strict=True)
     qt = qt.resolve(strict=True)
     work = work.resolve()
@@ -149,6 +174,8 @@ def build(source, source_sha, qt, work, output, jobs):
     selected_qt = subprocess.check_output([str(qmake), "-query", "QT_VERSION"], text=True, timeout=30).strip()
     if selected_qt != QT_VERSION:
         raise ValueError("Launcher SDK requires Qt 6.10.3 exactly")
+    browser_sdk = browser_sdk.resolve(strict=True)
+    browser = browser_dependency(source, browser_sdk)
     identity = source_identity(source)
     work.mkdir(parents=True)
     output.mkdir(parents=True)
@@ -157,10 +184,10 @@ def build(source, source_sha, qt, work, output, jobs):
     run(["cmake", "-S", source / LAUNCHER, "-B", native_build,
          "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_TESTING=OFF",
          "-DDOCKPIPE_COCKPIT_ASSETS=", "-DDOCKPIPE_INSTALL_LAUNCHER_SDK=ON",
-         f"-DCMAKE_PREFIX_PATH={qt}", f"-DQt6_DIR={qt}/lib/cmake/Qt6",
+         f"-DCMAKE_PREFIX_PATH={qt};{browser_sdk}", f"-DQt6_DIR={qt}/lib/cmake/Qt6",
          f"-DCMAKE_INSTALL_PREFIX={prefix}",
          f"-DCMAKE_CXX_FLAGS_RELEASE=-O2 -DNDEBUG -ffile-prefix-map={source}=. -ffile-prefix-map={work}=."], 300)
-    run(["cmake", "--build", native_build, "--target", "dockpipe-launcher-ui", "dockpipe-browser",
+    run(["cmake", "--build", native_build, "--target", "dockpipe-launcher-ui", "dockpipe-browser", "dockpipe-workspace-reader",
          "--parallel", jobs], 1800)
     run(["cmake", "--install", native_build, "--component", "LauncherSDK"], 120)
     relocated = work / ARCHIVE_ROOT
@@ -168,14 +195,17 @@ def build(source, source_sha, qt, work, output, jobs):
     protect_runtime(relocated)
     consumer_build = work / "consumer"
     run(["cmake", "-S", source / LAUNCHER / "tests/sdk-consumer", "-B", consumer_build,
-         f"-DCMAKE_PREFIX_PATH={relocated};{qt}"], 120)
+         f"-DCMAKE_PREFIX_PATH={relocated};{qt};{browser_sdk}"], 120)
     run(["cmake", "--build", consumer_build, "--parallel", jobs], 300)
     if source_identity(source) != identity:
         raise ValueError("Source snapshot changed during launcher SDK qualification")
-    package_sdk(relocated, native_build, source_sha, identity, output)
+    if browser_dependency(source, browser_sdk) != browser:
+        raise ValueError("Browser dependency changed during qualification")
+    package_sdk(relocated, native_build, source_sha, identity, output, browser)
 
 
-def package_sdk(relocated, native_build, source_sha, identity, output):
+def package_sdk(relocated, native_build, source_sha, identity, output, browser):
+    verify_browser_compiler(native_build, browser)
     entries = inventory(relocated)
     manifest = {"schema": 1, "artifact_class": "sdk", "files": entries}
     manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode()
@@ -192,6 +222,7 @@ def package_sdk(relocated, native_build, source_sha, identity, output):
             "source_repository": "Dockpipe-Industries/dockpipe", "source_sha": source_sha,
             "source_state": "committed-snapshot" if source_sha else "development",
             "source_digest": identity, "compiler": compiler_identity(native_build),
+            "dependencies": {"spatialweb_browser": browser},
             "abi": {"cxx_standard": 17, "workspace_interface": "com.dockpipe.launcher.WorkspacePackage/2.0"},
             "archive": {"name": archive.name, "size_bytes": archive.stat().st_size, "sha256": digest(archive)},
             "file_manifest": {"name": "sdk-files.json", "sha256": hashlib.sha256(manifest_bytes).hexdigest()},
@@ -211,6 +242,7 @@ def main():
     identity.add_argument("--source-sha", help="Exact commit of the caller-supplied frozen source snapshot")
     identity.add_argument("--development-source", action="store_true", help="Record uncommitted inputs without claiming a source commit")
     parser.add_argument("--qt-root", type=Path, required=True)
+    parser.add_argument("--browser-sdk", type=Path, required=True)
     parser.add_argument("--work-directory", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--jobs", type=int, default=2)
@@ -218,7 +250,7 @@ def main():
     if args.jobs < 1:
         parser.error("--jobs must be positive")
     try:
-        build(args.source_root, args.source_sha, args.qt_root, args.work_directory, args.output, args.jobs)
+        build(args.source_root, args.source_sha, args.qt_root, args.work_directory, args.output, args.jobs, args.browser_sdk)
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         parser.exit(2, f"Launcher SDK build failed: {error}\n")
 

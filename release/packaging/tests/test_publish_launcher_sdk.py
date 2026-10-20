@@ -1,5 +1,7 @@
 import importlib.util
 import json
+import hashlib
+import tempfile
 from types import SimpleNamespace
 from pathlib import Path
 import unittest
@@ -12,6 +14,50 @@ spec.loader.exec_module(publisher)
 
 
 class CandidateBoundaryTests(unittest.TestCase):
+    def test_candidate_validation_binds_browser_pin_compiler_interface_and_cleanup(self):
+        source_sha = "a" * 40
+        browser = {"product": "SpatialWebBrowserSDK", "version": "0.1.0",
+                   "source_sha": "b" * 40, "compiler": {"id": "GNU", "version": "11.4.0"},
+                   "artifact": {"name": "Browser.tar.gz", "sha256": "c" * 64, "size_bytes": 4}}
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            archive_bytes = b"qualified archive fixture"
+            inventory_bytes = b'{"schema":1,"artifact_class":"sdk","files":[]}'
+            (directory / publisher.ARCHIVE).write_bytes(archive_bytes)
+            (directory / "sdk-files.json").write_bytes(inventory_bytes)
+            metadata = {
+                "schema": 1, "product": "DockPipeLauncherSDK", "version": "1.1.0",
+                "platform": "linux-amd64", "qt_version": "6.10.3",
+                "source_repository": publisher.REPOSITORY, "source_sha": source_sha,
+                "source_state": "committed-snapshot", "source_digest": "d" * 64,
+                "compiler": browser["compiler"], "dependencies": {"spatialweb_browser": browser},
+                "abi": {"cxx_standard": 17, "workspace_interface": "com.dockpipe.launcher.WorkspacePackage/2.0"},
+                "archive": {"name": publisher.ARCHIVE, "size_bytes": len(archive_bytes),
+                            "sha256": hashlib.sha256(archive_bytes).hexdigest()},
+                "file_manifest": {"name": "sdk-files.json", "sha256": hashlib.sha256(inventory_bytes).hexdigest()},
+                "checks": ["sdk-component-install", "shared-runtime-symbol-cleanup", "relocated-external-consumer-compile-link"],
+            }
+            path = directory / "sdk-release.json"
+            path.write_text(json.dumps(metadata))
+            with patch.object(publisher, "browser_dependency", return_value=browser):
+                self.assertEqual(set(publisher.ASSETS), set(publisher.validate(directory, source_sha)))
+                for key, value in (
+                    ("dependencies", {}),
+                    ("dependencies", {"spatialweb_browser": {**browser, "source_sha": "e" * 40}}),
+                    ("compiler", {"id": "GNU", "version": "13.3.0"}),
+                    ("abi", {"cxx_standard": 17, "workspace_interface": "com.dockpipe.launcher.WorkspacePackage/1.0"}),
+                    ("source_digest", "development"),
+                    ("checks", ["sdk-component-install", "relocated-external-consumer-compile-link"]),
+                ):
+                    with self.subTest(key=key, value=value):
+                        path.write_text(json.dumps({**metadata, key: value}))
+                        with self.assertRaises(ValueError):
+                            publisher.validate(directory, source_sha)
+                path.write_text(json.dumps(metadata))
+                (directory / publisher.ARCHIVE).write_bytes(b"changed archive fixture")
+                with self.assertRaisesRegex(ValueError, "archive differs"):
+                    publisher.validate(directory, source_sha)
+
     def test_existing_tag_must_resolve_to_the_qualified_commit(self):
         commit = {'__typename': 'Commit', 'oid': 'a' * 40}
         publisher.verify_tag({'target': commit}, 'a' * 40)
@@ -89,7 +135,7 @@ class CandidateBoundaryTests(unittest.TestCase):
     def test_fresh_and_resumed_drafts_use_id_reads_and_never_duplicate_release(self):
         source = "a" * 40
         environment = {"GITHUB_REPOSITORY": publisher.REPOSITORY, "GITHUB_REF": "refs/heads/dev", "GITHUB_EVENT_NAME": "push", "GITHUB_SHA": source}
-        tag = "launcher-sdk-1.0.0-staging." + source
+        tag = "launcher-sdk-1.1.0-staging." + source
         assets = {"fixture": {"size": 2, "digest": "sha256:aa"}}
         for previously_created in (False, True):
             with self.subTest(previously_created=previously_created):

@@ -188,7 +188,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertEqual(call["needs"], ["test", "test-windows", "cockpit-native"])
         native = ci["jobs"]["cockpit-native"]
         self.assertEqual(native["runs-on"], "ubuntu-22.04")
-        self.assertEqual(native["permissions"], {"contents": "read"})
+        self.assertEqual(native["permissions"], {"contents": "read", "attestations": "read"})
         qt_install = next(step for step in native["steps"] if step.get("name") == "Install pinned Qt ABI")
         self.assertIn('DOCKPIPE_QT_ROOT=$RUNNER_TEMP/Qt/6.10.3/gcc_64', qt_install["run"])
         self.assertNotIn("DOCKPIPE_QT_ROOT", native["env"])
