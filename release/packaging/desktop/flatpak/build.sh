@@ -94,11 +94,13 @@ cp -a "$out/qt-build"/libdockpipe-launcher-ui.so* "$app/files/libexec/dockpipe/"
 install -m755 "$out/qt-build/dockpipe-workspace-reader" "$app/files/libexec/dockpipe/dockpipe-workspace-reader"
 # Release compilation can still inherit private symbol/debug sections from
 # linked objects. Enforce the public payload contract after deployment.
+# The attested Browser SDK is dependency-owned and must remain byte-identical.
+# Its immutable inventory is checked again after installation.
 # Variables in this script belong to the Flatpak build environment.
 # shellcheck disable=SC2016
 flatpak build "$app" bash -c '
   set -euo pipefail
-  for binary in /app/libexec/dockpipe/dockpipe-launcher /app/libexec/dockpipe/dockpipe-workspace-reader /app/libexec/dockpipe/libdockpipe-launcher-ui.so* /app/lib/libXRes.so* /app/lib/libSpatialWebBrowser.so*; do
+  for binary in /app/libexec/dockpipe/dockpipe-launcher /app/libexec/dockpipe/dockpipe-workspace-reader /app/libexec/dockpipe/libdockpipe-launcher-ui.so* /app/lib/libXRes.so*; do
     strip --strip-unneeded "$binary"
     if readelf --wide --sections "$binary" | grep -E "\\.(z?debug[_.]|symtab[[:space:]]|gnu_debugdata[[:space:]]|gdb_index[[:space:]])" >/dev/null; then
       echo "Private symbol sections remain in public Flatpak binary: $binary" >&2
