@@ -548,7 +548,46 @@ void TerminalWidgetTest::terminalAndComposer()
     workspace.hide();
     QTest::qWait(100);
     outputFrames.clear();
-    QVERIFY(hub.send(second, "stty -echo; yes bounded-output"));
+    bool floodStarted = false;
+    bool replayOverflowed = false;
+    {
+        QEventLoop warmupLoop;
+        QTimer warmupDeadline;
+        warmupDeadline.setSingleShot(true);
+        warmupDeadline.setTimerType(Qt::PreciseTimer);
+        connect(&warmupDeadline, &QTimer::timeout, &warmupLoop, &QEventLoop::quit);
+        QElapsedTimer warmupElapsed;
+        warmupElapsed.start();
+        const auto observeReplay = [&]() {
+            if (warmupElapsed.elapsed() >= 3000)
+                return;
+            quint64 warmupCursor = 0;
+            bool warmupTruncated = false;
+            hub.readOutput(second, warmupCursor, warmupTruncated);
+            if (warmupTruncated && warmupElapsed.elapsed() < 3000) {
+                replayOverflowed = true;
+                warmupLoop.quit();
+            }
+        };
+        const auto warmupOutput = connect(&hub, &TerminalHub::outputAvailable,
+            &warmupLoop, [&](const QString &id) {
+                if (id == second)
+                    observeReplay();
+            });
+        warmupDeadline.start(3000);
+        floodStarted = hub.send(second, "stty -echo; yes bounded-output");
+        if (floodStarted) {
+            observeReplay();
+            if (!replayOverflowed)
+                warmupLoop.exec();
+        }
+        disconnect(warmupOutput);
+        warmupDeadline.stop();
+        qInfo() << "Hidden terminal flood replay warmup elapsed ms" << warmupElapsed.elapsed()
+                << "overflow observed" << replayOverflowed;
+    }
+    QVERIFY(floodStarted);
+    QVERIFY2(replayOverflowed, "The hidden flood must overflow the replay window within three seconds before measuring fairness");
     int timerTicks = 0;
     QTimer heartbeat;
     heartbeat.setInterval(10);
@@ -557,6 +596,12 @@ void TerminalWidgetTest::terminalAndComposer()
     // CoreFoundation handles timers differently during manual processEvents
     // polling. Measure the application's real event loop with the same deadline.
     QEventLoop floodLoop;
+    int measuredOutputBatches = 0;
+    const auto measuredOutput = connect(&hub, &TerminalHub::outputAvailable,
+        &floodLoop, [&](const QString &id) {
+            if (id == second)
+                ++measuredOutputBatches;
+        });
     QTimer floodDeadline;
     floodDeadline.setSingleShot(true);
     floodDeadline.setTimerType(Qt::PreciseTimer);
@@ -565,8 +610,12 @@ void TerminalWidgetTest::terminalAndComposer()
     floodElapsed.start();
     floodDeadline.start(350);
     floodLoop.exec();
-    qInfo() << "Hidden terminal flood elapsed ms" << floodElapsed.elapsed() << "heartbeat ticks" << timerTicks;
+    disconnect(measuredOutput);
+    floodDeadline.stop();
+    qInfo() << "Hidden terminal flood elapsed ms" << floodElapsed.elapsed()
+            << "heartbeat ticks" << timerTicks << "output batches" << measuredOutputBatches;
     QVERIFY(timerTicks >= 10);
+    QVERIFY2(measuredOutputBatches > 0, "Terminal output must keep advancing during the fairness measurement");
     QCOMPARE(outputFrames.size(), 0);
     QVERIFY(hub.sendBytes(second, QByteArray(1, '\x03')));
     QTest::qWait(100);
