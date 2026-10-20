@@ -1,6 +1,6 @@
 # Preserve Ubuntu 22.04's compiler/glibc baseline. amd64 ships its matching Qt;
 # arm64 retains distribution Qt and does not qualify the native ForgePipe SDK.
-FROM ubuntu:22.04
+FROM ubuntu:26.04
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         build-essential cmake git dpkg-dev python3-venv patchelf ca-certificates libgl1-mesa-dev \
