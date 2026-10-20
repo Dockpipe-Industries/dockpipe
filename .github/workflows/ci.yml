@@ -54,6 +54,9 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             cmake \
             build-essential \
+            python3-yaml \
+            apt-utils \
+            gnupg \
             ripgrep \
             shellcheck \
             qt6-base-dev \
@@ -63,6 +66,9 @@ jobs:
             libqt6opengl6-dev \
             libgl1-mesa-dev \
             libegl1-mesa-dev
+
+      - name: Release tooling contracts before builds
+        run: /usr/bin/python3 -B -m unittest discover -s release/packaging/tests -v
 
       # Flatpak qualification owns the native desktop build and tests.
       - name: Build CLI (Bash tests use src/bin/dockpipe)
