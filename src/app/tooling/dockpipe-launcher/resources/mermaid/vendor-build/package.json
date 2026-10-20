@@ -1,0 +1,9 @@
+{
+  "name": "dockpipe-mermaid-vendor-build",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "core-js": "3.45.1",
+    "esbuild": "0.25.12"
+  }
+}

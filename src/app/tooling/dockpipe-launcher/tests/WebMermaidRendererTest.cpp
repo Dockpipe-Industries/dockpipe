@@ -29,6 +29,8 @@ private slots:
         QTest::addColumn<bool>("dark");
         QTest::newRow("flowchart-light") << QStringLiteral("flowchart LR\n A[Start] --> B[Finish]") << false;
         QTest::newRow("flowchart-dark") << QStringLiteral("flowchart TD\n A --> B --> C") << true;
+        // Self-loop layout uses structuredClone in the pinned Mermaid runtime.
+        QTest::newRow("self-loop") << QStringLiteral("flowchart LR\n A[Loop] --> A\n A --> B") << false;
         QTest::newRow("sequence") << QStringLiteral("sequenceDiagram\n Alice->>Bob: Hello\n Bob-->>Alice: Hi") << false;
         QTest::newRow("inert-link") << QStringLiteral("flowchart LR\n A --> B\n click A href \"https://127.0.0.1:9/forbidden\"") << false;
     }
