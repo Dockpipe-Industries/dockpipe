@@ -23,6 +23,17 @@ def smoke(app):
             return subprocess.run([*options, str(app), *args], check=True, text=True,
                                   stdout=subprocess.PIPE, timeout=90).stdout
 
+        closure = run("ldd", "/app/lib/libSpatialWebBrowser.so.0")
+        if "not found" in closure:
+            raise RuntimeError("Installed Browser SDK cannot resolve the KDE Platform runtime")
+        if "libQt6Core.so.6" not in closure or "libQt6WebEngineCore.so.6" not in closure:
+            raise RuntimeError("Installed Browser SDK did not resolve the required Qt runtime")
+        page = json.loads(subprocess.run(
+            [*options, str(app), "/app/libexec/dockpipe/dockpipe-workspace-reader"],
+            input=json.dumps({"root": str(root), "directory": str(root), "limit": 16}),
+            check=True, text=True, stdout=subprocess.PIPE, timeout=30).stdout)
+        if "error" in page or not isinstance(page.get("entries"), list):
+            raise RuntimeError("Installed workspace reader could not read its owned fixture")
         cli = "/app/bin/dockpipe"
         version = run(cli, "--version").strip()
         assert "git version" in run("/app/bin/git", "--version")

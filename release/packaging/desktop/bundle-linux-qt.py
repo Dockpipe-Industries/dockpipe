@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Deploy the pinned native amd64 Qt runtime from a trusted Release build."""
+"""Deploy the pinned native Linux Qt runtime from a trusted Release build."""
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -11,6 +12,10 @@ import subprocess
 
 
 QT_VERSION = "6.10.3"
+BASELINES = {"linux-amd64": (2, 35), "linux-arm64": (2, 39)}
+SPEC = importlib.util.spec_from_file_location("desktop_browser_runtime", Path(__file__).with_name("browser-runtime.py"))
+BROWSER = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(BROWSER)
 PLUGIN_GROUPS = (
     "imageformats", "iconengines", "networkinformation", "tls", "platforminputcontexts",
     "platformthemes", "printsupport", "xcbglintegrations", "wayland-decoration-client",
@@ -50,14 +55,15 @@ def shlibs_entry(name, version):
     return f"{match[1]} {match[2]} dockpipe-desktop (= {version})"
 
 
-def check_baseline(binary):
+def check_baseline(binary, baseline=(2, 35)):
     output = command("readelf", "--version-info", str(binary))
     versions = {tuple(map(int, item.split("."))) for item in re.findall(r"GLIBC_([0-9.]+)", output)}
-    if versions and max(versions) > (2, 35):
-        raise RuntimeError(f"{binary.name} requires glibc newer than Ubuntu 22.04")
+    if versions and max(versions) > baseline:
+        distribution = "Ubuntu 22.04" if baseline == (2, 35) else "Ubuntu 24.04"
+        raise RuntimeError(f"{binary.name} requires glibc newer than {distribution}")
 
 
-def deploy(launcher, qt, stage, private_debug, version):
+def deploy(launcher, qt, stage, private_debug, version, browser_sdk=None, platform="linux-amd64"):
     qt = qt.resolve()
     stage = stage.resolve()
     private_debug = private_debug.resolve()
@@ -70,6 +76,20 @@ def deploy(launcher, qt, stage, private_debug, version):
     if not core or not core.is_relative_to(qt) or core.name != f"libQt6Core.so.{QT_VERSION}":
         raise RuntimeError("The launcher was not built against the selected Qt SDK")
 
+    if platform not in BASELINES:
+        raise RuntimeError("Unsupported Linux runtime ABI baseline")
+    if browser_sdk is None:
+        raise RuntimeError("An exact verified Browser SDK prefix is required")
+    browser_sdk = browser_sdk.resolve(strict=True)
+    lock_path = Path(__file__).resolve().parents[2] / "dependencies/spatialweb-browser.lock.json"
+    BROWSER.verify(browser_sdk, lock_path, platform)
+    browser = linked.get("libSpatialWebBrowser.so.0")
+    if not browser or not browser.is_relative_to(browser_sdk):
+        raise RuntimeError("The launcher does not resolve the selected Browser SDK runtime")
+    reader = launcher.parent / "dockpipe-workspace-reader"
+    if not reader.is_file():
+        raise RuntimeError("Workspace reader must ship beside the launcher")
+
     runtime = stage / "usr/lib/dockpipe"
     notices = stage / "usr/share/doc/dockpipe-desktop/qt"
     runtime.mkdir(parents=True, exist_ok=True)
@@ -80,20 +100,21 @@ def deploy(launcher, qt, stage, private_debug, version):
 
     def copy_binary(source, target, owned=False):
         source = source.resolve()
-        check_baseline(source)
+        check_baseline(source, BASELINES[platform])
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
         binaries.append((target, owned))
         for name, path in dependencies(source).items():
             if name.startswith("libQt6") and not path.is_relative_to(qt):
                 raise RuntimeError(f"Mixed Qt runtime: {name} resolves outside the selected SDK")
-            if (path.is_relative_to(qt) or name == "libdockpipe-launcher-ui.so.1"
+            if (path.is_relative_to(qt) or path.is_relative_to(browser_sdk) or name == "libdockpipe-launcher-ui.so.1"
                     or name in COMPATIBILITY_LIBRARIES):
                 if name in libraries and libraries[name] != path:
                     raise RuntimeError(f"Conflicting runtime dependency: {name}")
                 libraries[name] = path
 
     copy_binary(launcher, runtime / "bin/dockpipe-launcher", owned=True)
+    copy_binary(reader, runtime / "bin/dockpipe-workspace-reader", owned=True)
     copy_binary(qt / "libexec/QtWebEngineProcess", runtime / "libexec/QtWebEngineProcess")
     for name in PLATFORMS:
         copy_binary(qt / "plugins/platforms" / name, runtime / "plugins/platforms" / name)
@@ -118,6 +139,9 @@ def deploy(launcher, qt, stage, private_debug, version):
             f"Ubuntu 22.04 compatibility runtime: {name}\nSource package: {identity}\n"
             "Source and packaging: https://launchpad.net/ubuntu/+source/tiff\n"
             "Bundled to preserve the Qt TIFF image plugin on Ubuntu 22.04 and 24.04.\n")
+
+    BROWSER.stage(browser_sdk, lock_path, platform,
+                  licenses=stage / "usr/share/doc/dockpipe-desktop/SpatialWebBrowser")
 
     # Keep only runtime data. SDK headers, CMake modules, examples and sources
     # never enter the public payload; upstream SPDX notices retain provenance.
@@ -175,7 +199,7 @@ def deploy(launcher, qt, stage, private_debug, version):
             shlibs.append(shlibs_entry(name, version))
     (stage / "DEBIAN/shlibs").write_text("\n".join(sorted(set(shlibs))) + "\n")
     manifest = {
-        "schema": 1, "qt": QT_VERSION, "platform": "linux-amd64", "glibc_max": "2.35",
+        "schema": 1, "qt": QT_VERSION, "platform": platform, "glibc_max": ".".join(map(str, BASELINES[platform])),
         "files": {str(path.relative_to(runtime)): hashlib.sha256(path.read_bytes()).hexdigest()
                   for path, _ in binaries},
     }
@@ -190,7 +214,9 @@ if __name__ == "__main__":
     parser.add_argument("--stage", type=Path, required=True)
     parser.add_argument("--private-debug", type=Path, required=True)
     parser.add_argument("--version", required=True)
+    parser.add_argument("--browser-sdk", type=Path, required=True)
+    parser.add_argument("--platform", choices=sorted(BASELINES), required=True)
     arguments = parser.parse_args()
     for binary in deploy(arguments.launcher.resolve(), arguments.qt, arguments.stage,
-                         arguments.private_debug, arguments.version):
+                         arguments.private_debug, arguments.version, arguments.browser_sdk, arguments.platform):
         print(binary)

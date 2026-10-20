@@ -20,8 +20,9 @@ MAX_ARCHIVE = 2 << 30
 MAX_EXPANDED = 4 << 30
 MAX_MEMBERS = 10000
 MAX_TAR_BYTES = MAX_EXPANDED + MAX_MEMBERS * 4096 + MAX_METADATA
-CHECKS = {"cockpit-ctest", "x11-spatial-gpu", "x11-package-rendering", "private-symbol-split",
+LEGACY_CHECKS = {"cockpit-ctest", "x11-spatial-gpu", "x11-package-rendering", "private-symbol-split",
           "bundled-runtime-closure", "bundled-x11-package-rendering"}
+CHECKS = LEGACY_CHECKS | {"x11-shared-interior-rendering"}
 
 
 def composer_module():
@@ -200,18 +201,28 @@ def verify_store(store, lock):
     if manifest.get("platform") != lock["platform"] or set(entries) != {("resolver", "cockpit")}:
         raise ValueError("Cockpit candidate must own exactly resolver/cockpit")
     entry = entries[("resolver", "cockpit")]
+    if lock["version"] not in {"0.1.2", "0.1.3"}:
+        raise ValueError("Cockpit candidate requires a supported dependency contract")
+    required_checks = LEGACY_CHECKS if lock["version"] == "0.1.2" else CHECKS
     if (entry["version"] != lock["version"] or entry["tarball"] != archive_name
             or entry["sha256"] != lock["artifact"]["sha256"] or entry["size_bytes"] != lock["artifact"]["size_bytes"]
             or receipt.get("schema") != 1 or receipt.get("resolver") != entry
             or any(receipt.get(key) != lock[key] for key in ("platform", "qt_version", "source_repository", "source_sha"))
-            or len(receipt.get("checks", [])) != len(CHECKS)
-            or set(receipt.get("checks", [])) != CHECKS
+            or len(receipt.get("checks", [])) != len(required_checks)
+            or set(receipt.get("checks", [])) != required_checks
             or candidate.get("qualification") != identity(store / "cockpit-qualification.json")):
         raise ValueError("Cockpit source, resolver or native qualification differs")
     pins = candidate.get("dependencies", {})
-    for key, filename, product, version, repository in (
+    if lock["version"] == "0.1.2":
+        sdk_contracts = (
             ("launcher_sdk", "launcher-sdk.lock.json", "DockPipeLauncherSDK", "1.0.0", PUBLISHER),
-            ("spatialpipe_sdk", "spatialpipe-sdk.lock.json", "SpatialPipe", "0.1.0", SOURCE)):
+            ("spatialpipe_sdk", "spatialpipe-sdk.lock.json", "SpatialPipe", "0.1.0", SOURCE))
+    else:
+        sdk_contracts = (
+            ("launcher_sdk", "launcher-sdk.lock.json", "DockPipeLauncherSDK", "1.1.0", PUBLISHER),
+            ("spatialpipe_scene_sdk", "spatialpipe-scene-sdk.lock.json", "SpatialPipeScene", "0.1.0", SOURCE),
+            ("spatial_web_projection_sdk", "spatialweb-projection-sdk.lock.json", "SpatialWebProjectionSDK", "0.1.0", "Dockpipe-Industries/Spatial-Web"))
+    for key, filename, product, version, repository in sdk_contracts:
         pin = pins[filename]["lock"]
         dependency = receipt["dependencies"][key]
         verify_sdk_identity(dependency, pin, product, version, repository)
@@ -227,7 +238,7 @@ def verify_store(store, lock):
     if (not isinstance(compiler, dict) or set(compiler) != {"id", "version"}
             or any(not isinstance(value, str) or not value or len(value) > 80 for value in compiler.values())
             or compiler != dependencies["launcher_sdk"]["compiler"]
-            or compiler != dependencies["spatialpipe_sdk"]["compiler"]):
+            or any(compiler != dependencies[key]["compiler"] for key, *_ in sdk_contracts)):
         raise ValueError("Cockpit dependency compiler identities differ")
     forge = pins["forgepipe-sdk.lock.json"]["lock"]
     if receipt.get("sdk_sha256") != forge["artifact"]["sha256"] or receipt.get("sdk_source_sha") != forge["source_sha"]:
@@ -293,7 +304,8 @@ def unpack_runtime(archive, output):
             else:
                 raise ValueError("Cockpit runtime archive cannot contain links, sparse or special files")
     assets = output / "resolvers/cockpit/assets"
-    if not (assets / "ui/libdockpipe-cockpit.so").is_file() or not (assets / "ui/cockpit-reader").is_file():
+    reader = "cockpit-reader" if archive.name == "dockpipe-resolver-cockpit-0.1.2.tar.gz" else "dockpipe-workspace-reader"
+    if not (assets / "ui/libdockpipe-cockpit.so").is_file() or not (assets / "ui" / reader).is_file():
         raise ValueError("Cockpit archive lacks its runtime module or bounded reader")
     return assets
 

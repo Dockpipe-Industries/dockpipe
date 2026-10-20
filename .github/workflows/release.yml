@@ -215,6 +215,14 @@ jobs:
           "$RUNNER_TEMP/aqt/bin/python" -m aqt install-qt mac desktop 6.10.3 clang_64 --outputdir "$RUNNER_TEMP/Qt" --modules qtwebengine qtwebchannel qtpositioning
           echo "$RUNNER_TEMP/Qt/6.10.3/macos/bin" >> "$GITHUB_PATH"
           echo "CMAKE_PREFIX_PATH=$RUNNER_TEMP/Qt/6.10.3/macos" >> "$GITHUB_ENV"
+      - name: Prepare exact attested Browser SDK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          python3 release/packaging/prepare-browser-sdk.py --lock release/dependencies/spatialweb-browser.lock.json \
+            --platform '${{ matrix.platform }}' --output "$RUNNER_TEMP/browser-sdk"
+          echo "DOCKPIPE_BROWSER_SDK=$RUNNER_TEMP/browser-sdk" >> "$GITHUB_ENV"
       - name: Build native CLI, all package stores, and installers
         shell: bash
         run: bash release/packaging/build-platform.sh "${{ needs.meta.outputs.version }}"
@@ -275,6 +283,9 @@ jobs:
           if-no-files-found: error
 
   build-msi:
+    permissions:
+      contents: read
+      attestations: read
     needs: [meta]
     runs-on: windows-latest
     steps:
@@ -318,6 +329,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Qt installation failed" }
           "$env:RUNNER_TEMP/Qt/6.10.3/msvc2022_64/bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
           "CMAKE_PREFIX_PATH=$env:RUNNER_TEMP/Qt/6.10.3/msvc2022_64" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Prepare exact attested Windows Browser SDK
+        if: needs.meta.outputs.build_msi == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          python release/packaging/prepare-browser-sdk.py --lock release/dependencies/spatialweb-browser.lock.json `
+            --platform windows-amd64 --output "$env:RUNNER_TEMP/browser-sdk"
+          if ($LASTEXITCODE -ne 0) { throw "Browser SDK preparation failed" }
+          "DOCKPIPE_BROWSER_SDK=$env:RUNNER_TEMP/browser-sdk" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Build Windows desktop runtime
         if: needs.meta.outputs.build_msi == 'true'
         shell: pwsh
@@ -392,6 +413,7 @@ jobs:
       version: ${{ needs.meta.outputs.version }}
     permissions:
       contents: read
+      attestations: read
 
   assemble:
     name: Assemble and verify artifacts

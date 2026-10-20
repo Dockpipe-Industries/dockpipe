@@ -246,6 +246,7 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
+      attestations: read
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -262,26 +263,31 @@ jobs:
             libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
             libxcb-render-util0 libxcb-shape0 libxcb-xkb1 libx11-dev \
             libxcomposite-dev libxrender-dev libxres-dev libxext-dev libxcb1-dev \
-            libnss3 libasound2 libsdl2-2.0-0
+            libnss3 libasound2 libsdl2-2.0-0 libopus0 libminizip1
       - name: Install pinned Qt ABI
         run: |
           bash release/packaging/desktop/install-linux-qt.sh "$RUNNER_TEMP/Qt"
           echo "DOCKPIPE_QT_ROOT=$RUNNER_TEMP/Qt/6.10.3/gcc_64" >> "$GITHUB_ENV"
       - name: Build repository CLI
         run: make build-core
+      - name: Prepare exact attested Browser SDK
+        run: |
+          python3 release/packaging/prepare-browser-sdk.py --lock release/dependencies/spatialweb-browser.lock.json \
+            --platform linux-amd64 --output "$RUNNER_TEMP/browser-sdk"
       - name: Verify public publisher and qualify installed Cockpit
         run: |
           python3 release/packaging/prepare-cockpit.py prepare \
             --lock release/cockpit.lock.json --output "$RUNNER_TEMP/cockpit-runtime"
           cmake -S src/app/tooling/dockpipe-launcher -B "$RUNNER_TEMP/cockpit-host" \
             -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON \
-            -DCMAKE_PREFIX_PATH="$DOCKPIPE_QT_ROOT" \
+            -DCMAKE_PREFIX_PATH="$DOCKPIPE_QT_ROOT;$RUNNER_TEMP/browser-sdk" \
             -DDOCKPIPE_COCKPIT_ASSETS="$RUNNER_TEMP/cockpit-runtime/package/resolvers/cockpit/assets"
           python3 release/packaging/prepare-cockpit.py verify-compiler \
             --lock release/cockpit.lock.json --store "$RUNNER_TEMP/cockpit-runtime/store" \
             --build "$RUNNER_TEMP/cockpit-host"
           cmake --build "$RUNNER_TEMP/cockpit-host" --target cockpit-package-rendering-test --parallel 2
-          ctest --test-dir "$RUNNER_TEMP/cockpit-host" --output-on-failure -R '^cockpit-package-rendering$' --no-tests=error
+          LD_LIBRARY_PATH="$DOCKPIPE_QT_ROOT/lib:$RUNNER_TEMP/browser-sdk/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+            ctest --test-dir "$RUNNER_TEMP/cockpit-host" --output-on-failure -R '^cockpit-package-rendering$' --no-tests=error
 
   staging-release:
     needs: [test, test-windows, cockpit-native]
