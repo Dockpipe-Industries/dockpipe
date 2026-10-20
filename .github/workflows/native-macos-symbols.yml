@@ -17,6 +17,7 @@ on:
       - src/app/tooling/dockpipe-launcher/tests/DashboardWorkspaceTest.cpp
       - src/app/tooling/dockpipe-launcher/tests/DashboardBrowserPerformanceTest.cpp
       - src/app/tooling/dockpipe-launcher/tests/DesktopAppWindowWinTest.cpp
+      - src/app/tooling/dockpipe-launcher/tests/WindowsTestLauncher.cpp
       - src/app/tooling/dockpipe-launcher/CMakeLists.txt
       - src/app/tooling/dockpipe-launcher/src/Browser*
       - src/app/tooling/dockpipe-launcher/tests/BrowserExtension*
@@ -162,6 +163,23 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - name: Qualify the standard-user Windows test launcher
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $visualStudio = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $visualStudio) { throw 'Visual Studio C++ tools are required.' }
+          & (Join-Path $visualStudio 'Common7/Tools/Launch-VsDevShell.ps1') -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+          if (-not $env:VCToolsInstallDir) { throw 'The Visual Studio developer environment is incomplete.' }
+          $launcher = Join-Path $env:RUNNER_TEMP 'windows-test-launcher.exe'
+          $object = Join-Path $env:RUNNER_TEMP 'windows-test-launcher.obj'
+          cl.exe /nologo /std:c++17 /EHsc /W4 /DUNICODE /D_UNICODE `
+            src/app/tooling/dockpipe-launcher/tests/WindowsTestLauncher.cpp `
+            "/Fe:$launcher" "/Fo:$object" /link advapi32.lib user32.lib
+          if ($LASTEXITCODE -ne 0) { throw 'Windows test launcher compilation failed.' }
+          & $launcher --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Windows test launcher qualification failed.' }
       - uses: actions/setup-go@v7
         with:
           go-version: '1.26.9'
