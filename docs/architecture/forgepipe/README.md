@@ -504,3 +504,46 @@ ABI and broader GPU/platform acceptance limits. Existing archived-but-unported a
 preserved legacy NVIDIA pixel failure above remain limitations. Native Qt C++ SDKs are not a stable
 cross-toolchain ABI. Production and paid distribution are outside this continuation; no real user
 worlds, saves or primary-checkout work were migrated or deleted by these verification fixtures.
+
+## Final ecosystem staging delivery
+
+The bounded ecosystem staging continuation is delivered as
+[`0.6.24-staging.39534730503.1.9bdf36d2f28d`](https://github.com/Dockpipe-Industries/dockpipe/releases/tag/v0.6.24-staging.39534730503.1.9bdf36d2f28d),
+from staging source `9bdf36d2f28d6eddd62e6f01897f5b4a9348cdc3`.
+[Run 39534730503](https://github.com/Dockpipe-Industries/dockpipe/actions/runs/39534730503)
+passed Linux and Windows CI, Cockpit host qualification, all four Unix release targets,
+Windows MSI, Flatpak, artifact assembly and staging publication. Production publication was
+skipped. [PR 198](https://github.com/Dockpipe-Industries/dockpipe/pull/198),
+[PR 200](https://github.com/Dockpipe-Industries/dockpipe/pull/200) and
+[PR 199](https://github.com/Dockpipe-Industries/dockpipe/pull/199) merged normally after
+all actual and required checks passed. The released Linux CLI reports Go **1.26.10**,
+including the crypto/x509 security fix that blocked the earlier Go 1.26.9 build.
+
+The Windows release embedding test actually passed; its full suite had 49 passes and four
+existing skips. Each Mac release suite had 56 passes and four skips, with DMG creation and
+native installation smoke passing. Pre-promotion jobs on the identical tree separately created
+and checksum-verified disposable DMG fixtures on both Mac architectures and passed 25/25 native
+checks per Mac. Intel dashboard p95 was 48.848/46.806 ms
+under the unchanged 100 ms gate. These are hosted platform checks, with the GPU limits above.
+
+Independent published-byte verification bound the successful run, committed Cockpit lock,
+immutable catalog, package archives and staging latest pointer. The released Linux CLI used
+fresh isolated stores to install Cockpit 0.1.2, add 0.1.3, remove each exact archive and roll
+back to the checksum-pinned 0.1.2 archive. Fixture saves survived every phase; this archive
+lifecycle proof does not claim Settings activation or real user-data migration.
+The final hosted Flatpak Marketplace lifecycle/rendering gate passed. Downloaded Flatpak
+Cockpit bytes matched their catalog and qualification sidecar; all 116 payload files matched
+the native package except the allowed `package.yml` platform adaptation. No whole Flatpak
+desktop bundle was installed again during that independent readback. The Flatpak store
+manifest is not listed in root `SHA256SUMS`; its identity, package sidecar, archive digest and
+native payload equivalence were checked separately.
+
+The final preservation audit rechecked 894 recorded authored-source preimages, retained
+retirement archives and the primary checkout's HEAD/full status. Byte preimages were not
+available for every other dirty primary file, and actual user saves were not read. All four
+production main/master refs matched their pre-publication baselines. One intermediate Windows
+fixture READY timeout remains recorded: final runs passed without increasing its deadline;
+timings locate cold cost before Qt window display, but the exact constructor remains unidentified.
+This closes the bounded staging delivery, while TASK-037 remains executing for deferred
+bindings, stable ABI and broader GPU/platform acceptance. The earlier archived-coverage and
+NVIDIA limitations remain in force; package and engine ownership boundaries are preserved.
