@@ -192,9 +192,15 @@ int main(int argc, char **argv)
     FixtureProcess fixture;
     fixture.setProcessChannelMode(QProcess::ForwardedErrorChannel);
     fixture.setCreateProcessArgumentsModifier([&desktopName](QProcess::CreateProcessArguments *arguments) {
+        const DWORD originalFlags = arguments->flags;
+        // This GUI fixture communicates through Qt's inherited pipes and needs
+        // no console. Its CREATE_NO_WINDOW path failed in KERNELBASE startup.
+        // Avoid console allocation while retaining QProcess and job ownership.
+        arguments->flags = (arguments->flags & ~CREATE_NO_WINDOW) | DETACHED_PROCESS;
         std::fprintf(stderr,
-            "Windows fixture launch: flags=0x%08lx inheritHandles=%d originalDesktop=%ls selectedDesktop=%ls console=%p\n",
-            static_cast<unsigned long>(arguments->flags), arguments->inheritHandles,
+            "Windows fixture launch: flags=0x%08lx originalFlags=0x%08lx inheritHandles=%d originalDesktop=%ls selectedDesktop=%ls console=%p\n",
+            static_cast<unsigned long>(arguments->flags), static_cast<unsigned long>(originalFlags),
+            arguments->inheritHandles,
             arguments->startupInfo->lpDesktop ? arguments->startupInfo->lpDesktop : L"(implicit)",
             desktopName.c_str(), static_cast<void *>(GetConsoleWindow()));
         // The outer test launcher uses this same explicit interactive context.
