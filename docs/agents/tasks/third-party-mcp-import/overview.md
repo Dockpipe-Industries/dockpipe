@@ -13,7 +13,14 @@ business logic. Include the shared CLI/UI parity and process-lifecycle acceptanc
 Backlog; initial architecture requirement, added 2026-10-17. Depends on
 [TASK-039](../unified-mcp-gateway/overview.md) registry, authentication, profiles and lifecycle
 contracts. Implements sections 5 and 14 of the [design request](../unified-mcp-gateway/design-request.md).
-TASK-038 is a sibling, not an implementation dependency. No external server has been connected.
+TASK-038 is a sibling, not an implementation dependency. No external server has been connected
+through a configured DockPipe runtime/gateway. The internal `mcpsession` owner now
+uses the official Go SDK and existing process-tree supervision; neutral child
+fixtures verify protocol/cancellation/recovery behavior. The internal `mcpimport` seam now requires injected trusted operation authorization
+and an owned runtime lease, binding the existing compiled dockerimage policy.
+Production authorizer/Docker executor, receipt reverification and CLI/gateway
+exposure remain pending; neutral host fixtures do not establish Docker containment.
+See [the precise component boundary](../../../runtime/mcp-registry.md#internal-session-owner-and-pending-application-integration).
 
 ## Scope
 
@@ -84,3 +91,22 @@ shared domain implementations serve CLI, MCP, explicit REST and desktop, with ex
 storage and version lifecycle. Ordinary local execution stays lightweight; required privileged
 controls cannot be bypassed by selecting a lighter interface or execution mode. Domain ownership
 and this task's existing security/acceptance requirements remain intact. Backlog only.
+
+## Read-Only Registry Foundation
+
+The scoped registry foundation adds CLI search/version metadata and
+validation of `mcp.servers` in the existing project configuration. See
+[the public contract](../../../runtime/mcp-registry.md) for exact behavior, bounds,
+verification and remaining gaps. Registry discovery does not install, connect, launch, authorize or
+expose imported servers. TASK-040's gateway, process lifecycle, policy, desktop and
+federated-import acceptance gates remain open; no external server is connected.
+
+
+## Local artifact milestone
+
+The generic `mcp bundle inspect/install` CLI now verifies and materializes a limited
+MCPB 0.3 native binary subset under the existing project artifact cache. Tests cover
+identity/architecture, traversal/alias rejection, unsupported launch contracts,
+checksum mismatch, cancellation, staging cleanup and no overwrite. This does not
+complete TASK-040: Registry URL selection, configured registration, execution grants,
+shared upstream sessions, lifecycle controls and gateway forwarding remain pending.

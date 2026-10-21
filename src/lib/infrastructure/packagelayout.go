@@ -189,3 +189,27 @@ func PackagesAssetsDir(workdir string) (string, error) {
 	}
 	return filepath.Join(root, "assets"), nil
 }
+
+// MCPBundleCacheDir owns verified upstream MCPB artifacts. It reuses the internal
+// artifact cache; MCPB archives are not relabeled as Dockpipe catalog packages.
+func MCPBundleCacheDir(workdir string) (string, error) {
+	project, err := filepath.Abs(workdir)
+	if err != nil {
+		return "", err
+	}
+	project, err = filepath.EvalSymlinks(project)
+	if err != nil {
+		return "", err
+	}
+	// Existing durable-state validation rejects linked/reparsed path components.
+	// Derive again from the canonical project to handle legitimate parent aliases.
+	root, err := StateInternalCacheDir(project)
+	if err != nil {
+		return "", err
+	}
+	candidate := filepath.Join(root, "mcpb")
+	if err := validateExistingStateBoundary(project, candidate); err != nil {
+		return "", err
+	}
+	return candidate, nil
+}

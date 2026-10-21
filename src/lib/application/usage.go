@@ -82,6 +82,7 @@ var mainUsageSections = []usageSection{
 			{"git --request <file.json>", "Review or perform a human-requested project Git action"},
 			{"session list|inspect|switch|publish", "Inspect and publish runtime-owned Git session workspaces"},
 			{"remote setup|serve|pair|worker|submit", "Pair outbound nodes and execute approved local workflows"},
+			{"mcp registry|config", "Read official MCP Registry metadata or validate configured servers; never starts servers"},
 			{"catalog list", "Print the Dockpipe-owned launcher/tooling catalog (workflows, resolvers, strategies, runtimes)"},
 			{"pipelang check|compile|invoke|materialize", "PipeLang typed authoring helpers"},
 			{"doctor", "Check docker, bash, and bundled assets"},

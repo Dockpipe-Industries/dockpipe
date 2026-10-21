@@ -4,10 +4,13 @@ package projectmodel
 import (
 	"encoding/json"
 	"fmt"
+
+	mcpmodel "dockpipe/src/lib/model/mcp"
 )
 
 // DockpipeProjectConfig is repo-root metadata (JSON). Schema may grow; unknown keys are ignored by encoding/json.
 type DockpipeProjectConfig struct {
+	MCP      *mcpmodel.Config       `json:"mcp,omitempty"`
 	Schema   int                    `json:"schema,omitempty"`
 	Compile  DockpipeCompileConfig  `json:"compile,omitempty"`
 	Secrets  DockpipeSecretsConfig  `json:"secrets,omitempty"`

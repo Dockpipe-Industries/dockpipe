@@ -1,0 +1,43 @@
+name: mcp-registry.verify
+description: Verify MCP registry, artifact and internal supervised-session contracts.
+vault: none
+docker_preflight: false
+steps:
+  - id: embedded-manifest
+    kind: host
+    cwd: repo
+    cmd: python3 release/packaging/embedded-inputs.py --check
+  - id: bundled-compatibility
+    kind: host
+    cwd: repo
+    cmd: go test . -run '^TestBundledAuthoredCompatibility$' -count=1
+  - id: contracts
+    kind: host
+    cwd: repo
+    cmd: go test ./src/lib/application/internal/mcpimport ./src/lib/infrastructure/process ./src/lib/infrastructure/mcpsession ./src/lib/infrastructure/mcpbundle ./src/lib/model/mcp ./src/lib/domain/mcp ./src/lib/infrastructure/mcpregistry ./src/lib/domain ./src/lib/model/project
+  - id: cli
+    kind: host
+    cwd: repo
+    cmd: go test ./src/lib/application -run '^TestMCP'
+  - id: vet
+    kind: host
+    cwd: repo
+    cmd: go vet ./src/lib/application/internal/mcpimport ./src/lib/infrastructure/mcpsession ./src/lib/infrastructure/mcpbundle ./src/lib/model/mcp ./src/lib/domain/mcp ./src/lib/infrastructure/mcpregistry
+  - id: staticcheck
+    kind: host
+    cwd: repo
+    cmd: go run honnef.co/go/tools/cmd/staticcheck@v0.7.0 ./src/lib/infrastructure ./src/lib/infrastructure/mcpbundle ./src/lib/infrastructure/mcpsession ./src/lib/infrastructure/mcpregistry ./src/lib/application ./src/lib/application/internal/mcpimport ./src/lib/domain/mcp ./src/lib/model/mcp
+  - id: security
+    kind: host
+    cwd: repo
+    cmd: go run github.com/securego/gosec/v2/cmd/gosec@v2.29.0 -conf .gosec.json -quiet ./src/lib/application/internal/mcpimport ./src/lib/infrastructure/mcpbundle ./src/lib/infrastructure/mcpsession ./src/lib/infrastructure/mcpregistry ./src/lib/domain/mcp ./src/lib/model/mcp ./src/lib/application
+  - id: build-cli
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: |-
+      output_dir="$(dockpipe scope artifacts mcp-registry-cli)"
+      mkdir -p "$output_dir"
+      go build -o "$output_dir/" ./src/cmd
