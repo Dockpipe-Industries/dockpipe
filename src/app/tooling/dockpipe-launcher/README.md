@@ -204,6 +204,10 @@ and execution flow. Read-only status widgets share their data sources and pause
 polling while hidden. The Browser widget uses the ordinary browser component,
 including its settings, permissions, downloads and annotations.
 
+**Tiling** is experimental and off by default. Opt in with **Settings → Tiling mode · Experimental → Enable tiling mode · Experimental**. Disabling it returns dashboards to Canvas and releases desktop apps while retaining saved tiling layouts. Existing saved tiling selections do not enable the feature.
+
+**Cockpit mode** is also labeled **Experimental** and remains off by default.
+
 **Canvas** and **Tiling** are independent environments with separate panels and
 arrangements. Canvas lets you move, resize and overlap DockPipe panels; it never
 captures desktop applications. Tiling arranges its own panels into draggable splits
