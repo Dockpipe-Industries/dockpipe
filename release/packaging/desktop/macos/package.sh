@@ -10,7 +10,15 @@ case "$(uname -m)" in
   *) echo 'Unsupported macOS architecture' >&2; exit 1 ;;
 esac
 work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
+cleanup() {
+  status=$?
+  if (( status == 0 )); then
+    rm -rf "$work"
+  else
+    echo "macOS packaging evidence retained at $work" >&2
+  fi
+}
+trap cleanup EXIT
 browser_sdk="${DOCKPIPE_BROWSER_SDK:?Verified Browser SDK prefix required}"
 resources="$app/Contents/Resources"
 store="$resources/share/dockpipe"
@@ -90,7 +98,7 @@ fi
 printf '%s\n' 'Open Install Dockpipe.pkg to install Dockpipe in Applications and the dockpipe terminal command.' \
   'Use one installation method: this installer or Homebrew.' > "$work/dmg/Read Me.txt"
 dmg="$out/dockpipe-desktop_${version}_darwin_${arch}.dmg"
-hdiutil create -volname Dockpipe -srcfolder "$work/dmg" -format UDZO -ov "$dmg"
+bash "$root/release/packaging/desktop/macos/create-dmg.sh" "$work/dmg" "$dmg"
 if [[ -n "${DOCKPIPE_MAC_NOTARY_PROFILE:-}" ]]; then
   codesign --sign "$identity" --timestamp "$dmg"
   xcrun notarytool submit "$dmg" --keychain-profile "$DOCKPIPE_MAC_NOTARY_PROFILE" --wait

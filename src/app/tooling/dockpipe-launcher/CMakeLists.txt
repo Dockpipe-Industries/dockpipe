@@ -512,10 +512,20 @@ if(BUILD_TESTING)
     add_test(NAME desktop-window-widget COMMAND desktop-window-widget-test)
     set_tests_properties(desktop-window-widget PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
     if(WIN32)
+        # Hosted Windows runners are administrators. Exercise embedding with the
+        # same unelevated identity required of real target applications.
+        add_executable(windows-test-launcher tests/WindowsTestLauncher.cpp)
+        set_target_properties(windows-test-launcher PROPERTIES AUTOMOC OFF AUTORCC OFF AUTOUIC OFF)
+        target_link_libraries(windows-test-launcher PRIVATE advapi32 user32)
+        add_test(NAME windows-test-launcher COMMAND windows-test-launcher --self-test)
+        set_tests_properties(windows-test-launcher PROPERTIES TIMEOUT 45)
         add_executable(desktop-app-window-win-test tests/DesktopAppWindowWinTest.cpp)
-        target_link_libraries(desktop-app-window-win-test PRIVATE dockpipe-launcher-ui user32)
-        add_test(NAME desktop-app-window-win COMMAND desktop-app-window-win-test)
-        set_tests_properties(desktop-app-window-win PROPERTIES TIMEOUT 45 SKIP_RETURN_CODE 77)
+        add_dependencies(desktop-app-window-win-test windows-test-launcher)
+        target_link_libraries(desktop-app-window-win-test PRIVATE dockpipe-launcher-ui user32 advapi32)
+        add_test(NAME desktop-app-window-win
+            COMMAND windows-test-launcher $<TARGET_FILE:desktop-app-window-win-test>)
+        # Preserve the test's 45-second execution budget and allow bounded cleanup.
+        set_tests_properties(desktop-app-window-win PROPERTIES TIMEOUT 50 SKIP_RETURN_CODE 77)
     elseif(DOCKPIPE_WAYLAND_CAPTURE AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET Qt6::DBus)
         add_executable(desktop-capture-frame-buffer-test tests/DesktopCaptureFrameBufferTest.cpp)
         target_link_libraries(desktop-capture-frame-buffer-test PRIVATE dockpipe-launcher-ui Qt6::Test)
