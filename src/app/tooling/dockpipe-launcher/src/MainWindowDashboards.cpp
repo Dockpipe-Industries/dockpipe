@@ -304,6 +304,14 @@ bool MainWindow::confirmDashboardClose()
     return dialog.exec() == QMessageBox::Discard;
 }
 
+void MainWindow::applyTilingAvailability()
+{
+    for (const auto &page : m_dashboardPages) {
+        if (page)
+            page->setTilingEnabled(m_settings.tilingEnabled);
+    }
+}
+
 void MainWindow::releaseDashboardWindows()
 {
     for (const auto &page : m_dashboardPages) {

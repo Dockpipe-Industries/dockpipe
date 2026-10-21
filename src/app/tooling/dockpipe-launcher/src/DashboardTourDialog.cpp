@@ -1,4 +1,5 @@
 #include "DashboardTourDialog.h"
+#include "LauncherSettings.h"
 #include "CanvasIcons.h"
 #include "DesktopWindowWidget.h"
 
@@ -48,6 +49,7 @@ QWidget *tourPage(QStackedWidget *pages, CanvasIcons::Symbol symbol, const QStri
 DashboardTourDialog::DashboardTourDialog(const DashboardOptions &options, QWidget *parent)
     : QDialog(parent), m_options(options)
 {
+    const bool tilingEnabled = LauncherSettings::current().tilingEnabled;
     setObjectName("dashboardTourDialog");
     setWindowTitle(tr("Make this dashboard yours"));
     resize(580, 470);
@@ -68,8 +70,10 @@ DashboardTourDialog::DashboardTourDialog(const DashboardOptions &options, QWidge
     m_canvas = new QRadioButton(tr("Start in Canvas"));
     m_canvas->setObjectName("dashboardTourCanvas");
     m_canvas->setChecked(true);
-    m_tiling = new QRadioButton(tr("Start in Tiling"));
+    m_tiling = new QRadioButton(tr("Start in Tiling · Experimental"));
     m_tiling->setObjectName("dashboardTourTiling");
+    m_tiling->setEnabled(tilingEnabled);
+    m_tiling->setToolTip(tr("Enable tiling mode in Settings to try this experimental workspace."));
     page->addWidget(m_canvas);
     page->addWidget(m_tiling);
     page->addStretch();
@@ -79,6 +83,7 @@ DashboardTourDialog::DashboardTourDialog(const DashboardOptions &options, QWidge
     m_compact = new QCheckBox(tr("Compact tiling"));
     m_compact->setObjectName("dashboardTourCompact");
     m_compact->setChecked(options.compactTiling);
+    m_compact->setEnabled(tilingEnabled);
     page->addWidget(m_compact);
     page->addWidget(description(tr("Compact tiling uses smaller gaps and removes extra widget footers.")));
     auto *form = new QFormLayout;
@@ -106,8 +111,7 @@ DashboardTourDialog::DashboardTourDialog(const DashboardOptions &options, QWidge
     availability->setObjectName("dashboardTourAvailability");
     availability->setVisible(!unavailable.isEmpty());
     page->addWidget(availability);
-    if (!unavailable.isEmpty())
-        m_acquire->setEnabled(false);
+    m_acquire->setEnabled(tilingEnabled && unavailable.isEmpty());
     page->addWidget(description(tr("This is optional. Finish applies your choices; Dismiss leaves the dashboard unchanged.")));
     page->addStretch();
 
@@ -168,7 +172,7 @@ DashboardOptions DashboardTourDialog::selectedOptions() const
 
 QString DashboardTourDialog::initialEnvironment() const
 {
-    return m_tiling->isChecked() ? QStringLiteral("tiling") : QStringLiteral("canvas");
+    return m_tiling->isEnabled() && m_tiling->isChecked() ? QStringLiteral("tiling") : QStringLiteral("canvas");
 }
 
 bool DashboardTourDialog::doNotShowAgain() const
