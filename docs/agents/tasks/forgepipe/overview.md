@@ -203,3 +203,15 @@ source-absent Dockpipe staging additionally requires exact release/catalog lifec
 Hosted raster or relocated software rendering is not physical GPU gameplay acceptance;
 separate local hardware proof does not broaden a hosted qualification claim. Production promotion
 is outside the current continuation; existing exclusions and saved-data safeguards remain in force.
+
+## Final ecosystem staging delivery
+
+The bounded ecosystem staging continuation is complete with Dockpipe
+`0.6.24-staging.39534730503.1.9bdf36d2f28d`, source
+`9bdf36d2f28d6eddd62e6f01897f5b4a9348cdc3`. The
+[canonical delivery record](../../../architecture/forgepipe/README.md#final-ecosystem-staging-delivery)
+records successful publication, released Linux CLI install/update/removal/rollback proof,
+Flatpak archive and Marketplace qualification, preservation and production-ref readback,
+and retained proof limits. This completes the current staging scope; TASK-037 remains
+executing for deferred bindings, stable ABI and broader GPU/platform acceptance.
+Production promotion and the other continuation exclusions remain outside scope.
