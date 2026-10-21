@@ -82,6 +82,8 @@ private slots:
     void retainsTilingPresentationAcrossCanvasChanges();
     void addingTilesShowsLiveContentAtFinalGeometry();
     void deferredConstraintsFollowHiddenFrameChanges();
+    void detachedCanvasConstraintsRefreshOnReattach();
+    void detachedCanvasSizeHintsRefreshOnReattach();
     void deferredTabsRetainMetadataAndAttachVisibleContent();
     void deferredSelectionSurvivesModeChangesAndRemoval();
     void preservesLiveWidgetsAndBothArrangements();
@@ -347,6 +349,83 @@ void DashboardWorkspaceTest::deferredConstraintsFollowHiddenFrameChanges()
     QVERIFY(frame->height() <= frame->maximumHeight());
     QVERIFY(frame->width() >= frame->minimumWidth());
     QVERIFY(frame->height() >= frame->minimumHeight());
+}
+
+void DashboardWorkspaceTest::detachedCanvasConstraintsRefreshOnReattach()
+{
+    DashboardWorkspace workspace("detached-constraints");
+    workspace.resize(1200, 800);
+    workspace.show();
+    auto *content = new QLineEdit("retained draft");
+    QVERIFY(workspace.addPanel("one", "One", content));
+    workspace.setMode("tiling");
+    auto *frame = workspace.findChild<CanvasPanel *>("dashboardPanel_one");
+    auto *group = workspace.findChild<QTabWidget *>();
+    QVERIFY(frame);
+    QVERIFY(group);
+    QWidget *page = group->currentWidget();
+    QVERIFY(page->isAncestorOf(frame));
+    const QSize originalMinimum = page->minimumSize();
+    const QSize originalMaximum = page->maximumSize();
+    const QSizePolicy originalPolicy = page->sizePolicy();
+
+    workspace.setMode("canvas");
+    QCOMPARE(frame->parentWidget(), &workspace);
+    frame->setMinimumSize(420, 230);
+    frame->setMaximumSize(700, 500);
+    frame->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    QCoreApplication::processEvents();
+    // The parked presentation keeps its last tile constraints while the live
+    // frame is changing independently in the canvas.
+    group->minimumSizeHint();
+    QCOMPARE(page->minimumSize(), originalMinimum);
+    QCOMPARE(page->maximumSize(), originalMaximum);
+    QCOMPARE(page->sizePolicy(), originalPolicy);
+
+    workspace.setMode("tiling");
+    QCOMPARE(group->currentWidget(), page);
+    QCOMPARE(page->minimumSize(), frame->minimumSize());
+    QCOMPARE(page->maximumSize(), frame->maximumSize());
+    QCOMPARE(page->sizePolicy(), frame->sizePolicy());
+    QVERIFY(selectedFrameIsVisible(group, frame));
+    QCOMPARE(content->text(), QString("retained draft"));
+}
+
+void DashboardWorkspaceTest::detachedCanvasSizeHintsRefreshOnReattach()
+{
+    DashboardWorkspace workspace("detached-size-hints");
+    workspace.resize(1200, 800);
+    workspace.show();
+    auto *content = new QLineEdit("retained draft");
+    QVERIFY(workspace.addPanel("one", "One", content));
+    workspace.setMode("tiling");
+    auto *frame = workspace.findChild<CanvasPanel *>("dashboardPanel_one");
+    auto *group = workspace.findChild<QTabWidget *>();
+    QVERIFY(frame);
+    QVERIFY(group);
+    frame->setMinimumSize(0, 0);
+    QCoreApplication::processEvents();
+    const QSize originalMinimumHint = group->minimumSizeHint();
+    QWidget *page = group->currentWidget();
+    const QSize explicitMinimum = page->minimumSize();
+    const QSize explicitMaximum = page->maximumSize();
+    const QSizePolicy policy = page->sizePolicy();
+
+    workspace.setMode("canvas");
+    QFont font = content->font();
+    font.setPointSize(48);
+    content->setFont(font);
+    QCoreApplication::processEvents();
+    QCOMPARE(frame->minimumSize(), explicitMinimum);
+    QCOMPARE(frame->maximumSize(), explicitMaximum);
+    QCOMPARE(frame->sizePolicy(), policy);
+
+    workspace.setMode("tiling");
+    QCOMPARE(group->currentWidget(), page);
+    QVERIFY(group->minimumSizeHint().height() > originalMinimumHint.height());
+    QCOMPARE(page->minimumSizeHint(), frame->minimumSizeHint());
+    QVERIFY(selectedFrameIsVisible(group, frame));
+    QCOMPARE(content->text(), QString("retained draft"));
 }
 
 void DashboardWorkspaceTest::deferredTabsRetainMetadataAndAttachVisibleContent()

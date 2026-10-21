@@ -265,9 +265,18 @@ public:
         return m_frame ? m_frame->heightForWidth(width) : -1;
     }
 
+    void setConstraintTrackingEnabled(bool enabled)
+    {
+        m_constraintTrackingEnabled = enabled;
+        if (enabled) {
+            synchronizeConstraints();
+            updateGeometry();
+        }
+    }
+
     void synchronizeConstraints()
     {
-        if (!m_frame)
+        if (!m_frame || !m_constraintTrackingEnabled)
             return;
         setMinimumSize(m_frame->minimumSize());
         setMaximumSize(m_frame->maximumSize());
@@ -277,7 +286,7 @@ public:
 protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
-        if (object == m_frame && (event->type() == QEvent::LayoutRequest
+        if (m_constraintTrackingEnabled && object == m_frame && (event->type() == QEvent::LayoutRequest
             || event->type() == QEvent::StyleChange || event->type() == QEvent::FontChange
             || event->type() == QEvent::ContentsRectChange || event->type() == QEvent::Resize)) {
             synchronizeConstraints();
@@ -289,6 +298,7 @@ protected:
 
 private:
     QPointer<QWidget> m_frame;
+    bool m_constraintTrackingEnabled = true;
 };
 
 class PanelTabs final : public QTabWidget {
@@ -1016,6 +1026,12 @@ void DashboardWorkspace::rebuild()
     PROFILE_LAYOUT_START(rebuildPhase);
     m_rebuilding = true;
     ++m_presentationRevision;
+    // Canvas changes must not invalidate the hidden retained tile layout.
+    // Refresh its constraints only after tiled chrome has been restored.
+    for (const Panel &panel : m_panels) {
+        if (auto *page = dynamic_cast<PanelSlot *>(panel.tabPage.data()))
+            page->setConstraintTrackingEnabled(false);
+    }
     if (m_retainedViewport) {
         for (auto *timer : m_retainedAttachTimers)
             timer->stop();
@@ -1051,6 +1067,8 @@ void DashboardWorkspace::rebuild()
                 continue;
             iterator.value().frame->setInteractionEnabled(false);
             applyPanelChrome(iterator.key(), true);
+            if (auto *page = dynamic_cast<PanelSlot *>(iterator.value().tabPage.data()))
+                page->setConstraintTrackingEnabled(true);
             iterator.value().header->setToolTip(tr("Drag onto another widget: center for a tab, edge for a split"));
         }
         applyTilingChrome();

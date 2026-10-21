@@ -58,8 +58,21 @@ class ReleaseWorkflowTests(unittest.TestCase):
         flatpak = (REPOSITORY / "release/packaging/desktop/flatpak/build.sh").read_text()
         self.assertIn("runtime_branch=6.10", flatpak)
         self.assertIn("io.qt.qtwebengine.BaseApp", flatpak)
-        for job in native["jobs"].values():
+        for job_name, job in native["jobs"].items():
             scripts = "\n".join(step.get("run", "") for step in job.get("steps", []))
+            if job_name == "windows-terminal":
+                commands = [line.strip() for line in scripts.splitlines()]
+                self.assertIn("-DBUILD_TESTING=ON", scripts)
+                self.assertIn("cmake --build $build --config Release", commands)
+                ctest_commands = [line for line in commands if line.startswith("ctest ")]
+                self.assertEqual(ctest_commands, [
+                    "ctest --test-dir $build -C Release --verbose -R '^terminal-session-win$'",
+                    "ctest --test-dir $build -C Release --verbose -R '^desktop-app-window-win$'",
+                    "ctest --test-dir $build -C Release --verbose --timeout 120 --stop-on-failure",
+                ])
+                self.assertRegex(scripts, r"(?s)if \(\$LASTEXITCODE -ne 0\) \{\s+try \{\s+& ./src/app/tooling/dockpipe-launcher/tests/TraceWindowsFixtureLoader.ps1.*?throw 'Native embedding qualification failed\.'")
+                self.assertIn("if ($qualificationExit -ne 0) { throw 'Native terminal qualification failed.' }", scripts)
+                continue
             self.assertIn("browser-extensions-test", scripts)
             self.assertIn("browser-extension-package-test", scripts)
             self.assertIn("browser-extension-store-test", scripts)
