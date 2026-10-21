@@ -99,6 +99,7 @@ private:
     int selectedPage() const;
     void setupDashboards();
     void applyDefaultDashboardVisibility();
+    void applyTilingAvailability();
     void createDashboard();
     void addDashboardNavigation(const DashboardDefinition &definition);
     void ensureDashboard(int page);
