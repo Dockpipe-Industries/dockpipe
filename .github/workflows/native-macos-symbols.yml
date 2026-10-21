@@ -10,10 +10,14 @@ on:
       - release/packaging/tests/test_prepare_browser_sdk.py
       - release/packaging/desktop/macos/protect-owned-binaries.py
       - release/packaging/desktop/macos/package.sh
+      - release/packaging/desktop/macos/create-dmg.sh
+      - release/packaging/tests/test_macos_dmg.py
       - release/packaging/tests/test_native_symbol_boundaries.py
       - src/app/tooling/dockpipe-launcher/src/DashboardWorkspace.cpp
       - src/app/tooling/dockpipe-launcher/tests/DashboardWorkspaceTest.cpp
       - src/app/tooling/dockpipe-launcher/tests/DashboardBrowserPerformanceTest.cpp
+      - src/app/tooling/dockpipe-launcher/tests/DesktopAppWindowWinTest.cpp
+      - src/app/tooling/dockpipe-launcher/tests/WindowsTestLauncher.cpp
       - src/app/tooling/dockpipe-launcher/CMakeLists.txt
       - src/app/tooling/dockpipe-launcher/src/Browser*
       - src/app/tooling/dockpipe-launcher/tests/BrowserExtension*
@@ -111,6 +115,16 @@ jobs:
       - name: Qualify native Mach-O fixture
         shell: bash
         run: python3 -m unittest discover -s release/packaging/tests -p test_native_symbol_boundaries.py -v
+      - name: Qualify DMG creation and bounded recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s release/packaging/tests -p test_macos_dmg.py -v
+          proof="$(mktemp -d "$RUNNER_TEMP/dockpipe-dmg-proof.XXXXXX")"
+          mkdir "$proof/source"
+          printf '%s\n' 'Disposable Dockpipe DMG qualification fixture' > "$proof/source/fixture.txt"
+          bash release/packaging/desktop/macos/create-dmg.sh "$proof/source" "$proof/fixture.dmg"
+          hdiutil verify "$proof/fixture.dmg"
       - name: Build and audit the owned release binaries
         shell: bash
         run: |
@@ -149,6 +163,23 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - name: Qualify the standard-user Windows test launcher
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $visualStudio = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $visualStudio) { throw 'Visual Studio C++ tools are required.' }
+          & (Join-Path $visualStudio 'Common7/Tools/Launch-VsDevShell.ps1') -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+          if (-not $env:VCToolsInstallDir) { throw 'The Visual Studio developer environment is incomplete.' }
+          $launcher = Join-Path $env:RUNNER_TEMP 'windows-test-launcher.exe'
+          $object = Join-Path $env:RUNNER_TEMP 'windows-test-launcher.obj'
+          cl.exe /nologo /std:c++17 /EHsc /W4 /DUNICODE /D_UNICODE `
+            src/app/tooling/dockpipe-launcher/tests/WindowsTestLauncher.cpp `
+            "/Fe:$launcher" "/Fo:$object" /link advapi32.lib user32.lib
+          if ($LASTEXITCODE -ne 0) { throw 'Windows test launcher compilation failed.' }
+          & $launcher --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Windows test launcher qualification failed.' }
       - uses: actions/setup-go@v7
         with:
           go-version: '1.26.9'
@@ -207,12 +238,75 @@ jobs:
           $transportLog = Join-Path $build 'native-terminal-session-results.txt'
           if (Test-Path -LiteralPath $transportLog) { Get-Content -LiteralPath $transportLog }
           if ($transportExit -ne 0) { throw 'Native terminal transport qualification failed.' }
-          cmake --build $build --config Release --target dockpipe-launcher terminal-shell-catalog-test terminal-session-win-test workspace-package-manager-test project-files-graph-test project-files-markdown-test web-mermaid-renderer-test dashboard-files-test project-files-test dashboard-page-test launcher-status-bar-test git-commit-queue-test git-repository-conflict-test git-history-widget-test project-git-test browser-extensions-test browser-extension-package-test browser-extension-store-test browser-extension-crx-test browser-extension-compatibility-test browser-test canvas-widget-presentation-test
+          # Isolate native embedding startup before compiling every desktop test.
+          cmake --build $build --config Release --target desktop-app-window-win-test
+          if ($LASTEXITCODE -ne 0) { throw 'Native embedding fixture compilation failed.' }
+          # Match the installed application: standard-user fixtures use an exact
+          # app-local Browser DLL instead of depending on the SDK directory ACLs.
+          python -B release/packaging/desktop/browser-runtime.py `
+            --sdk "$env:RUNNER_TEMP/browser-sdk" --platform windows-amd64 --runtime $build
+          if ($LASTEXITCODE -ne 0) { throw 'Native test Browser runtime deployment failed.' }
+          # Report effective static imports without replacing the native test gate.
+          try {
+              $dumpbin = (Get-Command dumpbin.exe -ErrorAction Stop).Source
+              $cmake = (Get-Command cmake -ErrorAction Stop).Source
+              $scanScript = (Resolve-Path src/app/tooling/dockpipe-launcher/tests/WindowsRuntimeDependencies.cmake).Path
+              $scanArguments = @(
+                  "`"-DTEST_EXECUTABLE=$build/desktop-app-window-win-test.exe`"",
+                  "`"-DDUMPBIN=$dumpbin`"",
+                  '-P', "`"$scanScript`""
+              )
+              $scan = Start-Process -FilePath $cmake -ArgumentList $scanArguments -NoNewWindow -PassThru
+              try {
+                  if (-not $scan.WaitForExit(60000)) {
+                      $scan.Kill($true)
+                      throw 'Windows import diagnostics exceeded the 60-second deadline.'
+                  }
+                  if ($scan.ExitCode -ne 0) { throw 'Windows import diagnostics failed.' }
+              } finally {
+                  $scan.Dispose()
+              }
+              Push-Location -LiteralPath $build
+              try {
+                  & (Join-Path $build 'windows-test-launcher.exe') --probe-runtime (Join-Path $build 'windows-runtime-dependencies.txt')
+                  if ($LASTEXITCODE -ne 0) { Write-Warning 'Restricted runtime access diagnostics failed; native test follows.' }
+              } finally {
+                  Pop-Location
+              }
+          } catch {
+              # Diagnostics must never replace the required native embedding gate.
+              Write-Warning "Windows import diagnostics failed: $_"
+          }
+          $previousPluginDiagnostics = $env:QT_DEBUG_PLUGINS
+          try {
+            $env:QT_DEBUG_PLUGINS = '1'
+            ctest --test-dir $build -C Release --verbose -R '^desktop-app-window-win$'
+            if ($LASTEXITCODE -ne 0) {
+              try {
+                & ./src/app/tooling/dockpipe-launcher/tests/TraceWindowsFixtureLoader.ps1 -BuildDirectory $build
+              } catch {
+                Write-Warning "Loader diagnostics failed: $_"
+              }
+              throw 'Native embedding qualification failed.'
+            }
+          } finally {
+            $env:QT_DEBUG_PLUGINS = $previousPluginDiagnostics
+          }
+          cmake --build $build --config Release
           if ($LASTEXITCODE -ne 0) { throw 'Native terminal compilation failed.' }
-          ctest --test-dir $build -C Release --verbose -R '^(dashboard-(files|file-views)|terminal-shell-catalog|workspace-package-manager|project-files(-graph|-markdown)?|web-mermaid-renderer|launcher-status-bar|browser-canvas-mode|dashboard-canvas-widgets|canvas-widget-presentation|browser-extensions|browser-extension-(package|store|crx)|project-git|git-(commit-queue|repository-conflict|history-widget))$'
+          # Exercise the same full desktop suite that gates the Windows release.
+          ctest --test-dir $build -C Release --verbose --timeout 120 --stop-on-failure
           $qualificationExit = $LASTEXITCODE
           foreach ($testLog in Get-ChildItem -LiteralPath $build -Filter 'native-*-results.txt') {
             Write-Host "Qt test results: $($testLog.Name)"
             Get-Content -LiteralPath $testLog.FullName
           }
           if ($qualificationExit -ne 0) { throw 'Native terminal qualification failed.' }
+      - name: Retain Windows loader diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-loader-trace
+          path: ${{ runner.temp }}/dockpipe-native-terminal/windows-loader-trace
+          if-no-files-found: ignore
+          retention-days: 7
