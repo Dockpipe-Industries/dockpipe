@@ -23,6 +23,7 @@ public:
     bool thirdPartyDisclaimerDismissed = false;
     bool sidebarVisible = true;
     bool defaultDashboardVisible = true;
+    bool tilingEnabled = false;
     CockpitSettings cockpit;
 
     bool load();

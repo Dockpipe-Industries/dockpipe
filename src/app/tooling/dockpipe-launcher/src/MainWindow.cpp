@@ -771,7 +771,7 @@ void MainWindow::setupMenuBar()
     view->setObjectName("workspaceViewMenu");
     auto *modeGroup = new QActionGroup(this);
     m_pageGroup = modeGroup;
-    const QStringList pages{tr("Apps"), tr("Workflows"), tr("Machines"), tr("Containers"), tr("Executions"), tr("Files"), tr("Git"), tr("Browser"), tr("Cockpit"), tr("Terminal")};
+    const QStringList pages{tr("Apps"), tr("Workflows"), tr("Machines"), tr("Containers"), tr("Executions"), tr("Files"), tr("Git"), tr("Browser"), tr("Cockpit · Experimental"), tr("Terminal")};
     for (int page = 0; page < pages.size(); ++page) {
         auto *action = view->addAction(pages[page]);
         action->setCheckable(true);
@@ -1105,6 +1105,7 @@ bool MainWindow::saveSettings(const LauncherSettings &settings)
         return false;
     }
     m_settings = settings;
+    applyTilingAvailability();
     applyDefaultDashboardVisibility();
     applyCockpitAvailability();
     applyGlobalRootDefault(m_settings.globalRootOverride);

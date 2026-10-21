@@ -103,14 +103,26 @@ SettingsDialog::SettingsDialog(const LauncherSettings &settings, QWidget *parent
     notes->setWordWrap(true);
     layout->addWidget(notes);
 
-    auto *cockpit = new QGroupBox(tr("Cockpit mode"));
+    auto *tiling = new QGroupBox(tr("Tiling mode · Experimental"));
+    tiling->setObjectName("tilingSettingsGroup");
+    auto *tilingLayout = new QVBoxLayout(tiling);
+    m_tilingEnabled = new QCheckBox(tr("Enable tiling mode · Experimental"));
+    m_tilingEnabled->setObjectName("settingsTilingEnabled");
+    m_tilingEnabled->setChecked(m_settings.tilingEnabled);
+    tilingLayout->addWidget(m_tilingEnabled);
+    auto *tilingDescription = new QLabel(tr("An experimental workspace with splits, tabs and desktop app panels. Off by default. Disabling it returns dashboards to Canvas and releases desktop apps. Saved tiling layouts are kept."));
+    tilingDescription->setWordWrap(true);
+    tilingLayout->addWidget(tilingDescription);
+    layout->addWidget(tiling);
+
+    auto *cockpit = new QGroupBox(tr("Cockpit mode · Experimental"));
     cockpit->setObjectName("cockpitSettingsGroup");
     auto *cockpitLayout = new QVBoxLayout(cockpit);
-    m_cockpitEnabled = new QCheckBox(tr("Enable Cockpit mode"));
+    m_cockpitEnabled = new QCheckBox(tr("Enable Cockpit mode · Experimental"));
     m_cockpitEnabled->setObjectName("settingsCockpitEnabled");
     m_cockpitEnabled->setChecked(m_settings.cockpit.enabled);
     cockpitLayout->addWidget(m_cockpitEnabled);
-    auto *description = new QLabel(tr("An optional workspace for flying, exploring rooms and the spatial web. Enabling it downloads the Cockpit package. Off by default. Disabling it stops flight, app capture, controller input and voice control."));
+    auto *description = new QLabel(tr("An experimental workspace for flying, exploring rooms and the spatial web. Enabling it downloads the Cockpit package. Off by default. Disabling it stops flight, app capture, controller input and voice control."));
     description->setWordWrap(true);
     cockpitLayout->addWidget(description);
     auto *options = new QWidget;
@@ -225,6 +237,7 @@ SettingsDialog::~SettingsDialog()
 LauncherSettings SettingsDialog::updatedSettings() const
 {
     LauncherSettings out = m_settings;
+    out.tilingEnabled = m_tilingEnabled->isChecked();
     out.defaultDashboardVisible = m_defaultDashboardVisible->isChecked();
     out.repoRootOverride = m_repoRootOverride->text().trimmed();
     out.globalRootOverride = m_globalRootOverride->text().trimmed();
