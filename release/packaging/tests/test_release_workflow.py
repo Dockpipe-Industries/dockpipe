@@ -70,7 +70,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
                     "ctest --test-dir $build -C Release --verbose -R '^desktop-app-window-win$'",
                     "ctest --test-dir $build -C Release --verbose --timeout 120 --stop-on-failure",
                 ])
-                self.assertIn("if ($LASTEXITCODE -ne 0) { throw 'Native embedding qualification failed.' }", scripts)
+                self.assertRegex(scripts, r"(?s)if \(\$LASTEXITCODE -ne 0\) \{\s+try \{\s+& ./src/app/tooling/dockpipe-launcher/tests/TraceWindowsFixtureLoader.ps1.*?throw 'Native embedding qualification failed\.'")
                 self.assertIn("if ($qualificationExit -ne 0) { throw 'Native terminal qualification failed.' }", scripts)
                 continue
             self.assertIn("browser-extensions-test", scripts)

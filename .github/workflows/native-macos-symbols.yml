@@ -281,7 +281,14 @@ jobs:
           try {
             $env:QT_DEBUG_PLUGINS = '1'
             ctest --test-dir $build -C Release --verbose -R '^desktop-app-window-win$'
-            if ($LASTEXITCODE -ne 0) { throw 'Native embedding qualification failed.' }
+            if ($LASTEXITCODE -ne 0) {
+              try {
+                & ./src/app/tooling/dockpipe-launcher/tests/TraceWindowsFixtureLoader.ps1 -BuildDirectory $build
+              } catch {
+                Write-Warning "Loader diagnostics failed: $_"
+              }
+              throw 'Native embedding qualification failed.'
+            }
           } finally {
             $env:QT_DEBUG_PLUGINS = $previousPluginDiagnostics
           }
@@ -295,3 +302,11 @@ jobs:
             Get-Content -LiteralPath $testLog.FullName
           }
           if ($qualificationExit -ne 0) { throw 'Native terminal qualification failed.' }
+      - name: Retain Windows loader diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-loader-trace
+          path: ${{ runner.temp }}/dockpipe-native-terminal/windows-loader-trace
+          if-no-files-found: ignore
+          retention-days: 7
