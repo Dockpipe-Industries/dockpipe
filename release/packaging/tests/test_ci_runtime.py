@@ -82,20 +82,27 @@ class RuntimeCITests(unittest.TestCase):
             self.assertEqual(result.returncode, 3, result.stderr)
 
     def test_release_and_ci_use_the_security_patched_toolchain(self):
-        for filename in ("ci.yml", "release.yml", "flatpak.yml"):
+        workflow_names = (
+            "ci.yml",
+            "release.yml",
+            "flatpak.yml",
+            "native-macos-symbols.yml",
+            "compiler-bootstrap.yml",
+        )
+        for filename in workflow_names:
             workflow = yaml.load((REPOSITORY / ".github/workflows" / filename).read_text(), Loader=yaml.BaseLoader)
             for job in workflow["jobs"].values():
                 for step in job.get("steps", []):
                     if step.get("uses", "").startswith("actions/setup-go@"):
-                        self.assertEqual(step["with"]["go-version"], "1.26.9")
-        self.assertIn("toolchain go1.26.9", (REPOSITORY / "go.mod").read_text())
+                        self.assertEqual(step["with"]["go-version"], "1.26.10")
+        self.assertIn("toolchain go1.26.10", (REPOSITORY / "go.mod").read_text())
 
         nested = yaml.load((REPOSITORY / "workflows/ci/test/config.yml").read_text(), Loader=yaml.BaseLoader)
         for step in nested["steps"]:
-            self.assertEqual(step["isolate"], "golang:1.26.9-bookworm")
+            self.assertEqual(step["isolate"], "golang:1.26.10-bookworm")
         lock = json.loads((REPOSITORY / "release/packaging/desktop/flatpak/package-tools.lock.json").read_text())
-        self.assertEqual(lock["tools"]["go"]["version"], "1.26.9")
-        self.assertEqual(lock["tools"]["go"]["url"], "https://go.dev/dl/go1.26.9.linux-amd64.tar.gz")
+        self.assertEqual(lock["tools"]["go"]["version"], "1.26.10")
+        self.assertEqual(lock["tools"]["go"]["url"], "https://go.dev/dl/go1.26.10.linux-amd64.tar.gz")
 
     def test_codeql_retains_go_and_actions_coverage(self):
         workflow = yaml.load((REPOSITORY / ".github/workflows/codeql.yml").read_text(), Loader=yaml.BaseLoader)
