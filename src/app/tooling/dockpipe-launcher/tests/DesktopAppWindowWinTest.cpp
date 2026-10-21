@@ -27,7 +27,8 @@
 namespace {
 void reportPhase(const char *phase)
 {
-    std::fprintf(stderr, "Windows embedding phase: pid=%lu %s\n", GetCurrentProcessId(), phase);
+    std::fprintf(stderr, "Windows embedding phase: pid=%lu tick=%llu %s\n",
+        GetCurrentProcessId(), static_cast<unsigned long long>(GetTickCount64()), phase);
     std::fflush(stderr);
 }
 
@@ -56,12 +57,22 @@ public:
 
     HWND add(const WCHAR *title, DWORD extendedStyle, HWND owner, int show)
     {
+        std::fprintf(stderr, "Windows fixture native window: tick=%llu before CreateWindowEx title=%ls show=%d\n",
+            static_cast<unsigned long long>(GetTickCount64()), title, show);
+        std::fflush(stderr);
         const HWND window = CreateWindowExW(extendedStyle, L"STATIC", title,
             WS_OVERLAPPEDWINDOW, 100, 100, 480, 320, owner, nullptr,
             GetModuleHandleW(nullptr), nullptr);
+        const DWORD creationError = window ? ERROR_SUCCESS : GetLastError();
+        std::fprintf(stderr, "Windows fixture native window: tick=%llu after CreateWindowEx title=%ls hwnd=%p error=%lu\n",
+            static_cast<unsigned long long>(GetTickCount64()), title,
+            static_cast<void *>(window), creationError);
+        std::fflush(stderr);
         if (window) {
             m_windows.append(window);
+            reportPhase("before native ShowWindow");
             ShowWindow(window, show);
+            reportPhase("after native ShowWindow");
         }
         return window;
     }
@@ -163,7 +174,9 @@ int main(int argc, char **argv)
         auto *layout = new QVBoxLayout(&window);
         layout->addWidget(new QLabel("Only this disposable test window may be embedded", &window));
         layout->addWidget(new QLineEdit("Native keyboard input", &window));
+        reportPhase("before Qt fixture show");
         window.show();
+        reportPhase("after Qt fixture show");
         NativeFixtureWindows windows;
         const HWND owner = windows.add(L"Hidden fixture owner", 0, nullptr, SW_HIDE);
         const HWND minimized = windows.add(L"Minimized fixture app", WS_EX_APPWINDOW, nullptr, SW_SHOWMINNOACTIVE);
