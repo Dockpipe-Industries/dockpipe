@@ -1,4 +1,5 @@
 #include "DashboardTourDialog.h"
+#include "LauncherSettings.h"
 #include "DesktopWindowWidget.h"
 #include "Theme.h"
 
@@ -36,6 +37,7 @@ bool captureIfRequested(DashboardTourDialog &dialog, const QString &name)
 class DashboardTourDialogTest final : public QObject {
     Q_OBJECT
 private slots:
+    void experimentalTilingGate();
     void defaultsAndNavigation();
     void backgroundChoices_data();
     void backgroundChoices();
@@ -43,6 +45,22 @@ private slots:
     void rejection_data();
     void rejection();
 };
+
+void DashboardTourDialogTest::experimentalTilingGate()
+{
+    auto settings = LauncherSettings::current();
+    settings.tilingEnabled = false;
+    QVERIFY(settings.save());
+    DashboardTourDialog dialog(DashboardOptions{});
+    auto *tiling = control<QRadioButton>(dialog, "dashboardTourTiling");
+    QVERIFY(tiling && !tiling->isEnabled());
+    tiling->setChecked(true);
+    QCOMPARE(dialog.initialEnvironment(), QString("canvas"));
+    QVERIFY(!control<QCheckBox>(dialog, "dashboardTourCompact")->isEnabled());
+    QVERIFY(!control<QCheckBox>(dialog, "dashboardTourAutoAcquire")->isEnabled());
+    settings.tilingEnabled = true;
+    QVERIFY(settings.save());
+}
 
 void DashboardTourDialogTest::defaultsAndNavigation()
 {
@@ -216,6 +234,10 @@ int main(int argc, char **argv)
     QApplication application(argc, argv);
     application.setOrganizationName("DockpipeDashboardTourTest");
     application.setApplicationName("DashboardTourFixture");
+    LauncherSettings settings;
+    settings.tilingEnabled = true;
+    if (!settings.save())
+        return 1;
     application.setStyle("Fusion");
     applyDockpipeLauncherTheme(application);
     if (application.styleSheet().isEmpty())

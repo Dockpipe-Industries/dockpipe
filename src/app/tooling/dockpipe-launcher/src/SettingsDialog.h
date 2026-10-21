@@ -31,6 +31,7 @@ private:
     LauncherSettings m_settings;
     bool m_installPending = false;
     QCheckBox *m_defaultDashboardVisible = nullptr;
+    QCheckBox *m_tilingEnabled = nullptr;
     QCheckBox *m_cockpitEnabled = nullptr;
     QCheckBox *m_appControl = nullptr;
     QCheckBox *m_orbitalMotion = nullptr;
