@@ -1,6 +1,6 @@
 # Claude Code template: Node.js + Claude CLI + the worker baseline DorkPipe orchestration lanes expect.
 # Requires ANTHROPIC_API_KEY or ~/.claude credentials at run time.
-FROM node:20-slim
+FROM node:25-slim
 
 # Keep this base image lean. Consumer workflows can add project-specific tooling at run time with
 # DORKPIPE_ORCH_CONTAINER_APT_PACKAGES or through normal image.packages-derived images.
