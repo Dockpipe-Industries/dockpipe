@@ -1,6 +1,6 @@
 # Codex template: Node.js + Codex CLI + the worker baseline DorkPipe orchestration lanes expect.
 # Requires OPENAI_API_KEY or Codex login at run time.
-FROM node:20-slim
+FROM node:25-slim
 
 # Do not install distro bubblewrap: Debian's /usr/bin/bwrap is often too old and lacks --argv0,
 # which Codex's sandbox passes — that breaks exec with "bwrap: Unknown option --argv0".
