@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Optional package-owned VM session reporting. The runtime supplies observed
 # connection values; the installed provider owns its records and management UI.
 vmimage_prepare_session_reporter() {
