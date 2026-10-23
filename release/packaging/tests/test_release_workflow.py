@@ -58,7 +58,8 @@ class ReleaseWorkflowTests(unittest.TestCase):
         flatpak = (REPOSITORY / "release/packaging/desktop/flatpak/build.sh").read_text()
         self.assertIn("runtime_branch=6.10", flatpak)
         self.assertIn("io.qt.qtwebengine.BaseApp", flatpak)
-        for job_name, job in native["jobs"].items():
+        for job_name in ("owned-symbols", "windows-terminal"):
+            job = native["jobs"][job_name]
             scripts = "\n".join(step.get("run", "") for step in job.get("steps", []))
             if job_name == "windows-terminal":
                 commands = [line.strip() for line in scripts.splitlines()]
