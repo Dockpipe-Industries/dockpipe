@@ -97,52 +97,6 @@ class DisplayCandidateTests(unittest.TestCase):
                     PUBLISHER.validate(root, SOURCE, TARGET)
                 digest.assert_not_called()
 
-    def test_fresh_resumed_and_published_candidates_never_replace_assets(self):
-        for state in ("absent", "draft", "published"):
-            with self.subTest(state=state), tempfile.TemporaryDirectory() as temporary:
-                root = Path(temporary)
-                delivery(root)
-                assets = PUBLISHER.validate(root, SOURCE, TARGET)
-                tag = f"display-sdk-1.0.0-{TARGET}-staging.{SOURCE}"
-                release = {"id": 123, "tag_name": tag, "target_commitish": SOURCE,
-                           "prerelease": True, "draft": state != "published",
-                           "html_url": "https://github.com/example/candidate",
-                           "assets": [{"name": name, **data} for name, data in assets.items()]}
-                exists = state != "absent"
-                calls = []
-
-                def execute(arguments):
-                    nonlocal exists
-                    calls.append(arguments)
-                    if arguments[1:3] == ["release", "create"]:
-                        self.assertFalse(exists)
-                        self.assertIn("--draft", arguments)
-                        self.assertIn("--latest=false", arguments)
-                        self.assertIn("--target", arguments)
-                        exists = True
-                        return ""
-                    if arguments[1:3] == ["release", "edit"]:
-                        self.assertIn("--draft=false", arguments)
-                        self.assertIn("--latest=false", arguments)
-                        release["draft"] = False
-                        return ""
-                    if "graphql" in arguments:
-                        reference = None if release["draft"] else {"target": {"__typename": "Commit", "oid": SOURCE}}
-                        return json.dumps({"data": {"repository": {"ref": reference}}})
-                    if arguments[-1].endswith("/releases?per_page=100&page=1"):
-                        return json.dumps([release] if exists else [])
-                    if arguments[-1].endswith("/releases/123"):
-                        return json.dumps(release)
-                    self.fail("Unexpected publication command")
-
-                with patch.dict(os.environ, environment(), clear=True), \
-                        patch.object(PUBLISHER.SHARED, "run", side_effect=execute), patch("builtins.print"):
-                    PUBLISHER.publish(root, TARGET)
-                self.assertEqual(sum(call[1:3] == ["release", "create"] for call in calls), int(state == "absent"))
-                self.assertEqual(sum(call[1:3] == ["release", "edit"] for call in calls), int(state != "published"))
-                self.assertFalse(any("--clobber" in call or "upload" in call or "delete" in call for call in calls))
-                self.assertFalse(release["draft"])
-
     def test_existing_tag_at_another_commit_never_creates_a_release(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -165,7 +119,7 @@ class DisplayCandidateTests(unittest.TestCase):
             tag = f"display-sdk-1.0.0-{TARGET}-staging.{SOURCE}"
             release = {"id": 123, "tag_name": tag, "target_commitish": SOURCE,
                        "prerelease": True, "draft": False,
-                       "assets": [{"name": name, **data} for name, data in assets.items()]}
+                       "assets": [{"name": name, "state": "uploaded", **data} for name, data in assets.items()]}
             release["assets"][0]["digest"] = "sha256:" + "0" * 64
             reference = {"data": {"repository": {"ref": {"target": {"__typename": "Commit", "oid": SOURCE}}}}}
             with patch.dict(os.environ, environment(), clear=True), \

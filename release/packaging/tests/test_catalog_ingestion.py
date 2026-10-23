@@ -66,6 +66,21 @@ class CatalogPinTests(unittest.TestCase):
             ingest.validate_pin(pin, catalog_platform='windows-amd64',
                                 catalog_source_commit=SOURCE, baseline_platform='windows-amd64')
 
+    def test_native_and_source_candidates_have_disjoint_exact_release_urls(self):
+        source_pin = catalog_pin()
+        native_pin = {**source_pin, 'url': source_pin['url'].replace(
+            '/catalog-candidate-', '/catalog-native-candidate-')}
+        for pin in (source_pin, native_pin):
+            ingest.validate_pin(pin, catalog_platform='windows-amd64', catalog_source_commit=SOURCE)
+        self.assertNotEqual(source_pin['url'], native_pin['url'])
+        for invalid in (
+                native_pin['url'].replace(SOURCE, SOURCE[:12]),
+                native_pin['url'].replace('catalog-native-candidate-', 'catalog-native-latest-'),
+                native_pin['url'].replace('catalog-native-candidate-', 'catalog-native-native-candidate-')):
+            with self.subTest(url=invalid), self.assertRaises(ValueError):
+                ingest.validate_pin({**native_pin, 'url': invalid},
+                                    catalog_platform='windows-amd64', catalog_source_commit=SOURCE)
+
     def test_optional_lock_preserves_legacy_and_rejects_bad_ownership_before_download(self):
         lock = json.loads((SCRIPT.parent / 'pinned-stores.lock.json').read_text())
         with tempfile.TemporaryDirectory() as temporary:

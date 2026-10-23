@@ -40,7 +40,7 @@ STABLE_RELEASE_URL = re.compile(
 )
 CATALOG_URL = re.compile(
     r'https://github\.com/Dockpipe-Industries/dockpipe-packages/releases/download/'
-    r'catalog-candidate-(?P<source>[0-9a-f]{40})/'
+    r'catalog-(?:native-)?candidate-(?P<source>[0-9a-f]{40})/'
     r'dockpipe-catalog-(?P<platform>linux-amd64|linux-arm64|darwin-amd64|darwin-arm64|windows-amd64)\.tar\.gz'
 )
 PIN_FIELDS = {'url', 'sha256', 'size_bytes', 'manifest_sha256'}
