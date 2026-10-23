@@ -428,7 +428,12 @@ if(BUILD_TESTING)
     add_executable(package-surface-test tests/PackageSurfaceTest.cpp src/PackageSurfacePage.cpp src/SessionManager.cpp)
     target_include_directories(package-surface-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(package-surface-test PRIVATE dockpipe-launcher-ui Qt6::Widgets Qt6::Test)
-    add_test(NAME package-surface COMMAND package-surface-test)
+    if(WIN32)
+        add_test(NAME package-surface COMMAND package-surface-test
+            -o "${CMAKE_CURRENT_BINARY_DIR}/native-package-surface-results.txt,txt")
+    else()
+        add_test(NAME package-surface COMMAND package-surface-test)
+    endif()
     set_tests_properties(package-surface PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
 
     add_executable(terminal-preferences-test tests/TerminalPreferencesTest.cpp)
