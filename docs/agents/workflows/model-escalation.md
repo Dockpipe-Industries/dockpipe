@@ -75,7 +75,7 @@ If a role must stay on one worker class, declare `worker_policy.mode: require`; 
 
 - `docs/workflows/agentic-workflows.md`
 - `docs/workflows/workflow-yaml.md`
-- `packages/dorkpipe/resolvers/dorkpipe/assets/docs/orchestration-contract.md`
+- [external DorkPipe source](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe/resolvers/dorkpipe/assets/docs/orchestration-contract.md)
 
 ## Training Mode
 

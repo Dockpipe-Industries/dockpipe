@@ -107,8 +107,8 @@ Prerequisites: Flatpak, Python 3, `org.kde.Sdk//6.10`, `org.kde.Platform//6.10`,
 `io.qt.qtwebengine.BaseApp//6.10` for the embedded browser, a
 matching static CLI, a verified core store, and `DOCKPIPE_FLATPAK_BROWSER_SDK` pointing to
 the separately verified public Spatial-Web Flatpak Browser SDK prefix.
-`DOCKPIPE_FLATPAK_COCKPIT_ASSETS` names the freshly verified locked Cockpit
-compatibility fixture prepared by `prepare-cockpit.py`. The builder does not install its
+`DOCKPIPE_FLATPAK_COCKPIT_ASSETS` optionally selects the freshly verified locked Cockpit
+compatibility fixture prepared by `prepare-cockpit.py` for the independent package integration lane. Generic host extension fixtures run without it. The builder does not install its
 prerequisites or install the resulting app on the build machine.
 The build bundles checksum-pinned libXRes 1.2.3 for X11 process identification,
 including RustDesk windows that omit their process ID property. Its license is
@@ -181,7 +181,13 @@ First-party packages additionally own `assets/flatpak/package.json` profiles nam
 exact artifacts, extra bundled tools, host integrations and required release
 payloads. Each pinned native archive must carry a profile declaring its own
 identity. The catalog builder rejects missing, duplicate or unowned artifacts and
-unknown dependencies. It rebuilds archives with their runtime-specific dependencies,
+unknown dependencies. Before adaptation, it reads only each selected archive’s
+top-level package manifest and verifies both package dependencies and required
+resolvers against the pinned store and shipped core. Nested fixtures do not
+become catalog packages. A historical store with absent umbrella packages or
+resolver archives must be repaired in its owning source; no checkout-only alias
+or dependency removal is substituted. Final CLI store validation still runs.
+It rebuilds archives with their runtime-specific dependencies,
 executes dependency/preflight checks in the Platform, then exports a complete store
 with checksums and a qualification receipt. Generated Flatpak metadata preserves the
 workflow namespace and declares `platforms: [flatpak]`; native metadata is untouched.
@@ -204,26 +210,23 @@ dependency locks currently target Linux amd64 only.
 
 ## Release integration and proof limits
 
-The reusable `.github/workflows/flatpak.yml` builds the desktop, bundled-library
-fixture and first-party catalog, and checks real Docker/Compose bind mounts.
-Standalone runs upload qualification artifacts. The release workflow calls the
-same job and requires its success before assembly/publication. Its catalog entry is
-`linux-amd64-flatpak-org.kde.Platform-6.10`, separate from all native stores; the
-Flatpak download contains both launcher and CLI. Native and Flatpak stores cannot
-be substituted, including through pinned store URLs. Runtime branch upgrades
-require package rebuilds and qualification.
+The reusable `.github/workflows/flatpak.yml` builds the desktop and generic bundled-library fixture, qualifies installed host terminals, and checks real Docker/Compose bind mounts. Its success remains required for the desktop release. It uploads the desktop bundle and a verified core-only store under the `linux-amd64-flatpak-org.kde.Platform-6.10` target. CLI, launcher and host SDK source remain in the main Dockpipe repository.
 
-Use the [production release catalog](https://packages.dockpipe.com/packages/latest.json)
+The independent `.github/workflows/flatpak-catalog.yml` retains strict optional catalog, installed Cockpit rendering and Marketplace lifecycle checks. It uploads `flatpak-optional-catalog-qualification-amd64` rather than runtime release artifacts. A failure in that lane does not make an optional package a host dependency. Marketplace promotion must use its qualified package store and update its own catalog pointer separately.
+
+Native and Flatpak stores cannot be substituted, including through pinned store URLs. Runtime branch upgrades require package rebuilds and qualification.
+
+Use the [production release catalog](https://packages.dockpipe.com/packages/runtime/latest.json)
 to discover the current immutable release manifest. Its
 `downloads["linux-amd64-flatpak-org.kde.Platform-6.10"].desktop` entry names the
 bundle relative to the manifest directory. The same release supplies
-`SHA256SUMS.txt` and the matching Flatpak package store. Do not pin installation
+`SHA256SUMS.txt` and the matching Flatpak core store. Optional Marketplace packages come from the independent package catalog. Do not pin installation
 instructions to a historical staging candidate or assume a GitHub release has a
 Flatpak attachment. The [installation guide](../../../../docs/install.md#flatpak-desktop-linux-amd64)
 resolves the current catalog and verifies the bundle before installation.
 
 For pre-release qualification, select the
-[staging catalog](https://packages.staging.dockpipe.com/packages/latest.json)
+[staging catalog](https://packages.staging.dockpipe.com/packages/runtime/latest.json)
 explicitly and keep its manifest, checksums and stores together. Published bundles
 currently retain the internal OSTree branch name `staging`; that branch name does
 not select the production or staging package host.

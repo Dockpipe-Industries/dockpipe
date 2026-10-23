@@ -693,3 +693,61 @@ In short:
 
 This keeps workflows stable while letting the runtime evolve from local Docker to distributed
 orchestration.
+
+## Git inspection in Docker linked worktrees
+
+A linked worktree's `.git` file normally points outside the mounted project.
+Docker runs now replace that inaccessible container view with a runtime-owned,
+read-only Git snapshot. The host gitfile, index and shared repository metadata
+are never rewritten. The same view is available with a project bind mount or the
+managed-volume tar-sync fallback.
+
+The snapshot contains the current HEAD's reachable history, its current branch
+reference, the actual index and any additional objects referenced by that index.
+Staged changes, unmerged stages and index flags remain inspectable. Split indexes
+are flattened only in the private copy. Shallow boundaries are retained. Local
+remotes, credentials, hooks, reflogs, stashes, unrelated branch/tag references,
+worktree registrations and object alternates are not mounted or copied. Git
+inspection is local; partial clones, sparse checkouts and repositories without a
+committed HEAD currently fail explicitly rather than fetching or mounting their
+shared Git directory.
+
+Inherited `GIT_*` variables are removed from snapshot commands and from the worker
+Git environment. The runtime supplies optional-lock suppression and one fixed
+`safe.directory=/work` declaration for its own mount; it does not trust arbitrary
+paths or disable ownership checks globally. The snapshot uses a fresh minimal
+config, retaining only the object format and safe filesystem boolean settings.
+Custom Git filters, global configuration and local ignore files are not copied.
+This is an inspection view, not a container Git-write or publication boundary.
+Existing runtime-owned host checkpoint/publication behavior remains separate.
+
+Preparation checks HEAD, branch and original index again after the object export
+and rejects concurrent changes. Each Git command has bounded output; index and
+metadata reads are limited to 64 MiB, the exported pack to 2 GiB, and preparation
+to three minutes with two packing workers and a 32 MiB packing-window allowance.
+Scratch space can include both the export and indexed pack during preparation.
+Errors and cancelled commands discard the temporary snapshot.
+
+Snapshot files are individually mounted read-only, together with an empty refs
+directory required by Git. Attached runs remove host scratch after container
+completion. For Linux detached runs, established bind mounts retain those file
+inodes after host scratch removal; Docker's disposable container lifetime then
+owns the remaining mounts. A native Linux fixture verifies Git inspection and
+bundle creation after the host snapshot has already been removed. This lifetime
+contract is not qualified for Windows or macOS Docker Desktop: detached external
+Git snapshots fail explicitly on those hosts. Attached code paths still require
+native Docker Desktop qualification. Restarting a detached snapshot container
+against deleted host mount paths is not supported; start a fresh runtime run.
+
+The focused native fixture is opt-in and uses an already installed image with Git:
+
+```bash
+DOCKPIPE_TEST_DOCKER_GIT_IMAGE=golang:1.26.10-bookworm \
+  go test ./src/lib/infrastructure \
+  -run '^TestDockerGitSnapshotNativeAttachedAndDetached$' -count=1
+```
+
+It creates only disposable fixture repositories, containers and a named volume;
+uses no container network; verifies attached bind/volume and detached behavior;
+and checks the source gitfile and split index remain byte-identical. Without the
+explicit image setting, ordinary unit-test runs do not claim native Docker proof.

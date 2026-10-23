@@ -169,6 +169,10 @@ func readExecutionSnapshot(ctx context.Context, workdir string, system, resource
 	if err != nil {
 		return snapshot, fmt.Errorf("execution history unavailable")
 	}
+	snapshot.Executions, snapshot.Truncated, err = mergeActiveExecutionResources(ctx, workdir, snapshot.Executions, collector)
+	if err != nil {
+		return snapshot, err
+	}
 	for index := range snapshot.Executions {
 		if err := ctx.Err(); err != nil {
 			return snapshot, err
@@ -210,9 +214,9 @@ func readExecutionSnapshot(ctx context.Context, workdir string, system, resource
 			}
 		}
 	}
-	if len(snapshot.Executions) == telemetry.MaxExecutions {
+	if snapshot.Truncated || len(snapshot.Executions) == telemetry.MaxExecutions {
 		snapshot.Truncated = true
-		snapshot.Notices = append(snapshot.Notices, "Showing the most recent "+strconv.Itoa(telemetry.MaxExecutions)+" executions.")
+		snapshot.Notices = append(snapshot.Notices, "Showing up to "+strconv.Itoa(telemetry.MaxExecutions)+" executions, prioritizing verified active runtime associations.")
 	}
 	return snapshot, nil
 }

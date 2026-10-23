@@ -70,7 +70,8 @@ def validate(directory, source_sha):
     browser = browser_dependency()
     if (metadata.get("dependencies") != {"spatialweb_browser": browser}
             or metadata.get("compiler") != browser["compiler"]
-            or metadata.get("abi") != {"cxx_standard": 17, "workspace_interface": "com.dockpipe.launcher.WorkspacePackage/2.0"}
+            or metadata.get("abi") != {"cxx_standard": 17, "workspace_interface": "com.dockpipe.launcher.WorkspacePackage/2.0",
+                                       "display_interface": "com.dockpipe.launcher.DisplayPackage/1.0"}
             or not isinstance(metadata.get("source_digest"), str)
             or not re.fullmatch(r"[0-9a-f]{64}", metadata["source_digest"])):
         raise ValueError("SDK Browser dependency, compiler or workspace interface differs from the committed ABI")

@@ -369,3 +369,91 @@ func mustLstat(t *testing.T, path string) os.FileInfo {
 	}
 	return info
 }
+
+func TestLegacyPackageStateTokenResolvesSafeSubpaths(t *testing.T) {
+	workdir, _, _ := durableImportFixture(t)
+	status, err := PreparePackageStateDirWithManifests(workdir, "fixture-worker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy, _, err := DiscoverLegacyPackageState(workdir, "fixture-worker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, suffix := range []string{"", "identity", "future/nested"} {
+		t.Run(suffix, func(t *testing.T) {
+			resolved, err := resolveLegacyPackageStateToken(workdir, filepath.Join(status.Dir, suffix))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resolved != filepath.Join(legacy, suffix) {
+				t.Fatalf("resolved %q, want legacy suffix %q", resolved, filepath.Join(legacy, suffix))
+			}
+		})
+	}
+}
+
+func TestLegacyPackageStateTokenRejectsLinkedSubpaths(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires separate Windows host privileges")
+	}
+	workdir, _, _ := durableImportFixture(t)
+	status, err := PreparePackageStateDirWithManifests(workdir, "fixture-worker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(t.TempDir(), filepath.Join(status.Dir, "linked")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := resolveLegacyPackageStateToken(workdir, filepath.Join(status.Dir, "linked", "future")); err == nil {
+		t.Fatal("linked package-state subpath was accepted")
+	}
+}
+
+func TestLegacyPackageStateTokenRejectsOtherProjects(t *testing.T) {
+	workdir, _, _ := durableImportFixture(t)
+	status, err := PreparePackageStateDirWithManifests(workdir, "fixture-worker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	other := t.TempDir()
+	if _, err := resolveLegacyPackageStateToken(other, filepath.Join(status.Dir, "future")); err == nil {
+		t.Fatal("another project's package-state token was accepted")
+	}
+}
+
+func TestDurableCohortImportsSelectedLegacyPackageSubdirectory(t *testing.T) {
+	workdir, _, _ := durableImportFixture(t)
+	status, err := PreparePackageStateDirWithManifests(workdir, "fixture-worker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy, _, err := DiscoverLegacyPackageState(workdir, "fixture-worker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy = filepath.Join(legacy, "selected")
+	if err := os.MkdirAll(filepath.Join(legacy, "identity"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	identity := filepath.Join(legacy, "identity", "disk.uuid")
+	if err := os.WriteFile(identity, []byte("preserved-guest\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	spec := durableImportTestSpec(filepath.Join(status.Dir, "selected"), "guest", "run")
+	spec.Mappings = []DurableImportMapping{{Source: "identity/disk.uuid", Destination: "identity/machine.uuid"}}
+	spec.IgnorePaths = nil
+	imported, err := PrepareDurableCohortImport(workdir, spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !imported.ImportedLegacy {
+		t.Fatal("selected legacy cohort was not imported")
+	}
+	for _, path := range []string{identity, filepath.Join(imported.DurableDir, "identity", "machine.uuid")} {
+		data, err := os.ReadFile(path)
+		if err != nil || string(data) != "preserved-guest\n" {
+			t.Fatalf("guest identity at %q = %q, %v", path, data, err)
+		}
+	}
+}

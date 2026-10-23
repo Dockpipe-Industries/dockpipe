@@ -77,6 +77,7 @@ python3 release/packaging/build-launcher-sdk.py \
   --source-root /path/to/frozen/dockpipe-source \
   --source-sha <exact-40-character-commit> \
   --qt-root /path/to/Qt/6.10.3/gcc_64 \
+  --browser-sdk /path/to/verified/SpatialWebBrowserSDK \
   --work-directory /path/to/fresh-sdk-work \
   --output /path/to/fresh-sdk-candidate
 ```
@@ -93,7 +94,7 @@ allocated sections, exports and build identity. The static host-browser archive
 retains the symbols needed for SDK linkage. This remains the existing Qt/C++ host
 compatibility interface; it does not establish a new protected C ABI.
 
-Outputs are `DockPipeLauncherSDK-1.0.0-Linux-amd64.tar.gz`, `sdk-files.json` and
+Outputs are `DockPipeLauncherSDK-1.1.0-Linux-amd64.tar.gz`, `sdk-files.json` and
 `sdk-release.json`. The archive contains regular files only, with fixed tar/gzip
 timestamps and sorted names. The external metadata binds the archive checksum and
 size, complete file-manifest checksum, source identity, compiler, Qt and workspace
@@ -105,3 +106,17 @@ Candidate publication and publisher authentication are separate steps. Pin both
 the archive and metadata by exact size and checksum; authenticate the metadata
 through the release publisher before consuming its file-manifest checksum.
 
+## Manual ForgePipe SDK attestation
+
+Use the separate **ForgePipe SDK attestation** workflow
+(`.github/workflows/forgepipe-sdk-attestation.yml`) to attest the exact SDK selected
+by `release/forgepipe-sdk.lock.json`. Its manual `forgepipe_sdk_tag` input remains
+empty by default. The existing gate accepts only a manual dispatch with a nonempty
+tag on `js/dev` or `staging`; it does not admit additional refs. The job audits the
+pinned public bytes before using its own narrowly scoped OIDC and attestation
+write permissions. It does not publish a product release.
+
+The reusable release workflow has no attestation-writing job or SDK-tag input.
+Its staging caller grants attestation **read** access to verify published SDKs,
+alongside the existing contents permission needed by release publication. This
+keeps manual attestation authority separate from staging build admission.

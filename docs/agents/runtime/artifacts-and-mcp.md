@@ -16,8 +16,7 @@ Read when using generated context, self-analysis artifacts, or DorkPipe MCP tool
 - Refresh only when the user asks.
 - Authored workflows should write generated files through `cwd: artifacts` or `dockpipe scope artifacts ...`.
 - Durable package continuity state belongs under `dockpipe scope --package <owner-id> ...`; workflow-run outputs, caches, and reproducible package products belong in artifact or package-runtime scope.
-- Pipeon binary: `packages/pipeon/resolvers/pipeon/bin/pipeon`.
-- Pipeon host apps: `packages/pipeon/apps/`.
+- Pipeon binaries and host apps belong to the [external package source](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon).
 
 ## MCP Tier Model
 
@@ -39,5 +38,5 @@ Treat that generated section as evidence subject to the rules above.
 ## Docs
 
 - `docs/runtime/artifacts.md`
-- `packages/dorkpipe-mcp/README.md`
-- `packages/dorkpipe-mcp/mcpbridge/README.md`
+- [MCP package](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe-mcp/README.md)
+- [MCP bridge](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe-mcp/mcpbridge/README.md)

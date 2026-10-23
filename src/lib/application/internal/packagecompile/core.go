@@ -8,11 +8,11 @@ import (
 	"strings"
 
 	"dockpipe/src/lib/application/internal/compileconfig"
-	"dockpipe/src/lib/application/internal/pipelangmaterialize"
 	"dockpipe/src/lib/application/internal/treecopy"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 	"dockpipe/src/lib/infrastructure/packagebuild"
+	pipelangmaterialize "github.com/Dockpipe-Industries/pipelang/sdk/materialize"
 
 	"gopkg.in/yaml.v3"
 )

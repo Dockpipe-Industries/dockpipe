@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Dockpipe project configuration",
+  "description": "Repository-level dockpipe.config.json. Unknown keys remain forward-compatible.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schema": {
+      "type": "integer"
+    },
+    "dockpipe_version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$",
+      "description": "Exact running Dockpipe release identity; no ranges, v prefix, latest or development tags."
+    },
+    "compile": {
+      "type": "object",
+      "properties": {
+        "core_from": {
+          "type": "string"
+        },
+        "workflows": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resolvers": false,
+        "bundles": false
+      },
+      "additionalProperties": true
+    },
+    "secrets": {
+      "type": "object"
+    },
+    "packages": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

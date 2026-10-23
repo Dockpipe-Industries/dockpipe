@@ -1,5 +1,7 @@
 ## DorkPipe Provider Pools
 
+Repository ownership note: package paths in this record describe external source. Current catalog packages live in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages); previously extracted [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) and [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) remain in their own repositories. Historical paths and receipts do not recreate a local package tree.
+
 Provider pools are a DorkPipe orchestration feature. They keep a bounded number of provider workers
 ready for low-latency top-level orchestration while preserving Dockpipe's governed runtime boundary.
 

@@ -10,7 +10,7 @@ Read when touching package resolution, compile/install flows, state paths, or bi
 | Durable project/package state | `dockpipe scope --package <owner-id> ...` | Owner-only state that must survive ordinary clean. |
 | Disposable package runtime | `PackageRuntimeDir` / shell SDK `path package-runtime` | Caches, build products, scratch, run evidence, and reproducible outputs under `bin/.dockpipe/`. |
 | Global install | `GlobalDockpipeDataDir()` / `DOCKPIPE_GLOBAL_ROOT` | User/machine shared package/core installs. |
-| Authoring trees | `src/core/`, `workflows/`, `packages/`, legacy `templates/` | Editable source trees. |
+| Authoring trees | `src/core/` and `workflows/` here; [external packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages/) in their own repository | Editable source ownership is separate from generated stores. |
 
 ## Hard Rules
 

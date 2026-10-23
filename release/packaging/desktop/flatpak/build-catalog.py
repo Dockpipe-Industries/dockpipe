@@ -118,6 +118,62 @@ def artifact_identity(path):
     return directory[:-1], name
 
 
+def package_manifest(archive, identity):
+    """Read only the selected slice, never a nested example's manifest."""
+    kind, name = identity
+    expected = "core/package.yml" if kind == "core" else f"{kind}s/{name}/package.yml"
+    manifests = []
+    with tarfile.open(archive) as source:
+        for member in source:
+            if member.name != expected:
+                continue
+            if not member.isfile() or not 0 < member.size <= 65536:
+                raise ValueError(f"Invalid package manifest: {archive.name}:{expected}")
+            manifests.append(yaml.safe_load(source.extractfile(member)))
+    if len(manifests) != 1 or not isinstance(manifests[0], dict):
+        raise ValueError(f"Archive needs one own package manifest: {archive.name}")
+    manifest = manifests[0]
+    package_name = manifest.get("name")
+    if not isinstance(package_name, str) or not package_name.strip() or len(package_name) > 256:
+        raise ValueError(f"Invalid package name: {archive.name}")
+    for field in ("depends", "requires_resolvers"):
+        references = manifest.get(field, [])
+        if (not isinstance(references, list) or len(references) > 128
+                or any(not isinstance(value, str) or not value.strip() or len(value) > 256
+                       for value in references)):
+            raise ValueError(f"Invalid {field}: {archive.name}")
+    return manifest
+
+
+def validate_package_dependencies(archives, core_directory):
+    """Fail before adaptation when the immutable input store is incomplete.
+
+    Store export must still run its ordinary CLI validation. This earlier check
+    neither borrows checkout manifests nor invents installable umbrella aliases.
+    """
+    core_archives = sorted(core_directory.glob("dockpipe-core-*.tar.gz"))
+    if len(core_archives) != 1 or core_archives[0].is_symlink():
+        raise ValueError("Flatpak catalog requires one selected compiled core archive")
+    manifests = []
+    for archive in archives:
+        identity = artifact_identity(archive)
+        manifests.append((identity, package_manifest(archive, identity)))
+    manifests.append((("core", "core"), package_manifest(core_archives[0], ("core", "core"))))
+    names = {manifest["name"].strip() for _, manifest in manifests}
+    resolvers = {name for (kind, name), _ in manifests if kind == "resolver"}
+    missing = []
+    for (kind, name), manifest in manifests:
+        for dependency in manifest.get("depends", []):
+            if dependency.strip() not in names:
+                missing.append(f"{kind} {name} requires missing package {dependency.strip()}")
+        for resolver in manifest.get("requires_resolvers", []):
+            if resolver.strip() not in resolvers:
+                missing.append(f"{kind} {name} requires missing resolver {resolver.strip()}")
+    if missing:
+        raise ValueError("Incomplete pinned catalog; repair the owning input store: "
+                         + "; ".join(sorted(set(missing))))
+
+
 def adapt_metadata(package, default_namespace):
     commands = set()
     for filename in ("package.yml", "config.yml"):
@@ -218,6 +274,7 @@ def main():
     spec.loader.exec_module(helpers)
     inputs = pinned_inputs(args.compiled)
     profile_map = profiles(inputs)
+    validate_package_dependencies(inputs, args.app / "files/share/dockpipe/packages/core")
     default_namespace = json.loads((root / "dockpipe.config.json").read_text())["packages"]["namespace"]
     if args.output.exists():
         raise SystemExit("Use a fresh catalog output directory")

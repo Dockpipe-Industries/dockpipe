@@ -5,7 +5,7 @@ for terminals, servers and CI. You do not need a Dockpipe source checkout or Go.
 Optional workflows and resolvers are installed from **Packages → Marketplace** or
 `dockpipe package install`; the base installer includes required core.
 
-Use the [release catalog](https://packages.dockpipe.com/packages/latest.json)
+Use the [release catalog](https://packages.dockpipe.com/packages/runtime/latest.json)
 to select the current release. The website selects the matching catalog for
 its environment; this source guide defaults to production.
 
@@ -17,7 +17,10 @@ its environment; this source guide defaults to production.
 | Linux amd64 with Flatpak | Combined launcher and CLI bundle, KDE Platform 6.10 | Bundled CLI via `flatpak run`; native packages are separate |
 | Other Linux distributions | See Flatpak requirements and qualification limits | RPM, APK, Arch or portable archive matching your CPU |
 
-Native host steps need Bash; Git for Windows supplies it on Windows. Container
+Native host inline commands use Windows PowerShell on Windows and Bash on
+Linux/macOS. Host `.sh` scripts and environment-sourcing setup scripts require
+Bash; Git for Windows supplies it on Windows. PowerShell 7 (`pwsh`) is required
+when a workflow selects it, or runs `.ps1` host scripts on Linux/macOS. Container
 workflows need a reachable Docker engine. Git, provider CLIs and authentication
 are needed only by workflows that use them. The Flatpak includes shell and
 container client tools but still needs a host engine for container workflows.
@@ -90,7 +93,7 @@ or checksum check fails; there is no version number to edit.
     cd "$HOME/Downloads/dockpipe"
 
     origin=https://packages.dockpipe.com
-    manifest=$(curl -fsSL "$origin/packages/latest.json" | jq -er '.manifest')
+    manifest=$(curl -fsSL "$origin/packages/runtime/latest.json" | jq -er '.manifest')
     base="$origin/${manifest%/*}"
     curl -fsSL "$origin/$manifest" -o release-manifest.json
     bundle=$(jq -er '.downloads["linux-amd64-flatpak-org.kde.Platform-6.10"].desktop' release-manifest.json)
@@ -175,7 +178,7 @@ before configuring the source above. Removing `dockpipe-desktop` retains the CLI
 
 ## Direct downloads and complete package stores
 
-Read the [release catalog](https://packages.dockpipe.com/packages/latest.json)
+Read the [release catalog](https://packages.dockpipe.com/packages/runtime/latest.json)
 and follow its `manifest` path relative to `https://packages.dockpipe.com/`.
 The release manifest lists numeric `version`, per-platform `downloads`, and
 `stores`. Download filenames are relative to the manifest's directory.
@@ -189,7 +192,7 @@ require `curl` and `jq` and select one immutable manifest before downloading:
 
 ```sh
 origin=https://packages.dockpipe.com
-manifest=$(curl -fsSL "$origin/packages/latest.json" | jq -er '.manifest')
+manifest=$(curl -fsSL "$origin/packages/runtime/latest.json" | jq -er '.manifest')
 base="$origin/${manifest%/*}"
 version=$(curl -fsSL "$origin/$manifest" | jq -er '.version')
 curl -fsSL "$base/install.sh" -o /tmp/dockpipe-install.sh
@@ -244,8 +247,10 @@ and check:
 dockpipe --version
 ```
 
-Native Windows workflows use Git for Windows for Bash and Docker Desktop for
-container execution. WSL is optional; a native install does not require a Linux
+Native Windows host inline commands use the installed Windows PowerShell.
+Install Git for Windows when a workflow uses Bash scripts or environment-sourcing
+setup scripts, and PowerShell 7 when it selects `shell: pwsh`. Container execution
+uses Docker Desktop. WSL is optional; a native install does not require a Linux
 Dockpipe binary. Follow [the WSL bridge guide](runtime/wsl-windows.md) only when you
 want execution inside a WSL distribution. Dockpipe is not listed in the default
 winget catalog yet.

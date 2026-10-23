@@ -112,18 +112,19 @@ QByteArray property(Display *display, Window window, const char *name, Atom type
     return value;
 }
 
-unsigned long processId(Display *display, Window window)
+unsigned long processId(Display *display, Window window, bool requireServerIdentity = false)
 {
     const auto bytes = property(display, window, "_NET_WM_PID", XA_CARDINAL, 1);
     unsigned long pid = 0;
     if (bytes.size() == sizeof(pid))
         memcpy(&pid, bytes.constData(), sizeof(pid));
 #ifdef DOCKPIPE_X11_RESOURCE_IDENTITIES
-    if (pid || !window)
+    if ((pid && !requireServerIdentity) || !window)
         return pid;
+    pid = 0;
 
-    // Some clients omit the optional EWMH PID hint. Ask the server for the
-    // owner of this one live window; never infer ownership from its title/class.
+    // Manual selection may use the EWMH hint. Package displays always require
+    // the server-owned process ID; never infer ownership from a title/class.
     // XRes accepts resource IDs even after destruction while the client lives,
     // so validate the window before using the server's client identity.
     XWindowAttributes attributes{};
@@ -148,6 +149,9 @@ unsigned long processId(Display *display, Window window)
     }
     if (identities)
         XResClientIdsDestroy(count, identities);
+#else
+    if (requireServerIdentity)
+        return 0;
 #endif
     return pid;
 }
@@ -166,6 +170,18 @@ QByteArray processStart(unsigned long pid)
     const auto fields = data.mid(commandEnd + 2).simplified().split(' ');
     // Fields after the parenthesized command start at field 3; starttime is 22.
     return fields.value(19);
+}
+
+QString publicProcessToken(unsigned long pid)
+{
+    QFile boot("/proc/sys/kernel/random/boot_id");
+    const auto start = processStart(pid);
+    if (start.isEmpty() || !boot.open(QIODevice::ReadOnly))
+        return {};
+    const auto bootId = boot.read(128).trimmed();
+    if (bootId.isEmpty() || bootId.size() >= 128)
+        return {};
+    return QString::fromLatin1(bootId + ":" + start);
 }
 
 bool isIconicWindow(Display *display, Window window)
@@ -225,6 +241,7 @@ struct DesktopAppWindow::Native {
 #if defined(DOCKPIPE_X11_BILLBOARDS) && QT_CONFIG(xcb)
     Display *display = nullptr;
     bool redirected = false;
+    bool serverIdentityRequired = false;
     unsigned long pid = 0;
     QByteArray processStart;
     QString applicationClass;
@@ -316,7 +333,8 @@ QVector<DesktopAppChoice> DesktopAppWindow::availableWindows(QString &error, qui
             if (!title.isEmpty()) {
                 const auto windowClass = property(display, window, "WM_CLASS", XA_STRING, 256).split('\0');
                 const QString applicationClass = windowClass.size() > 1 ? QString::fromUtf8(windowClass[1]) : QString();
-                choices.append({window, title, applicationClass});
+                const auto verifiedPid = processId(display, window, true);
+                choices.append({window, title, applicationClass, static_cast<qint64>(verifiedPid), publicProcessToken(verifiedPid)});
             }
         }
     }
@@ -410,8 +428,27 @@ bool DesktopAppWindow::alive() const
     if (!m_native->display || !m_native->pid)
         return false;
     XErrorScope errors(m_native->display);
-    return processId(m_native->display, m_choice.id) == m_native->pid && !errors.failed();
+    return processId(m_native->display, m_choice.id, m_native->serverIdentityRequired) == m_native->pid
+        && !m_native->processStart.isEmpty() && processStart(m_native->pid) == m_native->processStart
+        && !errors.failed();
 #else
+    return false;
+#endif
+}
+
+bool DesktopAppWindow::matchesProcess(qint64 expectedPid, const QString &startToken) const
+{
+#if defined(DOCKPIPE_X11_BILLBOARDS) && QT_CONFIG(xcb)
+    if (expectedPid <= 0 || startToken.isEmpty() || !m_native->display
+        || static_cast<qint64>(m_native->pid) != expectedPid
+        || processId(m_native->display, m_choice.id, true) != m_native->pid
+        || publicProcessToken(m_native->pid) != startToken)
+        return false;
+    m_native->serverIdentityRequired = true;
+    return alive();
+#else
+    Q_UNUSED(expectedPid);
+    Q_UNUSED(startToken);
     return false;
 #endif
 }

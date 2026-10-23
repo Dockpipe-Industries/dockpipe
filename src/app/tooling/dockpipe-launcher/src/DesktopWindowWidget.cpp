@@ -17,6 +17,7 @@
 #include <QVBoxLayout>
 #include <QFutureWatcher>
 #include <QSet>
+#include <QMap>
 #include <QtConcurrent>
 
 #ifdef DOCKPIPE_PORTAL_WINDOW_CAPTURE
@@ -28,6 +29,8 @@
 #include <QPainter>
 
 namespace {
+QMap<QString, QPointer<DesktopWindowWidget>> processDisplayOwners;
+
 struct ApplicationLaunchResult {
     bool success = false;
     QString error;
@@ -59,6 +62,10 @@ private:
 
 
 struct DesktopWindowWidget::State {
+    qint64 displayProcessId = 0;
+    QString displayStartToken;
+    QTimer *displayTimer = nullptr;
+    QElapsedTimer displayDeadline;
     QAction *choose = nullptr;
     QIcon applicationIcon;
     QLabel *status = nullptr;
@@ -118,6 +125,9 @@ DesktopWindowWidget::DesktopWindowWidget(QWidget *parent)
     m_state->nativeTimer->setObjectName("desktopNativeMonitor");
     m_state->nativeTimer->setInterval(50);
     connect(m_state->nativeTimer, &QTimer::timeout, this, &DesktopWindowWidget::advanceNativeWindow);
+    m_state->displayTimer = new QTimer(this);
+    m_state->displayTimer->setInterval(100);
+    connect(m_state->displayTimer, &QTimer::timeout, this, &DesktopWindowWidget::advanceProcessDisplay);
     m_state->launchTimer = new QTimer(this);
     m_state->launchTimer->setObjectName("desktopApplicationDiscovery");
     m_state->launchTimer->setInterval(50);
@@ -292,12 +302,18 @@ QVector<DesktopAppChoice> DesktopWindowWidget::availableWindows(QString &error)
 
 bool DesktopWindowWidget::acquireWindow(quint64 nativeId, QString &error)
 {
+    return acquireWindow(nativeId, error, 0, {});
+}
+
+bool DesktopWindowWidget::acquireWindow(quint64 nativeId, QString &error, qint64 expectedPid, const QString &startToken)
+{
     error.clear();
     if (!nativeId) {
         error = tr("Choose a valid desktop window.");
         return false;
     }
-    if (acquiredWindowId() == nativeId && m_state->native->alive())
+    if (acquiredWindowId() == nativeId && m_state->native->alive()
+        && (!expectedPid || m_state->native->matchesProcess(expectedPid, startToken)))
         return true;
     error = automaticAcquisitionUnavailableReason();
     if (!error.isEmpty())
@@ -312,6 +328,11 @@ bool DesktopWindowWidget::acquireWindow(quint64 nativeId, QString &error)
             continue;
         releaseWindow();
         m_state->native = std::make_unique<DesktopAppWindow>(choice);
+        if (expectedPid && !m_state->native->matchesProcess(expectedPid, startToken)) {
+            error = tr("The display process identity changed. Refresh its package status before attaching.");
+            releaseWindow();
+            return false;
+        }
         if (!m_state->native->prepareControl(error)) {
             fail(error);
             return false;
@@ -331,6 +352,92 @@ bool DesktopWindowWidget::acquireWindow(quint64 nativeId, QString &error)
     }
     error = tr("This desktop window is no longer available or cannot be embedded.");
     return false;
+}
+
+void DesktopWindowWidget::setProcessDisplay(qint64 processId, const QString &startToken)
+{
+    if (m_state->displayProcessId == processId && m_state->displayStartToken == startToken)
+        return;
+    releaseWindow();
+    m_state->displayProcessId = processId;
+    m_state->displayStartToken = startToken;
+    m_state->choose->setEnabled(processId <= 0);
+    if (processId > 0 && isVisible()) {
+        m_state->displayDeadline.restart();
+        m_state->displayTimer->start();
+        advanceProcessDisplay();
+    }
+}
+
+void DesktopWindowWidget::advanceProcessDisplay()
+{
+    if (!isVisible() || m_state->displayProcessId <= 0) {
+        m_state->displayTimer->stop();
+        return;
+    }
+    if (m_state->native) {
+        m_state->displayTimer->stop();
+        return;
+    }
+    const QString key = QString::number(m_state->displayProcessId) + ':' + m_state->displayStartToken;
+    const auto previous = processDisplayOwners.value(key);
+    if (previous && previous != this)
+        previous->releaseWindow();
+    QString error;
+    if (acquireProcessWindow(m_state->displayProcessId, m_state->displayStartToken, error)) {
+        processDisplayOwners.insert(key, this);
+        m_state->displayTimer->stop();
+        return;
+    }
+    if (m_state->displayDeadline.elapsed() >= 5000) {
+        m_state->displayTimer->stop();
+        m_state->status->setText(error);
+        emit windowUnavailable(error);
+    } else {
+        m_state->displayTimer->start();
+        m_state->status->setText(tr("Waiting for the verified display window…"));
+    }
+}
+
+bool DesktopWindowWidget::acquireProcessWindow(qint64 processId, const QString &startToken, QString &error)
+{
+#ifdef Q_OS_WIN
+    Q_UNUSED(processId);
+    Q_UNUSED(startToken);
+    error = tr("Package display attachment requires public kernel process identities, which are unavailable on Windows hosts.");
+    return false;
+#elif !defined(DOCKPIPE_X11_RESOURCE_IDENTITIES)
+    Q_UNUSED(processId);
+    Q_UNUSED(startToken);
+    error = tr("This build cannot verify native display ownership. Package displays require X11 XRes process identities.");
+    return false;
+#else
+    const auto choices = availableWindows(error);
+    if (!error.isEmpty())
+        return false;
+    const auto id = processWindowId(choices, processId, startToken, error);
+    return id && acquireWindow(id, error, processId, startToken);
+#endif
+}
+
+quint64 DesktopWindowWidget::processWindowId(const QVector<DesktopAppChoice> &choices,
+                                           qint64 processId, const QString &startToken, QString &error)
+{
+    error.clear();
+    QVector<DesktopAppChoice> matching;
+    if (processId > 0 && !startToken.isEmpty()) {
+        for (const auto &choice : choices) {
+            if (choice.processId == processId && choice.processStartToken == startToken)
+                matching.append(choice);
+        }
+    }
+    if (matching.size() != 1) {
+        error = matching.isEmpty()
+            ? tr("No eligible window matches the live display process. Refresh its package status.")
+            : tr("The display process has several eligible windows. A single display window is required.");
+        return 0;
+    }
+    return matching.first().id;
 }
 
 quint64 DesktopWindowWidget::acquiredWindowId() const
@@ -540,6 +647,13 @@ void DesktopWindowWidget::startMacCapture()
 
 void DesktopWindowWidget::releaseWindow()
 {
+    for (auto owner = processDisplayOwners.begin(); owner != processDisplayOwners.end();) {
+        if (!owner.value() || owner.value() == this)
+            owner = processDisplayOwners.erase(owner);
+        else
+            ++owner;
+    }
+    m_state->displayTimer->stop();
     ++m_state->launchGeneration;
     m_state->launchTimer->stop();
     m_state->launching = false;
@@ -578,7 +692,7 @@ void DesktopWindowWidget::releaseWindow()
         m_state->preview->deleteLater();
         m_state->preview = nullptr;
     }
-    m_state->choose->setEnabled(true);
+    m_state->choose->setEnabled(m_state->displayProcessId <= 0);
     m_state->status->show();
     m_state->surface->hide();
     if (QGuiApplication::platformName() == "cocoa")
@@ -604,6 +718,10 @@ void DesktopWindowWidget::fail(const QString &message)
 void DesktopWindowWidget::hideEvent(QHideEvent *event)
 {
     QWidget::hideEvent(event);
+    if (m_state->displayProcessId > 0) {
+        releaseWindow();
+        return;
+    }
     // Mode changes briefly hide/reparent panels. Preserve their sessions without
     // repeatedly suspending and resuming the native capture backend.
     m_state->hiddenTimer->start();
@@ -612,6 +730,12 @@ void DesktopWindowWidget::hideEvent(QHideEvent *event)
 void DesktopWindowWidget::showEvent(QShowEvent *event)
 {
     QWidget::showEvent(event);
+    if (m_state->displayProcessId > 0) {
+        m_state->displayDeadline.restart();
+        m_state->displayTimer->start();
+        advanceProcessDisplay();
+        return;
+    }
     m_state->hiddenTimer->stop();
     updateCaptureVisibility();
 }

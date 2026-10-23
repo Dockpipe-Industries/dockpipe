@@ -8,13 +8,13 @@
 #
 # Main local dev entrypoint:
 #   make build
-#     Builds Dockpipe core + Dockpipe Launcher for this checkout.
+#     Builds Dockpipe core with its pinned external language SDK.
+#   make build-dockpipe-launcher
+#     Builds the optional Dockpipe Launcher separately.
 #
 # Contributors who want plain `dockpipe ...` on PATH should run:
 #   make dev-install
 include src/Makefile
-
-build: build-dockpipe-launcher
 
 .PHONY: \
 	maintainer-tools test \

@@ -1,6 +1,6 @@
 ## Implementation Sequence
 
-The 2026-09-11 [PipeLang foundation plan](../../../concepts/pipelang-foundation.md) requires the
+The 2026-09-11 [PipeLang foundation plan](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/concepts/pipelang-foundation.md) requires the
 reviewed language-foundation milestone before production application/service generation. It includes
 enums, structs/classes, polymorphism, loops, managed tasks, parallelism and synchronization. Existing
 fixtures remain evidence, not proof that the language is complete. TASK-021 owns the object/memory/

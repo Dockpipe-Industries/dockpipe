@@ -126,24 +126,14 @@ class ReleaseWorkflowTests(unittest.TestCase):
 
     def test_artifact_verification_has_no_deployment_or_production_credentials(self):
         for name, job in self.jobs.items():
-            if name in ("publish", "publish-staging", "devto", "attest-forgepipe-sdk"):
+            if name in ("publish", "publish-staging", "devto"):
                 continue
             self.assertNotIn("environment", job, name)
             self.assertNotIn("secrets.", yaml.dump(job), name)
             self.assertNotIn("write", job.get("permissions", {}).values(), name)
 
-        attestation = self.jobs["attest-forgepipe-sdk"]
-        self.assertNotIn("environment", attestation)
-        self.assertEqual(attestation["permissions"], {
-            "contents": "read", "id-token": "write", "attestations": "write",
-        })
-        self.assertNotIn("secrets.", yaml.dump(attestation))
-        self.assertIn("github.event_name == 'workflow_dispatch'", attestation["if"])
-        self.assertIn("inputs.forgepipe_sdk_tag != ''", attestation["if"])
-        self.assertIn("github.ref == 'refs/heads/js/dev'", attestation["if"])
-        self.assertIn("github.ref == 'refs/heads/staging'", attestation["if"])
-        self.assertIn("inputs.forgepipe_sdk_tag == ''", self.jobs["meta"]["if"])
-        self.assertIn("release/packaging/attest-forgepipe.py", yaml.dump(attestation))
+        self.assertNotIn("attest-forgepipe-sdk", self.jobs)
+        self.assertNotIn("forgepipe_sdk_tag", self.workflow["on"]["workflow_dispatch"]["inputs"])
 
         assembly = self.jobs["assemble"]
         self.assertEqual(assembly["needs"], ["meta", "build-unix", "build-msi", "build-flatpak"])
@@ -198,8 +188,18 @@ class ReleaseWorkflowTests(unittest.TestCase):
     def test_staging_call_waits_for_tests_and_publishes_only_prereleases(self):
         ci = yaml.load((REPOSITORY / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)
         call = ci["jobs"]["staging-release"]
-        self.assertEqual(call["needs"], ["test", "test-windows", "cockpit-native"])
-        native = ci["jobs"]["cockpit-native"]
+        self.assertEqual(call["needs"], ["test", "test-windows"])
+        self.assertNotIn("cockpit-native", ci["jobs"])
+        compatibility = yaml.load(
+            (REPOSITORY / ".github/workflows/cockpit-sdk-compatibility.yml").read_text(),
+            Loader=yaml.BaseLoader)
+        self.assertIn("workflow_dispatch", compatibility["on"])
+        self.assertEqual(set(compatibility["jobs"]), {"cockpit-native"})
+        native = compatibility["jobs"]["cockpit-native"]
+        self.assertNotIn("continue-on-error", native)
+        self.assertNotIn("if", native)
+        for step in native["steps"]:
+            self.assertNotIn("continue-on-error", step)
         self.assertEqual(native["runs-on"], "ubuntu-22.04")
         self.assertEqual(native["permissions"], {"contents": "read", "attestations": "read"})
         qt_install = next(step for step in native["steps"] if step.get("name") == "Install pinned Qt ABI")
@@ -264,37 +264,26 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertEqual(triggers["push"]["branches"], ["master"])
         self.assertEqual(triggers["workflow_dispatch"]["inputs"]["dry_run"]["default"], "true")
 
-    def test_cockpit_catalog_waits_for_pinned_runtime_host_qualification(self):
-        job = self.jobs["build-unix"]
-        self.assertEqual(job["permissions"]["attestations"], "read")
-        steps = job["steps"]
-        by_name = {step.get("name"): index for index, step in enumerate(steps) if step.get("name")}
-        initial = by_name["Build native CLI, all package stores, and installers"]
-        prepare = by_name["Prepare the pinned public Cockpit runtime"]
-        build = by_name["Build Linux desktop against Ubuntu 22.04"]
-        finalize = by_name["Finalize the qualified Linux Cockpit catalog"]
-        self.assertLess(initial, prepare)
-        self.assertLess(prepare, build)
-        self.assertLess(build, finalize)
-        self.assertEqual(steps[prepare]["if"], "matrix.platform == 'linux-amd64'")
-        self.assertIn("prepare-cockpit.py prepare", steps[prepare]["run"])
-        self.assertIn("--lock release/cockpit.lock.json", steps[prepare]["run"])
-        self.assertIn('DOCKPIPE_COCKPIT_PREPARED=$RUNNER_TEMP/cockpit-runtime', steps[prepare]["run"])
-        self.assertEqual(steps[build]["if"], "runner.os == 'Linux'")
-        self.assertEqual(steps[build]["env"], {
-            "DOCKPIPE_QUALIFY_COCKPIT": "${{ matrix.platform == 'linux-amd64' && '1' || '0' }}",
-        })
-        self.assertEqual(steps[finalize]["if"], "matrix.platform == 'linux-amd64'")
-        for step in (steps[prepare], steps[build], steps[finalize]):
-            self.assertNotIn("DOCKPIPE_BUILD_COCKPIT", step.get("env", {}))
-            self.assertNotIn("DOCKPIPE_RELEASE_SOURCE_SHA", step.get("env", {}))
-        self.assertNotIn("DOCKPIPE_QUALIFY_COCKPIT", job.get("env", {}))
-        self.assertIn("--finalize-cockpit", steps[finalize]["run"])
-        self.assertIn("release/artifacts/cockpit-store", steps[finalize]["run"])
-        uploads = [index for index, step in enumerate(steps)
-                   if step.get("uses", "").startswith("actions/upload-artifact@")]
-        self.assertTrue(uploads)
-        self.assertTrue(all(finalize < index for index in uploads))
+    def test_runtime_release_does_not_fetch_optional_catalog_or_cockpit(self):
+        steps = self.jobs["build-unix"]["steps"]
+        build = next(step for step in steps
+                     if step.get("name") == "Build native CLI, core store, and installers")
+        self.assertIn("build-platform.sh", build["run"])
+        for job_name in ("build-unix", "build-msi"):
+            for step in self.jobs[job_name]["steps"]:
+                script = step.get("run", "")
+                self.assertNotIn("prepare-cockpit.py", script)
+                self.assertNotIn("--finalize-cockpit", script)
+                self.assertNotIn("DOCKPIPE_QUALIFY_COCKPIT", step.get("env", {}))
+        desktop = next(step for step in steps
+                       if step.get("name") == "Build Linux desktop against Ubuntu 22.04")
+        self.assertEqual(desktop["if"], "runner.os == 'Linux'")
+        self.assertNotIn("continue-on-error", desktop)
+        script = (REPOSITORY / "release/packaging/build-platform.sh").read_text()
+        normal_build = script.split('version="${1:?release version}"', 1)[1]
+        self.assertNotIn("ingest-pinned-stores.py", normal_build)
+        self.assertNotIn("pinned-stores.lock.json", normal_build)
+        self.assertIn('verify-store "$store" --core-only', normal_build)
 
     def test_version_generation_uses_all_tags_and_fails_on_lookup_error(self):
         step = next(step for step in self.jobs["meta"]["steps"] if step.get("id") == "version")

@@ -57,6 +57,10 @@ else
   args+=(
          "-DCMAKE_CXX_FLAGS_RELEASE=-O2 -g -DNDEBUG -ffile-prefix-map=$root=. -ffile-prefix-map=$build=.")
 fi
+if [[ "${DOCKPIPE_BUILD_COCKPIT:-0}" != 0 ]]; then
+  echo 'Cockpit source builds belong to dockpipe-packages; consume its qualified package store.' >&2
+  exit 1
+fi
 args+=("-DCMAKE_PREFIX_PATH=$prefixes")
 if [[ "${DOCKPIPE_QUALIFY_COCKPIT:-0}" == 1 ]]; then
   [[ "$(uname -s)" == Linux && "$(uname -m)" == x86_64 ]]

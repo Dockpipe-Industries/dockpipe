@@ -320,6 +320,15 @@ bool DesktopAppWindow::alive() const
         && pid == m_native->pid && CompareFileTime(&created, &m_native->created) == 0;
 }
 
+bool DesktopAppWindow::matchesProcess(qint64 expectedPid, const QString &startToken) const
+{
+    // Public process telemetry currently has no Windows collector. Do not
+    // invent an identity token that packages cannot obtain through that API.
+    Q_UNUSED(expectedPid);
+    Q_UNUSED(startToken);
+    return false;
+}
+
 std::optional<DesktopAppChoice> DesktopAppWindow::replacement(QString &error) const
 {
     error.clear();

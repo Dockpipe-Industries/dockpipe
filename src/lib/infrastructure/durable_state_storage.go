@@ -182,7 +182,7 @@ func writePrivateJSONAtomic(root, path string, value any) error {
 		return err
 	}
 	raw = append(raw, '\n')
-	temporary, err := os.CreateTemp(filepath.Dir(path), ".dockpipe-state-*.tmp")
+	temporary, err := createPrivateTempFile(filepath.Dir(path), ".dockpipe-state-*.tmp")
 	if err != nil {
 		return err
 	}
@@ -223,7 +223,7 @@ func openPrivateLockFile(root, path string) (*os.File, error) {
 	for attempt := 0; attempt < 2; attempt++ {
 		info, err := os.Lstat(path)
 		if os.IsNotExist(err) {
-			file, createErr := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600)
+			file, createErr := createPrivateFile(path, os.O_RDWR)
 			if os.IsExist(createErr) {
 				continue
 			}

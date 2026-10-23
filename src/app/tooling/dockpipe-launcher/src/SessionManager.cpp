@@ -11,7 +11,7 @@
 #include <functional>
 
 #ifdef Q_OS_WIN
-// taskkill used below
+#include <qt_windows.h>
 #else
 #include <errno.h>
 #include <signal.h>
@@ -133,20 +133,30 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
     m_info[ctx.id] = si;
 
     std::function<void(bool)> flushOutput = [this, ctx, proc, logFile](bool drainRemainder) {
-        QByteArray &pending = m_pendingOutput[ctx.id];
+        // Output signals can synchronously cancel and finish this process.
+        // Keep parsing storage independent of hash entries removed by teardown.
+        QByteArray pending = m_pendingOutput.take(ctx.id);
         pending += proc->readAll();
+        if (m_info.value(ctx.id).stopRequested)
+            return;
 
         QByteArray visible;
         auto processLine = [this, ctx, &visible](const QByteArray &rawLine) {
+            if (ctx.maximumOutputLineBytes > 0 && rawLine.size() > ctx.maximumOutputLineBytes) {
+                emit sessionFailed(ctx.id, QStringLiteral("Workflow output exceeded the consumer's line capacity."));
+                stop(ctx.id);
+                return false;
+            }
             const QString line = QString::fromLocal8Bit(rawLine);
             if (line.startsWith(promptEventPrefix())) {
                 QString payload = line.mid(promptEventPrefix().size());
                 while (payload.endsWith(QLatin1Char('\n')) || payload.endsWith(QLatin1Char('\r')))
                     payload.chop(1);
                 emit sessionPrompt(ctx.id, payload);
-                return;
+                return !m_info.value(ctx.id).stopRequested;
             }
             visible += rawLine;
+            return true;
         };
 
         while (true) {
@@ -155,13 +165,24 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
                 break;
             const QByteArray line = pending.left(newline + 1);
             pending.remove(0, newline + 1);
-            processLine(line);
+            if (!processLine(line))
+                return;
+        }
+
+        if (ctx.maximumOutputLineBytes > 0 && pending.size() > ctx.maximumOutputLineBytes) {
+            pending.clear();
+            emit sessionFailed(ctx.id, QStringLiteral("Workflow output exceeded the consumer's line capacity."));
+            stop(ctx.id);
+            return;
         }
 
         if (drainRemainder && !pending.isEmpty()) {
-            processLine(pending);
+            if (!processLine(pending))
+                return;
             pending.clear();
         }
+        if (!pending.isEmpty())
+            m_pendingOutput.insert(ctx.id, pending);
 
         if (visible.isEmpty())
             return;
@@ -193,6 +214,7 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
                 s.pid = 0;
                 s.ready = false;
                 emit sessionStopped(ctx.id, exitCode, st);
+                proc->deleteLater();
             });
 
     connect(proc, &QProcess::errorOccurred, this, [this, ctx, proc, logFile, flushOutput](QProcess::ProcessError) {
@@ -206,16 +228,19 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
             s.status = SessionStatus::Failed;
             s.errorString = proc->errorString();
             s.ready = false;
-            emit sessionFailed(ctx.id, proc->errorString());
+            if (!s.stopRequested)
+                emit sessionFailed(ctx.id, proc->errorString());
         }
     });
 
+    m_processes[ctx.id] = proc;
     proc->start();
     if (!proc->waitForStarted(15000)) {
         emit sessionFailed(ctx.id, proc->errorString());
         logFile->close();
         logFile->deleteLater();
         proc->deleteLater();
+        m_processes.remove(ctx.id);
         m_info[ctx.id].status = SessionStatus::Failed;
         m_info[ctx.id].ready = false;
         return false;
@@ -232,15 +257,35 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
 void SessionManager::stop(const QString &contextId)
 {
     QPointer<QProcess> proc = m_processes.value(contextId);
-    if (!proc)
+    if (!proc || proc->state() == QProcess::NotRunning || m_info.value(contextId).stopRequested)
         return;
+    // waitForFinished dispatches output/error/finished signals. A consumer can
+    // call stop again from those signals; only the first call owns teardown.
     m_info[contextId].stopRequested = true;
     const qint64 pid = proc->processId();
 #ifdef Q_OS_WIN
     proc->terminate();
     if (!proc->waitForFinished(8000)) {
-        QProcess::execute(QStringLiteral("taskkill"),
-                            {QStringLiteral("/PID"), QString::number(pid), QStringLiteral("/T"), QStringLiteral("/F")});
+        wchar_t systemDirectory[MAX_PATH];
+        const UINT length = GetSystemDirectoryW(systemDirectory, MAX_PATH);
+        if (length > 0 && length < MAX_PATH) {
+            QProcess treeKiller;
+            treeKiller.setProgram(QDir::toNativeSeparators(
+                QString::fromWCharArray(systemDirectory, int(length)) + QStringLiteral("/taskkill.exe")));
+            treeKiller.setArguments({QStringLiteral("/PID"), QString::number(pid),
+                                    QStringLiteral("/T"), QStringLiteral("/F")});
+            treeKiller.start();
+            if (!treeKiller.waitForStarted(1000) || !treeKiller.waitForFinished(3000)) {
+                treeKiller.kill();
+                treeKiller.waitForFinished(1000);
+            }
+        }
+        // Reap the QProcess we own even if tree termination fails or its exit
+        // notification is still queued. taskkill's exit is not the child's exit.
+        if (proc && proc->state() != QProcess::NotRunning) {
+            proc->kill();
+            proc->waitForFinished(3000);
+        }
     }
 #else
     if (pid > 0) {

@@ -697,6 +697,6 @@ release qualification remains a hosted check.
 Account references and personal home paths were removed from public source and historical
 notes. Public configuration now requires operator-supplied deployment targets. The
 source/package-content regression gate and fork publication opt-in are documented in
-[the public repository boundary](../../../../public-repository-boundary.md). Local validation
+[the public repository boundary](../../../public-repository-boundary.md). Local validation
 and hosted release qualification must be reported separately. Confirm publication
 from the release run and live catalog before reporting it complete.

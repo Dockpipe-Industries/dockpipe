@@ -209,5 +209,30 @@
       "workflow",
       "pipeon-dev-stack-stop"
     ]
-  ]
+  ],
+  "catalog": {
+    "source_commit": "30859228a77ba20a23a4b69ab81aae133d6ccfe9",
+    "owned": [
+      [
+        "workflow",
+        "dockpipe.terraform.core"
+      ],
+      [
+        "workflow",
+        "dockpipe.cloudflare.r2infra"
+      ],
+      [
+        "workflow",
+        "secretstore-r2-publish-test"
+      ]
+    ],
+    "artifacts": {
+      "linux-amd64": {
+        "sha256": "515263b7563b5207f5beb2f543a316b96338ddb82178f8d5835375774e3183cc",
+        "size_bytes": 28977,
+        "manifest_sha256": "d106eea52ac831d8a55af42883a8beedcc2c2fdf0b2e01adcb90e5d689372fd6",
+        "url": "https://github.com/Dockpipe-Industries/dockpipe-packages/releases/download/catalog-candidate-30859228a77ba20a23a4b69ab81aae133d6ccfe9/dockpipe-catalog-linux-amd64.tar.gz"
+      }
+    }
+  }
 }

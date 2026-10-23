@@ -7,8 +7,6 @@ DOCKPIPE="$REPO_ROOT/src/bin/dockpipe"
 ACTION="$REPO_ROOT/src/core/assets/scripts/commit-worktree.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 
-require_agent_dev_template "$REPO_ROOT"
-
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 cd "$tmp"
@@ -21,7 +19,7 @@ git add initial.txt
 git commit -q -m "initial"
 
 # Run dockpipe: command creates a new file, action should commit it
-"$DOCKPIPE" --template agent-dev --workdir "$tmp" --action "$ACTION" \
+"$DOCKPIPE" --template base-dev --workdir "$tmp" --action "$ACTION" \
   --env "DOCKPIPE_COMMIT_MESSAGE=agent: integration test" \
   -- sh -c 'echo "from container" > newfile.txt'
 

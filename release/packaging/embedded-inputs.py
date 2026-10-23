@@ -6,12 +6,7 @@ from pathlib import Path
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
-ROOTS = ('src/core/', 'workflows/', 'packages/')
-EXTERNAL_PACKAGE_PREFIXES = (
-    'packages/dorkpipe/',
-    'packages/dorkpipe-mcp/',
-    'packages/pipeon/',
-)
+ROOTS = ('src/core/', 'workflows/')
 
 
 def authored(root):
@@ -19,7 +14,6 @@ def authored(root):
     deleted = set(subprocess.check_output(['git', 'ls-files', '--deleted', '-z'], cwd=root).decode().split('\0'))
     # Match the former Go directory walk: dot/underscore entries were omitted.
     selected = sorted(p for p in set(paths) - deleted if (p in ('VERSION', 'assets/entrypoint.sh') or p.startswith(ROOTS))
-                      and not p.startswith(EXTERNAL_PACKAGE_PREFIXES)
                       and not any(part.startswith(('.', '_')) for part in p.split('/'))
                       and not any((parent / 'go.mod').is_file() for parent in (root / p).parents if parent != root and parent.is_relative_to(root)))
     for name in selected:

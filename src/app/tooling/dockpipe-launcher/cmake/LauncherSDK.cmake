@@ -35,7 +35,7 @@ install(TARGETS dockpipe-launcher-ui dockpipe-browser dockpipe-launcher-headers
 # Public headers used by Cockpit, followed by their launcher-owned include closure.
 set(sdk_headers
     BrowserRuntime.h BrowserWidget.h CanvasIcons.h CanvasView.h ContextStore.h
-    DesktopAppWindow.h DesktopApplicationCatalog.h LauncherWorkspacePackage.h
+    DesktopAppWindow.h DesktopApplicationCatalog.h LauncherWorkspacePackage.h LauncherDisplayPackage.h LauncherNativeLibraryScope.h
     ProjectFilesWidget.h ProjectGitClient.h SourceEditor.h SourceHighlighter.h
     Theme.h WorkspaceFiles.h WorkspacePackageManager.h
     WorkspaceGraphPage.h WorkspaceGraphReader.h WorkspaceGraphNode.h WorkspaceGraphView.h WorkspaceGraphWidget.h
@@ -70,7 +70,7 @@ install(DIRECTORY "${CMAKE_BINARY_DIR}/syntax-licenses"
 
 # External native package builders use the SDK's audited tooling and notices.
 get_filename_component(dockpipe_repository_root "${CMAKE_CURRENT_SOURCE_DIR}/../../../.." ABSOLUTE)
-install(FILES "${dockpipe_repository_root}/packages/native-sdk/assets/scripts/elf_artifacts.py"
+install(FILES "${dockpipe_repository_root}/release/packaging/lib/elf_artifacts.py"
     DESTINATION ${sdk_resource_directory}/tools COMPONENT LauncherSDK)
 install(FILES "${dockpipe_repository_root}/LICENSE"
     DESTINATION ${sdk_resource_directory}/licenses RENAME Dockpipe-LICENSE COMPONENT LauncherSDK)

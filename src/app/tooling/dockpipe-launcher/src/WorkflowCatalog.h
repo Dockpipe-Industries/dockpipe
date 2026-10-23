@@ -1,9 +1,26 @@
 #pragma once
 
 #include <QString>
+#include <QJsonObject>
 #include <QStringList>
 #include <QMap>
 #include <QVector>
+
+struct PackageNativeDisplayMeta {
+    int interfaceVersion = 0;
+    QString packageRoot;
+    QMap<QString, QString> libraries;
+};
+
+struct PackageDisplayMeta {
+    QString id;
+    QString title;
+    qint64 processId = 0;
+    QString processStartToken;
+    PackageNativeDisplayMeta nativePackage;
+    QJsonObject options;
+    QString leaseId;
+};
 
 struct WorkflowInputMeta {
     QString fieldName;
@@ -76,6 +93,33 @@ struct WorkflowMeta {
     QMap<QString, QString> vars;
 };
 
+struct PackageSurfaceEnvironmentBinding {
+    QString asset;
+    QString inherit;
+    bool operator==(const PackageSurfaceEnvironmentBinding &other) const
+    {
+        return asset == other.asset && inherit == other.inherit;
+    }
+};
+
+struct PackageSurfaceActionMeta {
+    QString id;
+    QString title;
+    QString scope;
+    QString workflow;
+    QString workflowId;
+    QMap<QString, QMap<QString, PackageSurfaceEnvironmentBinding>> launchEnvironment;
+};
+
+struct PackageSurfaceMeta {
+    QString packageRoot;
+    QString id;
+    QString title;
+    QString snapshot;
+    QVector<PackageSurfaceActionMeta> actions;
+    PackageNativeDisplayMeta nativeDisplay;
+};
+
 struct ResolverMeta {
     QString name;
     QString title;
@@ -83,6 +127,7 @@ struct ResolverMeta {
     QString description;
     QString capability;
     QString remoteSetup;
+    PackageSurfaceMeta surface;
 };
 
 struct WorkflowCatalogData {

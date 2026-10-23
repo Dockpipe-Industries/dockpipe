@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "product": "DockPipeDisplaySDK",
+  "version": "@PROJECT_VERSION@",
+  "source_state": "development-candidate",
+  "interface": "com.dockpipe.launcher.DisplayPackage/1.0",
+  "interface_sha256": "@interface_sha256@",
+  "native_library_scope_sha256": "@native_library_sha256@",
+  "qt_version": "@Qt6_VERSION@",
+  "compiler_id": "@CMAKE_CXX_COMPILER_ID@",
+  "compiler_version": "@CMAKE_CXX_COMPILER_VERSION@",
+  "system": "@CMAKE_SYSTEM_NAME@",
+  "processor": "@CMAKE_SYSTEM_PROCESSOR@"
+}

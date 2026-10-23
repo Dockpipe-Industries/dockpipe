@@ -47,7 +47,7 @@ The handoff transports the same objective id, authority, `done_when`, invariants
 dirty-tree ownership, completed proof, effect and retry evidence, and next checkpoint. It grants no
 new execution scope. Follow the rendered skill's delivery instructions: create exactly one fresh
 task when supported, or return one paste-ready prompt for the user to open a fresh chat. Preserve
-the same saved checkout without a worktree unless requested, then stop the old task.
+the active checkout or managed worktree and its owned state, then stop the old task.
 
 A continuation receiver admits durable completed proof, revalidates only affected live anchors, and
 executes the single pending boundary first. It does not replay chronology or rerun passed proof
@@ -62,13 +62,27 @@ without drift, new failure evidence, or a direct dependency.
   external-resource authority.
 - Do not interrupt a running mutation or incomplete read-back. Reach a safe boundary first.
 - After successful task creation, stop the old task.
-- Do not create a worktree unless explicitly requested.
+- Use a runtime-managed worktree when isolation protects existing edits or supports the bounded
+  task. Reuse a suitable existing workspace first; preserve the original checkout and unrelated state.
 
 ## Normal completion
 
 When the objective completes, report its owned scope, checks, risks, generated artifacts, deferred
-findings, and terminal state. Ask before commit in a normal session. Optional follow-up work is not
-part of the completed objective and is not automatically authorized.
+findings, and terminal state. Keep implementation uncommitted until the user authorizes a commit
+or explicitly requests moving the bounded task to staging. Optional follow-up work is not part
+of the completed objective and is not automatically authorized.
+
+## Bounded staging authorization
+
+An explicit request to move a bounded task to staging authorizes the necessary commits, pushes,
+PRs, dependency publications and staging promotion for that task after their required checks pass.
+Carry that authority through the flow without asking again at each step. Keep implementation
+uncommitted while the task is still being developed unless a validated intermediate source
+publication is required by that staging dependency chain.
+
+Preserve unrelated changes and use the runtime-owned Git operations. This authority does not
+extend to production, unrelated work, destructive operations or unresolved scope decisions.
+An automatic approval rejection still requires resolving its stated condition before retrying.
 
 ## Autonomous Master Exception
 

@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Dockpipe package resource display",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "process_id",
+        "process_start_token"
+      ],
+      "properties": {
+        "kind": {
+          "const": "native-window"
+        },
+        "process_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "process_start_token": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "options"
+      ],
+      "properties": {
+        "kind": {
+          "const": "package-native"
+        },
+        "options": {
+          "type": "object",
+          "maxProperties": 127,
+          "propertyNames": {
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "additionalProperties": {
+            "$ref": "#/definitions/option"
+          }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "option": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "string",
+          "maxLength": 4096
+        },
+        {
+          "type": "array",
+          "maxItems": 127,
+          "items": {
+            "$ref": "#/definitions/option"
+          }
+        },
+        {
+          "type": "object",
+          "maxProperties": 127,
+          "propertyNames": {
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "additionalProperties": {
+            "$ref": "#/definitions/option"
+          }
+        }
+      ]
+    }
+  }
+}

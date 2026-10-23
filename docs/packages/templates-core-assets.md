@@ -1,21 +1,23 @@
-# `templates/core/assets/`
+# Bundled core assets
 
-Support files (scripts, images, compose samples) — **not** extra primitives. Definitions: **[../concepts/architecture-model.md](../concepts/architecture-model.md)**.
+Required shared support files live under `src/core/assets/`: scripts, image recipes
+and Compose examples. They support the existing runtime/resolver/strategy model;
+they are not additional engine primitives. See [architecture](../concepts/architecture-model.md).
 
-```
-templates/core/assets/scripts/   # agnostic helpers (clone, commit, terraform lib, …)
-templates/core/assets/images/    # Dockerfiles for TemplateBuild / --isolate
-templates/core/assets/compose/   # optional examples (not auto-run)
-templates/core/bundles/<domain>/ # domain trees (dorkpipe, …)
-```
+| Source | Ownership |
+| --- | --- |
+| `src/core/assets/scripts/` | Generic Dockpipe shared helpers |
+| `src/core/assets/images/` | Generic bundled image recipes |
+| `src/core/assets/compose/` | Optional generic Compose examples |
+| [External package assets](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages) | Product/provider-specific support and tests |
 
-**Installed or materialized separately from `dockpipe init`** into a project’s **`templates/core/`** when you use **`dockpipe install core`** or other package/materialization flows.
+Terraform helpers live in the [Terraform package](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages/terraform/resolvers/terraform-core).
+DorkPipe scripts live in [DorkPipe](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe).
+Do not copy either into a root script shadow or make shared assets depend on their
+source checkouts. Package consumers use compiled/installed artifacts and public
+SDK helpers.
 
-| Kind | Notes |
-|------|--------|
-| **SAFE TO BUNDLE** | Dockpipe-authored; ship in the binary. |
-| **USER-SUPPLIED** | Credentials / tools the user installs. |
-
-**Script details:** **`src/core/assets/scripts/README.md`** (**`DOCKPIPE_TF_*`**; Terraform library lives under **`packages/terraform/resolvers/terraform-core/`**). **Image search order:** resolver **`assets/images/<name>`** → bundle → **`assets/images/<name>`**.
-
-**Maintainer-only script trees** (e.g. **`scripts/dorkpipe/`**) live in first-party package assets under **`packages/…`** per **`dockpipe.config.json`** — not duplicated as fake repo-root stubs.
+Workflow-specific scripts belong alongside the workflow's `config.yml`. A helper
+shared by several workflows may sit at their common owning boundary. Keep
+credentials and operator configuration outside bundled source; reusable assets
+must accept operator-supplied targets. See [package model](package-model.md).

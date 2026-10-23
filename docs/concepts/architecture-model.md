@@ -96,3 +96,9 @@ engine, provision a service or grant an agent extra permissions.
 The [maintainer architecture contract](architecture-contract.md) preserves the
 engine invariants and source layout rules. It is for extending Dockpipe itself,
 not a prerequisite for using workflows.
+
+Resolver profile loading supplies `DOCKPIPE_RESOLVER_PACKAGE_ROOT` as the absolute
+parent of the selected installed profile. The runtime derives this value after
+reading profile fields, so an authored profile cannot substitute another root.
+A resolver may use it to locate its own installed assets; it does not grant
+access to sibling source trees or change workflow working directories.

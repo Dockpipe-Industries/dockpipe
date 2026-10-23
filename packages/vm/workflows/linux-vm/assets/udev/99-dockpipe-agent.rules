@@ -1,1 +1,0 @@
-SUBSYSTEM=="virtio-ports", ATTR{name}=="org.dockpipe.agent.1", GROUP="dockpipe-agent", MODE="0660"

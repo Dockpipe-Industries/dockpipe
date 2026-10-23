@@ -6,11 +6,9 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DOCKPIPE="$REPO_ROOT/src/bin/dockpipe"
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 
-require_agent_dev_template "$REPO_ROOT"
-
 # Run detached: sleep 2 so the container stays up briefly; we capture the ID
 # (stdout may include image digest from build; container ID is the last line)
-out=$("$DOCKPIPE" -d --no-data --template agent-dev -- sleep 2)
+out=$("$DOCKPIPE" -d --no-data --template base-dev -- sleep 2)
 cid=$(echo "$out" | tail -1 | tr -d '\n')
 # Container ID is 12 or 64 hex chars (docker run -d prints short id)
 [[ "$cid" =~ ^[a-f0-9]{12,64}$ ]] || { echo "Expected container ID, got: $cid"; exit 1; }
