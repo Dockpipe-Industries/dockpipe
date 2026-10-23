@@ -10,12 +10,19 @@ import unittest
 
 REPOSITORY = Path(__file__).resolve().parents[3]
 SCRIPT = REPOSITORY / "release/packaging/desktop/macos/create-dmg.sh"
+VERIFY_SCRIPT = SCRIPT.with_name("verify-dmg.sh")
 
 HDIUTIL_FIXTURE = r"""#!/usr/bin/env python3
 import json
 import os
 from pathlib import Path
 import sys
+
+if sys.argv[1] == "verify":
+    if os.environ["DMG_TEST_MODE"] == "verify-permission":
+        print("hdiutil: verify failed - Permission denied", file=sys.stderr)
+        sys.exit(7)
+    sys.exit(0)
 
 record = Path(os.environ["DMG_TEST_RECORD"])
 calls = json.loads(record.read_text()) if record.exists() else []
@@ -57,6 +64,7 @@ import sys
 
 with Path(os.environ["DMG_TEST_DELAYS"]).open("a") as stream:
     stream.write(sys.argv[1] + "\n")
+sys.exit(int(os.environ.get("DMG_TEST_SLEEP_EXIT", "0")))
 """
 
 
@@ -80,6 +88,7 @@ class MacosDmgTests(unittest.TestCase):
         self.environment = dict(
             os.environ,
             PATH=str(tools) + os.pathsep + os.environ["PATH"],
+            TMPDIR=str(self.root),
             DMG_TEST_RECORD=str(self.record),
             DMG_TEST_DELAYS=str(self.delays),
             DMG_TEST_OUTPUT=str(self.output),
@@ -136,7 +145,7 @@ class MacosDmgTests(unittest.TestCase):
         self.assertFalse(self.output.exists())
 
     def test_other_failure_and_cancellation_are_not_retried(self):
-        for mode, status in (("permission", 7), ("cancel", 130), ("other-busy-status", 7)):
+        for mode, status in (("permission", 7), ("cancel", 130), ("other-busy-status", 7), ("verify-permission", 7)):
             with self.subTest(mode=mode):
                 with tempfile.TemporaryDirectory(dir=self.root) as evidence_root:
                     original_output = self.output
@@ -203,6 +212,136 @@ class MacosDmgTests(unittest.TestCase):
                     self.assertFalse((self.output / "attempt-1.dmg").exists())
                     self.assertEqual(self.output.is_symlink(), mode == "race-symlink")
                     self.output = original_output
+
+
+VERIFY_FIXTURE = r"""#!/usr/bin/env python3
+import json
+import os
+from pathlib import Path
+import sys
+
+record = Path(os.environ["DMG_TEST_RECORD"])
+calls = json.loads(record.read_text()) if record.exists() else []
+calls.append(sys.argv[1:])
+record.write_text(json.dumps(calls))
+mode = os.environ["DMG_TEST_MODE"]
+if mode == "success" or (mode == "recover" and len(calls) == 3):
+    print("verified checksum")
+    sys.exit(0)
+if mode == "corrupt":
+    print("hdiutil: verify failed - checksum mismatch", file=sys.stderr)
+    sys.exit(1)
+if mode == "other-busy":
+    print("hdiutil: verify failed - Resource busy", file=sys.stderr)
+    sys.exit(1)
+print('hdiutil: verify: unable to recognize image. (Resource temporarily unavailable)', file=sys.stderr)
+print("hdiutil: verify failed - Resource temporarily unavailable", file=sys.stderr)
+sys.exit({"cancel": 130, "other-status": 7}.get(mode, 1))
+"""
+
+
+class MacosDmgVerificationTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix="dockpipe dmg verify test ")
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.image = self.root / "image.dmg"
+        self.image.write_bytes(b"unchanged image bytes")
+        self.record = self.root / "calls.json"
+        self.delays = self.root / "delays.txt"
+        tools = self.root / "tools"
+        tools.mkdir()
+        for name, content in (("hdiutil", VERIFY_FIXTURE), ("sleep", SLEEP_FIXTURE)):
+            executable = tools / name
+            executable.write_text(content)
+            executable.chmod(0o755)
+        self.environment = dict(
+            os.environ,
+            PATH=str(tools) + os.pathsep + os.environ["PATH"],
+            TMPDIR=str(self.root),
+            DMG_TEST_RECORD=str(self.record),
+            DMG_TEST_DELAYS=str(self.delays),
+        )
+
+    def verify(self, mode):
+        result = subprocess.run(
+            ["bash", str(VERIFY_SCRIPT), str(self.image)],
+            env=dict(self.environment, DMG_TEST_MODE=mode),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        self.assertEqual(self.image.read_bytes(), b"unchanged image bytes")
+        calls = json.loads(self.record.read_text()) if self.record.exists() else []
+        self.assertTrue(all(call == ["verify", str(self.image)] for call in calls))
+        evidence = list(self.root.glob("dockpipe-dmg-verify.*"))
+        if result.returncode == 0:
+            self.assertEqual(evidence, [])
+        elif calls:
+            self.assertEqual(len(evidence), 1)
+            self.assertEqual(len(list(evidence[0].glob("attempt-*.log"))), len(calls))
+            self.assertIn(str(evidence[0]), result.stderr)
+        return result, calls
+
+    def test_success_requires_no_retry(self):
+        result, calls = self.verify("success")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(calls), 1)
+        self.assertFalse(self.delays.exists())
+
+    def test_measured_eagain_recovery_verifies_same_image(self):
+        result, calls = self.verify("recover")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(self.delays.read_text(), "2\n4\n")
+        self.assertIn("verified checksum", result.stdout)
+
+    def test_persistent_eagain_remains_failure(self):
+        result, calls = self.verify("busy")
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(self.delays.read_text(), "2\n4\n")
+
+    def test_corruption_and_other_busy_text_are_not_retried(self):
+        for mode in ("corrupt", "other-busy"):
+            with self.subTest(mode=mode):
+                self.record.unlink(missing_ok=True)
+                result, calls = self.verify(mode)
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(len(calls), 1)
+                self.assertFalse(self.delays.exists())
+                for evidence in self.root.glob("dockpipe-dmg-verify.*"):
+                    for log in evidence.iterdir():
+                        log.unlink()
+                    evidence.rmdir()
+
+    def test_cancellation_and_other_status_are_not_retried(self):
+        for mode, status in (("cancel", 130), ("other-status", 7)):
+            with self.subTest(mode=mode):
+                self.record.unlink(missing_ok=True)
+                result, calls = self.verify(mode)
+                self.assertEqual(result.returncode, status)
+                self.assertEqual(len(calls), 1)
+                self.assertFalse(self.delays.exists())
+                for evidence in self.root.glob("dockpipe-dmg-verify.*"):
+                    for log in evidence.iterdir():
+                        log.unlink()
+                    evidence.rmdir()
+
+    def test_interrupted_backoff_stops_before_another_verify(self):
+        self.environment["DMG_TEST_SLEEP_EXIT"] = "143"
+        result, calls = self.verify("busy")
+        self.assertEqual(result.returncode, 143)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(self.delays.read_text(), "2\n")
+
+    def test_symlink_is_rejected_before_hdiutil(self):
+        original = self.root / "original.dmg"
+        self.image.rename(original)
+        self.image.symlink_to(original)
+        result, calls = self.verify("success")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(calls, [])
 
 
 if __name__ == "__main__":
