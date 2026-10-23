@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate complete stores and prepare the public release download catalog."""
+"""Validate stores and prepare the independent CLI/core/desktop release catalog."""
 import argparse
 import hashlib
 import json
@@ -19,21 +19,34 @@ def digest(path):
     return checksum.hexdigest()
 
 
-def verify_store(directory):
+def verify_store(directory, core_only=False):
     manifest = json.loads((directory / "packages-store-manifest.json").read_text())
-    packages = manifest["packages"]
-    if not all(packages.get(kind) for kind in ("core", "workflows", "resolvers")):
+    packages = manifest.get("packages")
+    if not isinstance(packages, dict) or not isinstance(packages.get("core"), dict) or not packages["core"]:
         raise ValueError(f"Incomplete package store: {directory}")
-    entries = [packages["core"], *packages["workflows"], *packages["resolvers"]]
+    workflows = packages.get("workflows", [])
+    resolvers = packages.get("resolvers", [])
+    if not isinstance(workflows, list) or not isinstance(resolvers, list):
+        raise ValueError(f"Invalid optional package lists: {directory}")
+    if core_only and (workflows or resolvers):
+        raise ValueError(f"Runtime release store contains optional packages: {directory}")
+    entries = [packages["core"], *workflows, *resolvers]
     names = set()
     for entry in entries:
-        name = entry["tarball"]
-        if Path(name).name != name or name in names:
+        if not isinstance(entry, dict):
+            raise ValueError(f"Invalid package entry: {directory}")
+        name = entry.get("tarball")
+        if not isinstance(name, str) or not name or Path(name).name != name or name in names:
             raise ValueError(f"Invalid or duplicate store filename: {name}")
         names.add(name)
         path = directory / name
         if path.is_symlink() or digest(path) != entry["sha256"]:
             raise ValueError(f"Package checksum mismatch: {path}")
+    if core_only:
+        allowed_files = names | {name + ".sha256" for name in names} | {"packages-store-manifest.json"}
+        for path in directory.iterdir():
+            if path.is_symlink() or not path.is_file() or path.name not in allowed_files:
+                raise ValueError(f"Unexpected runtime store payload: {path}")
     return len(entries)
 
 
@@ -65,7 +78,7 @@ def prepare(directory, version, candidate="", source_sha=""):
         store = directory / "stores" / platform
         stores[platform] = {
             "manifest": f"stores/{platform}/packages-store-manifest.json",
-            "count": verify_store(store),
+            "count": verify_store(store, core_only=True),
         }
         suffix = "zip" if platform.startswith("windows") else "tar.gz"
         required = [
@@ -99,10 +112,11 @@ def prepare(directory, version, candidate="", source_sha=""):
             raise ValueError("Flatpak store has an incorrect runtime target")
         stores[FLATPAK_PLATFORM] = {
             "manifest": f"stores/{FLATPAK_PLATFORM}/packages-store-manifest.json",
-            "count": verify_store(flatpak_store),
+            "count": verify_store(flatpak_store, core_only=True),
         }
         downloads[FLATPAK_PLATFORM] = {"cli": flatpak_bundle, "desktop": flatpak_bundle}
-    catalog = {"schema": 1, "version": version, "stores": stores, "downloads": downloads}
+    catalog = {"schema": 1, "artifact_class": "runtime", "version": version,
+               "stores": stores, "downloads": downloads}
     if source_sha:
         catalog["source_sha"] = source_sha
     if candidate:
@@ -120,9 +134,10 @@ if __name__ == "__main__":
     parser.add_argument("--destination", type=Path)
     parser.add_argument("--candidate", default="")
     parser.add_argument("--source-sha", default="")
+    parser.add_argument("--core-only", action="store_true")
     args = parser.parse_args()
     if args.command == "verify-store":
-        print(f"Verified {verify_store(args.directory)} packages in {args.directory}")
+        print(f"Verified {verify_store(args.directory, core_only=args.core_only)} packages in {args.directory}")
     elif args.command == "stage-core":
         if args.destination is None:
             parser.error("stage-core requires --destination")

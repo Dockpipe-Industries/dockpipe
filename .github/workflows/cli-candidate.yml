@@ -12,6 +12,7 @@ on:
       - src/lib/**
       - src/core/**
       - release/packaging/build-cli-candidate.py
+      - release/packaging/release-version.py
       - release/packaging/embedded-inputs.py
       - release/packaging/publish-cli-candidate.py
       - release/packaging/publish-launcher-sdk.py
@@ -28,6 +29,7 @@ on:
       - src/lib/**
       - src/core/**
       - release/packaging/build-cli-candidate.py
+      - release/packaging/release-version.py
       - release/packaging/embedded-inputs.py
       - release/packaging/publish-cli-candidate.py
       - release/packaging/publish-launcher-sdk.py
@@ -56,6 +58,8 @@ jobs:
       - name: Verify candidate boundaries
         run: python3 -B -m unittest discover -s release/packaging/tests -p test_cli_candidate.py -v
       - name: Build pure-Go CLI archives from fresh public module pins
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           python3 -B release/packaging/build-cli-candidate.py \
             --source-root "$GITHUB_WORKSPACE" --source-sha "$GITHUB_SHA" \

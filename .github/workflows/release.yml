@@ -191,27 +191,13 @@ jobs:
           python3 release/packaging/prepare-browser-sdk.py --lock release/dependencies/spatialweb-browser.lock.json \
             --platform '${{ matrix.platform }}' --output "$RUNNER_TEMP/browser-sdk"
           echo "DOCKPIPE_BROWSER_SDK=$RUNNER_TEMP/browser-sdk" >> "$GITHUB_ENV"
-      - name: Build native CLI, all package stores, and installers
+      - name: Build native CLI, core store, and installers
         shell: bash
         run: bash release/packaging/build-platform.sh "${{ needs.meta.outputs.version }}"
-      - name: Prepare the pinned public Cockpit runtime
-        if: matrix.platform == 'linux-amd64'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          python3 release/packaging/prepare-cockpit.py prepare \
-            --lock release/cockpit.lock.json --output "$RUNNER_TEMP/cockpit-runtime"
-          echo "DOCKPIPE_COCKPIT_PREPARED=$RUNNER_TEMP/cockpit-runtime" >> "$GITHUB_ENV"
       - name: Build Linux desktop against Ubuntu 22.04
         if: runner.os == 'Linux'
-        env:
-          DOCKPIPE_QUALIFY_COCKPIT: ${{ matrix.platform == 'linux-amd64' && '1' || '0' }}
         shell: bash
         run: bash release/packaging/desktop/build-linux.sh "${{ needs.meta.outputs.version }}" release/artifacts
-      - name: Finalize the qualified Linux Cockpit catalog
-        if: matrix.platform == 'linux-amd64'
-        shell: bash
-        run: bash release/packaging/build-platform.sh --finalize-cockpit "${{ needs.meta.outputs.version }}" release/artifacts/cockpit-store
       - name: Build native macOS desktop installers
         if: runner.os == 'macOS'
         shell: bash
@@ -266,7 +252,7 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Build Windows CLI and all package stores
+      - name: Build Windows CLI and core store
         shell: bash
         run: bash release/packaging/build-platform.sh "${{ needs.meta.outputs.version }}"
 

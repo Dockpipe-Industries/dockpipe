@@ -4,6 +4,7 @@ import argparse
 import gzip
 import hashlib
 import io
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -19,6 +20,7 @@ TARGETS = ("darwin/amd64", "darwin/arm64", "linux/amd64", "linux/arm64", "window
 GO_VERSION = "go1.26.10"
 REPOSITORY = "Dockpipe-Industries/dockpipe"
 MAX_BINARY_BYTES = 64 << 20
+MAX_HISTORY_BYTES = 64 << 10
 
 
 def digest(path):
@@ -33,6 +35,114 @@ def candidate_identity(base, source_sha):
     # Prefix the hash so an all-numeric hash cannot form an invalid leading-zero
     # SemVer prerelease identifier.
     return base + "-staging.cli.sha" + source_sha[:12], "cli-candidate-" + base + "-staging." + source_sha
+
+
+
+def release_allocator():
+    specification = importlib.util.spec_from_file_location(
+        "cli_release_allocator", Path(__file__).with_name("release-version.py"))
+    module = importlib.util.module_from_spec(specification)
+    specification.loader.exec_module(module)
+    return module
+
+
+def allocation_receipt(release_line, source_sha, tags):
+    history = "".join(tag + "\n" for tag in sorted(set(tags)))
+    if len(history.encode("utf-8")) > MAX_HISTORY_BYTES:
+        raise ValueError("CLI published tag history exceeds 64 KiB")
+    allocated_base = release_allocator().next_version(release_line, history.splitlines())
+    candidate_identity(allocated_base, source_sha)
+    return {
+        "schema": 1, "source_sha": source_sha, "release_line": release_line,
+        "allocated_base": allocated_base, "history": history,
+        "history_sha256": hashlib.sha256(history.encode("utf-8")).hexdigest(),
+        "history_source": "https://api.github.com/repos/" + REPOSITORY + "/tags",
+    }
+
+
+def validate_allocation(receipt, release_line, source_sha):
+    fields = {"schema", "source_sha", "release_line", "allocated_base", "history",
+              "history_sha256", "history_source"}
+    if (not isinstance(receipt, dict) or set(receipt) != fields
+            or type(receipt.get("schema")) is not int or receipt["schema"] != 1
+            or receipt.get("source_sha") != source_sha or receipt.get("release_line") != release_line
+            or not isinstance(receipt.get("history"), str)
+            or len(receipt["history"].encode("utf-8")) > MAX_HISTORY_BYTES):
+        raise ValueError("CLI version allocation requires bounded source-bound published history")
+    expected = allocation_receipt(release_line, source_sha, receipt["history"].splitlines())
+    if receipt != expected:
+        raise ValueError("CLI version allocation history, digest or selected base differs")
+    return candidate_identity(receipt["allocated_base"], source_sha)
+
+
+def acquire_version_allocation(source, source_sha, environment):
+    """Read history once; reuse an existing source candidate's immutable receipt."""
+    release_line = (source / "VERSION").read_text().strip()
+    candidate_identity(release_line, source_sha)
+    # gh cannot combine --slurp with --jq. @json emits exactly one compact
+    # array line per page, retaining pagination without release bodies/authors.
+    history_filter = (
+        'map({tag_name,draft,prerelease,target_commitish,assets:['
+        '.assets[] | select(.name == "cli-candidate.json") | {name,id,size,digest}]}) | @json')
+    response = command([
+        "gh", "api", "--hostname", "github.com", "--paginate",
+        f"repos/{REPOSITORY}/releases?per_page=100", "--jq", history_filter], source, environment)
+    pages = [json.loads(line) for line in response.splitlines()]
+    if (not isinstance(pages, list) or any(not isinstance(page, list) for page in pages)):
+        raise ValueError("CLI release history response must contain paginated release lists")
+    releases = [release for page in pages for release in page]
+    if any(not isinstance(release, dict) or not isinstance(release.get("tag_name"), str)
+           or type(release.get("draft")) is not bool for release in releases):
+        raise ValueError("CLI release history contains invalid release metadata")
+    existing = [release for release in releases
+                if re.fullmatch(r"cli-candidate-[0-9]+\.[0-9]+\.[0-9]+-staging\." + source_sha,
+                                release["tag_name"])]
+    if len(existing) > 1:
+        raise ValueError("Multiple CLI candidates already claim the exact source")
+    if existing:
+        release = existing[0]
+        if release.get("target_commitish") != source_sha or release.get("prerelease") is not True:
+            raise ValueError("Existing CLI candidate source identity differs")
+        assets = release.get("assets", [])
+        if not isinstance(assets, list):
+            raise ValueError("Existing CLI candidate assets are invalid")
+        manifests = [asset for asset in assets if isinstance(asset, dict)
+                     and asset.get("name") == "cli-candidate.json"]
+        if len(manifests) != 1:
+            raise ValueError("Existing CLI candidate requires one immutable allocation manifest")
+        asset = manifests[0]
+        if (type(asset.get("id")) is not int or asset["id"] <= 0
+                or type(asset.get("size")) is not int or not 0 < asset["size"] <= 128 << 10):
+            raise ValueError("Existing CLI candidate manifest must be bounded")
+        content = command(["gh", "api", "--hostname", "github.com", "-H", "Accept: application/octet-stream",
+                           f"repos/{REPOSITORY}/releases/assets/{asset['id']}"], source, environment)
+        data = content.encode("utf-8")
+        if (len(data) != asset["size"]
+                or "sha256:" + hashlib.sha256(data).hexdigest() != asset.get("digest")):
+            raise ValueError("Existing CLI candidate allocation manifest bytes differ")
+        manifest = json.loads(content)
+        if (not isinstance(manifest, dict) or manifest.get("source_sha") != source_sha
+                or manifest.get("source_repository") != REPOSITORY
+                or manifest.get("product") != "DockpipeCLI"
+                or manifest.get("source_state") != "committed-snapshot"):
+            raise ValueError("Existing CLI candidate allocation manifest source differs")
+        receipt = manifest.get("version_allocation")
+        version, tag = validate_allocation(receipt, release_line, source_sha)
+        if manifest.get("version") != version or manifest.get("tag") != tag or release["tag_name"] != tag:
+            raise ValueError("Existing CLI candidate identity differs from its allocation")
+        return receipt
+    # A public native tag consumes its version even if release publication was
+    # interrupted. Use the same tag history as the native release allocator.
+    response = command([
+        "gh", "api", "--hostname", "github.com", "--paginate",
+        f"repos/{REPOSITORY}/tags?per_page=100", "--jq", "map(.name) | @json"], source, environment)
+    pages = [json.loads(line) for line in response.splitlines()]
+    if not pages or any(not isinstance(page, list) for page in pages):
+        raise ValueError("CLI version history must contain paginated tag lists")
+    tags = [tag for page in pages for tag in page]
+    if any(not isinstance(tag, str) or not tag or "\n" in tag or "\r" in tag for tag in tags):
+        raise ValueError("CLI version history contains an invalid Git tag")
+    return allocation_receipt(release_line, source_sha, tags)
 
 
 def public_environment(work):
@@ -125,7 +235,7 @@ def verify_native_cli(binary, version, work, environment):
         raise ValueError("Native CLI Python host step did not run")
 
 
-def build(source, source_sha, work, output, go):
+def build(source, source_sha, work, output, go, version_allocation=None):
     source = source.resolve(strict=True)
     work, output = work.resolve(), output.resolve()
     if (platform.system(), platform.machine()) != ("Linux", "x86_64"):
@@ -133,7 +243,10 @@ def build(source, source_sha, work, output, go):
     if (work.exists() or output.exists() or work.is_relative_to(source) or output.is_relative_to(source)
             or work.is_relative_to(output) or output.is_relative_to(work)):
         raise ValueError("Use separate fresh work/output directories outside the source")
-    version, tag = candidate_identity((source / "VERSION").read_text().strip(), source_sha)
+    release_line = (source / "VERSION").read_text().strip()
+    if version_allocation is None:
+        version_allocation = acquire_version_allocation(source, source_sha, dict(os.environ))
+    version, tag = validate_allocation(version_allocation, release_line, source_sha)
     work.mkdir(parents=True)
     output.mkdir(parents=True)
     environment = public_environment(work)
@@ -167,6 +280,7 @@ def build(source, source_sha, work, output, go):
     metadata = {
         "schema": 1, "product": "DockpipeCLI", "artifact_class": "cli-only", "version": version,
         "tag": tag, "source_repository": REPOSITORY, "source_sha": source_sha,
+        "version_allocation": version_allocation,
         "source_state": "committed-snapshot", "go_version": GO_VERSION, "module_files": source_hashes,
         "module_acquisition": "fresh-public-proxy-and-checksum-database", "artifacts": artifacts,
         "checks": ["authored-embed-manifest", "public-module-download", "module-integrity", "pure-go-five-platform-build",

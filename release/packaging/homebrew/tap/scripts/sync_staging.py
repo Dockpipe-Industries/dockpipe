@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 import urllib.error
 import urllib.request
 
@@ -21,12 +22,23 @@ CASK = "Casks/dockpipe-desktop-staging.rb"
 
 
 def download(path):
-    # curl matches the release installers and handles Cloudflare's public endpoint.
-    return subprocess.check_output([
-        "curl", "--fail", "--silent", "--show-error", "--retry", "2",
-        "--connect-timeout", "15", "--max-time", "60", "--proto", "=https",
-        f"{ORIGIN}/{path}",
-    ])
+    # Keep HTTP status separate from the body: curl transport failures must not
+    # accidentally admit the legacy-pointer fallback.
+    url = f"{ORIGIN}/{path}"
+    with tempfile.TemporaryDirectory(prefix="dockpipe-homebrew-download-") as temporary:
+        body = Path(temporary) / "response"
+        command = [
+            "curl", "--fail", "--silent", "--show-error", "--retry", "2",
+            "--connect-timeout", "15", "--max-time", "60", "--proto", "=https",
+            "--output", str(body), "--write-out", "%{http_code}", url,
+        ]
+        try:
+            subprocess.check_output(command)
+        except subprocess.CalledProcessError as error:
+            if error.returncode == 22 and error.output == b"404":
+                raise urllib.error.HTTPError(url, 404, "Not Found", {}, None) from error
+            raise
+        return body.read_bytes()
 
 
 def github(path, payload=None, allow_missing=False):
@@ -69,7 +81,15 @@ def completed_candidate(pointer, catalog, run):
 
 
 def latest_release():
-    pointer = json.loads(download("packages/latest.json"))
+    try:
+        pointer_bytes = download("packages/runtime/latest.json")
+    except urllib.error.HTTPError as error:
+        if error.code != 404:
+            raise
+        # Older channels used one pointer for the host release and Marketplace.
+        # Only a missing new pointer admits that transition fallback.
+        pointer_bytes = download("packages/latest.json")
+    pointer = json.loads(pointer_bytes)
     candidate = pointer["candidate"]
     _, run_id, attempt, _ = candidate_parts(candidate)
     # Construct the path from the validated identity, never from an arbitrary pointer URL.
