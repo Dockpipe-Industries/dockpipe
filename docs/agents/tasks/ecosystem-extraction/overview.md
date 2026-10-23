@@ -321,3 +321,29 @@ core import pins. A strict core importer extension passes 21 focused tests;
 catalog native store and Guest Tools publication work is being prepared with
 explicit dependency/provenance contracts. No new native store or full Dockpipe
 staging release is published at this checkpoint. Production remains outside scope.
+
+### Independent host and optional package releases (2026-10-23)
+
+The user confirmed that launcher and host SDK ownership stays in the main Dockpipe
+repository. CLI-only users do not require the desktop. The release boundary is now
+being qualified with required CLI/core and desktop Qt/Browser inputs separated from
+optional VM/Cockpit/catalog integration. Required host stores reject optional
+payloads; Marketplace discovery keeps its independent pointer while runtime
+publication uses `packages/runtime/latest.json`. Strict optional Cockpit and
+Flatpak catalog checks remain in independent workflows.
+
+The existing minimum-runtime contract is used for the VM family's new installable
+slices; exact producer pins and native ABI checks remain separate. CLI candidate
+versions now derive from published release history rather than the older release-line
+baseline, with the original allocation retained for immutable retries. A real local
+core-only store compiles and verifies. The release-tooling suite passes 261 tests
+with four existing environment/platform skips. Hosted qualification, independent
+package publication and final staging promotion remain outstanding. The original
+saved checkout and protected ForgePipe changes remain preserved.
+
+The source-only catalog compatibility overlay is now published from catalog commit
+`30859228a77ba20a23a4b69ab81aae133d6ccfe9` after hosted build, installed default/failure
+workflow checks, consumer composition, CI attestations and anonymous readback. Its
+three owned workflow repairs are pinned only for independent optional-catalog
+qualification. They are not native VM or Guest Tools release proof and no longer
+block host artifact assembly. The Marketplace pointer was not changed.

@@ -63,6 +63,12 @@ For a reproducible setup, use an immutable manifest URL and the selected package
 checksum. When authoring your own packages, keep YAML, scripts and assets together
 and declare dependencies so another user can run them without your source tree.
 
+### Independent host and package releases
+
+The CLI/core and desktop host release independently of optional packages. The launcher remains part of the Dockpipe repository, and CLI-only users do not need it. Host releases publish their download pointer at `packages/runtime/latest.json`; Marketplace discovery uses the separately promoted `packages/latest.json` catalog. Releasing the host does not replace the package catalog or require VM/Cockpit packages to be installed.
+
+Packages use published SDKs and declare `min_dockpipe_version` for required engine features. Their build repository can pin one exact producer with `dockpipe_version` and a checksum lock. Runtime compatibility, producer reproducibility and native plugin ABI checks are separate contracts. See [release boundaries](../../release/docs/releasing.md#runtime-and-optional-package-release-boundaries).
+
 ### Hidden packages
 
 Set `hidden: true` in an installable workflow, resolver, or core `package.yml`

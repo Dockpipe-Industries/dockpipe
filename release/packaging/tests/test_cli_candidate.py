@@ -1,4 +1,5 @@
 """CLI bootstrap candidates bind public inputs, installer formats and immutable publication."""
+import hashlib
 import importlib.util
 import json
 import os
@@ -26,6 +27,10 @@ PUBLISHER = load("cli_publisher_test", ROOT / "publish-cli-candidate.py")
 SOURCE = "012345678901" + "a" * 28
 
 
+def allocation():
+    return PRODUCER.allocation_receipt("0.6.0", SOURCE, ["v0.6.25"])
+
+
 def source_fixture(root):
     source = root / "source"
     source.mkdir()
@@ -50,7 +55,7 @@ def build_fixture(root):
 
     with patch.object(PRODUCER, "command", side_effect=execute), \
             patch.object(PRODUCER, "verify_native_cli") as smoke, patch("builtins.print"):
-        PRODUCER.build(source, SOURCE, work, output, "go")
+        PRODUCER.build(source, SOURCE, work, output, "go", allocation())
     if smoke.call_count != 1:
         raise AssertionError("Native candidate was not qualified exactly once")
     return output
@@ -64,6 +69,128 @@ class CLIBootstrapTests(unittest.TestCase):
         for base, source in (("v0.6.0", SOURCE), ("0.6", SOURCE), ("0.6.0-rc.1", SOURCE), ("0.6.0", "dev")):
             with self.assertRaises(ValueError):
                 PRODUCER.candidate_identity(base, source)
+
+    def test_allocated_candidate_advances_published_native_release_without_version_edit(self):
+        receipt = allocation()
+        version, tag = PRODUCER.validate_allocation(receipt, "0.6.0", SOURCE)
+        self.assertEqual(receipt["allocated_base"], "0.6.26")
+        self.assertEqual(version, "0.6.26-staging.cli.sha012345678901")
+        self.assertIn("0.6.26", tag)
+        self.assertEqual(receipt["history"], "v0.6.25\n")
+        self.assertEqual(receipt["history_sha256"], hashlib.sha256(b"v0.6.25\n").hexdigest())
+        for key, value in (("history", "v0.6.24\n"), ("history_sha256", "0" * 64),
+                           ("allocated_base", "0.6.25"), ("source_sha", "a" * 40),
+                           ("release_line", "0.7.0"), ("schema", True)):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                PRODUCER.validate_allocation(receipt | {key: value}, "0.6.0", SOURCE)
+
+    def test_allocation_history_is_bounded_before_build(self):
+        with self.assertRaisesRegex(ValueError, "history exceeds"):
+            PRODUCER.allocation_receipt("0.6.0", SOURCE, ["x" * (PRODUCER.MAX_HISTORY_BYTES + 1)])
+
+    def test_history_acquisition_uses_public_tags_and_ignores_untagged_drafts(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = source_fixture(Path(temporary))
+            releases = [[{"tag_name": "v0.6.25", "draft": False},
+                         {"tag_name": "v0.6.99", "draft": True}]]
+            responses = ["\n".join(json.dumps(page) for page in releases), '["v0.6.25"]']
+            with patch.object(PRODUCER, "command", side_effect=responses) as execute:
+                receipt = PRODUCER.acquire_version_allocation(source, SOURCE, {})
+            self.assertEqual(receipt["allocated_base"], "0.6.26")
+            self.assertEqual(execute.call_count, 2)
+            arguments = execute.call_args_list[0].args[0]
+            self.assertEqual(arguments[:2], ["gh", "api"])
+            self.assertIn("--paginate", arguments)
+            self.assertNotIn("--slurp", arguments)
+            self.assertIn("--jq", arguments)
+            self.assertIn('select(.name == "cli-candidate.json")', arguments[-1])
+            self.assertTrue(execute.call_args_list[1].args[0][-3].endswith('/tags?per_page=100'))
+            self.assertNotIn("v0.6.99", receipt["history"])
+
+    def test_existing_native_tag_consumes_version_before_release_is_completed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = source_fixture(Path(temporary))
+            tags = ["v0.6.25", "v0.6.26-staging.123.1.aaaaaaaaaaaa"]
+            # The later native tag exists, but its release listing is absent.
+            with patch.object(PRODUCER, "command", side_effect=['[]', json.dumps(tags)]):
+                receipt = PRODUCER.acquire_version_allocation(source, SOURCE, {})
+            self.assertEqual(receipt["allocated_base"], "0.6.27")
+            self.assertTrue(receipt["history_source"].endswith('/tags'))
+
+    def test_retry_reuses_original_bound_history_after_newer_native_release(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = build_fixture(Path(temporary))
+            manifest = (output / "cli-candidate.json").read_bytes()
+            metadata = json.loads(manifest)
+            release = {
+                "tag_name": metadata["tag"], "draft": False, "prerelease": True,
+                "target_commitish": SOURCE,
+                "assets": [{"name": "cli-candidate.json", "id": 17, "size": len(manifest),
+                            "digest": "sha256:" + hashlib.sha256(manifest).hexdigest()}],
+            }
+            pages = [[{"tag_name": "v0.6.29", "draft": False}, release]]
+            for draft in (True, False):
+                release["draft"] = draft
+                with self.subTest(draft=draft), patch.object(
+                        PRODUCER, "command", side_effect=["\n".join(json.dumps(page) for page in pages), manifest.decode()]) as execute:
+                    receipt = PRODUCER.acquire_version_allocation(output.parent / "source", SOURCE, {})
+                self.assertEqual(receipt, metadata["version_allocation"])
+                self.assertEqual(receipt["allocated_base"], "0.6.26")
+                self.assertEqual(execute.call_count, 2)
+                self.assertTrue(execute.call_args.args[0][-1].endswith("/releases/assets/17"))
+            release["assets"][0]["digest"] = "sha256:" + "0" * 64
+            with patch.object(PRODUCER, "command", side_effect=["\n".join(json.dumps(page) for page in pages), manifest.decode()]):
+                with self.assertRaisesRegex(ValueError, "manifest bytes differ"):
+                    PRODUCER.acquire_version_allocation(output.parent / "source", SOURCE, {})
+
+    def test_history_failure_never_falls_back_to_release_line(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = source_fixture(Path(temporary))
+            with patch.object(PRODUCER, "command", side_effect=ValueError("history unavailable")):
+                with self.assertRaisesRegex(ValueError, "history unavailable"):
+                    PRODUCER.acquire_version_allocation(source, SOURCE, {})
+            for content in ("{}", "[{}]", '[[{"tag_name":"v0.6.25","draft":"false"}]]'):
+                with self.subTest(content=content), patch.object(PRODUCER, "command", return_value=content):
+                    with self.assertRaises(ValueError):
+                        PRODUCER.acquire_version_allocation(source, SOURCE, {})
+
+    def test_publisher_rejects_missing_or_tampered_allocation_before_network(self):
+        for mutation in ("missing", "digest", "version"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
+                output = build_fixture(Path(temporary))
+                path = output / "cli-candidate.json"
+                metadata = json.loads(path.read_text())
+                if mutation == "missing":
+                    del metadata["version_allocation"]
+                elif mutation == "digest":
+                    metadata["version_allocation"]["history_sha256"] = "0" * 64
+                else:
+                    metadata["version"] = "0.6.25-staging.cli.sha" + SOURCE[:12]
+                path.write_text(json.dumps(metadata))
+                with self.assertRaises(ValueError), patch.object(PUBLISHER.SHARED, "run") as execute:
+                    PUBLISHER.validate(output, SOURCE)
+                execute.assert_not_called()
+
+    def test_go_pin_integrity_guard_is_not_rebaselined_after_download(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = source_fixture(root)
+
+            def execute(arguments, directory, environment, timeout=300):
+                if arguments[1:] == ["env", "GOVERSION"]:
+                    return PRODUCER.GO_VERSION
+                if arguments[1:] == ["mod", "edit", "-json"]:
+                    return '{"Replace":null}'
+                if arguments[1:] == ["mod", "download", "all"]:
+                    (source / "go.sum").write_text("changed")
+                if arguments[1] == "build":
+                    Path(arguments[arguments.index("-o") + 1]).write_bytes(b"fixture")
+                return ""
+
+            with patch.object(PRODUCER, "command", side_effect=execute), \
+                    patch.object(PRODUCER, "verify_native_cli"):
+                with self.assertRaisesRegex(ValueError, "Go module pins changed"):
+                    PRODUCER.build(source, SOURCE, root / "work", root / "output", "go", allocation())
 
     def test_public_module_environment_removes_local_and_private_overrides(self):
         hostile = {name: "private" for name in ("GOPROXY", "GOSUMDB", "GOFLAGS", "GOPRIVATE", "GONOSUMDB", "GONOPROXY", "GOWORK", "GOCACHEPROG")}
@@ -107,7 +234,7 @@ class CLIBootstrapTests(unittest.TestCase):
             source = source_fixture(root)
             with patch.object(PRODUCER, "command", side_effect=["", PRODUCER.GO_VERSION, '{"Replace":[{"New":{"Path":"../private"}}]}']) as execute:
                 with self.assertRaisesRegex(ValueError, "replacements"):
-                    PRODUCER.build(source, SOURCE, root / "work", root / "out", "go")
+                    PRODUCER.build(source, SOURCE, root / "work", root / "out", "go", allocation())
             self.assertEqual(execute.call_count, 3)
 
     def test_stale_embed_manifest_fails_before_any_go_command(self):
@@ -116,7 +243,7 @@ class CLIBootstrapTests(unittest.TestCase):
             source = source_fixture(root)
             with patch.object(PRODUCER, "command", side_effect=ValueError("stale embed manifest")) as execute:
                 with self.assertRaisesRegex(ValueError, "stale embed manifest"):
-                    PRODUCER.build(source, SOURCE, root / "work", root / "out", "go")
+                    PRODUCER.build(source, SOURCE, root / "work", root / "out", "go", allocation())
             self.assertEqual(execute.call_count, 1)
             arguments = execute.call_args.args[0]
             self.assertEqual(arguments[1:], [source / "release/packaging/embedded-inputs.py", "--check"])
@@ -142,6 +269,8 @@ class CLIBootstrapTests(unittest.TestCase):
         self.assertEqual(toolchain, "go1.26.10")
         workflow = (repository / ".github/workflows/cli-candidate.yml").read_text()
         self.assertIn("go-version: '1.26.10'", workflow)
+        self.assertEqual(workflow.count("      - release/packaging/release-version.py"), 2)
+        self.assertIn("GH_TOKEN: ${{ github.token }}", workflow)
 
     def test_five_platform_metadata_and_archive_hashes_validate(self):
         with tempfile.TemporaryDirectory() as temporary:

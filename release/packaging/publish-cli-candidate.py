@@ -37,8 +37,9 @@ def validate(directory, source_sha):
     version = metadata.get("version", "")
     if not isinstance(version, str):
         raise ValueError("CLI candidate version must be a string")
-    base = version.split("-", 1)[0]
-    expected_version, tag = PRODUCER.candidate_identity(base, source_sha)
+    release_line = (Path(__file__).resolve().parents[2] / "VERSION").read_text().strip()
+    expected_version, tag = PRODUCER.validate_allocation(
+        metadata.get("version_allocation"), release_line, source_sha)
     if version != expected_version or metadata.get("tag") != tag:
         raise ValueError("CLI candidate version/tag differs from the exact source")
     artifacts = metadata.get("artifacts", {})
