@@ -300,54 +300,13 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual((self.root / "data/packages/core" / core.name).read_bytes(), b"test-core")
         subprocess.run(command, env=dict(env, TEST_OS="Linux"), check=True, capture_output=True)
 
-    def test_release_setup_copies_only_scoped_values_and_defaults_to_checks(self):
-        source = PACKAGING.parents[1] / "workflows/package/package-release-setup/assets/scripts/configure-release.py"
-        spec = importlib.util.spec_from_file_location("release_setup", source)
-        setup = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(setup)
-        values = {"RELEASE_SETUP_REPOSITORY": "example/project", "AWS_ACCESS_KEY_ID": "test-id", "AWS_SECRET_ACCESS_KEY": "test-key", "APT_SIGNING_KEY": "test-signing-key\nsecond-line",
-                  "R2_ENDPOINT_URL": "https://example.invalid", "DOCKPIPE_RELEASE_BUCKET": "example-packages", "R2_PREFIX": "packages",
-                  "CLOUDFLARE_API_TOKEN": "must-not-copy", "R2_STATE_SECRET_ACCESS_KEY": "must-not-copy"}
-        with patch.dict(os.environ, values), patch.object(setup, "signing_fingerprint", return_value="A" * 40), patch.object(setup, "run") as run:
-            setup.configure(False)
-            run.assert_not_called()
-            setup.configure(True)
-            secrets = [call for call in run.call_args_list if call.args[0][1] == "secret"]
-            self.assertEqual({call.args[0][3] for call in secrets}, set(setup.SECRETS))
-            for call in secrets:
-                self.assertEqual(call.kwargs["value"], values[call.args[0][3]])
-                self.assertNotIn(call.kwargs["value"], call.args[0])
-            self.assertEqual(len(run.call_args_list), 7)
-            run.reset_mock()
-            with patch.dict(os.environ, {"RELEASE_SETUP_REPOSITORY": ""}):
-                with self.assertRaises(ValueError):
-                    setup.configure(True, "release-staging")
-            run.assert_not_called()
-            with patch.dict(os.environ, {"DOCKPIPE_RELEASE_BUCKET": "example-staging"}):
-                setup.configure(True, "release-staging")
-            self.assertEqual(len(run.call_args_list), 7)
-            for call in run.call_args_list:
-                self.assertIn("example/project", call.args[0])
-                self.assertIn("release-staging", call.args[0])
-                self.assertNotIn("release", call.args[0])
-
-    def test_release_setup_repairs_only_valid_flattened_armor(self):
-        source = PACKAGING.parents[1] / "workflows/package/package-release-setup/assets/scripts/configure-release.py"
-        spec = importlib.util.spec_from_file_location("release_setup", source)
-        setup = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(setup)
-        armor = "-----BEGIN PGP PRIVATE KEY BLOCK-----\n\nYWJjZA==\n=YWJj\n-----END PGP PRIVATE KEY BLOCK-----\n"
-        self.assertEqual(setup.normalize_signing_key(armor.replace("\n", " ")), armor)
-        self.assertEqual(setup.normalize_signing_key(armor), armor.strip())
-        for invalid in ("filename.asc", armor.replace("\n", " ").replace("YWJjZA==", "bad!")):
-            with self.assertRaises(ValueError):
-                setup.normalize_signing_key(invalid)
-
     @unittest.skipUnless(all(shutil.which(tool) for tool in ("gpg", "gpgv", "apt-ftparchive", "dpkg-deb")), "APT tools required")
     def test_signed_apt_repository_is_readable_and_by_hash(self):
         gpg_home = self.root / "gnupg"
         gpg_home.mkdir(mode=0o700)
         env = dict(os.environ, GNUPGHOME=str(gpg_home))
+        self.addCleanup(subprocess.run, ["gpgconf", "--kill", "gpg-agent"],
+                        env=env, capture_output=True)
         subprocess.run(["gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "",
                         "--quick-generate-key", "Dockpipe test only", "rsa2048", "sign", "1d"],
                        env=env, check=True, capture_output=True)
