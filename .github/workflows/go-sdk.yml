@@ -26,19 +26,24 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: '1.26.9'
+          cache: false
       - name: Read the committed SDK source lock
         id: lock
         run: |
           python3 - <<'PY'
-          import json, os
+          import json, os, re
           lock = json.load(open('release/go-sdk-source.lock.json'))
+          if lock['source_commit'] != 'c604b291d463906acf0a05ef8cfe2efc071bdbaa':
+              raise ValueError('Update the literal SDK checkout together with its source lock')
+          if not re.fullmatch(r'0\.1\.0-source\.[0-9a-f]{16}', lock['version']):
+              raise ValueError('SDK version must identify its source inventory')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write('source_commit=' + lock['source_commit'] + '\n')
               output.write('tag=dockpipe-go-sdk-' + lock['version'] + '\n')
           PY
       - uses: actions/checkout@v7
         with:
-          ref: ${{ steps.lock.outputs.source_commit }}
+          ref: c604b291d463906acf0a05ef8cfe2efc071bdbaa
           path: build/sdk-source
           persist-credentials: false
       - name: Install committed source dependency modules

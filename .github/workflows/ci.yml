@@ -294,6 +294,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/staging' && vars.DOCKPIPE_RELEASE_ENABLED == 'true'
     permissions:
       contents: write
+      attestations: read
     uses: ./.github/workflows/release.yml
     # GitHub requires inheritance to resolve the called job's environment secrets.
     # https://github.com/actions/runner/issues/4453

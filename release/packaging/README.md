@@ -105,3 +105,18 @@ distribution contract, not a general filesystem traversal limit.
 Candidate publication and publisher authentication are separate steps. Pin both
 the archive and metadata by exact size and checksum; authenticate the metadata
 through the release publisher before consuming its file-manifest checksum.
+
+## Manual ForgePipe SDK attestation
+
+Use the separate **ForgePipe SDK attestation** workflow
+(`.github/workflows/forgepipe-sdk-attestation.yml`) to attest the exact SDK selected
+by `release/forgepipe-sdk.lock.json`. Its manual `forgepipe_sdk_tag` input remains
+empty by default. The existing gate accepts only a manual dispatch with a nonempty
+tag on `js/dev` or `staging`; it does not admit additional refs. The job audits the
+pinned public bytes before using its own narrowly scoped OIDC and attestation
+write permissions. It does not publish a product release.
+
+The reusable release workflow has no attestation-writing job or SDK-tag input.
+Its staging caller grants attestation **read** access to verify published SDKs,
+alongside the existing contents permission needed by release publication. This
+keeps manual attestation authority separate from staging build admission.
