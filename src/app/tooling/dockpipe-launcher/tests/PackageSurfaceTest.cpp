@@ -53,6 +53,7 @@ private slots:
     void refreshesOnlyWhenActiveAndBindsResourceActions();
     void cancelsOneSnapshotAndRejectsOversizedLines();
     void coalescesInventoryRequestsUntilSnapshotFinishes();
+    void stopsOnceWhenOutputFailureCancelsSynchronously();
 };
 
 void PackageSurfaceTest::initialSelectionPrefersDisplayAndPreservesUserChoice()
@@ -317,6 +318,29 @@ void PackageSurfaceTest::cancelsOneSnapshotAndRejectsOversizedLines()
     QTRY_VERIFY_WITH_TIMEOUT(!page.findChild<QPushButton *>("surfaceCancel")->isEnabled(), 10000);
 }
 
+void PackageSurfaceTest::stopsOnceWhenOutputFailureCancelsSynchronously()
+{
+    SessionManager sessions;
+    QTemporaryDir temporary;
+    Context context = Context::createNew();
+    context.workdir = temporary.path();
+    context.workflowFile = "oversized-wait";
+    context.dockpipeBinary = QCoreApplication::applicationFilePath();
+    context.maximumOutputLineBytes = 1024;
+    QSignalSpy failures(&sessions, &SessionManager::sessionFailed);
+    QSignalSpy stopped(&sessions, &SessionManager::sessionStopped);
+    connect(&sessions, &SessionManager::sessionFailed, &sessions,
+            [&sessions](const QString &id, const QString &) { sessions.stop(id); });
+    QVERIFY(sessions.launch(context, temporary.path()));
+    QTRY_COMPARE_WITH_TIMEOUT(stopped.count(), 1, 10000);
+    QCOMPARE(failures.count(), 1);
+    QVERIFY(!sessions.isRunning(context.id));
+    QCOMPARE(sessions.info(context.id).pid, 0);
+    QCOMPARE(sessions.info(context.id).status, SessionStatus::Stopped);
+    sessions.stop(context.id);
+    QCOMPARE(stopped.count(), 1);
+}
+
 int main(int argc, char **argv)
 {
     if (argc > 2 && QByteArray(argv[1]) == "--workflow-file") {
@@ -324,6 +348,14 @@ int main(int argc, char **argv)
         if (workflow == "delayed")
             QThread::msleep(200);
         if (workflow == "wait") {
+            QThread::sleep(30);
+            return 0;
+        }
+        if (workflow == "oversized-wait") {
+            const QByteArray bytes(2048, 'x');
+            std::fwrite(bytes.constData(), 1, size_t(bytes.size()), stdout);
+            std::fputc('\n', stdout);
+            std::fflush(stdout);
             QThread::sleep(30);
             return 0;
         }
