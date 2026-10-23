@@ -18,6 +18,14 @@ function Assert-PublicDesktopRuntime {
 }
 
 $root = (Resolve-Path (Join-Path $PSScriptRoot "../../..")).Path
+if (-not $env:DOCKPIPE_BROWSER_SDK) {
+    throw "Prepare the exact public Browser SDK and set DOCKPIPE_BROWSER_SDK"
+}
+$browserSdk = (Resolve-Path -LiteralPath $env:DOCKPIPE_BROWSER_SDK).Path
+& python (Join-Path $PSScriptRoot "browser-runtime.py") --sdk $browserSdk --platform windows-amd64
+if ($LASTEXITCODE -ne 0) { throw "Browser SDK verification failed" }
+$prefixes = $browserSdk
+if ($env:CMAKE_PREFIX_PATH) { $prefixes += ";" + $env:CMAKE_PREFIX_PATH }
 $build = Join-Path ([IO.Path]::GetTempPath()) ("dockpipe-desktop-" + [guid]::NewGuid().ToString("N"))
 if (Test-Path -LiteralPath $StageDir) {
     throw "Desktop stage must be new: $StageDir"
@@ -36,13 +44,30 @@ if (-not $env:VCToolsInstallDir -or -not $env:VCToolsRedistDir) {
 try {
     $qualification = if ($EnableQualification) { "ON" } else { "OFF" }
     cmake -S (Join-Path $root "src/app/tooling/dockpipe-launcher") -B $build -G "NMake Makefiles" `
-        -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF "-DDOCKPIPE_ENABLE_QUALIFICATION=$qualification" "-DDOCKPIPE_RELEASE_VERSION=$Version"
+        -DCMAKE_BUILD_TYPE=Release "-DDOCKPIPE_ENABLE_QUALIFICATION=$qualification" -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL "-DCMAKE_PREFIX_PATH=$prefixes" "-DDOCKPIPE_RELEASE_VERSION=$Version"
     if ($LASTEXITCODE -ne 0) {
         throw "Desktop configure failed"
     }
     cmake --build $build
     if ($LASTEXITCODE -ne 0) {
         throw "Desktop build failed"
+    }
+    # Match the installed application before standard-user embedding fixtures run.
+    # The verified app-local copy inherits the build directory's access rights.
+    & python (Join-Path $PSScriptRoot "browser-runtime.py") --sdk $browserSdk `
+        --platform windows-amd64 --runtime $build
+    if ($LASTEXITCODE -ne 0) {
+        throw "Desktop test Browser runtime deployment failed"
+    }
+    $testPath = $env:PATH
+    try {
+        $env:PATH = (Join-Path $browserSdk "bin") + ";" + $testPath
+        ctest --test-dir $build --output-on-failure --timeout 120 --stop-on-failure
+        if ($LASTEXITCODE -ne 0) {
+            throw "Desktop regression tests failed"
+        }
+    } finally {
+        $env:PATH = $testPath
     }
     New-Item -ItemType Directory -Path $StageDir | Out-Null
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot "licenses") -Destination $StageDir -Recurse
@@ -52,6 +77,10 @@ try {
     Copy-Item -LiteralPath (Join-Path $build "dockpipe-syntax.rcc") -Destination $StageDir
     Copy-Item -LiteralPath (Join-Path $build "syntax-licenses") -Destination $StageDir -Recurse
     Copy-Item -LiteralPath (Join-Path $build "dockpipe-launcher-ui.dll") -Destination $StageDir
+    Copy-Item -LiteralPath (Join-Path $build "dockpipe-workspace-reader.exe") -Destination $StageDir
+    & python (Join-Path $PSScriptRoot "browser-runtime.py") --sdk $browserSdk --platform windows-amd64 `
+        --runtime $StageDir --licenses (Join-Path $StageDir "licenses/SpatialWebBrowser")
+    if ($LASTEXITCODE -ne 0) { throw "Browser runtime deployment failed" }
     windeployqt --release --compiler-runtime --dir $StageDir $launcher
     if ($LASTEXITCODE -ne 0) {
         throw "Qt deployment failed"
@@ -66,7 +95,7 @@ try {
     Get-ChildItem -LiteralPath $crt.FullName -Filter "*.dll" | Copy-Item -Destination $StageDir
     Assert-PublicDesktopRuntime -RuntimeDirectory $StageDir
     foreach ($required in @(
-        "Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6OpenGL.dll",
+        "SpatialWebBrowser.dll", "dockpipe-workspace-reader.exe", "Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6OpenGL.dll",
         "Qt6WebEngineCore.dll", "Qt6WebEngineWidgets.dll", "QtWebEngineProcess.exe",
         "resources/icudtl.dat", "resources/qtwebengine_resources.pak", "translations/qtwebengine_locales/en-US.pak",
         "resources/qtwebengine_resources_100p.pak", "resources/qtwebengine_resources_200p.pak",

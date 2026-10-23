@@ -38,6 +38,7 @@ public:
     int panelCount() const { return m_definition.panels.size(); }
     QString environment() const;
     void setEnvironment(const QString &environment);
+    void setTilingEnabled(bool enabled);
     bool applyOptions(const DashboardOptions &options);
     void showTour(bool automatic = false);
 
@@ -104,6 +105,7 @@ private:
     bool m_backgroundLookupPending = false;
     bool m_tourOpen = false;
     quint64 m_backgroundGeneration = 0;
+    bool m_tilingEnabled = false;
     bool m_loading = true;
     bool m_fullscreen = false;
 };

@@ -598,6 +598,7 @@ private:
 class DashboardPageTest final : public QObject {
     Q_OBJECT
 private slots:
+    void experimentalTilingGate();
     void paintsOwnSurroundAfterWindowResize();
     void independentEnvironmentsAndRoundTrip();
     void optionsAndSettingsControls();
@@ -2493,6 +2494,41 @@ void DashboardPageTest::fileScopesAndCanvasProjectPicker()
     QVERIFY(captureIfRequested(page, "file-scopes"));
 }
 
+void DashboardPageTest::experimentalTilingGate()
+{
+    auto settings = LauncherSettings::current();
+    settings.tilingEnabled = true;
+    QVERIFY(settings.save());
+    SessionManager sessions;
+    ContextStore contexts;
+    DashboardWidgetFactory factory(sessions, contexts);
+    DashboardPage original(emptyDashboard(), &factory);
+    original.setEnvironment("tiling");
+    QVERIFY(original.addWidgetKind("workflows"));
+    const auto saved = original.snapshot();
+    const auto savedTiling = saved.layout.value("tiling");
+
+    settings.tilingEnabled = false;
+    QVERIFY(settings.save());
+    DashboardPage restored(saved, &factory);
+    auto *button = restored.findChild<QPushButton *>("dashboardTilingMode");
+    QVERIFY(button && button->isHidden());
+    QCOMPARE(restored.environment(), QString("canvas"));
+    restored.setEnvironment("tiling");
+    QCOMPARE(restored.environment(), QString("canvas"));
+    QCOMPARE(restored.snapshot().layout.value("tiling"), savedTiling);
+
+    restored.setTilingEnabled(true);
+    QVERIFY(!button->isHidden());
+    restored.setEnvironment("tiling");
+    QCOMPARE(restored.environment(), QString("tiling"));
+    restored.setTilingEnabled(false);
+    QCOMPARE(restored.environment(), QString("canvas"));
+    QCOMPARE(restored.snapshot().layout.value("tiling"), savedTiling);
+    settings.tilingEnabled = true;
+    QVERIFY(settings.save());
+}
+
 int main(int argc, char **argv)
 {
     QTemporaryDir config;
@@ -2504,6 +2540,10 @@ int main(int argc, char **argv)
     QApplication application(argc, argv);
     application.setOrganizationName("DockpipeDashboardPageTest");
     application.setApplicationName("DashboardPageFixture");
+    LauncherSettings settings;
+    settings.tilingEnabled = true;
+    if (!settings.save())
+        return 1;
     application.setStyle("Fusion");
     applyDockpipeLauncherTheme(application);
     if (application.styleSheet().isEmpty())

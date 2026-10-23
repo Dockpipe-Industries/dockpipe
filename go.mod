@@ -2,7 +2,7 @@ module dockpipe
 
 go 1.25
 
-toolchain go1.26.9
+toolchain go1.26.10
 
 require (
 	github.com/Dockpipe-Industries/pipelang v0.1.0

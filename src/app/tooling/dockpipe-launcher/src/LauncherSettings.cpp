@@ -59,6 +59,7 @@ bool LauncherSettings::load()
     thirdPartyDisclaimerDismissed = false;
     sidebarVisible = true;
     defaultDashboardVisible = true;
+    tilingEnabled = false;
     cockpit = {};
     recentProjectFolders.clear();
 
@@ -70,6 +71,7 @@ bool LauncherSettings::load()
     if (!doc.isObject())
         return true;
     const QJsonObject o = doc.object();
+    tilingEnabled = o.value("experimental").toObject().value("tiling").toBool(false);
     const auto cockpitObject = o.value("cockpit").toObject();
     cockpit.enabled = cockpitObject.value("enabled").toBool(false);
     cockpit.appControl = cockpitObject.value("appControl").toBool(false);
@@ -150,6 +152,9 @@ bool LauncherSettings::save() const
         {"orbitalMotion", cockpit.orbitalMotion}, {"controller", cockpit.controller},
         {"showShip", cockpit.showShip}, {"experimental", QJsonObject{{"voiceCommands", cockpit.voiceCommands}}},
         {"hardwareAcceleration", cockpit.hardwareAcceleration}});
+    auto experimental = o.value("experimental").toObject();
+    experimental.insert("tiling", tilingEnabled);
+    o.insert("experimental", experimental);
     o.insert(QStringLiteral("sidebarVisible"), sidebarVisible);
     o.insert(QStringLiteral("defaultDashboardVisible"), defaultDashboardVisible);
     o.insert(QStringLiteral("uiMode"), uiMode);

@@ -125,7 +125,15 @@ def owned_binaries(app):
         libraries.add(binary)
     if len(libraries) != 1:
         raise ValueError("Expected exactly one owned host UI binary, found " + str(len(libraries)))
-    return [launcher.resolve(), next(iter(libraries))]
+    reader = app / "Contents/MacOS/dockpipe-workspace-reader"
+    owned = [launcher.resolve(), next(iter(libraries))]
+    # The packager requires and installs this helper. Keep this audit usable for
+    # historical app fixtures while checking the helper whenever it is present.
+    if reader.exists() or reader.is_symlink():
+        if not reader.is_file() or not reader.resolve().is_relative_to(app):
+            raise ValueError("The owned workspace reader escapes the application bundle")
+        owned.append(reader.resolve())
+    return owned
 
 
 def protect(app, receipt):

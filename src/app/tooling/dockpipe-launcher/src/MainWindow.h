@@ -109,6 +109,7 @@ private:
                                const QString &actionId, const QString &resourceId);
     QMap<QString, QPointer<PackageSurfacePage>> m_surfacePages;
     void applyDefaultDashboardVisibility();
+    void applyTilingAvailability();
     void createDashboard();
     void addDashboardNavigation(const DashboardDefinition &definition);
     void ensureDashboard(int page);

@@ -1086,7 +1086,7 @@ exec "$@"
     if (!waitUntil([&]() { return navigation->count() == 13; })
         || navigation->item(8)->text() != "Browser"
         || navigation->item(11)->text() != "Operations dashboard"
-        || navigation->item(12)->text() != "Cockpit")
+        || navigation->item(12)->text() != "Cockpit · Experimental")
         return 172;
     auto *dashboard = qobject_cast<DashboardPage *>(workspacePages->currentWidget());
     if (!dashboard || !dashboard->addWidgetKind("browser") || !dashboard->addWidgetKind("logs")
@@ -1267,7 +1267,7 @@ exec "$@"
         return 187;
     removeDialog->done(QMessageBox::Yes);
     if (navigation->count() != 12 || navigation->item(10)->text() != "Daily work"
-        || navigation->item(11)->text() != "Cockpit")
+        || navigation->item(11)->text() != "Cockpit · Experimental")
         return 188;
     navigation->setCurrentRow(8);
     if (workspacePages->currentWidget() != browser)
@@ -1310,6 +1310,8 @@ exec "$@"
     restoredDashboards.last().name = "Externally saved dashboard";
     if (!dashboardStore.save(restoredDashboards, dashboardError))
         return 191;
+    // This close-conflict fixture explicitly opts into the experimental mode.
+    reopenedDashboard->setTilingEnabled(true);
     reopenedDashboard->setEnvironment("tiling");
     bool cancelledConflictClose = false;
     QTimer::singleShot(0, &reopened, [&]() {

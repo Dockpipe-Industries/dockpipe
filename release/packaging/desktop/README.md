@@ -4,24 +4,32 @@ Desktop means **launcher plus CLI**. Headless servers and CI continue to use the
 CLI packages. See [the installation guide](../../../docs/install.md) for user
 choices.
 
-The desktop includes the top-level Browser and Qt WebEngine independently of the
-optional Cockpit package. Native amd64 DEBs bundle Qt 6.10.3, its plugins and
-WebEngine helper/resources/locales. `dpkg-shlibdeps` resolves the remaining
-distribution libraries. ARM64 DEBs retain distribution Qt and its helper package;
-macOS/Windows deployment tools bundle the matching helper, resources and locales.
-Flatpak uses the WebEngine runtime supplied by its matching KDE Platform 6.10.
-The Chrome extension API requires Qt WebEngine 6.10 or later. macOS, Windows,
-native Linux amd64 and Flatpak use that baseline; the legacy ARM64 DEB does not
-support extensions. Its Ubuntu 22.04 compatibility baseline prevents using Qt’s
-prebuilt ARM64 kit, which requires glibc 2.39. A Qt source build or a separate
-newer-runtime artifact is needed to close that gap.
+The desktop consumes the independently published Spatial-Web Browser SDK 0.1.0.
+Set `DOCKPIPE_BROWSER_SDK` to a prefix prepared by
+[`prepare-browser-sdk.py`](../prepare-browser-sdk.md) from the committed
+`release/dependencies/spatialweb-browser.lock.json`. Every builder reads back its
+receipt, unchanged lock hash and installed file inventory before using its CMake
+package. Desktop payloads contain the Browser shared library and license notices;
+SDK headers, CMake packages and import libraries remain build inputs. The bounded
+`dockpipe-workspace-reader` process ships beside the actual launcher executable.
+
+Native amd64 DEBs bundle Qt 6.10.3 on Ubuntu 22.04 with glibc ceiling 2.35.
+ARM64 uses an explicit Ubuntu 24.04 builder, matching Qt 6.10.3 ARM64 kit and glibc
+ceiling 2.39. It requires Ubuntu 24.04 or a compatible newer runtime. Both bundle
+Qt plugins and WebEngine helper/resources/locales; `dpkg-shlibdeps` resolves the
+remaining distribution libraries. This change does not qualify ARM64 ForgePipe or
+Cockpit. macOS and Windows deploy the matching Qt runtime using native tools.
+Flatpak consumes the same public binary SDK and verifies the actual KDE SDK and
+BaseApp Core/WebEngine patch versions before building; a `6.10` branch name alone
+is insufficient. A mismatch requires a separately qualified SDK built in the
+Spatial-Web repository, without embedding its source in Dockpipe.
 
 | Target | Desktop artifact | Contents |
 | --- | --- | --- |
 | macOS arm64 / amd64 | `dockpipe-desktop_VERSION_darwin_ARCH.dmg` | Apple Installer package: `/Applications/DockPipe.app` plus `/usr/local/bin/dockpipe` symlink |
 | macOS Homebrew | `dockpipe-desktop_VERSION_darwin_ARCH.zip` | Same self-contained app; cask depends on the CLI formula |
 | Ubuntu 22.04 / 24.04 amd64; Pop!_OS 22.04 | `dockpipe-desktop_VERSION_amd64.deb` | Launcher, private Qt 6.10.3 runtime, icons, menu entry and exact-version CLI dependency |
-| Ubuntu 22.04 / 24.04 arm64 | `dockpipe-desktop_VERSION_arm64.deb` | Launcher with older distribution Qt; modern browser parity and native ForgePipe/Cockpit SDK are not qualified |
+| Ubuntu 24.04 arm64 | `dockpipe-desktop_VERSION_arm64.deb` | Launcher, Browser SDK, private Qt 6.10.3 runtime; glibc 2.39 baseline; ForgePipe/Cockpit remain unqualified |
 | Windows amd64 | `dockpipe_VERSION_windows_amd64.msi` | CLI, core package, deployed Qt launcher and Start menu shortcut; launcher selected by default |
 | Linux amd64 Flatpak (staging) | `dockpipe-desktop_VERSION_linux_amd64.flatpak` | Launcher, CLI, core and container clients; requires KDE Platform 6.10; optional packages use a separate runtime-specific store |
 
@@ -82,11 +90,10 @@ On disposable macOS CI runners, `smoke-unix.sh` mounts the DMG, uses Apple's rea
 Installer, runs a host workflow through the installed CLI, checks the desktop,
 and exercises a second installation. It refuses that system-install test outside
 GitHub Actions. `smoke-linux.sh VERSION [ARTIFACT_DIRECTORY]` installs the same CLI
-and launcher DEBs with APT in clean Ubuntu 22.04 and 24.04 containers on each native
-architecture. Neither container has the build toolchain or preinstalled Qt. It
-checks runtime closure and licenses on amd64, dependency resolution, core-only inventory, launcher startup, a host
+and launcher DEBs with APT in clean Ubuntu 22.04 and 24.04 containers on amd64 and Ubuntu 24.04 on ARM64. Neither container has the build toolchain or preinstalled Qt. It
+checks runtime closure and licenses on both architectures, dependency resolution, core-only inventory, launcher startup, a host
 workflow, and desktop removal preserving the CLI. The host OS is not modified.
-An additional amd64 probe loads a page and executes JavaScript through the installed
+An additional native Qt probe loads a page and executes JavaScript through the installed
 WebEngine helper. Docker build tests and this probe disable Chromium's inner
 sandbox only inside disposable test containers, whose namespace restrictions
 prevent that sandbox from starting. Installed desktop settings are unchanged;
@@ -169,3 +176,20 @@ libraries retain their existing deployment and licensing rules.
 The Windows producer rejects PDBs, object files, import libraries and other
 private compiler intermediates anywhere in the desktop stage before the MSI
 harvests it. Release builds do not enable compiler/linker debug output.
+
+
+## Browser SDK consumer verification
+
+`browser-runtime.py --sdk PREFIX --platform PLATFORM` validates the prepared
+prefix against the committed lock. `--runtime DIR --licenses DIR` copies only the
+selected shared library aliases and installed Browser notices. Native Linux uses
+the same validator before following ELF dependencies into its private Qt closure.
+The SDK prefix is mounted read-only in Docker and Flatpak builds.
+
+Flatpak records `browser-abi.txt` from the selected KDE SDK, tests the built
+consumer, then checks Browser dependency resolution and the workspace-reader in
+the smaller Platform without the SDK mount. Native installed smoke likewise
+invokes the adjacent reader against an isolated temporary directory. These source
+gates require native matrix execution before claiming released platform parity.
+Network-free packaging tests: `python3 -B -m unittest discover -s
+release/packaging/desktop -p test_browser_runtime.py -v`.
