@@ -73,9 +73,12 @@ func mergeActiveExecutionResources(ctx context.Context, workdir string, records 
 		}
 		opened, statErr := file.Stat()
 		data, readErr := io.ReadAll(io.LimitReader(file, 8193))
-		file.Close()
+		closeErr := file.Close()
+		if statErr != nil || readErr != nil || closeErr != nil {
+			continue
+		}
 		var host HostRunRecord
-		if statErr != nil || !os.SameFile(info, opened) || readErr != nil || len(data) > 8192 || json.Unmarshal(data, &host) != nil || host.ID != id {
+		if !os.SameFile(info, opened) || len(data) > 8192 || json.Unmarshal(data, &host) != nil || host.ID != id {
 			continue
 		}
 		started, err := time.Parse(time.RFC3339, host.StartedAt)
