@@ -48,5 +48,5 @@ func commandForPlatform(script string, environment []string, operatingSystem str
 			return exec.Command(executable, script), nil
 		}
 	}
-	return nil, fmt.Errorf("Python 3 is required for a Python host script; install it or set DOCKPIPE_HOST_PYTHON_BIN")
+	return nil, fmt.Errorf("a Python 3 interpreter is required for a Python host script; install it or set DOCKPIPE_HOST_PYTHON_BIN")
 }
