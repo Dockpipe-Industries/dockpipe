@@ -5,6 +5,8 @@ and forwards it as the closed `session_adapter` MCP/CLI field; non-Codex chat om
 separate `/codex` host tool, bounded workers, workflows, and callers that omit the field retain the
 existing exec route for an unpinned session.
 
+Repository ownership note: package paths in this record describe external source. Current catalog packages live in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages); previously extracted [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) and [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) remain in their own repositories. Historical paths and receipts do not recreate a local package tree.
+
 An explicit choice requires a bounded non-empty Pipeon session id and is persisted on first use in
 DorkPipe package state as one exact schema-versioned record under a SHA-256-derived filename. The
 record is created with exclusive first-write semantics and then compared exactly on every explicit

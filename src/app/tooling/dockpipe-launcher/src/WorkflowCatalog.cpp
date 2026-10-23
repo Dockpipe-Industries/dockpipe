@@ -208,6 +208,34 @@ WorkflowCatalogData WorkflowCatalog::discoverCatalog(const QString &hintWorkdir)
         resolver.description = object.value("description").toString();
         resolver.capability = object.value("capability").toString();
         resolver.remoteSetup = object.value("remote_setup").toString();
+        const auto surface = object.value("surface").toObject();
+        if (surface.value("schema").toInt() == 1) {
+            resolver.surface.packageRoot = surface.value("package_root").toString();
+            resolver.surface.id = surface.value("id").toString();
+            resolver.surface.title = surface.value("title").toString();
+            resolver.surface.snapshot = surface.value("snapshot").toString();
+            const auto nativeDisplay = surface.value("native_display").toObject();
+            resolver.surface.nativeDisplay.interfaceVersion = nativeDisplay.value("interface").toInt();
+            resolver.surface.nativeDisplay.packageRoot = nativeDisplay.value("package_root").toString();
+            const auto libraries = nativeDisplay.value("libraries").toObject();
+            for (auto entry = libraries.begin(); entry != libraries.end(); ++entry)
+                resolver.surface.nativeDisplay.libraries.insert(entry.key(), entry.value().toString());
+            for (const auto &entry : surface.value("actions").toArray()) {
+                const auto action = entry.toObject();
+                resolver.surface.actions.append({action.value("id").toString(), action.value("title").toString(),
+                    action.value("scope").toString(), action.value("workflow").toString(),
+                    action.value("workflow_id").toString()});
+                auto &environment = resolver.surface.actions.last().launchEnvironment;
+                const auto platforms = action.value("launch_environment").toObject();
+                for (auto platform = platforms.begin(); platform != platforms.end(); ++platform) {
+                    const auto bindings = platform.value().toObject();
+                    for (auto binding = bindings.begin(); binding != bindings.end(); ++binding) {
+                        const auto reference = binding.value().toObject();
+                        environment[platform.key()][binding.key()] = {reference.value("asset").toString(), reference.value("inherit").toString()};
+                    }
+                }
+            }
+        }
         if (!resolver.name.isEmpty())
             out.resolverDetails.append(resolver);
     }

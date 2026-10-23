@@ -7,9 +7,9 @@ import (
 	"regexp"
 	"strings"
 
-	"dockpipe/src/lib/application/internal/pipelangmaterialize"
 	"dockpipe/src/lib/domain"
-	"dockpipe/src/lib/pipelang"
+	pipelangmaterialize "github.com/Dockpipe-Industries/pipelang/sdk/materialize"
+	"github.com/Dockpipe-Industries/pipelang/src/lib/pipelang"
 )
 
 var (

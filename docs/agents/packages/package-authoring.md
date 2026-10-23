@@ -1,6 +1,6 @@
 # Package Authoring
 
-Read when editing `packages/` or package-owned workflows/resolvers/assets.
+Read when authoring external package workflows, resolvers, assets or manifests. Catalog package source lives in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages/); do package work in that repository, not this runtime checkout. Previously extracted DorkPipe/MCP and Pipeon remain in their dedicated repositories; see [ownership](../../packages/core-tools.md).
 
 ## Package Boundary
 
@@ -11,7 +11,7 @@ Packages are self-contained YAML plus assets plus resolver/runtime wiring. They 
 - Keep package logic inside the package tree.
 - Do not make maintainer/dev flows depend silently on whatever happens to be on `PATH`.
 - Prefer real repo-local build outputs first, then fall back to `PATH`.
-- Prefer shared SDK helpers under `src/core/assets/scripts/lib/` instead of copying lookup logic.
+- Consume shared SDK helpers from the pinned Dockpipe SDK instead of reaching into a sibling core checkout. Models require the separately pinned PipeLang compiler/SDK.
 - In package workflow YAML, reference local package files by the path the author sees, such as
   `assets/scripts/run.sh` or `../assets/scripts/run.sh`. Use `scripts/<name>/...` only when
   intentionally calling a shared/cross-package script namespace.
@@ -24,18 +24,16 @@ Packages are self-contained YAML plus assets plus resolver/runtime wiring. They 
 - Never link durable state back into `bin/.dockpipe`; compatibility import is validated copy-and-publish and leaves legacy bytes untouched.
 - Keep package tests self-contained.
 
-## Repo-Local Binary Preferences
+## Tool selection and checks
 
-| Binary | Preferred repo-local path |
-| --- | --- |
-| `dockpipe` | `src/bin/dockpipe` |
-| `dorkpipe` | `packages/dorkpipe/bin/dorkpipe` |
-| `mcpd` | `packages/dorkpipe-mcp/bin/mcpd` |
-| `pipeon` | `packages/pipeon/resolvers/pipeon/bin/pipeon` |
-| `pipeon-desktop` | `packages/pipeon/apps/pipeon-desktop/bin/pipeon-desktop` |
+Select an absolute `DOCKPIPE_BIN` for the pinned compiler binary and set
+`PACKAGE_REPOSITORY` to the owning checkout and `PACKAGE_SOURCE` to the selected
+package's absolute source directory. Build product binaries inside that repository;
+never infer a sibling Dockpipe checkout. Package workflows must declare required
+PipeLang and native SDK artifacts and fail when they are unavailable.
 
-## Checks
-
-- `./src/bin/dockpipe package test --workdir . --only <package>`
-- `./src/bin/dockpipe package compile workflows --workdir . --from packages/<package> --force`
-- `./src/bin/dockpipe package compile resolvers --workdir . --from packages/<package> --force`
+```bash
+"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only <package>
+"$DOCKPIPE_BIN" package compile workflows --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force
+"$DOCKPIPE_BIN" package compile resolvers --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force
+```

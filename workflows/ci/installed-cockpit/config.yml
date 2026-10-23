@@ -1,0 +1,8 @@
+name: installed-cockpit
+description: Qualify the native host SDK and real X11 rendering against the pinned external Cockpit package.
+docker_preflight: false
+steps:
+  - id: installed-package-qualification
+    kind: host
+    cwd: repo
+    run: assets/scripts/qualify.sh

@@ -1,4 +1,6 @@
 #include "DashboardPage.h"
+#include "DashboardAppsDialog.h"
+#include <QListWidget>
 #include "BrowserWidget.h"
 #include "SendInputWidget.h"
 #include <QWebEngineView>
@@ -24,6 +26,7 @@
 #include "SessionManager.h"
 #include "Theme.h"
 #include "DesktopWindowWidget.h"
+#include "PackageDisplayWidget.h"
 #include "DesktopApplicationCatalog.h"
 #include "DesktopAppWindow.h"
 
@@ -54,6 +57,8 @@
 #include <QTabBar>
 #include <QTabWidget>
 #include <algorithm>
+#include <cstdio>
+#include <QVBoxLayout>
 #include <memory>
 #include <vector>
 
@@ -606,6 +611,10 @@ private slots:
     void desktopLaunchAdmission();
     void desktopLaunchAcquisition();
     void staleDesktopPanelsAreNotRestored();
+    void packageDisplayAttachment();
+    void installedWidgetAttachment();
+    void packageDisplayIdentitySelection();
+    void packageDisplayPickersOfferLiveResourcesInBothLayouts();
     void tourLifecycle();
     void canvasGadgetsAndBrowserTearOut();
     void fileScopesAndCanvasProjectPicker();
@@ -2003,6 +2012,154 @@ void DashboardPageTest::desktopLaunchAcquisition()
 #endif
 }
 
+void DashboardPageTest::packageDisplayPickersOfferLiveResourcesInBothLayouts()
+{
+    SessionManager sessions;
+    ContextStore contexts;
+    DashboardWidgetFactory factory(sessions, contexts);
+    factory.setPackageDisplays("example.resources", {{"resource-one", "Example live display", 42, "boot:100"}});
+    DashboardPage page(emptyDashboard(), &factory);
+    page.resize(1000, 700);
+    page.show();
+    QSignalSpy inventory(&factory, &DashboardWidgetFactory::packageDisplayInventoryRequested);
+    for (const QString &mode : {QString("canvas"), QString("tiling")}) {
+        page.setEnvironment(mode);
+        page.findChild<QToolButton *>("dashboardDockApps")->click();
+        auto *apps = page.findChild<DashboardAppsDialog *>();
+        QVERIFY(apps);
+        auto *list = apps->findChild<QListWidget *>("dashboardAppList");
+        bool found = false;
+        for (int row = 0; row < list->count(); ++row)
+            found = found || list->item(row)->data(Qt::UserRole + 1).toString() == "example.resources/resource-one";
+        QVERIFY(found);
+        apps->reject();
+        drainEvents();
+    }
+    page.setEnvironment("canvas");
+    page.findChild<QPushButton *>("dashboardAddWidget")->click();
+    auto *picker = page.findChild<QDialog *>("dashboardWidgetPicker");
+    QVERIFY(picker);
+    auto *choices = picker->findChild<QListWidget *>("dashboardWidgetChoices");
+    QVERIFY(choices);
+    choices->setCurrentRow(choices->count() - 1);
+    const QString selectedDisplay = choices->currentItem()->data(Qt::UserRole).toString();
+    QVERIFY(selectedDisplay.startsWith("package-display:"));
+    factory.setPackageDisplays("example.resources", {{"resource-one", "Updated live display", 42, "boot:100"}});
+    QCOMPARE(choices->currentItem()->data(Qt::UserRole).toString(), selectedDisplay);
+    picker->reject();
+    QVERIFY(inventory.count() >= 2);
+    factory.setPackageDisplays("example.resources", {});
+    QVERIFY(factory.packageDisplays().isEmpty());
+}
+
+void DashboardPageTest::packageDisplayIdentitySelection()
+{
+    const DesktopAppChoice expected{7, "Fixture", "Example", 42, "boot:100"};
+    const DesktopAppChoice reusedPid{8, "Unrelated", "Example", 42, "boot:200"};
+    const DesktopAppChoice secondWindow{9, "Second", "Example", 42, "boot:100"};
+    QString error;
+    QCOMPARE(DesktopWindowWidget::processWindowId({expected, reusedPid}, 42, "boot:100", error), quint64(7));
+    QVERIFY(error.isEmpty());
+    QCOMPARE(DesktopWindowWidget::processWindowId({reusedPid}, 42, "boot:100", error), quint64(0));
+    QVERIFY(!error.isEmpty());
+    QCOMPARE(DesktopWindowWidget::processWindowId({expected, secondWindow}, 42, "boot:100", error), quint64(0));
+    QVERIFY(error.contains("several"));
+    QCOMPARE(DesktopWindowWidget::processWindowId({expected}, 42, {}, error), quint64(0));
+    QCOMPARE(DesktopWindowWidget::processWindowId({expected}, 0, "boot:100", error), quint64(0));
+}
+
+void DashboardPageTest::installedWidgetAttachment()
+{
+    const QString root = qEnvironmentVariable("DOCKPIPE_DISPLAY_FIXTURE_ROOT");
+    if (root.isEmpty())
+        QSKIP("Requires the explicitly built installed SDK display fixture.");
+    PackageDisplayMeta display;
+    display.id = "fixture";
+    display.title = "Installed widget";
+    display.leaseId = "fixture";
+    display.nativePackage = {1, root, {{"linux", QDir(root).filePath("assets/libdisplay-good.so")}}};
+    display.options = {{"resource_id", "fixture"}};
+    SessionManager sessions;
+    ContextStore contexts;
+    DashboardWidgetFactory factory(sessions, contexts);
+    DashboardPage page(emptyDashboard(), &factory);
+    page.resize(900, 700);
+    page.show();
+    QString error;
+    for (const QString &mode : {QString("canvas"), QString("tiling")}) {
+        page.setEnvironment(mode);
+        QVERIFY2(page.attachPackageDisplay(display, error), qPrintable(error));
+        auto *widget = page.findChild<PackageDisplayWidget *>();
+        QVERIFY(widget);
+        QTRY_VERIFY(widget->hasPackageSurface());
+        page.hide();
+        QVERIFY(!widget->hasPackageSurface());
+        page.show();
+        QTRY_VERIFY(widget->hasPackageSurface());
+        QVERIFY(page.snapshot().panels.isEmpty());
+        page.releaseDesktopWindows();
+        QCOMPARE(page.panelCount(), 0);
+        drainEvents();
+    }
+}
+
+void DashboardPageTest::packageDisplayAttachment()
+{
+    if (qEnvironmentVariable("DOCKPIPE_OWNED_NATIVE_DISPLAY_TEST") != "1")
+        QSKIP("Requires explicit opt-in to embed only a disposable child fixture window.");
+    QString error;
+    QVERIFY2(DesktopWindowWidget::automaticAcquisitionUnavailableReason().isEmpty(),
+        qPrintable(DesktopWindowWidget::automaticAcquisitionUnavailableReason()));
+    FixtureProcess fixture;
+    fixture.start(QCoreApplication::applicationFilePath(), {"--package-display-fixture"});
+    QVERIFY(fixture.waitForStarted(3000));
+    QByteArray output;
+    QTRY_VERIFY_WITH_TIMEOUT((output += fixture.readAllStandardOutput()).contains("WINDOW:"), 5000);
+    const quint64 id = output.trimmed().mid(7).toULongLong();
+    QVERIFY(id);
+    QVector<DesktopAppChoice> choices;
+    QTRY_VERIFY_WITH_TIMEOUT(!(choices = DesktopAppWindow::availableWindows(error, id)).isEmpty(), 5000);
+    const auto identity = choices.first();
+    QCOMPARE(identity.processId, fixture.processId());
+    QVERIFY(!identity.processStartToken.isEmpty());
+    SessionManager sessions;
+    ContextStore contexts;
+    DashboardWidgetFactory factory(sessions, contexts);
+    DashboardPage page(emptyDashboard(), &factory);
+    page.resize(900, 700);
+    page.show();
+    QVERIFY(!page.attachPackageDisplay("Stale fixture", identity.processId, "stale", error));
+    QCOMPARE(page.panelCount(), 0);
+    for (const QString &mode : {QString("canvas"), QString("tiling")}) {
+        page.setEnvironment(mode);
+        QVERIFY2(page.attachPackageDisplay("Package display fixture", identity.processId, identity.processStartToken, error), qPrintable(error));
+        auto *window = page.findChild<DesktopWindowWidget *>();
+        QVERIFY(window);
+        QTRY_VERIFY_WITH_TIMEOUT(window->hasInteractiveWindow(), 5000);
+        QCOMPARE(window->acquiredWindowId(), id);
+        QCOMPARE(page.panelCount(), 1);
+        page.hide();
+        QTRY_VERIFY_WITH_TIMEOUT(!window->hasInteractiveWindow(), 5000);
+        DesktopWindowWidget inlineDisplay;
+        inlineDisplay.resize(600, 400);
+        inlineDisplay.show();
+        inlineDisplay.setProcessDisplay(identity.processId, identity.processStartToken);
+        QTRY_VERIFY_WITH_TIMEOUT(inlineDisplay.hasInteractiveWindow(), 5000);
+        page.show();
+        QTRY_VERIFY_WITH_TIMEOUT(window->hasInteractiveWindow(), 5000);
+        QVERIFY(!inlineDisplay.hasInteractiveWindow());
+        inlineDisplay.setProcessDisplay(0, {});
+        inlineDisplay.hide();
+        const auto saved = page.snapshot();
+        QVERIFY(saved.panels.isEmpty());
+        QVERIFY(!QJsonDocument(saved.layout).toJson().contains("package-display"));
+        page.releaseDesktopWindows();
+        QCOMPARE(page.panelCount(), 0);
+        QCOMPARE(fixture.state(), QProcess::Running);
+        QTRY_VERIFY_WITH_TIMEOUT(!DesktopAppWindow::availableWindows(error, id).isEmpty(), 5000);
+    }
+}
+
 void DashboardPageTest::staleDesktopPanelsAreNotRestored()
 {
     SessionManager sessions;
@@ -2028,7 +2185,7 @@ void DashboardPageTest::staleDesktopPanelsAreNotRestored()
     const QString staleCanvas = "stale-desktop-canvas";
     saved.panels.append({staleSplit, "desktop-window", "tiling"});
     saved.panels.append({staleFloating, "desktop-window", "tiling"});
-    saved.panels.append({staleCanvas, "desktop-window", "canvas"});
+    saved.panels.append({staleCanvas, "package-display", "canvas"});
     auto tiling = expectedTiling;
     const QJsonObject staleTabs{{"type", "tabs"}, {"ids", QJsonArray{staleSplit}}, {"active", staleSplit}};
     tiling["tree"] = QJsonObject{{"type", "split"}, {"orientation", "horizontal"},
@@ -2359,6 +2516,17 @@ int main(int argc, char **argv)
         application.setStyleSheet({});
         application.setPalette(application.style()->standardPalette());
         application.setStyleSheet(QString::fromUtf8(shared.readAll() + light.readAll()));
+    }
+    if (application.arguments().contains("--package-display-fixture")) {
+        QWidget window;
+        window.setWindowTitle("DockPipe disposable package display fixture");
+        window.resize(500, 350);
+        auto *layout = new QVBoxLayout(&window);
+        layout->addWidget(new QLabel("Task-owned native display attachment fixture"));
+        window.show();
+        std::printf("WINDOW:%llu\n", static_cast<unsigned long long>(window.winId()));
+        std::fflush(stdout);
+        return application.exec();
     }
     DashboardPageTest test;
     return QTest::qExec(&test, argc, argv);

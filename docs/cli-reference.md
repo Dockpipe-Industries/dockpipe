@@ -168,9 +168,9 @@ Commands:
 
 ## `dockpipe pipelang`
 
-Optional typed authoring helper. PipeLang compiles to inspectable artifacts; workflow execution still uses normal Dockpipe YAML.
+Typed authoring helper backed by the versioned external [PipeLang SDK](https://github.com/Dockpipe-Industries/pipelang). Dockpipe retains these commands and automatic `.pipe` materialization for existing models. The standalone `pipelang` CLI is also available from that repository. PipeLang compiles to inspectable artifacts; workflow execution still uses normal Dockpipe YAML.
 
-When a workflow also declares `view:`, that YAML remains a launcher/tooling presentation layer over the typed model rather than a separate execution contract. See **[concepts/pipelang.md](concepts/pipelang.md)** and **[workflows/workflow-yaml.md](workflows/workflow-yaml.md)**.
+When a workflow also declares `view:`, that YAML remains a launcher/tooling presentation layer over the typed model rather than a separate execution contract. See **[concepts/pipelang.md](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/concepts/pipelang.md)** and **[workflows/workflow-yaml.md](workflows/workflow-yaml.md)**.
 
 | Command | Purpose |
 |---------|---------|

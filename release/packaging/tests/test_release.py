@@ -44,17 +44,31 @@ class ReleaseTests(unittest.TestCase):
 
     def test_embedded_inputs_follow_working_tree_removals(self):
         inputs = load_module("embedded-inputs")
-        package = self.root / "packages/example"
-        package.mkdir(parents=True)
-        (package / "current.txt").write_text("current input")
-        tracked = b"packages/example/current.txt\0packages/example/removed.txt\0"
-        deleted = b"packages/example/removed.txt\0"
+        workflow = self.root / "workflows/example"
+        workflow.mkdir(parents=True)
+        (workflow / "current.txt").write_text("current input")
+        tracked = b"workflows/example/current.txt\0workflows/example/removed.txt\0"
+        deleted = b"workflows/example/removed.txt\0"
         with patch.object(inputs.subprocess, "check_output", side_effect=[tracked, deleted]):
-            self.assertEqual(inputs.authored(self.root), ["packages/example/current.txt"])
+            self.assertEqual(inputs.authored(self.root), ["workflows/example/current.txt"])
         # Missing inputs must still fail when Git did not identify them as deletions.
         with patch.object(inputs.subprocess, "check_output", side_effect=[tracked, b""]):
             with self.assertRaises(ValueError):
                 inputs.authored(self.root)
+
+    def test_embedded_inputs_exclude_all_package_sources(self):
+        inputs = load_module("embedded-inputs")
+        package_names = ("example", "cockpit", "native-sdk", "pipelang", "future-package")
+        tracked = []
+        for name in package_names:
+            relative = f"packages/{name}/asset.txt"
+            path = self.root / relative
+            path.parent.mkdir(parents=True)
+            path.write_text("external package input")
+            tracked.append(relative)
+        encoded = ("\0".join(tracked) + "\0").encode()
+        with patch.object(inputs.subprocess, "check_output", side_effect=[encoded, b""]):
+            self.assertEqual(inputs.authored(self.root), [])
 
     def test_store_rejects_corruption_and_missing_categories(self):
         self.store(self.root / "store")

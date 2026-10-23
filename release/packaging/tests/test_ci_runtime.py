@@ -13,21 +13,13 @@ REPOSITORY = Path(__file__).resolve().parents[3]
 
 
 class RuntimeCITests(unittest.TestCase):
-    def test_selector_excludes_only_separate_compiler_campaigns(self):
+    def test_selector_qualifies_every_owned_runtime_package(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             fake_go = root / "go"
             fake_go.write_text(
                 "#!/usr/bin/env bash\n"
-                "set -euo pipefail\n"
-                "if [[ $1 == list ]]; then\n"
-                "  printf '%s\\n' dockpipe/src/cmd dockpipe/src/lib/infrastructure "
-                "dockpipe/src/lib/pipelang dockpipe/src/lib/pipelang/backend "
-                "dockpipe/src/lib/applicationir dockpipe/tests/pipelangcompat "
-                "dockpipe/tests/containedexec dockpipe/tests/containedexec/transcript\n"
-                "else\n"
-                "  printf '%s\\n' \"$@\" > \"$TEST_GO_ARGUMENTS\"\n"
-                "fi\n"
+                'printf "%s\\n" "$@" > "$TEST_GO_ARGUMENTS"\n'
             )
             fake_go.chmod(0o755)
             arguments = root / "arguments"
@@ -35,8 +27,7 @@ class RuntimeCITests(unittest.TestCase):
                                TEST_GO_ARGUMENTS=str(arguments))
             subprocess.run(["bash", str(REPOSITORY / "release/packaging/test-runtime.sh")],
                            env=environment, check=True, capture_output=True, text=True)
-            self.assertEqual(arguments.read_text().splitlines(),
-                             ["test", "dockpipe/src/cmd", "dockpipe/src/lib/infrastructure"])
+            self.assertEqual(arguments.read_text().splitlines(), ["test", "./..."])
 
     def test_host_and_nested_workflow_use_release_selector_and_pinned_tools(self):
         ci = yaml.load((REPOSITORY / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)

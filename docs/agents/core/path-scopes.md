@@ -53,6 +53,6 @@ When changing scope semantics, update together:
 ## Checks
 
 - `./src/bin/dockpipe workflow validate <config.yml>`
-- `./src/bin/dockpipe package test --workdir . --only <package>`
-- `./src/bin/dockpipe package compile workflows --workdir . --from packages/<package> --force`
+- `"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only <package>`
+- `"$DOCKPIPE_BIN" package compile workflows --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force`
 - `go test ./src/lib/domain ./src/lib/application` for scope/runner changes

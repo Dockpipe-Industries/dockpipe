@@ -1,5 +1,7 @@
 ## Ownership Correction — 2026-10-17
 
+Repository ownership note: package paths in this record describe external source. Current catalog packages live in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages); previously extracted [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) and [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) remain in their own repositories. Historical paths and receipts do not recreate a local package tree.
+
 DorkPipe owns the AI features and their delivery. The earlier separate DockPipe AI
 package/app plan below is superseded wherever it conflicts with the
 [active ownership decision](overview.md#product-naming-and-ownership).
@@ -1157,7 +1159,7 @@ project Git exposes explicit staged, unstaged and combined comparisons, streamed
 content identities, file staging/unstaging, confirmed discard and exact-index
 commits. Conventional Project Git shares the request client and keeps its saved-file
 commit semantics. No cockpit world logic or heavyweight dependencies entered the
-engine. [Capabilities and bounds](../../../../packages/cockpit/docs/git-review.md)
+engine. [Capabilities and bounds](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages/cockpit/docs/git-review.md)
 document this local vertical slice; PR providers and branch/commit gauntlets remain
 unimplemented. Validation uses disposable repositories, including the fifteen-file
 acceptance fixture, rather than modifying the active user checkout.
@@ -1188,7 +1190,7 @@ browser, terminal and new application bindings remain future providers. Existing
 app/theatre/Git displays are adapted for editing while retaining their content and
 activation identities. The Add display action is replaced by Furnish room; legacy
 application-reference editing remains for compatibility. Details and limits are in
-[the furnishing guide](../../../../packages/cockpit/docs/furnishing.md).
+[the furnishing guide](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages/cockpit/docs/furnishing.md).
 
 Launcher and package built successfully. Seven focused CTests passed, including
 the new furnishing fixture, Git review, flight dynamics, operations and spatial
@@ -1232,7 +1234,7 @@ existing Web surface. Source pages retain the existing single-page interactions;
 Live page / Return to space preserves the current world and camera. No renderer,
 heavy dependency, engine behavior or package-acquisition contract was added.
 Details, supported hierarchy and intentional limitations are in
-[the site-world guide](../../../../packages/cockpit/docs/site-worlds.md).
+[the site-world guide](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages/cockpit/docs/site-worlds.md).
 
 Launcher/package builds passed. The package test runner passed five Python tests
 and fourteen CTests; three desktop-only checks skipped under offscreen Qt.

@@ -5,6 +5,7 @@ project(dockpipe-launcher VERSION 0.1.0 LANGUAGES CXX)
 if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
+option(DOCKPIPE_ENABLE_QUALIFICATION "Build explicit installed desktop qualification entrypoint" OFF)
 set(DOCKPIPE_RELEASE_VERSION "" CACHE STRING "Explicit release version; empty stamps a development build")
 
 # Generate at build time so an incremental build sees commit and dirty-state changes.
@@ -90,6 +91,8 @@ set(DOCKPIPE_LAUNCHER_SOURCES
     src/MainWindow.cpp
     src/MainWindowWorkflows.cpp
     src/MainWindowDashboards.cpp
+    src/MainWindowSurfaces.cpp
+    src/PackageSurfacePage.cpp
     src/DashboardPage.cpp
     src/DashboardSettingsDialog.cpp
     src/DashboardTourDialog.cpp
@@ -117,6 +120,11 @@ if(APPLE)
         MACOSX_BUNDLE_SHORT_VERSION_STRING "${DOCKPIPE_BUNDLE_VERSION}"
         MACOSX_BUNDLE_ICON_FILE DockPipe.icns
     )
+endif()
+
+if(DOCKPIPE_ENABLE_QUALIFICATION)
+    target_sources(dockpipe-launcher PRIVATE src/PackageDisplayQualification.cpp)
+    target_compile_definitions(dockpipe-launcher PRIVATE DOCKPIPE_ENABLE_QUALIFICATION)
 endif()
 
 target_include_directories(dockpipe-launcher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -200,6 +208,8 @@ if(BUILD_TESTING AND UNIX)
     target_include_directories(workflow-workspace-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(workflow-workspace-test PRIVATE Qt6::Widgets Qt6::Network Qt6::Concurrent)
     add_test(NAME workflow-workspace COMMAND workflow-workspace-test)
+    add_test(NAME workflow-surface-navigation COMMAND workflow-workspace-test --surfaces)
+    set_tests_properties(workflow-surface-navigation PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
     set_tests_properties(workflow-workspace PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
     add_test(NAME remote-launcher COMMAND remote-launcher-test)
     set_tests_properties(remote-launcher PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
@@ -277,8 +287,8 @@ set(DOCKPIPE_UI_SOURCES
     src/ContextStore.cpp src/DockpipeChoices.cpp src/WorkflowCatalog.cpp
     src/LauncherSettings.cpp src/BrowserPreferences.cpp src/BrowserLinkRouter.cpp
     src/CanvasPanel.cpp src/DashboardWorkspace.cpp src/DashboardStore.cpp src/DashboardDock.cpp src/DashboardFilesWidget.cpp
-    src/DesktopWindowWidget.cpp src/DesktopApplicationCatalog.cpp src/DesktopBackground.cpp
-    src/PackageCommand.cpp src/WorkspacePackageManager.cpp)
+    src/DesktopWindowWidget.cpp src/PackageDisplayWidget.cpp src/DesktopApplicationCatalog.cpp src/DesktopBackground.cpp
+    src/PackageCommand.cpp src/WorkspacePackageManager.cpp src/SurfaceLaunchEnvironment.cpp)
 if(WIN32)
     list(APPEND DOCKPIPE_UI_SOURCES src/DesktopAppWindowWin.cpp)
 else()
@@ -287,11 +297,16 @@ endif()
 add_library(dockpipe-launcher-ui SHARED ${DOCKPIPE_UI_SOURCES})
 target_compile_definitions(dockpipe-launcher-ui
     PRIVATE DOCKPIPE_LAUNCHER_UI_BUILD
+        DOCKPIPE_DISPLAY_COMPILER_ID="${CMAKE_CXX_COMPILER_ID}"
+        DOCKPIPE_DISPLAY_COMPILER_VERSION="${CMAKE_CXX_COMPILER_VERSION}"
     INTERFACE DOCKPIPE_LAUNCHER_UI_USE)
 set_target_properties(dockpipe-launcher-ui PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON VERSION 1.0 SOVERSION 1
     BUILD_RPATH_USE_ORIGIN TRUE)
-target_include_directories(dockpipe-launcher-ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src"
-    $<TARGET_PROPERTY:dockpipe-syntax,INTERFACE_INCLUDE_DIRECTORIES>)
+target_include_directories(dockpipe-launcher-ui PUBLIC
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
+    "$<BUILD_INTERFACE:$<TARGET_PROPERTY:dockpipe-syntax,INTERFACE_INCLUDE_DIRECTORIES>>"
+    "$<INSTALL_INTERFACE:include/dockpipe-launcher>"
+    "$<INSTALL_INTERFACE:include/dockpipe-launcher/syntax>")
 target_link_libraries(dockpipe-launcher-ui PUBLIC Qt6::Widgets Qt6::Network PRIVATE dockpipe-syntax Qt6::Concurrent)
 if(WIN32)
     target_link_libraries(dockpipe-launcher-ui PRIVATE user32 gdi32 advapi32 shell32 ole32)
@@ -374,8 +389,11 @@ add_library(dockpipe-browser STATIC
     src/BrowserDownloads.cpp src/BrowserAnnotationDialog.cpp src/BrowserExtensionsDialog.cpp
     ${DOCKPIPE_TERMINAL_SOURCES} src/TerminalShellCatalog.cpp src/TerminalHub.cpp src/TerminalWidget.cpp src/TerminalBridge.h src/TerminalPreferences.cpp src/TerminalSettingsDialog.cpp
     src/SendInputWidget.cpp terminal.qrc)
-target_include_directories(dockpipe-browser PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_include_directories(dockpipe-browser PUBLIC
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
+    "$<INSTALL_INTERFACE:include/dockpipe-launcher>")
 target_link_libraries(dockpipe-browser PUBLIC Qt6::WebEngineWidgets Qt6::PrintSupport Qt6::WebChannel dockpipe-launcher-ui)
+include(cmake/LauncherSDK.cmake)
 if(APPLE)
     target_link_libraries(dockpipe-browser PRIVATE proc)
 endif()
@@ -387,6 +405,20 @@ endforeach()
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    add_executable(package-native-display-harness tests/PackageDisplayHarness.cpp)
+    target_link_libraries(package-native-display-harness PRIVATE dockpipe-launcher-ui Qt6::Widgets)
+
+    add_executable(package-native-display-test tests/PackageDisplayTest.cpp src/SessionManager.cpp)
+    target_link_libraries(package-native-display-test PRIVATE dockpipe-launcher-ui Qt6::Widgets Qt6::Test)
+    add_test(NAME package-native-display COMMAND package-native-display-test)
+    set_tests_properties(package-native-display PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+
+    add_executable(package-surface-test tests/PackageSurfaceTest.cpp src/PackageSurfacePage.cpp src/SessionManager.cpp)
+    target_include_directories(package-surface-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(package-surface-test PRIVATE dockpipe-launcher-ui Qt6::Widgets Qt6::Test)
+    add_test(NAME package-surface COMMAND package-surface-test)
+    set_tests_properties(package-surface PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
+
     add_executable(terminal-preferences-test tests/TerminalPreferencesTest.cpp)
     target_link_libraries(terminal-preferences-test PRIVATE dockpipe-browser Qt6::Test)
     add_test(NAME terminal-preferences COMMAND terminal-preferences-test)
@@ -481,6 +513,8 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME dashboard-file-views COMMAND dashboard-page-test fileScopesAndCanvasProjectPicker)
     set_tests_properties(dashboard-file-views PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    add_test(NAME package-display-identity COMMAND dashboard-page-test packageDisplayIdentitySelection)
+    set_tests_properties(package-display-identity PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
     add_test(NAME dashboard-page COMMAND dashboard-page-test)
     set_tests_properties(dashboard-page PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
     add_executable(dashboard-browser-performance-test tests/DashboardBrowserPerformanceTest.cpp
@@ -592,17 +626,17 @@ if(BUILD_TESTING)
         "QT_QPA_PLATFORM=offscreen;DOCKPIPE_WORKSPACE_PACKAGE=${CMAKE_CURRENT_BINARY_DIR}/workspace-fixture" TIMEOUT 30)
 endif()
 
-# Explicit developer integration only. The normal launcher has no dependency on
-# the package source tree. Installed builds discover
-# the package through Dockpipe's resolver store when the user enables the feature.
-set(DOCKPIPE_COCKPIT_SOURCE "" CACHE PATH "Optional Cockpit package source for development/testing")
+# Optional package source belongs to SpatialPipe. Host qualification uses only
+# already-built assets through the same loader used by installed applications.
 if(DOCKPIPE_COCKPIT_SOURCE)
-    set(DOCKPIPE_LAUNCHER_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-    add_subdirectory("${DOCKPIPE_COCKPIT_SOURCE}" "${CMAKE_CURRENT_BINARY_DIR}/cockpit-package")
-    if(BUILD_TESTING)
-        set_tests_properties(remote-launcher launcher-settings PROPERTIES ENVIRONMENT
-            "QT_QPA_PLATFORM=offscreen;DOCKPIPE_WORKSPACE_PACKAGE=${CMAKE_CURRENT_BINARY_DIR}/cockpit-package/assets;DOCKPIPE_COCKPIT_READER=$<TARGET_FILE:cockpit-reader>")
+    message(FATAL_ERROR "DOCKPIPE_COCKPIT_SOURCE was removed; use DOCKPIPE_COCKPIT_ASSETS")
+endif()
+set(DOCKPIPE_COCKPIT_ASSETS "" CACHE PATH "Installed Cockpit assets for host loader/rendering qualification")
+if(DOCKPIPE_COCKPIT_ASSETS)
+    if(NOT BUILD_TESTING)
+        message(FATAL_ERROR "DOCKPIPE_COCKPIT_ASSETS requires BUILD_TESTING=ON")
     endif()
+    include(cmake/InstalledCockpitTest.cmake)
 endif()
 
 if(BUILD_TESTING)

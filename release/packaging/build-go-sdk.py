@@ -14,8 +14,12 @@ import tarfile
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
-ENTRYPOINTS = ('dockpipe/src/lib/infrastructure', 'dockpipe/src/lib/infrastructure/filepublication')
-EXTERNAL = ('packages/dorkpipe/', 'packages/dorkpipe-mcp/', 'packages/pipeon/', 'packages/cockpit/')
+ENTRYPOINTS = (
+    'dockpipe/src/lib/infrastructure',
+    'dockpipe/src/lib/infrastructure/filepublication',
+    'dockpipe/src/lib/infrastructure/remote',
+)
+EXTERNAL = ('packages/',)
 TARGETS = ('linux/amd64', 'linux/arm64', 'windows/amd64', 'darwin/amd64', 'darwin/arm64')
 
 

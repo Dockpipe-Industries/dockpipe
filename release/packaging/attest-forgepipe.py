@@ -10,7 +10,7 @@ import tarfile
 import urllib.parse
 import urllib.request
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "packages/native-sdk/assets/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 from elf_artifacts import audit
 
 

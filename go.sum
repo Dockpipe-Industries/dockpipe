@@ -1,3 +1,5 @@
+github.com/Dockpipe-Industries/pipelang v0.1.0 h1:LXd+PKL3jpgwnUSd8G4Uug6zBppqS3lGlKN1tJzi2V4=
+github.com/Dockpipe-Industries/pipelang v0.1.0/go.mod h1:AGZSO8Ux3+eR6q1qkTY4LYlZSUa2823XCGj7n1w7hvk=
 github.com/klauspost/compress v1.20.3 h1:zWNoFqq/lSuYQRim3dUXlXeA0IqwuZGicdG5ZTfY5j4=
 github.com/klauspost/compress v1.20.3/go.mod h1:LUdAzn7YLVvxLpc7y3V1m40wESHTgc1422pwwBSKYuI=
 github.com/mattn/go-shellwords v1.0.12 h1:M2zGm7EW6UQJvDeQxo4T51eKPurbeFbe8WtebGE2xrk=

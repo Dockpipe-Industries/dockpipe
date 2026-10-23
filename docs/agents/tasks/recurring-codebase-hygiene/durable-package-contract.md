@@ -1,5 +1,7 @@
 ## Rank 1 Implementation — 2026-08-14
 
+Repository ownership note: package paths in this record describe external source. Current catalog packages live in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages); previously extracted [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) and [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) remain in their own repositories. Historical paths and receipts do not recreate a local package tree.
+
 The generic CI-artifact contract now accepts the existing explicit bindings `workflow`,
 `workflow:<name>`, `package`, and `package:<name>` without selecting a product package when no owner
 is present. Workflow context remains an automatic workflow binding, explicit raw/analysis paths

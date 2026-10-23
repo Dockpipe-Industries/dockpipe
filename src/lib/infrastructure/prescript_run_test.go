@@ -30,7 +30,11 @@ func TestRunHostCommandUsesStepCWD(t *testing.T) {
 		"DOCKPIPE_STEP_CWD="+cwd,
 		"DOCKPIPE_SKIP_HOST_CLEANUP=1",
 	)
-	if err := RunHostCommand("printf ok > marker.txt", env); err != nil {
+	command := "printf ok > marker.txt"
+	if runtime.GOOS == "windows" {
+		command = "[IO.File]::WriteAllText((Join-Path $PWD 'marker.txt'), 'ok')"
+	}
+	if err := RunHostCommand(command, env); err != nil {
 		t.Fatalf("RunHostCommand: %v", err)
 	}
 	body, err := os.ReadFile(filepath.Join(cwd, "marker.txt"))

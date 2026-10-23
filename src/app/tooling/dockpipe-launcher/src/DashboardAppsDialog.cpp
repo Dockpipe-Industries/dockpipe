@@ -19,8 +19,8 @@ struct ApplicationInventory {
 }
 
 DashboardAppsDialog::DashboardAppsDialog(const QVector<WorkflowMeta> &workflows, QWidget *parent,
-    bool allowDesktopApps)
-    : QDialog(parent), m_workflows(workflows)
+    bool allowDesktopApps, const QVector<PackageDisplayMeta> &displays)
+    : QDialog(parent), m_workflows(workflows), m_displays(displays)
 {
     setObjectName("dashboardAppsDialog");
     setWindowTitle(tr("Open an app"));
@@ -106,6 +106,14 @@ void DashboardAppsDialog::rebuildList()
         item->setData(Qt::UserRole + 3, workflow.cloneable);
         item->setToolTip(workflow.catalogDescription());
     }
+    for (const auto &display : m_displays) {
+        if (!display.title.contains(search, Qt::CaseInsensitive))
+            continue;
+        auto *item = new QListWidgetItem(CanvasIcons::icon(CanvasIcons::Symbol::Monitor), display.title, m_list);
+        item->setToolTip(tr("Live package display"));
+        item->setData(Qt::UserRole, "package-display");
+        item->setData(Qt::UserRole + 1, display.id);
+    }
     for (int index = 0; index < m_applications.size(); ++index) {
         const auto &application = m_applications[index];
         if (!application.name.contains(search, Qt::CaseInsensitive))
@@ -134,6 +142,11 @@ void DashboardAppsDialog::launchSelected()
     const auto *item = m_list->currentItem();
     if (!item || m_launching || item->data(Qt::UserRole + 2).toBool())
         return;
+    if (item->data(Qt::UserRole) == "package-display") {
+        emit packageDisplayRequested(item->data(Qt::UserRole + 1).toString());
+        accept();
+        return;
+    }
     if (item->data(Qt::UserRole) == "workflow") {
         emit workflowRequested(item->data(Qt::UserRole + 1).toString());
         accept();
@@ -143,4 +156,10 @@ void DashboardAppsDialog::launchSelected()
     m_launching = true;
     emit desktopApplicationRequested(application);
     accept();
+}
+
+void DashboardAppsDialog::setPackageDisplays(const QVector<PackageDisplayMeta> &displays)
+{
+    m_displays = displays;
+    rebuildList();
 }

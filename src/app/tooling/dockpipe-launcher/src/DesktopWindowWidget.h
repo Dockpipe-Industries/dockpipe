@@ -21,6 +21,10 @@ public:
     static QVector<DesktopAppChoice> availableWindows(QString &error);
     static QString automaticAcquisitionUnavailableReason();
     bool acquireWindow(quint64 nativeId, QString &error);
+    bool acquireWindow(quint64 nativeId, QString &error, qint64 expectedPid, const QString &startToken);
+    bool acquireProcessWindow(qint64 processId, const QString &startToken, QString &error);
+    void setProcessDisplay(qint64 processId, const QString &startToken);
+    static quint64 processWindowId(const QVector<DesktopAppChoice> &choices, qint64 processId, const QString &startToken, QString &error);
     quint64 acquiredWindowId() const;
     QString acquiredWindowTitle() const;
     QString acquiredApplicationClass() const;
@@ -47,6 +51,7 @@ private:
     void startPortalCapture();
     void startMacCapture();
     void advanceNativeWindow();
+    void advanceProcessDisplay();
     void findLaunchedWindow();
     void fail(const QString &message);
     void updateCaptureVisibility();

@@ -17,7 +17,10 @@ its environment; this source guide defaults to production.
 | Linux amd64 with Flatpak | Combined launcher and CLI bundle, KDE Platform 6.10 | Bundled CLI via `flatpak run`; native packages are separate |
 | Other Linux distributions | See Flatpak requirements and qualification limits | RPM, APK, Arch or portable archive matching your CPU |
 
-Native host steps need Bash; Git for Windows supplies it on Windows. Container
+Native host inline commands use Windows PowerShell on Windows and Bash on
+Linux/macOS. Host `.sh` scripts and environment-sourcing setup scripts require
+Bash; Git for Windows supplies it on Windows. PowerShell 7 (`pwsh`) is required
+when a workflow selects it, or runs `.ps1` host scripts on Linux/macOS. Container
 workflows need a reachable Docker engine. Git, provider CLIs and authentication
 are needed only by workflows that use them. The Flatpak includes shell and
 container client tools but still needs a host engine for container workflows.
@@ -244,8 +247,10 @@ and check:
 dockpipe --version
 ```
 
-Native Windows workflows use Git for Windows for Bash and Docker Desktop for
-container execution. WSL is optional; a native install does not require a Linux
+Native Windows host inline commands use the installed Windows PowerShell.
+Install Git for Windows when a workflow uses Bash scripts or environment-sourcing
+setup scripts, and PowerShell 7 when it selects `shell: pwsh`. Container execution
+uses Docker Desktop. WSL is optional; a native install does not require a Linux
 Dockpipe binary. Follow [the WSL bridge guide](runtime/wsl-windows.md) only when you
 want execution inside a WSL distribution. Dockpipe is not listed in the default
 winget catalog yet.

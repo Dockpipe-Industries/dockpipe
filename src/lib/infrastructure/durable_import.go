@@ -260,9 +260,9 @@ func validateDurableImportSpec(workdir string, spec DurableCohortImportSpec) (va
 	return validated, nil
 }
 
-// resolveLegacyPackageStateToken lets maintained package importers keep accepting the public
-// package-state path after that path becomes durable. The durable package metadata supplies only
-// the exact legacy owner ID; discovery remains read-only and never links the two roots.
+// resolveLegacyPackageStateToken accepts a public package-state path or a safe subpath
+// after that path becomes durable. Metadata identifies the exact legacy owner; discovery
+// remains read-only and never links the two roots.
 func resolveLegacyPackageStateToken(workdir, token string) (string, error) {
 	stateRoot, err := DurableStateRoot()
 	if err != nil {
@@ -270,14 +270,26 @@ func resolveLegacyPackageStateToken(workdir, token string) (string, error) {
 	}
 	stateRoot, err = filepath.Abs(filepath.Clean(stateRoot))
 	if err != nil || !sameOrWithinDurablePath(stateRoot, token) || sameDurablePath(stateRoot, token) {
-		return "", errors.New("legacy cohort root must be below the resolved project runtime root or equal a durable public package-state root")
+		return "", errors.New("legacy cohort root must be below the resolved project runtime root or a durable public package-state root")
 	}
-	if err := validatePrivatePath(token, true); err != nil {
-		return "", fmt.Errorf("durable public package-state token: %w", err)
-	}
+
+	packageRoot := token
 	var metadata durablePackageMetadata
-	if err := readPrivateJSON(stateRoot, filepath.Join(token, durablePackageMetaFile), &metadata); err != nil {
-		return "", fmt.Errorf("durable public package-state token metadata: %w", err)
+	for {
+		err = readPrivateJSON(stateRoot, filepath.Join(packageRoot, durablePackageMetaFile), &metadata)
+		if err == nil {
+			break
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return "", fmt.Errorf("durable public package-state token metadata: %w", err)
+		}
+		packageRoot = filepath.Dir(packageRoot)
+		if sameDurablePath(packageRoot, stateRoot) {
+			return "", errors.New("durable public package-state token metadata is missing")
+		}
+	}
+	if err := validatePrivatePath(packageRoot, true); err != nil {
+		return "", fmt.Errorf("durable public package-state token: %w", err)
 	}
 	if metadata.Schema != durableStateSchema {
 		return "", errors.New("durable public package-state token metadata schema is invalid")
@@ -286,14 +298,24 @@ func resolveLegacyPackageStateToken(workdir, token string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if !sameDurablePath(location.packageRoot, token) || metadata.OwnerDigest != location.ownerDigest {
+	if !sameDurablePath(location.packageRoot, packageRoot) || metadata.OwnerDigest != location.ownerDigest {
 		return "", errors.New("durable public package-state token does not match this project and owner")
 	}
 	legacyRoot, _, err := DiscoverLegacyPackageState(workdir, metadata.OwnerID)
 	if err != nil {
 		return "", err
 	}
-	return legacyRoot, nil
+	if sameDurablePath(packageRoot, token) {
+		return legacyRoot, nil
+	}
+	suffix, err := filepath.Rel(packageRoot, token)
+	if err != nil {
+		return "", err
+	}
+	if _, err := JoinStatePath(packageRoot, filepath.ToSlash(suffix)); err != nil {
+		return "", fmt.Errorf("durable public package-state token suffix: %w", err)
+	}
+	return JoinStatePath(legacyRoot, filepath.ToSlash(suffix))
 }
 
 func durableImportStorageIdentity(value, label string) (canonical, segment, digest string, err error) {
@@ -383,7 +405,7 @@ func durableImportPathContains(parent, child string) bool {
 }
 
 func publishDurableImport(workdir, packageRoot, cohortRoot, destination string, manifest durableImportManifest, spec validatedDurableImportSpec) error {
-	temporary, err := os.MkdirTemp(cohortRoot, "."+spec.instanceDigest+".import-")
+	temporary, err := createPrivateTempDirectory(cohortRoot, "."+spec.instanceDigest+".import-")
 	if err != nil {
 		return err
 	}
@@ -465,7 +487,7 @@ func copyDurableImportEntry(temporary, legacyRoot string, entry durableImportEnt
 	if err != nil || !os.SameFile(before, opened) {
 		return fmt.Errorf("legacy cohort file %q changed while opening", entry.SourcePath)
 	}
-	output, err := os.OpenFile(destination, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	output, err := createPrivateFile(destination, os.O_WRONLY)
 	if err != nil {
 		return err
 	}
@@ -670,7 +692,7 @@ func writeDurableImportManifest(root, path string, manifest durableImportManifes
 	if err != nil {
 		return err
 	}
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	file, err := createPrivateFile(path, os.O_WRONLY)
 	if err != nil {
 		return err
 	}

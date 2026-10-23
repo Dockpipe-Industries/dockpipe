@@ -1,0 +1,84 @@
+name: Go compatibility SDK
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the reproduced SDK after release environment approval.
+        required: false
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: dockpipe-go-sdk
+  cancel-in-progress: false
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      source_commit: ${{ steps.lock.outputs.source_commit }}
+      tag: ${{ steps.lock.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.9'
+      - name: Read the committed SDK source lock
+        id: lock
+        run: |
+          python3 - <<'PY'
+          import json, os
+          lock = json.load(open('release/go-sdk-source.lock.json'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('source_commit=' + lock['source_commit'] + '\n')
+              output.write('tag=dockpipe-go-sdk-' + lock['version'] + '\n')
+          PY
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.lock.outputs.source_commit }}
+          path: build/sdk-source
+          persist-credentials: false
+      - name: Install committed source dependency modules
+        working-directory: build/sdk-source
+        env:
+          GOWORK: 'off'
+          GOTOOLCHAIN: local
+        run: go mod download
+      - name: Verify locked SDK producer
+        run: python3 -B -m unittest discover -s release/packaging/tests -p test_locked_go_sdk.py
+      - name: Reproduce the exact SDK archive and manifest
+        env:
+          GOWORK: 'off'
+          GOTOOLCHAIN: local
+        run: python3 release/packaging/build-locked-go-sdk.py --source-root build/sdk-source --output "$RUNNER_TEMP/go-sdk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dockpipe-go-sdk
+          path: ${{ runner.temp }}/go-sdk/
+          if-no-files-found: error
+  publish:
+    if: inputs.publish
+    needs: reproduce
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dockpipe-go-sdk
+          path: sdk-artifacts
+      - name: Publish the immutable SDK release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SDK_TAG: ${{ needs.reproduce.outputs.tag }}
+          SDK_COMMIT: ${{ needs.reproduce.outputs.source_commit }}
+        run: |
+          gh release create "$SDK_TAG" sdk-artifacts/* \
+            --repo "$GITHUB_REPOSITORY" --target "$SDK_COMMIT" \
+            --title "Dockpipe Go SDK $SDK_TAG" --latest=false \
+            --notes 'Immutable compatibility SDK reproduced from the committed source and content lock. No runtime or compiler source checkout is required by consumers.'

@@ -1479,7 +1479,7 @@ background spatial content cannot request an interactive permission decision.
 Unsupported permissions are denied. Browser TLS validation and Chromium sandboxing
 retain their defaults.
 
-Build the optional [Cockpit package](../../../../packages/cockpit/README.md) with
+Build the optional [Cockpit package](https://github.com/Dockpipe-Industries/spatialpipe) with
 `DOCKPIPE_SPATIAL_WEB=ON` for the spatial view. The normal launcher includes Qt
 WebEngine for its top-level Browser but does not include spatial extraction or
 world rendering. Use an up-to-date Qt WebEngine distribution for release builds; this
@@ -1492,8 +1492,10 @@ for the native browser vehicle fixture, optionally with `DOCKPIPE_WEB_LIVE_URL`.
 
 ### Optional Cockpit package
 
-Cockpit implementation, spatial browser resources, voice helper and feature tests now live
-in `packages/cockpit`. Settings installs the resolver package on first enable using
+Cockpit implementation, spatial browser resources, voice helper and feature tests live
+in the SpatialPipe repository's separate `packages/cockpit` package. DockPipe consumes
+installed artifacts and does not import that repository's source. Settings installs the
+resolver package on first enable using
 the configured HTTPS catalog and the CLI's checksum-verified package installer.
 The switch is not saved as enabled until loading succeeds; failed downloads leave
 it off with a retry action. Cancel stops the in-flight package operation. The
@@ -1501,6 +1503,30 @@ normal launcher has no link dependency on the spatial renderer. Ordinary browsin
 uses its built-in shared browser runtime and Qt WebEngine. Shared file
 editing remains in the small `dockpipe-launcher-ui` library shipped with desktop.
 See the package README for native bundle compatibility and development builds.
+
+The optional launcher SDK installs with `DOCKPIPE_INSTALL_LAUNCHER_SDK=ON` and
+`cmake --install <build> --component LauncherSDK`. Build `dockpipe-launcher-ui` and
+`dockpipe-browser` first. External host packages use
+`find_package(DockPipeLauncherSDK 1.0.0 EXACT CONFIG REQUIRED)` with the installed
+prefix, linking `DockPipe::LauncherUI` and `DockPipe::HostBrowser`. This host SDK
+includes DockPipe services; it is not the standalone SpatialPipe browser component.
+It requires Qt 6.10.3 and the recorded matching platform/compiler ABI.
+
+To verify an independently built or installed Cockpit package, configure the
+launcher with `BUILD_TESTING=ON` and
+`DOCKPIPE_COCKPIT_ASSETS=/absolute/path/to/installed/assets`, then build the
+`cockpit-package-rendering-test` target and run:
+
+```sh
+ctest --test-dir <build> --output-on-failure --no-tests=error -R '^cockpit-package-rendering$'
+```
+
+The host test links only its UI SDK and loads Cockpit after creating a window.
+It checks package loading and late OpenGL composition, movement frames and absence
+of compositor errors. The required Xvfb/X11 software-rendering pass fails on a
+skip; it is separate from hardware GPU or interactive desktop proof. The package's
+internal world/game tests remain in SpatialPipe. This test input is explicit and
+does not change ordinary package discovery or saved user data.
 
 With **Bring open desktop apps into Tiling** enabled, a desktop panel's close
 button sends the OS window a normal close request. Unsaved-work prompts and

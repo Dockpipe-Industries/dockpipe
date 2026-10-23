@@ -13,7 +13,7 @@ This task tracks three related but distinct layers:
 2. **PipeLang managed language**: the shared target-neutral semantic/Core foundation plus typed
    models, reactive state, computed values, actions, governed effects, validation, and binding
    expressions owned by
-   [TASK-021](../pipelang-reactive-application-language/overview.md).
+   [TASK-021](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/agents/tasks/pipelang-reactive-application-language/overview.md).
 3. **Generic Dockpipe primitive**: a versioned normalized application/view contract plus
    target-agnostic building and artifact-manifest contracts.
 
@@ -51,12 +51,12 @@ implementations.
 
 ## Existing Ownership Boundary
 
-The 2026-09-11 [PipeLang foundation plan](../../../concepts/pipelang-foundation.md) requires the
+The 2026-09-11 [PipeLang foundation plan](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/concepts/pipelang-foundation.md) requires the
 reviewed language-foundation milestone before production application/service generation. It includes
 enums, structs/classes, polymorphism, loops, managed tasks, parallelism and synchronization. Existing
 fixtures remain evidence, not proof that the language is complete. TASK-021 owns the object/memory/
 task/atomic/lock/semaphore semantics; target adapters must consume them and cannot invent them.
-The completed [foundation dependency plan](../../../concepts/pipelang-foundation-delivery.md)
+The completed [foundation dependency plan](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/concepts/pipelang-foundation-delivery.md)
 proposes M-app after the full managed foundation and minimum compiler library, with compiler
 port/bootstrap separately scheduled. Founder ratification remains pending; no app/service
 implementation is authorized. Physical target certification and target delivery estimates remain

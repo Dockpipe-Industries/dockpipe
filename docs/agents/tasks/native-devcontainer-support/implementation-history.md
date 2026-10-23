@@ -1,5 +1,7 @@
 ## Implementation Update — Read-Only Discovery/Status Slice (2026-07-13)
 
+Repository ownership note: package paths in this record describe external source. Current catalog packages live in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages); previously extracted [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) and [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) remain in their own repositories. Historical paths and receipts do not recreate a local package tree.
+
 Implemented the recommended first vertical slice in the package-owned
 `packages/ide/resolvers/devcontainer` resolver only.
 

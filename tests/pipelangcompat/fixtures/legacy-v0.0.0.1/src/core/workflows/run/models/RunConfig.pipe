@@ -1,7 +1,0 @@
-/// <summary>
-/// Concrete defaults for the bundled run workflow.
-/// </summary>
-public Class RunConfig : IRunConfig
-{
-    public string DockpipeCommitMessage = "dockpipe(run): automated commit";
-}

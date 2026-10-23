@@ -1,5 +1,7 @@
 ### Follow-up: Workflow Provider-Pool Leasing
 
+Repository ownership note: package paths in this record describe external source. Current catalog packages live in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages); previously extracted [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) and [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) remain in their own repositories. Historical paths and receipts do not recreate a local package tree.
+
 Current state:
 
 - Pipeon direct chat uses the host MCP provider-pool path and benefits from warm workers through

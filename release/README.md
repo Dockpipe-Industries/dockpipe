@@ -7,6 +7,8 @@ Everything needed to **ship**, **package**, and **document** dockpipe releases l
 | **`packaging/`** | CLI packages, desktop **DMG/DEB/MSI**, Homebrew formula/cask source, **`install.ps1`**, winget notes |
 | **`releasenotes/`** | Per-version release bodies (`X.Y.Z.md`) consumed by **`.github/workflows/release.yml`** |
 | **`docs/`** | Maintainer docs: branching, releasing, dev.to, blog drafts |
+| [Go SDK](go-sdk.md) | Immutable runtime contracts consumed by external Go packages |
+| [Native display SDK](display-sdk.md) | Qualified QWidget interface artifacts for package-owned native displays |
 | **`demo/`** | Terminal demo recordings / GIFs (`make demo-record`) |
 | **`artifacts/`** | *(gitignored)* Local and CI outputs: **`make package-templates-core`**, GitHub release tarballs/debs, **`dockpipe package build core`**. Tracked **`release/`** docs and scripts stay outside this folder. |
 

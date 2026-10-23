@@ -158,3 +158,16 @@ func TestLoadIsolationProfileBundledLayoutUsesBundledWorkflowResolverProfile(t *
 		t.Fatalf("expected bundled runtime + resolver profile merge, got %#v", m)
 	}
 }
+
+func TestLoadIsolationProfileInjectsActualResolverPackageRoot(t *testing.T) {
+	repo := t.TempDir()
+	writeResolverFile(t, repo, "example/profile", "DOCKPIPE_RESOLVER_PACKAGE_ROOT=/forged\nDOCKPIPE_RESOLVER_CMD=example\n")
+	profile, err := LoadIsolationProfile(repo, "", "example")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(repo, "templates", "core", "resolvers", "example")
+	if profile["DOCKPIPE_RESOLVER_PACKAGE_ROOT"] != want {
+		t.Fatalf("resolver package root = %q, want %q", profile["DOCKPIPE_RESOLVER_PACKAGE_ROOT"], want)
+	}
+}

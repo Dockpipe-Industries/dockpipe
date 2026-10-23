@@ -40,6 +40,11 @@ func ValidateDockpipeProjectConfig(c *DockpipeProjectConfig) error {
 	if c == nil {
 		return nil
 	}
+	if c.DockpipeVersion != nil {
+		if err := ValidateExactDockpipeVersion(*c.DockpipeVersion); err != nil {
+			return err
+		}
+	}
 	if c.Secrets.Vault != nil {
 		if err := ValidateVaultModeString(*c.Secrets.Vault); err != nil {
 			return fmt.Errorf("secrets.vault: %w", err)
