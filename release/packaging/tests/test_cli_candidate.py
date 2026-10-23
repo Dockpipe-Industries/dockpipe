@@ -314,7 +314,7 @@ class CLIBootstrapTests(unittest.TestCase):
             tag, assets = PUBLISHER.validate(output, SOURCE)
             release = {"id": 123, "tag_name": tag, "target_commitish": SOURCE,
                        "prerelease": True, "draft": False,
-                       "assets": [{"name": name, **data} for name, data in assets.items()]}
+                       "assets": [{"name": name, "state": "uploaded", **data} for name, data in assets.items()]}
             release["assets"][0]["digest"] = "sha256:" + "0" * 64
             reference = {"data": {"repository": {"ref": {"target": {
                 "__typename": "Commit", "oid": SOURCE}}}}}
@@ -329,24 +329,32 @@ class CLIBootstrapTests(unittest.TestCase):
             self.assertIn("graphql", run.call_args.args[0])
 
     def test_fresh_and_resumed_candidates_preserve_immutable_assets(self):
-        for state in ("absent", "draft", "published"):
+        for state in ("absent", "partial", "draft", "published"):
             with self.subTest(state=state), tempfile.TemporaryDirectory() as temporary:
                 output = build_fixture(Path(temporary))
                 tag, assets = PUBLISHER.validate(output, SOURCE)
                 release = {"id": 123, "tag_name": tag, "target_commitish": SOURCE, "prerelease": True,
                            "draft": state != "published", "html_url": "https://github.com/example/candidate",
-                           "assets": [{"name": name, **data} for name, data in assets.items()]}
+                           "assets": [] if state in ("absent", "partial") else
+                           [{"name": name, "state": "uploaded", **data} for name, data in assets.items()]}
                 exists = state != "absent"
                 calls = []
 
                 def execute(arguments):
                     nonlocal exists
                     calls.append(arguments)
-                    if arguments[1:3] == ["release", "create"]:
+                    if "--method" in arguments:
                         self.assertFalse(exists)
-                        self.assertIn("--draft", arguments)
-                        self.assertIn("--latest=false", arguments)
+                        self.assertIn("draft=true", arguments)
+                        self.assertIn("prerelease=true", arguments)
+                        self.assertIn("make_latest=false", arguments)
+                        self.assertIn("target_commitish=" + SOURCE, arguments)
                         exists = True
+                        return json.dumps({"id": 123, "tag_name": tag})
+                    if arguments[1:3] == ["release", "upload"]:
+                        name = Path(arguments[4]).name
+                        self.assertFalse(any(item["name"] == name for item in release["assets"]))
+                        release["assets"].append({"name": name, "state": "uploaded", **assets[name]})
                         return ""
                     if arguments[1:3] == ["release", "edit"]:
                         self.assertIn("--latest=false", arguments)
@@ -355,9 +363,12 @@ class CLIBootstrapTests(unittest.TestCase):
                     if "graphql" in arguments:
                         reference = None if release["draft"] else {"target": {"__typename": "Commit", "oid": SOURCE}}
                         return json.dumps({"data": {"repository": {"ref": reference}}})
-                    if arguments[-1].endswith("/releases?per_page=100&page=1"):
-                        return json.dumps([release] if exists else [])
-                    if arguments[-1].endswith("/releases/123"):
+                    endpoint = next((item for item in arguments if item.startswith("repos/")), "")
+                    self.assertIn("--jq", arguments)
+                    if endpoint.endswith("/releases?per_page=100&page=1"):
+                        return json.dumps({"count": int(exists), "matches":
+                            [{"id": 123, "tag_name": tag}] if exists else []})
+                    if endpoint.endswith("/releases/123"):
                         return json.dumps(release)
                     self.fail("Unexpected publication command")
 
@@ -366,9 +377,14 @@ class CLIBootstrapTests(unittest.TestCase):
                 with patch.dict(os.environ, environment, clear=True), \
                         patch.object(PUBLISHER.SHARED, "run", side_effect=execute), patch("builtins.print"):
                     PUBLISHER.publish(output)
-                self.assertEqual(sum(call[1:3] == ["release", "create"] for call in calls), int(state == "absent"))
+                self.assertEqual(sum("--method" in call for call in calls), int(state == "absent"))
                 self.assertEqual(sum(call[1:3] == ["release", "edit"] for call in calls), int(state != "published"))
-                self.assertFalse(any("--clobber" in call or "upload" in call or "delete" in call for call in calls))
+                self.assertEqual(sum(call[1:3] == ["release", "upload"] for call in calls),
+                                 len(assets) if state in ("absent", "partial") else 0)
+                self.assertFalse(any("--clobber" in call or "delete" in call for call in calls))
+                if state == "absent":
+                    creation = next(index for index, call in enumerate(calls) if "--method" in call)
+                    self.assertIn("/releases/123", " ".join(calls[creation + 1]))
 
 
 if __name__ == "__main__":

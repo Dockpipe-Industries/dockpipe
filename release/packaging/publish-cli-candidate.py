@@ -104,21 +104,16 @@ def publish(directory):
     release = SHARED.find_release(tag)
     verify_reference(release is None or release.get("draft") is True)
     if release is None:
-        SHARED.run(["gh", "release", "create", tag, *[str(directory / name) for name in sorted(assets)],
-                    "--repo", REPOSITORY, "--target", source_sha, "--draft", "--prerelease", "--latest=false",
-                    "--title", "CLI-only bootstrap candidate",
-                    "--notes", "Immutable pure-Go CLI for checksum-pinned package producers. "
-                    "No package stores, Qt, installers, application release or production channel update."])
-        release = SHARED.find_release(tag)
-    if release is None:
-        raise ValueError("Created CLI draft is unavailable in the release inventory")
-    SHARED.verify_release(release, tag, source_sha, assets)
+        release = SHARED.create_release(
+            tag, source_sha, "CLI-only bootstrap candidate",
+            "Immutable pure-Go CLI for checksum-pinned package producers. "
+            "No package stores, Qt, installers, application release or production channel update.")
+    release = SHARED.reconcile_assets(directory, release, tag, source_sha, assets)
     verify_reference(release.get("draft") is True)
     if release.get("draft") is True:
         SHARED.run(["gh", "release", "edit", tag, "--repo", REPOSITORY,
                     "--draft=false", "--prerelease", "--latest=false"])
-    final = json.loads(SHARED.run(["gh", "api", "--hostname", "github.com",
-                                  f"repos/{REPOSITORY}/releases/{release['id']}"]))
+    final = SHARED.read_release(release["id"], tag)
     SHARED.verify_release(final, tag, source_sha, assets)
     if final.get("draft") is not False:
         raise ValueError("CLI candidate remains a draft")
