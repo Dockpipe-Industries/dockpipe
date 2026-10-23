@@ -16,7 +16,7 @@ import zipfile
 
 
 TARGETS = ("darwin/amd64", "darwin/arm64", "linux/amd64", "linux/arm64", "windows/amd64")
-GO_VERSION = "go1.26.9"
+GO_VERSION = "go1.26.10"
 REPOSITORY = "Dockpipe-Industries/dockpipe"
 MAX_BINARY_BYTES = 64 << 20
 
@@ -140,7 +140,7 @@ def build(source, source_sha, work, output, go):
     command([sys.executable, source / "release/packaging/embedded-inputs.py", "--check"],
             source, environment, 120)
     if command([go, "env", "GOVERSION"], source, environment).strip() != GO_VERSION:
-        raise ValueError("CLI candidates require the pinned Go 1.26.9 toolchain")
+        raise ValueError("CLI candidates require the pinned Go 1.26.10 toolchain")
     module = json.loads(command([go, "mod", "edit", "-json"], source, environment))
     if module.get("Replace"):
         raise ValueError("CLI candidates cannot use Go module replacements")

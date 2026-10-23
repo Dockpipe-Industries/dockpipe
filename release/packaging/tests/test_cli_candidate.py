@@ -134,6 +134,15 @@ class CLIBootstrapTests(unittest.TestCase):
         self.assertIn("[truncated after 4096 bytes]", message)
         self.assertLess(len(message), 8500)
 
+    def test_candidate_toolchain_matches_reviewed_go_security_pin(self):
+        repository = ROOT.parents[1]
+        toolchain = next(line.split()[1] for line in (repository / "go.mod").read_text().splitlines()
+                         if line.startswith("toolchain "))
+        self.assertEqual(PRODUCER.GO_VERSION, toolchain)
+        self.assertEqual(toolchain, "go1.26.10")
+        workflow = (repository / ".github/workflows/cli-candidate.yml").read_text()
+        self.assertIn("go-version: '1.26.10'", workflow)
+
     def test_five_platform_metadata_and_archive_hashes_validate(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = build_fixture(Path(temporary))

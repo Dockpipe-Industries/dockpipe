@@ -192,9 +192,10 @@ guest-tools-cd.json and guest-services-durable-tests.log. No commits or publicat
 
 The user authorized completing the extraction/dependency staging work and a
 Dockpipe staging release after the native installed-launcher checks. Production
-publication remains excluded. The public owning repositories exist but have no
-published default branch yet; source publication and release input pins remain
-part of the staging work.
+publication remains excluded. The user explicitly approved the exact source
+payloads and clarified that an explicit bounded staging request authorizes its
+necessary commits, pushes, dependency publications and staging promotion without
+repeated approval. Implementation stays uncommitted until that authority applies.
 
 The exact locked Go compatibility SDK was reproduced again and published at
 `dockpipe-go-sdk-0.1.0-source.90db6efa41c56d31`, bound to source commit
@@ -211,10 +212,10 @@ Evidence: `/tmp/dockpipe-extraction/full-launcher-validation/go-sdk-publication.
 The guarded extraction synchronizer now excludes generated `bin`/`build` only at
 repository roots. Authored `workflows/build` trees are retained, including the
 standalone compiler build and VM Guest Tools build. Saved checkouts now contain
-682 PipeLang and 893 catalog authored files; all prior destination postimages
+682 PipeLang and 894 catalog authored files; all prior destination postimages
 were admitted before synchronization and no user-owned drift was overwritten.
 
-The fresh unpublished PipeLang v0.1.0 seal includes these workflows and the three
+The PipeLang v0.1.0 seal includes these workflows and the three
 current transcript-test fixes. Its canonical Go sum is
 `h1:LXd+PKL3jpgwnUSd8G4Uug6zBppqS3lGlKN1tJzi2V4=`; core `go.sum` now binds it.
 Core PipeLang application consumer tests, transcript tests from the sealed module,
@@ -222,9 +223,11 @@ and the standalone bounded test workflow through pinned Dockpipe 0.6.25 pass.
 The prior 680-file module/publication manifest is superseded for release use.
 Evidence: `/tmp/dockpipe-extraction/publication-pipelang-module.json` and
 `full-launcher-validation/publication-{module-core-tests,module-transcript-tests,pipelang-baseline}.log`.
-Public source/tag/module fetching remains pending; this is a local exact-source
-seal, not public Go proxy proof. The already published Go SDK has no PipeLang
-module dependency and remains unchanged.
+PipeLang commit `50c17bbf019e4736a9943513931c1c10eb8d1f7d` is now public on
+master/dev/staging with source tag `v0.1.0`. Independent fresh public Go proxy and
+checksum-database fetching verifies this exact sum and source commit. Core tests
+also pass with fresh public-only module caches and no sibling replacements.
+The already published Go SDK has no PipeLang module dependency and remains unchanged.
 
 ### Native bootstrap and archive contracts (2026-10-23)
 
@@ -250,8 +253,71 @@ the new boot-display helper is included. All 44 core library/CLI packages pass.
 Core-owned Display SDK and store-free CLI candidate producer/publisher workflows
 are prepared with immutable source/tag/asset binding. The SDK's seven-file native
 consumer passes on Linux amd64, Windows amd64 and macOS arm64. The CLI bootstrap
-breaks the old-CLI/new-catalog-store dependency cycle; it requires a fresh public
-PipeLang fetch and an accepted source push before publication. These new CI lanes,
-public artifact fetches and store lock updates are still pending; local native
-proof is not a published dependency. The compatibility Go SDK remains the only
-newly published dependency at this checkpoint.
+provides the new execution contracts for catalog producers; the catalog also
+needs an explicitly installed compiled runtime core for resolver discovery.
+SDK/CLI hosted candidate publication and store lock updates remain pending;
+local native proof is not a published dependency.
+
+### Public source and native installed qualification (2026-10-23)
+
+Catalog initial commit `99a9acf93a546a5939e112a3527f41ab536abf7f` is public on
+master/dev/staging. Core source commit `564ad3d5f78f3d6ef6ac582a691eebbc78cdd56e`
+is public on js/dev in PR #207 targeting dev. Public source refs were independently
+read back. The PR needs integration with newer dev SDK and native qualification
+changes before CI can run. That integration now uses a Dockpipe-managed worktree
+on `codex/extraction-staging-merge`; the saved checkout and its unrelated ForgePipe
+overview remain intact. The actual rename-aware merge identified 34 conflicts,
+including 12 files retained for current host SDK and filesystem-reader contracts.
+Existing worktree Git lifecycle tests (20) and path/state/Docker tests (12) pass;
+the workflow cwd, workdir and source root all resolve to the isolated worktree.
+The user permits managed worktrees and authorizes validated Git operations and
+publications within an explicitly requested bounded staging task.
+The merge completed as `f32e5ae90c168862c3221c7a831715836b97361b` through
+Dockpipe. The actual merged Go suite passes with Go 1.26.10; four packages needed
+reviewed host loopback access. The release suite runs 232 tests successfully with
+four existing environment/platform skips. The actual merged Display SDK producer
+and relocated Linux consumer also pass with GNU 11.4 and Qt 6.10.3. These local
+checks do not establish merged Windows/macOS or public candidate qualification.
+
+Complete task-local packaged Windows and macOS applications passed actual VM tab,
+Canvas picker, tiling picker, native input acknowledgement, close/reopen, retained
+managed QEMU ownership and explicit child cleanup. These are native installed
+payload proofs, not MSI upgrade or global application replacement proofs. The
+live original Windows guest also visibly shows Qt Guest Tools ready for SSH,
+agent and durable startup repair through the Linux host's native Qt VM tab.
+No activation, credentials, clipboard contents or reboot were needed for that
+final visible check. The strict pointer corner proof retains a one-pixel upstream
+edge limitation. The Windows driver currently exposes only 1280x800, so an
+alternate live resolution switch remains unproven.
+
+The initial hosted catalog Linux test found a missing compiled runtime-core
+dependency; Windows hit the old 0.6.25 CLI's durable ownership check. The Linux
+dependency fix, commit `5578ae4054c411c46b480c95f769cad19e659a24`, declares and
+verifies the existing immutable public core archive, installs it into a fresh
+task-private global root and wires both CI jobs to that setup. All 34 tooling
+tests pass, as does the actual previously failing resolver lookup with the
+published CLI and isolated catalog source. Hosted follow-up CI and the corrected
+CLI candidate remain required. PipeLang's initial native Windows CI has the same
+old-CLI ownership failure; its Linux/release-source checks and public module
+identity are separate evidence. No tag was moved.
+
+The catalog ownership cleanup is committed as
+`28d38451453b94bfb275964e643b1a1198d53379`: 359 older copied Cockpit files were
+retired from active discovery after exact hash/mode and historical archive
+verification. Their original public history remains intact; core dev's independently
+qualified SpatialPipe 0.1.3 lock is preserved. Six product tests now live beside
+the owning release-setup workflow. All 34 tooling tests, six owning tests and the
+actual installed-CLI IDE test hook pass. An isolated authored-source copy compiles
+39 resolver/workflow archives with QEMU retained and no competing Cockpit archive.
+Two measured hosted fixture defects were corrected without dropping assertions:
+native Windows path comparison and inherited parent-workflow state in an IDE fixture.
+Hosted follow-up CI passed the first five Linux package suites and the Windows
+tooling suite. Linux VM tests now stop at a newer short socket-root SDK contract
+absent from CLI 0.6.25; Windows still stops at that old CLI ownership check. The
+corrected immutable CLI pin is required for both; the checks remain intact.
+
+The owning catalog still needs actual immutable native artifact publication and
+core import pins. A strict core importer extension passes 21 focused tests;
+catalog native store and Guest Tools publication work is being prepared with
+explicit dependency/provenance contracts. No new native store or full Dockpipe
+staging release is published at this checkpoint. Production remains outside scope.

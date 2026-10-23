@@ -34,7 +34,7 @@ it, or the host lacks that UI.
 | AI workflows must beat one strong direct worker on quality, safety, cost, review effort, or rerun value. DorkPipe owns the lower-level proof through artifacts/metrics, not user boilerplate. | `docs/agents/workflows/ai-workflow-value-bar.md` |
 | Main docs stay canonical for repo facts and public behavior. `docs/agents/` is the compressed routing/safety layer, not a shadow documentation tree. | `docs/agents/docs/docs-system.md` |
 | Treat `docs/agents/task-index.yaml` as the AI entrypoint for the cross-cutting backlog and keep the linked task files current when a task materially completes or advances one of those items. | `docs/agents/task-index.yaml` |
-| Normal sessions ask before committing. An explicitly designated autonomous master session follows the bounded commit exception in `docs/agents/docs/session-handoffs.md`. | `docs/agents/docs/session-handoffs.md` |
+| Keep implementation uncommitted until authorized. An explicit request to move a bounded task to staging authorizes its validated commit and staging promotion flow without repeated approval. | `docs/agents/docs/session-handoffs.md` |
 
 ## Task Routing
 
