@@ -67,3 +67,35 @@ When workflow/package authoring contracts change, update the engine parser/schem
 canonical docs and the language extension in its owning repository together. For
 example, installable package manifests support `hidden: true`, with completion and
 hover help in the language extension. See [Package model](package-model.md).
+
+
+## Project configuration schema
+
+`dockpipe.config.json` has a separate authoritative
+[JSON schema](../../src/lib/infrastructure/schema/dockpipe.config.schema.json).
+Associate that file through your editor's JSON schema settings, or set `$schema`
+to its local path. In a Dockpipe source checkout:
+
+```json
+{
+  "$schema": "./src/lib/infrastructure/schema/dockpipe.config.schema.json",
+  "schema": 1,
+  "dockpipe_version": "0.6.24"
+}
+```
+
+For external repositories, use the schema from the installed/pinned Dockpipe
+release or a published immutable schema URL for that release. The schema source
+is authoritative; adding this file does not publish a new hosted schema endpoint
+or install an editor extension. `dockpipe_version` requires an exact complete
+SemVer and the CLI enforces it before executing repository commands. Package
+minimum-version metadata has separate compatibility semantics.
+
+
+Package authors may associate `assets/ui/surface.json` with
+`src/lib/infrastructure/schema/package-surface.schema.json` from a pinned Dockpipe
+source/schema distribution. The package manifest's optional `surface` field names
+that descriptor. This is separate from workflow `view` metadata: surface actions
+still reference ordinary workflow files or public workflow IDs, and typed public
+workflow inputs continue through the existing launcher dialog. See
+[package-contributed host pages](package-model.md#package-contributed-host-pages).

@@ -14,6 +14,8 @@ struct DesktopAppChoice {
     quint64 id = 0;
     QString title;
     QString applicationClass;
+    qint64 processId = 0;
+    QString processStartToken;
 };
 
 // Local, explicitly selected supported desktop windows. The owner must release control
@@ -41,6 +43,7 @@ public:
     bool requestClose(QString &error);
     void releaseControl();
     bool alive() const;
+    bool matchesProcess(qint64 processId, const QString &startToken) const;
     QIcon applicationIcon() const;
 private:
     void acknowledgeControlFrame();

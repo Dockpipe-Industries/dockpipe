@@ -34,9 +34,14 @@ public:
     void setWorkflows(const QVector<WorkflowMeta> &workflows);
     QVector<WorkflowMeta> workflows() const { return m_workflows; }
     void refresh();
+    void setPackageDisplays(const QString &source, const QVector<PackageDisplayMeta> &displays);
+    QVector<PackageDisplayMeta> packageDisplays() const;
+    void requestPackageDisplayInventory() { emit packageDisplayInventoryRequested(); }
     TerminalHub &terminals() const { return *m_terminals; }
 
 signals:
+    void packageDisplaysChanged();
+    void packageDisplayInventoryRequested();
     void openFullView(const QString &pageKey);
     void launchWorkflow(const QString &workflowId);
     void cloneWorkflow(const QString &workflowId);
@@ -77,6 +82,7 @@ private:
     QTimer *m_timer;
     QVector<QPointer<QWidget>> m_widgets;
     QVector<WorkflowMeta> m_workflows;
+    QMap<QString, QVector<PackageDisplayMeta>> m_packageDisplays;
     QString m_workdir;
     quint64 m_generation = 0;
 };

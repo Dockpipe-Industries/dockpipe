@@ -208,10 +208,11 @@ func runParallelStepWorker(o *runStepsOpts, idx, n, batchStart int, baseEnv, bas
 	for _, r := range step.RunPaths() {
 		pre = append(pre, infrastructure.ResolveWorkflowScript(r, o.wfRoot, o.repoRoot, o.projectRoot))
 	}
+	stepScriptCount := len(pre)
 	if idx == batchStart && idx == 0 {
 		pre = append(pre, o.firstStepExtra...)
 	}
-	for _, p := range pre {
+	for scriptIndex, p := range pre {
 		if p == "" {
 			continue
 		}
@@ -223,8 +224,12 @@ func runParallelStepWorker(o *runStepsOpts, idx, n, batchStart int, baseEnv, bas
 			"script":   filepath.Base(p),
 		}
 		if step.IsHostStep() {
+			shell := step.Shell
+			if scriptIndex >= stepScriptCount {
+				shell = ""
+			}
 			_, err := infrastructure.RunOperationWithResultOptions(os.Stderr, "host.setup", hostSpinnerLabel(p), ids, hostSetupOperationOptions(), func() error {
-				return runHostScriptFn(p, appendUniqueEnv(envSliceWithScriptContext(envSlice, p), "DOCKPIPE_HOST_SCRIPT_SPINNER=false"))
+				return runHostStepScript(shell, p, appendUniqueEnv(envSliceWithScriptContext(envSlice, p), "DOCKPIPE_HOST_SCRIPT_SPINNER=false"))
 			})
 			if err != nil {
 				return err
@@ -252,7 +257,7 @@ func runParallelStepWorker(o *runStepsOpts, idx, n, batchStart int, baseEnv, bas
 
 	if step.IsHostStep() {
 		if cmd := strings.TrimSpace(step.CmdLine()); cmd != "" {
-			if err := runHostCommandFn(cmd, envSlice); err != nil {
+			if err := runHostStepCommand(step.Shell, cmd, envSlice); err != nil {
 				return err
 			}
 		}

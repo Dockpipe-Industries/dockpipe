@@ -298,6 +298,7 @@ class CompositionTests(unittest.TestCase):
         for directory, manifest in ((baseline, base_manifest), (cockpit, candidate)):
             (directory / 'packages-store-manifest.json').write_text(json.dumps(manifest))
         (cockpit / 'cockpit-qualification.json').write_text(json.dumps(receipt))
+        (root / 'forgepipe-sdk.lock.json').write_text(json.dumps(lock))
         return baseline, cockpit, base_manifest, candidate, receipt, lock
 
     def test_cockpit_finalization_preserves_core_and_all_unowned_bytes(self):
@@ -311,13 +312,25 @@ class CompositionTests(unittest.TestCase):
 
             with mock.patch.object(ingest, 'read_json', side_effect=read), \
                     mock.patch.dict(ingest.os.environ, {'DOCKPIPE_RELEASE_SOURCE_SHA': 'd' * 40}):
-                result = ingest.finalize_cockpit(baseline, cockpit, root / 'out', '0.6.20')
+                result = ingest.finalize_cockpit(baseline, cockpit, root / 'out', '0.6.20',
+                                                  root / 'forgepipe-sdk.lock.json')
             self.assertEqual(result['packages']['core'], base['packages']['core'])
             self.assertEqual(result['packages']['workflows'], base['packages']['workflows'])
             self.assertEqual(result['packages']['resolvers'], candidate['packages']['resolvers'])
             for entry in (base['packages']['core'], base['packages']['workflows'][0]):
                 self.assertEqual((root / 'out' / entry['tarball']).read_bytes(), (baseline / entry['tarball']).read_bytes())
             self.assertFalse((root / 'out' / base['packages']['resolvers'][0]['tarball']).exists())
+
+    def test_cockpit_finalization_requires_explicit_external_sdk_lock(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            baseline, cockpit, *_ = self.cockpit_inputs(root)
+            with mock.patch.dict(ingest.os.environ, {}, clear=True):
+                with self.assertRaisesRegex(ValueError, 'explicit SDK lock'):
+                    ingest.finalize_cockpit(baseline, cockpit, root / 'out', '0.6.20')
+            with self.assertRaisesRegex(ValueError, 'absolute path'):
+                ingest.finalize_cockpit(baseline, cockpit, root / 'out', '0.6.20', Path('relative.json'))
+            self.assertFalse((root / 'out').exists())
 
     def test_cockpit_finalization_rejects_wrong_owner_platform_sdk_and_modified_archive(self):
         for failure in ('owner', 'platform', 'sdk', 'source', 'checks', 'core-version', 'archive'):
@@ -349,7 +362,8 @@ class CompositionTests(unittest.TestCase):
                 with mock.patch.object(ingest, 'read_json', side_effect=read), \
                         mock.patch.dict(ingest.os.environ, {'DOCKPIPE_RELEASE_SOURCE_SHA': 'd' * 40}):
                     with self.assertRaises(ValueError):
-                        ingest.finalize_cockpit(baseline, cockpit, root / 'out', version)
+                        ingest.finalize_cockpit(baseline, cockpit, root / 'out', version,
+                                                root / 'forgepipe-sdk.lock.json')
                 self.assertFalse((root / 'out').exists())
 
     def test_replaces_core_and_owned_identity_while_retaining_unrelated_archive(self):

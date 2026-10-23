@@ -5,6 +5,7 @@ go 1.25
 toolchain go1.26.9
 
 require (
+	github.com/Dockpipe-Industries/pipelang v0.1.0
 	github.com/klauspost/compress v1.20.3
 	github.com/mattn/go-shellwords v1.0.12
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1

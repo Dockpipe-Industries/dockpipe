@@ -71,7 +71,7 @@ ln -s /Applications/DockPipe.app/Contents/MacOS/dockpipe-cli "$work/payload/usr/
 install -m 755 "$root/release/packaging/desktop/macos/scripts/preinstall" "$work/scripts/preinstall"
 pkgbuild --analyze --root "$work/payload" "$work/components.plist"
 # Keep updates at /Applications; do not relocate a managed app to an old user copy.
-/usr/libexec/PlistBuddy -c 'Set :0:BundleIsRelocatable false' "$work/components.plist"
+python3 "$root/release/packaging/desktop/macos/configure-components.py" "$work/components.plist"
 pkg_args=(--root "$work/payload" --component-plist "$work/components.plist" --scripts "$work/scripts"
           --identifier com.dockpipe.desktop --version "$version" --install-location /)
 if [[ -n "${DOCKPIPE_MAC_INSTALLER_IDENTITY:-}" ]]; then

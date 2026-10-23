@@ -3,6 +3,7 @@
 #include "LauncherStatusBar.h"
 #include "ProjectFilesWidget.h"
 #include "WorkspacePackageManager.h"
+#include "PackageSurfacePage.h"
 #include "ProjectGitWidget.h"
 
 #include "BasicModeWidget.h"
@@ -584,6 +585,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
         if (page > terminalPageIndex)
             ensureDashboard(page);
         m_stack->setCurrentIndex(page);
+        for (const auto &surface : m_surfacePages) {
+            if (surface)
+                surface->setActive(m_stack->widget(page) == surface);
+        }
         updateDashboardFullscreen();
         m_workspaceBar->setVisible(page == 0 || page == 5 || page == 6 || page == terminalPageIndex);
         m_dockerWidget->setActive(page == 3 || (page == cockpitPageIndex && m_cockpit && m_cockpit->resourceSection() == "containers"));
@@ -687,7 +692,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     connect(&m_sessions, &SessionManager::sessionOutput, this, &MainWindow::onSessionOutput);
     connect(&m_sessions, &SessionManager::sessionPrompt, this, &MainWindow::onSessionPrompt);
     connect(&m_sessions, &SessionManager::sessionFailed, this,
-            [this](const QString &, const QString &err) { QMessageBox::warning(this, tr("Dockpipe Launcher"), err); });
+            [this](const QString &id, const QString &err) {
+                for (const auto &surface : m_surfacePages) {
+                    if (surface && surface->ownsSession(id))
+                        return;
+                }
+                QMessageBox::warning(this, tr("Dockpipe Launcher"), err);
+            });
     auto *trayAvailability = new QTimer(this);
     connect(trayAvailability, &QTimer::timeout, this, &MainWindow::setupTray);
     trayAvailability->start(5000);
@@ -1322,7 +1333,7 @@ void MainWindow::onBasicLaunch(const QString &workflowId)
             return;
         }
         m_basicLaunchingContextId = c->id;
-        if (m_sessions.launch(*c, ContextStore::logsDir()))
+        if (launchPackageAwareContext(*c))
             refreshSessionUi();
         else if (!m_sessions.isRunning(c->id)) {
             m_basicLaunchingContextId.clear();
@@ -1534,6 +1545,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 MainWindow::~MainWindow()
 {
+    syncPackageSurfaces({});
     releaseDashboardWindows();
 }
 
@@ -1686,6 +1698,7 @@ void MainWindow::startWorkflowCatalogDiscovery()
         m_basicAppsLoading = false;
         m_advancedSourceContexts.clear();
         m_workspaceWorkflows.clear();
+        syncPackageSurfaces({});
         m_basicApps.clear();
         applyAdvancedContextFilter();
         updateBasicPage();
@@ -1698,6 +1711,7 @@ void MainWindow::startWorkflowCatalogDiscovery()
         m_workspaceWorkflows.clear();
         m_advancedSourceContexts.clear();
         m_remoteWidget->setResolvers({});
+        syncPackageSurfaces({});
         m_remoteWidget->setWorkdir(workdir);
     }
     m_workflowCatalogRequestedWorkdir = workdir;
@@ -1757,6 +1771,7 @@ void MainWindow::applyWorkflowCatalogResult(const AsyncWorkflowCatalogResult &re
     }
     m_remoteWidget->setResolvers(catalog.resolverDetails);
     m_workspaceWorkflows = catalog.workflows;
+    syncPackageSurfaces(catalog.resolverDetails);
     m_advancedSourceContexts = contextsFromCatalog(result.workdir, result.repoRoot, catalog);
     m_basicApps = appWorkflowsFromCatalog(catalog);
     m_advancedDiscoveryLoading = false;
@@ -1965,7 +1980,7 @@ bool MainWindow::launchWorkflow(const Context &display)
     }
     if (!meta.workflowId.isEmpty() && !configureContextForWorkflow(*c, meta, false))
         return false;
-    if (m_sessions.launch(*c, ContextStore::logsDir())) {
+    if (launchPackageAwareContext(*c)) {
         m_outputContext = *c;
         rememberWorkflowRun(display);
         setWorkflowConsoleVisible(true);

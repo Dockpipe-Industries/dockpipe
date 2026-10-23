@@ -66,3 +66,41 @@ for explicit installation and dependency resolution. This applies to the new
 Linux amd64 Pipeon archive and to the retained 0.6.3 archives on the other four
 native platforms. Hiding changes composed catalog metadata only; the pinned
 archive bytes, versions, and source manifest checksums stay unchanged.
+## Launcher host SDK candidate producer
+
+`build-launcher-sdk.py` builds the optional LauncherSDK install component from a
+caller-supplied frozen DockPipe source snapshot. It performs no Git, download,
+signing or publication operation. Supply the matching Qt 6.10.3 SDK explicitly:
+
+```sh
+python3 release/packaging/build-launcher-sdk.py \
+  --source-root /path/to/frozen/dockpipe-source \
+  --source-sha <exact-40-character-commit> \
+  --qt-root /path/to/Qt/6.10.3/gcc_64 \
+  --work-directory /path/to/fresh-sdk-work \
+  --output /path/to/fresh-sdk-candidate
+```
+
+The caller owns the correspondence between that frozen snapshot and its commit.
+For uncommitted local validation, use `--development-source` instead of
+`--source-sha`; its metadata records a null source SHA and cannot qualify as a
+committed dependency candidate. A separate source-content digest detects changes
+during the build. Work and output directories must be fresh and outside the source.
+
+The producer installs and relocates the SDK, then compiles and links its external
+consumer against the relocated prefix. Shared-library symbol cleanup preserves
+allocated sections, exports and build identity. The static host-browser archive
+retains the symbols needed for SDK linkage. This remains the existing Qt/C++ host
+compatibility interface; it does not establish a new protected C ABI.
+
+Outputs are `DockPipeLauncherSDK-1.0.0-Linux-amd64.tar.gz`, `sdk-files.json` and
+`sdk-release.json`. The archive contains regular files only, with fixed tar/gzip
+timestamps and sorted names. The external metadata binds the archive checksum and
+size, complete file-manifest checksum, source identity, compiler, Qt and workspace
+ABI. Neither manifest is inside the archive, so checksums have no circularity.
+The installed payload is limited to 4,096 files and 512 MiB; this is the candidate
+distribution contract, not a general filesystem traversal limit.
+
+Candidate publication and publisher authentication are separate steps. Pin both
+the archive and metadata by exact size and checksum; authenticate the metadata
+through the release publisher before consuming its file-manifest checksum.

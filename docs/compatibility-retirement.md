@@ -1,5 +1,7 @@
 # Compatibility Retirement Ledger
 
+Package source examples below belong to [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages), [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) or [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon), as applicable. Run package-source commands in that owning repository with pinned Dockpipe tools.
+
 This is the canonical inventory for Dockpipe compatibility debt. It records accepted legacy
 inputs, aliases, layouts, ignored values, and recovery readers so that a later change can retire
 exactly one surface without treating a repository search or an old task record as removal

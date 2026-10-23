@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$Version,
-    [Parameter(Mandatory = $true)][string]$StageDir
+    [Parameter(Mandatory = $true)][string]$StageDir,
+    [switch]$EnableQualification
 )
 $ErrorActionPreference = "Stop"
 
@@ -33,8 +34,9 @@ if (-not $env:VCToolsInstallDir -or -not $env:VCToolsRedistDir) {
 }
 
 try {
+    $qualification = if ($EnableQualification) { "ON" } else { "OFF" }
     cmake -S (Join-Path $root "src/app/tooling/dockpipe-launcher") -B $build -G "NMake Makefiles" `
-        -DCMAKE_BUILD_TYPE=Release "-DDOCKPIPE_RELEASE_VERSION=$Version"
+        -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF "-DDOCKPIPE_ENABLE_QUALIFICATION=$qualification" "-DDOCKPIPE_RELEASE_VERSION=$Version"
     if ($LASTEXITCODE -ne 0) {
         throw "Desktop configure failed"
     }

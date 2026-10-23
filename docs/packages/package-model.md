@@ -114,7 +114,31 @@ So **one repo** can ship **workflows**, **resolvers**, and **runtimes** / **stra
 
 Materialize a **project-local** store under **`bin/.dockpipe/internal/packages/`** without moving authoring trees.
 
-**Repo-root `dockpipe.config.json` (optional)** — JSON with a **`compile`** object:
+**Repo-root `dockpipe.config.json` (optional)** stores repository settings.
+
+Set the top-level `dockpipe_version` string to pin a repository to one exact
+Dockpipe executable version, for example `"dockpipe_version": "0.6.24"`.
+This belongs in repository configuration rather than `package.yml`, whose
+`min_dockpipe_version` remains a package compatibility lower bound. The pin accepts
+complete SemVer, including prerelease/build identifiers, without a `v` prefix.
+Ranges, `latest`, partial versions, empty strings and development tags are invalid.
+The running executable must match exactly, including build metadata; a project
+`VERSION` file cannot satisfy the check. An unversioned development executable
+also fails an explicit pin. Omitting the field preserves normal behavior.
+
+The CLI checks the current/`--workdir` project's nearest configuration before
+workflow resolution, dependency compilation, or execution commands dispatch.
+Help, version, diagnostics and installation/bootstrap commands remain available
+to repair a mismatch. `--help` passed after the command separator is workflow
+input and does not bypass the check. The pin selects no source checkout and
+compiles no external repository; install the matching release separately.
+
+The authoritative editor schema is
+[`dockpipe.config.schema.json`](../../src/lib/infrastructure/schema/dockpipe.config.schema.json).
+See [editor schema association](editor-extensions.md#project-configuration-schema).
+
+The `compile` object supports `workflows` and `core_from`; `secrets` and
+`packages` are top-level objects:
 
 - **`workflows`** — array of repo-relative (or absolute) **directories** to scan for named workflow folders (each with **`config.yml`**). Same roots drive **`dockpipe package compile resolvers`** (nested **`…/resolvers/<name>/`**) plus flat **`src/core/resolvers`** and **`templates/core/resolvers`** when present.
 - **`core_from`** — optional path override for **`compile core`** (same as **`--from`**).
@@ -540,3 +564,297 @@ not affect ordering. Unversioned `dev` builds use normal schema validation inste
 Older archives without a declared minimum remain supported. Unsupported workflow
 fields retain their schema diagnostic and add an update-or-check-field-names hint.
 Already-installed older CLIs must be updated to gain these checks.
+
+
+## Package-contributed host pages
+
+An installed resolver may declare `surface: assets/ui/surface.json` in its
+`package.yml`. The optional descriptor contributes a generic resource page to
+launchers. Discovery is data-only; it does not execute the snapshot or actions.
+Resolvers with the same surface ID share one page with a provider selector.
+The page title comes from package metadata; the host has no provider-name switch.
+
+```json
+{
+  "schema": 1,
+  "id": "example.resources",
+  "title": "Example Resources",
+  "snapshot": "assets/ui/snapshot/config.yml",
+  "actions": [
+    {"id": "create", "title": "Create", "scope": "surface", "workflow_id": "example-create"},
+    {"id": "inspect", "title": "Inspect", "scope": "resource", "workflow": "assets/ui/inspect/config.yml"}
+  ]
+}
+```
+
+The snapshot is a package-relative workflow file. Each action declares exactly one
+contained `workflow` file or a `workflow_id` available in the public workflow
+catalog. Public workflows use their existing typed launch dialog and session
+lifecycle. Missing or unsupported public workflows are not offered as actions.
+Descriptor and workflow references must resolve to regular files within their
+owning resolver, including after symlink resolution. IDs use 1–64 lowercase ASCII
+letters, digits, dots, underscores or hyphens, starting with a letter or digit.
+Titles contain 1–160 characters. A descriptor is at most 64 KiB and has at most
+32 uniquely named actions. Schema: `src/lib/infrastructure/schema/package-surface.schema.json`.
+
+`dockpipe catalog list --format json` projects the descriptor under
+`resolver_details[].surface`, resolving contained file references to absolute
+paths. Profile values and credentials are not projected. A surface declares no
+new execution semantics: its files remain ordinary Dockpipe workflows and use
+installed tools and SDK contracts.
+
+### Surface workflow events
+
+Snapshot and contained action workflows emit UTF-8 JSON events on complete lines,
+prefixed by `::dockpipe-surface::`. Other output remains ordinary operation output.
+The viewer passes `DOCKPIPE_SURFACE_ID`, `DOCKPIPE_SURFACE_ACTION_ID` and
+`DOCKPIPE_SURFACE_RESOURCE_ID` as per-invocation context. The resource ID is opaque
+and package-owned; the action must validate it against current provider state.
+Do not place credential values in IDs, event details or progress messages.
+
+```text
+::dockpipe-surface::{"schema":1,"kind":"snapshot","resources":[{"id":"instance-one","title":"Example instance","state":"running","details":{"Health":"Ready"},"actions":["inspect"]}]}
+::dockpipe-surface::{"schema":1,"kind":"progress","resource_id":"instance-one","phase":"inspect","message":"Checking health","percent":50}
+```
+
+A snapshot replaces the resource collection atomically after complete validation.
+The interactive v1 contract permits 256 resources, 32 string details and 32 action
+IDs per resource. Resource IDs are unique nonempty strings of at most 256 characters;
+titles and states are at most 160 characters; detail values and progress messages
+are at most 4096 characters. Detail names are at most 160 characters. Resource IDs
+cannot contain NUL or line breaks. Progress has a phase (at most 160 characters), a
+message, an optional resource ID and an optional percentage from 0 to 100.
+
+The viewer bounds each event/output line to 1 MiB and each contained operation to
+2 MiB of output. It retains the last valid snapshot on malformed/failed output,
+marks it stale and disables resource actions until a successful refresh. Snapshot
+refreshes have a 30-second deadline, run at most once at a time, and poll every five
+seconds only while the page is visible and selected. Contained management actions
+have a two-minute deadline and can be cancelled. Public workflow sessions retain
+their normal lifecycle, including long-running workflows; their configured inputs
+and normal Stop controls remain available. Packages own their connection records,
+health checks and operation results. The host page does not infer readiness from
+provider-specific files or claim successful mutation from a progress message.
+
+A snapshot resource may optionally advertise a local native display:
+
+```json
+"display": {
+  "kind": "native-window",
+  "process_id": 42,
+  "process_start_token": "boot-id:kernel-start-ticks"
+}
+```
+
+The package emits this field only after verifying the resource's live process identity.
+The display contract is defined in
+`src/lib/infrastructure/schema/package-native-display.schema.json`: a positive integer
+PID up to 2147483647 and a nonempty token up to 256 characters without control characters.
+Linux uses the public execution telemetry token (`boot-id:start-ticks`). Package
+display attachment currently requires a Linux X11 host. Windows hosts have no public
+kernel telemetry collector, so package display attachment explicitly reports unavailable;
+existing manually selected Windows desktop embedding remains supported. No display
+handle, address, credential, or executable is accepted.
+
+The desktop shows the selected, fresh resource's display directly in its package page.
+The dashboard dock's app picker and the Add widget picker also list live package displays;
+the operator opens one directly in Canvas or Tiling. Opening either picker requests a
+bounded one-shot package snapshot, including pages that are currently hidden. Hidden
+pages do not poll in the background.
+
+The host requires exactly one eligible local window matching the XRes server-owned PID
+and kernel identity and revalidates immediately before embedding. Builds or X servers
+without XRes 1.2 process identities cannot show package displays. Missing, ambiguous,
+unsupported, or reused identities fail without attaching another window. One visible
+view owns a display at a time: switching pages or layouts releases the native window
+before the next view acquires it. Package and CLI workflows remain usable without the desktop.
+
+Attached displays belong only to the desktop session. Their resource identifiers,
+process identities, native handles and panel arrangement are excluded from saved
+dashboards. Closing or releasing their panel restores the external window; it does
+not close the application or stop the resource. Resource shutdown remains an explicit
+package workflow action. Automatic desktop acquisition remains limited to Tiling;
+package displays can be explicitly attached in either layout.
+
+For launcher-origin display routing, a resource may include an optional `launch_id`
+containing 1–128 ASCII letters, digits, dots, underscores or hyphens. When a local
+launcher workflow matches exactly one installed surface's surface-scoped
+`workflow_id` action, the launcher injects a fresh per-invocation
+`DOCKPIPE_SURFACE_LAUNCH_ID` into a transient context and opens that surface. The
+package propagates this opaque value through its own lifecycle record and emits it
+in the corresponding snapshot resource. It is never a credential or a native handle.
+The host selects and displays only the matching resource, with a 120-second deadline;
+failure, cancellation, provider removal or workspace change cancels the pending route.
+No heuristic based on newly appearing resources substitutes for this correlation.
+
+Terminal launches do not receive a launcher correlation token and retain their normal
+standalone display. Explicitly opening a package page can select its initial resource;
+that selection opportunity is consumed by the first snapshot, even if it is empty.
+Subsequent background snapshots never select a newly appearing terminal resource.
+The operator can explicitly select a resource or open it through the dashboard picker.
+The package page presents a screen-dominant native view with compact provider/resource
+selectors and View/Actions menus; package metadata supplies all operation labels.
+
+### Package-owned native display widgets
+
+A surface may optionally declare a native widget factory:
+
+```json
+"native_display": {
+  "interface": 1,
+  "libraries": { "linux": "assets/ui/libexample-display.so" }
+}
+```
+
+Every library is a regular contained file in the installed package. The catalog
+projects canonical absolute library paths and `package_root`; authored descriptors
+must not supply `package_root`. Only the immutable descriptor selects code. A
+resource may then advertise:
+
+```json
+"display": {
+  "kind": "package-native",
+  "options": { "resource_id": "example-123", "state_ref": "public-reference" }
+}
+```
+
+Options are opaque public resource/connection references, never resolved keys,
+passwords, tokens or other secret contents. They cannot override the library.
+The host enforces a compact UTF-8 JSON limit of 16 KiB, depth 8, 128 JSON values
+including the root, nonempty keys of at most 64 characters, and strings of at most
+4096 characters without NUL. Schema describes the value shapes; the host also
+enforces aggregate byte, node and depth limits before calling package code.
+Options and native panels remain session-only and are not saved into layouts.
+
+The installed host SDK exports `LauncherDisplayPackage.h`, interface
+`com.dockpipe.launcher.DisplayPackage/1.0`. A Qt plugin implements
+`initialize(packageRoot)` and `createDisplay(options, parent)`. Its
+`LauncherDisplaySurface` QWidget implements `setActive(bool)` and idempotent
+`closeDisplay()`. Inactive views release pressed keys/buttons and suppress input;
+closing cancels and joins workers, disconnects transport, and leaves the managed
+resource running. Status/failure callbacks run on the GUI thread and cease before
+close returns. The package owns rendering, transport, endpoint validation, input
+mapping and any process launch behavior.
+
+Plugin metadata must contain `display_abi: 1`, the exact host `qt_version`,
+`build_abi` from `QSysInfo::buildAbi()`, and the matching CMake `compiler_id` and
+`compiler_version`. The SDK's CMake configuration also enforces the host compiler
+and Qt kit. The loader rejects missing or mismatched metadata before instantiation;
+Qt additionally validates its binary plugin compatibility. A package declaring
+only Linux support is honestly unavailable on other hosts. Native code is trusted
+installed package code, not a sandbox.
+On Windows, the host admits adjacent dependency DLLs with a native library scope
+after validating the plugin metadata. It does not change PATH or the current
+directory. The installed SDK exports the same scope helper for native consumers.
+
+The same generic wrapper serves a package page and dashboard Canvas/Tiling. One
+visible view holds a lease per package root and resource ID. An explicit new view
+hands off from the previous view; background snapshots do not reacquire a handed-off
+resource. Hiding or closing a panel disconnects its widget. Plugin code remains
+mapped for process lifetime while widgets and their workers are destroyed safely.
+Legacy `native-window` resources remain supported on their qualified platform.
+When a package page first selects a resource, it prefers a resource with a display
+over historical entries without one. Refreshes preserve an existing user selection.
+
+A task SDK candidate can be installed with CMake's `LauncherSDK` component, then
+`tests/package-display-consumer` can build its disposable plugin solely through
+`find_package(DockPipeLauncherSDK 1.0.0 EXACT)`. This is a local candidate boundary
+proof; it does not change or impersonate a published SDK release identity.
+
+A public surface workflow action can declare a platform-scoped transient launch
+environment without a host shell setup script:
+
+```json
+"launch_environment": {
+  "linux": {
+    "REAL_TOOL": { "inherit": "TOOL_BIN" },
+    "TOOL_BIN": { "asset": "assets/tooling/bin/native-tool" }
+  }
+}
+```
+
+This field is allowed only on `scope: "surface"` actions with `workflow_id`.
+Platforms are `linux`, `windows`, and `macos`; omitted platforms receive no bindings.
+Each platform has 1 to 16 bindings with ASCII environment identifiers of at most
+64 characters. A binding contains exactly one `asset` or `inherit` reference;
+there are no literal values or secret contents in package metadata. Assets must
+be regular contained executable files; catalog projection resolves them and the
+launcher rechecks containment before invocation.
+
+The launcher snapshots the original process environment, explicit environment-file
+fallbacks, and invocation overrides before resolving any binding. Explicit context
+assignments take precedence, including an explicitly empty value. Missing inherited
+sources leave the target alone. Inherited values are limited to 4096 UTF-8 bytes;
+resolved bindings total at most 16 KiB. The explicit environment-file fallback is
+bounded to 1 MiB and follows the CLI's simple dotenv syntax.
+
+Resolved bindings go into the CLI child's process environment for that invocation.
+Conflicting and inherited-source context assignments are removed from invocation
+arguments after capture. Their values never enter command previews, logs, saved
+contexts or package snapshots. The stored context and parent process environment
+are unchanged. Only an unambiguous installed public surface action matching the
+launched workflow applies this field; ordinary terminal execution is unaffected.
+
+For packages needing only the native display interface, the explicit leaf SDK
+at `src/app/tooling/dockpipe-launcher/display-sdk` installs `DockPipeDisplaySDK`
+and `DockPipe::DisplayHeaders`. It exports the same core-owned
+`LauncherDisplayPackage.h` and requires only the exact Qt Widgets kit, platform
+and compiler used to create that SDK candidate. It links no host implementation
+and does not configure or relax the full WebEngine-dependent Launcher SDK.
+
+Both SDKs also install `LauncherNativeLibraryScope.h`. After contained-path and
+exact IID/ABI/Qt/compiler admission, Windows hosts use this scoped reference to
+load the module with `LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR` and
+`LOAD_LIBRARY_SEARCH_DEFAULT_DIRS`. Package-adjacent dependencies can resolve
+without adding package directories to PATH, changing the working directory or
+mutating process-wide DLL search directories. Other platforms use the existing
+Qt loader. A view closes its surface and joins package workers, releases the Qt
+loader, then releases the additional native reference. The helper's hash is
+recorded separately in the leaf SDK candidate metadata; the display ABI remains
+unchanged.
+
+A package must explicitly select this smaller SDK in its build configuration;
+there is no fallback from a failed full Launcher SDK lookup. The leaf's
+`display-sdk-candidate.json` records the public interface hash, native compiler,
+platform and Qt version as a development candidate. It is not a published SDK
+release identity. Its installed external consumer and compatibility rejection
+checks live under `display-sdk/tests`.
+
+A full installed desktop qualification build can explicitly enable
+`DOCKPIPE_ENABLE_QUALIFICATION=ON` (default OFF). The owning Windows desktop
+packager exposes this as `-EnableQualification`; ordinary runtime packaging keeps
+it disabled. `--qualify-package-display CONFIG.json` exercises the real MainWindow,
+installed catalog and package snapshot, provider page, Canvas widget picker,
+Tiling Apps picker, handoff and panel close/reopen. It never injects a fake catalog
+or factory and never owns the external resource lifecycle.
+
+The bounded configuration requires `schema: 1`, existing absolute `workspace`,
+fresh absolute `output`, `surface_id`, `resource_id`, stable unique `profile_id`,
+boolean `allow_input`, and integer `timeout_ms` from 30000 through 180000.
+The profile ID uses 1–64 ASCII letters, digits, underscores or hyphens. Surface
+and resource IDs use 1–128 ASCII letters, digits, dots, underscores, colons or
+hyphens. A unique organization/application namespace is selected before startup
+preferences or MainWindow construction. Invoke the same configuration with
+`--qualification-profile-path` to print its exact profile path and exit before
+preferences initialize.
+
+The qualifier requires authoritative readiness, frame revision and input
+acknowledgement properties from the package surface. It captures both native
+frame pixels and the complete application window after each view has remained
+ready for at least 6.5 seconds, checks one active resource lease, and records
+bounded lifecycle results. Explicitly enabled input sends only a native Shift
+press/release through the real widget and requires protocol acknowledgements;
+it does not type text or access the clipboard. Use an owned disposable resource
+for that proof. Resource creation, process identity validation, final liveness
+and cleanup remain the surrounding Dockpipe workflow's responsibility.
+
+
+### Package script interpreters
+
+Package build and test hooks ending in `.py` run directly with Python 3, without
+Bash or PowerShell wrapping. Dockpipe selects `python3` from PATH, then `python`
+on Windows. Set `DOCKPIPE_HOST_PYTHON_BIN` to an absolute executable path to select
+an installed interpreter explicitly. A missing, empty or invalid explicit
+selection fails without falling back. Package authors must declare Python 3 as a
+source-build prerequisite when using these hooks. This selects an interpreter;
+it does not install Python or change the native host shell choice.

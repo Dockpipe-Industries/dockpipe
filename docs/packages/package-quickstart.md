@@ -78,6 +78,12 @@ dockpipe package uninstall --path /absolute/path/to/package.tar.gz
 Uninstall preserves package data and settings. Core, external stores, directories
 and symlinks are protected from this command.
 
+## Source examples
+
+Browse [real package workflows and tests](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages)
+without cloning Dockpipe core. [Ecosystem ownership](core-tools.md) links
+the independent AI/editor and language repositories.
+
 ## Package your own workflow
 
 You can run source workflows without compiling them. When you want to distribute

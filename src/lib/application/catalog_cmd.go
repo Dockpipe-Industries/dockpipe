@@ -202,7 +202,14 @@ func listCatalogWorkflows(projectRoot, workdir string) ([]catalogWorkflowRecord,
 		if display == "" {
 			display = name
 		}
-		inputs := buildCatalogWorkflowInputs(cfgPath, wf)
+		inputConfigPath := cfgPath
+		if len(wf.Types) > 0 {
+			inputConfigPath, err = infrastructure.WorkflowConfigOnDiskPath(workdir, cfgPath)
+			if err != nil {
+				continue
+			}
+		}
+		inputs := buildCatalogWorkflowInputs(inputConfigPath, wf)
 		out = append(out, catalogWorkflowRecord{
 			WorkflowID:  name,
 			DisplayName: display,

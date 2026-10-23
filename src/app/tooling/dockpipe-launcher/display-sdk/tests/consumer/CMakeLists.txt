@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.22)
+project(InstalledDisplaySDKConsumer LANGUAGES CXX)
+find_package(DockPipeDisplaySDK 1.0.0 EXACT REQUIRED)
+add_executable(display-sdk-consumer main.cpp)
+target_link_libraries(display-sdk-consumer PRIVATE DockPipe::DisplayHeaders)
+enable_testing()
+add_test(NAME installed-display-sdk-consumer COMMAND display-sdk-consumer)
+set_tests_properties(installed-display-sdk-consumer PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

@@ -68,8 +68,15 @@ func main() {
 		_             = flag.Bool("Service", false, "run as background service/task")
 		configPath    = flag.String("config", "", "path to config.json")
 		configPathAlt = flag.String("ConfigPath", "", "path to config.json")
+		installTools  = flag.Bool("install-guest-tools", false, "install or repair Dockpipe Guest Tools")
 	)
 	flag.Parse()
+	if *installTools {
+		if err := installGuestTools(); err != nil {
+			fatalf("install Dockpipe Guest Tools: %v", err)
+		}
+		return
+	}
 
 	selectedConfigPath := strings.TrimSpace(*configPath)
 	if selectedConfigPath == "" {

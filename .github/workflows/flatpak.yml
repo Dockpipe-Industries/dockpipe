@@ -22,7 +22,7 @@ on:
       - src/lib/application/dependencies.go
       - src/lib/application/internal/remotecmd/**
       - src/app/tooling/dockpipe-launcher/**
-      - packages/**
+      - release/packaging/pinned-stores.lock.json
       - workflows/**
 
 permissions:

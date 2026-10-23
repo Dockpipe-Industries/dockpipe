@@ -42,6 +42,7 @@ class ProjectGitWidget;
 class QDialog;
 class QSplitter;
 class LauncherWorkspaceSurface;
+class PackageSurfacePage;
 
 struct AsyncWorkflowCatalogResult {
     QString workdir;
@@ -50,6 +51,9 @@ struct AsyncWorkflowCatalogResult {
 };
 
 class MainWindow : public QMainWindow {
+#ifdef DOCKPIPE_ENABLE_QUALIFICATION
+    friend class PackageDisplayQualification;
+#endif
     Q_OBJECT
 public:
     explicit MainWindow(QWidget *parent = nullptr);
@@ -98,6 +102,12 @@ private:
     void selectPage(int page);
     int selectedPage() const;
     void setupDashboards();
+    void syncPackageSurfaces(const QVector<ResolverMeta> &providers);
+    void removePackageSurface(const QString &id);
+    bool launchPackageAwareContext(const Context &context);
+    void launchSurfaceWorkflow(const QString &workflowId, const QString &surfaceId,
+                               const QString &actionId, const QString &resourceId);
+    QMap<QString, QPointer<PackageSurfacePage>> m_surfacePages;
     void applyDefaultDashboardVisibility();
     void createDashboard();
     void addDashboardNavigation(const DashboardDefinition &definition);

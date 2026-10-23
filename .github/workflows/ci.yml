@@ -106,7 +106,7 @@ jobs:
             exit "$GC"
           fi
 
-      - name: Runtime Go tests (PipeLang uses separate containment qualification)
+      - name: Runtime Go tests
         run: bash release/packaging/test-runtime.sh
 
       - name: Pinned repository workflow tests
@@ -225,7 +225,7 @@ jobs:
       - name: Pinned package-store composition on Windows
         run: python3 -B -m unittest discover -s release/packaging/tests -p 'test_package_store_composition.py'
 
-      - name: Runtime Go tests (PipeLang uses separate containment qualification)
+      - name: Runtime Go tests
         run: bash release/packaging/test-runtime.sh
 
       - name: Templates/core path guard (docs + code)
@@ -240,16 +240,12 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
-      attestations: read
-    env:
-      DOCKPIPE_COCKPIT_NATIVE_TEST: '1'
-      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
           go-version: '1.26.9'
-      - name: Install matching native SDK prerequisites
+      - name: Install native host SDK prerequisites
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
@@ -259,24 +255,24 @@ jobs:
             libxcb-render-util0 libxcb-shape0 libxcb-xkb1 libx11-dev \
             libxcomposite-dev libxrender-dev libxres-dev libxext-dev libxcb1-dev \
             libnss3 libasound2t64 libsdl2-2.0-0
-      - name: Install pinned Qt ABI
+      - name: Install the exact Qt host ABI
         run: |
           bash release/packaging/desktop/install-linux-qt.sh "$RUNNER_TEMP/Qt"
           echo "DOCKPIPE_QT_ROOT=$RUNNER_TEMP/Qt/6.10.3/gcc_64" >> "$GITHUB_ENV"
-      - name: Build repository CLI
+      - name: Build the repository CLI
         run: make build-core
-      - name: Verify SDK publisher and qualify Cockpit
-        run: bash packages/cockpit/tests/run.sh
+      - name: Verify external package admission and mandatory rendering receipts
+        run: python3 -B -m unittest discover -s workflows/ci/installed-cockpit/tests -p 'test_*.py'
+      - name: Qualify the host SDK against installed Cockpit bytes
+        env:
+          DOCKPIPE_BIN: ${{ github.workspace }}/src/bin/dockpipe
+        run: '"$DOCKPIPE_BIN" --workflow-file workflows/ci/installed-cockpit/config.yml --workdir "$GITHUB_WORKSPACE" --'
 
   staging-release:
     needs: [test, test-windows, cockpit-native]
     if: github.event_name == 'push' && github.ref == 'refs/heads/staging' && vars.DOCKPIPE_RELEASE_ENABLED == 'true'
     permissions:
       contents: write
-      # Reusable workflows cannot declare permissions absent from the caller.
-      # Release jobs narrow these again; SDK signing itself is manual-only.
-      id-token: write
-      attestations: write
     uses: ./.github/workflows/release.yml
     # GitHub requires inheritance to resolve the called job's environment secrets.
     # https://github.com/actions/runner/issues/4453

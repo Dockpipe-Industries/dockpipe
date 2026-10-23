@@ -16,6 +16,7 @@ class QPushButton;
 class QTimer;
 class QStackedWidget;
 struct DesktopApplicationEntry;
+struct PackageDisplayMeta;
 
 class DashboardPage final : public QWidget {
     Q_OBJECT
@@ -31,6 +32,8 @@ public:
     void setFullscreen(bool fullscreen);
     bool launchDesktopApplication(const DesktopApplicationEntry &application);
     void addWindowForApplication(const QString &name);
+    bool attachPackageDisplay(const QString &title, qint64 processId, const QString &startToken, QString &error);
+    bool attachPackageDisplay(const PackageDisplayMeta &display, QString &error);
     void releaseDesktopWindows();
     int panelCount() const { return m_definition.panels.size(); }
     QString environment() const;

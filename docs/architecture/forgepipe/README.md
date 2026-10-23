@@ -35,9 +35,9 @@ flowchart TD
 | --- | --- | --- |
 | forgepipe (private) | Rendering, geometry, terrain/soil/water/weather, simulation, generic vehicle physics, camera/input/audio, engine asset and persistence foundations | Any consumer, DockPipe installation |
 | MesaMoto (private) | Bike configuration/tuning/assists, rider/race rules, tracks/RedBud, game presentation/content and standalone shell | DockPipe or SpatialPipe application |
-| SpatialPipe (private) | Offline worlds/planets, furnishing, generalized screens, portals, persistence; separate consumer application | DockPipe integrations or mandatory network identity |
+| SpatialPipe (private) | Offline worlds/planets, furnishing, generalized screens, portals, persistence; standalone application and separately packaged Cockpit host integration | DockPipe integrations or mandatory network identity in the offline runtime/application |
 | Spatial-Web (public) | Interpretation, discovery, manifests, web composition, reusable browser library and separate Spatial Browser shell | Cockpit, privileged host providers, private source access |
-| dockpipe | Optional Cockpit package, filesystem/Git/container/machine/workflow adapters, settings and installation | Any spatial dependency with Cockpit absent/disabled |
+| dockpipe | Native host SDK, generic package loading, host settings and installation; consumes optional Cockpit owned by SpatialPipe | Any spatial dependency with Cockpit absent/disabled |
 
 One implementation per capability. CMake installed package targets and versioned binary SDKs
 are the native boundary; no consumer source directory imports or sibling `add_subdirectory`.
@@ -289,3 +289,68 @@ both Mac architectures; no platform exception was added. Native Linux rendering
 qualification used the CI compositor and does not establish physical GPU gameplay
 acceptance. This delivery does not complete standalone product extraction,
 PipeLang bindings or a stable cross-toolchain SDK ABI. Production was not promoted.
+
+### SpatialPipe and separate Cockpit source checkpoint (2026-10-20)
+
+SpatialPipe now contains the separate `packages/cockpit` implementation. The
+transfer added 361 authored files and updated seven existing files, after checking
+396 original source hashes. Updated SpatialPipe preimages were backed up. Existing
+Dockpipe graph edits were copied exactly; no original source or saved data was
+deleted. The local SpatialPipe directory has no Git metadata. Its authored source
+has been reconciled with the initialized hosted repository in
+[SpatialPipe PR #2](https://github.com/Dockpipe-Industries/SpatialPipe/pull/2),
+preserving the security baseline and dependency updates targeting `dev`.
+The independent host SDK producer is in
+[Dockpipe PR #184](https://github.com/Dockpipe-Industries/dockpipe/pull/184).
+SpatialPipe PR #2 passed its hosted runtime SDK consumer and repository checks.
+The draft-release lookup repair in PR #3 then passed and merged into `dev` at
+`8b67f00a059a440665cdca93069a287fd817ad7f`. Its
+[runtime SDK candidate](https://github.com/Dockpipe-Industries/SpatialPipe/releases/tag/spatialpipe-sdk-0.1.0-staging.8b67f00a059a440665cdca93069a287fd817ad7f.39387510298.1)
+passed hosted build and publication. A fresh authenticated download verified its
+exact archive, metadata and installed inventory. The host SDK PR remains under
+platform qualification.
+
+The current continuation permits dependency candidates followed by Dockpipe
+staging qualification, with exact release and checksum pins. Production promotion
+and Freeflight changes remain excluded. PipeLang stays in Dockpipe.
+
+The complete scene layout, including transient vehicle and ride-surface records,
+is canonical in `SpatialPipe::Runtime`. Cockpit no longer compiles its own
+workspace, workspace-store or ride-surface implementation, and delegates
+structural furnishing storage to the runtime. Its ContextStore adapter still
+supplies the existing paths. Version-1 persistence remains unchanged. Unknown
+identities remain inert in runtime storage; legacy Cockpit catalog admission can
+still reject an unsupported layout without rewriting its file.
+
+Dockpipe can export `DockPipeLauncherSDK 1.0.0` with explicit host UI, host browser
+and header-only targets. Cockpit builds independently against installed exact
+host, SpatialPipe 0.1.0 and ForgePipe 0.1.0 SDKs with Qt 6.10.3. The root SpatialPipe
+runtime build does not import Cockpit or Dockpipe adapters. The headless engine
+was not changed. This host browser SDK is not the neutral Spatial-Web extraction.
+
+Local Linux amd64 validation passed:
+
+- SpatialPipe's pinned-CLI build/check/test workflows and runtime fixtures.
+- The installed launcher SDK consumer, including browser construction.
+- All 16 portable Cockpit contracts and 17 offscreen CTest fixtures.
+- Required X11 software-OpenGL geometry and late package-loading/rendering checks.
+- Separate X11 browser and image-extraction fixtures.
+- Bundle dependency closure, private-symbol separation, local resolver archive
+  compilation and checksum/payload readback.
+
+The independent CMake project restores optimized native builds, retaining private
+debug information. The original camera-return test passes unchanged. A GPU
+context-recreation colour assertion failed with Qt's offscreen driver; the same
+executable passes under X11 software OpenGL. The runners therefore execute that
+GPU check through the mandatory X11 path, without weakening assertions or treating
+exit 77 as success. Native handoff and desktop-window fixtures remained skipped;
+physical GPU, actual desktop interaction and other platforms are unverified.
+
+Dockpipe's old Cockpit tree remains temporarily because current CI/release jobs
+compile it. Retirement requires immutable delivered host/runtime dependencies,
+consumer checks and updated store composition. The source now pins the existing
+0.6.19 staging compiler and its archive digest; this preserves the manifest sizes
+needed by the package receipt. Cockpit 0.1.2 is reserved for this extraction.
+An earlier published Cockpit binary cannot prove delivery of the new source.
+Freeflight, saved data and the running preview remain untouched. Standalone
+applications and the remaining browser/game splits are still open.

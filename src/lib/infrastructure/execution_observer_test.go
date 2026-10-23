@@ -8,9 +8,57 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"dockpipe/src/lib/infrastructure/telemetry"
 )
+
+func TestActiveRuntimeAssociationSurvivesRecentHistoryEviction(t *testing.T) {
+	directory := t.TempDir()
+	runs := HostRunsDir(directory)
+	if err := os.MkdirAll(runs, 0700); err != nil {
+		t.Fatal(err)
+	}
+	identity := telemetry.ProcessIdentity{PID: 42, StartToken: "boot:original"}
+	host := HostRunRecord{ID: "a1b2c3d4", PID: identity.PID, ProcessStart: identity.StartToken, Workdir: directory, StartedAt: time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)}
+	resource := telemetry.Resource{ID: "runtime-resource", Runtime: "fixture", Process: identity}
+	for name, value := range map[string]any{"a1b2c3d4.json": host, "a1b2c3d4.resource": resource} {
+		data, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(runs, name), data, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	recent := make([]telemetry.Execution, telemetry.MaxExecutions)
+	for index := range recent {
+		recent[index] = telemetry.Execution{ID: "completed", State: "succeeded", StartedAt: time.Now()}
+	}
+	collector := executionFixtureCollector{process: telemetry.Process{ProcessIdentity: identity}}
+	merged, truncated, err := mergeActiveExecutionResources(context.Background(), directory, recent, collector)
+	if err != nil || !truncated || len(merged) != telemetry.MaxExecutions || merged[0].ID != host.ID {
+		t.Fatalf("active association lost: count=%d truncated=%v err=%v", len(merged), truncated, err)
+	}
+	collector.process.StartToken = "boot:reused"
+	merged, _, err = mergeActiveExecutionResources(context.Background(), directory, recent, collector)
+	if err != nil || merged[0].ID == host.ID {
+		t.Fatal("reused PID recovered an unrelated execution")
+	}
+	t.Run("reject linked registry entry", func(t *testing.T) {
+		collector.process.StartToken = identity.StartToken
+		if err := os.Rename(filepath.Join(runs, "a1b2c3d4.json"), filepath.Join(runs, "original-host-record")); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(filepath.Join(runs, "original-host-record"), filepath.Join(runs, "a1b2c3d4.json")); err != nil {
+			t.Skip("platform does not permit creating test symlinks")
+		}
+		merged, _, err = mergeActiveExecutionResources(context.Background(), directory, recent, collector)
+		if err != nil || merged[0].ID == host.ID {
+			t.Fatal("linked registry entry accepted")
+		}
+	})
+}
 
 func TestExecutionLifecycleRapidExitAssociationAndPrivacy(t *testing.T) {
 	directory := t.TempDir()

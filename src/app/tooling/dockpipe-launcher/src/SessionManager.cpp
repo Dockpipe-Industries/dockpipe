@@ -138,6 +138,11 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
 
         QByteArray visible;
         auto processLine = [this, ctx, &visible](const QByteArray &rawLine) {
+            if (ctx.maximumOutputLineBytes > 0 && rawLine.size() > ctx.maximumOutputLineBytes) {
+                emit sessionFailed(ctx.id, QStringLiteral("Workflow output exceeded the consumer's line capacity."));
+                stop(ctx.id);
+                return;
+            }
             const QString line = QString::fromLocal8Bit(rawLine);
             if (line.startsWith(promptEventPrefix())) {
                 QString payload = line.mid(promptEventPrefix().size());
@@ -156,6 +161,13 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
             const QByteArray line = pending.left(newline + 1);
             pending.remove(0, newline + 1);
             processLine(line);
+        }
+
+        if (ctx.maximumOutputLineBytes > 0 && pending.size() > ctx.maximumOutputLineBytes) {
+            pending.clear();
+            emit sessionFailed(ctx.id, QStringLiteral("Workflow output exceeded the consumer's line capacity."));
+            stop(ctx.id);
+            return;
         }
 
         if (drainRemainder && !pending.isEmpty()) {

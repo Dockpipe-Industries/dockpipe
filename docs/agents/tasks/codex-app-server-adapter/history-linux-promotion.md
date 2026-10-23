@@ -1,5 +1,7 @@
 #### Linux VM reviewed source-build offline-promotion contract (2026-08-08)
 
+Repository ownership note: package paths in this record describe external source. Current catalog packages live in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages); previously extracted [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) and [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) remain in their own repositories. Historical paths and receipts do not recreate a local package tree.
+
 The missing boundary between deterministic source-build evidence and Gate 2 inputs is now a
 separately authorized offline promotion. This decision records the already reviewed source root
 `/tmp/dockpipe-vm-source-review.ZStX82CE` without re-reading it. The reviewed repository checkpoint

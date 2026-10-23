@@ -271,11 +271,11 @@ MAIN_WORKFLOW_IDENTITY = ('workflow', 'dockpipe-repo-quality')
 COCKPIT_IDENTITY = ('resolver', 'cockpit')
 
 
-def finalize_cockpit(baseline_root, cockpit_root, output, version):
+def finalize_cockpit(baseline_root, cockpit_root, output, version, sdk_lock_path=None):
     """Admit only the matching Linux amd64 build's qualified Cockpit resolver.
 
     The complete initial store remains authoritative for core and every other
-    package. SDK identity comes from the committed consumer lock, not candidate
+    package. SDK identity comes from the explicitly selected consumer lock, not candidate
     ownership supplied by the new archive.
     """
     baseline = read_json(baseline_root / 'packages-store-manifest.json', composer.MAX_MANIFEST_BYTES)
@@ -299,8 +299,14 @@ def finalize_cockpit(baseline_root, cockpit_root, output, version):
         if (not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', previous_version)
                 or tuple(map(int, previous_version.split('.'))) > (0, 1, 1)):
             raise ValueError('Cockpit finalization cannot downgrade the existing package')
-    lock_path = Path(__file__).resolve().parents[2] / 'packages/cockpit/assets/forgepipe-sdk.lock.json'
-    lock = read_json(lock_path, MAX_LOCK_BYTES)
+    if sdk_lock_path is None:
+        selected_lock = os.environ.get('DOCKPIPE_COCKPIT_SDK_LOCK', '')
+        if not selected_lock:
+            raise ValueError('External Cockpit qualification requires an explicit SDK lock; set DOCKPIPE_COCKPIT_SDK_LOCK')
+        sdk_lock_path = Path(selected_lock)
+    if not sdk_lock_path.is_absolute():
+        raise ValueError('External Cockpit SDK lock must use an absolute path')
+    lock = read_json(sdk_lock_path, MAX_LOCK_BYTES)
     receipt = read_json(cockpit_root / 'cockpit-qualification.json', MAX_LOCK_BYTES)
     source_sha = os.environ.get('DOCKPIPE_RELEASE_SOURCE_SHA', '')
     if not re.fullmatch(r'[0-9a-f]{40}', source_sha) or receipt.get('source_sha') != source_sha:
@@ -427,6 +433,8 @@ def main():
     parser.add_argument('--finalize-cockpit', action='store_true')
     parser.add_argument('--base-store', type=Path)
     parser.add_argument('--cockpit-store', type=Path)
+    parser.add_argument('--cockpit-sdk-lock', type=Path,
+                        help='Explicit immutable SDK lock for optional external Cockpit qualification')
     parser.add_argument('--version')
     parser.add_argument('--out', type=Path, required=True)
     args = parser.parse_args()
@@ -434,7 +442,8 @@ def main():
         if args.finalize_cockpit:
             if not all((args.base_store, args.cockpit_store, args.version)):
                 parser.error('--finalize-cockpit needs --base-store, --cockpit-store and --version')
-            manifest = finalize_cockpit(args.base_store, args.cockpit_store, args.out, args.version)
+            manifest = finalize_cockpit(args.base_store, args.cockpit_store, args.out,
+                                       args.version, args.cockpit_sdk_lock)
         else:
             if not all((args.lock, args.platform, args.core_store, args.main_store)):
                 parser.error('Initial ingestion needs --lock, --platform, --core-store and --main-store')

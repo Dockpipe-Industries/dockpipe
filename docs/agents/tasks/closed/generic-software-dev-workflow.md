@@ -1,5 +1,7 @@
 # TASK-007 Generic Software Dev Workflow — Closed
 
+Repository ownership note: package paths in this record describe external source. Current catalog packages live in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages); previously extracted [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) and [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) remain in their own repositories. Historical paths and receipts do not recreate a local package tree.
+
 Completed: 2026-07-18
 
 ## Shipped
@@ -28,7 +30,7 @@ Completed: 2026-07-18
 ## Consumer Contract
 
 The canonical invocation, artifact, approval/apply, wrapper, and promotion command documentation is
-[`packages/dorkpipe/workflows/software.dev/README.md`](../../../../packages/dorkpipe/workflows/software.dev/README.md).
+[`packages/dorkpipe/workflows/software.dev/README.md`](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe/workflows/software.dev/README.md).
 Planner promotion policy and approval ownership remain canonical in
 [`docs/agents/workflows/planner-promotion-model.md`](../../workflows/planner-promotion-model.md).
 

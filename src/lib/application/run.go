@@ -86,6 +86,9 @@ func Run(argv []string, baseEnviron []string) error {
 		printUsage()
 		return nil
 	}
+	if err := checkCLIProjectVersion(argv); err != nil {
+		return err
+	}
 	if argv[0] == "init" {
 		return cmdInit(argv[1:])
 	}
@@ -191,10 +194,6 @@ func Run(argv []string, baseEnviron []string) error {
 		infrastructure.SetWorkflowsDirForProcess(opts.WorkflowsDir)
 		defer infrastructure.SetWorkflowsDirForProcess("")
 	}
-	if err := ensureHostBash(); err != nil {
-		return err
-	}
-
 	if compileDepsWanted(opts) && opts.Workflow != "" && !isVSCodeWorkflow(opts.Workflow) && opts.WorkflowFile == "" && strings.TrimSpace(opts.Package) == "" {
 		effWd := effectiveWorkdirForWorkflowOpts(opts)
 		if err := compileClosureForWorkflow(effWd, opts.Workflow, opts.Force); err != nil {

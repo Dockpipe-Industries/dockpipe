@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestTemplateBuild maps template names to image names and Dockerfile directories under the repo.
+// TestTemplateBuild verifies required generic images remain in the core source.
 func TestTemplateBuild(t *testing.T) {
 	repoRoot := localModuleRoot(t)
 	core := CoreDir(repoRoot)
@@ -19,11 +19,6 @@ func TestTemplateBuild(t *testing.T) {
 	}{
 		{"base-dev", "dockpipe-base-dev", filepath.Join(core, "assets", "images", "base-dev"), true, true},
 		{"dev", "dockpipe-dev", filepath.Join(core, "assets", "images", "dev"), true, true},
-		{"agent-dev", "dockpipe-claude", DockerfileDir(repoRoot, "claude"), true, true},
-		{"claude", "dockpipe-claude", DockerfileDir(repoRoot, "claude"), true, true},
-		{"codex", "dockpipe-codex", DockerfileDir(repoRoot, "codex"), true, true},
-		{"vscode", "dockpipe-vscode", DockerfileDir(repoRoot, "vscode"), true, false},
-		{"ollama", "dockpipe-ollama", DockerfileDir(repoRoot, "ollama"), true, true},
 		{"unknown", "", "", false, false},
 	}
 	for _, tc := range cases {
@@ -36,6 +31,46 @@ func TestTemplateBuild(t *testing.T) {
 				if st, err := os.Stat(filepath.Join(dir, "Dockerfile")); err != nil || st.IsDir() {
 					t.Fatalf("expected Dockerfile under %q, stat err=%v", dir, err)
 				}
+			}
+		})
+	}
+}
+
+func TestTemplateBuildExternalImagesUseConfiguredSource(t *testing.T) {
+	repo := t.TempDir()
+	vendorRoot := filepath.Join(repo, "vendor", "images")
+	for _, name := range []string{"claude", "codex", "vscode", "ollama"} {
+		dockerfile := filepath.Join(vendorRoot, name, "assets", "images", name, "Dockerfile")
+		if err := os.MkdirAll(filepath.Dir(dockerfile), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(dockerfile, []byte("FROM scratch\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	config := []byte(`{"compile":{"workflows":["vendor/images"]}}`)
+	if err := os.WriteFile(filepath.Join(repo, "dockpipe.config.json"), config, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cases := []struct {
+		name     string
+		resolved string
+	}{
+		{"agent-dev", "claude"},
+		{"claude", "claude"},
+		{"codex", "codex"},
+		{"vscode", "vscode"},
+		{"ollama", "ollama"},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			image, directory, ok := TemplateBuild(repo, test.name)
+			expectedImage := "dockpipe-" + test.resolved
+			expectedDirectory := filepath.Join(vendorRoot, test.resolved, "assets", "images", test.resolved)
+			if !ok || image != expectedImage || directory != expectedDirectory {
+				t.Fatalf("TemplateBuild(%q) = (%q, %q, %v), want (%q, %q, true)",
+					test.name, image, directory, ok, expectedImage, expectedDirectory)
 			}
 		})
 	}
