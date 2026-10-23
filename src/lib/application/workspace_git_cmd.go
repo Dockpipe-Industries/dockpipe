@@ -43,7 +43,7 @@ func cmdWorkspaceGit(args []string) error {
 		return fmt.Errorf("project Git request: %w", err)
 	}
 	switch request.Action {
-	case "status", "diff", "commit", "pull", "push", "review-status", "compare", "catalog", "stage", "unstage", "discard", "commit-index", "history", "commit-review", "branch-create", "branch-switch", "branch-delete", "fetch", "merge", "stash-list", "stash-save", "stash-apply", "stash-pop", "stash-drop", "revert", "cherry-pick", "operation-continue", "operation-skip", "operation-abort", "resolve-stage", "resolve-ours", "resolve-theirs", "resolve-delete":
+	case "status", "diff", "commit", "pull", "push", "tag-publish", "review-status", "compare", "catalog", "stage", "unstage", "discard", "commit-index", "history", "commit-review", "branch-create", "branch-switch", "branch-delete", "fetch", "merge", "stash-list", "stash-save", "stash-apply", "stash-pop", "stash-drop", "revert", "cherry-pick", "operation-continue", "operation-skip", "operation-abort", "resolve-stage", "resolve-ours", "resolve-theirs", "resolve-delete":
 	default:
 		return errors.New("unsupported project Git action")
 	}
