@@ -22,7 +22,7 @@ func dockerGitFixture(t *testing.T, root string, input string, args ...string) s
 	if err := command.Run(); err != nil {
 		t.Fatalf("fixture Git %v: %v\n%s\n%s", args, err, output.Bytes(), diagnostics.Bytes())
 	}
-	return strings.TrimSpace(string(output.Bytes()))
+	return strings.TrimSpace(output.String())
 }
 
 func dockerLinkedFixture(t *testing.T) (string, string) {
