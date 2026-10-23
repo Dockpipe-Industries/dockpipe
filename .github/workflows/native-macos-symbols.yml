@@ -11,6 +11,7 @@ on:
       - release/packaging/desktop/macos/protect-owned-binaries.py
       - release/packaging/desktop/macos/package.sh
       - release/packaging/desktop/macos/create-dmg.sh
+      - release/packaging/desktop/macos/verify-dmg.sh
       - release/packaging/tests/test_macos_dmg.py
       - release/packaging/tests/test_native_symbol_boundaries.py
       - src/app/tooling/dockpipe-launcher/src/DashboardWorkspace.cpp
@@ -116,6 +117,7 @@ jobs:
         shell: bash
         run: python3 -m unittest discover -s release/packaging/tests -p test_native_symbol_boundaries.py -v
       - name: Qualify DMG creation and bounded recovery
+        timeout-minutes: 3
         shell: bash
         run: |
           set -euo pipefail
@@ -124,7 +126,7 @@ jobs:
           mkdir "$proof/source"
           printf '%s\n' 'Disposable Dockpipe DMG qualification fixture' > "$proof/source/fixture.txt"
           bash release/packaging/desktop/macos/create-dmg.sh "$proof/source" "$proof/fixture.dmg"
-          hdiutil verify "$proof/fixture.dmg"
+          bash release/packaging/desktop/macos/verify-dmg.sh "$proof/fixture.dmg"
       - name: Build and audit the owned release binaries
         shell: bash
         run: |

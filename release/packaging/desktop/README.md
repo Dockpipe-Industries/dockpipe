@@ -75,6 +75,17 @@ Its package-owned producer qualifies native rendering and emits a separate
 On macOS, run `bash release/packaging/desktop/build-unix.sh VERSION release/artifacts`
 with CMake and Qt 6.10.3 including WebEngine, WebChannel and Positioning modules,
 with deployment target macOS 13.
+The macOS packager verifies each newly created DMG before publishing its final
+filename. `macos/verify-dmg.sh` retries the same image only when `hdiutil` exits 1
+with the exact observed “Resource temporarily unavailable” diagnostic, at most
+three times with two- and four-second delays. Corruption, other errors and
+cancellation remain failures. Failed attempts retain their diagnostic logs; the
+helper does not detach volumes or terminate DiskImages services. Each synchronous
+`hdiutil` command remains under its caller's timeout and cancellation: the native
+CI fixture has a three-minute step deadline within a thirty-minute job, and the
+release packager runs under its build job's deadline. Direct callers must provide
+their own process lifetime boundary; the helper bounds retries, not command time.
+
 Windows uses `build-windows.ps1` with Visual
 Studio 2022, the same Qt modules and `windeployqt`, then the existing WiX MSI builder.
 The native deployment scripts reject missing WebEngine helper/resources/locales.

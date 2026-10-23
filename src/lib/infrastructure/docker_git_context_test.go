@@ -16,11 +16,13 @@ func dockerGitFixture(t *testing.T, root string, input string, args ...string) s
 	command := exec.Command("git", append([]string{"-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + os.DevNull, "-C", root}, args...)...)
 	command.Env = dockerGitEnvironment()
 	command.Stdin = strings.NewReader(input)
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("fixture Git %v: %v\n%s", args, err, output)
+	var output, diagnostics workspaceGitBuffer
+	command.Stdout = &output
+	command.Stderr = &diagnostics
+	if err := command.Run(); err != nil {
+		t.Fatalf("fixture Git %v: %v\n%s\n%s", args, err, output.Bytes(), diagnostics.Bytes())
 	}
-	return strings.TrimSpace(string(output))
+	return strings.TrimSpace(string(output.Bytes()))
 }
 
 func dockerLinkedFixture(t *testing.T) (string, string) {
