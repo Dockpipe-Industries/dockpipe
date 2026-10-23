@@ -59,6 +59,48 @@ credentials use the existing local Git configuration; interactive terminal promp
 are disabled. Review output is limited to 8 MiB and 2048 changed files; an operation
 has a two-minute deadline. JSON goes to stdout and operation diagnostics to stderr.
 
+`tag-publish` is a separately confirmed remote publication. Supply `name` (a
+short tag name, without `refs/tags/`), `commit` (a full lowercase object ID matching
+the repository format), the fresh `snapshot`, and `confirm: true`. For example:
+
+```json
+{
+  "workdir": "/path/to/project",
+  "action": "tag-publish",
+  "snapshot": "<fresh status fingerprint>",
+  "name": "reviewed-example",
+  "commit": "<exact full reviewed commit object ID>",
+  "confirm": true
+}
+```
+
+The project must be clean, have no active Git operation, and contain the selected
+commit in the reviewed HEAD's ancestry. The runtime resolves exactly one effective
+`origin` push destination and uses that same destination for observation and one
+non-force `<commit>:refs/tags/<name>` push. It does not create a local tag, move a
+branch, change upstream configuration, fetch, force, delete or follow other tags.
+Before observing or pushing, the resolved literal destination must remain the same
+under Git's fetch URL resolution and must match no further `insteadOf` or
+`pushInsteadOf` prefix. This conservative check rejects rewrite ambiguity,
+including explicit `origin.pushurl` rules that a later literal push would handle
+differently. It is repeated immediately before pushing without changing stored
+configuration, credential helpers or hooks. Ordinary origin shorthand rewrites
+are supported when their resolved destination needs no further rewrite.
+A literal destination that is also a configured remote name is rejected.
+
+An existing remote ref is accepted only when its actual object ID exactly equals
+the selected commit; an annotated tag object is not equivalent to its peeled
+commit. A competing ref is never overwritten.
+
+Success includes `tag_publication` with the requested and observed commit, exact
+ref, `origin`, a SHA256 of its effective push destination, and `already_published`
+and `recovered` flags. The destination URL is not returned. `recovered` means a
+push reported failure but one readback proved that the remote accepted the exact
+commit. Failed or ambiguous readback is an error; there is no blind push retry.
+Cancellation propagates and may leave an already accepted remote tag in place.
+Refresh and reconcile that exact ref before retrying. The existing two-minute
+CLI deadline and bounded Git output apply.
+
 This adapter serves explicit human actions in an existing project. Autonomous
 agents continue to use the managed [session lifecycle](runtime/git-runtime-sessions.md).
 

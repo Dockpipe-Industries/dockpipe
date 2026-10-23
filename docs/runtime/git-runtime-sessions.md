@@ -64,6 +64,20 @@ This simpler human UI is separate from the strict session checkpoint/publication
 request and receipt contracts below. See [CLI reference](../cli-reference.md#project-git)
 for its request fields and limits.
 
+The separately confirmed project `tag-publish` action publishes one immutable
+commit to one `origin` tag ref. It requires a clean fresh snapshot and a full
+canonical commit reachable from reviewed HEAD. It resolves the effective push
+destination once, observes the exact tag, revalidates project and destination,
+then performs at most one non-force exact-OID push and verifies the actual remote
+OID. Literal fetch resolution must preserve the resolved destination; matching
+additional fetch/push URL rewrite prefixes are conservatively rejected before
+remote observation and again before push. No persistent Git configuration,
+credential helpers or hooks are modified. A literal URL cannot also name another configured remote. Existing exact refs are idempotent; conflicting or ambiguous refs fail.
+Local tags, branches, index and configuration remain untouched. Cancellation or
+transport failure can leave a remote effect, so recovery observes the same exact
+ref rather than deleting or replacing it. This human-authorized project action
+does not expand managed session publication beyond `refs/heads/`.
+
 ### Managed sessions
 
 The public interface should be provider-neutral. The local CLI now exposes the human-facing review
