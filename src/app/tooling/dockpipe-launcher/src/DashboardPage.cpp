@@ -41,6 +41,7 @@
 DashboardPage::DashboardPage(const DashboardDefinition &definition, DashboardWidgetFactory *factory, QWidget *parent)
     : QWidget(parent), m_definition(definition), m_factory(factory)
 {
+    m_tilingEnabled = LauncherSettings::current().tilingEnabled;
     setObjectName("dashboardPage");
     setProperty("dashboardId", definition.id);
     auto *layout = new QVBoxLayout(this);
@@ -70,8 +71,9 @@ DashboardPage::DashboardPage(const DashboardDefinition &definition, DashboardWid
     toolbar->addStretch(1);
     m_canvas = new QPushButton(tr("Canvas"));
     m_canvas->setObjectName("dashboardCanvasMode");
-    m_tiling = new QPushButton(tr("Tiling"));
+    m_tiling = new QPushButton(tr("Tiling · Experimental"));
     m_tiling->setObjectName("dashboardTilingMode");
+    m_tiling->setVisible(m_tilingEnabled);
     auto *modeSwitch = new QFrame;
     modeSwitch->setObjectName("dashboardModeSwitch");
     auto *modeLayout = new QHBoxLayout(modeSwitch);
@@ -686,10 +688,24 @@ DashboardWorkspace *DashboardPage::workspaceFor(const QString &environment) cons
     return environment == "tiling" ? m_tilingWorkspace : m_canvasWorkspace;
 }
 
+void DashboardPage::setTilingEnabled(bool enabled)
+{
+    m_tilingEnabled = enabled;
+    m_tiling->setVisible(enabled);
+    if (!enabled) {
+        releaseDesktopWindows();
+        setEnvironment("canvas");
+    }
+}
+
 void DashboardPage::setEnvironment(const QString &mode)
 {
     if (mode != "canvas" && mode != "tiling")
         return;
+    if (mode == "tiling" && !m_tilingEnabled) {
+        setEnvironment("canvas");
+        return;
+    }
     const bool changed = environment() != mode;
     m_workspace = workspaceFor(mode);
     m_environments->setCurrentWidget(m_workspace);

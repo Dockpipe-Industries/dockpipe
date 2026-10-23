@@ -22,6 +22,7 @@ int main(int argc, char **argv)
     LauncherSettings defaults;
     CHECK(defaults.load());
     CHECK(defaults.defaultDashboardVisible);
+    CHECK(!defaults.tilingEnabled);
     CHECK(!defaults.cockpit.enabled && !defaults.cockpit.appControl && !defaults.cockpit.controller);
     CHECK(!defaults.cockpit.voiceCommands && defaults.cockpit.orbitalMotion);
     CHECK(defaults.save());
@@ -31,6 +32,11 @@ int main(int argc, char **argv)
     file.close();
     CHECK(defaults.load() && !defaults.cockpit.enabled);
     CHECK(!defaults.cockpit.voiceCommands);
+    CHECK(!defaults.tilingEnabled);
+    CHECK(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    CHECK(file.write("{\"uiMode\":\"advanced\",\"experimental\":{\"tiling\":\"true\",\"future\":42}}") > 0);
+    file.close();
+    CHECK(defaults.load() && !defaults.tilingEnabled);
 
     SettingsDialog dialog(defaults);
     auto *showDashboard = dialog.findChild<QCheckBox *>("settingsDefaultDashboardVisible");
@@ -38,10 +44,16 @@ int main(int argc, char **argv)
     showDashboard->setChecked(false);
     CHECK(!dialog.updatedSettings().defaultDashboardVisible);
     CHECK(LauncherSettings::current().defaultDashboardVisible);
+    auto *tiling = dialog.findChild<QCheckBox *>("settingsTilingEnabled");
+    CHECK(tiling && !tiling->isChecked() && tiling->text().contains("Experimental"));
+    tiling->setChecked(true);
+    CHECK(dialog.updatedSettings().tilingEnabled);
+    CHECK(!LauncherSettings::current().tilingEnabled);
     auto *group = dialog.findChild<QGroupBox *>("cockpitSettingsGroup");
     auto *options = dialog.findChild<QWidget *>("cockpitSettingsOptions");
     auto *enabled = dialog.findChild<QCheckBox *>("settingsCockpitEnabled");
     CHECK(group && options && enabled && group->isAncestorOf(options));
+    CHECK(group->title().contains("Experimental") && enabled->text().contains("Experimental"));
     auto *experimental = dialog.findChild<QGroupBox *>("cockpitExperimentalSettingsGroup");
     auto *voice = dialog.findChild<QCheckBox *>("settingsCockpitVoice");
     CHECK(experimental && voice && options->isAncestorOf(experimental));
@@ -70,6 +82,7 @@ int main(int argc, char **argv)
     CHECK(updated.save());
     auto loaded = LauncherSettings::current();
     CHECK(!loaded.defaultDashboardVisible);
+    CHECK(loaded.tilingEnabled);
     CHECK(loaded.cockpit.enabled && loaded.cockpit.appControl && loaded.cockpit.controller);
     CHECK(loaded.cockpit.voiceCommands && !loaded.cockpit.orbitalMotion);
     CHECK(loaded.uiMode == "advanced");
@@ -77,7 +90,10 @@ int main(int argc, char **argv)
     CHECK(!options->isEnabled());
     updated = dialog.updatedSettings();
     CHECK(!updated.cockpit.enabled && updated.cockpit.appControl && updated.cockpit.controller);
+    tiling->setChecked(false);
+    updated = dialog.updatedSettings();
     dialog.reject();
+    CHECK(LauncherSettings::current().tilingEnabled);
     CHECK(LauncherSettings::current().cockpit.enabled);
     CHECK(updated.save());
     CHECK(file.open(QIODevice::ReadOnly));
@@ -86,6 +102,8 @@ int main(int argc, char **argv)
     CHECK(!json.value("cockpit").toObject().contains("voiceCommands"));
     CHECK(json.value("cockpit").toObject().value("experimental").toObject().value("voiceCommands").toBool());
     CHECK(!json.contains("appControl"));
+    CHECK(!json.value("experimental").toObject().value("tiling").toBool(true));
+    CHECK(json.value("experimental").toObject().value("future").toInt() == 42);
     file.close();
     bool completed = true;
     bool suppressed = true;

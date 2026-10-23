@@ -38,6 +38,11 @@ STABLE_RELEASE_URL = re.compile(
     r'(?P<version>[0-9]+\.[0-9]+\.[0-9]+)/'
     r'(?P=owner)-packages-(?P=version)-linux-amd64\.tar\.gz'
 )
+CATALOG_URL = re.compile(
+    r'https://github\.com/Dockpipe-Industries/dockpipe-packages/releases/download/'
+    r'catalog-candidate-(?P<source>[0-9a-f]{40})/'
+    r'dockpipe-catalog-(?P<platform>linux-amd64|linux-arm64|darwin-amd64|darwin-arm64|windows-amd64)\.tar\.gz'
+)
 PIN_FIELDS = {'url', 'sha256', 'size_bytes', 'manifest_sha256'}
 
 
@@ -70,16 +75,25 @@ def read_json(path, maximum):
     return json.loads(data, object_pairs_hook=composer.reject_duplicate_keys)
 
 
-def validate_pin(pin, *, baseline_platform=None, candidate_name=None, candidate_version=None):
+def validate_pin(pin, *, baseline_platform=None, candidate_name=None, candidate_version=None,
+                 catalog_platform=None, catalog_source_commit=None):
     if not isinstance(pin, dict) or set(pin) != PIN_FIELDS:
         raise ValueError('Published bundle requires complete immutable pins')
     url = pin['url']
-    if not isinstance(url, str) or (baseline_platform is None) == (candidate_name is None):
-        raise ValueError('Bundle requires an explicit baseline or candidate source')
+    roles = (baseline_platform, candidate_name, catalog_platform)
+    if not isinstance(url, str) or sum(role is not None for role in roles) != 1:
+        raise ValueError('Bundle requires exactly one explicit publisher role')
+    if catalog_platform is None and catalog_source_commit is not None:
+        raise ValueError('Catalog source identity requires its publisher role')
     if baseline_platform is not None:
         matched = GITHUB_BASELINE_URL.fullmatch(url)
         if matched is None or matched['platform'] != baseline_platform:
             raise ValueError('Baseline must use its immutable GitHub release asset')
+    elif catalog_platform is not None:
+        matched = CATALOG_URL.fullmatch(url)
+        if (matched is None or matched['platform'] != catalog_platform
+                or matched['source'] != catalog_source_commit):
+            raise ValueError('Catalog must use its exact owning source and native release asset')
     else:
         matched = STAGING_CANDIDATE_URL.fullmatch(url) or STABLE_RELEASE_URL.fullmatch(url)
         if (matched is None or matched['owner'] != candidate_name
@@ -103,7 +117,8 @@ def validate_hidden_identities(raw_identities, candidate_ownership):
 
 def load_lock(path):
     lock = read_json(path, MAX_LOCK_BYTES)
-    if (not isinstance(lock, dict) or set(lock) != {'schema', 'baselines', 'linux_candidates', 'hidden_identities'}
+    required = {'schema', 'baselines', 'linux_candidates', 'hidden_identities'}
+    if (not isinstance(lock, dict) or not required.issubset(lock) or set(lock) - required - {'catalog'}
             or type(lock['schema']) is not int or lock['schema'] != 1):
         raise ValueError('Unsupported first-party store lock')
     if not isinstance(lock['baselines'], dict) or set(lock['baselines']) != PLATFORMS:
@@ -128,7 +143,37 @@ def load_lock(path):
         validate_pin(candidate['artifact'], candidate_name=name,
                      candidate_version=candidate['version'])
     validate_hidden_identities(lock['hidden_identities'], seen)
+    if 'catalog' in lock:
+        validate_catalog(lock['catalog'], seen)
     return lock
+
+
+def validate_catalog(catalog, independent_ownership):
+    if not isinstance(catalog, dict) or set(catalog) != {'source_commit', 'owned', 'artifacts'}:
+        raise ValueError('Catalog requires source identity, exact ownership and native artifacts')
+    source = catalog['source_commit']
+    if not isinstance(source, str) or not re.fullmatch(r'[0-9a-f]{40}', source):
+        raise ValueError('Catalog source commit must be exact')
+    ownership = composer.validate_ownership(catalog['owned'])
+    if MAIN_WORKFLOW_IDENTITY in ownership or ownership & independent_ownership:
+        raise ValueError('Catalog cannot replace core-owned or independently published identities')
+    artifacts = catalog['artifacts']
+    if not isinstance(artifacts, dict) or not artifacts or set(artifacts) - PLATFORMS:
+        raise ValueError('Catalog requires explicitly qualified native platforms')
+    for platform, pin in artifacts.items():
+        validate_pin(pin, catalog_platform=platform, catalog_source_commit=source)
+
+
+def compose_catalog(catalog, platform, baseline, baseline_root, manifest, catalog_root, output):
+    if platform not in catalog['artifacts'] or baseline.get('platform') != platform:
+        raise ValueError('Catalog composition requires its qualified target')
+    entries, _ = composer.validate_store(manifest, candidate=True)
+    if (set(manifest['packages']) - {'resolvers', 'workflows'}
+            or manifest.get('platform') != platform
+            or set(entries) != composer.validate_ownership(catalog['owned'])):
+        raise ValueError('Catalog manifest differs from its exact native ownership')
+    return composer.assemble(baseline, manifest, catalog['owned'], baseline_root,
+                             catalog_root, output, MAX_EXPANDED_BYTES)
 
 
 def apply_hidden_policy(manifest, hidden_identities):
@@ -157,9 +202,11 @@ def verify_bundle(path, pin):
         raise ValueError('Bundle checksum differs from its committed pin')
 
 
-def download(pin, destination, *, baseline_platform=None, candidate_name=None, candidate_version=None):
+def download(pin, destination, *, baseline_platform=None, candidate_name=None, candidate_version=None,
+             catalog_platform=None, catalog_source_commit=None):
     validate_pin(pin, baseline_platform=baseline_platform, candidate_name=candidate_name,
-                 candidate_version=candidate_version)
+                 candidate_version=candidate_version, catalog_platform=catalog_platform,
+                 catalog_source_commit=catalog_source_commit)
     if destination.exists() or destination.is_symlink():
         raise ValueError('Download destination must be fresh')
     command = ['curl', '--fail', '--silent', '--show-error', '--location',
@@ -271,57 +318,27 @@ MAIN_WORKFLOW_IDENTITY = ('workflow', 'dockpipe-repo-quality')
 COCKPIT_IDENTITY = ('resolver', 'cockpit')
 
 
-def finalize_cockpit(baseline_root, cockpit_root, output, version, sdk_lock_path=None):
-    """Admit only the matching Linux amd64 build's qualified Cockpit resolver.
-
-    The complete initial store remains authoritative for core and every other
-    package. SDK identity comes from the explicitly selected consumer lock, not candidate
-    ownership supplied by the new archive.
-    """
+def finalize_cockpit(baseline_root, cockpit_root, output, version, lock_path=None):
+    """Replace only resolver/cockpit with the independently pinned public runtime."""
+    spec = importlib.util.spec_from_file_location('pinned_cockpit', Path(__file__).with_name('prepare-cockpit.py'))
+    consumer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(consumer)
+    if lock_path is None:
+        lock_path = Path(__file__).resolve().parents[2] / 'release/cockpit.lock.json'
+    lock = consumer.load_lock(lock_path)
+    candidate, _, _ = consumer.verify_store(cockpit_root, lock)
     baseline = read_json(baseline_root / 'packages-store-manifest.json', composer.MAX_MANIFEST_BYTES)
-    candidate = read_json(cockpit_root / 'packages-store-manifest.json', composer.MAX_MANIFEST_BYTES)
-    if baseline.get('platform') != 'linux-amd64' or candidate.get('platform') != 'linux-amd64':
-        raise ValueError('Cockpit qualification supports Linux amd64 only')
-    if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version):
-        raise ValueError('Cockpit finalization needs the exact numeric Dockpipe release version')
     baseline_entries, _ = composer.validate_store(baseline)
-    if baseline['packages'].get('core', {}).get('version') != version:
-        raise ValueError('Initial core does not match the selected release version')
-    entries, _ = composer.validate_store(candidate, candidate=True)
-    if set(entries) != {COCKPIT_IDENTITY} or set(candidate['packages']) - {'resolvers', 'workflows'}:
-        raise ValueError('Cockpit build must own exactly resolver/cockpit and no core')
-    entry = entries[COCKPIT_IDENTITY]
-    if entry['version'] != '0.1.1':
-        raise ValueError('Cockpit build differs from the qualified package version')
+    if (baseline.get('platform') != lock['platform']
+            or not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version)
+            or baseline['packages'].get('core', {}).get('version') != version):
+        raise ValueError('Initial core must match the selected Linux amd64 release')
     previous = baseline_entries.get(COCKPIT_IDENTITY)
     if previous:
         previous_version = previous['version']
         if (not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', previous_version)
-                or tuple(map(int, previous_version.split('.'))) > (0, 1, 1)):
+                or tuple(map(int, previous_version.split('.'))) > tuple(map(int, lock['version'].split('.')))):
             raise ValueError('Cockpit finalization cannot downgrade the existing package')
-    if sdk_lock_path is None:
-        selected_lock = os.environ.get('DOCKPIPE_COCKPIT_SDK_LOCK', '')
-        if not selected_lock:
-            raise ValueError('External Cockpit qualification requires an explicit SDK lock; set DOCKPIPE_COCKPIT_SDK_LOCK')
-        sdk_lock_path = Path(selected_lock)
-    if not sdk_lock_path.is_absolute():
-        raise ValueError('External Cockpit SDK lock must use an absolute path')
-    lock = read_json(sdk_lock_path, MAX_LOCK_BYTES)
-    receipt = read_json(cockpit_root / 'cockpit-qualification.json', MAX_LOCK_BYTES)
-    source_sha = os.environ.get('DOCKPIPE_RELEASE_SOURCE_SHA', '')
-    if not re.fullmatch(r'[0-9a-f]{40}', source_sha) or receipt.get('source_sha') != source_sha:
-        raise ValueError('Cockpit qualification does not bind the selected Dockpipe source SHA')
-    if (receipt.get('schema') != 1 or receipt.get('platform') != 'linux-amd64'
-            or receipt.get('qt_version') != '6.10.3' or receipt.get('resolver') != entry
-            or not isinstance(lock.get('artifact'), dict)
-            or not re.fullmatch(r'[0-9a-f]{64}', lock['artifact'].get('sha256', ''))
-            or not re.fullmatch(r'[0-9a-f]{40}', lock.get('source_sha') or '')
-            or lock.get('public_redistribution') is not True
-            or receipt.get('sdk_sha256') != lock['artifact'].get('sha256')
-            or receipt.get('sdk_source_sha') != lock.get('source_sha')
-            or receipt.get('checks') != ['desktop-ctest', 'x11-spatial-gpu', 'x11-package-rendering', 'private-symbol-split',
-                                         'bundled-runtime-closure', 'bundled-x11-package-rendering']):
-        raise ValueError('Cockpit qualification receipt does not bind the committed SDK and runtime checks')
     return composer.assemble(baseline, candidate, [list(COCKPIT_IDENTITY)],
                              baseline_root, cockpit_root, output, MAX_EXPANDED_BYTES)
 
@@ -411,6 +428,18 @@ def ingest(lock_path, platform, core_root, main_root, output):
         download(lock['baselines'][platform], bundle, baseline_platform=platform)
         baseline_root = scratch / 'baseline'
         baseline = unpack_bundle(bundle, lock['baselines'][platform], baseline_root, platform)
+        catalog = lock.get('catalog')
+        if catalog is not None and platform in catalog['artifacts']:
+            pin = catalog['artifacts'][platform]
+            bundle = scratch / 'catalog.tar.gz'
+            download(pin, bundle, catalog_platform=platform,
+                     catalog_source_commit=catalog['source_commit'])
+            catalog_root = scratch / 'catalog'
+            manifest = unpack_bundle(bundle, pin, catalog_root, platform)
+            combined_root = scratch / 'catalog-baseline'
+            baseline = compose_catalog(catalog, platform, baseline, baseline_root,
+                                       manifest, catalog_root, combined_root)
+            baseline_root = combined_root
         candidates = {}
         if platform == 'linux-amd64':
             for name, candidate in lock['linux_candidates'].items():
@@ -433,8 +462,7 @@ def main():
     parser.add_argument('--finalize-cockpit', action='store_true')
     parser.add_argument('--base-store', type=Path)
     parser.add_argument('--cockpit-store', type=Path)
-    parser.add_argument('--cockpit-sdk-lock', type=Path,
-                        help='Explicit immutable SDK lock for optional external Cockpit qualification')
+    parser.add_argument('--cockpit-lock', type=Path)
     parser.add_argument('--version')
     parser.add_argument('--out', type=Path, required=True)
     args = parser.parse_args()
@@ -442,8 +470,7 @@ def main():
         if args.finalize_cockpit:
             if not all((args.base_store, args.cockpit_store, args.version)):
                 parser.error('--finalize-cockpit needs --base-store, --cockpit-store and --version')
-            manifest = finalize_cockpit(args.base_store, args.cockpit_store, args.out,
-                                       args.version, args.cockpit_sdk_lock)
+            manifest = finalize_cockpit(args.base_store, args.cockpit_store, args.out, args.version, args.cockpit_lock)
         else:
             if not all((args.lock, args.platform, args.core_store, args.main_store)):
                 parser.error('Initial ingestion needs --lock, --platform, --core-store and --main-store')

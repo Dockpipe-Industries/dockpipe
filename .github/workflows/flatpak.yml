@@ -12,6 +12,15 @@ on:
   pull_request:
     paths:
       - .github/workflows/flatpak.yml
+      - release/cockpit.lock.json
+      - release/packaging/prepare-cockpit.py
+      - release/dependencies/spatialweb-flatpak-browser.lock.json
+      - release/packaging/prepare-flatpak-browser-sdk.py
+      - release/packaging/tests/test_prepare_flatpak_browser_sdk.py
+      - release/packaging/prepare-browser-sdk.py
+      - release/packaging/desktop/browser-runtime.py
+      - release/packaging/desktop/test_browser_runtime.py
+      - release/packaging/tests/test_prepare_browser_sdk.py
       - release/packaging/desktop/flatpak/**
       - release/packaging/tests/fixtures/flatpak-package/**
       - src/lib/infrastructure/packageplatform/**
@@ -30,6 +39,9 @@ permissions:
 
 jobs:
   desktop:
+    permissions:
+      contents: read
+      attestations: read
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -38,7 +50,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version: '1.26.9'
+          go-version: '1.26.10'
       - uses: actions/setup-node@v7
         with:
           node-version: '24.21.0'
@@ -48,9 +60,20 @@ jobs:
           export FLATPAK_USER_DIR="$RUNNER_TEMP/dockpipe-flatpak-installation"
           printf 'FLATPAK_USER_DIR=%s\n' "$FLATPAK_USER_DIR" >> "$GITHUB_ENV"
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends flatpak python3-yaml
+          sudo apt-get install -y --no-install-recommends flatpak python3-yaml xvfb xauth
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
           flatpak install --user --noninteractive --assumeyes flathub org.kde.Sdk//6.10 org.kde.Platform//6.10 io.qt.qtwebengine.BaseApp//6.10
+          python3 -B release/packaging/prepare-flatpak-browser-sdk.py \
+            --lock release/dependencies/spatialweb-flatpak-browser.lock.json \
+            --print-ref-pins > "$RUNNER_TEMP/flatpak-browser-ref-pins.tsv"
+          while IFS=$'\t' read -r ref commit; do
+            flatpak update --user --noninteractive --assumeyes --commit="$commit" "$ref"
+          done < "$RUNNER_TEMP/flatpak-browser-ref-pins.tsv"
+          # This is a software-rendering qualification input, not the SDK ABI.
+          flatpak install --user --noninteractive --assumeyes --no-related flathub org.freedesktop.Platform.GL.default//25.08
+          flatpak update --user --noninteractive --assumeyes \
+            --commit=fe659a591fe882f573584ae62cfb55b92065e4ff7a972833271438bddfa6669e \
+            runtime/org.freedesktop.Platform.GL.default/x86_64/25.08
       - name: Build CLI, core and pinned native store
         env:
           GH_TOKEN: ${{ github.token }}
@@ -89,6 +112,20 @@ jobs:
             --platform linux-amd64 --core-store "$RUNNER_TEMP/core-store" \
             --main-store "$RUNNER_TEMP/main-store" \
             --out "$RUNNER_TEMP/native-store"
+      - name: Prepare exact attested Flatpak Browser SDK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 -B release/packaging/prepare-flatpak-browser-sdk.py --lock release/dependencies/spatialweb-flatpak-browser.lock.json \
+            --verify-installed-refs --output "$RUNNER_TEMP/browser-sdk"
+          echo "DOCKPIPE_FLATPAK_BROWSER_SDK=$RUNNER_TEMP/browser-sdk" >> "$GITHUB_ENV"
+      - name: Prepare locked Cockpit compatibility fixture
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 -B release/packaging/prepare-cockpit.py prepare \
+            --lock release/cockpit.lock.json --output "$RUNNER_TEMP/flatpak-cockpit-runtime"
+          echo "DOCKPIPE_FLATPAK_COCKPIT_ASSETS=$RUNNER_TEMP/flatpak-cockpit-runtime/package/resolvers/cockpit/assets" >> "$GITHUB_ENV"
       - name: Build and test Flatpak desktop and optional bundled dependency
         shell: bash
         run: |
@@ -103,6 +140,13 @@ jobs:
             --bundle "$RUNNER_TEMP/flatpak/dockpipe-desktop_$(cat VERSION)_linux_amd64.flatpak" \
             --build-dir "$RUNNER_TEMP/flatpak/qt-build" \
             --out "$RUNNER_TEMP/flatpak-host-qualification"
+      - name: Qualify installed Cockpit rendering and actual library providers
+        run: |
+          python3 -B release/packaging/desktop/flatpak/verify-installed-cockpit.py \
+            --lock release/cockpit.lock.json --prepared "$RUNNER_TEMP/flatpak-cockpit-runtime" \
+            --browser-sdk "$DOCKPIPE_FLATPAK_BROWSER_SDK" \
+            --app-build-dir "$RUNNER_TEMP/flatpak/app" --test-build-dir "$RUNNER_TEMP/flatpak/qt-build" \
+            --output "$RUNNER_TEMP/flatpak-cockpit-qualification"
       - name: Qualify real Docker and Compose bind mounts
         run: |
           docker pull debian:12
@@ -114,8 +158,19 @@ jobs:
           python3 -B -m unittest discover -s release/packaging/desktop/flatpak -p 'test_*.py'
           python3 release/packaging/desktop/flatpak/prepare-package-tools.py "$RUNNER_TEMP/package-tools" \
             --cache "$RUNNER_TEMP/package-downloads" --app "$RUNNER_TEMP/flatpak/app"
+          python3 -B release/packaging/ingest-pinned-stores.py --finalize-cockpit \
+            --base-store "$RUNNER_TEMP/native-store" \
+            --cockpit-store "$RUNNER_TEMP/flatpak-cockpit-runtime/store" \
+            --cockpit-lock release/cockpit.lock.json --version "$(cat VERSION)" \
+            --out "$RUNNER_TEMP/native-store-with-cockpit"
           python3 release/packaging/desktop/flatpak/build-catalog.py "$RUNNER_TEMP/flatpak/app" \
-            "$RUNNER_TEMP/native-store" "$RUNNER_TEMP/package-tools" "$RUNNER_TEMP/flatpak-catalog"
+            "$RUNNER_TEMP/native-store-with-cockpit" "$RUNNER_TEMP/package-tools" "$RUNNER_TEMP/flatpak-catalog"
+      - name: Qualify Marketplace-installed Cockpit lifecycle and rendering
+        run: |
+          python3 -B release/packaging/desktop/flatpak/verify-marketplace-cockpit.py \
+            --catalog "$RUNNER_TEMP/flatpak-catalog/store" --cockpit-lock release/cockpit.lock.json \
+            --test-build-dir "$RUNNER_TEMP/flatpak/qt-build" \
+            --output "$RUNNER_TEMP/flatpak-marketplace-cockpit"
       - name: Stage tested release artifacts
         if: inputs.version != ''
         shell: bash

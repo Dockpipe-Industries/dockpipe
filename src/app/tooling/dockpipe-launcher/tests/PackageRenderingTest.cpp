@@ -3,6 +3,8 @@
 // The package implementation and its feature tests remain owned by SpatialPipe.
 #include "WorkspacePackageManager.h"
 #include <QApplication>
+#include <QFile>
+#include <QDir>
 #include <QElapsedTimer>
 #include <QGraphicsView>
 #include <QKeyEvent>
@@ -43,8 +45,15 @@ void idle(int milliseconds)
 }
 
 class FrameRecorder final : public QObject {
+    Q_OBJECT
 public:
     QVector<double> intervals;
+    int completedFrames = 0;
+public slots:
+    void recordCompletedFrame()
+    {
+        ++completedFrames;
+    }
 protected:
     bool eventFilter(QObject *, QEvent *event) override
     {
@@ -58,6 +67,27 @@ protected:
 private:
     QElapsedTimer m_timer;
 };
+
+void recordMovement(QGraphicsView *flight, FrameRecorder &recorder)
+{
+    flight->viewport()->installEventFilter(&recorder);
+    QKeyEvent forward(QEvent::KeyPress, Qt::Key_W, Qt::NoModifier);
+    QApplication::sendEvent(flight, &forward);
+    idle(1500);
+    QKeyEvent stop(QEvent::KeyRelease, Qt::Key_W, Qt::NoModifier);
+    QApplication::sendEvent(flight, &stop);
+    flight->viewport()->removeEventFilter(&recorder);
+    std::sort(recorder.intervals.begin(), recorder.intervals.end());
+}
+
+void reportFrames(const char *phase, const FrameRecorder &recorder)
+{
+    const double percentile95 = recorder.intervals.isEmpty() ? 0
+        : recorder.intervals[recorder.intervals.size() * 95 / 100];
+    const double maximum = recorder.intervals.isEmpty() ? 0 : recorder.intervals.last();
+    std::printf("phase=%s movement_frames=%lld frame_p95_ms=%.2f frame_max_ms=%.2f compositor_failures=%d\n",
+        phase, qint64(recorder.intervals.size()), percentile95, maximum, compositorFailures);
+}
 }
 
 int main(int argc, char **argv)
@@ -68,8 +98,15 @@ int main(int argc, char **argv)
         return 77;
     QTemporaryDir directory;
     CHECK(directory.isValid());
-    qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
-    qputenv("XDG_DATA_HOME", directory.path().toUtf8());
+    const bool installed = qEnvironmentVariable("DOCKPIPE_PACKAGE_RENDER_INSTALLED") == QStringLiteral("1");
+    if (installed) {
+        CHECK(qEnvironmentVariableIsEmpty("DOCKPIPE_WORKSPACE_PACKAGE"));
+        CHECK(!qEnvironmentVariableIsEmpty("DOCKPIPE_GLOBAL_ROOT"));
+    } else {
+        qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
+        qputenv("XDG_DATA_HOME", directory.path().toUtf8());
+    }
+    const QString workspace = installed ? QDir::currentPath() : directory.path();
     previousHandler = qInstallMessageHandler(recordMessage);
 
     // Link only the host SDK, never Cockpit. The host's backing store must
@@ -85,15 +122,21 @@ int main(int argc, char **argv)
 
     WorkspacePackageManager manager;
     LauncherSettings settings;
-    settings.projectFolder = directory.path();
+    settings.projectFolder = workspace;
     QElapsedTimer entry;
     entry.start();
     manager.prepare(settings, false);
+    if (installed) {
+        QElapsedTimer discovery;
+        discovery.start();
+        while (!manager.ready() && manager.busy() && discovery.elapsed() < 15000)
+            idle(10);
+    }
     CHECK(manager.ready());
     const qint64 loadMilliseconds = entry.elapsed();
     auto *surface = manager.createWorkspace(&host);
     CHECK(surface);
-    surface->setWorkspace(directory.path());
+    surface->setWorkspace(workspace);
     CockpitSettings preferences;
     preferences.enabled = true;
     preferences.orbitalMotion = false;
@@ -104,6 +147,18 @@ int main(int argc, char **argv)
     idle(500);
     auto *flight = surface->findChild<QGraphicsView *>("workspaceDroneFlight");
     CHECK(flight);
+    // Installed compatibility qualification records actual loaded providers.
+    // Ordinary rendering tests do not read or write this diagnostic.
+    const QString mapsPath = qEnvironmentVariable("DOCKPIPE_PACKAGE_RENDER_MAPS");
+    if (!mapsPath.isEmpty()) {
+        QFile mappings(QStringLiteral("/proc/self/maps"));
+        CHECK(mappings.open(QIODevice::ReadOnly));
+        const QByteArray bytes = mappings.read(1024 * 1024);
+        CHECK(mappings.atEnd());
+        QFile output(mapsPath);
+        CHECK(output.open(QIODevice::WriteOnly | QIODevice::NewOnly));
+        CHECK(output.write(bytes) == bytes.size());
+    }
     QOpenGLContext probe;
     CHECK(probe.create());
     QOffscreenSurface probeSurface;
@@ -117,11 +172,28 @@ int main(int argc, char **argv)
     const QString normalizedRenderer = renderer.toLower();
     const bool softwareOpenGL = normalizedRenderer.contains("llvmpipe") || normalizedRenderer.contains("softpipe")
         || normalizedRenderer.contains("software") || normalizedRenderer.contains("basic render");
-    if (softwareOpenGL) {
-        // Product policy correctly keeps CPU OpenGL on its raster fallback.
-        // This test owns a late GL viewport solely to exercise Qt's compositor
-        // after the host backing store and optional package already exist.
+    if (softwareOpenGL)
         CHECK(!flight->viewport()->inherits("QOpenGLWidget"));
+    else
+        CHECK(flight->viewport()->inherits("QOpenGLWidget"));
+    std::printf("opengl_renderer=%s product_viewport=%s package_load_ms=%lld cockpit_construction_ms=%lld\n",
+        qPrintable(renderer), softwareOpenGL ? "raster" : "hardware-OpenGL",
+        loadMilliseconds, constructionMilliseconds);
+
+    // Keep the performance contract on the viewport selected by the product.
+    // Software Mesa uses raster rendering; the synthetic GL phase below is only
+    // a late-compositor integration check, not a supported rendering mode.
+    FrameRecorder productRecorder;
+    recordMovement(flight, productRecorder);
+    reportFrames("product", productRecorder);
+    CHECK(compositorFailures == 0);
+    CHECK(productRecorder.intervals.size() >= 40);
+    surface->hide();
+    surface->show();
+    idle(100);
+    CHECK(compositorFailures == 0);
+
+    if (softwareOpenGL) {
         // Keep OpenGLWidgets out of this host's link dependencies. Loading the
         // private factory now preserves the original late-import condition.
         QLibrary factory(QStringLiteral(DOCKPIPE_TEST_GL_FACTORY_PATH));
@@ -137,34 +209,38 @@ int main(int argc, char **argv)
         CHECK(viewport);
         flight->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
         flight->setViewport(viewport);
+        FrameRecorder compositorRecorder;
+        // Observe completed composition without linking OpenGLWidgets into this
+        // host, which would defeat the late-loading regression condition.
+        CHECK(QObject::connect(viewport, SIGNAL(frameSwapped()),
+            &compositorRecorder, SLOT(recordCompletedFrame())));
         idle(500);
         CHECK(validViewport(viewport));
+        compositorRecorder.completedFrames = 0;
+        recordMovement(flight, compositorRecorder);
+        reportFrames("synthetic-software-GL", compositorRecorder);
+        std::printf("phase=synthetic-software-GL completed_frames=%d\n", compositorRecorder.completedFrames);
+        CHECK(validViewport(viewport));
+        CHECK(compositorRecorder.intervals.size() >= 2);
+        CHECK(compositorRecorder.completedFrames >= 2);
+        CHECK(compositorFailures == 0);
+
+        const int completedBeforeShow = compositorRecorder.completedFrames;
+        surface->hide();
+        surface->show();
+        viewport->update();
+        idle(500);
+        std::printf("phase=synthetic-software-GL recovery_completed_frames=%d\n",
+            compositorRecorder.completedFrames - completedBeforeShow);
+        CHECK(validViewport(viewport));
+        CHECK(compositorRecorder.completedFrames > completedBeforeShow);
+        CHECK(compositorFailures == 0);
     }
-    CHECK(flight->viewport()->inherits("QOpenGLWidget"));
-    std::printf("opengl_renderer=%s qualification=%s\n", qPrintable(renderer),
-        softwareOpenGL ? "software-OpenGL late compositor; product raster fallback verified" : "hardware-OpenGL late compositor");
-    FrameRecorder recorder;
-    flight->viewport()->installEventFilter(&recorder);
-    QKeyEvent forward(QEvent::KeyPress, Qt::Key_W, Qt::NoModifier);
-    QApplication::sendEvent(flight, &forward);
-    idle(1500);
-    QKeyEvent stop(QEvent::KeyRelease, Qt::Key_W, Qt::NoModifier);
-    QApplication::sendEvent(flight, &stop);
-    flight->viewport()->removeEventFilter(&recorder);
-    CHECK(!recorder.intervals.isEmpty());
-    std::sort(recorder.intervals.begin(), recorder.intervals.end());
     const QString capture = qEnvironmentVariable("DOCKPIPE_PACKAGE_RENDER_CAPTURE");
     if (!capture.isEmpty())
         CHECK(host.screen()->grabWindow(host.winId()).save(capture));
-    std::printf("package_load_ms=%lld cockpit_construction_ms=%lld movement_frames=%lld frame_p95_ms=%.2f frame_max_ms=%.2f compositor_failures=%d\n",
-        loadMilliseconds, constructionMilliseconds, qint64(recorder.intervals.size()),
-        recorder.intervals[recorder.intervals.size() * 95 / 100], recorder.intervals.last(), compositorFailures);
-    CHECK(compositorFailures == 0);
-    CHECK(recorder.intervals.size() >= 40);
-    surface->hide();
-    surface->show();
-    idle(100);
-    CHECK(compositorFailures == 0);
     qInstallMessageHandler(previousHandler);
     return 0;
 }
+
+#include "PackageRenderingTest.moc"

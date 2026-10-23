@@ -42,7 +42,7 @@ jobs:
 
       - uses: actions/setup-go@v7
         with:
-          go-version: "1.26.9"
+          go-version: "1.26.10"
 
       - name: Public repository configuration boundary
         run: python3 release/packaging/check-public-content.py
@@ -54,6 +54,9 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             cmake \
             build-essential \
+            python3-yaml \
+            apt-utils \
+            gnupg \
             ripgrep \
             shellcheck \
             qt6-base-dev \
@@ -63,6 +66,9 @@ jobs:
             libqt6opengl6-dev \
             libgl1-mesa-dev \
             libegl1-mesa-dev
+
+      - name: Release tooling contracts before builds
+        run: /usr/bin/python3 -B -m unittest discover -s release/packaging/tests -v
 
       # Flatpak qualification owns the native desktop build and tests.
       - name: Build CLI (Bash tests use src/bin/dockpipe)
@@ -220,7 +226,7 @@ jobs:
 
       - uses: actions/setup-go@v7
         with:
-          go-version: "1.26.9"
+          go-version: "1.26.10"
 
       - name: Pinned package-store composition on Windows
         run: python3 -B -m unittest discover -s release/packaging/tests -p 'test_package_store_composition.py'
@@ -236,16 +242,19 @@ jobs:
 
   cockpit-native:
     name: Cockpit native SDK and rendering
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
     permissions:
       contents: read
+      attestations: read
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version: '1.26.9'
-      - name: Install native host SDK prerequisites
+          go-version: '1.26.10'
+      - name: Install matching native SDK prerequisites
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
@@ -254,19 +263,31 @@ jobs:
             libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
             libxcb-render-util0 libxcb-shape0 libxcb-xkb1 libx11-dev \
             libxcomposite-dev libxrender-dev libxres-dev libxext-dev libxcb1-dev \
-            libnss3 libasound2t64 libsdl2-2.0-0
-      - name: Install the exact Qt host ABI
+            libnss3 libasound2 libsdl2-2.0-0 libopus0 libminizip1
+      - name: Install pinned Qt ABI
         run: |
           bash release/packaging/desktop/install-linux-qt.sh "$RUNNER_TEMP/Qt"
           echo "DOCKPIPE_QT_ROOT=$RUNNER_TEMP/Qt/6.10.3/gcc_64" >> "$GITHUB_ENV"
       - name: Build the repository CLI
         run: make build-core
-      - name: Verify external package admission and mandatory rendering receipts
-        run: python3 -B -m unittest discover -s workflows/ci/installed-cockpit/tests -p 'test_*.py'
-      - name: Qualify the host SDK against installed Cockpit bytes
-        env:
-          DOCKPIPE_BIN: ${{ github.workspace }}/src/bin/dockpipe
-        run: '"$DOCKPIPE_BIN" --workflow-file workflows/ci/installed-cockpit/config.yml --workdir "$GITHUB_WORKSPACE" --'
+      - name: Prepare exact attested Browser SDK
+        run: |
+          python3 release/packaging/prepare-browser-sdk.py --lock release/dependencies/spatialweb-browser.lock.json \
+            --platform linux-amd64 --output "$RUNNER_TEMP/browser-sdk"
+      - name: Verify public publisher and qualify installed Cockpit
+        run: |
+          python3 release/packaging/prepare-cockpit.py prepare \
+            --lock release/cockpit.lock.json --output "$RUNNER_TEMP/cockpit-runtime"
+          cmake -S src/app/tooling/dockpipe-launcher -B "$RUNNER_TEMP/cockpit-host" \
+            -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON \
+            -DCMAKE_PREFIX_PATH="$DOCKPIPE_QT_ROOT;$RUNNER_TEMP/browser-sdk" \
+            -DDOCKPIPE_COCKPIT_ASSETS="$RUNNER_TEMP/cockpit-runtime/package/resolvers/cockpit/assets"
+          python3 release/packaging/prepare-cockpit.py verify-compiler \
+            --lock release/cockpit.lock.json --store "$RUNNER_TEMP/cockpit-runtime/store" \
+            --build "$RUNNER_TEMP/cockpit-host"
+          cmake --build "$RUNNER_TEMP/cockpit-host" --target cockpit-package-rendering-test --parallel 2
+          LD_LIBRARY_PATH="$DOCKPIPE_QT_ROOT/lib:$RUNNER_TEMP/browser-sdk/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+            ctest --test-dir "$RUNNER_TEMP/cockpit-host" --output-on-failure -R '^cockpit-package-rendering$' --no-tests=error
 
   staging-release:
     needs: [test, test-windows, cockpit-native]

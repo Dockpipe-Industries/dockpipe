@@ -10,7 +10,7 @@ endif()
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
-set(DOCKPIPE_LAUNCHER_SDK_VERSION "1.0.0")
+set(DOCKPIPE_LAUNCHER_SDK_VERSION "1.1.0")
 set(sdk_config_directory "${CMAKE_INSTALL_LIBDIR}/cmake/DockPipeLauncherSDK")
 set(sdk_resource_directory "${CMAKE_INSTALL_DATADIR}/DockPipeLauncherSDK")
 
@@ -18,12 +18,14 @@ add_library(dockpipe-launcher-headers INTERFACE)
 set_target_properties(dockpipe-launcher-headers PROPERTIES EXPORT_NAME LauncherHeaders)
 target_include_directories(dockpipe-launcher-headers INTERFACE
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
-    "$<INSTALL_INTERFACE:include/dockpipe-launcher>")
+    "$<INSTALL_INTERFACE:include/dockpipe-launcher>"
+    "$<INSTALL_INTERFACE:include>")
 target_compile_features(dockpipe-launcher-headers INTERFACE cxx_std_17)
 set_target_properties(dockpipe-launcher-ui PROPERTIES EXPORT_NAME LauncherUI)
 set_target_properties(dockpipe-browser PROPERTIES EXPORT_NAME HostBrowser)
 target_compile_features(dockpipe-launcher-ui PUBLIC cxx_std_17)
 target_compile_features(dockpipe-browser PUBLIC cxx_std_17)
+install(TARGETS dockpipe-workspace-reader RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT LauncherSDK)
 install(TARGETS dockpipe-launcher-ui dockpipe-browser dockpipe-launcher-headers
     EXPORT DockPipeLauncherSDKTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT LauncherSDK
@@ -36,6 +38,7 @@ set(sdk_headers
     DesktopAppWindow.h DesktopApplicationCatalog.h LauncherWorkspacePackage.h LauncherDisplayPackage.h LauncherNativeLibraryScope.h
     ProjectFilesWidget.h ProjectGitClient.h SourceEditor.h SourceHighlighter.h
     Theme.h WorkspaceFiles.h WorkspacePackageManager.h
+    WorkspaceGraphPage.h WorkspaceGraphReader.h WorkspaceGraphNode.h WorkspaceGraphView.h WorkspaceGraphWidget.h
     LauncherUiExport.h CockpitSettings.h Context.h RemoteCommand.h
     LauncherSettings.h PackageCommand.h)
 foreach(header IN LISTS sdk_headers)
