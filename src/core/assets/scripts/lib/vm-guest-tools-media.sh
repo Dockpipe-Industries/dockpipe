@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # An optional resolver-owned, prebuilt interactive Guest Tools application.
 # The canonical runtime provisioning helper remains at the media root.
 vmimage_stage_resolver_guest_tools() {
