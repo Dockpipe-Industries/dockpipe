@@ -1,6 +1,6 @@
 module dockpipe
 
-go 1.25
+go 1.26.0
 
 toolchain go1.26.10
 
@@ -14,4 +14,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-require golang.org/x/sys v0.28.0
+require golang.org/x/sys v0.49.0
