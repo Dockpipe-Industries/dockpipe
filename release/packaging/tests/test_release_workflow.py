@@ -126,22 +126,14 @@ class ReleaseWorkflowTests(unittest.TestCase):
 
     def test_artifact_verification_has_no_deployment_or_production_credentials(self):
         for name, job in self.jobs.items():
-            if name in ("publish", "publish-staging", "devto", "attest-forgepipe-sdk"):
+            if name in ("publish", "publish-staging", "devto"):
                 continue
             self.assertNotIn("environment", job, name)
             self.assertNotIn("secrets.", yaml.dump(job), name)
             self.assertNotIn("write", job.get("permissions", {}).values(), name)
 
-        attestation = self.jobs["attest-forgepipe-sdk"]
-        self.assertIn("github.event_name == 'workflow_dispatch'", attestation["if"])
-        self.assertIn("inputs.forgepipe_sdk_tag != ''", attestation["if"])
-        self.assertEqual(attestation["permissions"], {
-            "contents": "read", "id-token": "write", "attestations": "write",
-        })
-        tag_input = self.workflow["on"]["workflow_dispatch"]["inputs"]["forgepipe_sdk_tag"]
-        self.assertEqual(tag_input["default"], "")
-        self.assertEqual(tag_input["required"], "false")
-        self.assertEqual(tag_input["type"], "string")
+        self.assertNotIn("attest-forgepipe-sdk", self.jobs)
+        self.assertNotIn("forgepipe_sdk_tag", self.workflow["on"]["workflow_dispatch"]["inputs"])
 
         assembly = self.jobs["assemble"]
         self.assertEqual(assembly["needs"], ["meta", "build-unix", "build-msi", "build-flatpak"])

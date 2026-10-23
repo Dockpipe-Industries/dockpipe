@@ -3,6 +3,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import re
 import tempfile
 import unittest
 
@@ -13,6 +14,19 @@ SPEC.loader.exec_module(PRODUCER)
 
 
 class LockedGoSDKTests(unittest.TestCase):
+    def test_workflow_uses_literal_locked_source_without_shared_cache(self):
+        root = SCRIPT.parents[2]
+        lock = PRODUCER.read_lock(root / 'release/go-sdk-source.lock.json')
+        workflow = (root / '.github/workflows/go-sdk.yml').read_text()
+        self.assertIn('ref: ' + lock['source_commit'] + '\n', workflow)
+        self.assertNotRegex(workflow, r'ref:\s*\$\{\{')
+        checkout = re.search(r'ref: [0-9a-f]{40}\n(?P<options>(?:          .+\n)+)', workflow)
+        self.assertIsNotNone(checkout)
+        self.assertIn('persist-credentials: false', checkout.group('options'))
+        setup = re.search(r'uses: actions/setup-go@[^\n]+\n(?P<options>(?:        .+\n)+)', workflow)
+        self.assertIsNotNone(setup)
+        self.assertIn('cache: false', setup.group('options'))
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
