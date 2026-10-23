@@ -12,7 +12,10 @@ import (
 
 func surfaceFixture(t *testing.T) (string, map[string]any) {
 	t.Helper()
-	root := t.TempDir()
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, name := range []string{"snapshot.yml", "action.yml"} {
 		if err := os.WriteFile(filepath.Join(root, name), []byte("name: fixture\nsteps: []\n"), 0600); err != nil {
 			t.Fatal(err)

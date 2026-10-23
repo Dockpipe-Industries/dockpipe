@@ -501,7 +501,10 @@ func TestCatalogResolverDetailsUsesResolvedProvider(t *testing.T) {
 }
 
 func TestCatalogResolverDetailsProjectsContainedPackageSurface(t *testing.T) {
-	root := t.TempDir()
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	resolver := filepath.Join(root, "templates", "core", "resolvers", "example.resources")
 	if err := os.MkdirAll(resolver, 0700); err != nil {
 		t.Fatal(err)
