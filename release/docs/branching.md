@@ -139,3 +139,22 @@ Official Dockpipe download defaults remain available for ordinary users.
 Do not enable `DEVTO_PUBLISH` in a fork unless you deliberately configure your own
 article destination and credentials. Follow the [public configuration boundary](../../docs/public-repository-boundary.md)
 for operator settings and examples.
+
+## Required desktop host and optional package checks
+
+The required `Native desktop host qualification` check runs for pull requests to
+`dev`, `staging` and `master`, and for explicit workflow dispatch. It succeeds
+only after the existing Windows native host tests, both macOS architecture jobs,
+and the core-only Flatpak desktop workflow actually succeed. Failed, skipped,
+cancelled or missing qualification results fail the final always-reported gateway.
+The generic extension, Browser, terminal, embedding and platform assertions remain
+inside those owning jobs; SDK consumer compilation alone does not replace them.
+This deliberately runs all host platforms even for documentation-only PRs.
+
+Cockpit SDK/rendering and optional Flatpak catalog integration retain independent
+strict package checks and dispatch entrypoints. They are not global prerequisites
+for CLI/core/desktop release. Required core tests, CodeQL, review rules, ref scopes
+and force-push/deletion protections remain unchanged. The dedicated native rule
+uses the host gateway from GitHub Actions app15368; it does not require an optional
+package check or grant a bypass. Branch-rule changes are a separate reviewed
+remote operation after this workflow is available and qualified on the PR.
