@@ -181,7 +181,13 @@ First-party packages additionally own `assets/flatpak/package.json` profiles nam
 exact artifacts, extra bundled tools, host integrations and required release
 payloads. Each pinned native archive must carry a profile declaring its own
 identity. The catalog builder rejects missing, duplicate or unowned artifacts and
-unknown dependencies. It rebuilds archives with their runtime-specific dependencies,
+unknown dependencies. Before adaptation, it reads only each selected archive’s
+top-level package manifest and verifies both package dependencies and required
+resolvers against the pinned store and shipped core. Nested fixtures do not
+become catalog packages. A historical store with absent umbrella packages or
+resolver archives must be repaired in its owning source; no checkout-only alias
+or dependency removal is substituted. Final CLI store validation still runs.
+It rebuilds archives with their runtime-specific dependencies,
 executes dependency/preflight checks in the Platform, then exports a complete store
 with checksums and a qualification receipt. Generated Flatpak metadata preserves the
 workflow namespace and declares `platforms: [flatpak]`; native metadata is untouched.

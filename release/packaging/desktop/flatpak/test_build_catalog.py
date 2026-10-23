@@ -2,7 +2,9 @@
 
 import hashlib
 import importlib.util
+import io
 import tempfile
+import tarfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -83,6 +85,90 @@ class CompiledArchiveChecksumTests(unittest.TestCase):
 
             with self.assertRaises(OSError):
                 catalog.compiled_archive_checksum(linked)
+
+
+class PinnedDependencyTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.core = self.root / "core"
+        self.core.mkdir()
+        self.archive("core", "core", "name: core\n")
+
+    def archive(self, kind, name, manifest, nested=None):
+        directory = self.core if kind == "core" else self.root
+        filename = directory / f"dockpipe-{kind}-{name}-0.6.1.tar.gz"
+        prefix = "core" if kind == "core" else f"{kind}s/{name}"
+        members = [(f"{prefix}/package.yml", manifest)]
+        if nested is not None:
+            members.append((f"{prefix}/tests/fixture/package.yml", nested))
+        with tarfile.open(filename, "w:gz") as archive:
+            for path, text in members:
+                payload = text.encode()
+                member = tarfile.TarInfo(path)
+                member.size = len(payload)
+                archive.addfile(member, io.BytesIO(payload))
+        return filename
+
+    def test_historical_pinned_workflow_reports_real_missing_packages_and_resolver(self):
+        # Exact dependency fields from the pinned Linux 0.6.16 store's
+        # secretstore-r2-publish-test 0.6.1 archive (SHA256 61475c36...).
+        workflow = self.archive("workflow", "secretstore-r2-publish-test", """schema: 1
+kind: workflow
+name: secretstore-r2-publish-test
+version: 0.6.1
+depends: [cloud.storage, secrets]
+requires_resolvers: [onepassword, r2]
+""")
+        onepassword = self.archive("resolver", "onepassword", "name: onepassword\n")
+
+        with self.assertRaisesRegex(ValueError, "Incomplete pinned catalog") as failure:
+            catalog.validate_package_dependencies([workflow, onepassword], self.core)
+
+        message = str(failure.exception)
+        self.assertIn("requires missing package cloud.storage", message)
+        self.assertIn("requires missing package secrets", message)
+        self.assertIn("requires missing resolver r2", message)
+        self.assertNotIn("missing resolver onepassword", message)
+
+    def test_present_dependencies_and_shipped_core_are_retained(self):
+        workflow = self.archive("workflow", "consumer", """name: consumer
+depends: [core, helper]
+requires_resolvers: [backend]
+""")
+        helper = self.archive("workflow", "helper", "name: helper\n")
+        backend = self.archive("resolver", "backend", "name: backend\n")
+
+        catalog.validate_package_dependencies([workflow, helper, backend], self.core)
+        with self.assertRaisesRegex(ValueError, "missing package helper"):
+            catalog.validate_package_dependencies([workflow, backend], self.core)
+
+    def test_nested_fixture_manifest_does_not_become_catalog_package_or_dependency(self):
+        workflow = self.archive("workflow", "consumer", "name: consumer\n",
+                                nested="name: fixture\ndepends: [not-installed]\n")
+        catalog.validate_package_dependencies([workflow], self.core)
+
+        other = self.archive("workflow", "other", "name: other\ndepends: [fixture]\n")
+        with self.assertRaisesRegex(ValueError, "missing package fixture"):
+            catalog.validate_package_dependencies([workflow, other], self.core)
+
+    def test_required_resolver_cannot_be_satisfied_by_workflow_with_same_name(self):
+        consumer = self.archive("workflow", "consumer", "name: consumer\nrequires_resolvers: [backend]\n")
+        backend = self.archive("workflow", "backend", "name: backend\n")
+        with self.assertRaisesRegex(ValueError, "missing resolver backend"):
+            catalog.validate_package_dependencies([consumer, backend], self.core)
+
+    def test_dependency_types_manifest_size_and_core_selection_are_bounded(self):
+        invalid = self.archive("workflow", "consumer", "name: consumer\ndepends: arbitrary-string\n")
+        with self.assertRaisesRegex(ValueError, "Invalid depends"):
+            catalog.validate_package_dependencies([invalid], self.core)
+        oversized = self.archive("workflow", "consumer", "name: consumer\n#" + "x" * 65536)
+        with self.assertRaisesRegex(ValueError, "Invalid package manifest"):
+            catalog.validate_package_dependencies([oversized], self.core)
+        self.archive("core", "second", "name: second\n")
+        with self.assertRaisesRegex(ValueError, "one selected compiled core"):
+            catalog.validate_package_dependencies([], self.core)
 
 
 if __name__ == "__main__":
