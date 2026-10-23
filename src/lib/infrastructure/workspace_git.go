@@ -51,19 +51,20 @@ type WorkspaceGitChange struct {
 }
 
 type WorkspaceGitSnapshot struct {
-	Root         string                    `json:"root"`
-	Branch       string                    `json:"branch"`
-	Head         string                    `json:"head"`
-	Snapshot     string                    `json:"snapshot"`
-	Changes      []WorkspaceGitChange      `json:"changes"`
-	Diff         string                    `json:"diff"`
-	Notice       string                    `json:"notice,omitempty"`
-	Review       *WorkspaceGitReview       `json:"review,omitempty"`
-	Catalog      *WorkspaceGitCatalog      `json:"catalog,omitempty"`
-	History      *WorkspaceGitHistory      `json:"history,omitempty"`
-	CommitReview *WorkspaceGitCommitReview `json:"commit_review,omitempty"`
-	Stashes      []WorkspaceGitStash       `json:"stashes,omitempty"`
-	Operation    *WorkspaceGitOperation    `json:"operation,omitempty"`
+	Root           string                      `json:"root"`
+	Branch         string                      `json:"branch"`
+	Head           string                      `json:"head"`
+	Snapshot       string                      `json:"snapshot"`
+	Changes        []WorkspaceGitChange        `json:"changes"`
+	Diff           string                      `json:"diff"`
+	Notice         string                      `json:"notice,omitempty"`
+	Review         *WorkspaceGitReview         `json:"review,omitempty"`
+	Catalog        *WorkspaceGitCatalog        `json:"catalog,omitempty"`
+	History        *WorkspaceGitHistory        `json:"history,omitempty"`
+	CommitReview   *WorkspaceGitCommitReview   `json:"commit_review,omitempty"`
+	Stashes        []WorkspaceGitStash         `json:"stashes,omitempty"`
+	Operation      *WorkspaceGitOperation      `json:"operation,omitempty"`
+	TagPublication *WorkspaceGitTagPublication `json:"tag_publication,omitempty"`
 }
 
 const workspaceGitBytes = 8 * 1024 * 1024 // Maximum review and command output, in bytes.
@@ -123,6 +124,9 @@ func RunWorkspaceGit(ctx context.Context, request WorkspaceGitRequest) (*Workspa
 	}
 	if current.Operation != nil && request.Action != "compare" && request.Action != "diff" && request.Action != "stage" && !strings.HasPrefix(request.Action, "operation-") && !strings.HasPrefix(request.Action, "resolve-") {
 		return nil, errors.New("finish or abort the active Git operation before another write")
+	}
+	if request.Action == "tag-publish" {
+		return publishWorkspaceGitTag(ctx, current, request)
 	}
 	if handledWorkspaceGitAction(request.Action) {
 		return mutateWorkspaceGitExtended(ctx, current, request)
