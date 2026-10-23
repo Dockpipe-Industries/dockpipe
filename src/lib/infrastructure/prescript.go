@@ -12,6 +12,8 @@ import (
 	"sync"
 
 	"golang.org/x/term"
+
+	"dockpipe/src/lib/domain"
 )
 
 // SourceHostScript runs a bash script with set -a (export all) and returns the resulting environment as a map.
@@ -64,23 +66,23 @@ func SourceHostScript(scriptPath string, env []string) (map[string]string, error
 	return m, nil
 }
 
-// RunHostScript runs a bash script as a subprocess with stdin/stdout/stderr attached to this
-// process (not sourced). Use for workflow steps with kind: host that print messages or
-// launch programs — SourceHostScript captures all output and hides it from the user.
+// RunHostScript runs a host script with its extension's interpreter, or the
+// native OS shell when the extension does not identify one.
 func RunHostScript(scriptPath string, env []string) error {
-	bashExe, err := resolveBashExe()
+	return RunHostScriptWithShell(scriptPath, env, "")
+}
+
+// RunHostScriptWithShell applies an explicit host interpreter without changing
+// the host-run registry, cleanup, observation, or signal-forwarding lifecycle.
+func RunHostScriptWithShell(scriptPath string, env []string, shell string) error {
+	command, commandEnv, err := hostScriptCommand(scriptPath, env, shell)
 	if err != nil {
-		hint := ""
-		if runtime.GOOS == "windows" {
-			hint = " (dockpipe requires bash on the host — e.g. Git for Windows, or DOCKPIPE_USE_WSL_BRIDGE=1 with dockpipe in WSL; see docs/install.md)"
-		}
-		return fmt.Errorf("bash not found for host script%s: %w", hint, err)
+		return err
 	}
-	pathFor := pathMapperFor(bashExe)
-	bashPath, err := pathFor(scriptPath)
-	if err != nil {
-		return fmt.Errorf("host script path: %w", err)
-	}
+	return runHostScriptProcess(scriptPath, command, commandEnv)
+}
+
+func runHostScriptProcess(scriptPath string, cmd *exec.Cmd, env []string) error {
 	parentExecutionID := envGet(env, "DOCKPIPE_RUN_ID")
 	runID, runFile, env, err := BeginHostRun(envGet(env, "DOCKPIPE_WORKDIR"), env)
 	if err != nil {
@@ -88,8 +90,6 @@ func RunHostScript(scriptPath string, env []string) error {
 	}
 	env = upsertEnv(env, "DOCKPIPE_PARENT_EXECUTION_ID", parentExecutionID)
 	env = applyInteractivePromptMode(env)
-	env = prepareHostBashEnv(env, bashExe)
-	cmd := exec.Command(bashExe, bashPath)
 	cmd.Env = env
 	if cwd := strings.TrimSpace(envGet(cmd.Env, "DOCKPIPE_STEP_CWD")); cwd != "" {
 		cmd.Dir = cwd
@@ -170,28 +170,46 @@ func applyInteractivePromptMode(env []string) []string {
 	return append(env, "DOCKPIPE_SDK_PROMPT_MODE=terminal")
 }
 
-// RunHostCommand runs an inline bash command on the host with inherited stdio.
-// It uses the same host-run registry and cleanup behavior as RunHostScript.
+// RunHostCommand runs an inline command using the native OS shell.
 func RunHostCommand(command string, env []string) error {
+	return RunHostCommandWithShell(command, env, "")
+}
+
+// RunHostCommandWithShell runs inline shell text through the same host process
+// lifecycle as script files. The temporary extension matches its interpreter.
+func RunHostCommandWithShell(command string, env []string, selection string) error {
 	command = strings.TrimSpace(command)
 	if command == "" {
 		return nil
 	}
-	f, err := os.CreateTemp("", "dockpipe-hostcmd-*.sh")
+	shell, err := hostShellForScript(selection, "", runtime.GOOS)
+	if err != nil {
+		return err
+	}
+	extension := ".ps1"
+	if shell == "bash" {
+		extension = ".sh"
+	}
+	file, err := os.CreateTemp("", "dockpipe-hostcmd-*"+extension)
 	if err != nil {
 		return fmt.Errorf("host command temp file: %w", err)
 	}
-	scriptPath := f.Name()
-	_ = f.Close()
+	scriptPath := file.Name()
 	defer func() { _ = os.Remove(scriptPath) }()
-	body := command
-	if !strings.HasSuffix(body, "\n") {
-		body += "\n"
+	body := command + "\n"
+	if shell != "bash" {
+		// Windows PowerShell 5 reads BOM-less UTF-8 scripts as the ANSI code page.
+		body = "\xef\xbb\xbf" + body
 	}
-	if err := os.WriteFile(scriptPath, []byte(body), 0o700); err != nil {
-		return fmt.Errorf("host command temp write: %w", err)
+	_, writeErr := file.WriteString(body)
+	closeErr := file.Close()
+	if writeErr != nil {
+		return fmt.Errorf("host command temp write: %w", writeErr)
 	}
-	return RunHostScript(scriptPath, env)
+	if closeErr != nil {
+		return fmt.Errorf("host command temp close: %w", closeErr)
+	}
+	return RunHostScriptWithShell(scriptPath, env, string(shell))
 }
 
 // bashSingleQuoted returns s as a single-quoted bash literal ('...' with ' escaped as '\”).
@@ -308,7 +326,8 @@ func upsertEnv(env []string, key, value string) []string {
 	out := make([]string, 0, len(env))
 	replaced := false
 	for _, entry := range env {
-		if strings.HasPrefix(entry, prefix) {
+		candidate, _, found := strings.Cut(entry, "=")
+		if found && domain.NativeEnvKey(candidate) == domain.NativeEnvKey(key) {
 			if !replaced {
 				out = append(out, prefix+value)
 				replaced = true

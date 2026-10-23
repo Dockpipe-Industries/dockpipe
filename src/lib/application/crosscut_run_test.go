@@ -44,21 +44,27 @@ func TestCrosscutStrategyWorktreeAndCommitResolveFromCore(t *testing.T) {
 	}
 }
 
-// TestCrosscutRuntimeResolverDockerimageClaudeAgainstPackageTree merges real runtimes/dockerimage + resolvers/claude profiles.
-func TestCrosscutRuntimeResolverDockerimageClaudeAgainstPackageTree(t *testing.T) {
-	repo := testRepoRoot(t)
-	if _, err := os.Stat(filepath.Join(repo, "packages", "agent", "resolvers", "claude")); err != nil {
-		t.Skip("no tracked agent resolver slice in checkout")
+// TestCrosscutRuntimeResolverMergesFixtureProfiles verifies generic profile merging without external package source.
+func TestCrosscutRuntimeResolverMergesFixtureProfiles(t *testing.T) {
+	repo := t.TempDir()
+	profiles := map[string]string{
+		"runtimes/dockerimage/profile": "DOCKPIPE_RUNTIME_SUBSTRATE=dockerimage\n",
+		"resolvers/fixture/profile":    "DOCKPIPE_RESOLVER_CMD=fixture-tool\n",
 	}
-	m, err := infrastructure.LoadIsolationProfile(repo, "dockerimage", "claude")
+	for relative, contents := range profiles {
+		profile := filepath.Join(repo, "src", "core", filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(profile), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(profile, []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	merged, err := infrastructure.LoadIsolationProfile(repo, "dockerimage", "fixture")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if m["DOCKPIPE_RUNTIME_SUBSTRATE"] != "dockerimage" {
-		t.Fatalf("expected dockerimage substrate, got %#v", m)
-	}
-	// Bundled claude profile uses DOCKPIPE_RESOLVER_CMD (not necessarily TEMPLATE).
-	if strings.TrimSpace(m["DOCKPIPE_RESOLVER_CMD"]) != "claude" && strings.TrimSpace(m["DOCKPIPE_RESOLVER_TEMPLATE"]) != "claude" {
-		t.Fatalf("expected claude resolver signal in merged profile, got %#v", m)
+	if merged["DOCKPIPE_RUNTIME_SUBSTRATE"] != "dockerimage" || merged["DOCKPIPE_RESOLVER_CMD"] != "fixture-tool" {
+		t.Fatalf("runtime and resolver assignments were not merged: %#v", merged)
 	}
 }

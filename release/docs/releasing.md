@@ -29,11 +29,11 @@ Trigger options:
 
 ## What the pipeline does
 
-1. Builds on native Linux amd64/arm64, macOS Intel/Apple Silicon, and Windows amd64 runners. Each runner builds the CLI and every package's source hook, verifies its complete store manifest, and runs a host workflow smoke test outside the checkout.
-2. Creates Linux DEB, RPM, Alpine APK, Arch packages, Linux/macOS tarballs, Windows ZIP, and optional MSI. It also creates `dockpipe-packages_VERSION_OS-ARCH.tar.gz` for each native target. These stores include native resolver helpers and must not be interchanged across platforms. The reusable `.github/workflows/flatpak.yml` separately builds and tests `dockpipe-desktop_VERSION_linux_amd64.flatpak` (launcher plus CLI/core) and its `linux-amd64-flatpak-org.kde.Platform-6.10` Marketplace store. Pipeon's optional desktop application has its own distribution lane.
-3. Requires all five native platform stores and successful Flatpak qualification before assembly. It verifies package checksums and records the separate Flatpak store and combined launcher/CLI download in `release-manifest.json`; `SHA256SUMS.txt` includes the bundle. Linux runs runtime/package/shell regressions and real signed-APT tests; Windows runs runtime/package regressions and MSI installation/removal when enabled.
+1. Builds the CLI and required core on native Linux amd64/arm64, macOS Intel/Apple Silicon, and Windows amd64 runners. Each runner verifies the core store and runs a host workflow smoke test outside the checkout. Optional package source hooks and catalogs are not release inputs.
+2. Creates CLI archives, Linux native packages, macOS desktop installers and optional Windows MSI. The existing `dockpipe-packages_VERSION_OS-ARCH.tar.gz` filenames contain only required core. The reusable `.github/workflows/flatpak.yml` builds and qualifies the launcher plus CLI/core bundle against its exact Qt and Browser dependencies.
+3. Requires all five native core stores and successful desktop/Flatpak host qualification before assembly. Core-store checks reject declared or stray optional package payloads. Generic plugin/SDK fixtures remain host gates. Real Cockpit rendering and the optional Flatpak catalog retain their strict checks in independent `cockpit-sdk-compatibility.yml` and `flatpak-catalog.yml` workflows; they do not gate runtime publication.
 4. The unprotected `assemble` job prepares the catalog and checksums. For dry runs it also builds a signed APT repository for amd64 and arm64 with immutable by-hash indexes, using a throwaway key, and uploads workflow artifacts. It has read-only repository permissions, no production secret references, and no deployment environment.
-5. Only a non-dry-run on `master` enters `publish`, which requires the protected `release` environment. It downloads the prepared artifacts, signs APT with the production key, and publishes release assets to GitHub and every individual package/store manifest to R2 at `packages/releases/VERSION/`. APT lives at `apt/`. Upload order is package payloads, APT pool/index files, signed metadata, then the version catalog and `packages/latest.json`. Old versions and old by-hash files are retained. The optional dev.to job uses the same master-only production condition.
+5. Only a non-dry-run on `master` enters `publish`, which requires the protected `release` environment. It downloads the prepared artifacts, signs APT with the production key, and publishes release assets to GitHub and every individual package/store manifest to R2 at `packages/releases/VERSION/`. APT lives at `apt/`. Upload order is package payloads, APT pool/index files, signed metadata, then the version catalog and `packages/runtime/latest.json`. Old versions and old by-hash files are retained. The optional dev.to job uses the same master-only production condition.
 
 Stable and staging publication share one concurrency group from version selection through publication. Dry runs use separate groups and do not reserve versions. Dry-run verification must not require a release-environment approval or administrator bypass. Production environment protections remain in place.
 
@@ -47,6 +47,16 @@ did not include it. Resolve download links from the published catalog rather tha
 assuming GitHub attachments. There is no Dockpipe Flathub listing or automatic-update
 remote. Bazzite, Podman/SELinux, ARM64 Flatpak and authenticated provider/VM behavior
 remain separate qualification work. See [user installation and manual updates](../../docs/install.md#flatpak-desktop-linux-amd64).
+
+## Runtime and optional package release boundaries
+
+The CLI, launcher and host SDK stay in this repository. A CLI-only installation does not need the launcher; desktop distributions provide the CLI/core they use. Qt and the pinned Browser library remain required desktop dependencies. PipeLang's pinned Go module remains a compile-time library dependency of the CLI; its standalone compiler release is independent.
+
+Optional VM, Cockpit, DorkPipe and other packages release from their owning repositories. They consume published host/SDK artifacts and declare `min_dockpipe_version` on each installable slice that needs newer host features. Repository `dockpipe_version` and its lock select the exact producer executable; they are not a package's compatibility minimum. Native plugins additionally retain their platform, ABI and Qt checks.
+
+Host publication updates `packages/runtime/latest.json`. Marketplace discovery continues to use `packages/latest.json`, which is owned by independent package catalog promotion. A host release must not replace that catalog pointer or download optional packages to assemble its own artifacts. Immutable host payload URLs under `packages/releases/` and `packages/candidates/` remain unchanged. The staging Homebrew synchronizer falls back to the legacy combined pointer only when the new runtime pointer returns HTTP 404; corruption and other HTTP failures remain errors.
+
+A new generic capability can therefore ship as a host/SDK release before a package uses it. The package then builds and qualifies against that published contract, without requiring a synchronized host rebuild. Optional integration failures remain visible in their own strict qualification workflows.
 
 ## Production credentials and public origin
 

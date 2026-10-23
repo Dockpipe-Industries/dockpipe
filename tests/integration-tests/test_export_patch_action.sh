@@ -7,8 +7,6 @@ DOCKPIPE="$REPO_ROOT/src/bin/dockpipe"
 ACTION="$REPO_ROOT/src/core/assets/scripts/export-patch.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 
-require_agent_dev_template "$REPO_ROOT"
-
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 cd "$tmp"
@@ -19,7 +17,7 @@ echo "initial" > initial.txt
 git add initial.txt
 git commit -q -m "initial"
 
-"$DOCKPIPE" --no-data --template agent-dev --workdir "$tmp" --action "$ACTION" \
+"$DOCKPIPE" --no-data --template base-dev --workdir "$tmp" --action "$ACTION" \
   -- sh -c 'echo "patched line" > newfile.txt && git add newfile.txt'
 
 [[ -f "$tmp/dockpipe.patch" ]] || { echo "Expected dockpipe.patch"; exit 1; }

@@ -118,6 +118,9 @@ func validateWorkflowStep(i int, s Step, w *Workflow) error {
 	if err := ValidateStepHostShape(i, s); err != nil {
 		return err
 	}
+	if err := ValidateStepShell(i, s); err != nil {
+		return err
+	}
 	if err := ValidateStepPackageInvocation(i, s); err != nil {
 		return err
 	}

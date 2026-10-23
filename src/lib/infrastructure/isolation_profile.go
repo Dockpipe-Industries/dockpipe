@@ -96,13 +96,26 @@ func LoadIsolationProfile(repoRoot, runtimeName, resolverName string) (map[strin
 		}
 		return nil
 	}
+	mergeResolver := func(path string) error {
+		if err := merge(path); err != nil {
+			return err
+		}
+		if path != "" {
+			absolute, err := filepath.Abs(filepath.Dir(path))
+			if err != nil {
+				return err
+			}
+			m["DOCKPIPE_RESOLVER_PACKAGE_ROOT"] = absolute
+		}
+		return nil
+	}
 
 	if runtimeName != "" {
 		if err := merge(tryResolveRuntime(repoRoot, runtimeName)); err != nil {
 			return nil, err
 		}
 		if !explicitPair && resolverName == "" {
-			if err := merge(tryResolveResolver(repoRoot, runtimeName)); err != nil {
+			if err := mergeResolver(tryResolveResolver(repoRoot, runtimeName)); err != nil {
 				return nil, err
 			}
 		}
@@ -113,7 +126,7 @@ func LoadIsolationProfile(repoRoot, runtimeName, resolverName string) (map[strin
 				return nil, err
 			}
 		}
-		if err := merge(tryResolveResolver(repoRoot, resolverName)); err != nil {
+		if err := mergeResolver(tryResolveResolver(repoRoot, resolverName)); err != nil {
 			return nil, err
 		}
 	}

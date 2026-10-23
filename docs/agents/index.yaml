@@ -15,6 +15,12 @@ skills:
     codex: ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex
     claude: ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target claude --output <path>
 
+external_sources:
+  packages: https://github.com/Dockpipe-Industries/dockpipe-packages
+  pipelang: https://github.com/Dockpipe-Industries/pipelang
+  package_validation: Use absolute DOCKPIPE_BIN, PACKAGE_REPOSITORY and PACKAGE_SOURCE selections in the owning repository.
+  language_dependency: Versioned external Go SDK; preserve typed models, dockpipe pipelang and automatic materialization.
+
 tasks:
   reliability_review:
     read:
@@ -27,15 +33,15 @@ tasks:
   pipelang_foundation_planning:
     read:
       - AGENTS.md
-      - docs/agents/tasks/pipelang-reactive-application-language/index.yaml
-      - docs/agents/tasks/pipelang-reactive-application-language/foundation-specification-plan.md
-      - docs/agents/tasks/pipelang-reactive-application-language/foundation-alignment.md
+      - https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/agents/tasks/pipelang-reactive-application-language/index.yaml
+      - https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/agents/tasks/pipelang-reactive-application-language/foundation-specification-plan.md
+      - https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/agents/tasks/pipelang-reactive-application-language/foundation-alignment.md
       - docs/concepts/pipelang-foundation.md
       - docs/concepts/pipelang-foundation-contracts.md
       - docs/concepts/pipelang-foundation-delivery.md
     optional:
-      - docs/agents/tasks/pipelang-reactive-application-language/compiler-contract.md
-      - docs/agents/tasks/pipelang-reactive-application-language/language-surface.md
+      - https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/agents/tasks/pipelang-reactive-application-language/compiler-contract.md
+      - https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/agents/tasks/pipelang-reactive-application-language/language-surface.md
     skills:
       - dorkpipe-objective-execution
       - dorkpipe-token-optimization
@@ -99,9 +105,9 @@ tasks:
         - legacy layout, state migration, or cleanup
         - package-owned compatibility changes
     validation:
-      - rg -n "compat|legacy|alias|deprecated|ignored|no-op|noop" src packages workflows docs tests .github -S
+      - rg -n "compat|legacy|alias|deprecated|ignored|no-op|noop" src workflows docs tests .github -S
       - go test ./src/lib/domain ./src/lib/application ./src/lib/infrastructure
-      - ./src/bin/dockpipe package test --workdir . --only <package>
+      - '"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only <package>'
       - git diff --check
 
   yaml_workflow_change:
@@ -144,8 +150,8 @@ tasks:
       - dorkpipe-token-optimization
     validation:
       - ./src/bin/dockpipe workflow validate <config.yml>
-      - ./src/bin/dockpipe package test --workdir . --only <package>
-      - ./src/bin/dockpipe package compile workflows --workdir . --from packages/<package> --force
+      - '"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only <package>'
+      - '"$DOCKPIPE_BIN" package compile workflows --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force'
       - go test ./src/lib/domain ./src/lib/application
 
   git_runtime_sessions:
@@ -192,9 +198,9 @@ tasks:
       - dorkpipe-package-authoring
       - dorkpipe-token-optimization
     validation:
-      - ./src/bin/dockpipe package test --workdir . --only <package>
-      - ./src/bin/dockpipe package compile workflows --workdir . --from packages/<package> --force
-      - ./src/bin/dockpipe package compile resolvers --workdir . --from packages/<package> --force
+      - '"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only <package>'
+      - '"$DOCKPIPE_BIN" package compile workflows --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force'
+      - '"$DOCKPIPE_BIN" package compile resolvers --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force'
 
   package_promotion:
     read:
@@ -211,11 +217,11 @@ tasks:
       - dorkpipe-core-review
       - dorkpipe-token-optimization
     validation:
-      - find packages/<package> -type f | sort
-      - rg -n "<old-name>|<old-script>" packages docs src workflows .github -S
-      - ./src/bin/dockpipe package test --workdir . --only <package>
-      - ./src/bin/dockpipe package compile workflows --workdir . --from packages/<package> --force
-      - ./src/bin/dockpipe package compile resolvers --workdir . --from packages/<package> --force
+      - rg --files "$PACKAGE_SOURCE"
+      - rg -n "<old-name>|<old-script>" docs src workflows .github -S
+      - '"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only <package>'
+      - '"$DOCKPIPE_BIN" package compile workflows --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force'
+      - '"$DOCKPIPE_BIN" package compile resolvers --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force'
 
   agentic_ai_workflow:
     read:
@@ -230,7 +236,7 @@ tasks:
     optional:
       - docs/workflows/agentic-workflows.md
       - docs/research/agentic-workflow-research-2026.md
-      - packages/dorkpipe/resolvers/dorkpipe/assets/docs/orchestration-contract.md
+      - https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe/resolvers/dorkpipe/assets/docs/orchestration-contract.md
     skills:
       - dorkpipe-agentic-yaml
       - dorkpipe-yaml-workflows
@@ -243,7 +249,7 @@ tasks:
         - approval gates
     validation:
       - ./src/bin/dockpipe workflow validate <config.yml>
-      - ./src/bin/dockpipe package test --workdir . --only dorkpipe
+      - '"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only dorkpipe'
 
   tooling_surface_change:
     read:
@@ -278,13 +284,13 @@ tasks:
     optional:
       - docs/workflows/agentic-workflows.md
       - docs/workflows/workflow-yaml.md
-      - packages/dorkpipe/resolvers/dorkpipe/assets/docs/example-brain/index.md
+      - https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe/resolvers/dorkpipe/assets/docs/example-brain/index.md
     skills:
       - dorkpipe-agentic-yaml
       - dorkpipe-token-optimization
     validation:
       - ./src/bin/dockpipe workflow validate <config.yml>
-      - rg -n "<old-name>|<old-script>" packages docs src workflows .github -S
+      - rg -n "<old-name>|<old-script>" docs src workflows .github -S
 
   artifacts_or_mcp:
     read:
@@ -293,8 +299,8 @@ tasks:
       - docs/agents/runtime/safety-guardrails.md
     optional:
       - docs/runtime/artifacts.md
-      - packages/dorkpipe-mcp/README.md
-      - packages/dorkpipe-mcp/mcpbridge/README.md
+      - https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe-mcp/README.md
+      - https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe-mcp/mcpbridge/README.md
     skills:
       - dorkpipe-core-review
     escalate:
@@ -330,7 +336,7 @@ tasks:
       - docs/runtime/operation-results.md
       - docs/runtime/git-runtime-sessions.md
       - docs/agents/core/architecture.md
-      - packages/dorkpipe/resolvers/dorkpipe/assets/docs/example-brain/index.md
+      - https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe/resolvers/dorkpipe/assets/docs/example-brain/index.md
     skills:
       - dorkpipe-token-optimization
       - dorkpipe-core-review
@@ -343,7 +349,7 @@ tasks:
       - docs/agents/docs/docs-system.md
       - docs/agents/docs/skills.md
       - docs/agents/packages/package-authoring.md
-      - packages/dorkpipe/workflows/skills.render/config.yml
+      - https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe/workflows/skills.render/config.yml
     skills:
       - dorkpipe-package-authoring
       - dorkpipe-token-optimization
@@ -377,7 +383,7 @@ tasks:
       - dorkpipe-objective-execution
       - dorkpipe-task-handoff
     validation:
-      - bash packages/dorkpipe/tests/test_task_skill_lifecycle.sh
+      - bash "$PACKAGE_REPOSITORY/packages/dorkpipe/tests/test_task_skill_lifecycle.sh"
       - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-objective-execution,dorkpipe-task-handoff
 
   safety_or_secrets:

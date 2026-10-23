@@ -25,6 +25,7 @@ for attempt in 1 2 3; do
   if hdiutil create -volname Dockpipe -srcfolder "$source_directory" -format UDZO "$candidate" >"$log" 2>&1; then
     cat "$log"
     [[ -f "$candidate" && -s "$candidate" && ! -L "$candidate" ]] || { echo 'hdiutil produced no regular DMG' >&2; exit 1; }
+    bash "$(dirname "$0")/verify-dmg.sh" "$candidate"
     python3 - "$candidate" "$output" <<'PY'
 import os
 import sys

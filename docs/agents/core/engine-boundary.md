@@ -27,7 +27,7 @@ Read before editing `src/lib/` or `src/cmd/`.
 
 ## Package/Workflow Interaction
 
-Treat `packages/`, `workflows/`, and `.staging/` as separate products. They interact with the engine only through:
+Package source belongs to the external [dockpipe-packages repository](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages/). PipeLang belongs to its [external SDK repository](https://github.com/Dockpipe-Industries/pipelang). Do not introduce sibling source paths or copied implementations. Packages interact with the engine through:
 
 - compile into `bin/.dockpipe/internal/packages/`
 - package/store tarballs

@@ -76,6 +76,16 @@ dependencies, terminal commands and removal. A package can require host tools,
 authentication or a container engine; installing it does not supply every external
 service or approve every action it may perform.
 
+## Ecosystem source and examples
+
+[Dockpipe packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages)
+contains the package sources, tests and real workflow examples. The
+[PipeLang compiler and SDK](https://github.com/Dockpipe-Industries/pipelang)
+has its own source, language documentation, tests and standalone CLI. Dockpipe
+consumes its versioned SDK for typed models and the existing `dockpipe pipelang`
+commands. Other tools and languages integrate through normal workflows, packages
+and the public Dockpipe SDK contracts.
+
 ## Learn more
 
 - [Documentation](docs/README.md)

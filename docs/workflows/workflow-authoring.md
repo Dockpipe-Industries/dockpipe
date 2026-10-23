@@ -64,13 +64,23 @@ name: build-with-setup
 steps:
   - id: prepare
     kind: host
-    cmd: ./scripts/prepare.sh
+    run: scripts/prepare.sh
 
   - id: test
     runtime: dockerimage
     isolate: node:22
     cmd: npm test
 ```
+
+Host inline commands use Windows PowerShell on Windows and Bash on Linux/macOS.
+Set `shell: bash`, `shell: powershell`, or `shell: pwsh` to select a shell explicitly;
+the selected executable must be installed. `powershell` selects Windows PowerShell
+and is only supported on Windows; `pwsh` selects PowerShell 7. Host `run` /
+`pre_script` files preserve
+their script family: `.sh` uses Bash, while `.ps1` uses Windows PowerShell on Windows
+and PowerShell 7 (`pwsh`) on Linux/macOS. A conflicting shell override is rejected.
+Use `shell: pwsh` when a Windows script requires PowerShell 7. See the
+[host shell contract](workflow-yaml.md#host-steps-kind-host) for complete rules.
 
 Host steps are outside Docker container security policy. Keep container policy on
 container steps.

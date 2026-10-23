@@ -3,6 +3,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/dockpipe-sdk.sh"
+source "${SCRIPT_DIR}/lib/vm-session-reporter.sh"
+source "${SCRIPT_DIR}/lib/vm-guest-tools-media.sh"
+source "${SCRIPT_DIR}/lib/vm-boot-display.sh"
 dockpipe_sdk_refresh
 
 vmimage_die() {
@@ -1210,6 +1213,22 @@ vmimage_ensure_secure_boot_firmware() {
   fi
 }
 
+vmimage_prepare_socket_dir() {
+  [[ -z "${DOCKPIPE_VM_SOCKET_DIR:-}" ]] || return 0
+  local runtime_root="${TMPDIR:-/tmp}"
+  [[ "$runtime_root" == /* && -d "$runtime_root" && ! -L "$runtime_root" && -w "$runtime_root" ]] ||
+    vmimage_die "VM socket temporary root must be an absolute, owned directory"
+  local socket_dir
+  socket_dir="$(umask 077; mktemp -d "${runtime_root%/}/dockpipe-vm.XXXXXXXX")" ||
+    vmimage_die "failed to allocate the VM socket directory"
+  local LC_ALL=C
+  if (( ${#socket_dir} + 13 > 107 )); then
+    rmdir "$socket_dir"
+    vmimage_die "VM socket temporary root is too long for Unix sockets (107-byte limit)"
+  fi
+  export DOCKPIPE_VM_SOCKET_DIR="$socket_dir"
+}
+
 vmimage_start_swtpm() {
   [[ "$(vmimage_tpm_mode)" != "off" ]] || return 0
   if vmimage_is_windows_host; then
@@ -1218,7 +1237,8 @@ vmimage_start_swtpm() {
   local state_dir tpm_dir sock log_path pid
   state_dir="$(vmimage_state_dir)"
   tpm_dir="$(vmimage_durable_state_dir)/tpm"
-  sock="${state_dir}/swtpm.sock"
+  vmimage_prepare_socket_dir
+  sock="${DOCKPIPE_VM_SOCKET_DIR}/swtpm.sock"
   log_path="${state_dir}/swtpm.log"
   mkdir -p "$tpm_dir" "$state_dir"
   chmod 700 "$tpm_dir" "$state_dir"
@@ -1652,8 +1672,7 @@ vmimage_windows_install_mode() {
       printf 'manual\n'
       ;;
     unattended|automated|auto)
-      vmimage_log "ignoring deprecated DOCKPIPE_VM_WINDOWS_INSTALL_MODE=${mode}; windows-vm now uses manual install flow"
-      printf 'manual\n'
+      printf 'unattended\n'
       ;;
     *)
       vmimage_log "ignoring unsupported DOCKPIPE_VM_WINDOWS_INSTALL_MODE=${mode}; windows-vm now uses manual install flow"
@@ -1776,7 +1795,11 @@ vmimage_builtin_bootstrap_reserved_names() {
     "provision-windows-ssh.ps1" \
     "dockpipe-guest-agent.exe" \
     "dockpipe-guest-agent.ps1" \
-    "README.txt"
+    "dockpipe-guest-ssh.pub" \
+    "Install-Dockpipe-Guest-Tools.cmd" \
+    "autorun.inf" \
+    "README.txt" \
+    "GuestTools"
 }
 
 vmimage_warn_reserved_bootstrap_overrides() {
@@ -1828,26 +1851,47 @@ vmimage_prepare_bootstrap_media() {
     builtin_script="$(vmimage_builtin_bootstrap_script)"
     [[ -f "$builtin_script" ]] || vmimage_die "built-in windows bootstrap helper not found: $builtin_script"
     cp "$builtin_script" "${shell_bootstrap}/"
+    if [[ -n "${DOCKPIPE_VM_WINDOWS_SSH_PUBKEY:-}" ]]; then
+      printf '%s\n' "$DOCKPIPE_VM_WINDOWS_SSH_PUBKEY" > "${shell_bootstrap}/dockpipe-guest-ssh.pub"
+    fi
     if [[ -f "${SCRIPT_DIR}/dockpipe-guest-agent.exe" ]]; then
       cp "${SCRIPT_DIR}/dockpipe-guest-agent.exe" "${shell_bootstrap}/"
     fi
     if [[ -f "${SCRIPT_DIR}/dockpipe-guest-agent.ps1" ]]; then
       cp "${SCRIPT_DIR}/dockpipe-guest-agent.ps1" "${shell_bootstrap}/"
     fi
+    cat > "${shell_bootstrap}/Install-Dockpipe-Guest-Tools.cmd" <<'EOF'
+@echo off
+title Dockpipe Guest Tools
+"%~dp0dockpipe-guest-agent.exe" -install-guest-tools
+if errorlevel 1 pause
+EOF
+    cat > "${shell_bootstrap}/autorun.inf" <<'EOF'
+[autorun]
+label=Dockpipe Guest Tools
+open=dockpipe-guest-agent.exe -install-guest-tools
+action=Install or repair Dockpipe Guest Tools
+shell\install=Install or repair Dockpipe Guest Tools
+shell\install\command=dockpipe-guest-agent.exe -install-guest-tools
+EOF
     cat > "${shell_bootstrap}/README.txt" <<'EOF'
 Dockpipe Windows VM bootstrap media
 
 This media is attached automatically by the Dockpipe VM runner.
-Run provision-windows-ssh.ps1 from an elevated PowerShell session inside the guest
-to install and configure OpenSSH before Dockpipe SSH automation is available.
+Run Install-Dockpipe-Guest-Tools.cmd to install or repair guest services.
+Windows asks for administrator approval. CD AutoPlay may offer this action
+automatically; Windows policy determines whether the installer is opened.
+The installer uses the existing account and the attached SSH public key.
+It persists a SYSTEM startup task that reconciles provisioning on every boot,
+including after an interrupted setup, without depending on this media.
 The same bootstrap media includes dockpipe-guest-agent.exe, which the
 provisioning script installs as a LocalSystem startup task by default.
 Dockpipe also keeps a PowerShell fallback copy beside it for recovery/debugging.
 
-Once the Dockpipe guest agent is provisioned, Dockpipe can bridge plain-text
-clipboard contents between the host and guest automatically on Windows hosts.
-Clipboard bridging is provided by the Dockpipe guest agent when it is
-provisioned and reachable.
+If an interactive Qt Guest Tools bundle is included, this launcher opens it.
+Its one-time installer registers the limited user application at login.
+The package-owned host clipboard bridge connects to that logged-in application.
+Windows policy controls AutoPlay; open this launcher manually when required.
 
 Example:
   Set-ExecutionPolicy -Scope Process Bypass
@@ -1855,19 +1899,36 @@ Example:
 EOF
   fi
 
+  vmimage_stage_resolver_guest_tools "$shell_bootstrap"
   printf '%s\n' "$bootstrap_dir"
+}
+
+vmimage_prepare_bootstrap_iso() {
+  local staged_dir="$1"
+  local iso_path="${staged_dir}.iso"
+  local temporary_iso="${iso_path}.tmp"
+  local -a iso_command=()
+  if command -v genisoimage >/dev/null 2>&1; then
+    iso_command=(genisoimage)
+  elif command -v mkisofs >/dev/null 2>&1; then
+    iso_command=(mkisofs)
+  elif command -v xorriso >/dev/null 2>&1; then
+    iso_command=(xorriso -as mkisofs)
+  else
+    vmimage_log "CD image builder unavailable; attaching Guest Tools as USB media. Open Install-Dockpipe-Guest-Tools.cmd inside Windows. Install genisoimage, mkisofs, or xorriso on the host for CD AutoPlay support."
+    return 1
+  fi
+  if ! "${iso_command[@]}" -quiet -J -R -V DOCKPIPE_TOOLS -o "$temporary_iso" "$staged_dir"; then
+    rm -f "$temporary_iso"
+    vmimage_die "failed to create Dockpipe Guest Tools CD image"
+  fi
+  mv -f "$temporary_iso" "$iso_path"
+  printf '%s\n' "$iso_path"
 }
 
 vmimage_attach_bootstrap_media_dir() {
   local staged_dir="$1"
-  local unattend_dir=""
   [[ -n "$staged_dir" ]] || return 0
-  if [[ -n "${DOCKPIPE_VM_WINDOWS_UNATTEND_DIR:-}" ]]; then
-    unattend_dir="$(vmimage_resolve_path "$DOCKPIPE_VM_WINDOWS_UNATTEND_DIR")"
-    vmimage_copy_tree_contents "$(vmimage_shell_path "$staged_dir")" "$(vmimage_shell_path "$unattend_dir")"
-    printf '%s\n' "$unattend_dir"
-    return 0
-  fi
   printf '%s\n' "$staged_dir"
 }
 
@@ -1875,16 +1936,12 @@ vmimage_bootstrap_attachment_mode() {
   local boot_source="$1"
   local staged_dir="$2"
   [[ -n "$staged_dir" ]] || return 0
-  if [[ -n "${DOCKPIPE_VM_WINDOWS_UNATTEND_DIR:-}" ]]; then
-    printf 'floppy\n'
-    return 0
-  fi
   case "$boot_source" in
-    image)
+    image|installer-iso)
       printf 'disk\n'
       ;;
     *)
-      printf 'floppy\n'
+      vmimage_die "unsupported bootstrap boot source: $boot_source"
       ;;
   esac
 }
@@ -1962,30 +2019,29 @@ vmimage_windows_ensure_ssh_key() {
 }
 
 vmimage_windows_bootstrap_encoded() {
-  local user pubkey script escaped_pubkey
+  local user pubkey script escaped_user escaped_pubkey
   user="${DOCKPIPE_VM_WINDOWS_ADMIN_USER}"
   pubkey="${DOCKPIPE_VM_WINDOWS_SSH_PUBKEY}"
+  escaped_user="${user//\'/\'\'}"
   escaped_pubkey="${pubkey//\'/\'\'}"
   script="$(cat <<EOF
 \$ErrorActionPreference = 'Stop'
-\$pubKey = '${escaped_pubkey}'
-try {
-  Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0 | Out-Null
-} catch {
-  Write-Host '[dockpipe] OpenSSH capability install returned:' \$_.Exception.Message
+\$helper = \$null
+for (\$attempt = 0; \$attempt -lt 60; \$attempt++) {
+  foreach (\$drive in Get-PSDrive -PSProvider FileSystem) {
+    \$candidate = Join-Path \$drive.Root 'provision-windows-ssh.ps1'
+    if (Test-Path -LiteralPath \$candidate) {
+      \$helper = \$candidate
+      break
+    }
+  }
+  if (\$null -ne \$helper) { break }
+  Start-Sleep -Seconds 2
 }
-Start-Sleep -Seconds 5
-Set-Service -Name sshd -StartupType Automatic
-if ((Get-Service sshd).Status -ne 'Running') { Start-Service sshd }
-\$sshDir = Join-Path \$env:ProgramData 'ssh'
-\$adminKeys = Join-Path \$sshDir 'administrators_authorized_keys'
-New-Item -ItemType Directory -Force -Path \$sshDir | Out-Null
-Set-Content -Path \$adminKeys -Value \$pubKey -Encoding ascii
-icacls \$adminKeys /inheritance:r | Out-Null
-icacls \$adminKeys /grant 'Administrators:F' 'SYSTEM:F' | Out-Null
-if (-not (Get-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -ErrorAction SilentlyContinue)) {
-  New-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22 | Out-Null
+if (\$null -eq \$helper) {
+  throw 'Dockpipe guest-services bootstrap media was not found within 120 seconds.'
 }
+& \$helper -UserName '${escaped_user}' -CreateUser \$false -AuthorizedKey '${escaped_pubkey}' -EnablePasswordAuth \$false -InstallDockPipeAgent \$true
 New-Item -ItemType File -Force -Path 'C:\dockpipe-firstboot.ok' | Out-Null
 EOF
 )"
@@ -2208,7 +2264,10 @@ vmimage_ensure_disk_exists_for_install() {
 vmimage_write_pid_sidecar() {
   local pid="$1"
   local run_file="${DOCKPIPE_RUN_FILE:-}"
-  [[ -n "$run_file" ]] || return 0
+  if [[ -z "$run_file" ]]; then
+    vmimage_report_session started "$pid"
+    return 0
+  fi
   printf '%s\n' "$pid" > "${run_file%.json}.pid"
   if [[ "${DOCKPIPE_OBSERVABILITY:-}" != "off" ]]; then
     local helper
@@ -2217,6 +2276,7 @@ vmimage_write_pid_sidecar() {
       vmimage_log "Host process association unavailable; VM execution continues."
     fi
   fi
+  vmimage_report_session started "$pid"
 }
 
 vmimage_collect_env_exports_bash() {
@@ -3084,6 +3144,11 @@ vmimage_apply_windows_image_compat_defaults() {
 
 vmimage_run_qemu_common() {
   local backend="$1"
+  local boot_display_geometry boot_display_width boot_display_height
+  boot_display_geometry="$(vmimage_boot_display_geometry)" || vmimage_die "invalid boot display geometry"
+  if [[ -n "$boot_display_geometry" ]]; then
+    IFS=x read -r boot_display_width boot_display_height <<< "$boot_display_geometry"
+  fi
   vmimage_require_host_dependencies
   vmimage_ensure_prompted_inputs
   vmimage_prepare_state_split
@@ -3091,6 +3156,9 @@ vmimage_run_qemu_common() {
   boot_source="$(vmimage_boot_source)"
   vmimage_apply_windows_installer_compat_defaults "$backend" "$boot_source"
   vmimage_apply_windows_image_compat_defaults "$backend" "$boot_source"
+  if [[ "$boot_source" == "image" && -n "${DOCKPIPE_VM_SSH_USER:-}" ]]; then
+    vmimage_windows_ensure_ssh_key
+  fi
   if vmimage_windows_should_unattend "$boot_source"; then
     vmimage_windows_prepare_unattended_install
   fi
@@ -3171,9 +3239,15 @@ vmimage_run_qemu_common() {
   pci_devices_csv="$(vmimage_pci_devices_csv)"
   pci_primary_mode="$(vmimage_pci_primary_mode)"
   ssh_port="$(vmimage_ssh_base)"
+  vmimage_prepare_session_event "$ssh_port" "$machine_uuid"
   state_dir="$(vmimage_state_dir)"
   pidfile="${state_dir}/qemu-${DOCKPIPE_RUN_ID:-vm}.pid"
-  monitor="${state_dir}/monitor-${DOCKPIPE_RUN_ID:-vm}.sock"
+  if [[ "$backend" == "qemu-kvm" ]]; then
+    vmimage_prepare_socket_dir
+    monitor="${DOCKPIPE_VM_SOCKET_DIR}/monitor.sock"
+  else
+    monitor="${state_dir}/monitor-${DOCKPIPE_RUN_ID:-vm}.sock"
+  fi
   qemu_stdout_log="${state_dir}/qemu-${DOCKPIPE_RUN_ID:-vm}.stdout.log"
   qemu_stderr_log="${state_dir}/qemu-${DOCKPIPE_RUN_ID:-vm}.stderr.log"
   clipboard_mode="$(vmimage_clipboard_mode)"
@@ -3205,6 +3279,12 @@ vmimage_run_qemu_common() {
     -netdev "user,id=net0,${ssh_hostfwd}"
     -device "${net_device},netdev=net0,mac=${net_mac}"
   )
+
+  if [[ -n "$boot_display_geometry" ]]; then
+    # Class globals configure only standard VGA; they never replace an explicit
+    # video device or select host GPU passthrough.
+    qemu_args+=(-global "VGA.xres=${boot_display_width}" -global "VGA.yres=${boot_display_height}")
+  fi
 
   case "$disk_bus" in
     virtio)
@@ -3285,14 +3365,19 @@ vmimage_run_qemu_common() {
     qemu_args+=(-drive "file=$(vmimage_resolve_path "$DOCKPIPE_VM_VIRTIO_ISO"),media=cdrom")
   fi
   if [[ -n "${DOCKPIPE_VM_WINDOWS_UNATTEND_DIR:-}" ]]; then
-    qemu_args+=(-drive "if=floppy,format=raw,file=fat:floppy:rw:$(vmimage_resolve_path "$DOCKPIPE_VM_WINDOWS_UNATTEND_DIR")")
-  elif [[ -n "$bootstrap_attachment_dir" && "$bootstrap_attachment_mode" == "floppy" ]]; then
-    qemu_args+=(-drive "if=floppy,format=raw,file=fat:floppy:rw:${bootstrap_attachment_dir}")
-  elif [[ -n "$bootstrap_attachment_dir" && "$bootstrap_attachment_mode" == "disk" ]]; then
+    qemu_args+=(-drive "if=floppy,format=raw,readonly=on,file=fat:floppy:$(vmimage_resolve_path "$DOCKPIPE_VM_WINDOWS_UNATTEND_DIR")")
+  fi
+  if [[ -n "$bootstrap_attachment_dir" && "$bootstrap_attachment_mode" == "disk" ]]; then
+    local bootstrap_iso bootstrap_drive
+    if bootstrap_iso="$(vmimage_prepare_bootstrap_iso "$bootstrap_attachment_dir")"; then
+      bootstrap_drive="if=none,id=vbootstrap,file=${bootstrap_iso},format=raw,readonly=on,media=cdrom"
+    else
+      bootstrap_drive="if=none,id=vbootstrap,file=fat:${bootstrap_attachment_dir},format=raw,readonly=on"
+    fi
     qemu_args+=(
-      -device "ich9-ahci,id=sata-bootstrap0"
-      -drive "if=none,id=vbootstrap,file=fat:rw:${bootstrap_attachment_dir},format=raw"
-      -device "ide-hd,drive=vbootstrap,bus=sata-bootstrap0.0,serial=$(vmimage_bootstrap_serial)"
+      -device qemu-xhci,id=dockpipe-bootstrap-usb
+      -drive "$bootstrap_drive"
+      -device "usb-storage,drive=vbootstrap,removable=on,serial=$(vmimage_bootstrap_serial)"
     )
   fi
 
@@ -3458,6 +3543,7 @@ vmimage_run_qemu_common() {
       fi
     fi
   fi
+  vmimage_report_session exited "${DOCKPIPE_VM_EVENT_PID:-0}"
 }
 
 vmimage_run_qemu_kvm() {

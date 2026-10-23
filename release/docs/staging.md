@@ -52,7 +52,8 @@ and [publication evidence and qualification limits](../packaging/desktop/flatpak
 - R2 stores each complete candidate at `packages/candidates/<CANDIDATE>/`.
   `release-manifest.json` records its full source SHA and per-platform store paths.
   Each store manifest retains the individual package versions and checksums.
-- `packages/latest.json` points to the latest completed staging candidate.
+- `packages/runtime/latest.json` points to the latest completed staging candidate.
+  The independent Marketplace pointer remains `packages/latest.json`; host publication does not change it.
   Publication uploads payloads and signed APT metadata before the catalog commit
   marker and pointer. Existing committed candidates cannot be overwritten.
 

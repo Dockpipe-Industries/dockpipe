@@ -3,6 +3,8 @@
 package infrastructure
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -43,6 +45,93 @@ func createPrivateDirectory(path string) error {
 		return &os.PathError{Op: "mkdir", Path: path, Err: err}
 	}
 	return nil
+}
+
+// Elevated tokens can default new file ownership to Administrators. Set the
+// current user owner and protected DACL during creation, before any bytes exist.
+func createPrivateFile(path string, flags int) (*os.File, error) {
+	if flags != os.O_WRONLY && flags != os.O_RDWR {
+		return nil, errors.New("private file creation requires write-only or read/write access")
+	}
+	userSID, err := currentWindowsUserSID()
+	if err != nil {
+		return nil, err
+	}
+	descriptor, err := windows.SecurityDescriptorFromString(
+		"O:" + userSID.String() + "D:P(A;;FA;;;" + userSID.String() + ")(A;;FA;;;SY)",
+	)
+	if err != nil {
+		return nil, err
+	}
+	attributes := windows.SecurityAttributes{
+		Length:             uint32(unsafe.Sizeof(windows.SecurityAttributes{})),
+		SecurityDescriptor: descriptor,
+	}
+	pathPointer, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return nil, err
+	}
+	access := uint32(windows.GENERIC_WRITE)
+	if flags == os.O_RDWR {
+		access |= windows.GENERIC_READ
+	}
+	handle, err := windows.CreateFile(pathPointer, access,
+		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE,
+		&attributes, windows.CREATE_NEW,
+		windows.FILE_ATTRIBUTE_NORMAL|windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	if err != nil {
+		return nil, &os.PathError{Op: "open", Path: path, Err: err}
+	}
+	return os.NewFile(uintptr(handle), path), nil
+}
+
+func createPrivateTempFile(directory, pattern string) (*os.File, error) {
+	for attempt := 0; attempt < 16; attempt++ {
+		path, err := privateTemporaryPath(directory, pattern)
+		if err != nil {
+			return nil, err
+		}
+		file, err := createPrivateFile(path, os.O_RDWR)
+		if os.IsExist(err) {
+			continue
+		}
+		return file, err
+	}
+	return nil, errors.New("could not allocate a collision-free private temporary file")
+}
+
+func createPrivateTempDirectory(directory, pattern string) (string, error) {
+	for attempt := 0; attempt < 16; attempt++ {
+		path, err := privateTemporaryPath(directory, pattern)
+		if err != nil {
+			return "", err
+		}
+		if err := createPrivateDirectory(path); os.IsExist(err) {
+			continue
+		} else if err != nil {
+			return "", err
+		}
+		return path, nil
+	}
+	return "", errors.New("could not allocate a collision-free private temporary directory")
+}
+
+func privateTemporaryPath(directory, pattern string) (string, error) {
+	if strings.ContainsAny(pattern, `/\`) {
+		return "", errors.New("private temporary name pattern contains a path separator")
+	}
+	if directory == "" {
+		directory = os.TempDir()
+	}
+	prefix, suffix := pattern, ""
+	if index := strings.LastIndexByte(pattern, '*'); index >= 0 {
+		prefix, suffix = pattern[:index], pattern[index+1:]
+	}
+	random := make([]byte, 16)
+	if _, err := rand.Read(random); err != nil {
+		return "", err
+	}
+	return filepath.Join(directory, prefix+hex.EncodeToString(random)+suffix), nil
 }
 
 // Metadata writers replace complete files atomically. Readers must permit that

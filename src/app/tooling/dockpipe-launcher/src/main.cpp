@@ -8,6 +8,9 @@
 #include "Theme.h"
 #include "WebMermaidRenderer.h"
 #include "TerminalPreferences.h"
+#ifdef DOCKPIPE_ENABLE_QUALIFICATION
+#include "PackageDisplayQualification.h"
+#endif
 
 #include <QApplication>
 #include <QIcon>
@@ -80,6 +83,18 @@ int main(int argc, char *argv[])
     QApplication::setApplicationVersion(QStringLiteral(DOCKPIPE_RELEASE_VERSION));
     QApplication::setApplicationDisplayName(QStringLiteral("Dockpipe Launcher"));
     QApplication::setOrganizationName(QStringLiteral("dockpipe"));
+#ifdef DOCKPIPE_ENABLE_QUALIFICATION
+    int qualificationExit = -1;
+    const bool qualification = preparePackageDisplayQualification(app, qualificationExit);
+    if (qualification && qualificationExit >= 0)
+        return qualificationExit;
+#else
+    if (app.arguments().contains("--qualify-package-display")
+        || app.arguments().contains("--qualification-profile-path")) {
+        QTextStream(stderr) << "This build does not enable desktop qualification.\n";
+        return 2;
+    }
+#endif
     // Transparent WebEngine surfaces otherwise bypass normal widget stacking.
     // Select the compatible compositor before constructing any browser views.
     if (TerminalPreferences::instance()->settings().opacity < 100
@@ -114,6 +129,10 @@ int main(int argc, char *argv[])
 
     app.setQuitOnLastWindowClosed(true);
 
+#ifdef DOCKPIPE_ENABLE_QUALIFICATION
+    if (qualification)
+        return runPackageDisplayQualification(app);
+#endif
     const bool startHome = app.arguments().contains(QStringLiteral("--start-home"));
     const bool allowSecond = allowSecondInstance(argc, argv);
     SingleInstanceGuard singleGuard;

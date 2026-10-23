@@ -38,6 +38,11 @@ STABLE_RELEASE_URL = re.compile(
     r'(?P<version>[0-9]+\.[0-9]+\.[0-9]+)/'
     r'(?P=owner)-packages-(?P=version)-linux-amd64\.tar\.gz'
 )
+CATALOG_URL = re.compile(
+    r'https://github\.com/Dockpipe-Industries/dockpipe-packages/releases/download/'
+    r'catalog-candidate-(?P<source>[0-9a-f]{40})/'
+    r'dockpipe-catalog-(?P<platform>linux-amd64|linux-arm64|darwin-amd64|darwin-arm64|windows-amd64)\.tar\.gz'
+)
 PIN_FIELDS = {'url', 'sha256', 'size_bytes', 'manifest_sha256'}
 
 
@@ -70,16 +75,25 @@ def read_json(path, maximum):
     return json.loads(data, object_pairs_hook=composer.reject_duplicate_keys)
 
 
-def validate_pin(pin, *, baseline_platform=None, candidate_name=None, candidate_version=None):
+def validate_pin(pin, *, baseline_platform=None, candidate_name=None, candidate_version=None,
+                 catalog_platform=None, catalog_source_commit=None):
     if not isinstance(pin, dict) or set(pin) != PIN_FIELDS:
         raise ValueError('Published bundle requires complete immutable pins')
     url = pin['url']
-    if not isinstance(url, str) or (baseline_platform is None) == (candidate_name is None):
-        raise ValueError('Bundle requires an explicit baseline or candidate source')
+    roles = (baseline_platform, candidate_name, catalog_platform)
+    if not isinstance(url, str) or sum(role is not None for role in roles) != 1:
+        raise ValueError('Bundle requires exactly one explicit publisher role')
+    if catalog_platform is None and catalog_source_commit is not None:
+        raise ValueError('Catalog source identity requires its publisher role')
     if baseline_platform is not None:
         matched = GITHUB_BASELINE_URL.fullmatch(url)
         if matched is None or matched['platform'] != baseline_platform:
             raise ValueError('Baseline must use its immutable GitHub release asset')
+    elif catalog_platform is not None:
+        matched = CATALOG_URL.fullmatch(url)
+        if (matched is None or matched['platform'] != catalog_platform
+                or matched['source'] != catalog_source_commit):
+            raise ValueError('Catalog must use its exact owning source and native release asset')
     else:
         matched = STAGING_CANDIDATE_URL.fullmatch(url) or STABLE_RELEASE_URL.fullmatch(url)
         if (matched is None or matched['owner'] != candidate_name
@@ -103,7 +117,8 @@ def validate_hidden_identities(raw_identities, candidate_ownership):
 
 def load_lock(path):
     lock = read_json(path, MAX_LOCK_BYTES)
-    if (not isinstance(lock, dict) or set(lock) != {'schema', 'baselines', 'linux_candidates', 'hidden_identities'}
+    required = {'schema', 'baselines', 'linux_candidates', 'hidden_identities'}
+    if (not isinstance(lock, dict) or not required.issubset(lock) or set(lock) - required - {'catalog'}
             or type(lock['schema']) is not int or lock['schema'] != 1):
         raise ValueError('Unsupported first-party store lock')
     if not isinstance(lock['baselines'], dict) or set(lock['baselines']) != PLATFORMS:
@@ -128,7 +143,37 @@ def load_lock(path):
         validate_pin(candidate['artifact'], candidate_name=name,
                      candidate_version=candidate['version'])
     validate_hidden_identities(lock['hidden_identities'], seen)
+    if 'catalog' in lock:
+        validate_catalog(lock['catalog'], seen)
     return lock
+
+
+def validate_catalog(catalog, independent_ownership):
+    if not isinstance(catalog, dict) or set(catalog) != {'source_commit', 'owned', 'artifacts'}:
+        raise ValueError('Catalog requires source identity, exact ownership and native artifacts')
+    source = catalog['source_commit']
+    if not isinstance(source, str) or not re.fullmatch(r'[0-9a-f]{40}', source):
+        raise ValueError('Catalog source commit must be exact')
+    ownership = composer.validate_ownership(catalog['owned'])
+    if MAIN_WORKFLOW_IDENTITY in ownership or ownership & independent_ownership:
+        raise ValueError('Catalog cannot replace core-owned or independently published identities')
+    artifacts = catalog['artifacts']
+    if not isinstance(artifacts, dict) or not artifacts or set(artifacts) - PLATFORMS:
+        raise ValueError('Catalog requires explicitly qualified native platforms')
+    for platform, pin in artifacts.items():
+        validate_pin(pin, catalog_platform=platform, catalog_source_commit=source)
+
+
+def compose_catalog(catalog, platform, baseline, baseline_root, manifest, catalog_root, output):
+    if platform not in catalog['artifacts'] or baseline.get('platform') != platform:
+        raise ValueError('Catalog composition requires its qualified target')
+    entries, _ = composer.validate_store(manifest, candidate=True)
+    if (set(manifest['packages']) - {'resolvers', 'workflows'}
+            or manifest.get('platform') != platform
+            or set(entries) != composer.validate_ownership(catalog['owned'])):
+        raise ValueError('Catalog manifest differs from its exact native ownership')
+    return composer.assemble(baseline, manifest, catalog['owned'], baseline_root,
+                             catalog_root, output, MAX_EXPANDED_BYTES)
 
 
 def apply_hidden_policy(manifest, hidden_identities):
@@ -157,9 +202,11 @@ def verify_bundle(path, pin):
         raise ValueError('Bundle checksum differs from its committed pin')
 
 
-def download(pin, destination, *, baseline_platform=None, candidate_name=None, candidate_version=None):
+def download(pin, destination, *, baseline_platform=None, candidate_name=None, candidate_version=None,
+             catalog_platform=None, catalog_source_commit=None):
     validate_pin(pin, baseline_platform=baseline_platform, candidate_name=candidate_name,
-                 candidate_version=candidate_version)
+                 candidate_version=candidate_version, catalog_platform=catalog_platform,
+                 catalog_source_commit=catalog_source_commit)
     if destination.exists() or destination.is_symlink():
         raise ValueError('Download destination must be fresh')
     command = ['curl', '--fail', '--silent', '--show-error', '--location',
@@ -381,6 +428,18 @@ def ingest(lock_path, platform, core_root, main_root, output):
         download(lock['baselines'][platform], bundle, baseline_platform=platform)
         baseline_root = scratch / 'baseline'
         baseline = unpack_bundle(bundle, lock['baselines'][platform], baseline_root, platform)
+        catalog = lock.get('catalog')
+        if catalog is not None and platform in catalog['artifacts']:
+            pin = catalog['artifacts'][platform]
+            bundle = scratch / 'catalog.tar.gz'
+            download(pin, bundle, catalog_platform=platform,
+                     catalog_source_commit=catalog['source_commit'])
+            catalog_root = scratch / 'catalog'
+            manifest = unpack_bundle(bundle, pin, catalog_root, platform)
+            combined_root = scratch / 'catalog-baseline'
+            baseline = compose_catalog(catalog, platform, baseline, baseline_root,
+                                       manifest, catalog_root, combined_root)
+            baseline_root = combined_root
         candidates = {}
         if platform == 'linux-amd64':
             for name, candidate in lock['linux_candidates'].items():

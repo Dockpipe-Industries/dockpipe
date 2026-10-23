@@ -203,14 +203,18 @@ func applyOutputsFile(path string, envMap, dockerEnv map[string]string, locked m
 // Replacement matters when envSlice was built from os.Environ(): inherited DOCKPIPE_WORKDIR must not
 // block --workdir, and explicit dockpipe-injected values must win.
 func appendUniqueEnv(slice []string, pair string) []string {
-	k, _, _ := strings.Cut(pair, "=")
-	for i, e := range slice {
-		if strings.HasPrefix(e, k+"=") {
-			slice[i] = pair
-			return slice
+	key, _, found := strings.Cut(pair, "=")
+	if !found {
+		return append(slice, pair)
+	}
+	out := make([]string, 0, len(slice))
+	for _, entry := range slice {
+		existing, _, found := strings.Cut(entry, "=")
+		if !found || domain.NativeEnvKey(existing) != domain.NativeEnvKey(key) {
+			out = append(out, entry)
 		}
 	}
-	return append(slice, pair)
+	return append(out, pair)
 }
 
 func prependPATHDir(currentPath, dir string) string {
@@ -226,8 +230,17 @@ func prependPATHDir(currentPath, dir string) string {
 	delimiter := string(os.PathListSeparator)
 	if strings.Contains(currentPath, ";") {
 		delimiter = ";"
+	} else if isAbsoluteWindowsDrivePath(currentPath) && !strings.Contains(currentPath[2:], ":") {
+		// A single native Windows entry contains a drive colon, not a separator.
+		delimiter = ";"
 	} else if strings.Contains(currentPath, ":") {
 		delimiter = ":"
+	}
+
+	if delimiter == ":" && isAbsoluteWindowsDrivePath(dir) {
+		// Bash PATH entries must not contain a Windows drive colon.
+		drive := strings.ToLower(dir[:1])
+		dir = "/" + drive + strings.ReplaceAll(dir[2:], `\`, "/")
 	}
 
 	for _, part := range strings.Split(currentPath, delimiter) {
@@ -236,6 +249,14 @@ func prependPATHDir(currentPath, dir string) string {
 		}
 	}
 	return dir + delimiter + currentPath
+}
+
+func isAbsoluteWindowsDrivePath(path string) bool {
+	if len(path) < 3 || path[1] != ':' || (path[2] != '\\' && path[2] != '/') {
+		return false
+	}
+	drive := path[0]
+	return (drive >= 'A' && drive <= 'Z') || (drive >= 'a' && drive <= 'z')
 }
 
 func firstNonEmpty(ss ...string) string {

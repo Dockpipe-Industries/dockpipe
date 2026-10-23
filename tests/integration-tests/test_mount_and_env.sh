@@ -6,8 +6,6 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DOCKPIPE="$REPO_ROOT/src/bin/dockpipe"
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 
-require_agent_dev_template "$REPO_ROOT"
-
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 mount_host="$tmp"
@@ -23,11 +21,11 @@ esac
 # Windows Docker Desktop is more reliable with directory binds than single-file binds, while still
 # covering the same Dockpipe mount path.
 echo "mount_content_here" > "$tmp/mounted.txt"
-out=$(MSYS2_ARG_CONV_EXCL='*' "$DOCKPIPE" --no-data --template agent-dev --mount "$mount_host:/tmp/inttest" -- sh -c 'cat /tmp/inttest/mounted.txt')
+out=$(MSYS2_ARG_CONV_EXCL='*' "$DOCKPIPE" --no-data --template base-dev --mount "$mount_host:/tmp/inttest" -- sh -c 'cat /tmp/inttest/mounted.txt')
 [[ "$out" == *"mount_content_here"* ]] || { echo "Expected mounted content in output, got: $out"; exit 1; }
 
 # 2. --env: pass env var
-out=$("$DOCKPIPE" --no-data --template agent-dev --env "INTTEST_FOO=bar" -- sh -c 'echo "$INTTEST_FOO"')
+out=$("$DOCKPIPE" --no-data --template base-dev --env "INTTEST_FOO=bar" -- sh -c 'echo "$INTTEST_FOO"')
 [[ "$out" == *"bar"* ]] || { echo "Expected env FOO=bar in output, got: $out"; exit 1; }
 
 echo "test_mount_and_env OK"

@@ -71,6 +71,11 @@ func ValidatePackageManifest(m *PackageManifest) error {
 	if err := ValidateProvider(m.Provider); err != nil {
 		return err
 	}
+	if m.Surface != "" {
+		if err := ValidatePackageSurfacePath(m.Surface); err != nil {
+			return err
+		}
+	}
 	if err := ValidateCapabilityID(m.Capability); err != nil {
 		return err
 	}
@@ -282,6 +287,15 @@ func validateRelativePackageScriptPath(raw, field string) error {
 	cleaned := path.Clean(script)
 	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "../") {
 		return fmt.Errorf("%s must stay inside the package tree", field)
+	}
+	return nil
+}
+
+// ValidatePackageSurfacePath requires a package-relative forward-slash path.
+func ValidatePackageSurfacePath(value string) error {
+	if value == "" || value == "." || value == ".." || path.IsAbs(value) || path.Clean(value) != value ||
+		strings.ContainsAny(value, "\\:\x00\r\n") || strings.HasPrefix(value, "../") {
+		return fmt.Errorf("surface paths must be clean package-relative paths")
 	}
 	return nil
 }

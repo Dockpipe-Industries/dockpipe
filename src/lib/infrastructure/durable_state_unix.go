@@ -14,6 +14,18 @@ func createPrivateDirectory(path string) error {
 	return os.Mkdir(path, 0o700)
 }
 
+func createPrivateFile(path string, flags int) (*os.File, error) {
+	return os.OpenFile(path, os.O_CREATE|os.O_EXCL|flags, 0o600)
+}
+
+func createPrivateTempFile(directory, pattern string) (*os.File, error) {
+	return os.CreateTemp(directory, pattern)
+}
+
+func createPrivateTempDirectory(directory, pattern string) (string, error) {
+	return os.MkdirTemp(directory, pattern)
+}
+
 func openPrivateReadFile(path string) (*os.File, error) {
 	return os.Open(path)
 }

@@ -1,6 +1,6 @@
 # Package Promotion
 
-Read when moving material from `.staging/` into tracked `packages/`.
+Read when promoting package source in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages/). This Dockpipe runtime checkout has no package source or `.staging/packages` authoring tree.
 
 ## Goal
 
@@ -24,15 +24,17 @@ Promote only source-of-truth package content. Leave experiments, generated state
 
 ## Required Review
 
-- Confirm package tree compiles from `packages/<name>`.
+- Confirm the selected external package tree compiles with the pinned Dockpipe binary.
 - Confirm staging copies are either intentionally left for a later cleanup or explicitly removed by request.
 - Search for old workflow/script names after deletion.
 - Verify docs describe package boundaries, not checkout-only paths as a public contract.
 
 ## Checks
 
-- `find packages/<name> -type f | sort`
-- `rg -n "<old-name>|<old-script>" packages docs src workflows .github -S`
-- `./src/bin/dockpipe package test --workdir . --only <name>`
-- `./src/bin/dockpipe package compile workflows --workdir . --from packages/<name> --force`
-- `./src/bin/dockpipe package compile resolvers --workdir . --from packages/<name> --force`
+Use the absolute tool/source selections described in [package authoring](package-authoring.md).
+
+- `rg --files "$PACKAGE_SOURCE"`
+- `rg -n "<old-name>|<old-script>" docs src workflows .github -S`
+- `"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only <name>`
+- `"$DOCKPIPE_BIN" package compile workflows --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force`
+- `"$DOCKPIPE_BIN" package compile resolvers --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force`

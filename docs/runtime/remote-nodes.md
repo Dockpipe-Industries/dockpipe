@@ -20,7 +20,7 @@ results, and process supervision. Resolvers own browser authentication, tunnels,
 configuration. Workflows still define what runs; runtimes still define local isolation. DorkPipe
 retains graph scheduling, placement, fan-out, and distributed orchestration ownership.
 
-The Cloudflare resolver ships in `packages/remote`. Additional providers implement the same edge
+The Cloudflare resolver source lives in the [external remote package](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages/remote). Additional providers implement the same edge
 contract without vendor branches in core. TASK-015's `node-execution.v1` fixtures stay unchanged;
 this `dockpipe.remote/v1` transport does not turn its fake broker into a hosted service.
 
@@ -48,11 +48,11 @@ or silently replace an existing connection.
 
 ## Build the resolver
 
-Use a CLI built from this revision. Install it at a stable path before installing services:
+Build from the external package repository with a pinned absolute `DOCKPIPE_BIN`.
+Select `PACKAGE_REPOSITORY` as that checkout. Install the CLI at a stable path before installing services:
 
 ```bash
-go build -o /tmp/dockpipe-remote ./src/cmd
-/tmp/dockpipe-remote package build source --workdir . --only remote
+"$DOCKPIPE_BIN" package build source --workdir "$PACKAGE_REPOSITORY" --only remote
 ```
 
 The package hook uses the source-build SDK, stages a resolver in package runtime state, and compiles
@@ -378,9 +378,11 @@ this contract alone does not supply a hosted service or multi-tenant authorizati
 ## Verification
 
 ```bash
-go test -race ./src/lib/infrastructure/remote ./src/lib/application/internal/remotecmd ./packages/remote/tools/...
-python3 packages/remote/tests/smoke.py /absolute/path/to/new/dockpipe
-python3 packages/remote/tests/delivery_smoke.py /absolute/path/to/new/dockpipe
+# From the Dockpipe runtime checkout:
+go test -race ./src/lib/infrastructure/remote ./src/lib/application/internal/remotecmd
+# From the external package checkout, with its pinned Dockpipe SDK:
+python3 "$PACKAGE_REPOSITORY/packages/remote/tests/smoke.py" "$DOCKPIPE_BIN"
+python3 "$PACKAGE_REPOSITORY/packages/remote/tests/delivery_smoke.py" "$DOCKPIPE_BIN"
 ```
 
 The smokes use real CLI broker/worker processes and native workflows on loopback. The delivery

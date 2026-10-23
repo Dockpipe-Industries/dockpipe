@@ -1,6 +1,9 @@
 package domain
 
-import "strings"
+import (
+	"runtime"
+	"strings"
+)
 
 // MergeIfUnset adds keys from src into dst only when dst does not already have the key,
 // or when the existing value is blank. Empty inherited env vars should not block workflow
@@ -31,11 +34,28 @@ func EnvSliceToMap(lines []string) map[string]string {
 
 // EnvironToMap converts KEY=VAL lines (e.g. os.Environ()) to a map.
 func EnvironToMap(environ []string) map[string]string {
+	return environToMap(environ, runtime.GOOS)
+}
+
+// NativeEnvKey canonicalizes host environment keys. Windows environment names
+// are case-insensitive; Unix environment names remain case-sensitive.
+func NativeEnvKey(key string) string {
+	return nativeEnvKey(key, runtime.GOOS)
+}
+
+func nativeEnvKey(key, operatingSystem string) string {
+	if operatingSystem == "windows" {
+		return strings.ToUpper(key)
+	}
+	return key
+}
+
+func environToMap(environ []string, operatingSystem string) map[string]string {
 	m := make(map[string]string)
 	for _, e := range environ {
 		k, v, ok := strings.Cut(e, "=")
 		if ok {
-			m[k] = v
+			m[nativeEnvKey(k, operatingSystem)] = v
 		}
 	}
 	return m

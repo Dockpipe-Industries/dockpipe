@@ -11,12 +11,13 @@ import (
 // ResolverMetadata is a public catalog projection. Profile values and credentials
 // are never included. RemoteSetup describes the generic setup contract, not a vendor.
 type ResolverMetadata struct {
-	Name        string `json:"name"`
-	Title       string `json:"title,omitempty"`
-	Version     string `json:"version,omitempty"`
-	Description string `json:"description,omitempty"`
-	Capability  string `json:"capability,omitempty"`
-	RemoteSetup string `json:"remote_setup,omitempty"`
+	Name        string          `json:"name"`
+	Title       string          `json:"title,omitempty"`
+	Version     string          `json:"version,omitempty"`
+	Description string          `json:"description,omitempty"`
+	Capability  string          `json:"capability,omitempty"`
+	RemoteSetup string          `json:"remote_setup,omitempty"`
+	Surface     *PackageSurface `json:"surface,omitempty"`
 }
 
 func DescribeResolver(profilePath, name string) (ResolverMetadata, error) {
@@ -27,6 +28,12 @@ func DescribeResolver(profilePath, name string) (ResolverMetadata, error) {
 		result.Version = manifest.Version
 		result.Description = manifest.Description
 		result.Capability = manifest.Capability
+		if manifest.Surface != "" {
+			result.Surface, err = LoadPackageSurface(filepath.Dir(profilePath), manifest.Surface)
+			if err != nil {
+				return result, err
+			}
+		}
 	} else if !os.IsNotExist(err) {
 		return result, err
 	}

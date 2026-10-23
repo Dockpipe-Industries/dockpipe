@@ -18,7 +18,19 @@ case "$arch" in
   *) echo "Unsupported Flatpak architecture: $arch" >&2; exit 1 ;;
 esac
 browser_sdk="$(realpath "${DOCKPIPE_FLATPAK_BROWSER_SDK:?Prepare the exact qualified Flatpak Browser SDK first}")"
-cockpit_assets="$(realpath "${DOCKPIPE_FLATPAK_COCKPIT_ASSETS:?Prepare the exact locked Cockpit compatibility fixture first}")"
+# Real optional-package fixtures are selected only by their integration lane.
+# Generic package ABI/loader fixtures remain in the ordinary CTest suite.
+cockpit_mounts=()
+cockpit_options=()
+if [[ -n "${DOCKPIPE_FLATPAK_COCKPIT_ASSETS:-}" ]]; then
+  cockpit_assets="$(realpath "$DOCKPIPE_FLATPAK_COCKPIT_ASSETS")"
+  if [[ ! -d "$cockpit_assets" ]]; then
+    echo 'Selected Cockpit compatibility assets directory is missing' >&2
+    exit 1
+  fi
+  cockpit_mounts+=("--filesystem=$cockpit_assets:ro")
+  cockpit_options+=("-DDOCKPIPE_COCKPIT_ASSETS=$cockpit_assets")
+fi
 browser_platform="linux-$goarch-flatpak-kde-6.10"
 browser_lock="$root/release/dependencies/spatialweb-flatpak-browser.lock.json"
 python3 -B "$root/release/packaging/prepare-flatpak-browser-sdk.py" --lock "$browser_lock" \
@@ -71,13 +83,13 @@ flatpak build --filesystem="$out" "$app" meson compile -C "$out/xres-build" -j 2
 flatpak build --filesystem="$out" "$app" meson install -C "$out/xres-build"
 mkdir -p "$app/files/share/licenses/libXRes"
 install -m644 "$out/libXres-1.2.3/COPYING" "$app/files/share/licenses/libXRes/COPYING"
-flatpak build --filesystem="$source_dir:ro" --filesystem="$browser_sdk:ro" --filesystem="$cockpit_assets:ro" --filesystem="$out" "$app" \
+flatpak build --filesystem="$source_dir:ro" --filesystem="$browser_sdk:ro" "${cockpit_mounts[@]}" --filesystem="$out" "$app" \
   cmake -S "$source_dir" -B "$out/qt-build" -DCMAKE_BUILD_TYPE=Release \
   "-DCMAKE_PREFIX_PATH=$browser_sdk;/app" \
   -DDOCKPIPE_BROWSER_ABI_PROFILE=flatpak-kde-6.10 \
-  "-DDOCKPIPE_COCKPIT_ASSETS=$cockpit_assets" \
+  "${cockpit_options[@]}" \
   "-DDOCKPIPE_RELEASE_VERSION=$version"
-flatpak build --filesystem="$source_dir:ro" --filesystem="$browser_sdk:ro" --filesystem="$cockpit_assets:ro" --filesystem="$out" "$app" \
+flatpak build --filesystem="$source_dir:ro" --filesystem="$browser_sdk:ro" "${cockpit_mounts[@]}" --filesystem="$out" "$app" \
   cmake --build "$out/qt-build" --parallel 2
 flatpak build --filesystem="$out" --filesystem="$browser_sdk:ro" --env=QT_QPA_PLATFORM=offscreen \
   --env=QTWEBENGINEPROCESS_PATH=/app/bin/QtWebEngineProcess \

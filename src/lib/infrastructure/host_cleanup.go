@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"dockpipe/src/lib/domain"
 )
 
 // Host cleanup after kind: host scripts (RunHostScript):
@@ -30,11 +32,11 @@ var (
 )
 
 func envGet(env []string, key string) string {
-	prefix := key + "="
+	key = domain.NativeEnvKey(key)
 	for i := len(env) - 1; i >= 0; i-- {
-		e := env[i]
-		if strings.HasPrefix(e, prefix) {
-			return strings.TrimPrefix(e, prefix)
+		candidate, value, found := strings.Cut(env[i], "=")
+		if found && domain.NativeEnvKey(candidate) == key {
+			return value
 		}
 	}
 	return ""

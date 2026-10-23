@@ -63,7 +63,7 @@ Parity proof must use deterministic adapter fixtures for complete, empty, partia
 detail, refresh-coalescing, selection-preservation, filtering, and state-action cases. A live Docker
 engine is useful integration evidence but cannot be the only acceptance oracle.
 
-The [2026-09-11 foundation alignment](../../../concepts/pipelang-foundation.md) places a reviewed
+The [2026-09-11 foundation alignment](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/concepts/pipelang-foundation.md) places a reviewed
 language-foundation milestone before production launcher migration. A read-only screen requiring
 only a smaller subset does not remove enums, polymorphism, loops or managed synchronization from
 the language goal. Preserve this frozen parity baseline and existing executable fixtures while

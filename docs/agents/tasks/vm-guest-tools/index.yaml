@@ -1,0 +1,6 @@
+schema: 1
+id: TASK-045
+topic: Qt Guest Tools and package-contributed VM management
+entrypoint: overview.md
+read:
+  - overview.md

@@ -1,5 +1,7 @@
 ## Rank 3 Implementation — 2026-08-14
 
+Repository ownership note: package paths in this record describe external source. Current catalog packages live in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages); previously extracted [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) and [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) remain in their own repositories. Historical paths and receipts do not recreate a local package tree.
+
 The saved checkout matched the delegated anchors before mutation: branch `js/dev`, HEAD
 `6752dce7c0540d68cb95e1f718ba0998ea0eae35`, local upstream relation 0 behind/1 ahead, and
 `stash@{0}` object `26ea507907550d2449dc6f9c81b9942bd52d8629`. There were no staged files.

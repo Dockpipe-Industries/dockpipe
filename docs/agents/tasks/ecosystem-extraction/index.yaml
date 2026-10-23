@@ -1,0 +1,6 @@
+schema: 1
+task: TASK-044
+topic: Standalone PipeLang and external package catalog
+read:
+  - overview.md
+  - cpp-direction.md
