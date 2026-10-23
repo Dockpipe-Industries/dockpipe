@@ -58,8 +58,12 @@ class Remote:
             # happen in gh before Python captures it, not after loading JSON.
             if '--jq' not in arguments:
                 return 'irrelevant release bodies' * (1 << 20)
-            return json.dumps({'count': 100, 'matches':
-                [{'id': 123, 'tag_name': self.tag}] if self.exists else []}) if self.exists else json.dumps({'count': 0, 'matches': []})
+            if not self.exists:
+                return json.dumps({'count': 0, 'matches': []})
+            return json.dumps({
+                'count': 100,
+                'matches': [{'id': 123, 'tag_name': self.tag}],
+            })
         if endpoint.endswith('/releases/123'):
             return json.dumps(self.release)
         raise AssertionError('Unexpected SDK operation: ' + repr(arguments))
