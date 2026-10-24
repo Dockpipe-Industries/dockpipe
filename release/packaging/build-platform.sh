@@ -59,6 +59,7 @@ core_store="$out/core-stores/$platform"
 mkdir -p "$out" "$root/src/bin"
 [[ ! -e "$store" && ! -L "$store" ]] || { echo 'Final store must be fresh' >&2; exit 1; }
 [[ ! -e "$core_store" && ! -L "$core_store" ]] || { echo 'Core store must be fresh' >&2; exit 1; }
+mkdir -p "$(dirname "$store")"
 export DOCKPIPE_BIN="$root/src/bin/dockpipe$exe"
 export CGO_ENABLED=0
 go build -trimpath -ldflags "-s -w -X main.Version=$version" -o "$DOCKPIPE_BIN" ./src/cmd

@@ -407,10 +407,10 @@ owning desktop artifacts and the actual public provider. The existing dry-run
 release lane will build the complete runtime; its explicit test entrypoint must
 be enabled only for qualification builds, independently of normal releases.
 
-The preserved Linux-host Windows guest was observed stopped at its recorded
-QEMU/TPM identities before final continuation. Its existing overlay, firmware
-variables, TPM and machine identity must be preserved and checked offline before
-one planned continuation boot. The reviewed 1920-by-1080 monitor preference still
+The preserved Linux-host Windows guest retains its original QEMU/TPM identities,
+verified in the host process namespace. Sandbox PID visibility is insufficient
+for lifecycle admission. Preserve its overlay, firmware variables, TPM and machine
+identity through a clean shutdown, offline checks and one planned continuation boot. The reviewed 1920-by-1080 monitor preference still
 needs actual guest/frame geometry and strict widget-to-guest pointer proof.
 Live alternate-resolution support remains unqualified; the prerelease display
 driver is not installed.
