@@ -31,6 +31,24 @@ verification_policy: Finish Windows validation first, then focused implementatio
 handoff_policy: user_requested_only
 ```
 
+Current checkpoint (2026-10-23): the final native catalog source
+`441a0a695f4876791ab54bed59264b0c8dfb32ca` passed Linux amd64 and Mac arm64
+display suites (ten tests each), Windows amd64 (nine tests), package compilation
+and public candidate publication. Independent public readback verified all seven
+assets, source/toolchain evidence and eight package identities on those targets.
+The exact candidate is pinned in the core consumer; the launcher and host SDK stay
+in core, and VM implementation stays in the optional package.
+
+Full installed Windows/macOS MainWindow, VM page, Canvas and Tiling acceptance
+still needs the final owning desktop build. The preserved Windows guest's recorded
+QEMU/TPM processes are stopped; no lifecycle action was taken after observing that.
+Continue only with its existing overlay, firmware variables, TPM and identity,
+checked offline, then the planned single continuation boot. The 1920-by-1080 boot
+preference and strict QWidget-to-guest edge/corner proof remain unqualified.
+Catalog staging promotion is tracked in catalog PR #2; final Dockpipe staging
+publication waits for installed acceptance. The older checkpoints below retain
+their original scope and do not substitute for these remaining gates.
+
 The user explicitly authorized this order after clarifying that the requested Qt
 application runs inside the guest, complementing a host top-level VM tab rather
 than replacing it. The existing launcher does not yet implement generic

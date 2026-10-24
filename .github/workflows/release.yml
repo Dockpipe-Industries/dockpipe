@@ -27,6 +27,11 @@ on:
         required: false
         default: true
         type: boolean
+      qualify_package_display:
+        description: "Enable the bounded installed MainWindow package display qualifier (dry runs only)"
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   # Both publication channels share one allocator lock. Dry runs never reserve versions.
@@ -46,6 +51,7 @@ jobs:
       notes_version: ${{ steps.m.outputs.notes_version }}
       dry_run: ${{ steps.m.outputs.dry_run }}
       build_msi: ${{ steps.m.outputs.build_msi }}
+      qualify_package_display: ${{ steps.m.outputs.qualify_package_display }}
       candidate: ${{ steps.version.outputs.candidate }}
     steps:
       - uses: actions/checkout@v7
@@ -60,6 +66,7 @@ jobs:
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           INPUT_BUILD_MSI: ${{ inputs.build_msi }}
+          INPUT_QUALIFY_PACKAGE_DISPLAY: ${{ inputs.qualify_package_display }}
           RELEASE_ENABLED: ${{ vars.DOCKPIPE_RELEASE_ENABLED }}
         run: |
           set -euo pipefail
@@ -96,6 +103,14 @@ jobs:
             echo "Unsupported event: ${GITHUB_EVENT_NAME}" >&2
             exit 1
           fi
+          qualify_package_display="false"
+          if [[ "${INPUT_QUALIFY_PACKAGE_DISPLAY:-false}" == "true" ]]; then
+            if [[ "$GITHUB_EVENT_NAME" != workflow_dispatch || "$dry_run" != true ]]; then
+              echo "::error::Package display qualification requires an explicit manual dry run."
+              exit 1
+            fi
+            qualify_package_display="true"
+          fi
           if [[ -z "$candidate" && "$dry_run" != "true" && "${GITHUB_REF}" != "refs/heads/master" ]]; then
             echo "::error::Production releases require master. Use dry_run=true for branch verification."
             exit 1
@@ -117,6 +132,7 @@ jobs:
           echo "notes_version=${raw}" >> "$GITHUB_OUTPUT"
           echo "dry_run=${dry_run}" >> "$GITHUB_OUTPUT"
           echo "build_msi=${build_msi}" >> "$GITHUB_OUTPUT"
+          echo "qualify_package_display=${qualify_package_display}" >> "$GITHUB_OUTPUT"
 
       - name: Generate the next native release version
         id: version
@@ -196,14 +212,27 @@ jobs:
         run: bash release/packaging/build-platform.sh "${{ needs.meta.outputs.version }}"
       - name: Build Linux desktop against Ubuntu 22.04
         if: runner.os == 'Linux'
+        env:
+          QUALIFY_PACKAGE_DISPLAY: ${{ needs.meta.outputs.qualify_package_display }}
         shell: bash
-        run: bash release/packaging/desktop/build-linux.sh "${{ needs.meta.outputs.version }}" release/artifacts
+        run: |
+          qualification_args=()
+          if [[ "$QUALIFY_PACKAGE_DISPLAY" == true ]]; then
+            qualification_args+=(--enable-qualification)
+          fi
+          bash release/packaging/desktop/build-linux.sh "${qualification_args[@]}" "${{ needs.meta.outputs.version }}" release/artifacts
       - name: Build native macOS desktop installers
         if: runner.os == 'macOS'
+        env:
+          QUALIFY_PACKAGE_DISPLAY: ${{ needs.meta.outputs.qualify_package_display }}
         shell: bash
         run: |
           python3 -m unittest discover -s release/packaging/tests -p test_native_symbol_boundaries.py -v
-          bash release/packaging/desktop/build-unix.sh "${{ needs.meta.outputs.version }}" release/artifacts
+          qualification_args=()
+          if [[ "$QUALIFY_PACKAGE_DISPLAY" == true ]]; then
+            qualification_args+=(--enable-qualification)
+          fi
+          bash release/packaging/desktop/build-unix.sh "${qualification_args[@]}" "${{ needs.meta.outputs.version }}" release/artifacts
       - name: Install and test Linux desktop on Ubuntu 22.04 and 24.04
         if: runner.os == 'Linux'
         shell: bash
@@ -294,8 +323,10 @@ jobs:
           "DOCKPIPE_BROWSER_SDK=$env:RUNNER_TEMP/browser-sdk" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Build Windows desktop runtime
         if: needs.meta.outputs.build_msi == 'true'
+        env:
+          QUALIFY_PACKAGE_DISPLAY: ${{ needs.meta.outputs.qualify_package_display }}
         shell: pwsh
-        run: ./release/packaging/desktop/build-windows.ps1 -Version "${{ needs.meta.outputs.version }}" -StageDir (Join-Path $PWD "bin/desktop-stage")
+        run: ./release/packaging/desktop/build-windows.ps1 -Version "${{ needs.meta.outputs.version }}" -StageDir (Join-Path $PWD "bin/desktop-stage") -EnableQualification:($env:QUALIFY_PACKAGE_DISPLAY -eq 'true')
 
       # One pwsh step: GITHUB_ENV mangles/truncates Windows paths for WIX — pass -WixRoot into build.ps1 instead.
       - name: Install WiX and build MSI

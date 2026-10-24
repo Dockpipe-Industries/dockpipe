@@ -2,6 +2,11 @@
 # Native Qt desktop build. Output stays outside the authored source tree.
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+enable_qualification=OFF
+if [[ "${1:-}" == --enable-qualification ]]; then
+  enable_qualification=ON
+  shift
+fi
 version="${1:?version}"
 out="${2:?output directory}"
 mkdir -p "$out"
@@ -43,7 +48,8 @@ esac
 export DOCKPIPE_BROWSER_SDK="$browser_sdk"
 python3 "$root/release/packaging/desktop/browser-runtime.py" --sdk "$browser_sdk" --platform "$browser_platform"
 args=(-S "$root/src/app/tooling/dockpipe-launcher" -B "$build" -DCMAKE_BUILD_TYPE=Release
-      "-DDOCKPIPE_RELEASE_VERSION=$version")
+      "-DDOCKPIPE_RELEASE_VERSION=$version"
+      "-DDOCKPIPE_ENABLE_QUALIFICATION=$enable_qualification")
 prefixes="$browser_sdk${CMAKE_PREFIX_PATH:+;$CMAKE_PREFIX_PATH}"
 if [[ "$(uname -s)" == Darwin ]]; then
   args+=("-DCMAKE_OSX_ARCHITECTURES=$(uname -m)" -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0)

@@ -2,6 +2,11 @@
 # Keep the DEB ABI baseline independent of the CI host's Ubuntu version.
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+qualification_args=()
+if [[ "${1:-}" == --enable-qualification ]]; then
+  qualification_args+=(--enable-qualification)
+  shift
+fi
 version="${1:?version}"
 out="${2:?output directory}"
 mkdir -p "$out"
@@ -40,4 +45,4 @@ docker run --rm --user "$(id -u):$(id -g)" \
   --mount "type=bind,source=$out,target=/artifacts" \
   --mount "type=bind,source=$debug_out,target=/private-debug" \
   "${package_args[@]}" \
-  "$image" bash /source/release/packaging/desktop/build-unix.sh "$version" /artifacts
+  "$image" bash /source/release/packaging/desktop/build-unix.sh "${qualification_args[@]}" "$version" /artifacts
