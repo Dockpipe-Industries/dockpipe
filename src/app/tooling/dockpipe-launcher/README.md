@@ -1642,3 +1642,20 @@ widget leaves the detached tab alive, and the shared profile is released after
 its last browser closes. Clear browsing data asks you to close detached siblings
 first so it cannot clear a session still used by another widget. Dashboard widget
 limits still apply; a rejected tear-out leaves the original tab in place.
+
+### macOS permission controls
+
+Settings → macOS permissions reports the current Screen Capture and Accessibility
+status for Dockpipe itself. Request access invokes the native macOS prompt only
+when clicked; opening Settings or checking status never requests access. Open
+System Settings leads to the relevant privacy pane. Status refreshes while the
+settings panel is visible and when Dockpipe becomes active again. Permission
+grants belong to macOS and are never cached as launcher settings. macOS may
+require a restart or renewed approval after a permission or application identity
+change.
+
+These optional permissions apply to capturing or controlling other Mac apps.
+Dockpipe's own panels and native VM displays do not require them. Single-window
+dashboard sharing continues to use the macOS content-sharing picker at first
+use; it does not request blanket desktop capture on installation. External test
+controllers and independently launched tools have their own permission identity.
