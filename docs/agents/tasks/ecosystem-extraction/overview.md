@@ -411,3 +411,12 @@ both step loaders. Source-hidden archive regressions fail on the unchanged
 public base and pass after the repair; the full core Go suites pass with pinned
 public modules. A fresh verified public CLI is required before the catalog can
 consume that repair.
+
+Source-hidden public archives exposed a related namespace boundary mismatch:
+compilation records the repository default in `package.yml`, but runtime filtering
+previously inspected only `config.yml`. Filtered admission now accepts the default
+from the same archive's bounded, validated manifest with matching kind/name/version.
+Explicit config namespace precedence and unfiltered legacy behavior are preserved.
+The unchanged public Claude archives now pass matching-filter admission and reach
+the deliberately rejecting Docker stub; a wrong filter is rejected first.
+Both generic contract repairs are being qualified together in core PR #212.
