@@ -22,3 +22,5 @@ Firmware and the guest driver decide which modes they expose and select. A
 Windows Basic Display guest may retain a single mode; this setting does not
 install a driver or prove that Windows will expose the preferred dimensions.
 Guest-specific fields and presentation belong to the owning VM package.
+
+For macOS host prerequisites and lifecycle behavior, see [Darwin VM runtime](vm-darwin.md).
