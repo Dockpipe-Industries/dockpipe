@@ -31,6 +31,22 @@ verification_policy: Finish Windows validation first, then focused implementatio
 handoff_policy: user_requested_only
 ```
 
+Darwin named-workflow follow-up (2026-10-24): actual installed Windows and
+macOS launcher fixtures have passed the five-view/input/lease lifecycle checks.
+Those proofs used the package display control plane; they do not establish that
+the public Windows VM named workflow can start a guest on macOS. The existing
+generic VM runtime rejects Darwin before guest launch.
+
+A bounded core 0.6.28 follow-up now prepares a shared-lifecycle Darwin TCG backend,
+explicit modern Bash admission and native temporary-path handling. VM package
+1.3.7 requires the resulting backend-capable public runtime at minimum 0.6.28-0,
+adds its missing resolver dependencies and retains the Debian-only Linux guest
+workflow boundary. Local unit/assembly tests and a Darwin manager cross-build are
+separate from pending source-hidden native named-workflow qualification. The
+actual generated public CLI version and source hashes must be bound before the
+new package candidate; no prior immutable candidate is relabelled. See
+[Darwin VM runtime](../../../runtime/vm-darwin.md) for the generic contract.
+
 Current checkpoint (2026-10-23): the final native catalog source
 `441a0a695f4876791ab54bed59264b0c8dfb32ca` passed Linux amd64 and Mac arm64
 display suites (ten tests each), Windows amd64 (nine tests), package compilation

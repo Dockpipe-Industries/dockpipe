@@ -55,7 +55,7 @@ func hostScriptCommand(scriptPath string, env []string, selection string) (*exec
 		return nil, nil, err
 	}
 	if shell == domain.HostShellBash {
-		bashExecutable, err := resolveBashExe()
+		bashExecutable, err := resolveBashExeForEnv(env)
 		if err != nil {
 			return nil, nil, fmt.Errorf("bash not found for host script; install Bash or select an available native shell: %w", err)
 		}

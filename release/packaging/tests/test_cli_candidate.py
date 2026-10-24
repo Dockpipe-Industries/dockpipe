@@ -31,16 +31,18 @@ def allocation():
     return PRODUCER.allocation_receipt("0.6.0", SOURCE, ["v0.6.25"])
 
 
-def source_fixture(root):
+def source_fixture(root, release_line="0.6.0"):
     source = root / "source"
     source.mkdir()
-    for name, content in {"VERSION": "0.6.0\n", "go.mod": "module fixture\n", "go.sum": "pinned\n"}.items():
+    for name, content in {"VERSION": release_line + "\n", "go.mod": "module fixture\n", "go.sum": "pinned\n"}.items():
         (source / name).write_text(content)
     return source
 
 
-def build_fixture(root):
-    source = source_fixture(root)
+def build_fixture(root, release_line=None):
+    if release_line is None:
+        release_line = (ROOT.parents[1] / "VERSION").read_text().strip()
+    source = source_fixture(root, release_line)
     work, output = root / "work", root / "output"
 
     def execute(arguments, directory, environment, timeout=300):
@@ -55,7 +57,8 @@ def build_fixture(root):
 
     with patch.object(PRODUCER, "command", side_effect=execute), \
             patch.object(PRODUCER, "verify_native_cli") as smoke, patch("builtins.print"):
-        PRODUCER.build(source, SOURCE, work, output, "go", allocation())
+        PRODUCER.build(source, SOURCE, work, output, "go",
+                       PRODUCER.allocation_receipt(release_line, SOURCE, ["v0.6.25"]))
     if smoke.call_count != 1:
         raise AssertionError("Native candidate was not qualified exactly once")
     return output
@@ -119,7 +122,7 @@ class CLIBootstrapTests(unittest.TestCase):
 
     def test_retry_reuses_original_bound_history_after_newer_native_release(self):
         with tempfile.TemporaryDirectory() as temporary:
-            output = build_fixture(Path(temporary))
+            output = build_fixture(Path(temporary), release_line="0.6.0")
             manifest = (output / "cli-candidate.json").read_bytes()
             metadata = json.loads(manifest)
             release = {

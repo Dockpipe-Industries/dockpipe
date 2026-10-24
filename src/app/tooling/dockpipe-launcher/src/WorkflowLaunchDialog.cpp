@@ -285,6 +285,7 @@ void WorkflowLaunchDialog::addViewPagesToLayout(QVBoxLayout *layout, const QMap<
             }
             m_entryChoice = new QComboBox(box);
             const QString envName = entryInput->envName.trimmed();
+            m_entryChoice->setObjectName("workflowInput_" + envName);
             QString selectedValue = currentValues.value(envName);
             if (selectedValue.isEmpty())
                 selectedValue = entryInput->defaultValue;
@@ -432,6 +433,7 @@ void WorkflowLaunchDialog::addLeafInputRow(QFormLayout *form, const WorkflowInpu
     const QJsonArray options = QJsonDocument::fromJson(inputAttribute(input, "options").toUtf8()).array();
     if (!options.isEmpty()) {
         auto *combo = new QComboBox(groupWidget);
+        combo->setObjectName("workflowInput_" + envName);
         for (const auto &option : options) {
             if (option.isString())
                 combo->addItem(option.toString(), option.toString());
@@ -443,6 +445,7 @@ void WorkflowLaunchDialog::addLeafInputRow(QFormLayout *form, const WorkflowInpu
         form->addRow(displayNameForInput(input), combo);
     } else if (envLooksBoolean(input)) {
         auto *check = new QCheckBox(groupWidget);
+        check->setObjectName("workflowInput_" + envName);
         const QString lower = value.trimmed().toLower();
         check->setChecked(lower == QStringLiteral("1") || lower == QStringLiteral("true")
                           || lower == QStringLiteral("yes") || lower == QStringLiteral("on"));
