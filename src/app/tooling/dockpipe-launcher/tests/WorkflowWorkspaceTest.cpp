@@ -1,5 +1,6 @@
 #include "MainWindow.h"
 #include "PackageSurfacePage.h"
+#include "PackageDisplayWidget.h"
 #include <QStackedWidget>
 #include "ActivityWidget.h"
 #include <QTableWidget>
@@ -114,7 +115,7 @@ done
 case "$operation" in
 catalog:list)
     if [ "$DOCKPIPE_SURFACE_CATALOG_TEST" = "1" ]; then
-        printf '{"workflows":[{"workflow_id":"demo","display_name":"Development","config_path":"%s/config.yml"}],"resolver_details":[{"name":"example.first","title":"First provider","surface":{"schema":1,"id":"example.resources","title":"Example Resources","snapshot":"/unused.yml","actions":[{"id":"create","title":"Create","scope":"surface","workflow_id":"demo","launch_environment":{"linux":{"PACKAGE_TEST_INHERITED":{"inherit":"PACKAGE_TEST_ORIGINAL"}}}}]}},{"name":"example.second","title":"Second provider","surface":{"schema":1,"id":"example.resources","title":"Example Resources","snapshot":"/unused.yml","actions":[]}}]}' "$DOCKPIPE_TEST_ROOT"
+        printf '{"workflows":[{"workflow_id":"demo","display_name":"Development","config_path":"%s/config.yml"}],"resolver_details":[{"name":"example.first","title":"First provider","surface":{"schema":1,"id":"example.resources","title":"Example Resources","snapshot":"/unused.yml","actions":[{"id":"create","title":"Create","scope":"surface","workflow_id":"demo","launch_environment":{"%s":{"PACKAGE_TEST_INHERITED":{"inherit":"PACKAGE_TEST_ORIGINAL"}}}}]}},{"name":"example.second","title":"Second provider","surface":{"schema":1,"id":"example.resources","title":"Example Resources","snapshot":"/unused.yml","actions":[]}}]}' "$DOCKPIPE_TEST_ROOT" "$DOCKPIPE_TEST_SURFACE_PLATFORM"
         exit 0
     fi
     if [ "$DOCKPIPE_VSCODE_CATALOG_TEST" = "1" ]; then
@@ -217,6 +218,7 @@ steps:
     const bool surfaceTest = QCoreApplication::arguments().contains("--surfaces");
     if (surfaceTest) {
         qputenv("DOCKPIPE_SURFACE_CATALOG_TEST", "1");
+        qputenv("DOCKPIPE_TEST_SURFACE_PLATFORM", PackageDisplayWidget::platformName().toUtf8());
         qputenv("PACKAGE_TEST_ORIGINAL", "private-surface-route-fixture");
     }
     MainWindow window;
@@ -249,8 +251,10 @@ steps:
         if (!launchFile.open(QIODevice::ReadOnly) || launchFile.readAll().size() != 36)
             return 57;
         const QString environmentProofPath = temporary.filePath("surface-environment-proof");
-        if (!waitUntil([&]() { return QFile::exists(environmentProofPath); }))
+        if (!waitUntil([&]() { return QFile::exists(environmentProofPath); })) {
+            std::fputs("Surface action did not deliver its declared inherited environment.\n", stderr);
             return 59;
+        }
         QFile environmentProof(environmentProofPath);
         if (!environmentProof.open(QIODevice::ReadOnly) || environmentProof.readAll() != "ok")
             return 60;
