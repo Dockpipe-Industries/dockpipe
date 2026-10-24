@@ -123,7 +123,7 @@ if(APPLE)
 endif()
 
 if(DOCKPIPE_ENABLE_QUALIFICATION)
-    target_sources(dockpipe-launcher PRIVATE src/PackageDisplayQualification.cpp)
+    target_sources(dockpipe-launcher PRIVATE src/PackageDisplayQualification.cpp src/QualificationWorkflowLaunch.cpp)
     target_compile_definitions(dockpipe-launcher PRIVATE DOCKPIPE_ENABLE_QUALIFICATION)
 endif()
 
@@ -417,6 +417,13 @@ endforeach()
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    add_executable(qualification-workflow-launch-test tests/QualificationWorkflowLaunchTest.cpp
+        src/QualificationWorkflowLaunch.cpp src/WorkflowLaunchDialog.cpp)
+    target_include_directories(qualification-workflow-launch-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(qualification-workflow-launch-test PRIVATE dockpipe-launcher-ui Qt6::Widgets Qt6::Test)
+    add_test(NAME qualification-workflow-launch COMMAND qualification-workflow-launch-test)
+    set_tests_properties(qualification-workflow-launch PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+
     add_executable(package-native-display-harness tests/PackageDisplayHarness.cpp)
     target_link_libraries(package-native-display-harness PRIVATE dockpipe-launcher-ui Qt6::Widgets)
 
