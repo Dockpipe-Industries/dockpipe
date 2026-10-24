@@ -45,7 +45,8 @@ func loadWorkflowFromTarball(tarPath, entry string) (*domain.Workflow, error) {
 // tryResolveWorkflowTarballURI returns a tar workflow URI when no on-disk config exists but a
 // dockpipe-workflow-<name>-*.tar.<codec> exists under the packages store workflows dir (first), then
 // packages.tarball_dir or release/artifacts. The archive must contain workflows/<name>/config.yml.
-// When dockpipe.config.json sets packages.namespace, the workflow namespace in that file must match.
+// When dockpipe.config.json sets packages.namespace, the explicit config namespace or
+// the same archive's validated compiled manifest namespace must match.
 func tryResolveWorkflowTarballURI(repoRoot, workdir, name string) (string, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
@@ -108,7 +109,14 @@ func tryResolveWorkflowTarballURI(repoRoot, workdir, name string) (string, error
 			if cfg != nil && cfg.Packages.Namespace != nil {
 				want := strings.TrimSpace(*cfg.Packages.Namespace)
 				if want != "" {
-					if strings.TrimSpace(top.Namespace) != want {
+					namespace := strings.TrimSpace(top.Namespace)
+					if namespace == "" {
+						namespace, err = workflowTarballManifestNamespace(tarPath, name)
+						if err != nil {
+							continue
+						}
+					}
+					if namespace != want {
 						continue
 					}
 				}
@@ -121,6 +129,30 @@ func tryResolveWorkflowTarballURI(repoRoot, workdir, name string) (string, error
 		}
 	}
 	return "", nil
+}
+
+// workflowTarballManifestNamespace reads only the identity-bound manifest beside
+// this workflow's config. The consumer's filter must never supply package identity.
+func workflowTarballManifestNamespace(tarPath, workflowName string) (string, error) {
+	manifestPath := filepath.ToSlash(filepath.Join("workflows", workflowName, PackageManifestFilename))
+	data, err := packagebuild.ReadFileFromTarGzLimit(tarPath, manifestPath, maxCompatibilityMetadataBytes)
+	if err != nil {
+		return "", err
+	}
+	var manifest domain.PackageManifest
+	if err := yaml.Unmarshal(data, &manifest); err != nil {
+		return "", err
+	}
+	domain.NormalizePackageManifestYAMLAliases(&manifest)
+	if err := domain.ValidatePackageManifest(&manifest); err != nil {
+		return "", err
+	}
+	archiveName, archiveVersion, valid := packagebuild.PackageArchiveIdentity(tarPath, "workflow")
+	if !valid || manifest.Schema != 1 || manifest.Kind != "workflow" || manifest.Name != workflowName ||
+		archiveName != packagebuild.SafeTarballToken(workflowName) || manifest.Version != archiveVersion {
+		return "", fmt.Errorf("compiled workflow manifest identity differs from its archive")
+	}
+	return strings.TrimSpace(manifest.Namespace), nil
 }
 
 func workflowTarballSearchDir(repoRoot string, cfg *domain.DockpipeProjectConfig) string {
