@@ -138,7 +138,7 @@ public:
     {
         m_clock.start();
         m_receipt = {{"schema", 1}, {"scope", "full-installed-launcher"},
-            {"qualifier_revision", 4}, {"real_main_window", true}, {"real_catalog_and_snapshot", true},
+            {"qualifier_revision", 5}, {"real_main_window", true}, {"real_catalog_and_snapshot", true},
             {"resource_lifecycle_owned_by_qualifier", false},
             {"profile_path", ContextStore::configDir()},
             {"application_path", application.applicationFilePath()},
@@ -472,8 +472,12 @@ private:
                 finish(false, "Canvas did not render nonuniform native pixels.");
                 return;
             }
-            if (!closeDisplayPanel() || !selectEnvironment("tiling")) {
-                finish(false, "The Canvas panel close or Tiling mode control failed.");
+            if (!closeDisplayPanel()) {
+                finish(false, "The Canvas panel close control was unavailable.");
+                return;
+            }
+            if (!selectEnvironment("tiling")) {
+                finish(false, "The Tiling mode control did not enter the requested environment.");
                 return;
             }
             if (auto *button = m_dashboard->findChild<QAbstractButton *>("dashboardDockApps"))
@@ -567,6 +571,8 @@ int runPackageDisplayQualification(QApplication &application)
     settings.projectFolder = configuration.value("workspace").toString();
     settings.defaultDashboardVisible = true;
     settings.sidebarVisible = true;
+    // This isolated qualifier explicitly exercises the experimental Tiling view.
+    settings.tilingEnabled = true;
     settings.packageRemotes.clear();
     if (!settings.save() || !LauncherSettings::saveDashboardTourState(true, true)) {
         QTextStream(stderr) << "Cannot initialize isolated qualification settings.\n";
