@@ -60,6 +60,8 @@ set(DOCKPIPE_LAUNCHER_SOURCES
     src/PackageCommand.cpp
     src/PackageManagerDialog.cpp
     src/SettingsDialog.cpp
+    src/DesktopPermissionAccess.cpp
+    src/DesktopPermissionsWidget.cpp
     src/LogViewerDialog.cpp
     src/PromptDialog.cpp
     src/WorkflowLaunchDialog.cpp
@@ -111,6 +113,11 @@ else()
 endif()
 
 if(APPLE)
+    enable_language(OBJCXX)
+    target_sources(dockpipe-launcher PRIVATE src/DesktopPermissionAccessMac.mm)
+    set_target_properties(dockpipe-launcher PROPERTIES OBJCXX_STANDARD 17 OBJCXX_STANDARD_REQUIRED ON)
+    set_source_files_properties(src/DesktopPermissionAccessMac.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+    target_link_libraries(dockpipe-launcher PRIVATE "-framework ApplicationServices" "-framework CoreGraphics")
     set_target_properties(dockpipe-launcher PROPERTIES
         MACOSX_BUNDLE TRUE
         OUTPUT_NAME DockPipe
@@ -417,6 +424,19 @@ endforeach()
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    qt_add_executable(desktop-permissions-widget-test
+        tests/DesktopPermissionsWidgetTest.cpp src/DesktopPermissionsWidget.cpp
+        src/DesktopPermissionAccess.cpp src/DesktopPermissionsWidget.h)
+    target_include_directories(desktop-permissions-widget-test PRIVATE src)
+    target_link_libraries(desktop-permissions-widget-test PRIVATE Qt6::Widgets Qt6::Test)
+    if(APPLE)
+        target_sources(desktop-permissions-widget-test PRIVATE src/DesktopPermissionAccessMac.mm)
+        set_target_properties(desktop-permissions-widget-test PROPERTIES OBJCXX_STANDARD 17 OBJCXX_STANDARD_REQUIRED ON)
+        target_link_libraries(desktop-permissions-widget-test PRIVATE "-framework ApplicationServices" "-framework CoreGraphics")
+    endif()
+    add_test(NAME desktop-permissions-widget COMMAND desktop-permissions-widget-test)
+    set_tests_properties(desktop-permissions-widget PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
+
     add_executable(qualification-workflow-launch-test tests/QualificationWorkflowLaunchTest.cpp
         src/QualificationWorkflowLaunch.cpp src/WorkflowLaunchDialog.cpp)
     target_include_directories(qualification-workflow-launch-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

@@ -1,5 +1,8 @@
 #include "SettingsDialog.h"
 #include "WorkspacePackageManager.h"
+#ifdef Q_OS_MAC
+#include "DesktopPermissionsWidget.h"
+#endif
 #include <QProgressBar>
 #include <QSignalBlocker>
 
@@ -55,6 +58,10 @@ SettingsDialog::SettingsDialog(const LauncherSettings &settings, QWidget *parent
     m_defaultDashboardVisible->setChecked(settings.defaultDashboardVisible);
     m_defaultDashboardVisible->setToolTip(tr("Hiding the built-in Dashboard keeps its widgets and layout."));
     layout->addWidget(m_defaultDashboardVisible);
+
+#ifdef Q_OS_MAC
+    layout->addWidget(new DesktopPermissionsWidget);
+#endif
 
     auto *intro = new QLabel(
         tr("Configure launcher defaults for package sources and repo discovery. Environment variables still win, and opening a folder inside a repo continues to override the repo-root fallback automatically."));

@@ -215,10 +215,14 @@ try {
         '    PasswordAuthentication no',
         '    AuthorizedKeysFile __PROGRAMDATA__/ssh/administrators_authorized_keys'
     )
-    Set-SshdOption -ConfigPath $configPath -Name 'PasswordAuthentication' -Value 'no'
+    $changed = Set-SshdOption -ConfigPath $configPath -Name 'PasswordAuthentication' -Value 'no'
+    Assert-True $changed 'Actual configuration replacement must request service reload'
     $lines = @(Get-Content -LiteralPath $configPath)
     Assert-True ($lines[0] -eq 'PasswordAuthentication no') 'Replace the existing global setting'
     Assert-True ($lines[2] -eq '    PasswordAuthentication no') 'Preserve conditional settings'
+    $beforeWrite = (Get-Item -LiteralPath $configPath).LastWriteTimeUtc
+    $changed = Set-SshdOption -ConfigPath $configPath -Name 'PasswordAuthentication' -Value 'no'
+    Assert-True (-not $changed -and (Get-Item -LiteralPath $configPath).LastWriteTimeUtc -eq $beforeWrite) 'Unchanged options must not rewrite config or request restart'
 
     Set-Content -LiteralPath $configPath -Value @(
         '# Global settings',
@@ -288,10 +292,19 @@ try {
     foreach ($script:serviceStatus in @('Running', 'Stopped')) {
         $script:serviceCalls = @()
         $script:validationExit = 0
-        Start-ProvisionedSshService -ConfigPath $configPath
+        Start-ProvisionedSshService -ConfigPath $configPath -ConfigurationChanged $true
         $expectedAction = if ($script:serviceStatus -eq 'Running') { 'restart' } else { 'start' }
         Assert-True (($script:serviceCalls -join '|') -eq ('host-keys|protect-host-key|protect-host-key|protect-host-key|validate|automatic|' + $expectedAction)) 'Validate before mutating or starting the service'
     }
+    $script:serviceCalls = @()
+    $script:serviceStatus = 'Running'
+    $script:validationExit = 0
+    Start-ProvisionedSshService -ConfigPath $configPath -ConfigurationChanged $false
+    Assert-True (($script:serviceCalls -join '|') -eq 'host-keys|protect-host-key|protect-host-key|protect-host-key|validate|automatic') 'Healthy unchanged repair must validate keys/configuration without restarting sshd'
+    $script:serviceCalls = @()
+    $script:serviceStatus = 'Stopped'
+    Start-ProvisionedSshService -ConfigPath $configPath -ConfigurationChanged $false
+    Assert-True (($script:serviceCalls -join '|') -eq 'host-keys|protect-host-key|protect-host-key|protect-host-key|validate|automatic|start') 'Stopped sshd must recover even with unchanged configuration'
     $script:serviceCalls = @()
     $script:validationExit = 1
     $rejected = $false

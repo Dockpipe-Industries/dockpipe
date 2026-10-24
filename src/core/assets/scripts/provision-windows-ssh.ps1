@@ -565,17 +565,21 @@ function Set-SshdOption {
       break
     }
     if ($content[$index] -match $pattern) {
+      if ($content[$index] -ceq $replacement) {
+        return $false
+      }
       $content[$index] = $replacement
       Set-Content -LiteralPath $ConfigPath -Value $content -Encoding ascii
-      return
+      return $true
     }
   }
   $content.Insert($globalEnd, $replacement)
   Set-Content -LiteralPath $ConfigPath -Value $content -Encoding ascii
+  return $true
 }
 
 function Start-ProvisionedSshService {
-  param([string]$ConfigPath)
+  param([string]$ConfigPath, [bool]$ConfigurationChanged = $false)
 
   # The Windows service normally generates these on its first start. Validation
   # runs before service mutation, so create missing keys explicitly; -A keeps
@@ -600,9 +604,11 @@ function Start-ProvisionedSshService {
   }
   Set-Service -Name sshd -StartupType Automatic
   if ((Get-Service -Name sshd).Status -eq 'Running') {
-    Restart-Service -Name sshd
+    if ($ConfigurationChanged) {
+      Restart-Service -Name sshd -ErrorAction Stop
+    }
   } else {
-    Start-Service -Name sshd
+    Start-Service -Name sshd -ErrorAction Stop
   }
 }
 
@@ -641,74 +647,235 @@ function Resolve-DockPipeAgentSourcePath {
   throw "dockpipe-guest-agent.exe or dockpipe-guest-agent.ps1 was not found beside the provisioning script or in the current directory."
 }
 
+function Get-GuestProvisioningSecurityFingerprint {
+  param([string]$Path, [bool]$Directory)
+
+  if (-not (Test-Path -LiteralPath $Path)) {
+    return $null
+  }
+  Assert-GuestToolsStatusPath -Path $Path -Directory $Directory
+  $sections = [Security.AccessControl.AccessControlSections]'Owner,Group,Access'
+  return (Get-Acl -LiteralPath $Path).GetSecurityDescriptorSddlForm($sections)
+}
+
+function Test-DockPipeAgentConfiguration {
+  param([string]$Path, [int]$Port, [string]$StatePath)
+
+  if (-not (Test-Path -LiteralPath $Path)) {
+    return $false
+  }
+  Assert-GuestToolsStatusPath -Path $Path -Directory $false
+  if ((Get-Item -LiteralPath $Path).Length -gt 32768) {
+    throw 'Guest agent configuration exceeds its bounded contract.'
+  }
+  try {
+    $configuration = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+  } catch [ArgumentException] {
+    return $false
+  }
+  $fields = @('port', 'bind_address', 'state_path', 'service_account')
+  if (@($configuration.PSObject.Properties).Count -ne $fields.Count) {
+    return $false
+  }
+  foreach ($name in $fields) {
+    if ($configuration.PSObject.Properties.Name -cnotcontains $name) {
+      return $false
+    }
+  }
+  return ($configuration.port -is [int] -or $configuration.port -is [long]) -and
+    $configuration.port -eq $Port -and $configuration.bind_address -ceq '127.0.0.1' -and
+    $configuration.state_path -ceq $StatePath -and $configuration.service_account -ceq 'LocalSystem'
+}
+
+function Test-GuestAgentUnlimitedExecution {
+  param($Value)
+
+  if ($Value -is [TimeSpan]) {
+    return $Value -eq [TimeSpan]::Zero
+  }
+  if ($Value -isnot [string] -or [string]::IsNullOrWhiteSpace($Value) -or $Value.Length -gt 64) {
+    return $false
+  }
+  try {
+    return [Xml.XmlConvert]::ToTimeSpan($Value) -eq [TimeSpan]::Zero
+  } catch [FormatException] {
+    return $false
+  }
+}
+
+function Test-DockPipeAgentTask {
+  param($Task, [string]$Executable, [string]$Arguments)
+
+  if ($null -eq $Task -or @($Task.Actions).Count -ne 1 -or @($Task.Triggers).Count -ne 1) {
+    return $false
+  }
+  $action = $Task.Actions[0]
+  $principal = $Task.Principal
+  $settings = $Task.Settings
+  $trigger = $Task.Triggers[0]
+  return $Task.TaskPath -ceq '\' -and $action.Execute -ieq $Executable -and $action.Arguments -ceq $Arguments -and
+    [string]::IsNullOrEmpty($action.WorkingDirectory) -and
+    $principal.UserId -in @('SYSTEM', 'S-1-5-18') -and
+    [string]$principal.LogonType -eq 'ServiceAccount' -and [string]$principal.RunLevel -eq 'Highest' -and
+    $trigger.CimClass.CimClassName -eq 'MSFT_TaskBootTrigger' -and $trigger.Enabled -and
+    -not $settings.DisallowStartIfOnBatteries -and -not $settings.StopIfGoingOnBatteries -and
+    [string]$settings.MultipleInstances -in @('IgnoreNew', '2') -and $settings.StartWhenAvailable -and
+    $settings.Enabled -and (Test-GuestAgentUnlimitedExecution -Value $settings.ExecutionTimeLimit)
+}
+
+function Get-DockPipeAgentProcesses {
+  param([string]$Executable, [string]$Arguments, [string]$NativePath, [string]$ScriptPath)
+
+  $scriptExecutable = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
+  $scriptArguments = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}" -Service -ConfigPath "{1}"' -f $ScriptPath, (Join-Path (Split-Path -Parent $ScriptPath) 'config.json')
+  $candidates = @(Get-CimInstance Win32_Process -Filter "Name = 'dockpipe-guest-agent.exe' OR Name = 'powershell.exe'")
+  if ($candidates.Count -gt 4096) {
+    throw 'Guest agent process discovery exceeds its bound.'
+  }
+  $selected = @()
+  foreach ($candidate in $candidates) {
+    $matchesNative = $candidate.ExecutablePath -ieq $NativePath
+    $matchesScript = $candidate.ExecutablePath -ieq $scriptExecutable -and
+      $candidate.CommandLine -cin @((('"{0}" {1}' -f $scriptExecutable, $scriptArguments)), ($scriptExecutable + ' ' + $scriptArguments))
+    if (-not $matchesNative -and -not $matchesScript) {
+      continue
+    }
+    if ($selected.Count -ge 16) {
+      throw 'Guest agent process selection exceeds its bound.'
+    }
+    $owner = Invoke-CimMethod -InputObject $candidate -MethodName GetOwnerSid -ErrorAction Stop
+    if ($owner.ReturnValue -ne 0 -or $owner.Sid -ne 'S-1-5-18') {
+      throw 'A selected guest agent process is not owned by SYSTEM.'
+    }
+    $process = Get-Process -Id $candidate.ProcessId -ErrorAction Stop
+    try {
+      if ($process.Path -ine $candidate.ExecutablePath) {
+        throw 'Guest agent image changed during observation.'
+      }
+      $selected += [pscustomobject]@{
+        Id = $process.Id
+        Image = $process.Path
+        StartFileTime = $process.StartTime.ToUniversalTime().ToFileTimeUtc()
+        DesiredInvocation = $candidate.ExecutablePath -ieq $Executable -and
+          $candidate.CommandLine -cin @((('"{0}" {1}' -f $Executable, $Arguments)), ($Executable + ' ' + $Arguments))
+      }
+    } finally {
+      $process.Dispose()
+    }
+  }
+  return $selected
+}
+
+function Stop-SelectedDockPipeAgent {
+  param($Identity)
+
+  $process = Get-Process -Id $Identity.Id -ErrorAction SilentlyContinue
+  if ($null -eq $process) {
+    return
+  }
+  try {
+    $handle = $process.Handle
+    if ($process.Path -ine $Identity.Image -or $process.StartTime.ToUniversalTime().ToFileTimeUtc() -ne $Identity.StartFileTime) {
+      throw 'Changed guest agent identity refused cleanup.'
+    }
+    $process.Kill()
+    if (-not $process.WaitForExit(5000)) {
+      throw 'Selected guest agent did not exit within its cleanup bound.'
+    }
+  } finally {
+    $process.Dispose()
+  }
+}
+
 function Ensure-DockPipeAgent {
-  param(
-    [int]$Port
-  )
+  param([int]$Port)
 
-  $agentRoot = Join-Path $env:ProgramData "Dockpipe\GuestAgent"
-  $agentExe = Join-Path $agentRoot "dockpipe-guest-agent.exe"
-  $agentScript = Join-Path $agentRoot "dockpipe-guest-agent.ps1"
-  $configPath = Join-Path $agentRoot "config.json"
+  $agentRoot = Join-Path $env:ProgramData 'Dockpipe\GuestAgent'
+  $agentExe = Join-Path $agentRoot 'dockpipe-guest-agent.exe'
+  $agentScript = Join-Path $agentRoot 'dockpipe-guest-agent.ps1'
+  $configPath = Join-Path $agentRoot 'config.json'
+  $statePath = Join-Path $agentRoot 'state.json'
   $sourceAgent = Resolve-DockPipeAgentSourcePath
+  Assert-GuestToolsStatusPath -Path $sourceAgent -Directory $false
+  $sourceHash = (Get-FileHash -LiteralPath $sourceAgent -Algorithm SHA256).Hash
+  $native = [IO.Path]::GetExtension($sourceAgent) -ieq '.exe'
+  $target = if ($native) { $agentExe } else { $agentScript }
+  $obsolete = if ($native) { $agentScript } else { $agentExe }
+  $executable = if ($native) { $agentExe } else { Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe' }
+  $arguments = if ($native) {
+    '-service -ConfigPath "{0}"' -f $configPath
+  } else {
+    '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}" -Service -ConfigPath "{1}"' -f $agentScript, $configPath
+  }
+
+  $securityBefore = Get-GuestProvisioningSecurityFingerprint -Path $agentRoot -Directory $true
   Protect-GuestProvisioningDirectory -Path $agentRoot
-  $taskName = "DockPipeGuestAgent"
-  $existingTask = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
-  if ($existingTask) {
-    Write-Step "Removing existing Dockpipe guest agent scheduled task"
-    Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
+  $securityChanged = $securityBefore -cne (Get-GuestProvisioningSecurityFingerprint -Path $agentRoot -Directory $true)
+  foreach ($path in @($target, $obsolete, $configPath)) {
+    if (Test-Path -LiteralPath $path) {
+      $securityBefore = Get-GuestProvisioningSecurityFingerprint -Path $path -Directory $false
+      Protect-GuestProvisioningFile -Path $path
+      $securityChanged = $securityChanged -or $securityBefore -cne (Get-GuestProvisioningSecurityFingerprint -Path $path -Directory $false)
+    }
+  }
+  $binaryChanged = -not (Test-Path -LiteralPath $target)
+  if (-not $binaryChanged) {
+    $binaryChanged = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -cne $sourceHash
+  }
+  $contentChanged = $binaryChanged
+  $obsoletePresent = Test-Path -LiteralPath $obsolete
+  $binaryChanged = $contentChanged -or $obsoletePresent
+  $configurationChanged = -not (Test-DockPipeAgentConfiguration -Path $configPath -Port $Port -StatePath $statePath)
+  $taskName = 'DockPipeGuestAgent'
+  $task = Get-ScheduledTask -TaskPath '\' -TaskName $taskName -ErrorAction SilentlyContinue
+  $taskChanged = -not (Test-DockPipeAgentTask -Task $task -Executable $executable -Arguments $arguments)
+  $processes = @(Get-DockPipeAgentProcesses -Executable $executable -Arguments $arguments -NativePath $agentExe -ScriptPath $agentScript)
+  $running = $null -ne $task -and $task.State -eq 'Running' -and $processes.Count -eq 1 -and $processes[0].Image -ieq $executable -and $processes[0].DesiredInvocation
+  if (-not $binaryChanged -and -not $configurationChanged -and -not $taskChanged -and -not $securityChanged -and $running) {
+    Write-Step 'The validated guest agent is already running; preserving its process identity.'
+    return
   }
 
-  Get-CimInstance Win32_Process -Filter "Name = 'dockpipe-guest-agent.exe'" -ErrorAction SilentlyContinue |
-    Where-Object { $_.ExecutablePath -eq $agentExe } |
-    ForEach-Object {
-      Write-Step "Stopping existing Dockpipe guest agent process $($_.ProcessId)"
-      Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
-    }
-
-  Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" -ErrorAction SilentlyContinue |
-    Where-Object { $_.CommandLine -like "*$agentScript*" } |
-    ForEach-Object {
-      Write-Step "Stopping existing Dockpipe guest agent process $($_.ProcessId)"
-      Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
-    }
-
-  $agentExtension = [IO.Path]::GetExtension($sourceAgent)
-  if ($agentExtension -ieq ".exe") {
-    Copy-Item -LiteralPath $sourceAgent -Destination $agentExe -Force
-    if (Test-Path -LiteralPath $agentScript) {
-      Remove-Item -LiteralPath $agentScript -Force -ErrorAction SilentlyContinue
-    }
-  } else {
-    Copy-Item -LiteralPath $sourceAgent -Destination $agentScript -Force
+  # No live process is interrupted until desired bytes, security and task policy have been checked.
+  if ($null -ne $task) {
+    # A modified task may point at an unrelated executable. Never stop its action.
+    # Unregister only the owned task; terminate only the selected agent identities below.
+    Unregister-ScheduledTask -TaskPath '\' -TaskName $taskName -Confirm:$false -ErrorAction Stop
   }
-
-  @{
-    port = $Port
-    bind_address = "127.0.0.1"
-    state_path = (Join-Path $agentRoot "state.json")
-    service_account = "LocalSystem"
-  } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $configPath
-
-  $pwshPath = Join-Path $env:WINDIR "System32\WindowsPowerShell\v1.0\powershell.exe"
-  if (Test-Path -LiteralPath $agentExe) {
-    $action = New-ScheduledTaskAction -Execute $agentExe -Argument ('-service -ConfigPath "{0}"' -f $configPath)
-    Write-Step "Installing Dockpipe guest agent startup task as LocalSystem (native executable)"
-  } else {
-    $action = New-ScheduledTaskAction -Execute $pwshPath -Argument ('-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}" -Service -ConfigPath "{1}"' -f $agentScript, $configPath)
-    Write-Step "Installing Dockpipe guest agent startup task as LocalSystem (PowerShell fallback)"
+  foreach ($identity in $processes) {
+    Stop-SelectedDockPipeAgent -Identity $identity
   }
+  if ($contentChanged) {
+    Copy-Item -LiteralPath $sourceAgent -Destination $target -Force -ErrorAction Stop
+    Protect-GuestProvisioningFile -Path $target
+    if ((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -cne $sourceHash) {
+      throw 'Copied guest agent differs from the admitted source bytes.'
+    }
+  }
+  if ($obsoletePresent) {
+    Remove-Item -LiteralPath $obsolete -Force -ErrorAction Stop
+  }
+  if ($configurationChanged) {
+    [ordered]@{
+      port = $Port
+      bind_address = '127.0.0.1'
+      state_path = $statePath
+      service_account = 'LocalSystem'
+    } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $configPath -ErrorAction Stop
+    Protect-GuestProvisioningFile -Path $configPath
+  }
+  $action = New-ScheduledTaskAction -Execute $executable -Argument $arguments
   $trigger = New-ScheduledTaskTrigger -AtStartup
-  $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
-  $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -StartWhenAvailable
-
-  Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings | Out-Null
-
-  Write-Step "Starting Dockpipe guest agent startup task"
-  Start-ScheduledTask -TaskName $taskName
-  Start-Sleep -Seconds 2
-  $task = Get-ScheduledTask -TaskName $taskName
-  Write-Step "Dockpipe guest agent task state: $($task.State) on port $Port"
+  $principal = New-ScheduledTaskPrincipal -UserId SYSTEM -LogonType ServiceAccount -RunLevel Highest
+  $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero)
+  # Set the schema duration explicitly as well, rather than accepting a module default.
+  $settings.ExecutionTimeLimit = 'PT0S'
+  Register-ScheduledTask -TaskPath '\' -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -ErrorAction Stop | Out-Null
+  $registered = Get-ScheduledTask -TaskPath '\' -TaskName $taskName -ErrorAction Stop
+  if (-not (Test-DockPipeAgentTask -Task $registered -Executable $executable -Arguments $arguments)) {
+    throw 'Registered guest agent task did not retain the admitted durable policy.'
+  }
+  Start-ScheduledTask -TaskPath '\' -TaskName $taskName -ErrorAction Stop
 }
 
 try {
@@ -788,14 +955,24 @@ try {
   }
 
   Write-Step -Phase ssh_configuration -Message 'Configuring Windows OpenSSH'
+  $sshConfigExisted = Test-Path -LiteralPath (Join-Path (Join-Path $env:ProgramData 'ssh') 'sshd_config')
   $sshdConfig = Ensure-SshConfigFile
-  Set-SshdOption -ConfigPath $sshdConfig -Name "PasswordAuthentication" -Value ($(if ($EnablePasswordAuth) { "yes" } else { "no" }))
-  Set-SshdOption -ConfigPath $sshdConfig -Name "PubkeyAuthentication" -Value ($(if ($EnablePublicKeyAuth) { "yes" } else { "no" }))
+  $passwordConfigurationChanged = Set-SshdOption -ConfigPath $sshdConfig -Name "PasswordAuthentication" -Value ($(if ($EnablePasswordAuth) { "yes" } else { "no" }))
+  $publicKeyConfigurationChanged = Set-SshdOption -ConfigPath $sshdConfig -Name "PubkeyAuthentication" -Value ($(if ($EnablePublicKeyAuth) { "yes" } else { "no" }))
+  $sshdConfigurationChanged = -not $sshConfigExisted -or $passwordConfigurationChanged -or $publicKeyConfigurationChanged
 
   if (-not [string]::IsNullOrWhiteSpace($DefaultShell)) {
-    Write-Step "Setting DefaultShell to $DefaultShell"
-    New-Item -Path "HKLM:\SOFTWARE\OpenSSH" -Force | Out-Null
-    New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name "DefaultShell" -Value $DefaultShell -PropertyType String -Force | Out-Null
+    $existingShell = Get-ItemProperty -LiteralPath "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -ErrorAction SilentlyContinue
+    $existingShellValue = $null
+    if ($null -ne $existingShell -and $null -ne $existingShell.PSObject.Properties['DefaultShell']) {
+      $existingShellValue = $existingShell.DefaultShell
+    }
+    if ($existingShellValue -cne $DefaultShell) {
+      Write-Step "Setting DefaultShell to $DefaultShell"
+      New-Item -Path "HKLM:\SOFTWARE\OpenSSH" -Force | Out-Null
+      New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name "DefaultShell" -Value $DefaultShell -PropertyType String -Force | Out-Null
+      $sshdConfigurationChanged = $true
+    }
   }
 
   Write-Step -Phase firewall -Message 'Repairing SSH firewall access'
@@ -812,7 +989,7 @@ try {
   }
 
   Write-Step -Phase ssh_service -Message 'Configuring sshd service startup'
-  Start-ProvisionedSshService -ConfigPath $sshdConfig
+  Start-ProvisionedSshService -ConfigPath $sshdConfig -ConfigurationChanged $sshdConfigurationChanged
 
   Write-Step "Configuring ssh-agent service startup"
   Set-Service -Name ssh-agent -StartupType Manual

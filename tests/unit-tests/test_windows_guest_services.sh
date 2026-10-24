@@ -7,6 +7,7 @@ FIXTURE="$(mktemp -d)"
 trap 'rm -rf "$FIXTURE"' EXIT
 
 pwsh -NoProfile -NonInteractive -File "$ROOT/tests/unit-tests/test_windows_guest_services.ps1"
+pwsh -NoProfile -NonInteractive -File "$ROOT/tests/unit-tests/test_windows_guest_agent_repair.ps1"
 
 export XDG_STATE_HOME="$FIXTURE/durable"
 export XDG_CACHE_HOME="$FIXTURE/cache"

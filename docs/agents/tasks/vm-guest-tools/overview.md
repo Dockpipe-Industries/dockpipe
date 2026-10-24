@@ -427,3 +427,40 @@ The Windows provider includes package-owned FromSlash normalization for installe
 The current native desktop artifact tests remain distinct from earlier development proofs. The task-private macOS validation input passed complete runtime intake, codesign, CLI0.6.27 and public provider materialization. After the unprimed-profile attempt failed at the Tiling transition, diagnostic attempt three explicitly enabled experimental Tiling only through its fresh isolated public qualification profile. The unchanged 05b app/295 provider passed all five views, Shift acknowledgements, single leases, both pickers, close/disconnect/reopen, live QEMU survival and all three owned process exits with metadata/socket cleanup and both postguards. Its verified-summary.json is retained under gui-profile-optin-result-3b; evidence SHA256 31ba85e69bdb95d0fffce99ca27f851cf5e48918c853d5f392ff2d6f507f1fae. This diagnostic does not qualify the new core/catalog artifacts. Windows source correction passed 46 native Go unit tests; the prior 441-provider installed GUI failure is retained and final installed Windows acceptance remains pending on the corrected public provider. Neither source publication nor the passing Intel diagnostic substitutes for those installed flows.
 
 The next core qualification must use a fresh committed pin and the full six-platform owning Release dry run with package-display qualification explicitly enabled, diagnose_layout disabled and publication disabled. Ordinary/staging/production builds retain their original defaults. The original Windows VM identities, disks, TPM, clipboard and protected saved checkouts remain outside this generated pin/docs change. The launcher and desktop host stay in core; VM implementation stays in its owning catalog package.
+
+
+### 2026-10-24 durable repair and desktop permission UX
+
+The published 0.6.30 staging desktop and runtime passed the six-platform release
+pipeline. Public artifact readback and private installed-payload checks remain
+separate from interactive acceptance. The recovered Windows desktop now passes
+all four exact pointer corners and both side edges through the shipping Qt VM
+view; the host cursor hides inside the viewport and returns outside it. The
+current Microsoft Basic Display Adapter advertises only 1920 by 1080. Alternate
+live modes and the clipboard roundtrip remain open acceptance items.
+
+Guest service repair now preserves healthy agent and SSH process identities,
+configuration bytes and scheduled task definitions. A changed policy is repaired
+before restarting only the selected owned agent. The agent startup task has no
+execution time limit; the bounded provisioning task retains its existing limit.
+Native Windows PowerShell tests and two actual installed repair passes verified
+idempotence after the initial task-policy correction.
+
+The macOS Settings dialog now reports native Screen Capture and Accessibility
+status with explicit Request access and Open System Settings actions. Status
+checks never prompt and are refreshed while the panel is visible and when the
+app becomes active. Permission grants stay owned by macOS. The host's VM display
+does not require capture of other apps. Temporary external automation controllers
+have their own permission identity. Native Objective-C++ compilation and focused
+UI tests passed on macOS; the full Linux launcher build and focused UI test also
+passed. This does not claim a new installed Mac UI acceptance result.
+
+Catalog candidate source 9e8836d8c36ad0e24a91b6e36601cde13f6ee87a passed
+its owning three-platform native publication pipeline. The public CLI 0.6.29
+and core 0.6.30 consumer contract remains pinned for its pending promotion.
+Linux named-controller acceptance passed; Windows and macOS named-controller
+acceptance and normal catalog publication remain pending. Keep the staging
+runtime pointer at 0.6.30 until that catalog promotion completes. The new repair
+and permission UI changes are validated source pending their normal core staging
+flow. Package VM behavior remains in the catalog; launcher and host permission
+controls remain in core. No production promotion is included.
