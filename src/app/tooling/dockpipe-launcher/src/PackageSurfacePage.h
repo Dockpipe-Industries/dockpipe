@@ -51,6 +51,9 @@ signals:
                                  const QString &actionId, const QString &resourceId);
 
 private:
+#ifdef DOCKPIPE_ENABLE_QUALIFICATION
+    friend class PackageDisplayQualification;
+#endif
     struct Resource {
         QString id;
         QString title;
