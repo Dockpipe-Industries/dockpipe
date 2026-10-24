@@ -262,7 +262,7 @@ func Run(argv []string, baseEnviron []string) error {
 			}
 			if statErr != nil {
 				names, _ := infrastructure.ListWorkflowNamesInRepoRootAndPackages(repoRoot, effWd)
-				msg := fmt.Sprintf("workflow %q not found — tried workflows/ (or DOCKPIPE_WORKFLOWS_DIR), extra roots from dockpipe.config.json compile.workflows, installed workflow packages under bin/.dockpipe/internal/packages/workflows/, configured local package sources from packages.sources, built-in bundled workflows for this dockpipe build, and namespaced workflow tarballs (dockpipe-workflow-%[1]s-*.tar.gz under release/artifacts or packages.tarball_dir when config.yml inside the archive sets namespace:)", opts.Workflow)
+				msg := fmt.Sprintf("workflow %q not found — tried workflows/ (or DOCKPIPE_WORKFLOWS_DIR), extra roots from dockpipe.config.json compile.workflows, installed workflow packages under bin/.dockpipe/internal/packages/workflows/, configured local package sources from packages.sources, built-in bundled workflows for this dockpipe build, and namespaced workflow tarballs (dockpipe-workflow-%[1]s-*.tar.gz under release/artifacts or packages.tarball_dir with a matching config.yml or compiled package.yml namespace)", opts.Workflow)
 				if strings.TrimSpace(opts.Package) != "" {
 					msg = fmt.Sprintf("workflow %q in package %q not found — tried unpacked packaged workflows and configured workflow roots", opts.Workflow, opts.Package)
 				}

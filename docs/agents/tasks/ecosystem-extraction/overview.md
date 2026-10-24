@@ -347,3 +347,76 @@ workflow checks, consumer composition, CI attestations and anonymous readback. I
 three owned workflow repairs are pinned only for independent optional-catalog
 qualification. They are not native VM or Guest Tools release proof and no longer
 block host artifact assembly. The Marketplace pointer was not changed.
+
+### Native catalog source and public dependencies (2026-10-23)
+
+PipeLang source `6f2129054e58499e6ba5067d720fdbf6b6dca3b5` is promoted to
+staging through merge `e9299284c01c085ae315e6483d68512a2520e927`. Its
+`v0.1.1-staging.1` prerelease passed all five native producer lanes; all twelve
+public assets and publisher attestations passed independent verification.
+Existing tags and the stable Go-module pin remain unchanged.
+
+Core PR #210 merged at `79bb110c712e0d71d8bcde4cecff725f3c107a49` after
+actual Windows, both macOS and core-only Flatpak host qualification. Its public
+CLI, Launcher SDK and four-platform Display SDK assets passed independent byte
+and publisher-attestation verification. The explicitly approved required-check
+replacement decouples the core merge gate from optional Cockpit qualification
+while preserving the other branch protections. The approved Homebrew PR #7
+updater source change merged without formula or cask changes. Generic immutable
+tag publication merged through core PR #211 at
+`4dba695f55e6e5b5d5190e111499bb8bfcee176f`; all exact-head required checks and
+sixty owning Git tests pass.
+
+Catalog source `183d897e1099aa50b3fcc70222cf11cf8643be75` is published on dev
+through Dockpipe's Git runtime. Its ninety-two reviewed source paths include the
+real dependency lock, native producer, dedicated QMP absolute-input channel and
+native resolution guard. Source-template admission passes for Linux amd64,
+Windows amd64 and macOS arm64. The lock uses actual public SDK artifacts,
+qualified Guest Tools and unchanged baseline/source compatibility identities;
+its own source fields are bound once by CI after the source commit exists.
+All 127 producer contract tests, ten display tests and six resolution manager
+tests pass. The Windows profile verifies exact preinstalled MSVC 19.51.36260.0
+and matching CRT files on the supported hosted runner, without executing an
+installer or claiming the rolling image is immutable.
+
+All eleven portable QMP C++ tests pass natively without skips on Linux, Windows
+and the paired Mac through Dockpipe. This qualifies the client layer separately
+from installed host acceptance. The final native catalog builds, immutable
+candidate publication, core catalog-pin admission and installed Windows/macOS
+launcher checks remain required. The final Linux-host Windows-guest corner test
+needs the planned restart preserving the existing overlay, firmware variables
+and TPM state. Alternate guest resolutions remain unqualified with the current
+single-mode driver; the reviewed prerelease display driver is not installed.
+
+The launcher and host SDK stay in core. Desktop installation includes the
+CLI/runtime, while CLI-only users can continue using QEMU's own window. Optional
+packages declare minimum runtime compatibility separately from producer pins and
+native ABI requirements. Draft staging PR #209 remains pending final validation;
+no production release promotion is authorized or claimed. The original saved
+checkout and protected ForgePipe edits remain intact.
+
+Native producer follow-up source `e6cb7d84c7f04478e280191672996e805af2239d`
+repairs measured PowerShell ancestry and signed GitHub CDN transport handling;
+all 129 producer tests pass. The next native run verifies Windows compiler/CRT
+identities and builds the Linux private broker and manager, then exposes further
+build-input gaps. Linux OpenGL prerequisites, native Go-cache priming and the
+Windows effective-command check are being repaired before another source run.
+No native catalog publication or final installed acceptance is claimed yet.
+
+The broader Linux catalog check also reproduces a core lookup defect: a compiled
+resolver contains its valid profile and the public scope command finds it, but
+per-step execution reads only core/source profile paths. The generic repair
+reuses shared installed-package lookup and the existing project/core merge in
+both step loaders. Source-hidden archive regressions fail on the unchanged
+public base and pass after the repair; the full core Go suites pass with pinned
+public modules. A fresh verified public CLI is required before the catalog can
+consume that repair.
+
+Source-hidden public archives exposed a related namespace boundary mismatch:
+compilation records the repository default in `package.yml`, but runtime filtering
+previously inspected only `config.yml`. Filtered admission now accepts the default
+from the same archive's bounded, validated manifest with matching kind/name/version.
+Explicit config namespace precedence and unfiltered legacy behavior are preserved.
+The unchanged public Claude archives now pass matching-filter admission and reach
+the deliberately rejecting Docker stub; a wrong filter is rejected first.
+Both generic contract repairs are being qualified together in core PR #212.
