@@ -34,7 +34,7 @@ jobs:
             --exports release/packaging/forgepipe-public-exports.txt \
             --tag "$FORGEPIPE_SDK_TAG" --output "$RUNNER_TEMP/forgepipe-sdk-attestation"
       - name: Attest the audited SDK and source-bound metadata
-        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
           subject-path: |
             ${{ runner.temp }}/forgepipe-sdk-attestation/*.tar.gz
