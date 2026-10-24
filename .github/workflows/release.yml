@@ -32,10 +32,18 @@ on:
         required: false
         default: false
         type: boolean
+      diagnose_layout:
+        description: "Diagnose unchanged full macOS Intel CTest context (manual dry run with qualification only)"
+        type: boolean
+        default: false
+      diagnostic_product_source:
+        description: "Full unchanged product source commit required by layout diagnosis"
+        type: string
+        default: ''
 
 concurrency:
   # Both publication channels share one allocator lock. Dry runs never reserve versions.
-  group: dockpipe-release-${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && format('dry-run-{0}', github.ref) || 'publish' }}
+  group: dockpipe-release-${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && format('dry-run-{0}{1}', github.ref, inputs.diagnose_layout && '-layout-diagnostic' || '') || 'publish' }}
   cancel-in-progress: false
 
 permissions:
@@ -53,6 +61,8 @@ jobs:
       build_msi: ${{ steps.m.outputs.build_msi }}
       qualify_package_display: ${{ steps.m.outputs.qualify_package_display }}
       candidate: ${{ steps.version.outputs.candidate }}
+      diagnose_layout: ${{ steps.m.outputs.diagnose_layout }}
+      diagnostic_product_source: ${{ steps.m.outputs.diagnostic_product_source }}
     steps:
       - uses: actions/checkout@v7
 
@@ -67,6 +77,8 @@ jobs:
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           INPUT_BUILD_MSI: ${{ inputs.build_msi }}
           INPUT_QUALIFY_PACKAGE_DISPLAY: ${{ inputs.qualify_package_display }}
+          INPUT_DIAGNOSE_LAYOUT: ${{ inputs.diagnose_layout }}
+          INPUT_DIAGNOSTIC_PRODUCT_SOURCE: ${{ inputs.diagnostic_product_source }}
           RELEASE_ENABLED: ${{ vars.DOCKPIPE_RELEASE_ENABLED }}
         run: |
           set -euo pipefail
@@ -111,6 +123,20 @@ jobs:
             fi
             qualify_package_display="true"
           fi
+          diagnose_layout="false"
+          diagnostic_product_source=""
+          if [[ "${INPUT_DIAGNOSE_LAYOUT:-false}" == true ]]; then
+            if [[ "$GITHUB_EVENT_NAME" != workflow_dispatch || "$dry_run" != true || "$qualify_package_display" != true ]]; then
+              echo '::error::Layout diagnosis requires a manual dry run with package display qualification.'
+              exit 1
+            fi
+            diagnostic_product_source="${INPUT_DIAGNOSTIC_PRODUCT_SOURCE:-}"
+            [[ "$diagnostic_product_source" =~ ^[0-9a-f]{40}$ ]] || {
+              echo '::error::Layout diagnosis requires a full product source commit.'
+              exit 1
+            }
+            diagnose_layout="true"
+          fi
           if [[ -z "$candidate" && "$dry_run" != "true" && "${GITHUB_REF}" != "refs/heads/master" ]]; then
             echo "::error::Production releases require master. Use dry_run=true for branch verification."
             exit 1
@@ -131,6 +157,8 @@ jobs:
           echo "staging_suffix=${candidate}" >> "$GITHUB_OUTPUT"
           echo "notes_version=${raw}" >> "$GITHUB_OUTPUT"
           echo "dry_run=${dry_run}" >> "$GITHUB_OUTPUT"
+          echo "diagnose_layout=$diagnose_layout" >> "$GITHUB_OUTPUT"
+          echo "diagnostic_product_source=$diagnostic_product_source" >> "$GITHUB_OUTPUT"
           echo "build_msi=${build_msi}" >> "$GITHUB_OUTPUT"
           echo "qualify_package_display=${qualify_package_display}" >> "$GITHUB_OUTPUT"
 
@@ -170,21 +198,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - runner: ubuntu-24.04
-            platform: linux-amd64
-          - runner: ubuntu-24.04-arm
-            platform: linux-arm64
-          - runner: macos-15-intel
-            platform: darwin-amd64
-          - runner: macos-15
-            platform: darwin-arm64
+        include: ${{ needs.meta.outputs.diagnose_layout == 'true' && fromJSON('[{"runner":"macos-15-intel","platform":"darwin-amd64"}]') || fromJSON('[{"runner":"ubuntu-24.04","platform":"linux-amd64"},{"runner":"ubuntu-24.04-arm","platform":"linux-arm64"},{"runner":"macos-15-intel","platform":"darwin-amd64"},{"runner":"macos-15","platform":"darwin-arm64"}]') }}
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       attestations: read
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: ${{ needs.meta.outputs.diagnose_layout == 'true' && '0' || '1' }}
+      - name: Bind unchanged diagnostic product source
+        if: needs.meta.outputs.diagnose_layout == 'true'
+        env:
+          PRODUCT_SOURCE: ${{ needs.meta.outputs.diagnostic_product_source }}
+        shell: bash
+        run: python3 release/packaging/desktop/layout-diagnostics.py guard --product-source "$PRODUCT_SOURCE" --evidence "$RUNNER_TEMP/layout-diagnostic/preparation"
       - uses: actions/setup-go@v7
         with:
           go-version: "1.26.10"
@@ -225,12 +253,18 @@ jobs:
         if: runner.os == 'macOS'
         env:
           QUALIFY_PACKAGE_DISPLAY: ${{ needs.meta.outputs.qualify_package_display }}
+          DIAGNOSE_LAYOUT: ${{ needs.meta.outputs.diagnose_layout }}
+          PRODUCT_SOURCE: ${{ needs.meta.outputs.diagnostic_product_source }}
+          DOCKPIPE_LAYOUT_DIAGNOSTICS: ${{ runner.temp }}/layout-diagnostic/desktop
         shell: bash
         run: |
           python3 -m unittest discover -s release/packaging/tests -p test_native_symbol_boundaries.py -v
           qualification_args=()
           if [[ "$QUALIFY_PACKAGE_DISPLAY" == true ]]; then
             qualification_args+=(--enable-qualification)
+          fi
+          if [[ "$DIAGNOSE_LAYOUT" == true ]]; then
+            qualification_args+=(--diagnose-layout "$PRODUCT_SOURCE")
           fi
           bash release/packaging/desktop/build-unix.sh "${qualification_args[@]}" "${{ needs.meta.outputs.version }}" release/artifacts
       - name: Install and test Linux desktop on Ubuntu 22.04 and 24.04
@@ -264,7 +298,17 @@ jobs:
           path: release/artifacts/
           if-no-files-found: error
 
+      - name: Retain full-context layout diagnostic evidence
+        if: ${{ always() && needs.meta.outputs.diagnose_layout == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: layout-diagnostic-${{ github.sha }}
+          path: ${{ runner.temp }}/layout-diagnostic/
+          if-no-files-found: error
+          retention-days: 7
+
   build-msi:
+    if: needs.meta.outputs.diagnose_layout != 'true'
     permissions:
       contents: read
       attestations: read
@@ -391,6 +435,7 @@ jobs:
           if-no-files-found: error
 
   build-flatpak:
+    if: needs.meta.outputs.diagnose_layout != 'true'
     needs: [meta]
     uses: ./.github/workflows/flatpak.yml
     with:
@@ -402,7 +447,7 @@ jobs:
   assemble:
     name: Assemble and verify artifacts
     needs: [meta, build-unix, build-msi, build-flatpak]
-    if: ${{ !cancelled() && needs.meta.result == 'success' && needs.build-unix.result == 'success' && needs.build-flatpak.result == 'success' && (needs.build-msi.result == 'success' || needs.build-msi.result == 'skipped') }}
+    if: ${{ !cancelled() && needs.meta.outputs.diagnose_layout != 'true' && needs.meta.result == 'success' && needs.build-unix.result == 'success' && needs.build-flatpak.result == 'success' && (needs.build-msi.result == 'success' || needs.build-msi.result == 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
