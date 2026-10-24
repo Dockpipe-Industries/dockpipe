@@ -174,7 +174,7 @@ func loadStepResolver(o *runStepsOpts, step domain.Step, stepIndex int) (*domain
 	if rtName == "" && rsName == "" {
 		return nil, "", "", nil
 	}
-	m, err := infrastructure.LoadIsolationProfile(o.repoRoot, rtName, rsName)
+	m, err := loadMergedIsolationProfile(o.repoRoot, o.projectRoot, rtName, rsName)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("step %s: isolation profile: %w", step.DisplayName(stepIndex), err)
 	}
@@ -197,7 +197,7 @@ func loadStepResolverWithProfileEnv(o *runStepsOpts, step domain.Step, stepIndex
 	if rtName == "" && rsName == "" {
 		return nil, "", "", nil, nil
 	}
-	m, err := infrastructure.LoadIsolationProfile(o.repoRoot, rtName, rsName)
+	m, err := loadMergedIsolationProfile(o.repoRoot, o.projectRoot, rtName, rsName)
 	if err != nil {
 		return nil, "", "", nil, fmt.Errorf("step %s: isolation profile: %w", step.DisplayName(stepIndex), err)
 	}
