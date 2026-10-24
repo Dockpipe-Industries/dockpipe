@@ -837,7 +837,8 @@ builds the existing qualifier; it does not launch a VM, install optional package
 or execute a qualification scenario. `--qualify-package-display CONFIG.json` exercises the real MainWindow,
 installed catalog and package snapshot, provider page, Canvas widget picker,
 Tiling Apps picker, handoff and panel close/reopen. It never injects a fake catalog
-or factory and never owns the external resource lifecycle.
+or factory. Its optional launch phase invokes only the installed package action;
+resource lifecycle policy remains package-owned.
 
 The bounded configuration requires `schema: 1`, existing absolute `workspace`,
 fresh absolute `output`, `surface_id`, `resource_id`, stable unique `profile_id`,
@@ -858,6 +859,39 @@ press/release through the real widget and requires protocol acknowledgements;
 it does not type text or access the clipboard. Use an owned disposable resource
 for that proof. Resource creation, process identity validation, final liveness
 and cleanup remain the surrounding Dockpipe workflow's responsibility.
+
+
+An optional startup scenario replaces `resource_id` with `launch`:
+
+```json
+"launch": {
+  "action_id": "start-fixture",
+  "workflow_id": "fixture-start",
+  "inputs": {"FIXTURE_PATH": "/absolute/task-owned/input"}
+}
+```
+
+The action must be an enabled declared surface action for that installed public
+workflow. The qualifier triggers its real QAction, fills only declared nonsecret
+workflow controls, and clicks the real dialog's **Launch** button once. It does
+not invoke a CLI workflow directly or bypass its configuration dialog. Input maps
+are limited to 32 entries, names 128 UTF-8 bytes and values 4096 UTF-8 bytes inside
+the existing 32 KiB configuration. Choice values must match declared options;
+checkboxes require string `0` or `1`. Unknown, sensitive, missing, explicitly hidden or
+ambiguous controls fail before launch. Routed entry choices and tab pages are
+selected through their real controls before the fields are filled; unprovided
+optional password fields remain blank. The dialog deadline is 15 seconds and the
+resource deadline 120 seconds, both within the unchanged whole-proof deadline.
+
+The newly discovered display must carry this exact invocation's launch identity
+and must not have existed in the initial snapshot. Cancellation is not success;
+a resource belonging to another invocation cannot satisfy startup. The same
+five-view proof then runs against that resource. Receipts record public action,
+workflow, invocation and resource identities plus booleans and stage timing;
+input values are not recorded. The outer task must independently validate actual
+resource process ownership and cleanup, including survival expectations when the
+GUI-owned CLI process exits. Preexisting-resource scenarios retain their existing
+behavior and do not start an action.
 
 
 ### Package script interpreters
