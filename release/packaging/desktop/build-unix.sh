@@ -7,10 +7,29 @@ if [[ "${1:-}" == --enable-qualification ]]; then
   enable_qualification=ON
   shift
 fi
+diagnostic_product_source=""
+if [[ "${1:-}" == --diagnose-layout ]]; then
+  [[ "$enable_qualification" == ON ]] || {
+    echo 'Layout diagnosis requires package display qualification.' >&2
+    exit 1
+  }
+  diagnostic_product_source="${2:?full unchanged product source}"
+  shift 2
+  diagnostic_output="${DOCKPIPE_LAYOUT_DIAGNOSTICS:?Private layout diagnostic output required}"
+fi
 version="${1:?version}"
 out="${2:?output directory}"
 mkdir -p "$out"
 out="$(cd "$out" && pwd)"
+if [[ -n "$diagnostic_product_source" ]]; then
+  diagnostic_output="$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$diagnostic_output")"
+  [[ "$diagnostic_output/" != "$out/"* && "$out/" != "$diagnostic_output/"* ]] || {
+    echo 'Layout diagnostics must be outside release artifacts.' >&2
+    exit 1
+  }
+  python3 "$root/release/packaging/desktop/layout-diagnostics.py" guard \
+    --product-source "$diagnostic_product_source" --evidence "$diagnostic_output"
+fi
 if [[ -n "${DOCKPIPE_PRIVATE_DEBUG_DIR:-}" ]]; then
   private_debug="$(python3 - "$DOCKPIPE_PRIVATE_DEBUG_DIR" <<'PY'
 from pathlib import Path
@@ -30,11 +49,19 @@ else
 fi
 cleanup_build() {
   local status=$?
+  if [[ -n "$diagnostic_product_source" ]]; then
+    for diagnostic_file in CMakeCache.txt Testing/Temporary/LastTest.log Testing/Temporary/LastTestsFailed.log; do
+      if [[ -f "$build/$diagnostic_file" ]]; then
+        cp "$build/$diagnostic_file" "$diagnostic_output/$(basename "$diagnostic_file")" || status=1
+      fi
+    done
+  fi
   if [[ "$status" == 0 || -z "${DOCKPIPE_PRIVATE_DEBUG_DIR:-}" ]]; then
     rm -rf "$build"
   else
     echo "Build failed; private diagnostics retained at $build" >&2
   fi
+  return "$status"
 }
 trap cleanup_build EXIT
 browser_sdk="$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve(strict=True))' "${DOCKPIPE_BROWSER_SDK:?Prepare the exact public Browser SDK first}")"
@@ -68,6 +95,9 @@ if [[ "${DOCKPIPE_BUILD_COCKPIT:-0}" != 0 ]]; then
   exit 1
 fi
 args+=("-DCMAKE_PREFIX_PATH=$prefixes")
+if [[ -n "$diagnostic_product_source" ]]; then
+  args+=(-DCMAKE_CXX_FLAGS=-DDOCKPIPE_PROFILE_DASHBOARD_LAYOUT)
+fi
 if [[ "${DOCKPIPE_QUALIFY_COCKPIT:-0}" == 1 ]]; then
   [[ "$(uname -s)" == Linux && "$(uname -m)" == x86_64 ]]
   export DOCKPIPE_GIT_TEST_CLI="$root/src/bin/dockpipe"
@@ -84,7 +114,12 @@ if [[ "${DOCKPIPE_QUALIFY_COCKPIT:-0}" == 1 ]]; then
     --lock "$root/release/cockpit.lock.json" --store "$DOCKPIPE_COCKPIT_STORE" --build "$build"
 fi
 cmake --build "$build" --parallel 2
-ctest --test-dir "$build" --output-on-failure
+if [[ -n "$diagnostic_product_source" ]]; then
+  python3 "$root/release/packaging/desktop/layout-diagnostics.py" ctest \
+    --build "$build" --evidence "$diagnostic_output"
+else
+  ctest --test-dir "$build" --output-on-failure
+fi
 if [[ "${DOCKPIPE_QUALIFY_COCKPIT:-0}" == 1 ]]; then
   [[ ! -e "$out/cockpit-store" ]]
   cp -R "$DOCKPIPE_COCKPIT_STORE" "$out/cockpit-store"
