@@ -61,7 +61,7 @@ void PackageDisplayTest::transientLaunchEnvironmentPrivacy()
     QString error;
     QVERIFY2(SurfaceLaunchEnvironment::apply(invocation, action, root.path(), error), qPrintable(error));
     QCOMPARE(invocation.transientLaunchEnv.value("PACKAGE_DISPLAY_REAL").toUtf8(), sentinel);
-    QCOMPARE(invocation.transientLaunchEnv.value("PACKAGE_DISPLAY_EXECUTABLE"), asset);
+    QCOMPARE(invocation.transientLaunchEnv.value("PACKAGE_DISPLAY_EXECUTABLE"), QFileInfo(asset).canonicalFilePath());
     QVERIFY(!QJsonDocument(invocation.toJson()).toJson().contains(sentinel));
     QVERIFY(!QJsonDocument(original.toJson()).toJson().contains(sentinel));
     SessionManager sessions;

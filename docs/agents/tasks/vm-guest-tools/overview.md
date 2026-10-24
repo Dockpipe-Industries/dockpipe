@@ -31,6 +31,24 @@ verification_policy: Finish Windows validation first, then focused implementatio
 handoff_policy: user_requested_only
 ```
 
+Current checkpoint (2026-10-23): the final native catalog source
+`441a0a695f4876791ab54bed59264b0c8dfb32ca` passed Linux amd64 and Mac arm64
+display suites (ten tests each), Windows amd64 (nine tests), package compilation
+and public candidate publication. Independent public readback verified all seven
+assets, source/toolchain evidence and eight package identities on those targets.
+The exact candidate is pinned in the core consumer; the launcher and host SDK stay
+in core, and VM implementation stays in the optional package.
+
+Full installed Windows/macOS MainWindow, VM page, Canvas and Tiling acceptance
+still needs the final owning desktop build. The preserved Windows guest's original
+QEMU/TPM identities remain alive, verified in the host process namespace; sandbox
+PID visibility alone is insufficient. Preserve its overlay, firmware variables,
+TPM and identity through clean shutdown, offline checks and one continuation boot. The 1920-by-1080 boot
+preference and strict QWidget-to-guest edge/corner proof remain unqualified.
+Catalog staging promotion is tracked in catalog PR #2; final Dockpipe staging
+publication waits for installed acceptance. The older checkpoints below retain
+their original scope and do not substitute for these remaining gates.
+
 The user explicitly authorized this order after clarifying that the requested Qt
 application runs inside the guest, complementing a host top-level VM tab rather
 than replacing it. The existing launcher does not yet implement generic
@@ -366,3 +384,13 @@ flow remains qualified by proof 37; native Mac Python smoke passes proof 43.
 Staging remains in progress. New public source/CLI/Display SDK artifacts and
 package-store pins must be published and read back before a staging application
 release is claimed. No production promotion is authorized or reported.
+
+### 2026-10-24 final native catalog integration checkpoint
+
+Catalog source `64e0891ac87aadc6c0d20843b6309233e8de6e1a` passed owning native run `40063759757` on Linux amd64, Windows amd64 and macOS arm64. Its seven public assets passed strict independent source, byte, toolchain, eight-package ownership and inner-archive verification, followed by unchanged public run/tag/release readback. The core lock replaces only the catalog overlay; all independent dependencies and unsupported-platform baselines remain unchanged. The native catalog publisher supplies native receipts, not SDK-style attestations.
+
+The Windows provider includes package-owned FromSlash normalization for installed runtime paths and a mandatory native Go unit gate. Minimum runtime compatibility and exact producer/SDK/ABI pins remain separate; the existing minimums and public SDK/Guest Tools pins are preserved.
+
+The current native desktop artifact tests remain distinct from earlier development proofs. The task-private macOS validation input passed complete runtime intake, codesign, CLI0.6.27 and public provider materialization. After the unprimed-profile attempt failed at the Tiling transition, diagnostic attempt three explicitly enabled experimental Tiling only through its fresh isolated public qualification profile. The unchanged 05b app/295 provider passed all five views, Shift acknowledgements, single leases, both pickers, close/disconnect/reopen, live QEMU survival and all three owned process exits with metadata/socket cleanup and both postguards. Its verified-summary.json is retained under gui-profile-optin-result-3b; evidence SHA256 31ba85e69bdb95d0fffce99ca27f851cf5e48918c853d5f392ff2d6f507f1fae. This diagnostic does not qualify the new core/catalog artifacts. Windows source correction passed 46 native Go unit tests; the prior 441-provider installed GUI failure is retained and final installed Windows acceptance remains pending on the corrected public provider. Neither source publication nor the passing Intel diagnostic substitutes for those installed flows.
+
+The next core qualification must use a fresh committed pin and the full six-platform owning Release dry run with package-display qualification explicitly enabled, diagnose_layout disabled and publication disabled. Ordinary/staging/production builds retain their original defaults. The original Windows VM identities, disks, TPM, clipboard and protected saved checkouts remain outside this generated pin/docs change. The launcher and desktop host stay in core; VM implementation stays in its owning catalog package.
