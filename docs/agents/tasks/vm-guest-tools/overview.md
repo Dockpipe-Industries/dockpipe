@@ -464,3 +464,62 @@ runtime pointer at 0.6.30 until that catalog promotion completes. The new repair
 and permission UI changes are validated source pending their normal core staging
 flow. Package VM behavior remains in the catalog; launcher and host permission
 controls remain in core. No production promotion is included.
+
+
+### 2026-10-24 final live acceptance and cleanup corrections
+
+The shipping Windows guest view passes both clipboard directions. The verifier
+restored the current host text payload and guest text exactly before resuming the
+bridge. X11 selection protocol timestamps are reported separately from payload
+bytes. This does not claim restoration of an image that changed externally before
+the test. Exact corner/edge pointer checks, native host cursor visibility and the
+visible Guest Tools readiness checks also pass. The current driver still exposes
+only 1920 by 1080; no alternate live mode or driver installation is claimed.
+
+The real Mac named workflow passes private display bus/Console, public resource
+identity and complete owned cleanup with the published CLI29/core30/package
+cohort. Its held workflow exits nonzero after deliberate cleanup because core30
+has a function-local exit trap bug. The correction uses a shell-owned active
+child record, running/stopped job ownership, bounded termination and explicit
+reaping. Seventeen regression scenarios pass on Linux and the paired Mac,
+including failure status, cancellation, completed jobs and termination failure.
+
+Native Windows testing confirmed that ordinary long qemu-img paths fail while
+extended-length Windows paths work. The source correction keeps shell and state
+paths unchanged, converts only native disk operands, and propagates disk creation
+failure. Final native source-helper and installed-flow checks remain separate
+from that initial tool experiment. Catalog publication and the final core staging
+release remain in progress; no production release is authorized or claimed.
+
+The refreshed optional catalog exposed a missing Flatpak mapping for the VM
+reporting timeout dependency. The adapter now selects the Platform command.
+Actual KDE Platform 6.10 provides GNU timeout and returns 124 at its deadline.
+Ten focused adapter tests and eight Flatpak boundary tests pass, including
+missing-command rejection. Full rebuilt catalog qualification remains a final
+head CI check. No host bridge or package dependency removal was introduced.
+
+The native Windows start-wait wrapper previously reported success after a
+launcher refusal. It now retains the child exit status through output capture
+and session reporting. Actual Windows PowerShell 7 tests reproduce the old
+37-to-zero failure and verify corrected zero, 37 and unavailable-reporter cases,
+with both output streams and all original guest/service guards preserved.
+The focused regression is routed into the normal Windows CI job.
+
+### Current staging order after native Windows media qualification
+
+Actual source-bound paused QEMU tests pass the short-base/long-overlay case,
+the explicit Windows vvfat bootstrap directory operand, and the 259-byte backing
+path boundary. The 260-byte case fails before overlay creation. All exact media
+and owned processes were removed and original guest/services remain unchanged.
+Long automatic backing paths are rejected clearly; the component-proven explicit
+backing-node alternative is deferred. This is media/backend proof, with the full
+installed frontend workflow still to qualify against published fixed artifacts.
+
+Published core30's legacy fat: bootstrap operand fails the Windows native test,
+so the earlier catalog-first hold is superseded. Promote the validated runtime
+fix through the normal pipeline first. Then pin actual public CLI/core artifacts
+in a new coherent VM catalog cohort, preserve prior immutable package identities,
+repeat native publication and all three named qualifications, and run the normal
+catalog staging consumers and conditional pointer promotion. Do not relabel N2 or
+weaken its producer/runtime admission. Refresh the optional host catalog pin after
+that new candidate is qualified. Production remains outside this staging task.

@@ -80,6 +80,8 @@ jobs:
         run: |
           bash tests/unit-tests/test_vm_darwin.sh
           bash tests/unit-tests/test_vm_boot_display_args.sh
+          bash tests/unit-tests/test_vm_posix_cleanup.sh
+          bash tests/unit-tests/test_vm_windows_media_paths.sh
 
       - name: govulncheck + gosec
         env:
@@ -246,6 +248,10 @@ jobs:
 
       - name: clone-worktree include script (bash + git)
         run: bash tests/unit-tests/test_clone_worktree_include.sh
+
+      - name: Native Windows QEMU exit status
+        shell: pwsh
+        run: ./tests/unit-tests/test_vm_windows_exit_status.ps1
 
   staging-release:
     needs: [test, test-windows]

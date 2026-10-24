@@ -291,6 +291,54 @@ vmimage_native_host_path() {
   printf '%s\n' "$path_value"
 }
 
+# QEMU's native Windows file APIs need the extended namespace for long paths.
+# Keep this conversion at the QEMU boundary; shell state paths stay unchanged.
+vmimage_qemu_media_path() {
+  local path_value="$1" native_path
+  if ! vmimage_is_windows_host; then
+    printf '%s\n' "$path_value"
+    return 0
+  fi
+  case "$path_value" in
+    [A-Za-z]:\\*|[A-Za-z]:/*|\\\\*|/*) ;;
+    *) vmimage_die "QEMU media path must be absolute on Windows" ;;
+  esac
+  command -v cygpath >/dev/null 2>&1 || vmimage_die "cygpath is required for native Windows QEMU media paths"
+  native_path="$(cygpath -aw -- "$path_value")" || vmimage_die "cannot convert native Windows QEMU media path"
+  native_path="${native_path//\//\\}"
+  case "$native_path" in
+    '\\?\UNC\'*) native_path="\\\\${native_path:8}" ;;
+    '\\?\'*) native_path="${native_path:4}" ;;
+    '\\.\'*) vmimage_die "Windows device namespace is not a QEMU media path" ;;
+  esac
+  local components="${native_path//\\//}"
+  case "$components" in
+    */./*|*/../*|*/.|*/..|*$'\n'*|*$'\r'*)
+      vmimage_die "native Windows QEMU media path is not canonical"
+      ;;
+  esac
+  local drive_pattern='^[A-Za-z]:\\'
+  local unc_pattern='^\\\\[^\\]+\\[^\\]+(\\|$)'
+  if [[ "$native_path" =~ $drive_pattern ]]; then
+    printf '\\\\?\\%s\n' "$native_path"
+  elif [[ "$native_path" =~ $unc_pattern ]]; then
+    printf '\\\\?\\UNC\\%s\n' "${native_path:2}"
+  else
+    vmimage_die "native Windows QEMU media path must name an absolute drive or UNC share"
+  fi
+}
+
+vmimage_bootstrap_directory_drive() {
+  local directory="$1"
+  if vmimage_is_windows_host; then
+    directory="$(vmimage_qemu_media_path "$directory")" || return 1
+    # The legacy fat: filename parser does not preserve native Windows paths.
+    printf 'if=none,id=vbootstrap,format=vvfat,dir=%s,readonly=on\n' "$directory"
+  else
+    printf 'if=none,id=vbootstrap,file=fat:%s,format=raw,readonly=on\n' "$directory"
+  fi
+}
+
 vmimage_powershell_bin() {
   if [[ -n "${DOCKPIPE_VM_PWSH_BIN:-}" ]]; then
     vmimage_shell_path "$DOCKPIPE_VM_PWSH_BIN"
@@ -2269,8 +2317,24 @@ vmimage_prepare_disk() {
   local state_dir overlay
   state_dir="$(vmimage_state_dir)"
   overlay="${state_dir}/overlay-${DOCKPIPE_RUN_ID:-vm}.qcow2"
+  local native_disk native_overlay
+  native_disk="$(vmimage_qemu_media_path "$disk")" || return 1
+  native_overlay="$(vmimage_qemu_media_path "$overlay")" || return 1
+  if vmimage_is_windows_host; then
+    local backing_path_bytes
+    backing_path_bytes="$(
+      export LC_ALL=C
+      printf '%s' "${#native_disk}"
+    )"
+    # The qualified Windows QEMU build truncates long automatic backing paths.
+    # Keep metadata-backed images within its tested 259-byte compatibility limit.
+    # Explicit backing nodes can avoid this limit, but this path uses metadata.
+    if (( backing_path_bytes >= 260 )); then
+      vmimage_die "Windows ephemeral backing path exceeds QEMU's 259-byte automatic backing limit; choose a shorter base image path or persistent mode"
+    fi
+  fi
   rm -f "$overlay"
-  "$qemu_img_bin" create -q -f qcow2 -F "$fmt" -b "$disk" "$overlay"
+  "$qemu_img_bin" create -q -f qcow2 -F "$fmt" -b "$native_disk" "$native_overlay" || return $?
   printf '%s|qcow2\n' "$overlay"
 }
 
@@ -2280,10 +2344,12 @@ vmimage_ensure_disk_exists_for_install() {
   local qemu_img_bin
   qemu_img_bin="$(vmimage_qemu_img_bin || true)"
   [[ -n "$qemu_img_bin" ]] || vmimage_die "$(vmimage_default_qemu_img_bin) is required to create a VM disk image"
+  local native_disk
+  native_disk="$(vmimage_qemu_media_path "$disk")" || return 1
   if ! vmimage_confirm_prompts_enabled; then
     mkdir -p "$(dirname "$disk")"
     local fmt="${DOCKPIPE_VM_DISK_CREATE_FORMAT:-qcow2}"
-    "$qemu_img_bin" create -f "$fmt" "$disk" "${DOCKPIPE_VM_DISK_SIZE:-64G}" >/dev/null
+    "$qemu_img_bin" create -f "$fmt" "$native_disk" "${DOCKPIPE_VM_DISK_SIZE:-64G}" >/dev/null || return $?
     return 0
   fi
   local answer
@@ -2300,7 +2366,7 @@ vmimage_ensure_disk_exists_for_install() {
   [[ "$answer" == "yes" ]] || vmimage_die "stopped before creating VM disk image"
   mkdir -p "$(dirname "$disk")"
   local fmt="${DOCKPIPE_VM_DISK_CREATE_FORMAT:-qcow2}"
-  "$qemu_img_bin" create -f "$fmt" "$disk" "${DOCKPIPE_VM_DISK_SIZE:-64G}" >/dev/null
+  "$qemu_img_bin" create -f "$fmt" "$native_disk" "${DOCKPIPE_VM_DISK_SIZE:-64G}" >/dev/null || return $?
 }
 
 vmimage_write_pid_sidecar() {
@@ -3029,28 +3095,92 @@ vmimage_open_interactive_guest_shell() {
   ssh $ssh_opts -tt "${user}@${host}" "$shell_cmd"
 }
 
+# Only running/stopped jobs retain live child ownership. Done jobs may be reaped
+# asynchronously, so their numeric PIDs must never be signalled again.
+vmimage_posix_child_is_owned() {
+  local owned_pid="$1" child_pid
+  for child_pid in $(jobs -pr; jobs -ps); do
+    [[ "$child_pid" == "$owned_pid" ]] && return 0
+  done
+  return 1
+}
+
+vmimage_cleanup_posix_qemu() {
+  local owned_pid="$1" attempt
+  if vmimage_posix_child_is_owned "$owned_pid"; then
+    kill "$owned_pid" >/dev/null 2>&1 || true
+    for (( attempt = 0; attempt < 50; attempt++ )); do
+      vmimage_posix_child_is_owned "$owned_pid" || break
+      sleep 0.1
+    done
+    if vmimage_posix_child_is_owned "$owned_pid"; then
+      kill -KILL "$owned_pid" >/dev/null 2>&1 || true
+      for (( attempt = 0; attempt < 20; attempt++ )); do
+        vmimage_posix_child_is_owned "$owned_pid" || break
+        sleep 0.1
+      done
+    fi
+    if vmimage_posix_child_is_owned "$owned_pid"; then
+      vmimage_log "owned QEMU child did not stop within the cleanup deadline"
+      vmimage_stop_swtpm
+      return 1
+    fi
+  fi
+  # wait is safe only after the child is known to have finished; it cannot block.
+  wait "$owned_pid" >/dev/null 2>&1 || true
+  vmimage_stop_swtpm
+}
+
+vmimage_exit_posix_qemu() {
+  local owned_pid="$VMIMAGE_POSIX_QEMU_PID"
+  VMIMAGE_POSIX_QEMU_PID=""
+  trap - EXIT INT TERM
+  vmimage_cleanup_posix_qemu "$owned_pid"
+}
+
+vmimage_arm_posix_qemu_cleanup() {
+  # These shell-owned records outlive a function unwound by errexit on macOS Bash.
+  # They are retired immediately after reap, never captured as permanent PIDs.
+  VMIMAGE_POSIX_QEMU_PID="$1"
+  VMIMAGE_POSIX_QEMU_PREVIOUS_TRAPS="$(trap -p EXIT INT TERM)"
+  trap 'vmimage_exit_posix_qemu' EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+}
+
+vmimage_disarm_posix_qemu_cleanup() {
+  local previous_traps="$VMIMAGE_POSIX_QEMU_PREVIOUS_TRAPS"
+  VMIMAGE_POSIX_QEMU_PID=""
+  VMIMAGE_POSIX_QEMU_PREVIOUS_TRAPS=""
+  trap - EXIT INT TERM
+  eval "$previous_traps"
+}
+
 vmimage_run_installer_session() {
   local qemu_bin="$1"
   shift || true
   local -a qemu_args=("$@")
-  local pid state_dir pidfile
+  local pid state_dir pidfile status=0
   state_dir="$(vmimage_state_dir)"
   pidfile="${state_dir}/qemu-${DOCKPIPE_RUN_ID:-vm}.pid"
   rm -f "$pidfile"
   vmimage_log "installer mode: launching interactive VM window and waiting until you close it or stop Dockpipe"
   "$qemu_bin" "${qemu_args[@]}" &
   pid="$!"
+  vmimage_arm_posix_qemu_cleanup "$pid"
   printf '%s\n' "$pid" > "$pidfile"
   vmimage_write_pid_sidecar "$pid"
-  trap 'kill "$pid" >/dev/null 2>&1 || true; vmimage_stop_swtpm' EXIT INT TERM
-  wait "$pid"
+  wait "$pid" || status=$?
+  vmimage_disarm_posix_qemu_cleanup
+  vmimage_stop_swtpm
+  return "$status"
 }
 
 vmimage_run_automated_installer_session() {
   local qemu_bin="$1"
   shift || true
   local -a qemu_args=("$@")
-  local pid state_dir pidfile old_timeout
+  local pid state_dir pidfile old_timeout status=0
   vmimage_require DOCKPIPE_STEP_CMD
   state_dir="$(vmimage_state_dir)"
   pidfile="${state_dir}/qemu-${DOCKPIPE_RUN_ID:-vm}.pid"
@@ -3058,9 +3188,9 @@ vmimage_run_automated_installer_session() {
   vmimage_log "installer mode: launching unattended installer VM and waiting for guest SSH readiness"
   "$qemu_bin" "${qemu_args[@]}" &
   pid="$!"
+  vmimage_arm_posix_qemu_cleanup "$pid"
   printf '%s\n' "$pid" > "$pidfile"
   vmimage_write_pid_sidecar "$pid"
-  trap 'kill "$pid" >/dev/null 2>&1 || true; vmimage_stop_swtpm' EXIT INT TERM
   old_timeout="${DOCKPIPE_VM_SSH_READY_TIMEOUT:-}"
   if [[ -z "$old_timeout" ]]; then
     export DOCKPIPE_VM_SSH_READY_TIMEOUT=3600
@@ -3080,23 +3210,26 @@ vmimage_run_automated_installer_session() {
     vmimage_fetch_outputs
   fi
   vmimage_keepalive_wait
-  wait "$pid"
+  wait "$pid" || status=$?
+  vmimage_disarm_posix_qemu_cleanup
+  vmimage_stop_swtpm
+  return "$status"
 }
 
 vmimage_run_headless_guest_session() {
   local qemu_bin="$1"
   shift || true
   local -a qemu_args=("$@")
-  local pid state_dir pidfile
+  local pid state_dir pidfile status=0
   state_dir="$(vmimage_state_dir)"
   pidfile="${state_dir}/qemu-${DOCKPIPE_RUN_ID:-vm}.pid"
   rm -f "$pidfile"
   vmimage_log "headless mode: launching VM in background and waiting for guest SSH readiness"
   "$qemu_bin" "${qemu_args[@]}" &
   pid="$!"
+  vmimage_arm_posix_qemu_cleanup "$pid"
   printf '%s\n' "$pid" > "$pidfile"
   vmimage_write_pid_sidecar "$pid"
-  trap 'kill "$pid" >/dev/null 2>&1 || true; vmimage_stop_swtpm' EXIT INT TERM
   vmimage_wait_for_guest
   vmimage_maybe_start_clipboard_bridge
   vmimage_sync_host_to_guest
@@ -3108,7 +3241,10 @@ vmimage_run_headless_guest_session() {
     vmimage_fetch_outputs
   fi
   vmimage_keepalive_wait
-  wait "$pid"
+  wait "$pid" || status=$?
+  vmimage_disarm_posix_qemu_cleanup
+  vmimage_stop_swtpm
+  return "$status"
 }
 
 vmimage_windows_write_args_file() {
@@ -3334,29 +3470,31 @@ vmimage_run_qemu_common() {
     fi
   fi
 
+  local qemu_disk
+  qemu_disk="$(vmimage_qemu_media_path "$disk")" || return 1
   case "$disk_bus" in
     virtio)
       qemu_args+=(
-        -drive "if=none,id=vdisk,file=${disk},format=${disk_fmt}"
+        -drive "if=none,id=vdisk,file=${qemu_disk},format=${disk_fmt}"
         -device "virtio-blk-pci,drive=vdisk,serial=${disk_serial}"
       )
       ;;
     sata)
       qemu_args+=(
         -device ich9-ahci,id=sata0
-        -drive "if=none,id=vdisk,file=${disk},format=${disk_fmt}"
+        -drive "if=none,id=vdisk,file=${qemu_disk},format=${disk_fmt}"
         -device "ide-hd,drive=vdisk,bus=sata0.0,serial=${disk_serial}"
       )
       ;;
     ide)
       qemu_args+=(
-        -drive "if=none,id=vdisk,file=${disk},format=${disk_fmt}"
+        -drive "if=none,id=vdisk,file=${qemu_disk},format=${disk_fmt}"
         -device "ide-hd,drive=vdisk,serial=${disk_serial}"
       )
       ;;
     nvme)
       qemu_args+=(
-        -drive "if=none,id=vdisk,file=${disk},format=${disk_fmt}"
+        -drive "if=none,id=vdisk,file=${qemu_disk},format=${disk_fmt}"
         -device "nvme,drive=vdisk,serial=${disk_serial}"
       )
       ;;
@@ -3420,7 +3558,7 @@ vmimage_run_qemu_common() {
     if bootstrap_iso="$(vmimage_prepare_bootstrap_iso "$bootstrap_attachment_dir")"; then
       bootstrap_drive="if=none,id=vbootstrap,file=${bootstrap_iso},format=raw,readonly=on,media=cdrom"
     else
-      bootstrap_drive="if=none,id=vbootstrap,file=fat:${bootstrap_attachment_dir},format=raw,readonly=on"
+      bootstrap_drive="$(vmimage_bootstrap_directory_drive "$bootstrap_attachment_dir")" || return 1
     fi
     qemu_args+=(
       -device qemu-xhci,id=dockpipe-bootstrap-usb

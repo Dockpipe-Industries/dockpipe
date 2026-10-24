@@ -3,6 +3,8 @@
 import hashlib
 import importlib.util
 import io
+import subprocess
+import shutil
 import tempfile
 import tarfile
 import unittest
@@ -169,6 +171,67 @@ requires_resolvers: [backend]
         self.archive("core", "second", "name: second\n")
         with self.assertRaisesRegex(ValueError, "one selected compiled core"):
             catalog.validate_package_dependencies([], self.core)
+
+
+class RuntimeDependencyTests(unittest.TestCase):
+    def test_runtime_timeout_is_not_replaced_and_qualification_requires_it(self):
+        execute = subprocess.run
+        bash = shutil.which("bash")
+        self.assertIsNotNone(bash)
+        for available in (False, True):
+            with self.subTest(available=available), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                package = root / "workflows" / "bounded-operation"
+                package.mkdir(parents=True)
+                metadata = {
+                    "name": "bounded-operation",
+                    "dependencies": {"host": [{"id": "deadline", "command": "timeout", "required": False}]},
+                }
+                (package / "config.yml").write_text(catalog.yaml.safe_dump(metadata))
+                commands = catalog.adapt_metadata(package, "fixture")
+                bundles, host_commands = catalog.copy_tools(
+                    package, {"tools": [], "host_commands": []}, commands, root / "unused-tools")
+                self.assertEqual(bundles, set())
+                self.assertEqual(host_commands, set())
+                self.assertEqual(list((package / "assets/tooling/bin").iterdir()), [])
+                adapted = catalog.yaml.safe_load((package / "config.yml").read_text())
+                self.assertEqual(adapted["dependencies"], metadata["dependencies"])
+                runtime_bin = root / "runtime-bin"
+                runtime_bin.mkdir()
+                if available:
+                    executable = runtime_bin / "timeout"
+                    executable.write_text("#!/bin/sh\nexit 0\n")
+                    executable.chmod(0o755)
+
+                def invoke_runtime(arguments, check, timeout):
+                    self.assertIn("--runtime", arguments)
+                    workflow_path = Path(arguments[arguments.index("--workflow-file") + 1])
+                    workflow = catalog.yaml.safe_load(workflow_path.read_text())
+                    script = package / workflow["steps"][0]["run"]
+                    # Emulate only Flatpak's marker. The generated script's actual
+                    # command lookup must fail with no timeout and pass with it.
+                    wrapper = 'test() { [[ "$1" == -f && "$2" == /.flatpak-info ]]; }; source "$1"'
+                    result = execute([bash, "-c", wrapper, "qualification", str(script)],
+                                     env={"PATH": str(runtime_bin)}, capture_output=True, timeout=5)
+                    if check and result.returncode:
+                        raise subprocess.CalledProcessError(result.returncode, arguments)
+                    return result
+
+                with patch.object(catalog.subprocess, "run", side_effect=invoke_runtime):
+                    if available:
+                        catalog.qualify(root / "app", root / "stage", package,
+                                        commands, bundles, host_commands)
+                    else:
+                        with self.assertRaises(subprocess.CalledProcessError):
+                            catalog.qualify(root / "app", root / "stage", package,
+                                            commands, bundles, host_commands)
+
+    def test_unknown_dependency_still_has_no_implicit_host_fallback(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with self.assertRaisesRegex(ValueError, "Dependency has no Flatpak implementation"):
+                catalog.copy_tools(root, {"tools": [], "host_commands": []},
+                                   {"undeclared-external-tool"}, root / "tools")
 
 
 if __name__ == "__main__":

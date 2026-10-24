@@ -4,7 +4,12 @@ owner="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 script_path="${DOCKPIPE_VM_RUNTIME_TEST_SCRIPT:-$owner/src/core/assets/scripts/vmimage-run.sh}"
 fixture="$(mktemp -d /tmp/dockpipe-vm-test.XXXXXXXX)"
 fixture="$(cd "$fixture" && pwd -P)"
-trap 'rm -rf "$fixture"' EXIT
+fixture_owner_subshell="$BASH_SUBSHELL"
+trap '
+  if (( BASH_SUBSHELL == fixture_owner_subshell )); then
+    rm -rf "$fixture"
+  fi
+' EXIT
 mkdir -p "$fixture/scripts/lib" "$fixture/state"
 cp "$script_path" "$fixture/scripts/"
 cp "$owner"/src/core/assets/scripts/lib/*.sh "$fixture/scripts/lib/"

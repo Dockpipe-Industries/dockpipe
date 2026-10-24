@@ -199,6 +199,7 @@ switch ($Action) {
     Set-Content -LiteralPath $PidFile -Value $process.Id -NoNewline
     Publish-VmSession -Phase 'started' -ProcessId $process.Id
     Wait-QemuProcess -Process $process
+    $exitCode = $process.ExitCode
     Publish-VmSession -Phase 'exited' -ProcessId $process.Id
     if (-not [string]::IsNullOrWhiteSpace($StdOutFile)) {
       [System.IO.File]::WriteAllText($StdOutFile, $process.StandardOutput.ReadToEnd())
@@ -206,7 +207,7 @@ switch ($Action) {
     if (-not [string]::IsNullOrWhiteSpace($StdErrFile)) {
       [System.IO.File]::WriteAllText($StdErrFile, $process.StandardError.ReadToEnd())
     }
-    break
+    exit $exitCode
   }
   'wait' {
     $process = Get-QemuProcess -Path $PidFile

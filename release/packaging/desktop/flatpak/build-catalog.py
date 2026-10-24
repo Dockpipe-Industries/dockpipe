@@ -34,7 +34,8 @@ TOOLS = {
     "az": ("azure", ["version"]),
     "wrangler": ("wrangler", ["--version"]),
 }
-RUNTIME_COMMANDS = {"bash", "curl", "docker", "git", "python3", "ssh"}
+# GNU timeout belongs to the selected Platform, and ordinary qualification still checks it.
+RUNTIME_COMMANDS = {"bash", "curl", "docker", "git", "python3", "ssh", "timeout"}
 HOST_COMMANDS = {"op", "code", "cursor", "codex", "claude", "npm", "systemctl", "loginctl",
                  "pkexec", "nvidia-smi", "nvidia-ctk", "qemu-img", "qemu-system-x86_64"}
 MAX_COMPILED_ARCHIVE_BYTES = 512 * 1024 * 1024
