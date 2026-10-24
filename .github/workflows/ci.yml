@@ -77,7 +77,9 @@ jobs:
       - name: Generic VM platform and foreground lifecycle contracts
         env:
           DOCKPIPE_TEST_DOCKPIPE_BIN: ${{ github.workspace }}/src/bin/dockpipe
-        run: bash tests/unit-tests/test_vm_darwin.sh
+        run: |
+          bash tests/unit-tests/test_vm_darwin.sh
+          bash tests/unit-tests/test_vm_boot_display_args.sh
 
       - name: govulncheck + gosec
         env:
