@@ -23,6 +23,16 @@ TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]*$")
 SHA256 = re.compile(r"^[0-9a-fA-F]{64}$")
 KINDS = {"workflow": "workflows", "resolver": "resolvers"}
 
+# Match the complete SemVer minimum accepted by domain.ValidateMinimumDockpipeVersion.
+# Keep manifest transport strict: no whitespace normalization or control characters.
+SEMVER_NUMBER = r"(?:0|[1-9][0-9]*)"
+SEMVER_PRERELEASE = r"(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)"
+MINIMUM_VERSION = re.compile(
+    rf"v?{SEMVER_NUMBER}\.{SEMVER_NUMBER}\.{SEMVER_NUMBER}"
+    rf"(?:-{SEMVER_PRERELEASE}(?:\.{SEMVER_PRERELEASE})*)?"
+    r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?"
+)
+
 # Win32 constants are independent of the POSIX flags exposed by Python's os.
 FILE_ATTRIBUTE_DIRECTORY = 0x10
 FILE_ATTRIBUTE_DEVICE = 0x40
@@ -68,7 +78,7 @@ def validate_entry(entry, kind, require_size):
     if "hidden" in entry and type(entry["hidden"]) is not bool:
         raise ValueError("Package hidden metadata must be boolean")
     minimum = entry.get("min_dockpipe_version", "")
-    if not isinstance(minimum, str) or (minimum and not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", minimum)):
+    if not isinstance(minimum, str) or (minimum and not MINIMUM_VERSION.fullmatch(minimum)):
         raise ValueError("Invalid minimum DockPipe version")
     return kind, name
 

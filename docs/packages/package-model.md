@@ -829,7 +829,12 @@ checks live under `display-sdk/tests`.
 A full installed desktop qualification build can explicitly enable
 `DOCKPIPE_ENABLE_QUALIFICATION=ON` (default OFF). The owning Windows desktop
 packager exposes this as `-EnableQualification`; ordinary runtime packaging keeps
-it disabled. `--qualify-package-display CONFIG.json` exercises the real MainWindow,
+it disabled. The Unix desktop build scripts expose `--enable-qualification` before
+version/output arguments. The release workflow's manual `qualify_package_display`
+boolean defaults false and permits this entrypoint only with `dry_run=true`;
+ordinary, staging and production artifacts continue to build it OFF. This option
+builds the existing qualifier; it does not launch a VM, install optional packages
+or execute a qualification scenario. `--qualify-package-display CONFIG.json` exercises the real MainWindow,
 installed catalog and package snapshot, provider page, Canvas widget picker,
 Tiling Apps picker, handoff and panel close/reopen. It never injects a fake catalog
 or factory and never owns the external resource lifecycle.

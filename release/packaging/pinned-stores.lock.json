@@ -211,7 +211,7 @@
     ]
   ],
   "catalog": {
-    "source_commit": "30859228a77ba20a23a4b69ab81aae133d6ccfe9",
+    "source_commit": "441a0a695f4876791ab54bed59264b0c8dfb32ca",
     "owned": [
       [
         "workflow",
@@ -224,14 +224,46 @@
       [
         "workflow",
         "secretstore-r2-publish-test"
+      ],
+      [
+        "resolver",
+        "qemu"
+      ],
+      [
+        "workflow",
+        "linux-vm"
+      ],
+      [
+        "workflow",
+        "windows-vm"
+      ],
+      [
+        "workflow",
+        "vm-manage"
+      ],
+      [
+        "workflow",
+        "vm-resolution"
       ]
     ],
     "artifacts": {
+      "darwin-arm64": {
+        "sha256": "6c36a1b26dfde3539c7769f721107c78090019d3cd705ba998fe881575ede5e0",
+        "size_bytes": 20377241,
+        "manifest_sha256": "8f914b218f40ac505e0145d4f5e3c4459f337a641ddb8d2033c37b5fe9a48c97",
+        "url": "https://github.com/Dockpipe-Industries/dockpipe-packages/releases/download/catalog-native-candidate-441a0a695f4876791ab54bed59264b0c8dfb32ca/dockpipe-catalog-darwin-arm64.tar.gz"
+      },
       "linux-amd64": {
-        "sha256": "515263b7563b5207f5beb2f543a316b96338ddb82178f8d5835375774e3183cc",
-        "size_bytes": 28977,
-        "manifest_sha256": "d106eea52ac831d8a55af42883a8beedcc2c2fdf0b2e01adcb90e5d689372fd6",
-        "url": "https://github.com/Dockpipe-Industries/dockpipe-packages/releases/download/catalog-candidate-30859228a77ba20a23a4b69ab81aae133d6ccfe9/dockpipe-catalog-linux-amd64.tar.gz"
+        "sha256": "81a6206abd3884cab0bb534df3c3f6e3f0b33adbed57c454ab88f56d08196e4b",
+        "size_bytes": 47461385,
+        "manifest_sha256": "8280e8763425e713dcd3d6b2b76cbdf3f0e0bd18041533549a9480184f6a22f2",
+        "url": "https://github.com/Dockpipe-Industries/dockpipe-packages/releases/download/catalog-native-candidate-441a0a695f4876791ab54bed59264b0c8dfb32ca/dockpipe-catalog-linux-amd64.tar.gz"
+      },
+      "windows-amd64": {
+        "sha256": "52c4a49a4a837579651d37fee6bdbddb52f8c9fab3f1576e1482b075be34d33b",
+        "size_bytes": 22439380,
+        "manifest_sha256": "3ea87a64abbfcc40d5b03462cc2ad18e4b09a5cb9da3bbf24e2af099ad41d496",
+        "url": "https://github.com/Dockpipe-Industries/dockpipe-packages/releases/download/catalog-native-candidate-441a0a695f4876791ab54bed59264b0c8dfb32ca/dockpipe-catalog-windows-amd64.tar.gz"
       }
     }
   }

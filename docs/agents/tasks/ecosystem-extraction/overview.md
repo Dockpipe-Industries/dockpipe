@@ -357,66 +357,66 @@ public assets and publisher attestations passed independent verification.
 Existing tags and the stable Go-module pin remain unchanged.
 
 Core PR #210 merged at `79bb110c712e0d71d8bcde4cecff725f3c107a49` after
-actual Windows, both macOS and core-only Flatpak host qualification. Its public
-CLI, Launcher SDK and four-platform Display SDK assets passed independent byte
-and publisher-attestation verification. The explicitly approved required-check
-replacement decouples the core merge gate from optional Cockpit qualification
-while preserving the other branch protections. The approved Homebrew PR #7
-updater source change merged without formula or cask changes. Generic immutable
-tag publication merged through core PR #211 at
-`4dba695f55e6e5b5d5190e111499bb8bfcee176f`; all exact-head required checks and
-sixty owning Git tests pass.
+actual Windows, both macOS and core-only Flatpak host qualification. Its Launcher
+SDK and four-platform Display SDK passed independent public byte and publisher
+attestation verification. The approved required-check replacement decouples core
+host qualification from optional Cockpit tests, preserving other protections.
+The approved Homebrew PR #7 updater source change merged without formula/cask
+changes. Generic tag publication merged through PR #211 at
+`4dba695f55e6e5b5d5190e111499bb8bfcee176f` with all required checks passing.
 
-Catalog source `183d897e1099aa50b3fcc70222cf11cf8643be75` is published on dev
-through Dockpipe's Git runtime. Its ninety-two reviewed source paths include the
-real dependency lock, native producer, dedicated QMP absolute-input channel and
-native resolution guard. Source-template admission passes for Linux amd64,
-Windows amd64 and macOS arm64. The lock uses actual public SDK artifacts,
-qualified Guest Tools and unchanged baseline/source compatibility identities;
-its own source fields are bound once by CI after the source commit exists.
-All 127 producer contract tests, ten display tests and six resolution manager
-tests pass. The Windows profile verifies exact preinstalled MSVC 19.51.36260.0
-and matching CRT files on the supported hosted runner, without executing an
-installer or claiming the rolling image is immutable.
+Core PR #212 merged at `48f628a8af6def1ed9d87c77dff1566ba8c49031` after all
+five required checks and actual Windows, both Macs and Flatpak host gates passed.
+Step loading now shares installed resolver lookup and project/core merging.
+Namespace filtering accepts compiler defaults from the same archive's bounded,
+validated package manifest while preserving explicit config precedence and
+legacy unfiltered admission. Its public CLI
+`0.6.27-staging.cli.sha48f628a8af6d` passed six anonymous asset/hash checks, six
+owning hosted attestations and five executable format/inventory checks. An actual
+source-hidden installed consumer resolves the matching namespace/profile and
+rejects the wrong namespace before the deliberately refusing Docker stub. Final
+release, tag and completed-run metadata remained unchanged during verification.
 
-All eleven portable QMP C++ tests pass natively without skips on Linux, Windows
-and the paired Mac through Dockpipe. This qualifies the client layer separately
-from installed host acceptance. The final native catalog builds, immutable
-candidate publication, core catalog-pin admission and installed Windows/macOS
-launcher checks remain required. The final Linux-host Windows-guest corner test
-needs the planned restart preserving the existing overlay, firmware variables
-and TPM state. Alternate guest resolutions remain unqualified with the current
-single-mode driver; the reviewed prerelease display driver is not installed.
+Catalog dev source `441a0a695f4876791ab54bed59264b0c8dfb32ca` is public through
+Dockpipe's Git runtime. Its native candidate run `40051115436` passed all Linux
+amd64 and Mac arm64 display tests (ten each), all nine Windows amd64 display tests,
+package compilation and publication. The seven public assets passed independent
+byte, source/archive, toolchain, ownership and inner-package integrity checks.
+Final public release, tag and completed-run metadata remained unchanged. The
+published candidate is pinned for those three targets with eight owned packages;
+other lock fields and unsupported-target baselines remain unchanged.
 
-The launcher and host SDK stay in core. Desktop installation includes the
-CLI/runtime, while CLI-only users can continue using QEMU's own window. Optional
-packages declare minimum runtime compatibility separately from producer pins and
-native ABI requirements. Draft staging PR #209 remains pending final validation;
-no production release promotion is authorized or claimed. The original saved
-checkout and protected ForgePipe edits remain intact.
+The shared package-store composer now admits complete semantic-version minimums,
+including the VM packages' existing `0.6.26-0`, consistently with runtime package
+compatibility. It preserves raw metadata and still rejects malformed versions.
+The minimum and producer/SDK pins are separate contracts; no package requirement
+was raised merely to match the current producer CLI. Existing public SDK, Go SDK
+and Guest Tools pins remain unchanged.
 
-Native producer follow-up source `e6cb7d84c7f04478e280191672996e805af2239d`
-repairs measured PowerShell ancestry and signed GitHub CDN transport handling;
-all 129 producer tests pass. The next native run verifies Windows compiler/CRT
-identities and builds the Linux private broker and manager, then exposes further
-build-input gaps. Linux OpenGL prerequisites, native Go-cache priming and the
-Windows effective-command check are being repaired before another source run.
-No native catalog publication or final installed acceptance is claimed yet.
+The dedicated private QMP absolute-input channel and native resolution guard stay
+in the owning VM package. All eleven portable QMP C++ tests previously passed
+natively without skips on Linux, Windows and the paired Mac through Dockpipe.
+Current native builds additionally qualify the final package source and closure.
+Windows fixtures explicitly assign their newly created private test objects to
+the current user; production owner/ACL checks remain strict. Elevated external
+QEMU socket ownership is not qualified by those current-user fixture tests.
 
-The broader Linux catalog check also reproduces a core lookup defect: a compiled
-resolver contains its valid profile and the public scope command finds it, but
-per-step execution reads only core/source profile paths. The generic repair
-reuses shared installed-package lookup and the existing project/core merge in
-both step loaders. Source-hidden archive regressions fail on the unchanged
-public base and pass after the repair; the full core Go suites pass with pinned
-public modules. A fresh verified public CLI is required before the catalog can
-consume that repair.
+Catalog staging promotion is tracked in catalog PR #2. Final installed Windows
+and macOS MainWindow, VM page, Canvas and Tiling acceptance remains pending full
+owning desktop artifacts and the actual public provider. The existing dry-run
+release lane will build the complete runtime; its explicit test entrypoint must
+be enabled only for qualification builds, independently of normal releases.
 
-Source-hidden public archives exposed a related namespace boundary mismatch:
-compilation records the repository default in `package.yml`, but runtime filtering
-previously inspected only `config.yml`. Filtered admission now accepts the default
-from the same archive's bounded, validated manifest with matching kind/name/version.
-Explicit config namespace precedence and unfiltered legacy behavior are preserved.
-The unchanged public Claude archives now pass matching-filter admission and reach
-the deliberately rejecting Docker stub; a wrong filter is rejected first.
-Both generic contract repairs are being qualified together in core PR #212.
+The preserved Linux-host Windows guest was observed stopped at its recorded
+QEMU/TPM identities before final continuation. Its existing overlay, firmware
+variables, TPM and machine identity must be preserved and checked offline before
+one planned continuation boot. The reviewed 1920-by-1080 monitor preference still
+needs actual guest/frame geometry and strict widget-to-guest pointer proof.
+Live alternate-resolution support remains unqualified; the prerelease display
+driver is not installed.
+
+The launcher, desktop host and host SDK stay in core. Desktop includes CLI/runtime;
+CLI-only users retain QEMU's own window. Optional packages declare minimum runtime
+compatibility separately from producer pins and native ABI. Draft staging PR #209
+waits for final validation. No production release promotion is authorized or
+claimed. The saved checkout and protected ForgePipe edits remain intact.
