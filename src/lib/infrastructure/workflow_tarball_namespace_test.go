@@ -12,11 +12,14 @@ import (
 func writeNamespaceArchiveFixture(t *testing.T, filter, configNamespace, manifest string) string {
 	t.Helper()
 	project := t.TempDir()
+	// Anchor even an unfiltered fixture so a workflow-owned TMPDIR cannot
+	// inherit its parent project's namespace filter.
+	projectConfig := `{"schema":1}`
 	if filter != "" {
-		config := `{"schema":1,"packages":{"namespace":"` + filter + `"}}`
-		if err := os.WriteFile(filepath.Join(project, "dockpipe.config.json"), []byte(config), 0o644); err != nil {
-			t.Fatal(err)
-		}
+		projectConfig = `{"schema":1,"packages":{"namespace":"` + filter + `"}}`
+	}
+	if err := os.WriteFile(filepath.Join(project, "dockpipe.config.json"), []byte(projectConfig), 0o644); err != nil {
+		t.Fatal(err)
 	}
 	source := t.TempDir()
 	config := "name: example\nsteps: []\n"
