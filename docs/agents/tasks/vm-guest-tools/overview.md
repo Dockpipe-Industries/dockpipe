@@ -40,10 +40,10 @@ The exact candidate is pinned in the core consumer; the launcher and host SDK st
 in core, and VM implementation stays in the optional package.
 
 Full installed Windows/macOS MainWindow, VM page, Canvas and Tiling acceptance
-still needs the final owning desktop build. The preserved Windows guest's recorded
-QEMU/TPM processes are stopped; no lifecycle action was taken after observing that.
-Continue only with its existing overlay, firmware variables, TPM and identity,
-checked offline, then the planned single continuation boot. The 1920-by-1080 boot
+still needs the final owning desktop build. The preserved Windows guest's original
+QEMU/TPM identities remain alive, verified in the host process namespace; sandbox
+PID visibility alone is insufficient. Preserve its overlay, firmware variables,
+TPM and identity through clean shutdown, offline checks and one continuation boot. The 1920-by-1080 boot
 preference and strict QWidget-to-guest edge/corner proof remain unqualified.
 Catalog staging promotion is tracked in catalog PR #2; final Dockpipe staging
 publication waits for installed acceptance. The older checkpoints below retain
