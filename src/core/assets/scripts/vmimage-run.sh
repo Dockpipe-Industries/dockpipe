@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# The shared SDK uses associative arrays and namerefs. Fail before sourcing it
+# on hosts whose default interpreter is the older system Bash.
+vmimage_require_bash_version() {
+  local major="$1" minor="$2"
+  if (( major < 4 || (major == 4 && minor < 3) )); then
+    echo "dockpipe vmimage: Bash 4.3 or newer is required; select an installed interpreter with DOCKPIPE_HOST_BASH_BIN" >&2
+    exit 1
+  fi
+}
+vmimage_require_bash_version "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/dockpipe-sdk.sh"
 source "${SCRIPT_DIR}/lib/vm-session-reporter.sh"
@@ -40,6 +51,7 @@ vmimage_host_os() {
   uname_s="$(uname -s 2>/dev/null || printf '')"
   case "$uname_s" in
     Linux) printf 'linux\n' ;;
+    Darwin) printf 'darwin\n' ;;
     MINGW*|MSYS*|CYGWIN*)
       printf 'windows\n'
       ;;
@@ -60,9 +72,10 @@ vmimage_is_windows_host() {
 vmimage_default_backend() {
   case "$(vmimage_host_os)" in
     linux) printf 'qemu-kvm\n' ;;
+    darwin) printf 'qemu-darwin\n' ;;
     windows) printf 'qemu-windows\n' ;;
     *)
-      vmimage_die "vm runtime currently supports Linux and Windows hosts only"
+      vmimage_die "vm runtime currently supports Linux, macOS and Windows hosts only"
       ;;
   esac
 }
@@ -74,7 +87,7 @@ vmimage_backend() {
     ""|auto)
       vmimage_default_backend
       ;;
-    qemu-kvm|qemu-windows)
+    qemu-kvm|qemu-darwin|qemu-windows)
       printf '%s\n' "$configured"
       ;;
     *)
@@ -235,6 +248,7 @@ vmimage_pscp_bin() {
 vmimage_default_accel() {
   case "$(vmimage_backend)" in
     qemu-kvm) printf 'kvm\n' ;;
+    qemu-darwin) printf 'tcg\n' ;;
     qemu-windows) printf 'whpx:tcg\n' ;;
   esac
 }
@@ -242,7 +256,7 @@ vmimage_default_accel() {
 vmimage_default_cpu_model() {
   case "$(vmimage_backend)" in
     qemu-kvm) printf 'host\n' ;;
-    qemu-windows) printf 'max\n' ;;
+    qemu-windows|qemu-darwin) printf 'max\n' ;;
   esac
 }
 
@@ -1064,6 +1078,11 @@ vmimage_require_host_dependencies() {
   if [[ "$(vmimage_tpm_mode)" != "off" && "$(vmimage_backend)" != "qemu-windows" ]]; then
     command -v swtpm >/dev/null 2>&1 || missing+=("swtpm")
   fi
+  if [[ "$(vmimage_host_os)" == "darwin" && -n "${DOCKPIPE_RESOLVER_VM_SESSION_REPORTER:-}" ]]; then
+    if ! command -v timeout >/dev/null 2>&1 && ! command -v gtimeout >/dev/null 2>&1; then
+      missing+=("GNU timeout or gtimeout (coreutils; required for bounded VM session reporting)")
+    fi
+  fi
   if [[ ${#missing[@]} -eq 0 ]]; then
     return 0
   fi
@@ -1072,6 +1091,9 @@ vmimage_require_host_dependencies() {
   missing_desc="$(IFS=', '; printf '%s' "${missing[*]}")"
   if vmimage_is_windows_host; then
     vmimage_die "missing required host tools: ${missing_desc}. Install QEMU for Windows and PuTTY (plink/pscp) as needed, then rerun windows-vm."
+  fi
+  if [[ "$(vmimage_host_os)" == "darwin" ]]; then
+    vmimage_die "missing required host tools: ${missing_desc}. Supply native QEMU x86_64, qemu-img, swtpm when TPM is enabled, and GNU coreutils when session reporting is enabled. Dockpipe does not install them automatically."
   fi
   vmimage_die "missing required host tools: ${missing_desc}. Install QEMU system emulation, qemu-img, swtpm, and UEFI firmware for your distro, then rerun windows-vm."
 }
@@ -1214,17 +1236,35 @@ vmimage_ensure_secure_boot_firmware() {
 }
 
 vmimage_prepare_socket_dir() {
-  [[ -z "${DOCKPIPE_VM_SOCKET_DIR:-}" ]] || return 0
-  local runtime_root="${TMPDIR:-/tmp}"
-  [[ "$runtime_root" == /* && -d "$runtime_root" && ! -L "$runtime_root" && -w "$runtime_root" ]] ||
-    vmimage_die "VM socket temporary root must be an absolute, owned directory"
-  local socket_dir
-  socket_dir="$(umask 077; mktemp -d "${runtime_root%/}/dockpipe-vm.XXXXXXXX")" ||
-    vmimage_die "failed to allocate the VM socket directory"
-  local LC_ALL=C
-  if (( ${#socket_dir} + 13 > 107 )); then
-    rmdir "$socket_dir"
-    vmimage_die "VM socket temporary root is too long for Unix sockets (107-byte limit)"
+  local socket_dir="${DOCKPIPE_VM_SOCKET_DIR:-}" allocated=0
+  if [[ -z "$socket_dir" ]]; then
+    local runtime_root="${TMPDIR:-/tmp}"
+    if [[ "$(vmimage_host_os)" == "darwin" ]]; then
+      # Darwin's per-user TMPDIR can exceed sockaddr_un.sun_path by itself.
+      runtime_root=/private/tmp
+    fi
+    [[ "$runtime_root" == /* && -d "$runtime_root" && ! -L "$runtime_root" && -w "$runtime_root" ]] ||
+      vmimage_die "VM socket temporary root must be an absolute ordinary writable directory"
+    runtime_root="$(cd "$runtime_root" && pwd -P)"
+    socket_dir="$(umask 077; mktemp -d "${runtime_root%/}/dockpipe-vm.XXXXXXXX")" ||
+      vmimage_die "failed to allocate the VM socket directory"
+    allocated=1
+  fi
+  [[ "$socket_dir" == /* && -d "$socket_dir" && ! -L "$socket_dir" && -O "$socket_dir" ]] ||
+    vmimage_die "VM socket directory must be absolute, ordinary and owned"
+  [[ "$(cd "$socket_dir" && pwd -P)" == "$socket_dir" ]] ||
+    vmimage_die "VM socket directory must use its canonical path"
+  [[ -n "$(find "$socket_dir" -prune -type d -perm 0700 -print)" ]] ||
+    vmimage_die "VM socket directory must have mode 0700"
+  local LC_ALL=C socket_limit=107
+  if [[ "$(vmimage_host_os)" == "darwin" ]]; then
+    socket_limit=103
+  fi
+  if (( ${#socket_dir} + 13 > socket_limit )); then
+    if (( allocated )); then
+      rmdir "$socket_dir"
+    fi
+    vmimage_die "VM socket temporary root is too long for Unix sockets (${socket_limit}-byte limit)"
   fi
   export DOCKPIPE_VM_SOCKET_DIR="$socket_dir"
 }
@@ -1715,6 +1755,8 @@ vmimage_windows_base64() {
 vmimage_windows_base64_decode() {
   if base64 --help 2>/dev/null | grep -q -- "-d"; then
     base64 -d
+  elif [[ "$(vmimage_host_os)" == "darwin" ]]; then
+    base64 -D
   else
     base64 --decode
   fi
@@ -1763,7 +1805,7 @@ vmimage_builtin_bootstrap_script() {
 
 vmimage_should_prepare_builtin_bootstrap() {
   case "$(vmimage_backend)" in
-    qemu-kvm|qemu-windows) ;;
+    qemu-kvm|qemu-darwin|qemu-windows) ;;
     *) return 1 ;;
   esac
   case "$(vmimage_boot_source)" in
@@ -2904,6 +2946,8 @@ vmimage_installer_display_mode() {
   fi
   if vmimage_is_windows_host; then
     printf 'gtk,grab-on-hover=on,window-close=on\n'
+  elif [[ "$(vmimage_host_os)" == "darwin" ]]; then
+    printf 'cocoa\n'
   else
     printf 'gtk,window-close=on\n'
   fi
@@ -3169,8 +3213,8 @@ vmimage_run_qemu_common() {
   vmimage_ensure_secure_boot_firmware "$boot_source"
   vmimage_confirm_user_supplied_media_rights
   vmimage_confirm_host_network_exposure
-  if [[ "$backend" == "qemu-windows" ]]; then
-    [[ -z "$(vmimage_pci_devices_csv)" ]] || vmimage_die "qemu-windows backend does not support host PCI passthrough; clear DOCKPIPE_VM_PCI_DEVICES or run windows-vm from a Linux host"
+  if [[ "$backend" != "qemu-kvm" ]]; then
+    [[ -z "$(vmimage_pci_devices_csv)" ]] || vmimage_die "${backend} backend does not support host PCI passthrough; clear DOCKPIPE_VM_PCI_DEVICES"
   else
     vmimage_validate_pci_passthrough "$(vmimage_pci_devices_csv)"
   fi
@@ -3242,7 +3286,7 @@ vmimage_run_qemu_common() {
   vmimage_prepare_session_event "$ssh_port" "$machine_uuid"
   state_dir="$(vmimage_state_dir)"
   pidfile="${state_dir}/qemu-${DOCKPIPE_RUN_ID:-vm}.pid"
-  if [[ "$backend" == "qemu-kvm" ]]; then
+  if [[ "$backend" != "qemu-windows" ]]; then
     vmimage_prepare_socket_dir
     monitor="${DOCKPIPE_VM_SOCKET_DIR}/monitor.sock"
   else
@@ -3517,6 +3561,8 @@ vmimage_run_qemu_common() {
           vmimage_fetch_outputs
         fi
         vmimage_keepalive_wait
+      elif [[ "$backend" == "qemu-darwin" ]]; then
+        vmimage_run_headless_guest_session "$qemu_bin" "${qemu_args[@]}"
       else
         local argsfile="${state_dir}/qemu-${DOCKPIPE_RUN_ID:-vm}.args"
         vmimage_windows_write_args_file "$argsfile" "${qemu_args[@]}"
@@ -3551,6 +3597,16 @@ vmimage_run_qemu_kvm() {
   vmimage_run_qemu_common qemu-kvm
 }
 
+vmimage_run_qemu_darwin() {
+  [[ "$(vmimage_host_os)" == "darwin" ]] || vmimage_die "qemu-darwin backend requires a macOS host"
+  # This backend emulates x86_64 on both Intel and Apple Silicon. HVF is not
+  # admitted until a separate same-architecture contract is qualified.
+  [[ "${DOCKPIPE_VM_ACCEL:-$(vmimage_default_accel)}" == "tcg" ]] ||
+    vmimage_die "qemu-darwin currently requires TCG for x86_64 emulation"
+  [[ -z "$(vmimage_pci_devices_csv)" ]] || vmimage_die "qemu-darwin does not support host PCI passthrough"
+  vmimage_run_qemu_common qemu-darwin
+}
+
 vmimage_run_qemu_windows() {
   vmimage_is_windows_host || vmimage_die "qemu-windows backend currently requires a Windows host"
   local accel
@@ -3572,6 +3628,7 @@ fi
 backend="$(vmimage_backend)"
 case "$backend" in
   qemu-kvm) vmimage_run_qemu_kvm ;;
+  qemu-darwin) vmimage_run_qemu_darwin ;;
   qemu-windows) vmimage_run_qemu_windows ;;
   *) vmimage_die "unsupported DOCKPIPE_VM_BACKEND=${backend}" ;;
 esac

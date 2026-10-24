@@ -51,7 +51,9 @@ vmimage_report_session() {
       vmimage_log "VM session reporting failed; management status is unavailable"
     return 0
   fi
-  if ! command -v timeout >/dev/null 2>&1; then
+  local timeout_executable
+  timeout_executable="$(command -v timeout || command -v gtimeout || true)"
+  if [[ -z "$timeout_executable" ]]; then
     vmimage_log "VM session reporting requires timeout; management status is unavailable"
     return 0
   fi
@@ -62,7 +64,7 @@ vmimage_report_session() {
       reporter_environment+=("${name}=${!name}")
     fi
   done < <(vmimage_session_reporter_environment_names)
-  if ! timeout --kill-after=1s 10s env -i "${reporter_environment[@]}" \
+  if ! "$timeout_executable" --kill-after=1s 10s env -i "${reporter_environment[@]}" \
     "$DOCKPIPE_VM_SESSION_REPORTER_EXECUTABLE" report; then
     vmimage_log "VM session reporting failed; management status is unavailable"
   fi
