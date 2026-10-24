@@ -123,22 +123,38 @@ func compileWorkflowOne(workdir, srcAbs, name string, force bool) error {
 		legacyDir := filepath.Join(pw, pkgName)
 		rebuild := force
 		if !force {
+			latestTar := infrastructure.PickLatestModTimePath(matches)
+			materialized, err := packagebuild.IsTarballExtractionSource(latestTar, infrastructure.TarballExtractCacheRoot(workdir), srcAbs)
+			if err != nil {
+				return err
+			}
 			if len(matches) > 0 {
-				latestTar := infrastructure.PickLatestModTimePath(matches)
 				if latestTar == "" {
 					rebuild = true
 				} else {
 					expectedName := fmt.Sprintf("dockpipe-workflow-%s-%s.tar.gz", packagebuild.SafeTarballToken(pkgName), packagebuild.SafeTarballToken(resolvedVersion))
 					if filepath.Base(latestTar) != expectedName {
+						if materialized {
+							return fmt.Errorf("installed workflow archive version does not match its materialized source")
+						}
 						opIDs["rebuild_reason"] = "package_version_changed"
 						rebuild = true
 					}
 					if ok, reason := compiledPackageWorkflowConfigsValid(latestTar); !ok {
+						if materialized {
+							return fmt.Errorf("installed workflow archive validation failed: %s", reason)
+						}
 						opIDs["rebuild_reason"] = "invalid_store_tarball"
 						opIDs["validation_error"] = reason
 						rebuild = true
 					}
 					if !rebuild {
+						if materialized {
+							opIDs["result"] = "skip"
+							opIDs["skip_reason"] = "installed_tarball_materialization"
+							opIDs["output"] = filepath.ToSlash(latestTar)
+							return nil
+						}
 						stale, err := infrastructure.SourceDirNewerThanPath(srcAbs, latestTar)
 						if err != nil {
 							return err

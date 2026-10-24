@@ -3325,9 +3325,13 @@ vmimage_run_qemu_common() {
   )
 
   if [[ -n "$boot_display_geometry" ]]; then
-    # Class globals configure only standard VGA; they never replace an explicit
-    # video device or select host GPU passthrough.
-    qemu_args+=(-global "VGA.xres=${boot_display_width}" -global "VGA.yres=${boot_display_height}")
+    if [[ -n "$pci_devices_csv" && "$pci_primary_mode" == "on" ]]; then
+      vmimage_log "boot display geometry is not applied to the primary passthrough GPU"
+    else
+      # VGA class globals disable QEMU's implicit VGA device. Create the
+      # standard display explicitly and scope its geometry to that device.
+      qemu_args+=(-device "VGA,xres=${boot_display_width},yres=${boot_display_height}")
+    fi
   fi
 
   case "$disk_bus" in

@@ -31,6 +31,23 @@ verification_policy: Finish Windows validation first, then focused implementatio
 handoff_policy: user_requested_only
 ```
 
+Current runtime follow-up (2026-10-24): Dockpipe 0.6.28 is independently
+verified on staging, and catalog PR #4 produced a verified native candidate at
+`e70f0245414e6f86da76843268d3b6410df5c6b2`. Fresh Mac intake admitted that
+candidate, the public CLI/core and the owning QA application separately. The
+first named-workflow attempt stopped at a fixture PATH error before VM launch.
+It also exposed automatic recompilation of an installed archive from its
+content-addressed extraction cache; native readback confirmed a changed archive
+and two changed generated metadata members.
+
+The bounded 0.6.29 candidate preserves installed workflow/resolver archives during
+automatic execution and corrects boot geometry that suppressed QEMU's implicit
+VGA device. Real source-hidden compilation regressions, owning VM tests and a
+disposable QEMU device/console differential cover the fixes. Newly packaged
+public artifacts and fresh installed-launcher startup proofs remain required.
+The separate Windows Guest Services idempotence repair is excluded until native
+qualification; Windows transport and interactive acceptance remain unresolved.
+
 Darwin named-workflow follow-up (2026-10-24): actual installed Windows and
 macOS launcher fixtures have passed the five-view/input/lease lifecycle checks.
 Those proofs used the package display control plane; they do not establish that
