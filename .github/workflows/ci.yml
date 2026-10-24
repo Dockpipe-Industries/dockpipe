@@ -74,6 +74,11 @@ jobs:
       - name: Build CLI (Bash tests use src/bin/dockpipe)
         run: make build-core
 
+      - name: Generic VM platform and foreground lifecycle contracts
+        env:
+          DOCKPIPE_TEST_DOCKPIPE_BIN: ${{ github.workspace }}/src/bin/dockpipe
+        run: bash tests/unit-tests/test_vm_darwin.sh
+
       - name: govulncheck + gosec
         env:
           DOCKPIPE_WORKDIR: ${{ github.workspace }}

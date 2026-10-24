@@ -7,6 +7,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 UNIT="$(cd "${ROOT}/tests/unit-tests" && pwd)"
 CLI="${ROOT}/src/bin/dockpipe"
+export DOCKPIPE_TEST_DOCKPIPE_BIN="$CLI"
 failed=0
 
 # Keep bundled extraction and related shell-test scratch state inside the repo
@@ -14,7 +15,7 @@ failed=0
 export DOCKPIPE_BUNDLED_CACHE="${DOCKPIPE_BUNDLED_CACHE:-${ROOT}/bin/.dockpipe/tmp/bundled-cache}"
 mkdir -p "$DOCKPIPE_BUNDLED_CACHE"
 
-for f in test_cli.sh test_repo_root.sh test_repo_layout.sh test_clone_worktree_include.sh; do
+for f in test_cli.sh test_repo_root.sh test_repo_layout.sh test_clone_worktree_include.sh test_vm_darwin.sh; do
   if [[ -f "$UNIT/$f" ]]; then
     echo "--- $f ---"
     bash "$UNIT/$f" || failed=1
