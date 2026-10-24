@@ -1,4 +1,7 @@
 #include "MainWindow.h"
+#include "PackageSurfacePage.h"
+#include "PackageDisplayWidget.h"
+#include <QStackedWidget>
 #include "ActivityWidget.h"
 #include <QTableWidget>
 #include "LauncherSettings.h"
@@ -96,8 +99,25 @@ int main(int argc, char **argv)
     qputenv("DOCKPIPE_TEST_ROOT", temporary.path().toUtf8());
     const QString cli = temporary.filePath("dockpipe");
     if (!writeFile(cli, R"SH(#!/bin/sh
-case "$1:$2" in
+operation="$1:$2"
+if [ -n "${PACKAGE_TEST_ORIGINAL:-}" ] && [ "${PACKAGE_TEST_INHERITED:-}" = "$PACKAGE_TEST_ORIGINAL" ]; then
+    printf 'ok' > "$DOCKPIPE_TEST_ROOT/surface-environment-proof"
+fi
+for argument in "$@"; do
+    if [ -n "${PACKAGE_TEST_ORIGINAL:-}" ] && [ "$argument" = "$PACKAGE_TEST_ORIGINAL" ]; then
+        printf 'leaked' > "$DOCKPIPE_TEST_ROOT/surface-environment-proof"
+    fi
+    case "$argument" in
+    DOCKPIPE_SURFACE_LAUNCH_ID=*)
+        printf '%s' "${argument#DOCKPIPE_SURFACE_LAUNCH_ID=}" > "$DOCKPIPE_TEST_ROOT/surface-launch-id" ;;
+    esac
+done
+case "$operation" in
 catalog:list)
+    if [ "$DOCKPIPE_SURFACE_CATALOG_TEST" = "1" ]; then
+        printf '{"workflows":[{"workflow_id":"demo","display_name":"Development","config_path":"%s/config.yml"}],"resolver_details":[{"name":"example.first","title":"First provider","surface":{"schema":1,"id":"example.resources","title":"Example Resources","snapshot":"/unused.yml","actions":[{"id":"create","title":"Create","scope":"surface","workflow_id":"demo","launch_environment":{"%s":{"PACKAGE_TEST_INHERITED":{"inherit":"PACKAGE_TEST_ORIGINAL"}}}}]}},{"name":"example.second","title":"Second provider","surface":{"schema":1,"id":"example.resources","title":"Example Resources","snapshot":"/unused.yml","actions":[]}}]}' "$DOCKPIPE_TEST_ROOT" "$DOCKPIPE_TEST_SURFACE_PLATFORM"
+        exit 0
+    fi
     if [ "$DOCKPIPE_VSCODE_CATALOG_TEST" = "1" ]; then
         echo '{"workflows":[{"workflow_id":"vscode-task:build","display_name":"Build","source":"vscode","source_kind":"task","source_path":".vscode/tasks.json","source_name":"Build","cloneable":true,"supported":false,"unsupported_reason":"Unsupported variable","warnings":["Run only"]}]}'
         exit 0
@@ -195,9 +215,69 @@ steps:
 )YAML"))
         return 3;
 
+    const bool surfaceTest = QCoreApplication::arguments().contains("--surfaces");
+    if (surfaceTest) {
+        qputenv("DOCKPIPE_SURFACE_CATALOG_TEST", "1");
+        qputenv("DOCKPIPE_TEST_SURFACE_PLATFORM", PackageDisplayWidget::platformName().toUtf8());
+        qputenv("PACKAGE_TEST_ORIGINAL", "private-surface-route-fixture");
+    }
     MainWindow window;
     window.resize(1380, 900);
     window.show();
+    if (surfaceTest) {
+        auto *navigation = window.findChild<QListWidget *>("workspaceNavigation");
+        auto *stack = window.findChild<QStackedWidget *>("workspacePages");
+        if (!waitUntil([&]() { return window.findChildren<PackageSurfacePage *>().size() == 1; }))
+            return 50;
+        auto *surface = window.findChild<PackageSurfacePage *>();
+        if (surface->findChild<QComboBox *>("surfaceProvider")->count() != 2)
+            return 51;
+        int surfaceRow = -1;
+        for (int row = 0; row < navigation->count(); ++row) {
+            if (navigation->item(row)->text() == "Example Resources")
+                surfaceRow = row;
+        }
+        if (surfaceRow < 0)
+            return 52;
+        navigation->setCurrentRow(surfaceRow);
+        if (stack->currentWidget() != surface || !surface->isVisible())
+            return 53;
+        navigation->setCurrentRow(0);
+        surface->publicWorkflowRequested("demo", "example.resources", "create", {});
+        const QString launchPath = temporary.filePath("surface-launch-id");
+        if (!waitUntil([&]() { return QFile::exists(launchPath); }) || stack->currentWidget() != surface)
+            return 56;
+        QFile launchFile(launchPath);
+        if (!launchFile.open(QIODevice::ReadOnly) || launchFile.readAll().size() != 36)
+            return 57;
+        const QString environmentProofPath = temporary.filePath("surface-environment-proof");
+        if (!waitUntil([&]() { return QFile::exists(environmentProofPath); })) {
+            std::fputs("Surface action did not deliver its declared inherited environment.\n", stderr);
+            return 59;
+        }
+        QFile environmentProof(environmentProofPath);
+        if (!environmentProof.open(QIODevice::ReadOnly) || environmentProof.readAll() != "ok")
+            return 60;
+        QFile storedContexts(ContextStore::contextsPath());
+        if (storedContexts.open(QIODevice::ReadOnly) && storedContexts.readAll().contains("DOCKPIPE_SURFACE_LAUNCH_ID"))
+            return 58;
+        if (storedContexts.isOpen()) {
+            storedContexts.seek(0);
+            if (storedContexts.readAll().contains("private-surface-route-fixture"))
+                return 61;
+        }
+        const QString capture = qEnvironmentVariable("DOCKPIPE_UI_CAPTURE");
+        if (!capture.isEmpty())
+            window.grab().save(capture + "-surfaces.png");
+        qunsetenv("DOCKPIPE_SURFACE_CATALOG_TEST");
+        QMetaObject::invokeMethod(&window, "rebuildUi", Qt::DirectConnection);
+        if (!waitUntil([&]() { return window.findChildren<PackageSurfacePage *>().isEmpty(); }))
+            return 54;
+        if (!stack->widget(2) || !window.findChild<QListWidget *>("workspaceNavigation"))
+            return 55;
+        std::puts("Package surface grouping, dynamic navigation, provider selection and removal passed.");
+        return 0;
+    }
 #ifndef Q_OS_MACOS
     if (!(window.windowFlags() & Qt::FramelessWindowHint)
         || !window.findChild<QToolButton *>("windowClose")

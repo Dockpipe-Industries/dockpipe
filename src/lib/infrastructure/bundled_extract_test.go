@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-// TestEmbeddedWorkflowConfigExists checks bundled core templates, resolver delegates,
-// and one retained maintainer package. Optional external packages have their own
+// TestEmbeddedWorkflowConfigExists checks bundled core templates and resolver delegates.
+// Optional external packages have their own
 // installation contract and are not part of the embedded asset set.
 func TestEmbeddedWorkflowConfigExists(t *testing.T) {
 	if !EmbeddedWorkflowConfigExists("run") {
@@ -28,8 +28,8 @@ func TestEmbeddedWorkflowConfigExists(t *testing.T) {
 	if !EmbeddedWorkflowConfigExists("secretstore") {
 		t.Fatal("expected secretstore workflow template")
 	}
-	if !EmbeddedWorkflowConfigExists("dockpipe.cloudflare.r2infra") {
-		t.Fatal("expected retained nested package workflow")
+	if EmbeddedWorkflowConfigExists("dockpipe.cloudflare.r2infra") {
+		t.Fatal("external package workflow must not be embedded")
 	}
 	if EmbeddedWorkflowConfigExists("") {
 		t.Fatal("empty name should be false")
@@ -44,7 +44,6 @@ func TestEmbeddedWorkflowConfigExists(t *testing.T) {
 
 func TestMapEmbeddedToMaterializedPath(t *testing.T) {
 	t.Parallel()
-	pfx0 := embeddedPackageRootsPrefixes[0]
 	cases := []struct {
 		in, want string
 	}{
@@ -54,8 +53,6 @@ func TestMapEmbeddedToMaterializedPath(t *testing.T) {
 		{EmbeddedTemplatesPrefix + "/runtimes/dockerimage/profile", filepath.Join(BundledLayoutDir, "core/runtimes/dockerimage/profile")},
 		{EmbeddedTemplatesPrefix + "/workflows/run/config.yml", filepath.Join(BundledLayoutDir, "workflows", "run", "config.yml")},
 		{path.Join("workflows", "test", "config.yml"), filepath.Join(BundledLayoutDir, "workflows", "test", "config.yml")},
-		{path.Join(pfx0, "cloud", "storage", "resolvers", "r2", "dockpipe.cloudflare.r2infra", "config.yml"), filepath.Join(BundledLayoutDir, "workflows", "dockpipe.cloudflare.r2infra", "config.yml")},
-		{path.Join(pfx0, "secrets", "resolvers", "onepassword", "secretstore-onepassword", "config.yml"), filepath.Join(BundledLayoutDir, "workflows", "secretstore-onepassword", "config.yml")},
 		{"workflows", filepath.Join(BundledLayoutDir, "workflows")},
 		// Already-materialized paths pass through unchanged (bundle cache layout uses BundledLayoutDir).
 		{filepath.Join(BundledLayoutDir, "workflows", "init", "config.yml"), filepath.Join(BundledLayoutDir, "workflows", "init", "config.yml")},
@@ -65,5 +62,38 @@ func TestMapEmbeddedToMaterializedPath(t *testing.T) {
 		if got != tc.want {
 			t.Fatalf("mapEmbeddedToMaterializedPath(%q): got %q want %q", tc.in, got, tc.want)
 		}
+	}
+}
+
+func TestMapEmbeddedWorkflowRelSyntheticRoots(t *testing.T) {
+	// The current binary contains no package source. Supply synthetic discovered
+	// roots to verify the existing namespace-flattening contract independently.
+	initEmbeddedWorkflowRoots()
+	previousRoots := embeddedWorkflowRoots
+	embeddedWorkflowRoots = []embedWorkflowRoot{
+		{prefix: "catalog/resolvers/tool/child", name: "child"},
+		{prefix: "catalog/resolvers/tool", name: "tool"},
+	}
+	t.Cleanup(func() { embeddedWorkflowRoots = previousRoots })
+
+	prefix := embeddedPackageRootsPrefixes[0]
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{prefix, filepath.Join(BundledLayoutDir, "workflows")},
+		{path.Join(prefix, "catalog/resolvers/tool/config.yml"), filepath.Join(BundledLayoutDir, "workflows/tool/config.yml")},
+		{path.Join(prefix, "catalog/resolvers/tool/assets/run.sh"), filepath.Join(BundledLayoutDir, "workflows/tool/assets/run.sh")},
+		{path.Join(prefix, "catalog/resolvers/tool/child/config.yml"), filepath.Join(BundledLayoutDir, "workflows/child/config.yml")},
+		{path.Join(prefix, "unmapped/config.yml"), filepath.Join(BundledLayoutDir, "workflows/unmapped/config.yml")},
+	}
+	for _, test := range cases {
+		got, ok := mapEmbeddedWorkflowRel(test.input)
+		if !ok || got != test.want {
+			t.Fatalf("mapEmbeddedWorkflowRel(%q) = (%q, %v), want (%q, true)", test.input, got, ok, test.want)
+		}
+	}
+	if got, ok := mapEmbeddedWorkflowRel("outside/config.yml"); ok || got != "" {
+		t.Fatalf("unowned prefix mapped to (%q, %v)", got, ok)
 	}
 }

@@ -1,9 +1,0 @@
-public Record ContainerRow {
-    public string Id;
-    public string Name;
-    public bool Running;
-}
-
-public Class Root {
-    public Optional<ContainerRow> FindRow(List<ContainerRow> values, string key) => find_by(values, ContainerRow.Id, key);
-}

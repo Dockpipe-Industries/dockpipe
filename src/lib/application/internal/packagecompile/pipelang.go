@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"dockpipe/src/lib/application/internal/pipelangmaterialize"
 	"dockpipe/src/lib/application/internal/treecopy"
-	"dockpipe/src/lib/pipelang"
+	pipelangmaterialize "github.com/Dockpipe-Industries/pipelang/sdk/materialize"
+	"github.com/Dockpipe-Industries/pipelang/src/lib/pipelang"
 )
 
 func compileWorkflowOneFromPipe(workdir, workflowDir string, force bool) error {

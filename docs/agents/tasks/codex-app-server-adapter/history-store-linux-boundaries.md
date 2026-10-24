@@ -4,6 +4,8 @@ Linux-only `TestLinuxNativeSQLiteFailureBoundaryMatrix`, gated by
 `-mod=readonly`, `-count=1`, verbose output, and the fixed 30-minute timeout. The exact command,
 run from `packages/dorkpipe/lib`, was:
 
+Repository ownership note: package paths in this record describe external source. Current catalog packages live in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages); previously extracted [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) and [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) remain in their own repositories. Historical paths and receipts do not recreate a local package tree.
+
 ```text
 TMPDIR=/tmp/dockpipe-sqlite-linux-failure-0a13OJYL DORKPIPE_SQLITE_LINUX_FAILURE_MATRIX=1 CGO_ENABLED=0 go test -mod=readonly ./appserversupervisor/sqliteevidence -run '^TestLinuxNativeSQLiteFailureBoundaryMatrix$' -count=1 -v -timeout=30m
 PASS; matrix elapsed 739ms; package ok in 0.748s

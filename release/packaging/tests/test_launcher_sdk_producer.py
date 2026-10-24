@@ -87,7 +87,7 @@ class LauncherSDKProducerTests(unittest.TestCase):
             root = Path(temporary)
             for relative in (
                 PRODUCER.LAUNCHER / "CMakeLists.txt", "LICENSE",
-                "packages/native-sdk/assets/scripts/elf_artifacts.py",
+                "release/packaging/lib/elf_artifacts.py",
                 "release/packaging/desktop/licenses/Qt-LGPL-3.txt",
                 "release/packaging/desktop/licenses/Qt-GPL-3.txt",
                 "release/packaging/build-launcher-sdk.py",

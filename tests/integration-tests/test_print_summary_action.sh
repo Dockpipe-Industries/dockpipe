@@ -7,8 +7,6 @@ DOCKPIPE="$REPO_ROOT/src/bin/dockpipe"
 ACTION="$REPO_ROOT/src/core/assets/scripts/print-summary.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 
-require_agent_dev_template "$REPO_ROOT"
-
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 cd "$tmp"
@@ -21,7 +19,7 @@ git commit -q -m "initial"
 
 out=$(mktemp)
 trap 'rm -f "$out"' RETURN
-"$DOCKPIPE" --no-data --template agent-dev --workdir "$tmp" --action "$ACTION" \
+"$DOCKPIPE" --no-data --template base-dev --workdir "$tmp" --action "$ACTION" \
   -- sh -c 'echo "new" > newfile.txt' >"$out" 2>&1 || true
 
 grep -q "\[dockpipe summary\]" "$out" || { echo "Expected [dockpipe summary] in output"; cat "$out"; exit 1; }

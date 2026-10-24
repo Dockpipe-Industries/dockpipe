@@ -1,5 +1,7 @@
 #### Linux VM Gate 2 system-user correction (2026-08-08)
 
+Repository ownership note: package paths in this record describe external source. Current catalog packages live in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages); previously extracted [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) and [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) remain in their own repositories. Historical paths and receipts do not recreate a local package tree.
+
 Live Gate 2 script SHA-256
 `1fc9d1074cce63bd5fa7be09557cc6984e9b1255d35f354925f4049c3ccd2f29`
 executed exactly once for run `g2r-ff1cc0a230d1f0c2` and cohort

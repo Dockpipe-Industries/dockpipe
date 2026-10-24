@@ -626,7 +626,25 @@ void TerminalWidgetTest::terminalAndComposer()
     QVERIFY(chunk.size() <= 32 * 1024);
     workspace.show();
     QTRY_VERIFY_WITH_TIMEOUT(outputFrames.size() > 0, 3000);
-    QTest::qWait(1000);
+    // Ctrl-C completion, the shell prompt and WebChannel replay are asynchronous.
+    // Observe a command after the flood in the actual renderer, then require a
+    // bounded quiet interval before measuring idle work. A fixed sleep can end
+    // before the prompt is delivered on a busy native host.
+    QVERIFY(hub.send(second, "printf '\\nIDLE_%s\\n' settled"));
+    QTRY_VERIFY_WITH_TIMEOUT(readScreen() && rendered.contains("IDLE_settled"), 3000);
+    QElapsedTimer quietElapsed;
+    quietElapsed.start();
+    QObject quietObserver;
+    const auto renderedTail = connect(terminal, &TerminalWidget::renderOutput, &quietObserver,
+        [&quietElapsed]() { quietElapsed.restart(); });
+    const auto nativeTail = connect(&hub, &TerminalHub::outputAvailable, &quietObserver,
+        [&quietElapsed, &second](const QString &id) {
+            if (id == second)
+                quietElapsed.restart();
+        });
+    QTRY_VERIFY_WITH_TIMEOUT(quietElapsed.elapsed() >= 250, 3000);
+    disconnect(renderedTail);
+    disconnect(nativeTail);
     heartbeat.stop();
     outputFrames.clear();
     const std::clock_t idleStart = std::clock();

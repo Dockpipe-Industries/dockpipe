@@ -6,7 +6,7 @@ on:
     paths:
       - LICENSE
       - src/app/tooling/dockpipe-launcher/**
-      - packages/native-sdk/**
+      - release/packaging/lib/elf_artifacts.py
       - release/packaging/desktop/licenses/**
       - release/packaging/desktop/install-linux-qt.sh
       - release/dependencies/spatialweb-browser.lock.json
@@ -26,7 +26,7 @@ on:
     paths:
       - LICENSE
       - src/app/tooling/dockpipe-launcher/**
-      - packages/native-sdk/**
+      - release/packaging/lib/elf_artifacts.py
       - release/packaging/desktop/licenses/**
       - release/packaging/desktop/install-linux-qt.sh
       - release/dependencies/spatialweb-browser.lock.json

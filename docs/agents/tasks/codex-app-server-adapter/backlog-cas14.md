@@ -1,5 +1,7 @@
 ### CAS-14 maintainer decision packet — 2026-08-03
 
+Repository ownership note: package paths in this record describe external source. Current catalog packages live in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages); previously extracted [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) and [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) remain in their own repositories. Historical paths and receipts do not recreate a local package tree.
+
 **Status: founder product decision accepted; the provider-neutral and supervisor-only CAS-14
 implementation foundations are complete, and CAS-14 is not complete.**
 

@@ -1,0 +1,323 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Dockpipe package surface descriptor",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "title",
+    "snapshot",
+    "actions"
+  ],
+  "properties": {
+    "schema": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "\\S",
+      "not": {
+        "pattern": "[\\x00\\r\\n]"
+      }
+    },
+    "snapshot": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\\\:\\x00\\r\\n]+$",
+      "not": {
+        "pattern": "(^/|/$|//|(^|/)\\.{1,2}(/|$))"
+      }
+    },
+    "actions": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "scope"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "\\S",
+            "not": {
+              "pattern": "[\\x00\\r\\n]"
+            }
+          },
+          "scope": {
+            "enum": [
+              "surface",
+              "resource"
+            ]
+          },
+          "workflow": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\\\:\\x00\\r\\n]+$",
+            "not": {
+              "pattern": "(^/|/$|//|(^|/)\\.{1,2}(/|$))"
+            }
+          },
+          "workflow_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+          },
+          "launch_environment": {
+            "type": "object",
+            "minProperties": 1,
+            "maxProperties": 3,
+            "additionalProperties": false,
+            "properties": {
+              "linux": {
+                "type": "object",
+                "minProperties": 1,
+                "maxProperties": 16,
+                "propertyNames": {
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "asset": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^[^\\\\:\\x00\\r\\n]+$",
+                      "not": {
+                        "pattern": "(^/|/$|//|(^|/)\\.{1,2}(/|$))"
+                      }
+                    },
+                    "inherit": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+                    }
+                  },
+                  "oneOf": [
+                    {
+                      "required": [
+                        "asset"
+                      ],
+                      "not": {
+                        "required": [
+                          "inherit"
+                        ]
+                      }
+                    },
+                    {
+                      "required": [
+                        "inherit"
+                      ],
+                      "not": {
+                        "required": [
+                          "asset"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              "windows": {
+                "type": "object",
+                "minProperties": 1,
+                "maxProperties": 16,
+                "propertyNames": {
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "asset": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^[^\\\\:\\x00\\r\\n]+$",
+                      "not": {
+                        "pattern": "(^/|/$|//|(^|/)\\.{1,2}(/|$))"
+                      }
+                    },
+                    "inherit": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+                    }
+                  },
+                  "oneOf": [
+                    {
+                      "required": [
+                        "asset"
+                      ],
+                      "not": {
+                        "required": [
+                          "inherit"
+                        ]
+                      }
+                    },
+                    {
+                      "required": [
+                        "inherit"
+                      ],
+                      "not": {
+                        "required": [
+                          "asset"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              "macos": {
+                "type": "object",
+                "minProperties": 1,
+                "maxProperties": 16,
+                "propertyNames": {
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "asset": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^[^\\\\:\\x00\\r\\n]+$",
+                      "not": {
+                        "pattern": "(^/|/$|//|(^|/)\\.{1,2}(/|$))"
+                      }
+                    },
+                    "inherit": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+                    }
+                  },
+                  "oneOf": [
+                    {
+                      "required": [
+                        "asset"
+                      ],
+                      "not": {
+                        "required": [
+                          "inherit"
+                        ]
+                      }
+                    },
+                    {
+                      "required": [
+                        "inherit"
+                      ],
+                      "not": {
+                        "required": [
+                          "asset"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "workflow"
+            ],
+            "not": {
+              "required": [
+                "workflow_id"
+              ]
+            }
+          },
+          {
+            "required": [
+              "workflow_id"
+            ],
+            "not": {
+              "required": [
+                "workflow"
+              ]
+            }
+          }
+        ],
+        "allOf": [
+          {
+            "if": {
+              "required": [
+                "launch_environment"
+              ]
+            },
+            "then": {
+              "required": [
+                "workflow_id"
+              ],
+              "properties": {
+                "scope": {
+                  "const": "surface"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "native_display": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "interface",
+        "libraries"
+      ],
+      "properties": {
+        "interface": {
+          "const": 1
+        },
+        "libraries": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 3,
+          "additionalProperties": false,
+          "properties": {
+            "linux": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[^\\\\:\\x00\\r\\n]+$",
+              "not": {
+                "pattern": "(^/|/$|//|(^|/)\\.{1,2}(/|$))"
+              }
+            },
+            "windows": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[^\\\\:\\x00\\r\\n]+$",
+              "not": {
+                "pattern": "(^/|/$|//|(^|/)\\.{1,2}(/|$))"
+              }
+            },
+            "macos": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[^\\\\:\\x00\\r\\n]+$",
+              "not": {
+                "pattern": "(^/|/$|//|(^|/)\\.{1,2}(/|$))"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

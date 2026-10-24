@@ -1,5 +1,7 @@
 # AI workflow design and contributor notes
 
+Package source examples below belong to [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages), [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) or [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon), as applicable. Run package-source commands in that owning repository with pinned Dockpipe tools.
+
 This page preserves repository examples and design direction. It is not a
 setup guide or a claim that every described tooling surface is available.
 For installed-user guidance, see [AI workflows](agentic-workflows.md).

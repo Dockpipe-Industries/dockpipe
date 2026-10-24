@@ -499,3 +499,29 @@ func TestCatalogResolverDetailsUsesResolvedProvider(t *testing.T) {
 		t.Fatalf("unexpected resolver catalog: %+v", details)
 	}
 }
+
+func TestCatalogResolverDetailsProjectsContainedPackageSurface(t *testing.T) {
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver := filepath.Join(root, "templates", "core", "resolvers", "example.resources")
+	if err := os.MkdirAll(resolver, 0700); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		"profile":      "PRIVATE=do-not-project\n",
+		"package.yml":  "schema: 1\nkind: resolver\nname: example.resources\nsurface: surface.json\n",
+		"snapshot.yml": "name: snapshot\nsteps: []\n",
+		"surface.json": `{"schema":1,"id":"example.resources","title":"Example Resources","snapshot":"snapshot.yml","actions":[]}`,
+	}
+	for name, data := range files {
+		if err := os.WriteFile(filepath.Join(resolver, name), []byte(data), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	details := catalogResolverDetails(root, []string{"example.resources"})
+	if len(details) != 1 || details[0].Surface == nil || details[0].Surface.ID != "example.resources" || details[0].Surface.Snapshot != filepath.Join(resolver, "snapshot.yml") {
+		t.Fatalf("surface projection is missing or incorrect: %+v", details)
+	}
+}

@@ -25,13 +25,18 @@ a cache permission failure alone does not require running the whole suite on the
 
 ## Package
 
+Run these checks in the external package checkout with absolute `DOCKPIPE_BIN`,
+`PACKAGE_REPOSITORY` and `PACKAGE_SOURCE` selections; see [package authoring](../packages/package-authoring.md).
+
 ```bash
-./src/bin/dockpipe package test --workdir . --only <package>
-./src/bin/dockpipe package compile workflows --workdir . --from packages/<package> --force
-./src/bin/dockpipe package compile resolvers --workdir . --from packages/<package> --force
+"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only <package>
+"$DOCKPIPE_BIN" package compile workflows --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force
+"$DOCKPIPE_BIN" package compile resolvers --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force
 ```
 
 ## DorkPipe Skills
+
+Install the external DorkPipe package before invoking its skill renderer. It is not bundled source.
 
 ```bash
 ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --list
@@ -42,7 +47,7 @@ a cache permission failure alone does not require running the whole suite on the
 ## Search
 
 ```bash
-rg -n "<old-name>|<old-script>" packages docs src workflows .github -S
+rg -n "<old-name>|<old-script>" docs src workflows .github -S
 git status --short
 git diff --stat
 ```

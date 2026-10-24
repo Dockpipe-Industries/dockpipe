@@ -225,3 +225,46 @@ func TestPreparePrivateDirectoryRefusesExistingPartialDACL(t *testing.T) {
 		t.Fatal("rejected directory permissions were changed")
 	}
 }
+
+func TestWindowsPrivateFileCreationRejectsExistingAdministratorOwner(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "private")
+	if err := createPrivateDirectory(root); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "existing.lock")
+	file, err := createPrivateFile(path, os.O_RDWR)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := file.WriteString("preserve existing owner"); err != nil {
+		file.Close()
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	administrators, err := windows.CreateWellKnownSid(windows.WinBuiltinAdministratorsSid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := windows.SetNamedSecurityInfo(path, windows.SE_FILE_OBJECT,
+		windows.OWNER_SECURITY_INFORMATION, administrators, nil, nil, nil); err != nil {
+		t.Skipf("assigning the Administrators owner requires an elevated token: %v", err)
+	}
+	if lock, err := openPrivateLockFile(root, path); err == nil {
+		lock.Close()
+		t.Fatal("existing Administrators-owned lock was silently adopted")
+	}
+	descriptor, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner, _, err := descriptor.Owner()
+	if err != nil || owner == nil || !owner.Equals(administrators) {
+		t.Fatalf("existing owner was changed after validation failed: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || string(data) != "preserve existing owner" {
+		t.Fatalf("existing lock bytes changed: %q, %v", data, err)
+	}
+}

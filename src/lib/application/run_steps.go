@@ -16,16 +16,18 @@ import (
 )
 
 var (
-	dockerBuildFn       = infrastructure.DockerBuild
-	dockerImageExistsFn = infrastructure.DockerImageExists
-	dockerPullFn        = infrastructure.DockerPull
-	composeLifecycleFn  = infrastructure.RunComposeLifecycle
-	runContainerFn      = infrastructure.RunContainer
-	sourceHostScriptFn  = infrastructure.SourceHostScript
-	runHostScriptFn     = infrastructure.RunHostScript
-	runHostCommandFn    = infrastructure.RunHostCommand
-	osStatFn            = os.Stat
-	getwdFn             = os.Getwd
+	dockerBuildFn             = infrastructure.DockerBuild
+	dockerImageExistsFn       = infrastructure.DockerImageExists
+	dockerPullFn              = infrastructure.DockerPull
+	composeLifecycleFn        = infrastructure.RunComposeLifecycle
+	runContainerFn            = infrastructure.RunContainer
+	sourceHostScriptFn        = infrastructure.SourceHostScript
+	runHostScriptFn           = infrastructure.RunHostScript
+	runHostCommandFn          = infrastructure.RunHostCommand
+	runHostScriptWithShellFn  = infrastructure.RunHostScriptWithShell
+	runHostCommandWithShellFn = infrastructure.RunHostCommandWithShell
+	osStatFn                  = os.Stat
+	getwdFn                   = os.Getwd
 )
 
 type runStepsOpts struct {
@@ -172,7 +174,7 @@ func loadStepResolver(o *runStepsOpts, step domain.Step, stepIndex int) (*domain
 	if rtName == "" && rsName == "" {
 		return nil, "", "", nil
 	}
-	m, err := infrastructure.LoadIsolationProfile(o.repoRoot, rtName, rsName)
+	m, err := loadMergedIsolationProfile(o.repoRoot, o.projectRoot, rtName, rsName)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("step %s: isolation profile: %w", step.DisplayName(stepIndex), err)
 	}
@@ -195,7 +197,7 @@ func loadStepResolverWithProfileEnv(o *runStepsOpts, step domain.Step, stepIndex
 	if rtName == "" && rsName == "" {
 		return nil, "", "", nil, nil
 	}
-	m, err := infrastructure.LoadIsolationProfile(o.repoRoot, rtName, rsName)
+	m, err := loadMergedIsolationProfile(o.repoRoot, o.projectRoot, rtName, rsName)
 	if err != nil {
 		return nil, "", "", nil, fmt.Errorf("step %s: isolation profile: %w", step.DisplayName(stepIndex), err)
 	}
@@ -501,7 +503,7 @@ func runBlockingStep(o *runStepsOpts, i, n int, dockerEnv map[string]string) err
 	if step.IsHostStep() {
 		if cmd := strings.TrimSpace(step.CmdLine()); cmd != "" {
 			fmt.Fprintf(os.Stderr, "[dockpipe] Host command\n")
-			if err := runHostCommandFn(cmd, o.envSlice); err != nil {
+			if err := runHostStepCommand(step.Shell, cmd, o.envSlice); err != nil {
 				return err
 			}
 		}
@@ -939,10 +941,11 @@ func runStepPreScripts(o *runStepsOpts, i int, step domain.Step) error {
 	for _, r := range step.RunPaths() {
 		pre = append(pre, infrastructure.ResolveWorkflowScript(r, o.wfRoot, o.repoRoot, o.projectRoot))
 	}
+	stepScriptCount := len(pre)
 	if i == 0 {
 		pre = append(pre, o.firstStepExtra...)
 	}
-	for _, p := range pre {
+	for scriptIndex, p := range pre {
 		if p == "" {
 			continue
 		}
@@ -953,10 +956,15 @@ func runStepPreScripts(o *runStepsOpts, i int, step domain.Step) error {
 			"script": filepath.Base(p),
 		}
 		if step.IsHostStep() {
+			shell := step.Shell
+			if scriptIndex >= stepScriptCount {
+				// CLI/strategy setup is not authored as part of this step.
+				shell = ""
+			}
 			// host-step run: must exec with inherited stdio — SourceHostScript sources and
 			// captures CombinedOutput(), so users would see nothing (e.g. cursor-dev step 2, vscode).
 			_, err := infrastructure.RunOperationWithResultOptions(os.Stderr, "host.setup", hostSpinnerLabel(p), ids, hostSetupOperationOptions(), func() error {
-				return runHostScriptFn(p, appendUniqueEnv(envSliceWithScriptContext(o.envSlice, p), "DOCKPIPE_HOST_SCRIPT_SPINNER=false"))
+				return runHostStepScript(shell, p, appendUniqueEnv(envSliceWithScriptContext(o.envSlice, p), "DOCKPIPE_HOST_SCRIPT_SPINNER=false"))
 			})
 			if err != nil {
 				return err
@@ -990,4 +998,18 @@ func parseStepArgv(cmd string) ([]string, error) {
 		return nil, nil
 	}
 	return shellwords.Parse(cmd)
+}
+
+func runHostStepScript(shell, scriptPath string, env []string) error {
+	if strings.TrimSpace(shell) == "" {
+		return runHostScriptFn(scriptPath, env)
+	}
+	return runHostScriptWithShellFn(scriptPath, env, shell)
+}
+
+func runHostStepCommand(shell, command string, env []string) error {
+	if strings.TrimSpace(shell) == "" {
+		return runHostCommandFn(command, env)
+	}
+	return runHostCommandWithShellFn(command, env, shell)
 }

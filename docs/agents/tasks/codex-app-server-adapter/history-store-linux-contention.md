@@ -6,6 +6,8 @@ Linux-only `TestLinuxNativeSQLiteContentionCohort`, gated by
 `#202606011647~1780583630~22.04~70ad774 SMP PREEMPT_DYNAMIC Thu J`, bare metal according to
 `systemd-detect-virt`, `amd64`, and Go `go1.25.0`.
 
+Repository ownership note: package paths in this record describe external source. Current catalog packages live in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages); previously extracted [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) and [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) remain in their own repositories. Historical paths and receipts do not recreate a local package tree.
+
 The caller created the new private parent
 `/tmp/dockpipe-sqlite-linux-contention-Gxjuxbnq` outside the repository with mode `0700`, owner
 UID/GID `1000:1000`, stat device `66311`, and inode `57176054`, and used it as `TMPDIR`.

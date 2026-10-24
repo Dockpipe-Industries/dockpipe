@@ -20,7 +20,7 @@ Do not use target-specific skill routing keys. Keep routing neutral and let the 
 skill for Codex, Claude, or another target.
 
 For provider-specific behavior, use the renderer's section overrides described in
-[DorkPipe Skills Renderer](../../../packages/dorkpipe/README.md#skills-renderer).
+[DorkPipe Skills Renderer](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe/README.md#skills-renderer).
 Keep shared instructions in one source; replace only the sections that differ for a target.
 
 ## Curated Skill IDs
@@ -33,10 +33,12 @@ Keep shared instructions in one source; replace only the sections that differ fo
 - `dorkpipe-token-optimization`
 - `dorkpipe-yaml-workflows`
 
-These are repository-owned sources, not a claim that every host has them installed.
+These are external DorkPipe-owned sources, not a claim that every host has them installed.
 Inspect available skills or render them for the selected adapter when needed.
 
 ## Render Commands
+
+Install the external DorkPipe package first. The local Dockpipe CLI runs its renderer through the public package contract.
 
 ```bash
 ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --list
@@ -54,11 +56,7 @@ Claude requires `--output` until a safe documented global install path is confir
 
 ## Source Of Truth
 
-Curated DorkPipe skill sources live in:
-
-```text
-packages/dorkpipe/resolvers/dorkpipe/assets/skills/
-```
+Curated sources live in the [external DorkPipe skills tree](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe/resolvers/dorkpipe/assets/skills/).
 
 New governed work uses two lifecycle roles:
 

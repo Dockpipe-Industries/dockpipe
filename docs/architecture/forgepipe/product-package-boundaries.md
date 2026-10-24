@@ -22,13 +22,18 @@ Names below describe artifact roles, not new manifest fields. The dated implemen
 ownership checkpoints distinguish qualified artifacts from remaining composed-delivery gates.
 Use existing package, SDK, platform and release conventions when selecting exact public identities.
 
+The 2026-10-20 continuation prepares dependency candidates before the Dockpipe
+consumer cutover. Dockpipe pins exact releases and checksums and then qualifies
+staging. Production and Freeflight are outside this continuation. PipeLang remains
+in Dockpipe; its extraction is deferred for a separate decision.
+
 | Owner/product | Reusable artifact | Application composition |
 | --- | --- | --- |
 | ForgePipe | Versioned engine SDK/runtime: rendering, geometry, terrain and generic physics | Shared foundation; does not depend on consumer products |
 | SpatialPipe | Offline world/planet/scene runtime and persistence | Standalone universe with custom planets and spatial web; no DockPipe or filesystem-provider dependency |
 | Spatial-Web | Ordinary browser component plus a separate spatial-web extension/library | Browser component is used by DockPipe's built-in Browser; spatial extension is consumed by SpatialPipe and Cockpit; retain separate browser shell where required by existing scope |
 | MesaMoto | Game runtime/content module, with standalone game shell | Standalone motorcycle game; optional installable universe experience through a narrow scene/session adapter |
-| DockPipe Cockpit | Host adapters and DockPipe-specific workspace UI | Shared SpatialPipe/Spatial-Web runtime plus filesystem, Git, containers, workflows and explicitly enabled host capabilities |
+| SpatialPipe repository: separate Cockpit package | Host adapters and DockPipe-specific workspace UI | Shared SpatialPipe/Spatial-Web runtime plus filesystem, Git, containers, workflows and explicitly enabled host capabilities |
 | DockPipe desktop | Built-in Browser navigation/view and host application shell | Ships ordinary browsing by default; optional spatial packages enhance it without owning or gating the base browser |
 
 Keep a single implementation of browser behavior, world runtime and game behavior. Source remains
@@ -39,6 +44,20 @@ extension may depend on the browser component and shared world/engine runtime; n
 relationship merely to reuse the current combined widget.
 
 ## SpatialPipe Versus Cockpit
+
+User refinement (2026-10-19): the SpatialPipe repository owns Cockpit as a separate
+`packages/cockpit` package alongside the standalone application. Repository ownership does
+not make Cockpit part of the standalone application or Steam composition. Those builds
+omit privileged Dockpipe adapters and their dependencies entirely. Dockpipe discovers and
+installs compatible Cockpit artifacts through the existing package system; release builds
+must not import the SpatialPipe sibling checkout. Preserve the existing package identity
+and saved-world compatibility during the ownership transfer.
+
+The Files graph keeps its lightweight 2D/orthographic 3D visualization. Remove flight,
+Cockpit and app-billboard entry points from that graph toolbar and options menu. The graph
+must eventually be available without loading the optional world/game runtime; its current
+implementation still resides in the Cockpit library, so removing navigation entries alone
+does not satisfy this dependency gate.
 
 SpatialPipe is a world application, not a DockPipe workspace with forbidden buttons hidden. Its
 composition must omit privileged host adapters. A world can persist opaque provider references for

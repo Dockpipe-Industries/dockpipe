@@ -1,5 +1,7 @@
 # Documentation
 
+Package source examples below belong to [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages), [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) or [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon), as applicable. Run package-source commands in that owning repository with pinned Dockpipe tools.
+
 Dockpipe has a small front door and deeper reference material behind it. Start
 with the task you are doing, then drop into reference docs only when needed.
 
@@ -24,7 +26,7 @@ maintainer docs below are reference material, not the shortest learning path.
 | Isolation layer and profile files | [concepts/isolation-layer.md](concepts/isolation-layer.md) |
 | Capability ids and resolver packages | [concepts/capabilities.md](concepts/capabilities.md) |
 | Governed AI/documentation workflows | [workflows/agentic-workflows.md](workflows/agentic-workflows.md) |
-| Optional typed authoring layer | [concepts/pipelang.md](concepts/pipelang.md) |
+| Optional typed authoring layer | [concepts/pipelang.md](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/concepts/pipelang.md) |
 
 ## Packages, Security, And Images
 
@@ -32,6 +34,7 @@ maintainer docs below are reference material, not the shortest learning path.
 |-------|-----|
 | Package/store model | [packages/package-model.md](packages/package-model.md) |
 | Security policy | [security/security-policy.md](security/security-policy.md) |
+| VM boot display geometry | [runtime/vm-display-geometry.md](runtime/vm-display-geometry.md) |
 | Docker image artifacts | [runtime/image-artifacts.md](runtime/image-artifacts.md) |
 | Combined design notes / history | [security/docker-security-images.md](security/docker-security-images.md) |
 | Windows WSL containers and WSL3 research | [research/wsl-containers-and-wsl3-2026.md](research/wsl-containers-and-wsl3-2026.md) |
@@ -47,7 +50,7 @@ Dockpipe itself, publishing packages, or debugging compiled/runtime behavior.
 | Coding style, resource bounds and failure handling | [coding-style.md](coding-style.md) |
 | AI workflow design and contributor examples | [workflows/agentic-design-notes.md](workflows/agentic-design-notes.md) |
 | Self-hosted package publication | [packages/package-publishing.md](packages/package-publishing.md) |
-| PipeLang foundation and proposals | [concepts/pipelang-foundation.md](concepts/pipelang-foundation.md), [contracts](concepts/pipelang-foundation-contracts.md), [delivery](concepts/pipelang-foundation-delivery.md) |
+| PipeLang foundation and proposals | [concepts/pipelang-foundation.md](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/concepts/pipelang-foundation.md), [contracts](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/concepts/pipelang-foundation-contracts.md), [delivery](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/concepts/pipelang-foundation-delivery.md) |
 | Engine data flow | [concepts/architecture.md](concepts/architecture.md) |
 | Dockpipe vs first-party maintainer packages | [packages/core-tools.md](packages/core-tools.md) |
 | Generated maintainer artifacts | [runtime/artifacts.md](runtime/artifacts.md) |
@@ -55,9 +58,11 @@ Dockpipe itself, publishing packages, or debugging compiled/runtime behavior.
 | Codex workspace-sandbox session limits and host requests | [runtime/codex-sandbox-sessions.md](runtime/codex-sandbox-sessions.md) |
 | Agent routing and focused maintainer rules | [agents/index.yaml](agents/index.yaml), [agents/](agents/) |
 | Core-vs-packages audit | [packages/core-vs-packages-audit.md](packages/core-vs-packages-audit.md) |
-| PipeLang verification optimization plan | [runtime/pipelang-verification.md](runtime/pipelang-verification.md) |
+| PipeLang verification optimization plan | [runtime/pipelang-verification.md](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/runtime/pipelang-verification.md) |
 | Manual QA | [manual-qa.md](manual-qa.md) |
 | Messaging / about copy | [concepts/messaging.md](concepts/messaging.md) |
 
-MCP (`mcpd`) is DorkPipe-owned control-plane tooling; see the package README
-under `packages/dorkpipe-mcp/`.
+MCP (`mcpd`) is DorkPipe-owned control-plane tooling; see the
+[external MCP package](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe-mcp).
+Browse [catalog package examples](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages)
+and [ecosystem ownership](packages/core-tools.md) for the independent source repositories.

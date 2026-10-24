@@ -98,6 +98,43 @@ class CompositionTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     composer.compose(self.base, candidate, self.owned)
 
+    def test_preserves_complete_semantic_version_minimum_metadata(self):
+        # Minimum-version normalization belongs to the existing runtime contract,
+        # independently of the producer's exact dockpipe_version pin grammar.
+        # The runtime minimum accepts an optional v prefix and SemVer suffixes.
+        accepted = [
+            "", "0.6.26", "0.6.26-0", "1.2.3-rc.1", "1.2.3-0.3.7",
+            "1.2.3-x.7.z.92", "1.2.3-alpha-beta", "1.2.3--",
+            "1.2.3+build.001", "1.2.3-rc.1+build.001", "v1.2.3-rc.1+build.5",
+        ]
+        for minimum in accepted:
+            with self.subTest(minimum=minimum):
+                candidate = copy.deepcopy(self.candidate)
+                candidate["packages"]["workflows"][0]["min_dockpipe_version"] = minimum
+                before = copy.deepcopy(candidate)
+                output = composer.compose(self.base, candidate, self.owned)
+                entry = next(entry for entry in output["packages"]["workflows"]
+                             if entry["name"] == "owned")
+                self.assertEqual(entry["min_dockpipe_version"], minimum)
+                self.assertEqual(candidate, before)
+
+    def test_rejects_malformed_or_injected_minimum_versions(self):
+        rejected = [
+            None, True, 1, [], {}, "latest", "dev", "0.6", "1", "1.2.3.4",
+            ">=1.2.3", "^1.2.3", "01.2.3", "1.02.3", "1.2.03", "1.2.3-01",
+            "1.2.3-alpha.01", "1.2.3-", "1.2.3+", "1.2.3-alpha..1",
+            "1.2.3+build..1", "1.2.3+one+two", "V1.2.3", "vv1.2.3",
+            "1.2.3/../../file", "1.2.3;echo bad", "$(command)",
+            "1.2.3\ncommand", "1.2.3\r\n", " 1.2.3", "1.2.3 ", "1.2.3\x00",
+            "1.2.3-\u03b1", "\u0661.2.3",
+        ]
+        for minimum in rejected:
+            with self.subTest(minimum=minimum):
+                candidate = copy.deepcopy(self.candidate)
+                candidate["packages"]["workflows"][0]["min_dockpipe_version"] = minimum
+                with self.assertRaisesRegex(ValueError, "minimum DockPipe version"):
+                    composer.compose(self.base, candidate, self.owned)
+
     def test_rejects_reusing_archive_name_with_different_bytes(self):
         self.candidate = store([artifact("owned", sha256="b" * 64)])
         with self.assertRaisesRegex(ValueError, "immutable archive"):

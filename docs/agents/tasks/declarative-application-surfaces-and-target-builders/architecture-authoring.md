@@ -118,7 +118,7 @@ PipeLang view syntax must be accepted through TASK-021 before this task consumes
 
 ## PipeLang Dependency
 
-[TASK-021](../pipelang-reactive-application-language/overview.md) owns the detailed PipeLang language gap,
+[TASK-021](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/agents/tasks/pipelang-reactive-application-language/overview.md) owns the detailed PipeLang language gap,
 versioning, type-system evolution, reactive state, pure computed properties, local actions, governed
 effects, safe expressions, parser/typechecker/compiler work, compatibility, diagnostics, and editor
 support. It is the first implementation dependency for this task.

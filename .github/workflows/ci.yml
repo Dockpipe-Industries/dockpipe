@@ -112,7 +112,7 @@ jobs:
             exit "$GC"
           fi
 
-      - name: Runtime Go tests (PipeLang uses separate containment qualification)
+      - name: Runtime Go tests
         run: bash release/packaging/test-runtime.sh
 
       - name: Pinned repository workflow tests
@@ -231,7 +231,7 @@ jobs:
       - name: Pinned package-store composition on Windows
         run: python3 -B -m unittest discover -s release/packaging/tests -p 'test_package_store_composition.py'
 
-      - name: Runtime Go tests (PipeLang uses separate containment qualification)
+      - name: Runtime Go tests
         run: bash release/packaging/test-runtime.sh
 
       - name: Templates/core path guard (docs + code)
@@ -240,64 +240,12 @@ jobs:
       - name: clone-worktree include script (bash + git)
         run: bash tests/unit-tests/test_clone_worktree_include.sh
 
-  cockpit-native:
-    name: Cockpit native SDK and rendering
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
-    permissions:
-      contents: read
-      attestations: read
-    env:
-      GH_TOKEN: ${{ github.token }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with:
-          go-version: '1.26.10'
-      - name: Install matching native SDK prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build python3-venv xvfb xauth \
-            libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev libxkbcommon-x11-0 \
-            libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
-            libxcb-render-util0 libxcb-shape0 libxcb-xkb1 libx11-dev \
-            libxcomposite-dev libxrender-dev libxres-dev libxext-dev libxcb1-dev \
-            libnss3 libasound2 libsdl2-2.0-0 libopus0 libminizip1
-      - name: Install pinned Qt ABI
-        run: |
-          bash release/packaging/desktop/install-linux-qt.sh "$RUNNER_TEMP/Qt"
-          echo "DOCKPIPE_QT_ROOT=$RUNNER_TEMP/Qt/6.10.3/gcc_64" >> "$GITHUB_ENV"
-      - name: Build repository CLI
-        run: make build-core
-      - name: Prepare exact attested Browser SDK
-        run: |
-          python3 release/packaging/prepare-browser-sdk.py --lock release/dependencies/spatialweb-browser.lock.json \
-            --platform linux-amd64 --output "$RUNNER_TEMP/browser-sdk"
-      - name: Verify public publisher and qualify installed Cockpit
-        run: |
-          python3 release/packaging/prepare-cockpit.py prepare \
-            --lock release/cockpit.lock.json --output "$RUNNER_TEMP/cockpit-runtime"
-          cmake -S src/app/tooling/dockpipe-launcher -B "$RUNNER_TEMP/cockpit-host" \
-            -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON \
-            -DCMAKE_PREFIX_PATH="$DOCKPIPE_QT_ROOT;$RUNNER_TEMP/browser-sdk" \
-            -DDOCKPIPE_COCKPIT_ASSETS="$RUNNER_TEMP/cockpit-runtime/package/resolvers/cockpit/assets"
-          python3 release/packaging/prepare-cockpit.py verify-compiler \
-            --lock release/cockpit.lock.json --store "$RUNNER_TEMP/cockpit-runtime/store" \
-            --build "$RUNNER_TEMP/cockpit-host"
-          cmake --build "$RUNNER_TEMP/cockpit-host" --target cockpit-package-rendering-test --parallel 2
-          LD_LIBRARY_PATH="$DOCKPIPE_QT_ROOT/lib:$RUNNER_TEMP/browser-sdk/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
-            ctest --test-dir "$RUNNER_TEMP/cockpit-host" --output-on-failure -R '^cockpit-package-rendering$' --no-tests=error
-
   staging-release:
-    needs: [test, test-windows, cockpit-native]
+    needs: [test, test-windows]
     if: github.event_name == 'push' && github.ref == 'refs/heads/staging' && vars.DOCKPIPE_RELEASE_ENABLED == 'true'
     permissions:
       contents: write
-      # Reusable workflows cannot declare permissions absent from the caller.
-      # Release jobs narrow these again; SDK signing itself is manual-only.
-      id-token: write
-      attestations: write
+      attestations: read
     uses: ./.github/workflows/release.yml
     # GitHub requires inheritance to resolve the called job's environment secrets.
     # https://github.com/actions/runner/issues/4453

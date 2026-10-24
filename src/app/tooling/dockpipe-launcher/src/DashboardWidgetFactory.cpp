@@ -162,6 +162,8 @@ void DashboardWidgetFactory::setWorkdir(const QString &workdir)
     if (m_workdir == workdir)
         return;
     m_workdir = workdir;
+    m_packageDisplays.clear();
+    emit packageDisplaysChanged();
     m_workflows.clear();
     emit workflowsChanged();
     ++m_generation;
@@ -323,4 +325,25 @@ void DashboardWidgetFactory::refreshMachines()
             }
             emit machinesChanged(document.array(), {});
         }, 5000);
+}
+
+void DashboardWidgetFactory::setPackageDisplays(const QString &source, const QVector<PackageDisplayMeta> &displays)
+{
+    if (displays.isEmpty())
+        m_packageDisplays.remove(source);
+    else
+        m_packageDisplays[source] = displays;
+    emit packageDisplaysChanged();
+}
+
+QVector<PackageDisplayMeta> DashboardWidgetFactory::packageDisplays() const
+{
+    QVector<PackageDisplayMeta> result;
+    for (auto source = m_packageDisplays.cbegin(); source != m_packageDisplays.cend(); ++source) {
+        for (auto display : source.value()) {
+            display.id = source.key() + '/' + display.id;
+            result.append(display);
+        }
+    }
+    return result;
 }

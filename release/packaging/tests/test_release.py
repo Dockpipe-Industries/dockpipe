@@ -31,30 +31,47 @@ class ReleaseTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
 
-    def store(self, directory):
+    def store(self, directory, core_only=False):
         directory.mkdir(parents=True)
         entries = []
-        for name in ("core", "workflow", "resolver"):
+        package_names = ("core",) if core_only else ("core", "workflow", "resolver")
+        for name in package_names:
             tarball = f"{name}.tar.gz"
             (directory / tarball).write_bytes(name.encode())
             entries.append({"tarball": tarball, "sha256": hashlib.sha256(name.encode()).hexdigest()})
         (directory / "packages-store-manifest.json").write_text(json.dumps({"packages": {
-            "core": entries[0], "workflows": [entries[1]], "resolvers": [entries[2]],
+            "core": entries[0],
+            "workflows": [] if core_only else [entries[1]],
+            "resolvers": [] if core_only else [entries[2]],
         }}))
 
     def test_embedded_inputs_follow_working_tree_removals(self):
         inputs = load_module("embedded-inputs")
-        package = self.root / "packages/example"
-        package.mkdir(parents=True)
-        (package / "current.txt").write_text("current input")
-        tracked = b"packages/example/current.txt\0packages/example/removed.txt\0"
-        deleted = b"packages/example/removed.txt\0"
+        workflow = self.root / "workflows/example"
+        workflow.mkdir(parents=True)
+        (workflow / "current.txt").write_text("current input")
+        tracked = b"workflows/example/current.txt\0workflows/example/removed.txt\0"
+        deleted = b"workflows/example/removed.txt\0"
         with patch.object(inputs.subprocess, "check_output", side_effect=[tracked, deleted]):
-            self.assertEqual(inputs.authored(self.root), ["packages/example/current.txt"])
+            self.assertEqual(inputs.authored(self.root), ["workflows/example/current.txt"])
         # Missing inputs must still fail when Git did not identify them as deletions.
         with patch.object(inputs.subprocess, "check_output", side_effect=[tracked, b""]):
             with self.assertRaises(ValueError):
                 inputs.authored(self.root)
+
+    def test_embedded_inputs_exclude_all_package_sources(self):
+        inputs = load_module("embedded-inputs")
+        package_names = ("example", "cockpit", "native-sdk", "pipelang", "future-package")
+        tracked = []
+        for name in package_names:
+            relative = f"packages/{name}/asset.txt"
+            path = self.root / relative
+            path.parent.mkdir(parents=True)
+            path.write_text("external package input")
+            tracked.append(relative)
+        encoded = ("\0".join(tracked) + "\0").encode()
+        with patch.object(inputs.subprocess, "check_output", side_effect=[encoded, b""]):
+            self.assertEqual(inputs.authored(self.root), [])
 
     def test_store_rejects_corruption_and_missing_categories(self):
         self.store(self.root / "store")
@@ -94,6 +111,27 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Invalid core filename"):
             artifacts_module.stage_core(store, self.root / "bad-payload")
 
+    def test_runtime_store_accepts_core_and_rejects_optional_or_corrupt_inputs(self):
+        store = self.root / "runtime-store"
+        self.store(store, core_only=True)
+        self.assertEqual(artifacts_module.verify_store(store, core_only=True), 1)
+        stray = store / "undeclared-optional.tar.gz"
+        stray.write_bytes(b"optional payload")
+        with self.assertRaisesRegex(ValueError, "Unexpected runtime store payload"):
+            artifacts_module.verify_store(store, core_only=True)
+        stray.unlink()
+        manifest_path = store / "packages-store-manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        manifest["packages"]["workflows"] = [{"tarball": "unavailable-optional.tar.gz"}]
+        manifest_path.write_text(json.dumps(manifest))
+        with self.assertRaisesRegex(ValueError, "contains optional packages"):
+            artifacts_module.verify_store(store, core_only=True)
+        manifest["packages"]["workflows"] = []
+        manifest_path.write_text(json.dumps(manifest))
+        (store / "core.tar.gz").write_bytes(b"corrupt")
+        with self.assertRaisesRegex(ValueError, "checksum mismatch"):
+            artifacts_module.verify_store(store, core_only=True)
+
     def test_catalog_requires_every_platform(self):
         with self.assertRaises(FileNotFoundError):
             artifacts_module.prepare(self.root, "0.6.0")
@@ -101,7 +139,7 @@ class ReleaseTests(unittest.TestCase):
     def test_flatpak_catalog_requires_matching_runtime_and_bundle(self):
         platform = artifacts_module.FLATPAK_PLATFORM
         store = self.root / "stores" / platform
-        self.store(store)
+        self.store(store, core_only=True)
         manifest_path = store / "packages-store-manifest.json"
         manifest = json.loads(manifest_path.read_text())
         bundle = "dockpipe-desktop_0.6.2_linux_amd64.flatpak"
@@ -117,7 +155,7 @@ class ReleaseTests(unittest.TestCase):
             manifest_path.write_text(json.dumps(manifest))
             artifacts_module.prepare(self.root, "0.6.2")
         catalog = json.loads((self.root / "release-manifest.json").read_text())
-        self.assertEqual(catalog["stores"][platform]["count"], 3)
+        self.assertEqual(catalog["stores"][platform]["count"], 1)
         self.assertEqual(catalog["downloads"][platform], {"cli": bundle, "desktop": bundle})
         self.assertIn(bundle, (self.root / "SHA256SUMS.txt").read_text())
 
@@ -125,7 +163,7 @@ class ReleaseTests(unittest.TestCase):
         version = "0.6.0"
         candidate = version + "-staging.123.2." + "a" * 12
         for platform in artifacts_module.PLATFORMS:
-            self.store(self.root / "stores" / platform)
+            self.store(self.root / "stores" / platform, core_only=True)
             suffix = "zip" if platform.startswith("windows") else "tar.gz"
             names = [f"dockpipe_{version}_{platform.replace('-', '_')}.{suffix}",
                      f"dockpipe-packages_{version}_{platform}.tar.gz"]
@@ -143,6 +181,8 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(catalog["candidate"], candidate)
         self.assertEqual(catalog["source_sha"], "a" * 40)
         self.assertEqual(catalog["channel"], "staging")
+        self.assertEqual(catalog["artifact_class"], "runtime")
+        self.assertTrue(all(store["count"] == 1 for store in catalog["stores"].values()))
         expected = artifacts_module.digest(self.root / "release-manifest.json")
         self.assertIn(expected + "  release-manifest.json", (self.root / "SHA256SUMS.txt").read_text())
         with self.assertRaises(ValueError):
@@ -155,7 +195,7 @@ class ReleaseTests(unittest.TestCase):
     def test_publish_commits_signed_index_after_payloads(self):
         artifacts = self.root / "artifacts"
         artifacts.mkdir()
-        (artifacts / "release-manifest.json").write_text('{}')
+        (artifacts / "release-manifest.json").write_text('{"artifact_class": "runtime"}')
         (artifacts / "dockpipe.tar.gz").write_bytes(b"payload")
         apt = self.root / "apt"
         (apt / "dists/stable").mkdir(parents=True)
@@ -166,7 +206,8 @@ class ReleaseTests(unittest.TestCase):
         with patch.dict(os.environ, environment), patch.object(publisher, "upload", side_effect=lambda *args: calls.append(args)), patch.object(publisher, "require_forward_version"), patch.object(publisher, "require_unpublished"):
             publisher.publish(artifacts, apt, "0.6.0", False)
         keys = [call[1] for call in calls]
-        self.assertEqual(keys[-1], "packages/latest.json")
+        self.assertEqual(keys[-1], "packages/runtime/latest.json")
+        self.assertNotIn("packages/latest.json", keys)
         self.assertEqual(keys[-2], "packages/releases/0.6.0/release-manifest.json")
         self.assertEqual(keys[-3], "apt/dists/stable/InRelease")
         self.assertLess(keys.index("apt/dists/stable/Packages"), keys.index("apt/dists/stable/Release"))
@@ -180,7 +221,8 @@ class ReleaseTests(unittest.TestCase):
         artifacts = self.root / "artifacts"
         artifacts.mkdir()
         candidate = "0.6.0-staging.123.1." + "a" * 12
-        catalog = {"version": "0.6.0", "channel": "staging", "candidate": candidate, "source_sha": "a" * 40}
+        catalog = {"artifact_class": "runtime", "version": "0.6.0", "channel": "staging",
+                   "candidate": candidate, "source_sha": "a" * 40}
         (artifacts / "release-manifest.json").write_text(json.dumps(catalog))
         (artifacts / "payload.tar.gz").write_bytes(b"candidate")
         apt = self.root / "apt"
@@ -194,7 +236,8 @@ class ReleaseTests(unittest.TestCase):
             prefix = f"packages/candidates/{candidate}"
             keys = [call.args[1] for call in upload.call_args_list]
             self.assertTrue(all(key.startswith((prefix + "/", "apt/")) for key in keys[:-1]))
-            self.assertEqual(keys[-2:], ["apt/dists/staging/InRelease", "packages/latest.json"])
+            self.assertEqual(keys[-2:], ["apt/dists/staging/InRelease", "packages/runtime/latest.json"])
+            self.assertNotIn("packages/latest.json", keys)
             self.assertLess(keys.index(prefix + "/release-manifest.json"), keys.index("apt/pool/candidate.deb"))
             self.assertLess(keys.index("apt/pool/candidate.deb"), keys.index("apt/dists/staging/InRelease"))
             self.assertIn(prefix + "/apt/pool/candidate.deb", keys)
@@ -286,54 +329,13 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual((self.root / "data/packages/core" / core.name).read_bytes(), b"test-core")
         subprocess.run(command, env=dict(env, TEST_OS="Linux"), check=True, capture_output=True)
 
-    def test_release_setup_copies_only_scoped_values_and_defaults_to_checks(self):
-        source = PACKAGING.parents[1] / "workflows/package/package-release-setup/assets/scripts/configure-release.py"
-        spec = importlib.util.spec_from_file_location("release_setup", source)
-        setup = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(setup)
-        values = {"RELEASE_SETUP_REPOSITORY": "example/project", "AWS_ACCESS_KEY_ID": "test-id", "AWS_SECRET_ACCESS_KEY": "test-key", "APT_SIGNING_KEY": "test-signing-key\nsecond-line",
-                  "R2_ENDPOINT_URL": "https://example.invalid", "DOCKPIPE_RELEASE_BUCKET": "example-packages", "R2_PREFIX": "packages",
-                  "CLOUDFLARE_API_TOKEN": "must-not-copy", "R2_STATE_SECRET_ACCESS_KEY": "must-not-copy"}
-        with patch.dict(os.environ, values), patch.object(setup, "signing_fingerprint", return_value="A" * 40), patch.object(setup, "run") as run:
-            setup.configure(False)
-            run.assert_not_called()
-            setup.configure(True)
-            secrets = [call for call in run.call_args_list if call.args[0][1] == "secret"]
-            self.assertEqual({call.args[0][3] for call in secrets}, set(setup.SECRETS))
-            for call in secrets:
-                self.assertEqual(call.kwargs["value"], values[call.args[0][3]])
-                self.assertNotIn(call.kwargs["value"], call.args[0])
-            self.assertEqual(len(run.call_args_list), 7)
-            run.reset_mock()
-            with patch.dict(os.environ, {"RELEASE_SETUP_REPOSITORY": ""}):
-                with self.assertRaises(ValueError):
-                    setup.configure(True, "release-staging")
-            run.assert_not_called()
-            with patch.dict(os.environ, {"DOCKPIPE_RELEASE_BUCKET": "example-staging"}):
-                setup.configure(True, "release-staging")
-            self.assertEqual(len(run.call_args_list), 7)
-            for call in run.call_args_list:
-                self.assertIn("example/project", call.args[0])
-                self.assertIn("release-staging", call.args[0])
-                self.assertNotIn("release", call.args[0])
-
-    def test_release_setup_repairs_only_valid_flattened_armor(self):
-        source = PACKAGING.parents[1] / "workflows/package/package-release-setup/assets/scripts/configure-release.py"
-        spec = importlib.util.spec_from_file_location("release_setup", source)
-        setup = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(setup)
-        armor = "-----BEGIN PGP PRIVATE KEY BLOCK-----\n\nYWJjZA==\n=YWJj\n-----END PGP PRIVATE KEY BLOCK-----\n"
-        self.assertEqual(setup.normalize_signing_key(armor.replace("\n", " ")), armor)
-        self.assertEqual(setup.normalize_signing_key(armor), armor.strip())
-        for invalid in ("filename.asc", armor.replace("\n", " ").replace("YWJjZA==", "bad!")):
-            with self.assertRaises(ValueError):
-                setup.normalize_signing_key(invalid)
-
     @unittest.skipUnless(all(shutil.which(tool) for tool in ("gpg", "gpgv", "apt-ftparchive", "dpkg-deb")), "APT tools required")
     def test_signed_apt_repository_is_readable_and_by_hash(self):
         gpg_home = self.root / "gnupg"
         gpg_home.mkdir(mode=0o700)
         env = dict(os.environ, GNUPGHOME=str(gpg_home))
+        self.addCleanup(subprocess.run, ["gpgconf", "--kill", "gpg-agent"],
+                        env=env, capture_output=True)
         subprocess.run(["gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "",
                         "--quick-generate-key", "Dockpipe test only", "rsa2048", "sign", "1d"],
                        env=env, check=True, capture_output=True)

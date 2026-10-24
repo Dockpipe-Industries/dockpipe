@@ -5,31 +5,42 @@ Primitive first: run in container, optionally act after. Keep the core minimal.
 Follow the [coding style and reliability standard](docs/coding-style.md) for readable
 responsibilities, resource bounds, cancellation, recovery and failure-path tests.
 
-DorkPipe packages, its MCP bridge, Pipeon, and the Dockpipe language-support
-extension are maintained in the separate [DorkPipe](https://github.com/Dockpipe-Industries/dorkpipe)
-and [Pipeon](https://github.com/Dockpipe-Industries/pipeon) source repositories.
-Run their package, editor, and desktop build tests there. This repository builds
-Dockpipe core and ingests exact published package bundles for release qualification.
+Dockpipe owns the generic engine, CLI, desktop host and public SDK contracts.
+Remaining catalog package source lives in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages).
+The compiler, language SDK, language tests and research live in
+[PipeLang](https://github.com/Dockpipe-Industries/pipelang). Dockpipe depends on the
+versioned PipeLang Go SDK for typed models and preserves its existing language CLI
+and automatic materialization behavior. Do not copy compiler or package source
+back into this repository or add sibling-checkout dependencies.
+
+Run package builds, tests and publication workflows from their owning repository
+using a pinned Dockpipe binary and SDK artifacts. Run core tests here. Release
+composition imports immutable package archives and validates their inventory and
+digests. See [ecosystem ownership](docs/packages/core-tools.md).
 
 **Security:** do not file public issues for undisclosed vulnerabilities — see **[SECURITY.md](SECURITY.md)**.
 
-**Issues** for bugs and ideas. **PRs** for code/docs; see [AGENTS.md](AGENTS.md). Prefer **feature branch** or **fork** → **PR → `staging`** (integration). **Do not push directly** to **`staging`** / **`master`** if those branches are protected. The maintainer ships by **PR `staging` → `master`** with updated **`release/releasenotes/<VERSION>.md`** for the selected release line (the workflow generates patch numbers) — that merge runs **Release**. **CI** (**`govulncheck`**, **`gosec`**, tests, **`make`**, **`.deb`**, **`tests/run_tests.sh`**, **`tests/integration-tests/run.sh`**) runs on PRs to **`staging`** and **`master`**; the **VERSION / release-notes gate** runs only on PRs **into `master`**. **CodeQL** runs in the same **`.github/workflows/ci.yml`** as the **`codeql`** job. Details: [release/docs/branching.md](release/docs/branching.md). **Tests:** `bash tests/run_tests.sh` (unit); integration: `bash tests/integration-tests/run.sh`.
+**Issues** for bugs and ideas. **PRs** for code/docs; see [AGENTS.md](AGENTS.md). Prefer **feature branch** or **fork** → **PR → `staging`** (integration). **Do not push directly** to **`staging`** / **`master`** if those branches are protected. The maintainer ships by **PR `staging` → `master`** with updated **`release/releasenotes/<VERSION>.md`** for the selected release line (the workflow generates patch numbers) — that merge runs **Release**. **CI** (**`govulncheck`**, **`gosec`**, tests, **`make`**, **`.deb`**, **`tests/run_tests.sh`**, **`tests/integration-tests/run.sh`**) runs on PRs to **`staging`** and **`master`**; the **VERSION / release-notes gate** runs only on PRs **into `master`**. **CodeQL** runs in **`.github/workflows/codeql.yml`**. Details: [release/docs/branching.md](release/docs/branching.md). **Tests:** `bash tests/run_tests.sh` (unit); integration: `bash tests/integration-tests/run.sh`.
 
 The [PR template](.github/pull_request_template.md) asks for the resulting behavior, verification and user impact. Remove its release section for ordinary integration PRs; release PRs must update the matching end-user notes.
 
 **Go:** layout is `src/lib/{domain,application,infrastructure}` — see [src/lib/README.md](src/lib/README.md). Run `go test ./...` and `gofmt` before PRs. Application tests set **`DOCKPIPE_SKIP_DOCKER_PREFLIGHT=1`** so the suite does not require a running Docker daemon (use **`dockpipe doctor`** manually to verify Docker).
 
-**Full local CI** (same as **`make ci`** / **`bash src/scripts/ci-local.sh`**): install **`govulncheck`**, **`gosec`**, and **`jq`** (`make dev-deps` or **`bash src/scripts/install-deps.sh`**). Use the toolchain from **`go.mod`** (e.g. `export GOTOOLCHAIN=go1.25.8`) and put Go’s **`bin`** on **`PATH`** (`export PATH="$(go env GOPATH)/bin:$PATH"`) so **`govulncheck`** matches the repo’s Go version. Then **`make ci`** (needs Docker). If **`govulncheck`** errors on stdlib / **`iter`**, reinstall it: **`go install golang.org/x/vuln/cmd/govulncheck@latest`**.
+**Full local CI** (same as **`make ci`** / **`bash src/scripts/ci-emulate.sh`**): install **`govulncheck`**, **`gosec`**, and **`jq`** (`make dev-deps` or **`bash src/scripts/install-deps.sh`**). Use the toolchain from **`go.mod`** with `GOTOOLCHAIN=local` and put Go’s **`bin`** on **`PATH`** (`export PATH="$(go env GOPATH)/bin:$PATH"`) so **`govulncheck`** matches the repo’s Go version. Then **`make ci`** (needs Docker). If **`govulncheck`** errors on stdlib / **`iter`**, reinstall it: **`go install golang.org/x/vuln/cmd/govulncheck@latest`**.
 
-**Bundled layout in docs/code:** **`TemplateBuild`** resolves Dockerfiles via **`DockerfileDir`**: **`resolvers/<name>/assets/images/<name>`**, then **`bundles/<domain>/assets/images/<domain>`**, then **`assets/images/<name>`** (agnostic: **base-dev**, **dev**, **example**, **minimal**, …). **Optional Compose** examples: **`resolvers/…/assets/compose/`**, **`bundles/…/assets/compose/`**, plus agnostic demos under **`assets/compose/minimal/`** and **`assets/compose/multi-service/`**. **Domain** script bundles use **`bundles/<domain>/assets/scripts/`** (and **`bundles/<domain>/assets/docs/`** for shipped markdown). **Agnostic** helpers stay in **`templates/core/assets/scripts/`** — there is **no** **`templates/core/assets/docs/`** (docs are domain-only under bundles/resolvers as needed). After editing docs or path strings, run **`make check-paths`**. CI runs this check.
+**Source layout:** required bundled definitions and shared runtime assets live under
+`src/core/`. Generic engine code stays in `src/lib/` and `src/cmd/`.
+This repository's own automation lives under `workflows/`; package automation lives
+with the external package. Workflow-specific scripts belong beside the workflow's
+`config.yml`; shared scripts belong at the lowest common owning boundary. Do not
+create root script shadows for package workflows. Run `make check-paths` after
+changing authored paths.
 
-**Workflow YAML (user contract):** when changing step/async/merge behavior, update **[docs/workflows/workflow-yaml.md](docs/workflows/workflow-yaml.md)** and keep [src/lib/README.md](src/lib/README.md) in sync for contributor-oriented detail.
-
-**Resolver** profiles: shared definitions under **`templates/core/resolvers/<name>`** only — not beside individual workflows. See **[docs/concepts/isolation-layer.md](docs/concepts/isolation-layer.md)**. New Dockerfile-backed name → **`templates/core/resolvers/<name>/assets/images/<name>/Dockerfile`** (or **`bundles/<domain>/assets/images/`** for bundle-owned images) + a case in **`src/lib/infrastructure/template.go`** (`TemplateBuild`). See **[docs/packages/templates-core-assets.md](docs/packages/templates-core-assets.md)**. **Framework scripts:** agnostic run/act/pre scripts belong in **`templates/core/assets/scripts/`**; domain packs under **`templates/core/bundles/<domain>/`**. Workflow YAML references **`scripts/…`** (resolved per **`paths.go`**). Repo-only tooling stays in top-level **`scripts/`** (see **`scripts/README.md`**).
-
-**Template:** add **`templates/<name>/`** with **`config.yml`** (and optional per-workflow **`strategies/`**). Bundled workflows live under **`templates/`**. The **`worktree`** / **`commit`** strategies are **`templates/core/strategies/`** only — not a separate workflow tree. Shared runtimes, resolvers, strategies, and framework scripts ship under **`templates/core/`**. See **[docs/concepts/architecture-model.md](docs/concepts/architecture-model.md)** (layout table).
-
-**Action:** add **`templates/core/assets/scripts/<name>.sh`** for agnostic bundled actions; domain-specific assets go under **`templates/core/bundles/`** when appropriate. Use `DOCKPIPE_EXIT_CODE`, `DOCKPIPE_CONTAINER_WORKDIR`. Add to `action init --from` list in **`src/cmd`** if copyable.
+**Workflow YAML:** keep [the YAML reference](docs/workflows/workflow-yaml.md),
+schema and the owning editor extension synchronized when changing public syntax.
+Use existing resolver/runtime/strategy contracts rather than adding product names
+to the engine. See [architecture](docs/concepts/architecture-model.md) and
+[package authoring](docs/agents/packages/package-authoring.md).
 
 **Releases:** merge **`staging` → `master`** (after **`VERSION`** + **`release/releasenotes/…`**) triggers **`.github/workflows/release.yml`**. See [release/docs/releasing.md](release/docs/releasing.md). Optional **dev.to**: [release/docs/devto.md](release/docs/devto.md).
 

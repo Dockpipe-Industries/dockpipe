@@ -13,6 +13,7 @@
 #include <QDir>
 #include "DashboardWorkspace.h"
 #include "DesktopWindowWidget.h"
+#include "PackageDisplayWidget.h"
 #include "DashboardDock.h"
 #include "DashboardAppsDialog.h"
 #include "CanvasIcons.h"
@@ -199,7 +200,7 @@ DashboardPage::DashboardPage(const DashboardDefinition &definition, DashboardWid
     }
     // Native windows and sharing grants only belong to the current visit.
     const bool removedDesktopPanels = m_definition.panels.removeIf([](const DashboardPanelDefinition &panel) {
-        return panel.kind == "desktop-window";
+        return panel.kind == "desktop-window" || panel.kind == "package-display";
     }) > 0;
     for (const auto &panel : m_definition.panels) {
         auto *content = createContent(panel.kind, panel.environment);
@@ -259,7 +260,7 @@ void DashboardPage::releaseDesktopWindows()
 
     const auto panels = m_definition.panels;
     for (const auto &panel : panels) {
-        if (panel.kind == "desktop-window")
+        if (panel.kind == "desktop-window" || panel.kind == "package-display")
             removePanel(panel.id, workspaceFor(panel.environment));
     }
 }
@@ -268,13 +269,15 @@ DashboardDefinition DashboardPage::snapshot() const
 {
     auto definition = m_definition;
     definition.panels.removeIf([](const DashboardPanelDefinition &panel) {
-        return panel.kind == "desktop-window";
+        return panel.kind == "desktop-window" || panel.kind == "package-display";
     });
     // Desktop panels disappear with their session instead of becoming empty tiles.
+    DashboardDefinition canvas = definition;
+    canvas.layout = m_canvasWorkspace->saveLayout();
     DashboardDefinition tiling = definition;
     tiling.layout = m_tilingWorkspace->saveLayout();
     definition.layout = {{"version", 2}, {"mode", environment()},
-                         {"canvas", m_canvasWorkspace->saveLayout()},
+                         {"canvas", DashboardStore::layoutForEnvironment(canvas, "canvas")},
                          {"tiling", DashboardStore::layoutForEnvironment(tiling, "tiling")}};
     return definition;
 }
@@ -306,7 +309,7 @@ void DashboardPage::setCanAddPanel(std::function<bool()> check)
 
 QString DashboardPage::panelTitle(const QString &kind) const
 {
-    if (kind == "desktop-window")
+    if (kind == "desktop-window" || kind == "package-display")
         return tr("Desktop window");
     for (const auto &descriptor : DashboardWidgetFactory::catalog()) {
         if (descriptor.id == kind)
@@ -317,6 +320,8 @@ QString DashboardPage::panelTitle(const QString &kind) const
 
 QWidget *DashboardPage::createContent(const QString &kind, const QString &mode)
 {
+    if (kind == "package-display")
+        return new PackageDisplayWidget;
     if (kind == "desktop-window")
         return new DesktopWindowWidget;
     const QString scope = mode == "tiling" ? m_definition.options.tilingFileScope : m_definition.options.canvasFileScope;
@@ -361,6 +366,20 @@ void DashboardPage::tearOutBrowserTab(BrowserWidget *source, QWebEngineView *vie
 
 bool DashboardPage::addWidgetKind(const QString &kind)
 {
+    if (kind.startsWith("package-display:")) {
+        const QString identity = kind.mid(QString("package-display:").size());
+        for (const auto &display : m_factory->packageDisplays()) {
+            if (display.id != identity)
+                continue;
+            QString error;
+            const bool attached = attachPackageDisplay(display, error);
+            if (!attached)
+                showSaveError(error);
+            return attached;
+        }
+        showSaveError(tr("This package display is no longer available. Refresh its status."));
+        return false;
+    }
     return addPanel(kind, true);
 }
 
@@ -368,7 +387,7 @@ bool DashboardPage::addPanel(const QString &kind, bool chooseWindow)
 {
     if (kind == "desktop-window" && environment() != "tiling")
         return false;
-    bool known = kind == "desktop-window";
+    bool known = kind == "desktop-window" || kind == "package-display";
     for (const auto &descriptor : DashboardWidgetFactory::catalog())
         known = known || descriptor.id == kind;
     if (!known)
@@ -434,7 +453,14 @@ void DashboardPage::chooseApp()
         existing->activateWindow();
         return;
     }
-    auto *dialog = new DashboardAppsDialog(m_factory->workflows(), this, environment() == "tiling");
+    m_factory->requestPackageDisplayInventory();
+    auto *dialog = new DashboardAppsDialog(m_factory->workflows(), this, environment() == "tiling", m_factory->packageDisplays());
+    connect(dialog, &DashboardAppsDialog::packageDisplayRequested, this, [this](const QString &id) {
+        addWidgetKind("package-display:" + id);
+    });
+    connect(m_factory, &DashboardWidgetFactory::packageDisplaysChanged, dialog, [this, dialog]() {
+        dialog->setPackageDisplays(m_factory->packageDisplays());
+    });
     connect(dialog, &DashboardAppsDialog::cloneRequested, this, &DashboardPage::cloneWorkflowRequested);
     connect(dialog, &DashboardAppsDialog::workflowRequested, this, &DashboardPage::appWorkflowRequested);
     connect(dialog, &DashboardAppsDialog::desktopApplicationRequested,
@@ -480,6 +506,39 @@ bool DashboardPage::launchDesktopApplication(const DesktopApplicationEntry &appl
     desktop->setApplicationIcon(DesktopApplicationCatalog::applicationIcon(application));
     desktop->launchApplication(application);
     refreshDock();
+    return true;
+}
+
+bool DashboardPage::attachPackageDisplay(const QString &title, qint64 processId, const QString &startToken, QString &error)
+{
+    return attachPackageDisplay(PackageDisplayMeta{{}, title, processId, startToken}, error);
+}
+
+bool DashboardPage::attachPackageDisplay(const PackageDisplayMeta &display, QString &error)
+{
+    if (display.processId > 0) {
+        const auto choices = DesktopWindowWidget::availableWindows(error);
+        if (!error.isEmpty() || !DesktopWindowWidget::processWindowId(choices, display.processId, display.processStartToken, error))
+            return false;
+    } else if (display.nativePackage.interfaceVersion != 1 || !PackageDisplayWidget::validateOptions(display.options, error)) {
+        if (error.isEmpty())
+            error = tr("Invalid installed package display.");
+        return false;
+    }
+    if (!addPanel("package-display", false)) {
+        error = tr("The dashboard cannot accept another display panel.");
+        return false;
+    }
+    const QString id = m_definition.panels.last().id;
+    auto *frame = m_workspace->findChild<QWidget *>("dashboardPanel_" + id);
+    auto *window = frame ? frame->findChild<PackageDisplayWidget *>() : nullptr;
+    if (!window) {
+        removePanel(id, m_workspace);
+        return false;
+    }
+    window->setDisplay(display);
+    m_workspace->setPanelTitle(id, display.title);
+    connect(window, &PackageDisplayWidget::displayFailed, this, &DashboardPage::showSaveError);
     return true;
 }
 
@@ -582,6 +641,23 @@ void DashboardPage::chooseWidget()
         item->setData(Qt::UserRole, descriptor.id);
         item->setSizeHint(QSize(420, 64));
     }
+    const auto updateDisplays = [this, list]() {
+        const QString selected = list->currentItem()
+            ? list->currentItem()->data(Qt::UserRole).toString() : QString();
+        for (int row = list->count() - 1; row >= 0; --row) {
+            if (list->item(row)->data(Qt::UserRole).toString().startsWith("package-display:"))
+                delete list->takeItem(row);
+        }
+        for (const auto &display : m_factory->packageDisplays()) {
+            auto *item = new QListWidgetItem(display.title + tr("\nLive package display"), list);
+            item->setData(Qt::UserRole, "package-display:" + display.id);
+            if (item->data(Qt::UserRole).toString() == selected)
+                list->setCurrentItem(item);
+        }
+    };
+    updateDisplays();
+    connect(m_factory, &DashboardWidgetFactory::packageDisplaysChanged, dialog, updateDisplays);
+    m_factory->requestPackageDisplayInventory();
     if (environment() == "tiling") {
         auto *desktop = new QListWidgetItem(tr("Desktop window\nChoose an app window. Available capture and control depend on your desktop."), list);
         desktop->setData(Qt::UserRole, "desktop-window");
@@ -730,7 +806,7 @@ void DashboardPage::closePanel(const QString &id, DashboardWorkspace *workspace)
     if (workspace == m_tilingWorkspace && m_definition.options.autoAcquireApps) {
         auto *frame = workspace->findChild<QWidget *>("dashboardPanel_" + id);
         auto *window = frame ? frame->findChild<DesktopWindowWidget *>() : nullptr;
-        if (window && window->acquiredWindowId()) {
+        if (window && window->acquiredWindowId() && !window->property("packageDisplay").toBool()) {
             QString error;
             if (!window->requestClose(error)) {
                 showSaveError(error);
@@ -757,20 +833,27 @@ void DashboardPage::bindWindow(const QString &id, QWidget *content)
 {
     auto *window = qobject_cast<DesktopWindowWidget *>(content);
     if (!window)
+        window = content->findChild<DesktopWindowWidget *>();
+    if (!window)
         return;
-    const auto update = [this, id, window]() {
+    auto *workspace = m_workspace;
+    for (const auto &panel : m_definition.panels) {
+        if (panel.id == id)
+            workspace = workspaceFor(panel.environment);
+    }
+    const auto update = [this, id, window, workspace]() {
         const QString title = window->acquiredWindowTitle();
-        m_tilingWorkspace->setPanelTitle(id, title.isEmpty() ? tr("Desktop window") : title);
-        m_tilingWorkspace->setPanelIcon(id, window->applicationIcon());
+        workspace->setPanelTitle(id, title.isEmpty() ? tr("Desktop window") : title);
+        workspace->setPanelIcon(id, window->applicationIcon());
         refreshDock();
     };
     connect(window, &DesktopWindowWidget::windowChanged, this, update);
     connect(window, &DesktopWindowWidget::applicationIconChanged, this, update);
     // Remove the panel after the sender has finished releasing native resources.
-    connect(window, &DesktopWindowWidget::windowUnavailable, this, [this, id](const QString &reason) {
-        if (!m_tilingWorkspace->findChild<QWidget *>("dashboardPanel_" + id))
+    connect(window, &DesktopWindowWidget::windowUnavailable, this, [this, id, workspace](const QString &reason) {
+        if (!workspace->findChild<QWidget *>("dashboardPanel_" + id))
             return;
-        removePanel(id, m_tilingWorkspace);
+        removePanel(id, workspace);
         if (!reason.isEmpty()) {
             showSaveError(reason);
             m_retry->hide();

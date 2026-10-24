@@ -22,6 +22,8 @@ struct Context {
     QStringList extraDockpipeEnv;
     /// Per-launch sensitive inputs. Never serialized or included in command previews.
     QMap<QString, QString> transientLaunchEnv;
+    /// Optional consumer capacity for one streamed output line; never serialized.
+    int maximumOutputLineBytes = 0;
 
     static Context createNew();
     static Context fromJson(const QJsonObject &o);
