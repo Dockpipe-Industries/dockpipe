@@ -38,32 +38,13 @@ func ResolveRuntimeFilePath(repoRoot, runtimeName string) (string, error) {
 	return p, nil
 }
 
-// tryResolveResolver returns the path to a resolver profile file if it exists.
+// tryResolveResolver uses the shared installed-package and source profile lookup.
 func tryResolveResolver(repoRoot, name string) string {
-	name = strings.TrimSpace(name)
-	if name == "" {
+	profile, err := ResolveResolverFilePath(repoRoot, name)
+	if err != nil {
 		return ""
 	}
-	var candidates []string
-	if !UsesBundledAssetLayout(repoRoot) {
-		candidates = append(candidates, nestedResolverProfileCandidates(repoRoot, name, ResolverCompileRootsCached(repoRoot))...)
-	} else {
-		wfRoot := WorkflowsRootDir(repoRoot)
-		candidates = append(candidates,
-			filepath.Join(wfRoot, name, "profile"),
-			filepath.Join(wfRoot, name),
-		)
-	}
-	candidates = append(candidates,
-		filepath.Join(CoreDir(repoRoot), "resolvers", name),
-		filepath.Join(CoreDir(repoRoot), "resolvers", name, "profile"),
-	)
-	for _, p := range candidates {
-		if st, err := os.Stat(p); err == nil && !st.IsDir() {
-			return p
-		}
-	}
-	return ""
+	return profile
 }
 
 // LoadIsolationProfile loads and merges KEY=value maps from runtime and resolver profiles.
