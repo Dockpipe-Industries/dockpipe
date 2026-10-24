@@ -1,4 +1,6 @@
 #include "PackageDisplayQualification.h"
+#include "QualificationWorkflowLaunch.h"
+#include "WorkflowLaunchDialog.h"
 #include "ContextStore.h"
 #include "DashboardAppsDialog.h"
 #include "DashboardPage.h"
@@ -12,6 +14,7 @@
 #include "PackageSurfacePage.h"
 
 #include <QAbstractButton>
+#include <QAction>
 #include <QApplication>
 #include <QComboBox>
 #include <QDialogButtonBox>
@@ -63,7 +66,7 @@ bool loadConfiguration(const QStringList &arguments, QString &error)
     }
     configuration = document.object();
     const QSet<QString> keys{"schema", "workspace", "surface_id", "resource_id", "output",
-                             "profile_id", "allow_input", "timeout_ms"};
+                             "profile_id", "allow_input", "timeout_ms", "launch"};
     for (auto entry = configuration.begin(); entry != configuration.end(); ++entry) {
         if (!keys.contains(entry.key())) {
             error = "Unknown qualification configuration field.";
@@ -78,13 +81,31 @@ bool loadConfiguration(const QStringList &arguments, QString &error)
     if (configuration.value("schema") != 1 || !workspace.isAbsolute() || !workspace.isDir()
         || !output.isAbsolute() || configuration.value("output").toString().size() > 4096
         || !identity.match(configuration.value("surface_id").toString()).hasMatch()
-        || !identity.match(configuration.value("resource_id").toString()).hasMatch()
+        || (!configuration.contains("launch") && !identity.match(configuration.value("resource_id").toString()).hasMatch())
         || !profile.match(configuration.value("profile_id").toString()).hasMatch()
         || !configuration.value("allow_input").isBool()
         || !timeout.isDouble() || timeout.toInt() < 30000 || timeout.toInt() > 180000
         || timeout.toDouble() != timeout.toInt()) {
         error = "Invalid qualification paths, identities, input policy or timeout.";
         return false;
+    }
+    if (configuration.contains("launch")) {
+        const auto value = configuration.value("launch");
+        const auto launch = value.toObject();
+        const QSet<QString> launchKeys{"action_id", "workflow_id", "inputs"};
+        if (!value.isObject() || configuration.contains("resource_id") || launch.size() != launchKeys.size()
+            || !identity.match(launch.value("action_id").toString()).hasMatch()
+            || !identity.match(launch.value("workflow_id").toString()).hasMatch()
+            || !launch.value("inputs").isObject() || launch.value("inputs").toObject().size() > 32) {
+            error = "Invalid qualification launch configuration or mixed resource modes.";
+            return false;
+        }
+        for (auto entry = launch.begin(); entry != launch.end(); ++entry) {
+            if (!launchKeys.contains(entry.key())) {
+                error = "Unknown qualification launch configuration field.";
+                return false;
+            }
+        }
     }
     return true;
 }
@@ -138,19 +159,21 @@ public:
     {
         m_clock.start();
         m_receipt = {{"schema", 1}, {"scope", "full-installed-launcher"},
-            {"qualifier_revision", 5}, {"real_main_window", true}, {"real_catalog_and_snapshot", true},
+            {"qualifier_revision", 6}, {"real_main_window", true}, {"real_catalog_and_snapshot", true},
             {"resource_lifecycle_owned_by_qualifier", false},
             {"profile_path", ContextStore::configDir()},
             {"application_path", application.applicationFilePath()},
             {"cli_path", DockpipeChoices::preferredDockpipeBinary(configuration.value("workspace").toString())},
             {"input_method", "programmatic Qt native Shift press/release; transport acknowledgement required"}};
+        m_resourceId = configuration.value("resource_id").toString();
+        m_receipt["launch_mode"] = configuration.contains("launch");
         m_timer.setInterval(200);
         connect(&m_timer, &QTimer::timeout, this, [this]() { advance(); });
         m_timer.start();
     }
 
 private:
-    enum class Phase { Discover, Surface, Input, CanvasPicker, Canvas, TilingPicker, Tiling, Return, Closed, Disconnected, Reopen };
+    enum class Phase { Discover, Surface, Input, CanvasPicker, Canvas, TilingPicker, Tiling, Return, Closed, Disconnected, Reopen, LaunchAction, LaunchDialog, LaunchResource };
 
     LauncherDisplaySurface *visibleSurface() const
     {
@@ -372,20 +395,139 @@ private:
         return m_dashboard->environment() == environment;
     }
 
+    void triggerLaunch()
+    {
+        const auto launch = configuration.value("launch").toObject();
+        const QString workflowId = launch.value("workflow_id").toString();
+        const QString actionId = launch.value("action_id").toString();
+        const auto actions = m_surfacePage->findChildren<QAction *>("surfaceAction-" + actionId);
+        if (actions.size() > 1) {
+            finish(false, "Qualification action is ambiguous on the installed surface.");
+            return;
+        }
+        auto *action = actions.size() == 1 ? actions.first() : nullptr;
+        if (!action || !action->isEnabled() || !m_surfacePage->m_stateFresh
+            || m_surfacePage->m_snapshotBusy || QApplication::activeModalWidget())
+            return;
+        const auto declared = m_surfacePage->m_actions.value(action);
+        if (declared.workflowId != workflowId || declared.scope != "surface") {
+            finish(false, "Qualification action does not declare the admitted public workflow.");
+            return;
+        }
+        m_launchWorkflow = m_window.findWorkflowMeta(configuration.value("workspace").toString(), workflowId, {});
+        QString error;
+        if (!m_launchWorkflow.supported || m_launchWorkflow.workflowId != workflowId
+            || m_launchWorkflow.inputs.isEmpty()
+            || !QualificationWorkflowLaunch::validate(m_launchWorkflow, launch.value("inputs").toObject(), error)) {
+            finish(false, error.isEmpty() ? "Qualification workflow metadata is unavailable or has no input dialog." : error);
+            return;
+        }
+        for (const auto &resource : m_surfacePage->m_resources)
+            m_previousResources.insert(resource.id);
+        transition(Phase::LaunchDialog);
+        m_receipt["launch_action_triggered"] = true;
+        m_receipt["launch_action_id"] = actionId;
+        // Return to the event loop before triggering a signal that opens dialog.exec().
+        QTimer::singleShot(0, this, [this, action = QPointer<QAction>(action)]() {
+            if (m_finished || !action || !m_surfacePage)
+                return;
+            action->trigger();
+            if (m_finished)
+                return;
+            if (!m_dialogAccepted) {
+                finish(false, "Qualification workflow dialog was not accepted through its Launch button.");
+                return;
+            }
+            m_launchId = m_surfacePage->m_expectedLaunchId;
+            if (m_launchId.isEmpty()) {
+                finish(false, "Qualification public workflow did not register a launch invocation.");
+                return;
+            }
+            m_receipt["launch_id"] = m_launchId;
+            m_receipt["launch_workflow_id"] = m_launchWorkflow.workflowId;
+            transition(Phase::LaunchResource);
+        });
+    }
+
+    void submitLaunchDialog()
+    {
+        if (m_dialogAccepted)
+            return;
+        auto *dialog = qobject_cast<WorkflowLaunchDialog *>(QApplication::activeModalWidget());
+        if (!dialog || !m_window.isAncestorOf(dialog))
+            return;
+        QString error;
+        const auto outcome = QualificationWorkflowLaunch::submit(*dialog, m_launchWorkflow,
+            configuration.value("launch").toObject().value("inputs").toObject(), error);
+        if (outcome == QualificationWorkflowLaunch::Outcome::Pending)
+            return;
+        if (outcome == QualificationWorkflowLaunch::Outcome::Failure) {
+            dialog->reject();
+            finish(false, error.isEmpty() ? "Qualification Launch button did not accept the workflow dialog." : error);
+            return;
+        }
+        m_dialogAccepted = true;
+        m_receipt["launch_dialog_accepted"] = true;
+        m_receipt["launch_dialog_elapsed_ms"] = double(m_clock.elapsed() - m_phaseSince);
+    }
+
+    void discoverLaunchResource()
+    {
+        if (!m_surfacePage->m_stateFresh)
+            return;
+        QVector<QualificationWorkflowLaunch::Resource> resources;
+        for (const auto &resource : m_surfacePage->m_resources)
+            resources.append({resource.id, resource.launchId, resource.packageDisplay || resource.displayProcessId > 0});
+        QString error;
+        const QString selected = QualificationWorkflowLaunch::resolve(m_launchId, m_previousResources, resources, error);
+        if (!error.isEmpty()) {
+            finish(false, error);
+            return;
+        }
+        if (!selected.isEmpty()) {
+            m_resourceId = selected;
+            m_receipt["launched_resource_id"] = selected;
+            m_receipt["launch_resource_correlated"] = true;
+            m_receipt["launch_resource_elapsed_ms"] = double(m_clock.elapsed() - m_phaseSince);
+            transition(Phase::Surface);
+        } else if (m_surfacePage->m_expectedLaunchId != m_launchId) {
+            finish(false, "Qualification launch was cancelled or resolved without its admitted fresh resource.");
+        }
+    }
+
     void advance()
     {
         if (m_clock.elapsed() > configuration.value("timeout_ms").toInt()) {
             finish(false, "Qualification deadline exceeded; installed catalog, display readiness or lifecycle did not satisfy the current phase.");
             return;
         }
-        const QString resource = configuration.value("resource_id").toString();
+        const QString resource = m_resourceId;
         switch (m_phase) {
         case Phase::Discover:
             m_surfacePage = m_window.m_surfacePages.value(configuration.value("surface_id").toString());
             if (m_surfacePage) {
                 m_window.selectPage(m_window.m_stack->indexOf(m_surfacePage));
-                transition(Phase::Surface);
+                transition(configuration.contains("launch") ? Phase::LaunchAction : Phase::Surface);
             }
+            break;
+        case Phase::LaunchAction:
+            triggerLaunch();
+            break;
+        case Phase::LaunchDialog:
+            if (m_clock.elapsed() - m_phaseSince > 15000) {
+                if (auto *dialog = qobject_cast<WorkflowLaunchDialog *>(QApplication::activeModalWidget()))
+                    dialog->reject();
+                finish(false, "Qualification workflow dialog deadline exceeded.");
+                return;
+            }
+            submitLaunchDialog();
+            break;
+        case Phase::LaunchResource:
+            if (m_clock.elapsed() - m_phaseSince > 120000) {
+                finish(false, "Qualification public workflow launch deadline exceeded.");
+                return;
+            }
+            discoverLaunchResource();
             break;
         case Phase::Surface: {
             auto *selector = m_surfacePage->findChild<QComboBox *>("surfaceResourceSelector");
@@ -556,6 +698,11 @@ private:
     qint64 m_phaseSince = 0;
     quint64 m_acknowledgements = 0;
     QString m_displayId;
+    QString m_resourceId;
+    QString m_launchId;
+    QSet<QString> m_previousResources;
+    WorkflowMeta m_launchWorkflow;
+    bool m_dialogAccepted = false;
     bool m_finished = false;
 };
 
