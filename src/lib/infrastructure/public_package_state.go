@@ -288,7 +288,7 @@ func publishWholePublicPackageState(workdir string, location durablePackageLocat
 	if err := ensurePrivateSubdirectory(location.stateRoot, packagesRoot); err != nil {
 		return err
 	}
-	temporary, err := os.MkdirTemp(packagesRoot, "."+location.ownerDigest+".public-import-")
+	temporary, err := createPrivateTempDirectory(packagesRoot, "."+location.ownerDigest+".public-import-")
 	if err != nil {
 		return err
 	}

@@ -1,5 +1,7 @@
 ##### Accepted post-reconciliation implementation plan — 2026-08-04
 
+Repository ownership note: package paths in this record describe external source. Current catalog packages live in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages); previously extracted [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) and [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) remain in their own repositories. Historical paths and receipts do not recreate a local package tree.
+
 **Plan status and boundary.** This is the decision-complete implementation plan authorized by the
 accepted product/storage direction above. It does not select schema syntax, add an operation, or
 authorize any implementation slice. The working state name remains `reconciled_outcome_unknown`

@@ -3,59 +3,7 @@ name: Native desktop qualification
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - .github/workflows/native-macos-symbols.yml
-      - release/dependencies/spatialweb-browser.lock.json
-      - release/packaging/prepare-browser-sdk.py
-      - release/packaging/tests/test_prepare_browser_sdk.py
-      - release/packaging/desktop/macos/protect-owned-binaries.py
-      - release/packaging/desktop/macos/package.sh
-      - release/packaging/desktop/macos/create-dmg.sh
-      - release/packaging/tests/test_macos_dmg.py
-      - release/packaging/tests/test_native_symbol_boundaries.py
-      - src/app/tooling/dockpipe-launcher/src/DashboardWorkspace.cpp
-      - src/app/tooling/dockpipe-launcher/tests/DashboardWorkspaceTest.cpp
-      - src/app/tooling/dockpipe-launcher/tests/DashboardBrowserPerformanceTest.cpp
-      - src/app/tooling/dockpipe-launcher/tests/DesktopAppWindowWinTest.cpp
-      - src/app/tooling/dockpipe-launcher/tests/WindowsTestLauncher.cpp
-      - src/app/tooling/dockpipe-launcher/CMakeLists.txt
-      - src/app/tooling/dockpipe-launcher/src/Browser*
-      - src/app/tooling/dockpipe-launcher/tests/BrowserExtension*
-      - src/app/tooling/dockpipe-launcher/src/Terminal*
-      - src/app/tooling/dockpipe-launcher/tests/Terminal*
-      - src/app/tooling/dockpipe-launcher/resources/theme/**
-      - src/app/tooling/dockpipe-launcher/src/BrowserTabBar.*
-      - src/app/tooling/dockpipe-launcher/src/SendInputWidget.*
-      - src/app/tooling/dockpipe-launcher/src/CanvasPanel.*
-      - src/app/tooling/dockpipe-launcher/src/DashboardWidget*
-      - src/app/tooling/dockpipe-launcher/tests/CanvasWidgetPresentationTest.cpp
-      - src/app/tooling/dockpipe-launcher/tests/BrowserTest.cpp
-      - src/app/tooling/dockpipe-launcher/src/Git*
-      - src/app/tooling/dockpipe-launcher/src/ProjectGit*
-      - src/app/tooling/dockpipe-launcher/tests/Git*
-      - src/app/tooling/dockpipe-launcher/tests/ProjectGitTest.cpp
-      - src/lib/infrastructure/workspace_git*
-      - src/lib/application/workspace_git_cmd.go
-      - src/app/tooling/dockpipe-launcher/src/LauncherStatusBar.*
-      - src/app/tooling/dockpipe-launcher/src/MainWindow*
-      - src/app/tooling/dockpipe-launcher/tests/LauncherStatusBarTest.cpp
-      - src/app/tooling/dockpipe-launcher/src/ProjectFilesWidget.*
-      - src/app/tooling/dockpipe-launcher/src/FileExplorer*
-      - src/app/tooling/dockpipe-launcher/src/DashboardFilesWidget.*
-      - src/app/tooling/dockpipe-launcher/tests/DashboardFilesWidgetTest.cpp
-      - src/app/tooling/dockpipe-launcher/src/MarkdownPreview.*
-      - src/app/tooling/dockpipe-launcher/src/MermaidRenderer.*
-      - src/app/tooling/dockpipe-launcher/src/WebMermaidRenderer.*
-      - src/app/tooling/dockpipe-launcher/resources/mermaid/**
-      - src/app/tooling/dockpipe-launcher/mermaid.qrc
-      - src/app/tooling/dockpipe-launcher/tests/WebMermaidRendererTest.cpp
-      - src/app/tooling/dockpipe-launcher/src/CanvasIcons.*
-      - src/app/tooling/dockpipe-launcher/tests/ProjectFilesMarkdownTest.cpp
-      - src/app/tooling/dockpipe-launcher/src/WorkspacePackageManager.*
-      - src/app/tooling/dockpipe-launcher/tests/ProjectFilesGraphTest.cpp
-      - src/app/tooling/dockpipe-launcher/tests/WorkspacePackageManagerTest.cpp
-      - src/app/tooling/dockpipe-launcher/tests/WorkspacePackageFixture.cpp
-
+    branches: [dev, staging, master]
 permissions:
   contents: read
   attestations: read
@@ -116,6 +64,7 @@ jobs:
         shell: bash
         run: python3 -m unittest discover -s release/packaging/tests -p test_native_symbol_boundaries.py -v
       - name: Qualify DMG creation and bounded recovery
+        timeout-minutes: 3
         shell: bash
         run: |
           set -euo pipefail
@@ -124,7 +73,7 @@ jobs:
           mkdir "$proof/source"
           printf '%s\n' 'Disposable Dockpipe DMG qualification fixture' > "$proof/source/fixture.txt"
           bash release/packaging/desktop/macos/create-dmg.sh "$proof/source" "$proof/fixture.dmg"
-          hdiutil verify "$proof/fixture.dmg"
+          bash release/packaging/desktop/macos/verify-dmg.sh "$proof/fixture.dmg"
       - name: Build and audit the owned release binaries
         shell: bash
         run: |
@@ -310,3 +259,49 @@ jobs:
           path: ${{ runner.temp }}/dockpipe-native-terminal/windows-loader-trace
           if-no-files-found: ignore
           retention-days: 7
+
+  host-version:
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: version
+        shell: bash
+        run: printf 'version=%s\n' "$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+  flatpak-host:
+    needs: host-version
+    uses: ./.github/workflows/flatpak.yml
+    permissions:
+      contents: read
+      attestations: read
+    with:
+      version: ${{ needs.host-version.outputs.version }}
+
+  required-host:
+    name: Native desktop host qualification
+    permissions: {}
+    if: ${{ always() }}
+    needs: [owned-symbols, windows-terminal, flatpak-host]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every real host qualification result
+        env:
+          QUALIFICATION_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PYTHON'
+          import json
+          import os
+          import sys
+
+          results = json.loads(os.environ['QUALIFICATION_RESULTS'])
+          expected = {'owned-symbols', 'windows-terminal', 'flatpak-host'}
+          if set(results) != expected:
+              sys.exit('Host qualification result set differs')
+          failed = [name for name in expected if results[name]['result'] != 'success']
+          if failed:
+              sys.exit('Host qualification failed, skipped or cancelled: ' + ', '.join(sorted(failed)))
+          PYTHON

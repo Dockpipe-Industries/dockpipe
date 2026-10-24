@@ -55,13 +55,13 @@ def inventory(root):
     return sorted(entries, key=lambda entry: entry["path"])
 
 
-def write_archive(root, archive, entries):
+def write_archive(root, archive, entries, archive_root=ARCHIVE_ROOT):
     with archive.open("xb") as destination:
         with gzip.GzipFile(fileobj=destination, mode="wb", filename="", mtime=0) as compressed:
             with tarfile.open(fileobj=compressed, mode="w", format=tarfile.PAX_FORMAT) as bundle:
                 for entry in entries:
                     source = root / entry["path"]
-                    member = tarfile.TarInfo(ARCHIVE_ROOT + "/" + entry["path"])
+                    member = tarfile.TarInfo(archive_root + "/" + entry["path"])
                     member.size = entry["bytes"]
                     member.mode = 0o755 if source.stat().st_mode & 0o111 else 0o644
                     with source.open("rb") as stream:
@@ -82,7 +82,7 @@ def source_identity(root):
                 raise ValueError("Launcher source snapshot must contain regular authored files")
             files.append(path)
     files.extend(root / name for name in (
-        "LICENSE", "packages/native-sdk/assets/scripts/elf_artifacts.py",
+        "LICENSE", "release/packaging/lib/elf_artifacts.py",
         "release/packaging/desktop/licenses/Qt-LGPL-3.txt",
         "release/packaging/desktop/licenses/Qt-GPL-3.txt",
         "release/packaging/build-launcher-sdk.py",
@@ -223,7 +223,8 @@ def package_sdk(relocated, native_build, source_sha, identity, output, browser):
             "source_state": "committed-snapshot" if source_sha else "development",
             "source_digest": identity, "compiler": compiler_identity(native_build),
             "dependencies": {"spatialweb_browser": browser},
-            "abi": {"cxx_standard": 17, "workspace_interface": "com.dockpipe.launcher.WorkspacePackage/2.0"},
+            "abi": {"cxx_standard": 17, "workspace_interface": "com.dockpipe.launcher.WorkspacePackage/2.0",
+                    "display_interface": "com.dockpipe.launcher.DisplayPackage/1.0"},
             "archive": {"name": archive.name, "size_bytes": archive.stat().st_size, "sha256": digest(archive)},
             "file_manifest": {"name": "sdk-files.json", "sha256": hashlib.sha256(manifest_bytes).hexdigest()},
             "checks": ["sdk-component-install", "shared-runtime-symbol-cleanup", "relocated-external-consumer-compile-link"],

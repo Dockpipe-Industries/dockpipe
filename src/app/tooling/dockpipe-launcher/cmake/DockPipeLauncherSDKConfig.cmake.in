@@ -16,6 +16,7 @@ set(DockPipeLauncherSDK_SYSTEM_PROCESSOR "@CMAKE_SYSTEM_PROCESSOR@")
 set(DockPipeLauncherSDK_COMPILER_ID "@CMAKE_CXX_COMPILER_ID@")
 set(DockPipeLauncherSDK_COMPILER_VERSION "@CMAKE_CXX_COMPILER_VERSION@")
 set(DockPipeLauncherSDK_CXX_STANDARD 17)
+set(DockPipeLauncherSDK_DISPLAY_INTERFACE "com.dockpipe.launcher.DisplayPackage/1.0")
 set(DockPipeLauncherSDK_WORKSPACE_INTERFACE "com.dockpipe.launcher.WorkspacePackage/2.0")
 
 foreach(pair IN ITEMS SYSTEM_NAME SYSTEM_PROCESSOR CXX_COMPILER_ID CXX_COMPILER_VERSION)

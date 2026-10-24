@@ -70,7 +70,8 @@ def validate(directory, source_sha):
     browser = browser_dependency()
     if (metadata.get("dependencies") != {"spatialweb_browser": browser}
             or metadata.get("compiler") != browser["compiler"]
-            or metadata.get("abi") != {"cxx_standard": 17, "workspace_interface": "com.dockpipe.launcher.WorkspacePackage/2.0"}
+            or metadata.get("abi") != {"cxx_standard": 17, "workspace_interface": "com.dockpipe.launcher.WorkspacePackage/2.0",
+                                       "display_interface": "com.dockpipe.launcher.DisplayPackage/1.0"}
             or not isinstance(metadata.get("source_digest"), str)
             or not re.fullmatch(r"[0-9a-f]{64}", metadata["source_digest"])):
         raise ValueError("SDK Browser dependency, compiler or workspace interface differs from the committed ABI")
@@ -91,16 +92,27 @@ def validate(directory, source_sha):
     return assets
 
 
-def verify_release(release, tag, source_sha, assets):
-    if (release.get("tag_name") != tag or release.get("target_commitish") != source_sha
+def verify_release(release, tag, source_sha, assets, *, complete=True):
+    if (not isinstance(release, dict) or type(release.get("id")) is not int
+            or release["id"] <= 0 or type(release.get("draft")) is not bool
+            or release.get("tag_name") != tag or release.get("target_commitish") != source_sha
             or release.get("prerelease") is not True):
         raise ValueError("Existing candidate differs from the qualified source identity")
-    remote = release.get("assets", [])
-    if len(remote) != len(assets) or {item.get("name") for item in remote} != set(assets):
+    remote = release.get("assets")
+    if not isinstance(remote, list) or len(remote) > len(assets):
         raise ValueError("Remote candidate inventory differs; published bytes are never replaced")
+    seen = set()
     for item in remote:
-        if any(item.get(key) != value for key, value in assets[item["name"]].items()):
+        name = item.get("name") if isinstance(item, dict) else None
+        if name not in assets or name in seen:
+            raise ValueError("Remote candidate inventory differs; published bytes are never replaced")
+        seen.add(name)
+        if (item.get("state") != "uploaded"
+                or any(item.get(key) != value for key, value in assets[name].items())):
             raise ValueError("Remote candidate bytes differ; published bytes are never replaced")
+    if complete and seen != set(assets):
+        raise ValueError("Remote candidate inventory differs; published bytes are never replaced")
+    return seen
 
 
 def verify_tag(reference, source_sha, *, allow_missing=False):
@@ -118,30 +130,76 @@ def verify_tag(reference, source_sha, *, allow_missing=False):
     raise ValueError("Candidate tag does not resolve to the exact qualified source commit")
 
 
+RELEASE_FIELDS = ("{id,tag_name,target_commitish,prerelease,draft,html_url,"
+                  "assets:[.assets[]|{name,size,digest,state}]}")
+
+
+def read_release(identity, tag):
+    if type(identity) is not int or identity <= 0:
+        raise ValueError("Candidate release ID is invalid")
+    endpoint = f"repos/{REPOSITORY}/releases/{identity}"
+    release = json.loads(run(["gh", "api", "--hostname", "github.com", endpoint,
+                              "--jq", RELEASE_FIELDS]))
+    if (not isinstance(release, dict) or release.get("id") != identity
+            or release.get("tag_name") != tag):
+        raise ValueError("Candidate release identity changed during lookup")
+    return release
+
+
 def find_release(tag):
-    # The tag endpoint can return 404 for an authenticated draft. The release
-    # inventory includes drafts; bind its numeric ID before reading assets.
+    # Project each page on the server response before capturing stdout. Release
+    # bodies and unrelated asset inventories are neither needed nor admitted.
+    selection = "{count:length,matches:[.[]|select(.tag_name==" + json.dumps(tag) + ")|{id,tag_name}]}"
     for page in range(1, 6):
         endpoint = f"repos/{REPOSITORY}/releases?per_page=100&page={page}"
-        releases = json.loads(run(["gh", "api", "--hostname", "github.com", endpoint]))
-        if (not isinstance(releases, list) or len(releases) > 100
-                or any(not isinstance(release, dict) for release in releases)):
+        selected = json.loads(run(["gh", "api", "--hostname", "github.com", endpoint,
+                                   "--jq", selection]))
+        if (not isinstance(selected, dict) or set(selected) != {"count", "matches"}
+                or type(selected["count"]) is not int or not 0 <= selected["count"] <= 100
+                or not isinstance(selected["matches"], list)
+                or len(selected["matches"]) > selected["count"]):
             raise ValueError("Candidate release inventory is invalid")
-        matches = [release for release in releases if release.get("tag_name") == tag]
+        matches = selected["matches"]
         if len(matches) > 1:
             raise ValueError("Candidate release tag is ambiguous")
         if matches:
-            release_id = matches[0].get("id")
-            if type(release_id) is not int or release_id <= 0:
-                raise ValueError("Candidate release ID is invalid")
-            endpoint = f"repos/{REPOSITORY}/releases/{release_id}"
-            release = json.loads(run(["gh", "api", "--hostname", "github.com", endpoint]))
-            if not isinstance(release, dict) or release.get("id") != release_id or release.get("tag_name") != tag:
-                raise ValueError("Candidate release identity changed during lookup")
-            return release
-        if len(releases) < 100:
+            match = matches[0]
+            if not isinstance(match, dict) or match.get("tag_name") != tag:
+                raise ValueError("Candidate release lookup selected another tag")
+            return read_release(match.get("id"), tag)
+        if selected["count"] < 100:
             return None
     raise ValueError("Candidate release lookup exceeds capacity; no publication attempted")
+
+
+def create_release(tag, source_sha, title, notes):
+    endpoint = f"repos/{REPOSITORY}/releases"
+    created = json.loads(run([
+        "gh", "api", "--hostname", "github.com", "--method", "POST", endpoint,
+        "-f", "tag_name=" + tag, "-f", "target_commitish=" + source_sha,
+        "-f", "name=" + title, "-f", "body=" + notes,
+        "-F", "draft=true", "-F", "prerelease=true", "-f", "make_latest=false",
+        "--jq", "{id,tag_name}",
+    ]))
+    if not isinstance(created, dict) or created.get("tag_name") != tag:
+        raise ValueError("Created candidate response lacks its exact ID/tag identity")
+    # Never search the eventually consistent release list after a successful POST.
+    return read_release(created.get("id"), tag)
+
+
+def reconcile_assets(directory, release, tag, source_sha, assets):
+    seen = verify_release(release, tag, source_sha, assets, complete=not release["draft"])
+    if release["draft"]:
+        for name in sorted(set(assets) - seen):
+            if name in seen:
+                continue
+            if release["draft"] is not True:
+                raise ValueError("Candidate became published before draft reconciliation completed")
+            run(["gh", "release", "upload", tag, str(directory / name), "--repo", REPOSITORY])
+            release = read_release(release["id"], tag)
+            seen = verify_release(release, tag, source_sha, assets, complete=not release["draft"])
+    verify_release(release, tag, source_sha, assets)
+    return release
 
 
 def publish(directory):
@@ -176,18 +234,11 @@ def publish(directory):
     verify_tag(existing["data"]["repository"]["ref"], source_sha,
                allow_missing=release is None or release.get("draft") is True)
     if release is None:
-        run([
-            "gh", "release", "create", tag, *[str(directory / name) for name in sorted(ASSETS)],
-            "--repo", REPOSITORY, "--target", source_sha, "--draft", "--prerelease",
-            "--latest=false", "--title", "Launcher SDK 1.1.0 candidate",
-            "--notes", "Qualified installed host SDK for SpatialPipe/Cockpit candidate builds. "
-            "No Dockpipe application release or production channel update.",
-        ])
-        release = find_release(tag)
-    if release is None:
-        raise ValueError("Created candidate draft is unavailable in the release inventory")
-    endpoint = f"repos/{REPOSITORY}/releases/{release['id']}"
-    verify_release(release, tag, source_sha, assets)
+        release = create_release(
+            tag, source_sha, "Launcher SDK 1.1.0 candidate",
+            "Qualified installed host SDK for SpatialPipe/Cockpit candidate builds. "
+            "No Dockpipe application release or production channel update.")
+    release = reconcile_assets(directory, release, tag, source_sha, assets)
     tag_state = json.loads(run(query_arguments))
     if tag_state.get("errors"):
         raise ValueError("Could not verify candidate tag")
@@ -197,7 +248,7 @@ def publish(directory):
     if release["draft"]:
         run(["gh", "release", "edit", tag, "--repo", REPOSITORY,
              "--draft=false", "--prerelease", "--latest=false"])
-    final = json.loads(run(["gh", "api", endpoint]))
+    final = read_release(release["id"], tag)
     verify_release(final, tag, source_sha, assets)
     if final["draft"]:
         raise ValueError("SDK candidate remains a draft")

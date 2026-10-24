@@ -14,7 +14,7 @@ Read when building docs workflows, documentation orchestration, or agent-created
   DAG/node evaluation rules before splitting docs work across agents.
 - When generating consumer-repo guidance, seed package-owned deterministic baseline rules before
   repo-specific synthesis. Use
-  `packages/dorkpipe/resolvers/dorkpipe/assets/docs/example-brain/index.md`.
+  [external DorkPipe source](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe/resolvers/dorkpipe/assets/docs/example-brain/index.md).
 
 ## Avoid
 

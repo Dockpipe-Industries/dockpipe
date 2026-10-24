@@ -1,5 +1,7 @@
 # Unified MCP — CLI-First Management and Desktop Integration
 
+Repository ownership note: package paths in this record describe external source. Current catalog packages live in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages); previously extracted [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) and [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) remain in their own repositories. Historical paths and receipts do not recreate a local package tree.
+
 ## Architectural Requirement
 
 Added 2026-10-17; applies to TASK-038, TASK-039, TASK-040, TASK-041 and TASK-042.

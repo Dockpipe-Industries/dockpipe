@@ -421,6 +421,7 @@ type Step struct {
 	// ID is optional; used in logs (e.g. [merge] lines). If empty, runner uses "step N".
 	ID        string                  `yaml:"id,omitempty"`
 	Kind      string                  `yaml:"kind,omitempty"`
+	Shell     string                  `yaml:"shell,omitempty"`
 	CWD       string                  `yaml:"cwd,omitempty"`
 	Scopes    StepScopes              `yaml:"scopes,omitempty"`
 	Run       RunSpec                 `yaml:"run,omitempty"`

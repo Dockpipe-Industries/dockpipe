@@ -143,6 +143,17 @@ qualified native baseline stores and the new Linux amd64 standalone bundles.
 Other native platforms retain their previous qualified package versions until their
 own standalone builds pass. New Linux package proof does not qualify those targets.
 
+The lock may also select an owning-catalog overlay through `catalog.source_commit`,
+`catalog.owned` and `catalog.artifacts`. Each artifact must use the exact
+`Dockpipe-Industries/dockpipe-packages` GitHub release tag
+`catalog-candidate-<full source SHA>` and asset `dockpipe-catalog-<platform>.tar.gz`,
+with its archive size, SHA-256 and nested manifest SHA-256 pinned. The manifest
+must contain exactly the trusted resolver/workflow identities for that platform.
+Catalog ownership cannot overlap core, the repository-quality workflow or the
+independent publishers. Platforms without an artifact retain their baseline;
+an absent platform does not establish native qualification. Changed bytes require
+new package archive names rather than replacing an existing immutable name.
+
 `compose-package-store.py` replaces exactly the identities in separately trusted
 ownership declarations. Candidate metadata cannot grant ownership or replace engine
 core. Every retained and incoming archive must match its digest and declared size.

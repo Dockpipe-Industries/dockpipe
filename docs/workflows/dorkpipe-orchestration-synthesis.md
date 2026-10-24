@@ -1,5 +1,7 @@
 # DorkPipe Orchestration Synthesis
 
+Package source examples below belong to [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages), [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) or [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon), as applicable. Run package-source commands in that owning repository with pinned Dockpipe tools.
+
 ## Task Summaries
 
 - `repo_shape` (ollama): Live Ollama worker output captured in response.md

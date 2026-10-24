@@ -23,11 +23,21 @@ test ! -e "$ROOT/src/scripts/review" || fail "src/scripts/review removed — kee
 test ! -e "$ROOT/src/scripts/dockpipe" || fail "extracted DorkPipe scripts returned under src/scripts"
 test ! -e "$ROOT/scripts/dockpipe" || fail "extracted DorkPipe scripts returned under repo-root scripts"
 for retired in \
-	packages/dorkpipe \
-	packages/dorkpipe-mcp \
-	packages/pipeon \
+	packages \
+	.staging/packages \
+	src/lib/pipelang \
+	src/lib/applicationir \
+	src/cmd/pipelang-streamc \
+	src/cmd/pipelang-native-cpp \
 	src/app/tooling/vscode-extensions/dockpipe-language-support; do
 	test ! -e "$ROOT/$retired" || fail "retired package source returned: $retired"
 done
+
+if rg -n '^replace[[:space:]]|=>[[:space:]]*\.\.?/' go.mod; then
+	fail "source checkout dependency overrides are forbidden in the released module"
+fi
+
+rg -q '^[[:space:]]*github\.com/Dockpipe-Industries/pipelang[[:space:]]+v[0-9]' go.mod ||
+	fail "PipeLang must be consumed through an exact external module version"
 
 echo "test_repo_layout OK"

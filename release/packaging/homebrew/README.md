@@ -4,6 +4,8 @@ This directory contains the staging tap source and the older stable formula stub
 
 ## Staging tap
 
+The synchronizer reads `packages/runtime/latest.json` for host releases. It uses the legacy `packages/latest.json` only when the runtime pointer returns HTTP 404; other failures do not trigger fallback. Marketplace catalog promotion owns the legacy package pointer independently.
+
 `tap/` is the maintained source for the active public
 [`Dockpipe-Industries/homebrew-dockpipe`](https://github.com/Dockpipe-Industries/homebrew-dockpipe)
 repository, with default branch `main`. Its initial native validation and formula

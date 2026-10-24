@@ -65,7 +65,12 @@ results. Local inspection does not start a collector daemon; opted-in remote
 monitoring runs within the existing outbound worker lifecycle.
 
 History is private local JSON under the existing project run store's `executions`
-subdirectory, bounded to the latest 256 executions and 1 MiB. Operations with no
+subdirectory, bounded to the latest 256 executions and 1 MiB. Project observations
+also recover active runtime associations from the runtime-owned host-run registry,
+checking the exact kernel identity of their owner before including them. These
+verified associations take priority over recent completed executions within the
+256-entry result. Registry discovery examines at most 4096 entries per observation.
+Operations with no
 project use the existing global data directory's `runs/executions` subdirectory.
 History updates use a cross-process lock and atomic replacement. It is a recent
 activity cache, not a durable audit log. Heavy concurrency can exceed retention;
@@ -107,16 +112,24 @@ new execution or authorization path.
 | Capability | Linux | macOS | Windows |
 | --- | --- | --- | --- |
 | Host/Docker/worker lifecycle metadata | Implemented, local tests | Implemented, cross-build only | Implemented, cross-build only |
-| Process start identity and System discovery | `/proc`, including boot identity | Unavailable | Unavailable |
-| Host CPU and resident memory | Implemented | Unavailable | Unavailable |
+| Process start identity and System discovery | `/proc`, including boot identity | BSD creation seconds/microseconds; native focused tests | Creation FILETIME; native limited-user tests |
+| Host CPU and resident memory | Implemented | Unavailable | Cumulative process CPU; resident memory unavailable |
 | Selected Docker resource metrics | Docker CLI; fixture-qualified | Same CLI contract; native unqualified | Same CLI contract; native unqualified |
-| QEMU host association/start verification | Existing VM runtime adapter | VM runtime unsupported | Association unavailable without native start identity |
+| QEMU host association/start verification | Existing VM runtime adapter | Package adapter implemented; native identity tests pass; complete association qualification pending | Package adapter implemented; native identity tests pass; complete association qualification pending |
 | Whole-system resources | CPU, memory, swap, root disk, network, uptime/load | Unavailable | CPU, physical memory, system-volume capacity, network and uptime; native qualification pending |
 | Opted-in remote monitoring | Outbound snapshots | Docker inventory; native resources unavailable | Worker runtime unsupported |
 
 Remote worker execution uses the same local recorder on the worker. Existing
 broker job status and raw logs are available in **Executions → Runs & logs**. Remote monitoring adds an
 explicitly authorized snapshot channel, never an arbitrary remote shell.
+
+Process inspection on Windows holds a process handle while reading its creation
+FILETIME and parent PID, then checks that the same kernel object remains live.
+macOS samples fixed-size BSD process metadata twice and admits only an unchanged
+creation timestamp. Both collectors check cancellation between bounded native
+calls and never read process arguments or environment. Discovery retains at most
+4,096 records from at most 8,192 candidates; inaccessible entries produce an
+explicit partial-inventory error. Unsupported counters remain null.
 
 ## Overall resources and remote machines
 
@@ -134,7 +147,8 @@ On Windows, whole-system measurements use native Windows APIs through the same
 CLI snapshot contract. CPU and network rates appear after two samples. Disk
 capacity describes the Windows system volume. Unix load average and swap are
 unavailable; Windows commit capacity is not reported as physical swap. This does
-not add Windows per-process discovery or per-process CPU/memory metrics.
+not describe per-process counters. Windows process discovery separately uses native
+creation identities and cumulative CPU time; resident memory remains unavailable.
 Whole-system CPU counters require a single processor group; on machines with
 multiple groups, CPU stays unavailable rather than showing a partial total.
 

@@ -312,7 +312,7 @@ func TestMergeExtraEnvCLIIntoSteps(t *testing.T) {
 func TestPrependPATHDirPreservesColonDelimitedPath(t *testing.T) {
 	current := "/mingw64/bin:/usr/local/bin:/c/Program Files/Docker/Docker/resources/bin"
 	got := prependPATHDir(current, `C:\Source\dockpipe\src\bin`)
-	want := `C:\Source\dockpipe\src\bin:/mingw64/bin:/usr/local/bin:/c/Program Files/Docker/Docker/resources/bin`
+	want := `/c/Source/dockpipe/src/bin:/mingw64/bin:/usr/local/bin:/c/Program Files/Docker/Docker/resources/bin`
 	if got != want {
 		t.Fatalf("prependPATHDir() = %q want %q", got, want)
 	}
@@ -323,6 +323,65 @@ func TestPrependPATHDirAvoidsDuplicateEntry(t *testing.T) {
 	got := prependPATHDir(current, `C:\Source\dockpipe\src\bin`)
 	if got != current {
 		t.Fatalf("prependPATHDir() = %q want %q", got, current)
+	}
+}
+
+func TestPrependPATHDirPathFormats(t *testing.T) {
+	tests := []struct {
+		name    string
+		current string
+		dir     string
+		want    string
+	}{
+		{
+			name:    "converted Bash entry is already present",
+			current: "/usr/bin:/c/Source/dockpipe/src/bin:/c/tools/go/bin",
+			dir:     `C:\Source\dockpipe\src\bin`,
+			want:    "/usr/bin:/c/Source/dockpipe/src/bin:/c/tools/go/bin",
+		},
+		{
+			name:    "forward slashes and uppercase drive",
+			current: "/usr/bin:/c/tools/go/bin",
+			dir:     "D:/Program Files/Dockpipe/bin",
+			want:    "/d/Program Files/Dockpipe/bin:/usr/bin:/c/tools/go/bin",
+		},
+		{
+			name:    "exact entry rather than substring",
+			current: "/c/tools/dockpipe-old:/usr/bin",
+			dir:     `C:\tools\dockpipe`,
+			want:    "/c/tools/dockpipe:/c/tools/dockpipe-old:/usr/bin",
+		},
+		{
+			name:    "native Windows list",
+			current: `C:\tools\go\bin;C:\Windows\System32`,
+			dir:     `D:\Dockpipe\bin`,
+			want:    `D:\Dockpipe\bin;C:\tools\go\bin;C:\Windows\System32`,
+		},
+		{
+			name:    "single native Windows entry",
+			current: `C:\tools\go\bin`,
+			dir:     `D:\Dockpipe\bin`,
+			want:    `D:\Dockpipe\bin;C:\tools\go\bin`,
+		},
+		{
+			name:    "single native duplicate",
+			current: `C:\tools\go\bin`,
+			dir:     `C:\tools\go\bin`,
+			want:    `C:\tools\go\bin`,
+		},
+		{
+			name:    "Unix list",
+			current: "/usr/bin:/bin",
+			dir:     "/opt/dockpipe/bin",
+			want:    "/opt/dockpipe/bin:/usr/bin:/bin",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := prependPATHDir(tt.current, tt.dir); got != tt.want {
+				t.Fatalf("prependPATHDir() = %q want %q", got, tt.want)
+			}
+		})
 	}
 }
 

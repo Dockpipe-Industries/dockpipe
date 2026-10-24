@@ -71,7 +71,7 @@ then implement separately scoped repairs.
 
 ## PipeLang foundation
 
-The [foundation contract](concepts/pipelang-foundation-contracts.md#c2--functions-modules-callable-values-and-control-flow)
+The [foundation contract](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/concepts/pipelang-foundation-contracts.md#c2--functions-modules-callable-values-and-control-flow)
 allows recursion under declared logical call-depth and step budgets. Keep this
 contract: do not prohibit recursion or substitute a host timeout for deterministic
 logical exhaustion. The foundation document is a design/delivery contract;

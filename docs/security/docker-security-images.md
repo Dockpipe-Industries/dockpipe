@@ -1,5 +1,7 @@
 # Docker Security Policy and Image Artifacts Design Notes
 
+Package source examples below belong to [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages), [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) or [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon), as applicable. Run package-source commands in that owning repository with pinned Dockpipe tools.
+
 Status: advanced design/history notes. For reader-facing docs, start with
 [security-policy.md](security-policy.md) and [../runtime/image-artifacts.md](../runtime/image-artifacts.md).
 

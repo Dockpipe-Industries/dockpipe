@@ -8,6 +8,8 @@ Linux `7.0.11-76070011-generic`, kernel build
 `f59ee93b1feb390705c790649a6ac36de360053aa5260818885c78df19881d19` and
 `b426dc8754abc50973fbae78d32642746de09cc6c6b6485a24727572cbf610a9`.
 
+Repository ownership note: package paths in this record describe external source. Current catalog packages live in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages); previously extracted [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) and [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) remain in their own repositories. Historical paths and receipts do not recreate a local package tree.
+
 The parent created one new private temporary parent
 `/tmp/dockpipe-sqlite-linux-fYSJ5FKK` outside the repository, set and revalidated it as a current-user
 owned `0700` directory, and used it as `TMPDIR`. The successful test-framework fixture root was

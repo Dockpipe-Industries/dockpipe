@@ -7,6 +7,8 @@ This file is a lightweight router. Load only the focused docs needed for the tas
 
 Machine-readable routing: `docs/agents/index.yaml`.
 
+This checkout owns the runtime, CLI, desktop host and host SDK. Remaining catalog package source is in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages/). The compiler and language SDK are in [PipeLang](https://github.com/Dockpipe-Industries/pipelang). Consume versioned external artifacts and the pinned PipeLang Go module; never copy those implementations back or depend on a sibling checkout. Existing typed-model, `dockpipe pipelang` and materialization behavior remains supported.
+
 ## Global Hard Rules
 
 When user input is genuinely required and the host supports structured prompts, use Yes/No for
@@ -32,7 +34,7 @@ it, or the host lacks that UI.
 | AI workflows must beat one strong direct worker on quality, safety, cost, review effort, or rerun value. DorkPipe owns the lower-level proof through artifacts/metrics, not user boilerplate. | `docs/agents/workflows/ai-workflow-value-bar.md` |
 | Main docs stay canonical for repo facts and public behavior. `docs/agents/` is the compressed routing/safety layer, not a shadow documentation tree. | `docs/agents/docs/docs-system.md` |
 | Treat `docs/agents/task-index.yaml` as the AI entrypoint for the cross-cutting backlog and keep the linked task files current when a task materially completes or advances one of those items. | `docs/agents/task-index.yaml` |
-| Normal sessions ask before committing. An explicitly designated autonomous master session follows the bounded commit exception in `docs/agents/docs/session-handoffs.md`. | `docs/agents/docs/session-handoffs.md` |
+| Keep implementation uncommitted until authorized. An explicit request to move a bounded task to staging authorizes its validated commit and staging promotion flow without repeated approval. | `docs/agents/docs/session-handoffs.md` |
 
 ## Task Routing
 
@@ -66,7 +68,7 @@ DorkPipe renders the same curated skills to Codex, Claude, or generic targets:
 ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex
 ```
 
-Curated skills available from the package (verify host availability before use):
+Curated skills available from the separately installed DorkPipe package (verify host availability before use):
 
 - `dorkpipe-agentic-yaml`
 - `dorkpipe-core-review`
@@ -93,7 +95,7 @@ Do not add or commit:
 3. Check whether the work is engine, workflow, package, resolver, strategy, docs, or generated artifact.
 4. If editing `src/`, verify the change is a general primitive.
 5. If changing authored YAML semantics, update schema, docs, and language support together.
-6. If touching packages, keep logic inside package assets and prefer repo-local binaries over `PATH`.
+6. If touching external packages, work in their owning repository, keep logic in package assets, and select a pinned Dockpipe binary/SDK rather than sibling source.
 7. If moving generated paths, decide first whether the file is workflow artifact, package state, resolver scope, or source.
 8. Check `git status --short` and do not revert unrelated user changes.
 

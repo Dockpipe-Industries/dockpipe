@@ -643,6 +643,11 @@
         },
         "cmd": { "type": "string" },
         "command": { "type": "string" },
+        "shell": {
+          "type": "string",
+          "enum": ["bash", "powershell", "pwsh"],
+          "description": "Host-step shell override. Inline commands default to Windows PowerShell on Windows and Bash on Unix. Script files infer Bash for .sh, PowerShell for .ps1, and Python 3 for .py when shell is omitted."
+        },
         "run": { "$ref": "#/$defs/string_or_string_array" },
         "pre_script": { "type": "string" },
         "inputs": { "$ref": "#/$defs/input_map" },
@@ -737,6 +742,22 @@
         }
       },
       "allOf": [
+        {
+          "if": { "required": ["shell"] },
+          "then": {
+            "properties": {
+              "kind": { "const": "host" }
+            },
+            "required": ["kind"],
+            "not": {
+              "anyOf": [
+                { "required": ["workflow"] },
+                { "required": ["package"] },
+                { "required": ["host_builtin"] }
+              ]
+            }
+          }
+        },
         {
           "if": {
             "anyOf": [

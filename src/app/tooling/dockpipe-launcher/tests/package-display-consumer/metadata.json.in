@@ -1,0 +1,1 @@
+{"display_abi":1,"qt_version":"@fixture_qt@","build_abi":"@fixture_build_abi@","compiler_id":"@CMAKE_CXX_COMPILER_ID@","compiler_version":"@fixture_compiler@"}

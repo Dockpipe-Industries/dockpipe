@@ -32,6 +32,8 @@ type PackageManifest struct {
 	Provider string `yaml:"provider,omitempty"`
 	// Capability: dotted capability id this resolver package provides (e.g. cli.codex, app.vscode). See docs/concepts/capabilities.md.
 	Capability string `yaml:"capability,omitempty"`
+	// Surface names an optional contained JSON descriptor for a package-contributed host page.
+	Surface string `yaml:"surface,omitempty"`
 	// PrimitiveYAMLDeprecated is the deprecated YAML key "primitive" — merged into Capability after parse.
 	PrimitiveYAMLDeprecated string `yaml:"primitive,omitempty"`
 	// Namespace: optional author/org label (same rules as workflow namespace; optional).

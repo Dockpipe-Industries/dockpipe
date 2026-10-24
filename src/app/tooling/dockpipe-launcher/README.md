@@ -1587,6 +1587,30 @@ native proof and source/archive preservation checks precede original-source
 retirement; final Dockpipe staging qualifies the resulting source-absent tree.
 
 
+The optional launcher SDK installs with `DOCKPIPE_INSTALL_LAUNCHER_SDK=ON` and
+`cmake --install <build> --component LauncherSDK`. Build `dockpipe-launcher-ui` and
+`dockpipe-browser` first. External host packages use
+`find_package(DockPipeLauncherSDK 1.0.0 EXACT CONFIG REQUIRED)` with the installed
+prefix, linking `DockPipe::LauncherUI` and `DockPipe::HostBrowser`. This host SDK
+includes DockPipe services; it is not the standalone SpatialPipe browser component.
+It requires Qt 6.10.3 and the recorded matching platform/compiler ABI.
+
+To verify an independently built or installed Cockpit package, configure the
+launcher with `BUILD_TESTING=ON` and
+`DOCKPIPE_COCKPIT_ASSETS=/absolute/path/to/installed/assets`, then build the
+`cockpit-package-rendering-test` target and run:
+
+```sh
+ctest --test-dir <build> --output-on-failure --no-tests=error -R '^cockpit-package-rendering$'
+```
+
+The host test links only its UI SDK and loads Cockpit after creating a window.
+It checks package loading and late OpenGL composition, movement frames and absence
+of compositor errors. The required Xvfb/X11 software-rendering pass fails on a
+skip; it is separate from hardware GPU or interactive desktop proof. The package's
+internal world/game tests remain in SpatialPipe. This test input is explicit and
+does not change ordinary package discovery or saved user data.
+
 With **Bring open desktop apps into Tiling** enabled, a desktop panel's close
 button sends the OS window a normal close request. Unsaved-work prompts and
 cancelled requests keep the panel alive. With management off, closing the panel

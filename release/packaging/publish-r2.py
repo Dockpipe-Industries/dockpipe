@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publish versioned packages first, then APT metadata. Never delete old versions."""
+"""Publish runtime artifacts and APT without changing the optional package catalog."""
 import argparse
 import json
 import mimetypes
@@ -70,12 +70,15 @@ def publish(artifacts, apt, version, dry_run, candidate=""):
     identity = candidate or version
     suite = "staging" if candidate else "stable"
     version_prefix = "/".join(part for part in (prefix, directory, identity) if part)
+    runtime_pointer_key = "/".join(part for part in (prefix, "runtime", "latest.json") if part)
     if not (apt / f"dists/{suite}/InRelease").is_file():
         raise ValueError("Signed APT repository is missing")
     if not (artifacts / "release-manifest.json").is_file():
         raise ValueError("Release catalog is missing")
+    catalog = json.loads((artifacts / "release-manifest.json").read_text())
+    if catalog.get("artifact_class") != "runtime":
+        raise ValueError("Runtime publication requires an independent runtime release catalog")
     if candidate:
-        catalog = json.loads((artifacts / "release-manifest.json").read_text())
         sha = catalog.get("source_sha", "")
         if (catalog.get("candidate") != candidate or catalog.get("channel") != "staging"
                 or catalog.get("version") != version or not re.fullmatch(r"[0-9a-f]{40}", sha)
@@ -89,7 +92,7 @@ def publish(artifacts, apt, version, dry_run, candidate=""):
     catalog_key = f"{version_prefix}/release-manifest.json"
     if not dry_run:
         require_unpublished(bucket, endpoint, catalog_key)
-        require_forward_version(bucket, endpoint, f"{prefix}/latest.json", version)
+        require_forward_version(bucket, endpoint, runtime_pointer_key, version)
     for path in sorted(artifacts.rglob("*")):
         if path.is_symlink():
             raise ValueError(f"Refusing symlink: {path}")
@@ -113,11 +116,12 @@ def publish(artifacts, apt, version, dry_run, candidate=""):
         for path in sorted(apt_files, key=lambda path: (order.get(path.name, 0), str(path))):
             upload(path, f"apt/{path.relative_to(apt).as_posix()}", bucket, endpoint, dry_run)
     latest = artifacts.parent / "latest.json"
-    pointer = {"version": version, "manifest": f"{version_prefix}/release-manifest.json"}
+    pointer = {"artifact_class": "runtime", "version": version,
+               "manifest": f"{version_prefix}/release-manifest.json"}
     if candidate:
         pointer.update(channel="staging", candidate=candidate)
     latest.write_text(json.dumps(pointer) + "\n")
-    upload(latest, "/".join(part for part in (prefix, "latest.json") if part), bucket, endpoint, dry_run)
+    upload(latest, runtime_pointer_key, bucket, endpoint, dry_run)
 
 
 if __name__ == "__main__":

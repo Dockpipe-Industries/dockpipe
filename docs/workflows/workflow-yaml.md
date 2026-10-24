@@ -209,6 +209,54 @@ For host steps, **`run:`** scripts execute on the host. Use **`kind: host`** whe
 - launching a local GUI tool
 - preparing files before a later container step
 
+Host inline **`cmd`** / **`command`** uses the native OS shell by default:
+Windows PowerShell (**`powershell.exe`**) on Windows, and Bash on Linux/macOS.
+Set **`shell: bash`**, **`shell: powershell`**, or **`shell: pwsh`** to choose the
+shell explicitly. **`powershell`** selects Windows PowerShell (**`powershell.exe`**)
+and is only supported on Windows; **`pwsh`** selects PowerShell 7 on any host OS.
+Dockpipe fails if the selected executable is unavailable, without choosing another
+shell.
+
+For host **`run`** / **`pre_script`** files, the filename preserves script semantics:
+**`.sh`** uses Bash, and **`.ps1`** uses Windows PowerShell on Windows or **`pwsh`**
+on Linux/macOS. Other extensions use the native OS shell. An explicit shell
+must agree with a recognized script extension: a PowerShell shell cannot run
+**`.sh`**, and Bash cannot run **`.ps1`**. Use **`shell: pwsh`** for a PowerShell 7
+script on Windows. The same rules apply in async groups and **`finally`** steps.
+
+Host `run:` files ending in `.py` use Python 3 directly when `shell` is omitted.
+Windows searches `python3`, then `python`; Unix searches `python3`.
+`DOCKPIPE_HOST_PYTHON_BIN` selects an absolute executable path. A present empty,
+relative or unusable override fails without fallback. Python runs through the
+same host observation, signal and cleanup lifecycle, without Git Bash. An explicit
+`shell` retains its existing interpreter semantics. This inference applies to
+script files, not inline `cmd` text.
+
+Inherited native Windows environment keys are case-insensitive. Dockpipe
+canonicalizes them before merging its host context so `Path` and `PATH` cannot
+randomly replace one another when the process environment is built. Ordered
+inherited duplicates use the last value. Authored `--env` and `--var` names
+retain their case for container steps. Native child environment updates compare
+keys case-insensitively on Windows; Unix environment keys remain case-sensitive.
+
+**`shell`** is only valid on ordinary **`kind: host`** steps. Packaged workflow
+calls, host built-ins, and container steps cannot set it. Container setup scripts
+that export environment variables still use Bash; **`shell`** does not change
+that environment-sourcing contract. Shell-specific inline syntax needs an
+explicit shell when the workflow must behave the same across operating systems:
+
+```yaml
+steps:
+  - id: list-files
+    kind: host
+    shell: pwsh
+    cmd: Get-ChildItem -LiteralPath .
+
+  - id: prepare
+    kind: host
+    run: assets/scripts/prepare.sh
+```
+
 If a host step starts sidecars or helper containers, the runner can clean them up after the step. The exact marker files and cleanup internals are engine behavior; workflow authors usually only need to know that host steps may register cleanup state under **`.dockpipe/`** and that cleanup can be disabled with **`DOCKPIPE_SKIP_HOST_CLEANUP=1`** when a workflow wants to keep the sidecar alive deliberately.
 
 | Variable | Meaning |
@@ -301,7 +349,7 @@ shared:
     collector: repo_map
     focus: Current orchestration contract
     starting_points:
-      - packages/dorkpipe/resolvers/dorkpipe/assets/docs/orchestration-contract.md
+      - docs/orchestration-contract.md
 ```
 
 Use `starting_points` as optional collector hints only. Do not duplicate broad mounted roots there;
@@ -476,7 +524,7 @@ Rules:
 - `view:` is a **presentation** layer only. It does not replace `vars:` or create a second runtime binding mechanism.
 - Invalid field paths should be ignored/pruned by tooling rather than breaking workflow execution.
 
-For PipeLang details, see **[../concepts/pipelang.md](../concepts/pipelang.md)**.
+For PipeLang details, see **[../concepts/pipelang.md](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/concepts/pipelang.md)**.
 
 ### `security`
 
@@ -608,8 +656,9 @@ Each **`-`** under `steps:` is one step (or a **`group`** wrapper — see [Async
 | Key | Purpose |
 |-----|---------|
 | `id` | Optional. Used in stderr logs (e.g. `[merge]` lines). If omitted, logs use `step 1`, `step 2`, … |
-| `cmd` / `command` | Shell command line for this step. In a **container** step it runs inside the container. In a **host** step it runs on the host. |
-| `run` | String or YAML list: host pre-scripts before this step’s container. Logical resolver script ids like `scripts/dorkpipe/...` require an explicit resolver dependency instead of relying on workflow-package fallback. |
+| `cmd` / `command` | Shell command line for this step. In a **container** step it runs inside the container. In a **host** step it uses the native OS shell unless `shell` selects another shell. |
+| `shell` | Host-step shell override: `bash`, `powershell` (Windows PowerShell), or `pwsh` (PowerShell 7). Script extensions `.sh` / `.ps1` retain their shell family; conflicting overrides are rejected. Not valid for container, packaged workflow, or host built-in steps. |
+| `run` | String or YAML list: host scripts for a host step, or host pre-scripts before a container step. Logical resolver script ids like `scripts/dorkpipe/...` require an explicit resolver dependency instead of relying on workflow-package fallback. |
 | `pre_script` | Single extra pre-script path (in addition to `run`). |
 | `isolate` | Template/image for this step (falls back to workflow / CLI / **core** runtime profile). |
 | `kind` | Step kind. Use **`container`** (default) for normal isolated execution, or **`host`** for host-side actions. |

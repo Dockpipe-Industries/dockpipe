@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"dockpipe/src/lib/infrastructure/hostpython"
 )
 
 // UpsertEnv replaces duplicate entries for key with one value or appends it when absent.
@@ -35,6 +37,9 @@ func UpsertEnv(env []string, key, value string) []string {
 func ScriptCommand(scriptAbs string) (*exec.Cmd, string, error) {
 	lower := strings.ToLower(scriptAbs)
 	switch {
+	case strings.HasSuffix(lower, ".py"):
+		command, err := hostpython.Command(scriptAbs, os.Environ())
+		return command, "", err
 	case strings.HasSuffix(lower, ".ps1"):
 		return exec.Command("pwsh", "-File", scriptAbs), "", nil
 	case strings.HasSuffix(lower, ".cmd"), strings.HasSuffix(lower, ".bat"):

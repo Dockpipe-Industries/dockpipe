@@ -80,9 +80,9 @@ Do not settle command spelling here. `dockpipe compile` already means Dockpipe p
 
 ## Related Ownership
 
-- [TASK-021](../pipelang-reactive-application-language/overview.md) owns the PipeLang language foundation and is
+- [TASK-021](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/agents/tasks/pipelang-reactive-application-language/overview.md) owns the PipeLang language foundation and is
   the first implementation dependency for this task.
-- [TASK-022](../go-first-pipelang-backend-services/overview.md) owns transport-neutral backend services, the
+- [TASK-022](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/agents/tasks/go-first-pipelang-backend-services/overview.md) owns transport-neutral backend services, the
   Go-first service resolver, schemas, and generated Qt/C++ clients. This task owns consuming those
   clients in application surfaces, not backend or transport semantics.
 - [TASK-008](../agentic-app-ui/overview.md) owns DockPipe AI's launcher-context control and inspection UX. It may
@@ -99,7 +99,7 @@ Do not settle command spelling here. `dockpipe compile` already means Dockpipe p
 
 ### Bounded Qt integration foundation
 
-The [Qt boundary contract](../../../concepts/pipelang-qt-boundary.md) records the approved
+The [Qt boundary contract](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/concepts/pipelang-qt-boundary.md) records the approved
 reference adapter for owned values, typed outcomes, QObject lifetime and queued delivery.
 It supplies downstream target obligations without implementing the Application IR
 generator, choosing Widgets versus Quick, or starting launcher migration.
