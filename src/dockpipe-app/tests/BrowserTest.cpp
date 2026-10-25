@@ -281,6 +281,13 @@ static int runBrowserChecks()
             [&](QWebEngineDownloadRequest *download) {
                 downloadRequested = true;
                 cancelledDownload = download;
+                const auto recordDownload = [&browser, download]() {
+                    browser.setProperty("testDownloadDetails", QStringLiteral("state=%1 reason=%2 directory=%3 file=%4")
+                        .arg(static_cast<int>(download->state()))
+                        .arg(download->interruptReasonString(), download->downloadDirectory(), download->downloadFileName()));
+                };
+                recordDownload();
+                QObject::connect(download, &QWebEngineDownloadRequest::stateChanged, &browser, recordDownload);
             });
         QTimer dismissSaveDialog;
         dismissSaveDialog.setInterval(20);
@@ -308,7 +315,13 @@ static int runBrowserChecks()
         CHECK_BROWSER(waitUntil([&]() { return downloadRequested && cancelledDownload.isNull(); }));
         acceptSaveDialog.stop();
         QFile downloaded(savedFile);
-        CHECK_BROWSER(downloaded.open(QIODevice::ReadOnly));
+        const bool downloadOpened = downloaded.open(QIODevice::ReadOnly);
+        if (!downloadOpened)
+            std::fprintf(stderr, "Accepted download unreadable: expected=%s error=%s status=%s request=%s files=%s\n",
+                qPrintable(savedFile), qPrintable(downloaded.errorString()), qPrintable(status->text()),
+                qPrintable(browser.property("testDownloadDetails").toString()),
+                qPrintable(QDir(downloads.path()).entryList(QDir::Files).mid(0, 20).join(", ")));
+        CHECK_BROWSER(downloadOpened);
         CHECK_BROWSER(downloaded.readAll().contains("Browser test page"));
         CHECK_BROWSER(status->text().contains("Download saved"));
         preferences = BrowserPreferences::instance()->settings();
