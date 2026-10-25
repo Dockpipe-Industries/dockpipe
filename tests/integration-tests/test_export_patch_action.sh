@@ -4,11 +4,13 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DOCKPIPE="$REPO_ROOT/src/bin/dockpipe"
-ACTION="$REPO_ROOT/src/core/assets/scripts/export-patch.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 
 tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
+actions=$(mktemp -d)
+trap 'rm -rf "$tmp" "$actions"' EXIT
+ACTION="$actions/export-patch.sh"
+"$DOCKPIPE" action init "$ACTION" --from export-patch
 cd "$tmp"
 git init -q
 git config user.email "test@dockpipe"

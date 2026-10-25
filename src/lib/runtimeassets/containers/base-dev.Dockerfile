@@ -39,7 +39,7 @@ RUN mkdir -p /work && chmod 777 /work \
     && git config --global init.defaultBranch main
 
 COPY assets/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod 0755 /entrypoint.sh
 
 WORKDIR /work
 ENTRYPOINT ["/entrypoint.sh"]

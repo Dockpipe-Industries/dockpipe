@@ -131,7 +131,10 @@ class ReleaseQualificationTest(unittest.TestCase):
         for title in ('Build Linux desktop against Ubuntu 22.04', 'Build native macOS desktop installers'):
             step = next(step for step in jobs['build-unix']['steps'] if step.get('name') == title)
             self.assertEqual(step['env']['QUALIFY_PACKAGE_DISPLAY'], '${{ needs.meta.outputs.qualify_package_display }}')
-            self.assertIn('qualification_args+=(--enable-qualification)', expanded(step['run']))
+            if title == 'Build native macOS desktop installers':
+                self.assertIn('set -- "$@" --enable-qualification', expanded(step['run']))
+            else:
+                self.assertIn('qualification_args+=(--enable-qualification)', expanded(step['run']))
         for job in ('publish', 'publish-staging'):
             self.assertIn("needs.meta.outputs.dry_run == 'false'", jobs[job]['if'])
 

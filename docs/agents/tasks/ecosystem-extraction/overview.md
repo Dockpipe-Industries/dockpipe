@@ -574,3 +574,32 @@ CI/native/staging paths; 114 focused tests passed. Actual public CLI/SDK pins,
 source-independent native consumers and isolated CLI acceptance remain required.
 Fresh required checks on the final repair commit, installed Bazzite integration
 and the runtime-first dependency publication chain still gate staging.
+
+
+## Container and release integration checkpoint (2026-10-25)
+
+The source cleanup now passes the complete Windows Go gate and native macOS
+qualification on Intel and ARM. Flatpak passed its installed host terminal and
+real Docker/Compose bind-mount gates. These checks apply to the tested repair
+head; later source changes still require fresh required checks.
+
+Linux CI exposed a real permission error in the generic default container:
+private materialized input remains mode 0600, while the image now explicitly
+installs its entrypoint as mode 0755. A fresh ordinary non-root container and
+the complete ten-test integration suite passed. Integration fixtures explicitly
+materialize project actions and isolate inherited workflow context. No implicit
+core-script lookup was restored.
+
+The release dry run passed Flatpak qualification but exposed a Linux Docker
+build-context path, Bash 3.2 empty-array handling and an intermittent Windows Git
+pack stream completion failure. The packaging fixes have focused checks. The
+Windows investigation adds a bounded, read-only opt-in diagnostic workflow and
+failure-only test diagnostics; production Git timeouts and failures are retained.
+Actual Windows diagnostic and complete release qualification remain pending.
+
+The container resource correction changes exported Go SDK bytes. Earlier SDK
+reproduction remains historical evidence and cannot supply final replacement
+pins. Reproduce the SDK from the real committed source before updating its lock
+and publishing through the existing protected environment. Existing public
+releases and downloads remain intact; final dependency readback, installed
+Bazzite acceptance and staging promotion are still pending.

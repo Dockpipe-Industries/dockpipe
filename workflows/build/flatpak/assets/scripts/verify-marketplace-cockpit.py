@@ -47,7 +47,10 @@ def verify(catalog, test_build, lock_path, output):
         if not (test_build / name).is_file():
             raise ValueError(f"Missing existing UI qualification fixture: {name}")
     output.mkdir(parents=True)
-    environment = os.environ.copy()
+    # This is a new consumer invocation, not a child of the producer workflow.
+    # Flatpak --cwd alone does not override Dockpipe's explicit workdir context.
+    environment = {key: value for key, value in os.environ.items()
+                   if not key.startswith("DOCKPIPE_")}
     directories = {}
     for variable in ("HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME"):
         path = output / variable.lower()
@@ -99,6 +102,7 @@ def verify(catalog, test_build, lock_path, output):
                     "--filesystem=" + str(output), "--filesystem=" + str(test_build) + ":ro",
                     "--unset-env=DOCKPIPE_WORKSPACE_PACKAGE", "--unset-env=DOCKPIPE_PACKAGES_ROOT",
                     "--env=DOCKPIPE_GLOBAL_ROOT=" + str(global_root), "--env=DOCKPIPE_BIN=/app/bin/dockpipe",
+                    "--env=DOCKPIPE_WORKDIR=" + str(project),
                     "--env=SSL_CERT_FILE=" + str(certificate), "--env=QT_QPA_PLATFORM=xcb",
                     "--env=QT_QPA_PLATFORMTHEME=generic", "--env=QT_IM_MODULE=compose",
                     "--env=LIBGL_ALWAYS_SOFTWARE=1", "--env=SDL_AUDIODRIVER=dummy"]

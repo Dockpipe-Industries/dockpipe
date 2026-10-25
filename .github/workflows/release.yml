@@ -36,6 +36,10 @@ on:
         description: "Diagnose unchanged full macOS Intel CTest context (manual dry run with qualification only)"
         type: boolean
         default: false
+      diagnose_windows_git:
+        description: "Run only bounded Windows Git snapshot diagnostics (manual dry run only)"
+        type: boolean
+        default: false
       diagnostic_product_source:
         description: "Full unchanged product source commit required by layout diagnosis"
         type: string
@@ -43,15 +47,37 @@ on:
 
 concurrency:
   # Both publication channels share one allocator lock. Dry runs never reserve versions.
-  group: dockpipe-release-${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && format('dry-run-{0}{1}', github.ref, inputs.diagnose_layout && '-layout-diagnostic' || '') || 'publish' }}
+  group: dockpipe-release-${{ github.event_name == 'workflow_dispatch' && inputs.diagnose_windows_git && format('windows-git-diagnostic-{0}', github.ref) || github.event_name == 'workflow_dispatch' && inputs.dry_run && format('dry-run-{0}{1}', github.ref, inputs.diagnose_layout && '-layout-diagnostic' || '') || 'publish' }}
   cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
+  windows-git-diagnostic:
+    if: github.event_name == 'workflow_dispatch' && inputs.dry_run == true && inputs.diagnose_windows_git == true && !inputs.diagnose_layout
+    runs-on: windows-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.10'
+          cache: false
+      - name: Diagnose only the Windows Git snapshot fixture
+        shell: bash
+        env:
+          GOTOOLCHAIN: local
+          GOWORK: 'off'
+          GOMAXPROCS: '2'
+        run: python3 workflows/shared/launch.py workflows/ci/runtime/windows-git-diagnostics.yml
+
   meta:
-    if: (github.event_name == 'workflow_dispatch' || vars.DOCKPIPE_RELEASE_ENABLED == 'true')
+    if: (github.event_name == 'workflow_dispatch' || vars.DOCKPIPE_RELEASE_ENABLED == 'true') && !(github.event_name == 'workflow_dispatch' && inputs.diagnose_windows_git)
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}

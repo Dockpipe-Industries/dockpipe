@@ -15,5 +15,5 @@ RUN apt-get update \
         libx11-xcb1 libdrm2 libgbm1 libpulse0 libwayland-client0 libwayland-cursor0 \
         libwayland-egl1 libopengl0 libgtk-3-0 libssl3 \
     && rm -rf /var/lib/apt/lists/*
-COPY install-linux-qt.sh /usr/local/bin/install-linux-qt
+COPY scripts/install-linux-qt.sh /usr/local/bin/install-linux-qt
 RUN bash /usr/local/bin/install-linux-qt /opt/Qt

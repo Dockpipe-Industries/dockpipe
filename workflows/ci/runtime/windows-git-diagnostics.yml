@@ -1,0 +1,11 @@
+name: windows-git-diagnostics
+description: Repeat only the Windows Git snapshot fixture while retaining its original failure and bounded failure diagnostics.
+docker_preflight: false
+steps:
+  - id: exact-fixture
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/ci/core/assets/scripts/test.py -p 2 -run '^TestDockerGitSnapshotOrdinaryDirectoryAndPartialClone$' -count 10 -timeout 7m -v ./src/lib/infrastructure
