@@ -630,3 +630,26 @@ its original manifest and attestations are retained and cannot supply final pins
 The CLI producer gains an explicit dev-only recovery route for metadata-only
 changes omitted by path filters. Fresh consistent CLI/SDK readback, external native
 packages, installed Bazzite acceptance and runtime staging promotion remain pending.
+
+
+## SDK publication and remaining native checks (2026-10-25)
+
+The approved SDK source `aecdf031dc48a1f085778aecbc613f49d145a209` is
+public as `dockpipe-go-sdk-0.1.0-source.2130fcfe0504ccf4`. Hosted CI
+reproduced the two exact files and recorded the approved environment review,
+but its publisher failed HTTP 403 because creating a tag at this source requires
+workflow permission. The explicitly approved Dockpipe operator recovery published
+those same files using the existing operator credential. Independent public
+downloads matched both approved hashes; the original release protection is
+restored. The CI publisher remains recorded as failed.
+
+The next PR checks exposed two separate native qualification issues. The Windows
+fixture constructed an unused input control before readiness; a single diagnostic
+measured that constructor at 3906 ms. Removing the unasserted control preserves
+the real QWidget, native window cases, every assertion and the five-second
+readiness bound. Intel exhausted its 30-minute job budget while still compiling,
+before any CTest ran. Its cold-build budget is now 50 minutes with two workers;
+ARM remains 30 minutes and all test deadlines and the 100 ms browser limit remain
+unchanged. Both repairs require fresh strict hosted qualification before merge.
+Actual public CLI intake, external native packages, installed Bazzite acceptance
+and runtime staging promotion remain pending.
