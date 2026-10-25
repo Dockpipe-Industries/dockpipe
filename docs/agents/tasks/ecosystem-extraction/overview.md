@@ -611,3 +611,22 @@ other real WebEngine tests. Its measured UI switching p95 exceeded the unchanged
 functional retention assertions and timeout remain unchanged. This corrects the
 test resource contract without claiming contention explains all GUI CPU cost.
 Fresh Intel native qualification remains required before merge.
+
+
+## Final qualification and merge identity checkpoint (2026-10-25)
+
+All ten final-head workflows passed, including both macOS hosts, all 58 Windows
+native tests, installed Flatpak/Compose and the complete Marketplace lifecycle.
+The six-platform release dry run and assembly passed, including actual mandatory
+Windows embedding and MSI install/uninstall. The final source-bound SDK was
+reproduced by hosted CI; its protected publication remains pending.
+
+Three GitHub-generated Dockpipe/PipeLang merge commits selected the account's old
+author email. The explicitly approved identity-only correction preserved source
+trees and uploaded downloads, corrected four refs, and restored both Dockpipe
+rulesets with independent readback. Future normal merges must select their author
+email explicitly and verify the result. The moved CLI candidate remains historical;
+its original manifest and attestations are retained and cannot supply final pins.
+The CLI producer gains an explicit dev-only recovery route for metadata-only
+changes omitted by path filters. Fresh consistent CLI/SDK readback, external native
+packages, installed Bazzite acceptance and runtime staging promotion remain pending.

@@ -1,6 +1,13 @@
 name: CLI bootstrap candidate
 
 on:
+  workflow_dispatch:
+    inputs:
+      publish_candidate:
+        description: Publish the exact dev candidate after reproduction; other refs build only.
+        required: false
+        type: boolean
+        default: false
   pull_request:
     branches: [dev]
     paths:
@@ -73,7 +80,7 @@ jobs:
           retention-days: 7
 
   publish:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    if: github.ref == 'refs/heads/dev' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_candidate))
     needs: build
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -99,4 +106,5 @@ jobs:
       - name: Publish the immutable CLI-only prerelease
         env:
           GH_TOKEN: ${{ github.token }}
+          DOCKPIPE_CLI_MANUAL_PUBLICATION: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_candidate }}
         run: python3 workflows/shared/launch.py workflows/publish/cli-candidate/config.yml -- --directory "$RUNNER_TEMP/cli-candidate"

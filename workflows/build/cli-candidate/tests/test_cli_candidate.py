@@ -319,6 +319,43 @@ class CLIBootstrapTests(unittest.TestCase):
                     PUBLISHER.publish(Path("not-read"))
                 run.assert_not_called()
 
+    def test_manual_recovery_rejects_unrequested_events_and_other_refs_before_io(self):
+        base = {"GITHUB_REF": "refs/heads/dev", "GITHUB_EVENT_NAME": "workflow_dispatch",
+                "GITHUB_REPOSITORY": PUBLISHER.SOURCE_REPOSITORY, "GITHUB_SHA": SOURCE,
+                "DOCKPIPE_CLI_MANUAL_PUBLICATION": "true"}
+        rejected = [
+            {"DOCKPIPE_CLI_MANUAL_PUBLICATION": "false"},
+            {"DOCKPIPE_CLI_MANUAL_PUBLICATION": ""},
+            {"DOCKPIPE_CLI_MANUAL_PUBLICATION": "1"},
+            {"GITHUB_REF": "refs/heads/staging"},
+            {"GITHUB_REF": "refs/heads/master"},
+            {"GITHUB_REF": "refs/heads/feature"},
+            {"GITHUB_EVENT_NAME": "pull_request"},
+            {"GITHUB_REPOSITORY": "other/repository"},
+            {"GITHUB_SHA": "dev"},
+        ]
+        for changes in rejected:
+            with self.subTest(changes=changes), patch.dict(os.environ, base | changes, clear=True), \
+                    patch.object(PUBLISHER, "validate") as validate, \
+                    patch.object(PUBLISHER.SHARED, "run") as run:
+                with self.assertRaisesRegex(ValueError, "accepted dev"):
+                    PUBLISHER.publish(Path("not-read"))
+                validate.assert_not_called()
+                run.assert_not_called()
+
+    def test_explicit_dev_recovery_uses_the_existing_asset_validation(self):
+        environment = {"GITHUB_REF": "refs/heads/dev", "GITHUB_EVENT_NAME": "workflow_dispatch",
+                       "GITHUB_REPOSITORY": PUBLISHER.SOURCE_REPOSITORY, "GITHUB_SHA": SOURCE,
+                       "DOCKPIPE_CLI_MANUAL_PUBLICATION": "true"}
+        directory = Path("untrusted-candidate")
+        with patch.dict(os.environ, environment, clear=True), \
+                patch.object(PUBLISHER, "validate", side_effect=ValueError("asset validation retained")) as validate, \
+                patch.object(PUBLISHER.SHARED, "run") as run:
+            with self.assertRaisesRegex(ValueError, "asset validation retained"):
+                PUBLISHER.publish(directory)
+            validate.assert_called_once_with(directory, SOURCE, PUBLISHER.SOURCE_REPOSITORY)
+            run.assert_not_called()
+
     def test_conflicting_remote_archive_never_mutates_a_release(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = build_fixture(Path(temporary))

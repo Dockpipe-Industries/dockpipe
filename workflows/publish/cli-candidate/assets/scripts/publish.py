@@ -82,9 +82,14 @@ def validate(directory, source_sha, repository=None):
 def publish(directory, repository=None):
     repository = SHARED.publication_target(repository)
     source_sha = os.environ.get("GITHUB_SHA", "")
-    if (os.environ.get("GITHUB_REPOSITORY") != SOURCE_REPOSITORY or os.environ.get("GITHUB_REF") != "refs/heads/dev"
-            or os.environ.get("GITHUB_EVENT_NAME") != "push" or not re.fullmatch(r"[0-9a-f]{40}", source_sha)):
-        raise ValueError("CLI candidate publication requires an exact accepted dev push")
+    event = os.environ.get("GITHUB_EVENT_NAME", "")
+    manual_publication = (event == "workflow_dispatch"
+                          and os.environ.get("DOCKPIPE_CLI_MANUAL_PUBLICATION") == "true")
+    if (os.environ.get("GITHUB_REPOSITORY") != SOURCE_REPOSITORY
+            or os.environ.get("GITHUB_REF") != "refs/heads/dev"
+            or (event != "push" and not manual_publication)
+            or not re.fullmatch(r"[0-9a-f]{40}", source_sha)):
+        raise ValueError("CLI candidate publication requires an exact accepted dev push or explicit dev recovery request")
     tag, assets = validate(directory, source_sha, repository)
     query = """query($owner:String!,$name:String!,$ref:String!){
       repository(owner:$owner,name:$name){ref(qualifiedName:$ref){target{
