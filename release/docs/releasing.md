@@ -23,25 +23,25 @@ Trigger options:
 2. **Manual dispatch** (Actions UI):
    - `version`: optional release baseline — defaults to **`VERSION`**; the selected patch may advance beyond it
    - `dry_run`: defaults to `true` → build, verify, and upload workflow artifacts without requesting deployment approval. `false` is accepted only on `master`; other refs fail before platform builds.
-   - `build_msi`: optional — defaults to **`true`**. On **push** to `master`, MSI is built when the committed marker file **`release/packaging/msi/SHIP_MSI`** is present. This repo currently keeps that marker checked in, so normal releases include WiX/MSI unless you intentionally remove it.
+   - `build_msi`: optional — defaults to **`true`**. On **push** to `master`, MSI is built when the committed marker file **`workflows/package/windows-msi/assets/SHIP_MSI`** is present. This repo currently keeps that marker checked in, so normal releases include WiX/MSI unless you intentionally remove it.
 
 ---
 
 ## What the pipeline does
 
-1. Builds the CLI and required core on native Linux amd64/arm64, macOS Intel/Apple Silicon, and Windows amd64 runners. Each runner verifies the core store and runs a host workflow smoke test outside the checkout. Optional package source hooks and catalogs are not release inputs.
-2. Creates CLI archives, Linux native packages, macOS desktop installers and optional Windows MSI. The existing `dockpipe-packages_VERSION_OS-ARCH.tar.gz` filenames contain only required core. The reusable `.github/workflows/flatpak.yml` builds and qualifies the launcher plus CLI/core bundle against its exact Qt and Browser dependencies.
-3. Requires all five native core stores and successful desktop/Flatpak host qualification before assembly. Core-store checks reject declared or stray optional package payloads. Generic plugin/SDK fixtures remain host gates. Real Cockpit rendering and the optional Flatpak catalog retain their strict checks in independent `cockpit-sdk-compatibility.yml` and `flatpak-catalog.yml` workflows; they do not gate runtime publication.
-4. The unprotected `assemble` job prepares the catalog and checksums. For dry runs it also builds a signed APT repository for amd64 and arm64 with immutable by-hash indexes, using a throwaway key, and uploads workflow artifacts. It has read-only repository permissions, no production secret references, and no deployment environment.
-5. Only a non-dry-run on `master` enters `publish`, which requires the protected `release` environment. It downloads the prepared artifacts, signs APT with the production key, and publishes release assets to GitHub and every individual package/store manifest to R2 at `packages/releases/VERSION/`. APT lives at `apt/`. Upload order is package payloads, APT pool/index files, signed metadata, then the version catalog and `packages/runtime/latest.json`. Old versions and old by-hash files are retained. The optional dev.to job uses the same master-only production condition.
+1. Dockpipe workflows build the standalone CLI on Linux amd64/arm64, macOS Intel/Apple Silicon and Windows amd64. Runtime defaults and SDK resources are library-owned; no source checkout or core archive is required by an installed CLI. Native smoke checks execute outside the checkout.
+2. Owning workflows create CLI archives, Linux packages, macOS desktop installers, optional Windows MSI and the Flatpak launcher-plus-CLI bundle against pinned Qt and Browser SDK inputs. Optional stores are explicit inputs; a valid empty store does not create a core-package requirement.
+3. Native desktop and Flatpak host qualification remain required. Windows MSI packaging requires an actual non-skipped embedding PASS. Optional Cockpit and Marketplace catalogs retain independent strict checks and do not become mandatory runtime payloads.
+4. The unprotected assembly job prepares catalogs and checksums. Dry runs also verify signed APT metadata with a disposable key and retain workflow artifacts. They have read-only repository permissions, no production secret references and no deployment environment.
+5. Production publication requires a non-dry-run on `master` and the protected `release` environment. Staging publication requires the current `staging` head, its successful caller checks and the separate `release-staging` environment. Owning publication workflows upload the qualified immutable artifact set, APT indexes and runtime catalog to the configured destinations. Existing releases, package payloads and by-hash files are retained; production announcements remain master-only.
 
 Stable and staging publication share one concurrency group from version selection through publication. Dry runs use separate groups and do not reserve versions. Dry-run verification must not require a release-environment approval or administrator bypass. Production environment protections remain in place.
 
-Package generation does not prove installation on every downstream distro/version. The hosted matrix covers the selected native runners; physical Mac launchd, sleep/wake, Docker, and remote-worker acceptance still need hardware testing. macOS notarization, Windows Authenticode and winget submission are separate follow-ups; staging Homebrew has its own [native qualification and publication lane](../packaging/homebrew/README.md).
+Package generation does not prove installation on every downstream distro/version. The hosted matrix covers the selected native runners; physical Mac launchd, sleep/wake, Docker, and remote-worker acceptance still need hardware testing. macOS notarization, Windows Authenticode and winget submission are separate follow-ups; staging Homebrew has its own [native qualification and publication lane](../../workflows/publish/homebrew/README.md).
 
 The Flatpak includes the CLI inside the desktop app; it does not replace native host
 CLI packages. Staging publication and matching hosted Flatpak qualification are
-[verified for the 0.6.3 candidate](../packaging/desktop/flatpak/README.md#release-integration-and-proof-limits).
+[verified for the 0.6.3 candidate](../../workflows/build/flatpak/README.md#release-integration-and-proof-limits).
 The public package host serves the `.flatpak`; the matching GitHub release assets
 did not include it. Resolve download links from the published catalog rather than
 assuming GitHub attachments. There is no Dockpipe Flathub listing or automatic-update
@@ -50,7 +50,7 @@ remain separate qualification work. See [user installation and manual updates](.
 
 ## Runtime and optional package release boundaries
 
-The CLI, launcher and host SDK stay in this repository. A CLI-only installation does not need the launcher; desktop distributions provide the CLI/core they use. Qt and the pinned Browser library remain required desktop dependencies. PipeLang's pinned Go module remains a compile-time library dependency of the CLI; its standalone compiler release is independent.
+The CLI, launcher and host SDK stay in this repository. A CLI-only installation does not need the launcher; desktop distributions provide their matching standalone CLI. Qt and the pinned Browser library remain required desktop dependencies. PipeLang's pinned Go module remains a compile-time library dependency of the CLI; its standalone compiler release is independent.
 
 Optional VM, Cockpit, DorkPipe and other packages release from their owning repositories. They consume published host/SDK artifacts and declare `min_dockpipe_version` on each installable slice that needs newer host features. Repository `dockpipe_version` and its lock select the exact producer executable; they are not a package's compatibility minimum. Native plugins additionally retain their platform, ABI and Qt checks.
 
@@ -60,51 +60,51 @@ A new generic capability can therefore ship as a host/SDK release before a packa
 
 ## Production credentials and public origin
 
-Public origin: **https://packages.dockpipe.com**. The R2 package bucket is **dockpipe**. Binding that hostname to the bucket, public access, and the private Terraform-state bucket are managed separately through `package-store-infra`; release jobs receive no Cloudflare management token or state-bucket credential.
+The public production package origin is **https://packages.dockpipe.com**.
+Operators configure its backing storage and private infrastructure independently;
+release jobs receive no Cloudflare management token or Terraform-state credential.
 
-The 1Password Environment **Dockpipe Packages - Production** (`your-production-environment-id`) should contain only:
+Provide the selected publication repository, `R2_ENDPOINT_URL`,
+`DOCKPIPE_RELEASE_BUCKET` and optional `R2_PREFIX` explicitly. Scoped
+`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` references authorize object uploads.
+`APT_SIGNING_KEY` references the channel's existing signing key; the public
+`APT_SIGNING_FINGERPRINT` binds its expected identity. Production and staging use
+separate protected GitHub environments and credentials. See the
+[fork setup boundary](branching.md#running-a-fork) and
+[R2 publication workflow](../../workflows/publish/r2/config.yml).
 
-| Variable | Scope |
-| --- | --- |
-| `AWS_ACCESS_KEY_ID` | R2 Object Read & Write credential restricted to the `dockpipe` bucket |
-| `AWS_SECRET_ACCESS_KEY` | Matching restricted R2 secret |
-| `APT_SIGNING_KEY` | ASCII-armored private APT signing key for unattended signing |
-
-Keep the existing broader Cloudflare credentials in their original vault item. The public project config uses placeholder environment IDs and names `packages-production` for the two upload variables and `packages-release-setup` for all three. Neither is the project default. Actual environment IDs belong in private project configuration; set `RELEASE_SETUP_REPOSITORY`, `R2_ENDPOINT_URL`, and `DOCKPIPE_RELEASE_BUCKET` explicitly before setup. See the [fork setup guide](branching.md#running-a-fork).
-
-Run the [release setup workflow](../../workflows/package/package-release-setup/README.md) to validate the key and copy only those three secrets into GitHub's **release** environment. The helper also sets public variables `APT_SIGNING_FINGERPRINT`, `R2_ENDPOINT_URL`, `DOCKPIPE_RELEASE_BUCKET`, and `R2_PREFIX`. GitHub then publishes unattended using scoped copies; it does not require desktop login or access to the rest of the 1Password vault. Re-run setup when rotating credentials. Apply environment protection rules before publishing.
-
-No production key is generated by a release or dry-run job. Create the production key once, save it in the new environment, preserve an independent recovery copy, and verify its public fingerprint. Do not publish an APT repository signed with the dry-run key.
+Configure and rotate those secret values through the operator's private setup
+process. No production key is generated by a release or dry-run job. Preserve an
+independent recovery copy and verify the public fingerprint. Never publish APT
+metadata signed with the disposable dry-run key.
 
 ## Qualification before publication
 
-Run Actions → Release with `dry_run=true` on the intended commit first. Inspect all five native stores, the Flatpak bundle and runtime-specific store, Flatpak qualification receipts, native smoke results, the MSI check, signed APT test, and checksums. Production publication additionally requires the scoped secrets above and a verified public R2 hostname. Do not treat a local Linux build or a Go cross-build as native Mac/Windows qualification.
+Run Actions → Release with `dry_run=true` on the intended commit first. Inspect all five platform CLI outputs, the desktop and Flatpak bundles, qualification receipts, any explicitly selected optional stores, the non-skipped MSI embedding result, signed APT test and checksums. Production publication additionally requires the scoped secrets above and a verified public R2 hostname. Do not treat a local Linux build or a Go cross-build as native Mac/Windows qualification.
 
 GitHub and R2 are separate services, so publication is not an atomic transaction across both. If a release upload fails, inspect which objects and tags exist before recovery; do not dispatch a second release with changed bytes under an existing version. Existing Git tags and a published version catalog are rejected before publication. A fresh complete run selects the next unused patch; update the release-line notes for the shipped changes. Change `VERSION` intentionally when advancing the major/minor line or setting a higher patch floor. Keep published tags: they are the allocation history.
 
 ## PipeLang qualification boundary
 
-The 0.6 runtime release uses `release/packaging/test-runtime.sh`: all root-module Go packages except `src/lib/pipelang/...`, `src/lib/applicationir`, `tests/pipelangcompat`, and `tests/containedexec/...`. Host CI on Linux and Windows and the nested Docker test workflow use the same selector. This is runtime qualification only; the separate PipeLang campaign remains required for compiler qualification. Those compiler suites intentionally refuse generated compilation without their verified containment runner. A plain broad local test run failed those containment checks and timed out in PipeLang; it is not passing release evidence.
-
-PipeLang's compiler campaigns remain under `tests/containedexec/` and must pass separately before the planned language release. This runtime gate does not claim compiler conformance or remove those tests. The public language rollout is deferred to 0.7; existing experimental CLI surfaces remain present.
+`workflows/ci/runtime/config.yml` runs every Go package owned by this standalone
+runtime repository through the canonical sanitized Go test workflow. PipeLang is
+a pinned external compiler/SDK module; its compiler conformance campaigns and
+language extension build/publication workflows belong to the
+[PipeLang repository](https://github.com/Dockpipe-Industries/pipelang).
+Runtime qualification does not claim that separate compiler campaign passed.
 
 ## Pipeon desktop updater boundary
 
-If/when this repo publishes `pipeon-desktop` updater artifacts, keep the updater scope narrow:
-
-- updater artifacts may replace the **Tauri desktop shell** only
-- updater artifacts must **not** bundle the Pipeon code-server image, Pipeon VSIX, stock VS Code, Cursor, or unrelated Dockpipe/DorkPipe binaries
-
-Treat the Pipeon desktop shell and the Pipeon editor/runtime surface as **separate distribution lanes**:
-
-- **desktop shell** = signed Tauri updater artifacts plus a `latest.json` feed
-- **Pipeon surface** = explicit refresh/rebuild/restart flow for the code-server image, VSIX, and local first-party binaries
+Pipeon and DorkPipe own their editor, code-server and optional desktop distribution
+lanes. Runtime publication does not rebuild or replace those packages or unrelated
+installed editors. Their independently locked artifacts and qualification remain
+with their owning repositories.
 
 > `release/releasenotes/<version>.md` is required. The workflow fails fast if it is missing.
 
 **Before merging to `master` (optional but recommended):** run **[manual QA](../../docs/manual-qa.md)** for the platforms you changed.
 
-**winget:** after the release is live, optionally submit/update a manifest for the Microsoft community repo — see **[../packaging/winget/README.md](../packaging/winget/README.md)**.
+**winget:** after the release is live, optionally submit/update a manifest for the Microsoft community repo — see **[../../workflows/install/distribution/assets/winget/README.md](../../workflows/install/distribution/assets/winget/README.md)**.
 
 ---
 
@@ -112,8 +112,8 @@ Treat the Pipeon desktop shell and the Pipeon editor/runtime surface as **separa
 
 After release artifacts are published, update Homebrew formula SHA/version:
 
-- Formula source in repo: `release/packaging/homebrew/dockpipe.rb`
-- Maintainer instructions: `release/packaging/homebrew/README.md`
+- Formula source in repo: `workflows/publish/homebrew/assets/dockpipe.rb`
+- Maintainer instructions: `workflows/publish/homebrew/README.md`
 
 ---
 

@@ -1,0 +1,61 @@
+{
+  "name": "dockpipe-language-support",
+  "displayName": "Dockpipe Language Support",
+  "description": "Dockpipe workflow, package and project authoring with public runtime SDK helpers.",
+  "version": "0.0.3",
+  "publisher": "dockpipe",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Dockpipe-Industries/dockpipe.git"
+  },
+  "license": "Apache-2.0",
+  "icon": "images/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "dockpipe",
+    "pipelang",
+    "yaml"
+  ],
+  "activationEvents": [
+    "onLanguage:yaml",
+    "onLanguage:shellscript",
+    "onLanguage:powershell",
+    "onLanguage:python",
+    "onLanguage:go",
+    "onLanguage:json",
+    "onLanguage:jsonc"
+  ],
+  "files": [
+    "extension.js",
+    "schemas/**",
+    "images/**",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
+  "main": "extension.js",
+  "contributes": {
+    "jsonValidation": [
+      {
+        "fileMatch": [
+          "dockpipe.config.json"
+        ],
+        "url": "./schemas/dockpipe.config.schema.json"
+      }
+    ]
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.7.1"
+  },
+  "extensionDependencies": [
+    "dockpipe.pipelang-language-support"
+  ],
+  "scripts": {
+    "test": "node extension.test.js"
+  }
+}

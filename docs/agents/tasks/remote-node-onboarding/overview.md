@@ -1,5 +1,21 @@
 # TASK-036 Remote Node Onboarding
 
+## Completed-job capacity and replay safety (2026-10-24)
+
+- A consenting native validation worker reached the documented lifetime limit of 128
+  retained jobs; all jobs were terminal, yet new delivery refused.
+- The broker now keeps at most 128 recent jobs and archives oldest terminal metadata
+  before admitting new work. Archived IDs preserve exact retry, result, cancellation,
+  and worker-result identity; unresolved jobs never retire. Payload storage is unchanged.
+- Private bounded immutable records, hot/archive overlap checks, and a persisted
+  downgrade guard preserve fail-closed recovery. Backups include terminal archives;
+  restoring stale broker metadata is not a supported rollback.
+- Focused offline remote/domain tests pass, including restart, conflicting replay,
+  incomplete state publication, malformed records, private path bounds, and canceled
+  or unknown work. Native APFS and NTFS checks pass. The supported live broker
+  service update preserved the original jobs, paired nodes and configuration;
+  subsequent Mac package and visible UI validation resumed successfully.
+
 ## User-service upgrade recovery (2026-10-13)
 
 - A live pairing failure was traced to a user service still pinned to an older test CLI,

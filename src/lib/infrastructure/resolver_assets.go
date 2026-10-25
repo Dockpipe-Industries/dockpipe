@@ -51,17 +51,11 @@ func ResolveResolverAssetsDir(repoRoot, resolverName string) (string, error) {
 		}
 	}
 
-	var sources []string
-	if UsesBundledAssetLayout(repoRoot) {
-		sources = append(sources, filepath.Join(WorkflowsRootDir(repoRoot), resolverName))
-	} else {
-		roots := ResolverCompileRootsCached(repoRoot)
-		sources = append(sources, nestedResolverLeafDirs(resolverName, roots)...)
-		for _, config := range nestedWorkflowConfigCandidates(repoRoot, resolverName, roots) {
-			sources = append(sources, filepath.Dir(config))
-		}
+	roots := ResolverCompileRootsCached(repoRoot)
+	sources := nestedResolverLeafDirs(resolverName, roots)
+	for _, config := range nestedWorkflowConfigCandidates(repoRoot, resolverName, roots) {
+		sources = append(sources, filepath.Dir(config))
 	}
-	sources = append(sources, filepath.Join(CoreDir(repoRoot), "resolvers", resolverName))
 	for _, directory := range sources {
 		if resolverAssetsPackageExists(directory) {
 			return checkedResolverAssetsDir(directory, resolverName)

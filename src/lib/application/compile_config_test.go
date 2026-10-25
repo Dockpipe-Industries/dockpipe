@@ -12,7 +12,6 @@ func TestCmdPackageCompileAllUsesCanonicalWorkflowRoots(t *testing.T) {
 	repo := t.TempDir()
 	t.Setenv("DOCKPIPE_PACKAGES_ROOT", "")
 	for _, dir := range []string{
-		filepath.Join(repo, "src", "core", "runtimes"),
 		filepath.Join(repo, "vendor", "packages", "resolvers", "fixture", "profile"),
 		filepath.Join(repo, "vendor", "packages", "fixture-workflow"),
 	} {
@@ -38,7 +37,6 @@ func TestCmdPackageCompileAllUsesCanonicalWorkflowRoots(t *testing.T) {
 		t.Fatalf("compile all: %v", err)
 	}
 	for label, pattern := range map[string]string{
-		"core":     filepath.Join(repo, "bin", ".dockpipe", "internal", "packages", "core", "dockpipe-core-*.tar.gz"),
 		"resolver": filepath.Join(repo, "bin", ".dockpipe", "internal", "packages", "resolvers", "dockpipe-resolver-fixture-*.tar.gz"),
 		"workflow": filepath.Join(repo, "bin", ".dockpipe", "internal", "packages", "workflows", "dockpipe-workflow-fixture-workflow-*.tar.gz"),
 	} {

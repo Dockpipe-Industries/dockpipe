@@ -51,8 +51,7 @@ type DockpipeSecretsConfig struct {
 // DockpipeCompileConfig lists directories (repo-relative or absolute) used by `dockpipe package compile`.
 // Pointer slices distinguish JSON "key absent" (nil → use CLI defaults) from "empty array" (non-nil, len 0 → compile nothing from that category).
 type DockpipeCompileConfig struct {
-	CoreFrom  *string   `json:"core_from,omitempty"` // optional override for compile core --from
-	Workflows *[]string `json:"workflows,omitempty"` // roots to scan for workflow/resolver trees (e.g. workflows/, packages/, custom vendor roots); same walk for tarballs and resolver discovery (+ src/core/resolvers, templates/core/resolvers)
+	Workflows *[]string `json:"workflows,omitempty"` // roots to scan for workflow/resolver trees (e.g. workflows/, packages/, custom vendor roots); shared roots for workflow and resolver discovery
 }
 
 // UnmarshalJSON rejects retired compile-root keys while preserving the project config's
@@ -62,6 +61,9 @@ func (c *DockpipeCompileConfig) UnmarshalJSON(data []byte) error {
 	var keys map[string]json.RawMessage
 	if err := json.Unmarshal(data, &keys); err != nil {
 		return err
+	}
+	if _, exists := keys["core_from"]; exists {
+		return fmt.Errorf("compile.core_from is retired; runtime defaults are built in and optional assets belong to packages")
 	}
 	for _, retired := range []string{"resolvers", "bundles"} {
 		if _, ok := keys[retired]; ok {
@@ -95,7 +97,7 @@ type DockpipePackagesConfig struct {
 
 // DockpipePackageSourceConfig points package resolution at an explicit local filesystem source.
 // Supported kinds:
-// - "store": a package store root containing workflows/, resolvers/, and core/
+// - "store": a package store root containing workflows/ and resolvers/
 // - "tarball_dir": a directory containing dockpipe-*.tar.gz artifacts
 type DockpipePackageSourceConfig struct {
 	Kind string `json:"kind,omitempty"`

@@ -4,6 +4,7 @@
 #include <QElapsedTimer>
 #include <QEventLoop>
 #include <QFile>
+#include <QFileInfo>
 #include <QPointer>
 #include <QProcess>
 #include <QRegularExpression>
@@ -87,10 +88,15 @@ void TerminalSessionTest::terminalInputResizeAndExit()
     QVERIFY(terminal.start(directory.path()));
     QVERIFY(terminal.send("stty -echo\n"));
     // A following command cannot be mistaken for terminal echo after stty.
-    QVERIFY(terminal.send("test -t 0 && test -t 1 && test -t 2 && printf '\\nPTY_READY\\n'; printf 'SIZE='; stty size; pwd\n"));
-    QTRY_VERIFY_WITH_TIMEOUT(received.contains("SIZE=41 117"), 3000);
-    QVERIFY(received.contains("PTY_READY\r\n"));
-    QVERIFY(received.contains(directory.path().toUtf8()));
+    const QString physicalDirectory = QFileInfo(directory.path()).canonicalFilePath();
+    QVERIFY(!physicalDirectory.isEmpty());
+    const QByteArray expectedDirectory = "\r\nCWD_PHYSICAL=" + physicalDirectory.toUtf8() + "\r\n";
+    QVERIFY(terminal.send("test -t 0 && test -t 1 && test -t 2 && printf '\\nPTY_READY\\n'; printf 'SIZE='; stty size; printf 'CWD_%s=' PHYSICAL; pwd -P\n"));
+    QTRY_VERIFY2_WITH_TIMEOUT(received.contains("SIZE=41 117"), received.constData(), 3000);
+    QVERIFY2(received.contains("PTY_READY\r\n"), received.constData());
+    // pwd may arrive after the size record, and macOS temporary directories
+    // can use a /var alias for their canonical /private/var location.
+    QTRY_VERIFY2_WITH_TIMEOUT(received.contains(expectedDirectory), received.constData(), 3000);
     terminal.resize(92, 29);
     QVERIFY(terminal.send("printf 'RESIZED='; stty size\n"));
     QTRY_VERIFY_WITH_TIMEOUT(received.contains("RESIZED=29 92"), 3000);

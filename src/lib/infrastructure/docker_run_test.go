@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -843,38 +844,24 @@ func TestRunContainerActionAbsError(t *testing.T) {
 	}
 }
 
-// TestDockerBuildPaths verifies DockerBuild runs inspect/build steps for dockpipe-dev (base chain) and plain image names.
+// DockerBuild executes the selected recipe without inferring image dependencies.
 func TestDockerBuildPaths(t *testing.T) {
 	withDockerSeams(t)
-	var mu sync.Mutex
 	var calls []call
 	execCommandFn = func(name string, args ...string) *exec.Cmd {
-		mu.Lock()
 		calls = append(calls, call{name: name, args: append([]string(nil), args...)})
-		mu.Unlock()
-		// Force inspect miss to trigger base build path.
-		if len(args) >= 3 && args[0] == "image" && args[1] == "inspect" {
-			return helperExitCommand(1)
-		}
 		return helperExitCommand(0)
 	}
-	if err := DockerBuild("dockpipe-dev:0.6.0", "/repo/templates/core/assets/images/dev", "/repo"); err != nil {
-		t.Fatalf("DockerBuild dockpipe-dev failed: %v", err)
+	wantDocker := dockerCommandName()
+	if err := DockerBuild("dockpipe-dev:0.6.0", "/selected/image", "/selected/context"); err != nil {
+		t.Fatal(err)
 	}
-	if err := DockerBuild("ubuntu:latest", "/repo/templates/core/assets/images/dev", "/repo"); err != nil {
-		t.Fatalf("DockerBuild non-dockpipe failed: %v", err)
+	if len(calls) != 1 {
+		t.Fatalf("selected recipe triggered hidden dependency commands: %+v", calls)
 	}
-	mu.Lock()
-	defer mu.Unlock()
-	got := strings.Join(flattenCalls(calls), "\n")
-	if !strings.Contains(got, "docker image inspect dockpipe-base-dev:latest") {
-		t.Fatalf("expected base image inspect call, got:\n%s", got)
-	}
-	if !strings.Contains(got, "docker build -q -t dockpipe-base-dev") {
-		t.Fatalf("expected base image build call, got:\n%s", got)
-	}
-	if !strings.Contains(got, "docker build -q -t ubuntu:latest") {
-		t.Fatalf("expected final image build call, got:\n%s", got)
+	wantArgs := []string{"build", "-q", "-t", "dockpipe-dev:0.6.0", "-f", filepath.Join("/selected/image", "Dockerfile"), "/selected/context"}
+	if calls[0].name != wantDocker || !slices.Equal(calls[0].args, wantArgs) {
+		t.Fatalf("unexpected build command: %+v; want %s %q", calls[0], wantDocker, wantArgs)
 	}
 }
 

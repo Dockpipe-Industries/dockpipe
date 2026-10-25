@@ -4,13 +4,13 @@ import "strings"
 
 // ResolverAssignments holds merged fields from runtime + resolver profiles (see infrastructure.LoadIsolationProfile).
 // A resolver profile is a concrete package that satisfies a capability (dotted id); see docs/concepts/capabilities.md.
-// Runtime file: templates/core/runtimes/<name> (DOCKPIPE_RUNTIME_*). Resolver file: templates/core/resolvers/<name> (DOCKPIPE_RESOLVER_*).
+// Runtime defaults and explicit profiles use DOCKPIPE_RUNTIME_*; selected resolver packages use DOCKPIPE_RESOLVER_*.
 // Normative model: docs/concepts/architecture-model.md.
 // See also docs/concepts/isolation-layer.md.
 // Contract (not beside a workflow folder):
 //   - DOCKPIPE_RUNTIME_IMAGE_TEMPLATE or DOCKPIPE_RESOLVER_TEMPLATE: built-in template name for docker image (see infrastructure.TemplateBuild).
 //     Omit when DOCKPIPE_RUNTIME_WORKFLOW / DOCKPIPE_RESOLVER_WORKFLOW or DOCKPIPE_RUNTIME_HOST_SCRIPT / DOCKPIPE_RESOLVER_HOST_ISOLATE is set.
-//   - DOCKPIPE_RUNTIME_WORKFLOW or DOCKPIPE_RESOLVER_WORKFLOW: optional; delegate YAML under templates/core/resolvers/<name>/config.yml (or workflows / legacy templates path).
+//   - DOCKPIPE_RUNTIME_WORKFLOW or DOCKPIPE_RESOLVER_WORKFLOW: optional; delegate YAML resolved from declared project roots or installed packages.
 //     After pre-scripts, runs that workflow via the same multi-step runner — preferred over duplicating script paths.
 //   - DOCKPIPE_RUNTIME_HOST_SCRIPT or DOCKPIPE_RESOLVER_HOST_ISOLATE: optional; repo-relative script run on the host after pre-scripts instead of docker run.
 //     Prefer *_WORKFLOW when a bundled workflow already exists.

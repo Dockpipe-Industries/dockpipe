@@ -1,0 +1,11 @@
+name: build-cli-candidate
+description: Build pure-Go CLI candidate archives. Pass producer options after --.
+docker_preflight: false
+steps:
+  - id: build
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/build/cli-candidate/assets/scripts/build.py

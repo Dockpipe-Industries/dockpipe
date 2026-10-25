@@ -15,7 +15,7 @@ This document is **FINAL**. It defines the core concepts, their relationships, a
 | **capability** (abstract) | **Which need** — stable dotted id (e.g. **`cli.codex`**, **`blob.storage`**) for packages and docs. **Resolvers satisfy capabilities**; runtime stays separate. See **[capabilities.md](capabilities.md)**. |
 | **resolver** | **Which platform/tool performs the work** — **platform-specific** adapter (a **resolver package** implements a **capability**). |
 | **strategy** | **Lifecycle wrapper** — before/after execution behavior. |
-| **assets** | **Support files** — scripts, image trees, and compose examples under the core authoring tree (**`src/core/assets/`** in-repo; equivalent installed/materialized core layout elsewhere). |
+| **assets** | **Support files** owned by their workflow or package; generic runtime/SDK resources belong to the library. |
 | **runtime.type** | **Classification of runtime behavior** — not implementation. |
 
 ---
@@ -32,7 +32,7 @@ This document is **FINAL**. It defines the core concepts, their relationships, a
 
 - **Inside** the packaged workflow, **child steps** still use ordinary runtimes (**`dockerimage`**, **`dockerfile`**, …). The packaged-workflow step form applies **only** to the **parent step** that **enters** the packaged unit — not to every step in the child.
 
-- **Specialization** is meant to stay **thin**: the **child** workflow still owns its **defaults** (names of **core** runtime / resolver / strategy profiles in its YAML). The **caller** tunes behavior with **`vars`**, **`env`**, and shared CLI-style inputs merged into the nested run; explicit **step-level** **`runtime:`** / **`resolver:`** **selection** among **core** profiles is the natural extension when you need to swap substrate or tool **without** forking the package.
+- **Specialization** is meant to stay **thin**: the **child** workflow still owns its **defaults** (names of runtime / resolver / strategy profiles in its YAML). The **caller** tunes behavior with **`vars`**, **`env`**, and shared CLI-style inputs merged into the nested run; explicit **step-level** **`runtime:`** / **`resolver:`** **selection** among available profiles is the natural extension when you need to swap substrate or tool **without** forking the package.
 
 This keeps the **mental model** one-dimensional — **workflow → runtime → resolver → strategy** — whether the workflow is **inline** in the repo or **packaged** and **referenced**.
 
@@ -89,27 +89,17 @@ In configuration, **`DOCKPIPE_RUNTIME_TYPE`** is the field that carries **`runti
 
 ---
 
-## Core layout (filesystem)
+## Source and resource ownership
 
-In the repository, the authored core tree is **`src/core/`**. Installed or materialized core keeps
-the same logical categories under its own core root. The core root contains the five category
-directories below plus exactly two intentional source files: **`package.yml`** declares the core
-source-build package, and **`__init__.py`** preserves the documented Python SDK import path. No other
-loose root files are part of the core layout.
+Generic engine capabilities, typed runtime defaults and on-demand runtime/SDK
+resources live in `src/lib/`. The CLI does not require a separately installed core
+archive or an extracted authoring tree. Project workflows and package-owned tool
+implementations remain outside the generic engine.
 
-| Directory | Role |
-|-----------|------|
-| **`runtimes/`** | Runtime profiles (**where** execution runs). |
-| **`resolvers/`** | Resolver profiles (**which** tool/platform). |
-| **`strategies/`** | Strategy **KEY=value** files (lifecycle before/after). |
-| **`assets/`** | Reusable **support files** — **`assets/scripts/`**, **`assets/images/`**, and **`assets/compose/`**. Per-domain assets live under packages or resolver trees, not as new primitives. |
-| **`workflows/`** | Bundled example workflows only. Not the home for repo-specific CI or maintainer automation. |
-
-Workflows continue to reference scripts in YAML as **`scripts/…`**; the runner resolves
-**`repo/scripts/…`** first, then resolver/package-owned paths, then core **`assets/scripts/…`**
-through the centralized path helpers and package/store resolution logic.
-
-Bundling policy and legal classification: **[../packages/templates-core-assets.md](../packages/templates-core-assets.md)**.
+Workflow scripts resolve from standard project scripts, workflow-local assets,
+declared roots and installed packages. No repository workflow inventory is embedded
+in the executable. See [runtime and package assets](runtime-resource-ownership.md)
+for the ownership and migration contract.
 
 ---
 
@@ -216,24 +206,21 @@ If any item fails, **correct the wording** before publishing.
 
 ## Packaging & distribution (where things live)
 
-This section **does not change** the four primitives above; it describes **where** implementations typically ship.
+| Layer | Default owner |
+| --- | --- |
+| Runtime substrates and generic defaults | Library; custom profile files may be explicitly selected. |
+| Lifecycle strategies | Workflow/project files and typed runtime-owned compatibility adapters. |
+| Tool/platform resolvers | Independent resolver packages implementing declared capabilities. |
+| Workflows and their assets | Project authoring roots or independent workflow packages. |
+| Repository automation | Dockpipe workflows; Make and GitHub Actions are thin launchers. |
 
-| Layer | Role | Default home |
-|--------|------|----------------|
-| **Runtimes** | Where execution runs — **stable, platform-agnostic profiles** | **In-repo** under **`src/core/runtimes/`** (light profile files; compiled/installed/materialized into core elsewhere). |
-| **Strategies** | Lifecycle before/after — **small, stable** | **In-repo** under **`src/core/strategies/`**. |
-| **Compiled core** | Tight core tree users can refresh from HTTPS | **Optional static origin install** via **`dockpipe install core`** + manifest, or compiled project-local core tarball under the package store. |
-| **Resolvers** | Tool/platform **adapters** — **packages** that **implement** **capabilities** (`capability:` in **`package.yml`**) | **Bundled defaults** under **`src/core/resolvers/`** plus package/store resolver tarballs under **`bin/.dockpipe/internal/packages/`** for extended catalogs. |
-| **Workflows** | What runs — **packages** when compiled/published; **rich metadata** for authoring and store discovery | **Project `workflows/`**, **installed packages**, or **store**; **`package.yml`** carries **`requires_capabilities`**, **`requires_resolvers`**, and dependency hints. |
+Workflow and resolver packages are optional, independently versioned artifacts.
+The application does not require a core archive. Local execution resolves declared
+sources and installed packages; network access belongs to explicit installation,
+publication or the workflow's own declared operations.
 
-**Ecosystem shape:** **workflows** and **resolver** packs are the natural **“plugin store”** surface (metadata-heavy). **Runtimes** and **strategies** stay **minimal and in-repo** so every install has a predictable, lightweight spine.
-
-**Execution and network (product intent):**
-
-- **Two run modes** are both valid: **source** workflows from the repo authoring tree (today’s low-friction path), and **compiled** workflows under **`bin/.dockpipe/internal/packages/workflows/`** after **`dockpipe package compile workflow`** (and future richer compile). Neither replaces the other.
-- **Remote fetches** (HTTPS / CDN / registry) are aimed at **install and release** commands, not at every **`dockpipe run`** once artifacts are local.
-
-Full detail: **[../packages/package-model.md](../packages/package-model.md)** (**`package.yml`**, compile → package → release, workflow vs resolver dependencies, resolution order).
+See [package model](../packages/package-model.md) and
+[runtime resource ownership](runtime-resource-ownership.md).
 
 ---
 

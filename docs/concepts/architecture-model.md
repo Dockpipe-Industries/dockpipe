@@ -102,3 +102,9 @@ parent of the selected installed profile. The runtime derives this value after
 reading profile fields, so an authored profile cannot substitute another root.
 A resolver may use it to locate its own installed assets; it does not grant
 access to sibling source trees or change workflow working directories.
+
+## Implementation ownership
+
+Generic capabilities and on-demand SDK/runtime resources belong to the library.
+Workflow and tool implementations resolve from declared projects or installed
+packages. See [runtime resource ownership](runtime-resource-ownership.md).

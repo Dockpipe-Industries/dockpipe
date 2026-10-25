@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -50,10 +51,6 @@ steps:
 	writeFile(t, filepath.Join(repoRoot, "templates", "init", "models", "IExampleWorkflowConfig.pipe"), "public Interface IExampleWorkflowConfig { public string ExampleMessage; public string ExampleImage; }\n", 0o644)
 	writeFile(t, filepath.Join(repoRoot, "templates", "init", "models", "ExampleWorkflowConfig.pipe"), "public Class ExampleWorkflowConfig : IExampleWorkflowConfig { public string ExampleMessage = \"hello from dockpipe\"; public string ExampleImage = \"alpine:3.22\"; }\n", 0o644)
 	writeFile(t, filepath.Join(repoRoot, "templates", "run", "config.yml"), "name: run\nrun: []\n", 0o644)
-	writeFile(t, filepath.Join(repoRoot, "templates", "core", "resolvers", "default"), "DOCKPIPE_RESOLVER_TEMPLATE=codex\n", 0o644)
-	writeFile(t, filepath.Join(repoRoot, "templates", "core", "resolvers", "claude"), "DOCKPIPE_RESOLVER_TEMPLATE=claude\n", 0o644)
-	writeFile(t, filepath.Join(repoRoot, "templates", "core", "assets", "scripts", "commit-worktree.sh"), "#!/usr/bin/env bash\n", 0o755)
-	writeFile(t, filepath.Join(repoRoot, "templates", "core", "assets", "scripts", "clone-worktree.sh"), "#!/usr/bin/env bash\n", 0o755)
 	return repoRoot
 }
 
@@ -65,13 +62,13 @@ func TestCmdTemplateUsageAndUnknownTemplate(t *testing.T) {
 	if err := cmdTemplate([]string{}); err == nil || !strings.Contains(err.Error(), "usage: dockpipe template init") {
 		t.Fatalf("expected usage error, got %v", err)
 	}
-	if err := cmdTemplate([]string{"init", "--from", "missing", "x"}); err == nil || !strings.Contains(err.Error(), "unknown bundled template") {
-		t.Fatalf("expected unknown bundled template error, got %v", err)
+	if err := cmdTemplate([]string{"init", "--from", "missing", "x"}); err == nil || !strings.Contains(err.Error(), "unknown template source") {
+		t.Fatalf("expected unknown template source error, got %v", err)
 	}
 }
 
-// TestCmdTemplateCreatesFromBundled copies a bundled template into a new directory.
-func TestCmdTemplateCreatesFromBundled(t *testing.T) {
+// TestCmdTemplateCreatesStarterWithoutCore keeps the legacy command without copying core.
+func TestCmdTemplateCreatesStarterWithoutCore(t *testing.T) {
 	repoRoot := mkRepoRootForSubcmdTests(t)
 	t.Setenv("DOCKPIPE_REPO_ROOT", repoRoot)
 
@@ -89,17 +86,19 @@ func TestCmdTemplateCreatesFromBundled(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dest, "config.yml")); err != nil {
 		t.Fatalf("expected copied config.yml: %v", err)
 	}
-	coreClaude := filepath.Join(wd, "templates", "core", "resolvers", "claude")
-	if _, err := os.Stat(coreClaude); err != nil {
-		t.Fatalf("expected shared templates/core/resolvers/claude: %v", err)
+	if _, err := os.Stat(filepath.Join(wd, "templates")); !os.IsNotExist(err) {
+		t.Fatalf("template init must not copy a shared core tree: %v", err)
+	}
+	if err := cmdTemplate([]string{"init", "my-workflow"}); err == nil {
+		t.Fatal("template init must not overwrite its existing destination")
 	}
 }
 
-// TestCmdInitLikeScriptCreateAndFromBundled covers dockpipe action init default and --from bundled script.
-func TestCmdInitLikeScriptCreateAndFromBundled(t *testing.T) {
+// TestCmdInitLikeScriptCreateAndFromLocalFile covers generated scripts and explicit local copies.
+func TestCmdInitLikeScriptCreateAndFromLocalFile(t *testing.T) {
 	repoRoot := mkRepoRootForSubcmdTests(t)
 	t.Setenv("DOCKPIPE_REPO_ROOT", repoRoot)
-	writeFile(t, filepath.Join(repoRoot, "templates", "core", "assets", "scripts", "print-summary.sh"), "#!/usr/bin/env bash\necho ok\n", 0o755)
+	writeFile(t, filepath.Join(repoRoot, "local-scripts", "summary.sh"), "#!/usr/bin/env bash\necho ok\n", 0o755)
 
 	wd := t.TempDir()
 	oldWd, _ := os.Getwd()
@@ -127,12 +126,34 @@ func TestCmdInitLikeScriptCreateAndFromBundled(t *testing.T) {
 		}
 	}
 
-	if err := cmdAction([]string{"init", "--from", "print-summary", "from-bundle.sh"}); err != nil {
+	source := filepath.Join(repoRoot, "local-scripts", "summary.sh")
+	if err := cmdAction([]string{"init", "--from", source, "from-local.sh"}); err != nil {
 		t.Fatalf("cmdAction --from failed: %v", err)
 	}
-	fromBundle := filepath.Join(wd, "from-bundle.sh")
-	if _, err := os.Stat(fromBundle); err != nil {
-		t.Fatalf("expected bundled script copy: %v", err)
+	fromLocal := filepath.Join(wd, "from-local.sh")
+	if _, err := os.Stat(fromLocal); err != nil {
+		t.Fatalf("expected explicit local script copy: %v", err)
+	}
+	content, err := os.ReadFile(fromLocal)
+	if err != nil || string(content) != "#!/usr/bin/env bash\necho ok\n" {
+		t.Fatalf("local script contents changed: %q, %v", content, err)
+	}
+	info, err := os.Stat(fromLocal)
+	if err != nil {
+		t.Fatalf("stat explicit local script copy: %v", err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm()&0o111 == 0 {
+		t.Fatal("local script must remain executable")
+	}
+	if err := cmdAction([]string{"init", "--from", source, "from-local.sh"}); err == nil {
+		t.Fatal("explicit script copy must not overwrite its destination")
+	}
+	if err := cmdAction([]string{"init", "--from", "print-summary", "from-library.sh"}); err != nil {
+		t.Fatalf("explicit legacy library template: %v", err)
+	}
+	libraryCopy, err := os.ReadFile(filepath.Join(wd, "from-library.sh"))
+	if err != nil || !strings.Contains(string(libraryCopy), "DOCKPIPE_EXIT_CODE") {
+		t.Fatalf("expected library hook bytes rather than old core fixture: %v", err)
 	}
 	if err := cmdAction([]string{"init", "--from"}); err == nil || !strings.Contains(err.Error(), "--from requires argument") {
 		t.Fatalf("expected --from validation error, got %v", err)
@@ -167,68 +188,6 @@ func TestCmdPreInitCreatesDefaultScript(t *testing.T) {
 	for _, want := range []string{"unit=init.script", "status=start", "status=done", "source=boilerplate"} {
 		if !strings.Contains(stderr, want) {
 			t.Fatalf("expected pre stderr to contain %q, got:\n%s", want, stderr)
-		}
-	}
-}
-
-// TestMergeBundledTemplatesCoreCopiesCoreTree copies templates/core from repoRoot into dest,
-// including nested assets (full copy when source has no workflows/ subdir).
-func TestMergeBundledTemplatesCoreCopiesCoreTree(t *testing.T) {
-	repo := t.TempDir()
-	dest := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(repo, "templates", "core", "assets", "scripts"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(repo, "templates", "core", "assets", "scripts", "merge-marker.txt"), []byte("ok\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := mergeBundledTemplatesCore(repo, dest); err != nil {
-		t.Fatalf("mergeBundledTemplatesCore: %v", err)
-	}
-	b, err := os.ReadFile(filepath.Join(dest, "templates", "core", "assets", "scripts", "merge-marker.txt"))
-	if err != nil || string(b) != "ok\n" {
-		t.Fatalf("got %v %q", err, string(b))
-	}
-}
-
-func TestMergeBundledTemplatesCoreFromSourceCheckoutExcludesGeneratedPythonCache(t *testing.T) {
-	repo := t.TempDir()
-	dest := t.TempDir()
-	fixtures := map[string]string{
-		"src/core/runtimes/default":                                      "DOCKPIPE_RUNTIME_IMAGE=alpine\n",
-		"src/core/workflows/example/config.yml":                          "steps: []\n",
-		"src/core/assets/scripts/merge-marker.txt":                       "ok\n",
-		"src/core/assets/scripts/.retained-core-asset":                   "intentional hidden asset\n",
-		"src/core/assets/scripts/helper.py":                              "print('source')\n",
-		"src/core/assets/scripts/helper.pyc.txt":                         "ordinary suffix\n",
-		"src/core/assets/scripts/generated.pyc":                          "generated bytecode\n",
-		"src/core/assets/scripts/lib/__pycache__/helper.cpython-310.pyc": "generated cache\n",
-		"src/core/assets/scripts/lib/__pycache__/ordinary-passenger.txt": "cache passenger\n",
-	}
-	for path, body := range fixtures {
-		writeFile(t, filepath.Join(repo, filepath.FromSlash(path)), body, 0o644)
-	}
-
-	if err := mergeBundledTemplatesCore(repo, dest); err != nil {
-		t.Fatalf("mergeBundledTemplatesCore: %v", err)
-	}
-	for _, retained := range []string{
-		"templates/core/runtimes/default",
-		"templates/core/assets/scripts/merge-marker.txt",
-		"templates/core/assets/scripts/.retained-core-asset",
-		"templates/core/assets/scripts/helper.py",
-		"templates/core/assets/scripts/helper.pyc.txt",
-	} {
-		if _, err := os.Stat(filepath.Join(dest, filepath.FromSlash(retained))); err != nil {
-			t.Fatalf("expected retained source-checkout core path %q: %v", retained, err)
-		}
-	}
-	for _, excluded := range []string{
-		"templates/core/assets/scripts/generated.pyc",
-		"templates/core/assets/scripts/lib/__pycache__",
-	} {
-		if _, err := os.Stat(filepath.Join(dest, filepath.FromSlash(excluded))); !os.IsNotExist(err) {
-			t.Fatalf("generated Python cache path %q entered scaffold: %v", excluded, err)
 		}
 	}
 }
@@ -284,8 +243,8 @@ func TestCmdInitCreatesWorkspaceAndMinimalWorkflow(t *testing.T) {
 	}
 }
 
-// TestCmdInitFromInitCopiesBundledInitTemplate restores the legacy copy of templates/init into workflows/<name>/.
-func TestCmdInitFromInitCopiesBundledInitTemplate(t *testing.T) {
+// TestCmdInitFromInitGeneratesStarter creates the library-owned starter without template files.
+func TestCmdInitFromInitGeneratesStarter(t *testing.T) {
 	repoRoot := mkRepoRootForSubcmdTests(t)
 	t.Setenv("DOCKPIPE_REPO_ROOT", repoRoot)
 	project := t.TempDir()
@@ -301,8 +260,16 @@ func TestCmdInitFromInitCopiesBundledInitTemplate(t *testing.T) {
 	if err := cmdInit([]string{"legacy", "--from", "init"}); err != nil {
 		t.Fatalf("cmdInit: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(project, "workflows", "legacy", "README.md")); err != nil {
-		t.Fatalf("expected bundled init README copied: %v", err)
+	if _, err := os.Stat(filepath.Join(project, "workflows", "legacy", "README.md")); !os.IsNotExist(err) {
+		t.Fatalf("built-in init must not copy template README/model files: %v", err)
+	}
+	content, err := os.ReadFile(filepath.Join(project, "workflows", "legacy", "config.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflow, err := domain.ParseWorkflowYAML(content)
+	if err != nil || len(workflow.Steps) != 1 || !workflow.Steps[0].IsHostStep() {
+		t.Fatalf("expected generated host starter: %v, %s", err, content)
 	}
 }
 

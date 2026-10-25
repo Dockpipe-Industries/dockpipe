@@ -1,0 +1,11 @@
+name: install-desktop
+description: Stage the developer desktop, or explicitly install it for the current user with --global.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py bash workflows/install/desktop/assets/scripts/install.sh

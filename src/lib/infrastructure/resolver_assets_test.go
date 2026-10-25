@@ -147,3 +147,19 @@ func TestResolveResolverAssetsDirInstalledPrecedenceAndCompatibility(t *testing.
 		t.Fatalf("installed compatibility gate bypassed: %v", err)
 	}
 }
+
+func TestResolveResolverAssetsDirIgnoresImplicitCoreTrees(t *testing.T) {
+	repo := t.TempDir()
+	for _, tree := range []string{"src/core", "templates/core", "bundle/core"} {
+		directory := filepath.Join(repo, tree, "resolvers", "retired-tool")
+		if err := os.MkdirAll(filepath.Join(directory, "assets"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(directory, "profile"), []byte("DOCKPIPE_RESOLVER_CMD=retired\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got, err := ResolveResolverAssetsDir(repo, "retired-tool"); err == nil {
+		t.Fatalf("unexpected implicit assets %q", got)
+	}
+}

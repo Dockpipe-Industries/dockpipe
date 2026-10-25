@@ -1,0 +1,11 @@
+name: install-windows
+description: Run the install windows operation with explicit options after --.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py pwsh -NoProfile -File workflows/install/windows/assets/scripts/install.ps1

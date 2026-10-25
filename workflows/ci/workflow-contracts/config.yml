@@ -1,0 +1,11 @@
+name: ci-workflow-contracts
+description: Run contract tests beside each owning workflow.
+docker_preflight: false
+steps:
+  - id: contracts
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/ci/workflow-contracts/assets/scripts/test.py

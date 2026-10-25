@@ -1,0 +1,11 @@
+name: publish-go-sdk
+description: Verify and publish the exact committed Go SDK as an immutable source candidate.
+docker_preflight: false
+steps:
+  - id: publish
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/publish/go-sdk/assets/scripts/publish.py

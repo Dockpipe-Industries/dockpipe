@@ -28,27 +28,8 @@ func EffectiveWorkflowCompileRootsDetailed(cfg *DockpipeProjectConfig, repoRoot 
 	return result
 }
 
-func mergeUniqueAbsPaths(a, b []string) []string {
-	seen := map[string]struct{}{}
-	for _, p := range a {
-		p = filepath.Clean(p)
-		seen[p] = struct{}{}
-	}
-	for _, p := range b {
-		p = filepath.Clean(p)
-		if _, ok := seen[p]; ok {
-			continue
-		}
-		seen[p] = struct{}{}
-		a = append(a, p)
-	}
-	return a
-}
-
-// EffectiveResolverCompileRoots merges workflow compile roots with flat core resolver dirs.
-// Resolver packs under packages/ and other compile roots are discovered from the same roots as
-// compile.workflows. Flat vendor trees
-// src/core/resolvers and templates/core/resolvers are always appended when present.
+// EffectiveResolverCompileRoots discovers resolver packages from the same
+// explicitly configured or default roots as workflows.
 func EffectiveResolverCompileRoots(cfg *DockpipeProjectConfig, repoRoot string) []string {
 	return EffectiveResolverCompileRootsDetailed(cfg, repoRoot).Paths
 }
@@ -56,22 +37,7 @@ func EffectiveResolverCompileRoots(cfg *DockpipeProjectConfig, repoRoot string) 
 // EffectiveResolverCompileRootsDetailed returns resolver compile roots plus any configured paths
 // that were skipped because they do not currently exist on disk.
 func EffectiveResolverCompileRootsDetailed(cfg *DockpipeProjectConfig, repoRoot string) CompilePathResolution {
-	wf := EffectiveWorkflowCompileRootsDetailed(cfg, repoRoot)
-	var core []string
-	for _, rel := range []string{
-		filepath.Join("src", "core", "resolvers"),
-		filepath.Join("templates", "core", "resolvers"),
-	} {
-		p := filepath.Join(repoRoot, rel)
-		if _, err := os.Stat(p); err == nil {
-			core = append(core, p)
-		}
-	}
-	result := CompilePathResolution{
-		Paths:        mergeUniqueAbsPaths(wf.Paths, core),
-		MissingPaths: append([]string(nil), wf.MissingPaths...),
-	}
-	return result
+	return EffectiveWorkflowCompileRootsDetailed(cfg, repoRoot)
 }
 
 func ResolveCompilePathList(repoRoot string, rels []string) CompilePathResolution {

@@ -9,7 +9,7 @@ struct Context {
     QString id;
     QString label;
     QString workdir;
-    /// Bundled workflow name (e.g. vscode); empty if using workflowFile only.
+    /// Project or installed package workflow name; empty when using workflowFile only.
     QString workflow;
     /// Path to workflow config.yml; empty if using workflow name only.
     QString workflowFile;

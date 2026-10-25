@@ -18,9 +18,7 @@
     "compile": {
       "type": "object",
       "properties": {
-        "core_from": {
-          "type": "string"
-        },
+        "core_from": false,
         "workflows": {
           "type": "array",
           "items": {

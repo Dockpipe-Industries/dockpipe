@@ -1,0 +1,120 @@
+param(
+    [Parameter(Mandatory = $true)][string]$Version,
+    [Parameter(Mandatory = $true)][string]$StageDir,
+    [switch]$EnableQualification
+)
+$ErrorActionPreference = "Stop"
+
+function Assert-PublicDesktopRuntime {
+    param([Parameter(Mandatory = $true)][string]$RuntimeDirectory)
+    # The MSI harvests the whole stage. Fail before harvesting private build state.
+    $privateExtensions = @(".pdb", ".obj", ".ilk", ".exp", ".lib", ".pch", ".iobj", ".ipdb", ".idb")
+    $privateFiles = @(Get-ChildItem -LiteralPath $RuntimeDirectory -Recurse -File | Where-Object {
+        $privateExtensions -contains $_.Extension.ToLowerInvariant()
+    })
+    if ($privateFiles.Count -ne 0) {
+        throw "Desktop runtime contains private build files: $($privateFiles.Name -join ', ')"
+    }
+}
+
+$root = (Resolve-Path (Join-Path $PSScriptRoot "../../../../..")).Path
+if (-not $env:DOCKPIPE_BROWSER_SDK) {
+    throw "Prepare the exact public Browser SDK and set DOCKPIPE_BROWSER_SDK"
+}
+$browserSdk = (Resolve-Path -LiteralPath $env:DOCKPIPE_BROWSER_SDK).Path
+& python (Join-Path $PSScriptRoot "../../../../dependencies/browser-sdk/assets/scripts/browser-runtime.py") --sdk $browserSdk --platform windows-amd64
+if ($LASTEXITCODE -ne 0) { throw "Browser SDK verification failed" }
+$prefixes = $browserSdk
+if ($env:CMAKE_PREFIX_PATH) { $prefixes += ";" + $env:CMAKE_PREFIX_PATH }
+$build = Join-Path ([IO.Path]::GetTempPath()) ("dockpipe-desktop-" + [guid]::NewGuid().ToString("N"))
+if (Test-Path -LiteralPath $StageDir) {
+    throw "Desktop stage must be new: $StageDir"
+}
+$vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio/Installer/vswhere.exe"
+$visualStudio = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+if (-not $visualStudio) {
+    throw "Visual Studio C++ tools are required"
+}
+$developerShell = Join-Path $visualStudio "Common7/Tools/Launch-VsDevShell.ps1"
+& $developerShell -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+if (-not $env:VCToolsInstallDir -or -not $env:VCToolsRedistDir) {
+    throw "Visual Studio developer environment is incomplete"
+}
+
+try {
+    $qualification = if ($EnableQualification) { "ON" } else { "OFF" }
+    cmake -S (Join-Path $root "src/app/tooling/dockpipe-launcher") -B $build -G "NMake Makefiles" `
+        -DCMAKE_BUILD_TYPE=Release "-DDOCKPIPE_ENABLE_QUALIFICATION=$qualification" -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL "-DCMAKE_PREFIX_PATH=$prefixes" "-DDOCKPIPE_RELEASE_VERSION=$Version"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Desktop configure failed"
+    }
+    cmake --build $build
+    if ($LASTEXITCODE -ne 0) {
+        throw "Desktop build failed"
+    }
+    # Match the installed application before standard-user embedding fixtures run.
+    # The verified app-local copy inherits the build directory's access rights.
+    & python (Join-Path $PSScriptRoot "../../../../dependencies/browser-sdk/assets/scripts/browser-runtime.py") --sdk $browserSdk `
+        --platform windows-amd64 --runtime $build
+    if ($LASTEXITCODE -ne 0) {
+        throw "Desktop test Browser runtime deployment failed"
+    }
+    $testPath = $env:PATH
+    try {
+        $env:PATH = (Join-Path $browserSdk "bin") + ";" + $testPath
+        $testReport = Join-Path $build ("desktop-regression-" + [guid]::NewGuid().ToString("N") + ".xml")
+        if (Test-Path -LiteralPath $testReport) {
+            throw "CTest report must be fresh"
+        }
+        ctest --test-dir $build --output-on-failure --timeout 120 --stop-on-failure --no-tests=error --output-junit $testReport
+        if ($LASTEXITCODE -ne 0) {
+            throw "Desktop regression tests failed"
+        }
+        & python (Join-Path $root "workflows/shared/ctest_result.py") --report $testReport --require desktop-app-window-win
+        if ($LASTEXITCODE -ne 0) {
+            throw "Required native desktop embedding did not produce a non-skipped PASS"
+        }
+    } finally {
+        $env:PATH = $testPath
+    }
+    New-Item -ItemType Directory -Path $StageDir | Out-Null
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot "../licenses") -Destination $StageDir -Recurse
+    Copy-Item -LiteralPath (Join-Path $root "LICENSE") -Destination (Join-Path $StageDir "licenses/DockPipe-LICENSE.txt")
+    $launcher = Join-Path $StageDir "dockpipe-launcher.exe"
+    Copy-Item -LiteralPath (Join-Path $build "dockpipe-launcher.exe") -Destination $launcher
+    Copy-Item -LiteralPath (Join-Path $build "dockpipe-syntax.rcc") -Destination $StageDir
+    Copy-Item -LiteralPath (Join-Path $build "syntax-licenses") -Destination $StageDir -Recurse
+    Copy-Item -LiteralPath (Join-Path $build "dockpipe-launcher-ui.dll") -Destination $StageDir
+    Copy-Item -LiteralPath (Join-Path $build "dockpipe-workspace-reader.exe") -Destination $StageDir
+    & python (Join-Path $PSScriptRoot "../../../../dependencies/browser-sdk/assets/scripts/browser-runtime.py") --sdk $browserSdk --platform windows-amd64 `
+        --runtime $StageDir --licenses (Join-Path $StageDir "licenses/SpatialWebBrowser")
+    if ($LASTEXITCODE -ne 0) { throw "Browser runtime deployment failed" }
+    windeployqt --release --compiler-runtime --dir $StageDir $launcher
+    if ($LASTEXITCODE -ne 0) {
+        throw "Qt deployment failed"
+    }
+    # A per-user MSI cannot rely on running a machine-wide VC redistributable
+    # installer. Ship Microsoft's redistributable CRT DLLs beside the application.
+    $crtRoot = Join-Path $env:VCToolsRedistDir "x64"
+    $crt = Get-ChildItem -LiteralPath $crtRoot -Directory -Filter "Microsoft.VC*.CRT" | Sort-Object Name | Select-Object -Last 1
+    if (-not $crt) {
+        throw "Visual C++ redistributable CRT directory is missing"
+    }
+    Get-ChildItem -LiteralPath $crt.FullName -Filter "*.dll" | Copy-Item -Destination $StageDir
+    Assert-PublicDesktopRuntime -RuntimeDirectory $StageDir
+    foreach ($required in @(
+        "SpatialWebBrowser.dll", "dockpipe-workspace-reader.exe", "Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6OpenGL.dll",
+        "Qt6WebEngineCore.dll", "Qt6WebEngineWidgets.dll", "QtWebEngineProcess.exe",
+        "resources/icudtl.dat", "resources/qtwebengine_resources.pak", "translations/qtwebengine_locales/en-US.pak",
+        "resources/qtwebengine_resources_100p.pak", "resources/qtwebengine_resources_200p.pak",
+        "platforms/qwindows.dll", "vcruntime140.dll", "msvcp140.dll"
+    )) {
+        if (-not (Test-Path -LiteralPath (Join-Path $StageDir $required))) {
+            throw "Incomplete desktop runtime: $required"
+        }
+    }
+} finally {
+    if (Test-Path -LiteralPath $build) {
+        Remove-Item -LiteralPath $build -Recurse -Force
+    }
+}

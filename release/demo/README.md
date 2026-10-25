@@ -14,7 +14,7 @@ The checked-in recordings are historical demo artifacts. Regenerate them against
 
 ## One command (builds both GIFs)
 
-From the repo root (or from `src/scripts/` — same Makefile forwards to the root):
+From the repository root:
 
 ```bash
 make demo-record
@@ -65,5 +65,5 @@ Install **agg** from [GitHub releases](https://github.com/asciinema/agg/releases
 
 ```bash
 make build
-bash src/scripts/record-demo.sh all    # or: short | long
+bash workflows/demo/record/assets/scripts/record.sh all    # or: short | long
 ```

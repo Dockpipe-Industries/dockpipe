@@ -1,0 +1,11 @@
+name: ci-repository-layout
+description: Run the repository ci repository-layout operation.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py bash workflows/ci/repository-layout/assets/scripts/check-paths.sh

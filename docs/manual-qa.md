@@ -42,6 +42,6 @@ CI runs **`go test ./...`**, **`dockpipe package test`**, and **`dockpipe workfl
 
 Record: OS version, `uname` / arch, install method (`deb` / tarball / source), `docker --version`, failing command + **stderr**.
 
-**Packaging maintainer:** [release/packaging/homebrew/README.md](../release/packaging/homebrew/README.md) · `release/packaging/build-deb-all.sh`
+**Packaging maintainer:** [workflows/publish/homebrew/README.md](../workflows/publish/homebrew/README.md) · [Linux packaging workflow](../workflows/package/linux-cli/all.yml)
 
 **Contributors:** [CONTRIBUTING.md](../CONTRIBUTING.md#platform-testing-we-need-you)

@@ -18,20 +18,33 @@ name: CI
 
 on:
   workflow_dispatch:
+    inputs:
+      build_go_sdk:
+        description: Reproduce the locked SDK as CI artifacts without publication.
+        required: false
+        type: boolean
+        default: false
+      publish_go_sdk:
+        description: Reproduce and request protected SDK publication.
+        required: false
+        type: boolean
+        default: false
   pull_request:
     branches: [master, staging, dev]
   push:
     branches: [master, staging, dev]
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/staging' }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}${{ github.event_name == 'workflow_dispatch' && (inputs.build_go_sdk || inputs.publish_go_sdk) && '-go-sdk' || '' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/staging' && !(github.event_name == 'workflow_dispatch' && (inputs.build_go_sdk || inputs.publish_go_sdk)) }}
 
 env:
   GOTOOLCHAIN: local
 
 jobs:
   test:
+    name: ${{ github.event_name == 'workflow_dispatch' && (inputs.build_go_sdk || inputs.publish_go_sdk) && 'sdk-selection-linux-tests-skipped' || 'test' }}
+    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.build_go_sdk || inputs.publish_go_sdk)) }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -45,7 +58,7 @@ jobs:
           go-version: "1.26.10"
 
       - name: Public repository configuration boundary
-        run: python3 release/packaging/check-public-content.py
+        run: python3 workflows/shared/launch.py workflows/release/metadata/content.yml
 
       - name: Install build and shell-test dependencies
         run: |
@@ -68,81 +81,33 @@ jobs:
             libegl1-mesa-dev
 
       - name: Release tooling contracts before builds
-        run: /usr/bin/python3 -B -m unittest discover -s release/packaging/tests -v
+        run: python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml
 
       # Flatpak qualification owns the native desktop build and tests.
       - name: Build CLI (Bash tests use src/bin/dockpipe)
-        run: make build-core
-
-      - name: Generic VM platform and foreground lifecycle contracts
-        env:
-          DOCKPIPE_TEST_DOCKPIPE_BIN: ${{ github.workspace }}/src/bin/dockpipe
-        run: |
-          bash tests/unit-tests/test_vm_darwin.sh
-          bash tests/unit-tests/test_vm_boot_display_args.sh
+        run: make build
 
       - name: govulncheck + gosec
         env:
           DOCKPIPE_WORKDIR: ${{ github.workspace }}
           DOCKPIPE_WORKFLOW_NAME: ci
-        run: |
-          set -euo pipefail
-          CI_RAW_DIR="$(./src/bin/dockpipe scope artifacts ci-raw --workdir "$DOCKPIPE_WORKDIR")"
-          export DOCKPIPE_CI_RAW_DIR="$CI_RAW_DIR"
-          rm -rf "$CI_RAW_DIR"
-          mkdir -p "$CI_RAW_DIR"
-          GOBIN="$(go env GOPATH)/bin"
-          go install honnef.co/go/tools/cmd/staticcheck@v0.7.0
-          go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
-          go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0
-          set +e
-          "$GOBIN/govulncheck" -format json ./... > "$CI_RAW_DIR/govulncheck.json"
-          VC=$?
-          if [[ $VC -eq 0 ]]; then
-            # JSON output reports findings without a failing exit status. Convert
-            # the same scan to text to enforce reachable vulnerabilities as a gate.
-            "$GOBIN/govulncheck" -mode convert < "$CI_RAW_DIR/govulncheck.json"
-            VC=$?
-          fi
-          "$GOBIN/gosec" -conf .gosec.json -fmt json -out="$CI_RAW_DIR/gosec.json" -exclude-dir=.gomodcache -exclude-dir=bin/.dockpipe -exclude-dir=testdata ./...
-          GC=$?
-          set -e
-          echo "::group::gosec stats (JSON)"
-          jq '.Stats // empty' "$CI_RAW_DIR/gosec.json" || true
-          echo "::endgroup::"
-          if [[ $VC -ne 0 ]]; then
-            echo "::error::govulncheck failed (exit $VC)"
-            exit "$VC"
-          fi
-          if [[ $GC -ne 0 ]]; then
-            echo "::error::gosec failed (exit $GC)"
-            exit "$GC"
-          fi
+        run: python3 workflows/shared/launch.py workflows/ci/repository/security.yml
 
       - name: Runtime Go tests
-        run: bash release/packaging/test-runtime.sh
+        run: python3 workflows/shared/launch.py workflows/ci/runtime/config.yml
 
       - name: Pinned repository workflow tests
-        run: python3 -B -m unittest discover -s workflows/ci/dockpipe-repo-quality/tests -p 'test_*.py'
+        run: python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/ci/dockpipe-repo-quality/tests
 
       - name: Staticcheck
-        run: staticcheck ./...
+        run: python3 workflows/shared/launch.py workflows/ci/repository/staticcheck.yml
 
       - name: ShellCheck syntax gate
         shell: bash
-        run: |
-          set -euo pipefail
-          mapfile -t shell_scripts < <(git ls-files '*.sh' ':!:src/app/tooling/vscode-extensions/**/node_modules/**' ':!:bin/**')
-          existing_shell_scripts=()
-          for script in "${shell_scripts[@]}"; do
-            [[ -f "$script" ]] && existing_shell_scripts+=("$script")
-          done
-          if ((${#existing_shell_scripts[@]})); then
-            shellcheck -S error "${existing_shell_scripts[@]}"
-          fi
+        run: python3 workflows/shared/launch.py workflows/ci/repository/shellcheck.yml
 
       - name: Templates/core path guard (docs + code)
-        run: bash src/scripts/check-templates-core-paths.sh
+        run: python3 workflows/shared/launch.py workflows/ci/repository-layout/config.yml
 
       # Workflow "test" = go test + vet + staticcheck + govulncheck + gosec inside Docker (tools installed in-container; only mod cache mounted).
       - name: Dockpipe workflow — test
@@ -198,28 +163,30 @@ jobs:
           echo "OK: shipping $V release line with updated $notes; patch number is generated."
 
       - name: Build amd64 .deb (for test_deb_install.sh)
-        run: bash ./release/packaging/build-deb.sh "$(tr -d ' \t\r\n' < VERSION)" amd64
+        run: python3 workflows/shared/launch.py workflows/package/linux-cli/config.yml -- "$(tr -d ' \t\r\n' < VERSION)" amd64 --output release/artifacts
 
       - name: Shell unit tests
-        run: bash tests/run_tests.sh
+        run: python3 workflows/shared/launch.py workflows/ci/shell/config.yml
 
       - name: Integration tests (Docker)
         if: ${{ env.ACT != 'true' }}
-        run: bash tests/integration-tests/run.sh
+        run: python3 workflows/shared/launch.py workflows/ci/integration/config.yml
 
       - name: Upload CI scan receipts
-        if: always()
+        if: ${{ always() && env.DOCKPIPE_CI_RAW_DIR != '' }}
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: dockpipe-ci-scans-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            bin/.dockpipe/workflows/ci/artifacts/ci-raw/
+          path: ${{ env.DOCKPIPE_CI_RAW_DIR }}
+          include-hidden-files: true
 
   # Windows: Go + bash scripts that mirror host pre-script behavior (Git Bash on the runner).
   # Full tests/run_tests.sh and Docker integration tests stay on Linux — Docker/Linux images
   # are not reliable on windows-latest the same way as ubuntu-latest.
   test-windows:
+    name: ${{ github.event_name == 'workflow_dispatch' && (inputs.build_go_sdk || inputs.publish_go_sdk) && 'sdk-selection-windows-tests-skipped' || 'test-windows' }}
+    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.build_go_sdk || inputs.publish_go_sdk)) }}
     runs-on: windows-latest
     permissions:
       contents: read
@@ -236,16 +203,17 @@ jobs:
           go-version: "1.26.10"
 
       - name: Pinned package-store composition on Windows
-        run: python3 -B -m unittest discover -s release/packaging/tests -p 'test_package_store_composition.py'
+        run: python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/catalog/compose/tests --pattern test_package_store_composition.py
 
       - name: Runtime Go tests
-        run: bash release/packaging/test-runtime.sh
+        run: python3 workflows/shared/launch.py workflows/ci/runtime/config.yml
 
       - name: Templates/core path guard (docs + code)
-        run: bash src/scripts/check-templates-core-paths.sh
+        run: python3 workflows/shared/launch.py workflows/ci/repository-layout/config.yml
 
       - name: clone-worktree include script (bash + git)
-        run: bash tests/unit-tests/test_clone_worktree_include.sh
+        run: python3 workflows/shared/launch.py workflows/ci/repository/worktree.yml
+
 
   staging-release:
     needs: [test, test-windows]
@@ -259,3 +227,11 @@ jobs:
     secrets: inherit
     with:
       staging: true
+
+  go-sdk:
+    if: ${{ github.event_name == 'workflow_dispatch' && (inputs.build_go_sdk || inputs.publish_go_sdk) }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/go-sdk.yml
+    with:
+      publish: ${{ inputs.publish_go_sdk }}

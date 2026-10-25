@@ -1,0 +1,11 @@
+name: install-built-windows-cli
+description: Run the install built windows cli operation with explicit options after --.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py pwsh -NoProfile -File workflows/install/windows/assets/scripts/dev-install.ps1

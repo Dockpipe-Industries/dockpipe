@@ -139,7 +139,7 @@ tasks:
       - docs/agents/core/validation-commands.md
     optional:
       - docs/workflows/workflow-yaml.md
-      - src/core/assets/scripts/README.md
+      - docs/concepts/runtime-resource-ownership.md
       - src/lib/application/sdk_cmd.go
       - src/lib/infrastructure/schema/workflow.schema.json
       - docs/packages/editor-extensions.md

@@ -1,0 +1,11 @@
+name: prepare-browser
+description: Run the prepare browser operation with its owning assets.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: bash workflows/build/flatpak/assets/scripts/prepare-browser.sh

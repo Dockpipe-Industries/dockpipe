@@ -15,20 +15,14 @@ import (
 
 var errStopScriptWalk = errors.New("stop script walk")
 
-// ResolveWorkflowScript resolves run/act path: scripts/* from the project (projectRoot/scripts/ if
-// present, else projectRoot/src/scripts/ for this dockpipe repo layout), else extra workflow roots
-// from dockpipe.config.json compile.workflows (nested trees), then templates/core
-// (materialized merge), then templates/core/assets/scripts/;
-// other paths are relative to the workflow template dir.
-// repoRoot is the layout root (bundled cache or checkout); projectRoot is the Dockpipe project
-// directory (--workdir or cwd). Pass projectRoot == "" to treat project as repoRoot.
-//
-// Namespace: scripts/core.<dot.segments> maps to paths under core/ by turning dots into path segments
-// (e.g. scripts/core.assets.scripts.foo.sh → core/assets/scripts/foo.sh). Resolution prefers compiled
-// core overlays, then any workflow/package asset that provides the same asset path via declared compile
-// roots or installed workflow tarballs, then the core spine itself.
-// Uses forward slashes so YAML paths match Linux/container expectations.
+// ResolveWorkflowScript resolves logical scripts through project overrides, installed
+// packages and declared workflow roots. Other paths remain relative to workflowRoot.
+// An empty projectRoot uses repoRoot. The legacy core.* alias searches package-owned
+// workflow assets only; it does not imply a bundled core tree.
 func ResolveWorkflowScript(rel, workflowRoot, repoRoot, projectRoot string) string {
+	if filepath.IsAbs(rel) {
+		return filepath.ToSlash(rel)
+	}
 	if strings.HasPrefix(rel, "scripts/") {
 		if p, ok := projectScriptOverridePath(repoRoot, projectRoot, rel); ok {
 			return filepath.ToSlash(p)
@@ -48,7 +42,6 @@ func projectScriptOverridePath(repoRoot, projectRoot, rel string) (string, bool)
 	rest := strings.TrimPrefix(rel, "scripts/")
 	for _, candidate := range []string{
 		filepath.Join(projectRoot, "scripts", rest),
-		filepath.Join(projectRoot, "src", "scripts", rest),
 	} {
 		if scriptFileExists(candidate) {
 			return candidate, true
@@ -214,7 +207,7 @@ func commonExtSegment(s string) bool {
 }
 
 // workflowAssetPathFromRoots finds the first workflow-owned asset whose path ends with rel under the
-// provided roots (authoring trees such as compile.workflows or bundled bundle/workflows).
+// provided roots (installed workflows or declared authoring roots).
 func workflowAssetPathFromRoots(rel string, roots []string) (string, bool) {
 	rel = filepath.ToSlash(filepath.Clean(rel))
 	if rel == "." || rel == "" {
@@ -277,8 +270,8 @@ func workflowAssetPathForLogicalScript(rest string, roots []string) (string, boo
 	return workflowAssetPathFromRoots(filepath.Join("assets", "scripts", after), roots)
 }
 
-// resolveCoreNamespacedAsset resolves scripts/core.* to a file under core/ (compiled overlays first).
-// projectRoot is the Dockpipe project directory (bin/.dockpipe, packages/); repoRoot is the layout root for CoreDir / bundle.
+// resolveCoreNamespacedAsset preserves the dotted compatibility alias for assets
+// owned by installed workflows or explicitly declared workflow roots.
 func resolveCoreNamespacedAsset(repoRoot, projectRoot, rest string) (string, bool) {
 	if projectRoot == "" {
 		projectRoot = repoRoot
@@ -287,45 +280,29 @@ func resolveCoreNamespacedAsset(repoRoot, projectRoot, rest string) (string, boo
 	if !ok {
 		return "", false
 	}
-	candidates := []string{
-		filepath.Join(projectRoot, DockpipeDirRel, "core", rel),
-		filepath.Join(projectRoot, DockpipeDirRel, "internal", "packages", "core", rel),
+	var stores []string
+	if root, err := PackagesWorkflowsDir(projectRoot); err == nil {
+		stores = append(stores, root)
 	}
-	pkgWf := filepath.Join(projectRoot, DockpipeDirRel, "internal", "packages", "workflows")
-	if p, ok := workflowAssetPathFromWorkflowTarballs(projectRoot, pkgWf, rel); ok {
-		return p, true
+	for _, root := range configuredPackageStoreRoots(projectRoot) {
+		stores = append(stores, filepath.Join(root, "workflows"))
 	}
-	if gw, err := GlobalPackagesWorkflowsDir(); err == nil {
-		if p, ok := workflowAssetPathFromWorkflowTarballs(projectRoot, gw, rel); ok {
-			return p, true
+	stores = append(stores, configuredPackageTarballDirs(projectRoot)...)
+	if root, err := GlobalPackagesWorkflowsDir(); err == nil {
+		stores = append(stores, root)
+	}
+	for _, root := range SystemPackagesRoots() {
+		stores = append(stores, filepath.Join(root, "workflows"))
+	}
+	for _, root := range stores {
+		if path, ok := workflowAssetPathFromRoots(rel, []string{root}); ok {
+			return path, true
+		}
+		if path, ok := workflowAssetPathFromWorkflowTarballs(projectRoot, root, rel); ok {
+			return path, true
 		}
 	}
-	var wfAssetRoots []string
-	if st, err := os.Stat(filepath.Join(repoRoot, BundledLayoutDir, "workflows")); err == nil && st.IsDir() {
-		wfAssetRoots = append(wfAssetRoots, filepath.Join(repoRoot, BundledLayoutDir, "workflows"))
-	}
-	wfAssetRoots = append(wfAssetRoots, WorkflowCompileRootsCached(projectRoot)...)
-	if p, ok := workflowAssetPathFromRoots(rel, wfAssetRoots); ok {
-		return p, true
-	}
-	if tarPath, err := FindLatestCoreTarball(projectRoot); err == nil && tarPath != "" {
-		if root, err := packagebuild.EnsureTarballExtractedCache(tarPath, TarballExtractCacheRoot(projectRoot)); err == nil {
-			candidates = append(candidates, filepath.Join(root, "core", rel))
-		}
-	}
-	candidates = append(candidates, filepath.Join(CoreDir(repoRoot), rel))
-	if gd, err := GlobalTemplatesCoreDir(); err == nil {
-		candidates = append(candidates, filepath.Join(gd, rel))
-	}
-	for _, sd := range SystemTemplatesCoreDirs() {
-		candidates = append(candidates, filepath.Join(sd, rel))
-	}
-	for _, p := range candidates {
-		if scriptFileExists(p) {
-			return p, true
-		}
-	}
-	return "", false
+	return workflowAssetPathFromRoots(rel, WorkflowCompileRootsCached(projectRoot))
 }
 
 // scriptPathFromResolverTarballs resolves paths under compiled resolver tarballs (dockpipe-resolver-*.tar.<codec>).
@@ -396,15 +373,11 @@ func resolveScriptsPrefixedPath(repoRoot, projectRoot, rel string) string {
 	if scriptFileExists(user) {
 		return user
 	}
-	srcScripts := filepath.Join(projectRoot, "src", "scripts", rest)
-	if scriptFileExists(srcScripts) {
-		return srcScripts
-	}
 	if p, ok := resolveCoreNamespacedAsset(repoRoot, projectRoot, rest); ok {
 		return p
 	}
-	pkgRes := filepath.Join(projectRoot, DockpipeDirRel, "internal", "packages", "resolvers")
-	pkgWf := filepath.Join(projectRoot, DockpipeDirRel, "internal", "packages", "workflows")
+	pkgRes, _ := PackagesResolversDir(projectRoot)
+	pkgWf, _ := PackagesWorkflowsDir(projectRoot)
 	// Compiled local store first (package compile resolvers → tarballs under pkgRes).
 	if p, ok := tryBundledAssetsScripts(pkgRes, "", rest); ok {
 		return p
@@ -455,7 +428,7 @@ func resolveScriptsPrefixedPath(repoRoot, projectRoot, rel string) string {
 		}
 	}
 	// Installed dependencies live in the global or system store. Resolve their
-	// scripts before falling back to older assets bundled with the executable.
+	// scripts before consulting declared authoring roots.
 	installedRoots := SystemPackagesRoots()
 	if globalRoot, err := GlobalPackagesRoot(); err == nil {
 		installedRoots = append([]string{globalRoot}, installedRoots...)
@@ -468,27 +441,7 @@ func resolveScriptsPrefixedPath(repoRoot, projectRoot, rel string) string {
 			return p
 		}
 	}
-	core := CoreDir(repoRoot)
 	wfRoots := WorkflowCompileRootsCached(projectRoot)
-	// Bundled cache layout: prefer spine resolvers/bundles under core/, then project compile roots
-	// (packages/, workflows/, …) so nested resolver trees resolve even when repoRoot is the
-	// materialized bundle and the real workflow lives under projectRoot.
-	if UsesBundledAssetLayout(repoRoot) {
-		if p, ok := tryBundledAssetsScripts(core, "resolvers", rest); ok {
-			return p
-		}
-		if p, ok := tryBundledAssetsScripts(core, "bundles", rest); ok {
-			return p
-		}
-		resolverPath := filepath.Join(core, "resolvers", rest)
-		if scriptFileExists(resolverPath) {
-			return resolverPath
-		}
-		bundlePath := filepath.Join(core, "bundles", rest)
-		if scriptFileExists(bundlePath) {
-			return bundlePath
-		}
-	}
 	for _, root := range wfRoots {
 		if p, ok := tryBundledAssetsScripts(root, "", rest); ok {
 			return p
@@ -500,20 +453,13 @@ func resolveScriptsPrefixedPath(repoRoot, projectRoot, rel string) string {
 	if p, ok := workflowAssetPathForLogicalScript(rest, wfRoots); ok {
 		return p
 	}
-	if p, ok := tryBundledAssetsScripts(core, "resolvers", rest); ok {
-		return p
-	}
-	resolverPath := filepath.Join(core, "resolvers", rest)
-	if scriptFileExists(resolverPath) {
-		return resolverPath
-	}
 	for _, root := range wfRoots {
 		p := filepath.Join(root, rest)
 		if scriptFileExists(p) {
 			return p
 		}
 	}
-	return filepath.Join(core, "assets", "scripts", rest)
+	return user
 }
 
 // ResolveActionPath resolves act script like bin/dockpipe.
@@ -533,7 +479,6 @@ func ResolveActionPath(action, repoRoot, cwd, projectRoot string) (string, error
 		}
 	} else {
 		candidates = append(candidates, filepath.Join(repoRoot, "scripts", action))
-		candidates = append(candidates, filepath.Join(repoRoot, "src", "scripts", action))
 	}
 	candidates = append(candidates, filepath.Join(cwd, action))
 	for _, c := range candidates {
@@ -560,7 +505,7 @@ func ResolvePreScriptPath(p, repoRoot, projectRoot string) string {
 }
 
 // ResolveResolverFilePath returns the path to a specific resolver profile (KEY=value) by name.
-// Search order: compiled packages/resolvers first, then compile.workflows roots (nested **/<name>/profile), then templates/core (or src/core).
+// Search order: project/configured stores, declared resolver roots, global/system stores, then archives.
 func ResolveResolverFilePath(repoRoot, resolverName string) (string, error) {
 	resolverName = strings.TrimSpace(resolverName)
 	if resolverName == "" {
@@ -579,19 +524,7 @@ func ResolveResolverFilePath(repoRoot, resolverName string) (string, error) {
 			filepath.Join(root, "resolvers", resolverName, "profile"),
 		)
 	}
-	if !UsesBundledAssetLayout(repoRoot) {
-		candidates = append(candidates, nestedResolverProfileCandidates(repoRoot, resolverName, ResolverCompileRootsCached(repoRoot))...)
-	} else {
-		wfRoot := WorkflowsRootDir(repoRoot)
-		candidates = append(candidates,
-			filepath.Join(wfRoot, resolverName),
-			filepath.Join(wfRoot, resolverName, "profile"),
-		)
-	}
-	candidates = append(candidates,
-		filepath.Join(CoreDir(repoRoot), "resolvers", resolverName),
-		filepath.Join(CoreDir(repoRoot), "resolvers", resolverName, "profile"),
-	)
+	candidates = append(candidates, nestedResolverProfileCandidates(repoRoot, resolverName, ResolverCompileRootsCached(repoRoot))...)
 	if gr, err := GlobalPackagesResolversDir(); err == nil {
 		candidates = append(candidates,
 			filepath.Join(gr, resolverName),
@@ -617,7 +550,7 @@ func ResolveResolverFilePath(repoRoot, resolverName string) (string, error) {
 			return p, nil
 		}
 	}
-	return "", fmt.Errorf("resolver profile not found for %q (tried %v); list maintainer trees under compile.workflows in %s (and ensure src/core/resolvers or templates/core/resolvers for bundled profiles) — use workflow YAML for custom flows — upgrade dockpipe or run `dockpipe doctor` if your install is stale", resolverName, candidates, domain.DockpipeProjectConfigFileName)
+	return "", fmt.Errorf("resolver profile not found for %q (tried %v); list maintainer trees under compile.workflows in %s or install the resolver package", resolverName, candidates, domain.DockpipeProjectConfigFileName)
 }
 
 // IsBundledCommitWorktree reports whether action is the bundled commit-worktree.sh.
@@ -628,8 +561,6 @@ func IsBundledCommitWorktree(actionPath, repoRoot string) bool {
 	}
 	for _, b := range []string{
 		filepath.Join(repoRoot, "scripts", "commit-worktree.sh"),
-		filepath.Join(repoRoot, "src", "scripts", "commit-worktree.sh"),
-		filepath.Join(CoreDir(repoRoot), "assets", "scripts", "commit-worktree.sh"),
 	} {
 		bp, err := filepath.Abs(b)
 		if err != nil {
@@ -639,5 +570,12 @@ func IsBundledCommitWorktree(actionPath, repoRoot string) bool {
 			return true
 		}
 	}
-	return false
+	if filepath.Base(a) != "commit-worktree.sh" {
+		return false
+	}
+	libraryHook, err := LegacyGitHookPath(repoRoot, "commit-worktree")
+	if err != nil {
+		return false
+	}
+	return a == libraryHook
 }

@@ -430,3 +430,184 @@ The Windows provider includes package-owned FromSlash normalization for installe
 Full desktop run `40055991281` at product source `05b5480` passed Windows, both Linux targets, macOS arm64 and core-only Flatpak, but failed the Intel performance gate. The unchanged-product, full-context Intel diagnostic `40060152788` at `7039b7b` passed the same 64-test order (60 passed, four existing platform skips), native packaging and install smoke. Its switch p95 values were 53.319/42.338 ms. The original failure remains recorded; diagnostic assembly/publication were disabled and this is not six-platform release qualification.
 
 A distinct unqualified macOS validation-input prerelease carries the unchanged owning Mac artifact; its explicit failed aggregate and successful owning job do not alter release gates or channels. Mac intake/codesign/CLI/provider checks pass. Earlier unprimed-profile GUI attempt two failed at the Canvas-to-Tiling transition because the isolated profile retained the normal experimental Tiling default of false. Diagnostic attempt three explicitly primed only its fresh public qualification profile with experimental.tiling=true using --qualification-profile-path; the unchanged 05b app and 295 provider then passed all five views, native Shift acknowledgements, single leases, picker/close/disconnect/reopen, QEMU survival and complete owned cleanup. Backend and admission postguards passed; this old-artifact diagnostic is not final candidate acceptance. This change makes the qualifier explicitly enable experimental Tiling only in its isolated profile; the fresh owning build remains pending. Final installed Windows/macOS acceptance and a fresh all-six-platform owning Release dry run remain required after this pin source is committed. Draft PR #213 and staging PR #209 remain subject to root review; no production promotion is claimed.
+
+
+### 2026-10-24 local release validation before the next push
+
+PR #219 keeps runtime-first promotion: publish the corrected runtime, then produce
+and qualify the VM cohort against actual public CLI/core artifacts. The launcher
+remains in core; VM behavior stays in the external package. Minimum runtime
+compatibility and exact producer pins remain separate contracts. Production
+promotion remains outside this staging objective.
+
+The previous release dry run at `84443ac` failed both Mac builds because six
+permission-panel test consumers omitted the native backend. The correction passed
+native macOS ARM64 ALL and all 66 CTest cases: 62 passes and four existing skips.
+The same final compiled source passed Linux amd64 and ARM64 ALL/full69, each with
+68 passes and one existing live-extension skip. Actual Windows ALL/full58 passed
+with 53 passes and five existing skips. Its browser event p95 values were
+54.418/39.962 ms against the unchanged 100 ms gate; renderer, DOM and input state
+were retained, with 524 objects before and after. An earlier private repaint
+experiment failed its original loop limit and was rejected, not adopted.
+
+The test repairs restore launcher-owned X11 fixtures after extraction, use Windows
+system fonts in isolated offscreen profiles and preserve shared Canvas theme
+presentation. Earlier failures remain in the local evidence; no thresholds,
+timeouts or platform skips were relaxed. Intel Mac execution remains a hosted
+native gate because this local Mac is ARM64 without Rosetta.
+
+The broker capacity repair preserves completed identities in private immutable
+archives and keeps unresolved work in the bounded recent map. Native APFS and
+NTFS checks passed, including recovery, replay and private-file rules. Windows
+Go qualification passed 121 tests with three existing platform skips; the fresh
+Windows guest-agent help probe also passed. Two Windows fixtures now use the
+existing private-file helpers instead of creating incorrectly owned raw files.
+Linux runtime coverage passed all 45 tested Go packages; two container-only
+prerequisite failures were corrected and only those packages were rerun.
+
+Canonical repeated core builds now produce identical bytes, independent of source
+timestamps. Generated Windows guest agents exclude temporary build paths.
+Installed consumers pass on Ubuntu 22.04/24.04, Debian 12/13, Fedora 44, Alpine 3.24
+and Arch, plus the affected Ubuntu 24.04 ARM64 package. The Linux desktop privately
+carries the pinned Qt JPEG ABI and its notices instead of requiring unavailable
+Debian libjpeg8 packages. These are real container installation/loader/workflow
+checks, not claims of native desktops for every distribution.
+
+Flatpak ALL, corrected full69 (67 passes, two existing opt-in skips), Platform
+smoke, eight installed host tests and an independent source-hidden workflow pass.
+CTest now receives the exact source as a read-only mount, matching configure and
+build. The final private installed launcher also passed visible Settings, Canvas
+navigation and normal Quit. Its binder distinguishes the sandbox init from the
+actual ELF process and verifies the owned X11 window through XRes.
+
+The final macOS numeric31 canonical package passed DMG verification, private
+expansion, codesign, source-hidden workflow, visible Settings/VM resource/setup
+Cancel and normal Quit. The personal global application and profile stayed
+unchanged. This does not claim global Installer upgrade/removal testing.
+
+Windows numeric31 passed native MSI install, visible modal Cancel, normal Quit
+and uninstall. Preexisting bundle/profile bytes were verified unchanged. Windows
+and Bazzite guests are now stopped with their disks preserved. The package stop
+requests completed, but the missing durable QEMU exit records prevent claiming a
+complete normal-stop receipt.
+
+Installed Bazzite reached a real Wayland login and its installed deployment was
+read back. Flatpak and portal integration qualification is still incomplete.
+Earlier live ISO frames prove only that desktop and Portal. Generic runtime
+preparation remains separate from package-owned Linux media choices. These are
+baseline results; the subsequent ownership changes require affected consumers to
+be qualified again before staging.
+
+
+## Editor ownership and publication followup (2026-10-25)
+
+The user added this to the active extraction and release cleanup scope:
+
+- Restore the working Dockpipe VS Code extension in the Dockpipe repository, retaining source provenance.
+- Build and validate its VSIX through a Dockpipe workflow, with a GitHub Actions adapter for extension marketplace publication.
+- Keep the PipeLang language extension and its separate build/publication workflow in the PipeLang repository.
+- Reuse the working implementations; keep workflow-specific scripts beside their workflow and publication credentials as secret references.
+
+Both owners now contain their extension source, Dockpipe build/install/publish
+workflows and manual Marketplace Actions. Actual local VSIX builds and Node,
+bounded compiler-request and artifact-contract tests passed. The qualified
+candidates are Dockpipe 0.0.3 and PipeLang 0.0.1; their source provenance includes
+the selected working postimages. PipeLang uses its existing pinned runner.
+Marketplace upload, editor installation and native VS Code extension-host proof
+were not performed. Publish PipeLang first because Dockpipe declares it as a
+dependency. Existing delivered releases and downloads are unchanged.
+
+
+## Runtime and workflow ownership implementation (2026-10-25)
+
+The staging worktree now removes the root embedding files, bundled extraction,
+`src/core`, obsolete core archive producers and scattered `src/scripts` ownership.
+Typed offline init produces a runnable host workflow. Generic runtime defaults,
+SDK helpers and the fixed Git hooks belong to library resources; VM implementation
+and its package checks belong to the external VM package. Declared project roots
+and installed packages provide workflow discovery. `compile.core_from` is rejected.
+
+Build and release scripts, assets and tests have moved beside their Dockpipe
+workflows, with shared helpers under `workflows/shared`. Make and GitHub Actions
+are adapters. The bootstrap CLI has its own verified lock, separate from consumer
+version pins. Existing releases and downloads are retained.
+
+Go qualification passed after six fixtures migrated from implicit core recipes
+to explicit workflow-owned images. The final standalone CLI passed 16 offline
+source-hidden commands with only the binary and private consumer mounted. Generic
+layout, SDK state and clone-hook callers passed. Workflow migration passed 386
+contract tests, plus YAML, Python and Bash checks. Independent review corrected
+bounded library-cache verification and requires an actual non-skipped Windows
+embedding PASS before MSI packaging.
+
+The changed Linux native desktop built in the admitted offline Qt/Browser SDK
+image and passed 68 configured tests; one existing live browser-extension test
+remains opt-in. The initial noexec temporary-filesystem failure was diagnosed and
+retained; the unchanged fixture passed with executable isolated temporary files.
+Fresh Windows/macOS required checks, installed Bazzite integration, final public
+content preflight and the runtime-first dependency publication chain still gate
+staging. No staging promotion or Marketplace upload is claimed by this checkpoint.
+
+
+## Required CI repair checkpoint (2026-10-25)
+
+Source cleanup commit `5492a3cb6912ea4f3e86512ecbd587d4dfa23bb0` is pushed
+for PR 219. CodeQL and the CLI, display SDK, launcher SDK and editor candidate
+builds passed. These PR artifacts do not establish public replacement pins.
+macOS ARM native qualification passed; Intel exposed a terminal test that checked
+working-directory output before waiting for that output record. The test repair
+waits for the physical directory record and preserves the real PTY assertions.
+
+Required CI exposed Windows selecting the WSL Bash executable and six unchecked
+resource cleanup errors. Workflow-owned shell selection and direct Python callers
+address the former; deliberate joined cleanup errors address the latter. The same
+gosec scan now reports zero findings and infrastructure tests pass. SDK workflow
+review also corrected checkout ordering before its protected publication job.
+
+The preserved Cockpit release still identifies its original publisher commit.
+Its rewritten tag is admitted only by exact commit pins and the verified identical
+source tree, with release identity and archive hashes unchanged. Seventeen owning
+tests and actual public release/commit readback passed. No release was replaced.
+
+External package source contracts now remove the mandatory core archive in current
+CI/native/staging paths; 114 focused tests passed. Actual public CLI/SDK pins,
+source-independent native consumers and isolated CLI acceptance remain required.
+Fresh required checks on the final repair commit, installed Bazzite integration
+and the runtime-first dependency publication chain still gate staging.
+
+
+## Container and release integration checkpoint (2026-10-25)
+
+The source cleanup now passes the complete Windows Go gate and native macOS
+qualification on Intel and ARM. Flatpak passed its installed host terminal and
+real Docker/Compose bind-mount gates. These checks apply to the tested repair
+head; later source changes still require fresh required checks.
+
+Linux CI exposed a real permission error in the generic default container:
+private materialized input remains mode 0600, while the image now explicitly
+installs its entrypoint as mode 0755. A fresh ordinary non-root container and
+the complete ten-test integration suite passed. Integration fixtures explicitly
+materialize project actions and isolate inherited workflow context. No implicit
+core-script lookup was restored.
+
+The release dry run passed Flatpak qualification but exposed a Linux Docker
+build-context path, Bash 3.2 empty-array handling and an intermittent Windows Git
+pack stream completion failure. The packaging fixes have focused checks. The
+Windows investigation adds a bounded, read-only opt-in diagnostic workflow and
+failure-only test diagnostics; production Git timeouts and failures are retained.
+Actual Windows diagnostic and complete release qualification remain pending.
+
+The container resource correction changes exported Go SDK bytes. Earlier SDK
+reproduction remains historical evidence and cannot supply final replacement
+pins. Reproduce the SDK from the real committed source before updating its lock
+and publishing through the existing protected environment. Existing public
+releases and downloads remain intact; final dependency readback, installed
+Bazzite acceptance and staging promotion are still pending.
+
+
+The final Intel native gate exposed a browser benchmark running concurrently with
+other real WebEngine tests. Its measured UI switching p95 exceeded the unchanged
+100 ms limit. The benchmark now declares exclusive CTest scheduling; its 50 cycles,
+functional retention assertions and timeout remain unchanged. This corrects the
+test resource contract without claiming contention explains all GUI CPU cost.
+Fresh Intel native qualification remains required before merge.

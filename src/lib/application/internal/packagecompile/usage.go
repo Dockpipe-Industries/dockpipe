@@ -5,15 +5,14 @@ const packageCompileUsageText = `dockpipe package compile
 Validate and materialize packages into bin/.dockpipe/internal/packages/ (see docs/packages/package-model.md).
 
 Usage:
-  dockpipe package compile core [options]
   dockpipe package compile resolvers [options]
   dockpipe package compile bundles [options]   (alias: same as compile workflows)
   dockpipe package compile workflows [options]
   dockpipe package compile all [options]
-  dockpipe package compile for-workflow <name> [options]   (core + transitive resolvers/workflows only)
+  dockpipe package compile for-workflow <name> [options]   (transitive resolvers/workflows only)
   dockpipe package compile workflow [options] [--from] <source-dir>
 
-Order for a full local store: core (spine only) → resolvers → workflows (dockpipe-workflow-* tarballs only).
+Order for a full local store: resolvers → workflows (dockpipe-workflow-* tarballs only).
 Use "compile all" to run the default sequence.
 
 `
@@ -38,8 +37,7 @@ const packageCompileResolversUsageText = `dockpipe package compile resolvers
 Merges each child directory from each --from source into
 bin/.dockpipe/internal/packages/resolvers/<name>/ (later --from wins on name clash).
 
-Defaults: compile.workflows roots, plus
-src/core/resolvers and templates/core/resolvers when those directories exist.
+Defaults: explicitly declared compile.workflows roots, or the project workflows directory.
 Dirs with profile or config.yml under each root become resolver tarballs.
 
 Pack roots:
@@ -84,14 +82,14 @@ Options:
 
 const packageCompileAllUsageText = `dockpipe package compile all
 
-Runs: compile core → compile resolver packages (one tarball per profile) → compile workflow packages.
+Runs: compile resolver packages (one tarball per profile) → compile workflow packages.
 Uses dockpipe.config.json compile.workflows for source lists when present (see packages/package-model.md).
 
 Note: dockpipe build runs this command with --force so existing compiled trees are replaced.
 
 Options:
   --workdir <path>   Project directory (default: directory with dockpipe.config.json, walking up from cwd; else cwd)
-  --force            Replace existing packages/core and tarball outputs under packages/workflows/
+  --force            Replace existing resolver and workflow tarballs
   --with-bundles, --skip-bundles   Ignored (compatibility no-ops)
 
 `

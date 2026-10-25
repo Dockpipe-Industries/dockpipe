@@ -14,6 +14,7 @@
 #include <QSignalSpy>
 #include <QShortcut>
 #include <QStyle>
+#include <QStandardPaths>
 #include "DashboardTourDialog.h"
 #include "LauncherSettings.h"
 #include <QRadioButton>
@@ -274,6 +275,14 @@ public:
         const bool sent = m_button(m_display, 1, pressed, 0);
         if (sent)
             m_pressed = pressed;
+        XSync(m_display, False);
+        return sent;
+    }
+
+    bool key(KeySym symbol)
+    {
+        const KeyCode code = XKeysymToKeycode(m_display, symbol);
+        const bool sent = code && m_key(m_display, code, True, 0) && m_key(m_display, code, False, 0);
         XSync(m_display, False);
         return sent;
     }
@@ -999,13 +1008,18 @@ void DashboardPageTest::nativePointerArrangesForeignWindows()
     for (int index = 0; index < 2; ++index) {
         auto fixture = std::make_unique<FixtureProcess>();
         fixture->setProcessChannelMode(QProcess::ForwardedErrorChannel);
-        fixture->start(QCoreApplication::applicationDirPath() + "/desktop-app-window-test", {"--fixture"});
+        fixture->start(QCoreApplication::applicationDirPath() + "/desktop-window-fixture", {"--fixture"});
         QVERIFY(fixture->waitForStarted(3000));
         QByteArray output;
         QTRY_VERIFY_WITH_TIMEOUT((output += fixture->readAllStandardOutput()).startsWith("WINDOW:")
             && output.contains('\n'), 5000);
         const quint64 id = output.split('\n').first().mid(7).toULongLong();
         QVERIFY(id);
+        if (index == 0) {
+            pointer.focus(id);
+            QVERIFY(pointer.key(XK_a));
+            QTRY_VERIFY_WITH_TIMEOUT((output += fixture->readAllStandardOutput()).contains("TEXT:a\n"), 3000);
+        }
         ids.append(id);
         fixtures.push_back(std::move(fixture));
     }
@@ -1278,7 +1292,7 @@ void DashboardPageTest::discoveryIncludesMinimizedAndMoreThanThreeWindows()
     for (int index = 0; index < 7; ++index) {
         auto fixture = std::make_unique<FixtureProcess>();
         fixture->setProcessChannelMode(QProcess::ForwardedErrorChannel);
-        fixture->start(QCoreApplication::applicationDirPath() + "/desktop-app-window-test", {"--fixture"});
+        fixture->start(QCoreApplication::applicationDirPath() + "/desktop-window-fixture", {"--fixture"});
         QVERIFY(fixture->waitForStarted(3000));
         QByteArray output;
         QTRY_VERIFY_WITH_TIMEOUT((output += fixture->readAllStandardOutput()).startsWith("WINDOW:")
@@ -1422,7 +1436,7 @@ void DashboardPageTest::retainsAndReleasesInactiveForeignWindow()
         "Refusing native acquisition: the selected display must be a verified local Xvfb server");
     FixtureProcess fixture;
     fixture.setProcessChannelMode(QProcess::ForwardedErrorChannel);
-    fixture.start(QCoreApplication::applicationDirPath() + "/desktop-app-window-test", {"--fixture"});
+    fixture.start(QCoreApplication::applicationDirPath() + "/desktop-window-fixture", {"--fixture"});
     QVERIFY(fixture.waitForStarted(3000));
     QByteArray output;
     QTRY_VERIFY_WITH_TIMEOUT((output += fixture.readAllStandardOutput()).startsWith("WINDOW:")
@@ -1537,7 +1551,7 @@ void DashboardPageTest::autoAcquireLifecycle()
     QVERIFY2(unavailable.isEmpty(), qPrintable(unavailable));
     FixtureProcess fixture;
     fixture.setProcessChannelMode(QProcess::ForwardedErrorChannel);
-    fixture.start(QCoreApplication::applicationDirPath() + "/desktop-app-window-test", {"--fixture", "--reject-first-close"});
+    fixture.start(QCoreApplication::applicationDirPath() + "/desktop-window-fixture", {"--fixture", "--reject-first-close"});
     QVERIFY(fixture.waitForStarted(3000));
     QByteArray output;
     QTRY_VERIFY_WITH_TIMEOUT((output += fixture.readAllStandardOutput()).startsWith("WINDOW:") && output.contains('\n'), 5000);
@@ -1824,7 +1838,7 @@ void DashboardPageTest::desktopLaunchAcquisition()
     QVERIFY(launch.initialize());
     FixtureProcess fixture;
     fixture.setProcessChannelMode(QProcess::ForwardedErrorChannel);
-    fixture.start(QCoreApplication::applicationDirPath() + "/desktop-app-window-test", {"--fixture"});
+    fixture.start(QCoreApplication::applicationDirPath() + "/desktop-window-fixture", {"--fixture"});
     QVERIFY(fixture.waitForStarted(3000));
     QByteArray output;
     QTRY_VERIFY_WITH_TIMEOUT((output += fixture.readAllStandardOutput()).startsWith("WINDOW:") && output.contains('\n'), 5000);
@@ -1929,7 +1943,7 @@ void DashboardPageTest::desktopLaunchAcquisition()
 
     FixtureProcess secondFixture;
     secondFixture.setProcessChannelMode(QProcess::ForwardedErrorChannel);
-    secondFixture.start(QCoreApplication::applicationDirPath() + "/desktop-app-window-test", {"--fixture"});
+    secondFixture.start(QCoreApplication::applicationDirPath() + "/desktop-window-fixture", {"--fixture"});
     QVERIFY(secondFixture.waitForStarted(3000));
     QByteArray secondOutput;
     QTRY_VERIFY_WITH_TIMEOUT((secondOutput += secondFixture.readAllStandardOutput()).startsWith("WINDOW:")
@@ -2118,6 +2132,13 @@ void DashboardPageTest::packageDisplayAttachment()
     QTRY_VERIFY_WITH_TIMEOUT((output += fixture.readAllStandardOutput()).contains("WINDOW:"), 5000);
     const quint64 id = output.trimmed().mid(7).toULongLong();
     QVERIFY(id);
+#ifdef DOCKPIPE_X11_BILLBOARDS
+    std::unique_ptr<IsolatedClientList> isolatedClients;
+    if (isolatedXvfbDisplay()) {
+        isolatedClients = std::make_unique<IsolatedClientList>();
+        QVERIFY(isolatedClients->install(id));
+    }
+#endif
     QVector<DesktopAppChoice> choices;
     QTRY_VERIFY_WITH_TIMEOUT(!(choices = DesktopAppWindow::availableWindows(error, id)).isEmpty(), 5000);
     const auto identity = choices.first();
@@ -2529,17 +2550,28 @@ void DashboardPageTest::experimentalTilingGate()
     QVERIFY(settings.save());
 }
 
-int main(int argc, char **argv)
+static int runDashboardPageTests(int argc, char **argv, const QString &applicationName,
+                                 QStringList &ownedProfilePaths)
 {
-    QTemporaryDir config;
-    if (!config.isValid())
-        return 1;
-    qputenv("XDG_CONFIG_HOME", config.path().toUtf8());
-    qputenv("XDG_CACHE_HOME", config.path().toUtf8());
-    qputenv("APPDATA", config.path().toUtf8());
     QApplication application(argc, argv);
     application.setOrganizationName("DockpipeDashboardPageTest");
-    application.setApplicationName("DashboardPageFixture");
+    application.setApplicationName(applicationName);
+    QStringList profilePaths;
+    for (const auto location : {QStandardPaths::AppConfigLocation, QStandardPaths::CacheLocation,
+                                QStandardPaths::AppDataLocation, QStandardPaths::AppLocalDataLocation}) {
+        const QString path = QDir::cleanPath(QStandardPaths::writableLocation(location));
+        const QFileInfo information(path);
+        if (path.isEmpty() || !QDir::isAbsolutePath(path)
+            || !QDir::fromNativeSeparators(path).split('/').contains(applicationName)
+            || information.exists() || information.isSymLink()) {
+            qCritical() << "A fresh, invocation-owned Qt test profile is required";
+            return 1;
+        }
+        profilePaths.append(path);
+    }
+    profilePaths.removeDuplicates();
+    // Claim paths only after every absence check, so collisions are never removed.
+    ownedProfilePaths = profilePaths;
     LauncherSettings settings;
     settings.tilingEnabled = true;
     if (!settings.save())
@@ -2570,6 +2602,36 @@ int main(int argc, char **argv)
     }
     DashboardPageTest test;
     return QTest::qExec(&test, argc, argv);
+}
+
+int main(int argc, char **argv)
+{
+    QTemporaryDir config;
+    if (!config.isValid())
+        return 1;
+    qputenv("XDG_CONFIG_HOME", config.path().toUtf8());
+    qputenv("XDG_CACHE_HOME", config.path().toUtf8());
+    qputenv("APPDATA", config.path().toUtf8());
+#ifdef Q_OS_WIN
+    QStandardPaths::setTestModeEnabled(true);
+#endif
+    const QString applicationName = QStringLiteral("DashboardPageFixture-")
+        + QFileInfo(config.path()).fileName();
+    QStringList ownedProfilePaths;
+    const int testResult = runDashboardPageTests(argc, argv, applicationName, ownedProfilePaths);
+    // QApplication/WebEngine have shut down before removing only this invocation's paths.
+    std::sort(ownedProfilePaths.begin(), ownedProfilePaths.end(),
+              [](const QString &left, const QString &right) { return left.size() > right.size(); });
+    bool cleanupSucceeded = true;
+    for (const QString &path : ownedProfilePaths) {
+        const QFileInfo information(path);
+        if (information.isSymLink() || (information.exists()
+            && (!information.isDir() || !QDir(path).removeRecursively()))) {
+            qCritical() << "Could not remove invocation-owned Qt test profile" << path;
+            cleanupSucceeded = false;
+        }
+    }
+    return cleanupSucceeded ? testResult : 1;
 }
 
 #include "DashboardPageTest.moc"

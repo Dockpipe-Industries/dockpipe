@@ -14,7 +14,7 @@ func TestRunEmbeddedResolverWorkflowWithLoad_CallsRunSteps(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(repoRoot, "dockpipe.config.json"), []byte("{}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	wfDir := filepath.Join(repoRoot, "templates", "cursor-dev")
+	wfDir := filepath.Join(repoRoot, "workflows", "cursor-dev")
 	if err := os.MkdirAll(wfDir, 0o755); err != nil {
 		t.Fatal(err)
 	}

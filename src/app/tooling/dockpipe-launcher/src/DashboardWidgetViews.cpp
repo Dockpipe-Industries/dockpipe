@@ -8,6 +8,7 @@
 #include "SystemResourceOverview.h"
 
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QDynamicPropertyChangeEvent>
 #include <QAbstractItemView>
 #include <QDir>
@@ -20,7 +21,9 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPushButton>
+#include <QProgressBar>
 #include <QSignalBlocker>
+#include <QStyle>
 #include <QTableWidget>
 #include <QTreeView>
 #include <QVBoxLayout>
@@ -57,19 +60,35 @@ protected:
                         cardLayout->setSpacing(cardLayout->property("canvasOriginalSpacing").toInt());
                     }
                 }
-                setStyleSheet(canvas ? QStringLiteral(
-                    "QWidget#canvasDashboardView { background: transparent; }"
-                    "QWidget#canvasDashboardView QFrame#systemMetricCard { background: palette(base); border: none; border-radius: 14px; }"
-                    "QWidget#canvasDashboardView QLabel#systemMetricTitle { color: palette(highlight); font-size: 11px; }"
-                    "QWidget#canvasDashboardView QProgressBar { border: none; border-radius: 3px; background: palette(alternate-base); max-height: 5px; }"
-                    "QWidget#canvasDashboardView QProgressBar::chunk { border-radius: 3px; background: palette(highlight); }"
-                    "QWidget#canvasDashboardView QListWidget, QWidget#canvasDashboardView QTableWidget { background: transparent; border: none; border-radius: 10px; }"
-                    "QWidget#canvasDashboardView QListWidget::item { padding: 5px 7px; border-radius: 7px; }"
-                    "QWidget#canvasDashboardView QListWidget::item:selected { background: palette(highlight); color: palette(highlighted-text); }"
-                    "QWidget#canvasDashboardView QLineEdit { border: none; border-radius: 14px; padding: 7px 10px; background: palette(base); }"
-                    "QWidget#canvasDashboardView QPushButton { border: none; border-radius: 14px; padding: 7px 12px; background: palette(alternate-base); }"
-                    "QWidget#canvasDashboardView QPushButton:hover { background: palette(highlight); color: palette(highlighted-text); }"
-                    "QWidget#canvasDashboardView QLabel#dashboardWidgetStatus { font-size: 11px; padding: 3px; }") : QString());
+                const auto progressBars = findChildren<QProgressBar *>();
+                if (canvas) {
+                    for (auto *progressBar : progressBars) {
+                        if (!progressBar->property("canvasOriginalMaximumHeight").isValid())
+                            progressBar->setProperty("canvasOriginalMaximumHeight", progressBar->maximumHeight());
+                    }
+                }
+                // The common theme owns canvas rules. Refresh each affected
+                // widget once after its root presentation selector changes.
+                // Keep this synchronous for detached and inactive tab contents.
+                auto presentationWidgets = findChildren<QWidget *>();
+                presentationWidgets.prepend(this);
+                for (auto *presentationWidget : presentationWidgets) {
+                    presentationWidget->style()->unpolish(presentationWidget);
+                    presentationWidget->style()->polish(presentationWidget);
+                    QEvent styleChange(QEvent::StyleChange);
+                    QCoreApplication::sendEvent(presentationWidget, &styleChange);
+                }
+                // Qt clears stylesheet height constraints when the rule leaves.
+                // Restore the programmatic bounds captured before canvas entry.
+                if (!canvas) {
+                    for (auto *progressBar : progressBars) {
+                        const QVariant originalMaximum = progressBar->property("canvasOriginalMaximumHeight");
+                        if (!originalMaximum.isValid())
+                            continue;
+                        progressBar->setMaximumHeight(originalMaximum.toInt());
+                        progressBar->setProperty("canvasOriginalMaximumHeight", QVariant());
+                    }
+                }
                 updateGeometry();
             }
         }

@@ -5,6 +5,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DOCKPIPE="$REPO_ROOT/src/bin/dockpipe"
+source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT

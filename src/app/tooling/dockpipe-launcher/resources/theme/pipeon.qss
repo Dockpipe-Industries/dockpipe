@@ -695,3 +695,61 @@ QSplitter#dashboardSplit[dashboardCompact="true"]::handle:horizontal { width: 0p
 QSplitter#dashboardSplit[dashboardCompact="true"]::handle:vertical { height: 0px; background: transparent; }
 QSplitter#dashboardSplit[dashboardCompact="false"]::handle:horizontal { width: 7px; }
 QSplitter#dashboardSplit[dashboardCompact="false"]::handle:vertical { height: 7px; }
+
+/* Canvas presentation uses the same retained widgets as pages and tiling. */
+QWidget#canvasDashboardView[dashboardCanvasPresentation="true"] {
+    background: transparent;
+}
+QWidget#canvasDashboardView[dashboardCanvasPresentation="true"] QFrame#systemMetricCard {
+    background: palette(base);
+    border: none;
+    border-radius: 14px;
+}
+QWidget#canvasDashboardView[dashboardCanvasPresentation="true"] QLabel#systemMetricTitle {
+    color: palette(highlight);
+    font-size: 11px;
+}
+QWidget#canvasDashboardView[dashboardCanvasPresentation="true"] QProgressBar {
+    border: none;
+    border-radius: 3px;
+    background: palette(alternate-base);
+    max-height: 5px;
+}
+QWidget#canvasDashboardView[dashboardCanvasPresentation="true"] QProgressBar::chunk {
+    border-radius: 3px;
+    background: palette(highlight);
+}
+QWidget#canvasDashboardView[dashboardCanvasPresentation="true"] QListWidget,
+QWidget#canvasDashboardView[dashboardCanvasPresentation="true"] QTableWidget {
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+}
+QWidget#canvasDashboardView[dashboardCanvasPresentation="true"] QListWidget::item {
+    padding: 5px 7px;
+    border-radius: 7px;
+}
+QWidget#canvasDashboardView[dashboardCanvasPresentation="true"] QListWidget::item:selected {
+    background: palette(highlight);
+    color: palette(highlighted-text);
+}
+QWidget#canvasDashboardView[dashboardCanvasPresentation="true"] QLineEdit {
+    border: none;
+    border-radius: 14px;
+    padding: 7px 10px;
+    background: palette(base);
+}
+QWidget#canvasDashboardView[dashboardCanvasPresentation="true"] QPushButton {
+    border: none;
+    border-radius: 14px;
+    padding: 7px 12px;
+    background: palette(alternate-base);
+}
+QWidget#canvasDashboardView[dashboardCanvasPresentation="true"] QPushButton:hover {
+    background: palette(highlight);
+    color: palette(highlighted-text);
+}
+QWidget#canvasDashboardView[dashboardCanvasPresentation="true"] QLabel#dashboardWidgetStatus {
+    font-size: 11px;
+    padding: 3px;
+}

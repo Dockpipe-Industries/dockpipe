@@ -36,10 +36,6 @@ func cmdInit(args []string) error {
 		}
 	}
 
-	repoRoot, err := infrastructure.RepoRoot()
-	if err != nil {
-		return err
-	}
 	projectDir, err := os.Getwd()
 	if err != nil {
 		return err
@@ -103,7 +99,7 @@ func cmdInit(args []string) error {
 		map[string]string{"project": projectDir},
 		infrastructure.OperationOptions{Spinner: false},
 		func() error {
-			return ensureProjectScaffold(repoRoot, projectDir)
+			return ensureProjectScaffold(projectDir)
 		},
 	); err != nil {
 		return err
@@ -114,7 +110,7 @@ func cmdInit(args []string) error {
 		}
 	}
 	if name == "" {
-		if err := ensureDefaultStarterWorkflow(repoRoot, projectDir); err != nil {
+		if err := ensureDefaultStarterWorkflow(projectDir); err != nil {
 			return err
 		}
 		return nil
@@ -124,24 +120,20 @@ func cmdInit(args []string) error {
 	if fromSource == "" {
 		fromSource = "blank"
 	}
-	return createNamedWorkflow(repoRoot, projectDir, name, fromSource, resolver, runtime, strategy)
+	return createNamedWorkflow(projectDir, name, fromSource, resolver, runtime, strategy)
 }
 
 func cmdAction(args []string) error {
-	return cmdInitLikeScript(args, "my-action.sh", []string{"commit-worktree", "export-patch", "print-summary"}, actionBoilerplate)
+	return cmdInitLikeScript(args, "my-action.sh", actionBoilerplate)
 }
 
 func cmdPre(args []string) error {
-	return cmdInitLikeScript(args, "my-pre.sh", []string{"clone-worktree"}, preBoilerplate)
+	return cmdInitLikeScript(args, "my-pre.sh", preBoilerplate)
 }
 
 func cmdTemplate(args []string) error {
-	repoRoot, err := infrastructure.RepoRoot()
-	if err != nil {
-		return err
-	}
 	if len(args) == 0 || (args[0] != "init" && args[0] != "create") {
-		return fmt.Errorf("usage: dockpipe template init [--from <bundled>] <dirname>")
+		return fmt.Errorf("usage: dockpipe template init [--from <local-template>] <dirname>")
 	}
 	args = args[1:]
 	var name, from string
@@ -164,17 +156,22 @@ func cmdTemplate(args []string) error {
 	if from == "" {
 		from = "init"
 	}
-	src := bundledWorkflowSourceDir(repoRoot, from)
-	if _, err := os.Stat(src); err != nil {
-		return fmt.Errorf("unknown bundled template %q", from)
-	}
 	dest := name
 	if !filepath.IsAbs(dest) {
 		wd, _ := os.Getwd()
 		dest = filepath.Join(wd, dest)
 	}
-	if _, err := os.Stat(dest); err == nil {
+	if _, err := os.Lstat(dest); err == nil {
 		return fmt.Errorf("%s already exists", dest)
+	}
+	workflow := initScaffoldWorkflow(filepath.Base(dest), from)
+	var sourceDirectory string
+	if workflow == nil {
+		var err error
+		sourceDirectory, err = resolveInitFromSource(from)
+		if err != nil {
+			return fmt.Errorf("unknown template source %q: %w", from, err)
+		}
 	}
 	return infrastructure.RunOperationWithOptions(
 		os.Stderr,
@@ -186,19 +183,14 @@ func cmdTemplate(args []string) error {
 		},
 		infrastructure.OperationOptions{Spinner: false},
 		func() error {
-			if err := copyDir(src, dest); err != nil {
-				return err
-			}
-			// Pull in shared templates/core next to the new workflow if not already present (resolvers, strategies).
-			wdParent := filepath.Dir(dest)
-			coreDest := filepath.Join(wdParent, "templates", "core")
-			if _, err := os.Stat(coreDest); err != nil && os.IsNotExist(err) {
-				if err := os.MkdirAll(filepath.Join(wdParent, "templates"), 0o755); err != nil {
+			if workflow != nil {
+				if err := os.MkdirAll(dest, 0o755); err != nil {
 					return err
 				}
-				if err := copyBundledCoreInto(coreDest, repoRoot); err != nil {
-					return fmt.Errorf("copy shared templates/core: %w", err)
-				}
+				return writeWorkflowYAML(filepath.Join(dest, "config.yml"), workflow)
+			}
+			if err := copyDir(sourceDirectory, dest); err != nil {
+				return err
 			}
 			_ = filepath.WalkDir(dest, func(p string, d fs.DirEntry, err error) error {
 				if err == nil && strings.HasSuffix(p, ".sh") {
@@ -211,13 +203,9 @@ func cmdTemplate(args []string) error {
 	)
 }
 
-func cmdInitLikeScript(args []string, defaultName string, bundled []string, boiler string) error {
-	repoRoot, err := infrastructure.RepoRoot()
-	if err != nil {
-		return err
-	}
+func cmdInitLikeScript(args []string, defaultName, boiler string) error {
 	if len(args) == 0 || (args[0] != "init" && args[0] != "create") {
-		return fmt.Errorf("usage: dockpipe <cmd> init [--from <bundled>] <filename>")
+		return fmt.Errorf("usage: dockpipe <cmd> init [--from <local-script>] <filename>")
 	}
 	args = args[1:]
 	var name, from string
@@ -240,7 +228,10 @@ func cmdInitLikeScript(args []string, defaultName string, bundled []string, boil
 	if !strings.HasSuffix(name, ".sh") {
 		name += ".sh"
 	}
-	wd, _ := os.Getwd()
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
 	dest := name
 	if !filepath.IsAbs(dest) {
 		dest = filepath.Join(wd, dest)
@@ -248,7 +239,7 @@ func cmdInitLikeScript(args []string, defaultName string, bundled []string, boil
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return err
 	}
-	if _, err := os.Stat(dest); err == nil {
+	if _, err := os.Lstat(dest); err == nil {
 		return fmt.Errorf("%s already exists", dest)
 	}
 	source := "boilerplate"
@@ -266,11 +257,26 @@ func cmdInitLikeScript(args []string, defaultName string, bundled []string, boil
 		infrastructure.OperationOptions{Spinner: false},
 		func() error {
 			if from != "" {
-				base := strings.TrimSuffix(from, ".sh")
-				src := filepath.Join(infrastructure.CoreDir(repoRoot), "assets", "scripts", base+".sh")
-				if _, err := os.Stat(src); err != nil {
-					return fmt.Errorf("unknown bundled script %q (try: %v)", from, bundled)
+				src, err := filepath.Abs(from)
+				if err != nil {
+					return err
 				}
+				switch template := strings.TrimSuffix(from, ".sh"); template {
+				case "clone-worktree", "commit-worktree", "export-patch", "print-summary":
+					src, err = infrastructure.LegacyGitHookPath(wd, template)
+					if err != nil {
+						return err
+					}
+				}
+
+				info, err := os.Stat(src)
+				if err != nil {
+					return fmt.Errorf("read script source %q: %w", from, err)
+				}
+				if !info.Mode().IsRegular() {
+					return fmt.Errorf("script source %q must be a regular file", from)
+				}
+
 				if err := copyFile(src, dest); err != nil {
 					return err
 				}
@@ -281,29 +287,6 @@ func cmdInitLikeScript(args []string, defaultName string, bundled []string, boil
 	)
 }
 
-// copyBundledCoreInto merges category dirs (assets, resolvers, runtimes, strategies) into coreDest.
-// When the install tree is dockpipe-style src/core (has workflows/), bundled example workflows are not copied.
-func copyBundledCoreInto(coreDest, repoRoot string) error {
-	coreSrc := infrastructure.CoreDir(repoRoot)
-	wfDir := filepath.Join(coreSrc, "workflows")
-	if st, err := os.Stat(wfDir); err == nil && st.IsDir() {
-		for _, name := range []string{"assets", "resolvers", "runtimes", "strategies"} {
-			if err := copyCoreSourceDirMaybe(filepath.Join(coreSrc, name), filepath.Join(coreDest, name)); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-	return copyCoreSourceDirMaybe(coreSrc, coreDest)
-}
-
-// mergeBundledTemplatesCore copies templates/core from the dockpipe install into dest,
-// matching dockpipe init without --from. Extra maintainer packages ship in the binary via go:embed (see embed.go), not via templates/vendor.
-func mergeBundledTemplatesCore(repoRoot, dest string) error {
-	_ = os.MkdirAll(filepath.Join(dest, "templates"), 0o755)
-	return copyBundledCoreInto(filepath.Join(dest, "templates", "core"), repoRoot)
-}
-
 func copyFile(src, dst string) error {
 	b, err := os.ReadFile(src)
 	if err != nil {
@@ -311,13 +294,6 @@ func copyFile(src, dst string) error {
 	}
 	_ = os.MkdirAll(filepath.Dir(dst), 0o755)
 	return os.WriteFile(dst, b, 0o644)
-}
-
-func copyCoreSourceDirMaybe(src, dst string) error {
-	if _, err := os.Stat(src); err != nil {
-		return nil
-	}
-	return treecopy.CopyCore(src, dst)
 }
 
 func copyDir(src, dst string) error {

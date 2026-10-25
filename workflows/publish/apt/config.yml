@@ -1,0 +1,11 @@
+name: publish-apt-metadata
+description: Run the publish apt metadata operation with explicit options after --.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py bash workflows/publish/apt/assets/scripts/build-apt.sh

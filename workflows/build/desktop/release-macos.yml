@@ -1,0 +1,11 @@
+name: release-macos
+description: Run the release macos phase using explicit CI inputs.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: bash workflows/build/desktop/assets/scripts/release-macos.sh

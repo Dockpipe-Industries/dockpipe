@@ -29,9 +29,9 @@ jobs:
         env:
           FORGEPIPE_SDK_TAG: ${{ inputs.forgepipe_sdk_tag }}
         run: |
-          python3 release/packaging/attest-forgepipe.py \
-            --lock release/forgepipe-sdk.lock.json \
-            --exports release/packaging/forgepipe-public-exports.txt \
+          python3 workflows/shared/launch.py workflows/publish/forgepipe-attestation/config.yml -- \
+            --lock workflows/publish/forgepipe-attestation/assets/forgepipe-sdk.lock.json \
+            --exports workflows/publish/forgepipe-attestation/assets/forgepipe-public-exports.txt \
             --tag "$FORGEPIPE_SDK_TAG" --output "$RUNNER_TEMP/forgepipe-sdk-attestation"
       - name: Attest the audited SDK and source-bound metadata
         uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3

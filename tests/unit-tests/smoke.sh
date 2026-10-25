@@ -4,7 +4,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-CLI="${REPO_ROOT}/src/bin/dockpipe"
+CLI="${DOCKPIPE_TEST_DOCKPIPE_BIN:-${REPO_ROOT}/src/bin/dockpipe}"
 
 if ! command -v docker &>/dev/null; then
   echo "smoke: Docker not found, skip"
@@ -16,9 +16,17 @@ if ! docker info &>/dev/null; then
   exit 0
 fi
 
-# From repo root so default image can be built (needs context for COPY assets/entrypoint.sh)
+# The repository is the mounted workspace; the default image context is library-owned.
 cd "$REPO_ROOT"
-out=$("$CLI" -- ls -la /work 2>&1)
+if out=$("$CLI" -- ls -la /work 2>&1); then
+  status=0
+else
+  status=$?
+fi
+if [[ "$status" -ne 0 ]]; then
+  printf 'smoke FAIL: default container command exited %s\n%s\n' "$status" "$out" >&2
+  exit "$status"
+fi
 if echo "$out" | grep -q "Dockerfile\|entrypoint\|README"; then
   echo "smoke OK (ls /work showed repo contents)"
 else

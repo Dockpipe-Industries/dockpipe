@@ -281,7 +281,7 @@ linked, escaping, or oversized files reject.
 
 ## Recovery and bounds
 
-The first implementation allows 64 nodes, 128 retained jobs, 32 MiB of broker metadata, one unresolved
+The broker allows 64 nodes, 128 recent jobs in its hot metadata window, 32 MiB of broker metadata, one unresolved
 assignment per node, a 24-hour profile timeout, 1 MiB of logs, and 8 MiB of artifacts per job.
 A delivery allows at most 1024 regular files and 8 MiB of
 source bytes, with canonical relative paths up to 512 characters. Executable bits are preserved;
@@ -289,10 +289,23 @@ other source permissions/ownership are not transferred.
 Result payloads are stored separately under the private `results/` state directory, with
 content digests in the broker metadata; maximum-size valid results fit for every admitted job.
 Source bundles are separately retained under private `bundles/` files, with digests in metadata.
-Keep `results/` and `bundles/` together with `broker.json` for backup/recovery. Worker `deliveries/`
+When a new job needs capacity, the oldest terminal job (success, failure, or cancelled)
+is durably moved to an immutable, digest-checked record under private `terminal-jobs/`.
+Each archived metadata record is bounded to 16 KiB; result payloads remain separate.
+Queued, running, and unknown jobs are never retired. If all 128 jobs are unresolved,
+new submissions refuse until work reaches a terminal state.
+
+`remote jobs` lists the recent window. Archived jobs and evidence remain available with
+`remote result --id`; exact submission retries return the original outcome, different
+contents under that ID refuse, and cancel cannot requeue an archived job. Per-ID archives
+and payloads accumulate intentionally to preserve execution identities; automatic deletion
+is not implemented. Keep `terminal-jobs/`, `results/`, and `bundles/` together with
+`broker.json` for backup/recovery. Worker `deliveries/`
 staging and `jobs/` journals are retained for inspection, including failed validation.
-Automatic retention and large-corpus transfer are not implemented. Download evidence and plan a
-fresh broker state when the configured capacity is exhausted.
+Large-corpus transfer is not implemented. Once the first job is retired, broker metadata
+contains a downgrade guard that older strict decoders reject. Do not roll back by restoring
+a stale pre-migration `broker.json`: it can forget later acknowledged job identities.
+Preserve the complete state set and use a broker version that understands archived jobs.
 
 The same submission ID and contents returns its existing job; different contents reject. Assignments
 bind a worker session, preventing another process from executing the same job. The worker persists

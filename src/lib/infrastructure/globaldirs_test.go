@@ -23,13 +23,6 @@ func TestGlobalDockpipeDataDirOverride(t *testing.T) {
 	if want := filepath.Join(tmp, "packages", "workflows"); sub != want {
 		t.Fatalf("workflows dir: got %q want %q", sub, want)
 	}
-	tc, err := GlobalTemplatesCoreDir()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want := filepath.Join(tmp, "templates", "core"); tc != want {
-		t.Fatalf("templates core: got %q want %q", tc, want)
-	}
 	img, err := GlobalImageArtifactByFingerprintDir()
 	if err != nil {
 		t.Fatal(err)
@@ -68,19 +61,8 @@ func TestSystemDockpipeDataDirsOverride(t *testing.T) {
 		t.Fatalf("got %q want %q", dirs[0], tmp)
 	}
 
-	coreDirs := SystemPackagesCoreDirs()
-	if len(coreDirs) != 1 {
-		t.Fatalf("expected 1 core dir, got %d (%v)", len(coreDirs), coreDirs)
-	}
-	if want := filepath.Join(tmp, "packages", "core"); filepath.Clean(coreDirs[0]) != filepath.Clean(want) {
-		t.Fatalf("got %q want %q", coreDirs[0], want)
-	}
-
-	templatesDirs := SystemTemplatesCoreDirs()
-	if len(templatesDirs) != 1 {
-		t.Fatalf("expected 1 templates/core dir, got %d (%v)", len(templatesDirs), templatesDirs)
-	}
-	if want := filepath.Join(tmp, "templates", "core"); filepath.Clean(templatesDirs[0]) != filepath.Clean(want) {
-		t.Fatalf("got %q want %q", templatesDirs[0], want)
+	packageDirs := SystemPackagesRoots()
+	if len(packageDirs) != 1 || packageDirs[0] != filepath.Join(tmp, "packages") {
+		t.Fatalf("system package roots = %v", packageDirs)
 	}
 }

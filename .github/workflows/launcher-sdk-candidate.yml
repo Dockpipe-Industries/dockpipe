@@ -5,39 +5,43 @@ on:
     branches: [dev]
     paths:
       - LICENSE
+      - workflows/shared/**
+      - workflows/publish/shared/**
       - src/app/tooling/dockpipe-launcher/**
-      - release/packaging/lib/elf_artifacts.py
-      - release/packaging/desktop/licenses/**
-      - release/packaging/desktop/install-linux-qt.sh
-      - release/dependencies/spatialweb-browser.lock.json
-      - release/packaging/desktop/browser-runtime.py
-      - release/packaging/desktop/test_browser_runtime.py
-      - release/packaging/prepare-browser-sdk.py
-      - release/packaging/prepare-flatpak-browser-sdk.py
-      - release/packaging/tests/test_prepare_flatpak_browser_sdk.py
-      - release/packaging/tests/test_prepare_browser_sdk.py
-      - release/packaging/build-launcher-sdk.py
-      - release/packaging/publish-launcher-sdk.py
-      - release/packaging/tests/test_launcher_sdk_producer.py
-      - release/packaging/tests/test_publish_launcher_sdk.py
+      - workflows/shared/lib/elf_artifacts.py
+      - workflows/build/desktop/assets/licenses/**
+      - workflows/build/desktop/assets/scripts/install-linux-qt.sh
+      - workflows/dependencies/browser-sdk/assets/spatialweb-browser.lock.json
+      - workflows/dependencies/browser-sdk/assets/scripts/browser-runtime.py
+      - workflows/dependencies/browser-sdk/tests/test_browser_runtime.py
+      - workflows/dependencies/browser-sdk/assets/scripts/prepare-browser-sdk.py
+      - workflows/build/flatpak/assets/scripts/prepare-flatpak-browser-sdk.py
+      - workflows/build/flatpak/tests/test_prepare_flatpak_browser_sdk.py
+      - workflows/dependencies/browser-sdk/tests/test_prepare_browser_sdk.py
+      - workflows/build/launcher-sdk/assets/scripts/build.py
+      - workflows/publish/launcher-sdk/assets/scripts/publish.py
+      - workflows/build/launcher-sdk/tests/test_launcher_sdk_producer.py
+      - workflows/publish/launcher-sdk/tests/test_publish_launcher_sdk.py
       - .github/workflows/launcher-sdk-candidate.yml
   push:
     branches: [dev]
     paths:
       - LICENSE
+      - workflows/shared/**
+      - workflows/publish/shared/**
       - src/app/tooling/dockpipe-launcher/**
-      - release/packaging/lib/elf_artifacts.py
-      - release/packaging/desktop/licenses/**
-      - release/packaging/desktop/install-linux-qt.sh
-      - release/dependencies/spatialweb-browser.lock.json
-      - release/packaging/desktop/browser-runtime.py
-      - release/packaging/desktop/test_browser_runtime.py
-      - release/packaging/prepare-browser-sdk.py
-      - release/packaging/prepare-flatpak-browser-sdk.py
-      - release/packaging/tests/test_prepare_flatpak_browser_sdk.py
-      - release/packaging/tests/test_prepare_browser_sdk.py
-      - release/packaging/build-launcher-sdk.py
-      - release/packaging/publish-launcher-sdk.py
+      - workflows/shared/lib/elf_artifacts.py
+      - workflows/build/desktop/assets/licenses/**
+      - workflows/build/desktop/assets/scripts/install-linux-qt.sh
+      - workflows/dependencies/browser-sdk/assets/spatialweb-browser.lock.json
+      - workflows/dependencies/browser-sdk/assets/scripts/browser-runtime.py
+      - workflows/dependencies/browser-sdk/tests/test_browser_runtime.py
+      - workflows/dependencies/browser-sdk/assets/scripts/prepare-browser-sdk.py
+      - workflows/build/flatpak/assets/scripts/prepare-flatpak-browser-sdk.py
+      - workflows/build/flatpak/tests/test_prepare_flatpak_browser_sdk.py
+      - workflows/dependencies/browser-sdk/tests/test_prepare_browser_sdk.py
+      - workflows/build/launcher-sdk/assets/scripts/build.py
+      - workflows/publish/launcher-sdk/assets/scripts/publish.py
       - .github/workflows/launcher-sdk-candidate.yml
 
 permissions:
@@ -63,22 +67,22 @@ jobs:
             libx11-dev libxcomposite-dev libxrender-dev libxres-dev libxext-dev \
             libxcb1-dev libnss3 libasound2 libopus0 libminizip1
       - name: Install matching Qt SDK
-        run: bash release/packaging/desktop/install-linux-qt.sh "$RUNNER_TEMP/Qt"
+        run: python3 workflows/shared/launch.py workflows/build/desktop/install-linux-qt.yml -- "$RUNNER_TEMP/Qt"
       - name: Qualify SDK archive producer
         run: |
-          python3 -B -m unittest discover -s release/packaging/tests -p test_prepare_browser_sdk.py -v
-          python3 -B -m unittest discover -s release/packaging/desktop -p test_browser_runtime.py -v
-          python3 -B -m unittest discover -s release/packaging/tests -p test_launcher_sdk_producer.py -v
-          python3 -B -m unittest discover -s release/packaging/tests -p test_publish_launcher_sdk.py -v
+          python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/dependencies/browser-sdk/tests --pattern test_prepare_browser_sdk.py
+          python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/dependencies/browser-sdk/tests --pattern test_browser_runtime.py
+          python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/build/launcher-sdk/tests --pattern test_launcher_sdk_producer.py
+          python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/publish/launcher-sdk/tests --pattern test_publish_launcher_sdk.py
       - name: Prepare the exact attested Browser SDK
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python3 release/packaging/prepare-browser-sdk.py --lock release/dependencies/spatialweb-browser.lock.json \
+          python3 workflows/shared/launch.py workflows/dependencies/browser-sdk/config.yml -- --lock workflows/dependencies/browser-sdk/assets/spatialweb-browser.lock.json \
             --platform linux-amd64 --output "$RUNNER_TEMP/browser-sdk"
       - name: Build and qualify relocated SDK
         run: |
-          python3 -B release/packaging/build-launcher-sdk.py \
+          python3 workflows/shared/launch.py workflows/build/launcher-sdk/config.yml -- \
             --source-root "$GITHUB_WORKSPACE" --source-sha "$GITHUB_SHA" \
             --qt-root "$RUNNER_TEMP/Qt/6.10.3/gcc_64" --browser-sdk "$RUNNER_TEMP/browser-sdk" \
             --work-directory "$RUNNER_TEMP/launcher-sdk-build" \
@@ -117,4 +121,4 @@ jobs:
       - name: Publish immutable SDK candidate
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 -B release/packaging/publish-launcher-sdk.py --directory "$RUNNER_TEMP/launcher-sdk"
+        run: python3 workflows/shared/launch.py workflows/publish/launcher-sdk/config.yml -- --directory "$RUNNER_TEMP/launcher-sdk"

@@ -70,12 +70,12 @@ install(DIRECTORY "${CMAKE_BINARY_DIR}/syntax-licenses"
 
 # External native package builders use the SDK's audited tooling and notices.
 get_filename_component(dockpipe_repository_root "${CMAKE_CURRENT_SOURCE_DIR}/../../../.." ABSOLUTE)
-install(FILES "${dockpipe_repository_root}/release/packaging/lib/elf_artifacts.py"
+install(FILES "${dockpipe_repository_root}/workflows/shared/lib/elf_artifacts.py"
     DESTINATION ${sdk_resource_directory}/tools COMPONENT LauncherSDK)
 install(FILES "${dockpipe_repository_root}/LICENSE"
     DESTINATION ${sdk_resource_directory}/licenses RENAME Dockpipe-LICENSE COMPONENT LauncherSDK)
-install(FILES "${dockpipe_repository_root}/release/packaging/desktop/licenses/Qt-LGPL-3.txt"
-    "${dockpipe_repository_root}/release/packaging/desktop/licenses/Qt-GPL-3.txt"
+install(FILES "${dockpipe_repository_root}/workflows/build/desktop/assets/licenses/Qt-LGPL-3.txt"
+    "${dockpipe_repository_root}/workflows/build/desktop/assets/licenses/Qt-GPL-3.txt"
     DESTINATION ${sdk_resource_directory}/licenses COMPONENT LauncherSDK)
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake/LauncherSDKLayout.json.in"
     "${CMAKE_CURRENT_BINARY_DIR}/sdk-layout.json" @ONLY)

@@ -1,0 +1,11 @@
+name: setup-developer-dependencies
+description: Run the repository setup developer-dependencies operation.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py bash workflows/setup/developer-dependencies/assets/scripts/install.sh

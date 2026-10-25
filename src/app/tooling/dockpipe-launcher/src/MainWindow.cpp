@@ -40,7 +40,6 @@
 #include <QCoreApplication>
 #include <QDesktopServices>
 #include <QDir>
-#include <QDirIterator>
 #include <QDialog>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -285,16 +284,6 @@ QVector<Context> contextsFromCatalog(const QString &workdir, const QString &repo
         baseLabel = QFileInfo(gitRoot).fileName() + QStringLiteral(" — ") + QFileInfo(clean).fileName();
 
     QVector<Context> out;
-    if (catalog.workflows.isEmpty()) {
-        Context c = Context::createNew();
-        c.workdir = clean;
-        c.label = baseLabel;
-        c.workflow = QStringLiteral("vscode");
-        c.dockpipeBinary = DockpipeChoices::preferredDockpipeBinary(clean);
-        out.append(c);
-        return out;
-    }
-
     out.reserve(catalog.workflows.size());
     for (const WorkflowMeta &wf : catalog.workflows) {
         if (wf.workflowId.trimmed().isEmpty())
@@ -309,75 +298,6 @@ QVector<Context> contextsFromCatalog(const QString &workdir, const QString &repo
     return out;
 }
 
-WorkflowCatalogData fastWorkflowShellCatalog(const QString &workdir)
-{
-    WorkflowCatalogData catalog;
-    const QString clean = QDir::cleanPath(workdir);
-    const QString repoRoot = DockpipeChoices::findRepoRoot(clean);
-    if (repoRoot.isEmpty())
-        return catalog;
-
-    QSet<QString> seen;
-    auto yamlScalarFromText = [](const QString &text, const QString &key) {
-        const QRegularExpression re(QStringLiteral("(?m)^\\s*%1\\s*:\\s*([^#\\r\\n]+)").arg(QRegularExpression::escape(key)));
-        const QRegularExpressionMatch match = re.match(text);
-        if (!match.hasMatch())
-            return QString();
-        QString value = match.captured(1).trimmed();
-        if ((value.startsWith(QLatin1Char('"')) && value.endsWith(QLatin1Char('"'))) ||
-            (value.startsWith(QLatin1Char('\'')) && value.endsWith(QLatin1Char('\'')))) {
-            value = value.mid(1, value.size() - 2);
-        }
-        return value.trimmed();
-    };
-
-    auto addWorkflow = [&](const QString &workflowId, const QString &configPath) {
-        const QString id = workflowId.trimmed();
-        if (id.isEmpty() || seen.contains(id))
-            return;
-        seen.insert(id);
-        WorkflowMeta meta;
-        meta.workflowId = id;
-        meta.displayName = id;
-        meta.configPath = configPath;
-        QFile config(configPath);
-        if (config.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            const QString text = QString::fromUtf8(config.readAll());
-            meta.category = yamlScalarFromText(text, QStringLiteral("category"));
-            meta.description = yamlScalarFromText(text, QStringLiteral("description"));
-            const QString displayName = yamlScalarFromText(text, QStringLiteral("display_name"));
-            if (!displayName.isEmpty())
-                meta.displayName = displayName;
-            const QString icon = yamlScalarFromText(text, QStringLiteral("icon"));
-            if (!icon.isEmpty()) {
-                const QFileInfo iconInfo(icon);
-                meta.iconPath = iconInfo.isAbsolute() ? QDir::cleanPath(icon)
-                                                      : QDir(QFileInfo(configPath).absolutePath()).filePath(icon);
-            }
-        }
-        catalog.workflows.append(meta);
-    };
-
-    auto scanConfigs = [&](const QString &root) {
-        if (!QFileInfo::exists(root))
-            return;
-        QDirIterator it(root, QStringList{QStringLiteral("config.yml")}, QDir::Files, QDirIterator::Subdirectories);
-        while (it.hasNext()) {
-            const QString configPath = QDir::cleanPath(it.next());
-            const QString id = QFileInfo(QFileInfo(configPath).absolutePath()).fileName();
-            addWorkflow(id, configPath);
-        }
-    };
-
-    scanConfigs(QDir(repoRoot).filePath(QStringLiteral("workflows")));
-    scanConfigs(QDir(repoRoot).filePath(QStringLiteral("src/core/workflows")));
-    scanConfigs(QDir(repoRoot).filePath(QStringLiteral("packages")));
-
-    std::sort(catalog.workflows.begin(), catalog.workflows.end(), [](const WorkflowMeta &a, const WorkflowMeta &b) {
-        return a.workflowId.localeAwareCompare(b.workflowId) < 0;
-    });
-    return catalog;
-}
 
 } // namespace
 
@@ -1740,14 +1660,6 @@ void MainWindow::startWorkflowCatalogDiscovery()
         m_workspaceWorkflows.clear();
         m_basicApps.clear();
     }
-    if (projectChanged || m_advancedSourceContexts.isEmpty()) {
-        const WorkflowCatalogData shellCatalog = fastWorkflowShellCatalog(workdir);
-        if (!shellCatalog.workflows.isEmpty()) {
-            m_workspaceWorkflows = shellCatalog.workflows;
-            m_advancedSourceContexts = contextsFromCatalog(workdir, QString(), shellCatalog);
-            m_basicApps = appWorkflowsFromCatalog(shellCatalog);
-        }
-    }
     applyAdvancedContextFilter();
     updateBasicPage();
 
@@ -1765,11 +1677,6 @@ void MainWindow::startWorkflowCatalogDiscovery()
 void MainWindow::applyWorkflowCatalogResult(const AsyncWorkflowCatalogResult &result)
 {
     WorkflowCatalogData catalog = result.catalog;
-    if (catalog.workflows.isEmpty()) {
-        const WorkflowCatalogData fallback = fastWorkflowShellCatalog(result.workdir);
-        if (!fallback.workflows.isEmpty())
-            catalog.workflows = fallback.workflows;
-    }
     m_remoteWidget->setResolvers(catalog.resolverDetails);
     m_workspaceWorkflows = catalog.workflows;
     syncPackageSurfaces(catalog.resolverDetails);

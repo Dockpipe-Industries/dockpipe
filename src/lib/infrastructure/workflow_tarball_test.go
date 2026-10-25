@@ -43,7 +43,7 @@ func TestTryResolveWorkflowTarballURI(t *testing.T) {
 
 func TestWorkflowCompileStartDirPrefersOnDiskOverStoreTarball(t *testing.T) {
 	bundle := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(bundle, BundledLayoutDir, "workflows", "demo"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(bundle, "bundle", "workflows", "demo"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	project := t.TempDir()

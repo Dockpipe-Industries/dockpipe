@@ -5,11 +5,15 @@ Read before final reporting or when choosing checks.
 ## Core
 
 ```bash
-go test ./src/lib/...
-go test ./src/cmd
-make build
-make ci
+python3 workflows/shared/launch.py workflows/ci/core/config.yml
+python3 workflows/shared/launch.py workflows/ci/repository/config.yml
+python3 workflows/shared/launch.py workflows/build/cli/config.yml -- --output /absolute/path/to/dockpipe
 ```
+
+The launcher verifies the separately released bootstrap CLI against
+`workflows/shared/bootstrap.lock.json`. Set `DOCKPIPE_BOOTSTRAP_ARCHIVE` to an
+already downloaded pinned archive for offline execution. Make targets are thin
+aliases for these workflows.
 
 Use writable task-owned cache/state directories when an isolated check supports them.
 If a required host capability is unavailable, follow the
@@ -69,7 +73,7 @@ Always say which checks ran, which failed, and which were skipped.
 ## Dogfooding
 
 This repo runs the same released binary and declarative workflows users get. Dogfooding is a quality
-bar, not a special CLI primitive. After `make build`, run dogfood workflows from the repo root with:
+bar, not a special CLI primitive. After the developer CLI build workflow, run dogfood workflows from the repo root with:
 
 ```bash
 ./src/bin/dockpipe --workflow <name> --
