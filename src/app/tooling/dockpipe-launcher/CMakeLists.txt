@@ -573,7 +573,10 @@ if(BUILD_TESTING)
         src/SessionManager.cpp src/SystemResourceOverview.cpp src/ExecutionMetricChart.cpp dockpipe-launcher.qrc)
     target_link_libraries(dashboard-browser-performance-test PRIVATE dockpipe-browser dockpipe-launcher-ui Qt6::Test)
     add_test(NAME dashboard-browser-performance COMMAND dashboard-browser-performance-test)
-    set_tests_properties(dashboard-browser-performance PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
+    set_tests_properties(dashboard-browser-performance PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        TIMEOUT 45
+        RUN_SERIAL TRUE)
     add_executable(desktop-window-widget-test tests/DesktopWindowWidgetTest.cpp)
     target_link_libraries(desktop-window-widget-test PRIVATE dockpipe-launcher-ui)
     add_test(NAME desktop-window-widget COMMAND desktop-window-widget-test)

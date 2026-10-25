@@ -603,3 +603,11 @@ pins. Reproduce the SDK from the real committed source before updating its lock
 and publishing through the existing protected environment. Existing public
 releases and downloads remain intact; final dependency readback, installed
 Bazzite acceptance and staging promotion are still pending.
+
+
+The final Intel native gate exposed a browser benchmark running concurrently with
+other real WebEngine tests. Its measured UI switching p95 exceeded the unchanged
+100 ms limit. The benchmark now declares exclusive CTest scheduling; its 50 cycles,
+functional retention assertions and timeout remain unchanged. This corrects the
+test resource contract without claiming contention explains all GUI CPU cost.
+Fresh Intel native qualification remains required before merge.
