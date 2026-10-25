@@ -18,20 +18,33 @@ name: CI
 
 on:
   workflow_dispatch:
+    inputs:
+      build_go_sdk:
+        description: Reproduce the locked SDK as CI artifacts without publication.
+        required: false
+        type: boolean
+        default: false
+      publish_go_sdk:
+        description: Reproduce and request protected SDK publication.
+        required: false
+        type: boolean
+        default: false
   pull_request:
     branches: [master, staging, dev]
   push:
     branches: [master, staging, dev]
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/staging' }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}${{ github.event_name == 'workflow_dispatch' && (inputs.build_go_sdk || inputs.publish_go_sdk) && '-go-sdk' || '' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/staging' && !(github.event_name == 'workflow_dispatch' && (inputs.build_go_sdk || inputs.publish_go_sdk)) }}
 
 env:
   GOTOOLCHAIN: local
 
 jobs:
   test:
+    name: ${{ github.event_name == 'workflow_dispatch' && (inputs.build_go_sdk || inputs.publish_go_sdk) && 'sdk-selection-linux-tests-skipped' || 'test' }}
+    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.build_go_sdk || inputs.publish_go_sdk)) }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -172,6 +185,8 @@ jobs:
   # Full tests/run_tests.sh and Docker integration tests stay on Linux — Docker/Linux images
   # are not reliable on windows-latest the same way as ubuntu-latest.
   test-windows:
+    name: ${{ github.event_name == 'workflow_dispatch' && (inputs.build_go_sdk || inputs.publish_go_sdk) && 'sdk-selection-windows-tests-skipped' || 'test-windows' }}
+    if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.build_go_sdk || inputs.publish_go_sdk)) }}
     runs-on: windows-latest
     permissions:
       contents: read
@@ -212,3 +227,11 @@ jobs:
     secrets: inherit
     with:
       staging: true
+
+  go-sdk:
+    if: ${{ github.event_name == 'workflow_dispatch' && (inputs.build_go_sdk || inputs.publish_go_sdk) }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/go-sdk.yml
+    with:
+      publish: ${{ inputs.publish_go_sdk }}

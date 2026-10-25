@@ -61,7 +61,8 @@ with mock.patch.dict(os.environ, {"DOCKPIPE_BIN": override, "PATH": str(path_bin
     assert selected.dockpipe_bin == str(local.resolve())
     local.unlink()
     selected.refresh(str(project))
-    assert selected.dockpipe_bin == str(path_cli)
+    assert selected.dockpipe_bin is not None, "PATH discovery did not select its fixture"
+    assert Path(selected.dockpipe_bin).samefile(path_cli), (selected.dockpipe_bin, str(path_cli))
     path_cli.unlink()
     selected.refresh(str(project))
     assert selected.dockpipe_bin is None

@@ -2,32 +2,10 @@ name: build-platform-release
 description: Build the standalone CLI, assemble release archives, then package native Linux inputs.
 docker_preflight: false
 steps:
-  - id: prepare
+  - id: build-and-package
     kind: host
     cwd: repo
     scopes:
       source: repo
       artifacts: artifacts
-    outputs: platform.env
-    cmd: python3 workflows/shared/run.py python3 workflows/build/platform/assets/scripts/prepare.py
-  - id: cli
-    kind: host
-    cwd: repo
-    scopes:
-      source: repo
-      artifacts: artifacts
-    cmd: python3 workflows/build/platform/assets/scripts/run-phase.py cli
-  - id: assemble
-    kind: host
-    cwd: repo
-    scopes:
-      source: repo
-      artifacts: artifacts
-    cmd: python3 workflows/build/platform/assets/scripts/assemble.py
-  - id: linux-packages
-    kind: host
-    cwd: repo
-    scopes:
-      source: repo
-      artifacts: artifacts
-    cmd: python3 workflows/build/platform/assets/scripts/run-phase.py linux-packages
+    cmd: python3 workflows/shared/run.py python3 workflows/build/platform/assets/scripts/run.py

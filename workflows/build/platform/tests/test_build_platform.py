@@ -17,6 +17,8 @@ class BuildPlatformFreshStoreTest(unittest.TestCase):
         repository = Path(__file__).resolve().parents[4]
         inputs = (
             'workflows/build/platform/assets/scripts/prepare.py',
+            'workflows/build/platform/assets/scripts/run.py',
+            'workflows/build/platform/assets/scripts/run-phase.py',
             'workflows/build/platform/assets/scripts/assemble.py',
             'workflows/build/cli/assets/scripts/build.py',
             'workflows/release/metadata/assets/scripts/release-artifacts.py',
@@ -64,23 +66,10 @@ else:
         self.store = self.root / 'release/artifacts/stores/darwin-arm64'
 
     def run_build(self):
-        environment = dict(self.environment, DOCKPIPE_SOURCE_ROOT=str(self.root),
-                           DOCKPIPE_STEP_OUTPUTS_FILE=str(self.root / 'outputs.env'))
-        commands = [
-            ['python3', 'workflows/build/platform/assets/scripts/prepare.py', '0.6.27'],
-            ['python3', 'workflows/build/cli/assets/scripts/build.py', '--output',
-             str(self.root / 'src/bin/dockpipe'), '--version', '0.6.27'],
-            ['python3', 'workflows/build/platform/assets/scripts/assemble.py'],
-        ]
-        for command in commands:
-            result = subprocess.run(command, cwd=self.root, env=environment,
-                                    capture_output=True, text=True, timeout=20)
-            if result.returncode:
-                return result
-            outputs = self.root / 'outputs.env'
-            if outputs.exists():
-                environment.update(line.split('=', 1) for line in outputs.read_text().splitlines())
-        return result
+        environment = dict(self.environment, DOCKPIPE_SOURCE_ROOT=str(self.root))
+        return subprocess.run(
+            ['python3', 'workflows/build/platform/assets/scripts/run.py', '0.6.27'],
+            cwd=self.root, env=environment, capture_output=True, text=True, timeout=20)
 
     def test_fresh_tree_builds_standalone_cli_without_catalog_or_source_mutation(self):
         result = self.run_build()

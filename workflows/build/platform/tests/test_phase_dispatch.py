@@ -2,6 +2,7 @@
 import importlib.util
 import json
 import os
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
@@ -12,6 +13,10 @@ SPECIFICATION = importlib.util.spec_from_file_location(
     'platform_phase', ROOT / 'workflows/build/platform/assets/scripts/run-phase.py')
 phase = importlib.util.module_from_spec(SPECIFICATION)
 SPECIFICATION.loader.exec_module(phase)
+RUN_SPECIFICATION = importlib.util.spec_from_file_location(
+    'platform_run', ROOT / 'workflows/build/platform/assets/scripts/run.py')
+runner = importlib.util.module_from_spec(RUN_SPECIFICATION)
+RUN_SPECIFICATION.loader.exec_module(runner)
 
 
 class PlatformPhaseTests(unittest.TestCase):
@@ -49,10 +54,39 @@ class PlatformPhaseTests(unittest.TestCase):
             self.assertEqual(command.call_args.args[0],
                              ['bash', str(root / 'workflows/build/platform/assets/scripts/package-linux.sh')])
 
+    def test_owner_passes_prepared_state_directly_to_every_phase(self):
+        with tempfile.TemporaryDirectory(prefix='platform source spaces ') as temporary:
+            prepared = {'PLATFORM_SYSTEM': 'windows', 'PLATFORM_BINARY': r'C:\release artifacts\dockpipe.exe',
+                        'PLATFORM_VERSION': '0.6.32'}
+            with patch.dict(os.environ, {'DOCKPIPE_SOURCE_ROOT': temporary}, clear=True):
+                with patch.object(runner.PREPARE, 'prepare', return_value=prepared) as prepare:
+                    with patch.object(runner.subprocess, 'run') as command:
+                        self.assertEqual(runner.main(['0.6.32']), 0)
+            prepare.assert_called_once_with(['0.6.32'])
+            self.assertEqual(len(command.call_args_list), 3)
+            phases = [call.args[0][1:] for call in command.call_args_list]
+            self.assertEqual(phases, [[str(runner.SCRIPTS / 'run-phase.py'), 'cli'],
+                                      [str(runner.SCRIPTS / 'assemble.py')],
+                                      [str(runner.SCRIPTS / 'run-phase.py'), 'linux-packages']])
+            for call in command.call_args_list:
+                for key, value in prepared.items():
+                    self.assertEqual(call.kwargs['env'][key], value)
+                self.assertNotIn('DOCKPIPE_STEP_OUTPUTS_FILE', call.kwargs['env'])
+                self.assertTrue(call.kwargs['check'])
+
+    def test_failed_phase_prevents_assembly_and_packaging(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            with patch.dict(os.environ, {'DOCKPIPE_SOURCE_ROOT': temporary}, clear=True):
+                with patch.object(runner.PREPARE, 'prepare', return_value={}):
+                    with patch.object(runner.subprocess, 'run', side_effect=subprocess.CalledProcessError(7, ['cli'])) as command:
+                        with self.assertRaises(subprocess.CalledProcessError):
+                            runner.main(['0.6.32'])
+                        self.assertEqual(command.call_count, 1)
+
     def test_workflow_does_not_require_host_shell_variable_expansion(self):
         workflow = (ROOT / 'workflows/build/platform/config.yml').read_text()
-        self.assertIn('run-phase.py cli', workflow)
-        self.assertIn('run-phase.py linux-packages', workflow)
+        self.assertIn('workflows/build/platform/assets/scripts/run.py', workflow)
+        self.assertNotIn('outputs:', workflow)
         self.assertNotIn('$PLATFORM_', workflow)
         self.assertNotIn('cmd: bash', workflow)
 

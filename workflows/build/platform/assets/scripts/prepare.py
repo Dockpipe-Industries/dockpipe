@@ -7,11 +7,11 @@ import re
 import subprocess
 
 
-def main():
+def prepare(arguments=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('version')
     parser.add_argument('--output', type=Path)
-    arguments = parser.parse_args()
+    arguments = parser.parse_args(arguments)
     if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', arguments.version):
         parser.error('Expected a numeric release version')
     source = Path(os.environ['DOCKPIPE_SOURCE_ROOT']).resolve(strict=True)
@@ -37,9 +37,4 @@ def main():
     }
     if any('\n' in value or '\r' in value for value in values.values()):
         parser.error('Output paths must not contain line breaks')
-    Path(os.environ['DOCKPIPE_STEP_OUTPUTS_FILE']).write_text(
-        ''.join(key + '=' + value + '\n' for key, value in values.items()))
-
-
-if __name__ == '__main__':
-    main()
+    return values

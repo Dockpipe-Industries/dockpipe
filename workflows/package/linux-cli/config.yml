@@ -2,22 +2,10 @@ name: package-linux-cli
 description: Build a standalone CLI and package it with an explicit optional catalog store.
 docker_preflight: false
 steps:
-  - id: prepare
+  - id: build-and-package
     kind: host
     cwd: repo
     scopes:
       source: repo
       artifacts: artifacts
-    outputs: linux.env
-    cmd: python3 workflows/shared/run.py python3 workflows/package/linux-cli/assets/scripts/prepare.py
-  - id: build-cli
-    kind: host
-    cwd: repo
-    scopes:
-      source: repo
-      artifacts: artifacts
-    cmd: python3 workflows/build/cli/assets/scripts/build.py --target "linux/$LINUX_ARCH" --output "$LINUX_BINARY" --version "$LINUX_VERSION"
-  - id: package-deb
-    kind: host
-    cwd: repo
-    cmd: bash -c 'DOCKPIPE_RELEASE_BINARY="$LINUX_BINARY" bash workflows/package/linux-cli/assets/scripts/build-deb.sh "$LINUX_VERSION" "$LINUX_ARCH" "$LINUX_OUTPUT"'
+    cmd: python3 workflows/shared/run.py python3 workflows/package/linux-cli/assets/scripts/run.py
