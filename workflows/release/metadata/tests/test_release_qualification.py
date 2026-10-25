@@ -33,8 +33,6 @@ class ReleaseQualificationTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / 'VERSION').write_text('0.6.0\n')
-            (root / 'release/releasenotes').mkdir(parents=True)
-            (root / 'release/releasenotes/0.6.0.md').write_text('Notes\n')
             environment = dict(os.environ, GITHUB_EVENT_NAME='workflow_dispatch', GITHUB_REF='refs/heads/dev',
                                INPUT_DRY_RUN='true', INPUT_BUILD_MSI='true', INPUT_STAGING='false',
                                INPUT_QUALIFY_PACKAGE_DISPLAY='false', RELEASE_ENABLED='true', INPUT_VERSION='',

@@ -13,7 +13,7 @@ import struct
 import subprocess
 
 
-LAUNCHER = Path("src/app/tooling/dockpipe-launcher")
+LAUNCHER = Path("src/dockpipe-app")
 VERSION = "1.0.0"
 QT_VERSION = "6.10.3"
 MAX_FILES = 64
@@ -45,8 +45,8 @@ def native_platform(system=None, machine=None):
 
 def source_identity(source):
     leaf = source / LAUNCHER / "display-sdk"
-    files = [source / "LICENSE", source / LAUNCHER / "src/LauncherDisplayPackage.h",
-             source / LAUNCHER / "src/LauncherNativeLibraryScope.h",
+    files = [source / "LICENSE", source / LAUNCHER / "src/host-sdk/contracts/LauncherDisplayPackage.h",
+             source / LAUNCHER / "src/packages/infrastructure/LauncherNativeLibraryScope.h",
              source / "workflows/build/display-sdk/assets/scripts/build.py", source / "workflows/shared/archive.py"]
     for directory, directories, filenames in os.walk(leaf, followlinks=False):
         directories[:] = [name for name in directories if name not in {"build", "__pycache__", "CMakeFiles"}]

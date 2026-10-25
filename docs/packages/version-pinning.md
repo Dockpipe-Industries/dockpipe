@@ -1,9 +1,13 @@
 # Exact package selection (proposal)
 
-**Status:** Proposed for a release after 0.6.17. The project and package locks,
-side-by-side execution, scoped workflow calls, version picker, and selected-version
-UI described below are not available in 0.6.17. Their file format and workflow
+**Status:** Proposal, not a supported package-selection contract. The project and
+package dependency locks, side-by-side execution, scoped workflow calls, version
+picker and selected-version UI described below are not implemented. Their file format and workflow
 syntax are still under design; do not author files or calls from this page yet.
+
+This is separate from the supported `dockpipe_version` and `dockpipe.lock.json`
+contract that pins the producer CLI. That tool pin does not select package
+dependency versions.
 
 Today, `dockpipe package install` can use a resolved HTTPS catalog URL and a
 `--sha256` assertion against the selected archive row. It verifies package

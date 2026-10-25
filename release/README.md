@@ -1,18 +1,23 @@
 # Release documentation and outputs
 
-This directory keeps release notes, articles, maintainer documentation and ignored
-artifact outputs. Build and release implementation lives beside the owning
+This directory keeps reviewed announcement content, maintainer documentation and
+ignored artifact outputs. Build and release implementation lives beside the owning
 [Dockpipe workflows](../workflows/release/README.md).
 
 | Path | Contents |
 | --- | --- |
-| `releasenotes/` | Per-version release bodies consumed by the release workflow |
 | `docs/` | Branching, staging, publication and announcement guidance |
 | [CLI candidates](cli-candidate.md) | Immutable standalone runtime bootstrap contract |
 | [Go SDK](go-sdk.md) | Runtime contracts consumed by external Go packages |
 | [Display SDK](display-sdk.md) | Native QWidget interface artifact contract |
-| `articles/` and `demo/` | Public release media and recording guidance |
-| `artifacts/` | Gitignored CLI, installer, manifest and checksum outputs |
+| `articles/announcement.md` and `articles/assets/` | Reviewed dev.to announcement and its public images |
+| `artifacts/` | Gitignored CLI, installer, manifest, checksum and release-notes outputs |
+
+`VERSION` selects the release line and numeric floor. The release workflow generates
+the next available version and a notes header with the exact tag, source and install
+guide. GitHub appends the merged-PR changelog during publication. Dry runs retain the
+header without calling the write-permission notes API. There is no per-version notes
+file to maintain. The optional dev.to announcement remains separately reviewed content.
 
 Workflow-specific scripts, tests, assets and dependency locks belong under
 `workflows/`; shared workflow helpers belong under `workflows/shared`.

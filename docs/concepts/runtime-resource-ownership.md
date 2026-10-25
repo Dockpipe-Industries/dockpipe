@@ -7,7 +7,7 @@ core archive to initialize a project or resolve an installed workflow.
 | --- | --- | --- |
 | Generic library | Typed runtime defaults, SDK helpers, container bootstrap resources and runtime-owned Git adapters | Built with the library; resources materialize only when the corresponding capability is requested. |
 | Project workflows | `config.yml`, workflow-specific scripts, tests and assets | Explicit project roots and `compile.workflows`, or `--workflow-file`. |
-| Resolver/workflow packages | Tool implementations, VM backends, provisioning and contributed UI | Declared package sources or project, user and system stores. |
+| Resolver/workflow packages | Tool integrations, VM backends, provisioning and contributed UI | Declared package sources or project, user and system stores. |
 
 ## Initialization and SDKs
 
@@ -31,7 +31,7 @@ operator workflow/project strategy files take precedence.
 Named workflows come from the selected project directory, declared compile roots,
 or installed/configured package archives. The executable does not contain the
 repository's CI, agent or example workflows, and it does not extract a workflow
-snapshot into a cache. The launcher uses Dockpipe's catalog as its authority.
+snapshot into a cache. The Dockpipe GUI uses Dockpipe's catalog as its authority.
 
 Workflow-specific scripts live beside `config.yml`. Reusable scripts live at their
 lowest common owning boundary. Standard project `scripts/` overrides and package

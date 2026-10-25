@@ -102,7 +102,7 @@ def qualify(work, assets, qt_root, environment):
     if version != '6.10.3':
         raise ValueError('Installed Cockpit requires the exact Qt 6.10.3 host ABI')
     build = work / 'host-build'
-    subprocess.run(['cmake', '-S', str(ROOT / 'src/app/tooling/dockpipe-launcher'), '-B', str(build),
+    subprocess.run(['cmake', '-S', str(ROOT / 'src/dockpipe-app'), '-B', str(build),
                     '-DCMAKE_BUILD_TYPE=Release', '-DBUILD_TESTING=ON',
                     f'-DCMAKE_PREFIX_PATH={qt_root}', f'-DQt6_DIR={qt_root}/lib/cmake/Qt6',
                     f'-DDOCKPIPE_COCKPIT_ASSETS={assets}'], env=environment, check=True)

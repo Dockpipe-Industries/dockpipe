@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
-HELPER = Path(__file__).resolve().parents[4] / 'src/app/tooling/dockpipe-launcher/cmake/WindowsOffscreenTestFonts.cmake'
+HELPER = Path(__file__).resolve().parents[4] / 'src/dockpipe-app/cmake/WindowsOffscreenTestFonts.cmake'
 
 
 class FontFixtureTests(unittest.TestCase):

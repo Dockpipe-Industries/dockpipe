@@ -15,7 +15,7 @@ The `compliance-handoff` workflow is owned and qualified by the separately publi
 
 ## CI scan bundle
 
-Dockpipe CI keeps the original govulncheck and gosec JSON receipts under its `ci-raw` workflow artifact directory. It runs the tools and enforces their exit status. DorkPipe owns any separately published normalization or analysis of those receipts. **`make ci`** reproduces the GitHub Actions test job locally through **`act`**.
+Dockpipe CI keeps the original govulncheck and gosec JSON receipts under its `ci-raw` workflow artifact directory. It runs the tools and enforces their exit status. DorkPipe owns any separately published normalization or analysis of those receipts. **`make -f tooling/Makefile ci`** reproduces the GitHub Actions test job locally through **`act`**.
 
 | Path | Role |
 |------|------|
@@ -23,6 +23,6 @@ Dockpipe CI keeps the original govulncheck and gosec JSON receipts under its `ci
 
 ## User insight queue
 
-Structured human guidance is owned by the DorkPipe insight CLI and its durable learning-authority helper; do not reconstruct its path with a generic public package-scope suffix. Schemas live under **`src/schemas/dockpipe-user-insight-*.schema.json`**.
+Structured human guidance is owned by the DorkPipe insight CLI and its durable learning-authority helper; do not reconstruct its path with a generic public package-scope suffix. The schemas are [insight queue](../../src/schemas/dockpipe-user-insight-queue.schema.json) and [insight collection](../../src/schemas/dockpipe-user-insights.schema.json).
 
 **Canonical implementation:** **`dorkpipe insight ...`** in the maintainer **`dorkpipe`** package; the workflow **`user-insight-process`** is a host-side entrypoint that uses the same CLI surface. See **`resolvers/user-insight-process/README.md`** there.

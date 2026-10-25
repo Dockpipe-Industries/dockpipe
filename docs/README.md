@@ -1,7 +1,5 @@
 # Documentation
 
-Package source examples below belong to [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages), [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) or [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon), as applicable. Run package-source commands in that owning repository with pinned Dockpipe tools.
-
 Dockpipe has a small front door and deeper reference material behind it. Start
 with the task you are doing, then drop into reference docs only when needed.
 
@@ -34,7 +32,7 @@ maintainer docs below are reference material, not the shortest learning path.
 |-------|-----|
 | Package/store model | [packages/package-model.md](packages/package-model.md) |
 | Security policy | [security/security-policy.md](security/security-policy.md) |
-| VM boot display geometry | [runtime/vm-display-geometry.md](runtime/vm-display-geometry.md) |
+| VM boot display geometry | [VM package display guide](https://github.com/Dockpipe-Industries/dockpipe-packages/blob/master/packages/vm/docs/vm-display-geometry.md) |
 | Docker image artifacts | [runtime/image-artifacts.md](runtime/image-artifacts.md) |
 | Combined design notes / history | [security/docker-security-images.md](security/docker-security-images.md) |
 | Windows WSL containers and WSL3 research | [research/wsl-containers-and-wsl3-2026.md](research/wsl-containers-and-wsl3-2026.md) |

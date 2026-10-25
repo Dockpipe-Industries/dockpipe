@@ -5,9 +5,9 @@ managed workspaces, bind-mount policy, or recovery/publish behavior.
 
 ## Canonical Design
 
-Use `docs/runtime/git-runtime-sessions.md` as the source of truth for the long-term architecture.
-Use `docs/runtime/operation-results.md` for the broader unit-of-work result/logging pattern that runtime
-session work should follow.
+Use [Git runtime sessions](../../runtime/git-runtime-sessions.md) for the implemented
+local interface and the separately labelled design. Use [operation results](../../runtime/operation-results.md)
+for the shared result/logging contract. Design goals are not evidence of current support.
 
 ## Hard Rules
 
@@ -35,48 +35,41 @@ session work should follow.
 
 ## Implementation Guidance
 
-- Keep the public model provider-neutral: `workspace_id`, `session_id`, worker leases, lifecycle
-  requests, and metadata events.
-- Keep branch/session logic in runtime infrastructure or a runtime-owned service boundary.
-- Do not add DorkPipe-specific session behavior to generic engine code unless it is a reusable
-  runtime primitive.
-- Do not require workflows to know host paths, Docker volume names, Git commands, or worktree paths.
-- Prefer one unit-of-work result/logging contract for runtime actions such as session create, volume
-  seed/sync, worker lease, checkpoint, sync, and publish; do not add more ad hoc status strings per
-  code path.
-- Prefer `workspace.mode: managed` as the future default; keep `workspace.mode: bind` explicit.
-- Prefer `workspace.storage: volume` for container-facing managed sessions; reserve
-  `workspace.storage: worktree` for local debugging and inspection when needed.
-- Start with serialized write leases before introducing worker branches or parallel worktrees.
-- Current lifecycle primitives are `CreateSessionBranch`, `CheckpointSession`, `SyncSession`,
-  `CheckpointSessionFromRequest`, `PublishSession`, `ArchiveSession`, `CreateWorkerLease`, and
-  `ReleaseWorkerLease`. The request-driven checkpoint operation is the strict exact-path boundary;
-  the older `CheckpointSession` remains the broad policy-driven finalizer used by existing flows.
-- Public local CLI commands are `dockpipe session list`, `dockpipe session inspect <id>`,
-  `dockpipe session switch <id>`, `dockpipe session checkpoint <id> --request <path> --receipt
-  <path>`, and `dockpipe session publish <id>`.
-- A controlled checkpoint request binds the runtime session/workspace, exact branch and parent,
-  canonical request and authorization fingerprints, sorted paths, exact postimages, and one bounded
-  message. The runtime rejects pre-existing staged state, any extra or unsupported worktree change,
-  stale/linked/non-regular postimages, and ambiguous recovery before it commits exactly those paths.
-- The controlled receipt binds the resulting commit and parent back to the request and session and
-  records push, publication, sync, and merge as false. Existing receipts and exact-commit recovery
-  are revalidated instead of creating a second commit.
-- `dockpipe session switch` should hand the human to the managed worktree; it cannot mutate the
-  parent shell's current directory.
-- `dockpipe session publish` should checkpoint first, then push the session branch. It must not
-  merge into the user's current branch.
-- `workspace.storage: volume` should mount a runtime-owned volume at `/work`.
-- AI workers edit files in `/work` only. They do not clone, branch, checkpoint, or publish.
-- Codex/Claude worker containers should receive a runtime-staged skills directory that preserves
-  the user's provider skills and overlays curated DorkPipe skills for deterministic script/task
-  routing guidance.
-- Non-AI runtime helper tools may clone/fetch/checkout/checkpoint/publish against the volume
-  workspace as part of Dockpipe runtime behavior.
-- Keep session metadata and audit logs under `bin/.dockpipe/sessions/...`.
+- Keep workspace/session identities, leases, lifecycle requests and events provider-neutral.
+  Branch logic belongs to runtime infrastructure, not provider-specific engine branches.
+- Reuse the shared operation-result contract for lifecycle work. Preserve failure and cancellation
+  results instead of inventing per-path status vocabularies.
+- Current local sessions require an existing Git checkout. Managed sessions default to a worktree;
+  `storage: volume` supplies a Docker editing surface with a managed worktree for checkpointing.
+  `storage: clone` is reserved and rejected. `workspace.repo` does not clone remote URLs.
+- Keep `mode: bind` explicit. Do not treat a design preference for volume-first storage as authority
+  to change existing defaults or the user's selected checkout.
+- Keep session metadata and audit logs under paths returned by the session helpers. Workers edit
+  `/work`; runtime-owned helpers own Git lifecycle. Auth mount rules remain in the linked guide.
+- Serialize shared write ownership before adding parallel workers/branches. A lease or checkpoint
+  is not publication authority.
+
+## Approval Boundaries
+
+- Controlled checkpoints use `dockpipe session checkpoint <id> --request <path> --receipt <path>`.
+  Preserve exact session/workspace, branch/parent, authorization/request fingerprints, sorted paths,
+  postimages and bounded message validation. Reject staged state, extra/unsupported changes,
+  stale or linked/non-regular postimages, and ambiguous recovery before committing.
+- Revalidate controlled receipts and exact-commit recovery instead of creating another commit.
+  Checkpoint approval grants no push, publication, sync, merge or branch-switch authority.
+- Policy-driven `CheckpointSession` remains the broader existing finalizer. `auto`/`step` YAML
+  policy is not a substitute for exact-path approval in approval-sensitive package flows.
+- Plain `session publish` may checkpoint dirty work before pushing the session branch. Strict
+  request-driven publication binds an already approved checkpoint and pushes only the approved
+  commit/ref; it must not create a checkpoint, rewrite a branch, force, delete or publish tags.
+  Keep these paths distinct; see the canonical request/receipt contracts before changing either.
+- `session switch` prints a managed worktree path; it cannot change the parent shell directory.
+- Provider skills overlays and DorkPipe worker prompt preparation are harness responsibilities,
+  not generic Git-session behavior. Implement them in the owning package and preserve the user’s
+  existing provider skills when adding curated overlays.
 
 ## Validation
 
 - For docs-only routing changes: `git diff --check`.
 - For workflow surface changes: update schema, docs, language support, and run workflow validation.
-- For runtime/session code: run `go test ./src/lib/...` and `make build`.
+- For runtime/session code: use the [validation workflows](../core/validation-commands.md#core), starting with affected session/checkpoint/publication tests. Build or broaden only when required by the change.

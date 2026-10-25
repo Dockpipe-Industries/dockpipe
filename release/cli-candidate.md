@@ -12,10 +12,9 @@ It does not change a repository pin automatically.
 existing pinned Go **1.26.10** toolchain. It uses a new module cache, the public
 `https://proxy.golang.org` proxy and `sum.golang.org`, disables workspaces and
 private/local proxy overrides, rejects module replacements, downloads/verifies
-all dependencies and preserves the exact `go.mod`/`go.sum` bytes. Before any Go
-command, the existing `embedded-inputs.py --check` must confirm the authored
-embed manifest is current; the producer never silently regenerates it. The independently
-published PipeLang module must therefore already match the committed checksum.
+all dependencies and preserves the exact `go.mod`/`go.sum` bytes. The independently
+published PipeLang module must match the committed checksum. Authored workflows
+and package source are not embedded in the CLI.
 An unpublished module or checksum mismatch fails; there is no sibling checkout
 or private-proxy fallback.
 

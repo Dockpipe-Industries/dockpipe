@@ -16,7 +16,7 @@ mkdir -p "$stage/root/usr/lib/dockpipe"
 install -D -m644 "$syntax_dir/dockpipe-syntax.rcc" "$stage/root/usr/share/dockpipe/launcher/dockpipe-syntax.rcc"
 cp -R "$syntax_dir/syntax-licenses" "$stage/root/usr/share/dockpipe/launcher/"
 cp "$root/workflows/build/desktop/assets/dockpipe-launcher.desktop" "$stage/root/usr/share/applications/"
-cp -R "$root/src/app/tooling/dockpipe-launcher/resources/icons/hicolor" "$stage/root/usr/share/icons/"
+cp -R "$root/src/dockpipe-app/resources/icons/hicolor" "$stage/root/usr/share/icons/"
 # Let the native distribution determine ABI constraints rather than guessing Qt names/versions.
 printf 'Source: dockpipe-desktop\nMaintainer: dockpipe maintainers\n\nPackage: dockpipe-desktop\nArchitecture: any\n' > "$stage/debian/control"
 case "$arch" in
@@ -48,7 +48,7 @@ Maintainer: dockpipe maintainers
 Section: devel
 Priority: optional
 Depends: dockpipe (= $version), $dependencies$qt_dependencies
-Description: Dockpipe desktop launcher
- Desktop launcher and application menu entry for Dockpipe workflows.
+Description: Dockpipe GUI shell
+ GUI shell and application menu entry for Dockpipe workflows.
 EOF
 dpkg-deb --root-owner-group --build "$stage/root" "$out/dockpipe-desktop_${version}_${arch}.deb"

@@ -68,9 +68,9 @@ Dockpipe already owns the normalized launcher/tooling contract:
 - `src/lib/application/catalog_cmd.go` exposes `dockpipe catalog list --format json` and explicitly
   requires launchers to consume that contract instead of scanning repository/package trees.
 - `src/lib/domain/workflow.go` owns the current authored `types:` and `view:` fields.
-- `src/app/tooling/dockpipe-launcher/src/WorkflowCatalog.cpp` invokes the CLI catalog command and
+- `src/dockpipe-app/src/catalog/infrastructure/WorkflowCatalog.cpp` invokes the CLI catalog command and
   parses its JSON projection.
-- `src/app/tooling/dockpipe-launcher/src/WorkflowCatalog.h` defines only launcher-side projection
+- `src/dockpipe-app/src/catalog/infrastructure/WorkflowCatalog.h` defines only launcher-side projection
   types; it is not a second workflow model or parser.
 
 The Qt launcher therefore sits above the Dockpipe CLI/catalog contract. It must continue consuming

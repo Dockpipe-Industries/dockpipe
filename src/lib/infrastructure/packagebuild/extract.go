@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -15,11 +16,19 @@ import (
 )
 
 // ExtractTarGzToDir extracts all regular files from a supported package archive into destDir.
-// Rejects member paths containing ".." after cleaning.
+// Member paths must be local and canonical; links and special files are rejected.
+// On failure, files already extracted into destDir remain owned by the caller.
 func ExtractTarGzToDir(tarGzPath, destDir string) (err error) {
 	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return err
 	}
+	root, err := os.OpenRoot(destDir)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = errors.Join(err, root.Close())
+	}()
 	decoded, err := archivecodec.OpenFile(context.Background(), tarGzPath, maxPackageArchiveDecodedBytes)
 	if err != nil {
 		return err
@@ -37,26 +46,25 @@ func ExtractTarGzToDir(tarGzPath, destDir string) (err error) {
 		if err != nil {
 			return err
 		}
-		name := strings.TrimPrefix(strings.TrimSpace(hdr.Name), "./")
-		name = filepath.ToSlash(name)
-		if name == "" || strings.Contains(name, "..") {
-			continue
+		name := strings.TrimPrefix(hdr.Name, "./")
+		if hdr.Typeflag == tar.TypeDir {
+			name = strings.TrimSuffix(name, "/")
 		}
-		target := filepath.Join(destDir, filepath.FromSlash(name))
-		if !strings.HasPrefix(filepath.Clean(target), filepath.Clean(destDir)) {
+		if name == "" || path.Clean(name) != name || strings.ContainsAny(name, "\\:") || !filepath.IsLocal(filepath.FromSlash(name)) {
 			return fmt.Errorf("unsafe tar path %q", hdr.Name)
 		}
+		target := filepath.FromSlash(name)
 		switch hdr.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(target, 0o755); err != nil {
+			if err := root.MkdirAll(target, 0o755); err != nil {
 				return err
 			}
 		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			if err := root.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return err
 			}
 			mode := normalizeArchiveMode(name, os.FileMode(hdr.Mode&0o777), false)
-			out, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
+			out, err := root.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
 			if err != nil {
 				return err
 			}
@@ -68,12 +76,12 @@ func ExtractTarGzToDir(tarGzPath, destDir string) (err error) {
 				return err
 			}
 			if shouldForceExecutable(name) {
-				if err := markExecutableOnDisk(target); err != nil {
+				if err := markExecutableOnDisk(filepath.Join(destDir, target)); err != nil {
 					return err
 				}
 			}
 		default:
-			continue
+			return fmt.Errorf("unsupported tar member type %d for %q", hdr.Typeflag, hdr.Name)
 		}
 	}
 }

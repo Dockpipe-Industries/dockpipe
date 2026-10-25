@@ -1,6 +1,6 @@
 name: Release
 
-# VERSION selects the release line/notes; the patch is generated from published tags.
+# VERSION selects the release line and numeric floor; the patch is generated from published tags.
 # Manual runs default to dry-run verification; production runs require master.
 on:
   workflow_call:
@@ -82,7 +82,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
-      notes_version: ${{ steps.m.outputs.notes_version }}
+      previous_tag: ${{ steps.version.outputs.previous_tag }}
       dry_run: ${{ steps.m.outputs.dry_run }}
       build_msi: ${{ steps.m.outputs.build_msi }}
       qualify_package_display: ${{ steps.m.outputs.qualify_package_display }}
@@ -176,12 +176,8 @@ jobs:
             echo "Invalid semver in VERSION / input: '${raw}'" >&2
             exit 1
           fi
-          if [[ ! -f "release/releasenotes/${raw}.md" ]]; then
-            echo "Missing release/releasenotes/${raw}.md" >&2
-            exit 1
-          fi
           echo "staging_suffix=${candidate}" >> "$GITHUB_OUTPUT"
-          echo "notes_version=${raw}" >> "$GITHUB_OUTPUT"
+          echo "base_version=${raw}" >> "$GITHUB_OUTPUT"
           echo "dry_run=${dry_run}" >> "$GITHUB_OUTPUT"
           echo "diagnose_layout=$diagnose_layout" >> "$GITHUB_OUTPUT"
           echo "diagnostic_product_source=$diagnostic_product_source" >> "$GITHUB_OUTPUT"
@@ -192,7 +188,7 @@ jobs:
         id: version
         env:
           GH_TOKEN: ${{ github.token }}
-          BASE_VERSION: ${{ steps.m.outputs.notes_version }}
+          BASE_VERSION: ${{ steps.m.outputs.base_version }}
           STAGING_SUFFIX: ${{ steps.m.outputs.staging_suffix }}
         shell: bash
         run: |
@@ -436,24 +432,14 @@ jobs:
           path: release/artifacts
 
       - name: Prepare release notes body
-        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.meta.outputs.tag }}
+          PREVIOUS_TAG: ${{ needs.meta.outputs.previous_tag }}
         run: |
-          set -euo pipefail
-          VERSION="${{ needs.meta.outputs.notes_version }}"
-          NOTES_FILE="release/releasenotes/${VERSION}.md"
-          if [[ ! -f "${NOTES_FILE}" ]]; then
-            echo "Missing required release notes file: ${NOTES_FILE}" >&2
-            exit 1
-          fi
-          python3 - "$NOTES_FILE" "${{ needs.meta.outputs.version }}" "$VERSION" <<'PY'
-          from pathlib import Path
-          import re
-          import sys
-          notes, version, baseline = sys.argv[1:]
-          body = Path(notes).read_text()
-          body = re.sub(r"(?<![0-9.])" + re.escape(baseline) + r"(?![0-9.])", version, body)
-          Path("release/artifacts/RELEASE_NOTES.md").write_text(body)
-          PY
+          python3 workflows/shared/launch.py workflows/release/metadata/notes.yml -- \
+            --repository "$GITHUB_REPOSITORY" --source-sha "$GITHUB_SHA" \
+            --tag "$RELEASE_TAG" --previous-tag "$PREVIOUS_TAG" \
+            --output release/artifacts/RELEASE_NOTES.md
 
       - name: Prepare installers and complete release catalog
         shell: bash
@@ -545,6 +531,8 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: ${{ needs.meta.outputs.tag }}
           body_path: release/artifacts/RELEASE_NOTES.md
+          generate_release_notes: true
+          previous_tag: ${{ needs.meta.outputs.previous_tag }}
           # MSI is optional (build-msi may be skipped); do not fail when artifacts dir has no .msi
           fail_on_unmatched_files: false
           files: |
@@ -637,6 +625,8 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: ${{ needs.meta.outputs.tag }}
           body_path: release/artifacts/RELEASE_NOTES.md
+          generate_release_notes: true
+          previous_tag: ${{ needs.meta.outputs.previous_tag }}
           # MSI is optional (build-msi may be skipped); do not fail when artifacts dir has no .msi
           fail_on_unmatched_files: false
           files: |
@@ -688,7 +678,6 @@ jobs:
           DEVTO_ARTICLE_ID: ${{ vars.DEVTO_ARTICLE_ID }}
           DEVTO_ONE_TIME_POST: ${{ vars.DEVTO_ONE_TIME_POST }}
           DEVTO_TAGS: ${{ vars.DEVTO_TAGS }}
-          NOTES_VERSION: ${{ needs.meta.outputs.notes_version }}
           TAG: ${{ needs.meta.outputs.tag }}
           ARTICLE_REPOSITORY: ${{ github.repository }}
           ARTICLE_SOURCE_SHA: ${{ github.sha }}

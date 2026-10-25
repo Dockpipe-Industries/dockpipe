@@ -175,7 +175,7 @@ The engine's own repository remains independent of these package implementations
 ForgePipe names the native engine. The former "ForgePipe Game Studios" label is
 retired. AI product features belong to the optional, independently versioned DorkPipe
 package and enhance the existing DockPipe application, CLI and unified MCP endpoint.
-[TASK-008](../../agents/tasks/agentic-app-ui/overview.md) records the unbuilt AI authoring
+[TASK-008](https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/agents/tasks/agentic-app-ui/overview.md) records the unbuilt AI authoring
 and inspection scope; it does not define a separate DockPipe AI package or application.
 Ordinary local use must not require a separate AI container stack, persistent daemon
 or managed database. Optional isolated workers and remote execution use DockPipe lifecycle

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"dockpipe/src/lib/application/internal/packageimages"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 	"dockpipe/src/lib/infrastructure/archivecodec"
@@ -29,7 +30,7 @@ func cmdPackage(args []string) error {
 	case "list":
 		return cmdPackageList(args[1:])
 	case "images":
-		return cmdPackageImages(args[1:])
+		return packageimages.Run(args[1:], dockerImageExistsAppFn)
 	case "manifest":
 		return cmdPackageManifest(args[1:])
 	case "build":

@@ -32,9 +32,9 @@ before implementation because desktop/package work is already in progress.
 | Source | Observed pattern | Implementation direction |
 | --- | --- | --- |
 | `src/lib/application/package_cmd.go` | Existing catalog/install/uninstall/list command routing over domain/infrastructure operations | Extend existing package commands and core services for MCP package contributions |
-| `src/app/tooling/dockpipe-launcher/src/PackageCommand.cpp` | Starts the selected CLI with arguments, bounds output/time, handles cancellation/failure and decodes JSON results | Reuse established command/result handling rather than implement package operations in UI code |
-| `src/app/tooling/dockpipe-launcher/src/PackageManagerDialog.h` and `.cpp` | Existing installed/catalog UI, filtering, refresh and install/uninstall actions | Integrate MCP packages and management through existing desktop patterns |
-| `src/app/tooling/dockpipe-launcher/src/LauncherSettings.cpp` | Launcher-local preferences persisted in `launcher.json` | Do not make launcher preferences a second authoritative MCP configuration store |
+| `src/dockpipe-app/src/packages/infrastructure/PackageCommand.cpp` | Starts the selected CLI with arguments, bounds output/time, handles cancellation/failure and decodes JSON results | Reuse established command/result handling rather than implement package operations in UI code |
+| `src/dockpipe-app/src/packages/presentation/PackageManagerDialog.h` and `.cpp` | Existing installed/catalog UI, filtering, refresh and install/uninstall actions | Integrate MCP packages and management through existing desktop patterns |
+| `src/dockpipe-app/src/shell/infrastructure/LauncherSettings.cpp` | Launcher-local preferences persisted in `launcher.json` | Do not make launcher preferences a second authoritative MCP configuration store |
 | `packages/dorkpipe-mcp/mcpbridge/` | Existing protocol transport, discovery, access checks and dispatch | Expose established capabilities through the gateway without making it a second engine |
 
 These are reuse candidates, not a prescription to relocate every capability into a new class or

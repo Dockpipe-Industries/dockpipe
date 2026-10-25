@@ -4,9 +4,15 @@ This repo now supports an automated GitHub Actions release pipeline.
 
 **Optional dev.to:** **PUT** a main article (**`DEVTO_ARTICLE_ID`**) and/or **POST** a one-time post per release (**`DEVTO_ONE_TIME_POST`**) — see **[devto.md](devto.md)** (**`DEVTO_PUBLISH`**, **`DEVTO_API_KEY`** secret).
 
-**Ship model:** Integrate on **`staging`**; when ready, **PR `staging` → `master`** — that merge runs **Release** (see **[branching.md](branching.md)**). Repo-root **`VERSION`** selects the release line/notes baseline; the pipeline generates the next unused patch from stable and staging tags; **`release/releasenotes/X.Y.Z.md`** must exist and be updated on the **ship** PR. **CI** runs on **`staging`** PRs too (tests only); the **release-notes gate** applies only to PRs **into `master`**.
+**Ship model:** Integrate on **`staging`**; when ready, **PR `staging` → `master`** — that merge runs **Release** (see **[branching.md](branching.md)**). Repo-root **`VERSION`** selects the release line and numeric floor; the pipeline generates the next unused patch from stable and staging tags. CI runs on integration and ship PRs without requiring a version-named notes file or a notes-only change.
 
-**Release notes body:** Start from [TEMPLATE.md](../releasenotes/TEMPLATE.md) and update the notes matching repo-root `VERSION`. Lead with end-user outcomes, then Linux/macOS/Windows installation, upgrade actions and known limits. Include a working recommended install path per platform; link alternatives and contributor build instructions instead of duplicating them. Verify asset names, prerequisites and signing/platform claims, and label preview or staging-only features. The workflow replaces baseline version references with the generated numeric version and publishes the body as the GitHub Release description.
+**Release notes body:** Metadata preparation generates `release/artifacts/RELEASE_NOTES.md` with the exact release tag and source commit, an install-guide link pinned to that commit, and a comparison link when a previous tag exists. Production uses the preceding stable release tag; staging uses the latest valid host release tag. SDK and other product tags are excluded. If no eligible prior host tag exists, no comparison link is emitted and GitHub selects its default changelog range for the first release. During publication, GitHub appends its generated merged-PR changelog using that same previous tag. Keep PR titles, descriptions and linked user documentation clear about outcomes, upgrade actions and known limits; label preview or staging-only features and verify platform claims.
+
+Dry runs retain the generated header but do not request GitHub's generated changelog:
+that API requires `contents: write`, while dry-run assembly keeps read-only repository
+permissions. Inspect the header and compare link in the retained artifact. The optional
+dev.to article is separately reviewed content in `release/articles/announcement.md`;
+it is not derived from the generated changelog.
 
 ---
 
@@ -19,9 +25,9 @@ Pipeline file: `.github/workflows/release.yml`
 
 Trigger options:
 
-1. **Merge (push) to `master`** — ships the next generated **`vX.Y.Z`** if **`release/releasenotes/${VERSION}.md`** exists on that commit.
+1. **Merge (push) to `master`** — qualifies and ships the next generated **`vX.Y.Z`** through the protected release flow.
 2. **Manual dispatch** (Actions UI):
-   - `version`: optional release baseline — defaults to **`VERSION`**; the selected patch may advance beyond it
+   - `version`: optional numeric release floor — defaults to **`VERSION`**; the selected patch may advance beyond it
    - `dry_run`: defaults to `true` → build, verify, and upload workflow artifacts without requesting deployment approval. `false` is accepted only on `master`; other refs fail before platform builds.
    - `build_msi`: optional — defaults to **`true`**. On **push** to `master`, MSI is built when the committed marker file **`workflows/package/windows-msi/assets/SHIP_MSI`** is present. This repo currently keeps that marker checked in, so normal releases include WiX/MSI unless you intentionally remove it.
 
@@ -30,7 +36,7 @@ Trigger options:
 ## What the pipeline does
 
 1. Dockpipe workflows build the standalone CLI on Linux amd64/arm64, macOS Intel/Apple Silicon and Windows amd64. Runtime defaults and SDK resources are library-owned; no source checkout or core archive is required by an installed CLI. Native smoke checks execute outside the checkout.
-2. Owning workflows create CLI archives, Linux packages, macOS desktop installers, optional Windows MSI and the Flatpak launcher-plus-CLI bundle against pinned Qt and Browser SDK inputs. Optional stores are explicit inputs; a valid empty store does not create a core-package requirement.
+2. Owning workflows create CLI archives, Linux packages, macOS desktop installers, optional Windows MSI and the Flatpak GUI shell and CLI bundle against pinned Qt and Browser SDK inputs. Optional stores are explicit inputs; a valid empty store does not create a core-package requirement.
 3. Native desktop and Flatpak host qualification remain required. Windows MSI packaging requires an actual non-skipped embedding PASS. Optional Cockpit and Marketplace catalogs retain independent strict checks and do not become mandatory runtime payloads.
 4. The unprotected assembly job prepares catalogs and checksums. Dry runs also verify signed APT metadata with a disposable key and retain workflow artifacts. They have read-only repository permissions, no production secret references and no deployment environment.
 5. Production publication requires a non-dry-run on `master` and the protected `release` environment. Staging publication requires the current `staging` head, its successful caller checks and the separate `release-staging` environment. Owning publication workflows upload the qualified immutable artifact set, APT indexes and runtime catalog to the configured destinations. Existing releases, package payloads and by-hash files are retained; production announcements remain master-only.
@@ -50,7 +56,7 @@ remain separate qualification work. See [user installation and manual updates](.
 
 ## Runtime and optional package release boundaries
 
-The CLI, launcher and host SDK stay in this repository. A CLI-only installation does not need the launcher; desktop distributions provide their matching standalone CLI. Qt and the pinned Browser library remain required desktop dependencies. PipeLang's pinned Go module remains a compile-time library dependency of the CLI; its standalone compiler release is independent.
+The CLI, GUI shell and host SDK stay in this repository. A CLI-only installation does not need the GUI shell; desktop distributions provide their matching standalone CLI. Qt and the pinned Browser library remain required desktop dependencies. PipeLang's pinned Go module remains a compile-time library dependency of the CLI; its standalone compiler release is independent.
 
 Optional VM, Cockpit, DorkPipe and other packages release from their owning repositories. They consume published host/SDK artifacts and declare `min_dockpipe_version` on each installable slice that needs newer host features. Repository `dockpipe_version` and its lock select the exact producer executable; they are not a package's compatibility minimum. Native plugins additionally retain their platform, ABI and Qt checks.
 
@@ -82,7 +88,7 @@ metadata signed with the disposable dry-run key.
 
 Run Actions → Release with `dry_run=true` on the intended commit first. Inspect all five platform CLI outputs, the desktop and Flatpak bundles, qualification receipts, any explicitly selected optional stores, the non-skipped MSI embedding result, signed APT test and checksums. Production publication additionally requires the scoped secrets above and a verified public R2 hostname. Do not treat a local Linux build or a Go cross-build as native Mac/Windows qualification.
 
-GitHub and R2 are separate services, so publication is not an atomic transaction across both. If a release upload fails, inspect which objects and tags exist before recovery; do not dispatch a second release with changed bytes under an existing version. Existing Git tags and a published version catalog are rejected before publication. A fresh complete run selects the next unused patch; update the release-line notes for the shipped changes. Change `VERSION` intentionally when advancing the major/minor line or setting a higher patch floor. Keep published tags: they are the allocation history.
+GitHub and R2 are separate services, so publication is not an atomic transaction across both. If a release upload fails, inspect which objects and tags exist before recovery; do not dispatch a second release with changed bytes under an existing version. Existing Git tags and a published version catalog are rejected before publication. A fresh complete run selects the next unused patch and regenerates its notes header. Change `VERSION` intentionally when advancing the major/minor line or setting a higher patch floor. Keep published tags: they are the allocation and changelog history.
 
 ## PipeLang qualification boundary
 
@@ -100,7 +106,9 @@ lanes. Runtime publication does not rebuild or replace those packages or unrelat
 installed editors. Their independently locked artifacts and qualification remain
 with their owning repositories.
 
-> `release/releasenotes/<version>.md` is required. The workflow fails fast if it is missing.
+Generated notes are release artifacts. Do not add per-version Markdown files to the
+source tree; keep lasting installation, migration and compatibility guidance in the
+user documentation linked from PRs.
 
 **Before merging to `master` (optional but recommended):** run **[manual QA](../../docs/manual-qa.md)** for the platforms you changed.
 

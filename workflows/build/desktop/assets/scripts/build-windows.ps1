@@ -43,7 +43,7 @@ if (-not $env:VCToolsInstallDir -or -not $env:VCToolsRedistDir) {
 
 try {
     $qualification = if ($EnableQualification) { "ON" } else { "OFF" }
-    cmake -S (Join-Path $root "src/app/tooling/dockpipe-launcher") -B $build -G "NMake Makefiles" `
+    cmake -S (Join-Path $root "src/dockpipe-app") -B $build -G "NMake Makefiles" `
         -DCMAKE_BUILD_TYPE=Release "-DDOCKPIPE_ENABLE_QUALIFICATION=$qualification" -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL "-DCMAKE_PREFIX_PATH=$prefixes" "-DDOCKPIPE_RELEASE_VERSION=$Version"
     if ($LASTEXITCODE -ne 0) {
         throw "Desktop configure failed"

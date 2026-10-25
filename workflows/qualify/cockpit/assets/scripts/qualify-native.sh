@@ -2,7 +2,7 @@
 set -euo pipefail
 python3 workflows/qualify/cockpit/assets/scripts/prepare-cockpit.py prepare \
   --lock workflows/qualify/cockpit/assets/cockpit.lock.json --output "$RUNNER_TEMP/cockpit-runtime"
-cmake -S src/app/tooling/dockpipe-launcher -B "$RUNNER_TEMP/cockpit-host" \
+cmake -S src/dockpipe-app -B "$RUNNER_TEMP/cockpit-host" \
   -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON \
   -DCMAKE_PREFIX_PATH="$DOCKPIPE_QT_ROOT;$RUNNER_TEMP/browser-sdk" \
   -DDOCKPIPE_COCKPIT_ASSETS="$RUNNER_TEMP/cockpit-runtime/package/resolvers/cockpit/assets"

@@ -8,7 +8,7 @@ import (
 	"dockpipe/src/lib/infrastructure"
 )
 
-func TestRunEmbeddedResolverWorkflowWithLoad_CallsRunSteps(t *testing.T) {
+func TestRunPreparedResolverWorkflowCallsRunSteps(t *testing.T) {
 	repoRoot := t.TempDir()
 	// Bound project discovery even when the test temp directory is inside a checkout.
 	if err := os.WriteFile(filepath.Join(repoRoot, "dockpipe.config.json"), []byte("{}\n"), 0o644); err != nil {
@@ -33,7 +33,11 @@ func TestRunEmbeddedResolverWorkflowWithLoad_CallsRunSteps(t *testing.T) {
 	}
 	env := map[string]string{}
 	opts := &CliOpts{Workdir: repoRoot}
-	err := runEmbeddedResolverWorkflowWithLoad(infrastructure.LoadWorkflow, runSteps, "cursor-dev", repoRoot, env, opts, nil, nil, "", "", "cursor", "")
+	prepared, err := prepareResolverWorkflow(infrastructure.LoadWorkflow, "cursor-dev", repoRoot, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = runPreparedResolverWorkflow(prepared, runSteps, repoRoot, env, opts, nil, nil, "", "", "cursor", "")
 	if err != nil {
 		t.Fatal(err)
 	}

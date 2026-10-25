@@ -1,6 +1,6 @@
 # Flatpak desktop and Marketplace packages
 
-The Linux amd64 launcher-plus-CLI bundle is published on the staging package host.
+The Linux amd64 GUI shell and CLI bundle is published on the staging package host.
 Use the [installation guide](../../../docs/install.md#flatpak-desktop-linux-amd64)
 for KDE runtime setup, verified download URLs, user installation, launch commands,
 manual bundle updates and Marketplace setup. This is not a Flathub listing or an
@@ -10,7 +10,7 @@ Dockpipe running inside Flatpak selects Flatpak Marketplace artifacts. Native
 Dockpipe selects native artifacts, even on an atomic OS or a machine with Flatpak
 installed. Selection follows the process boundary, without a distribution toggle.
 
-The base app contains the launcher, CLI, required core, Git and container clients
+The base app contains the GUI shell, CLI, required core, Git and container clients
 (Docker, Compose and Buildx). It does **not** install the optional Marketplace
 catalog. Optional packages remain ordinary Dockpipe archives, built for the
 Flatpak runtime and downloaded individually.
@@ -23,7 +23,7 @@ First-party dependency inputs are version/checksum pinned in the adjacent lock
 files. Azure wheels match the runtime's Python ABI. Wrangler uses its npm integrity
 lock, with installation scripts disabled.
 
-Container clients connect to a host engine. Both the launcher/CLI and subprocess
+Container clients connect to a host engine. Both the GUI shell/CLI and subprocess
 clients select the same socket: explicit Docker environment settings take priority,
 then `/run/docker.sock`, the user's Docker socket, or the user's Podman socket.
 Projects and temporary bind sources use host-visible paths. No container engine is
@@ -48,18 +48,18 @@ Unavailable host access or utilities produce an error instead of opening a
 different shell inside the sandbox. No host dependency is installed automatically.
 
 The bundle also permits talking to `org.kde.StatusNotifierWatcher` for the Qt tray
-icon. It does not request unrestricted session-bus access. The launcher checks tray
+icon. It does not request unrestricted session-bus access. The GUI shell checks tray
 availability before registration and before hiding on close; if the tray disappears
-while the launcher is hidden, the window is restored. Without a tray, closing exits.
+while the GUI shell is hidden, the window is restored. Without a tray, closing exits.
 
-On normal launcher startup, terminal integration runs automatically in a background
+On normal GUI shell startup, terminal integration runs automatically in a background
 task. It reads only the needed host environment fields through `flatpak-spawn`,
 preserves an existing host `dockpipe` command, and otherwise creates
 `~/.local/bin/dockpipe`. No Settings switch or extra setup action is required.
 If the host PATH omits that directory, setup adds an idempotent labelled block to
 Bash/Zsh startup configuration or a Fish `conf.d` file. Existing content is retained;
 symlinks, conflicting files, and modified Dockpipe blocks are not replaced. Setup
-errors stay visible in the launcher without preventing it from opening.
+errors stay visible in the GUI shell without preventing it from opening.
 
 The wrapper uses Flatpak's normal app selection and forwards arguments and exit
 status. It resolves the caller's physical working directory, passes it explicitly
@@ -68,19 +68,19 @@ Mounted project folders outside the home directory therefore remain the target o
 commands such as `dockpipe init`. If the directory disappears or Flatpak cannot
 enter it, the command fails instead of initializing the home directory.
 
-Launcher startup upgrades the exact previous Dockpipe-generated shortcut even when
+GUI shell startup upgrades the exact previous Dockpipe-generated shortcut even when
 it is already on PATH. User-modified shortcuts and native commands are preserved;
 updates use an atomic file replacement and retain executable permissions.
-Version/installation smoke probes and native launcher runs do not perform terminal
+Version/installation smoke probes and native GUI shell runs do not perform terminal
 setup. Remove the wrapper and labelled PATH configuration when uninstalling the app.
 
 For older bundles affected by [issue #127](https://github.com/Dockpipe-Industries/dockpipe/issues/127),
 explicitly select the project directory when invoking Flatpak directly. See the
 [installation guide](../../../docs/install.md#flatpak-desktop-linux-amd64) for
-the command. The source fix must be included in a new bundle before launcher
+the command. The source fix must be included in a new bundle before GUI shell
 startup can update an installed shortcut.
 
-The launcher filters only the older Qt text-input-v3 warning for a null surface
+The GUI shell filters only the older Qt text-input-v3 warning for a null surface
 on leave, matching [Qt's treatment of destroyed surfaces as normal teardown](https://github.com/qt/qtbase/blob/dev/src/plugins/platforms/wayland/qwaylandtextinputv3.cpp).
 No Wayland input behavior is disabled or replaced. Set `DOCKPIPE_QT_DIAGNOSTICS=1`
 inside the Flatpak to retain the original diagnostic. Other messages, non-null
@@ -131,12 +131,12 @@ packages and binary dependency resolution, recording `browser-abi.txt`.
 Different components or refs require a separately qualified Spatial-Web profile;
 Dockpipe does not embed its source. Only the
 Browser shared library, installed notices and its consumer receipt enter the app.
-The workspace-reader ships beside the launcher and is exercised by Platform smoke.
+The workspace-reader ships beside the GUI shell and is exercised by Platform smoke.
 The [Flatpak SDK consumer contract](assets/prepare-flatpak-browser-sdk.md) documents
 preparation, provenance, immutable refs and the separate package identity.
 
-The builder compiles the launcher in the SDK, runs the Qt regression tests, and checks the
-launcher, CLI, core-only inventory, workflow execution and package target selection
+The builder compiles the GUI shell in the SDK, runs the Qt regression tests, and checks the
+GUI shell, CLI, core-only inventory, workflow execution and package target selection
 in the smaller Platform. Outputs include an unsigned staging `.flatpak` bundle, OSTree
 repository, app build directory and SDK/runtime commit receipts.
 
@@ -210,7 +210,7 @@ dependency locks currently target Linux amd64 only.
 
 ## Release integration and proof limits
 
-The reusable `.github/workflows/flatpak.yml` builds the desktop and generic bundled-library fixture, qualifies installed host terminals, and checks real Docker/Compose bind mounts. Its success remains required for the desktop release. It uploads the desktop bundle and a verified core-only store under the `linux-amd64-flatpak-org.kde.Platform-6.10` target. CLI, launcher and host SDK source remain in the main Dockpipe repository.
+The reusable `.github/workflows/flatpak.yml` builds the desktop and generic bundled-library fixture, qualifies installed host terminals, and checks real Docker/Compose bind mounts. Its success remains required for the desktop release. It uploads the desktop bundle and a verified core-only store under the `linux-amd64-flatpak-org.kde.Platform-6.10` target. CLI, GUI shell and host SDK source remain in the main Dockpipe repository.
 
 The independent `.github/workflows/flatpak-catalog.yml` retains strict optional catalog, installed Cockpit rendering and Marketplace lifecycle checks. It uploads `flatpak-optional-catalog-qualification-amd64` rather than runtime release artifacts. A failure in that lane does not make an optional package a host dependency. Marketplace promotion must use its qualified package store and update its own catalog pointer separately.
 
@@ -239,7 +239,7 @@ remain separate qualification/publication work.
 Do not describe local or hosted checks as universal workflow parity.
 
 Local Linux amd64 qualification exercised all 61 optional artifacts in the Platform,
-the core-only launcher/CLI, a bundled shared library, real Docker/Compose bind mounts,
+the core-only GUI shell/CLI, a bundled shared library, real Docker/Compose bind mounts,
 and a read-only systemctl call through the host bridge. Pipeon started its stack,
 MCP endpoints and browser UI twice from the same isolated project/state, without a
 source checkout or provider credentials. That test reused an existing code-server

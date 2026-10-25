@@ -10,7 +10,7 @@ Read when touching package resolution, compile/install flows, state paths, or bi
 | Durable project/package state | `dockpipe scope --package <owner-id> ...` | Owner-only state that must survive ordinary clean. |
 | Disposable package runtime | `PackageRuntimeDir` / shell SDK `path package-runtime` | Caches, build products, scratch, run evidence, and reproducible outputs under `bin/.dockpipe/`. |
 | Global install | `GlobalDockpipeDataDir()` / `DOCKPIPE_GLOBAL_ROOT` | User/machine shared optional packages. |
-| Authoring trees | `workflows/` here; [external packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages/) in their own repository | Editable source ownership is separate from generated stores. |
+| Authoring trees | `workflows/` here; package sources in their [owning repositories](repo-map.md#core-paths) | Editable source ownership is separate from generated stores. |
 
 ## Hard Rules
 
@@ -29,9 +29,8 @@ Read when touching package resolution, compile/install flows, state paths, or bi
 - It creates `workflows/`, `README.md`, and `dockpipe.config.json` when missing. Vault templates and secret providers are opt-in.
 - If no workflows exist yet, it seeds `workflows/example/config.yml`.
 - `dockpipe init <name>` creates `workflows/<name>/config.yml` as a minimal workflow.
-- `dockpipe init <name> --from <template>` copies an explicit local/declared workflow tree.
-- Typed initialization is offline and asset-free. It does not clone Git repositories or copy shared support trees.
-
+- `dockpipe init <name> --from blank|init` selects a built-in scaffold; another explicit local/declared workflow source copies that tree.
+- Built-in initialization is offline and asset-free. It does not clone Git repositories or copy shared support trees.
 - No mandatory core archive, core source discovery or embedded workflow snapshot is part of the runtime contract.
 
 ## Canonical Docs

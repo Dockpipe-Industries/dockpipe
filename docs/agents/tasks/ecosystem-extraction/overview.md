@@ -611,3 +611,168 @@ other real WebEngine tests. Its measured UI switching p95 exceeded the unchanged
 functional retention assertions and timeout remain unchanged. This corrects the
 test resource contract without claiming contention explains all GUI CPU cost.
 Fresh Intel native qualification remains required before merge.
+
+
+## Final qualification and merge identity checkpoint (2026-10-25)
+
+All ten final-head workflows passed, including both macOS hosts, all 58 Windows
+native tests, installed Flatpak/Compose and the complete Marketplace lifecycle.
+The six-platform release dry run and assembly passed, including actual mandatory
+Windows embedding and MSI install/uninstall. The final source-bound SDK was
+reproduced by hosted CI; its protected publication remains pending.
+
+Three GitHub-generated Dockpipe/PipeLang merge commits selected the account's old
+author email. The explicitly approved identity-only correction preserved source
+trees and uploaded downloads, corrected four refs, and restored both Dockpipe
+rulesets with independent readback. Future normal merges must select their author
+email explicitly and verify the result. The moved CLI candidate remains historical;
+its original manifest and attestations are retained and cannot supply final pins.
+The CLI producer gains an explicit dev-only recovery route for metadata-only
+changes omitted by path filters. Fresh consistent CLI/SDK readback, external native
+packages, installed Bazzite acceptance and runtime staging promotion remain pending.
+
+
+## SDK publication and remaining native checks (2026-10-25)
+
+The approved SDK source `aecdf031dc48a1f085778aecbc613f49d145a209` is
+public as `dockpipe-go-sdk-0.1.0-source.2130fcfe0504ccf4`. Hosted CI
+reproduced the two exact files and recorded the approved environment review,
+but its publisher failed HTTP 403 because creating a tag at this source requires
+workflow permission. The explicitly approved Dockpipe operator recovery published
+those same files using the existing operator credential. Independent public
+downloads matched both approved hashes; the original release protection is
+restored. The CI publisher remains recorded as failed.
+
+The next PR checks exposed two separate native qualification issues. The Windows
+fixture constructed an unused input control before readiness; a single diagnostic
+measured that constructor at 3906 ms. Removing the unasserted control preserves
+the real QWidget, native window cases, every assertion and the five-second
+readiness bound. Intel exhausted its 30-minute job budget while still compiling,
+before any CTest ran. Its cold-build budget is now 50 minutes with two workers;
+ARM remains 30 minutes and all test deadlines and the 100 ms browser limit remain
+unchanged. Both repairs require fresh strict hosted qualification before merge.
+Actual public CLI intake, external native packages, installed Bazzite acceptance
+and runtime staging promotion remain pending.
+
+## Preserved local checkout notes
+
+Catalog initial commit `99a9acf93a546a5939e112a3527f41ab536abf7f` is public on
+master/dev/staging. Core source commit `564ad3d5f78f3d6ef6ac582a691eebbc78cdd56e`
+is public on js/dev in PR #207 targeting dev. Public source refs were independently
+read back. The PR has 23 text conflicts with newer dev changes, including SDK and
+native qualification changes; those require deliberate resolution before CI can
+run. The saved checkout's unrelated ForgePipe overview remains excluded and intact.
+Its dirty state prevents the runtime's clean-only merge operation; a temporary
+managed worktree decision is pending under the existing no-worktree rule.
+
+### Host/package separation and native producers (2026-10-23)
+
+The launcher, desktop host and host SDK remain in the main Dockpipe repository.
+The desktop distribution includes the CLI/runtime; users do not need a second
+CLI installation. CLI-only installation remains supported. Optional VM and other
+catalog packages declare runtime compatibility through `min_dockpipe_version`;
+their producer pins and native ABI dependencies are separate contracts.
+
+PR #208 merged into dev at `49987891f4c3b81f5ef871b1c4cffd333e3ce274`.
+Core native Windows, macOS Intel/ARM, core-only Flatpak and optional catalog
+qualification passed. The public five-platform CLI candidate from that source
+was independently checked by size, checksum and publisher attestations. Both
+external repositories now consume that verified CLI instead of 0.6.25.
+
+Guest Tools source `13ffe8ad8c59f1c8aa6ba75e2b229d9c26a34681` passed its native
+Windows build, both CTests and installer-integrity checks, then published its
+candidate through the owning workflow. All six public assets and attestations
+passed independent readback. PipeLang final source
+`6f2129054e58499e6ba5067d720fdbf6b6dca3b5` passed Linux, Windows, CodeQL and all
+five native release lanes without publishing. All five archive payloads reproduced
+byte-identically. PR #1 promoted that exact source into staging through merge
+`e9299284c01c085ae315e6483d68512a2520e927`, whose tree and source ancestry were
+read back. Exact tag `v0.1.1-staging.1` then ran all five native lanes and
+published the compiler prerelease. All 12 public assets match the reviewed bytes
+and all 12 publisher attestations passed independent verification. The old tag,
+existing drafts and latest-channel state remain unchanged. The generic
+runtime-owned tag action merged through core PR #211 at
+`4dba695f55e6e5b5d5190e111499bb8bfcee176f`, after exact-head core and native
+host qualification. Its 60 owning tests pass, including the reproduced
+wrong-remote URL rewrite case.
+
+The Windows pointer protocol proof now reaches all ten tested positions exactly,
+including every edge and corner, using standard QMP absolute input. The original
+cursor was restored. The 21-path dedicated-channel implementation now lives in
+the owning VM package. Linux portable protocol tests and native schema-2 firmware
+proof pass; all 11 native C++ tests pass without skips on both Windows and the
+paired Mac through Dockpipe. The final installed widget path still requires the
+planned preserved-state restart and verified public SDK inputs. Alternate live Windows resolutions
+remain unqualified with the current single-mode guest driver.
+
+PR #210 repairs candidate publication and source/native catalog tag separation.
+Its exact final head `e75557cfffbd9c1ae842e20a9a2262d551c1dc25` passed core checks
+and the new actual Windows, both macOS and core-only Flatpak host gateway.
+The former required Cockpit context coupled merging to an optional package.
+After explicit user approval, ruleset 25454445 replaced only that required
+context; strictness, no-bypass settings, refs and other protections were read back
+unchanged. PR #210 merged into dev at `79bb110c712e0d71d8bcde4cecff725f3c107a49`.
+The approved two-file Homebrew updater promotion also merged through PR #7 at
+`7a25186b0d7b2ea490e22baac7067fc27d966016`, without formula/cask changes.
+Dockpipe's staging promotion PR #209 remains a draft;
+the native catalog lock, remaining package qualification and final installed
+Windows/macOS candidate checks are still required. No production promotion is
+authorized or claimed.
+
+### Native input admission and remaining acceptance (2026-10-23)
+
+The public CLI, Launcher SDK and four-platform Display SDK candidates from
+`79bb110c712e0d71d8bcde4cecff725f3c107a49` passed independent public byte and
+publisher-attestation verification. The catalog's admitted native lock now uses
+the actual Display SDK artifacts, qualified Guest Tools, public Go SDK and
+unchanged baseline/source compatibility identities. Its three profiles are
+Linux amd64, Windows amd64 and macOS arm64; the optional native catalog does
+not claim an Intel Mac profile. The source template intentionally leaves its
+own commit/transport fields for CI to bind once, avoiding self-reference.
+
+The Windows producer now admits the exact preinstalled MSVC 19.51.36260.0
+compiler and ten matching CRT files on the supported VS 2026 hosted runner.
+This matches the SDK's compiler ABI. The profile verifies actual file identities,
+signatures, selected toolchain paths and a native app-local CRT ABI probe. It
+does not execute a compiler installer or claim the rolling runner is immutable.
+All 127 producer contract tests and 10 display tests pass after source adoption.
+Actual three-platform native builds, immutable publication and final installed
+Windows/macOS launcher acceptance remain required before staging promotion.
+
+The approved paired-Mac transfer and native portable QMP tests completed through
+Dockpipe. All 11 C++ cases pass without skips on Linux, Windows and macOS.
+That protocol-layer result does not replace the final installed widget's guest
+corner test, which still needs the planned restart preserving the existing
+Windows overlay, firmware variables and TPM state. Alternate guest modes remain
+unqualified; the signed prerelease display driver has not been installed.
+
+### Saved-checkout cleanup review (2026-10-25)
+
+Cleanup remains visible in the saved checkout, uncommitted and unstaged.
+The obsolete local Codex environment contract is removed; `.gitattributes`
+retains shell LF normalization. `.gitignore` removes extracted-package and
+obsolete output paths and covers the current editor extension outputs.
+Generic cache, credential and assistant-state rules retain their nested scope.
+Restoring nested `.dockpipe/` protection keeps 1,287 generated runtime-state
+files out of review without deleting them. Runtime status passes its unchanged
+2,048-file limit; the editor-output probe ignores four generated files and
+keeps its authored control visible. The temporary probe was removed.
+Merge, publication and staging remain on hold for user cleanup review.
+
+
+### Human documentation ownership audit (2026-10-25)
+
+The human-facing documentation pass corrected installation/onboarding, CLI and
+workflow semantics, runtime references, retired core ownership and current GUI
+terminology. DorkPipe now holds its workflow/harness guides and design research.
+The catalog repository holds secrets-provider setup, VM host/guest guides and
+the unchanged historical VM JSON evidence. Core keeps generic contracts and
+short pointers at the former documentation paths. Existing PipeLang pointers
+already target owner-held documents and were retained.
+
+Local link/anchor checks, example syntax checks, isolated Linux host examples
+and both 12-page Cloud documentation bundles pass. These are documentation and
+local-example checks, not native platform, VM, provider or release acceptance.
+All three repositories retain their earlier work, unchanged indexes and HEADs;
+the documentation remains unstaged and uncommitted. AI guidance was not audited
+in this pass. Evidence is under `/tmp/dockpipe-human-docs-audit/`.

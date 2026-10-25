@@ -17,7 +17,7 @@ QT_VERSION = "6.10.3"
 ARCHIVE_ROOT = f"DockPipeLauncherSDK-{VERSION}-Linux-amd64"
 MAX_FILES = 4096
 MAX_INSTALLED_BYTES = 512 << 20
-LAUNCHER = Path("src/app/tooling/dockpipe-launcher")
+LAUNCHER = Path("src/dockpipe-app")
 
 
 

@@ -156,7 +156,3 @@ func upsertEnvLocal(env []string, key, value string) []string {
 func dockpipeScriptCommand(scriptAbs string) (*exec.Cmd, string, error) {
 	return packagescript.ScriptCommand(scriptAbs)
 }
-
-func dockpipeBashShellCommand(command string) (*exec.Cmd, string, error) {
-	return packagescript.BashShellCommand(command)
-}

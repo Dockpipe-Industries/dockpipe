@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- WiX 3.x - build on Windows: see build.ps1. Ships dockpipe.exe and optionally a staged Dockpipe Launcher payload. -->
+<!-- WiX 3.x - build on Windows: see build.ps1. Ships dockpipe.exe and optionally a staged Dockpipe GUI shell payload. -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Product Id="*"
            Name="dockpipe"
@@ -12,7 +12,7 @@
     <Package InstallerVersion="500"
              Compressed="yes"
              InstallScope="perUser"
-             Description="Dockpipe CLI and desktop workflow launcher"
+             Description="Dockpipe CLI and GUI shell"
              Comments="Apache-2.0"
              Manufacturer="Jamie Steele" />
 
@@ -35,8 +35,8 @@
     </Feature>
 <?if "$(var.DockpipeLauncherEnabled)" = "1" ?>
     <Feature Id="LauncherFeature"
-             Title="Dockpipe Launcher"
-             Description="Optional desktop launcher and Start Menu shortcut."
+             Title="Dockpipe"
+             Description="Optional GUI shell and Start Menu shortcut."
              Level="1"
              Absent="allow">
       <ComponentGroupRef Id="LauncherComponents" />
@@ -119,8 +119,8 @@
                        Value="1"
                        KeyPath="yes" />
         <Shortcut Id="sh_dockpipe_launcher"
-                  Name="Dockpipe Launcher"
-                  Description="Open Dockpipe Launcher"
+                  Name="Dockpipe"
+                  Description="Open Dockpipe"
                   Target="[INSTALLFOLDER]dockpipe-launcher.exe"
                   WorkingDirectory="INSTALLFOLDER" />
         <RemoveFile Id="RemoveDockpipeLauncherShortcut"

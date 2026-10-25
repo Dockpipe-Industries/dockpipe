@@ -11,7 +11,7 @@ if (-not $env:VCToolsInstallDir) { throw 'The Visual Studio developer environmen
 $launcher = Join-Path $env:RUNNER_TEMP 'windows-test-launcher.exe'
 $object = Join-Path $env:RUNNER_TEMP 'windows-test-launcher.obj'
 cl.exe /nologo /std:c++17 /EHsc /W4 /DUNICODE /D_UNICODE `
-  src/app/tooling/dockpipe-launcher/tests/WindowsTestLauncher.cpp `
+  src/dockpipe-app/tests/WindowsTestLauncher.cpp `
   "/Fe:$launcher" "/Fo:$object" /link advapi32.lib user32.lib
 if ($LASTEXITCODE -ne 0) { throw 'Windows test launcher compilation failed.' }
 & $launcher --self-test
@@ -52,7 +52,7 @@ if (-not $visualStudio) { throw 'Visual Studio C++ tools are required.' }
 $developerShell = Join-Path $visualStudio 'Common7/Tools/Launch-VsDevShell.ps1'
 & $developerShell -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
 if (-not $env:VCToolsInstallDir) { throw 'The Visual Studio developer environment is incomplete.' }
-cmake -S src/app/tooling/dockpipe-launcher -B $build -G 'NMake Makefiles' -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release
+cmake -S src/dockpipe-app -B $build -G 'NMake Makefiles' -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release
 if ($LASTEXITCODE -ne 0) { throw 'Native terminal configuration failed.' }
 # Qualify the Core-only transport before compiling the full desktop.
 cmake --build $build --config Release --parallel $Jobs --target terminal-session-win-test
@@ -74,7 +74,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Native test Browser runtime deployment failed.
 try {
     $dumpbin = (Get-Command dumpbin.exe -ErrorAction Stop).Source
     $cmake = (Get-Command cmake -ErrorAction Stop).Source
-    $scanScript = (Resolve-Path src/app/tooling/dockpipe-launcher/tests/WindowsRuntimeDependencies.cmake).Path
+    $scanScript = (Resolve-Path src/dockpipe-app/tests/WindowsRuntimeDependencies.cmake).Path
     $scanArguments = @(
         "`"-DTEST_EXECUTABLE=$build/desktop-app-window-win-test.exe`"",
         "`"-DDUMPBIN=$dumpbin`"",
@@ -108,7 +108,7 @@ try {
   ctest --test-dir $build -C Release --verbose --no-tests=error --parallel $Jobs --output-junit $embeddingReport -R '^desktop-app-window-win$' 
   if ($LASTEXITCODE -ne 0) {
     try {
-      & ./src/app/tooling/dockpipe-launcher/tests/TraceWindowsFixtureLoader.ps1 -BuildDirectory $build
+      & ./src/dockpipe-app/tests/TraceWindowsFixtureLoader.ps1 -BuildDirectory $build
     } catch {
       Write-Warning "Loader diagnostics failed: $_"
     }

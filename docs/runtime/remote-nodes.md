@@ -5,7 +5,7 @@ outbound HTTPS requests and invokes the existing local CLI. No SSH server, inbou
 inbound shell endpoint or automatic Git operation is involved. Source delivery is an explicit,
 bounded snapshot; it does not synchronize an entire checkout.
 
-The launcher exposes remote setup and pairing in **Machines**, delivery in **Workflows**,
+The Dockpipe app exposes remote setup and pairing in **Machines**, delivery in **Workflows**,
 and results in **Executions → Runs & logs → Remote jobs**. The current single-operator implementation has Linux loopback
 and local UI test evidence. Darwin builds and launchd manifests alone do not establish
 complete native Mac pairing, sleep/wake or end-to-end provider acceptance.
@@ -21,32 +21,32 @@ configuration. Workflows still define what runs; runtimes still define local iso
 retains graph scheduling, placement, fan-out, and distributed orchestration ownership.
 
 The Cloudflare resolver source lives in the [external remote package](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages/remote). Additional providers implement the same edge
-contract without vendor branches in core. TASK-015's `node-execution.v1` fixtures stay unchanged;
-this `dockpipe.remote/v1` transport does not turn its fake broker into a hosted service.
+contract without vendor branches in core. The `dockpipe.remote/v1` transport is
+the current node-delivery contract; it does not provide a hosted service by itself.
 
 ## Install the resolver
 
-From the launcher Marketplace, install `dockpipe.cloudflare.remote-edge` on the broker
+From the app Marketplace, install `dockpipe.cloudflare.remote-edge` on the broker
 host. Its title is **Cloudflare Tunnel remote edge**. The worker only needs the CLI.
 The resolver was previously published as `cloudflare`; existing installs of that name
 are not renamed automatically. New setup commands use the qualified identity below.
 
 In **Machines → Set up remote access**, choose **Install provider** (or **Add provider**)
 to open the Marketplace filtered to remote-access resolver packages. Select a package
-and choose **Install**. The launcher uses the catalog's pinned version and checksum,
+and choose **Install**. The Dockpipe app uses the catalog's pinned version and checksum,
 returns to setup, refreshes installed providers and selects the package you installed.
 Choose its setup action to continue; installing or selecting a package alone does not
 change your remote connection. Other providers appear through their `remote.edge`
-or `remote.broker` package capability, without a Cloudflare-only launcher path.
+or `remote.broker` package capability, without a Cloudflare-only app path.
 
 An existing connection keeps its remote address visible, including when it was created
 before provider metadata was saved. **Review remote setup** from the pairing page
 opens the provider selector and pre-fills the existing hostname. Select the provider
 that originally created the connection, then complete setup to verify its saved state
-and record its provider details. The launcher does not infer a provider from a hostname
+and record its provider details. The Dockpipe app does not infer a provider from a hostname
 or silently replace an existing connection.
 
-## Build the resolver
+## Build the resolver (package authors)
 
 Build from the external package repository with a pinned absolute `DOCKPIPE_BIN`.
 Select `PACKAGE_REPOSITORY` as that checkout. Install the CLI at a stable path before installing services:
@@ -82,9 +82,9 @@ dockpipe remote setup --resolver dockpipe.cloudflare.remote-edge --hostname benc
 This command authorizes its documented setup effects: browser login, one named tunnel, its DNS
 route, private local state, and a user service. Passwords and MFA stay in Cloudflare's browser flow.
 Setup reports its login, tunnel, DNS, and readiness stages and prints the next pairing command.
-The launcher's setup button starts this same flow in a terminal for interactive prompts
+The Dockpipe app's setup button starts this same flow in a terminal for interactive prompts
 and browser authentication; there is no command to type. When it finishes, choose
-**Check connection** in the launcher to reload the saved address and provider details.
+**Check connection** in the app to reload the saved address and provider details.
 Cloudflared opens the browser itself; the resolver preserves desktop-session variables including
 XAUTHORITY and XDG desktop settings. If no window opens, follow cloudflared's printed login URL
 and keep the terminal open. A valid existing account certificate skips browser login explicitly.
@@ -102,7 +102,7 @@ Services use systemd user units on Linux and LaunchAgents on macOS. They retain 
 user's PATH. They are user-session services, not a promise of operation before login or while the
 machine sleeps. Configure power/session policy separately for an always-on benchmark worker.
 
-After installing a new Dockpipe version, open **Machines**. The launcher reports when a
+After installing a new Dockpipe version, open **Machines**. The Dockpipe app reports when a
 registered service differs from the current CLI installation, including when the binary
 has changed at the same path. **Update broker service…** or **Update worker service…**
 asks before replacing the service definition and restarting it. This can interrupt active
@@ -156,7 +156,7 @@ close the window and deny all pending requests. Cancelling the worker's wait
 preserves its private identity for retry; it does not revoke a request already
 approved by the broker. `remote nodes` reports enrollment, not live presence.
 
-The launcher's **Connect this computer** flow starts the worker user service
+The Dockpipe app's **Connect this computer** flow starts the worker user service
 automatically after approval and reports service startup separately from pairing.
 If startup fails, pairing is preserved; use **Start worker service** to retry.
 Existing paired computers can use that button without pairing again.
@@ -343,7 +343,7 @@ implemented providers. Cloud-machine provisioning remains runtime-owned work.
 The details describe the profile selected by normal resolver lookup, including project
 precedence. Profile values, scripts and credentials are excluded. `remote_setup` is
 `local` for an edge setup hook or `hosted` for the hosted contract below. Conflicting
-hooks and incompatible capabilities are not offered in the launcher's provider selector.
+hooks and incompatible capabilities are not offered in the app's provider selector.
 Legacy edge profiles without a capability remain supported.
 
 `dockpipe remote info` returns a safe configuration summary: optional `broker` with
@@ -353,7 +353,7 @@ Older local setups show no resolver metadata until setup records it. Core never 
 from a hostname. A local metadata snapshot is bound to the edge configuration digest;
 changing the edge invalidates the displayed provider instead of leaving a stale label.
 
-The launcher shows the configured provider and address independently of the provider
+The Dockpipe app shows the configured provider and address independently of the provider
 selected for a new setup. Setup uses the current workspace's resolver catalog and passes
 `--workdir` to the CLI. Provider selection itself performs no setup or account mutation.
 
@@ -363,7 +363,7 @@ A hosted provider is a resolver package with `capability: remote.broker` and
 `DOCKPIPE_REMOTE_BROKER_SETUP=assets/scripts/login.sh`. It must not also declare an edge
 setup hook. The package owns browser authentication, account selection, credential
 renewal and any provider dependencies. The user does not supply a hostname. The current
-launcher hands authentication to a terminal; a fully integrated Dockpipe Cloud account
+app hands authentication to a terminal; a fully integrated Dockpipe Cloud account
 sign-in experience is future work, not an available provider.
 
 Core runs the relative, non-symlinked Bash script with `--state <private-provider-dir>`
@@ -384,7 +384,7 @@ outbound connections. Hosted setup never initializes or starts a local broker or
 Setup can reauthenticate the same provider and endpoint. Replacing a configured provider,
 changing its endpoint or mixing hosted/local broker state is rejected; use a separate
 `--state` directory. Automatic provider migration, account logout/revocation, background
-token renewal and multi-connection selection in the launcher are not implemented.
+token renewal and multi-connection selection in the app are not implemented.
 A future Dockpipe-managed provider must implement these identity/service requirements;
 this contract alone does not supply a hosted service or multi-tenant authorization.
 
@@ -402,7 +402,7 @@ The smokes use real CLI broker/worker processes and native workflows on loopback
 smoke removes the original sender paths before starting an empty worker, executes a workflow
 with assets, an extra input and a package dependency, and retrieves logs/results. It also checks
 preview, pairing retries/authority changes, and submission identity. Neither smoke contacts
-Cloudflare, installs services, or runs Nucleon. Resolver tests use fake provider commands and
+Cloudflare, installs services, or runs a production workload. Resolver tests use fake provider commands and
 exercise the desktop environment passed to the browser launcher.
 
 References: [Cloudflare login/setup](https://developers.cloudflare.com/tunnel/features/locally-managed-tunnels/create-local-tunnel/),
@@ -413,7 +413,7 @@ References: [Cloudflare login/setup](https://developers.cloudflare.com/tunnel/fe
 
 `remote submit --expected-digest <bundle_hash>` requires the exact bundle digest
 returned by `--dry-run`. A changed snapshot fails before contacting the broker.
-The launcher uses this to keep the file review and actual delivery consistent.
+The Dockpipe app uses this to keep the file review and actual delivery consistent.
 
 Removing machine access retains its record. Pairing again with the same name requires a
 fresh worker credential and a newly approved verification code. An explicit `remote pair`

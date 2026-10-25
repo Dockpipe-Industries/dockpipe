@@ -54,7 +54,7 @@ arbitrary image.
 ## Host Step
 
 Use `kind: host` only when the step genuinely needs host access, such as a local
-CLI, GUI launcher, or sidecar lifecycle script. The following example assumes your
+CLI, GUI application, or sidecar lifecycle script. The following example assumes your
 project has `scripts/prepare.sh`, `package.json`, and installed Node dependencies.
 Save it as `workflows/build-with-setup/config.yml`.
 
@@ -146,8 +146,8 @@ manifest that run consumes. For the security model, see
 ## Step Outputs
 
 Steps pass values forward with dotenv-style output files. This example uses
-host steps so both commands run with your local shell tools; it does not require
-Docker. Save it as `workflows/version/config.yml`:
+host steps with an explicit Bash shell; install Bash on Windows before running
+it. Docker is not required. Save it as `workflows/version/config.yml`:
 
 ```yaml
 name: version
@@ -156,12 +156,14 @@ docker_preflight: false
 steps:
   - id: compute
     kind: host
+    shell: bash
     cwd: artifacts
-    cmd: sh -c 'echo VERSION=1.2.3 > version.env'
+    cmd: echo VERSION=1.2.3 > version.env
     outputs: version.env
 
   - id: use
     kind: host
+    shell: bash
     cmd: echo "$VERSION"
 ```
 

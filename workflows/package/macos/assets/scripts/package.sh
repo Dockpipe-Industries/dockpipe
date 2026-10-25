@@ -35,7 +35,7 @@ otool -hv "$app/Contents/MacOS/DockPipe" >/dev/null
 if [[ -n "${DOCKPIPE_RELEASE_STORE:-}" ]]; then
   python3 "$root/workflows/release/metadata/assets/scripts/release-artifacts.py" stage-store "$DOCKPIPE_RELEASE_STORE" --destination "$store"
 fi
-icon="$root/src/app/tooling/dockpipe-launcher/resources/images/dockpipe-launcher.png"
+icon="$root/src/dockpipe-app/resources/images/dockpipe-launcher.png"
 for size in 16 32 128 256 512; do
   sips -z "$size" "$size" "$icon" --out "$work/DockPipe.iconset/icon_${size}x${size}.png" >/dev/null
   double=$((size * 2))

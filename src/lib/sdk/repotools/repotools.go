@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"golang.org/x/term"
@@ -78,11 +79,24 @@ func ResolveDockpipeBin(root string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	candidate := filepath.Join(resolvedRoot, "src", "bin", "dockpipe")
-	if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+	if candidate := resolveRepoLocalDockpipeBin(resolvedRoot, runtime.GOOS); candidate != "" {
 		return candidate, nil
 	}
 	return exec.LookPath("dockpipe")
+}
+
+func resolveRepoLocalDockpipeBin(root, operatingSystem string) string {
+	names := []string{"dockpipe"}
+	if operatingSystem == "windows" {
+		names = []string{"dockpipe.exe", "dockpipe"}
+	}
+	for _, name := range names {
+		candidate := filepath.Join(root, "src", "bin", name)
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			return candidate
+		}
+	}
+	return ""
 }
 
 func Load(root string) (SDK, error) {
@@ -213,10 +227,14 @@ func resourceExists(baseDir, resourceKind, value string) bool {
 	if err != nil {
 		return false
 	}
-	if resourceKind == "directory" {
+	switch resourceKind {
+	case "", "file":
+		return info.Mode().IsRegular()
+	case "directory":
 		return info.IsDir()
+	default:
+		return true
 	}
-	return true
 }
 
 func Prompt(spec PromptSpec) (string, error) {
@@ -385,21 +403,14 @@ func Prompt(spec PromptSpec) (string, error) {
 					return out, nil
 				}
 				if spec.MustExist {
-					resolved := out
-					if !filepath.IsAbs(resolved) {
-						resolved = filepath.Join(spec.BaseDir, out)
+					resourceKind := "file"
+					label := "File"
+					if spec.PathMode == "open-dir" {
+						resourceKind = "directory"
+						label = "Directory"
 					}
-					info, err := os.Stat(resolved)
-					if err != nil {
-						label := "File"
-						if spec.PathMode == "open-dir" {
-							label = "Directory"
-						}
+					if !resourceExists(spec.BaseDir, resourceKind, out) {
 						fmt.Fprintf(os.Stderr, "%s not found: %s\n", label, out)
-						continue
-					}
-					if spec.PathMode == "open-dir" && !info.IsDir() {
-						fmt.Fprintf(os.Stderr, "Directory not found: %s\n", out)
 						continue
 					}
 				}

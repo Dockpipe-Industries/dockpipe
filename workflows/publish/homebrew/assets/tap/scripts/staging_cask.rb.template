@@ -5,7 +5,7 @@ cask "dockpipe-desktop-staging" do
 @PLATFORMS@
 
   name "Dockpipe Desktop (staging)"
-  desc "Desktop launcher and command-line runtime for Dockpipe workflows"
+  desc "GUI shell and command-line runtime for Dockpipe workflows"
   homepage "https://github.com/Dockpipe-Industries/dockpipe"
 
   depends_on macos: ">= :ventura"

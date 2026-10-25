@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"dockpipe/src/lib/infrastructure/filepublication"
 )
 
 // WriteDirTarGzWithPrefix packs absSrcDir into a gzip tar at outPath. Archive paths are
@@ -27,11 +29,48 @@ func WriteDirTarGzWithPrefix(absSrcDir, outPath, prefixInArchive string) (sha256
 	if !st.IsDir() {
 		return "", fmt.Errorf("not a directory: %s", absSrcDir)
 	}
+	canonicalSource, err := filepath.EvalSymlinks(absSrcDir)
+	if err != nil {
+		return "", err
+	}
+	canonicalSource, err = filepath.Abs(canonicalSource)
+	if err != nil {
+		return "", err
+	}
+	for _, destination := range []string{outPath, outPath + ".sha256"} {
+		canonicalDestination, err := canonicalArchiveDestination(destination)
+		if err != nil {
+			return "", err
+		}
+		insideSource, err := archiveDestinationHasSourceAncestor(canonicalDestination, st)
+		if err != nil {
+			return "", err
+		}
+		if insideSource {
+			return "", fmt.Errorf("archive output must be outside its source directory: %s", destination)
+		}
+		if !strings.EqualFold(filepath.VolumeName(canonicalSource), filepath.VolumeName(canonicalDestination)) {
+			continue
+		}
+		relative, err := filepath.Rel(canonicalSource, canonicalDestination)
+		if err != nil {
+			return "", err
+		}
+		if filepath.IsLocal(relative) {
+			return "", fmt.Errorf("archive output must be outside its source directory: %s", destination)
+		}
+	}
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		return "", err
 	}
-	w, err := os.Create(outPath)
+	w, err := os.CreateTemp(filepath.Dir(outPath), ".dockpipe-archive-*")
 	if err != nil {
+		return "", err
+	}
+	temporaryArchive := w.Name()
+	defer os.Remove(temporaryArchive)
+	if err := w.Chmod(0o644); err != nil {
+		_ = w.Close()
 		return "", err
 	}
 	gz := gzip.NewWriter(w)
@@ -92,31 +131,114 @@ func WriteDirTarGzWithPrefix(absSrcDir, outPath, prefixInArchive string) (sha256
 		_ = tw.Close()
 		_ = gz.Close()
 		_ = w.Close()
-		_ = os.Remove(outPath)
+		_ = os.Remove(temporaryArchive)
 		return "", walkErr
 	}
 	if err := tw.Close(); err != nil {
 		_ = gz.Close()
 		_ = w.Close()
-		_ = os.Remove(outPath)
+		_ = os.Remove(temporaryArchive)
 		return "", err
 	}
 	if err := gz.Close(); err != nil {
 		_ = w.Close()
-		_ = os.Remove(outPath)
+		_ = os.Remove(temporaryArchive)
+		return "", err
+	}
+	if err := w.Sync(); err != nil {
+		_ = w.Close()
 		return "", err
 	}
 	if err := w.Close(); err != nil {
-		_ = os.Remove(outPath)
+		_ = os.Remove(temporaryArchive)
 		return "", err
 	}
-	sum, err := sha256File(outPath)
+	sum, err := sha256File(temporaryArchive)
 	if err != nil {
 		return "", err
 	}
 	shaPath := outPath + ".sha256"
-	if err := os.WriteFile(shaPath, []byte(sum+"\n"), 0o644); err != nil {
+	temporaryChecksum, err := filepublication.Stage(filepath.Dir(outPath), ".dockpipe-checksum-*", []byte(sum+"\n"))
+	if err != nil {
 		return "", err
 	}
+	defer os.Remove(temporaryChecksum)
+	if err := os.Chmod(temporaryChecksum, 0o644); err != nil {
+		return "", err
+	}
+	for _, destination := range []string{outPath, shaPath} {
+		info, err := os.Lstat(destination)
+		if err != nil && !os.IsNotExist(err) {
+			return "", err
+		}
+		if err == nil && info.IsDir() {
+			return "", fmt.Errorf("artifact destination is a directory: %s", destination)
+		}
+	}
+	// Both outputs are complete before replacing either previous artifact.
+	// Two paths cannot be published atomically; report a checksum publication
+	// failure explicitly if the archive rename has already succeeded.
+	if err := os.Rename(temporaryArchive, outPath); err != nil {
+		return "", err
+	}
+	if err := os.Rename(temporaryChecksum, shaPath); err != nil {
+		return "", fmt.Errorf("archive published but checksum publication failed: %w", err)
+	}
 	return sum, nil
+}
+
+// canonicalArchiveDestination resolves existing parent aliases without requiring
+// the output directory to exist. The final filename is replaced by rename, so
+// an existing final symlink is not followed when choosing the publication path.
+func canonicalArchiveDestination(destination string) (string, error) {
+	absolute, err := filepath.Abs(destination)
+	if err != nil {
+		return "", err
+	}
+	ancestor := filepath.Dir(absolute)
+	var missing []string
+	for {
+		resolved, err := filepath.EvalSymlinks(ancestor)
+		if err == nil {
+			for index := len(missing) - 1; index >= 0; index-- {
+				resolved = filepath.Join(resolved, missing[index])
+			}
+			return filepath.Join(resolved, filepath.Base(absolute)), nil
+		}
+		if !os.IsNotExist(err) {
+			return "", err
+		}
+		// A present but dangling symlink must not be treated as a missing folder.
+		if _, statErr := os.Lstat(ancestor); statErr == nil || !os.IsNotExist(statErr) {
+			return "", err
+		}
+		parent := filepath.Dir(ancestor)
+		if parent == ancestor {
+			return "", err
+		}
+		missing = append(missing, filepath.Base(ancestor))
+		ancestor = parent
+	}
+}
+
+// Compare existing ancestor identities as well as lexical paths: case aliases on
+// case-insensitive filesystems need not be normalized by EvalSymlinks. Missing
+// output-directory suffixes are skipped until an existing ancestor is reached.
+func archiveDestinationHasSourceAncestor(destination string, source os.FileInfo) (bool, error) {
+	ancestor := filepath.Dir(destination)
+	for {
+		info, err := os.Stat(ancestor)
+		if err == nil {
+			if os.SameFile(source, info) {
+				return true, nil
+			}
+		} else if !os.IsNotExist(err) {
+			return false, err
+		}
+		parent := filepath.Dir(ancestor)
+		if parent == ancestor {
+			return false, nil
+		}
+		ancestor = parent
+	}
 }

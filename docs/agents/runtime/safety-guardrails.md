@@ -9,6 +9,7 @@ Read when touching secrets, generated artifacts, package promotion, destructive 
   must not become public defaults or operational records. Use placeholders and private configuration.
 - Require explicit deployment targets before credentials can be copied or remote resources changed.
 
+- Secret environments and legacy template injection follow the [core vault contract](../../runtime/vault.md); provider login/configuration belongs to the secrets package.
 - Template files contain references only, such as `op://...`.
 - Never commit plaintext secrets.
 - Keep private vault templates local/gitignored.

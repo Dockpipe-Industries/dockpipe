@@ -1,31 +1,56 @@
-# dockpipe Go packages (DDD-style layout)
+# Dockpipe library ownership
 
-| Layer | Package | Responsibility |
-|-------|---------|----------------|
-| **Domain** | `dockpipe/src/lib/domain` | Workflow/step model, YAML parse from **bytes** (`ParseWorkflowYAML`), env merge helpers, **resolver** key semantics, branch-prefix rules. No `docker` / subprocess / file I/O in non-test code. |
-| **Infrastructure** | `dockpipe/src/lib/infrastructure` | Filesystem, `docker`, `bash` pre-scripts, git commit-on-host, repo root discovery, `.env` files, template→image paths, version tags. Subpackage **`fetchinstall`**: HTTPS fetch + **`dockpipe install core`**. **`RunHostScript`** defer: **`ApplyHostCleanup`** (run-scoped: **`bin/.dockpipe/runs/<id>.container`** when **`DOCKPIPE_RUN_ID`** is set; legacy sweep of **`bin/.dockpipe/cleanup/docker-*`** only when the run id is absent) and **`RemoveHostRunArtifacts`** for the host-run registry. |
-| **Application** | `dockpipe/src/lib/application` | CLI flags, subcommands (`init`, `template`, …), and the **run** use-case that wires domain + infrastructure. |
+Organize code by responsibility inside each DDD layer. A Go directory is a package
+boundary: an owner keeps its implementation and direct tests together and depends
+on lower-level owners rather than importing its parent package.
 
-`src/cmd` is a thin entrypoint that calls `application.Run`.
+| Area | Responsibility |
+| --- | --- |
+| `application/` | CLI composition and workflow execution orchestration. |
+| `application/internal/clioptions/` | Flag parsing and CLI option values. |
+| `application/internal/*cmd/` | Independent command handlers, including project Git and workflow document editing. |
+| `application/internal/packagecompile/` | Package compilation and closure orchestration. |
+| `application/internal/packageimages/` | Planned/indexed image inventory and availability presentation. |
+| `application/internal/imageartifact/` | Image manifest construction, serialization and archive identification. |
+| `application/internal/runtimepolicy/` | Effective runtime and security policy assembly. |
+| `application/internal/hostdependencies/` | Workflow/package host admission with explicit workdir, approval policy and invocation adapters. |
+| `application/internal/workflowinputs/` | Typed field discovery, metadata, defaults and input binding, independent of catalog presentation. |
+| `domain/workflow/` | Workflow/step values, YAML parsing and imports, validation and runtime-artifact rules. |
+| `domain/workflowdocument/` | Inert YAML document editing and editor capacity rules. |
+| `domain/packagecontract/` | Package manifest, catalog metadata and engine compatibility rules. |
+| `domain/dependency/`, `domain/namespace/` | Shared dependency and namespace validation. |
+| `domain/environment/` | Environment conversion, normalization and merge rules. |
+| `domain/secretenv/`, `domain/remote/` | Secret binding/vault tokens and remote job contracts. |
+| `infrastructure/` | Filesystem, container, process and runtime-session adapters and composition. |
+| `infrastructure/workspacegit/` | Project Git requests, snapshots, review and lifecycle operations. |
+| Other `infrastructure/` children | Focused adapters such as archive codecs, package catalog/build, process supervision and editor discovery. |
+| `model/` | Authored configuration and artifact wire types. |
+| `sdk/`, `sdkassets/`, `runtimeassets/` | Public host SDK and fixed generic library resources. |
 
-### Application package files (baseline)
+`src/cmd` calls `application.Run`. Root Domain and Infrastructure entry points retain
+source compatibility through aliases and explicit forwarding functions; new code
+should use its owning package when that avoids unnecessary parent dependencies.
+Private command dispatch calls independent command owners directly.
 
-Keep new orchestration in the right file so `run.go` stays the single-command path only:
+Workflow run/step/environment orchestration remains in Application. CLI dispatch
+and workflow selection have separate boundaries; a run session owns host environment
+state and success-only finalization. Prepared step state retains separate host and
+container environments, and nested steps inherit captured execution adapters.
+Catalog JSON and view controls remain presentation concerns. Infrastructure owns
+the workflow/artifact/CI path layout shared by execution and SDK scope projection.
 
-| File | Role |
-|------|------|
-| `run.go` | `Run()` — main CLI flow for `dockpipe [opts] -- cmd` |
-| `run_steps.go` | Multi-step workflow loop (`steps:` in config) |
-| `workflow_env.go` | Workflow/env merge helpers (`.env`, outputs, branch prefix, `--var` locks) |
-| `flags.go` | `CliOpts`, `ParseFlags` |
-| `subcmds.go` | `init`, `action`, `pre`, `template` |
-| `install.go` | `install core` (remote **templates/core** via **`fetchinstall`**) |
-| `package_cmd.go` | `package list` / `package manifest` — **`bin/.dockpipe/internal/packages/`** + **`package.yml`** |
-| `usage.go` | `--help` text |
+Compatibility test seams and some process-level configuration remain shared; this
+does not establish concurrent `Run` support or change legacy cancellation behavior.
+The root Infrastructure Docker and durable
+session families also remain coupled. Legacy file-based project and manifest
+loading APIs remain in Domain; this organization pass does not claim to resolve
+those layer boundaries. The [library audit](../../docs/agents/tasks/recurring-codebase-hygiene/reliability-audit.md)
+records their follow-up and the confirmed correctness repairs.
 
-Shell assets (`assets/entrypoint.sh` at repo root, etc.) stay outside **`src/`**; only **Go** lives under `src/lib/`.
-
----
+Generic resources live beside their owners, including
+`runtimeassets/containers/entrypoint.sh`. Authored build/test workflows and helpers
+stay under the repository's `workflows/` tree. See [source builds](../README.md)
+for the workflow entry points.
 
 ### Multi-step workflows: async group, join point, merge
 

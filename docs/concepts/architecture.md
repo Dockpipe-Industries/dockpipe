@@ -22,11 +22,11 @@ resolution.
 
 | Piece | Role |
 |-------|------|
-| **`src/bin/dockpipe`** | Launcher → compiled binary or **`go run ./src/cmd`** during source checkout use. |
+| **`src/bin/dockpipe`** | Generated developer CLI output; build it through the repository workflow. Installed users run `dockpipe` from their installation. |
 | **`src/cmd`**, **`src/lib/…`** | CLI parsing, workflow/package resolution, runtime orchestration, Docker/host execution, lifecycle actions. |
-| **embedded bundle** | Ships **`src/core/`**, repo **`workflows/`**, package assets, **`assets/entrypoint.sh`**, and **`VERSION`** into the bundled/materialized runtime layout. |
-| **`assets/entrypoint.sh`** | Container entrypoint: run command, then optional **`DOCKPIPE_ACTION`**. |
-| **compiled package store** | Project-local compiled core/workflow/resolver tarballs under **`bin/.dockpipe/internal/packages/`**. |
+| **library resources** | Typed runtime defaults plus fixed generic resources in **`src/lib/runtimeassets/`** and **`src/lib/sdkassets/`**, materialized on demand. |
+| **`src/lib/runtimeassets/containers/entrypoint.sh`** | Container entrypoint: run command, then optional **`DOCKPIPE_ACTION`**. |
+| **compiled package store** | Project-local compiled workflow/resolver tarballs under **`bin/.dockpipe/internal/packages/`**. |
 | **session state** | Runtime-owned managed workspaces, Docker volumes, leases, checkpoints, and audit metadata under **`bin/.dockpipe/sessions/`**. |
 
 **Paths:** profile/script/package resolution is centralized in **`src/lib/infrastructure/paths.go`**
@@ -39,7 +39,6 @@ Current execution can enter through several surfaces:
 
 - named workflow from **`workflows/<name>/config.yml`**
 - nested workflow roots listed in **`dockpipe.config.json compile.workflows`**
-- bundled example workflow under **`src/core/workflows/<name>/`**
 - compiled workflow tarball from the package store
 - arbitrary **`--workflow-file <path>`**
 
@@ -57,7 +56,7 @@ After resolution, Dockpipe may:
 ### Simple container run
 
 ```text
-dockpipe --workflow run -- echo ok
+dockpipe --runtime dockerimage --isolate alpine:3.22 -- echo ok
   -> resolve workflow + runtime/resolver
   -> prepare isolate/image
   -> docker run with /work mounted
@@ -87,15 +86,17 @@ workflow config.yml
 
 ## Extension points
 
-1. **Core authoring tree** — **`src/core/runtimes/`**, **`src/core/resolvers/`**,
-   **`src/core/strategies/`**, **`src/core/assets/`**. Installed/materialized core uses the same
-   logical shape under the global or bundled layout.
-2. **Package authoring trees** — repo/package **`workflows/`**, package **`resolvers/`**, package
-   assets, and compiled package tarballs in the store.
-3. **Images** — Dockerfiles under resolver/core/package **`assets/images/`** plus compiled image
-   artifact manifests.
+1. **Runtime and SDK resources** — typed library defaults and fixed generic helpers.
+   There is no shared core authoring tree or mandatory core package. See
+   [resource ownership](runtime-resource-ownership.md).
+2. **Project and package source** — declared workflow roots, resolver profiles,
+   workflow-local scripts and assets, and installed workflow/resolver archives.
+   Tool integrations belong to their independent package repositories.
+3. **Images** — explicit registry images or Dockerfile-backed resolver/package
+   assets, with compiled image-artifact manifests.
 4. **Workflow YAML** — **`config.yml`**, **`steps:`**, **`workspace:`**, **`security:`**,
-   **`agent:`**, and packaged workflow step forms.
+   and packaged-workflow calls. The generic schema also carries **`agent:`** metadata;
+   DorkPipe owns its orchestration behavior.
 
 ## Runtime-owned lifecycle
 

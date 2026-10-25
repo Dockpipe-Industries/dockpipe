@@ -72,7 +72,7 @@ class FlatpakWorkflowBoundariesTest(unittest.TestCase):
         self.assertIn('flatpak-marketplace-cockpit/', uploads[0]['path'])
 
     def test_host_cmake_keeps_generic_plugin_tests_and_only_real_cockpit_is_conditional(self):
-        cmake = (Path(__file__).resolve().parents[4] / 'src/app/tooling/dockpipe-launcher/CMakeLists.txt').read_text()
+        cmake = (Path(__file__).resolve().parents[4] / 'src/dockpipe-app/CMakeLists.txt').read_text()
         conditional = cmake.index('if(DOCKPIPE_COCKPIT_ASSETS)')
         self.assertLess(cmake.index('add_test(NAME package-native-display '), conditional)
         build = BUILD.read_text()

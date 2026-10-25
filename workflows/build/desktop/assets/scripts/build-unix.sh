@@ -74,7 +74,7 @@ case "$(uname -s):$(uname -m)" in
 esac
 export DOCKPIPE_BROWSER_SDK="$browser_sdk"
 python3 "$root/workflows/dependencies/browser-sdk/assets/scripts/browser-runtime.py" --sdk "$browser_sdk" --platform "$browser_platform"
-args=(-S "$root/src/app/tooling/dockpipe-launcher" -B "$build" -DCMAKE_BUILD_TYPE=Release
+args=(-S "$root/src/dockpipe-app" -B "$build" -DCMAKE_BUILD_TYPE=Release
       "-DDOCKPIPE_RELEASE_VERSION=$version"
       "-DDOCKPIPE_ENABLE_QUALIFICATION=$enable_qualification")
 prefixes="$browser_sdk${CMAKE_PREFIX_PATH:+;$CMAKE_PREFIX_PATH}"

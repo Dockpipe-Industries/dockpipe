@@ -22,7 +22,7 @@ install_binary_atomically() {
 
 if [[ ! -f "$SRC" ]]; then
   echo "install-dockpipe: missing binary: $SRC" >&2
-  echo "Run: make build" >&2
+  echo "Run: make -f tooling/Makefile build" >&2
   exit 1
 fi
 

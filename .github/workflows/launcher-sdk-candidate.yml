@@ -7,7 +7,7 @@ on:
       - LICENSE
       - workflows/shared/**
       - workflows/publish/shared/**
-      - src/app/tooling/dockpipe-launcher/**
+      - src/dockpipe-app/**
       - workflows/shared/lib/elf_artifacts.py
       - workflows/build/desktop/assets/licenses/**
       - workflows/build/desktop/assets/scripts/install-linux-qt.sh
@@ -29,7 +29,7 @@ on:
       - LICENSE
       - workflows/shared/**
       - workflows/publish/shared/**
-      - src/app/tooling/dockpipe-launcher/**
+      - src/dockpipe-app/**
       - workflows/shared/lib/elf_artifacts.py
       - workflows/build/desktop/assets/licenses/**
       - workflows/build/desktop/assets/scripts/install-linux-qt.sh

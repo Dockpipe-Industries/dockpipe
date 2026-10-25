@@ -19,9 +19,11 @@ def resolve_dockpipe_bin(root: str | None = None) -> str | None:
     if configured:
         return configured
     resolved_root = repo_root(root)
-    candidate = resolved_root / "src" / "bin" / "dockpipe"
-    if candidate.is_file() and os.access(candidate, os.X_OK):
-        return str(candidate)
+    names = ("dockpipe.exe", "dockpipe") if sys.platform == "win32" else ("dockpipe",)
+    for name in names:
+        candidate = resolved_root / "src" / "bin" / name
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
     return shutil.which("dockpipe")
 
 
@@ -141,6 +143,8 @@ def _resource_exists(value: str, resource_kind: str) -> bool:
     resolved = _resolve_prompt_path(value)
     if resource_kind == "directory":
         return resolved.is_dir()
+    if resource_kind in {"", "file"}:
+        return resolved.is_file()
     return resolved.exists()
 
 
@@ -243,8 +247,8 @@ def prompt(
                 if not selected:
                     return selected
                 if must_exist:
-                    resolved = _resolve_prompt_path(selected)
-                    valid = resolved.is_dir() if path_mode == "open-dir" else resolved.exists()
+                    resource_kind = "directory" if path_mode == "open-dir" else "file"
+                    valid = _resource_exists(selected, resource_kind)
                     if not valid:
                         kind_label = "Directory" if path_mode == "open-dir" else "File"
                         print(f"{kind_label} not found: {selected}", file=sys.stderr)

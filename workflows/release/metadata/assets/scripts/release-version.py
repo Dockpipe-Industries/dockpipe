@@ -34,7 +34,19 @@ def metadata(base, tags, staging_suffix=""):
     if staging_suffix and not re.fullmatch(r"staging\.[1-9][0-9]*\.[1-9][0-9]*\.[0-9a-f]{12}", staging_suffix):
         raise ValueError("Invalid staging provenance suffix")
     candidate = f"{version}-{staging_suffix}" if staging_suffix else ""
-    return {"version": version, "candidate": candidate, "tag": "v" + (candidate or version)}
+    previous = []
+    for tag in tags:
+        tag = tag.strip()
+        release = RELEASE_TAG.fullmatch(tag)
+        if release and (staging_suffix or "-staging." not in tag):
+            previous.append((tuple(map(int, release.groups())), tag))
+    previous_tag = max(previous)[1] if previous else ""
+    return {
+        "version": version,
+        "candidate": candidate,
+        "tag": "v" + (candidate or version),
+        "previous_tag": previous_tag,
+    }
 
 
 if __name__ == "__main__":

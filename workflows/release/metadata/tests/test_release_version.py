@@ -39,7 +39,7 @@ class ReleaseVersionTests(unittest.TestCase):
         self.assertEqual(staging["candidate"], "0.6.1-staging.124.1.bbbbbbbbbbbb")
         history.append(staging["tag"])
         stable = versions.metadata("0.6.0", history)
-        self.assertEqual(stable, {"version": "0.6.2", "candidate": "", "tag": "v0.6.2"})
+        self.assertEqual(stable, {"version": "0.6.2", "candidate": "", "tag": "v0.6.2", "previous_tag": "v0.5.8"})
         history.append(stable["tag"])
         self.assertEqual(versions.next_version("0.6.0", history), "0.6.3")
 
@@ -48,6 +48,15 @@ class ReleaseVersionTests(unittest.TestCase):
         self.assertEqual(versions.next_version("0.6.0", history), "0.6.10")
         self.assertEqual(versions.next_version("0.7.0", history), "0.7.0")
         self.assertEqual(versions.next_version("0.6.20", history), "0.6.20")
+
+    def test_notes_compare_stable_to_stable_and_staging_to_latest_candidate(self):
+        history = ["v0.6.2", "v0.6.12-staging.123.1.aaaaaaaaaaaa", "v0.6.9", "other"]
+        self.assertEqual(versions.metadata("0.6.0", history)["previous_tag"], "v0.6.9")
+        staging = versions.metadata("0.6.0", history, "staging.124.1.bbbbbbbbbbbb")
+        self.assertEqual(staging["previous_tag"], "v0.6.12-staging.123.1.aaaaaaaaaaaa")
+        self.assertEqual(versions.metadata("1.0.0", ["unrelated"])["previous_tag"], "")
+        staging_only = ["v0.6.12-staging.123.1.aaaaaaaaaaaa"]
+        self.assertEqual(versions.metadata("0.6.0", staging_only)["previous_tag"], "")
 
     def test_downgrades_and_windows_version_overflow_fail(self):
         for baseline, history in [

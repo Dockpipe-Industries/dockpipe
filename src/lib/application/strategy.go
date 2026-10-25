@@ -172,19 +172,23 @@ func ResolverActWouldBeBundledCommit(actFromResolver, repoRoot string) bool {
 
 // RunStrategyAfterScripts runs after hooks: bundled commit uses CommitOnHost; other paths use RunHostScript.
 func RunStrategyAfterScripts(afterAbs []string, repoRoot string, envMap map[string]string, envSlice []string, opts *CliOpts) error {
-	workHost := firstNonEmpty(envMap["DOCKPIPE_WORKDIR"], opts.Workdir)
+	return runStrategyAfterScripts(afterAbs, repoRoot, envMap, envSlice, opts.Workdir, opts.BundleOut, runHostScriptAppFn, runHostCommit)
+}
+
+func runStrategyAfterScripts(afterAbs []string, repoRoot string, envMap map[string]string, envSlice []string, workdir, bundleOut string, runScript func(string, []string) error, commit func(string, string, string, bool) error) error {
+	workHost := firstNonEmpty(envMap["DOCKPIPE_WORKDIR"], workdir)
 	for _, p := range afterAbs {
 		if _, err := os.Stat(p); err != nil {
 			return fmt.Errorf("strategy after script not found: %s: %w", p, err)
 		}
 		if infrastructure.IsBundledCommitWorktree(p, repoRoot) {
-			if err := runHostCommit(workHost, envMap["DOCKPIPE_COMMIT_MESSAGE"], firstNonEmpty(envMap["DOCKPIPE_BUNDLE_OUT"], opts.BundleOut), strings.TrimSpace(envMap["DOCKPIPE_BUNDLE_ALL"]) == "1"); err != nil {
+			if err := commit(workHost, envMap["DOCKPIPE_COMMIT_MESSAGE"], firstNonEmpty(envMap["DOCKPIPE_BUNDLE_OUT"], bundleOut), strings.TrimSpace(envMap["DOCKPIPE_BUNDLE_ALL"]) == "1"); err != nil {
 				return err
 			}
 			continue
 		}
 		fmt.Fprintf(os.Stderr, "[dockpipe] Strategy after: %s\n", p)
-		if err := runHostScriptAppFn(p, envSliceWithScriptContext(envSlice, p)); err != nil {
+		if err := runScript(p, envSliceWithScriptContext(envSlice, p)); err != nil {
 			return err
 		}
 	}

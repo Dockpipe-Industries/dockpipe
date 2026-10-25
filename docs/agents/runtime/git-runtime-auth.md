@@ -10,24 +10,23 @@ Git/SSH discovery for runtime-owned sessions.
 - Mount auth material into runtime helper containers only, never AI worker containers.
 - Treat auth adapters as runtime infrastructure, not workflow/package logic.
 
-## Day 1 Scope
+## Current Support And Design
 
-- GitHub SSH
-- Azure DevOps SSH
-
-Support additional auth modes later as separate adapters instead of expanding the first helper path.
+Read [Git runtime sessions](../../runtime/git-runtime-sessions.md), especially the
+provider/auth design section, before treating a proposed adapter as implemented.
+Current volume seeding clones from the mounted local repository or uses the tar-sync
+fallback. Host-side publication uses the repository's existing Git configuration.
+The design’s GitHub/Azure SSH adapter examples do not establish a live provider
+support matrix or permission to copy host credentials into a container.
 
 ## Host Discovery
 
-Use host-side inspection to determine provider and mount inputs before starting the helper
-container:
-
-- `git remote get-url origin`
-- `git config --get core.sshCommand`
-- `git config --get-regexp '^url\.'`
-- `git config --get credential.helper`
-- `git config --list --show-origin`
-- `ssh -G <host-or-alias>` for SSH-backed remotes
+Inspect only the effective remote, SSH command and credential-helper settings needed
+for the operation. Use read-only Git/SSH inspection; it does not authorize lifecycle
+mutations or an authentication attempt. URLs and configuration may contain private
+identifiers or credentials: do not dump `git config --list`, resolved URLs or SSH
+configuration into chat, public logs or committed evidence. Preserve only sanitized
+metadata required to bind the approved operation.
 
 ## Helper Rules
 
@@ -40,5 +39,5 @@ container:
 ## Validation
 
 - `git diff --check`
-- `go test ./src/lib/...`
+- Use the [core validation workflow](../core/validation-commands.md#core) for focused auth/discovery tests; provider acceptance needs separate authorized evidence.
 - verify provider-specific docs/schema updates when authored workflow surfaces change

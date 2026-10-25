@@ -71,7 +71,7 @@ inside the child workflow.
 
 | Mode | Meaning |
 |------|---------|
-| `offline` | No outbound internet. Preserve Docker-internal behavior needed for container startup and internal DNS. |
+| `offline` | Docker containers use `--network none`: loopback only, without external access or Docker network DNS. |
 | `allowlist` | Only declared destinations are allowed when enforcement is available. |
 | `restricted` | Baseline-deny intent with curated allowances. |
 | `internet` | Normal outbound access, still with filesystem/process hardening. |

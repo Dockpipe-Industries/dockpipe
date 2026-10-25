@@ -1,6 +1,6 @@
 # Install Dockpipe
 
-Choose **Desktop** for the launcher and CLI together, or **CLI / Remote Worker**
+Choose **Desktop** for the Dockpipe GUI and CLI together, or **CLI / Remote Worker**
 for terminals, servers and CI. You do not need a Dockpipe source checkout or Go.
 Optional workflows and resolvers are installed from **Packages → Marketplace** or
 `dockpipe package install`; the base CLI is self-contained.
@@ -12,9 +12,10 @@ its environment; this source guide defaults to production.
 | Platform | Desktop | CLI / Remote Worker |
 | --- | --- | --- |
 | macOS Apple Silicon / Intel | DMG installer | Native tarball or portable installer |
-| Windows x64 | MSI with launcher selected | ZIP, or MSI with only the CLI feature |
-| Ubuntu 22.04 / 24.04 amd64 / arm64; Pop!_OS 22.04 | `dockpipe-desktop` DEB plus `dockpipe` | `dockpipe` DEB |
-| Linux amd64 with Flatpak | Combined launcher and CLI bundle, KDE Platform 6.10 | Bundled CLI via `flatpak run`; native packages are separate |
+| Windows x64 | MSI with Dockpipe GUI selected | ZIP, or MSI with only the CLI feature |
+| Ubuntu 22.04 / 24.04 and Debian 12 / 13 amd64; Pop!_OS 22.04 | `dockpipe-desktop` DEB plus `dockpipe` | `dockpipe` DEB |
+| Ubuntu 24.04 arm64 | `dockpipe-desktop` DEB plus `dockpipe`; glibc 2.39 or newer | `dockpipe` DEB |
+| Linux amd64 with Flatpak | Combined GUI and CLI bundle, KDE Platform 6.10 | Bundled CLI via `flatpak run`; native packages are separate |
 | Other Linux distributions | See Flatpak requirements and qualification limits | RPM, APK, Arch or portable archive matching your CPU |
 
 Native host inline commands use Windows PowerShell on Windows and Bash on
@@ -39,7 +40,7 @@ use the DMG above or the native CLI installer below.
 <!-- dockpipe:end-channel -->
 
 <!-- dockpipe:channel staging -->
-**Homebrew on macOS (staging):** refresh the tap, then install the launcher and CLI together:
+**Homebrew on macOS (staging):** refresh the tap, then install the Dockpipe GUI and CLI together:
 
 ```sh
 brew update
@@ -57,9 +58,14 @@ Uninstalling the desktop cask removes the app and retains the CLI formula. User 
 
 <!-- dockpipe:end-channel -->
 
-**Windows:** run `dockpipe_VERSION_windows_amd64.msi`. The default installs the CLI, full Qt launcher runtime and a Start menu shortcut. Deselect **Dockpipe Launcher** for a CLI-only install, or change the feature later through the installer's Modify option. The ZIP is always CLI-only.
+**Windows:** run `dockpipe_VERSION_windows_amd64.msi`. The default installs the CLI, full Qt GUI runtime and a Start menu shortcut. Deselect **Dockpipe** for a CLI-only install, or change the feature later through the installer's Modify option. The ZIP is always CLI-only.
 
-**Ubuntu 22.04 / 24.04 and Pop!_OS 22.04:** after configuring the signed APT source below, run `sudo apt install dockpipe-desktop`; it installs the matching CLI dependency. The DEB supports Ubuntu 22.04's Qt libraries and is installation-tested on both Ubuntu releases. For downloaded DEBs, install both together:
+**Debian/Ubuntu desktop:** after configuring the signed APT source below, run
+`sudo apt install dockpipe-desktop`; it installs the matching CLI dependency and
+carries its own Qt runtime. The amd64 package targets Ubuntu 22.04/24.04, Debian
+12/13 and Pop!_OS 22.04. The arm64 desktop package requires Ubuntu 24.04 or a
+compatible system with glibc 2.39 or newer; it does not support Ubuntu 22.04 arm64.
+For downloaded DEBs, install both together:
 
 ```sh
 sudo apt install ./dockpipe_VERSION_amd64.deb ./dockpipe-desktop_VERSION_amd64.deb
@@ -69,9 +75,9 @@ Use `arm64` filenames on ARM64. Launch **Dockpipe** from the application menu. R
 
 ### Flatpak desktop (Linux amd64)
 
-Install the launcher and CLI together on **Linux x86_64 (amd64)**. Install
-Flatpak from your distribution first. DockPipe uses the **KDE Platform 6.10**
-runtime from Flathub; the DockPipe app itself is a separate download. ARM64
+Install the Dockpipe GUI and CLI together on **Linux x86_64 (amd64)**. Install
+Flatpak from your distribution first. Dockpipe uses the **KDE Platform 6.10**
+runtime from Flathub; the Dockpipe app itself is a separate download. ARM64
 Flatpak builds are not available.
 
 **1. Add the runtime** (once):
@@ -105,13 +111,13 @@ or checksum check fails; there is no version number to edit.
 )
 ```
 
-**3. Open DockPipe** from your application menu, or run:
+**3. Open Dockpipe** from your application menu, or run:
 
 ```sh
 flatpak run com.dockpipe.Dockpipe
 ```
 
-The launcher sets up a user-level `dockpipe` shortcut on its first start. Open a
+The Dockpipe GUI sets up a user-level `dockpipe` shortcut on its first start. Open a
 new terminal and run `dockpipe --version`. Existing native installations are
 preserved. You can always run the bundled CLI directly:
 
@@ -131,9 +137,9 @@ mounted-directory shortcut bug in 0.6.13. Run from the intended project folder:
 )
 ```
 
-**Updates:** close DockPipe and finish active workflows, then repeat step 2.
-`flatpak update` updates the KDE runtime, but does not download new DockPipe
-bundles. DockPipe does not yet provide an updating Flatpak remote.
+**Updates:** close Dockpipe and finish active workflows, then repeat step 2.
+`flatpak update` updates the KDE runtime, but does not download new Dockpipe
+bundles. Dockpipe does not yet provide an updating Flatpak remote.
 
 **Optional packages:** open **Settings → Package Remotes → Use production**,
 save, then open **Packages → Marketplace**. The Flatpak selects packages built
@@ -148,7 +154,7 @@ for permissions, terminal setup details and troubleshooting.
 
 ## Signed APT repository
 
-For Ubuntu/Pop!_OS installations, configure the signed APT source
+For supported Debian/Ubuntu/Pop!_OS installations, configure the signed APT source
 once. Download the public key and inspect its fingerprint:
 
 ```sh
@@ -187,22 +193,29 @@ Choose `amd64` for x86_64 or `arm64` for aarch64/Apple Silicon. Verify downloade
 files against `SHA256SUMS.txt` from that same release before installing. On Linux
 use `sha256sum`; on macOS use `shasum -a 256`; on Windows use `Get-FileHash -Algorithm SHA256`.
 
-The native CLI installer can use the current release. These commands
-require `curl` and `jq` and select one immutable manifest before downloading:
+The native CLI installer can use the current release. Run this block in Bash
+with `curl` and `jq` installed. It selects one immutable manifest before downloading
+and stops if a download fails:
 
-```sh
-origin=https://packages.dockpipe.com
-manifest=$(curl -fsSL "$origin/packages/runtime/latest.json" | jq -er '.manifest')
-base="$origin/${manifest%/*}"
-version=$(curl -fsSL "$origin/$manifest" | jq -er '.version')
-curl -fsSL "$base/install.sh" -o /tmp/dockpipe-install.sh
-DOCKPIPE_VERSION="$version" DOCKPIPE_DOWNLOAD_BASE="$base" DOCKPIPE_INSTALL_MODE=portable sh /tmp/dockpipe-install.sh
+```bash
+(
+    set -euo pipefail
+    installer=$(mktemp)
+    trap 'rm -f "$installer"' EXIT
+
+    origin=https://packages.dockpipe.com
+    manifest=$(curl -fsSL "$origin/packages/runtime/latest.json" | jq -er '.manifest')
+    base="$origin/${manifest%/*}"
+    version=$(curl -fsSL "$origin/$manifest" | jq -er '.version')
+    curl -fsSL "$base/install.sh" -o "$installer"
+    DOCKPIPE_VERSION="$version" DOCKPIPE_DOWNLOAD_BASE="$base" DOCKPIPE_INSTALL_MODE=portable sh "$installer"
+)
 ```
 
 The installer verifies its CLI payload checksum. It installs the portable CLI in
 `~/.local/bin` by default; add that directory to your shell's `PATH` if needed.
 Use the numeric manifest `version` for `DOCKPIPE_VERSION`.
-This script installs the self-contained CLI, not the desktop launcher.
+This script installs the self-contained CLI, not the GUI shell.
 
 ### Native Linux packages
 
@@ -295,11 +308,11 @@ that build images. Workflows using Compose also need
 
 Dockpipe uses the [Docker client's context selection](https://docs.docker.com/engine/manage-resources/contexts/).
 Use `docker context ls` to find your profile's context, then `docker context use <name>` if you want
-to change the default for both terminals and the launcher. For one terminal command, use
+to change the default for both terminals and the Dockpipe GUI. For one terminal command, use
 `DOCKER_CONTEXT=<name> dockpipe doctor`. Existing `DOCKER_HOST`, `DOCKER_CONTEXT`, and `DOCKER_CONFIG`
 settings retain Docker's normal precedence; Dockpipe does not switch contexts or start a VM.
 
-The launcher adds `/opt/homebrew/bin` and `/usr/local/bin` after inherited `PATH` entries so Finder
+The Dockpipe GUI adds `/opt/homebrew/bin` and `/usr/local/bin` after inherited `PATH` entries so Finder
 launches can discover Homebrew tools. Shell-only exports are not inherited by Finder; use Docker's
 saved context for Finder launches, or start the app executable from a configured terminal. Custom
 Homebrew locations still need an explicit `PATH`. If Docker is unreachable, start the selected Colima
@@ -309,7 +322,7 @@ The compatibility changes are implemented in source. Native Colima container, mo
 and Compose qualification on macOS remains pending; the earlier desktop installer dry run does not
 cover this integration.
 
-## Browsing packages in the launcher
+## Browsing packages in the Dockpipe GUI
 
 Open **Settings → Package Remotes → Use production**, save, then open
 **Packages → Marketplace**. The package origin for this guide is

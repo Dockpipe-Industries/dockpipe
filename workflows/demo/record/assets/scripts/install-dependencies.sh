@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Optional: asciinema + agg for `make demo-record` (see release/demo/README.md).
+# Optional: asciinema + agg for `make -f tooling/Makefile demo-record` (see workflows/demo/record/README.md).
 # Best-effort user-level installs; does not use sudo. Exits 0 even if tools remain missing.
 set -uo pipefail
 
@@ -113,4 +113,4 @@ for d in "$HOME/.local/bin" "$HOME/.cargo/bin"; do
 done
 
 echo ""
-echo "Demo recording dependencies step finished (optional tools for make demo-record)."
+echo "Demo recording dependencies step finished (optional tools for make -f tooling/Makefile demo-record)."

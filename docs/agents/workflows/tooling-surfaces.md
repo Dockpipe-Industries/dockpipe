@@ -1,79 +1,41 @@
-# Tooling Surfaces
+# GUI and editor surfaces
 
-Read when changing Dockpipe Language Support, the DorkPipe/Pipeon VS Code extension, DockPipe AI,
-model browser, template designer, run inspector, or any editor/app-facing workflow UX.
+Read for changes to the Dockpipe GUI shell, host SDK, workflow editor or language
+extension. The source boundaries are in [the GUI architecture](../../../src/dockpipe-app/ARCHITECTURE.md)
+and [editor ownership](../../packages/editor-extensions.md).
 
-## Contract Rule
+## Ownership
 
-Workflow YAML is the durable contract. Tooling may make it easier to author, inspect, or launch, but
-must not create a second durable workflow system.
-
-DockPipe AI is an unbuilt optional first-party package backlog. Its planned UI
-uses YAML, package-owned catalogs, launcher context, operation-result events and
-artifacts as its contracts. It does not own a separate execution or
-configuration model.
-
-## Layers
-
-| Layer | Owns |
+| Surface | Owner |
 | --- | --- |
-| Dockpipe Language Support | YAML/schema completions, hovers, diagnostics, snippets. |
-| DorkPipe/Pipeon extension | Chat, designer, model browser, run inspector, draft UI state. |
-| DockPipe AI | Launcher-context workflow control, YAML-backed authoring, run inspection, approvals, artifact/log views, diff preview. |
-| DorkPipe package | Agent orchestration, model escalation, skills, artifacts, package-owned catalogs. |
-| Dockpipe engine | Generic workflow/package/runtime/resolver execution primitives. |
+| GUI shell, generic package contributions and workflow editing | Dockpipe, `src/dockpipe-app/` |
+| Workflow/package YAML and project JSON editor support | Dockpipe, `tooling/vscode-extensions/dockpipe-language-support/` |
+| PipeLang grammar, compiler diagnostics and language SDK | PipeLang |
+| AI domain logic, model/provider configuration and AI contribution proposals | DorkPipe |
+| Existing Pipeon application | Pipeon; product development is paused |
 
-## DockPipe AI (backlog)
+Call the GUI product Dockpipe. Preserve legacy installed IDs, host SDK symbols and
+package ABI names where compatibility requires them.
 
-DockPipe AI should be invoked by the Dockpipe launcher, using the same context-passing model as Pipeon.
-The launcher provides the current repo/workspace, selected workflow or package, session
-identity, artifact root, allowed scopes, model/resolver lanes, and MCP connector availability.
+## Contracts
 
-DockPipe AI should focus on governed workflow work, not full IDE replacement:
+- Keep domain/application operations independent of Qt views. UI adapters present
+  state, collect input and invoke application operations.
+- Workflow YAML and declared package metadata remain the durable execution
+  contracts. UI preferences, drafts and caches must not become a second workflow
+  engine or an independent credential/approval store.
+- Preserve cancellation, failure reporting, input validation and package removal
+  behavior across UI and headless entrypoints.
+- Update parser/schema, editor mirrors and human documentation together when a
+  public authored contract changes.
+- DorkPipe's proposed AI contributions use the existing app and generic extension
+  contracts. There is no separate Dockpipe AI application to implement here.
+  Follow the owning backlog before implementing deferred features.
 
-- create and edit workflows, agents, tasks, MCP connectors, model-lane policy, approval/apply
-  policy, and package workflow references
-- derive saved durable state from YAML and package-owned catalogs
-- show generated YAML before save when using guided editors
-- run workflows from the launcher context
-- render operation-result events, task graph state, logs, artifacts, approvals, verifier findings,
-  model usage, and apply/publish status
-- preview generated diffs, apply targets, conflicts, and repair options
-- map workflows and agents to `AGENTS.md`, `docs/agents/index.yaml`, routed markdown, TODOs, and
-  rendered skills
-- optionally expose the same app/server through Qt mobile, Cloudflare Tunnel, Let's Encrypt,
-  free-domain, or bring-your-own-domain setup when explicitly approved
+## Checks
 
-UI/chat surfaces should sit on top of the CLI/master protocol. They send requests, stream the same
-structured events the CLI uses, render approval prompts, and forward approve/deny/escalate
-decisions. A future UI should not fork execution semantics from CLI runs.
-
-Deep code editing can remain in the user's normal editor. The app should provide enough diff,
-artifact, and conflict context to decide what to apply, retry, repair, or defer.
-
-Remote access and mobile access are governed setup surfaces. Creating tunnels, DNS records,
-certificates, public endpoints, mobile auth, or remote app auth must be explicit, reversible, logged
-through operation-result events, and backed by YAML/package config rather than UI-only state.
-
-## Rules
-
-- Round-trip template/designer data through `config.yml` fields such as `model_policy`,
-  `steps[].agent`, orchestration tasks, access, verification, and approval.
-- Treat model-browser entries as DorkPipe escalation lanes with availability, capability, context,
-  local/cloud, and budget metadata.
-- Keep provider-specific behavior in package assets/resolvers, not `src/lib/` or `src/cmd/`.
-- User-created GUI templates and model-browser entries should live in user/global extension storage;
-  chat sessions can stay workspace-local.
-- Extension-local state is only for drafts, caches, active selections, and UI preferences.
-- Repo files should change only when the user exports/saves a `config.yml` workflow or edits package
-  assets explicitly.
-- If the YAML surface changes, update Dockpipe Language Support in the same change.
-- If the rich extension UX changes, document how it maps back to YAML and package-owned catalogs.
-- If DockPipe AI UX changes, document the launcher context, YAML mapping, event stream, and
-  artifact/run-inspection behavior.
-
-## Validation
-
-- `npm run typecheck` in the extension package when TypeScript changes.
-- `make package-dockpipe-language-support` when language support packaging changes.
-- `./src/bin/dockpipe workflow validate <config.yml>` for changed workflow examples.
+Use the focused checks in [validation commands](../core/validation-commands.md)
+and the affected source architecture guide. Editor changes use the owning
+`editor.build` workflow; GUI changes use the native desktop build/test workflows.
+Distinguish Linux/offscreen checks from native interactive acceptance. A docs-only
+change needs link/routing checks, not a desktop build or extension installation.

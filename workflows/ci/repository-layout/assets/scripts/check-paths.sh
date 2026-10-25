@@ -19,28 +19,35 @@ fail() {
   exit 1
 }
 
-# Bundled framework paths use templates/core/assets/{scripts,images,compose}/ only.
-if grep -rE "${OBSOLETE_SCRIPTS_IMAGES}" \
-    --include='*.md' \
-    --include='*.go' \
-    docs README.md AGENTS.md CONTRIBUTING.md templates lib cmd 2>/dev/null | grep -q .; then
-  grep -rE "${OBSOLETE_SCRIPTS_IMAGES}" \
-    --include='*.md' \
-    --include='*.go' \
-    docs README.md AGENTS.md CONTRIBUTING.md templates lib cmd 2>/dev/null || true
-  fail 'found pre-assets templates/core scripts or images path; use templates/core/assets/…'
-fi
+source_paths=()
+for path in docs README.md AGENTS.md CONTRIBUTING.md src/lib src/cmd src/core templates; do
+  [[ -e "$path" ]] && source_paths+=("$path")
+done
 
-if grep -rE "${OBSOLETE_LEGACY_DIRS}" \
-    --include='*.md' \
-    --include='*.go' \
-    docs README.md AGENTS.md CONTRIBUTING.md src/core src/lib src/cmd 2>/dev/null | grep -q .; then
-  grep -rE "${OBSOLETE_LEGACY_DIRS}" \
-    --include='*.md' \
-    --include='*.go' \
-    docs README.md AGENTS.md CONTRIBUTING.md src/core src/lib src/cmd 2>/dev/null || true
-  fail 'found obsolete workflows/ or run-worktree/ under templates; see docs and workflow_dirs.go'
-fi
+check_source_paths() {
+  local pattern="$1"
+  local message="$2"
+  local matches status
+
+  if ((${#source_paths[@]} == 0)); then
+    return
+  fi
+
+  if matches="$(grep -rEnH --include='*.md' --include='*.go' "$pattern" "${source_paths[@]}")"; then
+    printf '%s\n' "$matches" >&2
+    fail "$message"
+  else
+    status=$?
+    if ((status != 1)); then
+      fail 'could not scan repository source paths'
+    fi
+  fi
+}
+
+check_source_paths "$OBSOLETE_SCRIPTS_IMAGES" \
+  'found pre-assets templates/core scripts or images path; use templates/core/assets/…'
+check_source_paths "$OBSOLETE_LEGACY_DIRS" \
+  'found obsolete workflows/ or run-worktree/ under templates; see docs and workflow_dirs.go'
 
 package_hits="$(
   grep -rInE "${DORKPIPE_CI_STATE_PATHS}|${DORKPIPE_CI_WORKFLOW_SDK}" \

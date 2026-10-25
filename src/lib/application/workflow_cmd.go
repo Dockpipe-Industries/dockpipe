@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"dockpipe/src/lib/application/internal/workflowdocumentcmd"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 )
@@ -47,7 +48,7 @@ func cmdWorkflow(args []string) error {
 	case "clone":
 		return cmdWorkflowClone(args[1:])
 	case "document":
-		return cmdWorkflowDocument(args[1:])
+		return workflowdocumentcmd.Run(args[1:])
 	case "validate":
 		path := ""
 		if len(args) > 1 {

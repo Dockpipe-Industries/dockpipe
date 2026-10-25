@@ -71,7 +71,7 @@ if [[ "$store" != - ]]; then
     --destination "$app/files/share/dockpipe"
 fi
 
-source_dir="$root/src/app/tooling/dockpipe-launcher"
+source_dir="$root/src/dockpipe-app"
 # The SDK omits libXres. Bundle it so clients without _NET_WM_PID can be
 # identified by the same X11 ownership protocol as native desktop builds.
 xres_archive="$out/libXres-1.2.3.tar.xz"

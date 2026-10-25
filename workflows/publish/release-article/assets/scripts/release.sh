@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
-set -euo pipefail
 if [[ -z "${DEVTO_API_KEY:-}" ]]; then
   echo "::error::Set secret DEVTO_API_KEY when DEVTO_PUBLISH is true."
   exit 1
 fi
 python3 workflows/publish/release-article/assets/scripts/prepare-article.py \
-  --article "release/articles/${NOTES_VERSION}.md" \
+  --article "release/articles/announcement.md" \
   --repository "$ARTICLE_REPOSITORY" --source-sha "$ARTICLE_SOURCE_SHA" \
   --tag "$TAG" --output /tmp/devto-article.json
 TITLE_MAIN=$(jq -r .title /tmp/devto-article.json)

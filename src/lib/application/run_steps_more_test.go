@@ -42,10 +42,10 @@ func baseRunStepsOpts() runStepsOpts {
 		wfRoot:   "/wf",
 		repoRoot: "/repo",
 		envMap:   map[string]string{},
-		envSlice: nil,
-		locked:   map[string]bool{},
-		opts:     &CliOpts{},
-		dataVol:  "dockpipe-data",
+
+		locked:  map[string]bool{},
+		opts:    &CliOpts{},
+		dataVol: "dockpipe-data",
 	}
 }
 
@@ -336,7 +336,7 @@ func TestRunBlockingStepInheritsWorkflowRuntimeForHostIsolate(t *testing.T) {
 	}
 }
 
-func TestMergeStepVarsAppliesVMOverrides(t *testing.T) {
+func TestApplyStepEnvOverridesAppliesVMOverrides(t *testing.T) {
 	o := baseRunStepsOpts()
 	o.repoRoot = `C:\repo`
 	o.projectRoot = `C:\repo`
@@ -362,7 +362,7 @@ func TestMergeStepVarsAppliesVMOverrides(t *testing.T) {
 		},
 	}
 	dockerEnv := map[string]string{}
-	if err := mergeStepVars(&o, step, dockerEnv); err != nil {
+	if err := applyStepEnvOverrides(&o, step, 0, o.envMap, dockerEnv); err != nil {
 		t.Fatal(err)
 	}
 	if got := o.envMap["DOCKPIPE_VM_SYNC_HOST_PATH"]; got != `C:\repo` {
@@ -394,7 +394,7 @@ func TestMergeStepVarsAppliesVMOverrides(t *testing.T) {
 	}
 }
 
-func TestMergeStepVarsVMMultipleMounts(t *testing.T) {
+func TestApplyStepEnvOverridesVMMultipleMounts(t *testing.T) {
 	o := baseRunStepsOpts()
 	step := domain.Step{
 		VM: domain.StepVMConfig{
@@ -405,7 +405,7 @@ func TestMergeStepVarsVMMultipleMounts(t *testing.T) {
 		},
 	}
 	dockerEnv := map[string]string{}
-	if err := mergeStepVars(&o, step, dockerEnv); err != nil {
+	if err := applyStepEnvOverrides(&o, step, 0, o.envMap, dockerEnv); err != nil {
 		t.Fatal(err)
 	}
 	want := "C:\\src\\repo\tC:\\uh\nC:\\tmp\\artifacts\tC:\\artifacts"
@@ -417,7 +417,7 @@ func TestMergeStepVarsVMMultipleMounts(t *testing.T) {
 	}
 }
 
-func TestMergeStepVarsVMHostContextOverrideWins(t *testing.T) {
+func TestApplyStepEnvOverridesVMHostContextOverrideWins(t *testing.T) {
 	o := baseRunStepsOpts()
 	o.repoRoot = `C:\repo`
 	o.projectRoot = `C:\repo`
@@ -430,7 +430,7 @@ func TestMergeStepVarsVMHostContextOverrideWins(t *testing.T) {
 		},
 	}
 	dockerEnv := map[string]string{}
-	if err := mergeStepVars(&o, step, dockerEnv); err != nil {
+	if err := applyStepEnvOverrides(&o, step, 0, o.envMap, dockerEnv); err != nil {
 		t.Fatal(err)
 	}
 	if got := o.envMap["DOCKPIPE_VM_SYNC_HOST_PATH"]; got != `C:\other` {
@@ -438,7 +438,7 @@ func TestMergeStepVarsVMHostContextOverrideWins(t *testing.T) {
 	}
 }
 
-func TestMergeStepVarsAppliesTypedInputs(t *testing.T) {
+func TestApplyStepEnvOverridesAppliesTypedInputs(t *testing.T) {
 	wfRoot := t.TempDir()
 	modelsDir := filepath.Join(wfRoot, "models")
 	if err := os.MkdirAll(modelsDir, 0o755); err != nil {
@@ -480,7 +480,7 @@ func TestMergeStepVarsAppliesTypedInputs(t *testing.T) {
 		},
 	}
 	dockerEnv := map[string]string{}
-	if err := mergeStepVars(&o, step, dockerEnv); err != nil {
+	if err := applyStepEnvOverrides(&o, step, 0, o.envMap, dockerEnv); err != nil {
 		t.Fatal(err)
 	}
 	if got := o.envMap["DOCKPIPE_VM_EXEC_MODE"]; got != "powershell" {
@@ -620,7 +620,6 @@ func TestRunBlockingStepHostIsolateReappliesWorkflowInputsFromWorkflowVars(t *te
 	if err := buildWorkflowEnvInto(o.envMap, o.wf, o.wfConfig, o.wfRoot, o.repoRoot, &CliOpts{Workdir: repo}); err != nil {
 		t.Fatal(err)
 	}
-	o.envSlice = domain.EnvMapToSlice(o.envMap)
 
 	var gotEnv []string
 	runHostScriptFn = func(scriptPath string, env []string) error {
@@ -965,7 +964,11 @@ func TestRunParallelStepWorkerNonZeroExit(t *testing.T) {
 	bFalse := false
 	o.wf.Steps = []domain.Step{{Cmd: "echo a", Isolate: "ubuntu:latest", Blocking: &bFalse}}
 	runContainerFn = func(ro infrastructure.RunOpts, argv []string) (int, error) { return 3, nil }
-	err := runParallelStepWorker(&o, 0, 1, 0, map[string]string{}, map[string]string{})
+	state, err := prepareParallelStep(&o, 0, map[string]string{}, map[string]string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = runParallelStepWorker(&o, 0, 1, 0, &state)
 	code, ok := exitCodeFromError(err)
 	if !ok || code != 3 {
 		t.Fatalf("expected non-zero worker error, got %v", err)
@@ -994,7 +997,11 @@ func TestRunParallelStepWorkerFirstStepExtraPreScript(t *testing.T) {
 		}
 		return nil
 	}
-	if err := runParallelStepWorker(&o, 0, 1, 0, map[string]string{}, map[string]string{}); err != nil {
+	state, err := prepareParallelStep(&o, 0, map[string]string{}, map[string]string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runParallelStepWorker(&o, 0, 1, 0, &state); err != nil {
 		t.Fatalf("runParallelStepWorker error: %v", err)
 	}
 	if !called {

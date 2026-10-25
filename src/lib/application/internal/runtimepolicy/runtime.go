@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 
+	"dockpipe/src/lib/application/internal/textvalue"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 	"dockpipe/src/lib/infrastructure/packagebuild"
@@ -216,7 +217,7 @@ func applyCompiledProxyNetworkPolicy(runOpts *infrastructure.RunOpts, policy dom
 	if runOpts == nil {
 		return nil
 	}
-	httpProxy := firstNonEmptyString(
+	httpProxy := textvalue.FirstNonEmpty(
 		runOptEnvValue(runOpts, "DOCKPIPE_POLICY_PROXY_URL"),
 		runOptEnvValue(runOpts, "DOCKPIPE_NETWORK_PROXY_URL"),
 		runOptEnvValue(runOpts, "HTTP_PROXY"),
@@ -230,7 +231,7 @@ func applyCompiledProxyNetworkPolicy(runOpts *infrastructure.RunOpts, policy dom
 		return fmt.Errorf("network policy requires proxy enforcement but no proxy URL is configured in the run environment (set DOCKPIPE_POLICY_PROXY_URL or DOCKPIPE_NETWORK_PROXY_URL)")
 	}
 	tokenizedHTTPProxy := PolicyProxyURLWithToken(httpProxy, policy)
-	httpsProxy := firstNonEmptyString(
+	httpsProxy := textvalue.FirstNonEmpty(
 		runOptEnvValue(runOpts, "DOCKPIPE_POLICY_PROXY_HTTPS_URL"),
 		runOptEnvValue(runOpts, "DOCKPIPE_NETWORK_PROXY_HTTPS_URL"),
 		runOptEnvValue(runOpts, "HTTPS_PROXY"),
@@ -576,13 +577,4 @@ func DefaultRuntimePolicyFingerprint() (string, error) {
 			PIDLimit:        256,
 		},
 	})
-}
-
-func firstNonEmptyString(values ...string) string {
-	for _, value := range values {
-		if strings.TrimSpace(value) != "" {
-			return strings.TrimSpace(value)
-		}
-	}
-	return ""
 }

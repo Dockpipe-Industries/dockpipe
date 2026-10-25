@@ -1,8 +1,10 @@
 # Worktree include files (local / gitignored config)
 
-When dockpipe creates a **git worktree** from your checkout (`clone-worktree.sh` with `DOCKPIPE_USER_REPO_ROOT`), the new tree starts from **HEAD**. Files that are **only on disk** and **gitignored** (e.g. `.env`, `appsettings.Development.json`) are **not** part of that checkout.
+The compatibility **`worktree` strategy** uses the library-owned `clone-worktree.sh` hook. Its include-file rules below do not apply to managed **`workspace:`** sessions, which have a separate [runtime contract](git-runtime-sessions.md).
 
-Dockpipe can copy extra paths from your **main** working tree into the **worktree** using an include list (same *idea* as some other tools’ `.worktreeinclude`).
+When this hook creates a **git worktree** from your checkout (`clone-worktree.sh` with `DOCKPIPE_USER_REPO_ROOT`), the new tree starts from **HEAD**. Files that are **only on disk** and **gitignored** (e.g. `.env`, `appsettings.Development.json`) are **not** part of that checkout.
+
+The hook can copy extra paths from your **main** working tree into the **worktree** using an include list (same *idea* as some other tools’ `.worktreeinclude`).
 
 ## Which file is used
 

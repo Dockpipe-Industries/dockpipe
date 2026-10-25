@@ -1,31 +1,6 @@
-# TASK-038 Native Terraform MCP Executor with Scoped Authorization
 schema: 1
-id: TASK-038
-topic: "Native Terraform MCP Executor with Scoped Authorization"
-entrypoint: overview.md
-
-dispatch:
-  readiness: unclassified
-  ownership: unclaimed
-
-routes:
-  orientation:
-    read:
-      - overview.md
-  implementation:
-    read:
-      - overview.md
-      - ../unified-mcp-gateway/cli-first-management.md
-  history:
-    read:
-      - original-proposal.md
-
-documents:
-  - path: overview.md
-    role: active task requirements, dependencies and acceptance criteria
-  - path: original-proposal.md
-    role: superseded standalone-server proposal and original acceptance history
-
-maintenance:
-  - Resolve document paths relative to this index.
-  - Keep task narrative in overview.md and dispatch metadata synchronized with docs/agents/task-index.yaml.
+task: TASK-038
+status: moved
+owner: dockpipe-packages
+read:
+- https://github.com/Dockpipe-Industries/dockpipe-packages/blob/master/docs/agents/tasks/standalone-terraform-mcp-executor/index.yaml

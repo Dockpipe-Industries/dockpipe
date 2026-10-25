@@ -44,7 +44,7 @@ materialize generic library resources only for the requested capability.
 - Top-level `runtime` and `resolver` set workflow defaults.
 - Step-level `runtime` and `resolver` override defaults.
 - `isolate` is an advanced low-level image/template override.
-- `kind: host` means host execution outside container isolation.
+- `kind: host` means host execution outside Docker policy. Inline commands use Windows PowerShell on Windows and Bash on Linux/macOS; script extensions and explicit shell choices follow the [host-shell contract](../../workflows/workflow-yaml.md#host-steps-kind-host).
 - `workflow` plus `package` enters a packaged child workflow.
 
 ## Canonical Docs

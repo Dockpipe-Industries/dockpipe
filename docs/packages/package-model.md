@@ -50,10 +50,10 @@ state paths; do not hardcode another user's cache or state location.
 ## Published packages and source projects
 
 Normal installers provide the self-contained CLI. Install optional packages from a published
-catalog with `dockpipe package install` or the launcher Marketplace. No Dockpipe
+catalog with `dockpipe package install` or the Dockpipe GUI Marketplace. No Dockpipe
 source checkout or release workflow is required.
 
-The launcher shows compressed package sizes in **Marketplace** and **Installed**.
+The Dockpipe GUI shows compressed package sizes in **Marketplace** and **Installed**.
 Marketplace sizes come from the catalog's optional `size_bytes` field; store builds
 measure each finished archive, and `dockpipe package catalog` preserves that value.
 `dockpipe package list --format json` reports the actual local archive size using
@@ -67,14 +67,14 @@ and declare dependencies so another user can run them without your source tree.
 
 ### Independent host and package releases
 
-The CLI and desktop host release independently of optional packages. The launcher remains part of the Dockpipe repository, and CLI-only users do not need it. Host releases publish their download pointer at `packages/runtime/latest.json`; Marketplace discovery uses the separately promoted `packages/latest.json` catalog. Releasing the host does not replace the package catalog or require VM/Cockpit packages to be installed.
+The CLI and desktop host release independently of optional packages. The Dockpipe GUI remains part of the Dockpipe repository, and CLI-only users do not need it. Host releases publish their download pointer at `packages/runtime/latest.json`; Marketplace discovery uses the separately promoted `packages/latest.json` catalog. Releasing the host does not replace the package catalog or require VM/Cockpit packages to be installed.
 
 Packages use published SDKs and declare `min_dockpipe_version` for required engine features. Their build repository can pin one exact producer with `dockpipe_version` and a checksum lock. Runtime compatibility, producer reproducibility and native plugin ABI checks are separate contracts. See [release boundaries](../../release/docs/releasing.md#runtime-and-optional-package-release-boundaries).
 
 ### Hidden packages
 
 Set `hidden: true` in an installable workflow or resolver `package.yml`
-to omit it from normal catalog discovery and the launcher's Marketplace.
+to omit it from normal catalog discovery and the Dockpipe GUI's Marketplace.
 The default is `false`. Each installable slice has its own flag; an umbrella
 `kind: package` manifest does not apply it to child slices.
 
@@ -159,7 +159,7 @@ The `compile` object supports `workflows`; `secrets` and
   - **`{ "kind": "tarball_dir", "path": "release/artifacts" }`** for a directory of **`dockpipe-*.tar.gz`** artifacts
   - these supplement local/global/system package roots and do **not** replace **`packages.tarball_dir`**, namespace filtering, or self-hosted S3/R2 package mirrors
 
-If **`dockpipe.config.json`** is **missing**, compile uses built-in defaults for each omitted key. **`dockpipe init`** seeds a starter JSON. **Maintainer package trees** (for example **`packages/`** in this repo) are **not** implied: add them explicitly under **`compile.workflows`** when you want them compiled.
+If **`dockpipe.config.json`** is **missing**, compile uses built-in defaults for each omitted key. **`dockpipe init`** seeds a starter JSON. **Maintainer package trees** (for example **`packages/`** in a package-authoring repository) are **not** implied: add them explicitly under **`compile.workflows`** when you want them compiled.
 
 Compile steps:
 
@@ -206,7 +206,7 @@ An explicit workflow `catalog_type` takes precedence over legacy `category: app`
 Core packages take metadata directly from their manifest.
 
 Store manifests, the remote catalog and installed-package inventory carry these
-fields. The launcher and public catalog display titles and filter discovery types;
+fields. The Dockpipe GUI and public catalog display titles and filter discovery types;
 search also matches stable IDs and purpose categories. Older published catalogs
 remain readable with name/kind fallbacks.
 
@@ -219,19 +219,20 @@ replace an immutable release solely to refresh its description.
 
 The [exact package selection proposal](version-pinning.md) distinguishes the
 current checksum-asserted install from future project/package version locks and
-runtime selection. Its lock and workflow-call formats are not implemented in
-0.6.17.
+runtime selection. This proposal is separate from the existing `dockpipe_version` and
+`dockpipe.lock.json` producer-tool pin; it is not supported package-selection syntax.
 
 `dockpipe package catalog --remote <HTTPS manifest URL>` returns JSON for the current
 execution platform (OS/architecture and, inside Flatpak, runtime identity). It accepts a latest pointer, release catalog, or explicit platform
 store manifest. Latest pointers use origin-relative `manifest` paths; release catalogs
 use release-relative `stores.<platform>.manifest` paths. Store manifests retain the
-existing schema-1 `packages.core`, `packages.workflows`, and `packages.resolvers` layout.
+schema-1 `packages.workflows` and `packages.resolvers` layout. Historical
+`packages.core` metadata is accepted for artifact accounting but is not required.
 The response includes the resolved store `manifest`, `platform`, and flattened `packages`.
 An explicit store URL must declare a compatible platform; native and Flatpak stores cannot be substituted.
 
 `dockpipe package install --remote <URL> --kind workflow --name <name>` installs the selected
-archive under the user package root in the appropriate `core`, `workflows`, or `resolvers`
+archive under the user package root in the appropriate `workflows` or `resolvers`
 subdirectory. `DOCKPIPE_GLOBAL_ROOT` selects another user root. The command prints JSON with
 its installed `path`. Use the catalog response's resolved manifest URL and `--sha256 <digest>`
 to pin a selection; a changed checksum is rejected before downloading the archive.
@@ -333,8 +334,8 @@ does not execute package code, modify the system/Brew store, or fetch anything
 during ordinary workflow resolution. Explicit package install prepares declared
 `depends` and `requires_resolvers` from the selected platform catalog before
 publishing them; host executable installation uses a separate approval flow.
-Normal installers supply only core; optional packages are selected explicitly
-from the remote catalog.
+Normal installers supply the standalone CLI and, for desktop distributions, the
+GUI shell. Optional packages are selected explicitly from the remote catalog.
 The complete store is a separate opt-in download.
 
 `dockpipe package list --format json` returns `packages`, `warnings`, and `install_root`,
@@ -350,7 +351,7 @@ root, compiled directories, and symbolic links are rejected. Uninstall retains p
 state, settings, caches, other versions, and dependencies; it never recursively deletes
 a package tree. The response contains the removed `path`.
 
-The launcher offers **Uninstall** on removable Installed entries and explains why managed
+The Dockpipe GUI offers **Uninstall** on removable Installed entries and explains why managed
 entries are protected. Marketplace marks a matching name/kind/version **Installed** and
 disables duplicate installation; matching versions do not prove identical staging content.
 **Cancel operation** is visible only while a request is active and stops both catalog and
@@ -501,7 +502,7 @@ occur. Ordinary clean removes that whole tree after rejecting links/reparse poin
 filesystem substitutions, and unsafe boundaries. A missing tree is a reported no-op. Durable state
 and external `DOCKPIPE_PACKAGES_ROOT` stores remain outside ordinary clean authority.
 
-**`bin/.dockpipe/internal/packages/`** is the default store for **fetched or compiled** package trees (workflows, core slices, assets) — the same conceptual layout whether content arrived as a **`.tar.gz`** or from **`dockpipe package compile workflow`**. **Uncompressed** authoring under **`workflows/`** remains normal; **compile** validates and **materializes** into **`bin/.dockpipe/internal/...`** when you opt into the packaged path. Resolution order for **`--workflow`** is implemented in **`workflow_dirs.go`** (**`workflows/`** → **packages** → legacy **`templates/`** paths, etc.).
+**`bin/.dockpipe/internal/packages/`** is the default project store for **compiled** workflow and resolver archives — the same conceptual layout whether content arrived as a **`.tar.gz`** or from **`dockpipe package compile workflow`**. **Uncompressed** authoring under **`workflows/`** remains normal; **compile** validates and **materializes** into **`bin/.dockpipe/internal/...`** when you opt into the packaged path. Resolution order for **`--workflow`** is implemented in **`workflow_dirs.go`** (**`workflows/`** → **packages** → legacy **`templates/`** paths, etc.).
 
 Image artifact metadata is **not** a package payload by default. See
 **[../runtime/image-artifacts.md](../runtime/image-artifacts.md)** for the user-facing lifecycle. Use:
@@ -528,7 +529,7 @@ explicitly instead of falling back to native packages.
 Optional packages remain Dockpipe archives with dependencies supplied by the
 runtime or explicitly bundled and tested by authors. See the
 [Flatpak build contract](../../workflows/build/flatpak/README.md).
-The base installer continues to contain required core only.
+The base installer does not require a core archive or optional Marketplace packages.
 
 ### User stores
 
@@ -678,10 +679,10 @@ not close the application or stop the resource. Resource shutdown remains an exp
 package workflow action. Automatic desktop acquisition remains limited to Tiling;
 package displays can be explicitly attached in either layout.
 
-For launcher-origin display routing, a resource may include an optional `launch_id`
+For GUI-origin display routing, a resource may include an optional `launch_id`
 containing 1–128 ASCII letters, digits, dots, underscores or hyphens. When a local
-launcher workflow matches exactly one installed surface's surface-scoped
-`workflow_id` action, the launcher injects a fresh per-invocation
+GUI workflow matches exactly one installed surface's surface-scoped
+`workflow_id` action, the Dockpipe GUI injects a fresh per-invocation
 `DOCKPIPE_SURFACE_LAUNCH_ID` into a transient context and opens that surface. The
 package propagates this opaque value through its own lifecycle record and emits it
 in the corresponding snapshot resource. It is never a credential or a native handle.
@@ -689,7 +690,7 @@ The host selects and displays only the matching resource, with a 120-second dead
 failure, cancellation, provider removal or workspace change cancels the pending route.
 No heuristic based on newly appearing resources substitutes for this correlation.
 
-Terminal launches do not receive a launcher correlation token and retain their normal
+Terminal launches do not receive a GUI correlation token and retain their normal
 standalone display. Explicitly opening a package page can select its initial resource;
 that selection opportunity is consumed by the first snapshot, even if it is empty.
 Subsequent background snapshots never select a newly appearing terminal resource.
@@ -781,9 +782,9 @@ Each platform has 1 to 16 bindings with ASCII environment identifiers of at most
 64 characters. A binding contains exactly one `asset` or `inherit` reference;
 there are no literal values or secret contents in package metadata. Assets must
 be regular contained executable files; catalog projection resolves them and the
-launcher rechecks containment before invocation.
+GUI rechecks containment before invocation.
 
-The launcher snapshots the original process environment, explicit environment-file
+The Dockpipe GUI snapshots the original process environment, explicit environment-file
 fallbacks, and invocation overrides before resolving any binding. Explicit context
 assignments take precedence, including an explicitly empty value. Missing inherited
 sources leave the target alone. Inherited values are limited to 4096 UTF-8 bytes;
@@ -798,7 +799,7 @@ are unchanged. Only an unambiguous installed public surface action matching the
 launched workflow applies this field; ordinary terminal execution is unaffected.
 
 For packages needing only the native display interface, the explicit leaf SDK
-at `src/app/tooling/dockpipe-launcher/display-sdk` installs `DockPipeDisplaySDK`
+at `src/dockpipe-app/display-sdk` installs `DockPipeDisplaySDK`
 and `DockPipe::DisplayHeaders`. It exports the same core-owned
 `LauncherDisplayPackage.h` and requires only the exact Qt Widgets kit, platform
 and compiler used to create that SDK candidate. It links no host implementation

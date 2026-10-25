@@ -13,7 +13,7 @@ on:
       - 'workflows/qualify/cockpit/assets/scripts/prepare-cockpit.py'
       - 'workflows/dependencies/browser-sdk/assets/scripts/prepare-browser-sdk.py'
       - 'workflows/build/desktop/**'
-      - 'src/app/tooling/dockpipe-launcher/**'
+      - 'src/dockpipe-app/**'
   push:
     branches: [master, staging, dev]
     paths:
@@ -23,7 +23,7 @@ on:
       - 'workflows/qualify/cockpit/assets/scripts/prepare-cockpit.py'
       - 'workflows/dependencies/browser-sdk/assets/scripts/prepare-browser-sdk.py'
       - 'workflows/build/desktop/**'
-      - 'src/app/tooling/dockpipe-launcher/**'
+      - 'src/dockpipe-app/**'
 
 permissions:
   contents: read
@@ -65,7 +65,7 @@ jobs:
           python3 workflows/shared/launch.py workflows/build/desktop/install-linux-qt.yml -- "$RUNNER_TEMP/Qt"
           echo "DOCKPIPE_QT_ROOT=$RUNNER_TEMP/Qt/6.10.3/gcc_64" >> "$GITHUB_ENV"
       - name: Build the repository CLI
-        run: make build
+        run: python3 workflows/shared/launch.py workflows/build/cli/config.yml -- --output src/bin/dockpipe.bin --alias src/bin/dockpipe
       - name: Prepare exact attested Browser SDK
         run: |
           python3 workflows/shared/launch.py workflows/dependencies/browser-sdk/config.yml -- --lock workflows/dependencies/browser-sdk/assets/spatialweb-browser.lock.json \

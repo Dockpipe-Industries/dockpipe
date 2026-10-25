@@ -116,7 +116,7 @@ class DiagnosticTests(unittest.TestCase):
             receipt = DIAGNOSTICS.guard_source('a' * 40)
         self.assertEqual(receipt['diagnostic_source'], 'b' * 40)
         self.assertEqual(run.call_args_list[0].args[0], ['git', 'diff', '--quiet', 'a' * 40, 'HEAD', '--',
-                                              'src/app/tooling/dockpipe-launcher',
+                                              'src/dockpipe-app',
                                               'workflows/dependencies/browser-sdk/assets/spatialweb-browser.lock.json'])
         self.assertTrue(run.call_args.kwargs['check'])
         self.assertEqual(run.call_args_list[1].args[0], ['git', 'diff', '--quiet', 'HEAD', '--', *DIAGNOSTICS.SOURCE_PATHS])
@@ -236,8 +236,6 @@ class WorkflowTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
             (directory / 'VERSION').write_text('0.6.0\n')
-            (directory / 'release/releasenotes').mkdir(parents=True)
-            (directory / 'release/releasenotes/0.6.0.md').write_text('Fixture release notes\n')
             output = directory / 'outputs'
             for event, dry_run, qualification, source, allowed in [
                     ('workflow_dispatch', 'true', 'true', 'a' * 40, True),

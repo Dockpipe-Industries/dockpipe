@@ -1,6 +1,7 @@
 # Contributing
 
-Primitive first: run in container, optionally act after. Keep the core minimal.
+The engine runs commands on the selected host or container runtime and applies
+the configured follow-up actions. Keep package-specific behavior outside it.
 
 Follow the [coding style and reliability standard](docs/coding-style.md) for readable
 responsibilities, resource bounds, cancellation, recovery and failure-path tests.
@@ -20,20 +21,50 @@ digests. See [ecosystem ownership](docs/packages/core-tools.md).
 
 **Security:** do not file public issues for undisclosed vulnerabilities — see **[SECURITY.md](SECURITY.md)**.
 
-**Issues** for bugs and ideas. **PRs** for code/docs; see [AGENTS.md](AGENTS.md). Prefer **feature branch** or **fork** → **PR → `staging`** (integration). **Do not push directly** to **`staging`** / **`master`** if those branches are protected. The maintainer ships by **PR `staging` → `master`** with updated **`release/releasenotes/<VERSION>.md`** for the selected release line (the workflow generates patch numbers) — that merge runs **Release**. **CI** (**`govulncheck`**, **`gosec`**, tests, **`make`**, **`.deb`**, **`tests/run_tests.sh`**, **`tests/integration-tests/run.sh`**) runs on PRs to **`staging`** and **`master`**; the **VERSION / release-notes gate** runs only on PRs **into `master`**. **CodeQL** runs in **`.github/workflows/codeql.yml`**. Details: [release/docs/branching.md](release/docs/branching.md). **Tests:** `bash tests/run_tests.sh` (unit); integration: `bash tests/integration-tests/run.sh`.
+**Issues** for bugs and ideas. **PRs** for code/docs; see [AGENTS.md](AGENTS.md).
+Prefer **feature branch** or **fork** → **PR → `staging`** (integration). **Do not push
+directly** to protected **`staging`** / **`master`** branches. The maintainer ships by
+**PR `staging` → `master`**; that merge runs **Release**. `VERSION` selects the release
+line and numeric floor. The workflow generates the patch number and notes header;
+GitHub appends the merged-PR changelog at publication. No per-version notes file or
+notes-change gate is required.
 
-The [PR template](.github/pull_request_template.md) asks for the resulting behavior, verification and user impact. Remove its release section for ordinary integration PRs; release PRs must update the matching end-user notes.
+**CI** (**`govulncheck`**, **`gosec`**, tests, **`make`**, **`.deb`**,
+**`tests/run_tests.sh`**, **`tests/integration-tests/run.sh`**) runs on PRs to
+**`staging`** and **`master`**. **CodeQL** runs in **`.github/workflows/codeql.yml`**.
+Details: [release/docs/branching.md](release/docs/branching.md).
+Run checks through their owning workflows from the repository root:
 
-**Go:** layout is `src/lib/{domain,application,infrastructure}` — see [src/lib/README.md](src/lib/README.md). Run `go test ./...` and `gofmt` before PRs. Application tests set **`DOCKPIPE_SKIP_DOCKER_PREFLIGHT=1`** so the suite does not require a running Docker daemon (use **`dockpipe doctor`** manually to verify Docker).
+```sh
+python3 workflows/shared/launch.py workflows/ci/core/config.yml
+python3 workflows/shared/launch.py workflows/ci/shell/config.yml
+python3 workflows/shared/launch.py workflows/ci/integration/config.yml
+```
 
-**Full local CI** (same as **`make ci`** / **`python3 workflows/shared/launch.py workflows/ci/ci-emulate/config.yml`**): install **`govulncheck`**, **`gosec`**, and **`jq`** (`make dev-deps` or **`python3 workflows/shared/launch.py workflows/setup/developer-dependencies/config.yml`**). Use the toolchain from **`go.mod`** with `GOTOOLCHAIN=local` and put Go’s **`bin`** on **`PATH`** (`export PATH="$(go env GOPATH)/bin:$PATH"`) so **`govulncheck`** matches the repo’s Go version. Then **`make ci`** (needs Docker). If **`govulncheck`** errors on stdlib / **`iter`**, reinstall it: **`go install golang.org/x/vuln/cmd/govulncheck@latest`**.
+The integration suite requires Docker. The workflow bootstrap uses the separately
+released CLI pinned in `workflows/shared/bootstrap.lock.json`; it does not use a
+newly built candidate to orchestrate its own checks.
 
-**Source layout:** required bundled definitions and shared runtime assets live under
-`src/core/`. Generic engine code stays in `src/lib/` and `src/cmd/`.
+The [PR template](.github/pull_request_template.md) asks for the resulting behavior,
+verification and user impact. Keep titles and descriptions useful to readers of the
+generated changelog, and link user documentation for upgrade steps and known limits.
+Remove its release section for ordinary integration PRs.
+
+**Go:** responsibilities live under `src/lib/{domain,application,infrastructure}`
+with focused child packages; see [src/lib/README.md](src/lib/README.md). Run `gofmt`
+on changed Go files and use the core test workflow above. It sanitizes inherited
+Dockpipe workflow state and isolates package roots before running `go test ./...`.
+Use `dockpipe doctor` separately when checking a live container engine.
+
+**Full local CI** (same as **`make -f tooling/Makefile ci`** / **`python3 workflows/shared/launch.py workflows/ci/ci-emulate/config.yml`**): install **`govulncheck`**, **`gosec`**, and **`jq`** (`make -f tooling/Makefile dev-deps` or **`python3 workflows/shared/launch.py workflows/setup/developer-dependencies/config.yml`**). Use the toolchain from **`go.mod`** with `GOTOOLCHAIN=local` and put Go’s **`bin`** on **`PATH`** (`export PATH="$(go env GOPATH)/bin:$PATH"`) so **`govulncheck`** matches the repo’s Go version. Then **`make -f tooling/Makefile ci`** (needs Docker). If **`govulncheck`** errors on stdlib / **`iter`**, reinstall it: **`go install golang.org/x/vuln/cmd/govulncheck@latest`**.
+
+**Source layout:** generic engine code and library-owned runtime resources live in
+`src/lib/`; the CLI entrypoint is `src/cmd/`. The Qt GUI shell and native host SDKs
+live in `src/dockpipe-app/`; see its [architecture guide](src/dockpipe-app/ARCHITECTURE.md).
 This repository's own automation lives under `workflows/`; package automation lives
 with the external package. Workflow-specific scripts belong beside the workflow's
 `config.yml`; shared scripts belong at the lowest common owning boundary. Do not
-create root script shadows for package workflows. Run `make check-paths` after
+create root script shadows for package workflows. Run `make -f tooling/Makefile check-paths` after
 changing authored paths.
 
 **Workflow YAML:** keep [the YAML reference](docs/workflows/workflow-yaml.md),
@@ -42,13 +73,20 @@ Use existing resolver/runtime/strategy contracts rather than adding product name
 to the engine. See [architecture](docs/concepts/architecture-model.md) and
 [package authoring](docs/agents/packages/package-authoring.md).
 
-**Releases:** merge **`staging` → `master`** (after **`VERSION`** + **`release/releasenotes/…`**) triggers **`.github/workflows/release.yml`**. See [release/docs/releasing.md](release/docs/releasing.md). Optional **dev.to**: [release/docs/devto.md](release/docs/devto.md).
+**Releases:** merging **`staging` → `master`** triggers **`.github/workflows/release.yml`**.
+Review the generated notes header and comparison link in a release dry run; the
+GitHub-generated changelog is added only during publication. See
+[release/docs/releasing.md](release/docs/releasing.md). Optional **dev.to** uses a
+separately reviewed announcement: [release/docs/devto.md](release/docs/devto.md).
 
 ---
 
 ## Platform testing (we need you)
 
-The maintainer **cannot exercise every OS, CPU, Docker setup, and shell** before a release. CI runs **`go test ./...`** and builds artifacts on **Linux amd64**; everything else depends on **real machines**. If you use dockpipe on an under-tested combo, your reports and small PRs are valuable.
+Automated qualification covers selected Linux, macOS and Windows runners; it does
+not cover every OS version, CPU, container engine or physical desktop. Cross-builds
+alone do not prove native installation or execution. Reports from real machines
+remain valuable, especially for combinations outside those workflows.
 
 **Manual QA:** **[docs/manual-qa.md](docs/manual-qa.md)** (Linux, macOS, Windows).
 

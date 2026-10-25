@@ -75,9 +75,10 @@ Use compressed agent-only text only when at least one of these is true:
 
 ## Public-site audience
 
-The DockPipe Cloud site selects source pages in its `workflows/console.build/assets/scripts/stage-docs.py`.
-Before changing site-facing docs, inspect that selection rather than assuming all
-repository Markdown is published.
+Dockpipe Cloud selects source pages in `src/frontend/console/content/public-documents.json`;
+`workflows/console.build/assets/scripts/stage-docs.py` renders that selection.
+Inspect the current catalog before changing site-facing docs; not all repository
+Markdown is published.
 
 - Installation and quickstarts assume an installed application and the user's own
   project, without a Dockpipe checkout, Go compiler or contributor Make targets.

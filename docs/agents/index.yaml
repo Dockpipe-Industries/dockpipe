@@ -1,407 +1,376 @@
 schema: 1
-description: Machine-readable routing map for Dockpipe agent guidance. Skill ids are target-independent; renderers decide Codex, Claude, or generic format.
-
+description: Machine-readable routing map for Dockpipe agent guidance. Skill ids are target-independent; renderers
+  decide Codex, Claude, or generic format.
 skills:
   curated:
-    - dorkpipe-agentic-yaml
-    - dorkpipe-core-review
-    - dorkpipe-objective-execution
-    - dorkpipe-package-authoring
-    - dorkpipe-task-handoff
-    - dorkpipe-token-optimization
-    - dorkpipe-yaml-workflows
+  - dorkpipe-agentic-yaml
+  - dorkpipe-core-review
+  - dorkpipe-objective-execution
+  - dorkpipe-package-authoring
+  - dorkpipe-task-handoff
+  - dorkpipe-token-optimization
+  - dorkpipe-yaml-workflows
   render:
-    list: ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --list
-    codex: ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex
-    claude: ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target claude --output <path>
-
+    list: '"$DOCKPIPE_BIN" --package dorkpipe --workflow skills.render -- --list'
+    codex: '"$DOCKPIPE_BIN" --package dorkpipe --workflow skills.render -- --target codex'
+    claude: '"$DOCKPIPE_BIN" --package dorkpipe --workflow skills.render -- --target claude --output <path>'
+  prerequisite: Select an absolute installed or built DOCKPIPE_BIN; verify the external DorkPipe package is installed.
+    Rendering is not a docs-only validation requirement.
 external_sources:
   packages: https://github.com/Dockpipe-Industries/dockpipe-packages
   pipelang: https://github.com/Dockpipe-Industries/pipelang
-  package_validation: Use absolute DOCKPIPE_BIN, PACKAGE_REPOSITORY and PACKAGE_SOURCE selections in the owning repository.
+  package_validation: Use absolute DOCKPIPE_BIN, PACKAGE_REPOSITORY and PACKAGE_SOURCE selections in the owning
+    repository.
   language_dependency: Versioned external Go SDK; preserve typed models, dockpipe pipelang and automatic materialization.
-
+  dorkpipe: https://github.com/Dockpipe-Industries/dorkpipe
+  pipeon: https://github.com/Dockpipe-Industries/pipeon
 tasks:
   reliability_review:
     read:
-      - AGENTS.md
-      - docs/coding-style.md
-      - docs/agents/tasks/recurring-codebase-hygiene/reliability-audit.md
+    - AGENTS.md
+    - docs/coding-style.md
+    - docs/agents/tasks/recurring-codebase-hygiene/reliability-audit.md
     skills:
-      - dorkpipe-core-review
-
+    - dorkpipe-core-review
   pipelang_foundation_planning:
     read:
-      - AGENTS.md
-      - https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/agents/tasks/pipelang-reactive-application-language/index.yaml
-      - https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/agents/tasks/pipelang-reactive-application-language/foundation-specification-plan.md
-      - https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/agents/tasks/pipelang-reactive-application-language/foundation-alignment.md
-      - docs/concepts/pipelang-foundation.md
-      - docs/concepts/pipelang-foundation-contracts.md
-      - docs/concepts/pipelang-foundation-delivery.md
-    optional:
-      - https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/agents/tasks/pipelang-reactive-application-language/compiler-contract.md
-      - https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/agents/tasks/pipelang-reactive-application-language/language-surface.md
+    - AGENTS.md
+    - https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/agents/index.yaml
+    - https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/agents/tasks/pipelang-reactive-application-language/index.yaml
     skills:
-      - dorkpipe-objective-execution
-      - dorkpipe-token-optimization
-
+    - dorkpipe-objective-execution
+    - dorkpipe-token-optimization
   orientation:
     read:
-      - AGENTS.md
-      - docs/agents/core/repo-map.md
-      - docs/agents/core/architecture.md
-      - docs/agents/docs/docs-system.md
+    - AGENTS.md
+    - docs/agents/core/repo-map.md
+    - docs/agents/core/architecture.md
+    - docs/agents/docs/docs-system.md
     optional:
-      - docs/README.md
+    - docs/README.md
     skills:
-      - dorkpipe-token-optimization
-
+    - dorkpipe-token-optimization
   engine_change:
     read:
-      - AGENTS.md
-      - docs/agents/core/engine-boundary.md
-      - docs/agents/core/architecture.md
-      - docs/agents/core/core-package-model.md
-      - docs/agents/core/validation-commands.md
+    - AGENTS.md
+    - docs/agents/core/engine-boundary.md
+    - docs/agents/core/architecture.md
+    - docs/agents/core/core-package-model.md
+    - docs/agents/core/validation-commands.md
     optional:
-      - docs/packages/package-model.md
-      - docs/concepts/architecture-model.md
-      - docs/concepts/capabilities.md
+    - docs/packages/package-model.md
+    - docs/concepts/architecture-model.md
+    - docs/concepts/capabilities.md
     skills:
-      - dorkpipe-core-review
-      - dorkpipe-token-optimization
+    - dorkpipe-core-review
+    - dorkpipe-token-optimization
     escalate:
       required_for:
-        - public CLI behavior
-        - engine boundary changes
-        - path/package resolution changes
-        - security-sensitive behavior
+      - public CLI behavior
+      - engine boundary changes
+      - path/package resolution changes
+      - security-sensitive behavior
     validation:
-      - go test ./src/lib/...
-      - make build
-
+    - python3 workflows/shared/launch.py workflows/ci/core/config.yml -- <affected-packages-and-test-arguments>
+    - python3 workflows/shared/launch.py workflows/build/cli/config.yml -- --output /absolute/path/to/dockpipe
   compatibility_retirement:
     read:
-      - AGENTS.md
-      - docs/agents/core/compatibility-retirement.md
-      - docs/agents/core/engine-boundary.md
-      - docs/agents/docs/docs-system.md
-      - docs/agents/core/validation-commands.md
+    - AGENTS.md
+    - docs/agents/core/compatibility-retirement.md
+    - docs/agents/core/engine-boundary.md
+    - docs/agents/docs/docs-system.md
+    - docs/agents/core/validation-commands.md
     optional:
-      - docs/compatibility-retirement.md
-      - docs/cli-reference.md
-      - docs/packages/package-model.md
-      - docs/workflows/workflow-yaml.md
-      - src/lib/infrastructure/schema/workflow.schema.json
-      - docs/packages/editor-extensions.md
+    - docs/compatibility-retirement.md
+    - docs/cli-reference.md
+    - docs/packages/package-model.md
+    - docs/workflows/workflow-yaml.md
+    - src/lib/infrastructure/schema/workflow.schema.json
+    - docs/packages/editor-extensions.md
     skills:
-      - dorkpipe-core-review
-      - dorkpipe-token-optimization
+    - dorkpipe-core-review
+    - dorkpipe-token-optimization
     escalate:
       required_for:
-        - public compatibility behavior removal
-        - config, CLI, schema, or editor compatibility changes
-        - legacy layout, state migration, or cleanup
-        - package-owned compatibility changes
+      - public compatibility behavior removal
+      - config, CLI, schema, or editor compatibility changes
+      - legacy layout, state migration, or cleanup
+      - package-owned compatibility changes
     validation:
-      - rg -n "compat|legacy|alias|deprecated|ignored|no-op|noop" src workflows docs tests .github -S
-      - go test ./src/lib/domain ./src/lib/application ./src/lib/infrastructure
-      - '"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only <package>'
-      - git diff --check
-
+    - rg -n "compat|legacy|alias|deprecated|ignored|no-op|noop" src workflows docs tests .github -S
+    - python3 workflows/shared/launch.py workflows/ci/core/config.yml -- <affected-packages-and-test-arguments>
+    - '"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only <package>'
+    - git diff --check
   yaml_workflow_change:
     read:
-      - AGENTS.md
-      - docs/agents/workflows/yaml-workflows.md
-      - docs/agents/core/path-scopes.md
-      - docs/agents/core/architecture.md
-      - docs/agents/runtime/safety-guardrails.md
-      - docs/agents/core/validation-commands.md
+    - AGENTS.md
+    - docs/agents/workflows/yaml-workflows.md
+    - docs/agents/core/path-scopes.md
+    - docs/agents/core/architecture.md
+    - docs/agents/runtime/safety-guardrails.md
+    - docs/agents/core/validation-commands.md
     optional:
-      - docs/workflows/workflow-yaml.md
-      - src/lib/infrastructure/schema/workflow.schema.json
-      - docs/packages/editor-extensions.md
+    - docs/workflows/workflow-yaml.md
+    - src/lib/infrastructure/schema/workflow.schema.json
+    - docs/packages/editor-extensions.md
     skills:
-      - dorkpipe-yaml-workflows
-      - dorkpipe-token-optimization
+    - dorkpipe-yaml-workflows
+    - dorkpipe-token-optimization
     validation:
-      - ./src/bin/dockpipe workflow validate <config.yml>
-      - go test ./src/lib/...
-
+    - '"$DOCKPIPE_BIN" workflow validate <config.yml>'
+    - python3 workflows/shared/launch.py workflows/ci/core/config.yml -- <affected-packages-and-test-arguments>
   path_scope_migration:
     read:
-      - AGENTS.md
-      - docs/agents/core/path-scopes.md
-      - docs/agents/workflows/yaml-workflows.md
-      - docs/agents/core/core-package-model.md
-      - docs/agents/packages/package-authoring.md
-      - docs/agents/core/validation-commands.md
+    - AGENTS.md
+    - docs/agents/core/path-scopes.md
+    - docs/agents/workflows/yaml-workflows.md
+    - docs/agents/core/core-package-model.md
+    - docs/agents/packages/package-authoring.md
+    - docs/agents/core/validation-commands.md
     optional:
-      - docs/workflows/workflow-yaml.md
-      - docs/concepts/runtime-resource-ownership.md
-      - src/lib/application/sdk_cmd.go
-      - src/lib/infrastructure/schema/workflow.schema.json
-      - docs/packages/editor-extensions.md
+    - docs/workflows/workflow-yaml.md
+    - docs/concepts/runtime-resource-ownership.md
+    - src/lib/application/sdk_cmd.go
+    - src/lib/infrastructure/schema/workflow.schema.json
+    - docs/packages/editor-extensions.md
     skills:
-      - dorkpipe-yaml-workflows
-      - dorkpipe-package-authoring
-      - dorkpipe-core-review
-      - dorkpipe-token-optimization
+    - dorkpipe-yaml-workflows
+    - dorkpipe-package-authoring
+    - dorkpipe-core-review
+    - dorkpipe-token-optimization
     validation:
-      - ./src/bin/dockpipe workflow validate <config.yml>
-      - '"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only <package>'
-      - '"$DOCKPIPE_BIN" package compile workflows --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force'
-      - go test ./src/lib/domain ./src/lib/application
-
+    - '"$DOCKPIPE_BIN" workflow validate <config.yml>'
+    - '"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only <package>'
+    - '"$DOCKPIPE_BIN" package compile workflows --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force'
+    - python3 workflows/shared/launch.py workflows/ci/core/config.yml -- <affected-packages-and-test-arguments>
   git_runtime_sessions:
     read:
-      - AGENTS.md
-      - docs/agents/runtime/git-runtime-sessions.md
-      - docs/agents/runtime/git-runtime-auth.md
-      - docs/agents/core/architecture.md
-      - docs/agents/core/engine-boundary.md
-      - docs/agents/core/path-scopes.md
-      - docs/agents/core/core-package-model.md
-      - docs/agents/core/validation-commands.md
+    - AGENTS.md
+    - docs/agents/runtime/git-runtime-sessions.md
+    - docs/agents/runtime/git-runtime-auth.md
+    - docs/agents/core/architecture.md
+    - docs/agents/core/engine-boundary.md
+    - docs/agents/core/path-scopes.md
+    - docs/agents/core/core-package-model.md
+    - docs/agents/core/validation-commands.md
     optional:
-      - docs/runtime/git-runtime-sessions.md
-      - docs/workflows/workflow-yaml.md
-      - src/lib/infrastructure/schema/workflow.schema.json
+    - docs/runtime/git-runtime-sessions.md
+    - docs/workflows/workflow-yaml.md
+    - src/lib/infrastructure/schema/workflow.schema.json
     skills:
-      - dorkpipe-core-review
-      - dorkpipe-yaml-workflows
-      - dorkpipe-token-optimization
+    - dorkpipe-core-review
+    - dorkpipe-yaml-workflows
+    - dorkpipe-token-optimization
     escalate:
       required_for:
-        - public workspace lifecycle fields
-        - runtime-owned Git operations
-        - autonomous checkpoint or publish behavior
-        - managed workspace storage changes
+      - public workspace lifecycle fields
+      - runtime-owned Git operations
+      - autonomous checkpoint or publish behavior
+      - managed workspace storage changes
     validation:
-      - git diff --check
-      - go test ./src/lib/...
-      - make build
-
+    - git diff --check
+    - python3 workflows/shared/launch.py workflows/ci/core/config.yml -- <affected-packages-and-test-arguments>
+    - python3 workflows/shared/launch.py workflows/build/cli/config.yml -- --output /absolute/path/to/dockpipe
   package_authoring:
     read:
-      - AGENTS.md
-      - docs/agents/packages/package-authoring.md
-      - docs/agents/core/path-scopes.md
-      - docs/agents/core/core-package-model.md
-      - docs/agents/runtime/safety-guardrails.md
-      - docs/agents/core/validation-commands.md
+    - AGENTS.md
+    - docs/agents/packages/package-authoring.md
+    - docs/agents/core/path-scopes.md
+    - docs/agents/core/core-package-model.md
+    - docs/agents/runtime/safety-guardrails.md
+    - docs/agents/core/validation-commands.md
     optional:
-      - docs/packages/package-model.md
-      - docs/packages/package-quickstart.md
+    - docs/packages/package-model.md
+    - docs/packages/package-quickstart.md
     skills:
-      - dorkpipe-package-authoring
-      - dorkpipe-token-optimization
+    - dorkpipe-package-authoring
+    - dorkpipe-token-optimization
     validation:
-      - '"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only <package>'
-      - '"$DOCKPIPE_BIN" package compile workflows --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force'
-      - '"$DOCKPIPE_BIN" package compile resolvers --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force'
-
+    - '"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only <package>'
+    - '"$DOCKPIPE_BIN" package compile workflows --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force'
+    - '"$DOCKPIPE_BIN" package compile resolvers --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force'
   package_promotion:
     read:
-      - AGENTS.md
-      - docs/agents/packages/package-promotion.md
-      - docs/agents/packages/package-authoring.md
-      - docs/agents/core/core-package-model.md
-      - docs/agents/runtime/safety-guardrails.md
-      - docs/agents/core/validation-commands.md
+    - AGENTS.md
+    - docs/agents/packages/package-promotion.md
+    - docs/agents/packages/package-authoring.md
+    - docs/agents/core/core-package-model.md
+    - docs/agents/runtime/safety-guardrails.md
+    - docs/agents/core/validation-commands.md
     optional:
-      - docs/packages/package-model.md
+    - docs/packages/package-model.md
     skills:
-      - dorkpipe-package-authoring
-      - dorkpipe-core-review
-      - dorkpipe-token-optimization
+    - dorkpipe-package-authoring
+    - dorkpipe-core-review
+    - dorkpipe-token-optimization
     validation:
-      - rg --files "$PACKAGE_SOURCE"
-      - rg -n "<old-name>|<old-script>" docs src workflows .github -S
-      - '"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only <package>'
-      - '"$DOCKPIPE_BIN" package compile workflows --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force'
-      - '"$DOCKPIPE_BIN" package compile resolvers --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force'
-
+    - rg --files "$PACKAGE_SOURCE"
+    - rg -n "<old-name>|<old-script>" docs src workflows .github -S
+    - '"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only <package>'
+    - '"$DOCKPIPE_BIN" package compile workflows --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force'
+    - '"$DOCKPIPE_BIN" package compile resolvers --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force'
   agentic_ai_workflow:
     read:
-      - AGENTS.md
-      - docs/agents/workflows/yaml-workflows.md
-      - docs/agents/workflows/ai-workflow-value-bar.md
-      - docs/agents/workflows/model-escalation.md
-      - docs/agents/workflows/docs-generation.md
-      - docs/agents/workflows/planner-promotion-model.md
-      - docs/agents/runtime/safety-guardrails.md
-      - docs/agents/core/validation-commands.md
+    - AGENTS.md
+    - docs/agents/workflows/yaml-workflows.md
+    - https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/agents/workflows/ai-workflow-value-bar.md
+    - https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/agents/workflows/model-escalation.md
+    - https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/agents/workflows/docs-generation.md
+    - https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/agents/workflows/planner-promotion-model.md
+    - docs/agents/runtime/safety-guardrails.md
+    - docs/agents/core/validation-commands.md
     optional:
-      - docs/workflows/agentic-workflows.md
-      - docs/research/agentic-workflow-research-2026.md
-      - https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe/resolvers/dorkpipe/assets/docs/orchestration-contract.md
+    - docs/workflows/agentic-workflows.md
+    - docs/research/agentic-workflow-research-2026.md
+    - https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe/resolvers/dorkpipe/assets/docs/orchestration-contract.md
     skills:
-      - dorkpipe-agentic-yaml
-      - dorkpipe-yaml-workflows
-      - dorkpipe-token-optimization
+    - dorkpipe-agentic-yaml
+    - dorkpipe-yaml-workflows
+    - dorkpipe-token-optimization
     escalate:
       required_for:
-        - cloud spend policy
-        - destructive actions
-        - autonomous overnight behavior
-        - approval gates
+      - cloud spend policy
+      - destructive actions
+      - autonomous overnight behavior
+      - approval gates
     validation:
-      - ./src/bin/dockpipe workflow validate <config.yml>
-      - '"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only dorkpipe'
-
+    - '"$DOCKPIPE_BIN" workflow validate <config.yml>'
+    - '"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only dorkpipe'
   tooling_surface_change:
     read:
-      - AGENTS.md
-      - docs/agents/workflows/tooling-surfaces.md
-      - docs/agents/workflows/planner-promotion-model.md
-      - docs/agents/workflows/yaml-workflows.md
-      - docs/agents/workflows/model-escalation.md
-      - docs/agents/core/validation-commands.md
+    - AGENTS.md
+    - docs/agents/workflows/tooling-surfaces.md
+    - docs/agents/core/validation-commands.md
     optional:
-      - docs/workflows/agentic-workflows.md
-      - docs/workflows/workflow-yaml.md
-      - docs/agents/tasks/agentic-app-ui/index.yaml
-      - docs/packages/editor-extensions.md
+    - src/dockpipe-app/ARCHITECTURE.md
+    - docs/packages/editor-extensions.md
+    - docs/workflows/workflow-yaml.md
     skills:
-      - dorkpipe-agentic-yaml
-      - dorkpipe-yaml-workflows
-      - dorkpipe-token-optimization
+    - dorkpipe-core-review
     validation:
-      - ./src/bin/dockpipe workflow validate <config.yml>
-      - npm run typecheck
-
+    - Use affected GUI/editor checks from docs/agents/core/validation-commands.md; do not run unrelated package
+      or provider tests.
   docs_generation:
     read:
-      - AGENTS.md
-      - docs/agents/docs/docs-system.md
-      - docs/agents/workflows/docs-generation.md
-      - docs/agents/workflows/planner-promotion-model.md
-      - docs/agents/docs/token-optimization.md
-      - docs/agents/runtime/safety-guardrails.md
-      - docs/agents/core/validation-commands.md
+    - AGENTS.md
+    - docs/agents/docs/docs-system.md
+    - https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/agents/workflows/docs-generation.md
+    - https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/agents/workflows/planner-promotion-model.md
+    - docs/agents/docs/token-optimization.md
+    - docs/agents/runtime/safety-guardrails.md
+    - docs/agents/core/validation-commands.md
     optional:
-      - docs/workflows/agentic-workflows.md
-      - docs/workflows/workflow-yaml.md
-      - https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe/resolvers/dorkpipe/assets/docs/example-brain/index.md
+    - docs/workflows/agentic-workflows.md
+    - docs/workflows/workflow-yaml.md
+    - https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe/resolvers/dorkpipe/assets/docs/example-brain/index.md
     skills:
-      - dorkpipe-agentic-yaml
-      - dorkpipe-token-optimization
+    - dorkpipe-agentic-yaml
+    - dorkpipe-token-optimization
     validation:
-      - ./src/bin/dockpipe workflow validate <config.yml>
-      - rg -n "<old-name>|<old-script>" docs src workflows .github -S
-
+    - '"$DOCKPIPE_BIN" workflow validate <config.yml>'
+    - rg -n "<old-name>|<old-script>" docs src workflows .github -S
   artifacts_or_mcp:
     read:
-      - AGENTS.md
-      - docs/agents/runtime/artifacts-and-mcp.md
-      - docs/agents/runtime/safety-guardrails.md
+    - AGENTS.md
+    - docs/agents/runtime/artifacts-and-mcp.md
+    - docs/agents/runtime/safety-guardrails.md
     optional:
-      - docs/runtime/artifacts.md
-      - https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe-mcp/README.md
-      - https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe-mcp/mcpbridge/README.md
+    - docs/runtime/artifacts.md
+    - https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe-mcp/README.md
+    - https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe-mcp/mcpbridge/README.md
     skills:
-      - dorkpipe-core-review
+    - dorkpipe-core-review
     escalate:
       required_for:
-        - MCP exec tier
-        - artifact regeneration
+      - MCP exec tier
+      - artifact regeneration
     validation:
-      - git status --short
-
+    - git status --short
   docs_or_agent_guidance:
     read:
-      - AGENTS.md
-      - docs/agents/docs/docs-system.md
-      - docs/agents/docs/token-optimization.md
-      - docs/agents/docs/skills.md
-      - docs/agents/index.yaml
-      - docs/agents/task-index.yaml
+    - AGENTS.md
+    - docs/agents/docs/docs-system.md
+    - docs/agents/docs/token-optimization.md
+    - docs/agents/docs/skills.md
+    - docs/agents/index.yaml
+    - docs/agents/task-index.yaml
     skills:
-      - dorkpipe-token-optimization
-      - dorkpipe-core-review
+    - dorkpipe-token-optimization
+    - dorkpipe-core-review
     validation:
-      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --list
-
+    - Parse changed YAML and verify local/owner routes, task identity and status consistency.
+    - Check Markdown links, anchors, stale paths and diff whitespace without rendering or installing skills.
   backlog_or_followup_update:
     read:
-      - AGENTS.md
-      - docs/agents/docs/docs-system.md
-      - docs/agents/task-index.yaml
-      - docs/agents/core/repo-map.md
-      - docs/agents/workflows/planner-promotion-model.md
-      - docs/agents/docs/token-optimization.md
+    - AGENTS.md
+    - docs/agents/TASKS.md
+    - docs/agents/task-index.yaml
+    - docs/agents/docs/docs-system.md
     optional:
-      - docs/runtime/operation-results.md
-      - docs/runtime/git-runtime-sessions.md
-      - docs/agents/core/architecture.md
-      - https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe/resolvers/dorkpipe/assets/docs/example-brain/index.md
+    - docs/agents/core/repo-map.md
     skills:
-      - dorkpipe-token-optimization
-      - dorkpipe-core-review
+    - dorkpipe-token-optimization
+    - dorkpipe-core-review
     validation:
-      - rg -n "TASK-00|Current State|Still Open" docs/agents/task-index.yaml docs/agents/tasks -S
-
+    - Verify each open task has one owning index and synchronized dispatch metadata.
+    - Verify moved/closed records preserve provenance, outstanding limits and valid successor links.
   skills_render:
     read:
-      - AGENTS.md
-      - docs/agents/docs/docs-system.md
-      - docs/agents/docs/skills.md
-      - docs/agents/packages/package-authoring.md
-      - https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe/workflows/skills.render/config.yml
+    - AGENTS.md
+    - docs/agents/docs/docs-system.md
+    - docs/agents/docs/skills.md
+    - docs/agents/packages/package-authoring.md
+    - https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe/workflows/skills.render/config.yml
     skills:
-      - dorkpipe-package-authoring
-      - dorkpipe-token-optimization
+    - dorkpipe-package-authoring
+    - dorkpipe-token-optimization
     validation:
-      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --list
-      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run
-      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target claude --output /tmp/dorkpipe-claude-skills --dry-run
-
+    - '"$DOCKPIPE_BIN" --package dorkpipe --workflow skills.render -- --list'
+    - '"$DOCKPIPE_BIN" --package dorkpipe --workflow skills.render -- --target codex --dry-run'
+    - '"$DOCKPIPE_BIN" --package dorkpipe --workflow skills.render -- --target claude --output /tmp/dorkpipe-claude-skills
+      --dry-run'
   task_handoff:
     read:
-      - AGENTS.md
-      - docs/agents/docs/session-handoffs.md
-      - docs/agents/docs/token-optimization.md
-      - docs/agents/docs/skills.md
+    - AGENTS.md
+    - docs/agents/docs/session-handoffs.md
+    - docs/agents/docs/token-optimization.md
+    - docs/agents/docs/skills.md
     skills:
-      - dorkpipe-task-handoff
-      - dorkpipe-objective-execution
-      - dorkpipe-token-optimization
+    - dorkpipe-task-handoff
+    - dorkpipe-objective-execution
+    - dorkpipe-token-optimization
     validation:
-      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --list
-      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-objective-execution,dorkpipe-task-handoff
-
+    - Check current authority, checkout ownership, completed proof and the next boundary; do not render skills or
+      create a chat merely to validate guidance.
   objective_execution:
     read:
-      - AGENTS.md
-      - docs/agents/docs/session-handoffs.md
-      - docs/agents/docs/skills.md
-      - docs/agents/task-index.yaml
-      - docs/agents/workflows/planner-promotion-model.md
+    - AGENTS.md
+    - docs/agents/docs/session-handoffs.md
+    - docs/agents/docs/skills.md
+    - docs/agents/task-index.yaml
+    - https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/agents/workflows/planner-promotion-model.md
     skills:
-      - dorkpipe-objective-execution
-      - dorkpipe-task-handoff
+    - dorkpipe-objective-execution
+    - dorkpipe-task-handoff
     validation:
-      - bash "$PACKAGE_REPOSITORY/packages/dorkpipe/tests/test_task_skill_lifecycle.sh"
-      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-objective-execution,dorkpipe-task-handoff
-
+    - Check current authority, checkout ownership, completed proof and the next boundary; do not render skills or
+      create a chat merely to validate guidance.
   safety_or_secrets:
     read:
-      - AGENTS.md
-      - docs/agents/docs/docs-system.md
-      - docs/agents/runtime/safety-guardrails.md
-      - docs/agents/runtime/codex-sandbox-sessions.md
-      - docs/agents/runtime/artifacts-and-mcp.md
+    - AGENTS.md
+    - docs/agents/docs/docs-system.md
+    - docs/agents/runtime/safety-guardrails.md
+    - docs/agents/runtime/codex-sandbox-sessions.md
+    - docs/agents/runtime/artifacts-and-mcp.md
     optional:
-      - docs/runtime/vault.md
+    - docs/runtime/vault.md
     skills:
-      - dorkpipe-core-review
-      - dorkpipe-token-optimization
+    - dorkpipe-core-review
+    - dorkpipe-token-optimization
     escalate:
       required_for:
-        - secret handling
-        - destructive cleanup
-        - permission changes
+      - secret handling
+      - destructive cleanup
+      - permission changes
     validation:
-      - git status --short
+    - git status --short

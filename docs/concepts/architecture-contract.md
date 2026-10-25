@@ -110,7 +110,7 @@ for the ownership and migration contract.
 3. **Resolver must NEVER define or control the environment** (no Docker, EC2, or infrastructure logic inside **resolver**).
 4. **runtime.type is ONLY a classification** and must **NOT** depend on implementation (Docker, EC2, browser, etc.).
 5. **Workflows must NOT encode runtime or resolver behavior internally** (no embedding of isolation or tool choice as the only way to run).
-6. **Templates are scaffolding only** and must **NOT** define architecture, behavior, or classification. Bundled `templates/` trees are **examples and file layout** for `dockpipe init` / samples — not the **definition** of workflow, runtime, resolver, strategy, or `runtime.type`.
+6. **Templates are scaffolding only** and must **NOT** define architecture, behavior, or classification. Explicit template sources are **examples and file layout** for `dockpipe init --from` — not the **definition** of workflow, runtime, resolver, strategy, or `runtime.type`.
 7. **Packaged workflow invocation:** a parent step that runs a **packaged** (namespaced) workflow uses the explicit **`workflow:`** + **`package:`** step form. Do not route it through **`runtime`**.
 
 ---
@@ -159,7 +159,7 @@ Each valid run is characterized by **all** of:
 | workflow | `secretstore` (or any host `kind: host` flow with env from a vault) |
 | runtime | `dockerimage` with host steps where needed; secret merge is **resolver**-owned. |
 | runtime.type | `execution` |
-| resolver | e.g. bundled **`dotenv`** (plain env file) or maintainer **`onepassword`** (`op`); other vaults are **other resolver profiles**, not other runtimes. |
+| resolver | e.g. an installed **`dotenv`** resolver (plain env file) or maintainer **`onepassword`** (`op`); other vaults are **other resolver profiles**, not other runtimes. |
 
 **Example 5**
 

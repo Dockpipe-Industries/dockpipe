@@ -2,13 +2,13 @@
 
 **Most users:** run **`dockpipe.exe` natively on Windows** (Docker Desktop + Git for Windows) and ignore this page — worktrees and commit-on-host use **Windows git** only.
 
-This doc is **only** for a **niche** flow: moving refs between a **WSL** clone and a **Windows** clone **via git bundle** (no remote), or related **mixed-environment** git gymnastics. It is **not** required for normal Dockpipe on Windows.
+Use this optional flow to transfer committed branches from a WSL clone to a Windows clone through a Git bundle, without a remote. Native Dockpipe on Windows does not require it.
 
 ---
 
 Get branches from a repo in WSL into your Windows clone **without pushing to a remote**. Dockpipe can write a git bundle when it commits on the host; you then fetch that bundle from PowerShell.
 
-**Install `dockpipe.exe` first** (MSI, script, or zip) — see **[../install.md](../install.md)** (Windows section). Quick option: `irm https://raw.githubusercontent.com/Dockpipe-Industries/dockpipe/master/workflows/install/windows/assets/scripts/install.ps1 | iex`
+Install the CLI for each environment you use; see [installation](../install.md). The examples below assume Dockpipe and the selected resolver are installed in WSL, and Git is installed on Windows.
 
 **WSL bridge users** may also read the sections below; the **default** Windows story remains **native `dockpipe.exe`**, not bundle fetch.
 
@@ -27,7 +27,7 @@ This configures the target distro, bootstraps WSL host-awareness env (`DOCKPIPE_
 
 - **Workflow (worktree strategy + commit-worktree):** work happens in **one new worktree branch** (e.g. `claude/…` or `codex/…`); the **commit** is only on that branch’s tree. From the CLI this feels like a single branch.
 - **The bundle file:** after commit-on-host, dockpipe runs **`git bundle create <path> refs/heads/<current-branch>`** (or **`HEAD`** if detached) — only the branch that was committed, so the file is usually **smaller** than `--all` when other branches have unique commits. Set **`DOCKPIPE_BUNDLE_ALL=1`** to restore the old **`--all`** behavior (see [`commit.go`](../../src/lib/infrastructure/commit.go)).
-- **Windows fetch:** the pain you hit (`refusing to fetch into branch … checked out`) is **Git on Windows**, not the bridge. A bare **`git fetch <bundle>`** (or `+refs/heads/*:refs/heads/*`) tries to move **local** `refs/heads/…` and **fails for the branch you have checked out**. Fetch resolver branches into **`refs/remotes/wsl/…`** first (and only then update other local branches), or restrict refspecs to **`claude/*`** / **`codex/*`** if that’s all you need.
+- **Windows fetch:** an explicit `+refs/heads/*:refs/heads/*` refspec updates local branches and is refused for a checked-out branch. Fetch into **`refs/remotes/wsl/…`** first. A plain `git fetch <bundle>` normally records `FETCH_HEAD`; it does not imply that local-branch refspec.
 
 ### Running dockpipe from Windows
 
@@ -45,31 +45,40 @@ Run dockpipe in WSL (worktree, commit, bundle) then fetch the bundle into your W
 .\Run-DockpipeWorktreeThenFetch.ps1 -RepoUrl "https://github.com/org/repo.git" -Branch "my-branch" -Prompt "Fix the bug" -WindowsRepo "C:\Source\YOUR_REPO" -BundlePath "C:\Users\YOUR_USER\YOUR_REPO.bundle"
 ```
 
-Optional: `-Resolver codex`, or `-DockpipePath "/home/YOUR_USER/source/dockpipe"` if dockpipe is not on your WSL PATH.
+This example assumes an installed `claude` resolver and CLI. Set `-DockpipeExecutable` to an absolute WSL executable path if Dockpipe is not on that distro’s `PATH`. The worktree strategy creates a branch and commits successful changes before writing the bundle; use it only when you intend those Git actions.
 
 **Run-DockpipeWorktreeThenFetch.ps1:**
 
 ```powershell
-# Run dockpipe in WSL (worktree + commit + bundle-out), then fetch the bundle into your Windows repo.
 param(
     [Parameter(Mandatory = $true)] [string] $RepoUrl,
     [Parameter(Mandatory = $true)] [string] $Branch,
     [Parameter(Mandatory = $true)] [string] $Prompt,
     [Parameter(Mandatory = $true)] [string] $WindowsRepo,
     [Parameter(Mandatory = $true)] [string] $BundlePath,
-    [ValidateSet("claude", "codex")] [string] $Resolver = "claude",
-    [string] $DockpipePath
+    [string] $DockpipeExecutable = "dockpipe"
 )
-$root = [System.IO.Path]::GetPathRoot($BundlePath)
-$drive = $root.TrimEnd(':\').ToLower()
-$rel = $BundlePath.Substring($root.Length) -replace '\\', '/'
-$BundlePathWsl = "/mnt/$drive/$rel"
-$dockpipeCmd = if ($DockpipePath) { "cd ""$DockpipePath"" && ./src/bin/dockpipe" } else { "dockpipe" }
-$resolverArg = switch ($Resolver) { "claude" { "claude -p" }; "codex" { "codex -p" }; default { "claude -p" } }
-$PromptEscaped = "'" + ($Prompt -replace "'", "'\\''") + "'"
-$wslCmd = "$dockpipeCmd --resolver $Resolver --repo ""$RepoUrl"" --branch ""$Branch"" --act scripts/commit-worktree.sh --bundle-out ""$BundlePathWsl"" -- $resolverArg $PromptEscaped"
-wsl -e sh -c $wslCmd
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$ErrorActionPreference = "Stop"
+$BundlePath = [System.IO.Path]::GetFullPath($BundlePath)
+$BundlePathWsl = wsl --exec wslpath -u $BundlePath
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+$BundlePathWsl = $BundlePathWsl.Trim()
+
+# Pass distinct arguments; do not interpolate the prompt into a shell program.
+$arguments = @(
+    "--exec", $DockpipeExecutable,
+    "--strategy", "worktree", "--resolver", "claude",
+    "--repo", $RepoUrl, "--branch", $Branch,
+    "--bundle-out", $BundlePathWsl,
+    "--", "claude", "-p", $Prompt
+)
+wsl @arguments
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 & "$scriptDir\FetchFromBundle.ps1" -WindowsRepo $WindowsRepo -BundlePath $BundlePath
 exit $LASTEXITCODE
@@ -81,10 +90,10 @@ exit $LASTEXITCODE
 
 ### 1. Generate the bundle (in WSL)
 
-Use a path under `/mnt/c/...` so Windows can see the file.
+Use a path under `/mnt/c/...` so Windows can see the file. This invokes the compatibility worktree strategy, including its commit-on-success hook; it requires the installed `claude` resolver.
 
 ```bash
-dockpipe --workflow my-ai --resolver claude --repo https://github.com/org/repo.git --branch my-branch \
+dockpipe --strategy worktree --resolver claude --repo https://github.com/org/repo.git --branch my-branch \
   --bundle-out /mnt/c/Users/YOUR_USER/YOUR_REPO.bundle \
   -- claude -p "Your prompt"
 ```
@@ -108,27 +117,48 @@ param(
 )
 $ErrorActionPreference = "Stop"
 if ($WSLRepoPath) {
-    $root = [System.IO.Path]::GetPathRoot($BundlePath)
-    $drive = $root.TrimEnd(':\').ToLower()
-    $rel = $BundlePath.Substring($root.Length) -replace '\\', '/'
-    $BundlePathWsl = "/mnt/$drive/$rel"
-    wsl -e sh -c "cd ""$WSLRepoPath"" && git bundle create ""$BundlePathWsl"" --all"
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    $BundlePath = [System.IO.Path]::GetFullPath($BundlePath)
+    $BundlePathWsl = wsl --exec wslpath -u $BundlePath
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+    $BundlePathWsl = $BundlePathWsl.Trim()
+    wsl --exec git -C $WSLRepoPath bundle create $BundlePathWsl --all
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
 }
+$BundlePath = [System.IO.Path]::GetFullPath($BundlePath)
 Set-Location $WindowsRepo
 git fetch $BundlePath "+refs/heads/*:refs/remotes/wsl/*"
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
 
 if ($MirrorLocalBranches) {
-    $current = (git branch --show-current 2>$null).Trim()
+    $current = git branch --show-current
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
     $refs = git for-each-ref "refs/remotes/wsl" --format="%(refname)"
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
     foreach ($ref in $refs) {
-        if ($ref -notmatch '^refs/remotes/wsl/(.+)$') { continue }
+        if ($ref -notmatch '^refs/remotes/wsl/(.+)$') {
+            continue
+        }
         $name = $Matches[1]
-        if ($OnlyResolverBranches -and ($name -notmatch '^(claude|codex)/')) { continue }
-        if ($name -eq $current) { continue }
-        git show-ref -q --verify "refs/heads/$name" 2>$null | Out-Null
-        if ($LASTEXITCODE -eq 0) { git branch -f $name $ref } else { git branch $name $ref }
+        if ($OnlyResolverBranches -and ($name -notmatch '^(claude|codex)/')) {
+            continue
+        }
+        if ($name -eq $current) {
+            continue
+        }
+        git branch -f $name $ref
+        if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+        }
     }
 }
 exit 0
@@ -142,6 +172,6 @@ Run:
 
 To create the bundle from an existing WSL repo (no dockpipe): pass `-WSLRepoPath "/home/YOUR_USER/source/YOUR_REPO"`.
 
-To also align **local** branch tips with the bundle (except the branch you have checked out): add **`-MirrorLocalBranches`**. If the bundle was built with **`--all`** and you only want **claude/** and **codex/** locals: **`-MirrorLocalBranches -OnlyResolverBranches`**.
+To also force local branch tips to the imported refs (except the current branch), add **`-MirrorLocalBranches`**. This can replace a local branch’s unmerged tip; review the refs first. Git refuses branches checked out in other worktrees, and the script stops on that error. If the bundle was built with **`--all`** and you only want **claude/** and **codex/** locals: **`-MirrorLocalBranches -OnlyResolverBranches`**.
 
 **Even smaller bundles (optional):** Git can pack only commits not reachable from a basis (e.g. `origin/main..HEAD`), but dockpipe does not pick a basis for you; the default **single-branch** bundle already drops **other branch tips** and their unique commits from the pack.

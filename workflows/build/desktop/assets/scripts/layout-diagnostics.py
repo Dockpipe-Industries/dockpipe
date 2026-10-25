@@ -13,7 +13,7 @@ import time
 
 INTERVAL_SECONDS = 5
 MAX_SAMPLES = 4320  # Six-hour hosted-job ceiling; no per-process inspection.
-SOURCE_PATHS = ('src/app/tooling/dockpipe-launcher',
+SOURCE_PATHS = ('src/dockpipe-app',
                 'workflows/dependencies/browser-sdk/assets/spatialweb-browser.lock.json')
 
 

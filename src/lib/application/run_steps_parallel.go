@@ -5,18 +5,16 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
 	"dockpipe/src/lib/application/internal/runtimepolicy"
-	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 )
 
 func runParallelBatch(o *runStepsOpts, from, to, n int, dockerEnv map[string]string) error {
-	if err := validateParallelOutputPaths(o.wf, from, to); err != nil {
-		return err
-	}
+	o = o.withExecutionServices()
 	if err := validateParallelNoResolverDelegate(o, from, to); err != nil {
 		return err
 	}
@@ -27,6 +25,19 @@ func runParallelBatch(o *runStepsOpts, from, to, n int, dockerEnv map[string]str
 	fmt.Fprintf(os.Stderr, "[dockpipe] --- Parallel batch steps %d–%d (non-blocking) ---\n", from+1, to)
 	baseEnv := maps.Clone(o.envMap)
 	baseDocker := maps.Clone(dockerEnv)
+	states := make([]preparedStepState, to-from)
+	outputPaths := make([]string, len(states))
+	for idx := from; idx < to; idx++ {
+		state, err := prepareParallelStep(o, idx, baseEnv, baseDocker)
+		if err != nil {
+			return err
+		}
+		states[idx-from] = state
+		outputPaths[idx-from] = state.outputsPath
+	}
+	if err := validateParallelOutputPaths(outputPaths, from); err != nil {
+		return err
+	}
 
 	if err := prefetchDockerBuildsForBatch(o, from, to, n, baseEnv, baseDocker); err != nil {
 		return err
@@ -40,7 +51,7 @@ func runParallelBatch(o *runStepsOpts, from, to, n int, dockerEnv map[string]str
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := runParallelStepWorker(o, idx, n, from, baseEnv, baseDocker); err != nil {
+			if err := runParallelStepWorker(o, idx, n, from, &states[idx-from]); err != nil {
 				mu.Lock()
 				if batchErr == nil {
 					batchErr = err
@@ -59,22 +70,38 @@ func runParallelBatch(o *runStepsOpts, from, to, n int, dockerEnv map[string]str
 	for idx := from; idx < to; idx++ {
 		step := o.wf.Steps[idx]
 		src := step.DisplayName(idx)
-		applyOutputsFile(stepOutputsAbsPath(o, step, o.envMap), o.envMap, dockerEnv, o.locked, mergeLog, src)
+		applyOutputsFile(states[idx-from].outputsPath, o.envMap, dockerEnv, o.locked, mergeLog, src)
 	}
-	o.envSlice = domain.EnvMapToSlice(o.envMap)
 	return nil
 }
 
-func validateParallelOutputPaths(wf *domain.Workflow, from, to int) error {
+func validateParallelOutputPaths(paths []string, from int) error {
 	seen := make(map[string]struct{})
-	for i := from; i < to; i++ {
-		p := wf.Steps[i].OutputsPath()
-		if _, ok := seen[p]; ok {
-			return fmt.Errorf("parallel steps %d+: duplicate outputs path %q (set distinct outputs: per step)", i+1, p)
+	for offset, path := range paths {
+		p, err := filepath.Abs(path)
+		if err != nil {
+			return err
 		}
-		seen[p] = struct{}{}
+		p = filepath.Clean(p)
+		key := parallelOutputPathKey(p, runtime.GOOS)
+		if _, ok := seen[key]; ok {
+			return fmt.Errorf("parallel steps %d+: duplicate outputs path %q (set distinct outputs: per step)", from+offset+1, p)
+		}
+		seen[key] = struct{}{}
 	}
 	return nil
+}
+
+func parallelOutputPathKey(path, operatingSystem string) string {
+	path = filepath.Clean(path)
+	if operatingSystem == "windows" {
+		return strings.ToLower(path)
+	}
+	return path
+}
+
+func prepareParallelStep(o *runStepsOpts, idx int, baseEnv, baseDocker map[string]string) (preparedStepState, error) {
+	return prepareStepState(o, o.wf.Steps[idx], idx, maps.Clone(baseEnv), maps.Clone(baseDocker))
 }
 
 func validateParallelNoResolverDelegate(o *runStepsOpts, from, to int) error {
@@ -116,6 +143,7 @@ func validateParallelNoHostCommit(o *runStepsOpts, from, to int) error {
 }
 
 func prefetchDockerBuildsForBatch(o *runStepsOpts, from, to, n int, baseEnv, baseDocker map[string]string) error {
+	o = o.withExecutionServices()
 	done := make(map[string]struct{})
 	buildAnnounced := false
 	for idx := from; idx < to; idx++ {
@@ -126,9 +154,8 @@ func prefetchDockerBuildsForBatch(o *runStepsOpts, from, to, n int, baseEnv, bas
 		if step.UsesPackagedWorkflow() {
 			continue
 		}
-		localEnv := maps.Clone(baseEnv)
-		localDocker := maps.Clone(baseDocker)
-		if err := applyStepEnvOverrides(o, step, idx, localEnv, localDocker); err != nil {
+		state, err := prepareParallelStep(o, idx, baseEnv, baseDocker)
+		if err != nil {
 			return err
 		}
 		ra, _, _, err := loadStepResolver(o, step, idx)
@@ -138,13 +165,13 @@ func prefetchDockerBuildsForBatch(o *runStepsOpts, from, to, n int, baseEnv, bas
 		if stepUsesResolverDelegate(ra) {
 			return fmt.Errorf("internal: resolver delegate in parallel batch should have been rejected")
 		}
-		_, runOpts, buildDir, buildCtx, rm, err := buildStepContainer(o, idx, n, step, localEnv, localDocker, ra)
+		_, runOpts, buildDir, buildCtx, rm, err := buildStepContainer(o, idx, n, step, state.env, state.dockerEnv, ra)
 		if err != nil {
 			return err
 		}
 		if buildDir == "" || buildCtx == "" {
 			if rm != nil {
-				msg, err := ensureCompiledRegistryImageForStep(rm)
+				msg, err := o.executionServices().ensureRegistryImage(rm)
 				if err != nil {
 					return err
 				}
@@ -163,7 +190,7 @@ func prefetchDockerBuildsForBatch(o *runStepsOpts, from, to, n int, baseEnv, bas
 		if rm != nil {
 			policyFingerprint = strings.TrimSpace(rm.PolicyFingerprint)
 		}
-		skipBuild, msg, err := maybeSkipDockerBuildForStep(o.projectRoot, o.repoRoot, o.wfConfig, o.wfRoot, stepRunPolicyID(step, idx), policyFingerprint, runOpts.Image, buildDir, buildCtx)
+		skipBuild, msg, err := o.executionServices().skipDockerBuild(o.projectRoot, o.repoRoot, o.wfConfig, o.wfRoot, stepRunPolicyID(step, idx), policyFingerprint, runOpts.Image, buildDir, buildCtx)
 		if err != nil {
 			return err
 		}
@@ -178,7 +205,7 @@ func prefetchDockerBuildsForBatch(o *runStepsOpts, from, to, n int, baseEnv, bas
 			fmt.Fprintf(os.Stderr, "[dockpipe] image: materializing image artifact (docker)…\n")
 			buildAnnounced = true
 		}
-		if err := dockerBuildFn(runOpts.Image, buildDir, buildCtx); err != nil {
+		if err := o.executionServices().dockerBuild(runOpts.Image, buildDir, buildCtx); err != nil {
 			return err
 		}
 		policyFingerprint = ""
@@ -194,15 +221,11 @@ func prefetchDockerBuildsForBatch(o *runStepsOpts, from, to, n int, baseEnv, bas
 	return nil
 }
 
-func runParallelStepWorker(o *runStepsOpts, idx, n, batchStart int, baseEnv, baseDocker map[string]string) error {
+func runParallelStepWorker(o *runStepsOpts, idx, n, batchStart int, state *preparedStepState) error {
+	o = o.withExecutionServices()
 	step := o.wf.Steps[idx]
-	localEnv := maps.Clone(baseEnv)
-	localDocker := maps.Clone(baseDocker)
-
-	if err := applyStepEnvOverrides(o, step, idx, localEnv, localDocker); err != nil {
-		return err
-	}
-	envSlice := domain.EnvMapToSlice(localEnv)
+	localEnv := state.env
+	localDocker := state.dockerEnv
 
 	var pre []string
 	for _, r := range step.RunPaths() {
@@ -216,7 +239,7 @@ func runParallelStepWorker(o *runStepsOpts, idx, n, batchStart int, baseEnv, bas
 		if p == "" {
 			continue
 		}
-		if _, err := osStatFn(p); err != nil {
+		if _, err := o.executionServices().stat(p); err != nil {
 			return fmt.Errorf("pre-script not found: %s", p)
 		}
 		ids := map[string]string{
@@ -229,7 +252,7 @@ func runParallelStepWorker(o *runStepsOpts, idx, n, batchStart int, baseEnv, bas
 				shell = ""
 			}
 			_, err := infrastructure.RunOperationWithResultOptions(os.Stderr, "host.setup", hostSpinnerLabel(p), ids, hostSetupOperationOptions(), func() error {
-				return runHostStepScript(shell, p, appendUniqueEnv(envSliceWithScriptContext(envSlice, p), "DOCKPIPE_HOST_SCRIPT_SPINNER=false"))
+				return o.executionServices().runHostStepScript(shell, p, appendUniqueEnv(envSliceWithScriptContext(state.hostEnvironment(), p), "DOCKPIPE_HOST_SCRIPT_SPINNER=false"))
 			})
 			if err != nil {
 				return err
@@ -239,7 +262,7 @@ func runParallelStepWorker(o *runStepsOpts, idx, n, batchStart int, baseEnv, bas
 		var em map[string]string
 		_, err := infrastructure.RunOperationWithResultOptions(os.Stderr, "host.setup", hostSpinnerLabel(p), ids, hostSetupOperationOptions(), func() error {
 			var opErr error
-			em, opErr = sourceHostScriptFn(p, envSliceWithScriptContext(envSlice, p))
+			em, opErr = o.executionServices().sourceHostScript(p, envSliceWithScriptContext(state.hostEnvironment(), p))
 			return opErr
 		})
 		if err != nil {
@@ -248,16 +271,21 @@ func runParallelStepWorker(o *runStepsOpts, idx, n, batchStart int, baseEnv, bas
 		for k, v := range em {
 			localEnv[k] = v
 		}
-		envSlice = domain.EnvMapToSlice(localEnv)
 	}
+	state.refreshOutputsPath(o, step)
 
 	if step.UsesPackagedWorkflow() {
 		return fmt.Errorf("parallel step %d: packaged workflow steps are not supported in async groups (use is_blocking: true)", idx+1)
 	}
 
 	if step.IsHostStep() {
+		localOpts := *o
+		localOpts.envMap = localEnv
+		if err := runStepHostBuiltin(&localOpts, step); err != nil {
+			return err
+		}
 		if cmd := strings.TrimSpace(step.CmdLine()); cmd != "" {
-			if err := runHostStepCommand(step.Shell, cmd, envSlice); err != nil {
+			if err := o.executionServices().runHostStepCommand(step.Shell, cmd, state.hostEnvironment()); err != nil {
 				return err
 			}
 		}
@@ -275,7 +303,7 @@ func runParallelStepWorker(o *runStepsOpts, idx, n, batchStart int, baseEnv, bas
 	if err != nil {
 		return err
 	}
-	workdir := firstNonEmpty(o.projectRoot, o.opts.Workdir, localEnv["DOCKPIPE_WORKDIR"], o.repoRoot, mustGetwd())
+	workdir := firstNonEmpty(o.projectRoot, o.opts.Workdir, localEnv["DOCKPIPE_WORKDIR"], o.repoRoot, o.executionServices().workingDirectory())
 	if rm != nil && rm.PolicySources.StepOverride {
 		for _, line := range runtimepolicy.CompiledRuntimePolicyLogLines(rm) {
 			fmt.Fprintf(os.Stderr, "[dockpipe] %s\n", line)
@@ -284,7 +312,7 @@ func runParallelStepWorker(o *runStepsOpts, idx, n, batchStart int, baseEnv, bas
 	if err := writeRunPolicyRecord(workdir, strings.TrimSpace(o.wf.Name), o.wfConfig, stepRunPolicyID(step, idx), runOpts.Image, "", rm); err != nil {
 		return err
 	}
-	rc, err := runContainerFn(runOpts, argv)
+	rc, err := o.executionServices().runContainer(runOpts, argv)
 	if err != nil {
 		return err
 	}

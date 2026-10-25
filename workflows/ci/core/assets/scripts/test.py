@@ -10,8 +10,13 @@ INTENTIONAL_INPUTS = ('DOCKPIPE_TEST_', 'DOCKPIPE_BOOTSTRAP_', 'DOCKPIPE_GO_SDK_
 
 
 def unit_environment(environment, root):
+    root = root.resolve(strict=True)
     selected = {key: value for key, value in environment.items()
                 if not key.startswith('DOCKPIPE_') or key.startswith(INTENTIONAL_INPUTS)}
+    # macOS exposes its default temporary directory through the /var symlink.
+    # Keep fixtures on canonical paths without relaxing runtime path guards.
+    for key in ('TMPDIR', 'TMP', 'TEMP'):
+        selected[key] = str(root)
     for key, directory in (('DOCKPIPE_GLOBAL_ROOT', 'global'), ('DOCKPIPE_SYSTEM_ROOT', 'system')):
         path = root / directory
         path.mkdir()

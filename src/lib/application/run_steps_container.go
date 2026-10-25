@@ -75,7 +75,7 @@ func buildStepContainer(o *runStepsOpts, i, n int, step domain.Step, envMap, doc
 	actionPath := actAbs
 	commitOnHost := false
 	if actionPath != "" {
-		if _, err := osStatFn(actionPath); err != nil {
+		if _, err := o.executionServices().stat(actionPath); err != nil {
 			return nil, runOpts, "", "", nil, fmt.Errorf("action script not found: %s", actionPath)
 		}
 		if infrastructure.IsBundledCommitWorktree(actionPath, o.repoRoot) {

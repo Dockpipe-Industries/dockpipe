@@ -86,7 +86,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
                 self.assertIn('--output-junit $embeddingReport', ctest_commands[1])
                 self.assertIn('--timeout 120 --stop-on-failure', ctest_commands[2])
                 self.assertIn('--require desktop-app-window-win', scripts)
-                self.assertRegex(scripts, r"(?s)if \(\$LASTEXITCODE -ne 0\) \{\s+try \{\s+& ./src/app/tooling/dockpipe-launcher/tests/TraceWindowsFixtureLoader.ps1.*?throw 'Native embedding qualification failed\.'")
+                self.assertRegex(scripts, r"(?s)if \(\$LASTEXITCODE -ne 0\) \{\s+try \{\s+& ./src/dockpipe-app/tests/TraceWindowsFixtureLoader.ps1.*?throw 'Native embedding qualification failed\.'")
                 self.assertIn("if ($qualificationExit -ne 0) { throw 'Native terminal qualification failed.' }", scripts)
                 continue
             self.assertIn("browser-extensions-test", scripts)
@@ -225,7 +225,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
                              if step.get("name") == "Verify public publisher and qualify installed Cockpit")
         script = expanded(qualification["run"])
         self.assertIn("--lock workflows/qualify/cockpit/assets/cockpit.lock.json", script)
-        self.assertIn('cmake -S src/app/tooling/dockpipe-launcher', script)
+        self.assertIn('cmake -S src/dockpipe-app', script)
         self.assertIn('-DDOCKPIPE_COCKPIT_ASSETS="$RUNNER_TEMP/cockpit-runtime/package/resolvers/cockpit/assets"', script)
         prepare = script.index("prepare-cockpit.py prepare")
         configure = script.index("cmake -S ")
@@ -327,67 +327,32 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertEqual(concurrency["cancel-in-progress"], "false")
         self.assertTrue(concurrency["group"].endswith("|| 'publish' }}"))
 
-    def test_published_notes_use_generated_version_without_editing_source(self):
+    def test_release_notes_are_generated_only_in_publication_jobs(self):
+        for job_name in ("publish", "publish-staging"):
+            job = self.jobs[job_name]
+            step = next(step for step in job["steps"] if step.get("name") == "Create GitHub release")
+            self.assertEqual(step["with"]["generate_release_notes"], "true")
+            self.assertEqual(step["with"]["previous_tag"], "${{ needs.meta.outputs.previous_tag }}")
+            self.assertEqual(step["with"]["body_path"], "release/artifacts/RELEASE_NOTES.md")
+        self.assertEqual(self.jobs["assemble"]["permissions"]["contents"], "read")
         step = next(step for step in self.jobs["assemble"]["steps"]
                     if step.get("name") == "Prepare release notes body")
-        script = step["run"].replace("${{ needs.meta.outputs.notes_version }}", "0.6.0")
-        script = script.replace("${{ needs.meta.outputs.version }}", "0.6.12")
+        self.assertIn("workflows/release/metadata/notes.yml", step["run"])
+        self.assertNotIn("releasenotes/", WORKFLOW.read_text())
+
+    def test_ship_gate_validates_version_without_a_notes_file(self):
+        ci = yaml.load((REPOSITORY / '.github/workflows/ci.yml').read_text(), Loader=yaml.BaseLoader)
+        gate = next(step for step in ci["jobs"]["test"]["steps"]
+                    if step.get("name") == "Release version (PRs targeting master only)")
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            notes = root / "release/releasenotes/0.6.0.md"
-            notes.parent.mkdir(parents=True)
-            (root / "release/artifacts").mkdir()
-            original = "# v0.6.0\nDownload dockpipe_0.6.0_amd64.deb\nKeep 10.6.0 and 0.6.01\n"
-            notes.write_text(original)
-            subprocess.run(["bash", "-c", script], cwd=root, check=True)
-            self.assertEqual(notes.read_text(), original)
-            self.assertEqual((root / "release/artifacts/RELEASE_NOTES.md").read_text(),
-                             "# v0.6.12\nDownload dockpipe_0.6.12_amd64.deb\nKeep 10.6.0 and 0.6.01\n")
-
-    def run_release_notes_gate(self, changed_paths):
-        ci = yaml.load((Path(__file__).resolve().parents[4] / '.github/workflows/ci.yml').read_text(), Loader=yaml.BaseLoader)
-        gate = next(step for step in ci["jobs"]["test"]["steps"]
-                    if step.get("name") == "Release notes (PRs targeting master only)")
-        script = gate["run"].replace("${{ github.event.pull_request.base.sha }}", "base")
-        script = script.replace("${{ github.event.pull_request.head.sha }}", "head")
-        with tempfile.TemporaryDirectory(prefix="dockpipe-release-notes-gate-") as temporary:
-            root = Path(temporary)
-            (root / "VERSION").write_text("0.6.0\n")
-            notes = root / "release/releasenotes/0.6.0.md"
-            notes.parent.mkdir(parents=True)
-            notes.write_text("Release notes\n")
-            changed = root / "changed-paths.txt"
-            changed.write_text("\n".join(changed_paths) + "\n")
-            binaries = root / "bin"
-            binaries.mkdir()
-            git = binaries / "git"
-            git.write_text(
-                '#!/usr/bin/env bash\n'
-                'case "$*" in\n'
-                '  "show base:VERSION") printf "0.5.3\\n" ;;\n'
-                '  "diff --name-only base head") cat "$TEST_CHANGED_PATHS" ;;\n'
-                '  *) exit 2 ;;\n'
-                'esac\n'
-            )
-            git.chmod(0o755)
-            environment = dict(os.environ, PATH=str(binaries) + os.pathsep + os.environ["PATH"],
-                               TEST_CHANGED_PATHS=str(changed))
-            return subprocess.run(["bash", "-c", script], cwd=root, env=environment,
-                                  capture_output=True, text=True)
-
-    def test_release_notes_gate_accepts_a_large_change_set(self):
-        paths = ["release/releasenotes/0.6.0.md"]
-        paths.extend(f"packages/example/workflows/workflow-{number}/assets/script.sh" for number in range(10000))
-        result = self.run_release_notes_gate(paths)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("OK: shipping 0.6.0", result.stdout)
-
-    def test_release_notes_gate_requires_the_exact_notes_path(self):
-        for paths in (["VERSION"], ["release/releasenotes/0x6x0xmd"]):
-            with self.subTest(paths=paths):
-                result = self.run_release_notes_gate(paths)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertIn("This PR must modify release/releasenotes/0.6.0.md", result.stdout)
+            for version, valid in [("0.6.29", True), ("1.0.0", True), ("0.06.0", False),
+                                   ("1.2", False), ("1.2.3-rc1", False)]:
+                with self.subTest(version=version):
+                    (root / "VERSION").write_text(version + "\n")
+                    result = subprocess.run(["bash", "-c", gate["run"]], cwd=root,
+                                            capture_output=True, text=True)
+                    self.assertEqual(result.returncode == 0, valid, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":

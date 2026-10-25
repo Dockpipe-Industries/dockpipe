@@ -76,8 +76,8 @@ class DisplaySDKProducerTests(unittest.TestCase):
             root = Path(temporary)
             for relative in (
                 "LICENSE", "workflows/build/display-sdk/assets/scripts/build.py", "workflows/shared/archive.py",
-                PRODUCER.LAUNCHER / "src/LauncherDisplayPackage.h",
-                PRODUCER.LAUNCHER / "src/LauncherNativeLibraryScope.h",
+                PRODUCER.LAUNCHER / "src/host-sdk/contracts/LauncherDisplayPackage.h",
+                PRODUCER.LAUNCHER / "src/packages/infrastructure/LauncherNativeLibraryScope.h",
                 PRODUCER.LAUNCHER / "display-sdk/CMakeLists.txt",
                 PRODUCER.LAUNCHER / "display-sdk/tests/consumer/main.cpp",
             ):

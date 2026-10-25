@@ -29,4 +29,4 @@ python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml
 
 A standalone CLI contains no catalog packages. A caller may explicitly supply a validated optional store. Historical manifests may retain a legacy core archive for readback; builds do not compile or require one. Optional catalog qualification and publication are separate operations.
 
-Shared helpers contain generic archive, bootstrap and launch behavior. Artifact-specific policy stays with its owning producer or publisher. Public release notes and articles remain in `release/`.
+Shared helpers contain generic archive, bootstrap and launch behavior. Artifact-specific policy stays with its owning producer or publisher. Release notes are generated under `release/artifacts/`; reviewed announcement content remains in `release/articles/announcement.md`.

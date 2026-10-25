@@ -3,11 +3,11 @@
 set -euo pipefail
 root="${DOCKPIPE_SOURCE_ROOT:?Workflow source scope required}"
 stage="${DOCKPIPE_ARTIFACT_ROOT:?Workflow artifact scope required}/desktop"
-build="$root/src/app/tooling/dockpipe-launcher/build"
+build="$root/src/dockpipe-app/build"
 mkdir -p "$stage/bin" "$stage/share/icons/hicolor"
 install -m 755 "$build/dockpipe-launcher" "$stage/bin/dockpipe-launcher"
-cp -R "$root/src/app/tooling/dockpipe-launcher/resources/icons/hicolor/." "$stage/share/icons/hicolor/"
-install -m 644 "$root/src/app/tooling/dockpipe-launcher/resources/images/dockpipe-launcher.png" "$stage/share/icons/dockpipe-launcher.png"
+cp -R "$root/src/dockpipe-app/resources/icons/hicolor/." "$stage/share/icons/hicolor/"
+install -m 644 "$root/src/dockpipe-app/resources/images/dockpipe-launcher.png" "$stage/share/icons/dockpipe-launcher.png"
 if [[ "${1:-}" != --global ]]; then
   printf 'Staged desktop at %s\n' "$stage"
   exit 0
@@ -20,7 +20,7 @@ cp -R "$stage/share/icons/hicolor/." "$HOME/.local/share/icons/hicolor/"
 printf '%s\n' \
   '[Desktop Entry]' \
   'Type=Application' \
-  'Name=Dockpipe Launcher' \
+  'Name=Dockpipe' \
   'Exec=/usr/bin/env -u DESKTOP_STARTUP_ID -u XDG_ACTIVATION_TOKEN '"$HOME"'/.local/share/dockpipe/bin/dockpipe-launcher --start-home' \
   'Icon=dockpipe-launcher' \
   'Terminal=false' \

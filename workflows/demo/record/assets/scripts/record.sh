@@ -3,7 +3,7 @@
 # The test-demo review step is resolver-driven (codex) inside runtime docker; Codex inner sandbox is
 # off via workflow YAML (--dangerously-bypass-approvals-and-sandbox) — see templates/core/resolvers/codex/README.md
 # Requires OPENAI_API_KEY (and/or CODEX_API_KEY) for the final Codex step (export or .env before recording).
-# Requires: asciinema, agg, Docker, and a built CLI (make build).
+# Requires: asciinema, agg, Docker, and a built CLI (make -f tooling/Makefile build).
 #
 # Usage: bash workflows/demo/record/assets/scripts/record.sh [short|long|all]
 #   short — compact GIF (social / quick share)
@@ -31,7 +31,7 @@ print_record_deps_help() {
 
 Missing tools for demo recording. Install:
 
-  First try (from repo root):  make install-record-deps
+  First try (from repo root):  make -f tooling/Makefile install-record-deps
   If that leaves tools missing, install manually:
 
   asciinema   Debian/Ubuntu/Pop!_OS:  sudo apt install asciinema
@@ -45,8 +45,8 @@ Missing tools for demo recording. Install:
 
 Ensure ~/.local/bin and ~/.cargo/bin are on your PATH if you used pip/cargo.
 
-Then re-run:  make demo-record
-(  make dev-deps  installs CI tools plus the demo-record helpers. )
+Then re-run:  make -f tooling/Makefile demo-record
+(  make -f tooling/Makefile dev-deps  installs CI tools plus the demo-record helpers. )
 EOT
 }
 
@@ -55,7 +55,7 @@ command -v agg >/dev/null 2>&1 || { echo "record-demo: agg not found." >&2; prin
 command -v docker >/dev/null 2>&1 || die "install Docker and ensure it is running"
 docker info >/dev/null 2>&1 || die "Docker daemon not reachable — start Docker"
 
-[[ -x "${ROOT}/src/bin/dockpipe.bin" ]] || [[ -f "${ROOT}/src/bin/dockpipe" ]] || die "run \`make build\` first (or: make demo-record)"
+[[ -x "${ROOT}/src/bin/dockpipe.bin" ]] || [[ -f "${ROOT}/src/bin/dockpipe" ]] || die "run \`make -f tooling/Makefile build\` first (or: make -f tooling/Makefile demo-record)"
 command -v go >/dev/null 2>&1 || die "need Go on PATH (go mod download + module cache mount for the test-demo workflow)"
 
 mkdir -p "$DEMO_DIR"

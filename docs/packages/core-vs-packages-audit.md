@@ -1,24 +1,25 @@
 # Core and package boundaries
 
-Dockpipe owns `src/lib/`, `src/cmd/`, the desktop host and required `src/core/`
-definitions. Its authored embed manifest includes `src/core/`, this repository's
-own `workflows/`, `VERSION` and the entrypoint asset. It excludes every external
-`packages/` source tree. `embed_test.go` independently verifies this boundary.
+Dockpipe owns the generic engine and CLI in `src/lib/` and `src/cmd/`, the GUI
+shell and host SDK in `src/dockpipe-app/`, and its workflow/configuration editor
+extension. Fixed runtime and SDK resources live in `src/lib/runtimeassets/` and
+`src/lib/sdkassets/`. They materialize only when needed; there is no required
+core archive or embedded repository workflow tree.
 
-All package implementations and their examples live in
-[dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages).
-PipeLang source and language tests live in
-[PipeLang](https://github.com/Dockpipe-Industries/pipelang); the runtime consumes
-its pinned SDK for typed models and existing compiler commands. There is no
-sibling checkout or copied source fallback.
+Tool-specific package implementations, examples and tests live in their
+[owning repositories](core-tools.md). PipeLang owns the compiler, language SDK,
+language extension and research. Dockpipe consumes its pinned external Go SDK
+for typed models, compiler commands and automatic materialization, without a
+sibling-source fallback.
 
-The compiled project store under `bin/.dockpipe/internal/packages/` is generated
-runtime state. Its name does not imply that this checkout owns package sources.
-Package installation and generic compilation remain engine features. Required
-core archives and optional package archives have distinct ownership and release
-inputs; optional archives are composed from exact external pins.
+The project store under `bin/.dockpipe/internal/packages/` contains generated
+workflow/resolver archives. Its name does not imply ownership of package sources.
+Package installation and generic compilation remain engine features. A host
+release can contain no optional packages; selected package archives come from
+explicit immutable manifests and digests.
 
 [Package metadata](package-model.md) defines the install/compile contract.
-[Ecosystem ownership](core-tools.md) links the source repositories and examples.
-Earlier migration inventories describe historical monorepo paths; see the
+[Runtime resource ownership](../concepts/runtime-resource-ownership.md) describes
+initialization and fixed library helpers. Earlier migration inventories record
+historical monorepo paths; see the
 [historical path note](../architecture/forgepipe/HISTORICAL-PATHS.md).

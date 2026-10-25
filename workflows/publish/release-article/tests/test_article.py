@@ -12,7 +12,7 @@ SPEC.loader.exec_module(ARTICLE)
 
 class ArticleTests(unittest.TestCase):
     def test_approved_body_only_changes_publication_links(self):
-        path = Path(__file__).resolve().parents[4] / 'release/articles/0.6.0.md'
+        path = Path(__file__).resolve().parents[4] / 'release/articles/announcement.md'
         source = path.read_text()
         sha = "a" * 40
         prepared = ARTICLE.prepare(path, "Dockpipe-Industries/dockpipe", sha, "v0.6.7")
@@ -25,7 +25,7 @@ class ArticleTests(unittest.TestCase):
         self.assertIn(sha, prepared["main_image"])
 
     def test_rejects_mutable_source_and_staging_tag(self):
-        path = Path(__file__).resolve().parents[4] / 'release/articles/0.6.0.md'
+        path = Path(__file__).resolve().parents[4] / 'release/articles/announcement.md'
         for sha, tag in [("master", "v0.6.7"), ("a" * 40, "v0.6.7-staging.123")]:
             with self.subTest(sha=sha, tag=tag), self.assertRaises(ValueError):
                 ARTICLE.prepare(path, "Dockpipe-Industries/dockpipe", sha, tag)

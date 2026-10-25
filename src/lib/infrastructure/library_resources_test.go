@@ -87,7 +87,8 @@ func TestLibraryResourcesRejectUnexpectedDirectoryTrees(t *testing.T) {
 					}
 				}
 			case "deep":
-				if err := os.MkdirAll(filepath.Join(unexpected, strings.Repeat("nested/", 128)), 0o700); err != nil {
+				// Exercise depth without exceeding the host's maximum path length.
+				if err := os.MkdirAll(filepath.Join(unexpected, strings.Repeat("n/", 128)), 0o700); err != nil {
 					t.Fatal(err)
 				}
 			}

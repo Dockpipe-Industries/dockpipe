@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"dockpipe/src/lib/application/internal/packageimages"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 	"dockpipe/src/lib/infrastructure/packagebuild"
@@ -80,17 +81,7 @@ func TestCmdPackageImagesMergesPlannedAndMaterializedArtifacts(t *testing.T) {
 	if err := persistImageArtifactIndexRecord(dir, &indexed); err != nil {
 		t.Fatal(err)
 	}
-	records, err := collectPackageImageArtifacts(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(records) != 1 {
-		t.Fatalf("expected one merged image artifact, got %d", len(records))
-	}
-	if records[0].ArtifactState != "materialized" || records[0].ImageRef != "dockpipe-codex:test" {
-		t.Fatalf("unexpected merged image artifact: %+v", records[0])
-	}
-	rows, err := collectPackageImageArtifactRows(dir, func(image string) (bool, error) {
+	rows, err := packageimages.CollectRows(dir, func(image string) (bool, error) {
 		if image != "dockpipe-codex:test" {
 			t.Fatalf("unexpected image check %q", image)
 		}
@@ -99,7 +90,7 @@ func TestCmdPackageImagesMergesPlannedAndMaterializedArtifacts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 1 || rows[0].Status != "ready" || rows[0].Artifact.ArtifactState != "materialized" {
+	if len(rows) != 1 || rows[0].Status != "ready" || rows[0].Artifact.ArtifactState != "materialized" || rows[0].Artifact.ImageRef != "dockpipe-codex:test" {
 		t.Fatalf("unexpected image artifact rows: %+v", rows)
 	}
 	oldExists := dockerImageExistsAppFn
@@ -148,7 +139,7 @@ func TestCollectPackageImageArtifactRowsDetectsStaleIndex(t *testing.T) {
 	if err := persistImageArtifactIndexRecord(dir, &stale); err != nil {
 		t.Fatal(err)
 	}
-	rows, err := collectPackageImageArtifactRows(dir, func(string) (bool, error) { return true, nil })
+	rows, err := packageimages.CollectRows(dir, func(string) (bool, error) { return true, nil })
 	if err != nil {
 		t.Fatal(err)
 	}

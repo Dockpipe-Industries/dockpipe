@@ -101,9 +101,18 @@ DOCKPIPE_VERSION=0.6.1 DOCKPIPE_DOWNLOAD_BASE="$base" \
 ```
 
 Use the catalog's numeric `version` for `DOCKPIPE_VERSION`; do not pass the candidate
-suffix as a native installer version. Windows supports the same environment
-variables with the candidate's `install.ps1`. Full platform package bundles are
-available beside the CLI, and individual stores are under `stores/<platform>/`.
+suffix as a native installer version. On Windows, download the candidate's
+`install.ps1` and select its GitHub release with the full candidate identity:
+
+```powershell
+.\install.ps1 -Version '0.6.1-staging.RUN_ID.ATTEMPT.SHORT_SHA' -SkipWSLSetup
+```
+
+Replace the example with the actual candidate. The script's `-Version` parameter
+selects the GitHub tag; it does not read `DOCKPIPE_VERSION` or
+`DOCKPIPE_DOWNLOAD_BASE`. `-SkipWSLSetup` omits the optional WSL setup.
+Full platform package bundles are available beside the CLI, and individual stores
+are under `stores/<platform>/`.
 
 ### Homebrew on a test Mac
 

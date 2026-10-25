@@ -7,9 +7,9 @@ on:
       - LICENSE
       - workflows/shared/**
       - workflows/publish/shared/**
-      - src/app/tooling/dockpipe-launcher/display-sdk/**
-      - src/app/tooling/dockpipe-launcher/src/LauncherDisplayPackage.h
-      - src/app/tooling/dockpipe-launcher/src/LauncherNativeLibraryScope.h
+      - src/dockpipe-app/display-sdk/**
+      - src/dockpipe-app/src/host-sdk/contracts/LauncherDisplayPackage.h
+      - src/dockpipe-app/src/packages/infrastructure/LauncherNativeLibraryScope.h
       - workflows/build/display-sdk/assets/scripts/build.py
       - workflows/build/launcher-sdk/assets/scripts/build.py
       - workflows/publish/display-sdk/assets/scripts/publish.py
@@ -23,9 +23,9 @@ on:
       - LICENSE
       - workflows/shared/**
       - workflows/publish/shared/**
-      - src/app/tooling/dockpipe-launcher/display-sdk/**
-      - src/app/tooling/dockpipe-launcher/src/LauncherDisplayPackage.h
-      - src/app/tooling/dockpipe-launcher/src/LauncherNativeLibraryScope.h
+      - src/dockpipe-app/display-sdk/**
+      - src/dockpipe-app/src/host-sdk/contracts/LauncherDisplayPackage.h
+      - src/dockpipe-app/src/packages/infrastructure/LauncherNativeLibraryScope.h
       - workflows/build/display-sdk/assets/scripts/build.py
       - workflows/build/launcher-sdk/assets/scripts/build.py
       - workflows/publish/display-sdk/assets/scripts/publish.py

@@ -24,7 +24,7 @@ func lowerVSCodeWorkflow(plan *vscode.Plan) (*domain.Workflow, error) {
 		Title:       plan.Entry.Name,
 		Description: "Imported from VS Code " + filepath.Base(plan.Entry.SourceFile) + ": " + plan.Entry.Name,
 		Vars:        make(map[string]string),
-		Platforms:   []string{runtime.GOOS},
+		Platforms:   []string{vscodeWorkflowPlatform(runtime.GOOS)},
 	}
 	if plan.Entry.Kind == "launch" {
 		workflow.Category = "app"
@@ -53,6 +53,15 @@ func lowerVSCodeWorkflow(plan *vscode.Plan) (*domain.Workflow, error) {
 		return nil, fmt.Errorf("VS Code entry %q has no runnable commands", plan.Entry.Name)
 	}
 	return workflow, nil
+}
+
+// VS Code resolves host-specific commands before lowering. Keep that OS scope,
+// but use the workflow schema's macOS spelling rather than Go's darwin value.
+func vscodeWorkflowPlatform(goos string) string {
+	if goos == "darwin" {
+		return "macos"
+	}
+	return goos
 }
 
 func importedInputChecks(inputs []vscode.Input) string {

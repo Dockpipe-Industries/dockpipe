@@ -34,9 +34,9 @@ first because Dockpipe depends on it. See the
 and explicit installation/publication options. Ordinary builds do not upload or
 install extensions. No external editor-source checkout or test SDK is required.
 
-## Existing downloads
+## Historical downloads
 
-The earlier staging downloads remain available:
+The earlier staging artifact references are:
 [Dockpipe Language Support 0.0.2](https://packages.staging.dockpipe.com/packages/standalone/dorkpipe/candidates/0.6.5-staging.cc31cf0aa848/dockpipe-language-support-0.0.2.vsix)
 and the [companion extension 0.0.7](https://packages.staging.dockpipe.com/packages/standalone/dorkpipe/candidates/0.6.5-staging.cc31cf0aa848/pipeon-0.0.7.vsix).
 Verify those exact downloads against their
@@ -77,5 +77,5 @@ Package authors may associate `assets/ui/surface.json` with
 source/schema distribution. The package manifest's optional `surface` field names
 that descriptor. This is separate from workflow `view` metadata: surface actions
 still reference ordinary workflow files or public workflow IDs, and typed public
-workflow inputs continue through the existing launcher dialog. See
+workflow inputs continue through the existing GUI dialog. See
 [package-contributed host pages](package-model.md#package-contributed-host-pages).

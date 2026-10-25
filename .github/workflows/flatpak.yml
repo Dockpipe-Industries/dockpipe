@@ -29,7 +29,7 @@ on:
       - src/lib/application/bundled_tools.go
       - src/lib/application/dependencies.go
       - src/lib/application/internal/remotecmd/**
-      - src/app/tooling/dockpipe-launcher/**
+      - src/dockpipe-app/**
       - workflows/**
 
 permissions:

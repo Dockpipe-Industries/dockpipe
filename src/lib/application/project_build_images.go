@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"dockpipe/src/lib/application/internal/imageartifact"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 	"dockpipe/src/lib/infrastructure/packagebuild"
@@ -52,7 +53,7 @@ func prebuildImageArtifactsFromWorkflowTarball(workdir, tgz string) (int, error)
 	}
 	total := 0
 	for _, entry := range paths {
-		if !isImageArtifactTarEntry(entry) {
+		if !imageartifact.IsTarEntry(entry) {
 			continue
 		}
 		b, err := packagebuild.ReadFileFromTarGz(tgz, entry)
@@ -80,12 +81,6 @@ func prebuildImageArtifactsFromWorkflowTarball(workdir, tgz string) (int, error)
 		}
 	}
 	return total, nil
-}
-
-func isImageArtifactTarEntry(entry string) bool {
-	entry = filepath.ToSlash(strings.TrimSpace(entry))
-	return strings.HasSuffix(entry, "/"+domain.RuntimeManifestDirName+"/"+domain.ImageArtifactFileName) ||
-		(strings.Contains(entry, "/"+domain.RuntimeManifestDirName+"/"+domain.StepArtifactsDirName+"/") && strings.HasSuffix(entry, ".image-artifact.json"))
 }
 
 func imageArtifactPackageRootFromTarEntry(entry string) string {

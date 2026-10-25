@@ -10,7 +10,7 @@ brew install Dockpipe-Industries/dockpipe/dockpipe-staging
 dockpipe --version
 ```
 
-For Desktop (launcher plus CLI), after a desktop candidate and the **Update staging CLI and desktop** workflow have passed on both Mac architectures:
+For Desktop (GUI shell plus CLI), after a desktop candidate and the **Update staging CLI and desktop** workflow have passed on both Mac architectures:
 
 ```sh
 brew install --cask dockpipe-industries/dockpipe/dockpipe-desktop-staging

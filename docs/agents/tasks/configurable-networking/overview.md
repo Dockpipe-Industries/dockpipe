@@ -7,7 +7,7 @@ Repository ownership note: package paths in this record describe external source
 Backlog architecture/planning, added 2026-10-17. No implementation, network mutation,
 service exposure, firewall change or provider qualification is authorized by this record.
 The [full proposal](design-request.md) preserves user intent; sample commands and YAML
-are conceptual. Include this task in the [direction audit](../agentic-app-ui/direction-review.md)
+are conceptual. Include this task in the [direction audit](https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/agents/tasks/agentic-app-ui/direction-review.md)
 before building. Do not introduce a parallel networking stack.
 
 Extend existing generic DockPipe configuration/runtime services for local, NAS, container,
@@ -74,6 +74,9 @@ require implementing every future network backend before useful local MCP work.
 - TASK-038 owns Terraform domain execution; consume network contracts without provider logic in core.
 - TASK-023 owns native sandbox mechanisms and fail-closed enforcement; avoid a second namespace driver.
 - TASK-036 owns remote onboarding; coordinate remote listener/worker configuration and diagnostics.
+- [TASK-047](../paired-storage-mounts/index.yaml) proposes package-owned storage
+  setup/mounts over existing pairing, sharing provider connectivity with RDP;
+  reuse this task's network contracts rather than create a second stack.
 - DorkPipe consumes generic network contracts for optional providers and knowledge sources.
 
 Start with inventory and normalized configuration/effective status, then explicit server MCP

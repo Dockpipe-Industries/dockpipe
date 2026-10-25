@@ -1,73 +1,30 @@
 package domain
 
-import (
-	"runtime"
-	"strings"
-)
+import "dockpipe/src/lib/domain/environment"
 
-// MergeIfUnset adds keys from src into dst only when dst does not already have the key,
-// or when the existing value is blank. Empty inherited env vars should not block workflow
-// defaults, .env values, or typed input source mappings.
+// MergeIfUnset adds defaults without replacing an existing nonblank value.
 func MergeIfUnset(dst map[string]string, src map[string]string) {
-	for k, v := range src {
-		if cur, ok := dst[k]; !ok || strings.TrimSpace(cur) == "" {
-			dst[k] = v
-		}
-	}
+	environment.MergeIfUnset(dst, src)
 }
 
-// EnvSliceToMap parses KEY=VAL from a slice (e.g. --env).
+// EnvSliceToMap parses KEY=VAL entries from command arguments.
 func EnvSliceToMap(lines []string) map[string]string {
-	m := make(map[string]string)
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		k, v, ok := strings.Cut(line, "=")
-		if ok {
-			m[strings.TrimSpace(k)] = strings.TrimSpace(v)
-		}
-	}
-	return m
+	return environment.EnvSliceToMap(lines)
 }
 
-// EnvironToMap converts KEY=VAL lines (e.g. os.Environ()) to a map.
+// EnvironToMap converts inherited process environment entries to a map.
 func EnvironToMap(environ []string) map[string]string {
-	return environToMap(environ, runtime.GOOS)
+	return environment.EnvironToMap(environ)
 }
 
-// NativeEnvKey canonicalizes host environment keys. Windows environment names
-// are case-insensitive; Unix environment names remain case-sensitive.
+// NativeEnvKey canonicalizes a key for the host environment.
 func NativeEnvKey(key string) string {
-	return nativeEnvKey(key, runtime.GOOS)
+	return environment.NativeEnvKey(key)
 }
 
-func nativeEnvKey(key, operatingSystem string) string {
-	if operatingSystem == "windows" {
-		return strings.ToUpper(key)
-	}
-	return key
-}
-
-func environToMap(environ []string, operatingSystem string) map[string]string {
-	m := make(map[string]string)
-	for _, e := range environ {
-		k, v, ok := strings.Cut(e, "=")
-		if ok {
-			m[nativeEnvKey(k, operatingSystem)] = v
-		}
-	}
-	return m
-}
-
-// EnvMapToSlice converts a map to KEY=VAL lines for subprocess env (order undefined).
-func EnvMapToSlice(m map[string]string) []string {
-	out := make([]string, 0, len(m))
-	for k, v := range m {
-		out = append(out, k+"="+v)
-	}
-	return out
+// EnvMapToSlice converts environment values to subprocess entries.
+func EnvMapToSlice(values map[string]string) []string {
+	return environment.EnvMapToSlice(values)
 }
 
 // BranchPrefixForTemplate maps template/resolver flavor to git branch prefix.

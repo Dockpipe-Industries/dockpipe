@@ -67,7 +67,11 @@ func TestHostShellRoutesBlockingAndParallelSteps(t *testing.T) {
 			}
 			var err error
 			if parallel {
-				err = runParallelStepWorker(&o, 0, 1, 0, o.envMap, map[string]string{})
+				state, prepareErr := prepareParallelStep(&o, 0, o.envMap, map[string]string{})
+				if prepareErr != nil {
+					t.Fatal(prepareErr)
+				}
+				err = runParallelStepWorker(&o, 0, 1, 0, &state)
 			} else {
 				err = runBlockingStep(&o, 0, 1, map[string]string{})
 			}

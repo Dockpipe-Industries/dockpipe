@@ -13,8 +13,9 @@ For most users, the main knobs are:
 
 Treat **`--isolate`** as the low-level image/template override, not the main way to think about workflow selection.
 
-**Prerequisites:** native host steps need Bash; container workflows need a reachable
-engine. Git is needed for Git operations. Flatpak supplies its shell/container
+**Prerequisites:** inline host steps use Windows PowerShell on Windows and Bash
+on Linux/macOS. Script files and explicit `shell` choices require their selected
+interpreter. Container workflows need a reachable Docker engine. Git is needed for Git operations. Flatpak supplies its shell/container
 clients and uses explicit host integrations where required. See [installation](install.md).
 
 **Workflow YAML (`config.yml`):** single-command layout (`run` / `isolate` / `act`) or multi-step **`steps:`** (ordering, **`outputs:`**, explicit **`group.mode: async`** for parallel work). In step mode, top-level `run` / `act` are not used. Full reference: **[workflows/workflow-yaml.md](workflows/workflow-yaml.md)**.
@@ -114,7 +115,7 @@ Local project setup only: **no `git clone`**, no treating **`init`** as a remote
 | `dockpipe init <name>` | Create **`workflows/<name>/config.yml`** as a **minimal empty workflow** (name + description only). **`--from init`** instead generates the runnable host starter. If **`workflows/`** already exists but has no **`*/config.yml`** trees, the CLI prints a **warning** (often a conflict with GitHub Actions). |
 | `dockpipe init <name> --workflows-dir <path>` | Put the new workflow under **`<path>/<name>/`** instead of **`workflows/`** (repo-relative or absolute). Same as env **`DOCKPIPE_WORKFLOWS_DIR`** for **`dockpipe run`**. |
 | `dockpipe init <name> --from <source>` | Generate the built-in **`blank`** or **`init`** scaffold, or copy another **declared project workflow** or a **local directory** into **`workflows/<name>/`** (or **`--workflows-dir`**). Explicit filesystem paths are copied directly. Not a Git URL. |
-| `dockpipe init <name> --resolver <n> --runtime <n> --strategy <n>` | Optional; written into the new **`config.yml`**. New workflows use plain **`resolver:`** and **`runtime:`**. Example: **`dockpipe init my-pipeline --from run-apply --resolver codex --runtime dockerimage`**. |
+| `dockpipe init <name> --resolver <n> --runtime <n> --strategy <n>` | Optional; written into the new **`config.yml`**. New workflows use plain **`resolver:`** and **`runtime:`**. Example: **`dockpipe init my-pipeline --from blank --resolver codex --runtime dockerimage`**. Install the selected resolver before running the workflow. |
 | `dockpipe init --gitignore` | **Opt-in** only: append a marked block to **`.gitignore`** at the **git repository root** (`bin/.dockpipe/`, Go caches, `tmp/`). Idempotent if the block is already present. Requires a **git working tree** (run from inside a repo). |
 
 Named workflows normally live at `workflows/<name>/config.yml` in your project.
@@ -171,7 +172,7 @@ advanced authoring and storage.
 | `dockpipe package list [--workdir <path>]` | Print project-store package metadata in text form; use `--format json` for inventory across project, configured, user and system stores, with warnings. |
 | `dockpipe package list --format json [--workdir <path>]` | Inventory project, configured, user, and system packages, plus warnings and the user install root. |
 | `dockpipe package catalog --remote <HTTPS manifest URL>` | Return the current execution platform's remote packages and resolved store manifest as JSON. Inside Flatpak this includes its runtime ID/branch; native processes retain OS/architecture selection. Accepts a latest pointer, release catalog, or explicit platform store. |
-| `dockpipe package install --remote <URL> --kind core\|workflow\|resolver --name <name> [--sha256 <digest>]` | Verify and install one package into the user store. A digest pins the selected catalog entry. Dependencies are installed separately. |
+| `dockpipe package install --remote <URL> --kind core\|workflow\|resolver --name <name> [--sha256 <digest>]` | Verify and install one package into the user store. A digest pins the selected catalog entry. The declared dependency closure is verified from the same catalog before dependencies and then the requested package are published to the store; package scripts are not executed. |
 | `dockpipe package uninstall --path <absolute archive path>` | Remove one optional user-store archive. Core, external stores, directories, and symlinks are protected; package data and settings are retained. |
 | `dockpipe package images [--workdir <path>]` | Merge planned image artifacts from compiled workflow tarballs with materialized/cached receipts under **`bin/.dockpipe/internal/images/by-fingerprint/`**; print **fingerprint**, **status**, **state**, **source**, **image_ref**, **workflow**, **package**, **step_id**, **image_key** (tab-separated). Status can show **`ready`**, **`missing`**, **`stale`**, **`planned`**, **`referenced`**, or **`docker-error`**. |
 | `dockpipe package manifest` | Print an example **`package.yml`** (schema: **name**, **version**, **title**, **description**, **author**, **website**, **license**, optional **kind**). |
@@ -203,7 +204,7 @@ Commands:
 
 Typed authoring helper backed by the versioned external [PipeLang SDK](https://github.com/Dockpipe-Industries/pipelang). Dockpipe retains these commands and automatic `.pipe` materialization for existing models. The standalone `pipelang` CLI is also available from that repository. PipeLang compiles to inspectable artifacts; workflow execution still uses normal Dockpipe YAML.
 
-When a workflow also declares `view:`, that YAML remains a launcher/tooling presentation layer over the typed model rather than a separate execution contract. See **[concepts/pipelang.md](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/concepts/pipelang.md)** and **[workflows/workflow-yaml.md](workflows/workflow-yaml.md)**.
+When a workflow also declares `view:`, that YAML remains an app/tooling presentation layer over the typed model rather than a separate execution contract. See **[concepts/pipelang.md](https://github.com/Dockpipe-Industries/pipelang/blob/master/docs/concepts/pipelang.md)** and **[workflows/workflow-yaml.md](workflows/workflow-yaml.md)**.
 
 | Command | Purpose |
 |---------|---------|
@@ -247,7 +248,7 @@ All options must appear **before** a standalone **`--`**. The command and its ar
 |------|---------|---------|
 | `--workflow <name>` | | Select a named workflow from project/declared roots or installed/configured packages. With `steps:`, a final `--` is optional. Mutually exclusive with `--workflow-file`. |
 | `--workflow-file <path>` | | Load explicit workflow YAML; relative run/act assets resolve beside it. Resolver selection uses declared/installed package roots. Mutually exclusive with `--workflow`. |
-| `--package <name>` | | With **`--workflow <name>`**, select an unpacked packaged workflow whose nearest **`package.yml`** has matching **`name:`**. This is a generic package selector, not an AI-provider concept. Mutually exclusive with **`--workflow-file`**. |
+| `--package <name>` | | With **`--workflow <name>`**, select an unpacked packaged workflow with a matching **`name:`** in its enclosing **`package.yml`** ancestry. This is a generic package selector, not an AI-provider concept. Mutually exclusive with **`--workflow-file`**. |
 | `--workflows-dir <path>` | | Repo-relative or absolute directory for **`--workflow <name>`** resolution (default **`workflows/`**). Same as **`DOCKPIPE_WORKFLOWS_DIR`**. Also **`dockpipe init <name> --workflows-dir …`**. |
 | `--run <path>` | `--pre-script` | **Run:** script(s) on the host before the container. Repeatable. |
 | `--isolate <name>` | `--template`, `--image` | Low-level image/template override. Builds if the value is a template. Prefer **`--runtime`** + **`--resolver`** for the normal path, and use **`--isolate`** when you need to pin the exact image/template. |
@@ -268,12 +269,12 @@ All options must appear **before** a standalone **`--`**. The command and its ar
 | `--no-data` | | Do not mount a data volume / data dir. |
 | `--reinit` | | With a data volume: remove that volume before run (fresh HOME). Confirms on TTY; use **`-f`** / **`--force`** to skip confirmation. |
 | `-f` / `--force` | | With **`--reinit`**, skip confirmation (warning may still print). |
-| `--build <path>` | | Parsed (relative to repo root or POSIX absolute). **Not currently consumed** by the Go runner — image build dirs come from **`--isolate`** / template resolution. Kept for CLI compatibility; see **`CliOpts.BuildPath`** in **[flags.go](../src/lib/application/flags.go)**. |
+| `--build <path>` | | Parsed (relative to repo root or POSIX absolute). **Not currently consumed** by the Go runner — image build dirs come from **`--isolate`** / template resolution. Kept for CLI compatibility; see **`CliOpts.BuildPath`** in **[flags.go](../src/lib/application/internal/clioptions/flags.go)**. |
 | `--env-file <path>` | | Merge `KEY=VAL` lines into workflow env (unset keys only unless overridden). Repeatable. |
 | `--var KEY=VAL` | | Set workflow var; **overrides** yaml / `.env`. Repeatable. |
 | `-d` / `--detach` | | Run the container in the background. |
 | `-h` / `--help` | | Print usage. |
-| `--version`, `-v`, `-V` | | Print version (handled in **`main`** before **`Run`**). |
+| `--version`, `-v`, `-V` | | Print the CLI version and exit. |
 
 ## Windows subcommands (`dockpipe windows …`)
 
@@ -290,15 +291,18 @@ All options must appear **before** a standalone **`--`**. The command and its ar
 
 ### Windows host: native vs WSL bridge
 
-**Default:** **`dockpipe.exe`** runs on **Windows**. **Docker Desktop** supplies **`docker`**; **`bash`** and **`git`** must be on **`PATH`** separately (e.g. **Git for Windows**) — Docker Desktop does not ship them.
+**Default:** **`dockpipe.exe`** runs on **Windows**. **Docker Desktop** supplies **`docker`**; **`git`** must be installed separately for Git operations. Bash scripts require **`bash`** (for example, Git for Windows); native inline host commands default to Windows PowerShell.
 
 **Container user:** **Linux/macOS** pass **`-u`** with the host **uid:gid** (overrides **`USER`** in the image). If you run **`dockpipe` as root** (e.g. **`sudo`**), that maps to **`-u 0:0`**, which breaks CLIs that refuse flags like **`--dangerously-skip-permissions`** as root. For **claude / codex / agent-dev** images, dockpipe defaults to **`-u node`** when the host uid is **0** (unless **`DOCKPIPE_FORCE_ROOT_CONTAINER=1`**). Override with **`DOCKPIPE_CONTAINER_USER`**.
 
 **Windows:** host uid is unavailable; dockpipe **does not** pass **`-u`** unless **`DOCKPIPE_WINDOWS_CONTAINER_USER`** is set (image **`USER`** applies — e.g. **`node`** in **claude/codex** images). Defaulting **`-u node`** from the CLI caused bind-mount stalls for some Docker Desktop setups, so use an **explicit** value when needed: **`DOCKPIPE_WINDOWS_CONTAINER_USER=node`** for Claude Code with **`--dangerously-skip-permissions`**, or **`0`** for root.
 
-**Claude Code `--dangerously-skip-permissions`:** The CLI blocks that flag when it thinks you’re root/sudo. In Dockpipe that behavior is handled by the **resolver image wrappers**, not the shared root entrypoint: the **claude** and **codex** images set **`IS_SANDBOX=1`** by default (Claude Code’s supported disposable-sandbox mode — see **[anthropics/claude-code#9184](https://github.com/anthropics/claude-code/issues/9184)**) and re-exec **root → `node`** via **`runuser`**/**`setpriv`** when the container still starts as uid 0. Opt out: **`DOCKPIPE_NO_SANDBOX_ENV=1`** and **`DOCKPIPE_SKIP_DROP_TO_NODE=1`**. **`DOCKPIPE_DEBUG=1`** still prints **`id`** from the shared entrypoint. Rebuild the resolver image after wrapper changes. **`DOCKPIPE_WINDOWS_CONTAINER_USER`** remains available if you want an explicit **`-u`** from the host.
-
-**Design: loose defaults in isolation.** Dockpipe targets **disposable containers**; resolver-owned images may apply automation-friendly defaults like **`IS_SANDBOX=1`** while the CLI still passes host **uid:gid** on Unix. People who want stricter behavior can opt out with the env vars above. **Dockpipe does not append** **`--dangerously-skip-permissions`** to your command — add it after **`--`** if you want that mode. **Security** is mostly **what you mount** (only **`/work`** etc.), **secrets** in env/volumes, and **network** — not “CLI tightness” alone.
+**Container environment:** the Docker runner supplies `IS_SANDBOX=1` unless
+`DOCKPIPE_NO_SANDBOX_ENV` is nonempty or an explicit container environment entry
+already defines `IS_SANDBOX`. This is an environment hint, not an isolation or
+permission guarantee. Resolver packages may add their own entrypoint behavior;
+consult the installed package for provider flags and user switching. Docker mounts,
+network policy and process identity determine the runtime access boundary.
 
 **Windows + host `git` / Docker mounts:** Bash scripts may export **`DOCKPIPE_WORKDIR`** as **`/c/Users/...`** (Git Bash). Native **`git.exe`** and **`docker -v`** need normal Windows paths; dockpipe converts MSYS-style paths before **`git -C`**, **`docker run` bind mounts**, **`--data-dir`**, and **`--mount`**. If **`/work`** looks empty in the container, rebuild with a current dockpipe and confirm the printed **Mount /work ← …** path exists on the host.
 
@@ -310,24 +314,23 @@ Environment: **`DOCKPIPE_WINDOWS_BRIDGE=1`** is set for the **inner** process wh
 
 ## Examples
 
-**Minimal (workflow does the rest):**
+Run an existing project workflow:
 
 ```bash
-dockpipe --workflow my-ai --resolver claude --repo https://github.com/you/repo.git -- claude -p "Fix the bug"
+dockpipe --workflow test --
 ```
 
-**Override branch, add env:**
+Override a workflow variable:
 
 ```bash
-dockpipe --workflow my-ai --resolver claude --repo https://github.com/you/repo.git --branch my-feature \
-  --env "GIT_PAT=$GIT_PAT" -- claude -p "Implement the plan"
+dockpipe --workflow test --var TEST_MODE=quick --
 ```
 
-**No workflow — override run/isolate/act:**
+Run a one-off container command with an explicit image (Docker is required, and
+an uncached image may require network access):
 
 ```bash
-dockpipe --resolver claude --repo https://github.com/you/repo.git \
-  --run ./my-run.sh --act ./my-act.sh -- claude -p "Task"
+dockpipe --runtime dockerimage --isolate alpine:3.22 -- echo hello
 ```
 
 ## Secret environments

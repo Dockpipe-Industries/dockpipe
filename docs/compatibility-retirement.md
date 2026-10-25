@@ -36,8 +36,9 @@ before staging. This migration does not remove existing releases or downloads.
 - **Current caller/fixture** is an authored config, package script, CI caller, or test in this
   checkout. Its absence is only negative repository evidence; it does not prove downstream absence.
 - **History** can prove the first source commit found by `git log -S`, but it cannot grant retirement
-  authority. Every identified engine surface first appeared after tag `v0.5.8`; the checkout says
-  `VERSION=0.6.0`, but there is no `v0.6.0` tag. Therefore the ledger records source-introduction
+  authority. The original inventory found every identified engine surface after tag `v0.5.8`,
+  with `VERSION=0.6.0` and no `v0.6.0` tag in that snapshot. These are historical
+  observations, not the current version or tag inventory. The ledger records source-introduction
   commits and treats the minimum released version as **unproven** unless a package version is
   explicitly stated.
 - **Closed evidence** in task archives, promotion packets, VM qualification records, or old handoffs
@@ -142,8 +143,9 @@ These scan hits are not retirement candidates in this ledger:
 - `AWS_ENDPOINT_URL_S3` in the R2 uploader is the AWS CLI's endpoint input, not a Dockpipe alias for
   `R2_ENDPOINT_URL`; the package declares both for different upload clients;
 - old DorkPipe/Pipeon context paths found only in negative fixtures are not active fallbacks;
-- `templates/core`, materialized `bundle/core`, and `bundle/workflows` are current installed layouts;
-  only the project authoring fallback `templates/<name>` is ledgered above.
+- `templates/core`, materialized `bundle/core`, and `bundle/workflows` were installed layouts
+  at the time of the original inventory. The runtime-resource migration above supersedes
+  that layout; these paths must not be restored from this historical record.
 
 ## Maintenance Rule
 

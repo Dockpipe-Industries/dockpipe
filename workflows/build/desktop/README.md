@@ -1,6 +1,6 @@
 # Desktop distribution
 
-Desktop means **launcher plus CLI**. Headless servers and CI continue to use the
+Desktop means **GUI shell plus CLI**. Headless servers and CI continue to use the
 CLI packages. See [the installation guide](../../../docs/install.md) for user
 choices.
 
@@ -11,7 +11,7 @@ Set `DOCKPIPE_BROWSER_SDK` to a prefix prepared by
 receipt, unchanged lock hash and installed file inventory before using its CMake
 package. Desktop payloads contain the Browser shared library and license notices;
 SDK headers, CMake packages and import libraries remain build inputs. The bounded
-`dockpipe-workspace-reader` process ships beside the actual launcher executable.
+`dockpipe-workspace-reader` process ships beside the actual GUI shell executable.
 
 Native amd64 DEBs bundle Qt 6.10.3 on Ubuntu 22.04 with glibc ceiling 2.35.
 ARM64 uses an explicit Ubuntu 24.04 builder, matching Qt 6.10.3 ARM64 kit and glibc
@@ -28,15 +28,15 @@ Spatial-Web repository, without embedding its source in Dockpipe.
 | --- | --- | --- |
 | macOS arm64 / amd64 | `dockpipe-desktop_VERSION_darwin_ARCH.dmg` | Apple Installer package: `/Applications/DockPipe.app` plus `/usr/local/bin/dockpipe` symlink |
 | macOS Homebrew | `dockpipe-desktop_VERSION_darwin_ARCH.zip` | Same self-contained app; cask depends on the CLI formula |
-| Ubuntu 22.04 / 24.04 and Debian 12 / 13 amd64; Pop!_OS 22.04 | `dockpipe-desktop_VERSION_amd64.deb` | Launcher, private Qt 6.10.3 runtime, icons, menu entry and exact-version CLI dependency |
-| Ubuntu 24.04 arm64 | `dockpipe-desktop_VERSION_arm64.deb` | Launcher, Browser SDK, private Qt 6.10.3 runtime; glibc 2.39 baseline; ForgePipe/Cockpit remain unqualified |
-| Windows amd64 | `dockpipe_VERSION_windows_amd64.msi` | CLI, core package, deployed Qt launcher and Start menu shortcut; launcher selected by default |
-| Linux amd64 Flatpak (staging) | `dockpipe-desktop_VERSION_linux_amd64.flatpak` | Launcher, CLI, core and container clients; requires KDE Platform 6.10; optional packages use a separate runtime-specific store |
+| Ubuntu 22.04 / 24.04 and Debian 12 / 13 amd64; Pop!_OS 22.04 | `dockpipe-desktop_VERSION_amd64.deb` | GUI shell, private Qt 6.10.3 runtime, icons, menu entry and exact-version CLI dependency |
+| Ubuntu 24.04 arm64 | `dockpipe-desktop_VERSION_arm64.deb` | GUI shell, Browser SDK, private Qt 6.10.3 runtime; glibc 2.39 baseline; ForgePipe/Cockpit remain unqualified |
+| Windows amd64 | `dockpipe_VERSION_windows_amd64.msi` | CLI, core package, deployed Qt GUI shell and Start menu shortcut; GUI shell selected by default |
+| Linux amd64 Flatpak (staging) | `dockpipe-desktop_VERSION_linux_amd64.flatpak` | GUI shell, CLI, core and container clients; requires KDE Platform 6.10; optional packages use a separate runtime-specific store |
 
 The macOS app contains the CLI in `Contents/Helpers`, a wrapper in `Contents/MacOS`,
 and only the required core package in `Contents/Resources/share/dockpipe`. The wrapper
 sets the existing `DOCKPIPE_SYSTEM_ROOT` only when unset. User data retains its
-normal location; no engine-specific macOS app knowledge is needed. Launcher
+normal location; no engine-specific macOS app knowledge is needed. GUI shell
 discovery preserves explicit `DOCKPIPE_BIN` and repository development binaries,
 then checks its sibling CLI before falling back to PATH.
 
@@ -49,7 +49,7 @@ the pinned Qt 6.10.3 `gcc_64` SDK using `install-linux-qt.sh`, also used by nati
 SDK consumers through `DOCKPIPE_QT_ROOT`. ARM64 retains distribution Qt 6.2. The
 official modern ARM64 Qt binaries require a newer glibc and do not establish an
 Ubuntu 22.04 ARM64 SDK baseline. Do not infer native Cockpit or ForgePipe support
-from a successful ARM64 launcher build.
+from a successful ARM64 GUI shell build.
 
 The pinned Qt image plugins also carry the admitted builder's `libjpeg.so.8` and
 `libtiff.so.5` compatibility ABIs with their copyright and source-package notices.
@@ -66,7 +66,7 @@ The installed-runtime check verifies hashes, dependency resolution, Qt isolation
 and absence of debug sections.
 
 Native Linux amd64 Release builds retain optimized private symbols before stripping
-the public launcher and UI library. Set `DOCKPIPE_PRIVATE_DEBUG_DIR` to private storage
+the public GUI shell and UI library. Set `DOCKPIPE_PRIVATE_DEBUG_DIR` to private storage
 outside the artifact directory; the default is the sibling `ARTIFACT_DIRECTORY.private-debug`.
 Keep this directory private and retain it alongside the matching release. It is
 not an upload or publication input. Qt's vendor runtime arrives separately;
@@ -74,9 +74,9 @@ this process does not manufacture upstream private debugging symbols.
 
 The all-inclusive amd64 release lane sets `DOCKPIPE_BUILD_COCKPIT=1` and supplies
 the attested `DOCKPIPE_FORGEPIPE_SDK` plus the already-built CLI. The SDK is mounted
-read-only, and Cockpit uses the same CMake build and Qt toolchain as the launcher.
+read-only, and Cockpit uses the same CMake build and Qt toolchain as the GUI shell.
 Its package-owned producer qualifies native rendering and emits a separate
-`cockpit-store`; the desktop DEB still contains the launcher and runtime only.
+`cockpit-store`; the desktop DEB still contains the GUI shell and runtime only.
 On macOS, run `bash workflows/build/desktop/assets/scripts/build-unix.sh VERSION release/artifacts`
 with CMake and Qt 6.10.3 including WebEngine, WebChannel and Positioning modules,
 with deployment target macOS 13.
@@ -97,29 +97,29 @@ The native deployment scripts reject missing WebEngine helper/resources/locales.
 macOS signs the renderer with Qt's supplied entitlements and preserves them when
 signing the enclosing app, following [Qt's WebEngine deployment guide](https://doc.qt.io/qt-6.10/qtwebengine-deploying.html).
 
-`smoke.py` runs the installed launcher's `--check-installation` diagnostic outside
+`smoke.py` runs the installed GUI shell's `--check-installation` diagnostic outside
 the checkout, with isolated user directories and no injected CLI override. It
-verifies Qt loads, the selected CLI runs, CLI and launcher versions match, and the
+verifies Qt loads, the selected CLI runs, CLI and GUI shell versions match, and the
 actual window stays running. `dockpipe-launcher --version` reports the generated
 release version without requiring a display server.
 On disposable macOS CI runners, `smoke-unix.sh` mounts the DMG, uses Apple's real
 Installer, runs a host workflow through the installed CLI, checks the desktop,
 and exercises a second installation. It refuses that system-install test outside
 GitHub Actions. `smoke-linux.sh VERSION [ARTIFACT_DIRECTORY]` installs the same CLI
-and launcher DEBs with APT in clean Ubuntu 22.04/24.04 and Debian 12/13 containers on amd64, and Ubuntu 24.04 on ARM64. Neither container has the build toolchain or preinstalled Qt. It
-checks runtime closure and licenses on both architectures, dependency resolution, core-only inventory, launcher startup, a host
+and GUI shell DEBs with APT in clean Ubuntu 22.04/24.04 and Debian 12/13 containers on amd64, and Ubuntu 24.04 on ARM64. Neither container has the build toolchain or preinstalled Qt. It
+checks runtime closure and licenses on both architectures, dependency resolution, core-only inventory, GUI shell startup, a host
 workflow, and desktop removal preserving the CLI. The host OS is not modified.
 An additional native Qt probe loads a page and executes JavaScript through the installed
 WebEngine helper. Docker build tests and this probe disable Chromium's inner
 sandbox only inside disposable test containers, whose namespace restrictions
 prevent that sandbox from starting. Installed desktop settings are unchanged;
 these checks do not qualify the browser's inner sandbox on a normal desktop.
-Windows smoke installs the real MSI, checks the app/CLI, modifies the launcher
+Windows smoke installs the real MSI, checks the app/CLI, modifies the GUI shell
 feature and uninstalls. Homebrew separately tests formula/cask installation and
 cask removal on both Mac architectures before updating the tap.
 
 Published staging Linux desktop artifacts include DEBs and the
-[Flatpak launcher-plus-CLI bundle](../flatpak/README.md), with separate on-demand
+[Flatpak GUI shell and CLI bundle](../flatpak/README.md), with separate on-demand
 runtime-compatible packages. The Flatpak bundle is available from the staging
 package host; this does not establish Bazzite/Pipeon or full Podman/SELinux support.
 See [Flatpak installation and manual updates](../../../docs/install.md#flatpak-desktop-linux-amd64).
@@ -179,7 +179,7 @@ No live tap or release update is performed by editing these source files.
 
 ## Native symbol boundaries
 
-Before macOS signing, the producer explicitly strips only Dockpipe's launcher
+Before macOS signing, the producer explicitly strips only Dockpipe's GUI shell
 and host UI dylib, verifies that required external symbols remain unchanged,
 and rejects debug sections or private defined symbols. Apple strip may insert
 its synthetic `radr://5614542` loader marker; the audit recognizes it only at

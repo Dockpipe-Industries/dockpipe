@@ -30,7 +30,7 @@ python3 workflows/qualify/native-desktop/assets/scripts/dmg-proof.py
 build="$RUNNER_TEMP/dockpipe-native-symbols"
 # Match the release configuration and collect bounded layout timings.
 # Profiling is compiled out of normal product builds.
-cmake -S src/app/tooling/dockpipe-launcher -B "$build" \
+cmake -S src/dockpipe-app -B "$build" \
   -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON \
   -DCMAKE_CXX_FLAGS=-DDOCKPIPE_PROFILE_DASHBOARD_LAYOUT \
   "-DDOCKPIPE_RELEASE_VERSION=$(cat VERSION)" \

@@ -1,8 +1,20 @@
 # Validation Commands
 
-Read before final reporting or when choosing checks.
+Read before choosing checks or reporting proof. Match checks to the changed behavior;
+docs-only work needs link/path and diff checks, not a build or full test suite.
 
 ## Core
+
+Use the repository workflow to preserve its bootstrap and test-environment setup.
+Arguments after `--` are forwarded to `go test`; begin with affected packages and
+a relevant test expression when appropriate:
+
+```bash
+python3 workflows/shared/launch.py workflows/ci/core/config.yml -- ./src/lib/application/... -run '^TestName$' -count=1
+```
+
+Replace the package/test selection with real affected coverage. For a required full
+suite, repository checks or CLI build, use the corresponding workflow:
 
 ```bash
 python3 workflows/shared/launch.py workflows/ci/core/config.yml
@@ -10,7 +22,7 @@ python3 workflows/shared/launch.py workflows/ci/repository/config.yml
 python3 workflows/shared/launch.py workflows/build/cli/config.yml -- --output /absolute/path/to/dockpipe
 ```
 
-The launcher verifies the separately released bootstrap CLI against
+The bootstrap script verifies the separately released bootstrap CLI against
 `workflows/shared/bootstrap.lock.json`. Set `DOCKPIPE_BOOTSTRAP_ARCHIVE` to an
 already downloaded pinned archive for offline execution. Make targets are thin
 aliases for these workflows.
@@ -22,10 +34,17 @@ a cache permission failure alone does not require running the whole suite on the
 
 ## Workflow
 
+Select an installed CLI or an existing build explicitly as absolute `DOCKPIPE_BIN`.
+The build workflow requires `--output`; do not assume `src/bin/dockpipe` exists.
+Validate authored examples in a task-owned temporary project. Execute only examples
+whose effects and prerequisites are within the current authorization.
+
 ```bash
-./src/bin/dockpipe workflow validate <config.yml>
-./src/bin/dockpipe --workflow <name> --
+"$DOCKPIPE_BIN" workflow validate <config.yml>
+"$DOCKPIPE_BIN" --workflow <name> --
 ```
+
+Schema validation does not prove dependency availability or runtime/platform behavior.
 
 ## Package
 
@@ -43,9 +62,9 @@ Run these checks in the external package checkout with absolute `DOCKPIPE_BIN`,
 Install the external DorkPipe package before invoking its skill renderer. It is not bundled source.
 
 ```bash
-./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --list
-./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run
-./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target claude --output /tmp/dorkpipe-claude-skills --dry-run
+"$DOCKPIPE_BIN" --package dorkpipe --workflow skills.render -- --list
+"$DOCKPIPE_BIN" --package dorkpipe --workflow skills.render -- --target codex --dry-run
+"$DOCKPIPE_BIN" --package dorkpipe --workflow skills.render -- --target claude --output /tmp/dorkpipe-claude-skills --dry-run
 ```
 
 ## Search
@@ -70,13 +89,21 @@ Always say which checks ran, which failed, and which were skipped.
   - tar sync path: `session.volume.sync_in`
 - Prefer topology-agnostic assertions unless the test is explicitly validating one bootstrap mode.
 
-## Dogfooding
+## Desktop
 
-This repo runs the same released binary and declarative workflows users get. Dogfooding is a quality
-bar, not a special CLI primitive. After the developer CLI build workflow, run dogfood workflows from the repo root with:
+Use the [desktop contributor instructions](../../../src/dockpipe-app/README.md) for
+SDK inputs and the build workflow. Run already-configured native tests through:
 
 ```bash
-./src/bin/dockpipe --workflow <name> --
+python3 workflows/shared/launch.py workflows/ci/desktop-native/config.yml -- --build /absolute/build/directory --regex '<affected-test-expression>'
 ```
 
-Omit `--workdir .` when the current directory is already the project root.
+Local/offscreen tests do not establish Windows, macOS or live embedding acceptance.
+Do not broaden to a cross-platform build matrix unless the task requires it.
+
+## Dogfooding
+
+Run an existing repository workflow through the bootstrap script, or use the
+explicitly selected built CLI from the repository root. Dogfooding uses the same
+runtime contract as consumer workflows; it does not permit checkout-only engine
+behavior. Building or running these workflows does not authorize publication.
