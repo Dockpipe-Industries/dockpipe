@@ -33,23 +33,6 @@ func cmdPackageBuild(args []string) error {
 	}
 }
 
-func resolvePackageRepoRoot(flagRoot string) (string, error) {
-	if flagRoot != "" {
-		return filepath.Abs(filepath.Clean(flagRoot))
-	}
-	if v := os.Getenv("DOCKPIPE_REPO_ROOT"); v != "" {
-		return filepath.Abs(filepath.Clean(v))
-	}
-	wd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	if top, err := infrastructure.GitTopLevel(wd); err == nil {
-		return top, nil
-	}
-	return filepath.Abs(wd)
-}
-
 func cmdPackageBuildStore(args []string) error {
 	if len(args) > 0 && (args[0] == "--help" || args[0] == "-h") {
 		fmt.Print(packageBuildStoreUsageText)
