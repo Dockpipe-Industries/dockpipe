@@ -107,7 +107,7 @@ backlogs. No provider is declared supported solely because its discovery endpoin
 - TASK-039 owns gateway authentication hooks, normalized request context, profiles and audit contracts;
   this task supplies the shared federation implementation. Design may proceed together; federation
   depends on those interfaces, while the basic gateway can retain API-key authentication.
-- [TASK-038](../standalone-terraform-mcp-executor/overview.md) consumes verified identities through
+- [TASK-038](https://github.com/Dockpipe-Industries/dockpipe-packages/blob/master/docs/agents/tasks/standalone-terraform-mcp-executor/overview.md) consumes verified identities through
   the shared boundary. Its federated pipeline acceptance depends on TASK-042; its execution core and
   existing-authentication path do not. Preserve plan checks, human approvals, vault ownership,
   DigitalOcean/Cloudflare scope, polling/webhooks and durable job state.

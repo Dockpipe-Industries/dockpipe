@@ -107,10 +107,11 @@ func runPackageScriptTarget(workdir string, target packageScriptTarget, env []st
 		"DOCKPIPE_PACKAGE_ROOT="+target.PackageDir,
 		"DOCKPIPE_PACKAGE_MANIFEST="+target.Manifest,
 	)
-	sdkPath := filepath.Join(infrastructure.CoreDir(workdir), "assets", "scripts", "lib", "dockpipe-sdk.sh")
-	if stat, err := os.Stat(sdkPath); err == nil && !stat.IsDir() {
-		baseEnv = append(baseEnv, "DOCKPIPE_SDK_SH="+sdkPath)
+	sdkPath, err := infrastructure.ShellSDKPath(workdir)
+	if err != nil {
+		return fmt.Errorf("prepare shell SDK: %w", err)
 	}
+	baseEnv = append(baseEnv, "DOCKPIPE_SDK_SH="+sdkPath)
 	if stateDir, err := infrastructure.StateRoot(workdir); err == nil {
 		baseEnv = append(baseEnv, infrastructure.EnvStateDir+"="+stateDir)
 	}
@@ -154,8 +155,4 @@ func upsertEnvLocal(env []string, key, value string) []string {
 
 func dockpipeScriptCommand(scriptAbs string) (*exec.Cmd, string, error) {
 	return packagescript.ScriptCommand(scriptAbs)
-}
-
-func dockpipeBashShellCommand(command string) (*exec.Cmd, string, error) {
-	return packagescript.BashShellCommand(command)
 }

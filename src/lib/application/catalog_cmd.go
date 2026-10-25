@@ -175,8 +175,8 @@ func buildCatalogListOutput(projectRoot, workdir string) (catalogListOutput, err
 		Workflows:       workflows,
 		Resolvers:       resolvers,
 		ResolverDetails: catalogResolverDetails(workdir, resolvers),
-		Strategies:      listCatalogCoreCategoryNames(projectRoot, workdir, "strategies"),
-		Runtimes:        listCatalogCoreCategoryNames(projectRoot, workdir, "runtimes"),
+		Strategies:      listCatalogProfileNames(projectRoot, workdir, "strategies"),
+		Runtimes:        listCatalogProfileNames(projectRoot, workdir, "runtimes"),
 	}, nil
 }
 
@@ -317,7 +317,9 @@ func listCatalogResolvers(projectRoot, workdir string) []string {
 	for _, root := range infrastructure.ResolverCompileRootsCached(projectRoot) {
 		collectResolverDirs(root)
 	}
-	collectDirectResolverConfigs(filepath.Join(infrastructure.CoreDir(projectRoot), "resolvers"), add)
+	if root, err := infrastructure.PackagesResolversDir(workdir); err == nil {
+		collectDirectResolverConfigs(root, add)
+	}
 	if localResolvers, err := infrastructure.PackagesResolversDir(workdir); err == nil {
 		collectTarballLeafNames(localResolvers, "dockpipe-resolver-*.tar.*", "dockpipe-resolver-", add)
 	}
@@ -330,7 +332,7 @@ func listCatalogResolvers(projectRoot, workdir string) []string {
 	return sortedCatalogSet(set)
 }
 
-func listCatalogCoreCategoryNames(projectRoot, workdir, category string) []string {
+func listCatalogProfileNames(projectRoot, workdir, category string) []string {
 	set := map[string]struct{}{}
 	add := func(name string) {
 		name = strings.TrimSpace(name)
@@ -339,20 +341,28 @@ func listCatalogCoreCategoryNames(projectRoot, workdir, category string) []strin
 		}
 		set[name] = struct{}{}
 	}
-	collectCoreCategory(filepath.Join(infrastructure.CoreDir(projectRoot), category), add)
-	if localCore, err := infrastructure.PackagesCoreDir(workdir); err == nil {
-		collectCoreCategory(filepath.Join(localCore, category), add)
-	}
-	if tgz, err := infrastructure.FindLatestCoreTarball(workdir); err == nil && tgz != "" {
-		if root, err := packagebuild.EnsureTarballExtractedCache(tgz, infrastructure.TarballExtractCacheRoot(workdir)); err == nil {
-			collectCoreCategory(filepath.Join(root, "core", category), add)
+	if category == "strategies" {
+		for _, name := range builtinStrategyNames() {
+			add(name)
 		}
 	}
-	if globalCore, err := infrastructure.GlobalTemplatesCoreDir(); err == nil {
-		collectCoreCategory(filepath.Join(globalCore, category), add)
+	if category == "runtimes" {
+		for _, name := range infrastructure.BuiltinRuntimeProfileNames() {
+			add(name)
+		}
 	}
-	for _, systemCore := range infrastructure.SystemTemplatesCoreDirs() {
-		collectCoreCategory(filepath.Join(systemCore, category), add)
+	collectProfileCategory(filepath.Join(projectRoot, category), add)
+	if workdir != projectRoot {
+		collectProfileCategory(filepath.Join(workdir, category), add)
+	}
+	if store, err := infrastructure.PackagesRoot(workdir); err == nil {
+		collectProfileCategory(filepath.Join(store, category), add)
+	}
+	if store, err := infrastructure.GlobalPackagesRoot(); err == nil {
+		collectProfileCategory(filepath.Join(store, category), add)
+	}
+	for _, store := range infrastructure.SystemPackagesRoots() {
+		collectProfileCategory(filepath.Join(store, category), add)
 	}
 	return sortedCatalogSet(set)
 }
@@ -373,7 +383,7 @@ func collectDirectResolverConfigs(root string, add func(string)) {
 	}
 }
 
-func collectCoreCategory(root string, add func(string)) {
+func collectProfileCategory(root string, add func(string)) {
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return

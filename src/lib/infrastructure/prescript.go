@@ -18,7 +18,7 @@ import (
 
 // SourceHostScript runs a bash script with set -a (export all) and returns the resulting environment as a map.
 func SourceHostScript(scriptPath string, env []string) (map[string]string, error) {
-	bashExe, err := resolveBashExe()
+	bashExe, err := resolveBashExeForEnv(env)
 	if err != nil {
 		hint := ""
 		if runtime.GOOS == "windows" {
@@ -215,6 +215,29 @@ func RunHostCommandWithShell(command string, env []string, selection string) err
 // bashSingleQuoted returns s as a single-quoted bash literal ('...' with ' escaped as '\”).
 func bashSingleQuoted(s string) string {
 	return `'` + strings.ReplaceAll(s, `'`, `'\''`) + `'`
+}
+
+// resolveBashExeForEnv admits an explicitly selected interpreter without
+// altering the native-shell default. An invalid explicit path never falls back.
+func resolveBashExeForEnv(env []string) (string, error) {
+	selected := envGet(env, "DOCKPIPE_HOST_BASH_BIN")
+	if selected == "" {
+		selected = os.Getenv("DOCKPIPE_HOST_BASH_BIN")
+	}
+	if selected == "" {
+		return resolveBashExe()
+	}
+	if !filepath.IsAbs(selected) {
+		return "", fmt.Errorf("DOCKPIPE_HOST_BASH_BIN must be an absolute executable path")
+	}
+	information, err := os.Stat(selected)
+	if err != nil {
+		return "", fmt.Errorf("inspect DOCKPIPE_HOST_BASH_BIN: %w", err)
+	}
+	if !information.Mode().IsRegular() || (runtime.GOOS != "windows" && information.Mode().Perm()&0o111 == 0) {
+		return "", fmt.Errorf("DOCKPIPE_HOST_BASH_BIN must select a regular executable file")
+	}
+	return selected, nil
 }
 
 // resolveBashExe prefers Git for Windows when installed: PATH often resolves

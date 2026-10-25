@@ -1,6 +1,7 @@
 package application
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,19 +33,23 @@ func withRunStepSeams(t *testing.T, fn func()) {
 // TestRunSteps_ParallelBatchAggregatesOutputsInOrder merges async host-step outputs in declaration order (last wins).
 func TestRunSteps_ParallelBatchAggregatesOutputsInOrder(t *testing.T) {
 	tmp := t.TempDir()
-	aPath := filepath.Join(tmp, "a.env")
-	bPath := filepath.Join(tmp, "b.env")
-	if err := os.MkdirAll(filepath.Dir(aPath), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(aPath, []byte("KEY=from_a\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(bPath, []byte("KEY=from_b\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
 
 	withRunStepSeams(t, func() {
+		oldHostCommand := runHostCommandFn
+		t.Cleanup(func() { runHostCommandFn = oldHostCommand })
+		runHostCommandFn = func(_ string, env []string) error {
+			values := domain.EnvSliceToMap(env)
+			outputRoot := values["DOCKPIPE_OUTPUT_ROOT"]
+			stepID := values["DOCKPIPE_STEP_ID"]
+			if outputRoot == "" || stepID == "" {
+				return fmt.Errorf("host step missed its output scope or identity")
+			}
+			if err := os.MkdirAll(outputRoot, 0o755); err != nil {
+				return err
+			}
+			path := filepath.Join(outputRoot, stepID+".env")
+			return os.WriteFile(path, []byte("KEY=from_"+stepID+"\n"), 0o644)
+		}
 		// No containers should run in this test.
 		runContainerFn = func(infrastructure.RunOpts, []string) (int, error) {
 			t.Fatalf("runContainerFn should not be called for host steps")
@@ -54,23 +59,29 @@ func TestRunSteps_ParallelBatchAggregatesOutputsInOrder(t *testing.T) {
 		nonBlocking := false
 		wf := &domain.Workflow{
 			Steps: []domain.Step{
-				{ID: "a", Kind: "host", Outputs: "a.env", Blocking: &nonBlocking},
-				{ID: "b", Kind: "host", Outputs: "b.env", Blocking: &nonBlocking},
+				{ID: "a", Kind: "host", Cmd: "emit", Outputs: "a.env", Blocking: &nonBlocking},
+				{ID: "b", Kind: "host", Cmd: "emit", Outputs: "b.env", Blocking: &nonBlocking},
 				{ID: "join", Kind: "host"}, // default blocking
 			},
 		}
 		o := runStepsOpts{
-			wf:       wf,
-			envMap:   map[string]string{"BASE": "x"},
-			envSlice: []string{"BASE=x"},
-			locked:   map[string]bool{},
-			opts:     &CliOpts{Workdir: tmp},
+			wf:     wf,
+			envMap: map[string]string{"BASE": "x"},
+
+			locked: map[string]bool{},
+			opts:   &CliOpts{Workdir: tmp},
 		}
 		if err := runSteps(o); err != nil {
 			t.Fatalf("runSteps error: %v", err)
 		}
 		if got := o.envMap["KEY"]; got != "from_b" {
 			t.Fatalf("expected last-write-wins merge (from_b), got %q", got)
+		}
+		for _, name := range []string{"a.env", "b.env"} {
+			path := filepath.Join(o.envMap["DOCKPIPE_OUTPUT_ROOT"], name)
+			if _, err := os.Stat(path); !os.IsNotExist(err) {
+				t.Errorf("merged output was not consumed: %s, %v", path, err)
+			}
 		}
 	})
 }
@@ -87,8 +98,8 @@ func TestRunStepPreScripts_UsesInjectedSourceFunction(t *testing.T) {
 			wfRoot:   "/wf",
 			repoRoot: "/repo",
 			envMap:   map[string]string{},
-			envSlice: []string{},
-			opts:     &CliOpts{},
+
+			opts: &CliOpts{},
 		}
 		step := domain.Step{Run: []string{"local/pre.sh"}}
 		if err := runStepPreScripts(o, 1, step); err != nil {
@@ -127,8 +138,8 @@ func TestRunStepPreScripts_HostUsesRunHostExec(t *testing.T) {
 			wfRoot:   tmp,
 			repoRoot: "/repo",
 			envMap:   map[string]string{},
-			envSlice: []string{},
-			opts:     &CliOpts{},
+
+			opts: &CliOpts{},
 		}
 		step := domain.Step{Kind: "host", Run: []string{"host.sh"}}
 		if err := runStepPreScripts(o, 0, step); err != nil {
@@ -170,9 +181,9 @@ func TestRunStepsFinallyRunsAfterFailure(t *testing.T) {
 			wfRoot:   tmp,
 			repoRoot: tmp,
 			envMap:   map[string]string{},
-			envSlice: nil,
-			locked:   map[string]bool{},
-			opts:     &CliOpts{Workdir: tmp},
+
+			locked: map[string]bool{},
+			opts:   &CliOpts{Workdir: tmp},
 		}
 		err := runSteps(o)
 		if code, ok := exitCodeFromError(err); !ok || code != 17 {
@@ -200,9 +211,9 @@ func TestRunStepsFinallyFailureCombinesErrors(t *testing.T) {
 			wfRoot:   tmp,
 			repoRoot: tmp,
 			envMap:   map[string]string{},
-			envSlice: nil,
-			locked:   map[string]bool{},
-			opts:     &CliOpts{Workdir: tmp},
+
+			locked: map[string]bool{},
+			opts:   &CliOpts{Workdir: tmp},
 		}
 		err := runSteps(o)
 		if err == nil || !strings.Contains(err.Error(), "permission denied") {

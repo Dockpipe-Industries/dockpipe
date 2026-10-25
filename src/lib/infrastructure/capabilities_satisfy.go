@@ -15,17 +15,12 @@ import (
 // SatisfiedCapabilityIDs returns dotted capability ids declared by resolver packages (package.yml capability:).
 func SatisfiedCapabilityIDs(workdir, repoRoot string) map[string]struct{} {
 	out := make(map[string]struct{})
-	if pr, err := PackagesRoot(workdir); err == nil {
-		mergeResolverCapabilitiesFromDir(filepath.Join(pr, "resolvers"), out)
+	for _, directory := range resolverPackageDirectories(workdir, repoRoot) {
+		capability, err := readResolverCapabilityFromPackageYML(filepath.Join(directory, PackageManifestFilename))
+		if err == nil && capability != "" {
+			out[capability] = struct{}{}
+		}
 	}
-	if gr, err := GlobalPackagesRoot(); err == nil {
-		mergeResolverCapabilitiesFromDir(filepath.Join(gr, "resolvers"), out)
-	}
-	for _, sr := range SystemPackagesResolversDirs() {
-		mergeResolverCapabilitiesFromDir(sr, out)
-	}
-	cd := CoreDir(repoRoot)
-	mergeResolverCapabilitiesFromDir(filepath.Join(cd, "resolvers"), out)
 	return out
 }
 
@@ -50,27 +45,6 @@ func readResolverCapabilityFromPackageYML(path string) (string, error) {
 	return c, nil
 }
 
-func mergeResolverCapabilitiesFromDir(resolversDir string, out map[string]struct{}) {
-	entries, err := os.ReadDir(resolversDir)
-	if err != nil {
-		return
-	}
-	for _, e := range entries {
-		if !e.IsDir() || strings.HasPrefix(e.Name(), ".") {
-			continue
-		}
-		p := filepath.Join(resolversDir, e.Name(), PackageManifestFilename)
-		c, err := readResolverCapabilityFromPackageYML(p)
-		if err != nil || c == "" {
-			continue
-		}
-		out[c] = struct{}{}
-	}
-}
-
-// CheckWorkflowPackageRequiresCapabilities ensures sibling package.yml requires_capabilities are
-// satisfied by installed resolver packages. Skips when the workflow is loaded from a tar URI,
-// when package.yml is missing, or when requires_capabilities is empty.
 func CheckWorkflowPackageRequiresCapabilities(workdir, repoRoot, wfRoot, wfConfigPath string) error {
 	if strings.HasPrefix(strings.TrimSpace(wfConfigPath), "tar://") {
 		return nil
@@ -200,9 +174,6 @@ func logicalResolverScriptDomain(workdir, repoRoot, rel string) (string, bool) {
 		projectRoot = root
 	}
 	if fileExists(filepath.Join(projectRoot, "scripts", filepath.FromSlash(rest))) {
-		return "", false
-	}
-	if fileExists(filepath.Join(projectRoot, "src", "scripts", filepath.FromSlash(rest))) {
 		return "", false
 	}
 	return first, true
@@ -358,22 +329,12 @@ func resolverProfileExists(repoRoot, workdir, name string) bool {
 	if roots := ResolverCompileRootsCached(projectRoot); len(NestedResolverLeafDirs(name, roots)) > 0 {
 		return true
 	}
-	if dirExists(filepath.Join(CoreDir(repoRoot), "resolvers", name)) {
-		return true
-	}
-	if dirExists(filepath.Join(CoreDir(repoRoot), "resolvers", name, "profile")) {
-		return true
-	}
-	if gr, err := GlobalPackagesResolversDir(); err == nil {
-		if dirExists(filepath.Join(gr, name)) || dirExists(filepath.Join(gr, name, "profile")) {
+	for _, root := range resolverPackageDirectories(projectRoot, repoRoot) {
+		if filepath.Base(root) == name && (scriptFileExists(filepath.Join(root, "profile")) || dirExists(filepath.Join(root, "profile"))) {
 			return true
 		}
 	}
-	for _, sr := range SystemPackagesResolversDirs() {
-		if dirExists(filepath.Join(sr, name)) || dirExists(filepath.Join(sr, name, "profile")) {
-			return true
-		}
-	}
+
 	return false
 }
 

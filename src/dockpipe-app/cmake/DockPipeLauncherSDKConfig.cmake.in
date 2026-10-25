@@ -1,0 +1,43 @@
+@PACKAGE_INIT@
+
+# Dependency configs can replace PACKAGE_PREFIX_DIR on CMake before 3.30.
+set(_DockPipeLauncherSDK_prefix "${PACKAGE_PREFIX_DIR}")
+include(CMakeFindDependencyMacro)
+find_dependency(Qt6 6.10.3 EXACT COMPONENTS Widgets Network Concurrent
+    WebEngineWidgets PrintSupport WebChannel)
+find_dependency(SpatialWebBrowser 0.1.0 EXACT CONFIG)
+set(PACKAGE_PREFIX_DIR "${_DockPipeLauncherSDK_prefix}")
+unset(_DockPipeLauncherSDK_prefix)
+
+set(DockPipeLauncherSDK_VERSION "@DOCKPIPE_LAUNCHER_SDK_VERSION@")
+set(DockPipeLauncherSDK_QT_VERSION "6.10.3")
+set(DockPipeLauncherSDK_SYSTEM_NAME "@CMAKE_SYSTEM_NAME@")
+set(DockPipeLauncherSDK_SYSTEM_PROCESSOR "@CMAKE_SYSTEM_PROCESSOR@")
+set(DockPipeLauncherSDK_COMPILER_ID "@CMAKE_CXX_COMPILER_ID@")
+set(DockPipeLauncherSDK_COMPILER_VERSION "@CMAKE_CXX_COMPILER_VERSION@")
+set(DockPipeLauncherSDK_CXX_STANDARD 17)
+set(DockPipeLauncherSDK_DISPLAY_INTERFACE "com.dockpipe.launcher.DisplayPackage/1.0")
+set(DockPipeLauncherSDK_WORKSPACE_INTERFACE "com.dockpipe.launcher.WorkspacePackage/2.0")
+
+foreach(pair IN ITEMS SYSTEM_NAME SYSTEM_PROCESSOR CXX_COMPILER_ID CXX_COMPILER_VERSION)
+    if(pair STREQUAL "CXX_COMPILER_ID")
+        set(expected "${DockPipeLauncherSDK_COMPILER_ID}")
+    elseif(pair STREQUAL "CXX_COMPILER_VERSION")
+        set(expected "${DockPipeLauncherSDK_COMPILER_VERSION}")
+    else()
+        set(expected "${DockPipeLauncherSDK_${pair}}")
+    endif()
+    if(NOT "${CMAKE_${pair}}" STREQUAL "${expected}")
+        set(DockPipeLauncherSDK_FOUND FALSE)
+        set(DockPipeLauncherSDK_NOT_FOUND_MESSAGE
+            "Launcher SDK ${pair} requires ${expected}; selected ${CMAKE_${pair}}")
+        return()
+    endif()
+endforeach()
+
+set_and_check(DockPipeLauncherSDK_RESOURCE_DIR "@PACKAGE_sdk_resource_directory@")
+set_and_check(DockPipeLauncherSDK_LIBRARY_DIR "@PACKAGE_CMAKE_INSTALL_LIBDIR@")
+set_and_check(DockPipeLauncherSDK_TEST_RESOURCES
+    "${DockPipeLauncherSDK_RESOURCE_DIR}/dockpipe-launcher.qrc")
+include("${CMAKE_CURRENT_LIST_DIR}/DockPipeLauncherSDKTargets.cmake")
+check_required_components(DockPipeLauncherSDK)

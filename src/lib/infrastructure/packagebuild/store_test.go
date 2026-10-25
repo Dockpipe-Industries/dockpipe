@@ -55,8 +55,8 @@ requires_capabilities: [cli.codex]
 	if err != nil {
 		t.Fatal(err)
 	}
-	if m.Packages.Core == nil || m.Packages.Core.Version != "1.2.3" {
-		t.Fatalf("core: %+v", m.Packages.Core)
+	if m.Packages.Core != nil {
+		t.Fatal("new stores must not export legacy core trees")
 	}
 	if len(m.Packages.Workflows) != 1 || m.Packages.Workflows[0].Name != "demo" || m.Packages.Workflows[0].Provider != "cloudflare" {
 		t.Fatalf("workflows: %+v", m.Packages.Workflows)
@@ -86,8 +86,8 @@ requires_capabilities: [cli.codex]
 	if err != nil || dec.Platform != platform {
 		t.Fatalf("store platform = %q; want %q (%v)", dec.Platform, platform, err)
 	}
-	if dec.Packages.Core.Tarball == "" {
-		t.Fatal("empty core tarball in manifest")
+	if dec.Packages.Core != nil {
+		t.Fatal("new manifest must omit core")
 	}
 	assertStoreArchiveSizes(t, out, &dec)
 	if len(dec.Packages.Workflows) != 1 || dec.Packages.Workflows[0].Provider != "cloudflare" {
@@ -180,8 +180,8 @@ capability: cli.codex
 	if err != nil {
 		t.Fatal(err)
 	}
-	if m.Packages.Core == nil || m.Packages.Core.Version != "0.6.0" {
-		t.Fatalf("core: %+v", m.Packages.Core)
+	if m.Packages.Core != nil {
+		t.Fatal("new stores must not copy historical core archives")
 	}
 	if len(m.Packages.Workflows) != 1 || m.Packages.Workflows[0].Name != "demo" {
 		t.Fatalf("workflows: %+v", m.Packages.Workflows)
@@ -213,5 +213,50 @@ func assertStoreArchiveSizes(t *testing.T, root string, manifest *StoreBuildMani
 		if artifact.SizeBytes <= 0 || artifact.SizeBytes != info.Size() {
 			t.Fatalf("archive %s: reported %d bytes; actual %d", artifact.Tarball, artifact.SizeBytes, info.Size())
 		}
+	}
+}
+
+func TestBuildCompiledStoreAllowsEmptyStoreAndOmitsCore(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "missing-store")
+	output := t.TempDir()
+	manifest, err := BuildCompiledStore(root, output, "1.2.3", "all")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Packages.Core != nil || len(manifest.Packages.Workflows) != 0 || len(manifest.Packages.Resolvers) != 0 {
+		t.Fatalf("unexpected empty-store packages: %+v", manifest.Packages)
+	}
+	data, err := os.ReadFile(filepath.Join(output, "packages-store-manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wire struct {
+		Packages map[string]json.RawMessage `json:"packages"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := wire.Packages["core"]; exists {
+		t.Fatal("empty store emitted a core entry")
+	}
+}
+
+func TestBuildCompiledStoreRejectsRetiredCoreSlice(t *testing.T) {
+	output := filepath.Join(t.TempDir(), "uncreated")
+	if _, err := BuildCompiledStore(t.TempDir(), output, "1.2.3", "core"); err == nil {
+		t.Fatal("retired core producer remained available")
+	}
+	if _, err := os.Stat(output); !os.IsNotExist(err) {
+		t.Fatalf("invalid core selection created output: %v", err)
+	}
+}
+
+func TestStoreManifestStillDecodesHistoricalCore(t *testing.T) {
+	var manifest StoreBuildManifest
+	if err := json.Unmarshal([]byte(`{"schema":1,"packages":{"core":{"name":"core","version":"1.2.3","tarball":"dockpipe-core-1.2.3.tar.gz","sha256":"abc"}}}`), &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Packages.Core == nil || manifest.Packages.Core.Version != "1.2.3" {
+		t.Fatal("historical core metadata is no longer readable")
 	}
 }

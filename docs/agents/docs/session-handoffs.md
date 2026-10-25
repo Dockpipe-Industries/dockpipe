@@ -47,7 +47,7 @@ The handoff transports the same objective id, authority, `done_when`, invariants
 dirty-tree ownership, completed proof, effect and retry evidence, and next checkpoint. It grants no
 new execution scope. Follow the rendered skill's delivery instructions: create exactly one fresh
 task when supported, or return one paste-ready prompt for the user to open a fresh chat. Preserve
-the same saved checkout without a worktree unless requested, then stop the old task.
+the active checkout or managed worktree and its owned state, then stop the old task.
 
 A continuation receiver admits durable completed proof, revalidates only affected live anchors, and
 executes the single pending boundary first. It does not replay chronology or rerun passed proof
@@ -62,26 +62,36 @@ without drift, new failure evidence, or a direct dependency.
   external-resource authority.
 - Do not interrupt a running mutation or incomplete read-back. Reach a safe boundary first.
 - After successful task creation, stop the old task.
-- Do not create a worktree unless explicitly requested.
+- Use a runtime-managed worktree when isolation protects existing edits or supports the bounded
+  task. Reuse a suitable existing workspace first; preserve the original checkout and unrelated state.
 
 ## Normal completion
 
 When the objective completes, report its owned scope, checks, risks, generated artifacts, deferred
-findings, and terminal state. Ask before commit in a normal session. Optional follow-up work is not
-part of the completed objective and is not automatically authorized.
+findings, and terminal state. Keep implementation uncommitted until the user authorizes a commit
+or explicitly requests moving the bounded task to staging. Optional follow-up work is not part
+of the completed objective and is not automatically authorized.
 
-## Autonomous Master Exception
+## Bounded staging authorization
 
-An explicitly designated master-orchestrator session may select one bounded objective whose required
-product decisions are already recorded, then stage only its exact changed files and commit the
-validated objective on the current branch. It must preserve unrelated worktree changes and never
-push, open a PR, rebase, reset, stash, delete state, or change repository policy incidentally.
+An explicit request to move a bounded task to staging authorizes the necessary commits, pushes,
+PRs, dependency publications and staging promotion for that task after their required checks pass.
+Carry that authority through the flow without asking again at each step. Keep implementation
+uncommitted while the task is still being developed unless a validated intermediate source
+publication is required by that staging dependency chain.
 
-Stop and ask the user only for an architecture gate: a missing decision or ambiguous scope; a new
-generic primitive or `src/lib` / `src/cmd` edit; a public CLI/MCP/schema contract; a package/runtime
-ownership boundary; live provider/Docker/auth/network work; destructive cleanup or secrets;
-validation uncertainty; or overlap/conflict with user changes. All other in-objective implementation,
-validation, task-documentation, and permitted commit decisions are autonomous.
+Preserve unrelated changes and use the runtime-owned Git operations. This authority does not
+extend to production, unrelated work, destructive operations or unresolved scope decisions.
+An automatic approval rejection still requires resolving its stated condition before retrying.
+
+## Scoped orchestration authority
+
+A master-orchestrator label, task dispatch flag or historical checkpoint does not
+itself authorize staging or commits. Apply any explicit user-granted orchestration
+scope to its named objective and checkout only, preserving unrelated work. Current
+instructions to leave work unstaged or uncommitted take precedence. Ask about a
+missing product decision or unresolved scope boundary; do not manufacture a new
+approval gate for reversible work already authorized.
 
 ## Compact continuation prompt
 

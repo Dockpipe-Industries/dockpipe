@@ -1,0 +1,8 @@
+name: editor.build
+description: Qualify and package the owning VSCode extension.
+docker_preflight: false
+steps:
+  - id: build
+    kind: host
+    cwd: repo
+    run: assets/scripts/build.py

@@ -1,7 +1,8 @@
 # Operation Results
 
-This document defines a repo-wide pattern for Dockpipe operations that do work, take time, and
-produce a result.
+This document describes Dockpipe’s operation-result contract and the conventions
+for adopting it in additional operations. The Go result, renderer and JSONL event
+ledger are implemented; adoption is not yet universal across every code path.
 
 It is broader than Git runtime sessions. The same contract should apply to engine/runtime work,
 CLI-visible actions, package/build flows, helper-container setup, DorkPipe orchestration support
@@ -47,7 +48,7 @@ Examples:
 
 ## Canonical Ownership
 
-Go should own the canonical contract.
+Go owns the canonical contract in [`operationrecord`](../../src/lib/infrastructure/operationrecord/operation_result.go).
 
 - core type definition lives in Go
 - core status vocabulary lives in Go
@@ -63,10 +64,10 @@ for operation status semantics.
 Prefer a concrete Go struct plus helpers over a pure interface-only design. Interface layering can
 sit on top if a package needs it later.
 
-Conceptual baseline:
+Current result shape (the package type is `OperationResult`):
 
 ```go
-type Result struct {
+type OperationResult struct {
     Unit       string
     Status     string
     Message    string
@@ -74,12 +75,12 @@ type Result struct {
     FinishedAt time.Time
     DurationMs int64
     IDs        map[string]string
-    Data       map[string]any
+    Error      string
 }
 ```
 
-The point is not the exact field names. The point is that every meaningful operation should have the
-same operational envelope.
+Structured events derive from this envelope. Domain-specific data belongs in
+the operation’s own result payload; the shared result has no arbitrary `Data` field.
 
 ### Required Fields
 
@@ -89,13 +90,13 @@ same operational envelope.
 - `Message`: short human summary, optional but preferred
 - duration/timing fields
 - identifiers relevant to the unit
-- optional details/data payload for debugging or downstream consumers
+- an error summary on failure; domain details remain in the operation’s own payload
 
 ## Status Vocabulary
 
 Keep the status vocabulary small and stable.
 
-Recommended baseline:
+Implemented lifecycle vocabulary:
 
 - `start`
 - `progress`
@@ -105,13 +106,13 @@ Recommended baseline:
 Not every operation needs to emit `progress`, but every surfaced operation should be able to map to
 the same lifecycle.
 
-Domain payloads such as "published", "archived", or "conflict" can still exist as operation data or
-domain-state results. They should not force each code path to invent a different log lifecycle.
+Domain payloads such as "published", "archived", or "conflict" can still exist in
+operation-specific results. They should not force each code path to invent a different log lifecycle.
 
 Example:
 
 - lifecycle status: `done`
-- domain state inside `Data`: `publish_status=published`
+- domain state in the publication result: `publish_status=published`
 
 ## Logging Contract
 
@@ -190,7 +191,7 @@ Current event schema:
   "finished_at": "2026-07-02T21:15:10Z",
   "duration_ms": 1824,
   "ids": {
-    "workspace": "unitehere",
+    "workspace": "example-project",
     "session": "run-1842"
   }
 }
@@ -202,8 +203,8 @@ Rules:
 - JSON projection files are rebuildable indexes over JSONL, useful for fast summaries and UI
   bootstrap, but not authoritative.
 - YAML files are canonical for desired state and configuration.
-- Postgres indexes JSONL/YAML as a rebuildable projection for DockPipe AI, dashboards, search, and
-  cross-run queries.
+- A future database index may project JSONL/YAML for dashboards or cross-run queries.
+  The core event contract does not require or supply a Postgres service.
 - Event writers should append; they should not rewrite earlier observed facts.
 - Structured events must derive from the Go result contract instead of being hand-authored in
   parallel.
@@ -284,8 +285,8 @@ setup follow this rule; password input remains directly between the terminal and
 Example:
 
 ```text
-[dockpipe] seeding session workspace volume... unitehere / run-1842
-[dockpipe] ts=2026-07-02T21:15:12Z unit=session.volume.seed status=done duration_ms=1824 workspace=unitehere session=run-1842 volume=dockpipe-ws-unitehere-run-1842
+[dockpipe] seeding session workspace volume... example-project / run-1842
+[dockpipe] ts=2026-07-02T21:15:12Z unit=session.volume.seed status=done duration_ms=1824 workspace=example-project session=run-1842 volume=dockpipe-ws-example-project-run-1842
 ```
 
 This keeps the nice live CLI experience while preserving one canonical result contract after the
@@ -302,16 +303,12 @@ Tests should be able to assert:
 
 This is stronger than string-matching arbitrary log lines and makes regressions easier to catch.
 
-## Migration Order
+## Adoption
 
-Recommended implementation order:
-
-1. Define the shared Go result type and renderer.
-2. Apply it to one vertical slice first:
-   session create -> volume seed/sync -> worker lease -> checkpoint -> publish.
-3. Map the same results into structured session events.
-4. Expand outward to container runs, package/build/install flows, and other CLI-visible work.
-5. Align bash helpers to the same vocabulary and unit naming as thin adapters.
+The shared Go type, renderer and structured event mapping already exist. New
+operations should reuse them, including package-owned shell adapters through
+`dockpipe result`. Add coverage where an existing path still emits only free-form
+status messages; do not assume that every command already produces this envelope.
 
 ## Non-Goals
 

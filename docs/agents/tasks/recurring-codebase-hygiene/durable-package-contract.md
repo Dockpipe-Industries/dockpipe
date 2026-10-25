@@ -21,7 +21,7 @@ Validation evidence:
 - focused `src/lib/application` state-environment tests passed with the cached Go 1.25.11 toolchain
   and offline module cache;
 - shell syntax, Pipeon SDK coverage, DorkPipe SDK coverage, and
-  `src/scripts/check-templates-core-paths.sh` passed;
+  `workflows/ci/repository-layout/assets/scripts/check-paths.sh` passed;
 - `dockpipe package compile workflows --workdir . --from packages/dorkpipe --force` compiled all
   16 discovered workflow packages, including `dorkpipe`;
 - the final offline `dockpipe package test --workdir . --only dorkpipe` run passed the CI
@@ -71,7 +71,7 @@ Validation evidence:
   isolated writable build cache;
 - a real CLI build under `/tmp` successfully emitted both text inventory and JSON prune-plan output
   against the current checkout;
-- `go test ./src/cmd`, `src/scripts/check-templates-core-paths.sh`,
+- `go test ./src/cmd`, `workflows/ci/repository-layout/assets/scripts/check-paths.sh`,
   `tests/unit-tests/test_repo_layout.sh`, and `git diff --check` passed;
 - a fresh CMake launcher root under `/tmp/dockpipe-task035-launcher.ovXZL7` configured and built
   offline (109 files; 1,609,552-byte executable) without touching the retained or configured build
@@ -159,7 +159,7 @@ current directory name.
 | Public CLI | `src/lib/application/sdk_cmd.go` (`cmdGet`, `cmdScope`, `packageScopeObject`); `usage.go`; `sdk_cmd_test.go` | `dockpipe get package_state_dir` and `dockpipe scope --package <name>` currently expose the mixed root, including JSON `root` and `state_root`. Their eventual cutover is to the durable package root with legacy discovery; a distinct package-runtime path is required for caches, build products, scratch, and run evidence. The public suffix join must remain within its selected root. |
 | Shell SDK | `src/core/assets/scripts/lib/dockpipe-sdk.sh` (`dockpipe_sdk_refresh`, `dockpipe_sdk_package_state_dir`, package CI binding, `path package`, `scope`); `src/core/assets/scripts/README.md`; package SDK tests | Mirrors the CLI fallback under `DOCKPIPE_STATE_DIR/packages`. It must consume injected durable state rather than independently recreate its location. Explicit package CI bindings move to disposable runtime/artifact paths. |
 | Go SDK and editor support | `src/core/assets/scripts/lib/repotools/repotools.go` (`PackageScope`, `PackageScopePath`); `docs/packages/editor-extensions.md` | These are pass-through consumers of `dockpipe scope --package`; no separate storage policy is allowed. Completion/docs must describe durable package state and the separate disposable runtime surface together. |
-| Isolation and reset boundaries | `src/scripts/ci-emulate.sh`; `packages/pipeon/resolvers/pipeon/bin/pipeon` | Both deliberately unset inherited package-state context when changing the effective workdir/container boundary. Preserve that behavior so state from one project cannot be rebound to another project identity. |
+| Isolation and reset boundaries | `workflows/ci/ci-emulate/assets/scripts/ci-emulate.sh`; `packages/pipeon/resolvers/pipeon/bin/pipeon` | Both deliberately unset inherited package-state context when changing the effective workdir/container boundary. Preserve that behavior so state from one project cannot be rebound to another project identity. |
 | Package-authoring and artifact guidance | `docs/agents/core/{core-package-model.md,path-scopes.md,repo-map.md}`; `docs/agents/runtime/artifacts-and-mcp.md`; `docs/workflows/workflow-yaml.md`; `docs/runtime/artifacts.md`; `docs/packages/package-model.md` | Current guidance groups service state, credentials, caches, metrics, and run artifacts under one package scope. Implementation must update canonical and compressed guidance to require an explicit durable-versus-disposable choice; workflow artifacts remain disposable. |
 | Clean/build compatibility | `src/lib/application/project_build_cmd.go` (`cmdClean`, `cmdRebuild`); `project_build_cmd_test.go`; `src/lib/infrastructure/packagelayout.go` (`PackagesRoot`) | `clean` currently deletes only the resolved compiled package store and honors `DOCKPIPE_PACKAGES_ROOT`; `rebuild` calls `clean`. The decision below makes ordinary clean checkout-only and decouples rebuild's compiled-store reset. Compiled package stores never become durable project/package state. |
 | Core VM package-state consumer | `src/core/assets/scripts/vmimage-run.sh` (`vmimage_state_dir` and callers) | Mixed. Machine UUID/MAC/disk serial, writable firmware variables, TPM state, generated administrator password/SSH identity, and other state needed to preserve a persistent guest identity are **durable** and sensitive. Per-run overlays, sync archives, PID/socket/log files, bootstrap temporaries, and transient run state are **disposable**. The current common root must split before clean. |

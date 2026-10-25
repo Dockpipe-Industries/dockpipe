@@ -66,7 +66,7 @@ func nestedResolverProfileCandidates(repoRoot, name string, roots []string) []st
 }
 
 // nestedWorkflowConfigCandidates returns config.yml paths for workflow name (deduped).
-// Tries nested src/core/workflows/**/<name>, then each extra root /**/<name>.
+// Searches only the supplied workflow roots, including their namespace directories.
 func nestedWorkflowConfigCandidates(repoRoot, name string, roots []string) []string {
 	seen := map[string]struct{}{}
 	var out []string
@@ -79,24 +79,6 @@ func nestedWorkflowConfigCandidates(repoRoot, name string, roots []string) []str
 		}
 		seen[p] = struct{}{}
 		out = append(out, p)
-	}
-	if bw := BundledWorkflowsAuthoringDir(repoRoot); bw != "" {
-		_ = filepath.WalkDir(bw, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				if os.IsNotExist(err) {
-					return nil
-				}
-				return err
-			}
-			if d.IsDir() || d.Name() != "config.yml" {
-				return nil
-			}
-			if filepath.Base(filepath.Dir(path)) != name {
-				return nil
-			}
-			add(path)
-			return nil
-		})
 	}
 	for _, st := range roots {
 		_ = filepath.WalkDir(st, func(path string, d fs.DirEntry, err error) error {
@@ -158,36 +140,9 @@ func findNestedWorkflowDirByLeafName(repoRoot, leaf string, roots []string) stri
 	return ""
 }
 
-// FindBundledWorkflowAuthoringDirByLeafName returns the first src/core/workflows/**/<leaf> directory
-// that contains config.yml (nested namespace under bundled examples).
+// FindBundledWorkflowAuthoringDirByLeafName is a compatibility alias for declared
+// project workflow roots. It does not inspect a bundled authoring tree.
+// Deprecated: use FindNestedWorkflowDirByLeafName.
 func FindBundledWorkflowAuthoringDirByLeafName(repoRoot, leaf string) string {
-	leaf = strings.TrimSpace(leaf)
-	if leaf == "" {
-		return ""
-	}
-	bw := BundledWorkflowsAuthoringDir(repoRoot)
-	if bw == "" {
-		return ""
-	}
-	var hit string
-	err := filepath.WalkDir(bw, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			if os.IsNotExist(err) {
-				return nil
-			}
-			return err
-		}
-		if !d.IsDir() || filepath.Base(path) != leaf {
-			return nil
-		}
-		if _, err := os.Stat(filepath.Join(path, "config.yml")); err == nil {
-			hit = path
-			return errStopNestedWalk
-		}
-		return nil
-	})
-	if err != nil && !errors.Is(err, errStopNestedWalk) {
-		return ""
-	}
-	return hit
+	return FindNestedWorkflowDirByLeafName(repoRoot, leaf)
 }

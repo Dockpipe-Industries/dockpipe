@@ -8,8 +8,8 @@ import (
 
 func TestLoadIsolationProfileMergesRuntimeThenResolver(t *testing.T) {
 	repo := t.TempDir()
-	rtDir := filepath.Join(repo, "templates", "core", "runtimes")
-	rsDir := filepath.Join(repo, "templates", "core", "resolvers")
+	rtDir := filepath.Join(repo, "runtimes")
+	rsDir := mustTestResolverStore(t, repo)
 	_ = os.MkdirAll(rtDir, 0o755)
 	_ = os.MkdirAll(rsDir, 0o755)
 	if err := os.WriteFile(filepath.Join(rtDir, "r1"), []byte("DOCKPIPE_RUNTIME_WORKFLOW=wf1\n"), 0o644); err != nil {
@@ -29,8 +29,8 @@ func TestLoadIsolationProfileMergesRuntimeThenResolver(t *testing.T) {
 
 func TestLoadIsolationProfileSameNamePairs(t *testing.T) {
 	repo := t.TempDir()
-	rtDir := filepath.Join(repo, "templates", "core", "runtimes")
-	rsDir := filepath.Join(repo, "templates", "core", "resolvers")
+	rtDir := filepath.Join(repo, "runtimes")
+	rsDir := mustTestResolverStore(t, repo)
 	_ = os.MkdirAll(rtDir, 0o755)
 	_ = os.MkdirAll(rsDir, 0o755)
 	if err := os.WriteFile(filepath.Join(rtDir, "both"), []byte("DOCKPIPE_RUNTIME_TYPE=execution\n"), 0o644); err != nil {
@@ -50,7 +50,7 @@ func TestLoadIsolationProfileSameNamePairs(t *testing.T) {
 
 func writeRuntimeFile(t *testing.T, repo, name, body string) {
 	t.Helper()
-	p := filepath.Join(repo, "templates", "core", "runtimes", name)
+	p := filepath.Join(repo, "runtimes", name)
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func writeRuntimeFile(t *testing.T, repo, name, body string) {
 
 func writeResolverFile(t *testing.T, repo, name, body string) {
 	t.Helper()
-	p := filepath.Join(repo, "templates", "core", "resolvers", name)
+	p := filepath.Join(mustTestResolverStore(t, repo), name)
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestLoadIsolationProfileNoProfilesErrors(t *testing.T) {
 }
 
 // TestLoadIsolationProfileExplicitPairDoesNotCrossRead verifies that with an explicit runtime+resolver
-// pair, only templates/core/runtimes/<runtime> and templates/core/resolvers/<resolver> participate
+// pair, only project runtimes and installed package resolvers participate
 // (resolver-only file under runtimes/ must not satisfy the resolver name).
 func TestLoadIsolationProfileExplicitPairDoesNotCrossRead(t *testing.T) {
 	repo := t.TempDir()
@@ -134,28 +134,25 @@ func TestLoadIsolationProfileExplicitPairDoesNotCrossRead(t *testing.T) {
 	}
 }
 
-func TestLoadIsolationProfileBundledLayoutUsesBundledWorkflowResolverProfile(t *testing.T) {
+func TestLoadIsolationProfileDeclaredResolverUsesBuiltinRuntime(t *testing.T) {
 	repo := t.TempDir()
-	rt := filepath.Join(repo, BundledLayoutDir, "core", "runtimes", "dockerimage", "profile")
-	rs := filepath.Join(repo, BundledLayoutDir, "workflows", "claude", "profile")
-	for path, body := range map[string]string{
-		rt: "DOCKPIPE_RUNTIME_SUBSTRATE=dockerimage\n",
-		rs: "DOCKPIPE_RESOLVER_TEMPLATE=claude\nDOCKPIPE_RESOLVER_CMD=claude\n",
-	} {
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
-			t.Fatal(err)
-		}
+	profile := filepath.Join(repo, "vendor", "toolset", "resolvers", "example-tool", "profile")
+	if err := os.MkdirAll(filepath.Dir(profile), 0o755); err != nil {
+		t.Fatal(err)
 	}
-
-	m, err := LoadIsolationProfile(repo, "dockerimage", "claude")
+	if err := os.WriteFile(profile, []byte("DOCKPIPE_RESOLVER_CMD=example-tool\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	config := `{"schema":1,"compile":{"workflows":["vendor"]}}`
+	if err := os.WriteFile(filepath.Join(repo, "dockpipe.config.json"), []byte(config), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	merged, err := LoadIsolationProfile(repo, "dockerimage", "example-tool")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if m["DOCKPIPE_RUNTIME_SUBSTRATE"] != "dockerimage" || m["DOCKPIPE_RESOLVER_TEMPLATE"] != "claude" {
-		t.Fatalf("expected bundled runtime + resolver profile merge, got %#v", m)
+	if merged["DOCKPIPE_RUNTIME_SUBSTRATE"] != "dockerimage" || merged["DOCKPIPE_RESOLVER_CMD"] != "example-tool" {
+		t.Fatalf("expected builtin runtime + declared resolver profile merge, got %#v", merged)
 	}
 }
 
@@ -166,8 +163,17 @@ func TestLoadIsolationProfileInjectsActualResolverPackageRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := filepath.Join(repo, "templates", "core", "resolvers", "example")
+	want := filepath.Join(mustTestResolverStore(t, repo), "example")
 	if profile["DOCKPIPE_RESOLVER_PACKAGE_ROOT"] != want {
 		t.Fatalf("resolver package root = %q, want %q", profile["DOCKPIPE_RESOLVER_PACKAGE_ROOT"], want)
 	}
+}
+
+func mustTestResolverStore(t *testing.T, repo string) string {
+	t.Helper()
+	root, err := PackagesResolversDir(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return root
 }

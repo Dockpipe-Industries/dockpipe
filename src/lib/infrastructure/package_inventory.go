@@ -69,12 +69,6 @@ func ListInstalledPackages(workdir string) (PackageInventory, error) {
 	for _, system := range SystemPackagesRoots() {
 		sources = append(sources, source{system, "System"})
 	}
-	if core, err := GlobalTemplatesCoreDir(); err == nil {
-		sources = append(sources, source{core, "User"})
-	}
-	for _, core := range SystemTemplatesCoreDirs() {
-		sources = append(sources, source{core, "System"})
-	}
 	seen := make(map[string]bool)
 	for _, location := range sources {
 		if canonical, err := filepath.EvalSymlinks(location.path); err == nil {
@@ -90,8 +84,7 @@ func ListInstalledPackages(workdir string) (PackageInventory, error) {
 			if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 {
 				return nil
 			}
-			archive := packagebuild.IsPackageArchivePath(entry.Name(), "core") ||
-				packagebuild.IsPackageArchivePath(entry.Name(), "workflow") ||
+			archive := packagebuild.IsPackageArchivePath(entry.Name(), "workflow") ||
 				packagebuild.IsPackageArchivePath(entry.Name(), "resolver")
 			if !archive && entry.Name() != PackageManifestFilename {
 				return nil
@@ -112,6 +105,9 @@ func ListInstalledPackages(workdir string) (PackageInventory, error) {
 			}
 			if err != nil {
 				out.Warnings = append(out.Warnings, fmt.Sprintf("%s: %v", filename, err))
+				return nil
+			}
+			if manifest.Kind == "core" {
 				return nil
 			}
 			_, removalErr := userPackageArchivePath(out.InstallRoot, absolute)

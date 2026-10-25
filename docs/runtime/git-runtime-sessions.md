@@ -1,7 +1,16 @@
 # Git Runtime Sessions
 
-This proposal defines a Git-owned session lifecycle for long-running autonomous and semi-autonomous
-Dockpipe runs. It is a foundation document, not the full implementation plan.
+Dockpipe owns the Git lifecycle for managed workflow sessions. This document
+contains both the implemented local interface and the longer-term design.
+
+Current local sessions require an existing Git checkout. `workspace.mode: managed`
+defaults to a managed worktree; `storage: volume` adds a Docker editing surface
+while retaining a managed Git worktree for checkpointing. `storage: clone` is
+reserved and rejected. `workspace.repo` selects an existing local directory or a
+logical identity for the current source; it does not clone a remote URL. Session
+publishing pushes a branch and does not create a pull request. The lifecycle,
+recovery, volume-first and migration sections below include design goals, not
+guarantees that all proposed transitions or adapters are implemented.
 
 ## Problem
 
@@ -63,6 +72,20 @@ Writes require a fresh review fingerprint, and unsaved editor buffers are exclud
 This simpler human UI is separate from the strict session checkpoint/publication
 request and receipt contracts below. See [CLI reference](../cli-reference.md#project-git)
 for its request fields and limits.
+
+The separately confirmed project `tag-publish` action publishes one immutable
+commit to one `origin` tag ref. It requires a clean fresh snapshot and a full
+canonical commit reachable from reviewed HEAD. It resolves the effective push
+destination once, observes the exact tag, revalidates project and destination,
+then performs at most one non-force exact-OID push and verifies the actual remote
+OID. Literal fetch resolution must preserve the resolved destination; matching
+additional fetch/push URL rewrite prefixes are conservatively rejected before
+remote observation and again before push. No persistent Git configuration,
+credential helpers or hooks are modified. A literal URL cannot also name another configured remote. Existing exact refs are idempotent; conflicting or ambiguous refs fail.
+Local tags, branches, index and configuration remain untouched. Cancellation or
+transport failure can leave a remote effect, so recovery observes the same exact
+ref rather than deleting or replacing it. This human-authorized project action
+does not expand managed session publication beyond `refs/heads/`.
 
 ### Managed sessions
 
@@ -238,7 +261,7 @@ workspace:
   mode: managed
   lifecycle:
     branch_prefix: ai
-    branch: js/features/spnext/reporting/worktree-report-poc
+    branch: feature/reporting
     checkpoint: auto
     publish: review
 ```
@@ -254,25 +277,25 @@ workspace:
     checkpoint: manual
 ```
 
-Proposed fields:
+Implemented workflow fields (with the reserved storage value noted):
 
 | Field | Meaning |
 | --- | --- |
-| `workspace.repo` | Logical repository identity or source path/URL. |
+| `workspace.repo` | Existing local source directory, or logical identity for the current source directory. |
 | `workspace.mode` | `managed` by default; `bind` for explicit local fast path. |
 | `workspace.lifecycle.branch_prefix` | Prefix for session branches, default `ai`. |
 | `workspace.lifecycle.branch` | Exact session branch name for repos with required branch conventions; overrides branch-prefix derivation. |
 | `workspace.lifecycle.checkpoint` | `manual`, `auto`, or `step`. |
 | `workspace.lifecycle.publish` | `none`, `branch`, or `review`. |
-| `workspace.base` | Optional base branch/ref, default current/default branch. |
-| `workspace.storage` | Optional advanced override, e.g. `volume`, `worktree`, `clone`; not needed for most workflows. |
+| `workspace.base` | Optional base branch/ref, default `HEAD`. |
+| `workspace.storage` | Managed sessions default to `worktree`; `volume` is an optional Docker editing surface. `clone` is reserved and rejected. |
 
-The initial runtime service now supports this authored surface for local sessions. The first
-implementation uses managed Git worktrees for `mode: managed` and current-checkout branch
-management for explicit `mode: bind`; later implementations can move the same public API to named
-Docker volumes, isolated clones, or distributed workers.
+Local sessions use managed Git worktrees for `mode: managed` and current-checkout
+branch management for explicit `mode: bind`. Docker volume storage is supported
+with a managed worktree as its checkpointable source. Isolated clones and
+distributed session services remain future work.
 
-## Session Lifecycle
+## Proposed Session Lifecycle
 
 ```text
 requested
@@ -312,10 +335,10 @@ State meanings:
 | `published` | Review target exists; no automatic merge has occurred. |
 | `archived` | Runtime has closed the session and retained metadata. |
 
-## Metadata Model
+## Metadata Design
 
 Runtime metadata should live under project-local state for local runs and under a session service for
-distributed runs. A local starting point:
+distributed runs. The following layout and JSON are design examples, not a byte-for-byte schema reference. Use `dockpipe session inspect <id> --json` for current records:
 
 ```text
 bin/.dockpipe/sessions/<session-id>/
@@ -511,7 +534,7 @@ DockPipe-Worker: editor-a
 DockPipe-Reason: worker-requested
 ```
 
-These commits are not final product history. Publish can either:
+These commits are not final product history. Future review integrations could:
 
 - preserve checkpoint commits for review transparency
 - squash them into one review commit
@@ -519,7 +542,7 @@ These commits are not final product history. Publish can either:
 
 The default should be preserve for recovery during development, squash at human merge time.
 
-## Recovery Strategy
+## Recovery Design
 
 After container or worker failure:
 
@@ -544,7 +567,7 @@ process can:
 For bind mode, recovery is weaker because dirty changes are in the host checkout. Runtime should
 checkpoint immediately where possible and warn if manual cleanup is needed.
 
-## Conflict Handling
+## Conflict-Handling Design
 
 The first implementation should avoid automatic conflict resolution beyond safe fast-forward/rebase
 cases.
@@ -558,7 +581,7 @@ Policy:
 
 AI can propose a conflict resolution patch, but the runtime still owns Git operations.
 
-## Runtime And Workflow Changes
+## Design Responsibilities
 
 Required core primitives:
 
@@ -583,7 +606,7 @@ Package-level changes:
 - Apply/publish stages should call runtime operations, not shell `git`.
 - Existing artifact-first flows remain valid and can run without workspace sessions.
 
-## Migration Plan
+## Migration Roadmap (historical design)
 
 Phase 0: design and guardrails
 
@@ -684,7 +707,7 @@ Worktrees should be an implementation detail for local managed workspaces. Clone
 implementation detail for remote/distributed workers. Worker branches should come later, after the
 session API and checkpoint ledger are stable.
 
-In short:
+The design distinguishes:
 
 - public default: session branch
 - local debugging path: managed worktree when needed
@@ -693,3 +716,61 @@ In short:
 
 This keeps workflows stable while letting the runtime evolve from local Docker to distributed
 orchestration.
+
+## Git inspection in Docker linked worktrees
+
+A linked worktree's `.git` file normally points outside the mounted project.
+Docker runs now replace that inaccessible container view with a runtime-owned,
+read-only Git snapshot. The host gitfile, index and shared repository metadata
+are never rewritten. The same view is available with a project bind mount or the
+managed-volume tar-sync fallback.
+
+The snapshot contains the current HEAD's reachable history, its current branch
+reference, the actual index and any additional objects referenced by that index.
+Staged changes, unmerged stages and index flags remain inspectable. Split indexes
+are flattened only in the private copy. Shallow boundaries are retained. Local
+remotes, credentials, hooks, reflogs, stashes, unrelated branch/tag references,
+worktree registrations and object alternates are not mounted or copied. Git
+inspection is local; partial clones, sparse checkouts and repositories without a
+committed HEAD currently fail explicitly rather than fetching or mounting their
+shared Git directory.
+
+Inherited `GIT_*` variables are removed from snapshot commands and from the worker
+Git environment. The runtime supplies optional-lock suppression and one fixed
+`safe.directory=/work` declaration for its own mount; it does not trust arbitrary
+paths or disable ownership checks globally. The snapshot uses a fresh minimal
+config, retaining only the object format and safe filesystem boolean settings.
+Custom Git filters, global configuration and local ignore files are not copied.
+This is an inspection view, not a container Git-write or publication boundary.
+Existing runtime-owned host checkpoint/publication behavior remains separate.
+
+Preparation checks HEAD, branch and original index again after the object export
+and rejects concurrent changes. Each Git command has bounded output; index and
+metadata reads are limited to 64 MiB, the exported pack to 2 GiB, and preparation
+to three minutes with two packing workers and a 32 MiB packing-window allowance.
+Scratch space can include both the export and indexed pack during preparation.
+Errors and cancelled commands discard the temporary snapshot.
+
+Snapshot files are individually mounted read-only, together with an empty refs
+directory required by Git. Attached runs remove host scratch after container
+completion. For Linux detached runs, established bind mounts retain those file
+inodes after host scratch removal; Docker's disposable container lifetime then
+owns the remaining mounts. A native Linux fixture verifies Git inspection and
+bundle creation after the host snapshot has already been removed. This lifetime
+contract is not qualified for Windows or macOS Docker Desktop: detached external
+Git snapshots fail explicitly on those hosts. Attached code paths still require
+native Docker Desktop qualification. Restarting a detached snapshot container
+against deleted host mount paths is not supported; start a fresh runtime run.
+
+The focused native fixture is opt-in and uses an already installed image with Git:
+
+```bash
+DOCKPIPE_TEST_DOCKER_GIT_IMAGE=golang:1.26.10-bookworm \
+  go test ./src/lib/infrastructure \
+  -run '^TestDockerGitSnapshotNativeAttachedAndDetached$' -count=1
+```
+
+It creates only disposable fixture repositories, containers and a named volume;
+uses no container network; verifies attached bind/volume and detached behavior;
+and checks the source gitfile and split index remain byte-identical. Without the
+explicit image setting, ordinary unit-test runs do not claim native Docker proof.

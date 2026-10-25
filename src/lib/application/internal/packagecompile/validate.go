@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"dockpipe/src/lib/application/internal/compileconfig"
@@ -16,7 +15,7 @@ import (
 )
 
 // validateCompileOutputs checks workflow and resolver tarballs under the compiled store for namespace
-// and depends closure (compile order: core → resolvers → workflows). Local compiled workflows may omit
+// and depends closure (compile order: resolvers → workflows). Local compiled workflows may omit
 // namespace unless requireWorkflowNamespace is true (store/export path).
 func validateCompileOutputsForMode(workdir string, requireWorkflowNamespace bool) error {
 	return validateCompileOutputsScoped(workdir, requireWorkflowNamespace, nil, nil)
@@ -313,18 +312,6 @@ func effectiveResolverNamespaceFromTar(pm *domain.PackageManifest, tgz string, m
 
 func compiledPackageNamesFromTarballs(pkgsRoot string) map[string]bool {
 	out := make(map[string]bool)
-	coreMatches, _ := filepath.Glob(filepath.Join(pkgsRoot, "core", "dockpipe-core-*.tar.*"))
-	sort.Strings(coreMatches)
-	if len(coreMatches) > 0 {
-		coreTar := coreMatches[len(coreMatches)-1]
-		b, err := packagebuild.ReadFileFromTarGz(coreTar, filepath.ToSlash(filepath.Join("core", infrastructure.PackageManifestFilename)))
-		if err == nil {
-			var m domain.PackageManifest
-			if yaml.Unmarshal(b, &m) == nil && strings.TrimSpace(m.Name) != "" {
-				out[strings.TrimSpace(m.Name)] = true
-			}
-		}
-	}
 	for _, kind := range []string{"workflows", "resolvers"} {
 		var pattern string
 		switch kind {
@@ -381,7 +368,6 @@ func compiledPackageNamesFromTarballs(pkgsRoot string) map[string]bool {
 func compiledPackageNamesFromTarballDir(dir string) map[string]bool {
 	out := make(map[string]bool)
 	for _, pattern := range []string{
-		"dockpipe-core-*.tar.*",
 		"dockpipe-workflow-*.tar.*",
 		"dockpipe-resolver-*.tar.*",
 	} {
@@ -389,17 +375,6 @@ func compiledPackageNamesFromTarballDir(dir string) map[string]bool {
 		for _, tgz := range matches {
 			base := filepath.Base(tgz)
 			switch {
-			case strings.HasPrefix(base, "dockpipe-core-"):
-				b, err := packagebuild.ReadFileFromTarGz(tgz, filepath.ToSlash(filepath.Join("core", infrastructure.PackageManifestFilename)))
-				if err != nil {
-					continue
-				}
-				var pm domain.PackageManifest
-				if yaml.Unmarshal(b, &pm) == nil {
-					if n := strings.TrimSpace(pm.Name); n != "" {
-						out[n] = true
-					}
-				}
 			case strings.HasPrefix(base, "dockpipe-workflow-"):
 				members, err := packagebuild.ListTarGzMemberPaths(tgz)
 				if err != nil {

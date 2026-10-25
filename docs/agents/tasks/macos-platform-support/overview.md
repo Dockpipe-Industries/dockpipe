@@ -93,7 +93,7 @@ its Docker runtime; containerd, Kubernetes, and other backends are outside this 
   checks for the existing Docker path.
 - Keep Colima-specific setup and lifecycle in package/resolver assets; change the generic engine
   only if endpoint compatibility needs a general primitive. Coordinate Dev Container acceptance
-  with [TASK-014](../native-devcontainer-support/overview.md).
+  with [TASK-014](https://github.com/Dockpipe-Industries/dockpipe-packages/blob/master/docs/agents/tasks/native-devcontainer-support/overview.md).
 
 Acceptance: reproducible native evidence with pinned host/tool versions, working CLI and launcher
 flows, clear setup/repair documentation, and no implicit changes to existing VM profiles or contexts.

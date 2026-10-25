@@ -1,7 +1,7 @@
 name: Flatpak qualification
 
-# Standalone runs produce qualification artifacts. The release caller includes
-# the tested bundle and distinct Marketplace store in its normal publication gate.
+# The desktop owns CLI/core/Qt/Browser and generic host extension contracts.
+# Optional Marketplace packages qualify independently in flatpak-catalog.yml.
 on:
   workflow_call:
     inputs:
@@ -12,8 +12,16 @@ on:
   pull_request:
     paths:
       - .github/workflows/flatpak.yml
-      - release/packaging/desktop/flatpak/**
-      - release/packaging/tests/fixtures/flatpak-package/**
+      - workflows/build/flatpak/assets/spatialweb-flatpak-browser.lock.json
+      - workflows/build/flatpak/assets/scripts/prepare-flatpak-browser-sdk.py
+      - workflows/build/flatpak/tests/test_prepare_flatpak_browser_sdk.py
+      - workflows/dependencies/browser-sdk/assets/scripts/prepare-browser-sdk.py
+      - workflows/dependencies/browser-sdk/assets/scripts/browser-runtime.py
+      - workflows/dependencies/browser-sdk/tests/test_browser_runtime.py
+      - workflows/dependencies/browser-sdk/tests/test_prepare_browser_sdk.py
+      - workflows/build/flatpak/**
+      - workflows/build/flatpak/tests/fixtures/flatpak-package/**
+      - workflows/build/flatpak/tests/test_flatpak_workflow_boundaries.py
       - src/lib/infrastructure/packageplatform/**
       - src/lib/infrastructure/packagecatalog/**
       - src/lib/infrastructure/packagebuild/**
@@ -21,8 +29,7 @@ on:
       - src/lib/application/bundled_tools.go
       - src/lib/application/dependencies.go
       - src/lib/application/internal/remotecmd/**
-      - src/app/tooling/dockpipe-launcher/**
-      - release/packaging/pinned-stores.lock.json
+      - src/dockpipe-app/**
       - workflows/**
 
 permissions:
@@ -30,6 +37,9 @@ permissions:
 
 jobs:
   desktop:
+    permissions:
+      contents: read
+      attestations: read
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -38,94 +48,58 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version: '1.26.9'
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '24.21.0'
+          go-version: '1.26.10'
       - name: Install Flatpak SDK and runtime
         run: |
           set -euo pipefail
           export FLATPAK_USER_DIR="$RUNNER_TEMP/dockpipe-flatpak-installation"
           printf 'FLATPAK_USER_DIR=%s\n' "$FLATPAK_USER_DIR" >> "$GITHUB_ENV"
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends flatpak python3-yaml
+          sudo apt-get install -y --no-install-recommends flatpak python3-yaml xvfb xauth
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
           flatpak install --user --noninteractive --assumeyes flathub org.kde.Sdk//6.10 org.kde.Platform//6.10 io.qt.qtwebengine.BaseApp//6.10
-      - name: Build CLI, core and pinned native store
+          python3 -B workflows/build/flatpak/assets/scripts/prepare-flatpak-browser-sdk.py \
+            --lock workflows/build/flatpak/assets/spatialweb-flatpak-browser.lock.json \
+            --print-ref-pins > "$RUNNER_TEMP/flatpak-browser-ref-pins.tsv"
+          while IFS=$'\t' read -r ref commit; do
+            flatpak update --user --noninteractive --assumeyes --commit="$commit" "$ref"
+          done < "$RUNNER_TEMP/flatpak-browser-ref-pins.tsv"
+          # This is a software-rendering qualification input, not the SDK ABI.
+          flatpak install --user --noninteractive --assumeyes --no-related flathub org.freedesktop.Platform.GL.default//25.08
+          flatpak update --user --noninteractive --assumeyes \
+            --commit=fe659a591fe882f573584ae62cfb55b92065e4ff7a972833271438bddfa6669e \
+            runtime/org.freedesktop.Platform.GL.default/x86_64/25.08
+      - name: Verify host and optional packaging boundaries
+        run: python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/build/flatpak/tests --pattern test_flatpak_workflow_boundaries.py
+      - name: Build standalone CLI
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
-        run: |
-          set -euo pipefail
-          version="${DOCKPIPE_FLATPAK_VERSION:-}"
-          if [[ -z "$version" ]]; then
-            # Use the same numeric candidate identity as release dry runs.
-            # VERSION is a release-line baseline, not the current engine version.
-            tags="$RUNNER_TEMP/dockpipe-qualification-tags.txt"
-            gh api --paginate "repos/$GITHUB_REPOSITORY/tags?per_page=100" --jq '.[].name' > "$tags"
-            python3 release/packaging/release-version.py --base "$(cat VERSION)" --tags "$tags" > "$RUNNER_TEMP/dockpipe-qualification-version.txt"
-            version="$(sed -n 's/^version=//p' "$RUNNER_TEMP/dockpipe-qualification-version.txt")"
-          fi
-          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          printf '%s\n' "$version" > VERSION
-          export CGO_ENABLED=0
-          export DOCKPIPE_PACKAGES_ROOT="$RUNNER_TEMP/core-compiled"
-          export XDG_STATE_HOME="$RUNNER_TEMP/dockpipe-state"
-          go build -trimpath -ldflags "-s -w -X main.Version=$version" -o "$RUNNER_TEMP/dockpipe" ./src/cmd
-          "$RUNNER_TEMP/dockpipe" package compile core --workdir "$GITHUB_WORKSPACE"
-          "$RUNNER_TEMP/dockpipe" package build store --workdir "$GITHUB_WORKSPACE" --only core --out "$RUNNER_TEMP/core-store"
-          wrapper_source="$GITHUB_WORKSPACE/workflows/ci/dockpipe-repo-quality"
-          wrapper_work="$RUNNER_TEMP/main-owned"
-          wrapper_target="$wrapper_work/workflows/dockpipe-repo-quality"
-          mkdir -p "$wrapper_target/assets/flatpak" "$wrapper_target/assets/scripts"
-          cp "$wrapper_source/config.yml" "$wrapper_source/package.yml" "$wrapper_target/"
-          cp "$wrapper_source/assets/source-lock.json" "$wrapper_target/assets/"
-          cp "$wrapper_source/assets/flatpak/package.json" "$wrapper_target/assets/flatpak/"
-          cp "$wrapper_source/assets/scripts/repo-quality-pinned.py" "$wrapper_target/assets/scripts/"
-          env -u DOCKPIPE_PACKAGES_ROOT "$RUNNER_TEMP/dockpipe" package compile workflows --workdir "$wrapper_work" --from "$wrapper_work/workflows" --force
-          env -u DOCKPIPE_PACKAGES_ROOT "$RUNNER_TEMP/dockpipe" package build store --workdir "$wrapper_work" --only workflows --out "$RUNNER_TEMP/main-store" --version "$version"
-          python3 release/packaging/ingest-pinned-stores.py \
-            --lock release/packaging/pinned-stores.lock.json \
-            --platform linux-amd64 --core-store "$RUNNER_TEMP/core-store" \
-            --main-store "$RUNNER_TEMP/main-store" \
-            --out "$RUNNER_TEMP/native-store"
-      - name: Build and test Flatpak desktop and optional bundled dependency
+        run: python3 workflows/shared/launch.py workflows/build/flatpak/prepare-cli.yml
+
+      - name: Prepare exact attested Flatpak Browser SDK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 workflows/shared/launch.py workflows/build/flatpak/prepare-browser.yml
+
+      - name: Build and test Flatpak desktop and generic bundled dependency
         shell: bash
-        run: |
-          set -euo pipefail
-          bash release/packaging/desktop/flatpak/build.sh "$(cat VERSION)" "$RUNNER_TEMP/dockpipe" "$RUNNER_TEMP/core-store" "$RUNNER_TEMP/flatpak"
-          bash release/packaging/desktop/flatpak/build-package.sh "$RUNNER_TEMP/flatpak/app" release/packaging/tests/fixtures/flatpak-package "$RUNNER_TEMP/flatpak-package"
+        run: python3 workflows/shared/launch.py workflows/build/flatpak/qualify-build.yml
+
       - name: Qualify installed Flatpak host terminals
         shell: bash
-        run: |
-          set -euo pipefail
-          python3 release/packaging/desktop/flatpak/verify-installed-host.py \
-            --bundle "$RUNNER_TEMP/flatpak/dockpipe-desktop_$(cat VERSION)_linux_amd64.flatpak" \
-            --build-dir "$RUNNER_TEMP/flatpak/qt-build" \
-            --out "$RUNNER_TEMP/flatpak-host-qualification"
+        run: python3 workflows/shared/launch.py workflows/build/flatpak/qualify-host.yml
+
       - name: Qualify real Docker and Compose bind mounts
-        run: |
-          docker pull debian:12
-          python3 release/packaging/desktop/flatpak/container-smoke.py "$RUNNER_TEMP/flatpak/app"
-      - name: Build and qualify optional Flatpak catalog
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 -B -m unittest discover -s release/packaging/desktop/flatpak -p 'test_*.py'
-          python3 release/packaging/desktop/flatpak/prepare-package-tools.py "$RUNNER_TEMP/package-tools" \
-            --cache "$RUNNER_TEMP/package-downloads" --app "$RUNNER_TEMP/flatpak/app"
-          python3 release/packaging/desktop/flatpak/build-catalog.py "$RUNNER_TEMP/flatpak/app" \
-            "$RUNNER_TEMP/native-store" "$RUNNER_TEMP/package-tools" "$RUNNER_TEMP/flatpak-catalog"
+        run: python3 workflows/shared/launch.py workflows/build/flatpak/qualify-containers.yml
+
       - name: Stage tested release artifacts
         if: inputs.version != ''
         shell: bash
         run: |
           set -euo pipefail
-          target=linux-amd64-flatpak-org.kde.Platform-6.10
-          mkdir -p "release/artifacts/stores/$target"
+          mkdir -p release/artifacts
           cp "$RUNNER_TEMP/flatpak/"*.flatpak release/artifacts/
-          cp "$RUNNER_TEMP/flatpak-catalog/store/"* "release/artifacts/stores/$target/"
-          cp "$RUNNER_TEMP/flatpak-catalog/qualification.json" "release/artifacts/stores/$target/"
       - uses: actions/upload-artifact@v7
         if: inputs.version != ''
         with:
@@ -135,11 +109,10 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: inputs.version == ''
         with:
-          name: flatpak-qualification-amd64
+          name: flatpak-host-qualification-amd64
           path: |
             ${{ runner.temp }}/flatpak/*.flatpak
             ${{ runner.temp }}/flatpak/*-commit.txt
             ${{ runner.temp }}/flatpak-package/store/
-            ${{ runner.temp }}/flatpak-catalog/store/
-            ${{ runner.temp }}/flatpak-catalog/qualification.json
+            ${{ runner.temp }}/flatpak-host-qualification/
           if-no-files-found: error

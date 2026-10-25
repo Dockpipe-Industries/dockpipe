@@ -1,2 +1,0 @@
-# Internal runtime substrate for packaged workflow dispatch. Public workflow YAML should use workflow: + package: steps instead.
-DOCKPIPE_RUNTIME_SUBSTRATE=package

@@ -30,7 +30,7 @@ func TestEffectiveWorkflowCompileRootsUsesCanonicalConfiguredRoots(t *testing.T)
 	}
 }
 
-func TestEffectiveResolverCompileRootsUsesWorkflowsBeforeCore(t *testing.T) {
+func TestEffectiveResolverCompileRootsPreservesDeclaredOrder(t *testing.T) {
 	repo := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(repo, "workflows", "x"), 0o755); err != nil {
 		t.Fatal(err)
@@ -73,5 +73,18 @@ func TestResolveCompilePathListReportsMissingPaths(t *testing.T) {
 	}
 	if got, want := filepath.Clean(result.MissingPaths[0]), filepath.Join(repo, "missing"); got != filepath.Clean(want) {
 		t.Fatalf("missing path = %q want %q", got, want)
+	}
+}
+
+func TestEffectiveResolverCompileRootsDoesNotInferLegacyCore(t *testing.T) {
+	root := t.TempDir()
+	for _, path := range []string{"workflows", "src/core/resolvers", "templates/core/resolvers"} {
+		if err := os.MkdirAll(filepath.Join(root, path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got := EffectiveResolverCompileRoots(nil, root)
+	if len(got) != 1 || got[0] != filepath.Join(root, "workflows") {
+		t.Fatalf("inferred undeclared resolver roots: %v", got)
 	}
 }

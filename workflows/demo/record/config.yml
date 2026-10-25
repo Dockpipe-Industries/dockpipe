@@ -1,0 +1,11 @@
+name: demo-record
+description: Record the selected terminal demo with prepared recording dependencies.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py bash workflows/demo/record/assets/scripts/record.sh

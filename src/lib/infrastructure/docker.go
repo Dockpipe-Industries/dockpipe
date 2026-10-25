@@ -200,24 +200,7 @@ var (
 func DockerBuild(image, dockerfileDir, contextDir string) error {
 	dockerCmd := dockerCommandName()
 	df := filepath.Join(dockerfileDir, "Dockerfile")
-	baseName := image
-	if i := strings.LastIndex(image, ":"); i >= 0 {
-		baseName = image[:i]
-	}
-	if baseName == "dockpipe-dev" {
-		inspect := execCommandFn(dockerCmd, "image", "inspect", "dockpipe-base-dev:latest")
-		inspect.Env = dockerCommandEnv(os.Environ(), dockerCmd)
-		if err := inspect.Run(); err != nil {
-			cmd := execCommandFn(dockerCmd, "build", "-q", "-t", "dockpipe-base-dev",
-				"-f", filepath.Join(CoreDir(contextDir), "assets", "images", "base-dev", "Dockerfile"), contextDir)
-			cmd.Env = dockerBuildEnv(os.Environ(), dockerCmd)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			if err := cmd.Run(); err != nil {
-				return fmt.Errorf("build dockpipe-base-dev: %w", err)
-			}
-		}
-	}
+
 	cmd := execCommandFn(dockerCmd, "build", "-q", "-t", image, "-f", df, contextDir)
 	cmd.Env = dockerBuildEnv(os.Environ(), dockerCmd)
 	cmd.Stdout = os.Stdout
@@ -413,6 +396,11 @@ func RunContainer(o RunOpts, argv []string) (int, error) {
 			return 1, dockerAbsErr
 		}
 	}
+	gitContext, err := prepareDockerGitContext(workHost, o.Detach)
+	if err != nil {
+		return 1, fmt.Errorf("prepare container Git context: %w", err)
+	}
+	defer gitContext.close()
 	workVolume := strings.TrimSpace(o.WorkdirVolume)
 	stdoutFile := o.Stdout
 	if stdoutFile == nil {
@@ -597,8 +585,20 @@ func RunContainer(o RunOpts, argv []string) (int, error) {
 			args = append(args, "-v", m)
 		}
 	}
+	if gitContext != nil {
+		for _, mount := range gitContext.mounts {
+			args = append(args, "-v", mount)
+		}
+		args = append(args, "-e", "GIT_OPTIONAL_LOCKS=0",
+			"-e", "GIT_CONFIG_COUNT=1", "-e", "GIT_CONFIG_KEY_0=safe.directory",
+			"-e", "GIT_CONFIG_VALUE_0="+containerWorkMount)
+	}
 	for _, e := range o.ExtraEnv {
 		e = strings.TrimSpace(e)
+		key, _, _ := strings.Cut(e, "=")
+		if gitContext != nil && strings.HasPrefix(strings.ToUpper(key), "GIT_") {
+			continue
+		}
 		if e != "" {
 			args = append(args, "-e", e)
 		}

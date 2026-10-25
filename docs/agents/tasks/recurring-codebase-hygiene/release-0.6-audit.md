@@ -186,7 +186,7 @@ out of diagnostics. Define outcome mapping before adding a generic result wrappe
 
 ### A6 — P2: Windows ZIP installation downloads unverified core into its installed location
 
-Location: `release/packaging/windows/install.ps1:135`.
+Location: `workflows/install/windows/assets/scripts/install.ps1:135`.
 
 The core download goes directly to the global package directory before its
 checksum is checked. A failed transfer or mismatch leaves the bad file there;

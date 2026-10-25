@@ -1,0 +1,11 @@
+name: layout-diagnostics
+description: Run the owning layout diagnostics operation.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/build/desktop/assets/scripts/layout-diagnostics.py

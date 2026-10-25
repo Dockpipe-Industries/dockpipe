@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "source_repository": "Dockpipe-Industries/dorkpipe",
+  "source_head": "b1f93d50be9974b03d49285fec3ae158f7d8c2fb",
+  "snapshot_kind": "selected-working-postimages",
+  "files": [
+    {
+      "source": "tooling/vscode-extensions/dockpipe-language-support/LICENSE",
+      "source_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "source_working_change": false,
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/LICENSE",
+      "destination_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "source": "tooling/vscode-extensions/dockpipe-language-support/README.md",
+      "source_sha256": "cfa568d5e4490533ad0e751021bc0e293a1e4b0caf0ba0dff4a7d44004df89ff",
+      "source_working_change": true,
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/README.md",
+      "destination_sha256": "f1215c1f60b655c864bf17ed4f3567630a863428614ef7cf7f2207c5d0b89a82"
+    },
+    {
+      "source": "tooling/vscode-extensions/dockpipe-language-support/extension.js",
+      "source_sha256": "8da8ce7c2c61cd17540d99420dc2a7265b77de43c1a22cc2ea14612b8cc0166c",
+      "source_working_change": true,
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/extension.js",
+      "destination_sha256": "ac76dfeb0fbda15263c6f3601514d15d53562c40372c753820e5d7fe71a0a80e"
+    },
+    {
+      "source": "tooling/vscode-extensions/dockpipe-language-support/extension.test.js",
+      "source_sha256": "682716538b7487004aa4e61f1cfc6d151dc11a68f55ff42431568b5fc8a0a988",
+      "source_working_change": true,
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/extension.test.js",
+      "destination_sha256": "98a9823a02afa5d8a1a5fb227fecf81f662d03ada32fb386a1b2a0f182238079"
+    },
+    {
+      "source": "tooling/vscode-extensions/dockpipe-language-support/images/icon.png",
+      "source_sha256": "d9b4daaf20c60a74867288bbefee57a57205597aef0b6a1a34097d4895c7c714",
+      "source_working_change": false,
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/images/icon.png",
+      "destination_sha256": "d9b4daaf20c60a74867288bbefee57a57205597aef0b6a1a34097d4895c7c714"
+    },
+    {
+      "source": "tooling/vscode-extensions/dockpipe-language-support/package-lock.json",
+      "source_sha256": "6dba0a2a55f5e4991d0709f538ff826932a29ca2e0d80284341a554a3db63036",
+      "source_working_change": false,
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/package-lock.json",
+      "destination_sha256": "ce2a1a8b50a802c4ec0a124a754af4336b2752f8f3d2b5eabb82fd564fff14fb"
+    },
+    {
+      "source": "tooling/vscode-extensions/dockpipe-language-support/package.json",
+      "source_sha256": "68e076fc02ff644644e14dce59a4bf43a88fd7954ebcf60ae9409ddd6b0e17ef",
+      "source_working_change": false,
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/package.json",
+      "destination_sha256": "d3397b1276fcd690834c035567f47afe02437f22b5cbe8616f062754f54e03c5"
+    }
+  ],
+  "runtime_schema_sources": [
+    {
+      "source": "src/lib/infrastructure/schema/dockpipe.config.schema.json",
+      "sha256": "524c2274e4d13527ed34d2e9b05252cc6b740897a6604c32ef7da4313b7c3674",
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/schemas/dockpipe.config.schema.json"
+    },
+    {
+      "source": "src/lib/infrastructure/schema/workflow.schema.json",
+      "sha256": "b48666a978e03dac87df9602366d28b3eac2187c0c9c8bebe0519cfcbd0e7bc1",
+      "destination": "tooling/vscode-extensions/dockpipe-language-support/schemas/workflow.schema.json"
+    }
+  ]
+}

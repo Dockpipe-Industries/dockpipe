@@ -22,17 +22,9 @@ func EffectiveVaultString(wf *Workflow, cfg *DockpipeProjectConfig) string {
 	return ""
 }
 
-// ValidateVaultModeString checks a vault backend token (workflow vault: or secrets.vault).
+// ValidateVaultModeString checks a vault backend token.
 func ValidateVaultModeString(v string) error {
-	if strings.TrimSpace(v) == "" {
-		return nil
-	}
-	switch strings.ToLower(strings.TrimSpace(v)) {
-	case "op", "1password", "environment", "none", "off", "false", "no", "0":
-		return nil
-	default:
-		return fmt.Errorf("vault %q is not supported (see docs/runtime/vault.md)", v)
-	}
+	return secretenv.ValidateVaultModeString(v)
 }
 
 // ValidateDockpipeProjectConfig checks optional fields after JSON decode.

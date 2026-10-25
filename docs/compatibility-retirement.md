@@ -11,6 +11,22 @@ The ledger is descriptive only. An entry is maintained until a separately approv
 the entry-specific retirement gate below. This file does not deprecate, warn on, migrate, remove,
 or change any behavior.
 
+## Runtime resource ownership migration (2026-10-25)
+
+The active user-authorized migration removes the checkout-only `src/core` tree,
+root workflow embedding, implicit source lookup and mandatory core archives.
+Runtime defaults and generic SDK resources are library-owned; VM/tool assets and
+checks belong to their external packages. Build, test, packaging and publication
+entrypoints belong to Dockpipe workflows. See
+[runtime resource ownership](concepts/runtime-resource-ownership.md).
+
+Rows below retain their original evidence locations as a historical inventory.
+Those locations are not current lookup paths or instructions to restore deleted
+assets. The active migration may cover several related rows within its approved
+scope; the one-entry proof profiles below describe the original inventory process.
+Validation of the replacement contracts and affected consumers is still required
+before staging. This migration does not remove existing releases or downloads.
+
 ## Evidence Rules
 
 - **Active source** is current engine, core-asset, schema/editor, or package code. It proves behavior
@@ -20,8 +36,9 @@ or change any behavior.
 - **Current caller/fixture** is an authored config, package script, CI caller, or test in this
   checkout. Its absence is only negative repository evidence; it does not prove downstream absence.
 - **History** can prove the first source commit found by `git log -S`, but it cannot grant retirement
-  authority. Every identified engine surface first appeared after tag `v0.5.8`; the checkout says
-  `VERSION=0.6.0`, but there is no `v0.6.0` tag. Therefore the ledger records source-introduction
+  authority. The original inventory found every identified engine surface after tag `v0.5.8`,
+  with `VERSION=0.6.0` and no `v0.6.0` tag in that snapshot. These are historical
+  observations, not the current version or tag inventory. The ledger records source-introduction
   commits and treats the minimum released version as **unproven** unless a package version is
   explicitly stated.
 - **Closed evidence** in task archives, promotion packets, VM qualification records, or old handoffs
@@ -126,8 +143,9 @@ These scan hits are not retirement candidates in this ledger:
 - `AWS_ENDPOINT_URL_S3` in the R2 uploader is the AWS CLI's endpoint input, not a Dockpipe alias for
   `R2_ENDPOINT_URL`; the package declares both for different upload clients;
 - old DorkPipe/Pipeon context paths found only in negative fixtures are not active fallbacks;
-- `templates/core`, materialized `bundle/core`, and `bundle/workflows` are current installed layouts;
-  only the project authoring fallback `templates/<name>` is ledgered above.
+- `templates/core`, materialized `bundle/core`, and `bundle/workflows` were installed layouts
+  at the time of the original inventory. The runtime-resource migration above supersedes
+  that layout; these paths must not be restored from this historical record.
 
 ## Maintenance Rule
 

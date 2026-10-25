@@ -1,0 +1,124 @@
+name: Optional Flatpak catalog qualification
+
+# Explicit installed-package integration lane. Its strict catalog/Cockpit checks
+# do not become prerequisites for releasing the generic Dockpipe desktop.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/flatpak-catalog.yml
+      - .github/workflows/flatpak.yml
+      - workflows/qualify/cockpit/assets/cockpit.lock.json
+      - workflows/qualify/cockpit/assets/scripts/prepare-cockpit.py
+      - workflows/build/flatpak/assets/spatialweb-flatpak-browser.lock.json
+      - workflows/build/flatpak/assets/scripts/prepare-flatpak-browser-sdk.py
+      - workflows/build/flatpak/tests/test_prepare_flatpak_browser_sdk.py
+      - workflows/dependencies/browser-sdk/assets/scripts/prepare-browser-sdk.py
+      - workflows/dependencies/browser-sdk/assets/scripts/browser-runtime.py
+      - workflows/dependencies/browser-sdk/tests/test_browser_runtime.py
+      - workflows/dependencies/browser-sdk/tests/test_prepare_browser_sdk.py
+      - workflows/build/flatpak/**
+      - workflows/build/flatpak/tests/fixtures/flatpak-package/**
+      - workflows/build/flatpak/tests/test_flatpak_workflow_boundaries.py
+      - src/lib/infrastructure/packageplatform/**
+      - src/lib/infrastructure/packagecatalog/**
+      - src/lib/infrastructure/packagebuild/**
+      - src/lib/application/package_remote.go
+      - src/lib/application/bundled_tools.go
+      - src/lib/application/dependencies.go
+      - src/lib/application/internal/remotecmd/**
+      - src/dockpipe-app/**
+      - workflows/catalog/compose/assets/pinned-stores.lock.json
+      - workflows/**
+
+permissions:
+  contents: read
+
+jobs:
+  catalog:
+    permissions:
+      contents: read
+      attestations: read
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      DOCKPIPE_FLATPAK_VERSION: ''
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.10'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24.21.0'
+      - name: Install Flatpak SDK and runtime
+        run: |
+          set -euo pipefail
+          export FLATPAK_USER_DIR="$RUNNER_TEMP/dockpipe-flatpak-installation"
+          printf 'FLATPAK_USER_DIR=%s\n' "$FLATPAK_USER_DIR" >> "$GITHUB_ENV"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends flatpak python3-yaml xvfb xauth
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user --noninteractive --assumeyes flathub org.kde.Sdk//6.10 org.kde.Platform//6.10 io.qt.qtwebengine.BaseApp//6.10
+          python3 -B workflows/build/flatpak/assets/scripts/prepare-flatpak-browser-sdk.py \
+            --lock workflows/build/flatpak/assets/spatialweb-flatpak-browser.lock.json \
+            --print-ref-pins > "$RUNNER_TEMP/flatpak-browser-ref-pins.tsv"
+          while IFS=$'\t' read -r ref commit; do
+            flatpak update --user --noninteractive --assumeyes --commit="$commit" "$ref"
+          done < "$RUNNER_TEMP/flatpak-browser-ref-pins.tsv"
+          # This is a software-rendering qualification input, not the SDK ABI.
+          flatpak install --user --noninteractive --assumeyes --no-related flathub org.freedesktop.Platform.GL.default//25.08
+          flatpak update --user --noninteractive --assumeyes \
+            --commit=fe659a591fe882f573584ae62cfb55b92065e4ff7a972833271438bddfa6669e \
+            runtime/org.freedesktop.Platform.GL.default/x86_64/25.08
+      - name: Verify host and optional packaging boundaries
+        run: python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/build/flatpak/tests --pattern test_flatpak_workflow_boundaries.py
+      - name: Build CLI and pinned optional native store
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: python3 workflows/shared/launch.py workflows/build/flatpak/prepare-catalog-inputs.yml
+
+      - name: Prepare exact attested Flatpak Browser SDK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 workflows/shared/launch.py workflows/build/flatpak/prepare-browser.yml
+
+      - name: Prepare locked Cockpit compatibility fixture
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 workflows/shared/launch.py workflows/qualify/cockpit/prepare-flatpak.yml
+
+      - name: Build and test Flatpak desktop and optional bundled dependency
+        shell: bash
+        run: python3 workflows/shared/launch.py workflows/build/flatpak/qualify-build.yml
+
+      - name: Qualify installed Flatpak host terminals
+        shell: bash
+        run: python3 workflows/shared/launch.py workflows/build/flatpak/qualify-host.yml
+
+      - name: Qualify installed Cockpit rendering and actual library providers
+        run: python3 workflows/shared/launch.py workflows/build/flatpak/qualify-cockpit.yml
+
+      - name: Qualify real Docker and Compose bind mounts
+        run: python3 workflows/shared/launch.py workflows/build/flatpak/qualify-containers.yml
+
+      - name: Build and qualify optional Flatpak catalog
+        shell: bash
+        run: python3 workflows/shared/launch.py workflows/build/flatpak/qualify-catalog.yml
+
+      - name: Qualify Marketplace-installed Cockpit lifecycle and rendering
+        run: python3 workflows/shared/launch.py workflows/build/flatpak/qualify-marketplace.yml
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: flatpak-optional-catalog-qualification-amd64
+          path: |
+            ${{ runner.temp }}/flatpak/*.flatpak
+            ${{ runner.temp }}/flatpak/*-commit.txt
+            ${{ runner.temp }}/flatpak-package/store/
+            ${{ runner.temp }}/flatpak-catalog/store/
+            ${{ runner.temp }}/flatpak-catalog/qualification.json
+            ${{ runner.temp }}/flatpak-cockpit-qualification/
+            ${{ runner.temp }}/flatpak-marketplace-cockpit/
+          if-no-files-found: error

@@ -13,11 +13,12 @@ dockpipe_test_source_build_contract() (
   local tmp fake_bin fake_bin_unix fake_repo fake_package_root
   local operation_log go_log stdout_log stderr_log
   local spec tool module_rel output_name go_package expected_output expected_module_dir
-  local first_spec first_go_package rc
+  local first_spec first_go_package rc sdk_script
 
   mkdir -p "$tmp_root"
   tmp="$(mktemp -d "$tmp_root/package-source-build.XXXXXX")"
   trap 'rm -rf "$tmp"' EXIT
+  sdk_script="$("${DOCKPIPE_TEST_DOCKPIPE_BIN:?select the pinned test CLI}" sdk path --language shell --workdir "$tmp")"
   fake_bin="$tmp/bin"
   fake_repo="$tmp/repo"
   fake_package_root="$fake_repo/packages/$package_dir"
@@ -112,7 +113,7 @@ SH
       export DOCKPIPE_BIN="$dockpipe_bin"
       export DOCKPIPE_PACKAGE_ROOT="$fake_package_root"
       unset DOCKPIPE_SOURCE_BUILD_LIB
-      export DOCKPIPE_SDK_SH="$repo_root/src/core/assets/scripts/lib/dockpipe-sdk.sh"
+      export DOCKPIPE_SDK_SH="$sdk_script"
       bash "$script"
     ) > "$stdout_log" 2> "$stderr_log"
   }

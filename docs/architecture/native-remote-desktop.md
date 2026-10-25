@@ -68,6 +68,13 @@ local QEMU frame transport distinct from a remote desktop session.
 
 ## Desktop protocols and platform backends
 
+The [paired connectivity and storage proposal](paired-storage-mounts.md) records
+shared setup through existing paired workflow delivery. Reuse provider connectivity
+and authentication/provisioning seams for RDP, while keeping desktop grants and
+storage mounts independent. The user requests a dedicated RDP/remote-desktop tab,
+separate from the VM tab; resolve top-level tab overload before final navigation
+placement. This adds no storage prerequisite to remote desktop.
+
 Offer capability-driven selection between Dockpipe Native and resolver-provided
 Windows RDP, macOS VNC/Screen Sharing, and Linux RDP/VNC compatibility. Inventory
 existing adapters before adding another implementation. Disclose whether a mode

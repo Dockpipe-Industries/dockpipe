@@ -136,7 +136,7 @@ and executor guarantees. Aggregating a tool does not make its downstream executi
    endpoint with stable names, collision rejection, distinct caller profiles and no privilege gain.
 3. [TASK-040](../third-party-mcp-import/overview.md) validates an existing third-party MCP through
    the same endpoint, including credential isolation and the unsupported-feature matrix.
-4. [TASK-038](../standalone-terraform-mcp-executor/overview.md) is the priority native capability
+4. [TASK-038](https://github.com/Dockpipe-Industries/dockpipe-packages/blob/master/docs/agents/tasks/standalone-terraform-mcp-executor/overview.md) is the priority native capability
    after the foundation. Implement shared services only as required by its governed vertical slice.
 5. [TASK-042](../oidc-workload-federation/overview.md) builds on the gateway identity/profile
    interfaces for federated pipeline authentication; design its contracts alongside the foundation.

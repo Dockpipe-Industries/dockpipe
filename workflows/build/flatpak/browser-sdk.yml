@@ -1,0 +1,11 @@
+name: prepare-flatpak-browser-sdk
+description: Run the prepare flatpak browser sdk operation with explicit options after --.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/build/flatpak/assets/scripts/prepare-flatpak-browser-sdk.py

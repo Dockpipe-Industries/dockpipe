@@ -21,7 +21,7 @@ type StoreBuildManifest struct {
 	Platform  string `json:"platform,omitempty"`
 	StoreRoot string `json:"store_root,omitempty"`
 	Packages  struct {
-		Core      *StoreArtifact  `json:"core,omitempty"`
+		Core      *StoreArtifact  `json:"core,omitempty"` // Historical decode only; current producers leave this nil.
 		Workflows []StoreArtifact `json:"workflows,omitempty"`
 		Resolvers []StoreArtifact `json:"resolvers,omitempty"`
 	} `json:"packages"`
@@ -62,7 +62,7 @@ type StoreArtifact struct {
 
 // BuildCompiledStore writes dockpipe-*.tar.gz (+ .sha256) for each slice under packagesRoot and
 // packages-store-manifest.json under outDir. fallbackVersion is used when package.yml omits version.
-// only is "all" (core + workflows + resolvers) or one of: core, workflows, resolvers.
+// only is "all" (workflows + resolvers), "workflows", or "resolvers". Empty stores are valid.
 func BuildCompiledStore(packagesRoot, outDir, fallbackVersion, only string) (*StoreBuildManifest, error) {
 	packagesRoot = filepath.Clean(packagesRoot)
 	outDir = filepath.Clean(outDir)
@@ -72,6 +72,9 @@ func BuildCompiledStore(packagesRoot, outDir, fallbackVersion, only string) (*St
 	only = strings.TrimSpace(strings.ToLower(only))
 	if only == "" {
 		only = "all"
+	}
+	if only != "all" && only != "workflows" && only != "resolvers" {
+		return nil, fmt.Errorf("unsupported package slice %q (use all, workflows, resolvers)", only)
 	}
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return nil, err
@@ -83,17 +86,6 @@ func BuildCompiledStore(packagesRoot, outDir, fallbackVersion, only string) (*St
 	m := &StoreBuildManifest{Schema: 1, Platform: platform}
 	// Exported stores resolve tarballs beside the manifest, not in the builder's
 	// private source directory. Retain StoreRoot only for reading legacy metadata.
-
-	if only == "all" || only == "core" {
-		coreDir := filepath.Join(packagesRoot, "core")
-		if st, err := os.Stat(coreDir); err == nil && st.IsDir() {
-			if artifact, err := buildOrCopyCoreArtifact(coreDir, outDir, fallbackVersion); err != nil {
-				return nil, fmt.Errorf("core: %w", err)
-			} else if artifact != nil {
-				m.Packages.Core = artifact
-			}
-		}
-	}
 
 	wfDir := filepath.Join(packagesRoot, "workflows")
 	if only == "all" || only == "workflows" {
@@ -115,14 +107,7 @@ func BuildCompiledStore(packagesRoot, outDir, fallbackVersion, only string) (*St
 		sort.Slice(m.Packages.Resolvers, func(i, j int) bool { return m.Packages.Resolvers[i].Name < m.Packages.Resolvers[j].Name })
 	}
 
-	if m.Packages.Core == nil && len(m.Packages.Workflows) == 0 && len(m.Packages.Resolvers) == 0 {
-		return nil, fmt.Errorf("no compiled packages under %s — run `dockpipe build` (or `dockpipe package compile all`) first", packagesRoot)
-	}
-
 	artifacts := []*StoreArtifact{}
-	if m.Packages.Core != nil {
-		artifacts = append(artifacts, m.Packages.Core)
-	}
 	for index := range m.Packages.Workflows {
 		artifacts = append(artifacts, &m.Packages.Workflows[index])
 	}
@@ -186,36 +171,6 @@ func readPackageManifestMeta(dir, fallback string) packageManifestMeta {
 		out.RequiresCapabilities = append([]string(nil), pm.RequiresCapabilities...)
 	}
 	return out
-}
-
-func buildOrCopyCoreArtifact(coreDir, outDir, fallback string) (*StoreArtifact, error) {
-	if paths, err := listTarballs(coreDir, "dockpipe-core-*.tar.gz"); err != nil {
-		return nil, err
-	} else if len(paths) > 0 {
-		return copyTarballArtifact(paths[0], outDir, fallback, tarballKindCore)
-	}
-	meta := readPackageManifestMeta(coreDir, fallback)
-	ver := meta.Version
-	base := fmt.Sprintf("dockpipe-core-%s.tar.gz", SafeTarballToken(ver))
-	outPath := filepath.Join(outDir, base)
-	sum, err := WriteDirTarGzWithPrefix(coreDir, outPath, "core")
-	if err != nil {
-		return nil, err
-	}
-	return &StoreArtifact{
-		MinDockpipeVersion: meta.MinDockpipeVersion,
-		Title:              meta.Title,
-		Description:        meta.Description,
-		CatalogType:        meta.CatalogType,
-		Hidden:             meta.Hidden,
-		Categories:         meta.Categories,
-		Name:               "core",
-		Version:            ver,
-		Tarball:            base,
-		SHA256:             sum,
-		Provider:           meta.Provider,
-		Capability:         meta.Capability,
-	}, nil
 }
 
 func buildOrCopyWorkflowArtifacts(root, outDir, fallback string) ([]StoreArtifact, error) {

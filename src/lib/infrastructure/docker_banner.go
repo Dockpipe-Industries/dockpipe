@@ -96,8 +96,3 @@ func RenderBannerForTerminal(stdout, stderr *os.File) string {
 	}
 	return renderBannerForWidth(width)
 }
-
-func shouldShowSpinner(width int) bool {
-	// Spinner uses carriage-return updates; hide it in narrow terminals to avoid messy wraps.
-	return width >= 60
-}

@@ -64,7 +64,7 @@ docker_preflight: false
 steps:
   - id: hello
     kind: host
-    cmd: printf 'Hello from this environment!\n'
+    cmd: echo "Hello from this environment!"
 ```
 
 On a native installation, this runs with your user permissions on the host.

@@ -20,16 +20,16 @@
 The user also needs explicit version selection for projects, package-owned
 dependency scopes, and a package manager that shows installed, selected, active,
 and required-by state. The [canonical proposal](../../../packages/version-pinning.md)
-records those semantics and the current 0.6.17 boundary. It is ready for a
+records those proposed semantics separately from the implemented producer-tool pin. It is ready for a
 bounded implementation slice; the lock format, workflow call syntax, history
 index, and UI actions are not published behavior yet. Ordinary installs can
 assert a resolved catalog checksum, but they do not persist project/package
 version selections or bind execution to those exact versions.
 
 Package-owned workflows must move with their package. Root workflows should
-remain as callers that select the package exactly. This includes migrating the
-two docs orchestration workflows into DorkPipe while retaining a thin pinned
-repository-quality workflow in the root project. Do not remove those published
+remain as callers that select the package exactly. DorkPipe already owns its package sources and docs orchestration. A root
+repository-quality caller must use the available explicit package-call contract;
+future exact-version selection remains separate design work. Do not remove those published
 catalog identities or source workflows before their replacement capabilities
 and exact-call path are qualified.
 

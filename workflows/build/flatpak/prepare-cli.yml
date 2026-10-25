@@ -1,0 +1,11 @@
+name: prepare-cli
+description: Run the prepare cli operation with its owning assets.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: bash workflows/build/flatpak/assets/scripts/prepare-cli.sh

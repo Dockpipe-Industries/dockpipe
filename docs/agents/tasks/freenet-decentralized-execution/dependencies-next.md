@@ -4,7 +4,7 @@
   owns the transport-neutral machine, capability snapshot, lease, event, cancellation, receipt,
   placement, and connector authority model. TASK-019 should adapt it, not invent a parallel remote
   execution contract.
-- [TASK-008 DockPipe AI Package](../agentic-app-ui/overview.md) owns general Dockpipe/DorkPipe run,
+- [TASK-008 DockPipe AI Package](https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/agents/tasks/agentic-app-ui/overview.md) owns general Dockpipe/DorkPipe run,
   approval, log, artifact, and inspection UX. A Freenet application remains a domain adapter rather
   than a second approval or execution system.
 - [TASK-001 Operation Results Contract Rollout](../closed/operation-results-contract.md) owns the

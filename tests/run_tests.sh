@@ -7,12 +7,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 UNIT="$(cd "${ROOT}/tests/unit-tests" && pwd)"
 CLI="${ROOT}/src/bin/dockpipe"
+export DOCKPIPE_TEST_DOCKPIPE_BIN="$CLI"
 failed=0
-
-# Keep bundled extraction and related shell-test scratch state inside the repo
-# instead of the caller's user cache so local/CI runs stay hermetic.
-export DOCKPIPE_BUNDLED_CACHE="${DOCKPIPE_BUNDLED_CACHE:-${ROOT}/bin/.dockpipe/tmp/bundled-cache}"
-mkdir -p "$DOCKPIPE_BUNDLED_CACHE"
 
 for f in test_cli.sh test_repo_root.sh test_repo_layout.sh test_clone_worktree_include.sh; do
   if [[ -f "$UNIT/$f" ]]; then
@@ -31,7 +27,7 @@ echo "--- smoke.sh (needs Docker) ---"
 bash "$UNIT/smoke.sh" || failed=1
 
 echo "--- test_deb_install.sh (needs Docker + .deb) ---"
-_deb="$(echo "$ROOT/release/packaging/build"/dockpipe_*_amd64.deb 2>/dev/null)"
+_deb="$(echo "$ROOT/release/artifacts"/dockpipe_*_amd64.deb 2>/dev/null)"
 _can_docker=0
 if command -v docker &>/dev/null && docker run --rm debian:bookworm-slim true &>/dev/null; then
   _can_docker=1
@@ -39,7 +35,7 @@ fi
 if [[ $_can_docker -eq 1 ]] && [[ -n "${_deb}" ]] && [[ -f "${_deb}" ]]; then
   bash "$UNIT/test_deb_install.sh" || failed=1
 else
-  echo "  (Docker runnable + .deb required; run ./release/packaging/build-deb.sh and ensure 'docker run' works to run this test)"
+  echo "  (Docker runnable + .deb required; run python3 workflows/shared/launch.py workflows/package/linux-cli/config.yml -- VERSION amd64 --output release/artifacts and ensure 'docker run' works to run this test)"
 fi
 
 if [[ $failed -eq 0 ]]; then

@@ -31,6 +31,57 @@ verification_policy: Finish Windows validation first, then focused implementatio
 handoff_policy: user_requested_only
 ```
 
+Current runtime follow-up (2026-10-24): Dockpipe 0.6.28 is independently
+verified on staging, and catalog PR #4 produced a verified native candidate at
+`e70f0245414e6f86da76843268d3b6410df5c6b2`. Fresh Mac intake admitted that
+candidate, the public CLI/core and the owning QA application separately. The
+first named-workflow attempt stopped at a fixture PATH error before VM launch.
+It also exposed automatic recompilation of an installed archive from its
+content-addressed extraction cache; native readback confirmed a changed archive
+and two changed generated metadata members.
+
+The bounded 0.6.29 candidate preserves installed workflow/resolver archives during
+automatic execution and corrects boot geometry that suppressed QEMU's implicit
+VGA device. Real source-hidden compilation regressions, owning VM tests and a
+disposable QEMU device/console differential cover the fixes. Newly packaged
+public artifacts and fresh installed-launcher startup proofs remain required.
+The separate Windows Guest Services idempotence repair is excluded until native
+qualification; Windows transport and interactive acceptance remain unresolved.
+
+Darwin named-workflow follow-up (2026-10-24): actual installed Windows and
+macOS launcher fixtures have passed the five-view/input/lease lifecycle checks.
+Those proofs used the package display control plane; they do not establish that
+the public Windows VM named workflow can start a guest on macOS. The existing
+generic VM runtime rejects Darwin before guest launch.
+
+A bounded core 0.6.28 follow-up now prepares a shared-lifecycle Darwin TCG backend,
+explicit modern Bash admission and native temporary-path handling. VM package
+1.3.7 requires the resulting backend-capable public runtime at minimum 0.6.28-0,
+adds its missing resolver dependencies and retains the Debian-only Linux guest
+workflow boundary. Local unit/assembly tests and a Darwin manager cross-build are
+separate from pending source-hidden native named-workflow qualification. The
+actual generated public CLI version and source hashes must be bound before the
+new package candidate; no prior immutable candidate is relabelled. See
+[Darwin VM runtime](../../../runtime/vm-darwin.md) for the generic contract.
+
+Current checkpoint (2026-10-23): the final native catalog source
+`441a0a695f4876791ab54bed59264b0c8dfb32ca` passed Linux amd64 and Mac arm64
+display suites (ten tests each), Windows amd64 (nine tests), package compilation
+and public candidate publication. Independent public readback verified all seven
+assets, source/toolchain evidence and eight package identities on those targets.
+The exact candidate is pinned in the core consumer; the launcher and host SDK stay
+in core, and VM implementation stays in the optional package.
+
+Full installed Windows/macOS MainWindow, VM page, Canvas and Tiling acceptance
+still needs the final owning desktop build. The preserved Windows guest's original
+QEMU/TPM identities remain alive, verified in the host process namespace; sandbox
+PID visibility alone is insufficient. Preserve its overlay, firmware variables,
+TPM and identity through clean shutdown, offline checks and one continuation boot. The 1920-by-1080 boot
+preference and strict QWidget-to-guest edge/corner proof remain unqualified.
+Catalog staging promotion is tracked in catalog PR #2; final Dockpipe staging
+publication waits for installed acceptance. The older checkpoints below retain
+their original scope and do not substitute for these remaining gates.
+
 The user explicitly authorized this order after clarifying that the requested Qt
 application runs inside the guest, complementing a host top-level VM tab rather
 than replacing it. The existing launcher does not yet implement generic
@@ -366,3 +417,124 @@ flow remains qualified by proof 37; native Mac Python smoke passes proof 43.
 Staging remains in progress. New public source/CLI/Display SDK artifacts and
 package-store pins must be published and read back before a staging application
 release is claimed. No production promotion is authorized or reported.
+
+### 2026-10-24 final native catalog integration checkpoint
+
+Catalog source `64e0891ac87aadc6c0d20843b6309233e8de6e1a` passed owning native run `40063759757` on Linux amd64, Windows amd64 and macOS arm64. Its seven public assets passed strict independent source, byte, toolchain, eight-package ownership and inner-archive verification, followed by unchanged public run/tag/release readback. The core lock replaces only the catalog overlay; all independent dependencies and unsupported-platform baselines remain unchanged. The native catalog publisher supplies native receipts, not SDK-style attestations.
+
+The Windows provider includes package-owned FromSlash normalization for installed runtime paths and a mandatory native Go unit gate. Minimum runtime compatibility and exact producer/SDK/ABI pins remain separate; the existing minimums and public SDK/Guest Tools pins are preserved.
+
+The current native desktop artifact tests remain distinct from earlier development proofs. The task-private macOS validation input passed complete runtime intake, codesign, CLI0.6.27 and public provider materialization. After the unprimed-profile attempt failed at the Tiling transition, diagnostic attempt three explicitly enabled experimental Tiling only through its fresh isolated public qualification profile. The unchanged 05b app/295 provider passed all five views, Shift acknowledgements, single leases, both pickers, close/disconnect/reopen, live QEMU survival and all three owned process exits with metadata/socket cleanup and both postguards. Its verified-summary.json is retained under gui-profile-optin-result-3b; evidence SHA256 31ba85e69bdb95d0fffce99ca27f851cf5e48918c853d5f392ff2d6f507f1fae. This diagnostic does not qualify the new core/catalog artifacts. Windows source correction passed 46 native Go unit tests; the prior 441-provider installed GUI failure is retained and final installed Windows acceptance remains pending on the corrected public provider. Neither source publication nor the passing Intel diagnostic substitutes for those installed flows.
+
+The next core qualification must use a fresh committed pin and the full six-platform owning Release dry run with package-display qualification explicitly enabled, diagnose_layout disabled and publication disabled. Ordinary/staging/production builds retain their original defaults. The original Windows VM identities, disks, TPM, clipboard and protected saved checkouts remain outside this generated pin/docs change. The launcher and desktop host stay in core; VM implementation stays in its owning catalog package.
+
+
+### 2026-10-24 durable repair and desktop permission UX
+
+The published 0.6.30 staging desktop and runtime passed the six-platform release
+pipeline. Public artifact readback and private installed-payload checks remain
+separate from interactive acceptance. The recovered Windows desktop now passes
+all four exact pointer corners and both side edges through the shipping Qt VM
+view; the host cursor hides inside the viewport and returns outside it. The
+current Microsoft Basic Display Adapter advertises only 1920 by 1080. Alternate
+live modes and the clipboard roundtrip remain open acceptance items.
+
+Guest service repair now preserves healthy agent and SSH process identities,
+configuration bytes and scheduled task definitions. A changed policy is repaired
+before restarting only the selected owned agent. The agent startup task has no
+execution time limit; the bounded provisioning task retains its existing limit.
+Native Windows PowerShell tests and two actual installed repair passes verified
+idempotence after the initial task-policy correction.
+
+The macOS Settings dialog now reports native Screen Capture and Accessibility
+status with explicit Request access and Open System Settings actions. Status
+checks never prompt and are refreshed while the panel is visible and when the
+app becomes active. Permission grants stay owned by macOS. The host's VM display
+does not require capture of other apps. Temporary external automation controllers
+have their own permission identity. Native Objective-C++ compilation and focused
+UI tests passed on macOS; the full Linux launcher build and focused UI test also
+passed. This does not claim a new installed Mac UI acceptance result.
+
+Catalog candidate source 9e8836d8c36ad0e24a91b6e36601cde13f6ee87a passed
+its owning three-platform native publication pipeline. The public CLI 0.6.29
+and core 0.6.30 consumer contract remains pinned for its pending promotion.
+Linux named-controller acceptance passed; Windows and macOS named-controller
+acceptance and normal catalog publication remain pending. Keep the staging
+runtime pointer at 0.6.30 until that catalog promotion completes. The new repair
+and permission UI changes are validated source pending their normal core staging
+flow. Package VM behavior remains in the catalog; launcher and host permission
+controls remain in core. No production promotion is included.
+
+
+### 2026-10-24 final live acceptance and cleanup corrections
+
+The shipping Windows guest view passes both clipboard directions. The verifier
+restored the current host text payload and guest text exactly before resuming the
+bridge. X11 selection protocol timestamps are reported separately from payload
+bytes. This does not claim restoration of an image that changed externally before
+the test. Exact corner/edge pointer checks, native host cursor visibility and the
+visible Guest Tools readiness checks also pass. The current driver still exposes
+only 1920 by 1080; no alternate live mode or driver installation is claimed.
+
+The real Mac named workflow passes private display bus/Console, public resource
+identity and complete owned cleanup with the published CLI29/core30/package
+cohort. Its held workflow exits nonzero after deliberate cleanup because core30
+has a function-local exit trap bug. The correction uses a shell-owned active
+child record, running/stopped job ownership, bounded termination and explicit
+reaping. Seventeen regression scenarios pass on Linux and the paired Mac,
+including failure status, cancellation, completed jobs and termination failure.
+
+Native Windows testing confirmed that ordinary long qemu-img paths fail while
+extended-length Windows paths work. The source correction keeps shell and state
+paths unchanged, converts only native disk operands, and propagates disk creation
+failure. Final native source-helper and installed-flow checks remain separate
+from that initial tool experiment. Catalog publication and the final core staging
+release remain in progress; no production release is authorized or claimed.
+
+The refreshed optional catalog exposed a missing Flatpak mapping for the VM
+reporting timeout dependency. The adapter now selects the Platform command.
+Actual KDE Platform 6.10 provides GNU timeout and returns 124 at its deadline.
+Ten focused adapter tests and eight Flatpak boundary tests pass, including
+missing-command rejection. Full rebuilt catalog qualification remains a final
+head CI check. No host bridge or package dependency removal was introduced.
+
+The native Windows start-wait wrapper previously reported success after a
+launcher refusal. It now retains the child exit status through output capture
+and session reporting. Actual Windows PowerShell 7 tests reproduce the old
+37-to-zero failure and verify corrected zero, 37 and unavailable-reporter cases,
+with both output streams and all original guest/service guards preserved.
+The focused regression is routed into the normal Windows CI job.
+
+### Current staging order after native Windows media qualification
+
+Actual source-bound paused QEMU tests pass the short-base/long-overlay case,
+the explicit Windows vvfat bootstrap directory operand, and the 259-byte backing
+path boundary. The 260-byte case fails before overlay creation. All exact media
+and owned processes were removed and original guest/services remain unchanged.
+Long automatic backing paths are rejected clearly; the component-proven explicit
+backing-node alternative is deferred. This is media/backend proof, with the full
+installed frontend workflow still to qualify against published fixed artifacts.
+
+Published core30's legacy fat: bootstrap operand fails the Windows native test,
+so the earlier catalog-first hold is superseded. Promote the validated runtime
+fix through the normal pipeline first. Then pin actual public CLI/core artifacts
+in a new coherent VM catalog cohort, preserve prior immutable package identities,
+repeat native publication and all three named qualifications, and run the normal
+catalog staging consumers and conditional pointer promotion. Do not relabel N2 or
+weaken its producer/runtime admission. Refresh the optional host catalog pin after
+that new candidate is qualified. Production remains outside this staging task.
+
+
+### Local final-source qualification before runtime31
+
+The generic runtime now supports automatic and provided-only guest preparation;
+see [guest preparation](../../../runtime/vm-guest-preparation.md). Distribution
+media selection remains in the external VM package. Native Windows full58 and
+Linux/macOS ALL suites pass with their existing platform skips. The current
+Windows guest's pointer/clipboard proof remains applicable to unchanged display
+sources; its Basic Display Adapter still exposes only 1920 by 1080, so alternate
+live resolution modes remain unqualified. No display driver was installed.
+
+The next catalog cohort must consume actual public runtime31 CLI/core pins after
+runtime promotion. Local source-bound media tests and an ongoing disposable
+Bazzite installation do not substitute for that final native catalog acceptance.

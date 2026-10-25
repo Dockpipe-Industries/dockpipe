@@ -1,0 +1,11 @@
+name: build-windows-icon-resource
+description: Run the build windows icon resource operation with explicit options after --.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py pwsh -NoProfile -File workflows/build/shared-windows-resources/assets/scripts/new-go-icon-resource.ps1

@@ -1,0 +1,11 @@
+name: allocate-release-version
+description: Run the allocate release version operation with explicit options after --.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/release/metadata/assets/scripts/release-version.py

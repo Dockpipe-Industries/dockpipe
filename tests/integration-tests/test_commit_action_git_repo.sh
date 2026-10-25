@@ -4,18 +4,20 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DOCKPIPE="$REPO_ROOT/src/bin/dockpipe"
-ACTION="$REPO_ROOT/src/core/assets/scripts/commit-worktree.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 cd "$tmp"
+mkdir scripts
+ACTION="$tmp/scripts/commit-worktree.sh"
+"$DOCKPIPE" action init "$ACTION" --from commit-worktree
 
 git init -q -b dockpipe-it-commit-action
 git config user.email "test@dockpipe"
 git config user.name "Test"
 echo "initial" > initial.txt
-git add initial.txt
+git add initial.txt scripts/commit-worktree.sh
 git commit -q -m "initial"
 
 # Run dockpipe: command creates a new file, action should commit it

@@ -3,8 +3,8 @@
 ## Model: **`staging` → `master` = ship**
 
 1. **Contributors** (or you) work on **feature branches** or **forks** → open **PR → `staging`**.
-2. **Merge to `staging`** when the change is accepted. After green CI, an installable [staging candidate](staging.md) publishes automatically. You can continue testing before production — you can push follow-ups, edit **`release/releasenotes/`**, bump **`VERSION`**, or tweak the contributor’s work on **`staging`** (via PR or maintainer commits, per your rules).
-3. When you’re ready to **cut a release**, open **PR `staging` → `master`** (or merge with the same protections). That PR must **update `release/releasenotes/X.Y.Z.md`** for the selected release line; patch numbers are generated (CI enforces this only for PRs **targeting `master`**).
+2. **Merge to `staging`** when the change is accepted. After green CI, an installable [staging candidate](staging.md) publishes automatically. Continue testing and integrate follow-ups before production. Change **`VERSION`** only to select a new release line or higher numeric floor.
+3. When you’re ready to **cut a release**, open **PR `staging` → `master`** (or merge with the same protections). Patch numbers and release notes are generated; the ship PR does not need a version-named notes file.
 4. **Merge to `master`** → **Release** workflow runs: artifacts + **GitHub Release** **`vX.Y.Z`**.
 
 **`master`** is **the released line**. **`staging`** holds “next release” integration until you ship.
@@ -19,7 +19,7 @@ There is **no separate “push a tag to release”** step for normal flow — th
 
 - **Outside contributors:** **fork** → **PR → `staging`**.
 - **Maintainers:** **feature branch** → **PR → `staging`** (same as contributors), or whatever your org allows on **`staging`**.
-- **Release:** **PR `staging` → `master`** when **`VERSION`** + release notes are final — merge triggers **Release**.
+- **Release:** **PR `staging` → `master`** when the changes, user documentation and selected release line are ready — merge triggers **Release**.
 
 Turn off **“allow administrators to bypass”** if you want **your own** changes to use the same PR path.
 
@@ -32,9 +32,9 @@ Turn off **“allow administrators to bypass”** if you want **your own** chang
 ### Recommended flow
 
 1. **On a feature branch:** **Actions → CI → Run workflow** → pick your branch (full tests; **no** VERSION gate).
-2. **PR → `staging`:** CI runs **without** the release-notes / VERSION bump requirement.
-3. **On `staging`:** You adjust code, **release notes**, and **`VERSION`** when you’re ready to ship.
-4. **PR `staging` → `master`:** CI runs **with** the release-notes gate → merge **ships**.
+2. **PR → `staging`:** CI qualifies the changes; PR descriptions document user-visible outcomes.
+3. **On `staging`:** Finalize code and user documentation. Adjust **`VERSION`** if the release line or numeric floor must change.
+4. **PR `staging` → `master`:** CI qualifies the ship PR; merging starts **Release** without a separate notes-change gate.
 5. **Release dry run:** **Actions → Release → Run workflow** → branch + **dry_run: true**.
 
 ### Dependabot
@@ -60,19 +60,22 @@ qualification alone does not cover this optional Tauri desktop shell.
 
 ---
 
-## `VERSION` + `release/releasenotes/X.Y.Z.md`
+## `VERSION` and generated release notes
 
 - **[`VERSION`](../../VERSION)** — single line, semver **`X.Y.Z`** (no `v` prefix). This selects the major/minor release line and minimum patch. Publication generates the next unused numeric patch across stable and staging tags.
-- **`release/releasenotes/${VERSION}.md`** — required body for the GitHub release.
+- **`release/artifacts/RELEASE_NOTES.md`** — generated header containing the exact release tag, source commit, pinned install-guide link and comparison link when a previous tag exists.
 
-**Every PR into `master` must** (enforced by CI):
+The publisher appends GitHub's merged-PR changelog. Production compares from the
+preceding stable release tag; staging compares from the latest valid host release
+tag. SDK and other product tags are excluded. If no eligible prior host tag exists, no comparison link is emitted and GitHub selects its default changelog range for the first release. Read-only dry runs retain the header
+and compare link without requesting the write-permission changelog API.
 
-1. Keep a valid numeric **`VERSION`** baseline; a manual patch bump is not required.
-2. **Modify** **`release/releasenotes/<baseline-version>.md`** in that same PR.
+Keep PR titles and descriptions useful to users and link migration guidance or
+known limits where needed. The version allocator validates the numeric **`VERSION`**
+floor; a manual patch bump or source notes file is not required.
 
-**PRs into `staging`** do **not** run that gate — integrate freely, then finalize notes + version on **`staging`** before the ship PR.
-
-**Docs-only or chore ship PRs** receive a generated patch and still need a short release note (e.g. “Docs: …”).
+**Docs-only or chore ship PRs** also receive a generated patch. Their PR descriptions
+supply the changelog context rather than a separate per-version Markdown file.
 
 ---
 
@@ -80,7 +83,7 @@ qualification alone does not cover this optional Tauri desktop shell.
 
 **`.github/workflows/ci.yml`** is a single workflow named **CI**. Each trigger creates **one** run in the Actions list. Inside it, three **jobs** run in parallel:
 
-- **`test`** (Ubuntu) — **`govulncheck`**, **`gosec`**, **`go test`**, **`make`**, **`.deb`**, shell + integration tests, and (on PRs to **`master`**) the release-notes gate.
+- **`test`** (Ubuntu) — **`govulncheck`**, **`gosec`**, **`go test`**, **`make`**, **`.deb`**, shell + integration tests.
 - **`test-windows`** (Windows) — **`go test ./...`** and **`test_clone_worktree_include.sh`** (bash + git; host pre-script–like coverage). Does **not** run Docker integration tests or full **`tests/run_tests.sh`** (those stay on Linux).
 - **`codeql`** — **CodeQL** (Go, **`security-extended`** via **`.github/codeql/codeql-config.yml`**), uploads to **Security → Code scanning** when allowed.
 
@@ -92,15 +95,15 @@ On the **weekly schedule**, only **`codeql`** runs (**`test`** and **`test-windo
 
 | Event | Workflow | What it does |
 |--------|-----------|----------------|
-| **PR** → **`staging`** | **`ci.yml`** | Jobs **`test`** + **`test-windows`** + **`codeql`** — **no** release-notes gate on **`test`** |
-| **PR** → **`master`** | **`ci.yml`** | Same + **release notes** on **`test`** |
+| **PR** → **`staging`** | **`ci.yml`** | Jobs **`test`** + **`test-windows`** + **`codeql`** |
+| **PR** → **`master`** | **`ci.yml`** | Same qualification; no source release-notes requirement |
 | **Push** **`staging`** / **`master`** | **`ci.yml`** | **`test`** + **`test-windows`** (no VERSION gate on push); staging then builds and publishes a candidate. CodeQL runs separately. |
 | **workflow_dispatch** | **`ci.yml`** | **`test`** + **`test-windows`** + **`codeql`** (no VERSION gate) |
 | **Schedule** (weekly) | **`ci.yml`** | **`codeql`** only |
 | **Push** **`master`** (merge) | **`release.yml`** | Full build + **GitHub Release** with generated `vX.Y.Z`; optional **dev.to** ([devto.md](devto.md)) |
 | **workflow_dispatch** on Release | **`release.yml`** | Defaults to **dry_run=true**, without deployment approval; **dry_run=false** requires **`master`** |
 
-> **Release** still runs only on **`push` to `master`**, not on pushes to **`staging`**.
+> Production **Release** runs on **`push` to `master`**. Successful staging CI calls the same reusable release workflow with the staging channel selected.
 
 ---
 
@@ -113,9 +116,8 @@ On the **weekly schedule**, only **`codeql`** runs (**`test`** and **`test-windo
 ## Local checks before a **ship** PR (`staging` → `master`)
 
 ```bash
-go test ./…
-# Ship PR must match VERSION file:
-test -f "release/releasenotes/$(tr -d ' \t\r\n' < VERSION).md"
+python3 workflows/shared/launch.py workflows/ci/core/config.yml
+python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/release/metadata/tests
 ```
 
 **Makefile** `deb` / `deb-all` use **`VERSION`** automatically when the file exists.
@@ -129,13 +131,33 @@ publication is off until the fork owner sets repository variable
 identity, endpoint, bucket, and prefix. Preserve the `staging` → `master` release
 flow and apply branch protections appropriate for your repository.
 
-The [release setup workflow](../../workflows/package/package-release-setup/README.md)
-requires `RELEASE_SETUP_REPOSITORY=your-owner/your-repository`; it never infers a
-credential destination from the upstream repository. Run checks before enabling
-apply. For CLI installation from a fork, use `DOCKPIPE_REPO=your-owner/your-repository`
+Configure those environment secrets and publication variables through your own
+private infrastructure/setup process, explicitly selecting the destination
+repository. The retired checkout-only setup workflows are not runtime release
+inputs. Follow the [public configuration boundary](../../docs/public-repository-boundary.md).
+For CLI installation from a fork, use `DOCKPIPE_REPO=your-owner/your-repository`
 with the shell installer or `-Repo your-owner/your-repository` with PowerShell.
 Official Dockpipe download defaults remain available for ordinary users.
 
 Do not enable `DEVTO_PUBLISH` in a fork unless you deliberately configure your own
 article destination and credentials. Follow the [public configuration boundary](../../docs/public-repository-boundary.md)
 for operator settings and examples.
+
+## Required desktop host and optional package checks
+
+The required `Native desktop host qualification` check runs for pull requests to
+`dev`, `staging` and `master`, and for explicit workflow dispatch. It succeeds
+only after the existing Windows native host tests, both macOS architecture jobs,
+and the standalone runtime Flatpak desktop workflow actually succeed. Failed, skipped,
+cancelled or missing qualification results fail the final always-reported gateway.
+The generic extension, Browser, terminal, embedding and platform assertions remain
+inside those owning jobs; SDK consumer compilation alone does not replace them.
+This deliberately runs all host platforms even for documentation-only PRs.
+
+Cockpit SDK/rendering and optional Flatpak catalog integration retain independent
+strict package checks and dispatch entrypoints. They are not global prerequisites
+for CLI/desktop release. Required runtime tests, CodeQL, review rules, ref scopes
+and force-push/deletion protections remain unchanged. The dedicated native rule
+uses the host gateway from GitHub Actions app15368; it does not require an optional
+package check or grant a bypass. Branch-rule changes are a separate reviewed
+remote operation after this workflow is available and qualified on the PR.

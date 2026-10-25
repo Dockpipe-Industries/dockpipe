@@ -1,7 +1,7 @@
 # Find and use packages
 
 Packages add reusable workflows and tool integrations (resolvers) to Dockpipe.
-The installer includes required core; optional packages are installed separately.
+The CLI includes its runtime defaults; optional packages are installed separately.
 You do not need to clone or build Dockpipe to use them.
 
 ## Use the Marketplace
@@ -10,7 +10,7 @@ You do not need to clone or build Dockpipe to use them.
    then save. Keep the catalog on the same release channel as your application.
 2. Open **Packages → Marketplace** and choose a workflow or resolver.
 3. Review its description, platform and dependencies before installing it.
-4. Install any required packages separately, then follow the workflow's usage instructions.
+4. Install the selected package, then follow its usage instructions. Declared package dependencies are installed from the same catalog automatically.
 
 Installation checks the archive against the catalog checksum and places it in your
 user store. Installing a package does not install every external tool it may use,
@@ -65,7 +65,7 @@ services. Package installation alone does not approve those later actions.
 
 To obtain a newer package, inspect the chosen channel's catalog again and install
 the selected entry. Other versions can remain installed; inspect the inventory and
-remove an obsolete optional user archive explicitly when appropriate. Core/CLI application updates and optional package selection
+remove an obsolete optional user archive explicitly when appropriate. CLI/application updates and optional package selection
 are separate operations; use your application's installation method for CLI updates.
 
 To remove an optional user-installed archive, take its absolute path from the
@@ -75,7 +75,7 @@ package inventory and run:
 dockpipe package uninstall --path /absolute/path/to/package.tar.gz
 ```
 
-Uninstall preserves package data and settings. Core, external stores, directories
+Uninstall preserves package data and settings. Legacy core archives, external stores, directories
 and symlinks are protected from this command.
 
 ## Source examples

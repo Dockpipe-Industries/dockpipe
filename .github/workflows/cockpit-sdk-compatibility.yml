@@ -1,0 +1,74 @@
+# Strict optional-package compatibility qualification, independent of core CI/releases.
+# The desktop host and generic SDK contract fixtures remain owned by core.
+name: Cockpit SDK compatibility
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [master, staging, dev]
+    paths:
+      - '.github/workflows/cockpit-sdk-compatibility.yml'
+      - 'workflows/qualify/cockpit/assets/cockpit.lock.json'
+      - 'workflows/dependencies/browser-sdk/assets/spatialweb-browser.lock.json'
+      - 'workflows/qualify/cockpit/assets/scripts/prepare-cockpit.py'
+      - 'workflows/dependencies/browser-sdk/assets/scripts/prepare-browser-sdk.py'
+      - 'workflows/build/desktop/**'
+      - 'src/dockpipe-app/**'
+  push:
+    branches: [master, staging, dev]
+    paths:
+      - '.github/workflows/cockpit-sdk-compatibility.yml'
+      - 'workflows/qualify/cockpit/assets/cockpit.lock.json'
+      - 'workflows/dependencies/browser-sdk/assets/spatialweb-browser.lock.json'
+      - 'workflows/qualify/cockpit/assets/scripts/prepare-cockpit.py'
+      - 'workflows/dependencies/browser-sdk/assets/scripts/prepare-browser-sdk.py'
+      - 'workflows/build/desktop/**'
+      - 'src/dockpipe-app/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cockpit-sdk-compatibility-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GOTOOLCHAIN: local
+
+jobs:
+  cockpit-native:
+    name: Cockpit native SDK and rendering
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      attestations: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.10'
+      - name: Install matching native SDK prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build python3-venv xvfb xauth \
+            libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev libxkbcommon-x11-0 \
+            libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-render-util0 libxcb-shape0 libxcb-xkb1 libx11-dev \
+            libxcomposite-dev libxrender-dev libxres-dev libxext-dev libxcb1-dev \
+            libnss3 libasound2 libsdl2-2.0-0 libopus0 libminizip1
+      - name: Install pinned Qt ABI
+        run: |
+          python3 workflows/shared/launch.py workflows/build/desktop/install-linux-qt.yml -- "$RUNNER_TEMP/Qt"
+          echo "DOCKPIPE_QT_ROOT=$RUNNER_TEMP/Qt/6.10.3/gcc_64" >> "$GITHUB_ENV"
+      - name: Build the repository CLI
+        run: python3 workflows/shared/launch.py workflows/build/cli/config.yml -- --output src/bin/dockpipe.bin --alias src/bin/dockpipe
+      - name: Prepare exact attested Browser SDK
+        run: |
+          python3 workflows/shared/launch.py workflows/dependencies/browser-sdk/config.yml -- --lock workflows/dependencies/browser-sdk/assets/spatialweb-browser.lock.json \
+            --platform linux-amd64 --output "$RUNNER_TEMP/browser-sdk"
+      - name: Verify public publisher and qualify installed Cockpit
+        run: python3 workflows/shared/launch.py workflows/qualify/cockpit/qualify-native.yml

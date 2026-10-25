@@ -176,6 +176,10 @@ func TestValidatePackageStateOverrideRequiresResolvedOrIndependentlyPrivateState
 	if err := os.Mkdir(broad, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	// A restrictive umask must not turn this unsafe fixture into private state.
+	if err := os.Chmod(broad, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	linked := filepath.Join(base, "linked")
 	if err := os.Symlink(privateOverride, linked); err != nil {
 		t.Fatal(err)

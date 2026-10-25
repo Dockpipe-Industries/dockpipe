@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "source_commit": "aecdf031dc48a1f085778aecbc613f49d145a209",
+  "version": "0.1.0-source.2130fcfe0504ccf4",
+  "source_digest": "2130fcfe0504ccf4a33740775df2a4e89f6014e7e67613f9e5317c3e050c94dc",
+  "manifest_asset": "dockpipe-go-sdk-2130fcfe0504ccf4.json",
+  "manifest_sha256": "2aafc16df9f3920c17d9769a606c81032542de2a31cfa8f83d4f2ee7ef826064",
+  "archive_asset": "dockpipe-go-sdk-2130fcfe0504ccf4.tar.gz",
+  "archive_sha256": "79446c926a8e067469d2db207b20fc9b5be572fd45cf3899484ae455e1038f73",
+  "archive_bytes": 246953
+}

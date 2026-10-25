@@ -180,7 +180,7 @@ func workflowScopeObject(workdir string) (scopeObject, error) {
 	if err != nil {
 		return scopeObject{}, err
 	}
-	stateRoot, err := infrastructure.StateRoot(workdir)
+	stateRoot, err := infrastructure.WorkflowStateDir(workdir, strings.TrimSpace(os.Getenv("DOCKPIPE_WORKFLOW_NAME")))
 	if err != nil {
 		return scopeObject{}, err
 	}
@@ -216,7 +216,7 @@ func workflowScopeObject(workdir string) (scopeObject, error) {
 		EventLog:     eventLog,
 		EventIndex:   eventIndex,
 		OutputRoot:   outputRoot,
-		StateRoot:    filepath.Join(stateRoot, "workflows", sanitizeWorkflowStateScope(name)),
+		StateRoot:    stateRoot,
 		Workdir:      workdir,
 	}, nil
 }

@@ -1,0 +1,26 @@
+schema: 1
+id: TASK-048
+topic: SignPath Foundation signing for Windows releases
+status: planned
+priority: medium-high
+entrypoint: overview.md
+
+dispatch:
+  readiness: unclassified
+  ownership: unclaimed
+
+routes:
+  orientation:
+    read: [overview.md]
+  implementation:
+    read: [overview.md]
+    gate: Backlog only. Signing implementation requires confirmed SignPath Foundation approval and a later bounded implementation request.
+
+documents:
+  - path: overview.md
+    role: cross-repository scope, application prerequisites, approval gate and release acceptance
+
+maintenance:
+  - Resolve document paths relative to this index.
+  - Keep dispatch metadata synchronized with docs/agents/task-index.yaml.
+  - Recheck the linked official requirements before applying or implementing signing.

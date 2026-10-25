@@ -207,7 +207,7 @@ func appendUniqueEnv(slice []string, pair string) []string {
 	if !found {
 		return append(slice, pair)
 	}
-	out := make([]string, 0, len(slice)+1)
+	out := make([]string, 0, len(slice))
 	for _, entry := range slice {
 		existing, _, found := strings.Cut(entry, "=")
 		if !found || domain.NativeEnvKey(existing) != domain.NativeEnvKey(key) {

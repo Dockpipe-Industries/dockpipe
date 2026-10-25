@@ -10,7 +10,7 @@ Objective contract:
 - objective_id: forgepipe-spatial-ecosystem-extraction-2026-10-16
 - state: executing
 - execution_skill: dorkpipe-objective-execution
-- execution_authority: user-approved implementation and continuation; GitHub publication authorized 2026-10-16
+- execution_authority: user-approved implementation and continuation; current publication scope is package candidates and Dockpipe staging only
 - authorized_objective: inventory-first extraction into ForgePipe, MesaMoto, SpatialPipe,
   Spatial-Web and the existing optional Cockpit package
 - done_when: independent SDK and standalone applications, shared library consumers, packaged
@@ -31,17 +31,18 @@ rendering/terrain/flight SDK and Cockpit consumption. Keep status and evidence i
 migration record as each seam advances. No original code retirement before equivalent proof.
 
 ForgePipe is the engine product name; the former "Game Studios" suffix is retired.
-[TASK-008](../agentic-app-ui/overview.md) records DorkPipe-owned AI features inside DockPipe;
+[TASK-008](https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/agents/tasks/agentic-app-ui/overview.md) records DorkPipe-owned AI features inside DockPipe;
 it does not define a separate AI application or package.
 It no longer uses the ForgePipe name.
-[TASK-016](../guided-game-development-package/overview.md) remains the Unreal-first guided path.
+[TASK-016](https://github.com/Dockpipe-Industries/dockpipe-packages/blob/master/docs/agents/tasks/guided-game-development-package/overview.md) remains the Unreal-first guided path.
 
 Repository setup has advanced: focused AI guides and root DockPipe initialization/workflows
 now exist for all seven product roots. Private DorkPipe/MCP consume a content-addressed
 local Go compatibility SDK, with independent helper builds and explicit Pipeon integration
 checks. Native and editor CI entrypoints use DockPipe workflows and a pinned CLI bootstrap.
 See [repository execution](../../../architecture/forgepipe/repository-workflows.md) for
-proof and limits. Three new products remain unconnected local scaffolds.
+proof and limits. At this setup checkpoint, three new products were unconnected local scaffolds;
+the hosted ownership milestone below records their subsequent implementation and qualification.
 ForgePipe's private staging SDK is published and verified. DorkPipe 0.6.4 passed
 SDK build, all 21 shell tests, both editor builds and all 26 packages on the pinned
 DockPipe 0.6.17 compiler. Its six frozen assets and 26-package staging feed passed
@@ -123,3 +124,150 @@ fresh published-CLI installation of Cockpit 0.1.1 on native Linux amd64. See the
 for source identities, publication readbacks and platform limits. TASK-037 remains
 executing: standalone products, PipeLang bindings, stable SDK ABI and physical GPU
 acceptance remain open. Production was not promoted.
+
+
+## Independent Cockpit consumer continuation (2026-10-20)
+
+The current user instruction authorizes dependency/package candidates followed by
+Dockpipe staging only. Production promotion and Freeflight are excluded. PipeLang
+stays in Dockpipe; no PipeLang extraction is part of this continuation. Preserve
+saved work, saved data and the existing preview. This narrows the publication
+scope of the earlier objective without discarding its original inventory/history.
+
+SpatialPipe owns its offline runtime and the separate Cockpit package. Dockpipe
+exports the installed host ABI and consumes package artifacts; no sibling-source
+CMake import may replace delivery. The public LauncherSDK candidate from
+`517747a588eeedf000819d952eb18aa8d8bcc02d` and runtime SDK candidate from
+`8b67f00a059a440665cdca93069a287fd817ad7f` are published. Exact immutable tags,
+verification and platform limits are recorded in the
+[canonical continuation](../../../architecture/forgepipe/README.md#independent-spatialpipe-and-cockpit-delivery-continuation-2026-10-20).
+Dependency producer commits need not equal the Cockpit consumer commit.
+
+Cockpit 0.1.2 is now published from
+`25ada5f9dc26c9612fb150c8752478a73aa1917a`, qualifying run `39398537573`,
+under tag `cockpit-0.1.2-staging.25ada5f9dc26.run39398537573.1`. The same-tag
+public Dockpipe mirror preserves the runtime allowlist unchanged, and Dockpipe's
+exact archive/receipt/candidate pins are written. A fresh public-package native
+host consumer passed: 92 product paint intervals in 1,500 ms, 93 synthetic completed
+swaps, one recovery completion and zero compositor errors. The inspected capture is synthetic
+software-GL evidence, not physical GPU gameplay proof. See the canonical record
+for exact identities and the product-throughput/compositor-liveness distinction.
+
+The isolated Dockpipe consumer workspace has retired 359 tracked original source
+files after rechecking all 363 original file preimages and the retained archive.
+Canonical embed regeneration removed exactly 359 entries and its membership
+check passed. The source-absent CLI built offline with cached Go 1.26.9 and
+parallelism two; all 31 focused tests and public-content/diff checks passed. The
+primary Dockpipe checkout retains the original source and saved work. Hosted
+development-PR checks and final Dockpipe staging remain pending on the
+source-absent consumer tree, including its actual release and catalog/install
+readbacks. No separate earlier staging release is required before
+removal. The original three dirty WorkspaceGraph files remain preserved in the
+extracted initial source; no unrelated work or saved application files may be
+removed. TASK-037 remained executing at this checkpoint; standalone product and browser/game ownership
+qualification were still open. The current hosted milestone below records their subsequent proof.
+Production was not promoted.
+
+## Native ownership cutover progress — 2026-10-20
+
+The [canonical ownership checkpoint](../../../architecture/forgepipe/README.md#ecosystem-ownership-cutover-checkpoint--2026-10-20)
+now records the extracted ordinary Browser, separate Web composition/Projection, neutral
+Scene/Geometry, standalone compositions and host Files graph. Cockpit consumes installed
+libraries through thin host adapters; headquarters/provider authority remains private to the
+host. Browser and Graph do not require Cockpit. MesaMoto code/content and neutral furniture
+import tooling have owning repositories; reusable source and assets were retired only after
+preimages and focused consumer proof were preserved.
+
+Local installed-library, Graph, Web/civic/site/input/folder navigation, persistence,
+matching-CLI Git review and native handoff checks pass. Old and new renderer fixtures pass
+the CI software-driver gate and retain an identical preexisting NVIDIA context-switch pixel
+failure. The original combined Graph fixture is archived with an explicit list of branches
+not requalified; replacement checks are not described as full legacy coverage.
+
+## Hosted ownership milestone — 2026-10-20
+
+MesaMoto's dev and staging candidates are verified, including fresh installed save/quit lifecycle.
+Spatial-Web's five native Browser SDK profiles and separate exact KDE Flatpak profile are qualified,
+and its staging artifacts are verified. SpatialPipe's independent app candidate at
+`abc9fde23b71dfb245f356419e0e3a83aeaeac8f` passed private artifact readback and relocated scene/browser
+proof. Dockpipe PR 191 passed all eleven checks and merged into dev at
+`c740d9dcefcdf04c558b93359c232a1938a01f80`; published LauncherSDK 1.1.0 is verified.
+SpatialPipe PR 9 and accepted-source Cockpit 0.1.3 qualification passed; PR 10 promoted
+the same tree to staging. Dockpipe pins the audited runtime-only public mirror.
+The [canonical hosted milestone](../../../architecture/forgepipe/README.md#hosted-ownership-milestone--2026-10-20)
+records accepted identities, ownership, private/public artifact boundaries and proof limits.
+
+TASK-037 remains executing for deferred bindings, stable ABI and broader GPU/platform acceptance.
+The consumer's native and Marketplace/Settings checks are mandatory before promotion; final
+source-absent Dockpipe staging additionally requires exact release/catalog lifecycle readback.
+Hosted raster or relocated software rendering is not physical GPU gameplay acceptance;
+separate local hardware proof does not broaden a hosted qualification claim. Production promotion
+is outside the current continuation; existing exclusions and saved-data safeguards remain in force.
+
+## Final ecosystem staging delivery
+
+The bounded ecosystem staging continuation is complete with Dockpipe
+`0.6.24-staging.39534730503.1.9bdf36d2f28d`, source
+`9bdf36d2f28d6eddd62e6f01897f5b4a9348cdc3`. The
+[canonical delivery record](../../../architecture/forgepipe/README.md#final-ecosystem-staging-delivery)
+records successful publication, released Linux CLI install/update/removal/rollback proof,
+Flatpak archive and Marketplace qualification, preservation and production-ref readback,
+and retained proof limits. This completes the current staging scope; TASK-037 remains
+executing for deferred bindings, stable ABI and broader GPU/platform acceptance.
+Production promotion and the other continuation exclusions remain outside scope.
+
+## Preserved local checkout notes
+
+proof and limits. The three new product roots began as unconnected scaffolds; the 2026-10-19
+extraction checkpoint below records newly authored runtime sources and its remaining gates.
+
+## Cockpit ownership and graph navigation refinement (2026-10-19)
+
+The user directed Cockpit to remain a separate package, owned by the SpatialPipe repository
+alongside its standalone application. Standalone/Steam builds omit Dockpipe host adapters;
+Dockpipe consumes the compatible package through the existing package system. This is an
+implementation refinement of TASK-037, not permission to replace package delivery with
+sibling-source CMake imports. Keep lightweight graph 3D, remove its Cockpit/flight and
+app-billboard navigation, and qualify graph operation without the optional world/game runtime.
+Ownership transfer, adapter SDK contracts and dependency retirement remain in progress.
+
+## Owning-repository runtime checkpoints (2026-10-19)
+
+The actual SpatialPipe and Spatial-Web repositories now contain extracted runtime source,
+installed CMake exports and independent fixture tests. SpatialPipe's initial world/store,
+furnishing persistence, inert provider and portal slice passed an installed SDK consumer
+using the original workspace persistence fixture and exact ForgePipe 0.1.0. It does not yet
+replace Cockpit's full transient scene ABI or privileged adapters. Spatial-Web owns the
+ordinary browser library with neutral host settings/icon adapters; launcher integration and
+source retirement still require installed consumer parity and package delivery qualification.
+MesaMoto's course/progress extraction is being qualified independently. These are partial
+runtime checkpoints, not complete standalone products or public package availability.
+
+## SpatialPipe and separate Cockpit continuation (2026-10-20)
+
+The user authorized starting with SpatialPipe and its separate Cockpit package,
+preserving existing work and saved data and excluding Freeflight. The subsequent
+explicit publication instruction permits package candidates and Dockpipe staging
+only; production promotion remains excluded. Prepare dependency releases first,
+then pin and qualify them in Dockpipe. PipeLang stays in Dockpipe for this work.
+
+The owning source now centralizes the complete scene records, including transient
+vehicles and ride surfaces, in SpatialPipe. Cockpit consumes installed
+`SpatialPipe::Runtime` and `DockPipeLauncherSDK` targets. Dockpipe exports an
+optional native host SDK; its headless engine is unchanged. Cockpit retains the
+legacy ContextStore paths as explicit adapter inputs. Existing graph edits are
+preserved in both the admitted source and extracted package.
+
+The implementation and validation checkpoint is recorded in the
+[canonical migration record](../../../architecture/forgepipe/README.md).
+Dockpipe's original package remains a temporary compatibility input to its
+existing CI/release jobs. Retiring it requires qualified separately delivered
+dependencies and replacement host-consumer checks; an old published Cockpit
+binary cannot qualify the newly extracted runtime. Standalone products, browser
+and game extraction, hosted delivery and source retirement remain open.
+
+Source publication is in progress through SpatialPipe PR #2 and Dockpipe PR #184.
+The latter exports the host SDK before removing the existing source integration,
+so the dependency can be qualified independently. Runtime and Cockpit receipts
+record their respective immutable producer commits; independently released
+dependencies need not share the consuming package's commit.

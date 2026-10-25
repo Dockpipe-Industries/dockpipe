@@ -2,11 +2,11 @@
 
 | Repository | Owns | Examples and guidance |
 | --- | --- | --- |
-| [Dockpipe](https://github.com/Dockpipe-Industries/dockpipe) | Generic engine, CLI, desktop host and host SDK | [Workflow authoring](../workflows/workflow-authoring.md), [package model](package-model.md) |
-| [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages) | All extracted package source, package tests and producer workflows | [Package examples](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages), [contributor guidance](https://github.com/Dockpipe-Industries/dockpipe-packages/blob/master/AGENTS.md) |
-| [DorkPipe](https://github.com/Dockpipe-Industries/dorkpipe) | Previously extracted DorkPipe, MCP and editor implementations | [DorkPipe package source](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) |
-| [Pipeon](https://github.com/Dockpipe-Industries/pipeon) | Previously extracted Pipeon package and host apps; source access required | [Pipeon package source](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) |
-| [PipeLang](https://github.com/Dockpipe-Industries/pipelang) | Compiler, application IR, language SDK, standalone CLI, language tests and research | [Language documentation](https://github.com/Dockpipe-Industries/pipelang/tree/master/docs), [contributor guidance](https://github.com/Dockpipe-Industries/pipelang/blob/master/AGENTS.md) |
+| [Dockpipe](https://github.com/Dockpipe-Industries/dockpipe) | Generic engine, CLI, GUI shell, host SDK and Dockpipe Language Support extension | [Workflow authoring](../workflows/workflow-authoring.md), [package model](package-model.md) |
+| [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages) | Catalog packages such as VM, IDE and secret integrations, with their tests and producer workflows | [Package examples](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages), [contributor guidance](https://github.com/Dockpipe-Industries/dockpipe-packages/blob/master/AGENTS.md) |
+| [DorkPipe](https://github.com/Dockpipe-Industries/dorkpipe) | DorkPipe orchestration, MCP and companion editor integration | [DorkPipe package source](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) |
+| [Pipeon](https://github.com/Dockpipe-Industries/pipeon) | Pipeon package and host apps; source access required | [Pipeon package source](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) |
+| [PipeLang](https://github.com/Dockpipe-Industries/pipelang) | Compiler, application IR, language SDK, standalone CLI, PipeLang editor extension, tests and research | [Language documentation](https://github.com/Dockpipe-Industries/pipelang/tree/master/docs), [contributor guidance](https://github.com/Dockpipe-Industries/pipelang/blob/master/AGENTS.md) |
 
 Dockpipe consumes the versioned external PipeLang SDK for typed models,
 `dockpipe pipelang` and automatic `.pipe` materialization. This preserves the

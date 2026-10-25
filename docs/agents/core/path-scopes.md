@@ -16,17 +16,12 @@ changing `cwd`, `scopes`, `outputs`, or `dockpipe scope` behavior.
 | Package-owned disposable cache/run/build state | `PackageRuntimeDir` or shell SDK `path package-runtime <owner-id> ...`. |
 | Resolver-owned auth/config paths | Declare them in the resolver profile and read with `dockpipe scope resolver <name> <field>`. |
 
-## DorkPipe Agent YAML
+## Package Extensions
 
-DorkPipe agent orchestration resolves full-string scope references in path lists before it writes
-task prompts and task JSON:
-
-- `scope:artifacts:<path>` -> current workflow artifact path
-- `scope:workflow:<name>:<path>` -> another workflow's artifact path
-- `scope:package:<name>:<path>` -> package-owned state path
-
-Use these in `accessible_paths`, `access.read/write/deny`, and task `context` fields when a worker
-needs a generated file path. Keep normal repository files as plain relative paths.
+DorkPipe’s `scope:...` expansion in agent access/context lists belongs to its
+[harness configuration](https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/workflows/harness-configuration.md).
+Do not implement that package-specific prompt expansion in the generic scope resolver.
+Keep normal repository files as plain relative paths.
 
 ## Migration Rules
 
@@ -43,8 +38,8 @@ needs a generated file path. Keep normal repository files as plain relative path
 
 When changing scope semantics, update together:
 
-- `src/lib/domain/workflow.go` and runner behavior
-- `src/lib/application/sdk_cmd.go`
+- `src/lib/domain/workflow/workflow.go` and runner behavior; retain the `domain` forwarding API
+- `src/lib/application/sdk_scope.go` and affected SDK helpers
 - `src/lib/infrastructure/schema/workflow.schema.json`
 - `docs/workflows/workflow-yaml.md`
 - `docs/packages/editor-extensions.md`
@@ -52,7 +47,7 @@ When changing scope semantics, update together:
 
 ## Checks
 
-- `./src/bin/dockpipe workflow validate <config.yml>`
+- `"$DOCKPIPE_BIN" workflow validate <config.yml>` using an explicitly selected installed or built CLI
 - `"$DOCKPIPE_BIN" package test --workdir "$PACKAGE_REPOSITORY" --only <package>`
 - `"$DOCKPIPE_BIN" package compile workflows --workdir "$PACKAGE_REPOSITORY" --from "$PACKAGE_SOURCE" --force`
-- `go test ./src/lib/domain ./src/lib/application` for scope/runner changes
+- Route focused scope/runner tests through the [core validation workflow](validation-commands.md#core), including the owning subpackages.

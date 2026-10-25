@@ -18,7 +18,8 @@ set, not adding Qt/WebEngine dependencies to the headless CLI or generic executi
 
 ## Product and Artifact Map
 
-Names below describe proposed artifact roles, not new manifest fields or already-shipped packages.
+Names below describe artifact roles, not new manifest fields. The dated implementation and hosted
+ownership checkpoints distinguish qualified artifacts from remaining composed-delivery gates.
 Use existing package, SDK, platform and release conventions when selecting exact public identities.
 
 The 2026-10-20 continuation prepares dependency candidates before the Dockpipe
@@ -147,8 +148,9 @@ DockPipe filesystem, command, package-install or approval privileges through bro
 
 Extraction, desktop/browser integration, standalone native interaction and hosted package delivery
 are separate completion gates. The current local Cockpit override proves package loading/rendering,
-not catalog availability or completion of these new product boundaries. At inspection the three
-consumer repositories were scaffolds; do not report this plan as completed extraction.
+not catalog availability or completion of these new product boundaries. At the initial inspection the three
+consumer repositories were scaffolds. The later ownership checkpoint below records implementation
+progress without treating it as completed staging delivery.
 
 ## Local Browser Implementation (2026-10-17)
 
@@ -173,3 +175,31 @@ remains unchanged. Device/location/notification permissions are currently denied
 
 Desktop build and packaging inputs include WebEngine. This local source work is separate from
 publishing Cockpit or extracting SpatialPipe, Spatial-Web, MesaMoto and their package dependencies.
+
+## Implemented ownership checkpoint — 2026-10-20
+
+The isolated source cutover now consumes installed `SpatialWeb::Browser`,
+`SpatialWeb::Composition`, `SpatialWeb::Projection`, `SpatialPipe::Runtime`,
+`SpatialPipe::Geometry` and `SpatialPipe::Scene`. Geometry/Scene are exported by
+`SpatialPipeScene 0.1.0`; the host interface is `DockPipeLauncherSDK 1.1.0`.
+Exact source/archive/compiler/Qt identities are selected by release locks and receipts,
+not by these version numbers alone. Projection receipts bind their committed Runtime,
+Scene and ForgePipe pins. Its bundled Browser has the same Web owning source revision.
+
+The launcher directly owns the Files graph and reader. Graph availability does not depend
+on Cockpit settings, package loading or any spatial SDK. Keep lightweight 2D/orthographic
+3D and drone navigation; graph flight and app-billboard entry points are removed. Files
+opened from the graph use the existing bounded host editor.
+
+The Web SDK owns projection and ordinary browsing; Cockpit retains its headquarters and
+explicit host adapters. Source and model/media duplication have been retired after archived
+preimages and installed-consumer proof. Hosted MesaMoto dev/staging and Web native/Flatpak
+profiles are verified; SpatialPipe's independent app candidate and Dockpipe's LauncherSDK
+1.1.0 are also verified. SpatialPipe's final extraction passed PR 9 and its accepted-source
+Cockpit 0.1.3 candidate, then entered staging through PR 10 with an identical tree.
+Dockpipe pins the audited public runtime mirror and includes mandatory native and
+Marketplace/Settings qualification. Final staging requires the exact candidate's catalog,
+installation and rollback readback.
+See the [hosted milestone](README.md#hosted-ownership-milestone--2026-10-20) for accepted source/run
+identities and limits, and the [ownership checkpoint](README.md#ecosystem-ownership-cutover-checkpoint--2026-10-20)
+for archived-but-unported assertions and the preserved GPU limitation.

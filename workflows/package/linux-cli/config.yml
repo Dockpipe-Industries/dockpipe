@@ -1,0 +1,11 @@
+name: package-linux-cli
+description: Build a standalone CLI and package it with an explicit optional catalog store.
+docker_preflight: false
+steps:
+  - id: build-and-package
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/package/linux-cli/assets/scripts/run.py

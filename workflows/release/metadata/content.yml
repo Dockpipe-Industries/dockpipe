@@ -1,0 +1,11 @@
+name: check-public-content
+description: Run the check public content operation with explicit options after --.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/release/metadata/assets/scripts/check-public-content.py

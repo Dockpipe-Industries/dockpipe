@@ -1,40 +1,33 @@
-# Release assets
+# Release documentation and outputs
 
-Everything needed to **ship**, **package**, and **document** dockpipe releases lives under **`release/`**:
+This directory keeps reviewed announcement content, maintainer documentation and
+ignored artifact outputs. Build and release implementation lives beside the owning
+[Dockpipe workflows](../workflows/release/README.md).
 
 | Path | Contents |
-|------|----------|
-| **`packaging/`** | CLI packages, desktop **DMG/DEB/MSI**, Homebrew formula/cask source, **`install.ps1`**, winget notes |
-| **`releasenotes/`** | Per-version release bodies (`X.Y.Z.md`) consumed by **`.github/workflows/release.yml`** |
-| **`docs/`** | Maintainer docs: branching, releasing, dev.to, blog drafts |
-| [Go SDK](go-sdk.md) | Immutable runtime contracts consumed by external Go packages |
-| [Native display SDK](display-sdk.md) | Qualified QWidget interface artifacts for package-owned native displays |
-| **`demo/`** | Terminal demo recordings / GIFs (`make demo-record`) |
-| **`artifacts/`** | *(gitignored)* Local and CI outputs: **`make package-templates-core`**, GitHub release tarballs/debs, **`dockpipe package build core`**. Tracked **`release/`** docs and scripts stay outside this folder. |
+| --- | --- |
+| `docs/` | Branching, staging, publication and announcement guidance |
+| [CLI candidates](cli-candidate.md) | Immutable standalone runtime bootstrap contract |
+| [Go SDK](go-sdk.md) | Runtime contracts consumed by external Go packages |
+| [Display SDK](display-sdk.md) | Native QWidget interface artifact contract |
+| `articles/announcement.md` and `articles/assets/` | Reviewed dev.to announcement and its public images |
+| `artifacts/` | Gitignored CLI, installer, manifest, checksum and release-notes outputs |
 
-User-facing install overview stays in repo-root **`docs/install.md`**.
+`VERSION` selects the release line and numeric floor. The release workflow generates
+the next available version and a notes header with the exact tag, source and install
+guide. GitHub appends the merged-PR changelog during publication. Dry runs retain the
+header without calling the write-permission notes API. There is no per-version notes
+file to maintain. The optional dev.to announcement remains separately reviewed content.
 
-## Optional R2 mirror
+Workflow-specific scripts, tests, assets and dependency locks belong under
+`workflows/`; shared workflow helpers belong under `workflows/shared`.
+Make and GitHub Actions launch those workflows. There is no core archive producer
+or required core package. Optional package catalogs release independently from
+runtime binaries. See [runtime resource ownership](../docs/concepts/runtime-resource-ownership.md).
 
-The release workflow can also publish the self-hosted package mirror to a
-Cloudflare R2 / S3-compatible bucket after the GitHub release succeeds.
-
-What it publishes from **`release/artifacts/`**:
-
-- **`templates-core-<version>.tar.gz`** + **`install-manifest.json`**
-- compiled package-store tarballs from **`dockpipe package build store`**
-- **`packages-store-manifest.json`**
-- per-file **`.sha256`** files and **`SHA256SUMS.txt`**
-
-Enable it with GitHub Actions configuration:
-
-- repo variable **`R2_PUBLISH=true`**
-- repo variable **`DOCKPIPE_RELEASE_BUCKET`** or **`R2_BUCKET`**
-- optional repo variables **`R2_PREFIX`**, **`R2_ENDPOINT_URL`**,
-  **`AWS_ENDPOINT_URL_S3`**, **`AWS_REGION`**, **`CLOUDFLARE_ACCOUNT_ID`**,
-  **`R2_ACCOUNT_ID`**
-- repo secrets **`AWS_ACCESS_KEY_ID`** and **`AWS_SECRET_ACCESS_KEY`**
-
-The workflow uses **`dockpipe release upload`** for each artifact, so the
-mirror path dogfoods the same S3/R2 upload contract documented in
-**`docs/cli-reference.md`**.
+The publication workflows upload qualified immutable artifacts to the explicitly
+selected GitHub and R2 destinations. Keep operator configuration and secret values
+outside the public checkout; use workflow inputs, repository/environment variables
+and secret references. Existing releases, downloads and version catalogs are
+retained. See [releasing](docs/releasing.md), [staging](docs/staging.md) and the
+[user installation guide](../docs/install.md).

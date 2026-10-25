@@ -1,0 +1,42 @@
+name: ForgePipe SDK attestation
+
+on:
+  workflow_dispatch:
+    inputs:
+      forgepipe_sdk_tag:
+        description: "Attest only the frozen, audited ForgePipe SDK prerelease selected by its committed lock"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  attest-forgepipe-sdk:
+    if: github.event_name == 'workflow_dispatch' && inputs.forgepipe_sdk_tag != '' && (github.ref == 'refs/heads/js/dev' || github.ref == 'refs/heads/staging')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Audit the exact public SDK bytes before attestation
+        env:
+          FORGEPIPE_SDK_TAG: ${{ inputs.forgepipe_sdk_tag }}
+        run: |
+          python3 workflows/shared/launch.py workflows/publish/forgepipe-attestation/config.yml -- \
+            --lock workflows/publish/forgepipe-attestation/assets/forgepipe-sdk.lock.json \
+            --exports workflows/publish/forgepipe-attestation/assets/forgepipe-public-exports.txt \
+            --tag "$FORGEPIPE_SDK_TAG" --output "$RUNNER_TEMP/forgepipe-sdk-attestation"
+      - name: Attest the audited SDK and source-bound metadata
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: |
+            ${{ runner.temp }}/forgepipe-sdk-attestation/*.tar.gz
+            ${{ runner.temp }}/forgepipe-sdk-attestation/sdk-release.json
+

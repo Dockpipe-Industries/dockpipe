@@ -202,7 +202,7 @@ func TestRedirectPolicy(t *testing.T) {
 func TestArchiveIdentityMismatch(t *testing.T) {
 	archive := testArchive(t, nil)
 	entry := Entry{packagebuild.StoreArtifact{Name: "sample", Version: "9.0.0"}, "workflow"}
-	if err := validateArchive(context.Background(), bytes.NewReader(archive), entry); err == nil || !strings.Contains(err.Error(), "identity") {
+	if err := validateArchiveForEngine(context.Background(), bytes.NewReader(archive), entry, "dev"); err == nil || !strings.Contains(err.Error(), "identity") {
 		t.Fatalf("identity mismatch: %v", err)
 	}
 }

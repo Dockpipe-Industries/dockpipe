@@ -15,10 +15,13 @@ routes:
   implementation:
     read:
       - overview.md
+      - ../../../architecture/artifact-retention-and-cache-management.md
 
 documents:
   - path: overview.md
     role: complete active task record
+  - path: ../../../architecture/artifact-retention-and-cache-management.md
+    role: proposed artifact expiry and Settings cache management scope
 
 maintenance:
   - Resolve document paths relative to this index.

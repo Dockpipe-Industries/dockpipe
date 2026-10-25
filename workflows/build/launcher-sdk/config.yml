@@ -1,0 +1,11 @@
+name: build-launcher-sdk
+description: Build and qualify the launcher host SDK.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/build/launcher-sdk/assets/scripts/build.py

@@ -3,11 +3,12 @@
 # and skips .worktreeinclude when format != 1. Requires bash 4+, git; no Docker.
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SCRIPT="$REPO_ROOT/src/core/assets/scripts/clone-worktree.sh"
+DOCKPIPE_TEST_BIN="${DOCKPIPE_TEST_DOCKPIPE_BIN:?select the pinned test CLI}"
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
+SCRIPT="$tmp/clone-worktree.sh"
+(cd "$tmp" && "$DOCKPIPE_TEST_BIN" action init --from clone-worktree "$SCRIPT")
 
 setup_repo() {
   local seed="$1"

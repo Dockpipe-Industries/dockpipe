@@ -54,18 +54,6 @@ func GlobalDockpipeDataDir() (string, error) {
 	}
 }
 
-// GlobalTemplatesCoreDir is where `dockpipe install core --global` extracts templates/core
-// (same layout as a project: <root>/templates/core).
-func GlobalTemplatesCoreDir() (string, error) {
-	root, err := GlobalDockpipeDataDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(root, "templates", "core"), nil
-}
-
-// GlobalPackagesRoot holds global package trees: packages/{workflows,resolvers,core}/...
-// (flat under the global data dir — not under bin/.dockpipe/internal).
 func GlobalPackagesRoot() (string, error) {
 	root, err := GlobalDockpipeDataDir()
 	if err != nil {
@@ -124,12 +112,6 @@ func SystemPackagesRoots() []string {
 	return uniqueExistingLikeDirs(SystemDockpipeDataDirs(), "packages")
 }
 
-// SystemPackagesCoreDirs returns candidate system-shared packages/core directories.
-func SystemPackagesCoreDirs() []string {
-	return uniqueExistingLikeDirs(SystemPackagesRoots(), "core")
-}
-
-// SystemPackagesWorkflowsDirs returns candidate system-shared packages/workflows directories.
 func SystemPackagesWorkflowsDirs() []string {
 	return uniqueExistingLikeDirs(SystemPackagesRoots(), "workflows")
 }
@@ -137,11 +119,6 @@ func SystemPackagesWorkflowsDirs() []string {
 // SystemPackagesResolversDirs returns candidate system-shared packages/resolvers directories.
 func SystemPackagesResolversDirs() []string {
 	return uniqueExistingLikeDirs(SystemPackagesRoots(), "resolvers")
-}
-
-// SystemTemplatesCoreDirs returns candidate system-shared templates/core directories.
-func SystemTemplatesCoreDirs() []string {
-	return uniqueExistingLikeDirs(SystemDockpipeDataDirs(), filepath.Join("templates", "core"))
 }
 
 func uniqueExistingLikeDirs(roots []string, suffix string) []string {

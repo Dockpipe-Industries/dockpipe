@@ -10,10 +10,8 @@ failed_tests=()
 log_dir="${TMPDIR:-/tmp}/dockpipe-integration-logs-${RANDOM}-${RANDOM}"
 mkdir -p "$log_dir"
 
-# These are source-checkout integration tests. Point the repo-built dockpipe
-# binary at this checkout instead of the materialized bundled cache.
-export DOCKPIPE_REPO_ROOT="$REPO_ROOT"
-export DOCKPIPE_BIN="$REPO_ROOT/src/bin/dockpipe"
+# Isolate inherited workflow context before invoking the current product CLI.
+source "$DIR/helpers.sh"
 
 # act on Windows runs these Linux tests inside a runner container while Docker
 # commands still target the host daemon. Keep temp files under the checkout so

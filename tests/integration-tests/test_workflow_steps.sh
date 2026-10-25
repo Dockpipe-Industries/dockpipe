@@ -4,6 +4,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CLI="${REPO_ROOT}/src/bin/dockpipe"
+source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 
 test_chain_outputs() {
   local tmp mod
@@ -18,8 +19,7 @@ test_chain_outputs() {
   (cd "$REPO_ROOT" && go mod download)
   (
     cd "$tmp"
-    DOCKPIPE_REPO_ROOT="$REPO_ROOT" \
-      "$CLI" --workflow test --workdir "$REPO_ROOT" \
+    "$CLI" --workflow test --workdir "$REPO_ROOT" \
         "${extra_args[@]}" \
         --mount "${pkg}:/go/pkg:rw" \
         2>&1 | tee "$tmp/out.log"

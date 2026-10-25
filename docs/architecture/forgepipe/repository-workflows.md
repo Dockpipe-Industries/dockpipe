@@ -14,13 +14,14 @@ a separate gate from the current staging delivery.
 | DorkPipe | `check`, `build`, `test`, `test.integration`, `editor.candidate`, `sdk.candidate`, `package.candidate`, `package.compile`, `package.delivery` | Agentic package, MCP and both VS Code extensions |
 | Pipeon | `check`, `test`, `package.candidate`, `package.compile`, `package.delivery` | Paused package; six resolver/workflow discovery entries hidden |
 | Nucleon | `check`, `build`, `test`, `sdk.candidate` | Independent native compression SDK; codec/research safeguards retained |
-| MesaMoto | `check` | Local scaffold; game extraction and standalone application pending |
-| SpatialPipe | `check` | Local scaffold; offline library/application extraction pending |
-| Spatial-Web | `check` | Local scaffold; public library/browser extraction pending |
+| MesaMoto | Native checks, standalone/session qualification and candidate producer | Game implementation/content and standalone shell extracted; delivery qualification tracked separately |
+| SpatialPipe | Native runtime/Scene/app checks and independent Cockpit candidate producer | Offline runtime/Scene/application plus separate trusted host package; exact installed SDK consumers |
+| Spatial-Web | `check`, `build`, `test`; independent Browser matrix and optional Projection candidate producer | Qt-only ordinary Browser; separate composition/Projection and browser shell |
 
-MesaMoto, SpatialPipe and Spatial-Web have existing empty remote repositories and
-local scaffolds without a Git checkout connection. A scaffold check does not
-qualify an application or publish its source.
+The three product source extractions and candidate producers have advanced beyond the
+initial scaffolds. A source PR, local build or producer definition still does not qualify
+all platform binaries or prove package delivery. The canonical ownership checkpoint records
+current local proof and remaining hosted/staging gates.
 
 ## Models and ownership
 
@@ -60,7 +61,7 @@ not hide the other. Hidden discovery does not revoke explicit installation or ac
 
 ## Go compatibility SDK
 
-`release/packaging/build-go-sdk.py` exports the public runtime dependency closure
+`workflows/build/go-sdk/assets/scripts/build.py` exports the public runtime dependency closure
 used by DorkPipe/MCP. It discovers Linux, Windows and macOS source variants and
 records every file and archive digest. Private implementations and optional native
 Cockpit source are excluded. Source discovery is not native platform qualification.
@@ -137,10 +138,21 @@ the package host. Source repository visibility and package distribution are
 independent decisions. DorkPipe now has public source and release evidence; Pipeon
 retains private source and release evidence. The package host remains the composed
 store distribution boundary. Private native ForgePipe and Nucleon SDKs
-are not part of this package-host distribution. `release/packaging/pinned-stores.lock.json` selects the five
+are not part of this package-host distribution. `workflows/catalog/compose/assets/pinned-stores.lock.json` selects the five
 qualified native baseline stores and the new Linux amd64 standalone bundles.
 Other native platforms retain their previous qualified package versions until their
 own standalone builds pass. New Linux package proof does not qualify those targets.
+
+The lock may also select an owning-catalog overlay through `catalog.source_commit`,
+`catalog.owned` and `catalog.artifacts`. Each artifact must use the exact
+`Dockpipe-Industries/dockpipe-packages` GitHub release tag
+`catalog-candidate-<full source SHA>` and asset `dockpipe-catalog-<platform>.tar.gz`,
+with its archive size, SHA-256 and nested manifest SHA-256 pinned. The manifest
+must contain exactly the trusted resolver/workflow identities for that platform.
+Catalog ownership cannot overlap core, the repository-quality workflow or the
+independent publishers. Platforms without an artifact retain their baseline;
+an absent platform does not establish native qualification. Changed bytes require
+new package archive names rather than replacing an existing immutable name.
 
 `compose-package-store.py` replaces exactly the identities in separately trusted
 ownership declarations. Candidate metadata cannot grant ownership or replace engine

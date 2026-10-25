@@ -1,0 +1,11 @@
+name: verify-dispatch
+description: Run the owning verify dispatch operation.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/publish/homebrew/assets/verify-dispatch.py

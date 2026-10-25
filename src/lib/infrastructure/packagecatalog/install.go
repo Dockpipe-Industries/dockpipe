@@ -107,10 +107,6 @@ func (c *Client) Install(ctx context.Context, catalog Catalog, entry Entry, stor
 	return filepath.Join(storeRoot, destination), nil
 }
 
-func validateArchive(ctx context.Context, reader io.Reader, entry Entry) error {
-	return validateArchiveForEngine(ctx, reader, entry, "dev")
-}
-
 func validateArchiveForEngine(ctx context.Context, reader io.Reader, entry Entry, engineVersion string) (resultErr error) {
 	codec := "gzip"
 	if entry.Tarball != "" {

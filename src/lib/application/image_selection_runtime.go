@@ -54,10 +54,6 @@ func ensureCompiledRegistryImageForWorkflow(rm *domain.CompiledRuntimeManifest) 
 	return ensureCompiledRegistryImage(rm.Image, rm.Security.Network, dockerImageExistsAppFn, dockerPullAppFn)
 }
 
-func ensureCompiledRegistryImageForStep(rm *domain.CompiledRuntimeManifest) (string, error) {
-	return ensureCompiledRegistryImage(rm.Image, rm.Security.Network, dockerImageExistsFn, dockerPullFn)
-}
-
 func ensureCompiledRegistryImage(sel domain.CompiledImageSelection, network domain.CompiledNetworkPolicy, existsFn func(string) (bool, error), pullFn func(string) error) (string, error) {
 	if domain.ImageSource(strings.TrimSpace(sel.Source)) != domain.ImageSourceRegistry || strings.TrimSpace(sel.Ref) == "" {
 		return "", nil

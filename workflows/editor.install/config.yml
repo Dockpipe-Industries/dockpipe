@@ -1,0 +1,8 @@
+name: editor.install
+description: Publish or install an exact reviewed VSIX artifact.
+docker_preflight: false
+steps:
+  - id: install
+    kind: host
+    cwd: repo
+    run: assets/scripts/install.py

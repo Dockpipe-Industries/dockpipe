@@ -1,0 +1,18 @@
+name: reproduce-locked-go-sdk
+description: Reproduce the exact SDK selected by workflows/build/go-sdk/assets/source.lock.json.
+docker_preflight: false
+steps:
+  - id: dependencies
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/build/go-sdk/assets/scripts/prepare-source.py
+  - id: reproduce
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/build/go-sdk/assets/scripts/build-locked.py

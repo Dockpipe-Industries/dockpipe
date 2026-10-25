@@ -1,0 +1,11 @@
+name: qualify-native-desktop
+description: Preserve the real macOS and Windows native desktop qualification gates.
+docker_preflight: false
+steps:
+  - id: qualify
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/qualify/native-desktop/assets/scripts/run.py

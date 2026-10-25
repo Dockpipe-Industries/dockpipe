@@ -1,6 +1,8 @@
 # ForgePipe engine and spatial ecosystem extraction
 
-Status: implementation authorized, in progress. This is an extraction of existing behavior,
+Status: implementation authorized, in progress. The hosted ownership milestone below records
+completed product candidates and the remaining composed-delivery gates. Earlier dated checkpoints
+preserve the proposal and evidence available at that time. This is an extraction of existing behavior,
 not a new engine rewrite. The complete file inventory is
 [migration-inventory.tsv](migration-inventory.tsv). It records source bytes before migration,
 local include edges, destination repository, and whether a file can move or must be split.
@@ -12,23 +14,25 @@ The [2026-10-17 product/package boundaries](product-package-boundaries.md) refin
 SpatialPipe ships custom worlds and spatial web without DockPipe host providers; MesaMoto is an
 optional universe experience and standalone game; normal browsing becomes built into the DockPipe
 desktop, independent of optional spatial packages. The ordinary browser component must therefore
-be separated from the spatial library dependencies shown below. These are target contracts, not
-claims of shipped extraction or package publication.
+be separated from the spatial library dependencies shown below. These originated as target
+contracts; the hosted ownership milestone below records the subsequently qualified artifacts.
 
 ## Ownership and dependency contracts
 
 ```mermaid
 flowchart TD
+    Qt[Qt WebEngine] --> Ordinary[SpatialWeb Browser]
+    Ordinary --> DockpipeBrowser[Dockpipe built-in Browser]
+    Ordinary --> Projection[SpatialWeb Composition and Projection]
+    ForgePipe --> Scene[SpatialPipe Runtime and Scene]
+    Scene --> Projection
     ForgePipe --> MesaMoto
-    ForgePipe --> SpatialRuntime[SpatialPipe offline runtime]
-    ForgePipe --> WebLibrary[Spatial-Web browser library]
-    SpatialRuntime --> WebLibrary
-    SpatialRuntime --> SpatialApp[SpatialPipe application]
-    WebLibrary --> SpatialApp
-    WebLibrary --> Browser[Standalone Spatial Browser]
-    ForgePipe --> Cockpit
-    SpatialRuntime --> Cockpit
-    WebLibrary --> Cockpit
+    Scene --> SpatialApp[SpatialPipe standalone application]
+    Projection --> SpatialApp
+    Projection --> WebShell[Spatial-Web standalone browser]
+    Scene --> Cockpit[Trusted Cockpit host adapters]
+    Projection --> Cockpit
+    HostSDK[Dockpipe LauncherSDK and Files graph] --> Cockpit
 ```
 
 | Repository | Owns | Must not require |
@@ -116,7 +120,7 @@ be included in public build inputs. Public contributors need a redistributable S
 without private-repository authentication; until that artifact and terms exist, full public
 application build readiness remains blocked. Pure public model/schema tests must work without it.
 
-Existing material provenance is retained from `packages/cockpit/resources/materials/README.md`;
+Existing material provenance is retained from [SpatialPipe material provenance](https://github.com/Dockpipe-Industries/SpatialPipe/blob/dev/packages/cockpit/resources/materials/README.md);
 furniture includes Kenney CC0 notices, bike content its own Innerscene provenance. Qt module
 licenses, LGPL/commercial conditions and WebEngine/Chromium third-party notices require an
 artifact-specific distribution review. The Qt resolver commercial product is excluded.
@@ -124,11 +128,11 @@ artifact-specific distribution review. The Qt resolver commercial product is exc
 ## Acceptance evidence
 
 The admitted baseline includes the existing terrain, wheelie/race, rival, RedBud and return-portal
-validation documents in `packages/cockpit/docs`. RedBud is an approximate map study, not a
+validation documents in [SpatialPipe Cockpit docs](https://github.com/Dockpipe-Industries/SpatialPipe/blob/dev/packages/cockpit/docs). RedBud is an approximate map study, not a
 surveyed replica. Native/offscreen evidence is distinct from interactive gameplay qualification.
 Keep the existing running preview untouched.
 
-Remaining terminal gates: installed SDK consumer, standalone MesaMoto/SpatialPipe/Browser,
+At the initial extraction checkpoint, the terminal gates were installed SDK consumers, standalone MesaMoto/SpatialPipe/Browser,
 optional Cockpit integration, real packaged installation/upgrade/rollback, saved-world and
 provider preservation, public build path, per-repository CI/release artifacts and cross-repository
 integration. Inventory or individual compilation alone does not complete this objective.
@@ -171,7 +175,7 @@ The engine's own repository remains independent of these package implementations
 ForgePipe names the native engine. The former "ForgePipe Game Studios" label is
 retired. AI product features belong to the optional, independently versioned DorkPipe
 package and enhance the existing DockPipe application, CLI and unified MCP endpoint.
-[TASK-008](../../agents/tasks/agentic-app-ui/overview.md) records the unbuilt AI authoring
+[TASK-008](https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/agents/tasks/agentic-app-ui/overview.md) records the unbuilt AI authoring
 and inspection scope; it does not define a separate DockPipe AI package or application.
 Ordinary local use must not require a separate AI container stack, persistent daemon
 or managed database. Optional isolated workers and remote execution use DockPipe lifecycle
@@ -233,8 +237,9 @@ the focused embedded-input regression passes.
 
 Root AI guidance, initialization, workflow entrypoints, CI bootstrap and the local Go
 compatibility SDK are recorded in [repository-workflows.md](repository-workflows.md).
-The three unextracted products have scaffold-only checks; independent application and
-package-feed qualification remain open. ForgePipe's private staging release has passed
+At this repository-setup checkpoint, the three unextracted products had scaffold-only checks;
+independent application and package-feed qualification were still open. The current hosted
+ownership milestone below supersedes that implementation status. ForgePipe's private staging release has passed
 GitHub gates. Nucleon's tested SDK packages and matching debug archive are durably
 published privately; public registry delivery and license approval remain open.
 DorkPipe 0.6.5 is published from its public source and verified on the staging
@@ -290,67 +295,255 @@ qualification used the CI compositor and does not establish physical GPU gamepla
 acceptance. This delivery does not complete standalone product extraction,
 PipeLang bindings or a stable cross-toolchain SDK ABI. Production was not promoted.
 
-### SpatialPipe and separate Cockpit source checkpoint (2026-10-20)
+### Independent SpatialPipe and Cockpit delivery continuation (2026-10-20)
 
-SpatialPipe now contains the separate `packages/cockpit` implementation. The
-transfer added 361 authored files and updated seven existing files, after checking
-396 original source hashes. Updated SpatialPipe preimages were backed up. Existing
-Dockpipe graph edits were copied exactly; no original source or saved data was
-deleted. The local SpatialPipe directory has no Git metadata. Its authored source
-has been reconciled with the initialized hosted repository in
-[SpatialPipe PR #2](https://github.com/Dockpipe-Industries/SpatialPipe/pull/2),
-preserving the security baseline and dependency updates targeting `dev`.
-The independent host SDK producer is in
-[Dockpipe PR #184](https://github.com/Dockpipe-Industries/dockpipe/pull/184).
-SpatialPipe PR #2 passed its hosted runtime SDK consumer and repository checks.
-The draft-release lookup repair in PR #3 then passed and merged into `dev` at
-`8b67f00a059a440665cdca93069a287fd817ad7f`. Its
-[runtime SDK candidate](https://github.com/Dockpipe-Industries/SpatialPipe/releases/tag/spatialpipe-sdk-0.1.0-staging.8b67f00a059a440665cdca93069a287fd817ad7f.39387510298.1)
-passed hosted build and publication. A fresh authenticated download verified its
-exact archive, metadata and installed inventory. The host SDK PR remains under
-platform qualification.
+SpatialPipe owns the offline scene/runtime and the separate optional
+`packages/cockpit` implementation, assets and feature tests. The root runtime
+exports `SpatialPipe::Runtime`; it does not build Cockpit or import Dockpipe host
+adapters. Cockpit consumes installed runtime and host SDKs. Its ContextStore
+adapter supplies the existing paths; version-1 persistence and saved user data
+remain unchanged. The three original dirty WorkspaceGraph source/test files are
+preserved byte for byte in the extracted initial source. The original migration
+inventory remains historical evidence, not a current source ownership override.
 
-The current continuation permits dependency candidates followed by Dockpipe
-staging qualification, with exact release and checksum pins. Production promotion
-and Freeflight changes remain excluded. PipeLang stays in Dockpipe.
+The dependency candidates are published:
 
-The complete scene layout, including transient vehicle and ride-surface records,
-is canonical in `SpatialPipe::Runtime`. Cockpit no longer compiles its own
-workspace, workspace-store or ride-surface implementation, and delegates
-structural furnishing storage to the runtime. Its ContextStore adapter still
-supplies the existing paths. Version-1 persistence remains unchanged. Unknown
-identities remain inert in runtime storage; legacy Cockpit catalog admission can
-still reject an unsupported layout without rewriting its file.
+- [DockPipeLauncherSDK 1.0.0](https://github.com/Dockpipe-Industries/dockpipe/releases/tag/launcher-sdk-1.0.0-staging.517747a588eeedf000819d952eb18aa8d8bcc02d),
+  source `517747a588eeedf000819d952eb18aa8d8bcc02d`. Its public publisher
+  attestation, archive/metadata pins and freshly installed inventory were verified.
+- [SpatialPipe SDK 0.1.0](https://github.com/Dockpipe-Industries/SpatialPipe/releases/tag/spatialpipe-sdk-0.1.0-staging.8b67f00a059a440665cdca93069a287fd817ad7f.39387510298.1),
+  source `8b67f00a059a440665cdca93069a287fd817ad7f`. The immutable private
+  candidate passed hosted publication and fresh authenticated archive, metadata
+  and installed-inventory readback.
 
-Dockpipe can export `DockPipeLauncherSDK 1.0.0` with explicit host UI, host browser
-and header-only targets. Cockpit builds independently against installed exact
-host, SpatialPipe 0.1.0 and ForgePipe 0.1.0 SDKs with Qt 6.10.3. The root SpatialPipe
-runtime build does not import Cockpit or Dockpipe adapters. The headless engine
-was not changed. This host browser SDK is not the neutral Spatial-Web extraction.
+Both SDKs use Qt 6.10.3 and record their compiler/platform ABI. Cockpit 0.1.2
+records its own source and qualification run separately from dependency source
+commits. Cockpit publication and the published-package native consumer have now
+passed independently, as recorded below; final Dockpipe staging remains pending.
 
-Local Linux amd64 validation passed:
+Public Dockpipe consumption selects only the unchanged runtime mirror of the
+independent Cockpit candidate. `workflows/qualify/cockpit/assets/cockpit.lock.json` pins the resolver
+archive, original qualification receipt and original candidate metadata by exact
+SHA-256 and byte size, with an immutable public release/tag and its qualified
+LauncherSDK source target. The candidate binds the original SpatialPipe source,
+run, compiler, SDK lock snapshots and runtime allowlist. The mirror contains only
+the resolver archive, its checksum, store manifest, qualification receipt,
+candidate metadata and SHA256SUMS. Private diagnostic archives remain separate;
+public consumers neither fetch private diagnostics nor require private source.
+An older Cockpit 0.1.1 archive cannot substitute for this extracted candidate.
 
-- SpatialPipe's pinned-CLI build/check/test workflows and runtime fixtures.
-- The installed launcher SDK consumer, including browser construction.
-- All 16 portable Cockpit contracts and 17 offscreen CTest fixtures.
-- Required X11 software-OpenGL geometry and late package-loading/rendering checks.
-- Separate X11 browser and image-extraction fixtures.
-- Bundle dependency closure, private-symbol separation, local resolver archive
-  compilation and checksum/payload readback.
+Before original source retirement, the real published independent package must
+pass Dockpipe's local/native installed-assets loader/render consumer and the
+original source/archive preservation hashes must be rechecked. The host fixture
+loads the module after creating its window and requires X11 rendering without a
+skip pass. The source-absent change includes the binary consumer integration and
+canonically regenerated embed declaration. Normal PR/checks and final Dockpipe
+staging then qualify that resulting tree; no separate staging release is required
+before removal. Catalog composition replaces only `resolver/cockpit`, retaining
+unrelated entries and archive bytes. The headless engine remains unchanged.
 
-The independent CMake project restores optimized native builds, retaining private
-debug information. The original camera-return test passes unchanged. A GPU
-context-recreation colour assertion failed with Qt's offscreen driver; the same
-executable passes under X11 software OpenGL. The runners therefore execute that
-GPU check through the mandatory X11 path, without weakening assertions or treating
-exit 77 as success. Native handoff and desktop-window fixtures remained skipped;
-physical GPU, actual desktop interaction and other platforms are unverified.
+The rendering contract separates actual product throughput from injected
+compositor liveness. The unchanged minimum of 40 paint intervals over the fixed
+1,500 ms movement sample applies to the viewport selected by the product: raster
+fallback on software Mesa, hardware OpenGL on a hardware renderer. The host stays
+1440 × 900. Only after that performance gate passes does software Mesa receive
+the late-loaded test OpenGL viewport. Its separate fixed-duration functional
+phase requires a valid context, multiple paint intervals and completed
+`frameSwapped` signals, zero compositor errors, and another completed frame after
+hide/show. This synthetic software-GL phase is not a product frame-rate claim or
+an exception to the product throughput threshold. Phase-labeled metrics retain
+both observations; a final software-GL capture depicts the injected compositor,
+not the earlier product raster viewport. The host-owned consumer fixture must
+preserve the same distinction. Software-OpenGL liveness and product raster
+throughput evidence do not establish physical GPU gameplay or interactive desktop
+acceptance.
 
-Dockpipe's old Cockpit tree remains temporarily because current CI/release jobs
-compile it. Retirement requires immutable delivered host/runtime dependencies,
-consumer checks and updated store composition. The source now pins the existing
-0.6.19 staging compiler and its archive digest; this preserves the manifest sizes
-needed by the package receipt. Cockpit 0.1.2 is reserved for this extraction.
-An earlier published Cockpit binary cannot prove delivery of the new source.
-Freeflight, saved data and the running preview remain untouched. Standalone
-applications and the remaining browser/game splits are still open.
+Published Cockpit and fresh public-consumer evidence:
+
+- [Cockpit 0.1.2 candidate](https://github.com/Dockpipe-Industries/SpatialPipe/releases/tag/cockpit-0.1.2-staging.25ada5f9dc26.run39398537573.1)
+  is published from `25ada5f9dc26c9612fb150c8752478a73aa1917a`, qualifying run
+  [`39398537573`](https://github.com/Dockpipe-Industries/SpatialPipe/actions/runs/39398537573),
+  attempt 1. It uses the exact published SDK pins above.
+- The [public runtime mirror](https://github.com/Dockpipe-Industries/dockpipe/releases/tag/cockpit-0.1.2-staging.25ada5f9dc26.run39398537573.1)
+  uses the same immutable tag and preserves the six runtime files unchanged.
+  `workflows/qualify/cockpit/assets/cockpit.lock.json` records the exact archive, qualification receipt and
+  candidate metadata identities. The resolver archive is 192,474,671 bytes with
+  SHA-256 `a09bc121f4aceca775e7fc293a02aa3c35efeefe476252ab19b4a80925da22eb`.
+  Private diagnostics were not included in the public consumer.
+- A fresh host configure/build and required `cockpit-package-rendering` test
+  passed against those public bytes with Qt 6.10.3 and llvmpipe. The unchanged
+  product raster gate recorded 92 paint intervals in the 1,500 ms sample,
+  p95 17.32 ms and maximum 17.40 ms, with zero compositor errors. The separate
+  synthetic software-GL phase completed 93 frame swaps and one further completion
+  after hide/show, also with zero compositor errors. Its retained capture was
+  inspected and is explicitly synthetic compositor evidence, not physical GPU or
+  gameplay proof. The fixture used fresh isolated XDG paths and no saved user data.
+
+The published-package native prerequisite is satisfied. The isolated Dockpipe
+consumer workspace has now retired all 359 tracked original Cockpit files after
+rechecking all 363 original file preimages and the retained archive. The primary
+Dockpipe checkout still retains its original source and saved work. The integration
+patch applied without fuzz, and canonical embed regeneration and its membership
+check passed, removing exactly 359 original source entries. The source-absent CLI
+build passed offline using cached Go 1.26.9 with build parallelism limited to two.
+All 31 focused tests and the public-content/diff checks passed. These are bounded
+local checks; hosted development-PR checks and final Dockpipe staging remain
+pending on the source-absent consumer tree, including the actual release identity
+and catalog/install readback. The earlier Cockpit 0.1.1 staging release remains historical
+evidence and does not satisfy that final source-absent gate.
+
+Current authority covers package candidates and Dockpipe staging only. Production
+promotion and Freeflight changes are excluded; PipeLang stays in Dockpipe.
+Saved work, saved worlds and the running preview remain preserved. This historical SDK
+checkpoint did not establish standalone products, physical GPU gameplay or complete browser/game
+extraction. Subsequent product qualification is recorded below; its platform and GPU limits remain explicit.
+
+## Ecosystem ownership cutover checkpoint — 2026-10-20
+
+The current isolated consumer has installed-library boundaries for the remaining native
+products. `SpatialWeb::Browser` owns ordinary browsing and requires Qt only;
+`SpatialWeb::Composition` owns document, discovery and media composition;
+`SpatialWeb::Projection` owns world planning, projected browser UI and neutral scene
+composition. The separate Browser-only producer does not require Scene or ForgePipe.
+Projection is an optional Linux SDK lane pinned to the qualified native Scene/Forge ABI.
+Both standalone browser modes reuse these libraries. Headquarters branding and trusted
+host actions remain Cockpit adapters. Neither ordinary nor spatial browsing imports MesaMoto.
+
+`SpatialPipe::Geometry` and `SpatialPipe::Scene`, installed by `SpatialPipeScene 0.1.0`,
+own neutral furnishing/room geometry and `SpatialWorldView`. Cockpit supplies host images,
+provider admission and explicit actions to that view; its filesystem flight, Git review,
+operations and desktop-window controls remain host features. The standalone universe omits
+those providers. Runtime storage still receives explicit paths, and host adapters retain
+existing saved-data paths. No real user data was migrated by this cutover.
+
+The Files graph now belongs to the Dockpipe launcher, with its own bounded
+`dockpipe-workspace-reader`. It opens directly without acquiring or enabling Cockpit.
+Its 2D/orthographic 3D views, camera controls and animated drone remain; graph flight and
+its editor overlay were removed from this host feature. The optional package retains a
+thin compatibility file-surface adapter. Page limits, workspace containment, link/Git
+metadata refusal, cancellation and stale-page checks remain in the host reader.
+
+Preserved preimages and hash manifests precede source retirement in the isolated consumer
+and extracted Cockpit package. Reusable Browser, Web composition/projection, Graph and
+neutral Scene implementations and their model/media assets have owning library targets;
+remaining forwarding headers preserve callers without compiling second implementations.
+MesaMoto owns game code/content and its importer; neutral furniture import tooling belongs
+to SpatialPipe Scene. Company branding, native app providers and local voice remain host-owned.
+
+Local checks pass installed-library build/link, Browser lifecycle/download regressions,
+Graph offscreen and actual X11 rendering, Web/civic/site/input/furnishing/folder-navigation
+fixtures, saved-world fixtures, matching-CLI Git review and retained native app handoff.
+The original renderer test passes for both preserved and extracted binaries using the CI
+private-X11 software driver. Both binaries reproduce the same NVIDIA independent-context
+pixel failure on this machine; that negative evidence remains recorded and the assertions
+remain enabled. Actual X11 Graph and native handoff rendered on NVIDIA, which does not
+establish that every native GPU or game acceptance gate passed.
+
+The retired combined Graph megafixture was archived. Folder travel, paging and reticle
+assertions moved to a narrow Cockpit fixture; relevant Graph/security checks belong to
+launcher tests. The removed Files flight/editor-overlay branches, legacy large-tree
+benchmarks, standalone preview timing and some combined pixel/composition branches were
+not all requalified. Their preservation record distinguishes archived coverage from passing
+replacement checks.
+
+Source/producer implementation and local proof are not final composed delivery. The hosted
+milestone below records subsequently qualified SDKs and product candidates. The exact Cockpit
+pin, Marketplace/Settings lifecycle and source-absent Dockpipe staging have separate gates.
+Cross-platform Browser qualification is tied to its accepted hosted artifacts and exact Qt/platform
+profiles; it does not follow from a Linux run. No production promotion is implied.
+
+## Hosted ownership milestone — 2026-10-20
+
+The following advances the extraction and ownership gates without declaring TASK-037 complete:
+
+- **MesaMoto:** the standalone game and shared game runtime passed hosted checks, normal dev and
+  staging promotion, private candidate readback and fresh installed relocation/save/quit lifecycle.
+  Staging source is `36307344ff40447f12c177e7f4a8b0545e990f44`, qualifying run
+  [`39461501753`](https://github.com/Dockpipe-Industries/MesaMoto/actions/runs/39461501753).
+  Hosted metadata states raster qualification and no physical GPU verification. The separate local
+  RTX 3080 game evidence does not turn the hosted lane into a physical GPU lane. This is private
+  candidate delivery, not public or paid game distribution.
+- **Spatial-Web:** five native ordinary-Browser SDK profiles passed hosted qualification and
+  artifact readback: Linux amd64/arm64, macOS amd64/arm64 and Windows amd64. The KDE Flatpak
+  Browser profile is a separate exact runtime/Qt profile with its own qualification; native SDK
+  success is not Flatpak compatibility proof. The Web owning repository's staging promotion and
+  artifacts are verified. Projection remains a separate pinned Scene/Forge consumer; matching
+  Browser/Projection ownership does not introduce game or privileged host dependencies.
+- **SpatialPipe:** the independent app's shutdown repair passed all required checks and merged
+  through [PR 8](https://github.com/Dockpipe-Industries/SpatialPipe/pull/8) to dev source
+  `abc9fde23b71dfb245f356419e0e3a83aeaeac8f`. Private candidate run
+  [`39463448605`](https://github.com/Dockpipe-Industries/SpatialPipe/actions/runs/39463448605)
+  passed. All four release assets and 269 runtime files were read back; fresh relocated scene and
+  WebEngine/helper smoke passed with isolated state and no game launch or universe write. Physical
+  GPU verification is explicitly false in that candidate. The final Cockpit **0.1.3** extraction
+  passed [PR 9](https://github.com/Dockpipe-Industries/SpatialPipe/pull/9) and accepted-source run
+  [`39474547346`](https://github.com/Dockpipe-Industries/SpatialPipe/actions/runs/39474547346).
+  Dev source `d5716567d213b25c85231d6943e3c449558aee63` and staging source
+  `5ec39cf123c41af2960062c35009f24bab37202f` have the same qualified tree.
+  The public runtime-only mirror is
+  [`cockpit-0.1.3-staging.d5716567d213.run39474547346.1`](https://github.com/Dockpipe-Industries/dockpipe/releases/tag/cockpit-0.1.3-staging.d5716567d213.run39474547346.1).
+  Its six assets passed digest/readback checks; the archive audit found 116 runtime files,
+  including 26 native binaries, without implementation source or private symbol sections.
+  Diagnostics remain associated with the candidate in the private owning repository.
+- **Dockpipe:** [PR 191](https://github.com/Dockpipe-Industries/dockpipe/pull/191) passed all eleven
+  checks and merged into dev at `c740d9dcefcdf04c558b93359c232a1938a01f80`. The published LauncherSDK
+  **1.1.0** has been verified. The launcher owns ordinary Browser and the Files graph/reader;
+  Cockpit remains an optional installed consumer of the exact host and shared-library SDK pins.
+
+`workflows/qualify/cockpit/assets/cockpit.lock.json` pins that qualified 0.1.3 mirror and its LauncherSDK source exactly.
+Flatpak catalog assembly includes the pinned Cockpit store before adaptation. Its mandatory
+Marketplace fixture exercises HTTPS discovery, Settings enable/install, normal CLI asset
+resolution, installed rendering, Settings disable and CLI removal while preserving fixture
+saves and unrelated settings. It does not use a development package override. These checks and
+the native consumer checks must pass before promotion. The final staging candidate also requires
+catalog/artifact readback and fresh install/update/removal/rollback proof against its exact source.
+CLI archive lifecycle and checksum-pinned rollback are distinct from Settings-managed activation.
+
+TASK-037 remains **executing** for its deferred language bindings, stable
+ABI and broader GPU/platform acceptance limits. Existing archived-but-unported assertions and the
+preserved legacy NVIDIA pixel failure above remain limitations. Native Qt C++ SDKs are not a stable
+cross-toolchain ABI. Production and paid distribution are outside this continuation; no real user
+worlds, saves or primary-checkout work were migrated or deleted by these verification fixtures.
+
+## Final ecosystem staging delivery
+
+The bounded ecosystem staging continuation is delivered as
+[`0.6.24-staging.39534730503.1.9bdf36d2f28d`](https://github.com/Dockpipe-Industries/dockpipe/releases/tag/v0.6.24-staging.39534730503.1.9bdf36d2f28d),
+from staging source `9bdf36d2f28d6eddd62e6f01897f5b4a9348cdc3`.
+[Run 39534730503](https://github.com/Dockpipe-Industries/dockpipe/actions/runs/39534730503)
+passed Linux and Windows CI, Cockpit host qualification, all four Unix release targets,
+Windows MSI, Flatpak, artifact assembly and staging publication. Production publication was
+skipped. [PR 198](https://github.com/Dockpipe-Industries/dockpipe/pull/198),
+[PR 200](https://github.com/Dockpipe-Industries/dockpipe/pull/200) and
+[PR 199](https://github.com/Dockpipe-Industries/dockpipe/pull/199) merged normally after
+all actual and required checks passed. The released Linux CLI reports Go **1.26.10**,
+including the crypto/x509 security fix that blocked the earlier Go 1.26.9 build.
+
+The Windows release embedding test actually passed; its full suite had 49 passes and four
+existing skips. Each Mac release suite had 56 passes and four skips, with DMG creation and
+native installation smoke passing. Pre-promotion jobs on the identical tree separately created
+and checksum-verified disposable DMG fixtures on both Mac architectures and passed 25/25 native
+checks per Mac. Intel dashboard p95 was 48.848/46.806 ms
+under the unchanged 100 ms gate. These are hosted platform checks, with the GPU limits above.
+
+Independent published-byte verification bound the successful run, committed Cockpit lock,
+immutable catalog, package archives and staging latest pointer. The released Linux CLI used
+fresh isolated stores to install Cockpit 0.1.2, add 0.1.3, remove each exact archive and roll
+back to the checksum-pinned 0.1.2 archive. Fixture saves survived every phase; this archive
+lifecycle proof does not claim Settings activation or real user-data migration.
+The final hosted Flatpak Marketplace lifecycle/rendering gate passed. Downloaded Flatpak
+Cockpit bytes matched their catalog and qualification sidecar; all 116 payload files matched
+the native package except the allowed `package.yml` platform adaptation. No whole Flatpak
+desktop bundle was installed again during that independent readback. The Flatpak store
+manifest is not listed in root `SHA256SUMS`; its identity, package sidecar, archive digest and
+native payload equivalence were checked separately.
+
+The final preservation audit rechecked 894 recorded authored-source preimages, retained
+retirement archives and the primary checkout's HEAD/full status. Byte preimages were not
+available for every other dirty primary file, and actual user saves were not read. All four
+production main/master refs matched their pre-publication baselines. One intermediate Windows
+fixture READY timeout remains recorded: final runs passed without increasing its deadline;
+timings locate cold cost before Qt window display, but the exact constructor remains unidentified.
+This closes the bounded staging delivery, while TASK-037 remains executing for deferred
+bindings, stable ABI and broader GPU/platform acceptance. The earlier archived-coverage and
+NVIDIA limitations remain in force; package and engine ownership boundaries are preserved.

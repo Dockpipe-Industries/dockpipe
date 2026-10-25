@@ -85,6 +85,10 @@ func readFileFromTarGz(ctx context.Context, tarGzPath, entryName string, maxByte
 			if int64(len(data)) > limit {
 				return nil, fmt.Errorf("tar member %q exceeds size limit", entryName)
 			}
+			// Builtin decoder integrity is checked only after its complete stream.
+			if _, err := io.Copy(io.Discard, decoded); err != nil {
+				return nil, err
+			}
 			return data, nil
 		}
 	}

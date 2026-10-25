@@ -11,10 +11,14 @@ import (
 
 func TestResolveResolverFilePath(t *testing.T) {
 	repo := t.TempDir()
-	// Workflow-local resolvers/ are not used — only templates/core/resolvers/.
-	coreDir := filepath.Join(repo, "templates", "core", "resolvers")
+	// Profiles come from declared resolver roots.
+	declarePathTestRoots(t, repo)
+	coreDir := filepath.Join(repo, "vendor", "resolvers")
 	_ = os.MkdirAll(coreDir, 0o755)
-	core := filepath.Join(coreDir, "shared")
+	core := filepath.Join(coreDir, "shared", "profile")
+	if err := os.MkdirAll(filepath.Dir(core), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(core, []byte("y=2\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +65,8 @@ func TestResolveResolverFilePathPrefersPackagesResolversStore(t *testing.T) {
 
 func TestResolveResolverFilePathPrefersProfileInDirectory(t *testing.T) {
 	repo := t.TempDir()
-	rsDir := filepath.Join(repo, "templates", "core", "resolvers", "tool")
+	declarePathTestRoots(t, repo)
+	rsDir := filepath.Join(repo, "vendor", "resolvers", "tool")
 	if err := os.MkdirAll(rsDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -78,32 +83,30 @@ func TestResolveResolverFilePathPrefersProfileInDirectory(t *testing.T) {
 	}
 }
 
-func TestResolveResolverFilePathBundledLayoutUsesBundledWorkflowProfile(t *testing.T) {
+func TestResolveResolverFilePathIgnoresBundledWorkflowProfile(t *testing.T) {
 	repo := t.TempDir()
-	prof := filepath.Join(repo, BundledLayoutDir, "workflows", "claude", "profile")
+	prof := filepath.Join(repo, "bundle", "workflows", "claude", "profile")
 	if err := os.MkdirAll(filepath.Dir(prof), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(prof, []byte("DOCKPIPE_RESOLVER_TEMPLATE=claude\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Join(repo, BundledLayoutDir, "core"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(repo, "bundle", "core"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	got, err := ResolveResolverFilePath(repo, "claude")
-	if err != nil {
-		t.Fatal(err)
+	if got, err := ResolveResolverFilePath(repo, "claude"); err == nil {
+		t.Fatalf("unexpected implicit bundle resolver %q", got)
 	}
-	if got != prof {
-		t.Fatalf("got %q want bundled workflow profile %q", got, prof)
-	}
+
 }
 
 // TestResolveResolverFilePathIgnoresWorkflowLocal verifies profiles beside templates/<wf>/ are not used.
 func TestResolveCoreNamespacedScriptPath(t *testing.T) {
 	repo := t.TempDir()
-	core := filepath.Join(repo, "templates", "core", "assets", "scripts", "hello.sh")
+	declarePathTestRoots(t, repo)
+	core := filepath.Join(repo, "vendor", "example", "assets", "scripts", "hello.sh")
 	if err := os.MkdirAll(filepath.Dir(core), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -166,22 +169,22 @@ func TestResolveWorkflowScriptResolvesCoreTerraformRun(t *testing.T) {
 	}
 }
 
-func TestResolveWorkflowScriptResolvesCoreTerraformRunFromBundledTerraformCore(t *testing.T) {
+func TestResolveWorkflowScriptIgnoresBundledTerraformCore(t *testing.T) {
 	repo := t.TempDir()
-	p := filepath.Join(repo, BundledLayoutDir, "workflows", "terraform-core", "assets", "scripts", "terraform-run.sh")
+	p := filepath.Join(repo, "bundle", "workflows", "terraform-core", "assets", "scripts", "terraform-run.sh")
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(p, []byte("#!/bin/sh\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	got := ResolveWorkflowScript("scripts/core.assets.scripts.terraform-run.sh", "/wf", repo, "")
-	if got != filepath.ToSlash(p) {
-		t.Fatalf("got %q want %q", got, filepath.ToSlash(p))
+	if got, err := ResolveCoreNamespacedScriptPath(repo, repo, "assets.scripts.terraform-run.sh"); err == nil {
+		t.Fatalf("unexpected implicit bundle asset %q", got)
 	}
+
 }
 
-func TestResolveWorkflowScriptResolvesScriptsPrefixToCoreWhenUserMissing(t *testing.T) {
+func TestResolveWorkflowScriptIgnoresCoreWhenUserMissing(t *testing.T) {
 	repo := t.TempDir()
 	core := filepath.Join(repo, "templates", "core", "assets", "scripts", "shared.sh")
 	if err := os.MkdirAll(filepath.Dir(core), 0o755); err != nil {
@@ -191,9 +194,14 @@ func TestResolveWorkflowScriptResolvesScriptsPrefixToCoreWhenUserMissing(t *test
 		t.Fatal(err)
 	}
 	got := ResolveWorkflowScript("scripts/shared.sh", "/wf", repo, "")
-	if got != filepath.ToSlash(core) {
-		t.Fatalf("got %q want %q", got, filepath.ToSlash(core))
+	want := filepath.Join(repo, "scripts", "shared.sh")
+	if got != filepath.ToSlash(want) {
+		t.Fatalf("got %q want unresolved project path %q", got, want)
 	}
+	if _, err := ResolveCoreNamespacedScriptPath(repo, repo, "assets.scripts.shared.sh"); err == nil {
+		t.Fatal("implicit core alias must not resolve an undeclared tree")
+	}
+
 }
 
 func TestResolveWorkflowScriptResolvesScriptsPrefixToConfiguredWorkflowRoot(t *testing.T) {
@@ -310,7 +318,7 @@ func TestResolveWorkflowScriptPrefersRepoScriptsOverSrcScripts(t *testing.T) {
 	}
 }
 
-func TestResolveWorkflowScriptUsesSrcScriptsWhenTopLevelScriptsMissing(t *testing.T) {
+func TestResolveWorkflowScriptIgnoresSrcScriptsWhenTopLevelScriptsMissing(t *testing.T) {
 	repo := t.TempDir()
 	src := filepath.Join(repo, "src", "scripts", "maint.sh")
 	if err := os.MkdirAll(filepath.Dir(src), 0o755); err != nil {
@@ -320,9 +328,15 @@ func TestResolveWorkflowScriptUsesSrcScriptsWhenTopLevelScriptsMissing(t *testin
 		t.Fatal(err)
 	}
 	got := ResolveWorkflowScript("scripts/maint.sh", "/wf", repo, "")
-	if got != filepath.ToSlash(src) {
-		t.Fatalf("got %q want %q", got, filepath.ToSlash(src))
+	want := filepath.Join(repo, "scripts", "maint.sh")
+	if got != filepath.ToSlash(want) {
+		t.Fatalf("got %q want unresolved project path %q", got, want)
 	}
+	action, err := ResolveActionPath("maint.sh", repo, repo, repo)
+	if err != nil || action != filepath.Join(repo, "maint.sh") {
+		t.Fatalf("source-tree action fallback survived: %q, %v", action, err)
+	}
+
 }
 
 // TestResolveWorkflowScriptResolvesAssetsFromWorkflowRoot verifies logical scripts/<domain>/…
@@ -485,5 +499,29 @@ func TestResolveWorkflowScriptUsesProjectRootWhenRepoRootIsBundle(t *testing.T) 
 	got := ResolveWorkflowScript("scripts/dockpipe.cloudflare.r2infra/terraform-cloudflare-r2-run.sh", "/wf", bundle, proj)
 	if filepath.ToSlash(got) != filepath.ToSlash(script) {
 		t.Fatalf("got %q want %q", got, script)
+	}
+}
+
+func declarePathTestRoots(t *testing.T, repo string) {
+	t.Helper()
+	config := `{"schema":1,"compile":{"workflows":["vendor"]}}`
+	if err := os.WriteFile(filepath.Join(repo, "dockpipe.config.json"), []byte(config), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestResolveResolverFilePathIgnoresImplicitCoreTrees(t *testing.T) {
+	repo := t.TempDir()
+	for _, directory := range []string{"src/core", "templates/core", "bundle/core"} {
+		profile := filepath.Join(repo, directory, "resolvers", "retired-tool", "profile")
+		if err := os.MkdirAll(filepath.Dir(profile), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(profile, []byte("DOCKPIPE_RESOLVER_CMD=retired\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if path, err := ResolveResolverFilePath(repo, "retired-tool"); err == nil {
+		t.Fatalf("unexpected implicit resolver %q", path)
 	}
 }

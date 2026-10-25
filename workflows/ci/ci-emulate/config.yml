@@ -28,4 +28,4 @@ steps:
     scopes:
       source: repo
       artifacts: artifacts
-    cmd: bash src/scripts/ci-emulate.sh
+    cmd: python3 workflows/shared/run.py bash workflows/ci/ci-emulate/assets/scripts/ci-emulate.sh

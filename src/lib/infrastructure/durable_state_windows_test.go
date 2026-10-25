@@ -161,7 +161,11 @@ func TestDurableStateWindowsDACLIsProtectedAndOwnerOnly(t *testing.T) {
 
 func TestDurableStateWindowsDACLRejectsPartialControl(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "private-state")
-	if err := os.WriteFile(path, []byte("state"), 0o600); err != nil {
+	file, err := createPrivateFile(path, os.O_RDWR)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
 		t.Fatal(err)
 	}
 	if err := makePrivatePath(path, false); err != nil {

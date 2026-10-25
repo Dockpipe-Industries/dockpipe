@@ -1,11 +1,19 @@
-# Closed Tasks
+# Closed work and historical records
 
-This folder keeps completed backlog topics as lightweight history.
+This directory preserves completed work and explicitly superseded audit or design
+records. A closed implementation slice does not imply release publication or
+completion of its wider epic.
 
-Rules:
+- Remove fully closed tasks from the open task index. Keep unfinished successors
+  with their actual owner and acceptance criteria.
+- Record the closure date, completed scope, evidence and remaining limitations.
+  Mark cancelled/superseded work as such rather than calling it shipped.
+- Keep old permissions, pending commands, versions and selections historical;
+  they do not authorize new operations.
+- Use [task maintenance](../../TASKS.md) for owner moves and current routing.
 
-- Do not include closed items in `docs/agents/task-index.yaml`.
-- Move the whole topic file here when the work is complete enough that it should leave the active AI
-  backlog.
-- Keep a short completion summary and the completion date in the moved file so future agents can see
-  what shipped without reopening the item in the active index.
+Recent archived slices:
+
+- [Structural cleanup and audit history](recurring-codebase-hygiene/README.md)
+- [Dockpipe GUI delivery history](agentic-app-ui-delivery.md)
+- [Local execution observability](execution-observability.md)

@@ -47,7 +47,7 @@ Target backlog: repository AGENTS.md becomes a minimal versioned bootstrap with
 identity, essential rules, configured MCP reference and safe offline behavior.
 TASK-039 routes authenticated knowledge/context requests to DorkPipe; DORK-001
 owns retrieval, decision/task state, provenance, freshness and supersession.
-See [the proposed contract](../../../workflows/agentic-design-notes.md#proposed-agent-bootstrap-and-knowledge-routing).
+See [the proposed contract](https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/workflows/agentic-design-notes.md#proposed-agent-bootstrap-and-knowledge-routing).
 Keep source permissions, policy authority and execution approvals separate from
 retrieved content. Do not remove the current Markdown guidance or assume host MCP
 support before migration and failure-path qualification. This is not shipped behavior.

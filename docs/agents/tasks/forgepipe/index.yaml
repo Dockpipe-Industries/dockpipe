@@ -2,25 +2,22 @@ schema: 1
 id: TASK-037
 topic: ForgePipe engine and spatial ecosystem extraction
 entrypoint: overview.md
-
 dispatch:
-  readiness: ready
-  ownership: active-objective
-
+  readiness: unclassified
+  ownership: unclaimed
 routes:
   orientation:
-    read: [overview.md]
+    read:
+    - overview.md
   product_composition:
     read:
-      - overview.md
-      - ../../../architecture/forgepipe/product-package-boundaries.md
-
+    - overview.md
+    - ../../../architecture/forgepipe/product-package-boundaries.md
 documents:
-  - path: overview.md
-    role: authorized extraction objective and canonical migration evidence
-  - path: ../../../architecture/forgepipe/product-package-boundaries.md
-    role: shared runtime packages, standalone products, optional game integration and built-in browser
-
+- path: overview.md
+  role: authorized extraction objective and canonical migration evidence
+- path: ../../../architecture/forgepipe/product-package-boundaries.md
+  role: shared runtime packages, standalone products, optional game integration and built-in browser
 maintenance:
-  - Keep dispatch metadata synchronized with docs/agents/task-index.yaml.
-  - Implementation is authorized within the recorded objective; publication and Git mutations remain separate.
+- Keep dispatch metadata synchronized with docs/agents/task-index.yaml.
+- Implementation is authorized within the recorded objective; publication and Git mutations remain separate.
