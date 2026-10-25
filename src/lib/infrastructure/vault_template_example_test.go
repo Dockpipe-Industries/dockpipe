@@ -1,18 +1,31 @@
 package infrastructure
 
 import (
-	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
-
-	"dockpipe"
 )
 
-func TestBundledVaultTemplateExampleExists(t *testing.T) {
-	b, err := fs.ReadFile(dockpipe.BundledFS, VaultTemplateExampleEmbeddedPath)
-	if err != nil {
-		t.Fatalf("embed %s: %v", VaultTemplateExampleEmbeddedPath, err)
+func TestVaultTemplateExamplePreservesOperatorFile(t *testing.T) {
+	root := t.TempDir()
+	if err := WriteVaultTemplateExampleIfMissing(root); err != nil {
+		t.Fatal(err)
 	}
-	if len(b) < 50 {
-		t.Fatalf("unexpected short embedded vault example: %d bytes", len(b))
+	destination := filepath.Join(root, ".env.vault.template.example")
+	example, err := os.ReadFile(destination)
+	if err != nil || !strings.Contains(string(example), "op://YourVault/YourItem/token") {
+		t.Fatalf("reference example = %q, %v", example, err)
+	}
+	original := []byte("operator-authored example\n")
+	if err := os.WriteFile(destination, original, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteVaultTemplateExampleIfMissing(root); err != nil {
+		t.Fatal(err)
+	}
+	actual, err := os.ReadFile(destination)
+	if err != nil || string(actual) != string(original) {
+		t.Fatalf("operator file changed: %q, %v", actual, err)
 	}
 }

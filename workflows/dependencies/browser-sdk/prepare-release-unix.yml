@@ -1,0 +1,11 @@
+name: prepare-release-unix
+description: Run the prepare release unix phase using explicit CI inputs.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: bash workflows/dependencies/browser-sdk/assets/scripts/prepare-release-unix.sh

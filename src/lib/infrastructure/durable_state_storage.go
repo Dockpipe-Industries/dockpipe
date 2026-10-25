@@ -164,6 +164,10 @@ func readPrivateFile(root, path string) ([]byte, error) {
 }
 
 func writePrivateJSONAtomic(root, path string, value any) error {
+	return writePrivateJSONPublication(root, path, value, false)
+}
+
+func writePrivateJSONPublication(root, path string, value any, exclusive bool) error {
 	if !sameOrWithinDurablePath(root, path) || filepath.Clean(root) == filepath.Clean(path) {
 		return errors.New("durable metadata target escapes its root")
 	}
@@ -206,10 +210,23 @@ func writePrivateJSONAtomic(root, path string, value any) error {
 	if err := temporary.Close(); err != nil {
 		return err
 	}
-	if err := replacePrivateFile(temporaryPath, path); err != nil {
-		return err
+	if exclusive {
+		if err := os.Link(temporaryPath, path); err != nil {
+			if os.IsExist(err) {
+				// A previous publisher may have linked the complete file but failed
+				// before syncing its directory. Make a verified retry durable too.
+				if syncErr := syncPrivateDirectory(filepath.Dir(path)); syncErr != nil {
+					return syncErr
+				}
+			}
+			return err
+		}
+	} else {
+		if err := replacePrivateFile(temporaryPath, path); err != nil {
+			return err
+		}
+		cleanup = false
 	}
-	cleanup = false
 	if err := makePrivatePath(path, false); err != nil {
 		return err
 	}
@@ -287,6 +304,17 @@ func WritePrivateJSON(path string, value any) error {
 		return err
 	}
 	return writePrivateJSONAtomic(root, path, value)
+}
+
+// WritePrivateJSONExclusive publishes a flushed private record without replacing
+// an existing identity. It retains the same directory durability and ACL policy
+// as WritePrivateJSON; an existing destination is reported as os.ErrExist.
+func WritePrivateJSONExclusive(path string, value any) error {
+	root := filepath.Dir(path)
+	if err := PreparePrivateDirectory(root); err != nil {
+		return err
+	}
+	return writePrivateJSONPublication(root, path, value, true)
 }
 
 // ValidateUnlinkedPath inspects each existing component rather than comparing

@@ -40,11 +40,15 @@ func PrivateDirectory(path string) error {
 }
 
 func ReadPrivate(path string, target any) error {
+	return readPrivateBounded(path, target, 64<<20)
+}
+
+func readPrivateBounded(path string, target any, maximum int64) error {
 	info, err := os.Lstat(path)
 	if err != nil {
 		return err
 	}
-	if !info.Mode().IsRegular() || info.Size() > 64<<20 {
+	if !info.Mode().IsRegular() || info.Size() > maximum {
 		return errors.New("remote state must be a bounded private regular file")
 	}
 	if err := infrastructure.ValidatePrivatePath(path, false); err != nil {
@@ -56,14 +60,14 @@ func ReadPrivate(path string, target any) error {
 	}
 	defer file.Close()
 	opened, err := file.Stat()
-	if err != nil || !opened.Mode().IsRegular() || !os.SameFile(info, opened) {
+	if err != nil || !opened.Mode().IsRegular() || opened.Size() > maximum || !os.SameFile(info, opened) {
 		return errors.New("remote state changed while being opened")
 	}
-	data, err := io.ReadAll(io.LimitReader(file, (64<<20)+1))
+	data, err := io.ReadAll(io.LimitReader(file, maximum+1))
 	if err != nil {
 		return err
 	}
-	if len(data) > 64<<20 {
+	if int64(len(data)) > maximum {
 		return errors.New("remote state exceeds size limit")
 	}
 	return Decode(data, target)

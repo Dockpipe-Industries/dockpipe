@@ -44,7 +44,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SOURCE_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
           SOURCE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
-        run: python3 release/packaging/homebrew/verify-dispatch.py
+        run: python3 workflows/shared/launch.py workflows/publish/homebrew/verify-dispatch.yml
 
       - name: Validate tap configuration
         if: steps.source.outputs.published == 'true'

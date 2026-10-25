@@ -8,125 +8,108 @@
 #
 # Main local dev entrypoint:
 #   make build
-#     Builds Dockpipe core with its pinned external language SDK.
+#     Builds the standalone Dockpipe CLI.
 #   make build-dockpipe-launcher
 #     Builds the optional Dockpipe Launcher separately.
 #
 # Contributors who want plain `dockpipe ...` on PATH should run:
 #   make dev-install
-include src/Makefile
+# Thin maintainer aliases. The released bootstrap CLI orchestrates each build.
+DOCKPIPE_WORKFLOW ?= python3 workflows/shared/launch.py
+DEB_VERSION ?= $(shell test -f VERSION && tr -d ' \t\r\n' < VERSION || echo 0.6.0)
+BUILD_VERSION ?= dev
+WINDOWS_OUT ?= src/bin/dockpipe.exe
+
+.PHONY: build build-windows test-core
+
+build:
+	$(DOCKPIPE_WORKFLOW) workflows/build/cli/config.yml -- --output src/bin/dockpipe.bin --alias src/bin/dockpipe --version "$(BUILD_VERSION)"
+
+build-windows:
+	$(DOCKPIPE_WORKFLOW) workflows/build/cli/config.yml -- --target windows/amd64 --output "$(WINDOWS_OUT)" --version "$(BUILD_VERSION)"
+
+test-core:
+	$(DOCKPIPE_WORKFLOW) workflows/ci/core/config.yml
 
 .PHONY: \
-	maintainer-tools test \
+	test \
 	build-dockpipe-launcher install-dockpipe-launcher install-dockpipe-launcher-global \
 	install dev-install test-quick check-paths deb deb-all demo-record demo-record-short demo-record-long \
-	dev-deps install-record-deps ci package-templates-core package-dockpipe-language-support \
+	dev-deps install-record-deps ci package-dockpipe-language-support \
 	package-vscode-language-support install-dockpipe-language-support
 
 build-dockpipe-launcher:
-	rm -rf src/app/tooling/dockpipe-launcher/build
-	cmake -S src/app/tooling/dockpipe-launcher -B src/app/tooling/dockpipe-launcher/build
-	cmake --build src/app/tooling/dockpipe-launcher/build
-
-# Deprecated maintainer alias at the repo layer only. Package-owned source builds live behind
-# dockpipe package build for source checkouts.
-maintainer-tools: build
-	./src/bin/dockpipe package build --workdir .
+	$(DOCKPIPE_WORKFLOW) workflows/build/desktop-development/config.yml -- --output src/app/tooling/dockpipe-launcher/build
 
 # Repo test sweep: core Go tests plus Dockpipe-owned package/workflow test hooks.
-test: build
-	go test ./...
-	./src/bin/dockpipe test --workdir .
+test:
+	$(MAKE) build
+	$(DOCKPIPE_WORKFLOW) workflows/ci/repository/config.yml
 
-install-dockpipe-launcher: build-dockpipe-launcher
-	mkdir -p bin/.dockpipe/tooling/bin
-	mkdir -p bin/.dockpipe/tooling/share/icons/hicolor
-	mkdir -p bin/.dockpipe/tooling/share/icons
-	install -m 755 src/app/tooling/dockpipe-launcher/build/dockpipe-launcher bin/.dockpipe/tooling/bin/dockpipe-launcher
-	cp -R src/app/tooling/dockpipe-launcher/resources/icons/hicolor/. bin/.dockpipe/tooling/share/icons/hicolor/
-	install -m 644 src/app/tooling/dockpipe-launcher/resources/images/dockpipe-launcher.png bin/.dockpipe/tooling/share/icons/dockpipe-launcher.png
+install-dockpipe-launcher:
+	$(MAKE) build-dockpipe-launcher
+	$(DOCKPIPE_WORKFLOW) workflows/install/desktop/config.yml
 
 # Internal/local desktop helper: installs the repo-built Dockpipe Launcher under ~/.local/share.
-install-dockpipe-launcher-global: install-dockpipe-launcher
-	mkdir -p "$$HOME/.local/share/dockpipe/bin"
-	mkdir -p "$$HOME/.local/share/dockpipe/icons"
-	mkdir -p "$$HOME/.local/share/icons/hicolor"
-	mkdir -p "$$HOME/.local/share/applications"
-	install -m 755 bin/.dockpipe/tooling/bin/dockpipe-launcher "$$HOME/.local/share/dockpipe/bin/dockpipe-launcher"
-	install -m 644 bin/.dockpipe/tooling/share/icons/dockpipe-launcher.png "$$HOME/.local/share/dockpipe/icons/dockpipe-launcher.png"
-	cp -R bin/.dockpipe/tooling/share/icons/hicolor/. "$$HOME/.local/share/icons/hicolor/"
-	rm -f "$$HOME/.local/share/applications/dockpipe-launcher.desktop"
-	printf '%s\n' \
-		'[Desktop Entry]' \
-		'Type=Application' \
-		'Name=Dockpipe Launcher' \
-		'Exec=/usr/bin/env -u DESKTOP_STARTUP_ID -u XDG_ACTIVATION_TOKEN '"$$HOME"'/.local/share/dockpipe/bin/dockpipe-launcher --start-home' \
-		'Icon=dockpipe-launcher' \
-		'Terminal=false' \
-		'Categories=Development;' \
-		'StartupNotify=false' \
-		'X-GNOME-WMClass=dockpipe-launcher' \
-		'StartupWMClass=dockpipe-launcher' \
-		> "$$HOME/.local/share/applications/dockpipe-launcher.desktop"
-	if command -v update-desktop-database >/dev/null 2>&1; then update-desktop-database "$$HOME/.local/share/applications" >/dev/null 2>&1 || true; fi
+install-dockpipe-launcher-global:
+	$(MAKE) build-dockpipe-launcher
+	$(DOCKPIPE_WORKFLOW) workflows/install/desktop/config.yml -- --global
 
-# Editor source and VSIX delivery belong to the public DorkPipe repository.
-# An explicit source root is a maintainer convenience, never a base-build dependency.
+# Editor build and installation use the repository-owned Dockpipe workflows.
 package-dockpipe-language-support:
-	@test -n "$(DORKPIPE_EDITOR_SOURCE)" || { echo "Set DORKPIPE_EDITOR_SOURCE to DorkPipe's tooling/vscode-extensions directory." >&2; exit 1; }
-	bash "$(DORKPIPE_EDITOR_SOURCE)/scripts/build.sh" "$(CURDIR)/bin/.dockpipe/extensions"
+	$(DOCKPIPE_WORKFLOW) workflows/editor.build/config.yml -- $(ARGS)
 
 package-vscode-language-support: package-dockpipe-language-support
 
 install-dockpipe-language-support:
-	@test -f "$(DOCKPIPE_LANGUAGE_VSIX)" || { echo "Set DOCKPIPE_LANGUAGE_VSIX to the reviewed versioned VSIX, then install it with your editor's Install from VSIX action." >&2; exit 1; }
-	code --install-extension "$(DOCKPIPE_LANGUAGE_VSIX)"
+	$(DOCKPIPE_WORKFLOW) workflows/editor.install/config.yml -- $(ARGS)
 
 # Install pre-built binary to a local PATH directory (~/.local/bin, %USERPROFILE%\\bin, …). Does not run go build.
 install:
-	bash src/scripts/install-dockpipe.sh
+	$(DOCKPIPE_WORKFLOW) workflows/install/developer-cli/config.yml
 
 # Developer loop: compile then install (same as: make build && make install).
 dev-install: build install
 
 # Go + template guard + bash unit tests (no Docker). Faster than full CI.
 test-quick:
-	bash src/scripts/test-quick.sh
+	$(DOCKPIPE_WORKFLOW) workflows/ci/quick/config.yml
 
 # Run the real GitHub Actions CI test job locally through nektos/act.
 ci:
-	bash src/scripts/ci-emulate.sh
+	$(DOCKPIPE_WORKFLOW) workflows/ci/ci-emulate/config.yml
 
-# Tar.gz + sha256 + install-manifest.json for `dockpipe install core` (upload release/artifacts/* to your HTTPS base URL).
-package-templates-core:
-	bash release/packaging/package-templates-core.sh
 
 # Docs/code guardrail: obsolete templates/core paths (pre-assets layout). See CONTRIBUTING.md.
 check-paths:
-	bash src/scripts/check-templates-core-paths.sh
+	$(DOCKPIPE_WORKFLOW) workflows/ci/repository-layout/config.yml
 
 # Debian packages (requires dpkg-deb). Default arch amd64; deb-all builds amd64 + arm64.
 deb:
-	./release/packaging/build-deb.sh "$(DEB_VERSION)" amd64
+	$(DOCKPIPE_WORKFLOW) workflows/package/linux-cli/config.yml -- "$(DEB_VERSION)" amd64 --output release/artifacts
 
 deb-all:
-	./release/packaging/build-deb-all.sh "$(DEB_VERSION)"
+	$(DOCKPIPE_WORKFLOW) workflows/package/linux-cli/all.yml -- "$(DEB_VERSION)" --output release/artifacts
 
 # Terminal demo GIFs for sharing (requires asciinema + agg + Docker — see release/demo/README.md).
-demo-record: build
-	bash src/scripts/record-demo.sh all
+demo-record:
+	$(MAKE) build
+	$(DOCKPIPE_WORKFLOW) workflows/demo/record/config.yml -- all
 
-demo-record-short: build
-	bash src/scripts/record-demo.sh short
+demo-record-short:
+	$(MAKE) build
+	$(DOCKPIPE_WORKFLOW) workflows/demo/record/config.yml -- short
 
-demo-record-long: build
-	bash src/scripts/record-demo.sh long
+demo-record-long:
+	$(MAKE) build
+	$(DOCKPIPE_WORKFLOW) workflows/demo/record/config.yml -- long
 
 # Optional dev tools: CI (govulncheck, gosec) + best-effort demo-record (asciinema, agg). Not for end users.
 dev-deps:
-	bash src/scripts/install-deps.sh
-	bash src/scripts/install-record-deps.sh
+	$(DOCKPIPE_WORKFLOW) workflows/setup/developer-dependencies/config.yml
+	$(DOCKPIPE_WORKFLOW) workflows/demo/record/dependencies.yml
 
 # Optional tools for `make demo-record` only (see release/demo/README.md).
 install-record-deps:
-	bash src/scripts/install-record-deps.sh
+	$(DOCKPIPE_WORKFLOW) workflows/demo/record/dependencies.yml
+

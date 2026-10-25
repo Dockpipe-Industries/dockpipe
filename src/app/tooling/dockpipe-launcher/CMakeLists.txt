@@ -39,6 +39,21 @@ endif()
 find_package(Qt6 REQUIRED COMPONENTS Widgets Network Concurrent WebEngineWidgets PrintSupport WebChannel OpenGLWidgets)
 add_subdirectory(third_party/ksyntaxhighlighting)
 
+if(APPLE)
+    enable_language(OBJCXX)
+    set_source_files_properties(src/DesktopPermissionAccessMac.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+endif()
+
+# Keep every permission widget consumer paired with its platform factory.
+function(dockpipe_target_desktop_permissions target)
+    target_sources(${target} PRIVATE src/DesktopPermissionsWidget.cpp src/DesktopPermissionAccess.cpp)
+    if(APPLE)
+        target_sources(${target} PRIVATE src/DesktopPermissionAccessMac.mm)
+        set_target_properties(${target} PROPERTIES OBJCXX_STANDARD 17 OBJCXX_STANDARD_REQUIRED ON)
+        target_link_libraries(${target} PRIVATE "-framework ApplicationServices" "-framework CoreGraphics")
+    endif()
+endfunction()
+
 set(DOCKPIPE_LAUNCHER_SOURCES
     src/main.cpp
     src/LauncherEnvironment.cpp
@@ -60,8 +75,6 @@ set(DOCKPIPE_LAUNCHER_SOURCES
     src/PackageCommand.cpp
     src/PackageManagerDialog.cpp
     src/SettingsDialog.cpp
-    src/DesktopPermissionAccess.cpp
-    src/DesktopPermissionsWidget.cpp
     src/LogViewerDialog.cpp
     src/PromptDialog.cpp
     src/WorkflowLaunchDialog.cpp
@@ -112,12 +125,9 @@ else()
     qt_add_executable(dockpipe-launcher ${DOCKPIPE_LAUNCHER_SOURCES})
 endif()
 
+dockpipe_target_desktop_permissions(dockpipe-launcher)
+
 if(APPLE)
-    enable_language(OBJCXX)
-    target_sources(dockpipe-launcher PRIVATE src/DesktopPermissionAccessMac.mm)
-    set_target_properties(dockpipe-launcher PROPERTIES OBJCXX_STANDARD 17 OBJCXX_STANDARD_REQUIRED ON)
-    set_source_files_properties(src/DesktopPermissionAccessMac.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
-    target_link_libraries(dockpipe-launcher PRIVATE "-framework ApplicationServices" "-framework CoreGraphics")
     set_target_properties(dockpipe-launcher PROPERTIES
         MACOSX_BUNDLE TRUE
         OUTPUT_NAME DockPipe
@@ -211,9 +221,11 @@ if(BUILD_TESTING AND UNIX)
     add_executable(remote-launcher-test tests/RemoteLauncherTest.cpp tests/SystemMonitoringTest.cpp ${REMOTE_LAUNCHER_UI_TEST_SOURCES})
     target_include_directories(remote-launcher-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(remote-launcher-test PRIVATE Qt6::Widgets Qt6::Network Qt6::Concurrent)
+    dockpipe_target_desktop_permissions(remote-launcher-test)
     add_executable(workflow-workspace-test tests/WorkflowWorkspaceTest.cpp ${REMOTE_LAUNCHER_TEST_SOURCES})
     target_include_directories(workflow-workspace-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(workflow-workspace-test PRIVATE Qt6::Widgets Qt6::Network Qt6::Concurrent)
+    dockpipe_target_desktop_permissions(workflow-workspace-test)
     add_test(NAME workflow-workspace COMMAND workflow-workspace-test)
     add_test(NAME workflow-surface-navigation COMMAND workflow-workspace-test --surfaces)
     set_tests_properties(workflow-surface-navigation PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
@@ -425,15 +437,10 @@ endforeach()
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
     qt_add_executable(desktop-permissions-widget-test
-        tests/DesktopPermissionsWidgetTest.cpp src/DesktopPermissionsWidget.cpp
-        src/DesktopPermissionAccess.cpp src/DesktopPermissionsWidget.h)
+        tests/DesktopPermissionsWidgetTest.cpp src/DesktopPermissionsWidget.h)
     target_include_directories(desktop-permissions-widget-test PRIVATE src)
     target_link_libraries(desktop-permissions-widget-test PRIVATE Qt6::Widgets Qt6::Test)
-    if(APPLE)
-        target_sources(desktop-permissions-widget-test PRIVATE src/DesktopPermissionAccessMac.mm)
-        set_target_properties(desktop-permissions-widget-test PROPERTIES OBJCXX_STANDARD 17 OBJCXX_STANDARD_REQUIRED ON)
-        target_link_libraries(desktop-permissions-widget-test PRIVATE "-framework ApplicationServices" "-framework CoreGraphics")
-    endif()
+    dockpipe_target_desktop_permissions(desktop-permissions-widget-test)
     add_test(NAME desktop-permissions-widget COMMAND desktop-permissions-widget-test)
     set_tests_properties(desktop-permissions-widget PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
 
@@ -571,6 +578,14 @@ if(BUILD_TESTING)
     target_link_libraries(desktop-window-widget-test PRIVATE dockpipe-launcher-ui)
     add_test(NAME desktop-window-widget COMMAND desktop-window-widget-test)
     set_tests_properties(desktop-window-widget PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND X11_Xcomposite_FOUND AND X11_Xrender_FOUND
+            AND X11_Xext_FOUND AND DOCKPIPE_DESKTOP_XCB_LIBRARY)
+        # A host-owned window fixture; optional package test implementations stay external.
+        add_executable(desktop-window-fixture tests/DesktopWindowFixture.cpp)
+        target_link_libraries(desktop-window-fixture PRIVATE Qt6::Widgets)
+        add_dependencies(desktop-window-widget-test desktop-window-fixture)
+        add_dependencies(dashboard-page-test desktop-window-fixture)
+    endif()
     if(WIN32)
         # Hosted Windows runners are administrators. Exercise embedding with the
         # same unelevated identity required of real target applications.
@@ -639,6 +654,9 @@ if(BUILD_TESTING)
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/workspace-fixture/ui")
     add_executable(workspace-package-test tests/WorkspacePackageTest.cpp src/SettingsDialog.cpp)
     target_link_libraries(workspace-package-test PRIVATE dockpipe-launcher-ui)
+    if(APPLE)
+        dockpipe_target_desktop_permissions(workspace-package-test)
+    endif()
     add_dependencies(workspace-package-test workspace-package-fixture)
     add_test(NAME workspace-package COMMAND workspace-package-test)
     set_tests_properties(workspace-package PROPERTIES ENVIRONMENT
@@ -674,6 +692,9 @@ if(BUILD_TESTING)
         TIMEOUT 45)
     add_executable(launcher-settings-test tests/LauncherSettingsTest.cpp src/SettingsDialog.cpp)
     target_link_libraries(launcher-settings-test PRIVATE dockpipe-launcher-ui)
+    if(APPLE)
+        dockpipe_target_desktop_permissions(launcher-settings-test)
+    endif()
     add_test(NAME launcher-settings COMMAND launcher-settings-test)
     add_dependencies(launcher-settings-test workspace-package-fixture)
     set_tests_properties(launcher-settings PROPERTIES ENVIRONMENT
@@ -745,7 +766,7 @@ if(BUILD_TESTING)
 endif()
 
 if(BUILD_TESTING)
-    add_executable(canvas-widget-presentation-test tests/CanvasWidgetPresentationTest.cpp
+    add_executable(canvas-widget-presentation-test tests/CanvasWidgetPresentationTest.cpp dockpipe-launcher.qrc
         src/DashboardWidgetFactory.cpp src/DashboardWidgetViews.cpp src/DashboardLogWidget.cpp
         src/SessionManager.cpp src/SystemResourceOverview.cpp src/ExecutionMetricChart.cpp)
     target_link_libraries(canvas-widget-presentation-test PRIVATE dockpipe-browser dockpipe-launcher-ui Qt6::Test)
@@ -761,3 +782,6 @@ if(BUILD_TESTING)
     add_test(NAME dashboard-canvas-widgets COMMAND dashboard-page-test canvasGadgetsAndBrowserTearOut)
     set_tests_properties(dashboard-canvas-widgets PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
 endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/WindowsOffscreenTestFonts.cmake")
+dockpipe_configure_windows_offscreen_test_fonts("$ENV{SystemRoot}/Fonts")

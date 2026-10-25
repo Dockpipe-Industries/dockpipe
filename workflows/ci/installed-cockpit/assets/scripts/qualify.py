@@ -18,7 +18,7 @@ REQUIRED_TESTS = {'cockpit-package-rendering', 'workspace-package', 'workspace-p
 
 
 def ingestion_module():
-    path = ROOT / 'release/packaging/ingest-pinned-stores.py'
+    path = ROOT / 'workflows/catalog/compose/assets/scripts/ingest-pinned-stores.py'
     spec = importlib.util.spec_from_file_location('installed_cockpit_ingestion', path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -128,7 +128,7 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     # Keep failed downloads/builds and their native-test report for inspection.
     work = Path(tempfile.mkdtemp(prefix='native-consumer-', dir=output))
-    lock = INGEST.load_lock(ROOT / 'release/packaging/pinned-stores.lock.json')
+    lock = INGEST.load_lock(ROOT / 'workflows/catalog/compose/assets/pinned-stores.lock.json')
     pin = lock['baselines']['linux-amd64']
     bundle = work / 'baseline.tar.gz'
     INGEST.download(pin, bundle, baseline_platform='linux-amd64')

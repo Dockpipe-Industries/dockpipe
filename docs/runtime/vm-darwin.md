@@ -35,3 +35,5 @@ guest operating system. A successful firmware boot on macOS does not establish
 Windows installation, guest drivers, live resolution switching or clipboard
 qualification. The new backend requires a new source-bound core candidate and
 consumer tests against that published artifact.
+
+Optional guest media preparation uses the shared [guest preparation policy](vm-guest-preparation.md).

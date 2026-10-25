@@ -47,7 +47,7 @@ The protected `.vscode/settings.json`, both stashes and HEAD remain unchanged.
 
 Passed:
 - Go package version/compiler/store tests, including inherited-version cache invalidation.
-- `bash release/packaging/test-runtime.sh` on the host (sandbox sockets are unavailable).
+- `bash workflows/ci/runtime/assets/scripts/test-runtime.sh` on the host (sandbox sockets are unavailable).
 - All 23 Python release-tooling tests, including real stable/staging APT signing and
   isolated APT readers, candidate provenance and publication guards, credential target
   isolation, and production-setting rejection by the actual Terraform wrapper/pipeline.
@@ -342,7 +342,7 @@ qualification remains separate.
 
 The user requested Homebrew support and selected a tap that polls every 15 minutes
 using its own GitHub token, without a new secret. The source under
-`release/packaging/homebrew/tap/` prepares a candidate formula from the existing
+`workflows/publish/homebrew/assets/tap/` prepares a candidate formula from the existing
 public artifacts, requires successful matching staging CI, validates catalog and
 artifact checksum inputs, gates publication on Intel/Apple Silicon Homebrew tests,
 and rechecks freshness before an idempotent formula update. A launcher uses the

@@ -398,7 +398,7 @@ For Windows qualification, build `desktop-app-window-win-test` and run
 `ctest -R desktop-app-window-win --output-on-failure` from the configured build
 directory in an interactive desktop session. The test creates its own disposable
 window and checks embedding, mode changes and restoration. For Linux X11, build
-`desktop-window-widget-test` and `desktop-app-window-test`, then run
+`desktop-window-widget-test` and `desktop-window-fixture`, then run
 `desktop-window-widget-test --native` in the graphical session. Native fixtures
 must never select an unrelated user's window. The Wayland mock-portal tests
 exercise cancellation and session cleanup without opening a real sharing dialog.
@@ -417,7 +417,7 @@ visible without blocking launcher startup.
 
 The launcher only hides on close when a system tray is available. It restores a
 hidden window if the tray disappears and exits normally when closed without one.
-See the [Flatpak guide](../../../../release/packaging/desktop/flatpak/README.md)
+See the [Flatpak guide](../../../../workflows/build/flatpak/README.md)
 for the narrowly handled Wayland teardown diagnostic and diagnostic opt-in.
 
 Open **Settings → Package Remotes** and choose **Use production** or **Use staging**.
@@ -532,7 +532,7 @@ Qt is available under **LGPL** and commercially. If you **ship binaries**, compl
 
 **Edit context…** includes **Extra dockpipe env** (one `KEY=value` per line). Each line is passed to dockpipe as **`--env`**, same as the CLI.
 
-**`src/scripts/docker-package-cache-demo.sh`** demonstrates named Docker volumes for persistent APT caches inside containers. Add env lines your workflows read, or pass **`dockpipe --mount`** when you run from the CLI; Pipeon can supply extra env lines if your wrapper reads them.
+**`workflows/demo/package-cache/config.yml`**, run through Dockpipe, demonstrates named Docker volumes for persistent APT caches inside containers. Add env lines your workflows read, or pass **`dockpipe --mount`** when you run from the CLI; Pipeon can supply extra env lines if your wrapper reads them.
 
 ## Prompt bridge
 
@@ -1123,10 +1123,15 @@ the foreign window if the Dockpipe process exits unexpectedly.
 
 CMake enables the optional backend when X11, XComposite, XRender and XCB development
 libraries are available; `-DDOCKPIPE_APP_BILLBOARDS=OFF` builds the unavailable stub.
-`desktop-app-window-test` skips in offscreen CI. On an X11 desktop it creates only
-its own disposable app and checks bounded capture, native focus/input, detach,
-closed-window handling and survival of an embedded host crash. The graph's native
-smoke uses `DOCKPIPE_BILLBOARD_FIXTURE=/absolute/path/to/desktop-app-window-test`
+`desktop-window-fixture` is a Linux test-only executable that creates one
+bounded disposable Qt window. It reports `WINDOW:<id>` and `TEXT:<text>` on stdout;
+`--reject-first-close` reports `CLOSE:cancelled` once before accepting a later close.
+Its icon is `#35b77c`. It contains no optional package implementation. Host native
+tests use it for capture, focus/input, detach and lifetime assertions. Isolated
+Xvfb dashboard tests provide their existing EWMH client-list fixture only after
+verifying the actual selected Xvfb server; they never edit a real desktop root.
+These fixtures do not qualify a real window manager or compositor. The graph's native
+smoke uses `DOCKPIPE_BILLBOARD_FIXTURE=/absolute/path/to/desktop-window-fixture`
 and optional `DOCKPIPE_GRAPH_SCREENSHOT=/tmp/preview` to check actual GPU drawing,
 shooting, panel resize, and hide cleanup. These tests do not select user apps.
 
@@ -1391,7 +1396,7 @@ renderer without introducing a game engine, instancing layer or package SDK.
 aggregate capacity and failed-save retry. `cockpit-test --spatial` exercises editing,
 walking, navigation, permission gates, process restart, idle activity and bounded
 scene performance. Set `DOCKPIPE_SPATIAL_FIXTURE` to the built
-`desktop-app-window-test` executable for disposable native input/capture/lifecycle
+`desktop-window-fixture` executable for disposable native input/capture/lifecycle
 checks. `DOCKPIPE_SPATIAL_SCREENSHOT` saves only fixture screenshots. Physical
 controller/microphone behavior and compatibility with each real application still
 need device/application-specific testing. GPU memory is reported only when the
@@ -1548,33 +1553,34 @@ Cockpit `assets` directory containing `ui/libdockpipe-cockpit.so` and
 input; ordinary runtime package discovery is unchanged. The removed
 `DOCKPIPE_COCKPIT_SOURCE` source-import parameter must not be used.
 
-For a published candidate, first run `release/packaging/prepare-cockpit.py prepare`
-with the reviewed `release/cockpit.lock.json` and a fresh output directory. It
-checks the exact public mirror, committed archive/receipt/candidate pins and
-runtime inventory. Use `extract` to obtain a fresh verified assets directory;
-no private diagnostic download or sibling source is required. Configure the host
-consumer against that directory:
+For a published candidate, run the owning qualification workflow with its reviewed
+`workflows/qualify/cockpit/assets/cockpit.lock.json` and fresh output directories.
+It checks the public archive, receipt, candidate pins and runtime inventory.
+Extraction produces a verified assets directory without sibling source. Use the
+pinned Dockpipe CLI for preparation, native build and test orchestration:
 
 ```sh
 prepared=/absolute/path/to/fresh-cockpit-download
 extracted=/absolute/path/to/fresh-cockpit-extraction
-python3 release/packaging/prepare-cockpit.py prepare \
-  --lock release/cockpit.lock.json --output "$prepared"
-assets="$(python3 release/packaging/prepare-cockpit.py extract \
-  --lock release/cockpit.lock.json --store "$prepared/store" --output "$extracted")"
-cmake -S src/app/tooling/dockpipe-launcher -B /absolute/path/to/host-consumer-build \
-  -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON \
-  -DCMAKE_PREFIX_PATH=/absolute/path/to/Qt/6.10.3/gcc_64 \
-  "-DDOCKPIPE_COCKPIT_ASSETS=$assets" \
-  -DDOCKPIPE_XVFB_RUN=/absolute/path/to/xvfb-run
-python3 release/packaging/prepare-cockpit.py verify-compiler \
-  --lock release/cockpit.lock.json --store "$prepared/store" \
-  --build /absolute/path/to/host-consumer-build
-cmake --build /absolute/path/to/host-consumer-build \
-  --target cockpit-package-rendering-test --parallel 2
+build=/absolute/path/to/host-consumer-build
+lock=workflows/qualify/cockpit/assets/cockpit.lock.json
+"$DOCKPIPE_BIN" --workflow-file workflows/qualify/cockpit/config.yml --workdir . -- \
+  prepare --lock "$lock" --output "$prepared"
+"$DOCKPIPE_BIN" --workflow-file workflows/qualify/cockpit/config.yml --workdir . -- \
+  extract --lock "$lock" --store "$prepared/store" --output "$extracted"
+assets="$extracted/resolvers/cockpit/assets"
+"$DOCKPIPE_BIN" --workflow-file workflows/build/desktop-development/config.yml --workdir . -- \
+  --output "$build" --jobs 2 \
+  --configure-argument=-DCMAKE_BUILD_TYPE=Release \
+  --configure-argument=-DBUILD_TESTING=ON \
+  "--configure-argument=-DCMAKE_PREFIX_PATH=/absolute/path/to/pinned-browser-sdk;/absolute/path/to/Qt/6.10.3/gcc_64" \
+  "--configure-argument=-DDOCKPIPE_COCKPIT_ASSETS=$assets" \
+  --configure-argument=-DDOCKPIPE_XVFB_RUN=/absolute/path/to/xvfb-run
+"$DOCKPIPE_BIN" --workflow-file workflows/qualify/cockpit/config.yml --workdir . -- \
+  verify-compiler --lock "$lock" --store "$prepared/store" --build "$build"
 DOCKPIPE_PACKAGE_RENDER_CAPTURE=/absolute/path/to/host-capture.png \
-  ctest --test-dir /absolute/path/to/host-consumer-build --output-on-failure \
-    --no-tests=error -R '^cockpit-package-rendering$'
+  "$DOCKPIPE_BIN" --workflow-file workflows/ci/desktop-native/config.yml --workdir . -- \
+  --build "$build" --regex '^cockpit-package-rendering$' --jobs 2
 ```
 
 `DOCKPIPE_XVFB_RUN` selects `xvfb-run`; its matching `Xvfb` and `xauth` must be
@@ -1590,7 +1596,7 @@ retirement; final Dockpipe staging qualifies the resulting source-absent tree.
 The optional launcher SDK installs with `DOCKPIPE_INSTALL_LAUNCHER_SDK=ON` and
 `cmake --install <build> --component LauncherSDK`. Build `dockpipe-launcher-ui` and
 `dockpipe-browser` first. External host packages use
-`find_package(DockPipeLauncherSDK 1.0.0 EXACT CONFIG REQUIRED)` with the installed
+`find_package(DockPipeLauncherSDK 1.1.0 EXACT CONFIG REQUIRED)` with the installed
 prefix, linking `DockPipe::LauncherUI` and `DockPipe::HostBrowser`. This host SDK
 includes DockPipe services; it is not the standalone SpatialPipe browser component.
 It requires Qt 6.10.3 and the recorded matching platform/compiler ABI.

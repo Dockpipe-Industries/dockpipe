@@ -75,7 +75,7 @@ Use compressed agent-only text only when at least one of these is true:
 
 ## Public-site audience
 
-The DockPipe Cloud site selects source pages in its `scripts/site/stage-docs.py`.
+The DockPipe Cloud site selects source pages in its `workflows/console.build/assets/scripts/stage-docs.py`.
 Before changing site-facing docs, inspect that selection rather than assuming all
 repository Markdown is published.
 

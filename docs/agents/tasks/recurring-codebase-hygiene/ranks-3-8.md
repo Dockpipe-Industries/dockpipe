@@ -11,7 +11,7 @@ hashes.
 Maintained-reference proof established that the extensionless file was unsupported:
 
 - repository-wide tracked and non-ignored source scans found direct script-path callers only at
-  `Makefile:142` and `Makefile:146`, both naming `src/scripts/install-record-deps.sh`;
+  `Makefile:142` and `Makefile:146`, both naming `workflows/demo/record/assets/scripts/install-dependencies.sh`;
 - other maintained occurrences name the public `install-record-deps` Make target, and
   `src/scripts/Makefile` delegates that target to the repository-root Makefile;
 - no maintained shell invocation names the extensionless `src/scripts/install-record-deps` path;
@@ -19,16 +19,16 @@ Maintained-reference proof established that the extensionless file was unsupport
   suffix, and a source diff confirmed that it lacked the retained script's release-binary path.
 
 Only `src/scripts/install-record-deps` was removed. The retained
-`src/scripts/install-record-deps.sh` stayed executable and byte-identical at SHA-256
+`workflows/demo/record/assets/scripts/install-dependencies.sh` stayed executable and byte-identical at SHA-256
 `3c558f0e04f4aacb23ab200e25da91627d5422540b5d7dc674f3b8a431faac26`. The root `Makefile` and
 `src/scripts/Makefile` also remained byte-identical.
 
 Validation evidence:
 
-- `bash -n src/scripts/install-record-deps.sh` passed;
+- `bash -n workflows/demo/record/assets/scripts/install-dependencies.sh` passed;
 - dry runs from both the repository root and `src/scripts/` resolved only to
-  `bash src/scripts/install-record-deps.sh`; no installer was executed;
-- `src/scripts/check-templates-core-paths.sh` and `tests/unit-tests/test_repo_layout.sh` passed;
+  `bash workflows/demo/record/assets/scripts/install-dependencies.sh`; no installer was executed;
+- `workflows/ci/repository-layout/assets/scripts/check-paths.sh` and `tests/unit-tests/test_repo_layout.sh` passed;
 - final tracked/non-ignored reference scans contained only the retained `.sh` path and public Make
   target references, with no extensionless shell caller;
 - `git diff --check`, owned deletion/record diffs, retained hashes/modes, and protected-file hashes
@@ -223,7 +223,7 @@ Bounded offline validation evidence:
   was rejected as validation setup evidence: the first hid MCP's intentional workspace dependency,
   and the second hid the existing offline module cache. The corrected runs above are authoritative;
 - shell syntax, ShellCheck, targeted ownership/reference scans,
-  `tests/unit-tests/test_repo_layout.sh`, `src/scripts/check-templates-core-paths.sh`, whitespace,
+  `tests/unit-tests/test_repo_layout.sh`, `workflows/ci/repository-layout/assets/scripts/check-paths.sh`, whitespace,
   protected hashes, `git diff --check`, and final owned/unrelated status and diff checks passed.
 
 The required package validation refreshed ignored binaries under `bin/.dockpipe/tooling/bin`,

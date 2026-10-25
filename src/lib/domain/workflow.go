@@ -42,7 +42,7 @@ func (r *RunSpec) UnmarshalYAML(n *yaml.Node) error {
 	return fmt.Errorf("expected string or sequence for run")
 }
 
-// Workflow is templates/<name>/config.yml (bundled or user project) or templates/core/resolvers/<name>/config.yml (delegate).
+// Workflow is config.yml from a selected project root, installed package, or explicit path.
 type Workflow struct {
 	Name        string   `yaml:"name"`
 	Title       string   `yaml:"title,omitempty"`
@@ -65,9 +65,9 @@ type Workflow struct {
 	Act       string   `yaml:"act,omitempty"`
 	Action    string   `yaml:"action,omitempty"`
 	Resolver  string   `yaml:"resolver,omitempty"`
-	// Runtime: default runtime profile name (templates/core/runtimes/<name>).
+	// Runtime: default runtime selector (builtin defaults or explicit profiles).
 	Runtime string `yaml:"runtime,omitempty"`
-	// Strategy: default named strategy (templates/core/strategies/<name> or templates/<wf>/strategies/<name>).
+	// Strategy: default lifecycle strategy (workflow/project files or typed compatibility defaults).
 	Strategy string `yaml:"strategy,omitempty"`
 	// Strategies: optional allowlist of strategy names; if non-empty, --strategy / workflow.strategy must be listed.
 	Strategies []string `yaml:"strategies,omitempty"`
@@ -394,7 +394,7 @@ func (w *Workflow) AnyContainerStep() bool {
 
 // NeedsDockerReachable reports whether we should run EnsureDockerReachable before executing steps.
 // True when any step uses the container runner, or when any step has run:/pre_script (host scripts
-// may invoke docker directly — e.g. templates/core/resolvers/vscode/config.yml is kind: host but runs docker on the host).
+// may invoke Docker directly even when declared as a host workflow).
 // If docker_preflight: false is set on the workflow, this returns false when no step uses the container runner
 // (opt-out for host-only workflows; scripts under run: must not require Docker).
 func (w *Workflow) NeedsDockerReachable() bool {
@@ -447,7 +447,7 @@ type Step struct {
 	CaptureStdout string `yaml:"capture_stdout,omitempty"`
 	// Manifest: host path to write a small JSON manifest after the step (exit_code, duration_ms, id).
 	Manifest string `yaml:"manifest,omitempty"`
-	// Runtime: optional runtime profile name (templates/core/runtimes/<name>); preferred over resolver for pairing.
+	// Runtime: optional runtime selector; preferred over resolver for pairing.
 	Runtime string `yaml:"runtime,omitempty"`
 	// Resolver: legacy alias for the same shared profile (not files next to this workflow).
 	// Loads DOCKPIPE_RESOLVER_* / DOCKPIPE_RUNTIME_* when unset on the step.

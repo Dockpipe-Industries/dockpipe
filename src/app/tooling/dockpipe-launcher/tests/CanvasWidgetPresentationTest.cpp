@@ -3,16 +3,21 @@
 #include "SendInputWidget.h"
 #include "SessionManager.h"
 #include "TerminalHub.h"
+#include "Theme.h"
 
 #include <QApplication>
 #include <QComboBox>
 #include <QDir>
 #include <QJsonArray>
 #include <QFrame>
+#include <QFile>
 #include <QLayout>
 #include <QLabel>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QProgressBar>
+#include <QScopeGuard>
+#include <QStyle>
 #include <QScrollBar>
 #include <QTextDocument>
 #include <QTest>
@@ -23,9 +28,19 @@
 class CanvasWidgetPresentationTest final : public QObject {
     Q_OBJECT
 private slots:
+    void initTestCase();
     void composerKeepsDraftAndExecutionBoundary();
     void resourcePresentationKeepsMissingMetricsHonest();
+    void canvasRulesFollowPresentationAndTheme_data();
+    void canvasRulesFollowPresentationAndTheme();
 };
+
+void CanvasWidgetPresentationTest::initTestCase()
+{
+    QVERIFY(QFile::exists(":/theme/pipeon.qss"));
+    qApp->setStyle("Fusion");
+    applyDockpipeLauncherTheme(*qApp);
+}
 
 void CanvasWidgetPresentationTest::composerKeepsDraftAndExecutionBoundary()
 {
@@ -91,9 +106,10 @@ void CanvasWidgetPresentationTest::resourcePresentationKeepsMissingMetricsHonest
     QVERIFY(metricCard);
     const QMargins originalCardMargins = metricCard->layout()->contentsMargins();
     const int originalCardSpacing = metricCard->layout()->spacing();
+    const int originalFrameWidth = metricCard->style()->pixelMetric(QStyle::PM_DefaultFrameWidth, nullptr, metricCard);
     presentation->setProperty("dashboardCanvasPresentation", true);
     QCOMPARE(metricCard->layout()->contentsMargins(), QMargins(8, 6, 8, 6));
-    QVERIFY(!presentation->styleSheet().isEmpty());
+    QCOMPARE(metricCard->style()->pixelMetric(QStyle::PM_DefaultFrameWidth, nullptr, metricCard), 0);
     auto *memory = resource->findChild<QLabel *>("systemMetric1");
     auto *swap = resource->findChild<QLabel *>("systemMetric2");
     QVERIFY(memory);
@@ -129,11 +145,100 @@ void CanvasWidgetPresentationTest::resourcePresentationKeepsMissingMetricsHonest
     }
     presentation->setProperty("dashboardCanvasPresentation", false);
     QCOMPARE(memory->text(), original);
-    QVERIFY(presentation->styleSheet().isEmpty());
+    QCOMPARE(metricCard->style()->pixelMetric(QStyle::PM_DefaultFrameWidth, nullptr, metricCard), originalFrameWidth);
     QCOMPARE(metricCard->layout()->contentsMargins(), originalCardMargins);
     QCOMPARE(metricCard->layout()->spacing(), originalCardSpacing);
     emit factory.snapshotChanged({}, "Collector unavailable");
     QCOMPARE(memory->text(), QString("Unavailable"));
+}
+
+void CanvasWidgetPresentationTest::canvasRulesFollowPresentationAndTheme_data()
+{
+    QTest::addColumn<bool>("light");
+    QTest::newRow("dark-to-light") << false;
+    QTest::newRow("light-to-dark") << true;
+}
+
+void CanvasWidgetPresentationTest::canvasRulesFollowPresentationAndTheme()
+{
+    QFETCH(bool, light);
+    const QString originalStyleSheet = qApp->styleSheet();
+    const QPalette originalPalette = qApp->palette();
+    const auto restoreTheme = qScopeGuard([&]() {
+        qApp->setPalette(originalPalette);
+        qApp->setStyleSheet(originalStyleSheet);
+    });
+    auto applyTheme = [](bool useLight) {
+        QFile common(":/theme/pipeon.qss");
+        QFile companion(useLight ? ":/theme/pipeon-light.qss" : ":/theme/pipeon-dark.qss");
+        if (!common.open(QIODevice::ReadOnly) || !companion.open(QIODevice::ReadOnly))
+            return false;
+        QPalette palette = qApp->palette();
+        palette.setColor(QPalette::Window, QColor(useLight ? "#edf2f7" : "#151f2b"));
+        palette.setColor(QPalette::Base, QColor(useLight ? "#ffffff" : "#202e3e"));
+        palette.setColor(QPalette::AlternateBase, QColor(useLight ? "#dce6ef" : "#293c4c"));
+        palette.setColor(QPalette::Highlight, QColor(useLight ? "#1a6172" : "#3aa5b8"));
+        qApp->setPalette(palette);
+        qApp->setStyleSheet(QString::fromUtf8(common.readAll() + companion.readAll()));
+        return true;
+    };
+    QVERIFY(applyTheme(light));
+
+    SessionManager sessions;
+    ContextStore store;
+    DashboardWidgetFactory factory(sessions, store);
+    std::unique_ptr<QWidget> resource(factory.create("system"));
+    resource->removeEventFilter(&factory);
+    for (auto *timer : factory.findChildren<QTimer *>())
+        timer->stop();
+    auto *presentation = resource->findChild<QWidget *>("canvasDashboardView");
+    auto *metricCard = resource->findChild<QFrame *>("systemMetricCard");
+    auto *title = resource->findChild<QLabel *>("systemMetricTitle");
+    auto *progress = resource->findChild<QProgressBar *>();
+    QVERIFY(presentation);
+    QVERIFY(metricCard);
+    QVERIFY(title);
+    QVERIFY(progress);
+    resource->ensurePolished();
+    metricCard->ensurePolished();
+    progress->ensurePolished();
+    progress->setMaximumHeight(13);
+    const int originalProgressMaximum = progress->maximumHeight();
+    const int originalFrameWidth = metricCard->style()->pixelMetric(QStyle::PM_DefaultFrameWidth, nullptr, metricCard);
+    QFrame unrelated;
+    unrelated.setObjectName("systemMetricCard");
+    unrelated.ensurePolished();
+    const int unrelatedFrameWidth = unrelated.style()->pixelMetric(QStyle::PM_DefaultFrameWidth, nullptr, &unrelated);
+
+    // Direct presentation changes must work without a workspace or reparent.
+    presentation->setProperty("dashboardCanvasPresentation", true);
+    QCOMPARE(metricCard->style()->pixelMetric(QStyle::PM_DefaultFrameWidth, nullptr, metricCard), 0);
+    QCOMPARE(progress->maximumHeight(), 5);
+    QCOMPARE(title->font().pixelSize(), 11);
+    QCOMPARE(title->palette().color(QPalette::WindowText), resource->palette().color(QPalette::Highlight));
+    QCOMPARE(unrelated.style()->pixelMetric(QStyle::PM_DefaultFrameWidth, nullptr, &unrelated), unrelatedFrameWidth);
+
+    // New descendants and a live theme reload inherit the same selector.
+    auto *lateProgress = new QProgressBar(presentation);
+    lateProgress->ensurePolished();
+    QCOMPARE(lateProgress->maximumHeight(), 5);
+    QVERIFY(applyTheme(!light));
+    QCOMPARE(metricCard->style()->pixelMetric(QStyle::PM_DefaultFrameWidth, nullptr, metricCard), 0);
+    QCOMPARE(progress->maximumHeight(), 5);
+    QCOMPARE(title->font().pixelSize(), 11);
+    QCOMPARE(title->palette().color(QPalette::WindowText), resource->palette().color(QPalette::Highlight));
+
+    presentation->setProperty("dashboardCanvasPresentation", false);
+    QCOMPARE(metricCard->style()->pixelMetric(QStyle::PM_DefaultFrameWidth, nullptr, metricCard), originalFrameWidth);
+    QCOMPARE(progress->maximumHeight(), originalProgressMaximum);
+    QVERIFY(lateProgress->maximumHeight() > 5);
+
+    progress->setMaximumHeight(17);
+    presentation->setProperty("dashboardCanvasPresentation", true);
+    QCOMPARE(progress->maximumHeight(), 5);
+    presentation->setProperty("dashboardCanvasPresentation", false);
+    QCOMPARE(progress->maximumHeight(), 17);
+    QCOMPARE(unrelated.style()->pixelMetric(QStyle::PM_DefaultFrameWidth, nullptr, &unrelated), unrelatedFrameWidth);
 }
 
 QTEST_MAIN(CanvasWidgetPresentationTest)

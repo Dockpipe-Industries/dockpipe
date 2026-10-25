@@ -1,0 +1,11 @@
+name: ci-quick
+description: Run the repository ci quick operation.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py bash workflows/ci/quick/assets/scripts/test-quick.sh

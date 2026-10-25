@@ -88,7 +88,7 @@ int main(int argc, char **argv)
         return 77;
     FixtureProcess fixture;
     fixture.setProcessChannelMode(QProcess::ForwardedErrorChannel);
-    fixture.start(QCoreApplication::applicationDirPath() + "/desktop-app-window-test", {"--fixture"});
+    fixture.start(QCoreApplication::applicationDirPath() + "/desktop-window-fixture", {"--fixture"});
     CHECK(fixture.waitForStarted(3000));
     QByteArray output;
     CHECK(waitFor([&] {

@@ -32,7 +32,7 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, os, re
-          lock = json.load(open('release/go-sdk-source.lock.json'))
+          lock = json.load(open('workflows/build/go-sdk/assets/source.lock.json'))
           if lock['source_commit'] != 'c604b291d463906acf0a05ef8cfe2efc071bdbaa':
               raise ValueError('Update the literal SDK checkout together with its source lock')
           if not re.fullmatch(r'0\.1\.0-source\.[0-9a-f]{16}', lock['version']):
@@ -53,12 +53,15 @@ jobs:
           GOTOOLCHAIN: local
         run: go mod download
       - name: Verify locked SDK producer
-        run: python3 -B -m unittest discover -s release/packaging/tests -p test_locked_go_sdk.py
+        run: python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/build/go-sdk/tests --pattern test_locked_go_sdk.py
+      - name: Install the separate locked workflow bootstrap
+        run: python3 workflows/shared/bootstrap.py --output "$RUNNER_TEMP/dockpipe-bootstrap"
       - name: Reproduce the exact SDK archive and manifest
         env:
           GOWORK: 'off'
           GOTOOLCHAIN: local
-        run: python3 release/packaging/build-locked-go-sdk.py --source-root build/sdk-source --output "$RUNNER_TEMP/go-sdk"
+        run: |
+          "$DOCKPIPE_BOOTSTRAP_BIN" --workflow-file workflows/build/go-sdk/locked.yml --workdir "$GITHUB_WORKSPACE" -- --source-root build/sdk-source --output "$RUNNER_TEMP/go-sdk"
       - uses: actions/upload-artifact@v4
         with:
           name: dockpipe-go-sdk

@@ -8,8 +8,8 @@ Read when orienting in the Dockpipe checkout.
 | --- | --- |
 | `src/lib/` | Dockpipe engine library. Must stay generic. |
 | `src/cmd/` | Dockpipe CLI entrypoint. Must stay generic. |
-| `src/core/` | Bundled core authoring: runtimes, resolvers, strategies, assets, and shipped example workflows. |
-| `workflows/` | This repo's lean CI/dogfood workflows. Not an engine contract. |
+| `src/lib/runtimeassets/` and `src/lib/sdkassets/` | Fixed generic library resources; no authored workflow tree. |
+| `workflows/` | Repository build, test, packaging, publication and developer workflows with colocated assets. |
 | [External packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages/) | Package source belongs to dockpipe-packages, outside this checkout. |
 | [External PipeLang](https://github.com/Dockpipe-Industries/pipelang) | Versioned compiler/language SDK dependency; no local language implementation tree. |
 | `bin/.dockpipe/` | Disposable generated project-local runtime, compiled packages, caches, and artifacts. |
@@ -40,11 +40,9 @@ Use generated artifacts as read-only grounding unless the user asks to refresh t
 
 | Location | Use |
 | --- | --- |
-| `src/core/workflows/<name>/` | Bundled reusable examples only. |
 | `workflows/<name>/` | This repo's lean CI/dogfood workflows. |
 | [External package workflows](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages/) | Run in the owning package repository using pinned Dockpipe tools. |
 
-Do not put this repo's CI/demo/internal automation in `src/core/workflows/`.
 First-party workflow scripts belong beside the workflow `config.yml`, not in repo-root shadow script trees.
 
 ## Editor Mirrors

@@ -1,7 +1,6 @@
 package application
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -9,7 +8,7 @@ import (
 	"dockpipe/src/lib/infrastructure"
 )
 
-// EffectiveRuntimeProfileName returns the isolation **runtime** profile name (templates/core/runtimes/<name>).
+// EffectiveRuntimeProfileName returns the isolation **runtime** profile name (typed defaults or explicitly selected profiles).
 // Precedence: CLI --runtime, then workflow runtime.
 func EffectiveRuntimeProfileName(opts *CliOpts, wf *domain.Workflow, stepsMode bool) string {
 	if opts != nil {
@@ -23,7 +22,7 @@ func EffectiveRuntimeProfileName(opts *CliOpts, wf *domain.Workflow, stepsMode b
 	return strings.TrimSpace(wf.Runtime)
 }
 
-// EffectiveResolverProfileName returns the **resolver** (tool adapter) profile name (templates/core/resolvers/<name>).
+// EffectiveResolverProfileName returns the **resolver** (tool adapter) profile name (declared or installed resolver packages).
 // Precedence: CLI --resolver, then workflow resolver.
 func EffectiveResolverProfileName(opts *CliOpts, wf *domain.Workflow, stepsMode bool) string {
 	if opts != nil {
@@ -78,23 +77,15 @@ func loadMergedIsolationProfile(repoRoot, projectRoot, runtimeName, resolverName
 	return base, nil
 }
 
-func templateBuildForRun(repoRoot, projectRoot, name string) (image, dockerfileDir, contextDir string, ok bool) {
+func templateBuildForRun(repoRoot, projectRoot, name string) (image, dockerfileDir, contextDir string, ok bool, err error) {
 	projectRoot = strings.TrimSpace(projectRoot)
 	if projectRoot != "" {
-		if im, dir, found := templateBuildAppFn(projectRoot, name); found && dockerfileExists(dir) {
-			return im, dir, projectRoot, true
+		image, dockerfileDir, contextDir, ok, err = templateBuildAppFn(projectRoot, name)
+		if err != nil || ok {
+			return image, dockerfileDir, contextDir, ok, err
 		}
 	}
-	im, dir, found := templateBuildAppFn(repoRoot, name)
-	return im, dir, repoRoot, found
-}
-
-func dockerfileExists(dir string) bool {
-	if strings.TrimSpace(dir) == "" {
-		return false
-	}
-	st, err := os.Stat(filepath.Join(dir, "Dockerfile"))
-	return err == nil && !st.IsDir()
+	return templateBuildAppFn(repoRoot, name)
 }
 
 // ValidateRuntimeAllowlist is a no-op in the simplified authored workflow model.

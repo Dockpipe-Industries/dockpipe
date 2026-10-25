@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"dockpipe/src/lib/domain"
+	"dockpipe/src/lib/infrastructure"
 )
 
 // TestBuildStepContainer_UsesCliArgsForLastStep uses argv after -- when the last step has no cmd in YAML.
@@ -54,7 +55,7 @@ func TestBuildStepContainer_ErrorsWhenActionMissing(t *testing.T) {
 
 // TestBuildStepContainer_CommitWorktreeTurnsIntoHostCommit maps bundled commit-worktree to CommitOnHost instead of in-container act.
 func TestBuildStepContainer_CommitWorktreeTurnsIntoHostCommit(t *testing.T) {
-	repoRoot := testRepoRoot(t)
+	repoRoot := t.TempDir()
 	o := &runStepsOpts{
 		repoRoot: repoRoot,
 		wfRoot:   filepath.Join(repoRoot, "templates", "test"),
@@ -62,7 +63,11 @@ func TestBuildStepContainer_CommitWorktreeTurnsIntoHostCommit(t *testing.T) {
 		opts:     &CliOpts{},
 	}
 	envMap := map[string]string{}
-	step := domain.Step{Cmd: "echo hi", Action: "scripts/commit-worktree.sh"}
+	hook, err := infrastructure.LegacyGitHookPath(repoRoot, "commit-worktree")
+	if err != nil {
+		t.Fatal(err)
+	}
+	step := domain.Step{Cmd: "echo hi", Action: hook}
 	_, runOpts, _, _, _, err := buildStepContainer(o, 0, 1, step, envMap, map[string]string{}, nil)
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)

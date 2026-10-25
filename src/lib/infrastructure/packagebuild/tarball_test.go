@@ -2,12 +2,14 @@ package packagebuild
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestWriteDirTarGzWithPrefix(t *testing.T) {
@@ -109,5 +111,112 @@ func TestWriteDirTarGzWithPrefix_ForcesExecutableModesForPackagedPayloads(t *tes
 	}
 	if got := modes["workflows/demo/assets/docs/readme.txt"]; got != 0o644 {
 		t.Fatalf("doc mode = %o, want 644", got)
+	}
+}
+
+func TestWriteDirTarGzWithPrefixIgnoresSourceTimestamps(t *testing.T) {
+	var archives [][]byte
+	var checksums []string
+	prefix := "packages/widget"
+	payloads := map[string]string{
+		"assets/scripts/run.sh": "#!/bin/sh\nprintf widget\n",
+		"docs/readme.txt":       "widget documentation\n",
+	}
+
+	for index, modified := range []time.Time{
+		time.Unix(1_600_000_000, 123_456_789),
+		time.Unix(1_800_000_000, 987_654_321),
+	} {
+		source := t.TempDir()
+		for name, contents := range payloads {
+			path := filepath.Join(source, filepath.FromSlash(name))
+			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := filepath.WalkDir(source, func(path string, entry os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			return os.Chtimes(path, modified.Add(time.Hour), modified)
+		}); err != nil {
+			t.Fatal(err)
+		}
+
+		output := filepath.Join(t.TempDir(), "widget.tar.gz")
+		checksum, err := WriteDirTarGzWithPrefix(source, output, prefix)
+		if err != nil {
+			t.Fatal(err)
+		}
+		archive, err := os.ReadFile(output)
+		if err != nil {
+			t.Fatal(err)
+		}
+		archives = append(archives, archive)
+		checksums = append(checksums, checksum)
+
+		compressed, err := gzip.NewReader(bytes.NewReader(archive))
+		if err != nil {
+			t.Fatal(err)
+		}
+		reader := tar.NewReader(compressed)
+		found := map[string]bool{}
+		for {
+			header, err := reader.Next()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.HasPrefix(header.Name, prefix+"/") {
+				t.Fatalf("archive escaped prefix: %q", header.Name)
+			}
+			if !header.ModTime.Equal(time.Unix(0, 0)) || !header.AccessTime.IsZero() || !header.ChangeTime.IsZero() {
+				t.Fatalf("tree %d retained source timestamp metadata: %+v", index, header)
+			}
+			relative := strings.TrimPrefix(header.Name, prefix+"/")
+			info, err := os.Stat(filepath.Join(source, filepath.FromSlash(relative)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			original, err := tar.FileInfoHeader(info, "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if header.Uid != original.Uid || header.Gid != original.Gid || header.Uname != original.Uname || header.Gname != original.Gname {
+				t.Fatal("archive ownership contract changed")
+			}
+			if contents, exists := payloads[relative]; exists {
+				actual, err := io.ReadAll(reader)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if string(actual) != contents {
+					t.Fatalf("payload changed: %q", relative)
+				}
+				mode := int64(0o644)
+				if relative == "assets/scripts/run.sh" {
+					mode = 0o755
+				}
+				if header.Mode != mode {
+					t.Fatalf("mode for %q = %o, want %o", relative, header.Mode, mode)
+				}
+				found[relative] = true
+			}
+		}
+		if err := compressed.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if len(found) != len(payloads) {
+			t.Fatalf("missing payloads: %v", found)
+		}
+	}
+
+	if !bytes.Equal(archives[0], archives[1]) || checksums[0] != checksums[1] {
+		t.Fatal("identical payloads produced different package bytes across source timestamps")
 	}
 }

@@ -11,6 +11,22 @@ The ledger is descriptive only. An entry is maintained until a separately approv
 the entry-specific retirement gate below. This file does not deprecate, warn on, migrate, remove,
 or change any behavior.
 
+## Runtime resource ownership migration (2026-10-25)
+
+The active user-authorized migration removes the checkout-only `src/core` tree,
+root workflow embedding, implicit source lookup and mandatory core archives.
+Runtime defaults and generic SDK resources are library-owned; VM/tool assets and
+checks belong to their external packages. Build, test, packaging and publication
+entrypoints belong to Dockpipe workflows. See
+[runtime resource ownership](concepts/runtime-resource-ownership.md).
+
+Rows below retain their original evidence locations as a historical inventory.
+Those locations are not current lookup paths or instructions to restore deleted
+assets. The active migration may cover several related rows within its approved
+scope; the one-entry proof profiles below describe the original inventory process.
+Validation of the replacement contracts and affected consumers is still required
+before staging. This migration does not remove existing releases or downloads.
+
 ## Evidence Rules
 
 - **Active source** is current engine, core-asset, schema/editor, or package code. It proves behavior

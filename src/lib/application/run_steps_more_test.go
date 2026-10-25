@@ -164,25 +164,34 @@ func TestRunBlockingStepContainerArtifactsCWDUsesWorkPath(t *testing.T) {
 	}
 }
 
+// writeVMHostDelegateFixture declares an authored resolver and its own adapter.
+// The VM substrate defaults come from the library, not a copied core tree.
+func writeVMHostDelegateFixture(t *testing.T, repo, resolver string) string {
+	t.Helper()
+	packageRoot := filepath.Join(repo, "packages", "vm", "resolvers", resolver)
+	script := filepath.Join(packageRoot, "assets", "scripts", "guest-run.sh")
+	if err := os.MkdirAll(filepath.Dir(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(script, []byte("#!/usr/bin/env bash\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	profile := "DOCKPIPE_RUNTIME_HOST_SCRIPT=scripts/" + resolver + "/guest-run.sh\n"
+	if err := os.WriteFile(filepath.Join(packageRoot, "profile"), []byte(profile), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	config := `{"schema":1,"compile":{"workflows":["packages/vm"]}}`
+	if err := os.WriteFile(filepath.Join(repo, "dockpipe.config.json"), []byte(config), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return script
+}
+
 func TestRunBlockingStepHostIsolateGetsProfileEnvAndStepCommand(t *testing.T) {
 	withRunStepsSeams(t)
 	wd := t.TempDir()
 	repo := t.TempDir()
-	profileDir := filepath.Join(repo, "src", "core", "runtimes", "vmimage")
-	if err := os.MkdirAll(profileDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	profile := "DOCKPIPE_RUNTIME_SUBSTRATE=vmimage\nDOCKPIPE_RUNTIME_HOST_SCRIPT=scripts/core.assets.scripts.vmimage-run.sh\nDOCKPIPE_RUNTIME_HOST_REQUIRES_DOCKER=0\n"
-	if err := os.WriteFile(filepath.Join(profileDir, "profile"), []byte(profile), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	scriptAbs := filepath.Join(repo, "src", "core", "assets", "scripts", "vmimage-run.sh")
-	if err := os.MkdirAll(filepath.Dir(scriptAbs), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(scriptAbs, []byte("#!/usr/bin/env bash\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	scriptAbs := writeVMHostDelegateFixture(t, repo, "fixture-vm")
 
 	o := baseRunStepsOpts()
 	o.repoRoot = repo
@@ -190,9 +199,12 @@ func TestRunBlockingStepHostIsolateGetsProfileEnvAndStepCommand(t *testing.T) {
 	o.opts.Workdir = wd
 	o.envMap["DOCKPIPE_WORKFLOW_NAME"] = "vm"
 	o.wf.Name = "vm"
-	o.wf.Steps = []domain.Step{{Runtime: "vmimage", Cmd: "echo hi"}}
+	o.wf.Steps = []domain.Step{{Runtime: "vmimage", Resolver: "fixture-vm", Cmd: "echo hi"}}
 	var gotEnv []string
 	runHostScriptFn = func(scriptPath string, env []string) error {
+		if filepath.Clean(scriptPath) != filepath.Clean(scriptAbs) {
+			t.Fatalf("expected the declared resolver adapter %q, got %q", scriptAbs, scriptPath)
+		}
 		gotEnv = append([]string(nil), env...)
 		return nil
 	}
@@ -263,32 +275,22 @@ func TestRunBlockingStepHostIsolateAllowsRawNonShellCommandString(t *testing.T) 
 	withRunStepsSeams(t)
 	wd := t.TempDir()
 	repo := t.TempDir()
-	profileDir := filepath.Join(repo, "src", "core", "runtimes", "vmimage")
-	if err := os.MkdirAll(profileDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	profile := "DOCKPIPE_RUNTIME_SUBSTRATE=vmimage\nDOCKPIPE_RUNTIME_HOST_SCRIPT=scripts/core.assets.scripts.vmimage-run.sh\nDOCKPIPE_RUNTIME_HOST_REQUIRES_DOCKER=0\n"
-	if err := os.WriteFile(filepath.Join(profileDir, "profile"), []byte(profile), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	scriptAbs := filepath.Join(repo, "src", "core", "assets", "scripts", "vmimage-run.sh")
-	if err := os.MkdirAll(filepath.Dir(scriptAbs), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(scriptAbs, []byte("#!/usr/bin/env bash\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	scriptAbs := writeVMHostDelegateFixture(t, repo, "fixture-vm")
 
 	o := baseRunStepsOpts()
 	o.repoRoot = repo
 	o.projectRoot = repo
 	o.opts.Workdir = wd
 	o.wf.Steps = []domain.Step{{
-		Runtime: "vmimage",
-		Cmd:     `if ($env:DOCKPIPE_VM_GUEST_COMMAND) { Invoke-Expression $env:DOCKPIPE_VM_GUEST_COMMAND } else { whoami; hostname }`,
+		Runtime:  "vmimage",
+		Resolver: "fixture-vm",
+		Cmd:      `if ($env:DOCKPIPE_VM_GUEST_COMMAND) { Invoke-Expression $env:DOCKPIPE_VM_GUEST_COMMAND } else { whoami; hostname }`,
 	}}
 	var gotEnv []string
 	runHostScriptFn = func(scriptPath string, env []string) error {
+		if filepath.Clean(scriptPath) != filepath.Clean(scriptAbs) {
+			t.Fatalf("expected the declared resolver adapter %q, got %q", scriptAbs, scriptPath)
+		}
 		gotEnv = append([]string(nil), env...)
 		return nil
 	}
@@ -306,32 +308,22 @@ func TestRunBlockingStepInheritsWorkflowRuntimeForHostIsolate(t *testing.T) {
 	withRunStepsSeams(t)
 	wd := t.TempDir()
 	repo := t.TempDir()
-	profileDir := filepath.Join(repo, "src", "core", "runtimes", "vmimage")
-	if err := os.MkdirAll(profileDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	profile := "DOCKPIPE_RUNTIME_SUBSTRATE=vmimage\nDOCKPIPE_RUNTIME_HOST_SCRIPT=scripts/core.assets.scripts.vmimage-run.sh\nDOCKPIPE_RUNTIME_HOST_REQUIRES_DOCKER=0\n"
-	if err := os.WriteFile(filepath.Join(profileDir, "profile"), []byte(profile), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	scriptAbs := filepath.Join(repo, "src", "core", "assets", "scripts", "vmimage-run.sh")
-	if err := os.MkdirAll(filepath.Dir(scriptAbs), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(scriptAbs, []byte("#!/usr/bin/env bash\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	scriptAbs := writeVMHostDelegateFixture(t, repo, "fixture-vm")
 
 	o := baseRunStepsOpts()
 	o.repoRoot = repo
 	o.projectRoot = repo
 	o.opts.Workdir = wd
 	o.wf.Runtime = "vmimage"
+	o.wf.Resolver = "fixture-vm"
 	o.wf.Steps = []domain.Step{{
 		Cmd: `if ($env:DOCKPIPE_VM_GUEST_COMMAND) { Invoke-Expression $env:DOCKPIPE_VM_GUEST_COMMAND } else { whoami; hostname }`,
 	}}
 	var calledHostScript bool
 	runHostScriptFn = func(scriptPath string, env []string) error {
+		if filepath.Clean(scriptPath) != filepath.Clean(scriptAbs) {
+			t.Fatalf("expected the declared resolver adapter %q, got %q", scriptAbs, scriptPath)
+		}
 		calledHostScript = true
 		return nil
 	}
@@ -566,21 +558,7 @@ func TestRunBlockingStepHostIsolateReappliesWorkflowInputsFromWorkflowVars(t *te
 	withRunStepsSeams(t)
 	wd := t.TempDir()
 	repo := t.TempDir()
-	profileDir := filepath.Join(repo, "src", "core", "runtimes", "vm")
-	if err := os.MkdirAll(profileDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	profile := "DOCKPIPE_RUNTIME_SUBSTRATE=vmimage\nDOCKPIPE_RUNTIME_HOST_SCRIPT=scripts/core.assets.scripts.vmimage-run.sh\nDOCKPIPE_RUNTIME_HOST_REQUIRES_DOCKER=0\n"
-	if err := os.WriteFile(filepath.Join(profileDir, "profile"), []byte(profile), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	scriptAbs := filepath.Join(repo, "src", "core", "assets", "scripts", "vmimage-run.sh")
-	if err := os.MkdirAll(filepath.Dir(scriptAbs), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(scriptAbs, []byte("#!/usr/bin/env bash\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	scriptAbs := writeVMHostDelegateFixture(t, repo, "qemu")
 
 	wfRoot := filepath.Join(repo, "workflows", "uh-vm")
 	modelsDir := filepath.Join(repo, "packages", "vm", "resolvers", "qemu", "models")
@@ -600,7 +578,7 @@ func TestRunBlockingStepHostIsolateReappliesWorkflowInputsFromWorkflowVars(t *te
     "workflows": ["workflows", "packages/vm"]
   }
 }`)
-	write(filepath.Join(repo, "packages", "vm", "resolvers", "qemu", "profile"), "DOCKPIPE_RESOLVER_VM_BACKEND=auto\n")
+	write(filepath.Join(repo, "packages", "vm", "resolvers", "qemu", "profile"), "DOCKPIPE_RUNTIME_HOST_SCRIPT=scripts/qemu/guest-run.sh\nDOCKPIPE_RESOLVER_VM_BACKEND=auto\n")
 	write(filepath.Join(repo, "packages", "vm", "resolvers", "qemu", "types.yml"), "types:\n  - models/QemuVmResolverConfig.pipe\n")
 	write(filepath.Join(modelsDir, "QemuVmResolverConfig.pipe"), `public Class QemuVmResolverConfig
 {
@@ -646,6 +624,9 @@ func TestRunBlockingStepHostIsolateReappliesWorkflowInputsFromWorkflowVars(t *te
 
 	var gotEnv []string
 	runHostScriptFn = func(scriptPath string, env []string) error {
+		if filepath.Clean(scriptPath) != filepath.Clean(scriptAbs) {
+			t.Fatalf("expected the declared resolver adapter %q, got %q", scriptAbs, scriptPath)
+		}
 		gotEnv = append([]string(nil), env...)
 		return nil
 	}
@@ -670,9 +651,13 @@ func TestRunBlockingStepBuildAndRun(t *testing.T) {
 	o.projectRoot = wd
 	o.repoRoot = wd
 	o.wf.Steps = []domain.Step{{Cmd: "echo hi", Isolate: "codex"}}
+	imageDirectory, imageContext := writeTestResolverImage(t, wd, "codex")
 	built := false
 	dockerBuildFn = func(image, dockerfileDir, contextDir string) error {
 		built = true
+		if dockerfileDir != imageDirectory || contextDir != imageContext {
+			t.Fatalf("package-owned image context changed: %q, %q", dockerfileDir, contextDir)
+		}
 		return nil
 	}
 	ran := false
@@ -741,17 +726,12 @@ func TestRunBlockingStepSkipsBuildWhenCompiledImageArtifactExists(t *testing.T) 
 	o.projectRoot = wd
 	o.wfRoot = wfRoot
 	o.wf.Steps = []domain.Step{{Cmd: "echo hi", Isolate: "codex"}}
-	if err := os.MkdirAll(filepath.Join(wd, "templates", "core", "assets", "images", "codex"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(wd, "templates", "core", "assets", "images", "codex", "Dockerfile"), []byte("FROM alpine\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	imageDirectory, imageContext := writeTestResolverImage(t, wd, "codex")
 	policyFingerprint, err := runtimepolicy.DefaultRuntimePolicyFingerprint()
 	if err != nil {
 		t.Fatal(err)
 	}
-	artifact, err := buildImageArtifactManifest(wd, "", "", "codex", "dockpipe-codex", filepath.Join(wd, "templates", "core", "assets", "images", "codex"), wd, policyFingerprint, domain.ImageArtifactProvenance{Isolate: "codex", DockpipeVersion: authoredPackageVersion(wd)})
+	artifact, err := buildImageArtifactManifest(wd, "", "", "codex", "dockpipe-codex", imageDirectory, imageContext, policyFingerprint, domain.ImageArtifactProvenance{Isolate: "codex", DockpipeVersion: authoredPackageVersion(wd)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -847,13 +827,8 @@ func TestMaybeSkipDockerBuildRejectsPolicyFingerprintMismatch(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(wfRoot, domain.RuntimeManifestDirName), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Join(wd, "templates", "core", "assets", "images", "codex"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(wd, "templates", "core", "assets", "images", "codex", "Dockerfile"), []byte("FROM alpine\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	artifact, err := buildImageArtifactManifest(wd, "", "", "codex", "dockpipe-codex", filepath.Join(wd, "templates", "core", "assets", "images", "codex"), wd, "sha256:oldpolicy", domain.ImageArtifactProvenance{Isolate: "codex", DockpipeVersion: authoredPackageVersion(wd)})
+	imageDirectory, imageContext := writeTestResolverImage(t, wd, "codex")
+	artifact, err := buildImageArtifactManifest(wd, "", "", "codex", "dockpipe-codex", imageDirectory, imageContext, "sha256:oldpolicy", domain.ImageArtifactProvenance{Isolate: "codex", DockpipeVersion: authoredPackageVersion(wd)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -900,7 +875,7 @@ func TestMaybeSkipDockerBuildRejectsPolicyFingerprintMismatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	dockerImageExistsFn = func(image string) (bool, error) { return true, nil }
-	skip, _, err := maybeSkipDockerBuildForStep(wd, wd, "", wfRoot, "", "", "dockpipe-codex", filepath.Join(wd, "templates", "core", "assets", "images", "codex"), wd)
+	skip, _, err := maybeSkipDockerBuildForStep(wd, wd, "", wfRoot, "", "", "dockpipe-codex", imageDirectory, imageContext)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -916,18 +891,12 @@ func TestMaybeSkipDockerBuildUsesMaterializedImageIndex(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(wfRoot, domain.RuntimeManifestDirName), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	buildDir := filepath.Join(wd, "templates", "core", "assets", "images", "codex")
-	if err := os.MkdirAll(buildDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(buildDir, "Dockerfile"), []byte("FROM alpine\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	buildDir, buildContext := writeTestResolverImage(t, wd, "codex")
 	policyFingerprint, err := runtimepolicy.DefaultRuntimePolicyFingerprint()
 	if err != nil {
 		t.Fatal(err)
 	}
-	artifact, err := buildImageArtifactManifest(wd, "", "", "codex", "dockpipe-codex", buildDir, wd, policyFingerprint, domain.ImageArtifactProvenance{Isolate: "codex"})
+	artifact, err := buildImageArtifactManifest(wd, "", "", "codex", "dockpipe-codex", buildDir, buildContext, policyFingerprint, domain.ImageArtifactProvenance{Isolate: "codex"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -949,7 +918,7 @@ func TestMaybeSkipDockerBuildUsesMaterializedImageIndex(t *testing.T) {
 		}
 		return true, nil
 	}
-	skip, msg, err := maybeSkipDockerBuildForStep(wd, wd, "", wfRoot, "", policyFingerprint, "dockpipe-codex", buildDir, wd)
+	skip, msg, err := maybeSkipDockerBuildForStep(wd, wd, "", wfRoot, "", policyFingerprint, "dockpipe-codex", buildDir, buildContext)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -965,10 +934,13 @@ func TestMaybeSkipDockerBuildUsesMaterializedImageIndex(t *testing.T) {
 func TestPrefetchDockerBuildsForBatchDedupes(t *testing.T) {
 	withRunStepsSeams(t)
 	o := baseRunStepsOpts()
+	o.repoRoot = t.TempDir()
+	o.projectRoot = o.repoRoot
+	o.wfRoot = o.repoRoot
 	bFalse := false
 	o.wf.Steps = []domain.Step{
-		{Cmd: "echo a", Isolate: "codex", Blocking: &bFalse},
-		{Cmd: "echo b", Isolate: "codex", Blocking: &bFalse},
+		{Cmd: "echo a", Isolate: "dev", Blocking: &bFalse},
+		{Cmd: "echo b", Isolate: "dev", Blocking: &bFalse},
 	}
 	count := 0
 	dockerBuildFn = func(image, dockerfileDir, contextDir string) error {
@@ -1099,4 +1071,17 @@ func TestRunBlockingStepComposeDownSkipsWhenAutodownDisabled(t *testing.T) {
 	if err := runBlockingStep(&o, 0, 1, dockerEnv); err != nil {
 		t.Fatalf("runBlockingStep error: %v", err)
 	}
+}
+
+func writeTestResolverImage(t *testing.T, project, name string) (imageDirectory, packageRoot string) {
+	t.Helper()
+	writeTestCoreResolver(t, project, name, "DOCKPIPE_RESOLVER_CMD=fixture\n")
+	store, err := infrastructure.PackagesResolversDir(project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	packageRoot = filepath.Join(store, name)
+	imageDirectory = filepath.Join(packageRoot, "assets", "images", name)
+	writeFile(t, filepath.Join(imageDirectory, "Dockerfile"), "FROM alpine\n", 0o644)
+	return imageDirectory, packageRoot
 }

@@ -523,3 +523,18 @@ repeat native publication and all three named qualifications, and run the normal
 catalog staging consumers and conditional pointer promotion. Do not relabel N2 or
 weaken its producer/runtime admission. Refresh the optional host catalog pin after
 that new candidate is qualified. Production remains outside this staging task.
+
+
+### Local final-source qualification before runtime31
+
+The generic runtime now supports automatic and provided-only guest preparation;
+see [guest preparation](../../../runtime/vm-guest-preparation.md). Distribution
+media selection remains in the external VM package. Native Windows full58 and
+Linux/macOS ALL suites pass with their existing platform skips. The current
+Windows guest's pointer/clipboard proof remains applicable to unchanged display
+sources; its Basic Display Adapter still exposes only 1920 by 1080, so alternate
+live resolution modes remain unqualified. No display driver was installed.
+
+The next catalog cohort must consume actual public runtime31 CLI/core pins after
+runtime promotion. Local source-bound media tests and an ongoing disposable
+Bazzite installation do not substitute for that final native catalog acceptance.

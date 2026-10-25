@@ -26,7 +26,7 @@ The [PR template](.github/pull_request_template.md) asks for the resulting behav
 
 **Go:** layout is `src/lib/{domain,application,infrastructure}` — see [src/lib/README.md](src/lib/README.md). Run `go test ./...` and `gofmt` before PRs. Application tests set **`DOCKPIPE_SKIP_DOCKER_PREFLIGHT=1`** so the suite does not require a running Docker daemon (use **`dockpipe doctor`** manually to verify Docker).
 
-**Full local CI** (same as **`make ci`** / **`bash src/scripts/ci-emulate.sh`**): install **`govulncheck`**, **`gosec`**, and **`jq`** (`make dev-deps` or **`bash src/scripts/install-deps.sh`**). Use the toolchain from **`go.mod`** with `GOTOOLCHAIN=local` and put Go’s **`bin`** on **`PATH`** (`export PATH="$(go env GOPATH)/bin:$PATH"`) so **`govulncheck`** matches the repo’s Go version. Then **`make ci`** (needs Docker). If **`govulncheck`** errors on stdlib / **`iter`**, reinstall it: **`go install golang.org/x/vuln/cmd/govulncheck@latest`**.
+**Full local CI** (same as **`make ci`** / **`python3 workflows/shared/launch.py workflows/ci/ci-emulate/config.yml`**): install **`govulncheck`**, **`gosec`**, and **`jq`** (`make dev-deps` or **`python3 workflows/shared/launch.py workflows/setup/developer-dependencies/config.yml`**). Use the toolchain from **`go.mod`** with `GOTOOLCHAIN=local` and put Go’s **`bin`** on **`PATH`** (`export PATH="$(go env GOPATH)/bin:$PATH"`) so **`govulncheck`** matches the repo’s Go version. Then **`make ci`** (needs Docker). If **`govulncheck`** errors on stdlib / **`iter`**, reinstall it: **`go install golang.org/x/vuln/cmd/govulncheck@latest`**.
 
 **Source layout:** required bundled definitions and shared runtime assets live under
 `src/core/`. Generic engine code stays in `src/lib/` and `src/cmd/`.

@@ -1,0 +1,11 @@
+name: test-runtime-artifacts
+description: Run the test runtime artifacts operation with explicit options after --.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py bash workflows/ci/runtime/assets/scripts/test-runtime.sh

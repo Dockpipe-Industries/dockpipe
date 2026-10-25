@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"dockpipe/src/lib/infrastructure"
 )
 
 func TestListCatalogWorkflowsIncludesTypedInputs(t *testing.T) {
@@ -484,7 +486,7 @@ public Class DemoVmWorkflowConfig
 
 func TestCatalogResolverDetailsUsesResolvedProvider(t *testing.T) {
 	root := t.TempDir()
-	provider := filepath.Join(root, "templates", "core", "resolvers", "example.hosted")
+	provider := filepath.Join(root, infrastructure.DockpipeDirRel, "internal", "packages", "resolvers", "example.hosted")
 	if err := os.MkdirAll(provider, 0700); err != nil {
 		t.Fatal(err)
 	}
@@ -505,7 +507,7 @@ func TestCatalogResolverDetailsProjectsContainedPackageSurface(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolver := filepath.Join(root, "templates", "core", "resolvers", "example.resources")
+	resolver := filepath.Join(root, infrastructure.DockpipeDirRel, "internal", "packages", "resolvers", "example.resources")
 	if err := os.MkdirAll(resolver, 0700); err != nil {
 		t.Fatal(err)
 	}

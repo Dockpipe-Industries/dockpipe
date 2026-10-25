@@ -119,7 +119,7 @@ needed to prove these cases; this audit performed none.
 
 ### 7. P2 — Publication subprocesses lack an overall local duration/output contract
 
-Evidence: [publish-r2.py](../../../../release/packaging/publish-r2.py):24,28–29,36–40
+Evidence: [publish-r2.py](../../../../workflows/publish/r2/assets/scripts/publish-r2.py):24,28–29,36–40
 runs AWS commands without a subprocess timeout; metadata reads use unbounded
 captured output. Provider socket/retry settings or an outer CI job timeout do not
 establish bounded completion and cleanup for this individual operation. A hung

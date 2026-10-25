@@ -106,52 +106,6 @@ func tarballCacheEntryMatchesPackage(dir, kind, name, archiveRoot string) bool {
 	return false
 }
 
-// FindLatestCoreTarball returns the newest matching dockpipe-core-*.tar.<codec> under packages/core (then global packages/core), or "" if none.
-func FindLatestCoreTarball(workdir string) (string, error) {
-	projectRoot, _ := domain.FindProjectRootWithDockpipeConfig(workdir)
-	d, err := PackagesCoreDir(workdir)
-	if err != nil {
-		return "", err
-	}
-	if p, err := findLatestGlob(filepath.Join(d, "dockpipe-core-*.tar.*")); err != nil {
-		return "", err
-	} else if p != "" {
-		return p, nil
-	}
-	for _, root := range configuredPackageStoreRoots(projectRoot) {
-		if p, err := findLatestGlob(filepath.Join(root, "core", "dockpipe-core-*.tar.*")); err != nil {
-			return "", err
-		} else if p != "" {
-			return p, nil
-		}
-	}
-	for _, dir := range configuredPackageTarballDirs(projectRoot) {
-		if p, err := findLatestGlob(filepath.Join(dir, "dockpipe-core-*.tar.*")); err != nil {
-			return "", err
-		} else if p != "" {
-			return p, nil
-		}
-	}
-	gp, err := GlobalPackagesRoot()
-	if err != nil {
-		return "", err
-	}
-	if p, err := findLatestGlob(filepath.Join(gp, "core", "dockpipe-core-*.tar.*")); err != nil {
-		return "", err
-	} else if p != "" {
-		return p, nil
-	}
-	for _, root := range SystemPackagesCoreDirs() {
-		if p, err := findLatestGlob(filepath.Join(root, "dockpipe-core-*.tar.*")); err != nil {
-			return "", err
-		} else if p != "" {
-			return p, nil
-		}
-	}
-	return "", nil
-}
-
-// FindLatestWorkflowTarball returns the newest dockpipe-workflow-<name>-*.tar.<codec> under packages/workflows (then global).
 func FindLatestWorkflowTarball(workdir, name string) (string, error) {
 	projectRoot, _ := domain.FindProjectRootWithDockpipeConfig(workdir)
 	d, err := PackagesWorkflowsDir(workdir)

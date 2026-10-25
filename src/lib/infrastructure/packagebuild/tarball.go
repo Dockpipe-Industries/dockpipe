@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // WriteDirTarGzWithPrefix packs absSrcDir into a gzip tar at outPath. Archive paths are
@@ -61,6 +62,10 @@ func WriteDirTarGzWithPrefix(absSrcDir, outPath, prefixInArchive string) (sha256
 		if err != nil {
 			return err
 		}
+		// Package identity depends on payloads and modes, not source-build timestamps.
+		hdr.ModTime = time.Unix(0, 0).UTC()
+		hdr.AccessTime = time.Time{}
+		hdr.ChangeTime = time.Time{}
 		hdr.Name = nameInTar
 		hdr.Mode = int64(normalizeArchiveMode(hdr.Name, info.Mode(), info.IsDir()))
 		if hdr.Typeflag == tar.TypeDir && !strings.HasSuffix(hdr.Name, "/") {

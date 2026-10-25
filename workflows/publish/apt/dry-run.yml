@@ -1,0 +1,11 @@
+name: dry-run
+description: Run the dry run phase using explicit CI inputs.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: bash workflows/publish/apt/assets/scripts/dry-run.sh

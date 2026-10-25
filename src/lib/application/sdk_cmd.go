@@ -16,6 +16,7 @@ const sdkUsageText = `dockpipe sdk — bootstrap SDK helpers for supported langu
 Usage:
   dockpipe sdk [--workdir <path>]
   dockpipe sdk shell-env [--workdir <path>]
+  dockpipe sdk path --language shell|powershell|python [--workdir <path>]
 
 By default, sdk emits shell code suitable for:
 
@@ -24,7 +25,7 @@ By default, sdk emits shell code suitable for:
 When --workdir is omitted, sdk prefers DOCKPIPE_WORKDIR from the
 environment and otherwise falls back to the current working directory.
 
-This bootstraps the shell SDK object from the canonical core helper.
+This bootstraps the shell SDK object from the library-owned portable helper.
 `
 
 const getUsageText = `dockpipe get — print generic Dockpipe context fields
@@ -68,9 +69,45 @@ func cmdSDK(args []string) error {
 	switch args[0] {
 	case "shell-env":
 		return cmdSDKShellEnv(args[1:])
+	case "path":
+		return cmdSDKPath(args[1:])
 	default:
 		return fmt.Errorf("unknown sdk subcommand %q (try: dockpipe sdk --help)", args[0])
 	}
+}
+
+// cmdSDKPath exposes only the fixed generic helper resources supported by this CLI.
+func cmdSDKPath(args []string) error {
+	var language string
+	var workdirArgs []string
+	for index := 0; index < len(args); index++ {
+		if args[index] == "--help" || args[index] == "-h" {
+			fmt.Println("dockpipe sdk path --language shell|powershell|python [--workdir <path>]")
+			return nil
+		}
+		if args[index] == "--language" {
+			if index+1 >= len(args) || language != "" {
+				return fmt.Errorf("sdk path requires one --language shell|powershell|python")
+			}
+			language = args[index+1]
+			index++
+			continue
+		}
+		workdirArgs = append(workdirArgs, args[index])
+	}
+	if language == "" {
+		return fmt.Errorf("sdk path requires --language shell|powershell|python")
+	}
+	workdir, err := parseSDKWorkdirFlag(workdirArgs)
+	if err != nil {
+		return err
+	}
+	helper, err := infrastructure.SDKHelperPath(workdir, language)
+	if err != nil {
+		return err
+	}
+	fmt.Println(helper)
+	return nil
 }
 
 func cmdGet(args []string) error {
@@ -347,18 +384,5 @@ func normalizeGetField(s string) string {
 }
 
 func resolveShellSDKPath(workdir string) (string, error) {
-	for cur := workdir; ; cur = filepath.Dir(cur) {
-		if infrastructure.DockpipeAuthoringSourceTree(cur) {
-			return filepath.Join(infrastructure.CoreDir(cur), "assets", "scripts", "lib", "dockpipe-sdk.sh"), nil
-		}
-		next := filepath.Dir(cur)
-		if next == cur {
-			break
-		}
-	}
-	rr, err := infrastructure.RepoRoot()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(infrastructure.CoreDir(rr), "assets", "scripts", "lib", "dockpipe-sdk.sh"), nil
+	return infrastructure.ShellSDKPath(workdir)
 }

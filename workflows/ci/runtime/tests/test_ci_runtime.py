@@ -1,0 +1,119 @@
+"""Keep runtime CI aligned with release qualification and compiler containment."""
+import json
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+import unittest
+
+import yaml
+
+
+REPOSITORY = Path(__file__).resolve().parents[4]
+
+import importlib.util
+_contract_spec = importlib.util.spec_from_file_location(
+    'workflow_contract_testing', REPOSITORY / 'workflows/shared/contract_testing.py')
+_contracts = importlib.util.module_from_spec(_contract_spec)
+_contract_spec.loader.exec_module(_contracts)
+
+
+def expanded(command):
+    return _contracts.expanded_run(REPOSITORY, command)
+
+
+class RuntimeCITests(unittest.TestCase):
+    def test_selector_qualifies_every_owned_runtime_package(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fake_go = root / "go"
+            fake_go.write_text(
+                "#!/usr/bin/env bash\n"
+                'printf "%s\\n" "$@" > "$TEST_GO_ARGUMENTS"\n'
+            )
+            fake_go.chmod(0o755)
+            arguments = root / "arguments"
+            environment = dict(os.environ, PATH=f"{root}:{os.environ['PATH']}",
+                               TEST_GO_ARGUMENTS=str(arguments))
+            subprocess.run(["bash", str(Path(__file__).resolve().parents[4] / 'workflows/ci/runtime/assets/scripts/test-runtime.sh')],
+                           env=environment, check=True, capture_output=True, text=True)
+            self.assertEqual(arguments.read_text().splitlines(), ["test", "./..."])
+
+    def test_host_and_nested_workflow_use_release_selector_and_pinned_tools(self):
+        ci = yaml.load((Path(__file__).resolve().parents[4] / '.github/workflows/ci.yml').read_text(), Loader=yaml.BaseLoader)
+        nested = yaml.load((Path(__file__).resolve().parents[4] / 'workflows/ci/test/config.yml').read_text(), Loader=yaml.BaseLoader)
+        selector = "python3 workflows/shared/launch.py workflows/ci/runtime/config.yml"
+        for job in ("test", "test-windows"):
+            commands = [step.get("run", "") for step in ci["jobs"][job]["steps"]]
+            self.assertIn(selector, commands)
+            self.assertNotIn("go test ./...", "\n".join(commands))
+        scan = next(step["cmd"] for step in nested["steps"] if step["id"] == "scan")
+        self.assertIn("bash workflows/ci/runtime/assets/scripts/test-runtime.sh", scan)
+        self.assertNotIn("go test ./...", scan)
+        host = "\n".join(expanded(step.get("run", "")) for step in ci["jobs"]["test"]["steps"])
+        for tool in ("honnef.co/go/tools/cmd/staticcheck@v0.7.0",
+                     "golang.org/x/vuln/cmd/govulncheck@v1.7.0",
+                     "github.com/securego/gosec/v2/cmd/gosec@v2.29.0"):
+            self.assertIn(f"go install {tool}", host)
+            self.assertIn(f"go install {tool}", scan)
+        self.assertEqual(ci["env"]["GOTOOLCHAIN"], "local")
+        self.assertEqual(nested["vars"]["GOTOOLCHAIN"], "local")
+
+    def test_json_vulnerability_findings_fail_the_host_gate(self):
+        ci = yaml.load((Path(__file__).resolve().parents[4] / '.github/workflows/ci.yml').read_text(), Loader=yaml.BaseLoader)
+        scan = next(expanded(step["run"]) for step in ci["jobs"]["test"]["steps"]
+                    if step.get("name") == "govulncheck + gosec")
+        commands = scan[scan.index("set +e"):scan.index('"$GOBIN/gosec"')]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            scanner = root / "govulncheck"
+            scanner.write_text(
+                "#!/usr/bin/env bash\n"
+                "if [[ $1 == -format ]]; then\n"
+                "  echo '{\"finding\":{}}'\n"
+                "  exit 0\n"
+                "fi\n"
+                "cat >/dev/null\n"
+                "exit 3\n"
+            )
+            scanner.chmod(0o755)
+            environment = dict(os.environ, GOBIN=str(root), CI_RAW_DIR=str(root))
+            result = subprocess.run(["bash", "-c", commands + 'exit "$VC"'],
+                                    env=environment, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 3, result.stderr)
+
+    def test_release_and_ci_use_the_security_patched_toolchain(self):
+        workflow_names = (
+            "ci.yml",
+            "release.yml",
+            "flatpak.yml",
+            "native-macos-symbols.yml",
+            "compiler-bootstrap.yml",
+        )
+        for filename in workflow_names:
+            workflow = yaml.load((Path(__file__).resolve().parents[4] / '.github/workflows' / filename).read_text(), Loader=yaml.BaseLoader)
+            for job in workflow["jobs"].values():
+                for step in job.get("steps", []):
+                    if step.get("uses", "").startswith("actions/setup-go@"):
+                        self.assertEqual(step["with"]["go-version"], "1.26.10")
+        self.assertIn("toolchain go1.26.10", (Path(__file__).resolve().parents[4] / 'go.mod').read_text())
+
+        nested = yaml.load((Path(__file__).resolve().parents[4] / 'workflows/ci/test/config.yml').read_text(), Loader=yaml.BaseLoader)
+        for step in nested["steps"]:
+            self.assertEqual(step["isolate"], "golang:1.26.10-bookworm")
+        lock = json.loads((Path(__file__).resolve().parents[4] / 'workflows/build/flatpak/assets/package-tools.lock.json').read_text())
+        self.assertEqual(lock["tools"]["go"]["version"], "1.26.10")
+        self.assertEqual(lock["tools"]["go"]["url"], "https://go.dev/dl/go1.26.10.linux-amd64.tar.gz")
+
+    def test_codeql_retains_go_and_actions_coverage(self):
+        workflow = yaml.load((Path(__file__).resolve().parents[4] / '.github/workflows/codeql.yml').read_text(), Loader=yaml.BaseLoader)
+        job = workflow["jobs"]["codeql"]
+        self.assertEqual(job["strategy"]["matrix"]["include"],
+                         [{"language": "go", "build-mode": "autobuild"},
+                          {"language": "actions", "build-mode": "none"}])
+        analyze = next(step for step in job["steps"] if step.get("uses", "").startswith("github/codeql-action/analyze@"))
+        self.assertEqual(analyze["with"]["category"], "/language:${{ matrix.language }}")
+
+
+if __name__ == "__main__":
+    unittest.main()

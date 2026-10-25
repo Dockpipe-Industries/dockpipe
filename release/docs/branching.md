@@ -100,7 +100,7 @@ On the **weekly schedule**, only **`codeql`** runs (**`test`** and **`test-windo
 | **Push** **`master`** (merge) | **`release.yml`** | Full build + **GitHub Release** with generated `vX.Y.Z`; optional **dev.to** ([devto.md](devto.md)) |
 | **workflow_dispatch** on Release | **`release.yml`** | Defaults to **dry_run=true**, without deployment approval; **dry_run=false** requires **`master`** |
 
-> **Release** still runs only on **`push` to `master`**, not on pushes to **`staging`**.
+> Production **Release** runs on **`push` to `master`**. Successful staging CI calls the same reusable release workflow with the staging channel selected.
 
 ---
 
@@ -113,7 +113,7 @@ On the **weekly schedule**, only **`codeql`** runs (**`test`** and **`test-windo
 ## Local checks before a **ship** PR (`staging` → `master`)
 
 ```bash
-go test ./…
+python3 workflows/shared/launch.py workflows/ci/core/config.yml
 # Ship PR must match VERSION file:
 test -f "release/releasenotes/$(tr -d ' \t\r\n' < VERSION).md"
 ```
@@ -129,10 +129,11 @@ publication is off until the fork owner sets repository variable
 identity, endpoint, bucket, and prefix. Preserve the `staging` → `master` release
 flow and apply branch protections appropriate for your repository.
 
-The [release setup workflow](../../workflows/package/package-release-setup/README.md)
-requires `RELEASE_SETUP_REPOSITORY=your-owner/your-repository`; it never infers a
-credential destination from the upstream repository. Run checks before enabling
-apply. For CLI installation from a fork, use `DOCKPIPE_REPO=your-owner/your-repository`
+Configure those environment secrets and publication variables through your own
+private infrastructure/setup process, explicitly selecting the destination
+repository. The retired checkout-only setup workflows are not runtime release
+inputs. Follow the [public configuration boundary](../../docs/public-repository-boundary.md).
+For CLI installation from a fork, use `DOCKPIPE_REPO=your-owner/your-repository`
 with the shell installer or `-Repo your-owner/your-repository` with PowerShell.
 Official Dockpipe download defaults remain available for ordinary users.
 
@@ -145,7 +146,7 @@ for operator settings and examples.
 The required `Native desktop host qualification` check runs for pull requests to
 `dev`, `staging` and `master`, and for explicit workflow dispatch. It succeeds
 only after the existing Windows native host tests, both macOS architecture jobs,
-and the core-only Flatpak desktop workflow actually succeed. Failed, skipped,
+and the standalone runtime Flatpak desktop workflow actually succeed. Failed, skipped,
 cancelled or missing qualification results fail the final always-reported gateway.
 The generic extension, Browser, terminal, embedding and platform assertions remain
 inside those owning jobs; SDK consumer compilation alone does not replace them.
@@ -153,7 +154,7 @@ This deliberately runs all host platforms even for documentation-only PRs.
 
 Cockpit SDK/rendering and optional Flatpak catalog integration retain independent
 strict package checks and dispatch entrypoints. They are not global prerequisites
-for CLI/core/desktop release. Required core tests, CodeQL, review rules, ref scopes
+for CLI/desktop release. Required runtime tests, CodeQL, review rules, ref scopes
 and force-push/deletion protections remain unchanged. The dedicated native rule
 uses the host gateway from GitHub Actions app15368; it does not require an optional
 package check or grant a bypass. Branch-rule changes are a separate reviewed

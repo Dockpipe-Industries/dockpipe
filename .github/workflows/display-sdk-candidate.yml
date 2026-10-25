@@ -5,29 +5,33 @@ on:
     branches: [dev]
     paths:
       - LICENSE
+      - workflows/shared/**
+      - workflows/publish/shared/**
       - src/app/tooling/dockpipe-launcher/display-sdk/**
       - src/app/tooling/dockpipe-launcher/src/LauncherDisplayPackage.h
       - src/app/tooling/dockpipe-launcher/src/LauncherNativeLibraryScope.h
-      - release/packaging/build-display-sdk.py
-      - release/packaging/build-launcher-sdk.py
-      - release/packaging/publish-display-sdk.py
-      - release/packaging/publish-launcher-sdk.py
-      - release/packaging/tests/test_display_sdk_producer.py
-      - release/packaging/tests/test_publish_display_sdk.py
+      - workflows/build/display-sdk/assets/scripts/build.py
+      - workflows/build/launcher-sdk/assets/scripts/build.py
+      - workflows/publish/display-sdk/assets/scripts/publish.py
+      - workflows/publish/launcher-sdk/assets/scripts/publish.py
+      - workflows/build/display-sdk/tests/test_display_sdk_producer.py
+      - workflows/publish/display-sdk/tests/test_publish_display_sdk.py
       - .github/workflows/display-sdk-candidate.yml
   push:
     branches: [dev]
     paths:
       - LICENSE
+      - workflows/shared/**
+      - workflows/publish/shared/**
       - src/app/tooling/dockpipe-launcher/display-sdk/**
       - src/app/tooling/dockpipe-launcher/src/LauncherDisplayPackage.h
       - src/app/tooling/dockpipe-launcher/src/LauncherNativeLibraryScope.h
-      - release/packaging/build-display-sdk.py
-      - release/packaging/build-launcher-sdk.py
-      - release/packaging/publish-display-sdk.py
-      - release/packaging/publish-launcher-sdk.py
-      - release/packaging/tests/test_display_sdk_producer.py
-      - release/packaging/tests/test_publish_display_sdk.py
+      - workflows/build/display-sdk/assets/scripts/build.py
+      - workflows/build/launcher-sdk/assets/scripts/build.py
+      - workflows/publish/display-sdk/assets/scripts/publish.py
+      - workflows/publish/launcher-sdk/assets/scripts/publish.py
+      - workflows/build/display-sdk/tests/test_display_sdk_producer.py
+      - workflows/publish/display-sdk/tests/test_publish_display_sdk.py
       - .github/workflows/display-sdk-candidate.yml
 
 permissions:
@@ -103,9 +107,10 @@ jobs:
         run: |
           import subprocess
           import sys
-          for suite in ('test_display_sdk_producer.py', 'test_publish_display_sdk.py'):
-              subprocess.run([sys.executable, '-B', '-m', 'unittest', 'discover',
-                              '-s', 'release/packaging/tests', '-p', suite, '-v'], check=True, timeout=120)
+          for directory in ('workflows/build/display-sdk/tests', 'workflows/publish/display-sdk/tests'):
+              subprocess.run([sys.executable, 'workflows/shared/launch.py',
+                              'workflows/ci/workflow-contracts/config.yml', '--', '--suite', directory],
+                             check=True, timeout=120)
       - name: Qualify the relocated native interface SDK
         shell: python
         run: |
@@ -114,7 +119,7 @@ jobs:
           import subprocess
           import sys
           root = Path(os.environ['RUNNER_TEMP'])
-          subprocess.run([sys.executable, '-B', 'release/packaging/build-display-sdk.py',
+          subprocess.run([sys.executable, 'workflows/shared/launch.py', 'workflows/build/display-sdk/config.yml', '--',
                           '--source-root', os.environ['GITHUB_WORKSPACE'], '--source-sha', os.environ['GITHUB_SHA'],
                           '--qt-root', os.environ['DISPLAY_SDK_QT_ROOT'],
                           '--work-directory', str(root / 'display-sdk-work'),
@@ -159,5 +164,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           DISPLAY_SDK_PLATFORM: ${{ matrix.platform }}
         run: |
-          python3 -B release/packaging/publish-display-sdk.py \
+          python3 workflows/shared/launch.py workflows/publish/display-sdk/config.yml -- \
             --directory "$RUNNER_TEMP/display-sdk" --platform "$DISPLAY_SDK_PLATFORM"

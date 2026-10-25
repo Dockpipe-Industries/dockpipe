@@ -1,0 +1,11 @@
+name: publish-homebrew-staging
+description: Run the publish homebrew staging operation with explicit options after --.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/publish/homebrew/assets/tap/scripts/sync_staging.py

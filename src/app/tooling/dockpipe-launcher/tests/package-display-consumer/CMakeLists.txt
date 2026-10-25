@@ -3,7 +3,7 @@ project(DockpipeInstalledDisplayConsumer LANGUAGES CXX)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-find_package(DockPipeLauncherSDK 1.0.0 EXACT REQUIRED)
+find_package(DockPipeLauncherSDK 1.1.0 EXACT REQUIRED)
 # The public interface header comes solely from the installed candidate SDK.
 # No include directory from the host source checkout is permitted.
 try_run(abi_result abi_compiled "${CMAKE_CURRENT_BINARY_DIR}/abi-probe"

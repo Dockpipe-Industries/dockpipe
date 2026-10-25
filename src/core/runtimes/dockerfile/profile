@@ -1,2 +1,0 @@
-# Runtime substrate: container built from a Dockerfile in the repo (build + run).
-DOCKPIPE_RUNTIME_SUBSTRATE=dockerfile

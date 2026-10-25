@@ -178,10 +178,10 @@ func TestResolveWorkflowConfigPathPrefersTemplatesWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Resolver delegate YAML (would be second choice).
-	if err := os.MkdirAll(filepath.Join(tmp, "templates", "core", "resolvers", "demo"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(tmp, "workflows", "adapters", "demo"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	rs := filepath.Join(tmp, "templates", "core", "resolvers", "demo", "config.yml")
+	rs := filepath.Join(tmp, "workflows", "adapters", "demo", "config.yml")
 	if err := os.WriteFile(rs, []byte("name: delegate\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -256,30 +256,27 @@ func TestResolveWorkflowConfigPathWithWorkdirPrefersPackagesOverLegacyTemplates(
 	}
 }
 
-func TestResolveWorkflowConfigPathLegacyTemplatesWhenWorkflowsMissing(t *testing.T) {
-	tmp := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(tmp, "templates", "demo"), 0o755); err != nil {
+func TestResolveWorkflowConfigPathRejectsImplicitLegacyTemplates(t *testing.T) {
+	root := t.TempDir()
+	isolateWorkflowPackageRoots(t, root)
+	config := filepath.Join(root, "templates", "demo", "config.yml")
+	if err := os.MkdirAll(filepath.Dir(config), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	leg := filepath.Join(tmp, "templates", "demo", "config.yml")
-	if err := os.WriteFile(leg, []byte("name: demo\n"), 0o644); err != nil {
+	if err := os.WriteFile(config, []byte("name: demo\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	got, err := ResolveWorkflowConfigPath(tmp, "demo")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != leg {
-		t.Fatalf("want legacy templates path %s got %s", leg, got)
+	if got, err := ResolveWorkflowConfigPath(root, "demo"); err == nil {
+		t.Fatalf("implicitly resolved legacy template %q", got)
 	}
 }
 
 func TestResolveWorkflowConfigPathFallsBackToResolverDelegate(t *testing.T) {
 	tmp := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(tmp, "templates", "core", "resolvers", "codex"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(tmp, "workflows", "adapters", "codex"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	rs := filepath.Join(tmp, "templates", "core", "resolvers", "codex", "config.yml")
+	rs := filepath.Join(tmp, "workflows", "adapters", "codex", "config.yml")
 	if err := os.WriteFile(rs, []byte("name: codex\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -296,6 +293,7 @@ func TestResolveWorkflowConfigPathFallsBackToResolverDelegate(t *testing.T) {
 // from an obsolete nested "workflows" directory under core (not a valid workflow lookup path).
 func TestResolveWorkflowConfigPathDoesNotSearchLegacyCoreWorkflowsDir(t *testing.T) {
 	tmp := t.TempDir()
+	isolateWorkflowPackageRoots(t, tmp)
 	legacyDir := filepath.Join(tmp, "templates", "core", "workflows", "ghost")
 	if err := os.MkdirAll(legacyDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -314,7 +312,7 @@ func TestResolveWorkflowConfigPathDoesNotSearchLegacyCoreWorkflowsDir(t *testing
 // local run resolution should prefer the authored project workflow over the cached tarball.
 func TestResolveWorkflowConfigPathWithWorkdirPrefersProjectWorkflowsOverTarball(t *testing.T) {
 	bundle := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(bundle, BundledLayoutDir, "workflows", "demo"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(bundle, "bundle", "workflows", "demo"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	project := t.TempDir()
@@ -355,7 +353,7 @@ func TestResolveWorkflowConfigPathWithWorkdirPrefersProjectWorkflowsOverTarball(
 
 func TestResolveWorkflowConfigPathWithWorkdirFindsNestedProjectWorkflowFromBundleRepoRoot(t *testing.T) {
 	bundle := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(bundle, BundledLayoutDir, "workflows"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(bundle, "bundle", "workflows"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	project := t.TempDir()
@@ -424,7 +422,7 @@ func TestResolveWorkflowConfigPathWithConfiguredExternalStore(t *testing.T) {
 
 func TestResolveWorkflowConfigPathWithConfiguredExternalStoreFromBundleRepoRoot(t *testing.T) {
 	bundle := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(bundle, BundledLayoutDir, "workflows"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(bundle, "bundle", "workflows"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	project := t.TempDir()
@@ -481,12 +479,12 @@ func TestProjectWorkflowConfigPathRespectsDockpipeWorkflowsDir(t *testing.T) {
 	}
 }
 
-func TestResolveEmbeddedResolverWorkflowConfigPathPrefersCoreResolverThenWorkflow(t *testing.T) {
+func TestResolveEmbeddedResolverWorkflowConfigPathUsesDeclaredResolverDelegate(t *testing.T) {
 	tmp := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(tmp, "templates", "core", "resolvers", "vscode"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(tmp, "workflows", "adapters", "vscode"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	coreCfg := filepath.Join(tmp, "templates", "core", "resolvers", "vscode", "config.yml")
+	coreCfg := filepath.Join(tmp, "workflows", "adapters", "vscode", "config.yml")
 	if err := os.WriteFile(coreCfg, []byte("steps: []\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -497,11 +495,35 @@ func TestResolveEmbeddedResolverWorkflowConfigPathPrefersCoreResolverThenWorkflo
 	if err := os.WriteFile(wfCfg, []byte("steps: []\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(filepath.Dir(coreCfg), "profile"), []byte("DOCKPIPE_RESOLVER_WORKFLOW=vscode\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	got, err := ResolveEmbeddedResolverWorkflowConfigPath(tmp, "vscode")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got != coreCfg {
 		t.Fatalf("want core resolver delegate first %s got %s", coreCfg, got)
+	}
+}
+
+func TestWorkflowDiscoveryIgnoresImplicitCoreSources(t *testing.T) {
+	root := t.TempDir()
+	isolateWorkflowPackageRoots(t, root)
+	for _, relative := range []string{"src/core/workflows/ghost", "bundle/workflows/ghost"} {
+		path := filepath.Join(root, relative, "config.yml")
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("name: ghost\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got, err := ResolveWorkflowConfigPath(root, "ghost"); err == nil {
+		t.Fatalf("implicitly resolved core workflow %q", got)
+	}
+	names, err := ListWorkflowNamesInRepoRoot(root)
+	if err != nil || len(names) != 0 {
+		t.Fatalf("implicit workflow names = %v, %v", names, err)
 	}
 }

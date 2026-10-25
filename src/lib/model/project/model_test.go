@@ -7,7 +7,6 @@ import (
 )
 
 func TestProjectConfigJSONShape(t *testing.T) {
-	coreFrom := "src/core"
 	workflows := []string{"workflows", "packages"}
 	vaultTemplate := ".env.vault.template"
 	opInjectTemplate := ".env.op.template"
@@ -21,7 +20,6 @@ func TestProjectConfigJSONShape(t *testing.T) {
 	got, err := json.Marshal(DockpipeProjectConfig{
 		Schema: 1,
 		Compile: DockpipeCompileConfig{
-			CoreFrom:  &coreFrom,
 			Workflows: &workflows,
 		},
 		Secrets: DockpipeSecretsConfig{
@@ -40,7 +38,7 @@ func TestProjectConfigJSONShape(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal project config: %v", err)
 	}
-	const want = `{"schema":1,"compile":{"core_from":"src/core","workflows":["workflows","packages"]},"secrets":{"vault_template":".env.vault.template","op_inject_template":".env.op.template","vault":"op","notes":"references only"},"packages":{"tarball_dir":"release/artifacts","namespace":"example","registry_urls":["https://packages.example.com"],"sources":[{"kind":"store","path":"vendor/packages"}]}}`
+	const want = `{"schema":1,"compile":{"workflows":["workflows","packages"]},"secrets":{"vault_template":".env.vault.template","op_inject_template":".env.op.template","vault":"op","notes":"references only"},"packages":{"tarball_dir":"release/artifacts","namespace":"example","registry_urls":["https://packages.example.com"],"sources":[{"kind":"store","path":"vendor/packages"}]}}`
 	if string(got) != want {
 		t.Fatalf("project config JSON changed:\nwant: %s\ngot:  %s", want, got)
 	}
@@ -70,6 +68,7 @@ func TestCompileConfigRejectsRetiredKeysWithExactErrors(t *testing.T) {
 		json string
 		want string
 	}{
+		{name: "core_from", json: `{"core_from":"legacy/core"}`, want: "compile.core_from is retired; runtime defaults are built in and optional assets belong to packages"},
 		{name: "resolvers", json: `{"resolvers":["extra"]}`, want: "compile.resolvers is not supported; use compile.workflows"},
 		{name: "bundles", json: `{"workflows":["canonical"],"bundles":["legacy"]}`, want: "compile.bundles is not supported; use compile.workflows"},
 		{name: "both", json: `{"bundles":[],"resolvers":[]}`, want: "compile.resolvers is not supported; use compile.workflows"},

@@ -7,12 +7,9 @@ import (
 	"dockpipe/src/lib/domain"
 )
 
-// CoreSourceBuild runs an optional package-owned source build against the staged core tree.
-type CoreSourceBuild func(workdir, staging string) error
-
 // Command dispatches a package compile command.
-func Command(args []string, sourceBuild CoreSourceBuild) error {
-	return cmdPackageCompile(args, sourceBuild)
+func Command(args []string) error {
+	return cmdPackageCompile(args)
 }
 
 // InjectWorkdirFromProjectConfig applies compile command project-root discovery.
@@ -21,8 +18,8 @@ func InjectWorkdirFromProjectConfig(args []string) ([]string, error) {
 }
 
 // CompileAll compiles the full configured package store.
-func CompileAll(args []string, sourceBuild CoreSourceBuild) error {
-	return cmdPackageCompileAll(args, sourceBuild)
+func CompileAll(args []string) error {
+	return cmdPackageCompileAll(args)
 }
 
 // CompileWorkflows compiles configured workflow authoring roots.
@@ -41,8 +38,8 @@ func CompileWorkflow(workdir, source, name string, force bool) error {
 }
 
 // CompileClosureForWorkflow compiles the transitive package closure for a workflow.
-func CompileClosureForWorkflow(projectRoot, workflowName string, force bool, sourceBuild CoreSourceBuild) error {
-	return compileClosureForWorkflow(projectRoot, workflowName, force, sourceBuild)
+func CompileClosureForWorkflow(projectRoot, workflowName string, force bool) error {
+	return compileClosureForWorkflow(projectRoot, workflowName, force)
 }
 
 // ValidateOutputsForMode validates compiled outputs using the requested namespace mode.

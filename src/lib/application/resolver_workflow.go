@@ -11,7 +11,7 @@ import (
 )
 
 // runEmbeddedResolverWorkflow runs bundled delegate YAML for DOCKPIPE_*_WORKFLOW (multi-step) with merged env.
-// Used when DOCKPIPE_RESOLVER_WORKFLOW is set so resolvers delegate (e.g. claude, codex, code-server, cursor-dev, vscode under templates/core/resolvers/<name>/config.yml).
+// Used when DOCKPIPE_RESOLVER_WORKFLOW selects package-owned delegate YAML.
 // runStepsFn must be the steps runner (e.g. runStepsAppFn) — passed in to avoid an init cycle with run_steps.go.
 func runEmbeddedResolverWorkflow(
 	workflowName string,

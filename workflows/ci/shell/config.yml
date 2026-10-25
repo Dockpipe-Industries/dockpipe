@@ -1,0 +1,11 @@
+name: ci-shell
+description: Run the repository shell and runtime workflow integration checks.
+docker_preflight: false
+steps:
+  - id: shell
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: bash tests/run_tests.sh

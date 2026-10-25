@@ -1,0 +1,11 @@
+name: install-developer-cli
+description: Run the repository install developer-cli operation.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py bash workflows/install/developer-cli/assets/scripts/install.sh

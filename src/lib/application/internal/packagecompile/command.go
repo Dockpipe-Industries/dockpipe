@@ -14,6 +14,7 @@ import (
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 	"dockpipe/src/lib/infrastructure/packagebuild"
+	"dockpipe/src/lib/runtimeassets"
 )
 
 const packageCompileProgressEvery = 5 * time.Second
@@ -49,18 +50,16 @@ func injectCompileWorkdirFromProjectConfig(args []string) ([]string, error) {
 	return append([]string{"--workdir", root}, args...), nil
 }
 
-func cmdPackageCompile(args []string, sourceBuild CoreSourceBuild) error {
+func cmdPackageCompile(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
 		fmt.Print(packageCompileUsageText)
 		return nil
 	}
 	switch args[0] {
 	case "for-workflow":
-		return cmdPackageCompileForWorkflow(args[1:], sourceBuild)
+		return cmdPackageCompileForWorkflow(args[1:])
 	case "workflow":
 		return cmdPackageCompileWorkflow(args[1:])
-	case "core":
-		return cmdPackageCompileCore(args[1:], sourceBuild)
 	case "resolvers":
 		return cmdPackageCompileResolvers(args[1:])
 	case "bundles":
@@ -73,7 +72,7 @@ func cmdPackageCompile(args []string, sourceBuild CoreSourceBuild) error {
 	case "workflows":
 		return cmdPackageCompileWorkflowsBatch(args[1:])
 	case "all":
-		return cmdPackageCompileAll(args[1:], sourceBuild)
+		return cmdPackageCompileAll(args[1:])
 	default:
 		return fmt.Errorf("unknown package compile target %q (try: dockpipe package compile --help; use for-workflow for dependency-scoped compile)", args[0])
 	}
@@ -236,12 +235,8 @@ func ensureWorkflowImageEntrypoint(workdir, staging string) error {
 	if st, err := os.Stat(dst); err == nil && !st.IsDir() {
 		return nil
 	}
-	src := filepath.Join(workdir, "assets", "entrypoint.sh")
-	b, err := os.ReadFile(src)
+	b, err := runtimeassets.ContainerEntrypoint()
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
 		return err
 	}
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {

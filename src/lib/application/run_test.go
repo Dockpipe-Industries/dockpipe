@@ -55,10 +55,14 @@ func TestRunInstalledWorkflowUsesItsOwnScriptDirectory(t *testing.T) {
 	}
 }
 
-// writeTestCoreResolver seeds templates/core/resolvers/<name> for tests that use a temp repoRoot.
+// writeTestCoreResolver seeds a project-owned installed resolver fixture.
 func writeTestCoreResolver(t *testing.T, repoRoot, name, body string) {
 	t.Helper()
-	p := filepath.Join(repoRoot, "templates", "core", "resolvers", name)
+	store, err := infrastructure.PackagesResolversDir(repoRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := filepath.Join(store, name, "profile")
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -144,11 +148,11 @@ func TestRunNonStepsHappyPath(t *testing.T) {
 	loadResolverFileAppFn = func(path string) (map[string]string, error) {
 		return map[string]string{"DOCKPIPE_RESOLVER_TEMPLATE": "codex"}, nil
 	}
-	templateBuildAppFn = func(repoRoot, name string) (string, string, bool) {
+	templateBuildAppFn = func(repoRoot, name string) (string, string, string, bool, error) {
 		if name == "codex" {
-			return "dockpipe-codex", "/build/codex", true
+			return "dockpipe-codex", "/build/codex", repoRoot, true, nil
 		}
-		return "", "", false
+		return "", "", repoRoot, false, nil
 	}
 	maybeVersionTagAppFn = func(repoRoot, image string) string { return image }
 	dockerBuilt := false
@@ -172,7 +176,7 @@ func TestRunNonStepsHappyPath(t *testing.T) {
 	}
 	var err error
 	stderr := captureRunTestStderr(t, func() {
-		err = Run([]string{"--resolver", "codex", "--", "echo", "hi"}, []string{"BASE=1"})
+		err = Run([]string{"--workdir", repoRoot, "--resolver", "codex", "--", "echo", "hi"}, []string{"BASE=1"})
 	})
 	if err != nil {
 		t.Fatalf("Run failed: %v", err)
@@ -209,11 +213,11 @@ vars:
 		t.Fatal(err)
 	}
 	repoRootAppFn = func() (string, error) { return repoRoot, nil }
-	templateBuildAppFn = func(repoRoot, name string) (string, string, bool) {
+	templateBuildAppFn = func(repoRoot, name string) (string, string, string, bool, error) {
 		if name == "codex" {
-			return "dockpipe-codex", "/build/codex", true
+			return "dockpipe-codex", "/build/codex", repoRoot, true, nil
 		}
-		return "", "", false
+		return "", "", repoRoot, false, nil
 	}
 	maybeVersionTagAppFn = func(repoRoot, image string) string { return image }
 	dockerBuildAppFn = func(image, dockerfileDir, contextDir string) error { return nil }
@@ -223,7 +227,7 @@ vars:
 		return 0, nil
 	}
 
-	err := Run([]string{"--workflow", "proxydemo", "--", "echo", "hi"}, nil)
+	err := Run([]string{"--workdir", repoRoot, "--workflow", "proxydemo", "--", "echo", "hi"}, nil)
 	if err != nil {
 		t.Fatalf("Run failed: %v", err)
 	}
@@ -244,11 +248,11 @@ func TestRunNonStepsSkipsWorkspaceSyncForAuthoritativeSessionVolume(t *testing.T
 	loadResolverFileAppFn = func(path string) (map[string]string, error) {
 		return map[string]string{"DOCKPIPE_RESOLVER_TEMPLATE": "codex"}, nil
 	}
-	templateBuildAppFn = func(repoRoot, name string) (string, string, bool) {
+	templateBuildAppFn = func(repoRoot, name string) (string, string, string, bool, error) {
 		if name == "codex" {
-			return "dockpipe-codex", "/build/codex", true
+			return "dockpipe-codex", "/build/codex", repoRoot, true, nil
 		}
-		return "", "", false
+		return "", "", repoRoot, false, nil
 	}
 	maybeVersionTagAppFn = func(repoRoot, image string) string { return image }
 	dockerBuildAppFn = func(image, dockerfileDir, contextDir string) error { return nil }
@@ -258,7 +262,7 @@ func TestRunNonStepsSkipsWorkspaceSyncForAuthoritativeSessionVolume(t *testing.T
 		return 0, nil
 	}
 
-	err := Run([]string{"--resolver", "codex", "--", "echo", "hi"}, []string{
+	err := Run([]string{"--workdir", repoRoot, "--resolver", "codex", "--", "echo", "hi"}, []string{
 		"DOCKPIPE_SESSION_VOLUME=dockpipe-ws-demo",
 		"DOCKPIPE_SESSION_VOLUME_AUTHORITATIVE=1",
 	})
@@ -287,10 +291,16 @@ steps: []
 	if err := os.WriteFile(filepath.Join(repoRoot, "workflows", "mywf", "config.yml"), []byte(cfg), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Join(workdir, "templates", "core", "assets", "images", "codex"), 0o755); err != nil {
+	writeTestCoreResolver(t, workdir, "codex", "DOCKPIPE_RESOLVER_CMD=fixture\n")
+	resolverStore, err := infrastructure.PackagesResolversDir(workdir)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(workdir, "templates", "core", "assets", "images", "codex", "Dockerfile"), []byte("FROM alpine\n"), 0o644); err != nil {
+	imageDirectory := filepath.Join(resolverStore, "codex", "assets", "images", "codex")
+	if err := os.MkdirAll(imageDirectory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(imageDirectory, "Dockerfile"), []byte("FROM alpine\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(workdir, "version"), []byte("0.0.0\n"), 0o644); err != nil {
@@ -313,8 +323,8 @@ steps: []
 		t.Fatal(err)
 	}
 	dockerImageExistsAppFn = func(image string) (bool, error) { return true, nil }
-	buildDir := filepath.Join(workdir, "templates", "core", "assets", "images", "codex")
-	skip, msg, err := maybeSkipDockerBuildForWorkflow(workdir, wfURI, filepath.Join(repoRoot, "workflows", "mywf"), "dockpipe-codex:0.0.0", buildDir, workdir)
+	buildDir := imageDirectory
+	skip, msg, err := maybeSkipDockerBuildForWorkflow(workdir, wfURI, filepath.Join(repoRoot, "workflows", "mywf"), "dockpipe-codex:0.0.0", buildDir, filepath.Join(resolverStore, "codex"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -374,7 +384,7 @@ func TestRunWorkflowPullsCompiledRegistryImageWhenAllowed(t *testing.T) {
 		}
 		return 0, nil
 	}
-	if err := Run([]string{"--workflow", "mywf", "--", "echo", "hi"}, nil); err != nil {
+	if err := Run([]string{"--workdir", repoRoot, "--workflow", "mywf", "--", "echo", "hi"}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if pulled != rm.Image.Ref {
@@ -422,7 +432,7 @@ func TestRunWorkflowBlocksCompiledRegistryPullWhenOffline(t *testing.T) {
 		t.Fatalf("docker pull should not be called for offline registry image")
 		return nil
 	}
-	err = Run([]string{"--workflow", "mywf", "--", "echo", "hi"}, nil)
+	err = Run([]string{"--workdir", repoRoot, "--workflow", "mywf", "--", "echo", "hi"}, nil)
 	if err == nil || !strings.Contains(err.Error(), `compiled network policy "offline" does not allow pulling`) {
 		t.Fatalf("expected offline pull error, got %v", err)
 	}
@@ -447,9 +457,9 @@ func TestRunHostIsolateHappyPath(t *testing.T) {
 		}, nil
 	}
 	dockerBuilt := false
-	templateBuildAppFn = func(repoRoot, name string) (string, string, bool) {
+	templateBuildAppFn = func(repoRoot, name string) (string, string, string, bool, error) {
 		dockerBuilt = true
-		return "", "", false
+		return "", "", repoRoot, false, nil
 	}
 	containerRan := false
 	runContainerAppFn = func(o infrastructure.RunOpts, argv []string) (int, error) {
@@ -490,7 +500,7 @@ func TestRunMissingWorkflowErrors(t *testing.T) {
 	repoRoot := t.TempDir()
 	repoRootAppFn = func() (string, error) { return repoRoot, nil }
 
-	err := Run([]string{"--workflow", "missing", "--", "echo", "x"}, nil)
+	err := Run([]string{"--workdir", repoRoot, "--workflow", "missing", "--", "echo", "x"}, nil)
 	if err == nil || !strings.Contains(err.Error(), `workflow "missing" not found`) {
 		t.Fatalf("expected workflow missing error, got %v", err)
 	}
@@ -505,13 +515,13 @@ func TestRunPreScriptNotFoundErrors(t *testing.T) {
 	loadResolverFileAppFn = func(path string) (map[string]string, error) {
 		return map[string]string{"DOCKPIPE_RESOLVER_TEMPLATE": "codex"}, nil
 	}
-	templateBuildAppFn = func(repoRoot, name string) (string, string, bool) {
-		return "dockpipe-codex", "/build", true
+	templateBuildAppFn = func(repoRoot, name string) (string, string, string, bool, error) {
+		return "dockpipe-codex", "/build", repoRoot, true, nil
 	}
 	maybeVersionTagAppFn = func(repoRoot, image string) string { return image }
 	resolvePreScriptAppFn = func(p, root, _ string) string { return filepath.Join(root, "does-not-exist.sh") }
 
-	err := Run([]string{"--resolver", "codex", "--run", "scripts/pre.sh", "--", "echo", "x"}, nil)
+	err := Run([]string{"--workdir", repoRoot, "--resolver", "codex", "--run", "scripts/pre.sh", "--", "echo", "x"}, nil)
 	if err == nil || !strings.Contains(err.Error(), "pre-script not found") {
 		t.Fatalf("expected pre-script not found error, got %v", err)
 	}
@@ -526,12 +536,12 @@ func TestRunMissingDashErrors(t *testing.T) {
 	loadResolverFileAppFn = func(path string) (map[string]string, error) {
 		return map[string]string{"DOCKPIPE_RESOLVER_TEMPLATE": "codex"}, nil
 	}
-	templateBuildAppFn = func(repoRoot, name string) (string, string, bool) {
-		return "dockpipe-codex", "/build", true
+	templateBuildAppFn = func(repoRoot, name string) (string, string, string, bool, error) {
+		return "dockpipe-codex", "/build", repoRoot, true, nil
 	}
 	maybeVersionTagAppFn = func(repoRoot, image string) string { return image }
 
-	err := Run([]string{"--resolver", "codex"}, nil)
+	err := Run([]string{"--workdir", repoRoot, "--resolver", "codex"}, nil)
 	if err == nil || !strings.Contains(err.Error(), "expected -- before command") {
 		t.Fatalf("expected missing -- error, got %v", err)
 	}
@@ -546,8 +556,8 @@ func TestRunNonZeroContainerExitCallsExitFn(t *testing.T) {
 	loadResolverFileAppFn = func(path string) (map[string]string, error) {
 		return map[string]string{"DOCKPIPE_RESOLVER_TEMPLATE": "codex"}, nil
 	}
-	templateBuildAppFn = func(repoRoot, name string) (string, string, bool) {
-		return "dockpipe-codex", "/build", true
+	templateBuildAppFn = func(repoRoot, name string) (string, string, string, bool, error) {
+		return "dockpipe-codex", "/build", repoRoot, true, nil
 	}
 	maybeVersionTagAppFn = func(repoRoot, image string) string { return image }
 	dockerBuildAppFn = func(image, dockerfileDir, contextDir string) error { return nil }
@@ -555,7 +565,7 @@ func TestRunNonZeroContainerExitCallsExitFn(t *testing.T) {
 	exitCode := -1
 	osExitAppFn = func(code int) { exitCode = code }
 
-	err := Run([]string{"--resolver", "codex", "--", "echo", "hi"}, nil)
+	err := Run([]string{"--workdir", repoRoot, "--resolver", "codex", "--", "echo", "hi"}, nil)
 	if err != nil {
 		t.Fatalf("Run returned error: %v", err)
 	}
@@ -570,7 +580,7 @@ func TestRunWorkflowStepsModeDelegatesToRunSteps(t *testing.T) {
 	repoRoot := t.TempDir()
 	writeTestCoreResolver(t, repoRoot, "codex", "DOCKPIPE_RESOLVER_TEMPLATE=codex\n")
 	repoRootAppFn = func() (string, error) { return repoRoot, nil }
-	workflowDir := filepath.Join(repoRoot, "templates", "demo")
+	workflowDir := filepath.Join(repoRoot, "workflows", "demo")
 	if err := os.MkdirAll(workflowDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -596,7 +606,7 @@ func TestRunWorkflowStepsModeDelegatesToRunSteps(t *testing.T) {
 		return nil
 	}
 
-	err := Run([]string{"--workflow", "demo", "--", "echo", "x"}, nil)
+	err := Run([]string{"--workdir", repoRoot, "--workflow", "demo", "--", "echo", "x"}, nil)
 	if err != nil {
 		t.Fatalf("Run failed: %v", err)
 	}
@@ -609,7 +619,7 @@ func TestRunWorkflowStepsModeNonZeroExitCallsExitFn(t *testing.T) {
 	withRunSeams(t)
 	repoRoot := t.TempDir()
 	repoRootAppFn = func() (string, error) { return repoRoot, nil }
-	workflowDir := filepath.Join(repoRoot, "templates", "demo")
+	workflowDir := filepath.Join(repoRoot, "workflows", "demo")
 	if err := os.MkdirAll(workflowDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -628,7 +638,7 @@ func TestRunWorkflowStepsModeNonZeroExitCallsExitFn(t *testing.T) {
 	exitCode := -1
 	osExitAppFn = func(code int) { exitCode = code }
 
-	err := Run([]string{"--workflow", "demo", "--", "echo", "x"}, nil)
+	err := Run([]string{"--workdir", repoRoot, "--workflow", "demo", "--", "echo", "x"}, nil)
 	if err != nil {
 		t.Fatalf("Run returned error: %v", err)
 	}
@@ -644,7 +654,7 @@ func TestRunWorkflowStepsModeCliWorkdirOverridesInheritedEnvMap(t *testing.T) {
 	repoRoot := t.TempDir()
 	writeTestCoreResolver(t, repoRoot, "codex", "DOCKPIPE_RESOLVER_TEMPLATE=codex\n")
 	repoRootAppFn = func() (string, error) { return repoRoot, nil }
-	workflowDir := filepath.Join(repoRoot, "templates", "demo")
+	workflowDir := filepath.Join(repoRoot, "workflows", "demo")
 	if err := os.MkdirAll(workflowDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -713,7 +723,7 @@ func TestResolveWorkflowWorkspaceSourceUsesLocalRepoPath(t *testing.T) {
 func TestRunWorkflowAppliesCompiledRuntimePolicy(t *testing.T) {
 	withRunSeams(t)
 	repoRoot := t.TempDir()
-	wfDir := filepath.Join(repoRoot, "templates", "secure")
+	wfDir := filepath.Join(repoRoot, "workflows", "secure")
 	if err := os.MkdirAll(filepath.Join(wfDir, domain.RuntimeManifestDirName), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -760,8 +770,8 @@ isolate: codex
 	}
 
 	repoRootAppFn = func() (string, error) { return repoRoot, nil }
-	templateBuildAppFn = func(repoRoot, name string) (string, string, bool) {
-		return "dockpipe-codex", "/build", true
+	templateBuildAppFn = func(repoRoot, name string) (string, string, string, bool, error) {
+		return "dockpipe-codex", "/build", repoRoot, true, nil
 	}
 	maybeVersionTagAppFn = func(repoRoot, image string) string { return image }
 	dockerBuildAppFn = func(image, dockerfileDir, contextDir string) error { return nil }
@@ -842,7 +852,7 @@ isolate: codex
 func TestRunWorkflowStepsModeLogsCompiledRuntimePolicy(t *testing.T) {
 	withRunSeams(t)
 	repoRoot := t.TempDir()
-	workflowDir := filepath.Join(repoRoot, "templates", "demo")
+	workflowDir := filepath.Join(repoRoot, "workflows", "demo")
 	if err := os.MkdirAll(filepath.Join(workflowDir, domain.RuntimeManifestDirName), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -888,7 +898,7 @@ func TestRunWorkflowStepsModeLogsCompiledRuntimePolicy(t *testing.T) {
 
 	var runErr error
 	stderr := captureRunTestStderr(t, func() {
-		runErr = Run([]string{"--workflow", "demo", "--", "echo", "x"}, nil)
+		runErr = Run([]string{"--workdir", repoRoot, "--workflow", "demo", "--", "echo", "x"}, nil)
 	})
 	if runErr != nil {
 		t.Fatalf("Run failed: %v", runErr)
@@ -924,8 +934,8 @@ func TestRunAutoBranchForRepoWithoutBranch(t *testing.T) {
 	loadResolverFileAppFn = func(path string) (map[string]string, error) {
 		return map[string]string{"DOCKPIPE_RESOLVER_TEMPLATE": "codex"}, nil
 	}
-	templateBuildAppFn = func(repoRoot, name string) (string, string, bool) {
-		return "dockpipe-codex", "/build", true
+	templateBuildAppFn = func(repoRoot, name string) (string, string, string, bool, error) {
+		return "dockpipe-codex", "/build", repoRoot, true, nil
 	}
 	maybeVersionTagAppFn = func(repoRoot, image string) string { return image }
 	dockerBuildAppFn = func(image, dockerfileDir, contextDir string) error { return nil }
@@ -935,13 +945,27 @@ func TestRunAutoBranchForRepoWithoutBranch(t *testing.T) {
 		return 0, nil
 	}
 
-	err := Run([]string{"--resolver", "codex", "--repo", "https://example.com/r.git", "--workdir", repoRoot, "--", "echo", "x"}, nil)
+	expectedHook, err := infrastructure.LegacyGitHookPath(repoRoot, "clone-worktree")
+	if err != nil {
+		t.Fatal(err)
+	}
+	selectedHook := ""
+	sourceHostScriptAppFn = func(path string, environment []string) (map[string]string, error) {
+		selectedHook = path
+		return map[string]string{"DOCKPIPE_WORKDIR": repoRoot}, nil
+	}
+
+	err = Run([]string{"--resolver", "codex", "--repo", "https://example.com/r.git", "--workdir", repoRoot, "--", "echo", "x"}, nil)
 	if err != nil {
 		t.Fatalf("Run failed: %v", err)
 	}
 	if gotRunOpts.Image == "" {
 		t.Fatalf("expected run container options to be populated")
 	}
+	if selectedHook != expectedHook {
+		t.Fatalf("--repo selected %q, want explicit library hook %q", selectedHook, expectedHook)
+	}
+
 }
 
 // TestRunInfersOriginWhenWorkflowUsesCloneWorktree fills --repo from git remote when workflow uses clone-worktree pre-script.
@@ -958,7 +982,7 @@ func TestRunInfersOriginWhenWorkflowUsesCloneWorktree(t *testing.T) {
 		t.Fatalf("git remote add: %v\n%s", err, out)
 	}
 
-	wfDir := filepath.Join(root, "templates", "wfinfer")
+	wfDir := filepath.Join(root, "workflows", "wfinfer")
 	if err := os.MkdirAll(wfDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -980,8 +1004,8 @@ isolate: codex
 	}
 
 	repoRootAppFn = func() (string, error) { return root, nil }
-	templateBuildAppFn = func(repoRoot, name string) (string, string, bool) {
-		return "dockpipe-codex", "/build", true
+	templateBuildAppFn = func(repoRoot, name string) (string, string, string, bool, error) {
+		return "dockpipe-codex", "/build", repoRoot, true, nil
 	}
 	maybeVersionTagAppFn = func(repoRoot, image string) string { return image }
 	dockerBuildAppFn = func(image, dockerfileDir, contextDir string) error { return nil }
@@ -1033,7 +1057,7 @@ isolate: codex
 func TestStrategyHookOrder(t *testing.T) {
 	withRunSeams(t)
 	repoRoot := t.TempDir()
-	stratDir := filepath.Join(repoRoot, "templates", "core", "strategies")
+	stratDir := filepath.Join(repoRoot, "strategies")
 	if err := os.MkdirAll(stratDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -1060,11 +1084,11 @@ isolate: codex
 	}
 
 	repoRootAppFn = func() (string, error) { return repoRoot, nil }
-	templateBuildAppFn = func(repoRoot, name string) (string, string, bool) {
+	templateBuildAppFn = func(repoRoot, name string) (string, string, string, bool, error) {
 		if name == "codex" {
-			return "dockpipe-codex", "/build/codex", true
+			return "dockpipe-codex", "/build/codex", repoRoot, true, nil
 		}
-		return "", "", false
+		return "", "", repoRoot, false, nil
 	}
 	maybeVersionTagAppFn = func(repoRoot, image string) string { return image }
 	dockerBuildAppFn = func(image, dockerfileDir, contextDir string) error { return nil }

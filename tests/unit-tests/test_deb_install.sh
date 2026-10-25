@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Integration test: install the .deb in a container and run dockpipe --help.
-# Validates dpkg install + dockpipe --help (bundled assets are embedded in the binary).
+# Validates dpkg installation and the standalone CLI without optional catalog packages.
 # (fix for issue #1). Requires Docker and a built .deb; fails if either is missing.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-DEB_GLOB="${REPO_ROOT}/release/packaging/build/dockpipe_*_amd64.deb"
+DEB_GLOB="${REPO_ROOT}/release/artifacts/dockpipe_*_amd64.deb"
 DEB="${DOCKPIPE_DEB_PATH:-}"
-BUILD_ROOT="${REPO_ROOT}/release/packaging/build"
+BUILD_ROOT="${REPO_ROOT}/release/artifacts"
 
 docker_mount_path() {
   local path="${1:?path}"
@@ -62,7 +62,7 @@ if [[ ! -f "${DEB}" ]]; then
   if [[ -n "${package_dir}" ]]; then
     DEB="$(rebuild_deb_from_package_dir "${package_dir}")"
   else
-    echo "test_deb_install FAIL: No .deb found at release/packaging/build/dockpipe_*_amd64.deb (run ./release/packaging/build-deb.sh first)"
+    echo "test_deb_install FAIL: No .deb found at release/artifacts/dockpipe_*_amd64.deb (run ./release/artifacts-deb.sh first)"
     exit 1
   fi
 fi

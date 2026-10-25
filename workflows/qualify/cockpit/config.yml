@@ -1,0 +1,11 @@
+name: qualify-cockpit
+description: Run the qualify cockpit operation with explicit options after --.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/qualify/cockpit/assets/scripts/prepare-cockpit.py

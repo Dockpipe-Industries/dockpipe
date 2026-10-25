@@ -17,7 +17,7 @@ var (
 	repoRootAppFn          = infrastructure.RepoRoot
 	loadWorkflowAppFn      = infrastructure.LoadWorkflow
 	loadResolverFileAppFn  = infrastructure.LoadResolverFile
-	templateBuildAppFn     = infrastructure.TemplateBuild
+	templateBuildAppFn     = infrastructure.ResolveTemplateBuild
 	maybeVersionTagAppFn   = infrastructure.MaybeVersionTag
 	resolveActionPathFn    = infrastructure.ResolveActionPath
 	sourceHostScriptAppFn  = infrastructure.SourceHostScript
@@ -251,33 +251,20 @@ func Run(argv []string, baseEnviron []string) error {
 			wfConfig, statErr = infrastructure.ResolveWorkflowConfigPathWithWorkdir(repoRoot, effWd, opts.Workflow)
 		}
 		if statErr != nil {
-			if strings.TrimSpace(opts.Package) == "" && os.Getenv("DOCKPIPE_REPO_ROOT") == "" && infrastructure.EmbeddedWorkflowConfigExists(opts.Workflow) {
-				if invErr := infrastructure.InvalidateBundledCache(); invErr == nil {
-					repoRoot, err = repoRootAppFn()
-					if err != nil {
-						return err
-					}
-					wfConfig, statErr = infrastructure.ResolveWorkflowConfigPathWithWorkdir(repoRoot, effWd, opts.Workflow)
-				}
+			names, _ := infrastructure.ListWorkflowNamesInRepoRootAndPackages(repoRoot, effWd)
+			msg := fmt.Sprintf("workflow %q not found — tried project workflows, declared compile roots, and installed or configured workflow packages", opts.Workflow)
+			if strings.TrimSpace(opts.Package) != "" {
+				msg = fmt.Sprintf("workflow %q in package %q not found — tried unpacked packaged workflows and configured workflow roots", opts.Workflow, opts.Package)
 			}
-			if statErr != nil {
-				names, _ := infrastructure.ListWorkflowNamesInRepoRootAndPackages(repoRoot, effWd)
-				msg := fmt.Sprintf("workflow %q not found — tried workflows/ (or DOCKPIPE_WORKFLOWS_DIR), extra roots from dockpipe.config.json compile.workflows, installed workflow packages under bin/.dockpipe/internal/packages/workflows/, configured local package sources from packages.sources, built-in bundled workflows for this dockpipe build, and namespaced workflow tarballs (dockpipe-workflow-%[1]s-*.tar.gz under release/artifacts or packages.tarball_dir with a matching config.yml or compiled package.yml namespace)", opts.Workflow)
-				if strings.TrimSpace(opts.Package) != "" {
-					msg = fmt.Sprintf("workflow %q in package %q not found — tried unpacked packaged workflows and configured workflow roots", opts.Workflow, opts.Package)
-				}
-				if len(names) > 0 {
-					msg += fmt.Sprintf(" (available in this install: %s)", strings.Join(names, ", "))
-				}
-				if strings.TrimSpace(opts.Package) != "" {
-					msg += ". Ensure the nearest package.yml sets name: to the requested package."
-				} else if !infrastructure.EmbeddedWorkflowConfigExists(opts.Workflow) {
-					msg += ". This dockpipe build does not include that workflow; install a newer release or use --workflow-file path/to/config.yml."
-				} else {
-					msg += ". Try deleting the bundled cache folder under your user cache (dockpipe/bundled-*) or set DOCKPIPE_REPO_ROOT to a full git checkout."
-				}
-				return fmt.Errorf("%s", msg)
+			if len(names) > 0 {
+				msg += fmt.Sprintf(" (available: %s)", strings.Join(names, ", "))
 			}
+			if strings.TrimSpace(opts.Package) != "" {
+				msg += ". Ensure the nearest package.yml sets name: to the requested package."
+			} else {
+				msg += ". Install the workflow package or use --workflow-file path/to/config.yml."
+			}
+			return fmt.Errorf("%s", msg)
 		}
 		if strings.HasPrefix(wfConfig, "tar://") {
 			configOnDisk, extractErr := infrastructure.WorkflowConfigOnDiskPath(effWd, wfConfig)
@@ -504,7 +491,7 @@ func Run(argv []string, baseEnviron []string) error {
 		preFromResolver = ra.PreScript
 		actFromResolver = ra.Action
 		if ra.Experimental {
-			fmt.Fprintf(os.Stderr, "[dockpipe] Profile %q is experimental — see templates/core and docs.\n", profileLabel)
+			fmt.Fprintf(os.Stderr, "[dockpipe] Profile %q is experimental — see its package documentation.\n", profileLabel)
 		}
 		if opts.Workflow == "" && opts.WorkflowFile == "" {
 			if len(opts.PreScripts) == 0 && preFromResolver != "" {
@@ -597,7 +584,9 @@ func Run(argv []string, baseEnviron []string) error {
 			// Host script or embedded workflow replaces docker isolate (e.g. cursor-dev / vscode templates).
 			image, buildDir, buildCtx = "", "", ""
 		} else if opts.Isolate != "" {
-			if im, dir, ctx, ok := templateBuildForRun(repoRoot, projectRoot, opts.Isolate); ok {
+			if im, dir, ctx, ok, err := templateBuildForRun(repoRoot, projectRoot, opts.Isolate); err != nil {
+				return err
+			} else if ok {
 				effectiveTemplate = opts.Isolate
 				image, buildDir, buildCtx = im, dir, ctx
 			} else {
@@ -605,14 +594,18 @@ func Run(argv []string, baseEnviron []string) error {
 			}
 		} else if templateName != "" {
 			effectiveTemplate = templateName
-			if im, dir, ctx, ok := templateBuildForRun(repoRoot, projectRoot, templateName); ok {
+			if im, dir, ctx, ok, err := templateBuildForRun(repoRoot, projectRoot, templateName); err != nil {
+				return err
+			} else if ok {
 				image, buildDir, buildCtx = im, dir, ctx
 			}
 		}
 		if hostIsolate == "" && resolverWorkflow == "" {
 			if image == "" {
-				image, buildDir = "dockpipe-base-dev", filepath.Join(infrastructure.CoreDir(repoRoot), "assets", "images", "base-dev")
-				buildCtx = repoRoot
+				image, buildDir, buildCtx, _, err = infrastructure.BuiltinContainerBuild(firstNonEmpty(projectRoot, repoRoot), "base-dev")
+				if err != nil {
+					return err
+				}
 			}
 			image = maybeVersionTagAppFn(repoRoot, image)
 		}
@@ -684,7 +677,11 @@ func Run(argv []string, baseEnviron []string) error {
 			fmt.Fprintf(os.Stderr, "[dockpipe] Data dir for worktrees: %s (override with --data-dir)\n", dataDir)
 			dataVol = ""
 		}
-		opts.PreScripts = []string{"scripts/clone-worktree.sh"}
+		cloneHook, err := infrastructure.LegacyGitHookPath(projectRoot, "clone-worktree")
+		if err != nil {
+			return fmt.Errorf("prepare repository clone hook: %w", err)
+		}
+		opts.PreScripts = []string{cloneHook}
 	}
 
 	// Drop inherited DOCKPIPE_WORKDIR before pre-scripts: a leftover export (or workflow .env)

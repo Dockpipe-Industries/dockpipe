@@ -1,0 +1,12 @@
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    file \
+    less \
+    man-db \
+    openssh-client \
+    patch \
+    unzip \
+    zip \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /work

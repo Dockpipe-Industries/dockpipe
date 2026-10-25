@@ -72,18 +72,18 @@ func packagedWorkflowDiskCandidates(repoRoot, workdir, name string) []string {
 			out = append(out, filepath.Join(pw, name, "config.yml"))
 		}
 	}
+	for _, root := range configuredPackageStoreRoots(workdir) {
+		out = append(out, filepath.Join(root, "workflows", name, "config.yml"))
+	}
 	if gw, err := GlobalPackagesWorkflowsDir(); err == nil {
 		out = append(out, filepath.Join(gw, name, "config.yml"))
 	}
-	out = append(out, filepath.Join(WorkflowsRootDir(repoRoot), name, "config.yml"))
-	if !UsesBundledAssetLayout(repoRoot) {
-		out = append(out, nestedWorkflowConfigCandidates(repoRoot, name, WorkflowCompileRootsCached(repoRoot))...)
+	for _, root := range SystemPackagesRoots() {
+		out = append(out, filepath.Join(root, "workflows", name, "config.yml"))
 	}
-	if strings.TrimSpace(workdir) != "" && workdir != repoRoot && !UsesBundledAssetLayout(workdir) {
+	out = append(out, nestedWorkflowConfigCandidates(repoRoot, name, WorkflowCompileRootsCached(repoRoot))...)
+	if strings.TrimSpace(workdir) != "" && workdir != repoRoot {
 		out = append(out, nestedWorkflowConfigCandidates(workdir, name, WorkflowCompileRootsCached(workdir))...)
-	}
-	if !UsesBundledAssetLayout(repoRoot) && !DockpipeAuthoringSourceTree(repoRoot) {
-		out = append(out, filepath.Join(repoRoot, "templates", name, "config.yml"))
 	}
 	return out
 }
@@ -147,7 +147,7 @@ func parseWorkflowNamespaceYAML(b []byte) (string, error) {
 	return strings.TrimSpace(top.Namespace), nil
 }
 
-// NormalizeRuntimeProfileName maps legacy names to bundled runtime profile dirs under core/runtimes/<name>.
+// NormalizeRuntimeProfileName maps legacy names to library runtime defaults.
 // Canonical substrates: dockerimage, dockerfile, vmimage, package (nested workflow entry). Legacy names
 // (docker, cli, powershell, cmd, kube-pod, kubepod, cloud, keystore) normalize to dockerimage.
 func NormalizeRuntimeProfileName(name string) string {

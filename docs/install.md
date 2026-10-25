@@ -3,7 +3,7 @@
 Choose **Desktop** for the launcher and CLI together, or **CLI / Remote Worker**
 for terminals, servers and CI. You do not need a Dockpipe source checkout or Go.
 Optional workflows and resolvers are installed from **Packages → Marketplace** or
-`dockpipe package install`; the base installer includes required core.
+`dockpipe package install`; the base CLI is self-contained.
 
 Use the [release catalog](https://packages.dockpipe.com/packages/runtime/latest.json)
 to select the current release. The website selects the matching catalog for
@@ -29,7 +29,7 @@ After installation, start with [Your first workflow](onboarding.md).
 
 ## Desktop installation
 
-**macOS:** download `dockpipe-desktop_VERSION_darwin_arm64.dmg` for Apple Silicon or `dockpipe-desktop_VERSION_darwin_amd64.dmg` for Intel, verify it against that release's `SHA256SUMS.txt`, open it, and run **Install Dockpipe.pkg**. Apple's Installer installs **DockPipe.app** in Applications and **`dockpipe`** in `/usr/local/bin`. Open Dockpipe from Applications; new terminals can run `dockpipe --version`. The desktop app contains the matching CLI, Qt runtime and required core package. macOS 13 or newer is required.
+**macOS:** download `dockpipe-desktop_VERSION_darwin_arm64.dmg` for Apple Silicon or `dockpipe-desktop_VERSION_darwin_amd64.dmg` for Intel, verify it against that release's `SHA256SUMS.txt`, open it, and run **Install Dockpipe.pkg**. Apple's Installer installs **DockPipe.app** in Applications and **`dockpipe`** in `/usr/local/bin`. Open Dockpipe from Applications; new terminals can run `dockpipe --version`. The desktop app contains the matching CLI and Qt runtime. macOS 13 or newer is required.
 
 Use one installation method. The DMG installer refuses an existing foreign CLI or app; users with an existing Homebrew installation should keep that installation method or remove it before switching. Re-running the DMG installer updates an installation owned by that installer. Current DMGs use ad-hoc signatures and are not yet Developer ID signed and notarized. They may be blocked by Gatekeeper; the installation instructions do not require changing macOS security settings.
 
@@ -53,7 +53,7 @@ brew update
 brew upgrade dockpipe-staging dockpipe-desktop-staging
 ```
 
-Uninstalling the desktop cask removes the app and retains the CLI formula. User contexts and data are retained. The app uses its bundled matching CLI; terminal commands use the formula. See [desktop packaging](../release/packaging/desktop/README.md) for direct-installer removal and signing requirements.
+Uninstalling the desktop cask removes the app and retains the CLI formula. User contexts and data are retained. The app uses its bundled matching CLI; terminal commands use the formula. See [desktop packaging](../workflows/build/desktop/README.md) for direct-installer removal and signing requirements.
 
 <!-- dockpipe:end-channel -->
 
@@ -143,7 +143,7 @@ for its architecture and runtime; native package stores are separate.
 Podman API socket. Editors, provider CLIs and authentication must be installed
 on the host when a workflow uses them. The Flatpak includes Git, Docker CLI,
 Compose and Buildx; it does not install a host engine. See
-[host integration and platform limits](../release/packaging/desktop/flatpak/README.md)
+[host integration and platform limits](../workflows/build/flatpak/README.md)
 for permissions, terminal setup details and troubleshooting.
 
 ## Signed APT repository
@@ -202,7 +202,7 @@ DOCKPIPE_VERSION="$version" DOCKPIPE_DOWNLOAD_BASE="$base" DOCKPIPE_INSTALL_MODE
 The installer verifies its CLI payload checksum. It installs the portable CLI in
 `~/.local/bin` by default; add that directory to your shell's `PATH` if needed.
 Use the numeric manifest `version` for `DOCKPIPE_VERSION`.
-This script installs CLI/core, not the desktop launcher.
+This script installs the self-contained CLI, not the desktop launcher.
 
 ### Native Linux packages
 
@@ -259,7 +259,7 @@ winget catalog yet.
 
 Use the [native CLI installer](#direct-downloads-and-complete-package-stores)
 or download the matching macOS tarball from the selected release catalog.
-The portable installer installs CLI/core into `~/.local/bin`; add it to
+The portable installer installs the self-contained CLI into `~/.local/bin`; add it to
 your shell PATH and check `dockpipe --version`.
 
 <!-- dockpipe:channel staging -->
@@ -317,18 +317,19 @@ Open **Settings → Package Remotes → Use production**, save, then open
 catalogs on the same release channel.
 
 Marketplace verifies checksums and installs selected packages into your user
-store. Base installers include core only. See [Find and use packages](packages/package-quickstart.md)
+store. Base installers include the self-contained CLI. See [Find and use packages](packages/package-quickstart.md)
 for dependencies, terminal installation and removal.
 
-## Bundled templates (no extra install tree)
+## Self-contained runtime and optional workflows
 
-The CLI and installer supply the required runtime assets. You do not need to copy
-`templates/`, clone Dockpipe, or compile its source to run an installed workflow.
-Dockpipe may materialize embedded assets in its user cache automatically.
+Install the application to obtain the CLI and its generic runtime capabilities.
+Project workflows live under `workflows/` or explicitly declared source roots.
+Optional workflow and resolver packages live in the package store; install them
+through the Marketplace or `dockpipe package install`.
 
-Your own source workflows live under `workflows/` in your project. Optional packages
-live in the user store; the [package model](packages/package-model.md) explains
-storage and precedence when you need advanced configuration.
+No source checkout, shared core archive or extracted workflow tree is required.
+See [runtime resource ownership](concepts/runtime-resource-ownership.md) and the
+[package model](packages/package-model.md).
 
 ## Building or maintaining Dockpipe
 

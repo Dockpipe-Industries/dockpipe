@@ -16,25 +16,13 @@ bool looksLikeRepoRoot(const QString &absPath)
     const QDir d(absPath);
     return QFileInfo(d.filePath(QStringLiteral("workflows"))).isDir()
         || QFileInfo(d.filePath(QStringLiteral("dockpipe.config.json"))).isFile()
-        || QFileInfo(d.filePath(QStringLiteral("packages"))).isDir()
-        || QFileInfo(d.filePath(QStringLiteral("src/core/runtimes"))).isDir()
-        || QFileInfo(d.filePath(QStringLiteral("templates/core"))).isDir();
+        || QFileInfo(d.filePath(QStringLiteral("packages"))).isDir();
 }
 
 void sortUnique(QStringList &list)
 {
     list.removeDuplicates();
     std::sort(list.begin(), list.end());
-}
-
-void appendStaticFallbacks(DockpipeChoices &c)
-{
-    c.workflowNames = QStringList{QStringLiteral("vscode"), QStringLiteral("init"), QStringLiteral("run"),
-                                  QStringLiteral("run-apply"), QStringLiteral("run-apply-validate")};
-    c.resolvers = QStringList{QStringLiteral("vscode"), QStringLiteral("claude"), QStringLiteral("codex"),
-                              QStringLiteral("cursor-dev")};
-    c.strategies = QStringList{QStringLiteral("commit"), QStringLiteral("worktree")};
-    c.runtimes = QStringList{QStringLiteral("dockerimage"), QStringLiteral("dockerfile"), QStringLiteral("package")};
 }
 
 QString executableCandidate(const QString &rootOrWorkdir)
@@ -141,25 +129,8 @@ void DockpipeChoices::scan(const QString &repoRoot, const QString &hintWorkdir)
     strategies = catalog.strategies;
     runtimes = catalog.runtimes;
 
-    if (workflowNames.isEmpty() && resolvers.isEmpty()) {
-        appendStaticFallbacks(*this);
-    } else {
-        if (workflowNames.isEmpty()) {
-            workflowNames = QStringList{QStringLiteral("vscode"), QStringLiteral("init"), QStringLiteral("run"),
-                                        QStringLiteral("run-apply"), QStringLiteral("run-apply-validate")};
-        }
-        if (resolvers.isEmpty())
-            resolvers = QStringList{QStringLiteral("vscode"), QStringLiteral("claude"), QStringLiteral("codex"),
-                                    QStringLiteral("cursor-dev")};
-        if (strategies.isEmpty())
-            strategies = QStringList{QStringLiteral("commit"), QStringLiteral("worktree")};
-        if (runtimes.isEmpty()) {
-            runtimes = QStringList{QStringLiteral("cli"), QStringLiteral("powershell"), QStringLiteral("cmd"),
-                                   QStringLiteral("dockerimage"), QStringLiteral("dockerfile"),
-                                   QStringLiteral("package")};
-        }
-    }
-
+    // The CLI catalog is authoritative. An unavailable or empty catalog must
+    // not advertise workflows, resolvers or strategies that are not installed.
     sortUnique(workflowNames);
     sortUnique(workflowConfigPaths);
     sortUnique(resolvers);

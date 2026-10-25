@@ -13,7 +13,7 @@ Dependency installation precedes the offline source discovery and archive export
 A changed producer or dependency closure must reproduce the same bytes, or the
 lock must be deliberately updated with new consumer evidence.
 
-Run `python3 release/packaging/build-locked-go-sdk.py --source-root /path/to/committed-snapshot --output /fresh/output`
+Run `python3 workflows/build/go-sdk/assets/scripts/build-locked.py --source-root /path/to/committed-snapshot --output /fresh/output`
 to reproduce locally after installing the snapshot's Go module dependencies.
 The source directory must contain the locked snapshot; it is an explicit producer
 input and is never a consumer fallback.

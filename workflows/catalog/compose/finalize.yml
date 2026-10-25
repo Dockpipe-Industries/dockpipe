@@ -1,0 +1,11 @@
+name: finalize-cockpit-catalog
+description: Compose qualified Cockpit into an explicit base catalog and fresh output store.
+docker_preflight: false
+steps:
+  - id: finalize
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/catalog/compose/assets/scripts/ingest-pinned-stores.py --finalize-cockpit
