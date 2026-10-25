@@ -302,11 +302,26 @@ static int runBrowserChecks()
         CHECK_BROWSER(status->text().contains("cancelled"));
         const QString savedFile = downloads.filePath("saved.html");
         downloadRequested = false;
+        bool savePathSelected = false;
         QTimer acceptSaveDialog;
         acceptSaveDialog.setInterval(20);
         QObject::connect(&acceptSaveDialog, &QTimer::timeout, &browser, [&]() {
             if (auto *dialog = browser.findChild<QFileDialog *>()) {
-                dialog->selectFile(savedFile);
+                if (!dialog->isVisible())
+                    return;
+                auto *fileNameEditor = dialog->findChild<QLineEdit *>("fileNameEdit");
+                if (!fileNameEditor) {
+                    dialog->reject();
+                    return;
+                }
+                // selectFile() need not replace the filename in an already
+                // visible dialog. Edit the same field used for user input.
+                fileNameEditor->setText(savedFile);
+                savePathSelected = dialog->selectedFiles() == QStringList{savedFile};
+                if (!savePathSelected) {
+                    dialog->reject();
+                    return;
+                }
                 QMetaObject::invokeMethod(dialog, "accept", Qt::DirectConnection);
             }
         });
@@ -314,6 +329,7 @@ static int runBrowserChecks()
         view->page()->download(first, "browser-test.html");
         CHECK_BROWSER(waitUntil([&]() { return downloadRequested && cancelledDownload.isNull(); }));
         acceptSaveDialog.stop();
+        CHECK_BROWSER(savePathSelected);
         QFile downloaded(savedFile);
         const bool downloadOpened = downloaded.open(QIODevice::ReadOnly);
         if (!downloadOpened)
