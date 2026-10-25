@@ -55,10 +55,10 @@ with mock.patch.dict(os.environ, {"DOCKPIPE_BIN": override, "PATH": str(path_bin
     assert selected.dockpipe_bin == override
     with mock.patch.object(sdk.subprocess, "check_output", return_value='{"scope":"selected"}') as run:
         assert selected.scope() == {"scope": "selected"}
-        run.assert_called_once_with([override, "scope", "--workdir", str(project)], text=True)
+        run.assert_called_once_with([override, "scope", "--workdir", str(project.resolve())], text=True)
     os.environ.pop("DOCKPIPE_BIN")
     selected.refresh(str(project))
-    assert selected.dockpipe_bin == str(local)
+    assert selected.dockpipe_bin == str(local.resolve())
     local.unlink()
     selected.refresh(str(project))
     assert selected.dockpipe_bin == str(path_cli)

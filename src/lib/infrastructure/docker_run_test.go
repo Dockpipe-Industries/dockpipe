@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -851,15 +852,16 @@ func TestDockerBuildPaths(t *testing.T) {
 		calls = append(calls, call{name: name, args: append([]string(nil), args...)})
 		return helperExitCommand(0)
 	}
+	wantDocker := dockerCommandName()
 	if err := DockerBuild("dockpipe-dev:0.6.0", "/selected/image", "/selected/context"); err != nil {
 		t.Fatal(err)
 	}
 	if len(calls) != 1 {
 		t.Fatalf("selected recipe triggered hidden dependency commands: %+v", calls)
 	}
-	got := strings.Join(flattenCalls(calls), "\n")
-	if !strings.Contains(got, "docker build -q -t dockpipe-dev:0.6.0 -f /selected/image/Dockerfile /selected/context") {
-		t.Fatalf("unexpected build command: %s", got)
+	wantArgs := []string{"build", "-q", "-t", "dockpipe-dev:0.6.0", "-f", filepath.Join("/selected/image", "Dockerfile"), "/selected/context"}
+	if calls[0].name != wantDocker || !slices.Equal(calls[0].args, wantArgs) {
+		t.Fatalf("unexpected build command: %+v; want %s %q", calls[0], wantDocker, wantArgs)
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -138,8 +139,11 @@ func TestCmdInitLikeScriptCreateAndFromLocalFile(t *testing.T) {
 		t.Fatalf("local script contents changed: %q, %v", content, err)
 	}
 	info, err := os.Stat(fromLocal)
-	if err != nil || info.Mode().Perm()&0o111 == 0 {
-		t.Fatalf("local script must remain executable: %v", err)
+	if err != nil {
+		t.Fatalf("stat explicit local script copy: %v", err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm()&0o111 == 0 {
+		t.Fatal("local script must remain executable")
 	}
 	if err := cmdAction([]string{"init", "--from", source, "from-local.sh"}); err == nil {
 		t.Fatal("explicit script copy must not overwrite its destination")
