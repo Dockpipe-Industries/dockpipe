@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reproduce the committed Go SDK selected by the core-owned content lock."""
+"""Reproduce the committed Go SDK selected by the workflow-owned content lock."""
 import argparse
 import hashlib
 import importlib.util
@@ -16,9 +16,16 @@ SPEC.loader.exec_module(PRODUCER)
 
 
 def read_lock(path):
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > 64 << 10:
+        raise ValueError('SDK lock must be a bounded regular file')
     lock = json.loads(path.read_text())
-    if lock.get('schema') != 1 or not re.fullmatch(r'[0-9a-f]{40}', lock['source_commit']):
-        raise ValueError('SDK lock requires an exact committed source')
+    fields = {'schema', 'source_commit', 'version', 'source_digest', 'manifest_asset',
+              'manifest_sha256', 'archive_asset', 'archive_sha256', 'archive_bytes'}
+    if (not isinstance(lock, dict) or set(lock) != fields
+            or type(lock.get('schema')) is not int or lock['schema'] != 1
+            or any(not isinstance(lock[field], str) for field in fields - {'schema', 'archive_bytes'})
+            or not re.fullmatch(r'[0-9a-f]{40}', lock['source_commit'])):
+        raise ValueError('SDK lock requires an exact committed source and complete content identity')
     for field in ('source_digest', 'manifest_sha256', 'archive_sha256'):
         if not re.fullmatch(r'[0-9a-f]{64}', lock[field]):
             raise ValueError('SDK lock requires an exact SHA-256 for ' + field)
@@ -53,15 +60,20 @@ def verify_output(directory, lock):
         raise ValueError('Reproduced SDK metadata differs from the committed lock')
 
 
-def main():
+def parse_arguments():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source-root', type=Path, required=True,
                         help='Checkout of the source commit in workflows/build/go-sdk/assets/source.lock.json')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--go', default='go')
+    parser.add_argument('--lock', type=Path, default=ROOT / 'workflows/build/go-sdk/assets/source.lock.json')
     arguments = sys.argv[1:] or json.loads(os.environ.get("DOCKPIPE_ARGS_JSON", "[]"))
-    args = parser.parse_args(arguments)
-    lock = read_lock(ROOT / 'workflows/build/go-sdk/assets/source.lock.json')
+    return parser.parse_args(arguments)
+
+
+def main():
+    args = parse_arguments()
+    lock = read_lock(args.lock)
     PRODUCER.export(args.source_root.resolve(), args.output.resolve(), PRODUCER.TARGETS,
                     args.go, source_commit=lock['source_commit'])
     verify_output(args.output.resolve(), lock)

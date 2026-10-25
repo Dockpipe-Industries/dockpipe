@@ -16,7 +16,7 @@ steps:
     scopes:
       source: repo
       artifacts: artifacts
-    cmd: python3 workflows/build/cli/assets/scripts/build.py --output "$PLATFORM_BINARY" --version "$PLATFORM_VERSION"
+    cmd: python3 workflows/build/platform/assets/scripts/run-phase.py cli
   - id: assemble
     kind: host
     cwd: repo
@@ -27,4 +27,7 @@ steps:
   - id: linux-packages
     kind: host
     cwd: repo
-    cmd: bash workflows/build/platform/assets/scripts/package-linux.sh
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/build/platform/assets/scripts/run-phase.py linux-packages

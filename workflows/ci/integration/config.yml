@@ -1,0 +1,11 @@
+name: ci-integration
+description: Run the unchanged runtime integration contracts with Docker.
+docker_preflight: false
+steps:
+  - id: integration-contracts
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py bash tests/integration-tests/run.sh

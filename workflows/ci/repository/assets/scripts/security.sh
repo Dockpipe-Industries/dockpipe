@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
-set -euo pipefail
 CI_RAW_DIR="$(./src/bin/dockpipe scope artifacts ci-raw --workdir "$DOCKPIPE_WORKDIR")"
 export DOCKPIPE_CI_RAW_DIR="$CI_RAW_DIR"
+if [[ -n "${GITHUB_ENV:-}" ]]; then
+  printf 'DOCKPIPE_CI_RAW_DIR=%s\n' "$CI_RAW_DIR" >> "$GITHUB_ENV"
+fi
 rm -rf "$CI_RAW_DIR"
 mkdir -p "$CI_RAW_DIR"
 GOBIN="$(go env GOPATH)/bin"
@@ -21,7 +23,8 @@ fi
 "$GOBIN/gosec" -conf .gosec.json -fmt json -out="$CI_RAW_DIR/gosec.json" -exclude-dir=.gomodcache -exclude-dir=bin/.dockpipe -exclude-dir=testdata ./...
 GC=$?
 set -e
-echo "::group::gosec stats (JSON)"
+echo "::group::gosec findings and stats"
+jq -r '.Issues[]? | "\(.file):\(.line): \(.rule_id) [\(.severity)/\(.confidence)] \(.details)"' "$CI_RAW_DIR/gosec.json" || true
 jq '.Stats // empty' "$CI_RAW_DIR/gosec.json" || true
 echo "::endgroup::"
 if [[ $VC -ne 0 ]]; then

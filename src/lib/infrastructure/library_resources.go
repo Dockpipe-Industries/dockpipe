@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -87,23 +88,19 @@ func materializeLibraryResources(workdir, namespace string, files map[string][]b
 	}
 	for _, path := range names {
 		if err := temporary.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-			temporary.Close()
-			return "", err
+			return "", errors.Join(err, temporary.Close())
 		}
 		file, err := temporary.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 		if err != nil {
-			temporary.Close()
-			return "", err
+			return "", errors.Join(err, temporary.Close())
 		}
 		_, writeErr := file.Write(files[path])
 		closeErr := file.Close()
 		if writeErr != nil {
-			temporary.Close()
-			return "", writeErr
+			return "", errors.Join(writeErr, closeErr, temporary.Close())
 		}
 		if closeErr != nil {
-			temporary.Close()
-			return "", closeErr
+			return "", errors.Join(closeErr, temporary.Close())
 		}
 	}
 	if err := temporary.Close(); err != nil {
@@ -220,17 +217,15 @@ func verifyLibraryResourceFile(root *os.Root, name string, expected []byte) erro
 	}
 	info, err := file.Stat()
 	if err != nil {
-		file.Close()
-		return err
+		return errors.Join(err, file.Close())
 	}
 	if !info.Mode().IsRegular() || info.Size() != int64(len(expected)) {
-		file.Close()
-		return fmt.Errorf("invalid file type or size")
+		return errors.Join(fmt.Errorf("invalid file type or size"), file.Close())
 	}
 	content, readErr := io.ReadAll(io.LimitReader(file, int64(len(expected))+1))
 	closeErr := file.Close()
 	if readErr != nil {
-		return readErr
+		return errors.Join(readErr, closeErr)
 	}
 	if closeErr != nil {
 		return closeErr

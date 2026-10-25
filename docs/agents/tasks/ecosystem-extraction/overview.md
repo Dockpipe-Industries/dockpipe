@@ -547,3 +547,30 @@ retained; the unchanged fixture passed with executable isolated temporary files.
 Fresh Windows/macOS required checks, installed Bazzite integration, final public
 content preflight and the runtime-first dependency publication chain still gate
 staging. No staging promotion or Marketplace upload is claimed by this checkpoint.
+
+
+## Required CI repair checkpoint (2026-10-25)
+
+Source cleanup commit `5492a3cb6912ea4f3e86512ecbd587d4dfa23bb0` is pushed
+for PR 219. CodeQL and the CLI, display SDK, launcher SDK and editor candidate
+builds passed. These PR artifacts do not establish public replacement pins.
+macOS ARM native qualification passed; Intel exposed a terminal test that checked
+working-directory output before waiting for that output record. The test repair
+waits for the physical directory record and preserves the real PTY assertions.
+
+Required CI exposed Windows selecting the WSL Bash executable and six unchecked
+resource cleanup errors. Workflow-owned shell selection and direct Python callers
+address the former; deliberate joined cleanup errors address the latter. The same
+gosec scan now reports zero findings and infrastructure tests pass. SDK workflow
+review also corrected checkout ordering before its protected publication job.
+
+The preserved Cockpit release still identifies its original publisher commit.
+Its rewritten tag is admitted only by exact commit pins and the verified identical
+source tree, with release identity and archive hashes unchanged. Seventeen owning
+tests and actual public release/commit readback passed. No release was replaced.
+
+External package source contracts now remove the mandatory core archive in current
+CI/native/staging paths; 114 focused tests passed. Actual public CLI/SDK pins,
+source-independent native consumers and isolated CLI acceptance remain required.
+Fresh required checks on the final repair commit, installed Bazzite integration
+and the runtime-first dependency publication chain still gate staging.

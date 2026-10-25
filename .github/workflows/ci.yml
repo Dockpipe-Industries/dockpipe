@@ -157,16 +157,16 @@ jobs:
 
       - name: Integration tests (Docker)
         if: ${{ env.ACT != 'true' }}
-        run: bash tests/integration-tests/run.sh
+        run: python3 workflows/shared/launch.py workflows/ci/integration/config.yml
 
       - name: Upload CI scan receipts
-        if: always()
+        if: ${{ always() && env.DOCKPIPE_CI_RAW_DIR != '' }}
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: dockpipe-ci-scans-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            bin/.dockpipe/workflows/ci/artifacts/ci-raw/
+          path: ${{ env.DOCKPIPE_CI_RAW_DIR }}
+          include-hidden-files: true
 
   # Windows: Go + bash scripts that mirror host pre-script behavior (Git Bash on the runner).
   # Full tests/run_tests.sh and Docker integration tests stay on Linux — Docker/Linux images
@@ -197,7 +197,7 @@ jobs:
         run: python3 workflows/shared/launch.py workflows/ci/repository-layout/config.yml
 
       - name: clone-worktree include script (bash + git)
-        run: bash tests/unit-tests/test_clone_worktree_include.sh
+        run: python3 workflows/shared/launch.py workflows/ci/repository/worktree.yml
 
 
   staging-release:

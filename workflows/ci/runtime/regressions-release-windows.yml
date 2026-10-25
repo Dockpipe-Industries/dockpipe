@@ -8,4 +8,4 @@ steps:
     scopes:
       source: repo
       artifacts: artifacts
-    cmd: bash workflows/ci/runtime/assets/scripts/regressions-release-windows.sh
+    cmd: python3 workflows/shared/run.py python3 workflows/ci/core/assets/scripts/test.py

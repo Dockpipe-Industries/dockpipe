@@ -78,6 +78,7 @@ def load_lock(path):
             or not re.fullmatch(r"[A-Za-z0-9_.-]+", publisher.get("release_tag", ""))
             or not re.fullmatch(r"[0-9a-f]{40}", publisher.get("source_sha", ""))):
         raise ValueError("Cockpit lock requires an exact public mirror repository, tag and host SDK source")
+    publisher_tag_commit(publisher)
     names = {"candidate": "cockpit-candidate.json", "artifact": f"dockpipe-resolver-cockpit-{lock['version']}.tar.gz",
              "qualification": "cockpit-qualification.json"}
     for key, name in names.items():
@@ -105,8 +106,33 @@ def api(path):
     return json.loads(payload, object_pairs_hook=composer.reject_duplicate_keys)
 
 
+
+def publisher_tag_commit(pin):
+    tag_commit = pin.get("tag_commit_sha")
+    tree = pin.get("source_tree_sha")
+    if tag_commit is None and tree is None:
+        return pin["source_sha"]
+    if (not isinstance(tag_commit, str) or not re.fullmatch(r"[0-9a-f]{40}", tag_commit)
+            or not isinstance(tree, str) or not re.fullmatch(r"[0-9a-f]{40}", tree)
+            or tag_commit == pin["source_sha"]):
+        raise ValueError("Publisher source equivalence requires distinct exact commits and one exact tree")
+    return tag_commit
+
+
+def verify_publisher_source_tree(pin, tag_commit):
+    if tag_commit == pin["source_sha"]:
+        return
+    for source in (pin["source_sha"], tag_commit):
+        commit = api(f"repos/{PUBLISHER}/git/commits/{source}")
+        tree = commit.get("tree")
+        if (commit.get("sha") != source or not isinstance(tree, dict)
+                or tree.get("sha") != pin["source_tree_sha"]):
+            raise ValueError("Publisher source equivalence does not match the pinned source tree")
+
+
 def verify_publisher(lock):
     pin = lock["publisher"]
+    tag_commit = publisher_tag_commit(pin)
     tag = urllib.parse.quote(pin["release_tag"], safe="")
     release = api(f"repos/{PUBLISHER}/releases/tags/{tag}")
     if (release.get("draft") is not False or release.get("prerelease") is not True
@@ -117,8 +143,9 @@ def verify_publisher(lock):
     visited = set()
     for _ in range(8):
         if reference.get("type") == "commit":
-            if reference.get("sha") != pin["source_sha"]:
+            if reference.get("sha") != tag_commit:
                 raise ValueError("Public mirror tag host SDK source differs")
+            verify_publisher_source_tree(pin, tag_commit)
             return release
         sha = reference.get("sha", "")
         if reference.get("type") != "tag" or not re.fullmatch(r"[0-9a-f]{40}", sha) or sha in visited:

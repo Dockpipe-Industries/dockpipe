@@ -29,31 +29,14 @@ jobs:
           cache: false
       - name: Read the committed SDK source lock
         id: lock
-        run: |
-          python3 - <<'PY'
-          import json, os, re
-          lock = json.load(open('workflows/build/go-sdk/assets/source.lock.json'))
-          if lock['source_commit'] != 'c604b291d463906acf0a05ef8cfe2efc071bdbaa':
-              raise ValueError('Update the literal SDK checkout together with its source lock')
-          if not re.fullmatch(r'0\.1\.0-source\.[0-9a-f]{16}', lock['version']):
-              raise ValueError('SDK version must identify its source inventory')
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write('source_commit=' + lock['source_commit'] + '\n')
-              output.write('tag=dockpipe-go-sdk-' + lock['version'] + '\n')
-          PY
+        run: python3 workflows/shared/launch.py workflows/build/go-sdk/inspect.yml -- --output "$GITHUB_OUTPUT"
       - uses: actions/checkout@v7
         with:
           ref: c604b291d463906acf0a05ef8cfe2efc071bdbaa
           path: build/sdk-source
           persist-credentials: false
-      - name: Install committed source dependency modules
-        working-directory: build/sdk-source
-        env:
-          GOWORK: 'off'
-          GOTOOLCHAIN: local
-        run: go mod download
-      - name: Verify locked SDK producer
-        run: python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/build/go-sdk/tests --pattern test_locked_go_sdk.py
+      - name: Verify locked SDK producer and publisher
+        run: python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/build/go-sdk/tests --suite workflows/publish/go-sdk/tests --suite workflows/publish/shared/tests
       - name: Install the separate locked workflow bootstrap
         run: python3 workflows/shared/bootstrap.py --output "$RUNNER_TEMP/dockpipe-bootstrap"
       - name: Reproduce the exact SDK archive and manifest
@@ -76,6 +59,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
           name: dockpipe-go-sdk
@@ -85,8 +71,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SDK_TAG: ${{ needs.reproduce.outputs.tag }}
           SDK_COMMIT: ${{ needs.reproduce.outputs.source_commit }}
-        run: |
-          gh release create "$SDK_TAG" sdk-artifacts/* \
-            --repo "$GITHUB_REPOSITORY" --target "$SDK_COMMIT" \
-            --title "Dockpipe Go SDK $SDK_TAG" --latest=false \
-            --notes 'Immutable compatibility SDK reproduced from the committed source and content lock. No runtime or compiler source checkout is required by consumers.'
+        run: python3 workflows/shared/launch.py workflows/publish/go-sdk/config.yml -- --directory sdk-artifacts

@@ -1,0 +1,11 @@
+name: ci-worktree-contract
+description: Build the selected source CLI and exercise real private Git clone/include contracts.
+docker_preflight: false
+steps:
+  - id: clone-include-contract
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/ci/repository/assets/scripts/test-worktree.py

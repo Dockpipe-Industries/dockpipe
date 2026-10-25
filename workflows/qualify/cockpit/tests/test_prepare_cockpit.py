@@ -212,6 +212,66 @@ class ConsumerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             consumer.unpack_runtime(archive, self.root / 'unsafe-link')
 
+    def publisher_equivalence_responses(self):
+        pin = self.lock['publisher']
+        pin['tag_commit_sha'] = 'd' * 40
+        pin['source_tree_sha'] = 'e' * 40
+        prefix = 'repos/' + consumer.PUBLISHER
+        return {
+            prefix + '/releases/tags/cockpit-test': {
+                'draft': False, 'prerelease': True, 'tag_name': 'cockpit-test',
+                'target_commitish': pin['source_sha'],
+            },
+            prefix + '/git/ref/tags/cockpit-test': {
+                'object': {'type': 'commit', 'sha': pin['tag_commit_sha']},
+            },
+            prefix + '/git/commits/' + pin['source_sha']: {
+                'sha': pin['source_sha'], 'tree': {'sha': pin['source_tree_sha']},
+            },
+            prefix + '/git/commits/' + pin['tag_commit_sha']: {
+                'sha': pin['tag_commit_sha'], 'tree': {'sha': pin['source_tree_sha']},
+            },
+        }
+
+    def test_publisher_accepts_only_exact_tag_and_original_source_tree(self):
+        responses = self.publisher_equivalence_responses()
+        with patch.object(consumer, 'api', side_effect=lambda path: responses[path]) as request:
+            release = consumer.verify_publisher(self.lock)
+        self.assertEqual(release['target_commitish'], self.lock['publisher']['source_sha'])
+        self.assertEqual(request.call_count, 4)
+
+    def test_publisher_source_equivalence_rejects_each_wrong_tree_or_commit(self):
+        for which in ('original-tree', 'tag-tree', 'returned-commit', 'tag-target', 'release-target'):
+            with self.subTest(which=which):
+                responses = self.publisher_equivalence_responses()
+                prefix = 'repos/' + consumer.PUBLISHER
+                pin = self.lock['publisher']
+                if which == 'original-tree':
+                    responses[prefix + '/git/commits/' + pin['source_sha']]['tree']['sha'] = 'f' * 40
+                elif which == 'tag-tree':
+                    responses[prefix + '/git/commits/' + pin['tag_commit_sha']]['tree']['sha'] = 'f' * 40
+                elif which == 'returned-commit':
+                    responses[prefix + '/git/commits/' + pin['tag_commit_sha']]['sha'] = 'f' * 40
+                elif which == 'tag-target':
+                    responses[prefix + '/git/ref/tags/cockpit-test']['object']['sha'] = pin['source_sha']
+                else:
+                    responses[prefix + '/releases/tags/cockpit-test']['target_commitish'] = pin['tag_commit_sha']
+                with patch.object(consumer, 'api', side_effect=lambda path: responses[path]):
+                    with self.assertRaises(ValueError):
+                        consumer.verify_publisher(self.lock)
+
+    def test_publisher_source_equivalence_requires_both_exact_pins(self):
+        original = dict(self.lock['publisher'])
+        for extra in (
+                {'tag_commit_sha': 'd' * 40},
+                {'source_tree_sha': 'e' * 40},
+                {'tag_commit_sha': original['source_sha'], 'source_tree_sha': 'e' * 40},
+                {'tag_commit_sha': 'd' * 40, 'source_tree_sha': 'not-a-tree'},
+                {'tag_commit_sha': 'not-a-commit', 'source_tree_sha': 'e' * 40}):
+            with self.subTest(extra=extra):
+                with self.assertRaises(ValueError):
+                    consumer.publisher_tag_commit({**original, **extra})
+
     def test_publisher_rejects_draft_release_or_wrong_host_source_tag(self):
         release = {'draft': False, 'prerelease': True, 'tag_name': 'cockpit-test', 'target_commitish': 'b' * 40}
         reference = {'object': {'type': 'commit', 'sha': 'b' * 40}}

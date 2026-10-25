@@ -8,4 +8,4 @@ steps:
     scopes:
       source: repo
       artifacts: artifacts
-    cmd: bash workflows/ci/runtime/assets/scripts/smoke-release-windows.sh
+    cmd: python3 workflows/shared/run.py python3 workflows/ci/runtime/assets/scripts/native-smoke.py src/bin/dockpipe.exe
