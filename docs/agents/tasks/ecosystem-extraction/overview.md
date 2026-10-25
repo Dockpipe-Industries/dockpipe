@@ -611,3 +611,45 @@ other real WebEngine tests. Its measured UI switching p95 exceeded the unchanged
 functional retention assertions and timeout remain unchanged. This corrects the
 test resource contract without claiming contention explains all GUI CPU cost.
 Fresh Intel native qualification remains required before merge.
+
+
+## Final qualification and merge identity checkpoint (2026-10-25)
+
+All ten final-head workflows passed, including both macOS hosts, all 58 Windows
+native tests, installed Flatpak/Compose and the complete Marketplace lifecycle.
+The six-platform release dry run and assembly passed, including actual mandatory
+Windows embedding and MSI install/uninstall. The final source-bound SDK was
+reproduced by hosted CI; its protected publication remains pending.
+
+Three GitHub-generated Dockpipe/PipeLang merge commits selected the account's old
+author email. The explicitly approved identity-only correction preserved source
+trees and uploaded downloads, corrected four refs, and restored both Dockpipe
+rulesets with independent readback. Future normal merges must select their author
+email explicitly and verify the result. The moved CLI candidate remains historical;
+its original manifest and attestations are retained and cannot supply final pins.
+The CLI producer gains an explicit dev-only recovery route for metadata-only
+changes omitted by path filters. Fresh consistent CLI/SDK readback, external native
+packages, installed Bazzite acceptance and runtime staging promotion remain pending.
+
+
+## SDK publication and remaining native checks (2026-10-25)
+
+The approved SDK source `aecdf031dc48a1f085778aecbc613f49d145a209` is
+public as `dockpipe-go-sdk-0.1.0-source.2130fcfe0504ccf4`. Hosted CI
+reproduced the two exact files and recorded the approved environment review,
+but its publisher failed HTTP 403 because creating a tag at this source requires
+workflow permission. The explicitly approved Dockpipe operator recovery published
+those same files using the existing operator credential. Independent public
+downloads matched both approved hashes; the original release protection is
+restored. The CI publisher remains recorded as failed.
+
+The next PR checks exposed two separate native qualification issues. The Windows
+fixture constructed an unused input control before readiness; a single diagnostic
+measured that constructor at 3906 ms. Removing the unasserted control preserves
+the real QWidget, native window cases, every assertion and the five-second
+readiness bound. Intel exhausted its 30-minute job budget while still compiling,
+before any CTest ran. Its cold-build budget is now 50 minutes with two workers;
+ARM remains 30 minutes and all test deadlines and the 100 ms browser limit remain
+unchanged. Both repairs require fresh strict hosted qualification before merge.
+Actual public CLI intake, external native packages, installed Bazzite acceptance
+and runtime staging promotion remain pending.

@@ -19,7 +19,7 @@ jobs:
       matrix:
         runner: [macos-15, macos-15-intel]
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    timeout-minutes: ${{ matrix.runner == 'macos-15-intel' && 50 || 30 }}
     steps:
       - uses: actions/checkout@v7
         with:
