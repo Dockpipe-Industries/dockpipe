@@ -39,7 +39,7 @@ jobs:
         run: python3 workflows/shared/launch.py workflows/build/go-sdk/inspect.yml -- --output "$GITHUB_OUTPUT"
       - uses: actions/checkout@v7
         with:
-          ref: a71e5db1026a478ea4dfbcbee9f2c884c9c2f61d
+          ref: aecdf031dc48a1f085778aecbc613f49d145a209
           path: build/sdk-source
           persist-credentials: false
       - name: Verify locked SDK producer and publisher

@@ -1,11 +1,11 @@
 {
   "schema": 1,
-  "source_commit": "a71e5db1026a478ea4dfbcbee9f2c884c9c2f61d",
-  "version": "0.1.0-source.917e9f14b15aaf09",
-  "source_digest": "917e9f14b15aaf092929c38bc76d02267a2c72c8612215a1d6f9ab53f154b3ba",
-  "manifest_asset": "dockpipe-go-sdk-917e9f14b15aaf09.json",
-  "manifest_sha256": "412543b824788a7e9e3b105dbf22c7440d8d58a0dbe9f7d36e69e7509630cedf",
-  "archive_asset": "dockpipe-go-sdk-917e9f14b15aaf09.tar.gz",
-  "archive_sha256": "f82e287127ddacbb87f2dd6ea7e62fb1c5bb84bb263efeb1f1aa26d0ec5ae4bd",
-  "archive_bytes": 246948
+  "source_commit": "aecdf031dc48a1f085778aecbc613f49d145a209",
+  "version": "0.1.0-source.2130fcfe0504ccf4",
+  "source_digest": "2130fcfe0504ccf4a33740775df2a4e89f6014e7e67613f9e5317c3e050c94dc",
+  "manifest_asset": "dockpipe-go-sdk-2130fcfe0504ccf4.json",
+  "manifest_sha256": "2aafc16df9f3920c17d9769a606c81032542de2a31cfa8f83d4f2ee7ef826064",
+  "archive_asset": "dockpipe-go-sdk-2130fcfe0504ccf4.tar.gz",
+  "archive_sha256": "79446c926a8e067469d2db207b20fc9b5be572fd45cf3899484ae455e1038f73",
+  "archive_bytes": 246953
 }
