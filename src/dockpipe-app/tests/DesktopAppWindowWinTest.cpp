@@ -7,6 +7,7 @@
 #include <QDialog>
 #include <QElapsedTimer>
 #include <QLabel>
+#include <QLineEdit>
 #include <QProcess>
 #include <QPointer>
 #include <QThread>
@@ -172,6 +173,7 @@ int main(int argc, char **argv)
         window.resize(560, 360);
         auto *layout = new QVBoxLayout(&window);
         layout->addWidget(new QLabel("Only this disposable test window may be embedded", &window));
+        layout->addWidget(new QLineEdit("Native keyboard input", &window));
         reportPhase("before Qt fixture show");
         window.show();
         reportPhase("after Qt fixture show");
