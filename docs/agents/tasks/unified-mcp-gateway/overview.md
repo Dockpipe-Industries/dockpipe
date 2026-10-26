@@ -184,8 +184,8 @@ approval owner. No separate dependency MCP server, policy engine or identity
 platform is proposed. Essential operations remain Core/CLI-owned and headless.
 
 Refine shared contracts with TASK-036: mandatory hardware-backed FIDO2/WebAuthn
-security-key authentication for pairing authorization and privileged dependency
-apply/restart approvals, including authenticator provenance policy, trusted
+security-key authentication for pairing authorization, including authenticator
+provenance policy, trusted
 registration, RP/origin and user-verification checks, key revocation and explicit
 recovery. Ordinary passkey support alone does not prove a hardware-bound key.
 TASK-046's optional future FIDO2 assessment must consume this shared policy rather
@@ -206,3 +206,10 @@ revoked and replayed grants fail closed. Include key-loss recovery, concurrent
 requests, scheduled policy expiry and audit attribution in TASK-052. Actual
 advisory exposure may require P0 remediation; this integration remains P1 absent
 an independently established exploitable authorization finding.
+
+Remote session refinement: use the [global remote auto-lock policy](../remote-node-onboarding/overview.md#remote-unlock-and-global-auto-lock-policy-2026-10-26-refinement)
+as the single owner for inactivity and OS lock/sleep behavior. Routine remote
+access unlocks through OS authentication and broker-verifiable session authority;
+per-operation hardware prompts and remote approval delivery are deferred policy
+extensions. Enforce expiry/scope on the server regardless of UI lock state; the
+shared adapter must not accept an unlocked client flag as authorization.

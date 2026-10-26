@@ -92,7 +92,8 @@ explicit authorization after the current refactor/stabilization milestone.
 Link the existing enrollment/passkey and future FIDO2 assessment to the
 [security and reliability initiative](../dependency-lifecycle/overview.md).
 TASK-036/039 now explicitly require mandatory hardware-backed security-key gates
-for pairing authorization and privileged lifecycle approvals. This supersedes an
+for pairing authorization. OS-authenticated remote unlock and global auto-lock
+policy are refined in TASK-036; per-operation hardware prompts are deferred. This supersedes an
 optional-only interpretation for those operations; it does not assert hardware
 authentication is implemented or extend the mandate to every desktop action.
 Keep the broader desktop/session policy decision explicit and reuse shared

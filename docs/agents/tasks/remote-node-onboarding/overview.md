@@ -262,7 +262,8 @@ gaps to address, not evidence of exploitation or implemented enhancements.
 Required P1 scope:
 
 - Define mandatory hardware-backed FIDO2/WebAuthn security-key authentication for
-  remote pairing authorization and privileged lifecycle/restart approvals. Reuse
+  remote pairing authorization. Remote feature unlock uses OS authentication;
+  per-operation hardware prompts are deferred configurable policy. Reuse
   established verification libraries and shared TASK-039 identity/grant contracts.
   Specify supported authenticators, RP/origin binding, user presence/verification,
   hardware provenance/attestation policy and enrollment/revocation/recovery.
@@ -283,3 +284,51 @@ merely paired privileged requests. Verify authorized local/headless human approv
 scoped unattended policy, loss/replacement of a hardware key, audit attribution,
 and tunnel heartbeat-loss recovery with TASK-052. Preserve existing pairing
 rate limits, private credentials and anonymous-approval rejection tests.
+
+## Remote unlock and global auto-lock policy (2026-10-26 refinement)
+
+User refinement: mandatory physical hardware-key verification applies to approval
+of a new pairing. Routine remote operations use an OS-authenticated remote unlock
+session; a hardware-key touch for every operation is not the initial requirement.
+Per-operation approval rules and remotely delivered approvals remain future work.
+This narrows the earlier hardware-approval wording; it does not relax broker-side
+scope checks or separate maintenance/restart authority.
+
+Provide one global, per-OS-user Dockpipe **Security > Remote access** policy,
+consumed by the desktop, CLI and shared authorization service. This is proposed
+behavior, not an implemented settings page or supported config schema.
+
+- **Auto-lock after inactivity:** configurable duration; proposed default 5 minutes,
+  with presets such as 1, 5, 15, 30 and 60 minutes plus a validated custom duration.
+  Define supported bounds with the session contract. Changing the timeout must not
+  silently unlock access. Do not add an unlimited session default.
+- **Lock when the computer locks** and **lock on sleep:** separately configurable,
+  enabled by default. Start locked after application/service restart; wake does
+  not restore the old unlock session. Expose an immediate Lock remote access action.
+- Measure inactivity from trusted local human interaction, never broker polling,
+  telemetry, background jobs, API calls or automation. Document OS idle detection
+  and supported fallback; unavailable lock/sleep integration must be visible.
+- Protect the signing credential using the platform authentication/key-storage
+  integration. OS reauthentication unlocks proof for a broker-verified scoped
+  session; a UI flag or static bearer token alone cannot authorize remote actions.
+  Mandatory hardware pairing cannot fall back to an ordinary OS password.
+- Local auto-lock stops signing/issuing requests and invalidates local unlock
+  state. Broker-side expiry and revocation remain authoritative even if the app
+  is bypassed or disconnected. Negotiate a bounded remote session lifetime and
+  refresh rules; background activity cannot extend it. A client preference cannot
+  exceed a stricter broker policy or renew a separate operation approval.
+- Locking prevents new remote actions; already admitted jobs can continue under
+  their existing authority. It does not unpair machines, cancel work implicitly
+  or change the lifetime of worker machine credentials.
+- Keep policy out of project/workflow/package configuration. A repository, resolver,
+  MCP client or background workflow must not weaken the user's global lock settings.
+  Settings changes that weaken security require an authenticated operator context;
+  tightening a policy takes effect immediately. Use one settings owner, not separate
+  CLI/UI/MCP policy stores.
+
+Acceptance/tests: cover inactivity boundaries, trusted versus background activity,
+OS lock/sleep/wake, process restart, immediate lock, timeout changes while unlocked,
+multiple clients, broker expiry/revocation, missing OS integration and a disconnected
+client. Prove a direct API call cannot bypass locked/expired authority, mandatory
+hardware pairing stays enforced, and existing admitted jobs continue correctly.
+Coordinate shared contracts with TASK-039 and qualification with TASK-052.

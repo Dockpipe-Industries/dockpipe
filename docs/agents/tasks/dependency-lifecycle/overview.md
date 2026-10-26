@@ -15,7 +15,7 @@ initiative; it does not authorize implementation or host changes.
 | [TASK-052](../dependency-lifecycle-qualification/index.yaml) | P1 | Integration, recovery, platform and remote connectivity qualification |
 | [TASK-010](../declarative-dependency-install-ux/index.yaml) | P1 lifecycle prerequisite scope | Existing installer trust and exact package selection/lock owner; do not duplicate |
 | [TASK-036](../remote-node-onboarding/index.yaml) | P1 security enhancement scope | Pairing authorization, hardware-backed enrollment, worker credential expiry/revocation |
-| [TASK-039](../unified-mcp-gateway/index.yaml) | P1 security enhancement scope | Shared authentication, mandatory hardware-backed privileged approval, scoped expiring grants |
+| [TASK-039](../unified-mcp-gateway/index.yaml) | P1 security enhancement scope | Shared authentication, hardware-backed pairing, OS-authenticated remote unlock and scoped expiring grants |
 | [TASK-042](../oidc-workload-federation/index.yaml) | P1 | Workload identity verification; separate from human authority |
 | [TASK-041](../cloud-mcp-approvals/index.yaml) | P1 security integration scope | Optional Cloud approval delivery; local enforcement cannot depend on Cloud |
 | [TASK-046](../native-remote-desktop/index.yaml) | P1 shared security refinement scope | Reuse enrollment/passkey assessment; desktop/media delivery retains its own scope |
