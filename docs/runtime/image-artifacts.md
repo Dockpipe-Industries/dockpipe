@@ -52,12 +52,12 @@ state. If the receipt is valid and Docker still has the image, run skips build.
 
 ## Registry Images
 
-Package metadata may point at a normal OCI image:
+Package metadata may point at a normal OCI image. Replace the placeholder with a real published image digest:
 
 ```yaml
 image:
   source: registry
-  ref: ghcr.io/acme/tool@sha256:0123456789abcdef...
+  ref: ghcr.io/acme/tool@sha256:<full-64-character-digest>
   pull_policy: if-missing
 ```
 
@@ -74,16 +74,16 @@ Digest-pinned refs are preferred. Mutable tags are hints, not proof of validity.
 
 Image validity is not based only on tag names.
 
-For Dockerfile-backed images, the fingerprint should cover:
+For Dockerfile-backed images, the current fingerprint includes:
 
-- Dockerfile content
-- build context content
-- build args
-- target stage
-- platform
-- base image digest when available
-- runtime/resolver/package provenance
-- builder schema version when needed
+- regular-file paths and contents under the selected build directory, including its Dockerfile
+- the selected image reference and Dockerfile/build-context paths
+- runtime, resolver, isolate, package-version and Dockpipe-version provenance
+
+The builder hashes the build directory, not an independently selected external
+context tree. Build arguments, target stage, platform and a resolved base-image
+digest are not separately captured by this fingerprint. Do not treat it as a
+complete reproducibility or supply-chain attestation.
 
 Runtime-only security restrictions should not force an image rebuild unless they
 change how the image is built or selected. Dockpipe keeps the image fingerprint

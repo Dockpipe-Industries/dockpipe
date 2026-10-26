@@ -1,37 +1,6 @@
-# TASK-008 DorkPipe AI features in DockPipe
 schema: 1
-id: TASK-008
-topic: DorkPipe AI features in DockPipe
-entrypoint: overview.md
-
-dispatch:
-  readiness: unclassified
-  ownership: unclaimed
-
-routes:
-  orientation:
-    read: [overview.md]
-  direction_audit:
-    read: [overview.md, direction-review.md]
-  product_and_ux:
-    read: [overview.md, product-ux.md]
-  browser_integration:
-    read: [overview.md, browser-integration.md]
-  delivery_and_open_work:
-    read: [overview.md, delivery.md, direction-review.md]
-
-documents:
-  - path: browser-integration.md
-    role: deferred optional browser assistance, shared contribution gaps and authorization boundaries
-  - path: direction-review.md
-    role: pre-implementation direction audit, conflicts and user review decisions
-  - path: overview.md
-    role: goal, decisions, product shape, and contract rule
-  - path: product-ux.md
-    role: launcher, remote, runtime, authoring, extension, and review UX
-  - path: delivery.md
-    role: documentation map, first slices, interim slice, and open work
-
-maintenance:
-  - Resolve document paths relative to this index and load only the route needed.
-  - Keep dispatch metadata synchronized with docs/agents/task-index.yaml.
+task: TASK-008
+status: moved
+owner: dorkpipe
+read:
+- https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/agents/tasks/agentic-app-ui/index.yaml

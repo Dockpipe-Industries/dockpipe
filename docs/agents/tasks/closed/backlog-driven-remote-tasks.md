@@ -3,7 +3,7 @@
 Repository ownership note: package paths in this record describe external source. Current catalog packages live in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages); previously extracted [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) and [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) remain in their own repositories. Historical paths and receipts do not recreate a local package tree.
 
 Historical naming: references to the proposed ForgePipe workflow UI in this completed
-record now refer to [DockPipe AI (TASK-008)](../agentic-app-ui/overview.md).
+record now refer to [DockPipe AI (TASK-008)](https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/agents/tasks/agentic-app-ui/overview.md).
 ForgePipe is the native engine. Original verification history is retained below.
 
 Status: Closed

@@ -1,0 +1,11 @@
+name: test-desktop-native
+description: Run all configured native desktop tests, or an explicit CTest name expression.
+docker_preflight: false
+steps:
+  - id: test
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/ci/desktop-native/assets/scripts/test.py

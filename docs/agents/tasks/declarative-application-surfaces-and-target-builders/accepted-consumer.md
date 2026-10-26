@@ -1,6 +1,6 @@
 ## Accepted First Application Consumer (2026-08-18)
 
-The existing Dockpipe Launcher is the first full application target for PipeLang, Application IR,
+The existing Dockpipe GUI shell is the first full application target for PipeLang, Application IR,
 and the standard Qt resolver. Its checked-in Qt/C++ implementation is the behavioral and
 presentation oracle. The end state is a PipeLang-authored native Qt launcher with one-to-one
 observable parity; this direction does not authorize a redesign, feature removal, or production

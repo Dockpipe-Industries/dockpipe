@@ -66,8 +66,8 @@ package-store pins or release the Dockpipe application.
 Run the producer and publication contract tests:
 
 ```bash
-python3 -B -m unittest discover -s release/packaging/tests -p test_display_sdk_producer.py -v
-python3 -B -m unittest discover -s release/packaging/tests -p test_publish_display_sdk.py -v
+python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/build/display-sdk/tests
+python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/publish/display-sdk/tests
 ```
 
 The publisher can run only in its accepted CI event context; there is no local

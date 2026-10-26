@@ -76,7 +76,7 @@ No OS heuristic, toggle, automatic native fallback, or bundled Marketplace catal
 Implemented source: shared process-platform detection, platform-labelled store
 exports, catalog/pinned-install checks, a KDE 6.10 desktop builder, offline
 package-owned dependency build/runtime-test recipes, and a reusable release CI
-workflow. See the canonical [Flatpak build contract](../../../../release/packaging/desktop/flatpak/README.md).
+workflow. See the canonical [Flatpak build contract](../../../../workflows/build/flatpak/README.md).
 
 Local amd64 proof: six Qt tests, actual Platform launcher/CLI/core-only inventory,
 real sandbox workflow, a package with a compiled shared-library dependency, and
@@ -107,7 +107,7 @@ Publication rechecked 2026-10-10: the staging pointer selects
 `0.6.3-staging.37959504785.1.4da6948415b9`; its manifest includes the 62-entry Flatpak
 store and the combined launcher/CLI bundle, whose package-host URL returns HTTP 200.
 The matching hosted Flatpak run succeeded. See the canonical
-[publication evidence](../../../../release/packaging/desktop/flatpak/README.md#release-integration-and-proof-limits)
+[publication evidence](../../../../workflows/build/flatpak/README.md#release-integration-and-proof-limits)
 and [installation guide](../../../install.md#flatpak-desktop-linux-amd64).
 
 Still open: native Bazzite, Podman/SELinux, arm64, signed/updating Flatpak remote,

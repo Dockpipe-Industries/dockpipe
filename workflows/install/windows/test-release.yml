@@ -1,0 +1,11 @@
+name: test-release
+description: Run the test release phase using explicit CI inputs.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: pwsh -NoProfile -File workflows/install/windows/assets/scripts/test-release.ps1

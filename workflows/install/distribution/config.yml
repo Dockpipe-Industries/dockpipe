@@ -1,0 +1,11 @@
+name: install-distribution
+description: Run the install distribution operation with explicit options after --.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py bash workflows/install/distribution/assets/scripts/install.sh

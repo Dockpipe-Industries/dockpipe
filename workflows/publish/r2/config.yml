@@ -1,0 +1,11 @@
+name: publish-runtime-channel
+description: Run the publish runtime channel operation with explicit options after --.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/publish/r2/assets/scripts/publish-r2.py

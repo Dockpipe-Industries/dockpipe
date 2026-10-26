@@ -53,3 +53,19 @@ func TestNormalizeRuntimeProfileName(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
+
+func TestResolvePackagedWorkflowIgnoresUndeclaredTrees(t *testing.T) {
+	repo := t.TempDir()
+	for _, tree := range []string{"templates", "bundle/workflows", "src/core"} {
+		directory := filepath.Join(repo, tree, "retired-workflow")
+		if err := os.MkdirAll(directory, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(directory, "config.yml"), []byte("name: retired-workflow\nnamespace: example.test\nsteps: []\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got, err := ResolvePackagedWorkflowConfigPath(repo, repo, "retired-workflow", "example.test"); err == nil {
+		t.Fatalf("unexpected undeclared workflow %q", got)
+	}
+}

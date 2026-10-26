@@ -1,73 +1,53 @@
 # Dockpipe editor extensions
 
-Dockpipe Language Support and the DorkPipe companion extension are owned by the
-public [DorkPipe repository](https://github.com/Dockpipe-Industries/dorkpipe) under `tooling/vscode-extensions/`. They are optional
-editor integrations. Dockpipe core builds and runs independently of their source.
+Dockpipe owns [Dockpipe Language Support](../../tooling/vscode-extensions/dockpipe-language-support/README.md)
+(`dockpipe.dockpipe-language-support`) for workflow/package YAML, project JSON,
+typed-model integration and portable SDK snippets. PipeLang owns the separate
+[`dockpipe.pipelang-language-support`](https://github.com/Dockpipe-Industries/pipelang/tree/dev/tooling/vscode-extensions/pipelang-language-support)
+extension for `.pipe` grammar, snippets and standalone compiler diagnostics.
+Dockpipe declares that extension as a dependency. DorkPipe retains its companion
+extension and AI behavior in its own repository. The CLI runs independently of
+editor extensions.
 
-## Proposed consolidation (backlog; awaiting review)
+## Maintainer build and publication
 
-The 2026-10-17 product direction is one DockPipe editor integration covering
-DockPipe workflow/package authoring, PipeLang language support and optional
-DockPipe-related AI chat through DorkPipe. DorkPipe retains extension source ownership;
-DockPipe branding does not move AI logic into core or require DorkPipe for basic
-language support. Chat uses the same package operations, project/version context,
-permissions and session contracts as DockPipe's desktop chat.
-
-Pipeon retirement and consolidation of the companion extension are proposals, not
-completed migrations. Before implementation, audit extension identities, settings,
-commands, saved sessions, existing installs, artifact pins and rollback. Decide whether
-to extend the language extension or provide an explicit migration; no extension ID
-rename, removal, marketplace publication or package retirement is authorized by this
-backlog record. See [direction review](../agents/tasks/agentic-app-ui/direction-review.md).
-
-## Current delivery
-
-Published extension identities remain `dockpipe.dockpipe-language-support` and
-`dorkpipe.pipeon`. The companion retains its existing name and settings for
-compatibility; Pipeon product development is paused.
-
-The reviewed staging release provides [Dockpipe Language Support 0.0.2](https://packages.staging.dockpipe.com/packages/standalone/dorkpipe/candidates/0.6.5-staging.cc31cf0aa848/dockpipe-language-support-0.0.2.vsix)
-and the [companion extension 0.0.7](https://packages.staging.dockpipe.com/packages/standalone/dorkpipe/candidates/0.6.5-staging.cc31cf0aa848/pipeon-0.0.7.vsix).
-Verify the download against that release's [SHA256SUMS](https://packages.staging.dockpipe.com/packages/standalone/dorkpipe/candidates/0.6.5-staging.cc31cf0aa848/SHA256SUMS),
-then use your editor's **Install from VSIX** action. These downloads do not require
-source-repository credentials. Neither extension is published to an
-editor marketplace by this release.
-
-Maintainers build and test both extensions from the DorkPipe repository root
-with its pinned DockPipe compiler:
+Run the owning repository's `editor.build` workflow with its pinned Dockpipe CLI:
 
 ```sh
-"$DOCKPIPE_BIN" --workflow-file workflows/editor.candidate/config.yml --workdir .
+"$DOCKPIPE_BIN" --workflow-file workflows/editor.build/config.yml --workdir . -- --out /absolute/path/to/fresh-vsix-output
 ```
 
-The output contains versioned VSIX files and `extensions.json` with sizes and
-SHA-256 digests. The standalone release pipeline tests and freezes these files,
-then publishes the reviewed artifacts to the matching package source. Source
-repository visibility and package distribution are separate choices.
+Node 22 or later is required. The workflow uses locked npm/vsce dependencies,
+runs editor and artifact-contract tests, then emits a versioned VSIX and
+`extension.json` binding its identity, source inventory, size and SHA-256.
+The restored local candidates are Dockpipe 0.0.3 and PipeLang 0.0.1. Their
+qualification does not claim native VS Code extension-host testing or Marketplace
+publication. Selected working-source provenance is recorded in
+[RESTORATION-SOURCES.json](../../tooling/vscode-extensions/RESTORATION-SOURCES.json).
 
-Pipeon packaging accepts `DOCKPIPE_LANGUAGE_VSIX`, `DOCKPIPE_LANGUAGE_VSIX_SHA256`,
-`PIPEON_VSIX`, and `PIPEON_VSIX_SHA256`. Select each immutable artifact and its digest
-from the approved release manifest. Both selections must also match
-`packages/pipeon/assets/editor-dependencies.lock.json`, which ships with the
-consumer package. The importer checks bytes, package identity and the exact
-locked version before staging the selected artifact. Updating environment
-variables cannot override this lock. An upgrade changes the committed lock and
-runs the consumer's editor-pin tests and packaging checks. It does not compile extensions
-or select an arbitrary previously built VSIX.
+Each repository has its own Marketplace GitHub Action and Dockpipe publication
+workflow. Manual publication selects a successful candidate run and its exact
+version and checksum, verifies that artifact against the source inventory, and
+publishes the same VSIX using the `VSCE_PAT` secret reference. Publish PipeLang
+first because Dockpipe depends on it. See the
+[editor workflow contract](../../workflows/editor/README.md) for credential setup
+and explicit installation/publication options. Ordinary builds do not upload or
+install extensions. No external editor-source checkout or test SDK is required.
 
-For the contained PipeLang integration campaign, extract the published
-`dockpipe-language-test-sdk-<version>.tar.gz` and set `DORKPIPE_EDITOR_TEST_SOURCE`
-to that absolute directory. `release/editor-source.lock.json` pins its editor
-version, DorkPipe source commit, source inventory and manifest digest. The campaign
-checks those pins and includes the admitted source in its input fingerprint.
-It requires the actual Node editor tests to pass. Ordinary core tests do not
-need this SDK.
+## Historical downloads
 
-When workflow/package authoring contracts change, update the engine parser/schema,
-canonical docs and the language extension in its owning repository together. For
-example, installable package manifests support `hidden: true`, with completion and
-hover help in the language extension. See [Package model](package-model.md).
+The earlier staging artifact references are:
+[Dockpipe Language Support 0.0.2](https://packages.staging.dockpipe.com/packages/standalone/dorkpipe/candidates/0.6.5-staging.cc31cf0aa848/dockpipe-language-support-0.0.2.vsix)
+and the [companion extension 0.0.7](https://packages.staging.dockpipe.com/packages/standalone/dorkpipe/candidates/0.6.5-staging.cc31cf0aa848/pipeon-0.0.7.vsix).
+Verify those exact downloads against their
+[SHA256SUMS](https://packages.staging.dockpipe.com/packages/standalone/dorkpipe/candidates/0.6.5-staging.cc31cf0aa848/SHA256SUMS)
+before using **Install from VSIX**. They are historical delivered artifacts;
+restoring source ownership does not replace their bytes or publish newer versions.
+Pipeon artifact dependency upgrades remain owned by its package and locked manifest.
 
+When workflow/package contracts change, update the runtime parser/schema,
+canonical documentation and Dockpipe extension together. PipeLang language
+contracts and compiler integration are maintained in PipeLang.
 
 ## Project configuration schema
 
@@ -97,5 +77,5 @@ Package authors may associate `assets/ui/surface.json` with
 source/schema distribution. The package manifest's optional `surface` field names
 that descriptor. This is separate from workflow `view` metadata: surface actions
 still reference ordinary workflow files or public workflow IDs, and typed public
-workflow inputs continue through the existing launcher dialog. See
+workflow inputs continue through the existing GUI dialog. See
 [package-contributed host pages](package-model.md#package-contributed-host-pages).

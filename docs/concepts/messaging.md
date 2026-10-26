@@ -1,17 +1,23 @@
-# External messaging (canonical)
+# Product description
 
-Use for the GitHub **About** field, short blurbs, and anything that should match the README.
+Use these descriptions for repository summaries and short introductions. They
+should match the capabilities described in the [README](../../README.md).
 
-**Repository description** (~100 characters):
+**Short description:**
 
-> Run commands in a disposable container; project at /work, removed when it exits.
+> Run commands and workflows across local, container and remote environments.
 
-**One-line product:**
+**Product line:**
 
 > Dockpipe runs anything, anywhere, in isolation.
 
-**Longer pitch** (README body):
+**Longer description:**
 
-> Your project is mounted at **`/work`** in a disposable container. When the command finishes, the container is gone. Optional host scripts run before and after. Same defaults every time—no hand-rolled `docker run` for the common case.
+> Dockpipe is a runtime, CLI and GUI shell for repeatable workflows. Workflows
+> describe the work, runtimes choose where it runs, and optional resolver packages
+> supply tool integrations. Run a local command, use a container with declared
+> policy, or deliver a workflow to a configured remote node.
 
-Full README: **[README.md](../README.md)**
+Host steps run with the permissions of the environment running Dockpipe; they are
+not container-sandboxed. Remote execution has its own setup and qualification
+limits. See [isolation](isolation-layer.md) and [remote nodes](../runtime/remote-nodes.md).

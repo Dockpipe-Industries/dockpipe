@@ -12,9 +12,9 @@ Dockpipe separates **what you need** (abstract) from **how it is satisfied** (co
 | Term | Meaning |
 |------|---------|
 | **Capability** | An **abstract** need — a stable dotted id (e.g. **`cli.codex`**, **`app.vscode`**, **`blob.storage`**). Names are **categories** + **specifics**: tool class (`cli`, `app`) or infrastructure (`blob`, `secrets`, `cache`) plus a short label. |
-| **Resolver** | A **concrete** package or profile under **`templates/core/resolvers/<name>/`** (or an installed resolver **package**) that **implements** a capability: env, images, delegate workflows, tool wiring. **A resolver satisfies a capability.** |
-| **Runtime** | **Where** execution runs — in normal authored workflows that means **`dockerimage`** or **`dockerfile`**; legacy **`cli`** / **`powershell`** / **`cmd`** normalize to **`dockerimage`** — **orthogonal** to capability and resolver. |
-| **Package** | **Workflow**, **resolver**, **core**, **bundle**, or **assets** — installable units with **`package.yml`**. **Resolvers are packages**; **workflows are packages** too when compiled or published. Same packaging story (`dockpipe package compile`, store tarballs). |
+| **Resolver** | A **concrete** installed resolver package or profile in an explicitly declared source that **implements** a capability: env, images, delegate workflows, tool wiring. **A resolver satisfies a capability.** |
+| **Runtime** | **Where** execution runs — for example **`dockerimage`**, **`dockerfile`**, or the **`vm`** selector with a VM package; legacy **`cli`** / **`powershell`** / **`cmd`** normalize to **`dockerimage`** — **orthogonal** to capability and resolver. |
+| **Package** | **Workflow** and **resolver** — the supported optional installable units, described by **`package.yml`**. Older metadata can describe other kinds; it does not imply a required core installation. **Resolvers are packages**; **workflows are packages** too when compiled or published. Same packaging story (`dockpipe package compile`, store tarballs). |
 
 ## Dockpipe-owned namespacing (`dockpipe.*`)
 
@@ -73,7 +73,7 @@ resolver: codex
 - **`packages-store-manifest.json`** (from **`dockpipe package build store`**) — each artifact includes **`provider`**, **`capability`**, and for workflow packages **`requires_capabilities`** when set in **`package.yml`**.
 
 Remote connection adapters use `remote.edge` for a tunnel to a local broker and
-`remote.broker` for a hosted broker with package-owned sign-in. The launcher discovers
+`remote.broker` for a hosted broker with package-owned sign-in. The GUI discovers
 these through their matching setup hooks; capability metadata alone never executes
 setup. See the [remote resolver contract](../runtime/remote-nodes.md#resolver-contract).
 

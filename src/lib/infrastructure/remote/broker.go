@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -25,12 +26,13 @@ type Enrollment struct {
 }
 
 type BrokerState struct {
-	Pairings     map[string]PairingSession `json:"pairings,omitempty"`
-	PairingUntil time.Time                 `json:"pairing_until,omitempty"`
-	Schema       string                    `json:"schema"`
-	AdminHash    string                    `json:"admin_hash"`
-	Nodes        map[string]Enrollment     `json:"nodes"`
-	Jobs         map[string]contract.Job   `json:"jobs"`
+	TerminalArchive bool                      `json:"terminal_archive,omitempty"`
+	Pairings        map[string]PairingSession `json:"pairings,omitempty"`
+	PairingUntil    time.Time                 `json:"pairing_until,omitempty"`
+	Schema          string                    `json:"schema"`
+	AdminHash       string                    `json:"admin_hash"`
+	Nodes           map[string]Enrollment     `json:"nodes"`
+	Jobs            map[string]contract.Job   `json:"jobs"`
 }
 
 type Broker struct {
@@ -57,7 +59,7 @@ func NewBroker(root string) (*Broker, error) {
 	if err := ReadPrivate(b.path, &b.state); err != nil {
 		return nil, err
 	}
-	if b.state.Schema != contract.Version || len(b.state.AdminHash) != 64 || b.state.Nodes == nil || b.state.Jobs == nil {
+	if len(b.state.Jobs) > contract.MaxJobs || b.state.Schema != contract.Version || len(b.state.AdminHash) != 64 || b.state.Nodes == nil || b.state.Jobs == nil {
 		return nil, errors.New("invalid broker state")
 	}
 	if b.state.Pairings == nil {
@@ -73,6 +75,10 @@ func NewBroker(root string) (*Broker, error) {
 			if err := b.storeResult(&job, job.Result); err != nil {
 				return nil, err
 			}
+		}
+		b.state.Jobs[id] = job
+		if _, _, err := b.lookupJob(id); err != nil {
+			return nil, err
 		}
 		b.state.Jobs[id] = job.Recover()
 	}
@@ -231,19 +237,42 @@ func (b *Broker) operator(path string, raw []byte) (any, error) {
 		if err := Decode(raw, &request); err != nil {
 			return nil, err
 		}
+		if err := request.Submission.Validate(); err != nil {
+			return nil, err
+		}
+		previous, _, err := b.lookupJob(request.ID)
+		if err == nil {
+			if previous.Submission != request.Submission {
+				return nil, errors.New("job ID already binds different work")
+			}
+			if err := b.storeBundle(request); err != nil {
+				return nil, err
+			}
+			return b.withResult(previous)
+		}
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
 		node, exists := b.state.Nodes[request.Node]
-		enrolled := exists && !node.Revoked && node.TokenHash != ""
-		job, changed, err := contract.Queue(b.state.Jobs).Submit(request.Submission, enrolled, time.Now())
+		if !exists || node.Revoked || node.TokenHash == "" {
+			return nil, errors.New("node is not enrolled")
+		}
+		jobs, retired, err := b.jobsForAdmission()
 		if err != nil {
 			return nil, err
 		}
 		if err := b.storeBundle(request); err != nil {
 			return nil, err
 		}
-		if !changed {
-			return b.withResult(job)
+		job, _, err := contract.Queue(jobs).Submit(request.Submission, true, time.Now())
+		if err != nil {
+			return nil, err
 		}
-		b.state.Jobs[job.ID] = job
+		jobs[job.ID] = job
+		b.state.Jobs = jobs
+		// This new field makes older strict decoders reject migrated state. Restoring
+		// an old broker must never forget archived IDs and execute them again.
+		b.state.TerminalArchive = b.state.TerminalArchive || retired
 		return job, b.save()
 	case "/v1/jobs":
 		jobs := make([]contract.Job, 0, len(b.state.Jobs))
@@ -270,11 +299,11 @@ func (b *Broker) operator(path string, raw []byte) (any, error) {
 			delete(b.monitoring, request.ID)
 			return map[string]string{"revoked": request.ID}, b.save()
 		}
-		job, ok := b.state.Jobs[request.ID]
-		if !ok {
-			return nil, errors.New("job not found")
+		job, archived, err := b.lookupJob(request.ID)
+		if err != nil {
+			return nil, err
 		}
-		if path == "/v1/cancel" {
+		if path == "/v1/cancel" && !archived {
 			if cancelled, changed := job.Cancel(); changed {
 				b.state.Jobs[job.ID] = cancelled
 				return cancelled, b.save()
@@ -314,7 +343,11 @@ func (b *Broker) worker(node, path string, raw []byte) (any, error) {
 		if err := Decode(raw, &request); err != nil {
 			return nil, errors.New("invalid worker message")
 		}
-		job, err := contract.Queue(b.state.Jobs).Assigned(request.ID, node, request.Session)
+		job, _, err := b.lookupJob(request.ID)
+		if err != nil {
+			return nil, err
+		}
+		job, err = contract.Queue{job.ID: job}.Assigned(request.ID, node, request.Session)
 		if err != nil {
 			return nil, err
 		}

@@ -1,36 +1,31 @@
 package infrastructure
 
 import (
-	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
-
-	"dockpipe"
 )
 
-// VaultTemplateExampleEmbeddedPath is the bundled core asset path for the vault env template example
-// (see dockpipe init → project root .env.vault.template.example).
-const VaultTemplateExampleEmbeddedPath = EmbeddedTemplatesPrefix + "/assets/env.vault.template.example"
+const vaultTemplateExample = `# Example vault references for an operator-supplied 1Password item.
+# Copy to .env.vault.template and configure secrets.vault_template and vault: op.
+# Keep resolved values and private vault templates out of source control.
+EXAMPLE_API_TOKEN=op://YourVault/YourItem/token
+`
 
-// WriteVaultTemplateExampleIfMissing writes projectDir/.env.vault.template.example when absent.
-// Prefers templates/core/assets/env.vault.template.example after dockpipe init merge; falls back to the embedded copy.
+// WriteVaultTemplateExampleIfMissing creates a generic reference-only example.
+// An existing operator-authored file is always preserved.
 func WriteVaultTemplateExampleIfMissing(projectDir string) error {
-	dst := filepath.Join(projectDir, ".env.vault.template.example")
-	if _, err := os.Stat(dst); err == nil {
+	destination := filepath.Join(projectDir, ".env.vault.template.example")
+	file, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if os.IsExist(err) {
 		return nil
-	} else if !os.IsNotExist(err) {
-		return err
 	}
-	src := filepath.Join(projectDir, "templates", "core", "assets", "env.vault.template.example")
-	if b, err := os.ReadFile(src); err == nil {
-		return os.WriteFile(dst, b, 0o644)
-	} else if !os.IsNotExist(err) {
-		return err
-	}
-	b, err := fs.ReadFile(dockpipe.BundledFS, VaultTemplateExampleEmbeddedPath)
 	if err != nil {
-		return fmt.Errorf("bundled vault template example: %w", err)
+		return err
 	}
-	return os.WriteFile(dst, b, 0o644)
+	_, writeErr := file.WriteString(vaultTemplateExample)
+	closeErr := file.Close()
+	if writeErr != nil {
+		return writeErr
+	}
+	return closeErr
 }

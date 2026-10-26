@@ -132,7 +132,7 @@ Dockpipe compiles this into the effective runtime manifest. Public YAML selects 
 ### Network modes
 
 - `offline`
-  No outbound internet. Preserve Docker-internal behavior needed for container startup and local resolution.
+  Docker containers use `--network none`: loopback only, without external access or Docker network DNS.
 - `allowlist`
   Only declared destinations may be reached.
 - `restricted`
@@ -176,9 +176,9 @@ Compose-managed stacks can feed this path cleanly through Dockpipe-owned workflo
 
 In the richer proxy-backed path, Dockpipe turns that base proxy URL into a per-step effective proxy URL that carries the compiled network policy token. That keeps the public YAML high-level while still letting a Dockpipe-aware proxy enforce the actual per-step `allow` / `block` rules instead of a static sidecar-wide allowlist.
 
-First package consumer in this repository:
+The first package consumer was the DorkPipe self-analysis proxy, now owned by
+[the DorkPipe repository](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe/resolvers/dorkpipe-self-analysis-stack-proxy):
 
-- `packages/dorkpipe/resolvers/dorkpipe-self-analysis-stack-proxy/`
 - compose-managed support services remain package-owned
 - Dockpipe still owns lifecycle, env export, manifest compilation, and proxy env injection
 

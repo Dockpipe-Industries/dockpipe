@@ -1,0 +1,11 @@
+name: qualify-native
+description: Run the qualify native operation with its owning assets.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: bash workflows/qualify/cockpit/assets/scripts/qualify-native.sh

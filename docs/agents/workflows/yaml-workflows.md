@@ -14,13 +14,13 @@ Read when editing workflow YAML, schema, runner semantics, or examples.
 
 | Field | Rule |
 | --- | --- |
-| `kind: host` | Runs on host. Do not set runtime/resolver/isolate on host steps. |
+| `kind: host` | Runs in the environment running Dockpipe (inside Flatpak when applicable). Docker policy does not sandbox it. Do not set runtime/resolver/isolate on host steps. |
 | `cwd` | Step working directory. Prefer `artifacts` for simple producers; use `repo`/`source` only when the process must start in the checkout. |
 | `scopes` | Optional source/artifact binding. Use `cwd: repo` with `scopes: { source: repo, artifacts: artifacts }` when a step needs repo cwd but generated outputs must stay under workflow artifacts. See `docs/agents/core/path-scopes.md`. |
 | `runtime` | Execution substrate profile. |
 | `resolver` | Tool/profile selection. |
 | `isolate` | Low-level image/template override. Prefer runtime/resolver first. |
-| `outputs` | Dotenv file merged into later steps. |
+| `outputs` | Dotenv file merged into later steps; relative paths resolve under the artifact/output root, not process cwd. |
 | `group: { mode: async }` | Async task batch. Avoid old plain-step `is_blocking: false`. |
 | `workflow` + `package` | Packaged child workflow invocation. |
 | `agent` | DorkPipe-consumed agentic declaration, not core AI behavior. |
@@ -31,7 +31,7 @@ When changing authored workflow/config surfaces, update in the same change:
 
 - Go domain structs and validation
 - JSON schema at `src/lib/infrastructure/schema/workflow.schema.json`
-- Dockpipe Language Support at `docs/packages/editor-extensions.md`
+- Dockpipe Language Support schema mirrors and affected editor behavior; see `docs/packages/editor-extensions.md`
 - docs near `docs/workflows/workflow-yaml.md`
 - package/workflow examples affected by the change
 
@@ -46,6 +46,6 @@ When working on templates/workflows, act as a Dockpipe user:
 
 ## Checks
 
-- `./src/bin/dockpipe workflow validate <config.yml>`
-- `./src/bin/dockpipe package compile workflows --workdir . --from <package-or-root> --force`
+- `"$DOCKPIPE_BIN" workflow validate <config.yml>`
+- `"$DOCKPIPE_BIN" package compile workflows --workdir . --from <package-or-root> --force`
 - `go test ./src/lib/...` for runner/schema changes

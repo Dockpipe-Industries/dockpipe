@@ -25,7 +25,7 @@ Promote only source-of-truth package content. Leave experiments, generated state
 ## Required Review
 
 - Confirm the selected external package tree compiles with the pinned Dockpipe binary.
-- Confirm staging copies are either intentionally left for a later cleanup or explicitly removed by request.
+- Bind the exact source revision, dependency pins and resulting artifact digests; source migration alone is not distribution qualification.
 - Search for old workflow/script names after deletion.
 - Verify docs describe package boundaries, not checkout-only paths as a public contract.
 

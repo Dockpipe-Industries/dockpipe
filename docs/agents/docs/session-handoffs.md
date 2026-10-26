@@ -84,18 +84,14 @@ Preserve unrelated changes and use the runtime-owned Git operations. This author
 extend to production, unrelated work, destructive operations or unresolved scope decisions.
 An automatic approval rejection still requires resolving its stated condition before retrying.
 
-## Autonomous Master Exception
+## Scoped orchestration authority
 
-An explicitly designated master-orchestrator session may select one bounded objective whose required
-product decisions are already recorded, then stage only its exact changed files and commit the
-validated objective on the current branch. It must preserve unrelated worktree changes and never
-push, open a PR, rebase, reset, stash, delete state, or change repository policy incidentally.
-
-Stop and ask the user only for an architecture gate: a missing decision or ambiguous scope; a new
-generic primitive or `src/lib` / `src/cmd` edit; a public CLI/MCP/schema contract; a package/runtime
-ownership boundary; live provider/Docker/auth/network work; destructive cleanup or secrets;
-validation uncertainty; or overlap/conflict with user changes. All other in-objective implementation,
-validation, task-documentation, and permitted commit decisions are autonomous.
+A master-orchestrator label, task dispatch flag or historical checkpoint does not
+itself authorize staging or commits. Apply any explicit user-granted orchestration
+scope to its named objective and checkout only, preserving unrelated work. Current
+instructions to leave work unstaged or uncommitted take precedence. Ask about a
+missing product decision or unresolved scope boundary; do not manufacture a new
+approval gate for reversible work already authorized.
 
 ## Compact continuation prompt
 

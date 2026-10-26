@@ -7,7 +7,11 @@ This file is a lightweight router. Load only the focused docs needed for the tas
 
 Machine-readable routing: `docs/agents/index.yaml`.
 
-This checkout owns the runtime, CLI, desktop host and host SDK. Remaining catalog package source is in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages/). The compiler and language SDK are in [PipeLang](https://github.com/Dockpipe-Industries/pipelang). Consume versioned external artifacts and the pinned PipeLang Go module; never copy those implementations back or depend on a sibling checkout. Existing typed-model, `dockpipe pipelang` and materialization behavior remains supported.
+This checkout owns the runtime, CLI, GUI shell, host SDK and workflow editor extension. Remaining catalog package source is in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages/). The compiler and language SDK are in [PipeLang](https://github.com/Dockpipe-Industries/pipelang). Consume versioned external artifacts and the pinned PipeLang Go module; never copy those implementations back or depend on a sibling checkout. Existing typed-model, `dockpipe pipelang` and materialization behavior remains supported.
+
+The Dockpipe GUI shell lives in `src/dockpipe-app/`; read its `ARCHITECTURE.md`
+before changing UI ownership or host SDK boundaries. Call the product Dockpipe.
+Legacy installed IDs and SDK symbols remain compatibility contracts.
 
 ## Global Hard Rules
 
@@ -52,8 +56,8 @@ explicit, and avoid overlapping edits or automatic fanout.
 | Git runtime sessions or workspace lifecycle | `docs/agents/runtime/git-runtime-sessions.md`, `docs/agents/core/architecture.md`, `docs/agents/core/path-scopes.md` | `dorkpipe-core-review`, `dorkpipe-yaml-workflows` |
 | Package authoring | `docs/agents/packages/package-authoring.md`, `docs/agents/core/core-package-model.md` | `dorkpipe-package-authoring` |
 | Package promotion | `docs/agents/packages/package-promotion.md`, `docs/agents/core/validation-commands.md` | `dorkpipe-package-authoring`, `dorkpipe-core-review` |
-| Agentic/DorkPipe workflows | `docs/agents/workflows/ai-workflow-value-bar.md`, `docs/agents/workflows/model-escalation.md`, `docs/agents/workflows/docs-generation.md`, `docs/agents/workflows/planner-promotion-model.md`, `docs/agents/workflows/yaml-workflows.md` | `dorkpipe-agentic-yaml`, `dorkpipe-yaml-workflows` |
-| Tooling app or UI surface | `docs/agents/workflows/tooling-surfaces.md`, `docs/agents/workflows/planner-promotion-model.md`, `docs/agents/tasks/agentic-app-ui/index.yaml` | `dorkpipe-agentic-yaml`, `dorkpipe-yaml-workflows` |
+| Agentic/DorkPipe workflows | [DorkPipe guidance](https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/agents/index.yaml), `docs/agents/workflows/yaml-workflows.md` for generic fields | `dorkpipe-agentic-yaml`, `dorkpipe-yaml-workflows` |
+| GUI or editor surface | `src/dockpipe-app/ARCHITECTURE.md`, `docs/agents/workflows/tooling-surfaces.md`, `docs/packages/editor-extensions.md` | `dorkpipe-core-review` |
 | Docs or agent guidance | `docs/agents/docs/token-optimization.md`, `docs/agents/docs/skills.md` | `dorkpipe-token-optimization` |
 | Docs system or sync rules | `docs/agents/docs/docs-system.md`, `docs/agents/docs/token-optimization.md` | `dorkpipe-token-optimization`, `dorkpipe-core-review` |
 | Artifacts or MCP | `docs/agents/runtime/artifacts-and-mcp.md`, `docs/agents/runtime/safety-guardrails.md` | `dorkpipe-core-review` |
@@ -61,11 +65,12 @@ explicit, and avoid overlapping edits or automatic fanout.
 ## Skill Routing
 
 Use target-independent skill ids. Do not write target-specific skill routing keys.
-DorkPipe renders the same curated skills to Codex, Claude, or generic targets:
+Select an absolute installed or built `DOCKPIPE_BIN` and verify that the external
+DorkPipe package is available. Its renderer supports Codex, Claude and generic targets:
 
 ```bash
-./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --list
-./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex
+"$DOCKPIPE_BIN" --package dorkpipe --workflow skills.render -- --list
+"$DOCKPIPE_BIN" --package dorkpipe --workflow skills.render -- --target codex
 ```
 
 Curated skills available from the separately installed DorkPipe package (verify host availability before use):
@@ -112,28 +117,8 @@ Report:
 
 ## Focused Docs
 
-- `docs/agents/index.yaml`
-- `docs/agents/core/repo-map.md`
-- `docs/agents/core/architecture.md`
-- `docs/agents/core/engine-boundary.md`
-- `docs/agents/core/core-package-model.md`
-- `docs/agents/core/path-scopes.md`
-- `docs/agents/runtime/git-runtime-sessions.md`
-- `docs/agents/runtime/codex-sandbox-sessions.md`
-- `docs/agents/runtime/git-runtime-auth.md`
-- `docs/agents/workflows/yaml-workflows.md`
-- `docs/agents/packages/package-authoring.md`
-- `docs/agents/packages/package-promotion.md`
-- `docs/agents/workflows/ai-workflow-value-bar.md`
-- `docs/agents/workflows/model-escalation.md`
-- `docs/agents/workflows/docs-generation.md`
-- `docs/agents/workflows/planner-promotion-model.md`
-- `docs/agents/runtime/artifacts-and-mcp.md`
-- `docs/agents/core/validation-commands.md`
-- `docs/agents/runtime/safety-guardrails.md`
-- `docs/agents/docs/token-optimization.md`
-- `docs/agents/docs/skills.md`
-- `docs/agents/docs/docs-system.md`
-- `docs/agents/task-index.yaml`
+Use `docs/agents/index.yaml` for guidance and `docs/agents/task-index.yaml` for
+open core work. Package-owned routing lives with its owner; closed records are
+historical evidence, not pending instructions. See `docs/agents/TASKS.md`.
 
 Dockpipe runs anything, anywhere, in isolation. Keep it simple. Keep it composable.

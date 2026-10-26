@@ -7,19 +7,44 @@ import (
 	"strings"
 )
 
-// tryResolveRuntime returns the path to templates/core/runtimes/<name> or .../<name>/profile if either exists as a file.
+// tryResolveRuntime resolves explicitly selected files and package/project runtime profiles.
+// Builtin defaults do not require an on-disk profile.
 func tryResolveRuntime(repoRoot, name string) string {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return ""
 	}
-	candidates := []string{
-		filepath.Join(CoreDir(repoRoot), "runtimes", name),
-		filepath.Join(CoreDir(repoRoot), "runtimes", name, "profile"),
+	var candidates []string
+	if filepath.IsAbs(name) || strings.ContainsAny(name, `/\`) {
+		path := name
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(repoRoot, path)
+		}
+		candidates = append(candidates, path, filepath.Join(path, "profile"))
+	} else {
+		var roots []string
+		if root, err := PackagesRoot(repoRoot); err == nil {
+			roots = append(roots, root)
+		}
+		roots = append(roots, configuredPackageStoreRoots(repoRoot)...)
+		for _, root := range roots {
+			path := filepath.Join(root, "runtimes", name)
+			candidates = append(candidates, path, filepath.Join(path, "profile"))
+		}
+		path := filepath.Join(repoRoot, "runtimes", name)
+		candidates = append(candidates, path, filepath.Join(path, "profile"))
+		if root, err := GlobalPackagesRoot(); err == nil {
+			path := filepath.Join(root, "runtimes", name)
+			candidates = append(candidates, path, filepath.Join(path, "profile"))
+		}
+		for _, root := range SystemPackagesRoots() {
+			path := filepath.Join(root, "runtimes", name)
+			candidates = append(candidates, path, filepath.Join(path, "profile"))
+		}
 	}
-	for _, p := range candidates {
-		if st, err := os.Stat(p); err == nil && !st.IsDir() {
-			return p
+	for _, path := range candidates {
+		if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() {
+			return path
 		}
 	}
 	return ""
@@ -47,17 +72,10 @@ func tryResolveResolver(repoRoot, name string) string {
 	return profile
 }
 
-// LoadIsolationProfile loads and merges KEY=value maps from runtime and resolver profiles.
-// Runtime keys (DOCKPIPE_RUNTIME_*) belong under templates/core/runtimes/<name>;
-// resolver keys (DOCKPIPE_RESOLVER_*) under templates/core/resolvers/<name> (see docs/concepts/architecture-model.md).
-//
-// Merge order: runtime file(s) first, then resolver file(s); later keys overlay earlier for duplicate keys.
-//
-// When only one of (runtimeName, resolverName) is set, also tries the other path with the same basename
-// so paired runtimes/foo + resolvers/foo work with a single CLI flag.
-//
-// When both names are set and differ, only templates/core/runtimes/<runtimeName> and
-// templates/core/resolvers/<resolverName> are loaded (no cross-name fallback).
+// LoadIsolationProfile merges builtin runtime defaults, optional runtime files,
+// and resolver files, in that order. Later assignments overlay earlier values.
+// A single selected name also checks the other profile category for a paired
+// runtime/resolver. Distinct explicit names do not cross-read profiles.
 func LoadIsolationProfile(repoRoot, runtimeName, resolverName string) (map[string]string, error) {
 	runtimeName = NormalizeRuntimeProfileName(strings.TrimSpace(runtimeName))
 	resolverName = strings.TrimSpace(resolverName)
@@ -77,6 +95,14 @@ func LoadIsolationProfile(repoRoot, runtimeName, resolverName string) (map[strin
 		}
 		return nil
 	}
+	mergeRuntime := func(name string) error {
+		if defaults, ok := builtinRuntimeDefaults(name); ok {
+			for key, value := range defaults.assignments() {
+				m[key] = value
+			}
+		}
+		return merge(tryResolveRuntime(repoRoot, name))
+	}
 	mergeResolver := func(path string) error {
 		if err := merge(path); err != nil {
 			return err
@@ -92,7 +118,7 @@ func LoadIsolationProfile(repoRoot, runtimeName, resolverName string) (map[strin
 	}
 
 	if runtimeName != "" {
-		if err := merge(tryResolveRuntime(repoRoot, runtimeName)); err != nil {
+		if err := mergeRuntime(runtimeName); err != nil {
 			return nil, err
 		}
 		if !explicitPair && resolverName == "" {
@@ -103,7 +129,7 @@ func LoadIsolationProfile(repoRoot, runtimeName, resolverName string) (map[strin
 	}
 	if resolverName != "" {
 		if !explicitPair && runtimeName == "" {
-			if err := merge(tryResolveRuntime(repoRoot, resolverName)); err != nil {
+			if err := mergeRuntime(resolverName); err != nil {
 				return nil, err
 			}
 		}
@@ -113,7 +139,7 @@ func LoadIsolationProfile(repoRoot, runtimeName, resolverName string) (map[strin
 	}
 
 	if len(m) == 0 {
-		return nil, fmt.Errorf("no isolation profile files found for runtime=%q resolver=%q", runtimeName, resolverName)
+		return nil, fmt.Errorf("no isolation profile found for runtime=%q resolver=%q", runtimeName, resolverName)
 	}
 	return m, nil
 }

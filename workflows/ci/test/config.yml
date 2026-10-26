@@ -91,8 +91,8 @@ steps:
       test "$GOT" = "$ARTIFACT_SHA256" || { echo "[demo] FAIL checksum mismatch"; exit 1; }
       echo "[demo] Checksum OK — same bytes on disk as in step 1."
       export PATH="$GOBIN:$(go env GOPATH)/bin:$PATH"
-      echo "[demo] Running: bash release/packaging/test-runtime.sh"
-      bash release/packaging/test-runtime.sh
+      echo "[demo] Running: python3 workflows/ci/core/assets/scripts/test.py"
+      python3 workflows/ci/core/assets/scripts/test.py
       echo "[demo] Running: go vet ./..."
       go vet ./...
       echo "[demo] go install staticcheck + govulncheck + gosec (must match container Go — do not use host GOBIN in Docker)"

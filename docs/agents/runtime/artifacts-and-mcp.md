@@ -1,42 +1,26 @@
-# Artifacts And MCP
+# Artifacts and external MCP
 
-Read when using generated context, self-analysis artifacts, or DorkPipe MCP tools.
+Read when using generated context or package-owned MCP tools. Human reference:
+[maintainer artifacts](../../runtime/artifacts.md).
 
-## Two Channels
+## Artifact rules
 
-| Channel | Use | Rule |
-| --- | --- | --- |
-| On-disk artifacts | `bin/.dockpipe/`, `.dorkpipe/` handoffs, facts, CI bundles, metrics, insights | Read-only grounding unless user asks to refresh. |
-| MCP (`mcpd`) | Bounded tool access with tiered IAM | Respect tier. Do not assume exec tools are available. |
+- Treat `bin/.dockpipe/` and `.dorkpipe/` reports as read-only grounding unless the
+  user asks to refresh them. Identify stale or missing evidence rather than
+  silently regenerating it.
+- Compare the recorded source identity with the current work when it affects a
+  conclusion. An old handoff, approval or successful run is not fresh authority.
+- Use `cwd: artifacts` or `dockpipe scope artifacts ...` for workflow outputs.
+  Durable continuity state belongs to its package owner; disposable caches and
+  reproducible products belong in artifact or package-runtime scope.
+- Keep generated outputs, credentials and resolved configuration out of commits.
 
-## Artifact Rules
+## MCP ownership
 
-- Say whether artifacts look current vs `HEAD` when relevant.
-- If missing or stale, suggest refresh instead of silently regenerating.
-- Refresh only when the user asks.
-- Authored workflows should write generated files through `cwd: artifacts` or `dockpipe scope artifacts ...`.
-- Durable package continuity state belongs under `dockpipe scope --package <owner-id> ...`; workflow-run outputs, caches, and reproducible package products belong in artifact or package-runtime scope.
-- Pipeon binaries and host apps belong to the [external package source](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon).
+The existing MCP bridge, tiers and analysis integrations are DorkPipe-owned.
+Read [its MCP guidance](https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/agents/runtime/mcp-and-analysis.md)
+and inspect actual tool capabilities before relying on them. Access to a tool
+is not permission to perform every operation it supports.
 
-## MCP Tier Model
-
-| Tier | Capability |
-| --- | --- |
-| `readonly` | list/read only |
-| `validate` | list + validate, no run tools |
-| `exec` | run tools enabled |
-
-Set with `DOCKPIPE_MCP_TIER`. Default tier is `validate`. `exec` or legacy
-`DOCKPIPE_MCP_ALLOW_EXEC=1` is required for run tools.
-
-## Scaffolded Handoffs
-
-`dockpipe init ... --from dorkpipe-self-analysis` appends a handoff section to
-`AGENTS.md` in new projects using marker `<!-- dockpipe: self-analysis handoff -->`.
-Treat that generated section as evidence subject to the rules above.
-
-## Docs
-
-- `docs/runtime/artifacts.md`
-- [MCP package](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe-mcp/README.md)
-- [MCP bridge](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages/dorkpipe-mcp/mcpbridge/README.md)
+The proposed [unified core gateway](../tasks/unified-mcp-gateway/index.yaml)
+is open backlog; do not describe it as replacing the existing package bridge.

@@ -15,7 +15,7 @@
 
 ## Release (only for PRs into master)
 
-<!-- Remove this section for ordinary integration PRs. VERSION selects the release line; the workflow generates the patch number. -->
+<!-- Remove this section for ordinary integration PRs. VERSION selects the release line and numeric floor; the workflow generates the patch number and GitHub generates the merged-PR changelog at publication. -->
 
-- [ ] Updated `release/releasenotes/<VERSION>.md` with user-facing changes, upgrade steps and known limits.
+- [ ] PR descriptions and linked user documentation cover user-facing changes, upgrade steps and known limits for the generated changelog.
 - [ ] Installation and feature claims match the artifacts and verification available for this release; staging or preview features are labelled.

@@ -1,0 +1,11 @@
+name: build-compiler-bootstrap
+description: Run the build compiler bootstrap operation with explicit options after --.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/build/compiler-bootstrap/assets/scripts/build.py

@@ -1,32 +1,27 @@
-# TASK-010 Declarative dependency install UX
 schema: 1
 id: TASK-010
-topic: "Declarative dependency install UX"
+topic: Declarative dependency install UX
 entrypoint: overview.md
-
 dispatch:
-  readiness: ready
-  ownership: active-objective
-
+  readiness: decision_ready
+  ownership: unclaimed
 routes:
   orientation:
     read:
-      - overview.md
+    - overview.md
   implementation:
     read:
-      - overview.md
+    - overview.md
   version_pinning:
     read:
-      - overview.md
-      - ../../../packages/version-pinning.md
-      - ../../../packages/package-model.md
-
+    - overview.md
+    - ../../../packages/version-pinning.md
+    - ../../../packages/package-model.md
 documents:
-  - path: overview.md
-    role: complete active task record
-  - path: ../../../packages/version-pinning.md
-    role: canonical proposed behavior and current-version boundary
-
+- path: overview.md
+  role: complete active task record
+- path: ../../../packages/version-pinning.md
+  role: canonical proposed behavior and current-version boundary
 maintenance:
-  - Resolve document paths relative to this index.
-  - Keep task narrative in overview.md and dispatch metadata synchronized with docs/agents/task-index.yaml.
+- Resolve document paths relative to this index.
+- Keep task narrative in overview.md and dispatch metadata synchronized with docs/agents/task-index.yaml.

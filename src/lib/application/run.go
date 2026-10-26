@@ -17,7 +17,7 @@ var (
 	repoRootAppFn          = infrastructure.RepoRoot
 	loadWorkflowAppFn      = infrastructure.LoadWorkflow
 	loadResolverFileAppFn  = infrastructure.LoadResolverFile
-	templateBuildAppFn     = infrastructure.TemplateBuild
+	templateBuildAppFn     = infrastructure.ResolveTemplateBuild
 	maybeVersionTagAppFn   = infrastructure.MaybeVersionTag
 	resolveActionPathFn    = infrastructure.ResolveActionPath
 	sourceHostScriptAppFn  = infrastructure.SourceHostScript
@@ -77,105 +77,7 @@ func setUserRepoRootForWorktree(env map[string]string, opts *CliOpts, repoURL st
 	})
 }
 
-// Run is the CLI entry (after stripping os.Args[0]).
-func Run(argv []string, baseEnviron []string) error {
-	if baseEnviron == nil {
-		baseEnviron = os.Environ()
-	}
-	if len(argv) == 0 {
-		printUsage()
-		return nil
-	}
-	if err := checkCLIProjectVersion(argv); err != nil {
-		return err
-	}
-	if argv[0] == "init" {
-		return cmdInit(argv[1:])
-	}
-	if argv[0] == "action" {
-		return cmdAction(argv[1:])
-	}
-	if argv[0] == "pre" {
-		return cmdPre(argv[1:])
-	}
-	if argv[0] == "template" {
-		return cmdTemplate(argv[1:])
-	}
-	if argv[0] == "windows" {
-		return cmdWindows(argv[1:])
-	}
-	if argv[0] == "workflow" {
-		return cmdWorkflow(argv[1:])
-	}
-	if argv[0] == "catalog" {
-		return cmdCatalog(argv[1:])
-	}
-	if argv[0] == "pipelang" {
-		return cmdPipeLang(argv[1:])
-	}
-	if argv[0] == "doctor" {
-		return cmdDoctor(argv[1:])
-	}
-	if argv[0] == "test" {
-		return cmdTest(argv[1:])
-	}
-	if argv[0] == "runs" {
-		return cmdRuns(argv[1:])
-	}
-	if argv[0] == "result" {
-		return cmdResult(argv[1:])
-	}
-	if argv[0] == "session" {
-		return cmdSession(argv[1:])
-	}
-	if argv[0] == "git" {
-		return cmdWorkspaceGit(argv[1:])
-	}
-	if argv[0] == "remote" {
-		return cmdRemote(argv[1:])
-	}
-	if argv[0] == "install" {
-		return cmdInstall(argv[1:])
-	}
-	if argv[0] == "package" {
-		return cmdPackage(argv[1:])
-	}
-	if argv[0] == "build" {
-		return cmdBuild(argv[1:])
-	}
-	if argv[0] == "clean" {
-		return cmdClean(argv[1:])
-	}
-	if argv[0] == "rebuild" {
-		return cmdRebuild(argv[1:])
-	}
-	if argv[0] == "compile" {
-		return cmdPackage(append([]string{"compile"}, argv[1:]...))
-	}
-	if argv[0] == "clone" {
-		return cmdClone(argv[1:])
-	}
-	if argv[0] == "release" {
-		return cmdRelease(argv[1:])
-	}
-	if argv[0] == "core" {
-		return cmdCore(argv[1:])
-	}
-	if argv[0] == "terraform" {
-		return cmdTerraform(argv[1:])
-	}
-	if argv[0] == "sdk" {
-		return cmdSDK(argv[1:])
-	}
-	if argv[0] == "get" {
-		return cmdGet(argv[1:])
-	}
-	if argv[0] == "scope" {
-		return cmdScope(argv[1:])
-	}
-	if argv[0] == "__state" {
-		return cmdInternalState(argv[1:])
-	}
+func executeWorkflowRun(argv []string, baseEnviron []string, services runExecutionServices) error {
 
 	repoRoot, err := repoRootAppFn()
 	if err != nil {
@@ -194,107 +96,25 @@ func Run(argv []string, baseEnviron []string) error {
 		infrastructure.SetWorkflowsDirForProcess(opts.WorkflowsDir)
 		defer infrastructure.SetWorkflowsDirForProcess("")
 	}
-	if compileDepsWanted(opts) && opts.Workflow != "" && !isVSCodeWorkflow(opts.Workflow) && opts.WorkflowFile == "" && strings.TrimSpace(opts.Package) == "" {
-		effWd := effectiveWorkdirForWorkflowOpts(opts)
-		if err := compileClosureForWorkflow(effWd, opts.Workflow, opts.Force); err != nil {
-			return err
-		}
+	selection, err := selectWorkflow(workflowSelectionRequest{
+		repoRoot:          repoRoot,
+		effectiveWorkdir:  effectiveWorkdirForWorkflowOpts(opts),
+		workflowName:      opts.Workflow,
+		workflowFile:      opts.WorkflowFile,
+		packageName:       opts.Package,
+		compileDepsWanted: compileDepsWanted(opts),
+		force:             opts.Force,
+	}, loadWorkflowAppFn)
+	if err != nil {
+		return err
 	}
-
-	var wf *domain.Workflow
-	var wfRoot, wfConfig string
-	stepsMode := false
-	if opts.Workflow != "" && opts.WorkflowFile != "" {
-		return fmt.Errorf("use only one of --workflow and --workflow-file")
+	wf, wfRoot, wfConfig := selection.workflow, selection.root, selection.config
+	stepsMode := selection.stepsMode
+	if selection.editorWorkdirOverride != "" {
+		opts.Workdir = selection.editorWorkdirOverride
 	}
-	if strings.TrimSpace(opts.Package) != "" && opts.Workflow == "" {
-		return fmt.Errorf("--package requires --workflow")
-	}
-	if strings.TrimSpace(opts.Package) != "" && opts.WorkflowFile != "" {
-		return fmt.Errorf("--package cannot be used with --workflow-file")
-	}
-	if opts.WorkflowFile != "" {
-		wfPath, err := filepath.Abs(opts.WorkflowFile)
-		if err != nil {
-			return fmt.Errorf("workflow file: %w", err)
-		}
-		if _, err := os.Stat(wfPath); err != nil {
-			return fmt.Errorf("workflow file: %w", err)
-		}
-		wf, err = loadWorkflowAppFn(wfPath)
-		if err != nil {
-			return fmt.Errorf("parse config: %w", err)
-		}
-		wfRoot = filepath.Dir(wfPath)
-		wfConfig = wfPath
-		if len(wf.Steps) > 0 {
-			stepsMode = true
-		}
-	} else if isVSCodeWorkflow(opts.Workflow) && strings.TrimSpace(opts.Package) == "" {
-		wf, wfRoot, err = loadVSCodeWorkflow(effectiveWorkdirForWorkflowOpts(opts), opts.Workflow)
-		if err != nil {
-			return fmt.Errorf("VS Code workflow: %w", err)
-		}
-		// The adapter produces normal host steps in memory. The editor JSON is
-		// provenance, not a YAML config to parse or ship to a remote machine.
-		stepsMode = true
-		opts.Workdir = wfRoot
-		if wf.Category == "app" {
-			fmt.Fprintln(os.Stderr, "[dockpipe] VS Code launch: running without a debugger")
-		}
-	} else if opts.Workflow != "" {
-		var statErr error
-		effWd := effectiveWorkdirForWorkflowOpts(opts)
-		if strings.TrimSpace(opts.Package) != "" {
-			wfConfig, statErr = infrastructure.ResolvePackageWorkflowConfigPath(repoRoot, effWd, opts.Workflow, opts.Package)
-		} else {
-			wfConfig, statErr = infrastructure.ResolveWorkflowConfigPathWithWorkdir(repoRoot, effWd, opts.Workflow)
-		}
-		if statErr != nil {
-			if strings.TrimSpace(opts.Package) == "" && os.Getenv("DOCKPIPE_REPO_ROOT") == "" && infrastructure.EmbeddedWorkflowConfigExists(opts.Workflow) {
-				if invErr := infrastructure.InvalidateBundledCache(); invErr == nil {
-					repoRoot, err = repoRootAppFn()
-					if err != nil {
-						return err
-					}
-					wfConfig, statErr = infrastructure.ResolveWorkflowConfigPathWithWorkdir(repoRoot, effWd, opts.Workflow)
-				}
-			}
-			if statErr != nil {
-				names, _ := infrastructure.ListWorkflowNamesInRepoRootAndPackages(repoRoot, effWd)
-				msg := fmt.Sprintf("workflow %q not found — tried workflows/ (or DOCKPIPE_WORKFLOWS_DIR), extra roots from dockpipe.config.json compile.workflows, installed workflow packages under bin/.dockpipe/internal/packages/workflows/, configured local package sources from packages.sources, built-in bundled workflows for this dockpipe build, and namespaced workflow tarballs (dockpipe-workflow-%[1]s-*.tar.gz under release/artifacts or packages.tarball_dir with a matching config.yml or compiled package.yml namespace)", opts.Workflow)
-				if strings.TrimSpace(opts.Package) != "" {
-					msg = fmt.Sprintf("workflow %q in package %q not found — tried unpacked packaged workflows and configured workflow roots", opts.Workflow, opts.Package)
-				}
-				if len(names) > 0 {
-					msg += fmt.Sprintf(" (available in this install: %s)", strings.Join(names, ", "))
-				}
-				if strings.TrimSpace(opts.Package) != "" {
-					msg += ". Ensure the nearest package.yml sets name: to the requested package."
-				} else if !infrastructure.EmbeddedWorkflowConfigExists(opts.Workflow) {
-					msg += ". This dockpipe build does not include that workflow; install a newer release or use --workflow-file path/to/config.yml."
-				} else {
-					msg += ". Try deleting the bundled cache folder under your user cache (dockpipe/bundled-*) or set DOCKPIPE_REPO_ROOT to a full git checkout."
-				}
-				return fmt.Errorf("%s", msg)
-			}
-		}
-		if strings.HasPrefix(wfConfig, "tar://") {
-			configOnDisk, extractErr := infrastructure.WorkflowConfigOnDiskPath(effWd, wfConfig)
-			if extractErr != nil {
-				return extractErr
-			}
-			wfRoot = filepath.Dir(configOnDisk)
-		} else {
-			wfRoot = filepath.Dir(wfConfig)
-		}
-		wf, err = loadWorkflowAppFn(wfConfig)
-		if err != nil {
-			return fmt.Errorf("parse config: %w", err)
-		}
-		if len(wf.Steps) > 0 {
-			stepsMode = true
-		}
+	if selection.editorLaunchWithoutDebugger {
+		fmt.Fprintln(os.Stderr, "[dockpipe] VS Code launch: running without a debugger")
 	}
 
 	effWd := effectiveWorkdirForWorkflowOpts(opts)
@@ -344,7 +164,8 @@ func Run(argv []string, baseEnviron []string) error {
 		})
 	}
 
-	envMap := domain.EnvironToMap(baseEnviron)
+	session := newRunSession(baseEnviron, services)
+	envMap := session.env
 	workflowRunID, identityErr := infrastructure.NewWorkflowRunID()
 	if identityErr != nil {
 		return identityErr
@@ -389,8 +210,7 @@ func Run(argv []string, baseEnviron []string) error {
 		MergeExtraEnvCLIIntoSteps(envMap, opts.ExtraEnvLines, opts.VarOverrides)
 		mergeVSCodeInputEnv(envMap, opts.ExtraEnvLines, opts.VarOverrides)
 	}
-	// CLI --workdir must live in envMap, not only on envSlice: strategy pre-scripts rebuild
-	// envSlice from envMap (run.go) and would otherwise drop DOCKPIPE_WORKDIR from appendUniqueEnv.
+	// Explicit workdir remains authoritative after setup exports are merged.
 	if opts.Workdir != "" {
 		envMap["DOCKPIPE_WORKDIR"] = opts.Workdir
 	}
@@ -504,7 +324,7 @@ func Run(argv []string, baseEnviron []string) error {
 		preFromResolver = ra.PreScript
 		actFromResolver = ra.Action
 		if ra.Experimental {
-			fmt.Fprintf(os.Stderr, "[dockpipe] Profile %q is experimental — see templates/core and docs.\n", profileLabel)
+			fmt.Fprintf(os.Stderr, "[dockpipe] Profile %q is experimental — see its package documentation.\n", profileLabel)
 		}
 		if opts.Workflow == "" && opts.WorkflowFile == "" {
 			if len(opts.PreScripts) == 0 && preFromResolver != "" {
@@ -513,6 +333,14 @@ func Run(argv []string, baseEnviron []string) error {
 			if opts.Action == "" && actFromResolver != "" {
 				opts.Action = filepath.Join(repoRoot, actFromResolver)
 			}
+		}
+	}
+
+	var preparedResolver *preparedWorkflow
+	if !stepsMode && resolverWorkflow != "" {
+		preparedResolver, err = prepareResolverWorkflow(loadWorkflowAppFn, resolverWorkflow, repoRoot, opts)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -597,7 +425,9 @@ func Run(argv []string, baseEnviron []string) error {
 			// Host script or embedded workflow replaces docker isolate (e.g. cursor-dev / vscode templates).
 			image, buildDir, buildCtx = "", "", ""
 		} else if opts.Isolate != "" {
-			if im, dir, ctx, ok := templateBuildForRun(repoRoot, projectRoot, opts.Isolate); ok {
+			if im, dir, ctx, ok, err := templateBuildForRun(repoRoot, projectRoot, opts.Isolate); err != nil {
+				return err
+			} else if ok {
 				effectiveTemplate = opts.Isolate
 				image, buildDir, buildCtx = im, dir, ctx
 			} else {
@@ -605,14 +435,18 @@ func Run(argv []string, baseEnviron []string) error {
 			}
 		} else if templateName != "" {
 			effectiveTemplate = templateName
-			if im, dir, ctx, ok := templateBuildForRun(repoRoot, projectRoot, templateName); ok {
+			if im, dir, ctx, ok, err := templateBuildForRun(repoRoot, projectRoot, templateName); err != nil {
+				return err
+			} else if ok {
 				image, buildDir, buildCtx = im, dir, ctx
 			}
 		}
 		if hostIsolate == "" && resolverWorkflow == "" {
 			if image == "" {
-				image, buildDir = "dockpipe-base-dev", filepath.Join(infrastructure.CoreDir(repoRoot), "assets", "images", "base-dev")
-				buildCtx = repoRoot
+				image, buildDir, buildCtx, _, err = infrastructure.BuiltinContainerBuild(firstNonEmpty(projectRoot, repoRoot), "base-dev")
+				if err != nil {
+					return err
+				}
 			}
 			image = maybeVersionTagAppFn(repoRoot, image)
 		}
@@ -684,7 +518,11 @@ func Run(argv []string, baseEnviron []string) error {
 			fmt.Fprintf(os.Stderr, "[dockpipe] Data dir for worktrees: %s (override with --data-dir)\n", dataDir)
 			dataVol = ""
 		}
-		opts.PreScripts = []string{"scripts/clone-worktree.sh"}
+		cloneHook, err := infrastructure.LegacyGitHookPath(projectRoot, "clone-worktree")
+		if err != nil {
+			return fmt.Errorf("prepare repository clone hook: %w", err)
+		}
+		opts.PreScripts = []string{cloneHook}
 	}
 
 	// Drop inherited DOCKPIPE_WORKDIR before pre-scripts: a leftover export (or workflow .env)
@@ -699,33 +537,33 @@ func Run(argv []string, baseEnviron []string) error {
 		}
 	}
 
-	envSlice := domain.EnvMapToSlice(envMap)
-	// Inject standard repo / job env for pre-scripts
-	envSlice = appendUniqueEnv(envSlice, "DOCKPIPE_REPO_ROOT="+repoRoot)
+	session.launchOverrides = make(map[string]string)
+	// Initial command-only values are not implicitly exported to step workflows.
+	session.launchOverrides["DOCKPIPE_REPO_ROOT"] = repoRoot
 	if opts.RepoURL != "" {
-		envSlice = appendUniqueEnv(envSlice, "DOCKPIPE_REPO_URL="+opts.RepoURL)
+		session.launchOverrides["DOCKPIPE_REPO_URL"] = opts.RepoURL
 	}
 	if opts.RepoBranch != "" {
-		envSlice = appendUniqueEnv(envSlice, "DOCKPIPE_REPO_BRANCH="+opts.RepoBranch)
+		session.launchOverrides["DOCKPIPE_REPO_BRANCH"] = opts.RepoBranch
 	}
 	if dataDir != "" {
-		envSlice = appendUniqueEnv(envSlice, "DOCKPIPE_DATA_DIR="+dataDir)
+		session.launchOverrides["DOCKPIPE_DATA_DIR"] = dataDir
 	}
 	if rsName != "" {
-		envSlice = appendUniqueEnv(envSlice, "RESOLVER="+rsName)
+		session.launchOverrides["RESOLVER"] = rsName
 	}
 	if rtName != "" {
-		envSlice = appendUniqueEnv(envSlice, "RUNTIME="+rtName)
+		session.launchOverrides["RUNTIME"] = rtName
 	}
 	if rsName == "" && rtName == "" && profileLabel != "" {
-		envSlice = appendUniqueEnv(envSlice, "RESOLVER="+profileLabel)
-		envSlice = appendUniqueEnv(envSlice, "RUNTIME="+profileLabel)
+		session.launchOverrides["RESOLVER"] = profileLabel
+		session.launchOverrides["RUNTIME"] = profileLabel
 	}
 	if templateName != "" {
-		envSlice = appendUniqueEnv(envSlice, "TEMPLATE="+templateName)
+		session.launchOverrides["TEMPLATE"] = templateName
 	}
 	if opts.Workdir != "" {
-		envSlice = appendUniqueEnv(envSlice, "DOCKPIPE_WORKDIR="+opts.Workdir)
+		session.launchOverrides["DOCKPIPE_WORKDIR"] = opts.Workdir
 	}
 
 	var firstStepExtra []string
@@ -779,16 +617,13 @@ func Run(argv []string, baseEnviron []string) error {
 			var em map[string]string
 			_, err := infrastructure.RunOperationWithResultOptions(os.Stderr, "host.setup", hostSpinnerLabel(p), ids, hostSetupOperationOptions(), func() error {
 				var opErr error
-				em, opErr = sourceHostScriptAppFn(p, envSlice)
+				em, opErr = services.sourceScript(p, session.commandEnvironment())
 				return opErr
 			})
 			if err != nil {
 				return err
 			}
-			for k, v := range em {
-				envMap[k] = v
-			}
-			envSlice = domain.EnvMapToSlice(envMap)
+			session.mergeSetupEnvironment(em)
 		}
 	}
 
@@ -804,22 +639,19 @@ func Run(argv []string, baseEnviron []string) error {
 			var em map[string]string
 			_, err := infrastructure.RunOperationWithResultOptions(os.Stderr, "host.setup", hostSpinnerLabel(p), ids, hostSetupOperationOptions(), func() error {
 				var opErr error
-				em, opErr = sourceHostScriptAppFn(p, envSlice)
+				em, opErr = services.sourceScript(p, session.commandEnvironment())
 				return opErr
 			})
 			if err != nil {
 				return err
 			}
-			for k, v := range em {
-				envMap[k] = v
-			}
-			envSlice = domain.EnvMapToSlice(envMap)
+			session.mergeSetupEnvironment(em)
 		}
 	}
 
 	if commitOnHost {
 		mergeCommitEnvFromLines(envMap, opts.ExtraEnvLines)
-		envSlice = domain.EnvMapToSlice(envMap)
+		session.launchOverrides = nil
 	}
 
 	if !opts.SeenDash && !stepsMode {
@@ -829,33 +661,32 @@ func Run(argv []string, baseEnviron []string) error {
 		return fmt.Errorf("no command given after --")
 	}
 
+	completion := runCompletion{
+		workflow:       wf,
+		gitSession:     gitSession,
+		repoRoot:       repoRoot,
+		workdir:        opts.Workdir,
+		bundleOut:      opts.BundleOut,
+		afterScripts:   stratAfterAbs,
+		extraEnv:       opts.ExtraEnvLines,
+		strategyCommit: strategyHandlesCommit,
+		profile:        profileLabel,
+		template:       effectiveTemplate,
+	}
+	if stepsMode {
+		completion.template = templateName
+		session.launchOverrides = nil
+	}
+
 	if !stepsMode && resolverWorkflow != "" {
-		if err := runEmbeddedResolverWorkflow(resolverWorkflow, repoRoot, envMap, opts, rest, locked, dataVol, dataDir, profileLabel, templateName, runStepsAppFn); err != nil {
+		if err := runPreparedResolverWorkflow(preparedResolver, services.executeSteps, repoRoot, envMap, opts, rest, locked, dataVol, dataDir, profileLabel, templateName); err != nil {
 			return err
 		}
 		workHost := firstNonEmpty(envMap["DOCKPIPE_WORKDIR"], opts.Workdir)
 		if commitOnHost && strings.TrimSpace(envMap["DOCKPIPE_WORKDIR"]) != "" {
 			logRunMount(envMap["DOCKPIPE_WORKDIR"])
 		}
-		if strategyHandlesCommit {
-			mergeCommitEnvFromLines(envMap, opts.ExtraEnvLines)
-			applyBranchPrefix(envMap, profileLabel, effectiveTemplate)
-			envSlice = domain.EnvMapToSlice(envMap)
-		}
-		if len(stratAfterAbs) > 0 {
-			if err := RunStrategyAfterScripts(stratAfterAbs, repoRoot, envMap, envSlice, opts); err != nil {
-				return err
-			}
-		}
-		if err := finalizeWorkflowGitSession(gitSession, wf); err != nil {
-			return err
-		}
-		if commitOnHost && !strategyHandlesCommit {
-			if err := runHostCommit(workHost, envMap["DOCKPIPE_COMMIT_MESSAGE"], firstNonEmpty(envMap["DOCKPIPE_BUNDLE_OUT"], opts.BundleOut), strings.TrimSpace(envMap["DOCKPIPE_BUNDLE_ALL"]) == "1"); err != nil {
-				return err
-			}
-		}
-		return nil
+		return session.complete(completion, workHost, commitOnHost)
 	}
 
 	if !stepsMode && hostIsolate != "" {
@@ -881,36 +712,18 @@ func Run(argv []string, baseEnviron []string) error {
 			logRunMount(envMap["DOCKPIPE_WORKDIR"])
 		}
 		hostEnv := hostDelegateEnvSlice(
-			envSliceWithScriptContext(envSlice, scriptAbs),
+			envSliceWithScriptContext(session.commandEnvironment(), scriptAbs),
 			isolationProfileEnv,
 			shellJoinArgs(rest),
 			filepath.Join(workHost, domain.DefaultOutputsEnvRel),
 		)
-		if err := runHostScriptAppFn(scriptAbs, hostEnv); err != nil {
+		if err := services.hostScript(scriptAbs, hostEnv); err != nil {
 			return err
 		}
 		dockerEnvMap := domain.EnvSliceToMap(opts.ExtraEnvLines)
 		applyOutputsFile(filepath.Join(workHost, domain.DefaultOutputsEnvRel), envMap, dockerEnvMap, locked, nil, "")
-		envSlice = domain.EnvMapToSlice(envMap)
-		if strategyHandlesCommit {
-			mergeCommitEnvFromLines(envMap, opts.ExtraEnvLines)
-			applyBranchPrefix(envMap, profileLabel, effectiveTemplate)
-			envSlice = domain.EnvMapToSlice(envMap)
-		}
-		if len(stratAfterAbs) > 0 {
-			if err := RunStrategyAfterScripts(stratAfterAbs, repoRoot, envMap, envSlice, opts); err != nil {
-				return err
-			}
-		}
-		if err := finalizeWorkflowGitSession(gitSession, wf); err != nil {
-			return err
-		}
-		if commitOnHost && !strategyHandlesCommit {
-			if err := runHostCommit(workHost, envMap["DOCKPIPE_COMMIT_MESSAGE"], firstNonEmpty(envMap["DOCKPIPE_BUNDLE_OUT"], opts.BundleOut), strings.TrimSpace(envMap["DOCKPIPE_BUNDLE_ALL"]) == "1"); err != nil {
-				return err
-			}
-		}
-		return nil
+		session.launchOverrides = nil
+		return session.complete(completion, workHost, commitOnHost)
 	}
 
 	dockerEnvMap := domain.EnvSliceToMap(opts.ExtraEnvLines)
@@ -943,7 +756,7 @@ func Run(argv []string, baseEnviron []string) error {
 				return err
 			}
 		}
-		if err := runStepsAppFn(runStepsOpts{
+		if err := services.executeSteps(runStepsOpts{
 			wf:                    wf,
 			wfRoot:                wfRoot,
 			wfConfig:              wfConfig,
@@ -951,7 +764,6 @@ func Run(argv []string, baseEnviron []string) error {
 			projectRoot:           projectRoot,
 			cliArgs:               rest,
 			envMap:                envMap,
-			envSlice:              envSlice,
 			locked:                locked,
 			userIsolate:           userIso,
 			userAct:               userAct,
@@ -964,25 +776,11 @@ func Run(argv []string, baseEnviron []string) error {
 			strategyHandlesCommit: strategyHandlesCommit,
 		}); err != nil {
 			if code, ok := exitCodeFromError(err); ok {
-				osExitAppFn(code)
-				return nil
+				return &runProcessExit{code: code}
 			}
 			return err
 		}
-		if strategyHandlesCommit {
-			mergeCommitEnvFromLines(envMap, opts.ExtraEnvLines)
-			applyBranchPrefix(envMap, profileLabel, templateName)
-			envSlice = domain.EnvMapToSlice(envMap)
-		}
-		if len(stratAfterAbs) > 0 {
-			if err := RunStrategyAfterScripts(stratAfterAbs, repoRoot, envMap, envSlice, opts); err != nil {
-				return err
-			}
-		}
-		if err := finalizeWorkflowGitSession(gitSession, wf); err != nil {
-			return err
-		}
-		return nil
+		return session.complete(completion, "", false)
 	}
 
 	if err := infrastructure.EnsureDockerReachable(os.Stderr); err != nil {
@@ -1003,7 +801,7 @@ func Run(argv []string, baseEnviron []string) error {
 				fmt.Fprintf(os.Stderr, "[dockpipe] %s\n", msg)
 			}
 			fmt.Fprintf(os.Stderr, "[dockpipe] image: materializing image artifact (docker)…\n")
-			if err := dockerBuildAppFn(image, buildDir, buildCtx); err != nil {
+			if err := services.buildImage(image, buildDir, buildCtx); err != nil {
 				return err
 			}
 			wfName := strings.TrimSpace(opts.Workflow)
@@ -1101,27 +899,14 @@ func Run(argv []string, baseEnviron []string) error {
 		}
 	}
 
-	rc, err := runContainerAppFn(runOpts, rest)
+	rc, err := services.container(runOpts, rest)
 	if err != nil {
 		return err
 	}
 	if rc != 0 {
-		osExitAppFn(rc)
+		return &runProcessExit{code: rc}
 	}
-	if strategyHandlesCommit {
-		mergeCommitEnvFromLines(envMap, opts.ExtraEnvLines)
-		applyBranchPrefix(envMap, profileLabel, effectiveTemplate)
-		envSlice = domain.EnvMapToSlice(envMap)
-	}
-	if len(stratAfterAbs) > 0 {
-		if err := RunStrategyAfterScripts(stratAfterAbs, repoRoot, envMap, envSlice, opts); err != nil {
-			return err
-		}
-	}
-	if err := finalizeWorkflowGitSession(gitSession, wf); err != nil {
-		return err
-	}
-	return nil
+	return session.complete(completion, "", false)
 }
 
 func effectiveWorkdirForWorkflowOpts(opts *CliOpts) string {

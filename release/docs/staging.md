@@ -24,10 +24,10 @@ Staging uses the same native/Flatpak build and artifact assembly jobs as product
 
 | Output | Platforms |
 | --- | --- |
-| Dockpipe CLI archives and complete package-store bundles | Linux amd64/arm64, macOS amd64/arm64, Windows amd64 |
+| Dockpipe CLI archives and explicitly selected optional package-store bundles | Linux amd64/arm64, macOS amd64/arm64, Windows amd64 |
 | DEB, RPM, APK and Arch packages | Linux amd64/arm64 |
 | MSI installer | Windows amd64; always enabled for staging |
-| Flatpak launcher plus CLI/core and separate Marketplace store | Linux amd64, KDE Platform 6.10 |
+| Flatpak launcher plus standalone CLI; optional Marketplace store | Linux amd64, KDE Platform 6.10 |
 | Signed APT repository | amd64/arm64, suite `staging`, separate signing key |
 | Install scripts, release catalog, package manifests and checksums | Included with each candidate |
 
@@ -37,13 +37,13 @@ Each new successful staging push creates a separately selectable candidate.
 The Flatpak bundle is published on the package host; it was absent from the GitHub
 assets for the verified 0.6.3 candidate. Use the catalog's download entry. See
 [Flatpak user installation and manual updates](../../docs/install.md#flatpak-desktop-linux-amd64)
-and [publication evidence and qualification limits](../packaging/desktop/flatpak/README.md#release-integration-and-proof-limits).
+and [publication evidence and qualification limits](../../workflows/build/flatpak/README.md#release-integration-and-proof-limits).
 
 ## Versions and immutable candidates
 
 - Repo-root `VERSION` selects the release line and notes baseline. The pipeline generates
   the next unused numeric patch from all stable and staging release tags (for example,
-  `0.6.1`, then `0.6.2`). CLI, core, launcher and native installers use that version.
+  `0.6.1`, then `0.6.2`). CLI, launcher and native installers use that version.
 - Each package's `package.yml` owns its independent version. Generated children
   inherit the nearest owner; explicit child versions take precedence. Existing
   equal version numbers do not imply that future bumps must be synchronized.
@@ -71,52 +71,21 @@ continue to select production unless staging is explicitly configured.
 
 ## Infrastructure preparation
 
-Configure `STAGING_R2_BUCKET`, `STAGING_PUBLIC_HOSTNAME`, `STAGING_TF_STATE_BUCKET`,
-and `STAGING_TF_STATE_KEY` in your private configuration first. See the
-[workflow inputs](../../workflows/package/package-store-staging-infra/README.md).
-Run from this checkout with your authenticated secret provider available:
-
-```bash
-./src/bin/dockpipe --workflow package-store-staging-infra --workdir . --tf plan --
-```
-
-The maintainer wrapper calls the existing Cloudflare R2 package's Terraform runner.
-It pins your explicitly configured staging bucket and hostname after vault injection, copies only the
-module's `.tf` files and optional lockfile to a private workflow artifact directory,
-and uses your private state bucket and staging-only state key. It clears inherited production
-Terraform flags, imports, workspaces, tfvars and backend overrides. Zone-level
-cache and WAF rules remain disabled to avoid separate state claiming the existing
-zone entrypoints. The existing R2 custom-domain resource owns the HTTPS binding.
-
-The workflow is plan-only and reports a saved `staging.tfplan` path. Review that
-plan for exactly the staging bucket and custom domain before separately approving
-apply. Plan files contain sensitive provider inputs; keep them in the private
-artifact directory and never attach them to a PR.
+Provision the staging bucket, public hostname and private Terraform state in the
+owning private infrastructure repository. This runtime checkout does not contain
+or invoke the retired organization-specific infrastructure/setup workflows.
+Review saved plans in that owning environment before applying them; plan files
+contain sensitive provider inputs and must not be attached to a public PR.
 
 ## Publication credentials
 
-Provision bucket-scoped R2 Object Read & Write credentials for your staging bucket
-and a staging APT signing identity. Store them in a separate secret environment;
-do not reuse the production upload token. Your private project configuration maps
-`packages-staging-release-setup` to the staging 1Password environment with bindings
-`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `APT_SIGNING_KEY`.
-`packages-staging` binds only the upload credential pair.
-
-The existing setup workflow supports checks followed by separately approved writes:
-
-```bash
-./src/bin/dockpipe --workflow package-release-setup --workdir . \
-  --secret-environment packages-staging-release-setup \
-  --var RELEASE_SETUP_ENVIRONMENT=release-staging \
-  --var RELEASE_SETUP_REPOSITORY=your-owner/your-repository \
-  --var R2_ENDPOINT_URL=https://your-account-id.r2.cloudflarestorage.com \
-  --var DOCKPIPE_RELEASE_BUCKET=your-staging-bucket --
-```
-
-After review, the same command with `--var RELEASE_SETUP_APPLY=1` copies only those
-three secrets and the public endpoint, bucket, prefix and signing fingerprint into
-`release-staging`. It neither creates provider credentials nor starts a release.
-The existing root `.env.template` remains the infrastructure credential source.
+Use bucket-scoped object upload credentials and an independent staging APT signing
+identity. Configure the protected `release-staging` GitHub environment with secret
+references for `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `APT_SIGNING_KEY`,
+and explicit publication repository, endpoint, bucket, prefix and signing
+fingerprint variables. Do not reuse production upload credentials. Configure and
+rotate those values through the operator's private setup process; runtime build
+and dry-run workflows do not create provider credentials or production keys.
 
 ## Installing a selected candidate
 
@@ -132,9 +101,18 @@ DOCKPIPE_VERSION=0.6.1 DOCKPIPE_DOWNLOAD_BASE="$base" \
 ```
 
 Use the catalog's numeric `version` for `DOCKPIPE_VERSION`; do not pass the candidate
-suffix as a native installer version. Windows supports the same environment
-variables with the candidate's `install.ps1`. Full platform package bundles are
-available beside the CLI, and individual stores are under `stores/<platform>/`.
+suffix as a native installer version. On Windows, download the candidate's
+`install.ps1` and select its GitHub release with the full candidate identity:
+
+```powershell
+.\install.ps1 -Version '0.6.1-staging.RUN_ID.ATTEMPT.SHORT_SHA' -SkipWSLSetup
+```
+
+Replace the example with the actual candidate. The script's `-Version` parameter
+selects the GitHub tag; it does not read `DOCKPIPE_VERSION` or
+`DOCKPIPE_DOWNLOAD_BASE`. `-SkipWSLSetup` omits the optional WSL setup.
+Full platform package bundles are available beside the CLI, and individual stores
+are under `stores/<platform>/`.
 
 ### Homebrew on a test Mac
 
@@ -154,7 +132,7 @@ dispatch is also available. No additional upload secret is required.
 
 The Homebrew formula version includes the candidate provenance in addition to the
 generated numeric version. It installs the
-native CLI and required core package. The command is still `dockpipe` and uses normal user data unless
+self-contained native CLI. The command is still `dockpipe` and uses normal user data unless
 `DOCKPIPE_GLOBAL_ROOT` is set to a separate test directory.
 The stable formula is not yet published, so a conflict declaration against it is invalid.
 

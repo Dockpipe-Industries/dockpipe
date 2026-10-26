@@ -12,18 +12,13 @@ func boolPtr(v bool) *bool { return &v }
 
 // TestValidateParallelOutputPaths rejects duplicate outputs paths within one async group.
 func TestValidateParallelOutputPaths(t *testing.T) {
-	wf := &domain.Workflow{
-		Steps: []domain.Step{
-			{Outputs: "a.env", Blocking: boolPtr(false)},
-			{Outputs: "b.env", Blocking: boolPtr(false)},
-		},
-	}
-	if err := validateParallelOutputPaths(wf, 0, 2); err != nil {
+	paths := []string{"a.env", "b.env"}
+	if err := validateParallelOutputPaths(paths, 0); err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	wf.Steps[1].Outputs = "a.env"
-	if err := validateParallelOutputPaths(wf, 0, 2); err == nil || !strings.Contains(err.Error(), "duplicate outputs path") {
+	paths[1] = "a.env"
+	if err := validateParallelOutputPaths(paths, 0); err == nil || !strings.Contains(err.Error(), "duplicate outputs path") {
 		t.Fatalf("expected duplicate outputs path error, got %v", err)
 	}
 }
@@ -70,8 +65,8 @@ func TestParseStepArgv(t *testing.T) {
 	}
 }
 
-// TestMergeStepVarsRespectsLocks applies step vars to unlocked keys only (CLI-locked keys unchanged).
-func TestMergeStepVarsRespectsLocks(t *testing.T) {
+// TestApplyStepEnvOverridesRespectsLocks applies step vars to unlocked keys only (CLI-locked keys unchanged).
+func TestApplyStepEnvOverridesRespectsLocks(t *testing.T) {
 	o := &runStepsOpts{
 		envMap: map[string]string{"LOCKED": "old", "FREE": "old"},
 		locked: map[string]bool{"LOCKED": true},
@@ -83,7 +78,7 @@ func TestMergeStepVarsRespectsLocks(t *testing.T) {
 			"FREE":   "new",
 		},
 	}
-	if err := mergeStepVars(o, step, dockerEnv); err != nil {
+	if err := applyStepEnvOverrides(o, step, 0, o.envMap, dockerEnv); err != nil {
 		t.Fatal(err)
 	}
 

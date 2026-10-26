@@ -45,11 +45,11 @@ func logCompileClosureSkip(projectRoot, parentWorkflow, relation, missingRef, re
 	})
 }
 
-// compileClosureForWorkflow compiles core (if missing), then resolver tarballs and workflow tarballs
+// compileClosureForWorkflow compiles resolver tarballs and workflow tarballs
 // for the transitive closure of workflowName: config.yml inject:, package.yml depends, requires_resolvers,
 // resolver/runtime names on the workflow and steps, and nested delegate workflows from merged isolation profiles.
 // projectRoot is the Dockpipe project directory (contains bin/.dockpipe and usually dockpipe.config.json).
-func compileClosureForWorkflow(projectRoot, workflowName string, force bool, sourceBuild CoreSourceBuild) error {
+func compileClosureForWorkflow(projectRoot, workflowName string, force bool) error {
 	repoRoot, err := infrastructure.RepoRoot()
 	if err != nil {
 		return err
@@ -78,10 +78,6 @@ func compileClosureForWorkflow(projectRoot, workflowName string, force bool, sou
 		"resolver_count": strconv.Itoa(len(resNames)),
 	})
 	return infrastructure.RunOperationWithOptions(os.Stderr, "package.compile.for_workflow", "Compiling workflow dependency closure…", opIDs, infrastructure.OperationOptions{Spinner: false, ProgressEvery: packageCompileProgressEvery}, func() error {
-		if err := ensureCoreCompiled(projectRoot, cfg, force, sourceBuild); err != nil {
-			return err
-		}
-
 		destRes, err := infrastructure.PackagesResolversDir(projectRoot)
 		if err != nil {
 			return err
@@ -126,22 +122,6 @@ func compileClosureForWorkflow(projectRoot, workflowName string, force bool, sou
 	})
 }
 
-func ensureCoreCompiled(projectRoot string, cfg *domain.DockpipeProjectConfig, force bool, sourceBuild CoreSourceBuild) error {
-	if !force {
-		if tgz, err := infrastructure.FindLatestCoreTarball(projectRoot); err == nil && strings.TrimSpace(tgz) != "" {
-			return nil
-		}
-	}
-	args := []string{"--workdir", projectRoot}
-	if force {
-		args = append(args, "--force")
-	}
-	return cmdPackageCompileCore(args, sourceBuild)
-}
-
-// closureWorkflowOrderAndResolvers returns workflow source dirs in dependency order (dependencies first)
-// and a set of resolver profile names to compile.
-// dockpipeRepoRoot is the Dockpipe engine checkout (templates/core); projectRoot is the project being compiled.
 func closureWorkflowOrderAndResolvers(dockpipeRepoRoot, projectRoot, startDir string, cfg *domain.DockpipeProjectConfig) ([]string, map[string]bool, error) {
 	wfRoots := compileconfig.WorkflowRoots(cfg, projectRoot)
 	visited := make(map[string]bool)
@@ -403,7 +383,7 @@ func dirExists(path string) bool {
 	return err == nil && st.IsDir()
 }
 
-func cmdPackageCompileForWorkflow(args []string, sourceBuild CoreSourceBuild) error {
+func cmdPackageCompileForWorkflow(args []string) error {
 	if len(args) > 0 && (args[0] == "--help" || args[0] == "-h") {
 		fmt.Print(packageCompileForWorkflowUsageText)
 		return nil
@@ -448,12 +428,12 @@ func cmdPackageCompileForWorkflow(args []string, sourceBuild CoreSourceBuild) er
 	if strings.TrimSpace(wfName) == "" {
 		return fmt.Errorf("missing workflow name (use --workflow <name> or a positional name)")
 	}
-	return compileClosureForWorkflow(workdir, wfName, force, sourceBuild)
+	return compileClosureForWorkflow(workdir, wfName, force)
 }
 
 const packageCompileForWorkflowUsageText = `dockpipe package compile for-workflow <name>
 
-Compiles only the core spine (if missing), resolver packs, and workflow packages needed for the
+Compiles only the resolver packs and workflow packages needed for the
 transitive closure of the named workflow: config.yml inject: (explicit workflow/resolver deps),
 package.yml depends, requires_resolvers, resolver/runtime names on the workflow and steps, and nested
 delegate workflows (DOCKPIPE_*_WORKFLOW from merged profiles). Dependencies are compiled before dependents.

@@ -46,7 +46,7 @@ resolver packages; see the [architecture model](../concepts/architecture-model.m
 
 **Arbitrary-path workflow:** `--workflow-file <path>` accepts the same YAML shape.
 Relative `run:` / `act:` paths resolve beside that file. Resolver definitions come
-from the configured package/core lookup, not an arbitrary resolver folder beside
+from the configured project/package lookup, not an arbitrary resolver folder beside
 the file. Do not combine `--workflow` and `--workflow-file`.
 
 **Validate:** use `dockpipe workflow validate workflows/hello/config.yml` from your
@@ -62,8 +62,8 @@ authenticate providers, execute commands or prove that a workflow will succeed.
 | **image** | Optional image customization for Dockerfile-backed runs. Use **`image.packages.apt`** to declare Debian packages that Dockpipe installs into a derived image during package compile/build, instead of bloating every resolver image. Step-level **`image`** adds packages for that step only. |
 | **act** | Follow-up after the main command (usually a **host** script; see **[../concepts/architecture.md](../concepts/architecture.md)** for in-container `DOCKPIPE_ACTION`). |
 | **workflow** | This file: a named preset selected with **`--workflow <name>`**. |
-| **strategy** | Optional **named lifecycle** wrapper: small **`KEY=value`** files under **`templates/<workflow>/strategies/<name>`** (optional) or **`templates/core/strategies/<name>`** define host scripts to run **before** and **after** the workflow body. See [Named strategies](#named-strategies) below. |
-| **runtime** / **resolver** | **Runtime** selects where execution runs; **resolver** selects an installed tool integration. Profiles come from core and configured package stores. See [Architecture model](../concepts/architecture-model.md) and [Isolation](../concepts/isolation-layer.md). |
+| **strategy** | Optional **named lifecycle** wrapper: small **`KEY=value`** files beside the workflow under **`strategies/<name>`**, or under the project's **`strategies/<name>`**, define host scripts to run **before** and **after** the workflow body. See [Named strategies](#named-strategies) below. |
+| **runtime** / **resolver** | **Runtime** selects where execution runs; **resolver** selects an installed tool integration. Built-in runtimes and configured project/package profiles supply these choices. See [Architecture model](../concepts/architecture-model.md) and [Isolation](../concepts/isolation-layer.md). |
 
 **Learning path:** [../onboarding.md](../onboarding.md) · **[../concepts/architecture-model.md](../concepts/architecture-model.md)** · **[../concepts/isolation-layer.md](../concepts/isolation-layer.md)**.
 
@@ -76,7 +76,7 @@ authenticate providers, execute commands or prove that a workflow will succeed.
 | **Single flow** | No `steps:` (or empty) | Top-level **`run`**, **`runtime`** / **`resolver`** (or advanced **`isolate`**), and **`act`** / **`action`** describe one run. This is the compact shorthand for simple workflows. |
 | **Multi-step** | Non-empty **`steps:`** | Each list item is a **step**. A step is either a **container step** (default) or a **host step** (`kind: host`). The CLI argument after `--` can supply the **last** step’s command if that step has no `cmd`/`command`. Top-level **`run`** and **`act`** / **`action`** are not used in this mode. Optional **`finally:`** steps run after the main steps even when a step fails or the run is interrupted. |
 
-Variable precedence for workflows is documented in **[CLI reference](../cli-reference.md)** (CLI > config > `.env` / `--env-file` / `--var`).
+Variable precedence for workflows is documented in **[CLI reference](../cli-reference.md)** (including explicit `--var` overrides and dotenv inputs).
 
 ### Image Packages
 
@@ -110,6 +110,13 @@ required dependencies before workspace/session mutation or step execution. If th
 and the current host platform is supported, Dockpipe can run the package/workflow-authored install
 command after explicit approval (`--yes`, `DOCKPIPE_APPROVE_PROMPTS=1`, or an interactive confirm).
 
+These checks also apply to packaged child workflows and resolver workflow delegates.
+A child selected before setup is admitted before the call site's setup scripts, and
+that admitted configuration is used for execution. Ordinary resolver profiles may
+still be created or updated by setup; a workflow delegate introduced this way is
+checked after setup and before its child commands run. Optional dependencies retain
+their normal nonblocking behavior.
+
 ```yaml
 platforms: [windows, deb]
 dependencies:
@@ -136,66 +143,23 @@ executables under `assets/tooling/bin`; dependency preflight checks that directo
 and package host scripts receive it at the front of their process-local `PATH`. Shared
 libraries must use package-owned loader paths rather than changing global library search paths.
 
-DorkPipe orchestration cloud workers also accept a run-level consumer image override:
-
-```yaml
-vars:
-  DORKPIPE_ORCH_CONTAINER_IMAGE_PACKAGES: "make cmake libxml2-utils"
-```
-
-When Codex or Claude orchestration workers need extra Debian packages, DorkPipe generates a derived
-Dockerfile from the provider image, tags the image with a checksum of provider + base image + package
-list, builds it once if missing, and runs workers with `--isolate <generated-image>`. This keeps
-tooling deterministic and cacheable instead of installing packages inside every worker container at
-startup.
-
-This override is intentionally consumer-owned. Resolver images keep only a lean baseline, so
-project workflows should request their own heavier language stacks, for example:
-
-```yaml
-vars:
-  DORKPIPE_ORCH_CONTAINER_IMAGE_PACKAGES: "python3 ruby-full golang-go dotnet-sdk-8.0"
-```
-
-The generated Dockerfile adds Microsoft's Debian package feed on demand when the requested package
-set includes `.NET` packages such as `dotnet-sdk-8.0`. `DORKPIPE_ORCH_CONTAINER_APT_PACKAGES`
-remains accepted as a compatibility alias, but new workflows should use
-`DORKPIPE_ORCH_CONTAINER_IMAGE_PACKAGES`.
-
-Cloud Codex/Claude workers run a host-auth preflight before the container starts. API-key env vars
-pass immediately; otherwise DorkPipe checks the provider auth files resolved by `dockpipe scope
-resolver <name> auth-dir`. When auth is missing and the run is interactive, DorkPipe asks whether to
-launch the host login command (`codex login` or `claude auth login`) and re-checks after the user
-finishes. Set `DORKPIPE_ORCH_AUTH_LOGIN_ON_MISSING=never` to fail fast, or `always` to launch the
-login command without asking. Non-interactive runs fail fast with the manual command to run.
-
-DorkPipe orchestration logging is controlled by `DORKPIPE_ORCH_LOG_MODE`:
-
-- `default` hides raw worker, Docker Compose, and Ollama pull chatter behind progress lines, but
-  prints failure log tails.
-- `minimal` currently behaves like `default` for orchestration scripts and is reserved for stricter
-  future output pruning.
-- `verbose` streams raw provider and Docker output.
-- `none` suppresses orchestration progress lines where package scripts own the output.
-
-Dev-stack logging can be overridden separately with `DORKPIPE_DEV_STACK_LOG_MODE`; otherwise it
-inherits `DORKPIPE_ORCH_LOG_MODE`.
+DorkPipe worker image packages, provider login and orchestration logging are package-owned settings. See [DorkPipe harness configuration](https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/workflows/harness-configuration.md).
 
 If a workflow grows beyond one simple run, prefer moving to **`steps:`** instead of piling more meaning onto top-level **`run`** / **`act`**.
 Once you switch to **`steps:`**, move those fields onto the specific step that needs them.
 
-Use **`finally:`** for teardown that must happen on failure paths as well:
+Use **`finally:`** for teardown that must happen on failure paths as well. This pattern assumes the workflow supplies the two scripts:
 
 ```yaml
 steps:
   - id: stack_up
     kind: host
-    run: scripts/dorkpipe/dev-stack-ensure-up.sh
+    run: assets/scripts/start.sh
 
 finally:
   - id: stack_down
     kind: host
-    run: scripts/dorkpipe/dev-stack-maybe-down.sh
+    run: assets/scripts/stop.sh
 ```
 
 ### Host steps (`kind: host`)
@@ -257,7 +221,7 @@ steps:
     run: assets/scripts/prepare.sh
 ```
 
-If a host step starts sidecars or helper containers, the runner can clean them up after the step. The exact marker files and cleanup internals are engine behavior; workflow authors usually only need to know that host steps may register cleanup state under **`.dockpipe/`** and that cleanup can be disabled with **`DOCKPIPE_SKIP_HOST_CLEANUP=1`** when a workflow wants to keep the sidecar alive deliberately.
+If a host step starts sidecars or helper containers, the runner can clean them up after the step. The exact marker files and cleanup internals are engine behavior; workflow authors usually only need to know that host steps may register cleanup state under the project’s **`bin/.dockpipe/`** runtime state and that cleanup can be disabled with **`DOCKPIPE_SKIP_HOST_CLEANUP=1`** when a workflow wants to keep the sidecar alive deliberately.
 
 | Variable | Meaning |
 |----------|---------|
@@ -268,7 +232,7 @@ If a host step starts sidecars or helper containers, the runner can clean them u
 
 Steps run from the source workdir by default. Use **`cwd: repo`** or **`cwd: source`** when
 the step should start in the checkout. When a step writes generated files with simple relative
-paths, set **`cwd: artifacts`**:
+paths, set **`cwd: artifacts`**. This example assumes the workflow supplies `assets/scripts/normalize.sh`:
 
 ```yaml
 steps:
@@ -276,7 +240,7 @@ steps:
     kind: host
     cwd: artifacts
     run:
-      - scripts/dorkpipe/normalize-ci-scans.sh
+      - assets/scripts/normalize.sh
 ```
 
 Dockpipe creates the workflow artifact root under
@@ -296,7 +260,7 @@ steps:
     scopes:
       source: repo
       artifacts: artifacts
-    run: assets/scripts/cloud-lanes-doctor.sh
+    run: assets/scripts/doctor.sh
 ```
 
 In that form the process starts in the checkout, while `dockpipe scope` returns the current workflow
@@ -328,74 +292,7 @@ dockpipe scope resolver codex auth-mount-mode
 dockpipe scope resolver codex assets-dir
 ```
 
-DorkPipe agent orchestration also accepts full-string scope references in path lists such as
-`agent.accessible_paths`, `agent.access.read/write/deny`, and task `context` fields:
-
-```yaml
-context:
-  required_artifacts:
-    - scope:workflow:docs.orchestrate:orchestrate/verify/result.json
-    - scope:artifacts:orchestrate/tasks/latest_run_audit/response.md
-```
-
-Those references are resolved through the same `dockpipe scope` CLI before prompts and task JSON are
-written. Use plain relative paths for normal checkout files.
-
-Shared collectors may declare `starting_points` when a collector needs concrete seeds:
-
-```yaml
-shared:
-  - path: repo-map.md
-    collector: repo_map
-    focus: Current orchestration contract
-    starting_points:
-      - docs/orchestration-contract.md
-```
-
-Use `starting_points` as optional collector hints only. Do not duplicate broad mounted roots there;
-mounts and `access.read` define the actual exploration boundary.
-
-For task execution lanes, define reusable role agents in sibling `agents.yml`, then reference those
-roles from tasks. If that sibling is absent, DorkPipe searches parent workflow directories for the
-nearest `agents.yml`; the sibling always wins. Search stops at the owning `workflows/` directory or,
-for package workflows, the package directory containing `package.yml`; it never falls back to an
-unbounded repository-level `agents.yml`.
-
-```yaml
-agents:
-  source_scout:
-    role: source scout
-    worker: ollama
-    worker_type: planning
-  patch_decider:
-    role: patch decision owner
-    worker: codex
-    worker_policy:
-      mode: require
-    work_mode: edit
-    worker_type: patch_decision
-```
-
-```yaml
-tasks:
-  - id: scout_repo
-    agent: source_scout
-    brief: Inventory current repo evidence.
-    context:
-      required_artifacts:
-        - shared/repo-map.md
-```
-
-`worker: codex|claude|ollama` belongs on the role definition, not each task. DorkPipe maps the role
-to seeded lane defaults such as preferred lane family and model provider. By default
-`worker_policy.mode: prefer` lets the orchestrator fall back, compare, or escalate when policy says
-it should. Use `worker_policy.mode: require` only when that role must stay on that worker profile.
-
-Role `work_mode` separates readonly artifact collection from direct workspace editing. The default
-`artifact` mode tells Codex/Claude workers to inspect mounted sources and return the requested
-artifact in `response.md`; DorkPipe apply/promotion writes approved files later. Set `work_mode:
-edit` only for implementation or repair tasks, and pair it with writable container mounts plus
-matching `agent.access.write` policy.
+DorkPipe extends scope references into agent context and access declarations, collectors and reusable role definitions. Those rules are owned by the [DorkPipe harness configuration](https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/workflows/harness-configuration.md), not the generic path resolver.
 
 Dockpipe also injects these variables for every step:
 
@@ -412,46 +309,35 @@ Dockpipe also injects these variables for every step:
 
 | Key | Purpose |
 |-----|---------|
-| `name` | Workflow name used by execution and as the display fallback (defaults to the template folder name, e.g. `run`). Keep published identifiers stable. |
-| `title` | Optional readable name for launcher and package discovery, independent of the stable name. |
+| `name` | Workflow name used by execution and as the display fallback (defaults to the workflow folder name, e.g. `run`). Keep published identifiers stable. |
+| `title` | Optional readable name for app and package discovery, independent of the stable name. |
 | `description` | Optional one-line task summary printed after `name` (e.g. what this workflow is for). |
 | `catalog_type` | Optional discovery type: `app`, `workflow`, `integration`, or `core`. Does not change the compiled package kind or execution. Use `app` for launchable applications. |
 | `categories` | Optional purpose tags, such as `[ai, development]`: at most 16 unique lowercase slugs of at most 64 characters, starting with a letter. See [package metadata](../packages/package-model.md#names-descriptions-and-discovery). |
-| `category` | Legacy **UI metadata**: `app` marks a launchable GUI/container IDE-style workflow. An explicit `catalog_type` takes precedence in the launcher; existing tools may still consume this field. |
+| `category` | Legacy **UI metadata**: `app` marks a launchable GUI/container IDE-style workflow. An explicit `catalog_type` takes precedence in the app; existing tools may still consume this field. |
 | `vars` | Map of default env vars (merged if not already set; `--var` overrides). |
 | `compose` | Optional Docker Compose settings for host built-ins such as `compose_up`, `compose_down`, and `compose_ps`. Fields: `file`, `project`, `project_directory`, `autodown_env`, `exports`, `services`. Compose runs inherit Dockpipe’s resolved environment and vault-injected vars directly. |
 | `container` | Optional container mount defaults. Use this to override the primary host path bound at `/work` (`workdir_host`), set a default container subdirectory under `/work` (`work_path`), and declare extra bind mounts (`mounts`). Relative host paths resolve from the active source/workdir, not the packaged workflow asset directory. |
 | `workspace` | Optional runtime-owned Git workspace/session lifecycle. Use `mode: managed` for a Dockpipe-owned session workspace, or `mode: bind` only when a workflow intentionally operates on the current checkout. |
 | `security` | Optional container security policy. Select a core-owned `profile`, then apply bounded `network`, `filesystem`, and `process` overrides. This applies to container execution only; `kind: host` steps remain outside Docker policy. |
-| `run` | String or list of host pre-script paths (repo `scripts/…` or paths under the template). Single-flow shorthand only; do not combine with `steps:`. Logical resolver script ids like `scripts/dorkpipe/...` must also have an explicit resolver dependency (`requires_resolvers`, `inject.resolver`, or workflow/step resolver selection). |
+| `run` | String or list of host pre-script paths (project paths or paths under the workflow directory). Single-flow shorthand only; do not combine with `steps:`. Logical resolver script ids like `scripts/dorkpipe/...` must also have an explicit resolver dependency (`requires_resolvers`, `inject.resolver`, or workflow/step resolver selection). |
 | `isolate` | Advanced low-level image/template override. Prefer **`runtime`** + **`resolver`** for the normal authoring path; use **`isolate`** when you need to pin the exact image/template. |
 | `act` / `action` | Action script after the container command (when not using per-step act). Single-flow shorthand only; do not combine with `steps:`. |
-| `runtime` | Main **where does this run?** field. Names an existing **core** runtime profile under **`templates/core/runtimes/<name>`**. Also acts as the default for steps unless a step overrides it. |
-| `resolver` | Main **which tool/profile does this use?** field. Names an existing **core** resolver profile under **`templates/core/resolvers/<name>`**. Also acts as the default for steps unless a step overrides it. |
+| `runtime` | Main **where does this run?** field. Selects a built-in runtime or a profile from the configured project/package roots. Also acts as the default for steps unless a step overrides it. |
+| `resolver` | Main **which tool/profile does this use?** field. Selects a tool profile from the configured project/package roots. Also acts as the default for steps unless a step overrides it. |
 | `steps` | List of **steps** (multi-step mode). |
 | `imports` | List of paths (relative to this file) to merge **before** this file: each imported file’s **`vars`** are merged (later files override), then **`steps`** from imports run **before** **`steps`** here. Circular imports are rejected. Requires loading from disk (not raw bytes-only parse). Use this when you want to change the authored workflow itself. |
 | `inject` | Compile-closure dependencies only. Use this when compile needs extra workflows/packages/resolvers included, but you do **not** want to merge their YAML into this workflow. `inject.resolver` also counts as an explicit dependency for logical resolver script ids like `scripts/dorkpipe/...`. |
 | `strategy` | Default **strategy name** when the CLI does **not** pass **`--strategy <name>`**. |
 | `strategies` | Optional allowlist: if non-empty, the effective strategy (CLI **`--strategy`** or **`strategy:`**) must be one of the listed names. |
 | `docker_preflight` | Default **true**. When **false**, the runner skips the Docker reachability check before **`steps:`** if **no** step uses the container. Use for **host-only** workflows whose **`run:`** / **`pre_script`** scripts do **not** invoke Docker. If a script calls **`docker`**, keep the default or the workflow may fail later. |
-| `types` | Optional PipeLang type entrypoints used by tooling/catalog/launcher surfaces. Execution still runs through normal workflow YAML and env resolution. |
+| `types` | Optional PipeLang type entrypoints used by tooling, catalog and app surfaces. Execution still runs through normal workflow YAML and env resolution. |
 | `model_policy` | Optional AI model attempt, validation, and escalation policy for DorkPipe harnesses. Use this to express cheap/local attempts, stronger validation, and approval-on-cost escalation intent. |
-| `view` | Optional authored launcher presentation layer. Define pages, sections, and ordered field paths over the typed model while keeping the underlying env contract unchanged. |
+| `view` | Optional authored app presentation layer. Define pages, sections, and ordered field paths over the typed model while keeping the underlying env contract unchanged. |
 
-#### Provider-Pool Model Policy
+#### Harness model policy
 
-DorkPipe agent workflows can opt selected workflow/subagent workers into the shared provider-pool leasing path without naming a provider-specific YAML field:
-
-```yaml
-model_policy:
-  execution_mode: provider_pool
-  role: reviewer
-  session_scope: workflow
-  max_active: 1
-  queue_timeout_seconds: 30
-```
-
-`execution_mode: provider_pool` makes the DorkPipe worker script call `dorkpipe provider-pool prompt --json` for that worker instead of spawning a direct provider CLI. `role` is a provider-neutral attribution/session grouping label. `session_scope: node` isolates each subagent node; `session_scope: workflow` reuses a role session within the workflow run. `max_active` narrows the provider catalog's active lease cap for that policy, and `queue_timeout_seconds` controls how long the worker waits before returning a visible queued failure.
+`model_policy` carries model-selection and escalation intent for a compatible harness. The engine parses the declaration; provider-pool leasing, role sessions and worker scheduling are DorkPipe behavior. See [DorkPipe harness configuration](https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/workflows/harness-configuration.md) for supported settings.
 
 ### `imports` vs `inject`
 
@@ -468,7 +354,7 @@ If you want compile/package closure to include additional workflows, packages, o
 
 Use `types:` when you want a workflow to expose a **typed model** to tooling.
 
-Use `view:` when you want to control **how launcher-style clients present that model**.
+Use `view:` when you want to control **how clients present that model**.
 
 The intended split is:
 
@@ -516,8 +402,8 @@ view:
 Rules:
 
 - `types:` is optional. Workflows without it remain plain YAML/env workflows.
-- `view:` is optional. When omitted, launchers may fall back to the older flat/tree rendering.
-- `view.entry` is optional. Use it when the launcher should ask a high-level question first and route to the relevant settings pages.
+- `view:` is optional. When omitted, clients may fall back to the older flat/tree rendering.
+- `view.entry` is optional. Use it when the app should ask a high-level question first and route to the relevant settings pages.
 - `view.entry.field` points at a typed model field path, and the chosen option writes that value back into the model/env contract.
 - `view.entry.options[].pages[]` and `view.entry.options[].next` describe which page ids should be shown after that choice.
 - `view.sections[].fields[]` contains **field paths** into the root typed model, such as `General.BootSource`.
@@ -577,7 +463,7 @@ workspace:
 
 Public fields:
 
-- `repo`: logical repository identity or source path/URL.
+- `repo`: an existing local source directory, or a logical identity for the current source directory. This field does not clone a remote URL.
 - `mode`: `managed` or `bind`. `managed` is preferred and creates a Dockpipe-owned session
   workspace; `bind` opts into the current checkout.
 - `base`: optional base ref for the session branch; defaults to `HEAD`.
@@ -615,9 +501,9 @@ The long-term architecture is documented in **[../runtime/git-runtime-sessions.m
 
 **Strategies** are reusable before/after wrappers for a workflow run. Use them when multiple workflows should share the same lifecycle behavior, such as worktree setup or commit-on-success.
 
-Shared definitions live under **`templates/core/strategies/`**; see **[../concepts/architecture-model.md](../concepts/architecture-model.md)** ( **`templates/core/`** layout ).
+Project definitions live under **`strategies/`**; a workflow can supply its own **`strategies/`** directory beside `config.yml`. Built-in `commit` and `worktree` fallbacks use library-owned Git hooks.
 
-**Resolution order** for the strategy file path: **`--strategy <name>`** (overrides **`strategy:`** in YAML when both are set) → **`templates/<this-workflow>/strategies/<name>`** (beside that workflow’s `config.yml`, if present) → **`templates/core/strategies/<name>`** (see **`ResolveStrategyFilePath`** in **`src/lib/application/strategy.go`**).
+The CLI **`--strategy`** overrides YAML **`strategy:`**. For the selected value, an explicit file path is resolved first (relative to the project when not absolute). Named lookup checks the workflow’s **`strategies/<name>`**, then the project’s **`strategies/<name>`**, then the built-in `commit`/`worktree` fallback. See [strategy resolution](../../src/lib/application/strategy.go).
 
 **File format** (`KEY=value`, `#` comments):
 
@@ -627,14 +513,14 @@ Shared definitions live under **`templates/core/strategies/`**; see **[../concep
 | `DOCKPIPE_STRATEGY_AFTER` | Same, run **after** the workflow body completes successfully (exit **0**). Bundled **`scripts/commit-worktree.sh`** is treated like today’s commit-on-host path (single commit, no duplicate with workflow **`act:`** when the strategy owns commit). |
 | `DOCKPIPE_STRATEGY_KIND` | Optional tag (e.g. `git`) for documentation only. |
 
-**Built-in names** (bundled under **`templates/core/strategies/`**):
+**Built-in fallback names** (no installed core package required):
 
 | Name | Role |
 |------|------|
-| **`worktree`** | **`before`:** `scripts/clone-worktree.sh` · **`after`:** `scripts/commit-worktree.sh` — clone/worktree on the host, then resolver-driven isolate, then commit. There is **no** separate bundled workflow for this; add **`strategy: worktree`** to **your** `templates/<name>/config.yml` (or **`--workflow-file`**). |
+| **`worktree`** | **`before`:** `scripts/clone-worktree.sh` · **`after`:** `scripts/commit-worktree.sh` — clone/worktree on the host, then resolver-driven isolate, then commit. There is **no** separate bundled workflow for this; add **`strategy: worktree`** to **your** `workflows/<name>/config.yml` (or **`--workflow-file`**). |
 | **`commit`** | **`after`:** commit only — e.g. **`run`** workflow. |
 
-**Example** (your repo, e.g. **`templates/my-ai/config.yml`**):
+**Example** (your repo, e.g. **`workflows/my-ai/config.yml`**):
 
 ```yaml
 name: my-ai
@@ -664,10 +550,10 @@ Each **`-`** under `steps:` is one step (or a **`group`** wrapper — see [Async
 | `kind` | Step kind. Use **`container`** (default) for normal isolated execution, or **`host`** for host-side actions. |
 | `cwd` | Step working directory. Omit or use **`source`** / **`repo`** for the checkout; use **`artifacts`** for this workflow's generated artifact root. |
 | `scopes` | Optional `{ source, artifacts }` binding for path roots. Use `source: repo` plus `artifacts: artifacts` when the process should run in the checkout but generated output should stay in workflow state. |
-| `runtime` | Optional **core** runtime profile basename (same as CLI **`--runtime`** — must exist under **`templates/core/runtimes/`**). Overrides the workflow default for this step. Not meaningful on `kind: host` steps. |
+| `runtime` | Optional built-in or configured runtime profile name (same as CLI **`--runtime`**). Overrides the workflow default for this step. Not meaningful on `kind: host` steps. |
 | `resolver` | Optional **resolver** profile basename (same as CLI **`--resolver`**). Overrides the workflow default for this step. Not meaningful on `kind: host` steps. Do **not** use it for packaged workflow calls. |
 | `workflow` | Marks this as a **packaged workflow step**. This is the **child workflow name** to run. |
-| `package` | Required for a **packaged workflow step**. This is the **child workflow namespace** and must match the nested workflow’s **`namespace:`** in **`config.yml`** (resolution searches packaged / staging / **`workflows/`** trees on disk). |
+| `package` | Required for a **packaged workflow step**. This is the **child workflow namespace** and must match the nested workflow’s **`namespace:`** in **`config.yml`** (resolution uses the configured project/package workflow sources). |
 | `act` / `action` | Action script for this step. Do not combine this with packaged workflow steps. |
 | `vars` | Per-step env map (merged for that step; `--var` keys can be “locked”). |
 | `inputs` | Typed input bindings. On normal steps these resolve against the caller workflow model; on packaged workflow steps they resolve against the child packaged workflow model. |
@@ -675,8 +561,8 @@ Each **`-`** under `steps:` is one step (or a **`group`** wrapper — see [Async
 | `container` | Optional step-level container mount override. Use this on container steps to change the primary `/work` bind for one step, change its working subdirectory under `/work`, or add extra bind mounts without affecting the whole workflow. |
 | `security` | Optional step-level container security override. Use this only on container steps when one step needs a different profile or tighter `network` / `filesystem` / `process` settings than the workflow default. |
 | `outputs` | Path to a **dotenv-style** file (`KEY=value` lines) written by the step; merged into env for **later** steps. Relative paths resolve under `DOCKPIPE_OUTPUT_ROOT`, not the process cwd. This is the normal way one step passes values forward to later steps. |
-| `capture_stdout` | Host path (relative to **`DOCKPIPE_WORKDIR`** / **`--workdir`**) — container **stdout** is also appended to this file (still printed on the terminal). |
-| `manifest` | Host path — after the step, dockpipe writes a small JSON file with **`exit_code`**, **`duration_ms`**, **`step_index`**, **`id`** (if set), and **`step_display`**. |
+| `capture_stdout` | Compatibility field accepted by the schema/model. The current runner does not tee stdout to this path. |
+| `manifest` | Compatibility field accepted by the schema/model. The current runner does not write a step receipt to this path; use the runtime operation log for implemented lifecycle records. |
 | `is_blocking` | Default **`true`**. Keep this at its default on normal steps. Async work should use an explicit **`group: { mode: async, tasks: [...] }`** entry instead. |
 | `host_builtin` | Optional engine-owned host action for `kind: host` steps. Supported values: `package_build_store`, `compose_up`, `compose_down`, `compose_ps`. Compose built-ins require top-level `compose.file`. |
 
@@ -692,64 +578,9 @@ Like `security`, this is only meaningful on container steps. Dockpipe rejects `c
 
 ### Agentic steps (`agent`)
 
-Use `agent:` when a step should declare agent behavior directly in workflow YAML while still letting
-shared DorkPipe scripts act as the harness.
+`agent` is an optional declaration for a compatible package harness. It carries prompt text, context inclusion, accessible-path hints, read/write/deny declarations, model settings, model policy and orchestration data. The generic engine parses this data; it does not itself launch AI workers or enforce agent access declarations as an operating-system sandbox.
 
-Typical uses:
-
-- startup prompt text
-- whether to include `AGENTS.md` context
-- access policy (`read`, `write`, `deny`) plus lightweight accessible path hints
-- model/provider knobs that affect generation
-- model policy overrides for attempt, validation, and escalation
-- orchestration fanout data such as request, tasks, concurrency, merge, verify, and apply policy
-- sibling or bounded-parent `agents.yml` role definitions so worker/model/access policy is reusable
-  across workflow families
-
-This keeps user intent in `config.yml` and lets shared scripts materialize the contract instead of
-forcing one shell file per workflow shape.
-
-`accessible_paths` is a compatibility/simple-hint field. Prefer `access.read`, `access.write`, and
-`access.deny` when the workflow needs a real contract that DorkPipe tooling can materialize into
-artifacts and, later, stronger runtime policy.
-
-`agent.orchestration.tasks[].context` entries are required briefing/discovery hints, not a hard
-allowlist. Keep them small: request text, compact source maps, seed paths, and previous role outputs.
-Let `access.read` and the mounted paths define the broader exploration boundary. Prompts should
-explicitly say when a role may inspect additional allowed sources and must cite exact paths for any
-claim it carries forward.
-
-Prefer reusable role definitions in a sibling `agents.yml`; when it is absent, DorkPipe uses the
-nearest parent `agents.yml` within the workflow or package authoring root. Inline
-`agent.orchestration.agents` is available for workflow-local overrides. Tasks reference roles via
-`tasks[].agent`. Agent definitions
-describe who the worker is: role, worker profile, authority, model policy, access defaults, and
-standing constraints. Tasks describe what happens in this workflow: `brief`,
-`context.required_artifacts`, `context.seed_paths`, `context.source_roots`, dependencies, and declared
-outputs. Keep source boundaries in access policy and mounts, not in task briefing fields.
-
-`agent.orchestration.concurrency` lets DorkPipe-owned harnesses cap worker fanout without hiding
-scheduling rules in scripts. `max_workers` caps total runnable workers, while `max_local_workers`
-and `max_cloud_workers` cap local and cloud-backed lanes separately.
-
-`agent.orchestration.apply` declares approved artifact-to-worktree writes. DorkPipe harnesses should
-write reviewable artifacts first, verify them, require approval when configured, and only then copy
-approved content into the checkout as normal uncommitted changes.
-
-`agent.orchestration.tasks[].materialize_outputs` lets one role worker own a coherent output cluster
-without becoming one worker per file. The worker returns `<!-- dorkpipe:file path="..." -->` blocks in
-its `response.md`; DorkPipe extracts only the declared relative paths into
-`tasks/<task-id>/materialized/`.
-
-Apply can then use either:
-
-- explicit `apply.outputs[]` entries with `source` and `path`
-- or `apply.target_root` plus `apply.required_artifacts`
-
-When `target_root` is used, DorkPipe infers the full apply set from `tasks/*/materialized/*`,
-requires the listed relative artifact paths to exist, and then writes the whole inferred bundle under
-the target root. Use this when the workflow needs a minimum required doc set but should still allow
-the AI to split or extend the durable file set beyond a rigid static list.
+Use the selected harness's documented resolver/scripts to consume these fields. DorkPipe role discovery, tasks, concurrency, materialized outputs and approved artifact application are described in [DorkPipe harness configuration](https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/workflows/harness-configuration.md). Container mounts and the runtime security policy still determine the process's actual filesystem access.
 
 ### Step state flow
 
@@ -831,6 +662,10 @@ Prefer the explicit **`group: { mode: async }`** form when authoring new workflo
 The entry must contain **only** the key `group` (no `cmd` beside it).
 
 ```yaml
+name: parallel-demo
+runtime: dockerimage
+isolate: alpine:3.22
+
 steps:
   - id: setup
     cmd: echo ready
@@ -840,9 +675,11 @@ steps:
       mode: async
       tasks:
         - id: task_a
+          cwd: artifacts
           cmd: sh -c 'echo BRANCH=a > out-a.env'
           outputs: out-a.env
         - id: task_b
+          cwd: artifacts
           cmd: sh -c 'echo BRANCH=b > out-b.env'
           outputs: out-b.env
 
@@ -853,7 +690,7 @@ steps:
 
 Inside `tasks:`, omitting `is_blocking` means **async** (forced non-blocking). **`is_blocking: true` inside `tasks`** is **invalid** and errors.
 
-**Do not** nest another `group` inside `tasks` — unsupported; unknown keys on a step are ignored by the YAML decoder.
+**Do not** nest another `group` inside `tasks`; nested groups are unsupported. Run `dockpipe workflow validate` to catch schema errors rather than relying on permissive YAML decoding.
 
 Plain-step **`is_blocking: false`** is no longer accepted. If you want parallelism, wrap those tasks in an explicit **`group`** entry.
 ---
@@ -914,10 +751,10 @@ Top-level `vault: environment` loads the named resolver-backed environment selec
 
 ## Visual authoring and the document bridge
 
-The Qt launcher's **Workflows → Workflow studio** edits ordinary workflow YAML. Its
+The Dockpipe app's **Workflows → Workflow studio** edits ordinary workflow YAML. Its
 first canvas supports ordered commands, script commands, packaged workflow calls,
 and explicit async groups. The YAML tab retains advanced settings; saving uses
-`dockpipe workflow validate` and running uses the launcher's existing session path.
+`dockpipe workflow validate` and running uses the app's existing session path.
 Canvas coordinates are local editor preferences and have no execution meaning.
 
 `dockpipe workflow document` is a non-executing stdin/stdout tooling bridge. It reads
@@ -935,7 +772,7 @@ multiple YAML documents are rejected rather than silently transformed.
 The interactive bridge accepts at most 1 MiB of source, 128 edits, 8192 YAML nodes,
 and 64 nesting levels, within a 6 MiB JSON request. These are editor capacity limits,
 not new workflow execution limits. Parsing or editing errors produce no successful
-response and change no file. The launcher bounds responses to 8 MiB and cancels
+response and change no file. The app bounds responses to 8 MiB and cancels
 CLI operations after 30 seconds or on explicit cancellation.
 
 `dockpipe scope resolver <name> assets-dir` resolves package-owned assets from installed resolver directories/archives or configured authoring trees. A resolver may supply `config.yml` and assets without an execution `profile` when its `package.yml` explicitly declares `kind: resolver`; `config.yml` alone does not identify a resolver, even under `resolvers/`. Auth/config fields still require a profile. Package engine compatibility is checked before archive extraction or asset access. Unsafe resolver names, missing assets and legacy flat profiles fail. Callers should use this path instead of reconstructing extraction-cache locations.

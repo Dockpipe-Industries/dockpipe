@@ -8,6 +8,7 @@ import (
 	"dockpipe/src/lib/application/internal/imageartifact"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
+	"dockpipe/src/lib/runtimeassets"
 )
 
 func selectCompiledImageArtifact(workdir, sourceRoot, pkgName string, wf *domain.Workflow, pm *domain.PackageManifest, policyFingerprint string) (domain.CompiledImageSelection, *domain.ImageArtifactManifest, error) {
@@ -50,13 +51,14 @@ func selectCompiledImageArtifact(workdir, sourceRoot, pkgName string, wf *domain
 		return domain.CompiledImageSelection{}, nil, nil
 	}
 
-	if image, dockerfileDir, ok := infrastructure.TemplateBuild(workdir, identity); ok {
+	image, dockerfileDir, contextDir, ok, err := compiledTemplateBuild(workdir, sourceRoot, identity)
+	if err != nil {
+		return domain.CompiledImageSelection{}, nil, err
+	}
+	if ok {
 		manifestRoot := workdir
-		contextDir := workdir
-		if localDir := workflowLocalImageDir(sourceRoot, identity); localDir != "" {
+		if relative, err := filepath.Rel(sourceRoot, contextDir); err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 			manifestRoot = sourceRoot
-			contextDir = sourceRoot
-			dockerfileDir = localDir
 		}
 		ref := infrastructure.MaybeVersionTag(workdir, image)
 		if len(packages) > 0 {
@@ -65,7 +67,6 @@ func selectCompiledImageArtifact(workdir, sourceRoot, pkgName string, wf *domain
 				return domain.CompiledImageSelection{}, nil, err
 			}
 			manifestRoot = sourceRoot
-			contextDir = sourceRoot
 			dockerfileDir = derived
 			ref = derivedImageRef(ref, packages)
 		}
@@ -155,13 +156,14 @@ func selectCompiledImageArtifactForStep(workdir, sourceRoot, pkgName string, wf 
 		return domain.CompiledImageSelection{}, nil, nil
 	}
 
-	if image, dockerfileDir, ok := infrastructure.TemplateBuild(workdir, identity); ok {
+	image, dockerfileDir, contextDir, ok, err := compiledTemplateBuild(workdir, sourceRoot, identity)
+	if err != nil {
+		return domain.CompiledImageSelection{}, nil, err
+	}
+	if ok {
 		manifestRoot := workdir
-		contextDir := workdir
-		if localDir := workflowLocalImageDir(sourceRoot, identity); localDir != "" {
+		if relative, err := filepath.Rel(sourceRoot, contextDir); err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 			manifestRoot = sourceRoot
-			contextDir = sourceRoot
-			dockerfileDir = localDir
 		}
 		ref := infrastructure.MaybeVersionTag(workdir, image)
 		if len(packages) > 0 {
@@ -170,7 +172,6 @@ func selectCompiledImageArtifactForStep(workdir, sourceRoot, pkgName string, wf 
 				return domain.CompiledImageSelection{}, nil, err
 			}
 			manifestRoot = sourceRoot
-			contextDir = sourceRoot
 			dockerfileDir = derived
 			ref = derivedImageRef(ref, packages)
 		}
@@ -363,4 +364,35 @@ func registryExpectedDigest(ref string) string {
 		return ref[i+1:]
 	}
 	return ""
+}
+
+// compiledTemplateBuild keeps builtin image contexts inside the staged package;
+// emitted build metadata must not depend on the producer's private cache paths.
+func compiledTemplateBuild(workdir, sourceRoot, name string) (image, directory, context string, ok bool, err error) {
+	if directory := workflowLocalImageDir(sourceRoot, name); directory != "" {
+		return "dockpipe-" + name, directory, sourceRoot, true, nil
+	}
+	image, directory, context, ok, err = infrastructure.ResolveTemplateBuild(workdir, name)
+	if err != nil || !ok {
+		return image, directory, context, ok, err
+	}
+	_, builtin, _, isBuiltin, err := infrastructure.BuiltinContainerBuild(workdir, name)
+	if err != nil || !isBuiltin || directory != builtin {
+		return image, directory, context, ok, err
+	}
+	files, _, err := runtimeassets.ContainerFiles(name)
+	if err != nil {
+		return "", "", "", false, err
+	}
+	context = filepath.Join(sourceRoot, ".dockpipe", "builtin-images", name)
+	for name, content := range files {
+		path := filepath.Join(context, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			return "", "", "", false, err
+		}
+		if err := os.WriteFile(path, content, 0o644); err != nil {
+			return "", "", "", false, err
+		}
+	}
+	return image, context, context, true, nil
 }

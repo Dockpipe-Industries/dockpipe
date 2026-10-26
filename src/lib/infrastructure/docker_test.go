@@ -15,16 +15,6 @@ func TestRenderBannerForWidth(t *testing.T) {
 	}
 }
 
-// TestShouldShowSpinner hides the spinner below a minimum terminal width.
-func TestShouldShowSpinner(t *testing.T) {
-	if shouldShowSpinner(59) {
-		t.Fatalf("spinner should be hidden for narrow width")
-	}
-	if !shouldShowSpinner(60) {
-		t.Fatalf("spinner should show at width 60")
-	}
-}
-
 // TestUseDockerInteractiveTTYNonTTYFiles returns false when stdin/stdout/stderr are regular files, not TTYs.
 func TestUseDockerInteractiveTTYNonTTYFiles(t *testing.T) {
 	a, err := os.CreateTemp(t.TempDir(), "stdin")

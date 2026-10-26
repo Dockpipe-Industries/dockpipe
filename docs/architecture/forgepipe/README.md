@@ -175,7 +175,7 @@ The engine's own repository remains independent of these package implementations
 ForgePipe names the native engine. The former "ForgePipe Game Studios" label is
 retired. AI product features belong to the optional, independently versioned DorkPipe
 package and enhance the existing DockPipe application, CLI and unified MCP endpoint.
-[TASK-008](../../agents/tasks/agentic-app-ui/overview.md) records the unbuilt AI authoring
+[TASK-008](https://github.com/Dockpipe-Industries/dorkpipe/blob/master/docs/agents/tasks/agentic-app-ui/overview.md) records the unbuilt AI authoring
 and inspection scope; it does not define a separate DockPipe AI package or application.
 Ordinary local use must not require a separate AI container stack, persistent daemon
 or managed database. Optional isolated workers and remote execution use DockPipe lifecycle
@@ -322,7 +322,7 @@ commits. Cockpit publication and the published-package native consumer have now
 passed independently, as recorded below; final Dockpipe staging remains pending.
 
 Public Dockpipe consumption selects only the unchanged runtime mirror of the
-independent Cockpit candidate. `release/cockpit.lock.json` pins the resolver
+independent Cockpit candidate. `workflows/qualify/cockpit/assets/cockpit.lock.json` pins the resolver
 archive, original qualification receipt and original candidate metadata by exact
 SHA-256 and byte size, with an immutable public release/tag and its qualified
 LauncherSDK source target. The candidate binds the original SpatialPipe source,
@@ -366,7 +366,7 @@ Published Cockpit and fresh public-consumer evidence:
   attempt 1. It uses the exact published SDK pins above.
 - The [public runtime mirror](https://github.com/Dockpipe-Industries/dockpipe/releases/tag/cockpit-0.1.2-staging.25ada5f9dc26.run39398537573.1)
   uses the same immutable tag and preserves the six runtime files unchanged.
-  `release/cockpit.lock.json` records the exact archive, qualification receipt and
+  `workflows/qualify/cockpit/assets/cockpit.lock.json` records the exact archive, qualification receipt and
   candidate metadata identities. The resolver archive is 192,474,671 bytes with
   SHA-256 `a09bc121f4aceca775e7fc293a02aa3c35efeefe476252ab19b4a80925da22eb`.
   Private diagnostics were not included in the public consumer.
@@ -490,7 +490,7 @@ The following advances the extraction and ownership gates without declaring TASK
   **1.1.0** has been verified. The launcher owns ordinary Browser and the Files graph/reader;
   Cockpit remains an optional installed consumer of the exact host and shared-library SDK pins.
 
-`release/cockpit.lock.json` pins that qualified 0.1.3 mirror and its LauncherSDK source exactly.
+`workflows/qualify/cockpit/assets/cockpit.lock.json` pins that qualified 0.1.3 mirror and its LauncherSDK source exactly.
 Flatpak catalog assembly includes the pinned Cockpit store before adaptation. Its mandatory
 Marketplace fixture exercises HTTPS discovery, Settings enable/install, normal CLI asset
 resolution, installed rendering, Settings disable and CLI removal while preserving fixture

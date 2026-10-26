@@ -1,6 +1,6 @@
 # Automating dev.to release posts
 
-**Related:** In-repo drafts: **[blog-dockpipe-primitive.md](blog-dockpipe-primitive.md)**.
+**Reviewed publication source:** [announcement.md](../articles/announcement.md).
 
 After each **GitHub Release**, the **Release** workflow can call the [Forem API](https://developers.forem.com/) for two **independent** actions:
 
@@ -11,7 +11,7 @@ After each **GitHub Release**, the **Release** workflow can call the [Forem API]
 
 You can enable **either**, **both**, or **neither** (job runs only if at least one action is configured — see below).
 
-Both actions publish the reviewed **`release/articles/X.Y.Z.md`** matching the `VERSION` baseline. Its first heading supplies the title. Release notes remain the separate GitHub release body. Images live in `release/articles/assets/`; publication pins their public URLs to the source commit and verifies that they are reachable. The company brand image supplies the article cover.
+Both actions publish the reviewed **`release/articles/announcement.md`**, independently of the release version. Its first heading supplies the title. Release notes remain the separate GitHub release body. Images live in `release/articles/assets/`; publication pins their public URLs to the source commit and verifies that they are reachable. The company brand image supplies the article cover.
 
 ---
 

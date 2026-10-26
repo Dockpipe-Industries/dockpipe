@@ -146,59 +146,13 @@ func applyWorkflowArtifactEnv(envMap map[string]string, workdir, workflowName st
 }
 
 func workflowArtifactRoot(workdir, workflowName string) (string, error) {
-	stateDir, err := infrastructure.StateRoot(workdir)
-	if err != nil {
-		return "", err
-	}
-	scope := sanitizeWorkflowStateScope(workflowName)
-	return filepath.Join(stateDir, "workflows", scope, "artifacts"), nil
+	return infrastructure.WorkflowArtifactRoot(workdir, workflowName)
 }
 
 func ciArtifactDirs(workdir, binding string) (string, string, error) {
-	binding = strings.TrimSpace(binding)
-	if strings.HasPrefix(binding, "package:") {
-		scope := strings.TrimSpace(strings.TrimPrefix(binding, "package:"))
-		if scope == "" {
-			return "", "", fmt.Errorf("CI artifact package binding requires a package name")
-		}
-		root, err := infrastructure.PackageRuntimeDir(workdir, scope)
-		if err != nil {
-			return "", "", err
-		}
-		return filepath.Join(root, "ci", "raw"), filepath.Join(root, "ci", "analysis"), nil
-	}
-	workflowName := binding
-	if strings.HasPrefix(binding, "workflow:") {
-		workflowName = strings.TrimSpace(strings.TrimPrefix(binding, "workflow:"))
-	}
-	if workflowName == "" {
-		return "", "", fmt.Errorf("CI artifact workflow binding requires a workflow name")
-	}
-	root, err := workflowArtifactRoot(workdir, workflowName)
-	if err != nil {
-		return "", "", err
-	}
-	return filepath.Join(root, "ci-raw"), filepath.Join(root, "ci-analysis"), nil
+	return infrastructure.CIArtifactDirs(workdir, binding)
 }
 
 func sanitizeWorkflowStateScope(scope string) string {
-	var b strings.Builder
-	lastDash := false
-	for _, r := range strings.TrimSpace(scope) {
-		ok := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '.' || r == '_' || r == '-'
-		if ok {
-			b.WriteRune(r)
-			lastDash = false
-			continue
-		}
-		if !lastDash {
-			b.WriteByte('-')
-			lastDash = true
-		}
-	}
-	out := strings.Trim(b.String(), "-")
-	if out == "" {
-		return "default"
-	}
-	return out
+	return infrastructure.SanitizeWorkflowStateScope(scope)
 }

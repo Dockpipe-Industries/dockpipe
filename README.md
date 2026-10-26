@@ -1,7 +1,7 @@
 # Dockpipe
 
 Run commands and reusable workflows in your project, with explicit choices for
-container execution, host tools and follow-up actions. Use the desktop launcher or
+container execution, host tools and follow-up actions. Use the Dockpipe GUI or
 the CLI; workflows use the same YAML and package model in both.
 
 ## Install
@@ -11,16 +11,16 @@ include:
 
 | Platform | Desktop | CLI |
 | --- | --- | --- |
-| Linux | DEB launcher or Linux amd64 Flatpak bundle | DEB, RPM, APK, Arch or portable archive |
+| Linux | DEB desktop app or Linux amd64 Flatpak bundle | DEB, RPM, APK, Arch or portable archive |
 | macOS | DMG installer | Native tarball or portable installer |
-| Windows x64 | MSI with launcher | MSI CLI feature or ZIP |
+| Windows x64 | MSI with desktop app | MSI CLI feature or ZIP |
 
 The [Flatpak instructions](docs/install.md#flatpak-desktop-linux-amd64)
 cover KDE Platform 6.10, verified downloads and manual bundle updates. Bazzite and
 full Podman/SELinux qualification remain open. macOS DMGs are not yet
 Developer ID signed and notarized.
 
-Installers include required core. Optional workflows and resolvers are selected
+The CLI includes its generic runtime capabilities. Optional workflows and resolvers are selected
 from **Packages → Marketplace** or the CLI. You do not need to clone this repository
 or compile Dockpipe to use them.
 
@@ -39,8 +39,9 @@ This downloads the example image if needed, mounts your project at `/work`, prin
 the working directory and removes the container. Files written into the mounted
 project remain on your machine. Choose an image that contains your command's tools.
 
-For Flatpak, replace `dockpipe` with
-`flatpak run --command=dockpipe com.dockpipe.Dockpipe`.
+For Flatpak, use the terminal shortcut created on the GUI's first start, or pass
+your project directory explicitly as shown in the
+[Flatpak instructions](docs/install.md#flatpak-desktop-linux-amd64).
 
 ## Make work repeatable
 
@@ -68,7 +69,7 @@ container tools, outputs and packaged child workflows.
 
 ## Use packages
 
-Open **Packages → Marketplace** in the launcher. Use
+Open **Packages → Marketplace** in Dockpipe. Use
 **Settings → Package Remotes → Use production** for the stable catalog.
 
 [Find and use packages](docs/packages/package-quickstart.md) explains installation,

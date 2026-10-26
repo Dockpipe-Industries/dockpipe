@@ -7,8 +7,13 @@ Do not concatenate a task folder for orientation.
 
 ## Status and closure
 
-- The global index contains only identity, topic, local-index path and dispatch
-  metadata. Keep detailed state and completed milestones in the owning task.
+- The core `tasks` list contains identity, topic, local-index path and dispatch
+  metadata for core or cross-repository work. `external_backlogs` routes package
+  owners without claiming their tasks. Keep detailed state and completed milestones
+  in the owning task.
+- Dispatch is a readiness hint, not execution authority. Do not retain a past
+  session's `claimed` or `active-objective` label when no current assignment exists.
+  Keep paused/deferred product decisions explicit.
 - Update the current summary when later evidence resolves an earlier blocker.
   Old approval, handoff, retry and machine-admission text is historical evidence,
   never a fresh instruction or grant of authority.

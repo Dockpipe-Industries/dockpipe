@@ -12,7 +12,7 @@ business logic. Include the shared CLI/UI parity and process-lifecycle acceptanc
 
 Future enhancement; backlog, added 2026-10-17. Depends on
 [TASK-039](../unified-mcp-gateway/overview.md) approval, identity and audit contracts, with
-[TASK-038](../standalone-terraform-mcp-executor/overview.md) as the first infrastructure scenario.
+[TASK-038](https://github.com/Dockpipe-Industries/dockpipe-packages/blob/master/docs/agents/tasks/standalone-terraform-mcp-executor/overview.md) as the first infrastructure scenario.
 Implements the optional Cloud scope in the [design request](../unified-mcp-gateway/design-request.md).
 Local/self-hosted authorization and Terraform execution do not depend on this task.
 

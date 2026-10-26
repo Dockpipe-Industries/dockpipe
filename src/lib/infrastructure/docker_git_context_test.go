@@ -2,6 +2,9 @@ package infrastructure
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -144,6 +147,13 @@ func TestDockerGitSnapshotOrdinaryDirectoryAndPartialClone(t *testing.T) {
 	dockerGitFixture(t, linked, "", "config", "remote.origin.promisor", "false")
 	ordinary, err := prepareDockerGitContext(linked, false)
 	if err != nil {
+		probe := dockerGitFailureDiagnostics(t, linked)
+		data, marshalErr := json.Marshal(probe)
+		if marshalErr != nil {
+			t.Logf("Git snapshot diagnostic serialization failed: %v", marshalErr)
+		} else {
+			t.Logf("Git snapshot failure diagnostics: %s", data)
+		}
 		t.Fatalf("inactive promisor setting was treated as partial clone: %v", err)
 	}
 	ordinary.close()
@@ -244,4 +254,142 @@ func TestDockerGitSnapshotSHA256AndShallowHistory(t *testing.T) {
 		}
 		dockerGitFixture(t, linked, "", "--git-dir="+directory, "log", "--oneline", "HEAD")
 	})
+}
+
+// Diagnostics run only after the original snapshot has already failed. They do
+// not retry snapshot acceptance or change the original error or WaitDelay.
+func dockerGitFailureDiagnostics(t *testing.T, root string) map[string]any {
+	t.Helper()
+	report := map[string]any{"probe_only": true}
+	git, err := exec.LookPath("git")
+	if err != nil {
+		report["lookup_error"] = err.Error()
+		return report
+	}
+	report["git_path"] = git
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	version, err := dockerGitOutput(ctx, root, "--version")
+	report["git_version"] = strings.TrimSpace(string(version))
+	if err != nil {
+		report["version_error"] = err.Error()
+		return report
+	}
+	head, err := dockerGitOutput(ctx, root, "rev-parse", "--verify", "HEAD")
+	if err != nil {
+		report["head_error"] = err.Error()
+		return report
+	}
+	directory := t.TempDir()
+	pack, err := os.Create(filepath.Join(directory, "objects.pack"))
+	if err != nil {
+		report["pack_error"] = err.Error()
+		return report
+	}
+	defer pack.Close()
+	stderr, err := os.Create(filepath.Join(directory, "stderr.log"))
+	if err != nil {
+		report["stderr_error"] = err.Error()
+		return report
+	}
+	defer stderr.Close()
+	trace := filepath.Join(directory, "trace2.jsonl")
+	command := dockerGitCommand(ctx, root, "pack-objects", "--stdout", "--revs", "--indexed-objects", "--delta-base-offset", "--threads=2", "--window-memory=32m")
+	// dockerGitCommand removes inherited GIT_* configuration. Add only the
+	// fixture-local trace destination after sanitization; never dump environment.
+	command.Env = append(command.Env, "GIT_TRACE2_EVENT="+trace)
+	input := strings.NewReader(strings.TrimSpace(string(head)) + "\n")
+	started := time.Now()
+	output := &dockerGitDiagnosticWriter{
+		destination: &dockerGitPackWriter{destination: pack, remaining: dockerGitPackLimit},
+		started:     started,
+	}
+	command.Stdin = input
+	command.Stdout = output
+	command.Stderr = stderr
+	err = command.Run()
+	report["command"] = command.Args
+	report["elapsed_ms"] = time.Since(started).Milliseconds()
+	report["wait_delay_ms"] = command.WaitDelay.Milliseconds()
+	report["wait_delay_expired"] = errors.Is(err, exec.ErrWaitDelay)
+	report["stdin_bytes_remaining"] = input.Len()
+	report["stdout_bytes"] = output.bytes
+	report["stdout_first_write_ms"] = output.firstWrite.Milliseconds()
+	report["stdout_last_write_ms"] = output.lastWrite.Milliseconds()
+	report["stdout_last_return_ms"] = output.lastReturn.Milliseconds()
+	if command.ProcessState != nil {
+		report["exit_code"] = command.ProcessState.ExitCode()
+		report["primary_process_success"] = command.ProcessState.Success()
+	}
+	if err != nil {
+		report["error"] = err.Error()
+	}
+	if ctx.Err() != nil {
+		report["context_error"] = ctx.Err().Error()
+	}
+	for name, path := range map[string]string{"stderr": stderr.Name(), "trace2": trace} {
+		data, truncated, readErr := dockerGitDiagnosticRead(path)
+		report[name] = string(data)
+		report[name+"_truncated"] = truncated
+		if readErr != nil {
+			report[name+"_read_error"] = readErr.Error()
+		}
+	}
+	return report
+}
+
+type dockerGitDiagnosticWriter struct {
+	destination io.Writer
+	started     time.Time
+	firstWrite  time.Duration
+	lastWrite   time.Duration
+	lastReturn  time.Duration
+	bytes       int64
+}
+
+func (writer *dockerGitDiagnosticWriter) Write(data []byte) (int, error) {
+	if writer.bytes == 0 {
+		writer.firstWrite = time.Since(writer.started)
+	}
+	writer.lastWrite = time.Since(writer.started)
+	count, err := writer.destination.Write(data)
+	writer.bytes += int64(count)
+	writer.lastReturn = time.Since(writer.started)
+	return count, err
+}
+
+func dockerGitDiagnosticRead(path string) ([]byte, bool, error) {
+	const limit = 64 << 10
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, false, err
+	}
+	defer file.Close()
+	data, err := io.ReadAll(io.LimitReader(file, limit+1))
+	if len(data) > limit {
+		return data[:limit], true, err
+	}
+	return data, false, err
+}
+
+func TestDockerGitFailureDiagnosticProbeAndReadBound(t *testing.T) {
+	_, linked := dockerLinkedFixture(t)
+	report := dockerGitFailureDiagnostics(t, linked)
+	if report["error"] != nil || report["exit_code"] != 0 || report["primary_process_success"] != true || report["wait_delay_ms"] != int64(1000) {
+		t.Fatalf("diagnostic probe did not preserve the actual pack contract: %+v", report)
+	}
+	if count, ok := report["stdout_bytes"].(int64); !ok || count == 0 || report["stdin_bytes_remaining"] != 0 {
+		t.Fatalf("diagnostic probe did not consume the fixture input and pack: %+v", report)
+	}
+	if report["trace2"] == "" || report["trace2_truncated"] != false {
+		t.Fatalf("fixture-local trace was not captured: %+v", report)
+	}
+	path := filepath.Join(t.TempDir(), "wide.log")
+	if err := os.WriteFile(path, []byte(strings.Repeat("x", (64<<10)+1)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	data, truncated, err := dockerGitDiagnosticRead(path)
+	if err != nil || !truncated || len(data) != 64<<10 {
+		t.Fatalf("diagnostic read exceeded its log bound: bytes=%d truncated=%v error=%v", len(data), truncated, err)
+	}
 }

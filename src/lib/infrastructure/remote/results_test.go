@@ -116,7 +116,7 @@ func TestJobCapacityRejectsBeforeAssignmentWithoutPoisoning(t *testing.T) {
 	}
 	broker := &Broker{path: filepath.Join(root, "broker.json"), state: BrokerState{Schema: contract.Version, AdminHash: Hash(strings.Repeat("a", 64)), Nodes: map[string]Enrollment{"node": {TokenHash: Hash(strings.Repeat("b", 64))}}, Jobs: map[string]contract.Job{}}}
 	for index := 0; index < 128; index++ {
-		job := contract.Job{Submission: contract.Submission{ID: fmt.Sprintf("job-%d", index), Node: "node", Profile: "bench"}, Status: "success"}
+		job := contract.Job{Submission: contract.Submission{ID: fmt.Sprintf("job-%d", index), Node: "node", Profile: "bench"}, Status: "queued"}
 		broker.state.Jobs[job.ID] = job
 	}
 	if err := broker.save(); err != nil {

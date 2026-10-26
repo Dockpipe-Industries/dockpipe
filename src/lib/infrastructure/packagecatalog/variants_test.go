@@ -119,15 +119,15 @@ func TestAlternateArchiveValidation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := validateArchive(context.Background(), bytes.NewReader(compressed), selected); err != nil {
+	if err := validateArchiveForEngine(context.Background(), bytes.NewReader(compressed), selected, "dev"); err != nil {
 		t.Fatal(err)
 	}
 	selected.DecodedSHA256 = strings.Repeat("a", 64)
-	if err := validateArchive(context.Background(), bytes.NewReader(compressed), selected); err == nil {
+	if err := validateArchiveForEngine(context.Background(), bytes.NewReader(compressed), selected, "dev"); err == nil {
 		t.Fatal("decoded digest mismatch accepted")
 	}
 	selected, _ = SelectArchive(entry, "zstd")
-	if err := validateArchive(context.Background(), bytes.NewReader(compressed[:len(compressed)-1]), selected); err == nil {
+	if err := validateArchiveForEngine(context.Background(), bytes.NewReader(compressed[:len(compressed)-1]), selected, "dev"); err == nil {
 		t.Fatal("truncated zstd archive accepted")
 	}
 	if _, err := SelectArchive(entry, "missing"); err == nil {

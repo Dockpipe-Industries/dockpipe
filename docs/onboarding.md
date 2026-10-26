@@ -4,8 +4,13 @@ Start with an [installed Dockpipe CLI or desktop app](install.md). You do not ne
 Dockpipe's source repository, Go, or its contributor tools. Use a folder you own;
 all project paths below refer to that folder.
 
-For Flatpak, replace `dockpipe` in the commands below with
-`flatpak run --command=dockpipe com.dockpipe.Dockpipe`.
+For Flatpak, use the terminal shortcut created on the GUI's first start. If you
+invoke the bundled CLI directly, run from your project folder and replace
+`dockpipe` below with:
+
+```sh
+flatpak run --command=dockpipe --cwd="$PWD" --filesystem="$PWD" com.dockpipe.Dockpipe
+```
 
 ## 1. Check your installation
 
@@ -13,9 +18,10 @@ For Flatpak, replace `dockpipe` in the commands below with
 dockpipe --version
 ```
 
-Native installations need Bash for host steps (Git for Windows supplies it on
-Windows). The Flatpak includes its shell tools. Docker is only needed for container
-steps; the first workflow below does not use it.
+Native inline host commands use Bash on Linux/macOS and Windows PowerShell on
+Windows. Bash is additionally needed for `.sh` scripts or workflows that select
+it explicitly; Git for Windows supplies it. The Flatpak includes its shell tools.
+Docker is only needed for container steps; the first workflow below does not use it.
 
 ## 2. Create a workflow in your project
 
@@ -25,7 +31,7 @@ Open a terminal in your project folder and run:
 dockpipe init hello
 ```
 
-This creates project configuration when missing and an empty
+This creates project configuration when missing and a starter
 `workflows/hello/config.yml`. Replace that file's contents with:
 
 ```yaml
@@ -36,7 +42,7 @@ docker_preflight: false
 steps:
   - id: greet
     kind: host
-    cmd: printf 'Hello from Dockpipe!\n'
+    cmd: echo 'Hello from Dockpipe!'
 ```
 
 Validate and run it from the same project folder:
@@ -86,8 +92,8 @@ own project's command and select an image that contains the tools it needs.
 
 ## 4. Add reusable tools when you need them
 
-The installer includes required core. Open **Packages → Marketplace** in the
-launcher to install optional workflows and resolvers. Select
+The CLI already includes its generic runtime capabilities. Open **Packages → Marketplace**
+in Dockpipe to install optional workflows and resolvers. Select
 **Settings → Package Remotes → Use production** and save to use the release catalog.
 
 The [package quickstart](packages/package-quickstart.md) covers discovery,

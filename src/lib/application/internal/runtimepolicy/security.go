@@ -3,6 +3,7 @@ package runtimepolicy
 import (
 	"strings"
 
+	"dockpipe/src/lib/application/internal/textvalue"
 	"dockpipe/src/lib/domain"
 )
 
@@ -49,7 +50,7 @@ func runtimeBaselineSecurityPolicy(wf *domain.Workflow) (string, domain.Compiled
 	if !workflowUsesContainerSecurityPolicy(wf) {
 		return "host-only", domain.CompiledSecurityPolicy{}
 	}
-	name := firstNonEmptyString(strings.TrimSpace(wf.Runtime), strings.TrimSpace(wf.Isolate), strings.TrimSpace(wf.Resolver), "container-default")
+	name := textvalue.FirstNonEmpty(strings.TrimSpace(wf.Runtime), strings.TrimSpace(wf.Isolate), strings.TrimSpace(wf.Resolver), "container-default")
 	return name, domain.CompiledSecurityPolicy{
 		FS: domain.CompiledFilesystemPolicy{
 			Root:      string(domain.FilesystemRootReadonly),
@@ -295,8 +296,8 @@ func CompiledRuleIDs(rm *domain.CompiledRuntimeManifest) []string {
 		return nil
 	}
 	rules := []string{
-		"security.profile." + firstNonEmptyString(strings.TrimSpace(rm.PolicyProfile), string(domain.PolicyProfileSecureDefault)),
-		"network.mode." + firstNonEmptyString(strings.TrimSpace(rm.Security.Network.Mode), string(domain.NetworkModeOffline)),
+		"security.profile." + textvalue.FirstNonEmpty(strings.TrimSpace(rm.PolicyProfile), string(domain.PolicyProfileSecureDefault)),
+		"network.mode." + textvalue.FirstNonEmpty(strings.TrimSpace(rm.Security.Network.Mode), string(domain.NetworkModeOffline)),
 	}
 	if strings.TrimSpace(rm.Security.FS.Root) != "" {
 		rules = append(rules, "filesystem.root."+strings.TrimSpace(rm.Security.FS.Root))

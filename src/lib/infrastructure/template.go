@@ -6,60 +6,51 @@ import (
 	"strings"
 )
 
-// DockerfileDir returns the directory that contains Dockerfile for a template isolate name.
-// Searches workflow compile roots that may carry packaged resolvers or direct workflow image trees,
-// explicit resolver compile roots, then core fallback locations.
+// DockerfileDir is the compatibility directory lookup for a selected image recipe.
+// New callers use ResolveTemplateBuild to preserve cache and resolution errors.
 func DockerfileDir(repoRoot, name string) string {
-	core := CoreDir(repoRoot)
-	var candidates []string
-	if !UsesBundledAssetLayout(repoRoot) {
-		workflowRoots := WorkflowCompileRootsCached(repoRoot)
-		for _, leaf := range nestedResolverLeafDirs(name, workflowRoots) {
-			candidates = append(candidates, filepath.Join(leaf, "assets", "images", name))
-		}
-		for _, root := range workflowRoots {
-			candidates = append(candidates, filepath.Join(root, name, "assets", "images", name))
-		}
-		for _, leaf := range nestedResolverLeafDirs(name, ResolverCompileRootsCached(repoRoot)) {
-			candidates = append(candidates, filepath.Join(leaf, "assets", "images", name))
-		}
-	} else {
-		candidates = append(candidates, filepath.Join(WorkflowsRootDir(repoRoot), name, "assets", "images", name))
-	}
-	candidates = append(candidates,
-		filepath.Join(core, "resolvers", name, "assets", "images", name),
-		filepath.Join(core, "bundles", name, "assets", "images", name),
-		filepath.Join(core, "assets", "images", name),
-	)
-	for _, d := range candidates {
-		if st, err := os.Stat(filepath.Join(d, "Dockerfile")); err == nil && !st.IsDir() {
-			return d
-		}
-	}
-	return filepath.Join(core, "assets", "images", name)
+	_, directory, _, _, _ := ResolveTemplateBuild(repoRoot, name)
+	return directory
 }
 
-// TemplateBuild maps template name → image name and Dockerfile directory for docker build.
-func TemplateBuild(repoRoot, name string) (image string, dockerfileDir string, ok bool) {
-	dir := func(n string) string {
-		return DockerfileDir(repoRoot, n)
+// TemplateBuild retains the SDK lookup signature. Generic recipes are discovered
+// through package/project assets; builtin development recipes need no source tree.
+func TemplateBuild(repoRoot, name string) (image, dockerfileDir string, ok bool) {
+	image, dockerfileDir, _, ok, err := ResolveTemplateBuild(repoRoot, name)
+	return image, dockerfileDir, ok && err == nil
+}
+
+// ResolveTemplateBuild resolves a package-owned Dockerfile or a generic builtin
+// recipe together with its complete Docker build context.
+func ResolveTemplateBuild(repoRoot, name string) (image, directory, context string, ok bool, err error) {
+	name = strings.TrimSpace(name)
+	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, `/\:`) {
+		return "", "", "", false, nil
 	}
-	switch name {
-	case "base-dev":
-		return "dockpipe-base-dev", dir("base-dev"), true
-	case "dev":
-		return "dockpipe-dev", dir("dev"), true
-	case "agent-dev", "claude":
-		return "dockpipe-claude", dir("claude"), true
-	case "codex":
-		return "dockpipe-codex", dir("codex"), true
-	case "vscode":
-		return "dockpipe-vscode", dir("vscode"), true
-	case "ollama":
-		return "dockpipe-ollama", dir("ollama"), true
-	default:
-		return "", "", false
+	var packageRoots []string
+	if assets, err := ResolveResolverAssetsDir(repoRoot, name); err == nil {
+		packageRoots = append(packageRoots, filepath.Dir(assets))
 	}
+	for _, root := range WorkflowCompileRootsCached(repoRoot) {
+		packageRoots = append(packageRoots, filepath.Join(root, name))
+	}
+	for _, root := range ResolverCompileRootsCached(repoRoot) {
+		packageRoots = append(packageRoots, nestedResolverLeafDirs(name, []string{root})...)
+	}
+	if config, resolveErr := ResolveWorkflowConfigPathWithWorkdir(repoRoot, repoRoot, name); resolveErr == nil {
+		config, err = WorkflowConfigOnDiskPath(repoRoot, config)
+		if err != nil {
+			return "", "", "", false, err
+		}
+		packageRoots = append(packageRoots, filepath.Dir(config))
+	}
+	for _, root := range packageRoots {
+		directory := filepath.Join(root, "assets", "images", name)
+		if info, err := os.Stat(filepath.Join(directory, "Dockerfile")); err == nil && info.Mode().IsRegular() {
+			return "dockpipe-" + name, directory, root, true, nil
+		}
+	}
+	return BuiltinContainerBuild(repoRoot, name)
 }
 
 // MaybeVersionTag appends :version from repoRoot/version for dockpipe-* images only.

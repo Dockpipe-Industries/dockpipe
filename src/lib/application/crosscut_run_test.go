@@ -9,7 +9,7 @@ import (
 	"dockpipe/src/lib/infrastructure"
 )
 
-// TestRunInvalidResolverErrorsBeforeDocker fails fast when no templates/core/resolvers/<name> exists.
+// TestRunInvalidResolverErrorsBeforeDocker fails fast when the selected resolver package is unavailable.
 func TestRunInvalidResolverErrorsBeforeDocker(t *testing.T) {
 	withRunSeams(t)
 	repoRoot := t.TempDir()
@@ -21,7 +21,7 @@ func TestRunInvalidResolverErrorsBeforeDocker(t *testing.T) {
 	}
 }
 
-// TestRunInvalidStrategyErrorsBeforeIsolate fails when templates/core/strategies/<name> is missing.
+// TestRunInvalidStrategyErrorsBeforeIsolate fails when the selected strategy is unavailable.
 func TestRunInvalidStrategyErrorsBeforeIsolate(t *testing.T) {
 	withRunSeams(t)
 	repoRoot := testRepoRoot(t)
@@ -33,9 +33,9 @@ func TestRunInvalidStrategyErrorsBeforeIsolate(t *testing.T) {
 	}
 }
 
-// TestCrosscutStrategyWorktreeAndCommitResolveFromCore exercises bundled strategies without Docker.
-func TestCrosscutStrategyWorktreeAndCommitResolveFromCore(t *testing.T) {
-	repo := testRepoRoot(t)
+// TestCrosscutStrategyWorktreeAndCommitResolveFromLibrary exercises explicit library strategies without Docker.
+func TestCrosscutStrategyWorktreeAndCommitResolveFromLibrary(t *testing.T) {
+	repo := t.TempDir()
 	for _, strat := range []string{"commit", "worktree"} {
 		_, _, err := LoadStrategyAssignments(repo, "", strat)
 		if err != nil {
@@ -47,12 +47,15 @@ func TestCrosscutStrategyWorktreeAndCommitResolveFromCore(t *testing.T) {
 // TestCrosscutRuntimeResolverMergesFixtureProfiles verifies generic profile merging without external package source.
 func TestCrosscutRuntimeResolverMergesFixtureProfiles(t *testing.T) {
 	repo := t.TempDir()
-	profiles := map[string]string{
-		"runtimes/dockerimage/profile": "DOCKPIPE_RUNTIME_SUBSTRATE=dockerimage\n",
-		"resolvers/fixture/profile":    "DOCKPIPE_RESOLVER_CMD=fixture-tool\n",
+	store, err := infrastructure.PackagesResolversDir(repo)
+	if err != nil {
+		t.Fatal(err)
 	}
-	for relative, contents := range profiles {
-		profile := filepath.Join(repo, "src", "core", filepath.FromSlash(relative))
+	profiles := map[string]string{
+		filepath.Join(repo, "runtimes", "dockerimage", "profile"): "DOCKPIPE_RUNTIME_SUBSTRATE=dockerimage\n",
+		filepath.Join(store, "fixture", "profile"):                "DOCKPIPE_RESOLVER_CMD=fixture-tool\n",
+	}
+	for profile, contents := range profiles {
 		if err := os.MkdirAll(filepath.Dir(profile), 0o755); err != nil {
 			t.Fatal(err)
 		}

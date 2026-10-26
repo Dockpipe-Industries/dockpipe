@@ -2,51 +2,26 @@ package infrastructure
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-// ResolverProfileNameForCapability returns templates/core/resolvers/<name> profile basename for a
-// resolver package whose package.yml declares this capability. Empty string means no resolver
-// implements the capability (e.g. workflow-only ids like workflow.*). Error if two resolvers declare the same id.
+// ResolverProfileNameForCapability returns the resolver package declaring a capability.
+// Only installed stores and declared resolver roots participate. Multiple providers are ambiguous.
 func ResolverProfileNameForCapability(workdir, repoRoot, capability string) (string, error) {
 	capability = strings.TrimSpace(capability)
 	if capability == "" {
 		return "", nil
 	}
 	var matches []string
-	add := func(resolversDir string) {
-		entries, err := os.ReadDir(resolversDir)
-		if err != nil {
-			return
-		}
-		for _, e := range entries {
-			if !e.IsDir() || strings.HasPrefix(e.Name(), ".") {
-				continue
-			}
-			p := filepath.Join(resolversDir, e.Name(), PackageManifestFilename)
-			c, err := readResolverCapabilityFromPackageYML(p)
-			if err != nil || c == "" {
-				continue
-			}
-			if strings.TrimSpace(c) != capability {
-				continue
-			}
-			matches = append(matches, e.Name())
+	for _, directory := range resolverPackageDirectories(workdir, repoRoot) {
+		declared, err := readResolverCapabilityFromPackageYML(filepath.Join(directory, PackageManifestFilename))
+		if err == nil && declared == capability {
+			matches = append(matches, filepath.Base(directory))
 		}
 	}
-	if pr, err := PackagesRoot(workdir); err == nil {
-		add(filepath.Join(pr, "resolvers"))
-	}
-	if gr, err := GlobalPackagesRoot(); err == nil {
-		add(filepath.Join(gr, "resolvers"))
-	}
-	for _, sr := range SystemPackagesResolversDirs() {
-		add(sr)
-	}
-	cd := CoreDir(repoRoot)
-	add(filepath.Join(cd, "resolvers"))
 
 	if len(matches) == 0 {
 		return "", nil
@@ -57,8 +32,8 @@ func ResolverProfileNameForCapability(workdir, repoRoot, capability string) (str
 	return matches[0], nil
 }
 
-// SubstrateRuntimeFromDockpipeCapability returns a bundled runtime profile name when the capability id
-// uses the dockpipe.* namespace for isolation. Host-style ids map to dockerimage (same bundled profile tree).
+// SubstrateRuntimeFromDockpipeCapability maps isolation capabilities to library runtime defaults.
+// Host-style ids map to dockerimage.
 func SubstrateRuntimeFromDockpipeCapability(capability string) string {
 	capability = strings.TrimSpace(strings.ToLower(capability))
 	if capability == "" || !strings.HasPrefix(capability, "dockpipe.") {
@@ -87,4 +62,57 @@ func SubstrateRuntimeFromDockpipeCapability(capability string) string {
 	default:
 		return ""
 	}
+}
+
+// resolverPackageDirectories enumerates installed resolver stores and package
+// directories inside declared authoring roots, retaining discovery order.
+func resolverPackageDirectories(workdir, repoRoot string) []string {
+	projectRoot := strings.TrimSpace(workdir)
+	if projectRoot == "" {
+		projectRoot = repoRoot
+	}
+	var directories []string
+	seen := make(map[string]bool)
+	add := func(directory string) {
+		directory = filepath.Clean(directory)
+		if !seen[directory] {
+			seen[directory] = true
+			directories = append(directories, directory)
+		}
+	}
+	addStore := func(root string) {
+		entries, err := os.ReadDir(root)
+		if err != nil {
+			return
+		}
+		for _, entry := range entries {
+			if entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
+				add(filepath.Join(root, entry.Name()))
+			}
+		}
+	}
+	if root, err := PackagesResolversDir(projectRoot); err == nil {
+		addStore(root)
+	}
+	for _, root := range configuredPackageStoreRoots(projectRoot) {
+		addStore(filepath.Join(root, "resolvers"))
+	}
+	if root, err := GlobalPackagesResolversDir(); err == nil {
+		addStore(root)
+	}
+	for _, root := range SystemPackagesResolversDirs() {
+		addStore(root)
+	}
+	for _, root := range ResolverCompileRootsCached(projectRoot) {
+		_ = filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if !entry.IsDir() && entry.Name() == PackageManifestFilename {
+				add(filepath.Dir(path))
+			}
+			return nil
+		})
+	}
+	return directories
 }

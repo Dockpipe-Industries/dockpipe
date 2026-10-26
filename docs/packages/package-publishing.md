@@ -38,14 +38,14 @@ Consumers can use your HTTPS store manifest with `dockpipe package catalog` and
 `dockpipe package install`. See [Remote catalogs and user installation](package-model.md#remote-catalogs-and-user-installation)
 for the manifest and verification contract. Dependencies are selected separately.
 
-## Legacy core-tree mirrors
+## Runtime and package releases
 
-`dockpipe package build core` exports a core-tree tarball and `install-manifest.json`
-for the older `dockpipe install core` mirror flow. This is separate from normal
-application installation and Marketplace package installation. The archive's
-entries use a `core/` prefix; use the export command rather than manually assembling
-an archive with a different layout.
+`dockpipe package build core` and `dockpipe install core` are retired. The CLI
+carries its own runtime defaults and resources; a self-hosted store publishes
+optional workflows and resolvers. Existing immutable core metadata may remain in
+historical catalogs, but new stores do not need a `packages.core` entry.
 
-Maintainers building official core payloads from the Dockpipe checkout can use
-`make package-templates-core`. That Make target and Dockpipe's own release workflows
-are contributor tooling, not requirements for installing third-party packages.
+Official CLI, desktop and package producers run through their owning Dockpipe
+workflows. The optional [maintainer Make adapter](../../tooling/README.md) delegates
+to those workflows; installing third-party packages does not require Make or a
+compiled runtime-core archive.

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"dockpipe/src/lib/domain"
+	"dockpipe/src/lib/infrastructure"
 )
 
 func captureStderr(t *testing.T, fn func()) string {
@@ -72,15 +73,21 @@ func TestCmdInitBareCreatesStarterWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := string(b)
-	if !strings.Contains(s, "example") || !strings.Contains(s, "steps:") || !strings.Contains(s, "types:") || !strings.Contains(s, "EXAMPLE_IMAGE") {
-		t.Fatalf("expected starter workflow config, got:\n%s", string(b))
+	workflow, err := domain.ParseWorkflowYAML(b)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(project, "workflows", "example", "models", "IExampleWorkflowConfig.pipe")); err != nil {
-		t.Fatalf("expected example model interface copied: %v", err)
+	if workflow.Name != "example" || workflow.DockerPreflight == nil || *workflow.DockerPreflight {
+		t.Fatalf("expected a host-only starter with Docker preflight disabled: %+v", workflow)
 	}
-	if _, err := os.Stat(filepath.Join(project, "workflows", "example", "models", "ExampleWorkflowConfig.pipe")); err != nil {
-		t.Fatalf("expected example model class copied: %v", err)
+	if len(workflow.Steps) != 1 || !workflow.Steps[0].IsHostStep() || workflow.Steps[0].Cmd == "" {
+		t.Fatalf("expected one runnable host step: %+v", workflow.Steps)
+	}
+	if len(workflow.Types) != 0 || len(workflow.Dependencies.Host) != 0 {
+		t.Fatalf("starter must not depend on copied models or external tools: %+v", workflow)
+	}
+	if _, err := os.Stat(filepath.Join(project, "workflows", "example", "models")); !os.IsNotExist(err) {
+		t.Fatalf("basic init must not copy optional example models: %v", err)
 	}
 }
 
@@ -194,7 +201,7 @@ func TestCmdInitSeedsDerivedPackagesNamespace(t *testing.T) {
 
 func TestInitScaffoldDoesNotRequestVault(t *testing.T) {
 	project := t.TempDir()
-	if err := ensureProjectScaffold(testRepoRoot(t), project); err != nil {
+	if err := ensureProjectScaffold(project); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("DOCKPIPE_VAULT_INJECT", "1")
@@ -227,7 +234,7 @@ func TestInitScaffoldPreservesExplicitVaultConfiguration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := ensureProjectScaffold(testRepoRoot(t), project); err != nil {
+	if err := ensureProjectScaffold(project); err != nil {
 		t.Fatal(err)
 	}
 	for name, want := range files {
@@ -313,5 +320,128 @@ func TestCmdInitBareWarnsForNonDockpipeWorkflowFiles(t *testing.T) {
 	})
 	if !strings.Contains(stderr, "has no Dockpipe workflow folders") {
 		t.Fatalf("expected workflows warning for non-Dockpipe workflow files, got:\n%s", stderr)
+	}
+}
+
+func TestInitBuiltinScaffoldsDoNotMaterializeBundledAssets(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		args       []string
+		workflow   string
+		standalone bool
+	}{
+		{name: "project", workflow: "example"},
+		{name: "named blank", args: []string{"blank"}, workflow: "blank"},
+		{name: "explicit blank", args: []string{"blank", "--from", "blank"}, workflow: "blank"},
+		{name: "explicit starter", args: []string{"starter", "--from", "init"}, workflow: "starter"},
+		{name: "standalone starter", args: []string{"init", "standalone"}, workflow: "standalone", standalone: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			project := t.TempDir()
+			cacheBlocker := filepath.Join(t.TempDir(), "not-a-directory")
+			writeFile(t, cacheBlocker, "blocked bundle cache", 0o644)
+			t.Setenv("DOCKPIPE_REPO_ROOT", "")
+			t.Setenv("DOCKPIPE_BUNDLED_CACHE", cacheBlocker)
+			oldWorkingDirectory, err := os.Getwd()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Chdir(project); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = os.Chdir(oldWorkingDirectory) })
+			command := "init"
+			config := filepath.Join(project, "workflows", test.workflow, "config.yml")
+			if test.standalone {
+				command = "template"
+				config = filepath.Join(project, test.workflow, "config.yml")
+			}
+			if err := Run(append([]string{command}, test.args...), nil); err != nil {
+				t.Fatalf("asset-free CLI init: %v", err)
+			}
+			if err := infrastructure.ValidateResolvedWorkflowYAML(config); err != nil {
+				t.Fatalf("generated workflow failed schema validation: %v", err)
+			}
+			cacheContents, err := os.ReadFile(cacheBlocker)
+			if err != nil || string(cacheContents) != "blocked bundle cache" {
+				t.Fatalf("asset-free scaffold changed the blocked cache: %v, %q", err, cacheContents)
+			}
+		})
+	}
+}
+
+func TestCmdInitPreservesExistingStarterOnRepeat(t *testing.T) {
+	project := t.TempDir()
+	oldWorkingDirectory, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(project); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldWorkingDirectory) })
+	if err := cmdInit(nil); err != nil {
+		t.Fatal(err)
+	}
+	config := filepath.Join(project, "workflows", "example", "config.yml")
+	const edited = "name: example\ndescription: User-owned edit\n"
+	writeFile(t, config, edited, 0o644)
+	if err := cmdInit(nil); err != nil {
+		t.Fatal(err)
+	}
+	actual, err := os.ReadFile(config)
+	if err != nil || string(actual) != edited {
+		t.Fatalf("repeat init overwrote starter: %v, %q", err, actual)
+	}
+	if err := cmdInit([]string{"example"}); err == nil {
+		t.Fatal("named init must reject an existing workflow directory")
+	}
+}
+
+func TestCmdInitCopiesLocalSourceWithoutBundledAssets(t *testing.T) {
+	project := t.TempDir()
+	source := t.TempDir()
+	writeFile(t, filepath.Join(source, "config.yml"), "name: source\ndescription: User template\n", 0o644)
+	writeFile(t, filepath.Join(source, "assets", "preserved.txt"), "user-owned source bytes\n", 0o644)
+	cacheBlocker := filepath.Join(t.TempDir(), "not-a-directory")
+	writeFile(t, cacheBlocker, "blocked bundle cache", 0o644)
+	t.Setenv("DOCKPIPE_REPO_ROOT", "")
+	t.Setenv("DOCKPIPE_BUNDLED_CACHE", cacheBlocker)
+	oldWorkingDirectory, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(project); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldWorkingDirectory) })
+	if err := cmdInit([]string{"copied", "--from", source, "--runtime", "local", "--resolver", "tool", "--strategy", "wrap"}); err != nil {
+		t.Fatal(err)
+	}
+	config, err := os.ReadFile(filepath.Join(project, "workflows", "copied", "config.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflow, err := domain.ParseWorkflowYAML(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if workflow.Name != "copied" || workflow.Runtime != "local" || workflow.Resolver != "tool" || workflow.Strategy != "wrap" {
+		t.Fatalf("local copy did not preserve naming/flag behavior: %+v", workflow)
+	}
+	actual, err := os.ReadFile(filepath.Join(project, "workflows", "copied", "assets", "preserved.txt"))
+	if err != nil || string(actual) != "user-owned source bytes\n" {
+		t.Fatalf("local source content changed: %v, %q", err, actual)
+	}
+}
+
+func TestInitScaffoldReportsWorkflowsDirectoryFailure(t *testing.T) {
+	project := t.TempDir()
+	writeFile(t, filepath.Join(project, "workflows"), "existing ordinary file", 0o644)
+	if err := ensureProjectScaffold(project); err == nil {
+		t.Fatal("creating workflows over an existing file must report failure")
+	}
+	if _, err := os.Stat(filepath.Join(project, domain.DockpipeProjectConfigFileName)); !os.IsNotExist(err) {
+		t.Fatalf("failed scaffold must not continue writing metadata: %v", err)
 	}
 }

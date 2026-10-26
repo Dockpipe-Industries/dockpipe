@@ -1,0 +1,11 @@
+name: ci-repository
+description: Run Go tests and the produced CLI package/workflow test hooks.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py bash workflows/ci/repository/assets/scripts/test.sh

@@ -10,7 +10,7 @@ Packages are self-contained YAML plus assets plus resolver/runtime wiring. They 
 
 - Keep package logic inside the package tree.
 - Do not make maintainer/dev flows depend silently on whatever happens to be on `PATH`.
-- Prefer real repo-local build outputs first, then fall back to `PATH`.
+- Pin the Dockpipe compiler/SDK explicitly. For package product helpers, use declared package-owned artifacts or explicit source-build outputs; do not silently substitute an unrelated executable from `PATH`.
 - Consume shared SDK helpers from the pinned Dockpipe SDK instead of reaching into a sibling core checkout. Models require the separately pinned PipeLang compiler/SDK.
 - In package workflow YAML, reference local package files by the path the author sees, such as
   `assets/scripts/run.sh` or `../assets/scripts/run.sh`. Use `scripts/<name>/...` only when

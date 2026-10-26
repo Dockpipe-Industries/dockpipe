@@ -1,0 +1,11 @@
+name: shellcheck
+description: Run the shellcheck phase using explicit CI inputs.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: bash workflows/ci/repository/assets/scripts/shellcheck.sh

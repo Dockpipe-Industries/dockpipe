@@ -35,29 +35,40 @@ func ValidateStrategyAllowlist(wf *domain.Workflow, name string) error {
 }
 
 // ResolveStrategyFilePath returns the path to the strategy KEY=value file:
-// per-workflow strategies/<name>, then templates/core/strategies/<name>.
+// per-workflow strategies/<name>, then project strategies/<name>, or an explicit path.
 func ResolveStrategyFilePath(repoRoot, wfRoot, name string) (string, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return "", fmt.Errorf("strategy name is empty")
 	}
 	candidates := []string{}
+	if filepath.IsAbs(name) || strings.ContainsAny(name, `/\`) {
+		explicit := name
+		if !filepath.IsAbs(explicit) {
+			explicit = filepath.Join(repoRoot, explicit)
+		}
+		candidates = append(candidates, explicit)
+	}
 	if wfRoot != "" {
 		candidates = append(candidates, filepath.Join(wfRoot, "strategies", name))
 	}
-	candidates = append(candidates, filepath.Join(infrastructure.CoreDir(repoRoot), "strategies", name))
+	candidates = append(candidates, filepath.Join(repoRoot, "strategies", name))
 	for _, p := range candidates {
 		if st, err := os.Stat(p); err == nil && !st.IsDir() {
 			return p, nil
 		}
 	}
-	return "", fmt.Errorf("strategy file not found for %q (tried %v); shared strategies live under templates/core/strategies/ — upgrade dockpipe or refresh the bundled cache if your install is stale", name, candidates)
+	return "", fmt.Errorf("strategy file not found for %q (tried %v); put shared strategies under the project strategies/ directory or select an explicit file", name, candidates)
 }
 
 // LoadStrategyAssignments loads and parses a named strategy file.
 func LoadStrategyAssignments(repoRoot, wfRoot, name string) (domain.StrategyAssignments, string, error) {
 	path, err := ResolveStrategyFilePath(repoRoot, wfRoot, name)
 	if err != nil {
+		if stringSliceContains(builtinStrategyNames(), name) {
+			assignments, hookErr := legacyGitStrategyAssignments(repoRoot, strings.TrimSpace(name))
+			return assignments, "", hookErr
+		}
 		return domain.StrategyAssignments{}, "", err
 	}
 	m, err := infrastructure.LoadStrategyFile(path)
@@ -65,6 +76,28 @@ func LoadStrategyAssignments(repoRoot, wfRoot, name string) (domain.StrategyAssi
 		return domain.StrategyAssignments{}, path, err
 	}
 	return domain.FromStrategyMap(m), path, nil
+}
+
+func builtinStrategyNames() []string {
+	return []string{"commit", "worktree"}
+}
+
+// legacyGitStrategyAssignments preserves explicitly selected Git strategies
+// without a strategy profile tree. Project and workflow files take precedence.
+func legacyGitStrategyAssignments(workdir, name string) (domain.StrategyAssignments, error) {
+	commit, err := infrastructure.LegacyGitHookPath(workdir, "commit-worktree")
+	if err != nil {
+		return domain.StrategyAssignments{}, err
+	}
+	assignments := domain.StrategyAssignments{Kind: "git", After: []string{commit}}
+	if name == "worktree" {
+		clone, err := infrastructure.LegacyGitHookPath(workdir, "clone-worktree")
+		if err != nil {
+			return domain.StrategyAssignments{}, err
+		}
+		assignments.Before = []string{clone}
+	}
+	return assignments, nil
 }
 
 // ResolveStrategyScriptPaths turns repo-relative strategy paths into absolute paths like workflow run:/act:.
@@ -139,19 +172,23 @@ func ResolverActWouldBeBundledCommit(actFromResolver, repoRoot string) bool {
 
 // RunStrategyAfterScripts runs after hooks: bundled commit uses CommitOnHost; other paths use RunHostScript.
 func RunStrategyAfterScripts(afterAbs []string, repoRoot string, envMap map[string]string, envSlice []string, opts *CliOpts) error {
-	workHost := firstNonEmpty(envMap["DOCKPIPE_WORKDIR"], opts.Workdir)
+	return runStrategyAfterScripts(afterAbs, repoRoot, envMap, envSlice, opts.Workdir, opts.BundleOut, runHostScriptAppFn, runHostCommit)
+}
+
+func runStrategyAfterScripts(afterAbs []string, repoRoot string, envMap map[string]string, envSlice []string, workdir, bundleOut string, runScript func(string, []string) error, commit func(string, string, string, bool) error) error {
+	workHost := firstNonEmpty(envMap["DOCKPIPE_WORKDIR"], workdir)
 	for _, p := range afterAbs {
 		if _, err := os.Stat(p); err != nil {
 			return fmt.Errorf("strategy after script not found: %s: %w", p, err)
 		}
 		if infrastructure.IsBundledCommitWorktree(p, repoRoot) {
-			if err := runHostCommit(workHost, envMap["DOCKPIPE_COMMIT_MESSAGE"], firstNonEmpty(envMap["DOCKPIPE_BUNDLE_OUT"], opts.BundleOut), strings.TrimSpace(envMap["DOCKPIPE_BUNDLE_ALL"]) == "1"); err != nil {
+			if err := commit(workHost, envMap["DOCKPIPE_COMMIT_MESSAGE"], firstNonEmpty(envMap["DOCKPIPE_BUNDLE_OUT"], bundleOut), strings.TrimSpace(envMap["DOCKPIPE_BUNDLE_ALL"]) == "1"); err != nil {
 				return err
 			}
 			continue
 		}
 		fmt.Fprintf(os.Stderr, "[dockpipe] Strategy after: %s\n", p)
-		if err := runHostScriptAppFn(p, envSliceWithScriptContext(envSlice, p)); err != nil {
+		if err := runScript(p, envSliceWithScriptContext(envSlice, p)); err != nil {
 			return err
 		}
 	}

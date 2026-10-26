@@ -1,0 +1,11 @@
+name: inspect-go-sdk-lock
+description: Bind the literal source checkout to the committed SDK content lock.
+docker_preflight: false
+steps:
+  - id: inspect
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/build/go-sdk/assets/scripts/inspect-lock.py

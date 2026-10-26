@@ -61,7 +61,7 @@ not hide the other. Hidden discovery does not revoke explicit installation or ac
 
 ## Go compatibility SDK
 
-`release/packaging/build-go-sdk.py` exports the public runtime dependency closure
+`workflows/build/go-sdk/assets/scripts/build.py` exports the public runtime dependency closure
 used by DorkPipe/MCP. It discovers Linux, Windows and macOS source variants and
 records every file and archive digest. Private implementations and optional native
 Cockpit source are excluded. Source discovery is not native platform qualification.
@@ -138,7 +138,7 @@ the package host. Source repository visibility and package distribution are
 independent decisions. DorkPipe now has public source and release evidence; Pipeon
 retains private source and release evidence. The package host remains the composed
 store distribution boundary. Private native ForgePipe and Nucleon SDKs
-are not part of this package-host distribution. `release/packaging/pinned-stores.lock.json` selects the five
+are not part of this package-host distribution. `workflows/catalog/compose/assets/pinned-stores.lock.json` selects the five
 qualified native baseline stores and the new Linux amd64 standalone bundles.
 Other native platforms retain their previous qualified package versions until their
 own standalone builds pass. New Linux package proof does not qualify those targets.

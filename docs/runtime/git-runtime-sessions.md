@@ -1,7 +1,16 @@
 # Git Runtime Sessions
 
-This proposal defines a Git-owned session lifecycle for long-running autonomous and semi-autonomous
-Dockpipe runs. It is a foundation document, not the full implementation plan.
+Dockpipe owns the Git lifecycle for managed workflow sessions. This document
+contains both the implemented local interface and the longer-term design.
+
+Current local sessions require an existing Git checkout. `workspace.mode: managed`
+defaults to a managed worktree; `storage: volume` adds a Docker editing surface
+while retaining a managed Git worktree for checkpointing. `storage: clone` is
+reserved and rejected. `workspace.repo` selects an existing local directory or a
+logical identity for the current source; it does not clone a remote URL. Session
+publishing pushes a branch and does not create a pull request. The lifecycle,
+recovery, volume-first and migration sections below include design goals, not
+guarantees that all proposed transitions or adapters are implemented.
 
 ## Problem
 
@@ -252,7 +261,7 @@ workspace:
   mode: managed
   lifecycle:
     branch_prefix: ai
-    branch: js/features/spnext/reporting/worktree-report-poc
+    branch: feature/reporting
     checkpoint: auto
     publish: review
 ```
@@ -268,25 +277,25 @@ workspace:
     checkpoint: manual
 ```
 
-Proposed fields:
+Implemented workflow fields (with the reserved storage value noted):
 
 | Field | Meaning |
 | --- | --- |
-| `workspace.repo` | Logical repository identity or source path/URL. |
+| `workspace.repo` | Existing local source directory, or logical identity for the current source directory. |
 | `workspace.mode` | `managed` by default; `bind` for explicit local fast path. |
 | `workspace.lifecycle.branch_prefix` | Prefix for session branches, default `ai`. |
 | `workspace.lifecycle.branch` | Exact session branch name for repos with required branch conventions; overrides branch-prefix derivation. |
 | `workspace.lifecycle.checkpoint` | `manual`, `auto`, or `step`. |
 | `workspace.lifecycle.publish` | `none`, `branch`, or `review`. |
-| `workspace.base` | Optional base branch/ref, default current/default branch. |
-| `workspace.storage` | Optional advanced override, e.g. `volume`, `worktree`, `clone`; not needed for most workflows. |
+| `workspace.base` | Optional base branch/ref, default `HEAD`. |
+| `workspace.storage` | Managed sessions default to `worktree`; `volume` is an optional Docker editing surface. `clone` is reserved and rejected. |
 
-The initial runtime service now supports this authored surface for local sessions. The first
-implementation uses managed Git worktrees for `mode: managed` and current-checkout branch
-management for explicit `mode: bind`; later implementations can move the same public API to named
-Docker volumes, isolated clones, or distributed workers.
+Local sessions use managed Git worktrees for `mode: managed` and current-checkout
+branch management for explicit `mode: bind`. Docker volume storage is supported
+with a managed worktree as its checkpointable source. Isolated clones and
+distributed session services remain future work.
 
-## Session Lifecycle
+## Proposed Session Lifecycle
 
 ```text
 requested
@@ -326,10 +335,10 @@ State meanings:
 | `published` | Review target exists; no automatic merge has occurred. |
 | `archived` | Runtime has closed the session and retained metadata. |
 
-## Metadata Model
+## Metadata Design
 
 Runtime metadata should live under project-local state for local runs and under a session service for
-distributed runs. A local starting point:
+distributed runs. The following layout and JSON are design examples, not a byte-for-byte schema reference. Use `dockpipe session inspect <id> --json` for current records:
 
 ```text
 bin/.dockpipe/sessions/<session-id>/
@@ -525,7 +534,7 @@ DockPipe-Worker: editor-a
 DockPipe-Reason: worker-requested
 ```
 
-These commits are not final product history. Publish can either:
+These commits are not final product history. Future review integrations could:
 
 - preserve checkpoint commits for review transparency
 - squash them into one review commit
@@ -533,7 +542,7 @@ These commits are not final product history. Publish can either:
 
 The default should be preserve for recovery during development, squash at human merge time.
 
-## Recovery Strategy
+## Recovery Design
 
 After container or worker failure:
 
@@ -558,7 +567,7 @@ process can:
 For bind mode, recovery is weaker because dirty changes are in the host checkout. Runtime should
 checkpoint immediately where possible and warn if manual cleanup is needed.
 
-## Conflict Handling
+## Conflict-Handling Design
 
 The first implementation should avoid automatic conflict resolution beyond safe fast-forward/rebase
 cases.
@@ -572,7 +581,7 @@ Policy:
 
 AI can propose a conflict resolution patch, but the runtime still owns Git operations.
 
-## Runtime And Workflow Changes
+## Design Responsibilities
 
 Required core primitives:
 
@@ -597,7 +606,7 @@ Package-level changes:
 - Apply/publish stages should call runtime operations, not shell `git`.
 - Existing artifact-first flows remain valid and can run without workspace sessions.
 
-## Migration Plan
+## Migration Roadmap (historical design)
 
 Phase 0: design and guardrails
 
@@ -698,7 +707,7 @@ Worktrees should be an implementation detail for local managed workspaces. Clone
 implementation detail for remote/distributed workers. Worker branches should come later, after the
 session API and checkpoint ledger are stable.
 
-In short:
+The design distinguishes:
 
 - public default: session branch
 - local debugging path: managed worktree when needed

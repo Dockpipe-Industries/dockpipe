@@ -1,0 +1,11 @@
+name: prepare-release-article
+description: Run the prepare release article operation with explicit options after --.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/publish/release-article/assets/scripts/prepare-article.py

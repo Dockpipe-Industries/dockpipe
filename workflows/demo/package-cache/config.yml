@@ -1,0 +1,11 @@
+name: demo-package-cache
+description: Run the repository demo package-cache operation.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py bash workflows/demo/package-cache/assets/scripts/demo.sh

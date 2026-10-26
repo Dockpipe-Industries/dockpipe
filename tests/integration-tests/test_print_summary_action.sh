@@ -4,11 +4,13 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DOCKPIPE="$REPO_ROOT/src/bin/dockpipe"
-ACTION="$REPO_ROOT/src/core/assets/scripts/print-summary.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 
 tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
+actions=$(mktemp -d)
+trap 'rm -rf "$tmp" "$actions"' EXIT
+ACTION="$actions/print-summary.sh"
+"$DOCKPIPE" action init "$ACTION" --from print-summary
 cd "$tmp"
 git init -q
 git config user.email "test@dockpipe"

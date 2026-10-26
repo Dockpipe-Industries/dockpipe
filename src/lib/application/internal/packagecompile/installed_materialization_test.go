@@ -196,20 +196,6 @@ func TestSourceHiddenNamedWorkflowClosurePreservesInstalledArchive(t *testing.T)
 	if err := os.RemoveAll(source); err != nil {
 		t.Fatal(err)
 	}
-	coreSource := t.TempDir()
-	if err := os.WriteFile(filepath.Join(coreSource, "package.yml"), []byte("schema: 1\nname: core\nkind: core\nversion: 1.2.3\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	coreDestination, err := infrastructure.PackagesCoreDir(workdir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(coreDestination, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := packagebuild.WriteDirTarGzWithPrefix(coreSource, filepath.Join(coreDestination, "dockpipe-core-1.2.3.tar.gz"), "core"); err != nil {
-		t.Fatal(err)
-	}
 	start, err := infrastructure.WorkflowCompileStartDir(bundle, workdir, "example")
 	if err != nil {
 		t.Fatal(err)
@@ -231,7 +217,7 @@ func TestSourceHiddenNamedWorkflowClosurePreservesInstalledArchive(t *testing.T)
 	if err := os.Chtimes(filepath.Join(start, "config.yml"), future, future); err != nil {
 		t.Fatal(err)
 	}
-	if err := compileClosureForWorkflow(workdir, "example", false, nil); err != nil {
+	if err := compileClosureForWorkflow(workdir, "example", false); err != nil {
 		t.Fatal(err)
 	}
 	after, err := os.ReadFile(archive)

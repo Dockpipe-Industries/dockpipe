@@ -1,22 +1,28 @@
 name: CLI bootstrap candidate
 
 on:
+  workflow_dispatch:
+    inputs:
+      publish_candidate:
+        description: Publish the exact dev candidate after reproduction; other refs build only.
+        required: false
+        type: boolean
+        default: false
   pull_request:
     branches: [dev]
     paths:
       - VERSION
       - go.mod
       - go.sum
-      - embed*.go
       - src/cmd/**
       - src/lib/**
-      - src/core/**
-      - release/packaging/build-cli-candidate.py
-      - release/packaging/release-version.py
-      - release/packaging/embedded-inputs.py
-      - release/packaging/publish-cli-candidate.py
-      - release/packaging/publish-launcher-sdk.py
-      - release/packaging/tests/test_cli_candidate.py
+      - workflows/build/cli-candidate/**
+      - workflows/shared/bootstrap.py
+      - workflows/shared/bootstrap.lock.json
+      - workflows/release/metadata/assets/scripts/release-version.py
+      - workflows/publish/cli-candidate/assets/scripts/publish.py
+      - workflows/publish/launcher-sdk/assets/scripts/publish.py
+      - workflows/build/cli-candidate/tests/test_cli_candidate.py
       - .github/workflows/cli-candidate.yml
   push:
     branches: [dev]
@@ -24,16 +30,15 @@ on:
       - VERSION
       - go.mod
       - go.sum
-      - embed*.go
       - src/cmd/**
       - src/lib/**
-      - src/core/**
-      - release/packaging/build-cli-candidate.py
-      - release/packaging/release-version.py
-      - release/packaging/embedded-inputs.py
-      - release/packaging/publish-cli-candidate.py
-      - release/packaging/publish-launcher-sdk.py
-      - release/packaging/tests/test_cli_candidate.py
+      - workflows/build/cli-candidate/**
+      - workflows/shared/bootstrap.py
+      - workflows/shared/bootstrap.lock.json
+      - workflows/release/metadata/assets/scripts/release-version.py
+      - workflows/publish/cli-candidate/assets/scripts/publish.py
+      - workflows/publish/launcher-sdk/assets/scripts/publish.py
+      - workflows/build/cli-candidate/tests/test_cli_candidate.py
       - .github/workflows/cli-candidate.yml
 
 permissions:
@@ -56,12 +61,14 @@ jobs:
           go-version: '1.26.10'
           cache: false
       - name: Verify candidate boundaries
-        run: python3 -B -m unittest discover -s release/packaging/tests -p test_cli_candidate.py -v
+        run: python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/build/cli-candidate/tests --pattern test_cli_candidate.py
+      - name: Install the separate locked workflow bootstrap
+        run: python3 workflows/shared/bootstrap.py --output "$RUNNER_TEMP/dockpipe-bootstrap"
       - name: Build pure-Go CLI archives from fresh public module pins
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python3 -B release/packaging/build-cli-candidate.py \
+          "$DOCKPIPE_BOOTSTRAP_BIN" --workflow-file workflows/build/cli-candidate/config.yml --workdir "$GITHUB_WORKSPACE" -- \
             --source-root "$GITHUB_WORKSPACE" --source-sha "$GITHUB_SHA" \
             --work-directory "$RUNNER_TEMP/cli-candidate-work" \
             --output "$RUNNER_TEMP/cli-candidate"
@@ -73,7 +80,7 @@ jobs:
           retention-days: 7
 
   publish:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    if: github.ref == 'refs/heads/dev' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_candidate))
     needs: build
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -99,4 +106,5 @@ jobs:
       - name: Publish the immutable CLI-only prerelease
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 -B release/packaging/publish-cli-candidate.py --directory "$RUNNER_TEMP/cli-candidate"
+          DOCKPIPE_CLI_MANUAL_PUBLICATION: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_candidate }}
+        run: python3 workflows/shared/launch.py workflows/publish/cli-candidate/config.yml -- --directory "$RUNNER_TEMP/cli-candidate"

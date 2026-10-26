@@ -1,0 +1,29 @@
+schema: 1
+id: TASK-047
+topic: Paired connectivity, storage mounts and worker data caching
+status: planned
+entrypoint: overview.md
+
+dispatch:
+  readiness: unclassified
+  ownership: unclaimed
+
+routes:
+  orientation:
+    read: [overview.md]
+  architecture:
+    read: [overview.md, ../../../architecture/paired-storage-mounts.md]
+  implementation:
+    read: [overview.md, ../../../architecture/paired-storage-mounts.md]
+    gate: Future work; requires explicit implementation authority after current stabilization.
+
+documents:
+  - path: overview.md
+    role: planned scope, owner dependencies and delivery acceptance
+  - path: ../../../architecture/paired-storage-mounts.md
+    role: canonical proposed package setup, connectivity, mount and caching design
+
+maintenance:
+  - Resolve document paths relative to this index.
+  - Keep dispatch metadata synchronized with docs/agents/task-index.yaml.
+  - Preserve planned status until implementation is explicitly authorized.

@@ -1,0 +1,11 @@
+name: package-linux-cli-all
+description: Build and package both supported Linux CLI architectures.
+docker_preflight: false
+steps:
+  - id: architectures
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/package/linux-cli/assets/scripts/all.py

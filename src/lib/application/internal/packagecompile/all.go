@@ -10,7 +10,7 @@ import (
 	"dockpipe/src/lib/infrastructure"
 )
 
-func cmdPackageCompileAll(args []string, sourceBuild CoreSourceBuild) error {
+func cmdPackageCompileAll(args []string) error {
 	if len(args) > 0 && (args[0] == "--help" || args[0] == "-h") {
 		fmt.Print(packageCompileAllUsageText)
 		return nil
@@ -59,9 +59,6 @@ func cmdPackageCompileAll(args []string, sourceBuild CoreSourceBuild) error {
 	}
 	opIDs := packageCompileIDs(workdir, nil)
 	return infrastructure.RunOperationWithOptions(os.Stderr, "package.compile.all", "Compiling package store…", opIDs, infrastructure.OperationOptions{Spinner: false, ProgressEvery: packageCompileProgressEvery}, func() error {
-		if err := cmdPackageCompileCore(workdirAndForceArgs(workdir, force), sourceBuild); err != nil {
-			return err
-		}
 		resRoots := compileconfig.ResolverRoots(cfg, repoRoot)
 		if len(resRoots) == 0 {
 			opIDs["resolver_result"] = "noop"

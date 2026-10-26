@@ -1,0 +1,11 @@
+name: build-go-sdk
+description: Export the Go compatibility SDK. Pass producer options after --.
+docker_preflight: false
+steps:
+  - id: build
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/build/go-sdk/assets/scripts/build.py

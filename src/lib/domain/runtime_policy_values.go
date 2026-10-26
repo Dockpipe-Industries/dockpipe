@@ -1,162 +1,47 @@
 package domain
 
-// PolicyProfile identifies a compiled security-policy profile.
-type PolicyProfile string
+import "dockpipe/src/lib/domain/workflow"
+
+type PolicyProfile = workflow.PolicyProfile
+type NetworkMode = workflow.NetworkMode
+type NetworkEnforcement = workflow.NetworkEnforcement
+type FilesystemRootPolicy = workflow.FilesystemRootPolicy
+type FilesystemWritePolicy = workflow.FilesystemWritePolicy
+type ProcessUserPolicy = workflow.ProcessUserPolicy
+type ImageSource = workflow.ImageSource
+type ImageAutoBuildMode = workflow.ImageAutoBuildMode
+type ImagePullPolicy = workflow.ImagePullPolicy
+type ImageArtifactState = workflow.ImageArtifactState
 
 const (
-	PolicyProfileSecureDefault  PolicyProfile = "secure-default"
-	PolicyProfileInternetClient PolicyProfile = "internet-client"
-	PolicyProfileBuildOnline    PolicyProfile = "build-online"
-	PolicyProfileSidecarClient  PolicyProfile = "sidecar-client"
+	PolicyProfileSecureDefault    = workflow.PolicyProfileSecureDefault
+	PolicyProfileInternetClient   = workflow.PolicyProfileInternetClient
+	PolicyProfileBuildOnline      = workflow.PolicyProfileBuildOnline
+	PolicyProfileSidecarClient    = workflow.PolicyProfileSidecarClient
+	NetworkModeOffline            = workflow.NetworkModeOffline
+	NetworkModeAllowlist          = workflow.NetworkModeAllowlist
+	NetworkModeRestricted         = workflow.NetworkModeRestricted
+	NetworkModeInternet           = workflow.NetworkModeInternet
+	NetworkEnforcementNative      = workflow.NetworkEnforcementNative
+	NetworkEnforcementProxy       = workflow.NetworkEnforcementProxy
+	NetworkEnforcementAdvisory    = workflow.NetworkEnforcementAdvisory
+	FilesystemRootReadonly        = workflow.FilesystemRootReadonly
+	FilesystemRootWritable        = workflow.FilesystemRootWritable
+	FilesystemWritesWorkspaceOnly = workflow.FilesystemWritesWorkspaceOnly
+	FilesystemWritesDeclared      = workflow.FilesystemWritesDeclared
+	ProcessUserAuto               = workflow.ProcessUserAuto
+	ProcessUserRoot               = workflow.ProcessUserRoot
+	ProcessUserNonRoot            = workflow.ProcessUserNonRoot
+	ImageSourceAuto               = workflow.ImageSourceAuto
+	ImageSourceBuild              = workflow.ImageSourceBuild
+	ImageSourceRegistry           = workflow.ImageSourceRegistry
+	ImageAutoBuildIfMissing       = workflow.ImageAutoBuildIfMissing
+	ImageAutoBuildIfStale         = workflow.ImageAutoBuildIfStale
+	ImageAutoBuildNever           = workflow.ImageAutoBuildNever
+	ImagePullIfMissing            = workflow.ImagePullIfMissing
+	ImagePullNever                = workflow.ImagePullNever
+	ImageArtifactPlanned          = workflow.ImageArtifactPlanned
+	ImageArtifactMaterialized     = workflow.ImageArtifactMaterialized
+	ImageArtifactReferenced       = workflow.ImageArtifactReferenced
+	ImageArtifactCached           = workflow.ImageArtifactCached
 )
-
-// NetworkMode identifies the network access model enforced for a runtime.
-type NetworkMode string
-
-const (
-	NetworkModeOffline    NetworkMode = "offline"
-	NetworkModeAllowlist  NetworkMode = "allowlist"
-	NetworkModeRestricted NetworkMode = "restricted"
-	NetworkModeInternet   NetworkMode = "internet"
-)
-
-// NetworkEnforcement identifies how a network policy is enforced.
-type NetworkEnforcement string
-
-const (
-	NetworkEnforcementNative   NetworkEnforcement = "native"
-	NetworkEnforcementProxy    NetworkEnforcement = "proxy"
-	NetworkEnforcementAdvisory NetworkEnforcement = "advisory"
-)
-
-// FilesystemRootPolicy identifies the root-filesystem access model.
-type FilesystemRootPolicy string
-
-const (
-	FilesystemRootReadonly FilesystemRootPolicy = "readonly"
-	FilesystemRootWritable FilesystemRootPolicy = "writable"
-)
-
-// FilesystemWritePolicy identifies where a runtime may write.
-type FilesystemWritePolicy string
-
-const (
-	FilesystemWritesWorkspaceOnly FilesystemWritePolicy = "workspace-only"
-	FilesystemWritesDeclared      FilesystemWritePolicy = "declared"
-)
-
-// ProcessUserPolicy identifies the user model for a runtime process.
-type ProcessUserPolicy string
-
-const (
-	ProcessUserAuto    ProcessUserPolicy = "auto"
-	ProcessUserRoot    ProcessUserPolicy = "root"
-	ProcessUserNonRoot ProcessUserPolicy = "non-root"
-)
-
-// ImageSource identifies how a compiled runtime image is obtained.
-type ImageSource string
-
-const (
-	ImageSourceAuto     ImageSource = "auto"
-	ImageSourceBuild    ImageSource = "build"
-	ImageSourceRegistry ImageSource = "registry"
-)
-
-// ImageAutoBuildMode identifies when a source image is rebuilt.
-type ImageAutoBuildMode string
-
-const (
-	ImageAutoBuildIfMissing ImageAutoBuildMode = "if-missing"
-	ImageAutoBuildIfStale   ImageAutoBuildMode = "if-stale"
-	ImageAutoBuildNever     ImageAutoBuildMode = "never"
-)
-
-// ImagePullPolicy identifies when a registry image is pulled.
-type ImagePullPolicy string
-
-const (
-	ImagePullIfMissing ImagePullPolicy = "if-missing"
-	ImagePullNever     ImagePullPolicy = "never"
-)
-
-// ImageArtifactState identifies the lifecycle state of an image artifact.
-type ImageArtifactState string
-
-const (
-	ImageArtifactPlanned      ImageArtifactState = "planned"
-	ImageArtifactMaterialized ImageArtifactState = "materialized"
-	ImageArtifactReferenced   ImageArtifactState = "referenced"
-	ImageArtifactCached       ImageArtifactState = "cached"
-)
-
-var (
-	validPolicyProfiles = enumValues(
-		PolicyProfile(""),
-		PolicyProfileSecureDefault,
-		PolicyProfileInternetClient,
-		PolicyProfileBuildOnline,
-		PolicyProfileSidecarClient,
-	)
-	validNetworkModes = enumValues(
-		NetworkMode(""),
-		NetworkModeOffline,
-		NetworkModeAllowlist,
-		NetworkModeRestricted,
-		NetworkModeInternet,
-	)
-	validNetworkEnforcement = enumValues(
-		NetworkEnforcement(""),
-		NetworkEnforcementNative,
-		NetworkEnforcementProxy,
-		NetworkEnforcementAdvisory,
-	)
-	validFilesystemRoots = enumValues(
-		FilesystemRootPolicy(""),
-		FilesystemRootReadonly,
-		FilesystemRootWritable,
-	)
-	validFilesystemWrites = enumValues(
-		FilesystemWritePolicy(""),
-		FilesystemWritesWorkspaceOnly,
-		FilesystemWritesDeclared,
-	)
-	validProcessUsers = enumValues(
-		ProcessUserPolicy(""),
-		ProcessUserAuto,
-		ProcessUserRoot,
-		ProcessUserNonRoot,
-	)
-	validImageSources = enumValues(
-		ImageSource(""),
-		ImageSourceAuto,
-		ImageSourceBuild,
-		ImageSourceRegistry,
-	)
-	validImageAutoBuildModes = enumValues(
-		ImageAutoBuildMode(""),
-		ImageAutoBuildIfMissing,
-		ImageAutoBuildIfStale,
-		ImageAutoBuildNever,
-	)
-	validImagePullPolicies = enumValues(
-		ImagePullPolicy(""),
-		ImagePullIfMissing,
-		ImagePullNever,
-	)
-	validImageArtifactStates = enumValues(
-		ImageArtifactState(""),
-		ImageArtifactPlanned,
-		ImageArtifactMaterialized,
-		ImageArtifactReferenced,
-		ImageArtifactCached,
-	)
-)
-
-func enumValues[T comparable](values ...T) map[T]struct{} {
-	result := make(map[T]struct{}, len(values))
-	for _, value := range values {
-		result[value] = struct{}{}
-	}
-	return result
-}

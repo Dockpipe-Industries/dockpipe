@@ -25,7 +25,8 @@ export DOCKPIPE_PACKAGE_ID="Example.Package"
 unset DOCKPIPE_PACKAGE_STATE_DIR DOCKPIPE_SDK_ROOT
 
 # shellcheck source=/dev/null
-source "$ROOT/src/core/assets/scripts/lib/dockpipe-sdk.sh"
+sdk_script="$("$DOCKPIPE_TEST_BIN" sdk path --language shell --workdir "$first")"
+source "$sdk_script"
 
 [[ "${dockpipe[package_state_dir]}" == "$XDG_STATE_HOME/dockpipe/"* ]]
 [[ "${dockpipe[package_state_dir]}" != "$first/bin/.dockpipe/"* ]]

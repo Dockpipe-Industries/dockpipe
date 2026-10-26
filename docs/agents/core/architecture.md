@@ -16,10 +16,10 @@ Capabilities are separate dotted ids documented in `docs/concepts/capabilities.m
 
 | Concept | Meaning | Authoring location |
 | --- | --- | --- |
-| Workflow/template | What happens. YAML, steps, scripts. | `src/core/workflows/`, repo `workflows/`, package `workflows/` |
-| Runtime | Where execution runs. | `src/core/runtimes/`, installed core |
-| Resolver | Which tool/profile performs work. | `src/core/resolvers/`, package `resolvers/` |
-| Strategy | Lifecycle wrapper around execution. | `src/core/strategies/` |
+| Workflow/template | What happens. YAML, steps, scripts. | Project/declared `workflows/` and workflow packages |
+| Runtime | Where execution runs. | Typed library defaults or explicitly selected profile files |
+| Resolver | Which tool/profile performs work. | Independent resolver packages and declared source roots |
+| Strategy | Lifecycle wrapper around execution. | Workflow/project files and runtime-owned compatibility defaults |
 
 ## Hard Rules
 
@@ -32,25 +32,19 @@ Capabilities are separate dotted ids documented in `docs/concepts/capabilities.m
 - Runtime-owned Git sessions are runtime lifecycle behavior. Agents and resolvers request lifecycle
   transitions; they do not own raw Git commands.
 
-## `src/core` Shape
+## Ownership
 
-Valid top-level categories in this repo's `src/core/`:
-
-- `runtimes/`
-- `resolvers/`
-- `strategies/`
-- `assets/`
-- `workflows/` for bundled examples only
-
-Invalid examples: `src/core/claude`, `src/core/docker`, `src/core/test`.
-If it is a tool/platform, put it under `resolvers/`. If it is an execution substrate, put it under `runtimes/`.
+Use [runtime resource ownership](../../concepts/runtime-resource-ownership.md).
+Do not reintroduce a mandatory core package, authored workflow embedding or
+checkout-only discovery. Keep tool backends and provisioning in their packages;
+materialize generic library resources only for the requested capability.
 
 ## Mental Model
 
 - Top-level `runtime` and `resolver` set workflow defaults.
 - Step-level `runtime` and `resolver` override defaults.
 - `isolate` is an advanced low-level image/template override.
-- `kind: host` means host execution outside container isolation.
+- `kind: host` means host execution outside Docker policy. Inline commands use Windows PowerShell on Windows and Bash on Linux/macOS; script extensions and explicit shell choices follow the [host-shell contract](../../workflows/workflow-yaml.md#host-steps-kind-host).
 - `workflow` plus `package` enters a packaged child workflow.
 
 ## Canonical Docs

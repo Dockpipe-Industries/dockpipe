@@ -3,16 +3,20 @@ package infrastructure
 import (
 	"os"
 	"path/filepath"
+	"strings"
+
+	"dockpipe/src/lib/domain"
 )
 
-// RepoRoot returns the layout root for bundled assets: materialized bundle has bundle/core,
-// bundle/workflows, lib/, and version; authoring checkouts use src/core/ or templates/ + templates/core/ instead.
-// Projects may also have top-level scripts/ and images/ for local copies and custom Dockerfiles.
-// By default this is the materialized embedded bundle in the user cache (see embed.go + bundled_extract.go).
-// Set DOCKPIPE_REPO_ROOT to override (e.g. development against a git checkout).
+// RepoRoot returns the current project context, or an explicitly selected root.
+// It never materializes workflow sources from the executable.
 func RepoRoot() (string, error) {
-	if v := os.Getenv("DOCKPIPE_REPO_ROOT"); v != "" {
-		return filepath.Abs(v)
+	if root := strings.TrimSpace(os.Getenv("DOCKPIPE_REPO_ROOT")); root != "" {
+		return filepath.Abs(root)
 	}
-	return MaterializedBundledRoot()
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	return domain.FindProjectRootWithDockpipeConfig(cwd)
 }

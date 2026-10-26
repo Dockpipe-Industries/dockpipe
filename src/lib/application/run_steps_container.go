@@ -13,7 +13,7 @@ import (
 )
 
 // buildStepContainer returns argv, docker run options, and Dockerfile build dir/context (if any).
-// ra is optional assignments from a shared core runtime profile; must not describe host isolate (handled before this).
+// ra is optional assignments from a selected runtime/resolver profile; must not describe host isolate (handled before this).
 func buildStepContainer(o *runStepsOpts, i, n int, step domain.Step, envMap, dockerEnv map[string]string, ra *domain.ResolverAssignments) (
 	argv []string, runOpts infrastructure.RunOpts, buildDir, buildCtx string, rm *domain.CompiledRuntimeManifest, err error,
 ) {
@@ -56,22 +56,26 @@ func buildStepContainer(o *runStepsOpts, i, n int, step domain.Step, envMap, doc
 
 	var image, dockerfileDir, contextDir string
 	var tmpl string
-	if im, dir, ok := infrastructure.TemplateBuild(o.repoRoot, effIso); ok {
+	if im, dir, ctx, ok, resolveErr := templateBuildForRun(o.repoRoot, o.projectRoot, effIso); resolveErr != nil {
+		return nil, runOpts, "", "", nil, resolveErr
+	} else if ok {
 		tmpl = effIso
-		image, dockerfileDir, contextDir = im, dir, o.repoRoot
+		image, dockerfileDir, contextDir = im, dir, ctx
 	} else {
 		image = effIso
 	}
 	if image == "" {
-		image, dockerfileDir = "dockpipe-base-dev", filepath.Join(infrastructure.CoreDir(o.repoRoot), "assets", "images", "base-dev")
-		contextDir = o.repoRoot
+		image, dockerfileDir, contextDir, _, err = infrastructure.BuiltinContainerBuild(firstNonEmpty(o.projectRoot, o.repoRoot), "base-dev")
+		if err != nil {
+			return nil, runOpts, "", "", nil, err
+		}
 	}
 	image = infrastructure.MaybeVersionTag(o.repoRoot, image)
 
 	actionPath := actAbs
 	commitOnHost := false
 	if actionPath != "" {
-		if _, err := osStatFn(actionPath); err != nil {
+		if _, err := o.executionServices().stat(actionPath); err != nil {
 			return nil, runOpts, "", "", nil, fmt.Errorf("action script not found: %s", actionPath)
 		}
 		if infrastructure.IsBundledCommitWorktree(actionPath, o.repoRoot) {

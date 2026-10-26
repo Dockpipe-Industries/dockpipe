@@ -1,0 +1,11 @@
+name: demo-record-dependencies
+description: Install the optional tools used by terminal demo recording.
+docker_preflight: false
+steps:
+  - id: install
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py bash workflows/demo/record/assets/scripts/install-dependencies.sh

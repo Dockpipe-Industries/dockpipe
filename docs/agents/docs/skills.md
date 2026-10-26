@@ -38,12 +38,15 @@ Inspect available skills or render them for the selected adapter when needed.
 
 ## Render Commands
 
-Install the external DorkPipe package first. The local Dockpipe CLI runs its renderer through the public package contract.
+Select an absolute installed or built `DOCKPIPE_BIN` and install the external
+DorkPipe package before rendering. Rendering can change host skill files; docs
+routing validation should inspect paths and IDs without installing skills. Use
+`--dry-run` when checking renderer behavior.
 
 ```bash
-./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --list
-./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex
-./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target claude --output /path/to/claude-skills
+"$DOCKPIPE_BIN" --package dorkpipe --workflow skills.render -- --list
+"$DOCKPIPE_BIN" --package dorkpipe --workflow skills.render -- --target codex
+"$DOCKPIPE_BIN" --package dorkpipe --workflow skills.render -- --target claude --output /path/to/claude-skills
 ```
 
 Codex default output:

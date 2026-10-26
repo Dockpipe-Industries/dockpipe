@@ -8,14 +8,13 @@ It does not change a repository pin automatically.
 
 ## Inputs and output
 
-[The producer](packaging/build-cli-candidate.py) runs on Linux amd64 with the
+[The producer](../workflows/build/cli-candidate/assets/scripts/build.py) runs on Linux amd64 with the
 existing pinned Go **1.26.10** toolchain. It uses a new module cache, the public
 `https://proxy.golang.org` proxy and `sum.golang.org`, disables workspaces and
 private/local proxy overrides, rejects module replacements, downloads/verifies
-all dependencies and preserves the exact `go.mod`/`go.sum` bytes. Before any Go
-command, the existing `embedded-inputs.py --check` must confirm the authored
-embed manifest is current; the producer never silently regenerates it. The independently
-published PipeLang module must therefore already match the committed checksum.
+all dependencies and preserves the exact `go.mod`/`go.sum` bytes. The independently
+published PipeLang module must match the committed checksum. Authored workflows
+and package source are not embedded in the CLI.
 An unpublished module or checksum mismatch fails; there is no sibling checkout
 or private-proxy fallback.
 
@@ -73,14 +72,14 @@ selected executable's reported version before use.
 
 A catalog pin update is a separate reviewed source change. Run fresh catalog
 Linux/Windows builds and the actual native package qualification after that
-update. Publish qualified stores, then bind their exact hashes in the full core
+update. Publish qualified stores, then bind their exact hashes in the runtime
 staging release. Do not point existing production users or latest aliases at a
 CLI bootstrap candidate.
 
 ## Validation status
 
 ```bash
-python3 -B -m unittest discover -s release/packaging/tests -p test_cli_candidate.py -v
+python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/build/cli-candidate/tests
 ```
 
 Local tests cover deterministic installer formats, version identity, public

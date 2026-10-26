@@ -18,7 +18,7 @@ REQUIRED_TESTS = {'cockpit-package-rendering', 'workspace-package', 'workspace-p
 
 
 def ingestion_module():
-    path = ROOT / 'release/packaging/ingest-pinned-stores.py'
+    path = ROOT / 'workflows/catalog/compose/assets/scripts/ingest-pinned-stores.py'
     spec = importlib.util.spec_from_file_location('installed_cockpit_ingestion', path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -102,7 +102,7 @@ def qualify(work, assets, qt_root, environment):
     if version != '6.10.3':
         raise ValueError('Installed Cockpit requires the exact Qt 6.10.3 host ABI')
     build = work / 'host-build'
-    subprocess.run(['cmake', '-S', str(ROOT / 'src/app/tooling/dockpipe-launcher'), '-B', str(build),
+    subprocess.run(['cmake', '-S', str(ROOT / 'src/dockpipe-app'), '-B', str(build),
                     '-DCMAKE_BUILD_TYPE=Release', '-DBUILD_TESTING=ON',
                     f'-DCMAKE_PREFIX_PATH={qt_root}', f'-DQt6_DIR={qt_root}/lib/cmake/Qt6',
                     f'-DDOCKPIPE_COCKPIT_ASSETS={assets}'], env=environment, check=True)
@@ -128,7 +128,7 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     # Keep failed downloads/builds and their native-test report for inspection.
     work = Path(tempfile.mkdtemp(prefix='native-consumer-', dir=output))
-    lock = INGEST.load_lock(ROOT / 'release/packaging/pinned-stores.lock.json')
+    lock = INGEST.load_lock(ROOT / 'workflows/catalog/compose/assets/pinned-stores.lock.json')
     pin = lock['baselines']['linux-amd64']
     bundle = work / 'baseline.tar.gz'
     INGEST.download(pin, bundle, baseline_platform='linux-amd64')

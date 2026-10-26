@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"dockpipe/src/lib/application/internal/packageimages"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 	"dockpipe/src/lib/infrastructure/archivecodec"
@@ -29,7 +30,7 @@ func cmdPackage(args []string) error {
 	case "list":
 		return cmdPackageList(args[1:])
 	case "images":
-		return cmdPackageImages(args[1:])
+		return packageimages.Run(args[1:], dockerImageExistsAppFn)
 	case "manifest":
 		return cmdPackageManifest(args[1:])
 	case "build":
@@ -274,9 +275,9 @@ Usage:
   dockpipe package uninstall --path <absolute user package archive>
   dockpipe package images [--workdir <path>]
   dockpipe package manifest
-  dockpipe package build core|source|store [options]
+  dockpipe package build source|store [options]
   dockpipe package test [options]
-  dockpipe package compile core|resolvers|bundles|workflows|all|for-workflow|workflow [options]  (bundles = alias for workflows)
+  dockpipe package compile resolvers|bundles|workflows|all|for-workflow|workflow [options]  (bundles = alias for workflows)
 
   list      Find package.yml under bin/.dockpipe/internal/packages and print rel path, name, version, provider, capability, requires_capabilities (comma-separated), description.
   images    List compiled/planned and materialized Docker image artifacts.
@@ -284,11 +285,11 @@ Usage:
   catalog   --remote <HTTPS manifest URL> [--include-hidden]: list discoverable remote packages as JSON for this platform.
   install   --remote <URL> --kind <kind> --name <name> [--codec <codec>] [--sha256 <digest>]: install into the user store.
   uninstall --path <archive>: remove one optional user package; retain data and settings.
-  build     core: templates-core tarball + install-manifest; source: package-owned authoring-tree builds; store: gzip tar per compiled package + packages-store-manifest.json.
+  build     source: package-owned authoring-tree builds; store: gzip tar per compiled package + packages-store-manifest.json.
   test      Run package-owned tests declared as test.script in package.yml for source checkouts.
-  compile   Materialize core / resolvers / workflows into bin/.dockpipe/internal/packages/ (see compile --help).
+  compile   Materialize resolvers / workflows into bin/.dockpipe/internal/packages/ (see compile --help).
 
-Optional repo-root dockpipe.config.json lists compile.workflows roots (resolver discovery uses the same list plus src/core/resolvers); see docs/packages/package-model.md.
+Optional repo-root dockpipe.config.json lists compile.workflows roots (resolver discovery uses the same declared roots); see docs/packages/package-model.md.
 
 Environment:
   DOCKPIPE_PACKAGES_ROOT   Override packages root (default: <workdir>/bin/.dockpipe/internal/packages).

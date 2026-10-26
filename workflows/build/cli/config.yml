@@ -1,0 +1,11 @@
+name: build-cli
+description: Build the standalone developer CLI. Pass explicit output and version options after --.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/build/cli/assets/scripts/build.py

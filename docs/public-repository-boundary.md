@@ -39,7 +39,7 @@ the default where provided.
 
 ## Verification
 
-Run `python3 release/packaging/check-public-content.py` before committing or packaging.
+Run `python3 workflows/release/metadata/assets/scripts/check-public-content.py` before committing or packaging.
 CI runs the same check. The release build also checks compiled package archives.
 The checker reports locations and reasons without repeating matched values.
 It detects common environment IDs, account-specific endpoints, personal home paths,

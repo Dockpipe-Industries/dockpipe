@@ -1,0 +1,11 @@
+name: compose-catalog
+description: Run the compose catalog operation with explicit options after --.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/catalog/compose/assets/scripts/compose-package-store.py

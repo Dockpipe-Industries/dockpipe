@@ -125,6 +125,10 @@ func TestInternalStatePackageRuntimeCanPreparePrivateRoot(t *testing.T) {
 	if err := os.MkdirAll(stateRoot, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	// Establish the shared-root fixture independently of the process umask.
+	if err := os.Chmod(stateRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	out, err := captureStdout(t, func() error {
 		return Run([]string{
 			"package-runtime",

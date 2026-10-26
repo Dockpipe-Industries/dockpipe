@@ -1,6 +1,6 @@
 # Execution Explorer and telemetry
 
-The launcher's **Executions** page shows recent Dockpipe-managed processes and a
+The Dockpipe app's **Executions** page shows recent Dockpipe-managed processes and a
 separate **System** view. Select a process or runtime resource for lifecycle
 records, available metrics, duration and its existing operation-log location.
 The floating inspector uses the same movable/resizable canvas panels as Docker
@@ -55,7 +55,7 @@ Existing YAML validation, schema, editor support and document round trips alread
 support these string variables. Tests cover preservation and schema validation.
 The Explorer's **Resource metrics** control and CLI `--resources` opt into sampling;
 **Pause updates** stops polling and cancels the current read. Leaving the page also
-stops monitoring. Known launcher session transitions request a refresh.
+stops monitoring. Known app session transitions request a refresh.
 
 Each execution has a two-record asynchronous queue and an explicit close/drain
 boundary. Recording does not wait for storage at process start. Storage lock
@@ -84,7 +84,7 @@ matching rows. The managed graph initially displays 32 matching executions, with
 an explicit expansion to 64. Filtering searches the retained snapshot. The selected
 CPU chart holds 60 samples. Refreshes run every four seconds, never overlap, and
 ignore results from an earlier project/view/pause state. Each CLI read has a
-five-second launcher timeout and bounded output.
+five-second app timeout and bounded output.
 
 ## Runtime associations
 
@@ -221,5 +221,6 @@ or a one-time parent-PID match. System parent IDs are best-effort kernel observa
 Pre-scripts used only to resolve environment, arbitrary internal helper subprocesses
 and already-running processes are not retrospectively registered as managed runs.
 
-Recommended follow-ups are native macOS/Windows collectors, explicitly authorized
-remote container controls/log access, redacted application stdout/stderr integration, and historical audit retention separate from this bounded live view.
+Remaining work includes broader native platform qualification, remote container
+controls and log access with explicit authorization, redacted application output,
+and historical audit retention. The current view is bounded live telemetry.

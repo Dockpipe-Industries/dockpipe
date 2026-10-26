@@ -1,3 +1,41 @@
+# Current library organization — 2026-10-25
+
+The user authorized folder organization across `src/lib` and removal of unused
+code after ecosystem extraction, with code auditing as the subsequent phase.
+Implementation stays in the saved checkout, uncommitted and unstaged; promotion
+remains on hold. The current owner map is [the library README](../../../../src/lib/README.md).
+
+- Workflow values/parsing/validation and runtime-artifact rules now share the
+  `domain/workflow` owner. Environment, workflow document editing, package
+  contracts, namespace and dependency rules have focused Domain children.
+- Application adds CLI option parsing, package image inventory, project Git and
+  workflow document command owners. Private dispatch goes directly to the new
+  command owners; public compatibility entry points retain their signatures.
+- Infrastructure project Git requests/review/lifecycle now belong to
+  `infrastructure/workspacegit`, with their direct tests.
+- Removed the unused image collector and its two orphaned helpers, an obsolete
+  spinner rule, test-only shell/archive forwarding functions and the unused
+  step-environment adapter. Existing tests exercise the active APIs.
+- Existing workflow orchestration and Infrastructure path/Docker/session coupling
+  remain visible for the later audit. Exported API and platform-specific code
+  were not treated as dead merely because they lacked a local caller.
+
+Validation: all Go packages compile; the complete Go test suite passes using the
+sandbox for ordinary suites and a narrow host rerun for three suites requiring
+localhost listeners. Staticcheck reports zero diagnostics. CLI builds pass for
+Linux/amd64, Windows/amd64 and macOS/arm64; cross-built binaries were not executed.
+The local SDK exporter resolves all five target dependency closures, including the
+new owners (221 source/resource files); that artifact is unapproved and unpublished.
+All 1,287 pre-existing application state files retain their exact bytes; only the
+two new test-generated receipts were removed. Branch, HEAD and staged content
+remain unchanged, while validation tooling refreshed the raw index file.
+Backups, move/reconstruction
+manifests and logs are outside the checkout under the task's temporary proof tree.
+The subsequent [library audit](reliability-audit.md) repairs async scope/builtin,
+archive and SDK correctness bugs, removes obsolete core-copy helpers and records
+remaining cancellation, import-budget and Domain filesystem boundaries.
+Earlier checkpoint evidence follows as historical context, not a current inventory.
+
 ## Application/Domain/Infrastructure Package Topology — 2026-08-16
 
 State: `completed`. Objective `TASK-035-package-topology` replaces flat shared namespaces with

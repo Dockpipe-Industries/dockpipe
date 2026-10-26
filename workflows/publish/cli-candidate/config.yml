@@ -1,0 +1,11 @@
+name: publish-cli-candidate
+description: Publish a qualified immutable CLI candidate.
+docker_preflight: false
+steps:
+  - id: run
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/publish/cli-candidate/assets/scripts/publish.py
