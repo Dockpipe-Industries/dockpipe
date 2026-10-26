@@ -86,3 +86,16 @@ codec-only evidence separate from transport and full-session evidence.
 This record selects no library, purchases no service, claims no codec advantage
 and changes no running process or current VM task. Implementation needs fresh,
 explicit authorization after the current refactor/stabilization milestone.
+
+## P1 shared authentication refinement linkage (2026-10-26)
+
+Link the existing enrollment/passkey and future FIDO2 assessment to the
+[security and reliability initiative](../dependency-lifecycle/overview.md).
+TASK-036/039 now explicitly require mandatory hardware-backed security-key gates
+for pairing authorization and privileged lifecycle approvals. This supersedes an
+optional-only interpretation for those operations; it does not assert hardware
+authentication is implemented or extend the mandate to every desktop action.
+Keep the broader desktop/session policy decision explicit and reuse shared
+registration, key revocation, scoped grants and expiration rather than duplicate
+identity systems. TASK-052 consumes the shared authorization tests; desktop/media
+qualification remains owned here. P1 applies to this shared security refinement.

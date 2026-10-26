@@ -244,3 +244,42 @@ files and repaired fresh pairing after access removal: explicit pairing rotates 
 credential and still requires a new operator-approved verification code. Tests retain the
 old-credential rejection check. Local development CLI/launcher identities now include the
 build commit and dirty state; release version injection is preserved.
+
+## P1 authentication and lifecycle hardening refinement (2026-10-26)
+
+Part of the [security and reliability initiative](../dependency-lifecycle/overview.md),
+with TASK-039 owning shared authorization contracts, TASK-042 workload identities,
+TASK-041 optional approval delivery and TASK-046 enrollment/passkey assessment.
+This refines existing pairing ownership; no second pairing or identity task is created.
+
+Inspection of `src/lib/infrastructure/remote/{broker,pairing}.go` found hashed
+administrator/worker bearer credentials, operator-opened pairing windows, explicit
+code approval and worker revocation. Invitation expiry is not continuing worker
+session expiry; the inspected authenticated dispatch does not itself establish
+hardware-backed approval or operation-scoped elevated authority. These are design
+gaps to address, not evidence of exploitation or implemented enhancements.
+
+Required P1 scope:
+
+- Define mandatory hardware-backed FIDO2/WebAuthn security-key authentication for
+  remote pairing authorization and privileged lifecycle/restart approvals. Reuse
+  established verification libraries and shared TASK-039 identity/grant contracts.
+  Specify supported authenticators, RP/origin binding, user presence/verification,
+  hardware provenance/attestation policy and enrollment/revocation/recovery.
+  A generic or synced passkey must not automatically satisfy a hardware-key policy.
+- Define bounded worker/admin session expiry, rotation and revocation, plus scoped
+  authorization separate from pairing. Fail closed for missing/expired hardware
+  assertions where required; recovery cannot silently downgrade the mandatory gate.
+- Pairing only enrolls the machine. Installing/updating software, elevation and
+  critical service restarts require exact target/action/plan authority checked by
+  the executor at use. Unattended work requires a separately provisioned bounded
+  policy; it cannot synthesize a hardware assertion or renew a human grant.
+- Coordinate TASK-049/050 existing broker jobs and target recovery. Token renewal,
+  reconnect and result retries cannot renew approvals or replay updates.
+
+Acceptance/tests: reject software-only credentials under hardware-required policy,
+wrong-origin/RP assertions, replay, expired sessions, revoked keys/workers and
+merely paired privileged requests. Verify authorized local/headless human approval,
+scoped unattended policy, loss/replacement of a hardware key, audit attribution,
+and tunnel heartbeat-loss recovery with TASK-052. Preserve existing pairing
+rate limits, private credentials and anonymous-approval rejection tests.

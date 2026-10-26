@@ -163,3 +163,15 @@ shared domain implementations serve CLI, MCP, explicit REST and desktop, with ex
 storage and version lifecycle. Ordinary local execution stays lightweight; required privileged
 controls cannot be bypassed by selecting a lighter interface or execution mode. Domain ownership
 and this task's existing security/acceptance requirements remain intact. Backlog only.
+
+## Security and reliability dependency lifecycle linkage (2026-10-26)
+
+This existing **P1** identity work joins the
+[dependency lifecycle and authentication hardening initiative](../dependency-lifecycle/overview.md).
+TASK-049/050 may authenticate scheduled/local/remote workloads through these
+contracts, but a valid OIDC identity is neither a hardware-backed human assertion
+nor an update/elevation/restart grant. TASK-036/039 own mandatory hardware approval
+and scoped session authority; TASK-041 is optional decision delivery. TASK-052
+must prove token refresh, reconnect and new sessions cannot renew an expired
+lifecycle permission envelope. No new issuer, federation task or authentication
+platform is introduced by dependency management.

@@ -188,6 +188,30 @@ tasks:
   dispatch:
     readiness: unclassified
     ownership: unclaimed
+- id: TASK-049
+  topic: Core dependency lifecycle architecture and interfaces
+  path: docs/agents/tasks/dependency-lifecycle/index.yaml
+  dispatch:
+    readiness: decision_ready
+    ownership: unclaimed
+- id: TASK-050
+  topic: Cloudflare Tunnel resolver lifecycle implementation
+  path: docs/agents/tasks/cloudflare-dependency-lifecycle/index.yaml
+  dispatch:
+    readiness: decision_ready
+    ownership: unclaimed
+- id: TASK-051
+  topic: Dependency security advisory monitoring and notifications
+  path: docs/agents/tasks/dependency-advisory-monitoring/index.yaml
+  dispatch:
+    readiness: decision_ready
+    ownership: unclaimed
+- id: TASK-052
+  topic: Dependency upgrade recovery and multi-platform qualification
+  path: docs/agents/tasks/dependency-lifecycle-qualification/index.yaml
+  dispatch:
+    readiness: decision_ready
+    ownership: unclaimed
 maintenance:
 - Keep tasks open-only and core-owned; external_backlogs route independent owners without claiming their
   work.

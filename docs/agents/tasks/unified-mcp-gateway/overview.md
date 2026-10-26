@@ -174,3 +174,35 @@ and effective enforcement contracts. Reuse its server/listener and workload poli
 boundaries; reachability never grants capability or operation authority. Local stdio
 functionality does not require the full server-networking initiative. Coordinate
 strict isolation and remote exposure acceptance before claiming those deployments.
+
+## P1 dependency lifecycle and hardware approval linkage (2026-10-26)
+
+The [security and reliability initiative](../dependency-lifecycle/overview.md)
+links TASK-049 lifecycle capabilities, TASK-050 provider implementation, TASK-051
+advisories and TASK-052 qualification to this existing authentication/privileged
+approval owner. No separate dependency MCP server, policy engine or identity
+platform is proposed. Essential operations remain Core/CLI-owned and headless.
+
+Refine shared contracts with TASK-036: mandatory hardware-backed FIDO2/WebAuthn
+security-key authentication for pairing authorization and privileged dependency
+apply/restart approvals, including authenticator provenance policy, trusted
+registration, RP/origin and user-verification checks, key revocation and explicit
+recovery. Ordinary passkey support alone does not prove a hardware-bound key.
+TASK-046's optional future FIDO2 assessment must consume this shared policy rather
+than create an independent enrollment system. These are P1 proposed enhancements.
+
+An approval binds authenticated human/trigger identity, machine, dependency,
+installed preimage, exact target/digest, provider/policy version, privileges,
+restart/maintenance scope and expiry. Recheck scope, expiry, revocation and replay
+at execution and each privileged phase; a newly authenticated session or OIDC
+identity never extends it. Automated updates require an explicit bounded policy
+established through the applicable human gate. TASK-041 delivers optional Cloud
+decisions; it does not replace executor verification or local approval.
+
+Acceptance/tests: shared CLI/UI/MCP status and action parity; readonly discovery
+cannot apply; merely paired machines and valid workload identities cannot elevate;
+missing hardware verification, source/target drift, wrong operation, expired,
+revoked and replayed grants fail closed. Include key-loss recovery, concurrent
+requests, scheduled policy expiry and audit attribution in TASK-052. Actual
+advisory exposure may require P0 remediation; this integration remains P1 absent
+an independently established exploitable authorization finding.

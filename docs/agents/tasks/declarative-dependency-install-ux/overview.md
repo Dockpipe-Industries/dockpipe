@@ -77,3 +77,19 @@ dependencies:
 - New first-party workflows/packages should add dependency declarations when they introduce a host
   executable requirement.
 - Auto-install must always cross an approval boundary unless a future explicit policy file permits it.
+
+## Security and reliability lifecycle linkage (2026-10-26)
+
+**P1 prerequisite scope** in the [dependency lifecycle and authentication hardening
+initiative](../dependency-lifecycle/overview.md). TASK-010 continues to own trusted
+installers and exact package selection/lock semantics. TASK-049 adds generic
+lifecycle orchestration; TASK-050 owns Cloudflare package integration, TASK-051
+advisory assessment and TASK-052 qualification. These are linked workstreams,
+not replacements for this task or claims that proposed locks are implemented.
+
+Before automatic updates, define shared host dependency versus package-lock
+conflicts and explicit vulnerable-pin resolution. Lifecycle policies cannot
+rewrite the producer CLI lock or a package-owned selection silently. Include
+negative tests for source/digest drift, install versus selection confusion,
+manager trust failure and conflicting shared-service versions. Preserve the
+existing approval requirement for host installation.
