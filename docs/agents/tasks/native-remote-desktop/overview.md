@@ -14,7 +14,7 @@ is a future capability; existing remote execution support is not desktop qualifi
 
 | Existing work | Reuse / prerequisite; do not duplicate |
 | --- | --- |
-| [TASK-044](../ecosystem-extraction/index.yaml) | Finish package extraction and stabilization before implementation; keep provider/codec implementation in its owning external repository |
+| [TASK-044](../closed/ecosystem-extraction/index.yaml) | Extraction completed through staging; preserve external ownership and pinned dependencies; qualify new provider/codec behavior separately |
 | [TASK-036](../remote-node-onboarding/index.yaml), [remote nodes](../../../runtime/remote-nodes.md) | Existing broker, pairing, revocation, identity and delivery lifecycle; audit enrollment/passkey assumptions and add scoped desktop grants without redesigning the broker |
 | [TASK-043](../configurable-networking/index.yaml) | Shared ingress/egress/proxy policy and diagnostics; own only desktop signaling/media extensions here |
 | [TASK-047](../paired-storage-mounts/index.yaml) | Share provider connectivity setup provisioned through existing pairing; keep RDP authorization, its dedicated tab and storage mounts independent; revisit tab overload before final navigation placement |

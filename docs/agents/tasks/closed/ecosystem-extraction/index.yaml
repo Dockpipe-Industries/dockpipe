@@ -1,7 +1,11 @@
 schema: 1
 task: TASK-044
 topic: Standalone PipeLang and external package catalog
+status: completed
+completed_on: 2026-10-26
+completion_scope: through_staging
 read:
   - overview.md
+history:
+  - history.md
   - cpp-direction.md
-  - ../build-workflow-ownership/editor-restoration.md
