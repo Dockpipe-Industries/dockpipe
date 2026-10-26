@@ -6,7 +6,9 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialogButtonBox>
+#include <QFileDialog>
 #include <QLineEdit>
+#include <QPushButton>
 #include <QSignalSpy>
 #include <QTest>
 #include <QTimer>
@@ -38,6 +40,11 @@ private:
     }
 
 private slots:
+    void initTestCase()
+    {
+        QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
+    }
+
     void realActionOpensDialogAndClicksLaunch()
     {
         const auto metadata = workflow();
@@ -174,6 +181,94 @@ private slots:
                      {{"FIXTURE_MODE", "second"}}, error),
                  QualificationWorkflowLaunch::Outcome::Failure);
         QCOMPARE(hiddenDialog.result(), int(QDialog::Rejected));
+    }
+
+    void explicitTextControlDoesNotInferAFilePicker()
+    {
+        auto metadata = workflow();
+        metadata.inputs[0].envName = "FIXTURE_DISK_SIZE";
+        metadata.inputs[0].attributes.insert("control", "text");
+        WorkflowLaunchDialog dialog(metadata, {});
+        auto *edit = dialog.findChild<QLineEdit *>("workflowInput_FIXTURE_DISK_SIZE");
+        QVERIFY(edit);
+        QVERIFY(!edit->parentWidget()->findChild<QPushButton *>(QString(), Qt::FindDirectChildrenOnly));
+    }
+
+    void explicitFileModeOverridesDiskNameGuess_data()
+    {
+        QTest::addColumn<QString>("fileMode");
+        QTest::addColumn<int>("expectedAcceptMode");
+        QTest::addColumn<int>("expectedFileMode");
+        QTest::newRow("existing") << QString("open-file") << int(QFileDialog::AcceptOpen) << int(QFileDialog::ExistingFile);
+        QTest::newRow("destination") << QString("save-file") << int(QFileDialog::AcceptSave) << int(QFileDialog::AnyFile);
+    }
+
+    void explicitFileModeOverridesDiskNameGuess()
+    {
+        QFETCH(QString, fileMode);
+        QFETCH(int, expectedAcceptMode);
+        QFETCH(int, expectedFileMode);
+        auto metadata = workflow();
+        metadata.inputs[0].envName = "FIXTURE_DISK";
+        metadata.inputs[0].attributes.insert("control", "file");
+        metadata.inputs[0].attributes.insert("filemode", fileMode);
+        WorkflowLaunchDialog dialog(metadata, {});
+        dialog.show();
+        auto *edit = dialog.findChild<QLineEdit *>("workflowInput_FIXTURE_DISK");
+        QVERIFY(edit);
+        auto *browse = edit->parentWidget()->findChild<QPushButton *>(QString(), Qt::FindDirectChildrenOnly);
+        QVERIFY(browse);
+        int actualAcceptMode = -1;
+        int actualFileMode = -1;
+        QTimer::singleShot(0, &dialog, [&]() {
+            for (auto *widget : QApplication::topLevelWidgets()) {
+                if (auto *picker = qobject_cast<QFileDialog *>(widget)) {
+                    actualAcceptMode = picker->acceptMode();
+                    actualFileMode = picker->fileMode();
+                    picker->reject();
+                }
+            }
+        });
+        QTest::mouseClick(browse, Qt::LeftButton);
+        QCOMPARE(actualAcceptMode, expectedAcceptMode);
+        QCOMPARE(actualFileMode, expectedFileMode);
+    }
+
+    void routedInputsPreserveEditsAndClearedDefaults()
+    {
+        auto metadata = workflow();
+        metadata.inputs[0].defaultValue = "initial";
+        WorkflowInputMeta source;
+        source.fieldName = "Source";
+        source.envName = "FIXTURE_SOURCE";
+        source.defaultValue = "first";
+        metadata.inputs.append(source);
+        metadata.view.entry.field = "Source";
+        metadata.view.entry.options = {{"first", "First", "first-page", {}},
+                                       {"second", "Second", "second-page", {}}};
+        WorkflowViewSectionMeta first;
+        first.fields = {"Name"};
+        WorkflowViewSectionMeta second;
+        second.fields = {"Mode"};
+        metadata.view.pages = {{"first-page", "First", {}, {first}},
+                               {"second-page", "Second", {}, {second}}};
+        WorkflowLaunchDialog dialog(metadata, {});
+        dialog.show();
+        auto *choice = dialog.findChild<QComboBox *>("workflowInput_FIXTURE_SOURCE");
+        auto *name = dialog.findChild<QLineEdit *>("workflowInput_FIXTURE_NAME");
+        QVERIFY(choice);
+        QVERIFY(name);
+        for (const QString &value : {QString("edited"), QString()}) {
+            name->setText(value);
+            choice->setCurrentIndex(1);
+            QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+            QVERIFY(!dialog.values().contains("FIXTURE_NAME"));
+            choice->setCurrentIndex(0);
+            QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+            name = dialog.findChild<QLineEdit *>("workflowInput_FIXTURE_NAME");
+            QVERIFY(name);
+            QCOMPARE(name->text(), value);
+        }
     }
 
     void cancellationDoesNotLaunch()

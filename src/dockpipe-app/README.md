@@ -661,6 +661,12 @@ picker can also open a UTF-8 YAML file. **⋯ → New workflow** starts
 another blank canvas. Navigating to another page keeps your current draft; changing
 workspaces, opening another workflow, or quitting checks for unsaved changes.
 
+Workflow settings retain edits when switching between source choices, including
+fields cleared by the user. Only fields in the selected route are submitted.
+Declared `Control = "text"` inputs do not receive a Browse button, and explicit
+`FileMode` metadata determines whether a file picker opens an existing file or
+chooses a save destination. Name-based picker guesses remain a fallback.
+
 The canvas
 supports ordered host/container commands, script commands, packaged workflow calls,
 and one level of parallel groups. Select a group before adding a command or workflow
