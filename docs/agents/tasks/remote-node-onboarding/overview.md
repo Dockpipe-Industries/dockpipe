@@ -450,10 +450,41 @@ attestation, signed consent and persistent machine identities are retained.
   supplying the native PIN endpoint. Explicit absolute host overrides remain
   supported; missing/invalid choices fail clearly. Regression coverage includes
   project/CWD/relative-PATH executable refusal.
-- Physical CLI terminal interaction, a real cross-machine pairing, macOS native interaction,
+- Physical CLI terminal interaction, macOS native key interaction,
   Windows adapter implementation and packaged-install qualification remain open.
   A generated response fixture or successful build is not that acceptance.
 
 The user authorized a local commit of this validated native refinement. The earlier
 pairing implementation was committed locally as `794104e9f`. No push, pipeline, production
 service change or live machine migration is authorized by this refinement.
+
+### Local macOS application identity refinement
+
+Bundled remote services now associate with their enclosing app's actual bundle
+identifier, read using the system plist tool with bounded output and cancellation.
+Standalone CLIs do not impersonate an installed application. Packaging gives the
+CLI and workspace reader explicit signing identifiers, preserves nested identifiers
+when signing the app, and includes a local-network permission purpose string.
+Existing service registrations are not rewritten or restarted automatically.
+
+Focused native macOS tests passed for XML/binary plist handling, malformed metadata,
+cancellation, output bounds, enclosing-app association and service update behavior.
+A registered, explicitly ad-hoc-signed temporary app reached a disposable broker
+over verified TLS and submitted signed machine pairing requests. This proves only
+that exact development build's connectivity. Consistent Apple-issued signing and
+installed-app update/privacy continuity still require release qualification;
+ad-hoc identifiers alone do not provide that guarantee. A subsequent fresh
+cross-machine test completed with a physical Yubico assertion in the Linux native
+dialog. The macOS worker received signed approval, both saved
+public machine identities matched the broker state, and authenticated nonce/idle
+polls succeeded. The temporary agents were removed, the disposable enrollment was
+revoked, and the test broker/listener stopped. Installed services and existing
+machine pairings were preserved. This does not qualify a packaged app upgrade or
+macOS-hosted physical-key interaction.
+
+A repeated fresh pairing was personally confirmed by the operator after completing
+the native PIN/touch interaction. The macOS worker again received approval and
+completed authenticated polls, both public machine identities matched, and the
+temporary agents, broker and listener were stopped with the test enrollment
+revoked. This repeat closes the user-observed cross-machine pairing check; it
+does not expand the platform or packaged-upgrade qualification above.

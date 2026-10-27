@@ -278,6 +278,18 @@ this role instead of requesting broker-wide jobs. Enrollment or successful servi
 installation does not prove that a workflow has executed; submit a job from the
 managing computer and inspect its result to verify delivery.
 
+On macOS, bundled CLI services associate their launch agent with the enclosing
+app's `CFBundleIdentifier`. The app declares why it needs local-network access,
+and packaged helpers retain explicit signing identifiers. Standalone CLI installs
+do not claim an unrelated app identity. Existing service definitions require an
+explicit replacement to adopt the association; installing new bytes alone does
+not restart a running service or transfer a privacy permission.
+
+Allow the app in **System Settings → Privacy & Security → Local Network** when
+connecting to LAN hosts. Ad-hoc development signatures can test the exact build,
+but reliable identity across updates requires a consistent Apple-issued signing
+identity. Duplicate permission entries do not establish which build is authorized.
+
 ### Legacy file invitation recovery
 
 Creating invitations and consuming unused invitation files are disabled because

@@ -9,7 +9,7 @@ import (
 
 func TestServiceManifestQuotesPathsAndContainsNoCredentials(t *testing.T) {
 	arguments := []string{"/Applications/Dock Pipe/bin/dockpipe", "remote", "worker", "--state", "/Users/test/A&B/remote"}
-	plist := launchAgent("com.dockpipe.test", arguments, "/Users/test/A&B/remote/worker.log")
+	plist := launchAgent("com.dockpipe.test", arguments, "/Users/test/A&B/remote/worker.log", "")
 	decoder := xml.NewDecoder(strings.NewReader(plist))
 	for {
 		_, err := decoder.Token()
