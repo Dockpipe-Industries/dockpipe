@@ -105,6 +105,16 @@ CLI deadline and bounded Git output apply.
 This adapter serves explicit human actions in an existing project. Autonomous
 agents continue to use the managed [session lifecycle](runtime/git-runtime-sessions.md).
 
+## Remote pairing hardware keys
+
+`dockpipe remote security-key-register --attestation-roots <manufacturer-ca.pem>`
+registers the first physical pairing key locally while the broker is stopped.
+`dockpipe remote security-key-register` adds a spare after verifying an existing
+key. `remote approve --code <code>` now requires protected local broker owner
+state and the local hardware-key ceremony; hosted approval is deferred;
+new file invitations are disabled. See [remote nodes](runtime/remote-nodes.md#register-pairing-hardware-keys)
+for trust roots, recovery, machine identity and legacy-worker boundaries.
+
 ## `dockpipe init`
 
 Local project setup only: **no `git clone`**, no treating **`init`** as a remote bootstrap. Everything runs in the **current working directory**.

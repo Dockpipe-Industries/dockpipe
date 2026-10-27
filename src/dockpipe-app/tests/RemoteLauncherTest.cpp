@@ -762,10 +762,10 @@ exec "$@"
     auto *requests = remote->findChild<QTableWidget *>("pairingRequests");
     if (!waitUntil([&]() { return requests->rowCount() == 1 && button(remote, "Check for requests")->isEnabled(); }))
         return 24;
-    if (button(remote, "Approve matching code")->isEnabled())
+    if (button(remote, "Verify key and approve")->isEnabled())
         return 25;
     requests->selectRow(0);
-    if (!button(remote, "Approve matching code")->isEnabled())
+    if (!button(remote, "Verify key and approve")->isEnabled())
         return 26;
     capture("-add-machine");
     // Return through the visible navigation, then exercise the worker-side path.

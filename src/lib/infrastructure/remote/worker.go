@@ -31,7 +31,7 @@ func RunWorker(ctx context.Context, root, executable string, config contract.Wor
 		return err
 	}
 	defer unlock()
-	client, err := NewClient(config.Endpoint, config.Token)
+	client, err := NewWorkerClient(config)
 	if err != nil {
 		return err
 	}

@@ -301,7 +301,7 @@ QWidget *RemoteWidget::buildPairing()
     m_pairings->setObjectName(QStringLiteral("pairingRequests"));
     layout->addWidget(m_pairings);
     auto *decisions = new QHBoxLayout;
-    m_approve = actionButton(tr("Approve matching code"), decisions, "primaryButton");
+    m_approve = actionButton(tr("Verify key and approve"), decisions, "primaryButton");
     m_deny = actionButton(tr("Deny request"), decisions, "quietButton");
     decisions->addStretch();
     auto *refreshButton = actionButton(tr("Check for requests"), decisions, "quietButton");
@@ -669,7 +669,7 @@ void RemoteWidget::decidePairing(bool approve)
                                        : tr("Request from %1 denied.").arg(name);
             refresh();
         }
-    });
+    }, approve ? 240000 : 30000);
 }
 
 void RemoteWidget::setResolvers(const QVector<ResolverMeta> &resolvers)

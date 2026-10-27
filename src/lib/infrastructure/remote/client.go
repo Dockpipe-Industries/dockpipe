@@ -13,12 +13,15 @@ import (
 	"time"
 
 	contract "dockpipe/src/lib/domain/remote"
+	"dockpipe/src/lib/infrastructure/remoteidentity"
 )
 
 type Client struct {
-	Endpoint string
-	Token    string
-	HTTP     *http.Client
+	Identity  *remoteidentity.Identity
+	BrokerKey string
+	Endpoint  string
+	Token     string
+	HTTP      *http.Client
 }
 
 func NewClient(endpoint, token string) (*Client, error) {
@@ -54,6 +57,22 @@ func (c *Client) Call(ctx context.Context, path string, input, output any) error
 	}
 	request.Header.Set("Authorization", "Bearer "+c.Token)
 	request.Header.Set("Content-Type", "application/json")
+	nonce := ""
+	if c.Identity != nil {
+		if remoteidentity.Fingerprint(c.BrokerKey) == "" {
+			return errors.New("paired broker machine identity is required")
+		}
+		nonce, err = c.machineNonce(request)
+		if err != nil {
+			return err
+		}
+		signature, signErr := c.Identity.Sign(machineMessage("request", nonce, path, 0, data))
+		if signErr != nil {
+			return signErr
+		}
+		request.Header.Set(machineNonceHeader, nonce)
+		request.Header.Set(machineSignatureHeader, signature)
+	}
 	response, err := c.HTTP.Do(request)
 	if err != nil {
 		return fmt.Errorf("remote connection failed: %w", err)
@@ -66,6 +85,9 @@ func (c *Client) Call(ctx context.Context, path string, input, output any) error
 	if len(body) > contract.MaxBody {
 		return errors.New("remote response exceeds size limit")
 	}
+	if c.Identity != nil && !remoteidentity.Verify(c.BrokerKey, machineMessage("response", nonce, path, response.StatusCode, body), response.Header.Get(machineSignatureHeader)) {
+		return errors.New("broker machine response verification failed")
+	}
 	if response.StatusCode != http.StatusOK {
 		// Provider error pages and reflected content are not safe diagnostics.
 		return &HTTPError{StatusCode: response.StatusCode}
@@ -74,4 +96,26 @@ func (c *Client) Call(ctx context.Context, path string, input, output any) error
 		return nil
 	}
 	return Decode(body, output)
+}
+
+// NewWorkerClient retains legacy paired workers, while new pairings require
+// proof from both persistent machine identities on every worker request.
+func NewWorkerClient(config contract.WorkerConfig) (*Client, error) {
+	client, err := NewClient(config.Endpoint, config.Token)
+	if err != nil {
+		return nil, err
+	}
+	if config.MachineKey == "" && len(config.MachinePrivateKey) == 0 && config.BrokerKey == "" {
+		return client, nil
+	}
+	identity := remoteidentity.Identity{PublicKey: config.MachineKey, PrivateKey: config.MachinePrivateKey}
+	if err := identity.Validate(); err != nil {
+		return nil, err
+	}
+	if remoteidentity.Fingerprint(config.BrokerKey) == "" {
+		return nil, errors.New("paired broker machine identity is required")
+	}
+	client.Identity = &identity
+	client.BrokerKey = config.BrokerKey
+	return client, nil
 }

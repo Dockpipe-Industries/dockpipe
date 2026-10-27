@@ -294,7 +294,7 @@ Per-operation approval rules and remotely delivered approvals remain future work
 This narrows the earlier hardware-approval wording; it does not relax broker-side
 scope checks or separate maintenance/restart authority.
 
-Provide one global, per-OS-user Dockpipe **Security > Remote access** policy,
+Provide one global, machine-level Dockpipe **Security > Remote access** policy,
 consumed by the desktop, CLI and shared authorization service. This is proposed
 behavior, not an implemented settings page or supported config schema.
 
@@ -332,3 +332,77 @@ multiple clients, broker expiry/revocation, missing OS integration and a disconn
 client. Prove a direct API call cannot bypass locked/expired authority, mandatory
 hardware pairing stays enforced, and existing admitted jobs continue correctly.
 Coordinate shared contracts with TASK-039 and qualification with TASK-052.
+
+## Mandatory hardware-key pairing implementation (2026-10-26)
+
+Objective: implement local-owner registration and broker-enforced hardware-key
+pairing for review, including persistent identities on both sides. Per-action
+prompts, OS-authenticated remote unlock/auto-lock, remotely delivered approvals,
+publication and live machine migration remain excluded from this implementation.
+The later global lock policy is machine-level; unlocking authorizes the current
+OS user, not every user on that machine.
+
+Source now adds a pinned Go-compatible WebAuthn verifier, manufacturer CA
+attestation admission, a private localhost ceremony, and broker-side one-use
+approval bound to the pending request. Local registration requires the broker
+stopped; adding a spare requires an existing key and cannot replace trust roots.
+Legacy new/unused file invitations cannot bypass the gate. Existing paired
+workers retain their current access pending deliberate revocation/re-pairing.
+
+New workers persist Ed25519 installation identities and pin the broker identity;
+requests and responses use one-use signed nonce exchanges. These identities belong
+to each private broker/worker state directory, not hostnames or login sessions.
+They are installation identities, not hardware-attested machine identities;
+OS-keystore/system-service storage is still future work. [Remote nodes](../../../runtime/remote-nodes.md#register-pairing-hardware-keys)
+is canonical for commands, trust roots, compatibility and limitations.
+
+Local validation completed:
+
+- Repository Core workflow, `./... -count=1`: passed.
+- Focused race tests for remote, remotecmd, hardwarekey and remoteidentity: passed.
+- Hardware attestation tests reject missing/self/untrusted attestation, backup
+  eligibility, missing presence/verification, wrong origin/RP/challenge and replay.
+- Pairing/machine tests cover both identities, stale status, nonce replay/expiry,
+  scope changes, denial/close, uncertain persistence and per-node capacity.
+- Native CLI build: passed; disposable binary/evidence under a task-owned temporary
+  directory. macOS arm64 and Windows amd64 compile-only checks passed for hardwarekey,
+  remoteidentity and remote packages. These are not native execution qualification.
+- Desktop source-layout checks, local doc links and diff whitespace checks passed.
+  Desktop button text and ceremony timeout were updated; no current native Qt build
+  was available, so its native interaction test remains pending.
+- Independent bounded security review found three issues (historical certificate
+  expiry, global challenge starvation and stale pairing status); all were repaired
+  and covered by regression tests, with no remaining blocker in that review.
+
+Physical-key/browser interaction and M6 native qualification remain unproven.
+The user authorized a local implementation commit after review; no push or CI
+pipeline is authorized or started. Key removal/trust rotation, machine-wide OS-keystore storage, remote
+unlock policy and per-operation/Cloud approvals remain separate work.
+No running broker, physical key, Cloudflare tunnel or remote machine was changed.
+
+## Pre-commit security review (2026-10-26)
+
+A further local review reproduced an active-intermediary replay: a previously
+signed machine challenge plus response could authenticate a later exchange. The
+broker now signs the fresh client nonce into challenge issuance, and the client
+checks it before signing or accepting the response. The regression failed before
+the fix and passes after it.
+
+The same review found that the browser launcher exposed its short-lived capability
+in process arguments on multi-user systems. Browser launch now uses an owner-only
+temporary redirect file; arguments reveal only the file URI, and lifecycle cleanup
+removes the file on completion, failure or cancellation.
+
+Pairing consent metadata/options were also unsigned on the operator channel.
+Consent is now broker-signed and bound to the requested code and a fresh operator
+nonce. The native client verifies it against protected local broker state before
+showing it in the browser. Hosted approvals are explicitly refused in this slice;
+remote approval remains deferred. Small challenge/consent routes have request
+body bounds matched to their wire contracts.
+
+Tests cover transcript replay, substituted consent/keys/options/code, stale
+operator nonces, hosted-approval refusal, private launcher permissions and cleanup,
+and absence of capabilities from opener arguments. Physical-key/browser and M6
+qualification remain pending. The user subsequently authorized a local commit
+and physical-key testing. Push, remote CI, service restart and live-state migration
+remain outside that authorization; physical-key testing begins with isolated state.

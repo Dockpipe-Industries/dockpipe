@@ -8,11 +8,13 @@ import (
 	"time"
 
 	contract "dockpipe/src/lib/domain/remote"
+	"dockpipe/src/lib/infrastructure/remoteidentity"
 )
 
 type PairingSession struct {
 	contract.PairingStatus
-	TokenHash string `json:"token_hash"`
+	TokenHash  string `json:"token_hash"`
+	MachineKey string `json:"machine_key,omitempty"`
 }
 
 // Public requests are accepted only during an operator-opened window. All limits
@@ -26,6 +28,9 @@ func (b *Broker) requestPairing(raw []byte) (any, error) {
 	if err != nil || len(decoded) != 32 {
 		return nil, errors.New("invalid pairing credential")
 	}
+	if len(request.Nonce) != 64 || !remoteidentity.Verify(request.MachineKey, pairingIdentityMessage(request), request.MachineProof) {
+		return nil, errors.New("pairing requires proof of the worker machine identity")
+	}
 	now := time.Now().UTC()
 	hash := Hash(request.Token)
 	for name, node := range b.state.Nodes {
@@ -35,9 +40,12 @@ func (b *Broker) requestPairing(raw []byte) (any, error) {
 	}
 	if node, exists := b.state.Nodes[request.Node]; exists && matches(request.Token, node.TokenHash) {
 		if node.Revoked {
-			return contract.PairingStatus{Node: request.Node, Status: "revoked"}, nil
+			return b.signedPairingStatus(contract.PairingStatus{Node: request.Node, Status: "revoked"}, request.MachineKey, hash, request.Nonce)
 		}
-		return contract.PairingStatus{Node: request.Node, Status: "approved"}, nil
+		if node.MachineKey != request.MachineKey {
+			return nil, errors.New("paired machine identity changed")
+		}
+		return b.signedPairingStatus(contract.PairingStatus{Node: request.Node, Status: "approved"}, request.MachineKey, hash, request.Nonce)
 	}
 	for code, session := range b.state.Pairings {
 		if session.TokenHash == hash && session.Node != request.Node {
@@ -46,15 +54,18 @@ func (b *Broker) requestPairing(raw []byte) (any, error) {
 		if session.TokenHash != hash || session.Node != request.Node {
 			continue
 		}
+		if session.MachineKey != request.MachineKey {
+			return nil, errors.New("pending machine identity changed")
+		}
 		if session.Status == "approved" {
 			node := b.state.Nodes[session.Node]
 			if node.Revoked || node.TokenHash != hash {
 				return nil, errors.New("pairing revoked")
 			}
-			return session.PairingStatus, nil
+			return b.signedPairingStatus(session.PairingStatus, request.MachineKey, hash, request.Nonce)
 		}
 		if now.Before(session.ExpiresAt) {
-			return session.PairingStatus, nil
+			return b.signedPairingStatus(session.PairingStatus, request.MachineKey, hash, request.Nonce)
 		}
 		delete(b.state.Pairings, code)
 		break
@@ -90,11 +101,17 @@ func (b *Broker) requestPairing(raw []byte) (any, error) {
 		return nil, errors.New("pairing code collision; retry")
 	}
 	status := contract.PairingStatus{Code: code, Node: request.Node, Status: "pending", ExpiresAt: b.state.PairingUntil}
-	b.state.Pairings[code] = PairingSession{PairingStatus: status, TokenHash: hash}
-	return status, b.save()
+	b.state.Pairings[code] = PairingSession{PairingStatus: status, TokenHash: hash, MachineKey: request.MachineKey}
+	if err := b.save(); err != nil {
+		return nil, err
+	}
+	return b.signedPairingStatus(status, request.MachineKey, hash, request.Nonce)
 }
 
 func (b *Broker) pairingOperator(path string, raw []byte) (any, error) {
+	if path == "/v1/approve" {
+		return b.finishHardwarePairing(raw)
+	}
 	now := time.Now().UTC()
 	switch path {
 	case "/v1/pairing-open":
@@ -118,7 +135,7 @@ func (b *Broker) pairingOperator(path string, raw []byte) (any, error) {
 		}
 		sort.Slice(statuses, func(i, j int) bool { return statuses[i].Code < statuses[j].Code })
 		return statuses, nil
-	case "/v1/approve", "/v1/deny":
+	case "/v1/deny":
 		var request struct {
 			Code string `json:"code"`
 		}
@@ -131,19 +148,7 @@ func (b *Broker) pairingOperator(path string, raw []byte) (any, error) {
 			return nil, errors.New("pairing is not pending or has expired")
 		}
 		session.Status = "denied"
-		if path == "/v1/approve" {
-			node, exists := b.state.Nodes[session.Node]
-			if exists && !node.Revoked && node.TokenHash != "" {
-				return nil, errors.New("node name already enrolled")
-			}
-			if !exists && len(b.state.Nodes) >= 64 {
-				return nil, errors.New("node capacity reached")
-			}
-			// Replace an unused file invitation only upon explicit approval. This
-			// also invalidates that invitation so it cannot enroll another token.
-			b.state.Nodes[session.Node] = Enrollment{TokenHash: session.TokenHash}
-			session.Status = "approved"
-		}
+
 		b.state.Pairings[code] = session
 		return session.PairingStatus, b.save()
 	}

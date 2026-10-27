@@ -22,15 +22,16 @@ const usage = `dockpipe remote <command> [options]
   info                                           Show configuration without credentials
   init    [--listen 127.0.0.1:47831]               Initialize a private broker
   serve                                          Run broker and configured edge
+  security-key-register --attestation-roots <pem>  Register a physical pairing key locally (broker stopped)
   pairing-open                                   Accept pairing requests for 15 minutes
   pairings                                       Show pending verification codes
-  approve --code <code>                          Approve the code shown on your worker
+  approve --code <code>                          Verify hardware key and approve the worker code
   deny    --code <code>                          Reject a pairing request
   pairing-close                                  Close pairing and deny pending requests
   nodes                                          List enrolled machines (not live presence)
   pair    --endpoint <https-origin> --node <name> --allow-delivery
                                                  Request approval without transferring files
-  invite  --node <name> --out <private-file>       Issue a 15-minute pairing file
+  invite  --node <name> --out <private-file>       Disabled; use hardware-key pairing
   pair    --invite <file> --allow-delivery        Trust this broker to send workflows
           [--profiles <json-file>]                Or approve installed profiles
   worker                                         Run the outbound worker
@@ -61,6 +62,7 @@ func Run(args []string, checkDependencies func(string) error) error {
 	command := args[0]
 	flags := flag.NewFlagSet("remote "+command, flag.ContinueOnError)
 	state := flags.String("state", "", "private state directory")
+	attestationRoots := flags.String("attestation-roots", "", "verified hardware-key manufacturer CA PEM bundle (first key only)")
 	listen := flags.String("listen", "127.0.0.1:47831", "loopback origin address")
 	resolver := flags.String("resolver", "", "remote access resolver profile")
 	hostname := flags.String("hostname", "", "public edge hostname")
@@ -117,6 +119,9 @@ func Run(args []string, checkDependencies func(string) error) error {
 	if *allowDelivery && command != "pair" {
 		return errors.New("--allow-delivery must be approved on the worker with remote pair")
 	}
+	if *attestationRoots != "" && command != "security-key-register" {
+		return errors.New("--attestation-roots is supported only by remote security-key-register")
+	}
 	root, err := stateRoot(*state)
 	if err != nil {
 		return err
@@ -125,9 +130,11 @@ func Run(args []string, checkDependencies func(string) error) error {
 	defer stop()
 	// Setup hands the terminal to dependency installers and provider authentication.
 	// An outer spinner would overwrite their prompts even when nested operations are quiet.
-	options := infrastructure.OperationOptions{Spinner: command != "setup" && command != "pair"}
+	options := infrastructure.OperationOptions{Spinner: command != "setup" && command != "pair" && command != "approve" && command != "security-key-register"}
 	return infrastructure.RunOperationWithOptions(os.Stderr, "remote."+command, "Remote "+command, nil, options, func() error {
 		switch command {
+		case "security-key-register":
+			return registerPairingKey(ctx, root, *attestationRoots)
 		case "monitoring":
 			return configureMonitoring(root, *monitorSystem, *monitorDocker, *disableMonitoring)
 		case "observe":

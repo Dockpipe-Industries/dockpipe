@@ -80,12 +80,15 @@ type Invitation struct {
 }
 
 type WorkerConfig struct {
-	Schema   string              `json:"schema"`
-	Endpoint string              `json:"endpoint"`
-	Node     string              `json:"node"`
-	Token    string              `json:"token"`
-	Profiles map[string]Profile  `json:"profiles"`
-	Delivery *DeliveryPermission `json:"delivery,omitempty"`
+	MachineKey        string              `json:"machine_key,omitempty"`
+	MachinePrivateKey []byte              `json:"machine_private_key,omitempty"`
+	BrokerKey         string              `json:"broker_key,omitempty"`
+	Schema            string              `json:"schema"`
+	Endpoint          string              `json:"endpoint"`
+	Node              string              `json:"node"`
+	Token             string              `json:"token"`
+	Profiles          map[string]Profile  `json:"profiles"`
+	Delivery          *DeliveryPermission `json:"delivery,omitempty"`
 }
 
 // EdgeConfig is written by a resolver after its provider-specific setup. Core

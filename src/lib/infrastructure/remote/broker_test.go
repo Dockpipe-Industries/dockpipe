@@ -39,26 +39,36 @@ func testBroker(t *testing.T) (string, *Broker, *Client, *httptest.Server) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	client.HTTP.Transport = brokerFixtureTransport{RoundTripper: client.HTTP.Transport, broker: broker}
 	t.Cleanup(client.HTTP.CloseIdleConnections)
 	return root, broker, client, server
 }
 
+// brokerFixtureTransport lets execution tests load pre-existing legacy enrollment
+// without exposing a production enrollment bypass. Hardware pairing has its own
+// cryptographic integration tests.
+type brokerFixtureTransport struct {
+	http.RoundTripper
+	broker *Broker
+}
+
 func enroll(t *testing.T, admin *Client, node string) (string, contract.Invitation) {
 	t.Helper()
-	var invitation contract.Invitation
-	if err := admin.Call(context.Background(), "/v1/invite", map[string]string{"node": node}, &invitation); err != nil {
-		t.Fatal(err)
-	}
+	broker := admin.HTTP.Transport.(brokerFixtureTransport).broker
 	token, err := Secret()
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := map[string]string{"node": node, "secret": invitation.Secret, "token": token}
-	if err := admin.Call(context.Background(), "/v1/pair", request, nil); err != nil {
+	secret, err := Secret()
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := admin.Call(context.Background(), "/v1/pair", request, nil); err != nil {
-		t.Fatalf("lost-reply retry: %v", err)
+	invitation := contract.Invitation{Schema: contract.Version, Node: node, Secret: secret, ExpiresAt: time.Now().Add(time.Minute)}
+	broker.mutex.Lock()
+	defer broker.mutex.Unlock()
+	broker.state.Nodes[node] = Enrollment{SecretHash: Hash(secret), ExpiresAt: invitation.ExpiresAt, TokenHash: Hash(token)}
+	if err := broker.save(); err != nil {
+		t.Fatal(err)
 	}
 	return token, invitation
 }
