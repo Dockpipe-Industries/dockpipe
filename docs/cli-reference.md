@@ -379,3 +379,18 @@ Omitted policy fields retain their current values. Weakening requires fresh OS
 authentication; any change leaves access locked. These are global security
 settings, not workflow/project configuration. See [remote security](runtime/remote-nodes.md#os-authentication-and-global-remote-auto-lock)
 for native prerequisites, the one-hour maximum lease and migration limitations.
+
+## Dependency lifecycle
+
+`dependency inventory --resolver <name> [--machine <id>] [--workdir <path>]`
+invokes an explicitly trusted resolver's inventory workflow. `dependency assess
+--report <inventory.json>` aggregates its evidence; `dependency plan --report
+<inventory.json> --dry-run` emits a non-executable content-bound review plan.
+Policy names are `manual`, `notify`, `security-only`, `compatible`, and `latest`;
+`--pin <exact-version>` adds a constraint without overriding existing locks.
+Inventory has a bounded `--timeout-seconds <5..120>` (default 60).
+
+This first slice has no apply, restart, scheduler, remote target or unattended
+update command. Provider workflows use ordinary workflow permissions; they must
+be trusted code. See [dependency lifecycle](runtime/dependency-lifecycle.md) for
+wire contracts, unknown/stale status, policy limits and the remaining phases.

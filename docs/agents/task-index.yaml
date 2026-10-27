@@ -218,6 +218,12 @@ tasks:
   dispatch:
     readiness: unclassified
     ownership: unclaimed
+- id: TASK-054
+  topic: Coordinated Dockpipe self-updates across CLI, GUI and broker
+  path: docs/agents/tasks/dockpipe-self-update/index.yaml
+  dispatch:
+    readiness: decision_ready
+    ownership: unclaimed
 maintenance:
 - Keep tasks open-only and core-owned; external_backlogs route independent owners without claiming their
   work.

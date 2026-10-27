@@ -34,6 +34,8 @@ func dispatchCommand(argv []string) (bool, error) {
 		return true, workspacegitcmd.Run(argv[1:])
 	case "remote":
 		return true, cmdRemote(argv[1:])
+	case "dependency":
+		return true, cmdDependency(argv[1:])
 	case "install":
 		return true, cmdInstall(argv[1:])
 	case "package":

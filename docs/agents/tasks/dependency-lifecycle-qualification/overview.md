@@ -10,6 +10,14 @@ blocks unattended enablement, not immediate operator-controlled P0 remediation.
 Reuse TASK-025 platform qualification and TASK-032/033 Windows/macOS evidence;
 do not create a second platform certification program.
 
+[TASK-054](../dockpipe-self-update/index.yaml) adds Dockpipe self-update qualification
+to this matrix: native Windows MSI/portable behavior, coherent CLI/GUI/broker and
+helper versions, stale running processes, file locks/UAC/reboot, active-work drain,
+state migration and compatible component-set recovery. Installation exit zero
+cannot substitute for proving the actual running components and authenticated
+post-update broker behavior. Unimplemented Windows broker/OS-auth rows remain
+explicit prerequisites rather than inferred platform support.
+
 ## Current architecture findings and problem statement
 
 Core has preflight/installer tests in `src/lib/application/internal/hostdependencies/`,

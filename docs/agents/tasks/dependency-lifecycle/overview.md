@@ -2,7 +2,7 @@
 
 ## Status, priority and initiative
 
-**P1; proposed, decision ready, unclaimed.** Added 2026-10-26 after source review at
+**P1; initial local read-only slice implemented; wider lifecycle remains open.** Added 2026-10-26 after source review at
 Core `1f2a687ffdcc35a9d204e39231e51cad30351a69`. This record coordinates the
 **Security and Reliability — Dependency Lifecycle and Authentication Hardening**
 initiative; it does not authorize implementation or host changes.
@@ -13,6 +13,7 @@ initiative; it does not authorize implementation or host changes.
 | [TASK-050](../cloudflare-dependency-lifecycle/index.yaml) | P1 framework adoption; P0 exposure lane | Cross-repository delivery; Cloudflare implementation remains in dockpipe-packages |
 | [TASK-051](../dependency-advisory-monitoring/index.yaml) | P1 | Generic advisory assessment and notifications; provider metadata stays package-owned |
 | [TASK-052](../dependency-lifecycle-qualification/index.yaml) | P1 | Integration, recovery, platform and remote connectivity qualification |
+| [TASK-054](../dockpipe-self-update/index.yaml) | P1 | Dockpipe self-updates, including Windows and coordinated CLI/GUI/broker activation |
 | [TASK-010](../declarative-dependency-install-ux/index.yaml) | P1 lifecycle prerequisite scope | Existing installer trust and exact package selection/lock owner; do not duplicate |
 | [TASK-036](../remote-node-onboarding/index.yaml) | P1 security enhancement scope | Pairing authorization, hardware-backed enrollment, worker credential expiry/revocation |
 | [TASK-039](../unified-mcp-gateway/index.yaml) | P1 security enhancement scope | Shared authentication, hardware-backed pairing, OS-authenticated remote unlock and scoped expiring grants |
@@ -42,6 +43,11 @@ inside the wider existing tasks.
 | External remote package README | DorkPipe retains scheduling. No dependency-specific scheduler was identified in inspected Core paths; integrate scheduled workflow invocations through that owner or operator-managed host scheduling. Inventory actual supported trigger contracts before implementation. |
 
 ## Problem statement
+
+Dockpipe itself is also a lifecycle-managed product. [TASK-054](../dockpipe-self-update/index.yaml)
+owns installation-channel adapters and coordinated CLI, GUI, broker and installed
+helper/worker upgrades, using this same orchestration contract. Updating an
+executable on disk is not proof that the running broker or GUI has been upgraded.
 
 Executable presence and package installation do not tell an operator whether the
 active dependency is safe, whether an update violates a pin, or whether a failed
@@ -168,3 +174,40 @@ malicious metadata; integration tests for audit write failure, cancellation,
 concurrent updates and recovery journals. TASK-052 owns end-to-end/platform proof,
 including CLI/UI/MCP parity and a generic fixture provider. Existing preflight,
 package resolution and broker regression suites must remain passing.
+
+
+## Initial local implementation (2026-10-27)
+
+The first slice adds CLI `dependency inventory`, `assess`, and `plan --dry-run`.
+See the [canonical lifecycle contract](../../../runtime/dependency-lifecycle.md).
+Core negotiates an optional versioned resolver inventory hook and invokes it
+through the existing CLI workflow runner, with a private per-invocation receipt,
+process-tree cancellation, bounded diagnostics and strict receipt validation.
+Resolver metadata exposes supported inventory without exposing profile paths.
+
+The generic inventory separates installed and active versions and records unknown
+coverage. Assessments never promote missing active-state evidence or stale reports
+to clean status. Plans bind inventory, provider/version, target, policy, pin and
+steps into a content ID; they are explicitly non-executable. All five policy
+names are recorded, but compatible/latest artifact selection, ecosystem locks,
+verification, privileged approval and every mutation/recovery gate remain open.
+An exact pin never overrides an existing lock or advisory conflict.
+
+A non-Cloudflare fixture exercised the actual CLI workflow runner through
+inventory, assessment and a latest-policy pin-conflict dry-run. Unit/race coverage
+includes malformed/oversized/linked/trailing receipts, target substitution,
+workflow path escape, private first-run state, cancellation, metadata negotiation,
+unknown/stale coverage and all five policies. Read-only command outcomes reuse
+operation records; durable update history/intent journals are not implemented.
+
+The selected provider is trusted executable code with normal workflow
+permissions; this protocol is not an OS read-only sandbox. Supplied reports and
+plan IDs are evidence only, never approvals. This slice does not change existing
+host-dependency preflight, producer/project/package locks or installed services.
+
+Remaining acceptance includes authenticated candidate preparation, lock resolution,
+approval/maintenance scopes, serialized mutation, durable audit/recovery, remote
+execution, schedules, advisory refresh/notifications and shared GUI/MCP surfaces.
+TASK-050 supplies the separate Cloudflare provider; the sealed resolver archive
+also passed an isolated Core CLI inventory/assessment/dry-run integration. TASK-052 remains open for
+native platform, failure/recovery and real tunnel qualification.

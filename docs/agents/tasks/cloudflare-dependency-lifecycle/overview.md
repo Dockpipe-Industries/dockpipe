@@ -3,7 +3,7 @@
 ## Status, priority and dependencies
 
 **P1 implementation; P0 immediate affected-installation remediation lane.** Proposed
-2026-10-26, decision ready, unclaimed. Cross-repository coordination record within
+2026-10-26; initial local read-only provider implementation and Linux integration verified. Cross-repository coordination record within
 [TASK-049's security and reliability initiative](../dependency-lifecycle/overview.md).
 Implementation belongs to the external
 [dockpipe-packages remote package](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages/remote),
@@ -135,3 +135,43 @@ credential preservation and denied restarts. TASK-052 adds real native/service/
 container matrices, no-connection recovery, broker retry nonreplay, health failure,
 rollback failure and private audit checks. Package publication and live tunnel
 qualification remain separate from mocked success.
+
+
+## Initial read-only provider slice (2026-10-27)
+
+Local changes in the external remote package implement the optional TASK-049
+inventory protocol through a resolver-embedded workflow and the existing
+`cloudflare-edge` helper. The hook has its own dependency-free workflow manifest
+so it can report a missing cloudflared rather than installing the tool it is
+inspecting. The normal Cloudflare remote-edge capability and setup path remain.
+
+The provider bounds installation paths, version probes and Linux process-image
+inspection. It avoids process command lines, environments and tunnel credentials.
+Calendar-version comparison and advisory floors remain entirely package-owned;
+malformed/prerelease/vendor-suffixed versions stay unknown. The macOS 2026.10.2
+channel exception remains unconfirmed and is assessed conservatively. A fixed
+installed binary alone does not prove the active tunnel is fixed.
+
+Package-manager ownership, services, containers, unavailable process namespaces
+and native macOS/Windows active-image proof remain explicit coverage gaps.
+This is version-based advisory triage, not universal trust-store/TLS-path proof.
+No apply, installer, tunnel restart, credential mutation, recovery or rollout is
+implemented by this slice; the original method matrix and TASK-052 qualification
+remain open. No new source publication or dependency pin is implied.
+
+
+Validation used the package repository's pinned CLI and checksum-verified SDK in
+an isolated source copy: package tests, source build and a resolver-embedded hook
+execution passed. A separate Core development CLI consumed the sealed resolver
+archive through its existing package store resolver lookup, invoked the normal
+workflow runner, validated the private report, assessed it and emitted a
+non-executable security-only plan.
+
+The read-only Linux host check observed installed and active cloudflared
+2026.10.4, with active-image evidence and no applicability to the specifically
+reported 2026.10.2 advisory floor. The aggregate deliberately remained unknown
+because service/manager/container/namespace coverage is incomplete. This is not
+a claim of complete vulnerability coverage or verified TLS remediation.
+Neither installed dependencies nor live tunnel/service configuration changed.
+Native macOS/Windows active discovery, Docker/method ownership, authenticated
+release preparation and every mutation/recovery matrix remain unqualified.
