@@ -33,9 +33,10 @@ type SecurityRequest struct {
 }
 
 type SecurityResponse struct {
-	Status *SecurityStatus `json:"status,omitempty"`
-	Proof  *SecurityProof  `json:"proof,omitempty"`
-	Error  string          `json:"error,omitempty"`
+	ErrorCode string          `json:"error_code,omitempty"`
+	Status    *SecurityStatus `json:"status,omitempty"`
+	Proof     *SecurityProof  `json:"proof,omitempty"`
+	Error     string          `json:"error,omitempty"`
 }
 
 // StartOperatorSecurity uses one canonical OS-user socket for every CLI/UI
@@ -189,6 +190,9 @@ func (authority *SecurityAuthority) serveSecurityConnection(parent context.Conte
 	}
 	if err != nil {
 		response.Error = err.Error()
+		if errors.Is(err, ErrOperatorLocked) {
+			response.ErrorCode = "operator_locked"
+		}
 		if len(response.Error) > 1024 {
 			response.Error = "operating-system security operation failed"
 		}
@@ -248,6 +252,9 @@ func callSecurityAt(ctx context.Context, directory string, request SecurityReque
 		return response, err
 	}
 	if response.Error != "" {
+		if response.ErrorCode == "operator_locked" {
+			return response, ErrOperatorLocked
+		}
 		return response, errors.New(response.Error)
 	}
 	return response, nil

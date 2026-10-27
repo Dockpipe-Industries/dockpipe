@@ -38,7 +38,7 @@ void DockerObservabilityWidget::changeMachine()
         QTimer::singleShot(0, this, &DockerObservabilityWidget::refresh);
 }
 
-void DockerObservabilityWidget::refreshRemote()
+void DockerObservabilityWidget::refreshRemote(bool allowAuthentication)
 {
     if (!m_active || m_monitorPaused || m_remoteCommand.busy())
         return;
@@ -59,7 +59,8 @@ void DockerObservabilityWidget::refreshRemote()
         return;
     }
     m_remoteCommand.run(program,
-        {"remote", "observe", "--node", node}, [this, node, generation](bool ok, const QByteArray &output) {
+        {"remote", "observe", "--node", node, "--auth",
+         allowAuthentication ? "auto" : "never"}, [this, node, generation](bool ok, const QByteArray &output) {
             if (generation != m_generation || !m_active || m_monitorPaused)
                 return;
             const auto envelope = QJsonDocument::fromJson(output).object();
@@ -78,7 +79,7 @@ void DockerObservabilityWidget::refreshRemote()
                 return;
             }
             applyRemoteSnapshot(envelope.value("docker").toObject());
-        }, 5000);
+        }, allowAuthentication ? 150000 : 5000);
 }
 
 void DockerObservabilityWidget::applyRemoteSnapshot(const QJsonObject &snapshot)

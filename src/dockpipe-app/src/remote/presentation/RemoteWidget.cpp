@@ -27,6 +27,7 @@
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
+#include <QShowEvent>
 
 namespace {
 enum Page { Overview, Pairing, Connection, Setup };
@@ -74,7 +75,8 @@ QPushButton *actionButton(const QString &text, QHBoxLayout *row, const char *sty
 }
 }
 
-RemoteWidget::RemoteWidget(QWidget *parent) : QWidget(parent), m_command(this)
+RemoteWidget::RemoteWidget(QWidget *parent)
+    : QWidget(parent), m_command(this), m_securityStatusCommand(this)
 {
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(28, 24, 28, 24);
@@ -176,6 +178,12 @@ RemoteWidget::RemoteWidget(QWidget *parent) : QWidget(parent), m_command(this)
         if (isVisible() && m_pages->currentIndex() == Pairing && !m_command.busy())
             refreshPairings();
     });
+    m_securityStatusTimer = new QTimer(this);
+    m_securityStatusTimer->setInterval(10000);
+    connect(m_securityStatusTimer, &QTimer::timeout, this, [this]() {
+        if (isVisible() && m_pages->currentIndex() == Overview)
+            refreshSecurityStatus();
+    });
     updateActions();
     auto *detailsPanel = new QWidget;
     detailsPanel->setLayout(root);
@@ -230,8 +238,11 @@ QWidget *RemoteWidget::buildOverview()
     m_actions.append(refreshButton);
     connect(add, &QPushButton::clicked, this, [this]() { showPage(Pairing); });
     connect(join, &QPushButton::clicked, this, [this]() { showPage(Connection); });
-    connect(refreshButton, &QPushButton::clicked, this, &RemoteWidget::refresh);
+    connect(refreshButton, &QPushButton::clicked, this, [this]() { refresh(true); });
     layout->addLayout(actions);
+    m_securityStatus = textLabel(tr("Checking remote access lock status…"), "hintText");
+    m_securityStatus->setObjectName(QStringLiteral("remoteLockStatus"));
+    layout->addWidget(m_securityStatus);
     layout->addWidget(textLabel(tr("Machines managed from this computer"), "sectionTitle"));
     m_overviewHint = textLabel(tr("Loading machines…"));
     layout->addWidget(m_overviewHint);
@@ -562,6 +573,17 @@ void RemoteWidget::showPage(int index)
     } else {
         m_pairingTimer->stop();
     }
+    if (index == Overview && isVisible())
+        refreshSecurityStatus();
+}
+
+void RemoteWidget::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    if (m_securityStatusTimer)
+        m_securityStatusTimer->start();
+    if (m_pages && m_pages->currentIndex() == Overview)
+        refreshSecurityStatus();
 }
 
 void RemoteWidget::updateActions()
@@ -592,10 +614,13 @@ void RemoteWidget::setWorkdir(const QString &workdir)
     m_workdir = workdir;
 }
 
-void RemoteWidget::run(const QStringList &arguments, RemoteCommand::Completion completion, int timeoutMs)
+void RemoteWidget::run(const QStringList &arguments, RemoteCommand::Completion completion,
+                       int timeoutMs, bool allowAuthentication)
 {
     if (m_command.busy())
         return;
+    if (allowAuthentication && timeoutMs < 150000)
+        timeoutMs = 150000;
     m_output->clear();
     m_pendingOutput.clear();
     const bool listing = arguments.first() == "nodes" || arguments.first() == "pairings" || arguments.first() == "info";
@@ -605,6 +630,8 @@ void RemoteWidget::run(const QStringList &arguments, RemoteCommand::Completion c
     }
     QStringList args{"remote"};
     args.append(arguments);
+    args << QStringLiteral("--auth")
+         << (allowAuthentication ? QStringLiteral("auto") : QStringLiteral("never"));
     QString program;
     QString error;
     program = DockpipeChoices::operatorDockpipeBinary(&error);
@@ -625,9 +652,9 @@ void RemoteWidget::run(const QStringList &arguments, RemoteCommand::Completion c
     }, timeoutMs);
 }
 
-void RemoteWidget::refreshNodes()
+void RemoteWidget::refreshNodes(bool allowAuthentication)
 {
-    run({"nodes"}, [this](bool ok, const QByteArray &data) {
+    run({"nodes"}, [this, allowAuthentication](bool ok, const QByteArray &data) {
         m_brokerAvailable = ok;
         m_nodes->setRowCount(0);
         if (!ok) {
@@ -673,11 +700,66 @@ void RemoteWidget::refreshNodes()
         updateMachineGraph();
         emit nodesChanged(paired);
         updateActions();
-        refreshPairings();
-    });
+        refreshPairings(allowAuthentication);
+    }, allowAuthentication ? 150000 : 30000, allowAuthentication);
 }
 
-void RemoteWidget::refreshPairings()
+void RemoteWidget::refreshSecurityStatus()
+{
+    if (!m_securityStatus || m_securityStatusCommand.busy())
+        return;
+
+    QString error;
+    const QString program = DockpipeChoices::operatorDockpipeBinary(&error);
+    if (program.isEmpty()) {
+        m_securityStatus->setText(tr("Remote access lock status unavailable: %1").arg(error));
+        return;
+    }
+
+    m_securityStatusCommand.run(program,
+        {QStringLiteral("remote"), QStringLiteral("security-status"),
+         QStringLiteral("--auth"), QStringLiteral("never")},
+        [this](bool ok, const QByteArray &output) {
+            if (!ok) {
+                m_securityStatus->setText(tr("Remote access lock status unavailable. Open Settings > Security for details."));
+                return;
+            }
+
+            const QJsonDocument document = QJsonDocument::fromJson(output);
+            if (!document.isObject()) {
+                m_securityStatus->setText(tr("Remote access lock status unavailable: invalid response."));
+                return;
+            }
+
+            const QJsonObject status = document.object();
+            if (!status.value(QStringLiteral("authority_available")).isBool()
+                || !status.value(QStringLiteral("locked")).isBool()) {
+                m_securityStatus->setText(tr("Remote access lock status unavailable: incomplete response."));
+                return;
+            }
+            if (!status.value(QStringLiteral("authority_available")).toBool()) {
+                m_securityStatus->setText(tr("Remote access lock status unavailable: no local security authority."));
+                return;
+            }
+
+            const bool locked = status.value(QStringLiteral("locked")).toBool();
+            QString text = locked ? tr("Remote access is locked.") : tr("Remote access is unlocked.");
+            if (!status.value(QStringLiteral("supported")).toBool()) {
+                const QJsonObject capabilities = status.value(QStringLiteral("capabilities")).toObject();
+                QStringList unavailable;
+                if (!capabilities.value(QStringLiteral("screen_lock")).toBool())
+                    unavailable.append(tr("screen lock"));
+                if (!capabilities.value(QStringLiteral("sleep")).toBool())
+                    unavailable.append(tr("sleep"));
+                if (!unavailable.isEmpty())
+                    text += tr(" Native %1 detection unavailable; remote authority still enforces its lock policy.")
+                        .arg(unavailable.join(tr(" and ")));
+            }
+            m_securityStatus->setText(text);
+        }, 5000);
+}
+
+void RemoteWidget::refreshPairings(bool allowAuthentication)
 {
     run({"pairings"}, [this](bool ok, const QByteArray &requests) {
         if (!ok) {
@@ -713,7 +795,7 @@ void RemoteWidget::refreshPairings()
         m_review->setText(tr("Review connection requests (%1)").arg(count));
         m_review->setVisible(count > 0);
         updateActions();
-    });
+    }, allowAuthentication ? 150000 : 30000, allowAuthentication);
 }
 
 void RemoteWidget::decidePairing(bool approve)
@@ -799,14 +881,14 @@ void RemoteWidget::updateSetup()
     m_setupHint->setText(details.join("\n\n"));
 }
 
-void RemoteWidget::refresh()
+void RemoteWidget::refresh(bool allowAuthentication)
 {
-    run({"info"}, [this](bool ok, const QByteArray &data) {
+    run({"info"}, [this, allowAuthentication](bool ok, const QByteArray &data) {
         const auto document = QJsonDocument::fromJson(data);
         if (!ok || !document.isObject()) {
             m_connectionSummary->setText(tr("Connection details unavailable. Update the CLI if it does not support remote info."));
             m_pairingAddress->setText(tr("Connection details unavailable. Use the address from your remote setup."));
-            refreshNodes();
+            refreshNodes(allowAuthentication);
             return;
         }
         const auto info = document.object();
@@ -840,7 +922,7 @@ void RemoteWidget::refresh()
                 m_hostname->setText(QUrl(address).host());
             m_connectionSummary->setText(provider + "\n" + mode + " · " + address);
             m_pairingAddress->setText(tr("Remote address: %1\nProvider: %2").arg(address, provider));
-            refreshNodes();
+            refreshNodes(allowAuthentication);
             return;
         }
         m_graphRemoteEndpoint = worker.value("endpoint").toString();
@@ -858,7 +940,7 @@ void RemoteWidget::refresh()
         updateMachineGraph();
         emit nodesChanged({});
         updateActions();
-    });
+    }, allowAuthentication ? 150000 : 30000, allowAuthentication);
 }
 
 void RemoteWidget::updateMachineGraph()

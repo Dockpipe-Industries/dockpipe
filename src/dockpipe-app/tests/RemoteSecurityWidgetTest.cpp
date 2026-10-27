@@ -49,6 +49,7 @@ int main(int argc, char **argv)
     cli.write(R"SH(#!/bin/sh
 case "$1:$2" in
 remote:security-status)
+  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/security-status-args"
   if [ -f "$DOCKPIPE_TEST_ROOT/security-unavailable" ]; then
     echo '{"supported":false,"authority_available":false,"locked":true,"idle_seconds":300,"lock_on_screen_lock":false,"lock_on_sleep":true,"absolute_seconds":3600,"expires_at":"","capabilities":{"idle":false,"screen_lock":false,"sleep":false},"detail":"Fixture host has no security authority."}'
   elif [ -f "$DOCKPIPE_TEST_ROOT/security-capability-limited" ]; then
@@ -105,7 +106,8 @@ esac
     unlock->click();
     CHECK(waitUntil([&]() { return status->text().contains(QStringLiteral("unlocked")); }));
     CHECK(status->text().contains(QStringLiteral("expires at")));
-    CHECK(readFile(directory.filePath(QStringLiteral("security-action-args"))) == "remote\nunlock\n");
+    CHECK(readFile(directory.filePath(QStringLiteral("security-action-args"))) == "remote\nunlock\n--auth\nauto\n");
+    CHECK(readFile(directory.filePath(QStringLiteral("security-status-args"))) == "remote\nsecurity-status\n--auth\nnever\n");
 
     idle->setValue(420);
     sleepLock->setChecked(false);
@@ -113,12 +115,12 @@ esac
     const QString policyPath = directory.filePath(QStringLiteral("security-policy-args"));
     CHECK(waitUntil([&]() { return QFileInfo::exists(policyPath); }));
     CHECK(readFile(policyPath) == "remote\nsecurity-policy\n--idle-seconds\n420\n"
-                                  "--lock-on-screen-lock=false\n--lock-on-sleep=false\n");
+                                  "--lock-on-screen-lock=false\n--lock-on-sleep=false\n--auth\nauto\n");
     CHECK(waitUntil([&]() { return lock->isEnabled(); }));
 
     lock->click();
     CHECK(waitUntil([&]() { return status->text().contains(QStringLiteral("is locked.")); }));
-    CHECK(readFile(directory.filePath(QStringLiteral("security-action-args"))) == "remote\nlock\n");
+    CHECK(readFile(directory.filePath(QStringLiteral("security-action-args"))) == "remote\nlock\n--auth\nauto\n");
 
     QFile idleUnavailable(directory.filePath(QStringLiteral("security-idle-unavailable")));
     CHECK(idleUnavailable.open(QIODevice::WriteOnly));
@@ -139,6 +141,7 @@ esac
     screenLock->setChecked(false);
     CHECK(QMetaObject::invokeMethod(&widget, "savePolicy", Qt::DirectConnection));
     CHECK(waitUntil([&]() { return readFile(directory.filePath(QStringLiteral("security-policy-args"))).contains("480"); }));
+    CHECK(readFile(directory.filePath(QStringLiteral("security-policy-args"))).endsWith("--auth\nauto\n"));
 
     QFile::remove(directory.filePath(QStringLiteral("security-idle-unavailable")));
     QFile::remove(directory.filePath(QStringLiteral("security-capability-limited")));

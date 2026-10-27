@@ -364,6 +364,12 @@ Go consumers use `dockpipe/src/lib/sdk/repotools` from the published SDK.
 
 ### Remote OS authentication
 
+Locked remote operator actions default to `--auth auto`: OS authentication occurs
+before sending, then the original action continues once. Use `--auth never` for
+scripts and background polling to return a lock error without a prompt. Failed
+HTTP requests are never replayed by this authentication flow. `remote unlock`
+remains available as an explicit standalone action.
+
 `dockpipe remote security-status` prints the shared OS-user remote policy,
 locked state and native capability availability. `remote unlock` requests native
 OS authentication; `remote lock` immediately invalidates remote operator access.

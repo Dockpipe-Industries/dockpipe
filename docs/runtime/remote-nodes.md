@@ -292,8 +292,10 @@ identity. Duplicate permission entries do not establish which build is authorize
 
 ### OS authentication and global remote auto-lock
 
-Local broker administration starts locked. Open **Settings > Security > Remote
-access** or use:
+Local broker administration starts locked. A user-requested operator action
+automatically asks for OS authentication when locked and continues with the same
+pending request after success. Settings is not required. Manual controls remain
+available in **Settings > Security > Remote access** and the CLI:
 
 ```sh
 dockpipe remote security-status
@@ -306,11 +308,20 @@ dockpipe remote security-policy --idle-seconds 300 --lock-on-screen-lock=true --
 OS terminal agent. Dockpipe does not collect the operating-system password.
 Physical-key pairing approval still requires the registered key independently.
 
+Use `--auth never` on unattended or background operator commands to fail closed
+without opening an authentication prompt. Re-authentication responds only to a
+typed lock denial from the local OS authority before HTTP admission. The original
+request body and operation are preserved; authentication is attempted once and
+the proof is reacquired once. Cancellation or failure sends no request. HTTP
+errors, lost replies and expired proofs after transmission never trigger automatic
+replay of remote work. Passive GUI monitoring uses `--auth never`.
+
 The shared OS-user policy defaults to five minutes of inactivity, with validated
 custom durations from 60 to 3600 seconds. Authorization also expires after one
 hour regardless of activity. OS lock and sleep locking default on. All policy
 changes leave access locked; weakening a setting requires OS authentication,
-while tightening takes effect immediately. Use `remote unlock` afterward.
+while tightening takes effect immediately. The next requested remote action can
+re-authenticate, or use `remote unlock` explicitly.
 Background polling, API requests and running workflows cannot renew inactivity.
 Locking blocks new administrative actions and does not cancel admitted jobs or
 revoke worker machine credentials.

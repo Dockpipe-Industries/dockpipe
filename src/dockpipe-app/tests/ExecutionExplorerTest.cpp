@@ -213,7 +213,7 @@ int main(int argc, char **argv)
         return 24;
     QFile operatorArgs(operatorArgsPath);
     if (!operatorArgs.open(QIODevice::ReadOnly)
-        || operatorArgs.readAll() != "remote\nobserve\n--node\nfixture-node\n")
+        || operatorArgs.readAll() != "remote\nobserve\n--node\nfixture-node\n--auth\nnever\n")
         return 25;
     explorer.setActive(false);
     return 0;

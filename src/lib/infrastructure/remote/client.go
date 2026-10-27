@@ -17,12 +17,13 @@ import (
 )
 
 type Client struct {
-	OperatorProof func(context.Context, string, []byte) (SecurityProof, error)
-	Identity      *remoteidentity.Identity
-	BrokerKey     string
-	Endpoint      string
-	Token         string
-	HTTP          *http.Client
+	ReauthenticateOperator func(context.Context) error
+	OperatorProof          func(context.Context, string, []byte) (SecurityProof, error)
+	Identity               *remoteidentity.Identity
+	BrokerKey              string
+	Endpoint               string
+	Token                  string
+	HTTP                   *http.Client
 }
 
 func NewClient(endpoint, token string) (*Client, error) {

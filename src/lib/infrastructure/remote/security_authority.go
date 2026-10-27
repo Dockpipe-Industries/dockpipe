@@ -185,7 +185,7 @@ func (authority *SecurityAuthority) checkLocked() error {
 		return errors.New("remote security policy publication is uncertain; inspect the policy and restart the authority")
 	}
 	if authority.identity == nil {
-		return errors.New("remote access is locked; run dockpipe remote unlock")
+		return ErrOperatorLocked
 	}
 	now := authority.now()
 	if !authority.available || now.Sub(authority.sampledAt) > 3*time.Second ||

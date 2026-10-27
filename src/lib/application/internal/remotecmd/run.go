@@ -54,6 +54,8 @@ const usage = `dockpipe remote <command> [options]
   revoke  --id <node>                             Revoke a worker
   service --role broker|worker                    Install a user service; --replace updates and restarts it
 All commands accept --state <directory>. Remote nodes currently target Linux/macOS.
+Locked operator actions re-authenticate before sending. Use --auth never for unattended
+or background commands; denial never retries an HTTP request or changes worker execution.
 Hardware-key commands use native FIDO2: --interaction terminal (default) or gui.
 The GUI uses private stdin/stdout interaction; PINs must never be passed as arguments.
 Profiles are local JSON: {"bench":{"workdir":"/absolute/checkout","workflow":"bench",
@@ -69,6 +71,7 @@ func Run(args []string, checkDependencies func(string) error) error {
 	command := args[0]
 	flags := flag.NewFlagSet("remote "+command, flag.ContinueOnError)
 	state := flags.String("state", "", "private state directory")
+	authentication := flags.String("auth", "auto", "OS re-authentication for locked operator actions: auto or never")
 	attestationRoots := flags.String("attestation-roots", "", "verified hardware-key manufacturer CA PEM bundle (first key only)")
 	interaction := flags.String("interaction", "terminal", "native hardware-key interaction: terminal or gui")
 	listen := flags.String("listen", "127.0.0.1:47831", "loopback origin address")
@@ -108,6 +111,9 @@ func Run(args []string, checkDependencies func(string) error) error {
 	}
 	if *replaceService && command != "service" {
 		return errors.New("--replace is supported only by remote service")
+	}
+	if *authentication != "auto" && *authentication != "never" {
+		return errors.New("--auth must be auto or never")
 	}
 	securityChanges := map[string]bool{}
 	flags.Visit(func(flag *flag.Flag) {
@@ -155,9 +161,13 @@ func Run(args []string, checkDependencies func(string) error) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	ctx = context.WithValue(ctx, hardwareInteractionModeKey{}, *interaction)
+	ctx = context.WithValue(ctx, remoteAuthenticationKey{}, *authentication == "auto")
 	// Setup hands the terminal to dependency installers and provider authentication.
 	// An outer spinner would overwrite their prompts even when nested operations are quiet.
 	options := infrastructure.OperationOptions{Spinner: command != "setup" && command != "pair" && command != "approve" && command != "security-key-register" && command != "unlock" && command != "security-policy"}
+	if *authentication == "auto" {
+		options.Spinner = false
+	}
 	return infrastructure.RunOperationWithOptions(os.Stderr, "remote."+command, "Remote "+command, nil, options, func() error {
 		switch command {
 		case "unlock", "lock", "security-status", "security-policy":

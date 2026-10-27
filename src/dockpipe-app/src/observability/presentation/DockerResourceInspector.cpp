@@ -62,6 +62,7 @@ DockerResourceInspector::DockerResourceInspector(QPlainTextEdit *logs,
     });
     actions->addWidget(pause);
     auto *refresh = new QPushButton(tr("Refresh"));
+    refresh->setObjectName(QStringLiteral("dockerRefresh"));
     connect(refresh, &QPushButton::clicked, this, &DockerResourceInspector::refreshRequested);
     actions->addWidget(refresh);
     layout->addLayout(actions);

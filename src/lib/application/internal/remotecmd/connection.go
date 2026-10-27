@@ -104,5 +104,6 @@ func operatorClient(root string) (*remoteio.Client, error) {
 		return nil, err
 	}
 	client.ProtectLocalOperator(brokerState.Identity.PublicKey)
+	client.ReauthenticateOperator = reauthenticateRemote
 	return client, nil
 }

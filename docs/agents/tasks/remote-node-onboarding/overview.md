@@ -557,6 +557,37 @@ including the GNOME Shell-owned screen-saver endpoint. All four focused desktop
 tests (remote launcher, execution explorer, launcher settings and remote security)
 and the desktop application build passed.
 
+### Action-driven OS re-authentication follow-up
+
+The CLI now owns continuation of a user-requested action across OS unlock. Its
+default `--auth auto` handles only the local authority's typed lock denial before
+HTTP transmission: authenticate once, reacquire the scoped proof once, then send
+the already serialized original request. It never replays an HTTP/network failure.
+`--auth never` preserves noninteractive denial for scripts and passive GUI reads.
+Cancellation, a second denial or unavailable authority stops without execution.
+Hardware-key pairing and worker-local authorization are unchanged.
+
+The GUI delegates user actions to that CLI contract, gives the OS prompt time to
+complete, and uses noninteractive status polling for its remote lock indicator.
+Settings remains an optional policy/manual-lock surface rather than an unlock
+prerequisite. Tests cover bounded continuation, cancellation, text errors that
+must not trigger authentication, no network replay, and original-submission
+snapshot preservation. A live locked CLI machine-list action opened native OS
+authentication and continued successfully to return the existing paired machine.
+The operator also personally confirmed the actual desktop flow: clicking Remote
+Refresh while locked opened OS authentication, continued automatically and showed
+the paired machine without visiting Settings. This proves machine-list
+continuation, not a new workflow execution or current worker health; monitoring
+was unavailable on the paired worker during this run.
+The focused remote/CLI race suites, snapshot-preservation regression, three GUI
+tests (remote launcher, execution explorer and remote security widget), and local
+CLI/desktop builds passed. Observer fixtures distinguish passive polling from
+explicit execution/Docker refresh and verify that only the latter requests
+interactive authentication. The operator approved restoration of the original
+300-second policy, completed OS authentication, and the authority remained locked.
+The local broker service was updated with explicit operator approval for these
+tests; no paired-worker installation or hosted pipeline was changed.
+
 [TASK-053](../adaptive-remote-threat-containment/index.yaml) adds a separate P2
 research proposal for adaptive threat signals and broker-independent worker
 containment. It consumes these authorization outcomes; scores never relax a hard

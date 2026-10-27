@@ -47,6 +47,9 @@ ExecutionExplorer::ExecutionExplorer(QWidget *parent) : QWidget(parent), m_comma
     m_resources = new QCheckBox(tr("Resource metrics"));
     m_resources->setChecked(true);
     toolbar->addWidget(m_resources);
+    m_refresh = new QPushButton(tr("Refresh"));
+    m_refresh->setObjectName("executionRefresh");
+    toolbar->addWidget(m_refresh);
     m_pause = new QPushButton(tr("Pause updates"));
     m_pause->setObjectName("executionPause");
     m_pause->setCheckable(true);
@@ -128,6 +131,10 @@ ExecutionExplorer::ExecutionExplorer(QWidget *parent) : QWidget(parent), m_comma
     m_timer = new QTimer(this);
     m_timer->setInterval(4000);
     connect(m_timer, &QTimer::timeout, this, &ExecutionExplorer::refresh);
+    connect(m_refresh, &QPushButton::clicked, this, [this]() { refreshWithAuthentication(true); });
+    connect(&m_command, &RemoteCommand::busyChanged, m_refresh, [this](bool busy) {
+        m_refresh->setEnabled(!busy);
+    });
     connect(m_canvas, &ResourceCanvas::resourceSelected, this, &ExecutionExplorer::inspect);
     connect(m_search, &QLineEdit::textChanged, this, [this]() { render(); });
     connect(m_resources, &QCheckBox::toggled, this, [this]() { ++m_generation; refresh(); });
@@ -216,6 +223,11 @@ void ExecutionExplorer::setActive(bool active)
 
 void ExecutionExplorer::refresh()
 {
+    refreshWithAuthentication(false);
+}
+
+void ExecutionExplorer::refreshWithAuthentication(bool allowAuthentication)
+{
     if (!m_active || m_pause->isChecked() || m_command.busy())
         return;
     QStringList args{"runs", "observe", "--json"};
@@ -239,7 +251,8 @@ void ExecutionExplorer::refresh()
     const QString node = m_machine->currentData().toString();
     QString program;
     if (!node.isEmpty()) {
-        args = {"remote", "observe", "--node", node};
+        args = {"remote", "observe", "--node", node, "--auth",
+                allowAuthentication ? "auto" : "never"};
         QString error;
         program = DockpipeChoices::operatorDockpipeBinary(&error);
         if (program.isEmpty()) {
@@ -281,7 +294,7 @@ void ExecutionExplorer::refresh()
                 m_overview->clear();
                 m_status->setText(tr("Monitoring unavailable. Displayed data may be stale. Check the CLI version and machine permissions."));
             }
-        }, 5000);
+        }, !node.isEmpty() && allowAuthentication ? 150000 : 5000);
 }
 
 void ExecutionExplorer::setNodes(const QStringList &nodes)

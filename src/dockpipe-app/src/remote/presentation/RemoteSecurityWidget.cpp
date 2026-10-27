@@ -102,7 +102,7 @@ RemoteSecurityWidget::RemoteSecurityWidget(QWidget *parent)
     });
     connect(m_unlock, &QPushButton::clicked, this, [this]() {
         clearOperationError();
-        run({QStringLiteral("unlock")}, 125000, [this](bool succeeded, const QByteArray &output) {
+        run({QStringLiteral("unlock")}, 150000, true, [this](bool succeeded, const QByteArray &output) {
             if (!succeeded)
                 m_operationError = tr("Unlock was not completed. %1")
                     .arg(QString::fromUtf8(output.isEmpty() ? m_commandDiagnostics : output).trimmed());
@@ -111,7 +111,7 @@ RemoteSecurityWidget::RemoteSecurityWidget(QWidget *parent)
     });
     connect(m_lock, &QPushButton::clicked, this, [this]() {
         clearOperationError();
-        run({QStringLiteral("lock")}, 30000, [this](bool succeeded, const QByteArray &output) {
+        run({QStringLiteral("lock")}, 30000, true, [this](bool succeeded, const QByteArray &output) {
             if (!succeeded)
                 m_operationError = tr("Remote access could not be locked. %1")
                     .arg(QString::fromUtf8(output.isEmpty() ? m_commandDiagnostics : output).trimmed());
@@ -136,7 +136,7 @@ void RemoteSecurityWidget::refresh()
     if (m_command.busy())
         return;
 
-    run({QStringLiteral("security-status")}, 30000,
+    run({QStringLiteral("security-status")}, 30000, false,
         [this](bool succeeded, const QByteArray &output) {
             if (!succeeded) {
                 setUnavailable(tr("Dockpipe could not read the remote access security status."));
@@ -152,7 +152,7 @@ void RemoteSecurityWidget::refresh()
         });
 }
 
-void RemoteSecurityWidget::run(const QStringList &arguments, int timeoutMs,
+void RemoteSecurityWidget::run(const QStringList &arguments, int timeoutMs, bool allowAuthentication,
                                RemoteCommand::Completion completion)
 {
     if (m_command.busy())
@@ -169,6 +169,8 @@ void RemoteSecurityWidget::run(const QStringList &arguments, int timeoutMs,
 
     QStringList commandArguments{QStringLiteral("remote")};
     commandArguments.append(arguments);
+    commandArguments << QStringLiteral("--auth")
+                     << (allowAuthentication ? QStringLiteral("auto") : QStringLiteral("never"));
     m_commandDiagnostics.clear();
     m_command.run(program, commandArguments, std::move(completion), timeoutMs);
 }
@@ -341,7 +343,7 @@ void RemoteSecurityWidget::savePolicy()
          QStringLiteral("--idle-seconds"), QString::number(m_idleSeconds->value()),
          booleanArgument(QStringLiteral("--lock-on-screen-lock"), m_lockOnScreenLock->isChecked()),
          booleanArgument(QStringLiteral("--lock-on-sleep"), m_lockOnSleep->isChecked())},
-        125000, [this](bool succeeded, const QByteArray &output) {
+        150000, true, [this](bool succeeded, const QByteArray &output) {
             if (!succeeded) {
                 m_operationError = tr("Dockpipe could not update the shared remote access policy. %1")
                     .arg(QString::fromUtf8(output.isEmpty() ? m_commandDiagnostics : output).trimmed());

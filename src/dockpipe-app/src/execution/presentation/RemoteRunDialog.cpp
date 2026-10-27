@@ -72,6 +72,7 @@ RemoteRunDialog::RemoteRunDialog(const Context &context, const QString &node, QW
         m_preview->clear();
         auto args = arguments();
         args.append(QStringLiteral("--dry-run"));
+        args << QStringLiteral("--auth") << QStringLiteral("auto");
         runRemote(args,
                       [this](bool ok, const QByteArray &data) {
             if (!ok) {
@@ -88,6 +89,7 @@ RemoteRunDialog::RemoteRunDialog(const Context &context, const QString &node, QW
     connect(m_send, &QPushButton::clicked, this, [this]() {
         auto args = arguments();
         args << "--expected-digest" << m_digest;
+        args << QStringLiteral("--auth") << QStringLiteral("auto");
         runRemote(args,
                       [this](bool ok, const QByteArray &) {
             if (ok) {
@@ -110,7 +112,7 @@ void RemoteRunDialog::runRemote(const QStringList &arguments, RemoteCommand::Com
         m_preview->setPlainText(error);
         return;
     }
-    m_command.run(program, arguments, std::move(completion), 120000);
+    m_command.run(program, arguments, std::move(completion), 150000);
 }
 
 void RemoteRunDialog::invalidatePreview()

@@ -4,6 +4,7 @@ package remote
 
 import (
 	"context"
+	"errors"
 	"net"
 	"os"
 	"path/filepath"
@@ -42,6 +43,11 @@ func TestSecurityIPCSharesLockAcrossClientsAndPreservesAdmittedWork(t *testing.T
 	status, err := callSecurityAt(ctx, directory, SecurityRequest{Action: "status"})
 	if err != nil || status.Status == nil || !status.Status.Locked {
 		t.Fatalf("authority did not start locked: %v", err)
+	}
+	_, err = callSecurityAt(ctx, directory, SecurityRequest{Action: "sign", Audience: broker.state.Identity.PublicKey,
+		Path: "/v1/nodes", Digest: bodyDigest([]byte("null"))})
+	if !errors.Is(err, ErrOperatorLocked) {
+		t.Fatalf("IPC did not preserve the typed lock denial: %v", err)
 	}
 	if _, err := callSecurityAt(ctx, directory, SecurityRequest{Action: "unlock"}); err != nil {
 		t.Fatal(err)

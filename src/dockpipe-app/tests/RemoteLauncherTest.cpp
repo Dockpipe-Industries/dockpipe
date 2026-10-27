@@ -144,6 +144,7 @@ remote:info)
     echo '{"broker":{"mode":"local","endpoint":"https://remote.example.com","resolver":{"name":"example.tunnel","title":"Example Tunnel","version":"1.2.0"}}}'
   fi ;;
 remote:jobs)
+  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/jobs-args"
   if [ -f "$DOCKPIPE_TEST_ROOT/jobs-fail" ]; then
     echo 'Could not reach fixture broker' >&2
     exit 1
@@ -153,8 +154,19 @@ remote:jobs)
 remote:cancel)
   printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/cancel-job-args"
   echo '{}' ;;
-remote:nodes) echo '[{"node":"mac-mini","status":"paired"},{"node":"studio-invite","status":"invited"}]' ;;
+remote:nodes)
+  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/nodes-args"
+  if [ "$4" = "auto" ]; then printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/nodes-auto-args"; fi
+  echo '[{"node":"mac-mini","status":"paired"},{"node":"studio-invite","status":"invited"}]' ;;
+remote:security-status)
+  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/security-status-args"
+  echo '{"supported":true,"authority_available":true,"locked":true,"idle_seconds":300,"lock_on_screen_lock":false,"lock_on_sleep":true,"absolute_seconds":3600,"expires_at":"","capabilities":{"idle":true,"screen_lock":false,"sleep":true},"detail":"Fixture status."}' ;;
 remote:observe)
+  if [ "$6" = "auto" ]; then
+    printf '%s\n' "$@" >> "$DOCKPIPE_TEST_ROOT/observe-auto-args"
+  elif [ "$4" = "monitor-host" ]; then
+    printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/observe-args"
+  fi
   if [ -f "$DOCKPIPE_TEST_ROOT/monitor-delay" ]; then sleep 0.2; fi
   cat "$DOCKPIPE_TEST_ROOT/monitor.json" ;;
 remote:pairings) echo '[{"node":"studio","code":"ABCD-1234-5678","status":"pending","expires_at":"2026-10-09T07:00:00Z"}]' ;;
@@ -673,6 +685,21 @@ exec "$@"
         std::fprintf(stderr, "Machine discovery failed\n");
         return 3;
     }
+    auto *remoteLockStatus = remote->findChild<QLabel *>("remoteLockStatus");
+    if (!remoteLockStatus || !waitUntil([&]() { return remoteLockStatus->text().contains("Remote access is locked."); }))
+        return 246;
+    QFile securityStatusArgs(directory.filePath("security-status-args"));
+    if (!securityStatusArgs.open(QIODevice::ReadOnly)
+        || securityStatusArgs.readAll() != "remote\nsecurity-status\n--auth\nnever\n")
+        return 247;
+    button(remote, "Refresh")->click();
+    QFile nodesAutoArgs(directory.filePath("nodes-auto-args"));
+    if (!waitUntil([&]() { return nodesAutoArgs.open(QIODevice::ReadOnly); }))
+        return 248;
+    if (nodesAutoArgs.readAll() != "remote\nnodes\n--auth\nauto\n")
+        return 249;
+    if (!waitUntil([&]() { return button(remote, "Refresh")->isEnabled(); }))
+        return 250;
     // All screenshots use isolated fixture data, never a live account or broker.
     if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE"))
         window.grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + "-machines.png");
@@ -815,7 +842,8 @@ exec "$@"
     if (!waitUntil([&]() { return hasRemoteStatus("Worker service started."); }))
         return 51;
     QFile serviceCalls(directory.filePath("service-calls"));
-    if (!serviceCalls.open(QIODevice::ReadOnly) || serviceCalls.readAll() != "remote\nservice\n--role\nworker\n")
+    if (!serviceCalls.open(QIODevice::ReadOnly)
+        || serviceCalls.readAll() != "remote\nservice\n--role\nworker\n--auth\nauto\n")
         return 52;
     serviceCalls.close();
     QFile serviceFails(directory.filePath("service-fails"));
@@ -900,7 +928,11 @@ exec "$@"
     if (!waitUntil([&]() { return dialog.result() == QDialog::Accepted; }))
         return 10;
     QFile submitted(directory.filePath("submit-args"));
-    if (!submitted.open(QIODevice::ReadOnly) || !submitted.readAll().contains("--expected-digest\nabc123\n"))
+    if (!submitted.open(QIODevice::ReadOnly))
+        return 11;
+    const QByteArray submittedArguments = submitted.readAll();
+    if (!submittedArguments.contains("--expected-digest\nabc123\n")
+        || !submittedArguments.endsWith("--auth\nauto\n"))
         return 11;
     if (QFile::exists(directory.filePath("project-cli-invoked")))
         return 241;
@@ -948,8 +980,14 @@ exec "$@"
         return 131;
     QFile cancelJobArgs(directory.filePath("cancel-job-args"));
     if (!cancelJobArgs.open(QIODevice::ReadOnly)
-        || cancelJobArgs.readAll() != "remote\ncancel\n--id\nbuild-1\n")
+        || cancelJobArgs.readAll() != "remote\ncancel\n--id\nbuild-1\n--auth\nauto\n")
         return 132;
+    QFile jobsArgs(directory.filePath("jobs-args"));
+    if (!jobsArgs.open(QIODevice::ReadOnly) || jobsArgs.readAll() != "remote\njobs\n--auth\nnever\n")
+        return 243;
+    QFile nodesArgs(directory.filePath("nodes-args"));
+    if (!nodesArgs.open(QIODevice::ReadOnly) || nodesArgs.readAll() != "remote\nnodes\n--auth\nnever\n")
+        return 244;
     capture("-execution-remote-jobs");
     QFile jobsFailure(directory.filePath("jobs-fail"));
     if (!jobsFailure.open(QIODevice::WriteOnly))
@@ -1043,7 +1081,8 @@ exec "$@"
     if (!waitUntil([&]() { return !repair->isVisible(); }))
         return 63;
     if (!serviceCalls.open(QIODevice::ReadOnly)
-        || serviceCalls.readAll().mid(beforeRepair.size()) != "remote\nservice\n--role\nbroker\n--replace\nremote\nservice\n--role\nbroker\n--replace\n")
+        || serviceCalls.readAll().mid(beforeRepair.size()) != "remote\nservice\n--role\nbroker\n--replace\n--auth\nauto\n"
+                                                              "remote\nservice\n--role\nbroker\n--replace\n--auth\nauto\n")
         return 64;
     serviceCalls.close();
 
@@ -1380,5 +1419,9 @@ exec "$@"
         return 193;
     if (const int monitoringResult = verifySystemMonitoring(directory.path()))
         return monitoringResult;
+    QFile observeArgs(directory.filePath("observe-args"));
+    if (!observeArgs.open(QIODevice::ReadOnly)
+        || observeArgs.readAll() != "remote\nobserve\n--node\nmonitor-host\n--auth\nnever\n")
+        return 245;
     return 0;
 }

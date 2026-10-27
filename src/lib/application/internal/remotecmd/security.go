@@ -4,11 +4,32 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 
 	contract "dockpipe/src/lib/domain/remote"
 	remoteio "dockpipe/src/lib/infrastructure/remote"
 )
+
+type remoteAuthenticationKey struct{}
+
+func reauthenticateRemote(ctx context.Context) error {
+	allowed, _ := ctx.Value(remoteAuthenticationKey{}).(bool)
+	if !allowed {
+		return remoteio.ErrOperatorLocked
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	fmt.Fprintln(os.Stderr, "Remote access is locked. Authenticate with the operating system to continue.")
+	closeAgent, err := startTerminalSecurityAgent(ctx)
+	if err != nil {
+		return err
+	}
+	defer closeAgent()
+	_, err = remoteio.CallSecurity(ctx, remoteio.SecurityRequest{Action: "unlock"})
+	return err
+}
 
 func remoteSecurity(ctx context.Context, command string, changes map[string]bool, idle int, screenLock, sleep bool) error {
 	action := "status"

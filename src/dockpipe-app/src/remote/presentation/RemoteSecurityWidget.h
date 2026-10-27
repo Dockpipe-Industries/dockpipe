@@ -19,6 +19,7 @@ public:
 
 private:
     void run(const QStringList &arguments, int timeoutMs,
+             bool allowAuthentication,
              RemoteCommand::Completion completion);
     void applyStatus(const QJsonObject &status);
     void setUnavailable(const QString &detail, bool locked = false);
