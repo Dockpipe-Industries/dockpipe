@@ -237,10 +237,25 @@ void ExecutionExplorer::refresh()
             args << "--container" << container;
     }
     const QString node = m_machine->currentData().toString();
-    if (!node.isEmpty())
+    QString program;
+    if (!node.isEmpty()) {
         args = {"remote", "observe", "--node", node};
+        QString error;
+        program = DockpipeChoices::operatorDockpipeBinary(&error);
+        if (program.isEmpty()) {
+            m_overview->clear();
+            m_system->setRowCount(0);
+            m_cpuCounters.clear();
+            m_sampleTime = 0;
+            m_snapshot = {};
+            m_status->setText(error);
+            return;
+        }
+    } else {
+        program = DockpipeChoices::preferredDockpipeBinary(m_workdir);
+    }
     const quint64 generation = m_generation;
-    m_command.run(DockpipeChoices::preferredDockpipeBinary(m_workdir), args,
+    m_command.run(program, args,
         [this, generation, node](bool ok, const QByteArray &output) {
             if (generation != m_generation)
                 return;

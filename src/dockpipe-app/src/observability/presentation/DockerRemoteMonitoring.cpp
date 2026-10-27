@@ -44,7 +44,21 @@ void DockerObservabilityWidget::refreshRemote()
         return;
     const QString node = m_machine->currentData().toString();
     const quint64 generation = m_generation;
-    m_remoteCommand.run(DockpipeChoices::preferredDockpipeBinary(QString()),
+    QString error;
+    const QString program = DockpipeChoices::operatorDockpipeBinary(&error);
+    if (program.isEmpty()) {
+        m_snapshot = {};
+        m_selectedResource.clear();
+        m_containers->setRowCount(0);
+        m_networks->setRowCount(0);
+        m_volumes->setRowCount(0);
+        updateGraph(m_snapshot);
+        updateInspector();
+        updateSummary();
+        setStatus(error);
+        return;
+    }
+    m_remoteCommand.run(program,
         {"remote", "observe", "--node", node}, [this, node, generation](bool ok, const QByteArray &output) {
             if (generation != m_generation || !m_active || m_monitorPaused)
                 return;

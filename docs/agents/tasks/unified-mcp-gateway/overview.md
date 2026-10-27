@@ -40,6 +40,10 @@ Direct external tokens are preferred where supported; MCP authorization compatib
 assessed before implementation. Optional exchange/adapters must not become a mandatory identity
 platform or Cloud dependency. A fresh identity token cannot renew a human permission envelope.
 
+The proposed [TASK-053 adaptive threat detection and remote isolation](../adaptive-remote-threat-containment/index.yaml)
+consumes gateway identity and grant outcomes. It owns signal aggregation and
+worker-local control-plane containment, not gateway authentication or grant semantics.
+
 ## Current Architecture And Gaps
 
 Bounded source inspection on 2026-10-17 found these reuse points. This is an initial gap analysis,

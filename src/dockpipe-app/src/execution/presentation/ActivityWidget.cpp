@@ -312,7 +312,16 @@ void ActivityWidget::run(const QStringList &args, RemoteCommand::Completion comp
     m_output->hide();
     QStringList command{"remote"};
     command.append(args);
-    m_command.run(DockpipeChoices::preferredDockpipeBinary(m_workdir), command,
+    QString error;
+    const QString program = DockpipeChoices::operatorDockpipeBinary(&error);
+    if (program.isEmpty()) {
+        completion(false, error.toUtf8());
+        m_status->setText(error);
+        m_output->setPlainText(error);
+        m_output->show();
+        return;
+    }
+    m_command.run(program, command,
                   [this, completion](bool ok, const QByteArray &data) {
         m_status->setText(ok ? tr("Up to date with the broker.") : tr("Could not complete the operation. See details below."));
         m_output->setVisible(!ok && !m_output->toPlainText().isEmpty());

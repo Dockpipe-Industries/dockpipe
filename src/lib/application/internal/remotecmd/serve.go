@@ -11,6 +11,7 @@ import (
 	"time"
 
 	contract "dockpipe/src/lib/domain/remote"
+	"dockpipe/src/lib/infrastructure/osauth"
 	remoteio "dockpipe/src/lib/infrastructure/remote"
 )
 
@@ -42,6 +43,15 @@ func serve(ctx context.Context, root string) error {
 		return err
 	}
 	defer listener.Close()
+	platform, err := osauth.New()
+	if err != nil {
+		return err
+	}
+	closeSecurity, err := broker.StartOperatorSecurity(ctx, platform)
+	if err != nil {
+		return err
+	}
+	defer closeSecurity()
 	server := &http.Server{Handler: broker, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 16 << 10}
 	defer server.Close()
 	failures := make(chan error, 2)

@@ -360,3 +360,16 @@ Use `dockpipe sdk shell-env` to initialize the shell SDK.
 `dockpipe sdk path --language shell|powershell|python [--workdir <path>]` returns
 the requested library-owned helper path; no source checkout is required.
 Go consumers use `dockpipe/src/lib/sdk/repotools` from the published SDK.
+
+
+### Remote OS authentication
+
+`dockpipe remote security-status` prints the shared OS-user remote policy,
+locked state and native capability availability. `remote unlock` requests native
+OS authentication; `remote lock` immediately invalidates remote operator access.
+`remote security-policy --idle-seconds <60..3600>` configures inactivity, with
+optional `--lock-on-screen-lock=true|false` and `--lock-on-sleep=true|false`.
+Omitted policy fields retain their current values. Weakening requires fresh OS
+authentication; any change leaves access locked. These are global security
+settings, not workflow/project configuration. See [remote security](runtime/remote-nodes.md#os-authentication-and-global-remote-auto-lock)
+for native prerequisites, the one-hour maximum lease and migration limitations.

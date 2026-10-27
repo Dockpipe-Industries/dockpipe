@@ -182,7 +182,7 @@ func TestTerminalArchiveCrashOverlapAndDowngradeGuard(t *testing.T) {
 		Jobs         map[string]contract.Job   `json:"jobs"`
 	}
 	var legacy legacyState
-	if err := ReadPrivate(restarted.path, &legacy); err == nil || (!strings.Contains(err.Error(), "terminal_archive") && !strings.Contains(err.Error(), "machine_identity")) {
+	if err := ReadPrivate(restarted.path, &legacy); err == nil || (!strings.Contains(err.Error(), "terminal_archive") && !strings.Contains(err.Error(), "machine_identity") && !strings.Contains(err.Error(), "operator_security")) {
 		t.Fatalf("old schema accepted migrated broker: %v", err)
 	}
 	// An inconsistent hot copy may not override its archive on restart or lookup.

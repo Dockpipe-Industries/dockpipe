@@ -38,6 +38,7 @@ for goarch in "${architectures[@]}"; do
   cp "$binary" "$BIN"
 
   sed -e "s|__VERSION__|${VERSION}|g" -e "s|__GOARCH__|${goarch}|g" -e "s|__BINARY__|${BIN}|g" \
+    -e "s|__POLKIT_POLICY__|${REPO_ROOT}/workflows/package/linux-cli/assets/org.dockpipe.remote.policy|g" \
     "${REPO_ROOT}/workflows/package/linux-cli/assets/nfpm.yaml.in" > "${STAGE}/nfpm.yaml"
 
   if [[ -n "${DOCKPIPE_RELEASE_STORE:-}" ]]; then

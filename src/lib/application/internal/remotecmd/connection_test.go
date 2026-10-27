@@ -67,8 +67,8 @@ func TestRemoteInfoLegacyAndBoundResolver(t *testing.T) {
 		t.Fatal("stale provider metadata was presented as current")
 	}
 	client, err := operatorClient(root)
-	if err != nil || client.Endpoint != "http://127.0.0.1:47831" {
-		t.Fatalf("local administration must stay on loopback: %v", err)
+	if err == nil || client != nil {
+		t.Fatal("unmigrated local broker accepted bearer-only administration")
 	}
 }
 
@@ -87,8 +87,8 @@ func TestHostedConnectionAdoptionAndRouting(t *testing.T) {
 		t.Fatalf("adopt: %v, checked=%v", err, checked)
 	}
 	client, err := operatorClient(root)
-	if err != nil || client.Endpoint != result.Endpoint || client.Token != result.Token {
-		t.Fatalf("hosted operator route: %v", err)
+	if err == nil || client != nil || !strings.Contains(err.Error(), "OS-session protocol") {
+		t.Fatalf("hosted broker accepted static bearer fallback: %v", err)
 	}
 	info, err := describeRemote(root)
 	if err != nil || info.Broker.Mode != "hosted" || info.Broker.Resolver.Name != metadata.Name {
@@ -118,7 +118,7 @@ func TestHostedConnectionAdoptionAndRouting(t *testing.T) {
 		t.Fatal("unreachable broker was adopted")
 	}
 	saved, err := readConnection(root)
-	if err != nil || saved.Token != client.Token {
+	if err != nil || saved.Token != strings.Repeat("private", 8) {
 		t.Fatal("failed sign-in replaced existing credentials")
 	}
 	result.Endpoint = "https://different.example.com"

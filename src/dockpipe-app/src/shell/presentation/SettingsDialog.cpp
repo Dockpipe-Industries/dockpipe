@@ -1,5 +1,6 @@
 #include "SettingsDialog.h"
 #include "WorkspacePackageManager.h"
+#include "RemoteSecurityWidget.h"
 #ifdef Q_OS_MAC
 #include "DesktopPermissionsWidget.h"
 #endif
@@ -18,6 +19,7 @@
 #include <QCheckBox>
 #include <QGroupBox>
 #include <QScrollArea>
+#include <QTabWidget>
 
 namespace {
 
@@ -48,7 +50,6 @@ SettingsDialog::SettingsDialog(const LauncherSettings &settings, QWidget *parent
     scroll->setFrameShape(QFrame::NoFrame);
     auto *content = new QWidget;
     scroll->setWidget(content);
-    outer->addWidget(scroll, 1);
     auto *layout = new QVBoxLayout(content);
     layout->setContentsMargins(14, 14, 14, 14);
     layout->setSpacing(10);
@@ -178,6 +179,17 @@ SettingsDialog::SettingsDialog(const LauncherSettings &settings, QWidget *parent
     cockpitLayout->addWidget(retry);
     cockpitLayout->addWidget(options);
     layout->addWidget(cockpit);
+
+    m_tabs = new QTabWidget;
+    m_tabs->setObjectName(QStringLiteral("settingsTabs"));
+    m_tabs->addTab(scroll, tr("General"));
+    m_remoteSecurity = new RemoteSecurityWidget;
+    m_tabs->addTab(m_remoteSecurity, tr("Security"));
+    connect(m_tabs, &QTabWidget::currentChanged, this, [this](int index) {
+        if (m_tabs->widget(index) == m_remoteSecurity)
+            m_remoteSecurity->refresh();
+    });
+    outer->addWidget(m_tabs, 1);
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);

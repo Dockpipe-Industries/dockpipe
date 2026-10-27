@@ -29,6 +29,10 @@ install -m 755 "$(dirname "$app")/dockpipe-workspace-reader" "$app/Contents/MacO
 python3 "$root/workflows/dependencies/browser-sdk/assets/scripts/browser-runtime.py" --sdk "$browser_sdk" --platform "darwin-$arch" \
   --runtime "$app/Contents/Frameworks" --licenses "$resources/licenses/SpatialWebBrowser"
 install -m 755 "$root/src/bin/dockpipe" "$app/Contents/Helpers/dockpipe"
+clang -fobjc-arc -fblocks -O2 -Wall -Wextra \
+  -framework Foundation -framework LocalAuthentication -framework CoreGraphics -framework IOKit \
+  "$root/src/lib/infrastructure/osauth/native/darwin/system_auth.m" \
+  -o "$app/Contents/Helpers/dockpipe-system-auth"
 install -m 755 "$root/workflows/package/macos/assets/dockpipe" "$app/Contents/MacOS/dockpipe-cli"
 # The wrapper name must differ from Dockpipe even on case-insensitive APFS.
 otool -hv "$app/Contents/MacOS/DockPipe" >/dev/null
@@ -65,6 +69,7 @@ if [[ "$identity" != - ]]; then
   sign_args+=(--options runtime --timestamp)
 fi
 codesign "${sign_args[@]}" --identifier com.dockpipe.cli "$app/Contents/Helpers/dockpipe"
+codesign "${sign_args[@]}" --identifier com.dockpipe.system-auth "$app/Contents/Helpers/dockpipe-system-auth"
 codesign "${sign_args[@]}" --identifier com.dockpipe.workspace-reader "$app/Contents/MacOS/dockpipe-workspace-reader"
 codesign "${sign_args[@]}" \
   --entitlements "$webengine_helper/Contents/Resources/QtWebEngineProcess.entitlements" \

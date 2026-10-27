@@ -606,19 +606,13 @@ void RemoteWidget::run(const QStringList &arguments, RemoteCommand::Completion c
     QStringList args{"remote"};
     args.append(arguments);
     QString program;
-    const int interactionOption = arguments.indexOf("--interaction");
-    const bool nativeInteraction = interactionOption >= 0 && arguments.value(interactionOption + 1) == "gui";
-    if (nativeInteraction) {
-        QString error;
-        program = DockpipeChoices::operatorDockpipeBinary(&error);
-        if (program.isEmpty()) {
-            m_status->setText(error);
-            m_status->show();
-            m_output->appendPlainText(error);
-            return;
-        }
-    } else {
-        program = DockpipeChoices::preferredDockpipeBinary(m_workdir);
+    QString error;
+    program = DockpipeChoices::operatorDockpipeBinary(&error);
+    if (program.isEmpty()) {
+        m_status->setText(error);
+        m_status->show();
+        m_output->appendPlainText(error);
+        return;
     }
     m_command.run(program, args,
                   [this, completion](bool ok, const QByteArray &output) {

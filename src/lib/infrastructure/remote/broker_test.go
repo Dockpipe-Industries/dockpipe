@@ -33,6 +33,7 @@ func testBroker(t *testing.T) (string, *Broker, *Client, *httptest.Server) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	authority, _ := testSecurityAuthority(t, broker)
 	server := httptest.NewServer(broker)
 	t.Cleanup(server.Close)
 	client, err := NewClient(server.URL, admin)
@@ -40,6 +41,9 @@ func testBroker(t *testing.T) (string, *Broker, *Client, *httptest.Server) {
 		t.Fatal(err)
 	}
 	client.HTTP.Transport = brokerFixtureTransport{RoundTripper: client.HTTP.Transport, broker: broker}
+	client.OperatorProof = func(ctx context.Context, path string, body []byte) (SecurityProof, error) {
+		return authority.Sign(ctx, broker.state.Identity.PublicKey, path, bodyDigest(body))
+	}
 	t.Cleanup(client.HTTP.CloseIdleConnections)
 	return root, broker, client, server
 }

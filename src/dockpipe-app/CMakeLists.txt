@@ -101,6 +101,7 @@ set(DOCKPIPE_APP_SOURCES
     src/shell/infrastructure/SetupTerminal.cpp
     src/remote/infrastructure/RemoteCommand.cpp
     src/remote/presentation/RemoteWidget.cpp
+    src/remote/presentation/RemoteSecurityWidget.cpp
     src/remote/presentation/HardwareKeyDialog.cpp
     src/execution/presentation/RemoteRunDialog.cpp
     src/execution/presentation/ActivityWidget.cpp
@@ -698,7 +699,9 @@ if(BUILD_TESTING)
     set_tests_properties(project-files-graph PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;DOCKPIPE_WORKSPACE_READER=$<TARGET_FILE:dockpipe-workspace-reader>"
         TIMEOUT 45)
-    add_executable(launcher-settings-test tests/LauncherSettingsTest.cpp src/shell/presentation/SettingsDialog.cpp)
+    add_executable(launcher-settings-test tests/LauncherSettingsTest.cpp
+        src/shell/presentation/SettingsDialog.cpp src/remote/presentation/RemoteSecurityWidget.cpp)
+    target_include_directories(launcher-settings-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
     target_link_libraries(launcher-settings-test PRIVATE dockpipe-launcher-ui)
     if(APPLE)
         dockpipe_target_desktop_permissions(launcher-settings-test)
@@ -820,6 +823,14 @@ if(BUILD_TESTING)
     target_link_libraries(hardware-key-dialog-test PRIVATE Qt6::Widgets)
     add_test(NAME hardware-key-dialog COMMAND hardware-key-dialog-test)
     set_tests_properties(hardware-key-dialog PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(remote-security-widget-test tests/RemoteSecurityWidgetTest.cpp
+        src/remote/presentation/RemoteSecurityWidget.cpp)
+    target_link_libraries(remote-security-widget-test PRIVATE dockpipe-launcher-ui Qt6::Widgets)
+    add_test(NAME remote-security-widget COMMAND remote-security-widget-test)
+    set_tests_properties(remote-security-widget PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
 endif()
 
 if(BUILD_TESTING)

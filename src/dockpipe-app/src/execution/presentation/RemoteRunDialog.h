@@ -13,6 +13,7 @@ class RemoteRunDialog : public QDialog {
 public:
     RemoteRunDialog(const Context &context, const QString &node, QWidget *parent = nullptr);
 private:
+    void runRemote(const QStringList &arguments, RemoteCommand::Completion completion);
     QStringList arguments() const;
     void invalidatePreview();
     Context m_context;

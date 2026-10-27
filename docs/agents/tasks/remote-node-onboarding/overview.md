@@ -295,8 +295,9 @@ This narrows the earlier hardware-approval wording; it does not relax broker-sid
 scope checks or separate maintenance/restart authority.
 
 Provide one global, machine-level Dockpipe **Security > Remote access** policy,
-consumed by the desktop, CLI and shared authorization service. This is proposed
-behavior, not an implemented settings page or supported config schema.
+consumed by the desktop, CLI and shared authorization service. The initial local
+broker implementation is recorded below; remaining platform/hosted qualification
+is still open.
 
 - **Auto-lock after inactivity:** configurable duration; proposed default 5 minutes,
   with presets such as 1, 5, 15, 30 and 60 minutes plus a validated custom duration.
@@ -488,3 +489,75 @@ completed authenticated polls, both public machine identities matched, and the
 temporary agents, broker and listener were stopped with the test enrollment
 revoked. This repeat closes the user-observed cross-machine pairing check; it
 does not expand the platform or packaged-upgrade qualification above.
+
+
+### OS-authenticated remote unlock implementation
+
+The local broker now owns one canonical OS-user remote authority, with an
+owner-only Unix socket and kernel-verified caller UID/PID. Its policy location is
+resolved from the OS account database, independently of project roots, `HOME`,
+XDG overrides and per-connection `--state`. A second local broker cannot create a
+second, weaker lock owner. Hosted operator sessions and Windows remain unavailable
+until their corresponding native/protocol adapters are implemented; they cannot
+fall back to static bearer administration.
+
+The authority starts locked. Native OS authentication creates an ephemeral
+in-memory signing credential; it never writes that credential or an unlock lease
+to disk. Each administrative HTTP request needs a scoped, single-use proof bound
+to the broker identity, OS user, session, operation, body digest and a deadline.
+The broker verifies fresh OS state outside the job mutex, then rechecks admission
+and a native suspend generation before dispatch. The administrator bearer alone
+cannot operate the broker. Replies are authenticated against the pinned broker
+identity. A persisted protocol marker makes older strict readers reject hardened
+broker state rather than bypass the new boundary.
+
+Default inactivity timeout is 300 seconds, configurable from 60 to 3600 seconds,
+with an independent one-hour maximum authorization lifetime. Background traffic
+never counts as human input. Native lock/sleep controls default on; unknown
+required capability fails closed. Unknown idle tracking uses a fixed timeout from
+unlock and is clearly disclosed. Security policy changes always leave access
+locked; weakening requires fresh OS authentication, while tightening takes effect
+without an additional prompt. Immediate lock, OS lock, inactivity, sleep/resume,
+restart and cancelled/invalidated authentication cannot restore authority. These
+controls govern new operator actions; admitted worker jobs can finish normally.
+Mandatory physical-key pairing remains an additional independent gate.
+
+The desktop exposes **Settings > Security > Remote access** through the same CLI
+policy owner. CLI commands are `remote security-status`, `remote unlock`,
+`remote lock` and `remote security-policy`. Native dialogs are OS-owned; Dockpipe
+never receives an OS password. Linux uses a dedicated polkit `auth_self` action
+without cached authorization and trusted local-session/lock signals, with native
+GNOME idle tracking. macOS uses a signed native LocalAuthentication helper,
+Quartz idle and suspend clocks. Missing native helpers or lock capabilities are
+reported explicitly. This is process-protected in-memory authority, not a claim
+that existing persisted machine keys are bound to an OS keystore or protected
+against arbitrary compromise of the same OS account.
+
+Validation covers direct bearer rejection, replay/body/path substitution,
+shared-client locking, policy weakening, inactivity and absolute expiry,
+late/cancelled authentication, silent IPC shutdown and admitted work while locked.
+Native OS prompt, installed packaging and cross-platform qualification are
+separate from deterministic test fixtures. No production service replacement,
+per-action hardware prompt, remote approval service or publication is included.
+
+The native helper compiled and passed signature verification on the macOS ARM64
+test host. Its read-only snapshot reported known idle, lock and sleep signals;
+typed OS-registry fixtures cover missing, ambiguous and positively locked console
+states. This check did not invoke LocalAuthentication. The full local Go suite,
+affected race suites and Linux/macOS ARM64 CLI builds passed. The operator approved
+installation of the root-owned packaged polkit action and personally completed
+the native Linux OS prompt against an isolated broker. The authority reported
+unlocked, an authenticated `remote nodes` request succeeded, and the same request
+was rejected after explicit lock. The global five-minute policy was preserved.
+Automatic idle, screen-lock and sleep transitions remain fixture-tested rather
+than operator-observed in this run. Flatpak host authentication integration remains
+unqualified; the native-host results do not establish sandboxed app support.
+The isolated Linux broker reports known idle, screen-lock and sleep capabilities,
+including the GNOME Shell-owned screen-saver endpoint. All four focused desktop
+tests (remote launcher, execution explorer, launcher settings and remote security)
+and the desktop application build passed.
+
+[TASK-053](../adaptive-remote-threat-containment/index.yaml) adds a separate P2
+research proposal for adaptive threat signals and broker-independent worker
+containment. It consumes these authorization outcomes; scores never relax a hard
+denial or replace the authoritative lock boundary.

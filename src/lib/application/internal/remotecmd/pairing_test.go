@@ -4,6 +4,8 @@ package remotecmd
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http/httptest"
 	"os"
@@ -15,6 +17,7 @@ import (
 	contract "dockpipe/src/lib/domain/remote"
 	"dockpipe/src/lib/infrastructure/hardwarekey"
 	remoteio "dockpipe/src/lib/infrastructure/remote"
+	"dockpipe/src/lib/internal/testsupport/ossecurity"
 	"dockpipe/src/lib/internal/testsupport/securitykey"
 )
 
@@ -52,9 +55,36 @@ func TestOnlinePairingPersistsIdentityBeforeApproval(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	securityDirectory, err := os.MkdirTemp("", "remote-os-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(securityDirectory)
+	securityDirectory, err = filepath.EvalSymlinks(securityDirectory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stopSecurity, err := broker.StartOperatorSecurity(context.Background(), ossecurity.Platform{Directory: securityDirectory})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stopSecurity()
+	authority := broker.OperatorAuthority()
+	var initialized remoteio.BrokerState
+	if err := remoteio.ReadPrivate(filepath.Join(brokerRoot, "broker.json"), &initialized); err != nil {
+		t.Fatal(err)
+	}
+	brokerIdentity := initialized.Identity.PublicKey
+	if err := authority.Unlock(context.Background(), os.Getpid()); err != nil {
+		t.Fatal(err)
+	}
 	server := httptest.NewServer(broker)
 	defer server.Close()
 	admin, _ := remoteio.NewClient(server.URL, operator.Token)
+	admin.OperatorProof = func(ctx context.Context, path string, body []byte) (remoteio.SecurityProof, error) {
+		digest := sha256.Sum256(body)
+		return authority.Sign(ctx, brokerIdentity, path, hex.EncodeToString(digest[:]))
+	}
 	defer admin.HTTP.CloseIdleConnections()
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()

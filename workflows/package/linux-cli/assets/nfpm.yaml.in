@@ -18,3 +18,7 @@ contents:
     dst: /usr/bin/dockpipe
     file_info:
       mode: 0755
+  - src: "__POLKIT_POLICY__"
+    dst: /usr/share/polkit-1/actions/org.dockpipe.remote.policy
+    file_info:
+      mode: 0644

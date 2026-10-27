@@ -290,6 +290,64 @@ connecting to LAN hosts. Ad-hoc development signatures can test the exact build,
 but reliable identity across updates requires a consistent Apple-issued signing
 identity. Duplicate permission entries do not establish which build is authorized.
 
+### OS authentication and global remote auto-lock
+
+Local broker administration starts locked. Open **Settings > Security > Remote
+access** or use:
+
+```sh
+dockpipe remote security-status
+dockpipe remote unlock
+dockpipe remote lock
+dockpipe remote security-policy --idle-seconds 300 --lock-on-screen-lock=true --lock-on-sleep=true
+```
+
+`unlock` uses an OS-owned authentication dialog; terminal Linux clients use the
+OS terminal agent. Dockpipe does not collect the operating-system password.
+Physical-key pairing approval still requires the registered key independently.
+
+The shared OS-user policy defaults to five minutes of inactivity, with validated
+custom durations from 60 to 3600 seconds. Authorization also expires after one
+hour regardless of activity. OS lock and sleep locking default on. All policy
+changes leave access locked; weakening a setting requires OS authentication,
+while tightening takes effect immediately. Use `remote unlock` afterward.
+Background polling, API requests and running workflows cannot renew inactivity.
+Locking blocks new administrative actions and does not cancel admitted jobs or
+revoke worker machine credentials.
+
+The policy is a private, versioned `policy.json` under the OS account's canonical
+security directory (`~/.local/state/dockpipe/security` on Linux, or
+`~/Library/Application Support/Dockpipe/security` on macOS). Its location ignores
+project, Dockpipe-root, HOME and XDG overrides. The desktop reads and updates the
+same policy through the CLI; it has no separate preference copy. One local broker
+owns the canonical authority; concurrent secondary brokers fail closed.
+
+Linux packages install a dedicated `org.dockpipe.remote.unlock` polkit action.
+Flatpak host authentication integration remains unqualified; native-host results
+do not establish sandboxed app support.
+A source-build CLI needs that reviewed OS action installed before native
+unlock can work. An active local login and a native authentication agent are
+required. GNOME exposes trusted idle duration; other desktops currently use the
+explicitly reported fixed timeout from unlock. If required screen-lock or suspend
+signals are unavailable, access remains locked. macOS packages include a signed
+`dockpipe-system-auth` helper; a bare CLI without its helper cannot unlock.
+`security-status` reports capabilities and unavailable integrations.
+
+Signing credentials and unlock sessions exist only in the authority's memory and
+are discarded on lock/restart. Static administrator credentials alone cannot
+operate the broker; requests and replies carry fresh, scoped cryptographic proof.
+This protects against stolen HTTP bearer credentials, not arbitrary compromise
+of the broker's OS account. Existing persisted installation keys are still
+protected by the existing private-file boundary, rather than an OS keystore.
+
+This changes the local broker protocol. Restart/replace an installed service only
+through an explicit upgrade operation; no service is restarted automatically.
+Older strict binaries reject the hardened state marker. Preserve state before
+migration and do not attempt an older binary against migrated state. Hosted
+broker operator access and the Windows native authority currently fail closed
+until compatible OS-session adapters are available. Public health metadata and
+existing worker identity/heartbeat/result paths do not grant operator access.
+
 ### Legacy file invitation recovery
 
 Creating invitations and consuming unused invitation files are disabled because

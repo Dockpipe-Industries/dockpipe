@@ -4,6 +4,8 @@
 #include "Theme.h"
 #include <QApplication>
 #include <QComboBox>
+#include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QHeaderView>
 #include <QMouseEvent>
@@ -14,6 +16,7 @@
 #include <QPushButton>
 #include <QTableWidget>
 #include <QTemporaryDir>
+#include <QThread>
 
 #define SNAPSHOT_CHECK(value) do { if (!(value)) return 90; } while (false)
 
@@ -162,5 +165,56 @@ int main(int argc, char **argv)
     explorer.findChild<QPushButton *>("executionPause")->setChecked(true);
     if (!explorer.findChild<QLabel *>("executionStatus")->text().contains("paused"))
         return 10;
+
+    const QString testRoot = temporary.path();
+    const QString projectRoot = testRoot + "/project";
+    const QString projectBinaryDirectory = projectRoot + "/src/bin";
+    const QString trustedBinaryDirectory = testRoot + "/trusted-bin";
+    if (!QDir().mkpath(projectBinaryDirectory) || !QDir().mkpath(trustedBinaryDirectory))
+        return 19;
+    QFile trustedCli(trustedBinaryDirectory + "/dockpipe");
+    if (!trustedCli.open(QIODevice::WriteOnly))
+        return 20;
+    trustedCli.write("#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$DOCKPIPE_TEST_ROOT/operator-args\"\n"
+                     "echo '{\"schema\":\"dockpipe.machine_snapshot.v1\",\"node\":\"fixture-node\",\"state\":\"live\",\"captured_at\":\"2026-01-01T12:00:00Z\",\"execution\":{}}'\n");
+    trustedCli.close();
+    trustedCli.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+    if (!QFile::copy(trustedBinaryDirectory + "/dockpipe", testRoot + "/trusted-cli"))
+        return 21;
+    QFile::setPermissions(testRoot + "/trusted-cli", QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+    QFile projectCli(projectBinaryDirectory + "/dockpipe");
+    if (!projectCli.open(QIODevice::WriteOnly))
+        return 22;
+    projectCli.write("#!/bin/sh\ntouch \"$DOCKPIPE_TEST_ROOT/project-cli-invoked\"\n"
+                     "exec \"$DOCKPIPE_TEST_ROOT/trusted-cli\" \"$@\"\n");
+    projectCli.close();
+    projectCli.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+
+    qputenv("DOCKPIPE_TEST_ROOT", testRoot.toUtf8());
+    const QByteArray previousPath = qgetenv("PATH");
+    qputenv("PATH", trustedBinaryDirectory.toUtf8() + ":" + previousPath);
+    qunsetenv("DOCKPIPE_BIN");
+    explorer.setWorkdir(projectRoot);
+    explorer.setNodes({"fixture-node"});
+    auto *machine = explorer.findChild<QComboBox *>("monitoringMachine");
+    if (!machine || machine->count() < 2)
+        return 23;
+    machine->setCurrentIndex(1);
+    explorer.findChild<QPushButton *>("executionPause")->setChecked(false);
+    explorer.setActive(true);
+    QElapsedTimer remoteTimer;
+    remoteTimer.start();
+    const QString operatorArgsPath = testRoot + "/operator-args";
+    while (!QFile::exists(operatorArgsPath) && remoteTimer.elapsed() < 3000) {
+        QApplication::processEvents();
+        QThread::msleep(10);
+    }
+    if (!QFile::exists(operatorArgsPath) || QFile::exists(testRoot + "/project-cli-invoked"))
+        return 24;
+    QFile operatorArgs(operatorArgsPath);
+    if (!operatorArgs.open(QIODevice::ReadOnly)
+        || operatorArgs.readAll() != "remote\nobserve\n--node\nfixture-node\n")
+        return 25;
+    explorer.setActive(false);
     return 0;
 }

@@ -212,6 +212,12 @@ tasks:
   dispatch:
     readiness: decision_ready
     ownership: unclaimed
+- id: TASK-053
+  topic: Adaptive threat detection and automatic remote isolation
+  path: docs/agents/tasks/adaptive-remote-threat-containment/index.yaml
+  dispatch:
+    readiness: unclassified
+    ownership: unclaimed
 maintenance:
 - Keep tasks open-only and core-owned; external_backlogs route independent owners without claiming their
   work.

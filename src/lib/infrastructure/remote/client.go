@@ -17,11 +17,12 @@ import (
 )
 
 type Client struct {
-	Identity  *remoteidentity.Identity
-	BrokerKey string
-	Endpoint  string
-	Token     string
-	HTTP      *http.Client
+	OperatorProof func(context.Context, string, []byte) (SecurityProof, error)
+	Identity      *remoteidentity.Identity
+	BrokerKey     string
+	Endpoint      string
+	Token         string
+	HTTP          *http.Client
 }
 
 func NewClient(endpoint, token string) (*Client, error) {
@@ -57,6 +58,14 @@ func (c *Client) Call(ctx context.Context, path string, input, output any) error
 	}
 	request.Header.Set("Authorization", "Bearer "+c.Token)
 	request.Header.Set("Content-Type", "application/json")
+	var operatorProof SecurityProof
+	if c.OperatorProof != nil && contract.OperatorScope(path) != "" {
+		operatorProof, err = c.OperatorProof(ctx, path, data)
+		if err != nil {
+			return err
+		}
+		request.Header.Set(operatorProofHeader, operatorProof.Header)
+	}
 	nonce := ""
 	if c.Identity != nil {
 		if remoteidentity.Fingerprint(c.BrokerKey) == "" {
@@ -87,6 +96,10 @@ func (c *Client) Call(ctx context.Context, path string, input, output any) error
 	}
 	if c.Identity != nil && !remoteidentity.Verify(c.BrokerKey, machineMessage("response", nonce, path, response.StatusCode, body), response.Header.Get(machineSignatureHeader)) {
 		return errors.New("broker machine response verification failed")
+	}
+	if operatorProof.Header != "" && !remoteidentity.Verify(operatorProof.BrokerKey,
+		machineMessage("operator-response", operatorProof.Nonce, path, response.StatusCode, body), response.Header.Get(operatorResponseHeader)) {
+		return errors.New("broker operator response verification failed; authority may have locked or expired")
 	}
 	if response.StatusCode != http.StatusOK {
 		// Provider error pages and reflected content are not safe diagnostics.

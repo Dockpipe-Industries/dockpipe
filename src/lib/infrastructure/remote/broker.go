@@ -29,18 +29,21 @@ type Enrollment struct {
 }
 
 type BrokerState struct {
-	Identity        *remoteidentity.Identity  `json:"machine_identity,omitempty"`
-	PairingKeys     *hardwarekey.Registry     `json:"pairing_keys,omitempty"`
-	TerminalArchive bool                      `json:"terminal_archive,omitempty"`
-	Pairings        map[string]PairingSession `json:"pairings,omitempty"`
-	PairingUntil    time.Time                 `json:"pairing_until,omitempty"`
-	Schema          string                    `json:"schema"`
-	AdminHash       string                    `json:"admin_hash"`
-	Nodes           map[string]Enrollment     `json:"nodes"`
-	Jobs            map[string]contract.Job   `json:"jobs"`
+	OperatorSecurity string                    `json:"operator_security,omitempty"`
+	Identity         *remoteidentity.Identity  `json:"machine_identity,omitempty"`
+	PairingKeys      *hardwarekey.Registry     `json:"pairing_keys,omitempty"`
+	TerminalArchive  bool                      `json:"terminal_archive,omitempty"`
+	Pairings         map[string]PairingSession `json:"pairings,omitempty"`
+	PairingUntil     time.Time                 `json:"pairing_until,omitempty"`
+	Schema           string                    `json:"schema"`
+	AdminHash        string                    `json:"admin_hash"`
+	Nodes            map[string]Enrollment     `json:"nodes"`
+	Jobs             map[string]contract.Job   `json:"jobs"`
 }
 
 type Broker struct {
+	operatorTokenHash string
+	security          *SecurityAuthority
 	pairingChallenges map[string]hardwarePairingChallenge
 	machineChallenges map[string]machineChallenge
 	monitoring        map[string]MachineSnapshot
@@ -76,6 +79,11 @@ func NewBroker(root string) (*Broker, error) {
 		}
 		b.state.Identity = &identity
 	}
+	if b.state.OperatorSecurity != "" && b.state.OperatorSecurity != contract.OperatorSecurityVersion {
+		return nil, errors.New("unsupported broker operator security protocol")
+	}
+	b.state.OperatorSecurity = contract.OperatorSecurityVersion
+	b.operatorTokenHash = b.state.AdminHash
 	if err := b.state.Identity.Validate(); err != nil {
 		return nil, err
 	}
@@ -139,6 +147,8 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		limit = MaxMonitoringBytes
 	}
 	switch r.URL.Path {
+	case "/v1/health":
+		limit = 1024
 	case "/v1/pairing-request":
 		limit = 4096
 	case "/v1/machine-challenge", "/v1/approve-begin":
@@ -151,13 +161,30 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "request too large", http.StatusRequestEntityTooLarge)
 		return
 	}
+	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	var admission operatorAdmission
+	var authorizationError error
+	if matches(token, b.operatorTokenHash) && contract.OperatorScope(r.URL.Path) != "" {
+		if b.security == nil || len(r.Header.Values(operatorProofHeader)) != 1 {
+			authorizationError = errors.New("OS-authenticated remote access is locked or unavailable")
+		} else {
+			admission, authorizationError = b.security.Verify(r.Context(), r.Header.Get(operatorProofHeader), r.URL.Path, body)
+		}
+	}
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 	if b.poisoned {
 		http.Error(w, "broker storage requires restart and inspection", http.StatusServiceUnavailable)
 		return
 	}
-	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if r.URL.Path == "/v1/health" {
+		b.respond(w, func() (any, error) {
+			return struct {
+				Schema string `json:"schema"`
+			}{Schema: contract.Version}, nil
+		})
+		return
+	}
 	if r.URL.Path == "/v1/pairing-request" {
 		b.respond(w, func() (any, error) { return b.requestPairing(body) })
 		return
@@ -167,7 +194,7 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if matches(token, b.state.AdminHash) {
-		b.respond(w, func() (any, error) { return b.operator(r.URL.Path, body) })
+		b.serveOperator(w, r, body, admission, authorizationError)
 		return
 	}
 	for node, enrollment := range b.state.Nodes {

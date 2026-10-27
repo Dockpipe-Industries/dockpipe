@@ -840,6 +840,36 @@ exec "$@"
     QApplication::processEvents();
     if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE"))
         window.grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + "-workflows.png");
+
+    const QByteArray originalDockpipeBin = qgetenv("DOCKPIPE_BIN");
+    const QByteArray originalPath = qgetenv("PATH");
+    const QString projectBinaryDirectory = directory.filePath("src/bin");
+    const QString trustedBinaryDirectory = directory.filePath("trusted-host-bin");
+    if (!QDir().mkpath(projectBinaryDirectory) || !QDir().mkpath(trustedBinaryDirectory))
+        return 237;
+    QFile trustedCli(trustedBinaryDirectory + "/dockpipe");
+    QFile sourceCli(cli);
+    if (!sourceCli.open(QIODevice::ReadOnly) || !trustedCli.open(QIODevice::WriteOnly)
+        || trustedCli.write(sourceCli.readAll()) <= 0)
+        return 238;
+    trustedCli.close();
+    trustedCli.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+    QFile operatorCli(directory.filePath("operator-dockpipe"));
+    if (!sourceCli.seek(0) || !operatorCli.open(QIODevice::WriteOnly)
+        || operatorCli.write(sourceCli.readAll()) <= 0)
+        return 239;
+    operatorCli.close();
+    operatorCli.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+    QFile projectCli(directory.filePath("src/bin/dockpipe"));
+    if (!projectCli.open(QIODevice::WriteOnly))
+        return 240;
+    projectCli.write("#!/bin/sh\nif [ \"$1\" = remote ]; then printf '%s\\n' \"$@\" >> \"$DOCKPIPE_TEST_ROOT/project-cli-invoked\"; fi\n"
+                     "exec \"$DOCKPIPE_TEST_ROOT/operator-dockpipe\" \"$@\"\n");
+    projectCli.close();
+    projectCli.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+    qputenv("PATH", trustedBinaryDirectory.toUtf8() + ":" + originalPath);
+    qunsetenv("DOCKPIPE_BIN");
+
     Context context = Context::createNew();
     context.label = "Build project";
     context.workdir = directory.path();
@@ -872,6 +902,8 @@ exec "$@"
     QFile submitted(directory.filePath("submit-args"));
     if (!submitted.open(QIODevice::ReadOnly) || !submitted.readAll().contains("--expected-digest\nabc123\n"))
         return 11;
+    if (QFile::exists(directory.filePath("project-cli-invoked")))
+        return 241;
     navigation->setCurrentRow(5);
     auto *executionTabs = window.findChild<QTabWidget *>("executionTabs");
     if (!executionTabs || !executionTabs->isVisible() || executionTabs->count() != 2)
@@ -933,6 +965,8 @@ exec "$@"
     activity->refreshRemote();
     if (!waitUntil([&]() { return download->isEnabled(); }) || diagnostics->isVisible())
         return 141;
+    if (QFile::exists(directory.filePath("project-cli-invoked")))
+        return 242;
     executionTabs->setCurrentIndex(0);
     if (activity->isVisible() || !executionTabs->widget(0)->isVisible())
         return 133;
@@ -957,10 +991,16 @@ exec "$@"
     if (download->isEnabled() || button(activity, "Cancel selected job")->isEnabled()
         || !jobsCalls.open(QIODevice::ReadOnly) || jobsCalls.readAll() != operatorCalls)
         return 47;
+    if (QFile::exists(directory.filePath("project-cli-invoked")))
+        return 243;
     for (auto *table : activity->findChildren<QTableWidget *>()) {
         if (table->rowCount() != 0)
             return 48;
     }
+    if (!originalDockpipeBin.isEmpty())
+        qputenv("DOCKPIPE_BIN", originalDockpipeBin);
+    qputenv("PATH", originalPath);
+    QFile::remove(directory.filePath("src/bin/dockpipe"));
     QFile staleService(directory.filePath("stale-service"));
     if (!staleService.open(QIODevice::WriteOnly))
         return 57;

@@ -75,6 +75,14 @@ uses `DockpipeChoices::operatorDockpipeBinary`: an explicit absolute host overri
 an installed sibling CLI, or an absolute PATH directory. Selected-project binaries
 and relative/current-directory PATH entries cannot become implicit PIN endpoints.
 
+Remote access security controls are also presentation-only CLI clients. The
+Settings dialog's Security tab reads global policy and current lock status from
+`dockpipe remote security-status`; lock, native-authenticated unlock and policy
+changes use the same trusted operator CLI selection. They do not store duplicate
+policy values in `LauncherSettings`. Lock and unlock actions remain reachable if
+status reporting is unavailable; the CLI reports whether the host can perform
+them. Platform capability gaps are shown explicitly.
+
 ## Verification
 
 Use `workflows/build/desktop-development/config.yml` with `--configure-only` for

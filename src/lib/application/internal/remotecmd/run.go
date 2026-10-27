@@ -18,6 +18,11 @@ import (
 )
 
 const usage = `dockpipe remote <command> [options]
+	unlock                                         Authenticate with the OS to unlock remote features
+	lock                                           Immediately lock new operator remote actions
+	security-status                                Show the global remote policy and capabilities
+	security-policy --idle-seconds <60..3600>        Update global remote auto-lock policy
+	                [--lock-on-screen-lock=true] [--lock-on-sleep=true]
   setup   --resolver <name> [--hostname <hostname>]  Package-owned remote setup
   info                                           Show configuration without credentials
   init    [--listen 127.0.0.1:47831]               Initialize a private broker
@@ -92,6 +97,9 @@ func Run(args []string, checkDependencies func(string) error) error {
 	flags.Var(&artifacts, "artifact", "exact result file relative to delivered workdir (repeatable)")
 	replaceService := flags.Bool("replace", false, "replace the user-service definition and restart it")
 	role := flags.String("role", "", "broker or worker service")
+	idleSeconds := flags.Int("idle-seconds", 300, "global remote inactivity timeout in seconds (60..3600)")
+	lockOnScreenLock := flags.Bool("lock-on-screen-lock", true, "lock remote access when the OS session locks")
+	lockOnSleep := flags.Bool("lock-on-sleep", true, "lock remote access after sleep/resume")
 	if err := flags.Parse(args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
@@ -100,6 +108,15 @@ func Run(args []string, checkDependencies func(string) error) error {
 	}
 	if *replaceService && command != "service" {
 		return errors.New("--replace is supported only by remote service")
+	}
+	securityChanges := map[string]bool{}
+	flags.Visit(func(flag *flag.Flag) {
+		if flag.Name == "idle-seconds" || flag.Name == "lock-on-screen-lock" || flag.Name == "lock-on-sleep" {
+			securityChanges[flag.Name] = true
+		}
+	})
+	if len(securityChanges) != 0 && command != "security-policy" {
+		return errors.New("remote lock policy flags are supported only by remote security-policy")
 	}
 	if (*monitorSystem || *monitorDocker || *disableMonitoring) && command != "monitoring" {
 		return errors.New("--system, --docker and --disable are supported only by remote monitoring")
@@ -140,9 +157,11 @@ func Run(args []string, checkDependencies func(string) error) error {
 	ctx = context.WithValue(ctx, hardwareInteractionModeKey{}, *interaction)
 	// Setup hands the terminal to dependency installers and provider authentication.
 	// An outer spinner would overwrite their prompts even when nested operations are quiet.
-	options := infrastructure.OperationOptions{Spinner: command != "setup" && command != "pair" && command != "approve" && command != "security-key-register"}
+	options := infrastructure.OperationOptions{Spinner: command != "setup" && command != "pair" && command != "approve" && command != "security-key-register" && command != "unlock" && command != "security-policy"}
 	return infrastructure.RunOperationWithOptions(os.Stderr, "remote."+command, "Remote "+command, nil, options, func() error {
 		switch command {
+		case "unlock", "lock", "security-status", "security-policy":
+			return remoteSecurity(ctx, command, securityChanges, *idleSeconds, *lockOnScreenLock, *lockOnSleep)
 		case "security-key-register":
 			return registerPairingKey(ctx, root, *attestationRoots)
 		case "monitoring":
