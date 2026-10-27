@@ -1,243 +1,218 @@
 package remotecmd
 
 import (
+	"bytes"
 	"context"
-	"crypto/sha256"
-	"crypto/subtle"
-	_ "embed"
-	"encoding/base64"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
-	"net"
-	"net/http"
-	"net/url"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
-	"strings"
-	"sync"
-	"time"
+	"unicode/utf8"
 
-	"dockpipe/src/lib/infrastructure"
 	"dockpipe/src/lib/infrastructure/hardwarekey"
+	"dockpipe/src/lib/infrastructure/nativekey"
 	remoteio "dockpipe/src/lib/infrastructure/remote"
 )
 
-//go:embed hardware_ceremony.html
-var hardwareCeremonyPage string
-
 type hardwareCeremonyOptions struct {
-	Title   string `json:"title"`
-	Details string `json:"details"`
-	Kind    string `json:"kind"`
-	Options any    `json:"options"`
+	Title   string
+	Details string
+	Kind    string
+	Options any
 }
 
-// The bridge holds no machine/admin secrets in browser storage. Only the short
-// lived local ceremony capability goes to the browser; broker calls stay native.
+type hardwareInteractionModeKey struct{}
+
+type nativeHardwareClient interface {
+	Devices(context.Context) ([]nativekey.Device, error)
+	Create(context.Context, nativekey.Device, []byte, []byte) ([]byte, error)
+	Assert(context.Context, nativekey.Device, []byte, []byte) ([]byte, error)
+}
+
+type systemHardwareClient struct{}
+
+func (systemHardwareClient) Devices(ctx context.Context) ([]nativekey.Device, error) {
+	return nativekey.Devices(ctx)
+}
+
+func (systemHardwareClient) Create(ctx context.Context, device nativekey.Device, options, pin []byte) ([]byte, error) {
+	return nativekey.Create(ctx, device, options, pin)
+}
+
+func (systemHardwareClient) Assert(ctx context.Context, device nativekey.Device, options, pin []byte) ([]byte, error) {
+	return nativekey.Assert(ctx, device, options, pin)
+}
+
+type hardwareInteraction interface {
+	Choose(context.Context, hardwareCeremonyOptions, []nativekey.Device) (int, []byte, error)
+	Touch() error
+}
+
 func runHardwareCeremony(ctx context.Context, begin func() (hardwareCeremonyOptions, error), finish func([]byte) (bool, error)) error {
-	listener, err := net.Listen("tcp4", hardwarekey.Listen)
-	if err != nil {
-		return fmt.Errorf("hardware-key browser port is unavailable: %w", err)
-	}
-	defer listener.Close()
-	token, err := remoteio.Secret()
-	if err != nil {
-		return err
-	}
 	ctx, cancel := context.WithTimeout(ctx, hardwarekey.CeremonyLifetime*2)
 	defer cancel()
-	done := make(chan error, 1)
-	handler := hardwareCeremonyHandler(token, begin, finish, done)
-	server := &http.Server{Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second,
-		WriteTimeout: 10 * time.Second, IdleTimeout: 10 * time.Second, MaxHeaderBytes: 8 << 10}
-	failures := make(chan error, 1)
-	go func() { failures <- server.Serve(listener) }()
-	defer func() {
-		shutdown, stop := context.WithTimeout(context.Background(), time.Second)
-		defer stop()
-		_ = server.Shutdown(shutdown)
-		_ = server.Close()
-	}()
-	address := hardwarekey.Origin + "/#" + token
-	fmt.Fprintf(os.Stderr, "Open this local page to verify your physical security key:\n%s\n", address)
-	launcher, cleanup, launchErr := prepareHardwareCeremonyLauncher(address)
-	if launchErr == nil {
-		defer func() {
-			if err := cleanup(); err != nil {
-				fmt.Fprintln(os.Stderr, "Could not remove the private hardware-key browser launcher.")
-			}
-		}()
-		openHardwareCeremonyBrowser(launcher)
+	var interaction hardwareInteraction
+	if ctx.Value(hardwareInteractionModeKey{}) == "gui" {
+		interaction = &guiHardwareInteraction{input: hardwareGUIInput(ctx), output: os.Stdout}
 	} else {
-		fmt.Fprintln(os.Stderr, "Could not prepare a private browser launcher; open the printed link manually.")
+		terminal, err := newTerminalHardwareInteraction()
+		if err != nil {
+			return err
+		}
+		defer terminal.Close()
+		interaction = terminal
 	}
-	select {
-	case err := <-done:
-		return err
-	case err := <-failures:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+	return performHardwareCeremony(ctx, begin, finish, systemHardwareClient{}, interaction)
 }
 
-func hardwareCeremonyHandler(token string, begin func() (hardwareCeremonyOptions, error), finish func([]byte) (bool, error), done chan<- error) http.Handler {
-	scriptStart := strings.Index(hardwareCeremonyPage, "<script>") + len("<script>")
-	scriptEnd := strings.Index(hardwareCeremonyPage, "</script>")
-	scriptDigest := sha256.Sum256([]byte(hardwareCeremonyPage[scriptStart:scriptEnd]))
-	policy := "default-src 'none'; script-src 'sha256-" + base64.StdEncoding.EncodeToString(scriptDigest[:]) + "'; connect-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
-	// Serialize the options/finish state. A second browser request cannot create
-	// multiple effects or race registration against existing-key verification.
-	var mutex sync.Mutex
-	completed := false
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-store")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("Referrer-Policy", "no-referrer")
-		w.Header().Set("Content-Security-Policy", policy)
-		if r.Host != "localhost:47832" || r.URL.RawQuery != "" {
-			http.Error(w, "invalid local ceremony host", http.StatusForbidden)
-			return
+func performHardwareCeremony(ctx context.Context, begin func() (hardwareCeremonyOptions, error), finish func([]byte) (bool, error), client nativeHardwareClient, interaction hardwareInteraction) error {
+	// Adding a spare has two deliberate phases: verify an existing key, then
+	// register the new key. Never retry a PIN or a failed authenticator operation.
+	for phase := 0; phase < 2; phase++ {
+		if err := ctx.Err(); err != nil {
+			return err
 		}
-		if r.URL.Path == "/" && r.Method == http.MethodGet {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			_, _ = io.WriteString(w, hardwareCeremonyPage)
-			return
+		options, err := begin()
+		if err != nil {
+			return err
 		}
-		if r.Method != http.MethodPost || r.Header.Get("Origin") != hardwarekey.Origin ||
-			subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Dockpipe-Ceremony")), []byte(token)) != 1 {
-			http.Error(w, "local ceremony authorization required", http.StatusForbidden)
-			return
+		if options.Kind != "create" && options.Kind != "get" {
+			return errors.New("unsupported native hardware-key ceremony")
 		}
-		mutex.Lock()
-		defer mutex.Unlock()
-		if completed {
-			http.Error(w, "ceremony finished", http.StatusConflict)
-			return
+		raw, err := json.Marshal(options.Options)
+		if err != nil || len(raw) > hardwarekey.MaxResponseBytes {
+			return errors.New("invalid native hardware-key options")
 		}
-		w.Header().Set("Content-Type", "application/json")
-		switch r.URL.Path {
-		case "/options":
-			options, err := begin()
-			if err != nil {
-				http.Error(w, "cannot prepare hardware-key ceremony; inspect the CLI", http.StatusConflict)
-				completed = true
-				done <- err
-				return
-			}
-			_ = json.NewEncoder(w).Encode(options)
-		case "/finish":
-			response, err := io.ReadAll(http.MaxBytesReader(w, r.Body, hardwarekey.MaxResponseBytes))
-			if err != nil {
-				http.Error(w, "response too large", http.StatusRequestEntityTooLarge)
-				return
-			}
-			next, err := finish(response)
-			if err != nil {
-				http.Error(w, "hardware-key verification failed; inspect the CLI", http.StatusConflict)
-				completed = true
-				done <- err
-				return
-			}
-			_ = json.NewEncoder(w).Encode(map[string]bool{"next": next})
-			if !next {
-				completed = true
-				done <- nil
-			}
-		default:
-			http.NotFound(w, r)
+		devices, err := client.Devices(ctx)
+		if err != nil {
+			return err
 		}
-	})
+		if len(devices) == 0 {
+			return errors.New("no accessible FIDO2 security key found; connect your key and check OS device permissions")
+		}
+		if len(devices) > 8 {
+			return errors.New("too many FIDO2 keys connected; connect at most eight keys")
+		}
+		selected, pin, err := interaction.Choose(ctx, options, devices)
+		if err != nil {
+			clear(pin)
+			return err
+		}
+		if selected < 0 || selected >= len(devices) || !utf8.Valid(pin) || utf8.RuneCount(pin) < 4 || len(pin) > 63 || bytes.IndexByte(pin, 0) >= 0 {
+			clear(pin)
+			return errors.New("invalid hardware-key selection or PIN; no key operation attempted")
+		}
+		if err := interaction.Touch(); err != nil {
+			clear(pin)
+			return err
+		}
+		var response []byte
+		if options.Kind == "create" {
+			response, err = client.Create(ctx, devices[selected], raw, pin)
+		} else {
+			response, err = client.Assert(ctx, devices[selected], raw, pin)
+		}
+		clear(pin)
+		if err != nil {
+			return err
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if len(response) == 0 || len(response) > hardwarekey.MaxResponseBytes {
+			return errors.New("native hardware-key response exceeds its bounds")
+		}
+		next, err := finish(response)
+		if err != nil || !next {
+			return err
+		}
+	}
+	return errors.New("native hardware-key ceremony exceeded its phase limit")
 }
 
-// Browser opener arguments can be visible to other local users. Put the secret
-// redirect inside an owner-only file, and launch only that file's public path.
-func prepareHardwareCeremonyLauncher(address string) (string, func() error, error) {
-	temporaryRoot, err := filepath.EvalSymlinks(os.TempDir())
+type guiHardwareInteraction struct {
+	input  io.Reader
+	output io.Writer
+}
+
+func (g *guiHardwareInteraction) Choose(ctx context.Context, options hardwareCeremonyOptions, devices []nativekey.Device) (int, []byte, error) {
+	secret, err := remoteio.Secret()
 	if err != nil {
-		return "", nil, err
+		return 0, nil, err
 	}
-	temporaryRoot, err = filepath.Abs(temporaryRoot)
+	id := secret[:32]
+	event := struct {
+		Event       string             `json:"event"`
+		ID          string             `json:"id"`
+		Title       string             `json:"title"`
+		Details     string             `json:"details"`
+		Devices     []nativekey.Device `json:"devices"`
+		PINRequired bool               `json:"pin_required"`
+	}{"hardware-key-prompt", id, options.Title, options.Details, devices, true}
+	if err := json.NewEncoder(g.output).Encode(event); err != nil {
+		return 0, nil, errors.New("cannot present the native hardware-key prompt")
+	}
+	response, err := readHardwareInteraction(ctx, g.input)
 	if err != nil {
-		return "", nil, err
+		return 0, nil, err
 	}
-	identifier, err := remoteio.Secret()
-	if err != nil {
-		return "", nil, err
+	defer clear(response)
+	var answer struct {
+		ID     string `json:"id"`
+		Device string `json:"device"`
+		PIN    string `json:"pin"`
+		Cancel bool   `json:"cancel"`
 	}
-	directory := filepath.Join(temporaryRoot, "dockpipe-key-"+identifier)
-	if err := infrastructure.PreparePrivateDirectory(directory); err != nil {
-		return "", nil, err
+	decoder := json.NewDecoder(bytes.NewReader(response))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&answer); err != nil || answer.ID != id {
+		return 0, nil, errors.New("invalid native hardware-key prompt response")
 	}
-	cleanup := func() error { return os.RemoveAll(directory) }
-	prepared := false
-	defer func() {
-		if !prepared {
-			_ = cleanup()
+	if err := decoder.Decode(new(any)); err != io.EOF {
+		return 0, nil, errors.New("unexpected native hardware-key prompt data")
+	}
+	if answer.Cancel {
+		return 0, nil, context.Canceled
+	}
+	for index, device := range devices {
+		if answer.Device == device.ID {
+			return index, []byte(answer.PIN), nil
 		}
-	}()
-	encodedAddress, err := json.Marshal(address)
-	if err != nil {
-		return "", nil, err
 	}
-	script := "location.replace(" + string(encodedAddress) + ");"
-	digest := sha256.Sum256([]byte(script))
-	policy := "default-src 'none'; script-src 'sha256-" + base64.StdEncoding.EncodeToString(digest[:]) + "'; base-uri 'none'; form-action 'none'"
-	page := "<!doctype html><meta charset=\"utf-8\"><meta name=\"referrer\" content=\"no-referrer\">" +
-		"<meta http-equiv=\"Content-Security-Policy\" content=\"" + policy + "\">" +
-		"<title>Dockpipe hardware-key pairing</title><script>" + script + "</script>"
-	path := filepath.Join(directory, "open.html")
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-	if err != nil {
-		return "", nil, err
-	}
-	_, writeErr := io.WriteString(file, page)
-	closeErr := file.Close()
-	if writeErr != nil {
-		return "", nil, writeErr
-	}
-	if closeErr != nil {
-		return "", nil, closeErr
-	}
-	uriPath := filepath.ToSlash(path)
-	if !strings.HasPrefix(uriPath, "/") {
-		uriPath = "/" + uriPath
-	}
-	launcher := (&url.URL{Scheme: "file", Path: uriPath}).String()
-	prepared = true
-	return launcher, cleanup, nil
+	return 0, nil, errors.New("native hardware-key response selected an unknown device")
 }
 
-// The browser is an independent user application. Finishing or cancelling this
-// ceremony must not kill it; the private local server still expires promptly.
-func openHardwareCeremonyBrowser(fileURI string) {
-	command := hardwareCeremonyBrowserCommand(fileURI)
-	if command == nil {
-		return
-	}
-	if err := command.Start(); err != nil {
-		// The printed localhost link remains usable when desktop opening is absent.
-		return
-	}
-	go func() { _ = command.Wait() }()
+func (g *guiHardwareInteraction) Touch() error {
+	return json.NewEncoder(g.output).Encode(struct {
+		Event   string `json:"event"`
+		Message string `json:"message"`
+	}{"hardware-key-status", "Touch your physical security key."})
 }
 
-func hardwareCeremonyBrowserCommand(fileURI string) *exec.Cmd {
-	parsed, err := url.Parse(fileURI)
-	if err != nil || parsed.Scheme != "file" || parsed.Host != "" || parsed.RawQuery != "" || parsed.Fragment != "" {
-		return nil
+func readHardwareInteraction(ctx context.Context, input io.Reader) ([]byte, error) {
+	// Read only one frame without buffering a later phase's secret response.
+	response := make([]byte, 0, 256)
+	for len(response) < 8192 {
+		if err := ctx.Err(); err != nil {
+			clear(response)
+			return nil, err
+		}
+		var character [1]byte
+		n, err := input.Read(character[:])
+		if n == 1 {
+			if character[0] == '\n' {
+				return response, nil
+			}
+			response = append(response, character[0])
+		}
+		if err != nil {
+			clear(response)
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+			return nil, errors.New("native hardware-key input closed before a complete response")
+		}
 	}
-	var command *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		command = exec.Command("open", fileURI)
-	case "windows":
-		command = exec.Command("rundll32", "url.dll,FileProtocolHandler", fileURI)
-	default:
-		command = exec.Command("xdg-open", fileURI)
-	}
-	return command
+	clear(response)
+	return nil, errors.New("native hardware-key input exceeds its bounds")
 }

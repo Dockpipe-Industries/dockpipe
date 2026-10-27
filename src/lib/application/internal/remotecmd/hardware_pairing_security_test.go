@@ -24,7 +24,7 @@ func TestHardwarePairingApprovalRejectsHostedOwner(t *testing.T) {
 		Mode: "hosted", Endpoint: "https://broker.example.com", Token: strings.Repeat("a", 64),
 		Resolver: infrastructure.ResolverMetadata{Name: "example.hosted", RemoteSetup: "hosted"}})
 	if err := approveWithHardwareKey(context.Background(), root, "AAAA-BBBB-CCCC"); err == nil || !strings.Contains(err.Error(), "local owner") {
-		t.Fatalf("hosted approval must stop before opening a browser or sending credentials: %v", err)
+		t.Fatalf("hosted approval must stop before opening a key prompt or sending credentials: %v", err)
 	}
 }
 
@@ -89,6 +89,6 @@ func TestHardwarePairingNeverDisplaysUnsignedConsent(t *testing.T) {
 		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(string(body))), Request: request}, nil
 	})
 	if _, err := preparePairingApproval(context.Background(), client, key.PublicKey, "AAAA-BBBB-CCCC"); err == nil {
-		t.Fatal("unsigned consent reached the browser preparation boundary")
+		t.Fatal("unsigned consent reached the native key preparation boundary")
 	}
 }

@@ -66,6 +66,15 @@ location. Source headers moved, but SDK installation keeps the flat
 `include/dockpipe-launcher` closure. Browser forwarding headers still consume the
 pinned SpatialWeb SDK; this app does not own that browser implementation.
 
+The remote hardware-key ceremony uses a normal private dialog in
+`remote/presentation`. The CLI owns native FIDO2 device access and verification;
+`RemoteCommand` validates its bounded interaction frames and sends a single
+response through the child process's private stdin. The dialog never stores PINs
+or credentials and closes when the owning command finishes. Credential interaction
+uses `DockpipeChoices::operatorDockpipeBinary`: an explicit absolute host override,
+an installed sibling CLI, or an absolute PATH directory. Selected-project binaries
+and relative/current-directory PATH entries cannot become implicit PIN endpoints.
+
 ## Verification
 
 Use `workflows/build/desktop-development/config.yml` with `--configure-only` for

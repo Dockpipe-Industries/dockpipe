@@ -406,3 +406,54 @@ and absence of capabilities from opener arguments. Physical-key/browser and M6
 qualification remain pending. The user subsequently authorized a local commit
 and physical-key testing. Push, remote CI, service restart and live-state migration
 remain outside that authorization; physical-key testing begins with isolated state.
+
+
+## Native hardware-key interaction (2026-10-26 refinement)
+
+The user requested a normal Dockpipe dialog and terminal CLI interaction instead
+of either an embedded or external browser. This supersedes the browser ceremony
+presentation described in the initial implementation above; the broker hardware
+attestation, signed consent and persistent machine identities are retained.
+
+- Core owns one native FIDO2 adapter over the existing system libfido2 library.
+  It leaves CTAP/PIN cryptography to libfido2 and produces responses checked by the
+  existing verifier. Native library loading uses supported absolute system paths;
+  missing APIs/platform support fail closed. No dependency is installed implicitly.
+- The GUI owns a normal key-selection/masked-PIN dialog. CLI uses terminal prompts
+  with echo disabled and works without the GUI running. A bounded private child
+  process protocol binds each GUI response to one fresh prompt and retained device.
+  PINs stay out of command arguments, settings and logs. Closing the GUI cancels;
+  terminal cancellation restores input state. Native calls have bounded timeouts.
+- No automatic PIN retry, PIN creation/change, key reset or browser fallback.
+  First/spare registration actions retain explicit manufacturer trust and the
+  stopped-broker requirement. OS-authenticated remote unlock remains separate.
+- The first physical-key attempt reached native signing but failed manufacturer
+  chain validation. Supplemental published intermediates can now complete a path
+  to the explicit self-signed roots; they cannot become independent trust anchors.
+  Regression tests cover missing intermediates, complete chains, wrong roots and
+  intermediate-only rejection. PIN wording explicitly identifies the existing key
+  PIN; it never configures or changes the key.
+- Linux/macOS amd64/arm64 native adapters are implemented. Windows native key
+  interaction currently fails closed; its platform adapter and native qualification
+  remain open under TASK-052. Installation packaging for libfido2 is also pending.
+- Full local Go suite, focused security/race suites, native Qt transport/dialog
+  checks and CLI build pass. Native adapter macOS arm64 and Windows amd64 compile
+  checks pass; the Windows runtime adapter still fails closed as described above.
+- The user's Yubico Security Key registered through the production native dialog
+  and libfido2 adapter in disposable Linux broker state. A second physical-key
+  assertion approved a dummy loopback worker; its signed approval and both saved
+  installation identities matched. An administrator token plus code alone was
+  rejected before that approval. Test broker/worker processes stopped afterward;
+  no services or jobs were installed or run. The PIN was not changed or reset.
+- GUI native-key commands now select an operator-controlled CLI rather than
+  automatically discovering a project executable, preventing a repository from
+  supplying the native PIN endpoint. Explicit absolute host overrides remain
+  supported; missing/invalid choices fail clearly. Regression coverage includes
+  project/CWD/relative-PATH executable refusal.
+- Physical CLI terminal interaction, a real cross-machine pairing, macOS native interaction,
+  Windows adapter implementation and packaged-install qualification remain open.
+  A generated response fixture or successful build is not that acceptance.
+
+The user authorized a local commit of this validated native refinement. The earlier
+pairing implementation was committed locally as `794104e9f`. No push, pipeline, production
+service change or live machine migration is authorized by this refinement.

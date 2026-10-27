@@ -1,4 +1,5 @@
 #include "RemoteWidget.h"
+#include "HardwareKeyDialog.h"
 #include "ResourceCanvas.h"
 #include "DockpipeChoices.h"
 #include "SetupTerminal.h"
@@ -8,6 +9,8 @@
 #include <QSignalBlocker>
 #include <QDateTime>
 #include <QFormLayout>
+#include <QFileDialog>
+#include <QMenu>
 #include <QHeaderView>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -140,6 +143,30 @@ RemoteWidget::RemoteWidget(QWidget *parent) : QWidget(parent), m_command(this)
                 m_pairingCode->setText(event.value("code").toString());
                 m_pairingCode->show();
             }
+        }
+    });
+    connect(&m_command, &RemoteCommand::hardwareKeyPrompt, this, [this](const QJsonObject &prompt) {
+        if (!m_command.busy())
+            return;
+        if (!m_hardwareKeyDialog) {
+            auto *dialog = new HardwareKeyDialog(this);
+            m_hardwareKeyDialog = dialog;
+            dialog->setAttribute(Qt::WA_DeleteOnClose);
+            connect(dialog, &QDialog::rejected, &m_command, &RemoteCommand::cancel);
+            connect(dialog, &HardwareKeyDialog::responseReady,
+                    &m_command, &RemoteCommand::submitHardwareKeyResponse);
+        }
+        m_hardwareKeyDialog->showPrompt(prompt);
+        m_hardwareKeyDialog->open();
+    });
+    connect(&m_command, &RemoteCommand::hardwareKeyStatus, this, [this](const QString &message) {
+        if (m_hardwareKeyDialog)
+            m_hardwareKeyDialog->showStatus(message);
+    });
+    connect(&m_command, &RemoteCommand::busyChanged, this, [this](bool busy) {
+        if (!busy && m_hardwareKeyDialog) {
+            m_hardwareKeyDialog->accept();
+            m_hardwareKeyDialog.clear();
         }
     });
     connect(&m_command, &RemoteCommand::busyChanged, this, &RemoteWidget::updateActions);
@@ -489,6 +516,34 @@ QWidget *RemoteWidget::buildSetup()
         else
             m_status->setText(error);
     });
+    layout->addWidget(textLabel(tr("Pairing security keys"), "sectionTitle"));
+    layout->addWidget(textLabel(tr("Register a physical security key before approving machines. Stop the broker before registering. For the first key, choose a trusted manufacturer attestation-root PEM file; Dockpipe does not download or select trust roots for you."), "hintText"));
+    auto *registerKey = new QPushButton(tr("Register pairing key…"), page);
+    registerKey->setObjectName(QStringLiteral("registerPairingKey"));
+    auto *registrationChoices = new QMenu(registerKey);
+    auto *firstKey = registrationChoices->addAction(tr("Register first pairing key…"));
+    auto *spareKey = registrationChoices->addAction(tr("Add spare pairing key…"));
+    registerKey->setMenu(registrationChoices);
+    m_actions.append(registerKey);
+    layout->addWidget(registerKey, 0, Qt::AlignLeft);
+    const auto registerPairingKey = [this](bool first) {
+        QStringList arguments{"security-key-register", "--interaction", "gui"};
+        if (first) {
+            const QString roots = QFileDialog::getOpenFileName(this,
+                tr("Choose trusted manufacturer attestation roots"), QString(),
+                tr("PEM certificates (*.pem);;All files (*)"));
+            if (roots.isEmpty())
+                return;
+            arguments << "--attestation-roots" << roots;
+        }
+        run(arguments, [this](bool ok, const QByteArray &) {
+            m_status->setText(ok ? tr("Pairing security key registered.")
+                : tr("Security-key registration did not complete. Check details before retrying."));
+            m_status->show();
+        }, 240000);
+    };
+    connect(firstKey, &QAction::triggered, this, [registerPairingKey]() { registerPairingKey(true); });
+    connect(spareKey, &QAction::triggered, this, [registerPairingKey]() { registerPairingKey(false); });
     updateSetup();
     return page;
 }
@@ -550,7 +605,22 @@ void RemoteWidget::run(const QStringList &arguments, RemoteCommand::Completion c
     }
     QStringList args{"remote"};
     args.append(arguments);
-    m_command.run(DockpipeChoices::preferredDockpipeBinary(m_workdir), args,
+    QString program;
+    const int interactionOption = arguments.indexOf("--interaction");
+    const bool nativeInteraction = interactionOption >= 0 && arguments.value(interactionOption + 1) == "gui";
+    if (nativeInteraction) {
+        QString error;
+        program = DockpipeChoices::operatorDockpipeBinary(&error);
+        if (program.isEmpty()) {
+            m_status->setText(error);
+            m_status->show();
+            m_output->appendPlainText(error);
+            return;
+        }
+    } else {
+        program = DockpipeChoices::preferredDockpipeBinary(m_workdir);
+    }
+    m_command.run(program, args,
                   [this, completion](bool ok, const QByteArray &output) {
         m_status->setText(ok ? QString() : tr("Could not complete this step. See details for the error; saved setup is preserved."));
         m_status->setVisible(!ok);
@@ -663,7 +733,10 @@ void RemoteWidget::decidePairing(bool approve)
             tr("Does %1 show exactly this code?\n\n%2\n\nApprove only if you can verify it on that machine.").arg(name, code),
             QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes)
         return;
-    run({approve ? "approve" : "deny", "--code", code}, [this, approve, name](bool ok, const QByteArray &) {
+    QStringList arguments{approve ? "approve" : "deny", "--code", code};
+    if (approve)
+        arguments << "--interaction" << "gui";
+    run(arguments, [this, approve, name](bool ok, const QByteArray &) {
         if (ok) {
             m_requestOutcome = approve ? tr("%1 is paired. On that computer, choose Start worker service to receive workflows.").arg(name)
                                        : tr("Request from %1 denied.").arg(name);

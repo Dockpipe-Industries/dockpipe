@@ -3,8 +3,10 @@
 #include "RemoteCommand.h"
 #include "WorkflowCatalogData.h"
 #include <QWidget>
+#include <QPointer>
 
 class ResourceCanvas;
+class HardwareKeyDialog;
 class QJsonObject;
 class QLabel;
 class QComboBox;
@@ -61,6 +63,7 @@ private:
     QLabel *m_pairingAddress = nullptr;
     QPushButton *m_setup = nullptr;
     RemoteCommand m_command;
+    QPointer<HardwareKeyDialog> m_hardwareKeyDialog;
     QLabel *m_status = nullptr;
     QLabel *m_pairingCode = nullptr;
     QLabel *m_overviewHint = nullptr;

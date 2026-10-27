@@ -115,6 +115,13 @@ state and the local hardware-key ceremony; hosted approval is deferred;
 new file invitations are disabled. See [remote nodes](runtime/remote-nodes.md#register-pairing-hardware-keys)
 for trust roots, recovery, machine identity and legacy-worker boundaries.
 
+Hardware-key commands use native FIDO2 interaction. CLI defaults to
+`--interaction terminal` with hidden PIN entry. The GUI supplies `--interaction gui`
+for a normal Dockpipe dialog, using private, bounded request/response frames over
+child-process pipes. Neither mode uses a browser. Linux/macOS require libfido2 in
+a supported system location; native Windows interaction remains unavailable.
+
+
 ## `dockpipe init`
 
 Local project setup only: **no `git clone`**, no treating **`init`** as a remote bootstrap. Everything runs in the **current working directory**.

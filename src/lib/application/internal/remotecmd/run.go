@@ -49,6 +49,8 @@ const usage = `dockpipe remote <command> [options]
   revoke  --id <node>                             Revoke a worker
   service --role broker|worker                    Install a user service; --replace updates and restarts it
 All commands accept --state <directory>. Remote nodes currently target Linux/macOS.
+Hardware-key commands use native FIDO2: --interaction terminal (default) or gui.
+The GUI uses private stdin/stdout interaction; PINs must never be passed as arguments.
 Profiles are local JSON: {"bench":{"workdir":"/absolute/checkout","workflow":"bench",
 "timeout_seconds":3600,"artifacts":["results/bench.json"]}}.
 Secrets stay in private state/pairing files. Do not paste pairing files into chat or logs.
@@ -63,6 +65,7 @@ func Run(args []string, checkDependencies func(string) error) error {
 	flags := flag.NewFlagSet("remote "+command, flag.ContinueOnError)
 	state := flags.String("state", "", "private state directory")
 	attestationRoots := flags.String("attestation-roots", "", "verified hardware-key manufacturer CA PEM bundle (first key only)")
+	interaction := flags.String("interaction", "terminal", "native hardware-key interaction: terminal or gui")
 	listen := flags.String("listen", "127.0.0.1:47831", "loopback origin address")
 	resolver := flags.String("resolver", "", "remote access resolver profile")
 	hostname := flags.String("hostname", "", "public edge hostname")
@@ -122,12 +125,19 @@ func Run(args []string, checkDependencies func(string) error) error {
 	if *attestationRoots != "" && command != "security-key-register" {
 		return errors.New("--attestation-roots is supported only by remote security-key-register")
 	}
+	if *interaction != "terminal" && *interaction != "gui" {
+		return errors.New("--interaction must be terminal or gui")
+	}
+	if *interaction != "terminal" && command != "approve" && command != "security-key-register" {
+		return errors.New("--interaction is supported only by remote approve or security-key-register")
+	}
 	root, err := stateRoot(*state)
 	if err != nil {
 		return err
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	ctx = context.WithValue(ctx, hardwareInteractionModeKey{}, *interaction)
 	// Setup hands the terminal to dependency installers and provider authentication.
 	// An outer spinner would overwrite their prompts even when nested operations are quiet.
 	options := infrastructure.OperationOptions{Spinner: command != "setup" && command != "pair" && command != "approve" && command != "security-key-register"}

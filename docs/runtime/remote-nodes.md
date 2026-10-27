@@ -136,6 +136,9 @@ dockpipe remote security-key-register --attestation-roots /path/to/verified-manu
 
 Obtain the manufacturer's attestation CA certificates through its authenticated
 published documentation or metadata and verify the selected roots independently.
+Include its published intermediate CA certificates in the PEM bundle when a key
+does not return the complete chain. Only explicitly supplied self-signed roots
+become trust anchors; supplemental intermediates must chain back to those roots.
 Do not use your operating system's general HTTPS CA bundle or an unverified
 certificate supplied by a pairing requester. The accepted initial attestation
 formats are `packed` and `fido-u2f` with a certificate chain to these explicit
@@ -146,13 +149,40 @@ attestation-certificate expiry cannot disable the broker. This is not automatic
 manufacturer revocation monitoring. Existing trust anchors
 cannot be replaced through this command or broker HTTP APIs.
 
-The CLI opens a private, owner-only temporary redirect file that navigates to
-`http://localhost:47832`. Browser process arguments contain only the file URI,
-not the ceremony capability. The redirect file is removed on completion or
-cancellation; the page and server
-expire after the ceremony. If opening fails, use the printed link locally. Its
-short-lived fragment is a ceremony capability: do not share it. Registration holds
-the private broker lock and cannot run while the broker service owns that state.
+Dockpipe uses a native FIDO2 adapter through the installed libfido2 library;
+no browser, localhost listener or browser extension is used. Linux and macOS
+amd64/arm64 adapters load libfido2 only from supported absolute system locations.
+The library must already be installed; this command does not install software.
+Native Windows key interaction is not implemented in this slice and fails closed.
+The existing Windows broker verification and machine identity contracts remain.
+
+From a terminal, the CLI lists connected keys, displays the exact operation and
+verified machine details, and asks for the selected key's existing FIDO2 PIN with
+echo disabled. Then touch the key. A wrong PIN ends the attempt; there is no
+automatic retry, PIN setup, PIN change, reset or fallback to a software credential.
+The PIN belongs to the key, not Dockpipe. This prompt never creates a new PIN.
+Cancellation restores the terminal. In-flight device operations have a bounded
+timeout; device cleanup waits for the native operation to finish.
+
+In the GUI, **Machines → Set up remote access → Pairing security keys** provides
+first-key and spare-key registration. Select independently verified manufacturer
+PEM roots for the first key. Stop the broker before registering; Dockpipe does not
+stop services implicitly. Pairing approval and registration use a normal Dockpipe
+dialog with plain consent text, key selection, a masked PIN field and touch status.
+Closing the dialog cancels the operation.
+
+The GUI invokes the same CLI with `--interaction gui`. Bounded, request-bound JSON
+prompts travel over the child process's private stdout channel and PIN responses
+over its stdin pipe; the host consumes control frames without putting them in
+logs. CLI defaults to `--interaction terminal` and works without the GUI running.
+PINs are not passed in arguments, stored in settings, or written to logs. Owned
+buffers are cleared where practical; ordinary Go/Qt heap and OS transport memory
+are not a guarantee of locked or completely erased secret memory.
+
+The same broker-side WebAuthn verifier checks native authenticator responses,
+manufacturer chains, challenges, user presence and verification. The existing
+`localhost` relying-party ID and client-data origin remain signature namespaces
+for credential compatibility; they do not cause a web page or listener to open.
 No remote administrator token can register keys through HTTP.
 
 Register a spare before relying on a single key. Adding another key uses:
@@ -190,7 +220,7 @@ dockpipe remote pairings
 dockpipe remote approve --code ABCD-1234-5678
 ```
 
-The code identifies the request. Approval opens the local browser ceremony and
+The code identifies the request. Approval opens the native key prompt and
 requires a registered physical key. **Machines → Verify key and approve** uses the
 same CLI and broker check. Code-only HTTP requests are rejected, including local
 requests with the administrator token. Approval currently requires the broker

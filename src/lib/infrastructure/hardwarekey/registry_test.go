@@ -1,17 +1,111 @@
 package hardwarekey
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
+	"math/big"
 	"testing"
 	"time"
 
 	"dockpipe/src/lib/internal/testsupport/securitykey"
 )
+
+func TestManufacturerIntermediateCompletesOnlyExplicitRootChain(t *testing.T) {
+	fixture := securitykey.New(t)
+	key := func() *ecdsa.PrivateKey {
+		value, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return value
+	}
+	rootKey, intermediateKey := key(), key()
+	certificate := func(serial int64, name string, ca bool) *x509.Certificate {
+		usage := x509.KeyUsageDigitalSignature
+		if ca {
+			usage = x509.KeyUsageCertSign
+		}
+		return &x509.Certificate{SerialNumber: big.NewInt(serial), Subject: pkix.Name{
+			CommonName: name, Country: []string{"US"}, Organization: []string{"Fixture"},
+			OrganizationalUnit: []string{"Authenticator Attestation"}},
+			NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour),
+			IsCA: ca, BasicConstraintsValid: true, KeyUsage: usage}
+	}
+	issue := func(template, parent *x509.Certificate, public *ecdsa.PublicKey, signer *ecdsa.PrivateKey) ([]byte, *x509.Certificate) {
+		der, err := x509.CreateCertificate(rand.Reader, template, parent, public, signer)
+		if err != nil {
+			t.Fatal(err)
+		}
+		parsed, err := x509.ParseCertificate(der)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return der, parsed
+	}
+	rootTemplate := certificate(11, "Explicit root", true)
+	rootDER, root := issue(rootTemplate, rootTemplate, &rootKey.PublicKey, rootKey)
+	intermediateDER, intermediate := issue(certificate(12, "Manufacturer intermediate", true), root, &intermediateKey.PublicKey, rootKey)
+	leafDER, _ := issue(certificate(13, "Hardware attestation", false), intermediate, &fixture.AttestationKey.PublicKey, intermediateKey)
+	rootPEM := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: rootDER}))
+	intermediatePEM := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: intermediateDER}))
+	if _, err := NewRegistry(intermediatePEM); err == nil {
+		t.Fatal("supplemental intermediate became an independent trust anchor")
+	}
+	for _, test := range []struct {
+		name  string
+		trust string
+		valid bool
+	}{
+		{"missing intermediate", rootPEM, false},
+		{"complete chain", rootPEM + intermediatePEM, true},
+		{"intermediate below different root", fixture.RootsPEM + intermediatePEM, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			registry, err := NewRegistry(test.trust)
+			if err != nil {
+				t.Fatal(err)
+			}
+			options, session, err := registry.BeginRegistration()
+			if err != nil {
+				t.Fatal(err)
+			}
+			raw, _ := json.Marshal(options)
+			var response map[string]any
+			if err := json.Unmarshal(fixture.Registration(raw), &response); err != nil {
+				t.Fatal(err)
+			}
+			payload := response["response"].(map[string]any)
+			objectBytes, _ := base64.RawURLEncoding.DecodeString(payload["attestationObject"].(string))
+			var object map[string]any
+			if err := cbor.Unmarshal(objectBytes, &object); err != nil {
+				t.Fatal(err)
+			}
+			object["attStmt"].(map[any]any)["x5c"] = []any{leafDER}
+			objectBytes, _ = cbor.Marshal(object)
+			payload["attestationObject"] = base64.RawURLEncoding.EncodeToString(objectBytes)
+			raw, _ = json.Marshal(response)
+			err = registry.FinishRegistration(*session, raw)
+			if (err == nil) != test.valid {
+				t.Fatalf("unexpected manufacturer-chain admission: %v", err)
+			}
+			if test.valid {
+				if err := registry.Validate(); err != nil {
+					t.Fatal(err)
+				}
+			}
+		})
+	}
+}
 
 func testRegistry(t *testing.T) (*Registry, *securitykey.Fixture) {
 	t.Helper()

@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/go-webauthn/webauthn/protocol"
@@ -17,7 +18,6 @@ import (
 
 const (
 	Origin           = "http://localhost:47832"
-	Listen           = "127.0.0.1:47832"
 	CeremonyLifetime = 2 * time.Minute
 	MaxResponseBytes = 64 << 10
 	MaxKeys          = 8
@@ -184,32 +184,45 @@ func (r Registry) FinishAssertion(session webauthn.SessionData, response []byte)
 }
 
 func roots(value string) (*x509.CertPool, error) {
+	trusted, _, err := manufacturerTrust(value)
+	return trusted, err
+}
+
+func manufacturerTrust(value string) (*x509.CertPool, *x509.CertPool, error) {
 	if len(value) == 0 || len(value) > MaxResponseBytes {
-		return nil, errors.New("supply a bounded PEM bundle of trusted hardware-key manufacturer roots")
+		return nil, nil, errors.New("supply a bounded PEM bundle of trusted hardware-key manufacturer roots")
 	}
-	pool := x509.NewCertPool()
+	trusted := x509.NewCertPool()
+	intermediates := x509.NewCertPool()
 	remaining := []byte(value)
-	count := 0
+	rootCount, intermediateCount := 0, 0
 	for len(bytes.TrimSpace(remaining)) != 0 {
 		block, rest := pem.Decode(remaining)
 		if block == nil || block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
-			return nil, errors.New("invalid hardware-key trust bundle")
+			return nil, nil, errors.New("invalid hardware-key trust bundle")
 		}
 		certificate, err := x509.ParseCertificate(block.Bytes)
 		if err != nil || !certificate.IsCA || !certificate.BasicConstraintsValid {
-			return nil, errors.New("hardware-key trust anchors must be CA certificates")
+			return nil, nil, errors.New("hardware-key trust bundle entries must be CA certificates")
 		}
-		pool.AddCert(certificate)
-		count++
-		if count > 16 {
-			return nil, errors.New("hardware-key trust bundle exceeds 16 roots")
+		if bytes.Equal(certificate.RawSubject, certificate.RawIssuer) && certificate.CheckSignatureFrom(certificate) == nil {
+			trusted.AddCert(certificate)
+			rootCount++
+		} else {
+			// Supplemental intermediates help build the chain but never become
+			// independent trust anchors. The leaf must reach an explicit root.
+			intermediates.AddCert(certificate)
+			intermediateCount++
+		}
+		if rootCount > 16 || intermediateCount > 32 {
+			return nil, nil, errors.New("hardware-key trust bundle exceeds 16 roots or 32 intermediates")
 		}
 		remaining = rest
 	}
-	if count == 0 {
-		return nil, errors.New("hardware-key trust bundle is empty")
+	if rootCount == 0 {
+		return nil, nil, errors.New("hardware-key trust bundle requires an explicit self-signed manufacturer root")
 	}
-	return pool, nil
+	return trusted, intermediates, nil
 }
 
 func (r Registry) verifyHardware(credential webauthn.Credential, registeredAt time.Time, verifyAttestation bool) error {
@@ -260,16 +273,15 @@ func (r Registry) verifyHardware(credential webauthn.Credential, registeredAt ti
 		}
 		certificates = append(certificates, certificate)
 	}
-	trusted, err := roots(r.RootsPEM)
+	trusted, intermediates, err := manufacturerTrust(r.RootsPEM)
 	if err != nil {
 		return err
 	}
-	intermediates := x509.NewCertPool()
 	for _, certificate := range certificates[1:] {
 		intermediates.AddCert(certificate)
 	}
 	if _, err := certificates[0].Verify(x509.VerifyOptions{Roots: trusted, Intermediates: intermediates, KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny}, CurrentTime: registeredAt}); err != nil {
-		return errors.New("hardware-key attestation is not trusted by the configured manufacturer roots")
+		return fmt.Errorf("hardware-key attestation is not trusted by the configured manufacturer roots: %w", err)
 	}
 	return nil
 }
