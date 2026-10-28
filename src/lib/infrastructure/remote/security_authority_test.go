@@ -169,7 +169,11 @@ func TestLockCancelsLateAuthenticationAndDoesNotBlockWorkers(t *testing.T) {
 	<-started
 	authority.Lock()
 	broker.mutex.Lock()
+	brokerIdentity := broker.state.Identity.PublicKey
 	broker.mutex.Unlock()
+	if brokerIdentity == "" {
+		t.Fatal("broker state is unavailable while OS authentication is pending")
+	}
 	close(release)
 	if err := <-done; err == nil || !authority.Status().Locked {
 		t.Fatal("late OS authentication restored a locked session")

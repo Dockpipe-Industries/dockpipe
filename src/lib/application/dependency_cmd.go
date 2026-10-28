@@ -42,7 +42,7 @@ func cmdDependency(args []string) error {
 		return cmdDependencyChange(operation, args[1:])
 	}
 	if operation != "inventory" && operation != "assess" && operation != "plan" {
-		return errors.New(dependencyUsage)
+		return fmt.Errorf("unknown dependency operation %q; use dockpipe dependency --help", operation)
 	}
 	flags := flag.NewFlagSet("dependency "+operation, flag.ContinueOnError)
 	resolver := flags.String("resolver", "", "explicit installed or declared resolver")
