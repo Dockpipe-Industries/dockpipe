@@ -39,13 +39,13 @@ func TestDarwinUsesSignedFixedSiblingAndNativeAccountHome(t *testing.T) {
 		if len(arguments) != 1 || arguments[0] != "--security-directory" {
 			t.Fatal("unexpected native account request")
 		}
-		return []byte(`{"schema":"dockpipe.osauth/v1","home":"/Users/example"}`), nil
+		return []byte(`{"schema":"dockpipe.osauth/v1","home":"/Users/ExampleUser"}`), nil
 	})
 	t.Setenv("HOME", "/tmp/project-home")
 	t.Setenv("PATH", "/tmp/project-bin")
 	t.Setenv("DOCKPIPE_GLOBAL_ROOT", "/tmp/project-security")
 	path, err := platform.SecurityDirectory()
-	if err != nil || path != "/Users/example/Library/Application Support/Dockpipe/security" {
+	if err != nil || path != "/Users/ExampleUser/Library/Application Support/Dockpipe/security" {
 		t.Fatalf("native account home was not used: %q %v", path, err)
 	}
 	if len(programs) != 2 || programs[1] != filepath.Join(directory, "dockpipe-system-auth") {
