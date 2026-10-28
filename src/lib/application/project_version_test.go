@@ -73,3 +73,43 @@ func TestRunRejectsProjectVersionBeforeWorkflowResolution(t *testing.T) {
 		t.Fatal("matching version did not execute workflow steps")
 	}
 }
+
+func TestProjectMinimumAdmissionUsesSelectedWorkdir(t *testing.T) {
+	withRunSeams(t)
+	previous := engineversion.Current()
+	t.Cleanup(func() { engineversion.Configure(previous) })
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "dockpipe.config.json"), []byte(`{"min_dockpipe_version":"0.6.11"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	child := filepath.Join(root, "child")
+	if err := os.Mkdir(child, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(child)
+	repoRootAppFn = func() (string, error) {
+		t.Fatal("minimum version failure reached workflow resolution")
+		return root, nil
+	}
+	engineversion.Configure("0.6.10")
+	if err := Run([]string{"--workdir", child, "--workflow", "example"}, nil); err == nil || !strings.Contains(err.Error(), "or newer") {
+		t.Fatalf("expected minimum admission failure, got %v", err)
+	}
+	for _, version := range []string{"0.6.10", "0.6.11", "0.6.33", "dev"} {
+		engineversion.Configure(version)
+		for _, args := range [][]string{
+			{"--workdir", child, "--workflow", "example"},
+			{"package", "build", "source", "--workdir=" + child},
+			{"--workflow", "example"},
+		} {
+			err := checkCLIProjectVersion(args)
+			allowed := version == "0.6.11" || version == "0.6.33"
+			if (err == nil) != allowed {
+				t.Errorf("version %s args %v allowed=%v: %v", version, args, allowed, err)
+			}
+		}
+		if err := checkCLIProjectVersion([]string{"install", "core", "--workdir", child}); err != nil {
+			t.Errorf("repair installation rejected: %v", err)
+		}
+	}
+}
