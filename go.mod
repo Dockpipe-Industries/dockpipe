@@ -1,6 +1,6 @@
 module dockpipe
 
-go 1.25.0
+go 1.26.0
 
 toolchain go1.26.10
 
@@ -18,7 +18,7 @@ require (
 	github.com/ebitengine/purego v0.11.2
 	github.com/fxamacker/cbor/v2 v2.9.2
 	github.com/go-webauthn/webauthn v0.17.4
-	golang.org/x/sys v0.45.0
+	golang.org/x/sys v0.49.0
 )
 
 require (
