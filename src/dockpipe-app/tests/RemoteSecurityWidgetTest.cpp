@@ -2,15 +2,20 @@
 
 #include <QApplication>
 #include <QCheckBox>
+#include <QCoreApplication>
+#include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLabel>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QTemporaryDir>
 #include <QThread>
 #include <cstdio>
+#include <cstring>
 #include <functional>
 
 #define CHECK(value) do { if (!(value)) { std::fprintf(stderr, "Remote security assertion at %d: %s\n", __LINE__, #value); return 1; } } while (false)
@@ -36,49 +41,99 @@ static QByteArray readFile(const QString &path)
     return file.readAll();
 }
 
+static bool writeFile(const QString &path, const QByteArray &contents = {})
+{
+    QFile file(path);
+    return file.open(QIODevice::WriteOnly) && file.write(contents) == contents.size();
+}
+
+static int runSecurityFixture()
+{
+    const QStringList arguments = QCoreApplication::arguments().mid(1);
+    const QDir directory(qEnvironmentVariable("DOCKPIPE_TEST_ROOT"));
+    const QString command = arguments.value(1);
+    QString captureName;
+    if (command == QStringLiteral("security-status"))
+        captureName = QStringLiteral("security-status-args");
+    else if (command == QStringLiteral("unlock") || command == QStringLiteral("lock"))
+        captureName = QStringLiteral("security-action-args");
+    else if (command == QStringLiteral("security-policy"))
+        captureName = QStringLiteral("security-policy-args");
+    else
+        return 2;
+
+    if (!writeFile(directory.filePath(captureName), arguments.join('\n').toUtf8() + '\n'))
+        return 10;
+
+    QFile output;
+    if (!output.open(stdout, QIODevice::WriteOnly))
+        return 10;
+
+    if (command == QStringLiteral("security-status")) {
+        QJsonObject capabilities{{"idle", true}, {"screen_lock", false}, {"sleep", true}};
+        QJsonObject status{
+            {"supported", true}, {"authority_available", true}, {"locked", true},
+            {"idle_seconds", 300}, {"lock_on_screen_lock", false}, {"lock_on_sleep", true},
+            {"absolute_seconds", 3600}, {"expires_at", ""},
+            {"detail", "Fixture authorization is locked."}
+        };
+        if (directory.exists(QStringLiteral("security-unavailable"))) {
+            status["supported"] = false;
+            status["authority_available"] = false;
+            status["detail"] = "Fixture host has no security authority.";
+            capabilities = {{"idle", false}, {"screen_lock", false}, {"sleep", false}};
+        } else if (directory.exists(QStringLiteral("security-capability-limited"))) {
+            status["supported"] = false;
+            status["lock_on_screen_lock"] = true;
+            status["detail"] = "Native idle, screen lock and sleep notifications are unavailable; the remote authority remains reachable.";
+            capabilities = {{"idle", false}, {"screen_lock", false}, {"sleep", false}};
+        } else if (directory.exists(QStringLiteral("security-idle-unavailable"))) {
+            status["detail"] = "Native idle, screen lock and sleep notifications are unavailable.";
+            capabilities = {{"idle", false}, {"screen_lock", false}, {"sleep", false}};
+        } else if (directory.exists(QStringLiteral("security-unlocked"))) {
+            status["locked"] = false;
+            status["expires_at"] = "2026-10-27T14:00:00Z";
+            status["detail"] = "Fixture authorization active.";
+        }
+        status["capabilities"] = capabilities;
+        const QByteArray json = QJsonDocument(status).toJson(QJsonDocument::Compact) + '\n';
+        return output.write(json) == json.size() && output.flush() ? 0 : 10;
+    }
+
+    if (command == QStringLiteral("unlock")) {
+        if (directory.exists(QStringLiteral("security-unlock-fails"))) {
+            std::fputs("Fixture native authentication was unavailable.\n", stderr);
+            return 1;
+        }
+        return writeFile(directory.filePath(QStringLiteral("security-unlocked"))) ? 0 : 10;
+    }
+    if (command == QStringLiteral("lock")) {
+        const QString marker = directory.filePath(QStringLiteral("security-unlocked"));
+        return !QFileInfo::exists(marker) || QFile::remove(marker) ? 0 : 10;
+    }
+    return output.write("{}\n") == 3 && output.flush() ? 0 : 10;
+}
+
 int main(int argc, char **argv)
 {
+    if (argc > 1 && std::strcmp(argv[1], "remote") == 0) {
+        QCoreApplication app(argc, argv);
+        return runSecurityFixture();
+    }
+
     QApplication app(argc, argv);
     QTemporaryDir directory;
     CHECK(directory.isValid());
     qputenv("DOCKPIPE_TEST_ROOT", directory.path().toUtf8());
 
-    const QString cliPath = directory.filePath(QStringLiteral("dockpipe"));
-    QFile cli(cliPath);
-    CHECK(cli.open(QIODevice::WriteOnly));
-    cli.write(R"SH(#!/bin/sh
-case "$1:$2" in
-remote:security-status)
-  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/security-status-args"
-  if [ -f "$DOCKPIPE_TEST_ROOT/security-unavailable" ]; then
-    echo '{"supported":false,"authority_available":false,"locked":true,"idle_seconds":300,"lock_on_screen_lock":false,"lock_on_sleep":true,"absolute_seconds":3600,"expires_at":"","capabilities":{"idle":false,"screen_lock":false,"sleep":false},"detail":"Fixture host has no security authority."}'
-  elif [ -f "$DOCKPIPE_TEST_ROOT/security-capability-limited" ]; then
-    echo '{"supported":false,"authority_available":true,"locked":true,"idle_seconds":300,"lock_on_screen_lock":true,"lock_on_sleep":true,"absolute_seconds":3600,"expires_at":"","capabilities":{"idle":false,"screen_lock":false,"sleep":false},"detail":"Native idle, screen lock and sleep notifications are unavailable; the remote authority remains reachable."}'
-  elif [ -f "$DOCKPIPE_TEST_ROOT/security-idle-unavailable" ]; then
-    echo '{"supported":true,"authority_available":true,"locked":true,"idle_seconds":300,"lock_on_screen_lock":false,"lock_on_sleep":true,"absolute_seconds":3600,"expires_at":"","capabilities":{"idle":false,"screen_lock":false,"sleep":false},"detail":"Native idle, screen lock and sleep notifications are unavailable."}'
-  elif [ -f "$DOCKPIPE_TEST_ROOT/security-unlocked" ]; then
-    echo '{"supported":true,"authority_available":true,"locked":false,"idle_seconds":300,"lock_on_screen_lock":false,"lock_on_sleep":true,"absolute_seconds":3600,"expires_at":"2026-10-27T14:00:00Z","capabilities":{"idle":true,"screen_lock":false,"sleep":true},"detail":"Fixture authorization active."}'
-  else
-    echo '{"supported":true,"authority_available":true,"locked":true,"idle_seconds":300,"lock_on_screen_lock":false,"lock_on_sleep":true,"absolute_seconds":3600,"expires_at":"","capabilities":{"idle":true,"screen_lock":false,"sleep":true},"detail":"Fixture authorization is locked."}'
-  fi ;;
-remote:unlock)
-  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/security-action-args"
-  if [ -f "$DOCKPIPE_TEST_ROOT/security-unlock-fails" ]; then
-    echo 'Fixture native authentication was unavailable.' >&2
-    exit 1
-  fi
-  touch "$DOCKPIPE_TEST_ROOT/security-unlocked" ;;
-remote:lock)
-  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/security-action-args"
-  rm -f "$DOCKPIPE_TEST_ROOT/security-unlocked" ;;
-remote:security-policy)
-  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/security-policy-args"
-  echo '{}' ;;
-*) echo 'Unexpected security fixture command' >&2; exit 2 ;;
-esac
-)SH");
-    cli.close();
-    cli.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+#ifdef Q_OS_WIN
+    const QString cliName = QStringLiteral("dockpipe.exe");
+#else
+    const QString cliName = QStringLiteral("dockpipe");
+#endif
+    const QString cliPath = directory.filePath(cliName);
+    CHECK(QFile::copy(QCoreApplication::applicationFilePath(), cliPath));
+    CHECK(QFile::setPermissions(cliPath, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner));
     qputenv("DOCKPIPE_BIN", cliPath.toUtf8());
 
     RemoteSecurityWidget widget;

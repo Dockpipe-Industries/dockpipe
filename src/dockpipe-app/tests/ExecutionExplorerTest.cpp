@@ -4,6 +4,7 @@
 #include "Theme.h"
 #include <QApplication>
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
@@ -17,11 +18,41 @@
 #include <QTableWidget>
 #include <QTemporaryDir>
 #include <QThread>
+#include <cstdio>
 
 #define SNAPSHOT_CHECK(value) do { if (!(value)) return 90; } while (false)
 
+static int remoteFixture(int argc, char **argv)
+{
+    QCoreApplication application(argc, argv);
+    const QString root = qEnvironmentVariable("DOCKPIPE_TEST_ROOT");
+    if (root.isEmpty())
+        return 30;
+
+    const QString projectBinaryDirectory = QDir(root).filePath("project/src/bin");
+    if (QDir::cleanPath(QCoreApplication::applicationDirPath()) == QDir::cleanPath(projectBinaryDirectory)) {
+        QFile marker(QDir(root).filePath("project-cli-invoked"));
+        return marker.open(QIODevice::WriteOnly) ? 31 : 32;
+    }
+
+    QFile arguments(QDir(root).filePath("operator-args"));
+    const QByteArray encoded = (application.arguments().mid(1).join('\n') + '\n').toUtf8();
+    if (!arguments.open(QIODevice::WriteOnly) || arguments.write(encoded) != encoded.size())
+        return 33;
+    arguments.close();
+
+    QFile output;
+    const QByteArray snapshot = "{\"schema\":\"dockpipe.machine_snapshot.v1\",\"node\":\"fixture-node\",\"state\":\"live\",\"captured_at\":\"2026-01-01T12:00:00Z\",\"execution\":{}}\n";
+    if (!output.open(stdout, QIODevice::WriteOnly) || output.write(snapshot) != snapshot.size() || !output.flush())
+        return 34;
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
+    if (argc > 1 && QString::fromLocal8Bit(argv[1]) == "remote")
+        return remoteFixture(argc, argv);
+
     QTemporaryDir temporary;
     qputenv("XDG_CONFIG_HOME", temporary.path().toUtf8());
     QApplication app(argc, argv);
@@ -172,27 +203,25 @@ int main(int argc, char **argv)
     const QString trustedBinaryDirectory = testRoot + "/trusted-bin";
     if (!QDir().mkpath(projectBinaryDirectory) || !QDir().mkpath(trustedBinaryDirectory))
         return 19;
-    QFile trustedCli(trustedBinaryDirectory + "/dockpipe");
-    if (!trustedCli.open(QIODevice::WriteOnly))
+#ifdef Q_OS_WIN
+    const QString cliName = "dockpipe.exe";
+#else
+    const QString cliName = "dockpipe";
+#endif
+    const QString trustedCli = QDir(trustedBinaryDirectory).filePath(cliName);
+    const QString projectCli = QDir(projectBinaryDirectory).filePath(cliName);
+    if (!QFile::copy(QCoreApplication::applicationFilePath(), trustedCli))
         return 20;
-    trustedCli.write("#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$DOCKPIPE_TEST_ROOT/operator-args\"\n"
-                     "echo '{\"schema\":\"dockpipe.machine_snapshot.v1\",\"node\":\"fixture-node\",\"state\":\"live\",\"captured_at\":\"2026-01-01T12:00:00Z\",\"execution\":{}}'\n");
-    trustedCli.close();
-    trustedCli.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
-    if (!QFile::copy(trustedBinaryDirectory + "/dockpipe", testRoot + "/trusted-cli"))
+    if (!QFile::setPermissions(trustedCli, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner))
         return 21;
-    QFile::setPermissions(testRoot + "/trusted-cli", QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
-    QFile projectCli(projectBinaryDirectory + "/dockpipe");
-    if (!projectCli.open(QIODevice::WriteOnly))
+    if (!QFile::copy(QCoreApplication::applicationFilePath(), projectCli))
         return 22;
-    projectCli.write("#!/bin/sh\ntouch \"$DOCKPIPE_TEST_ROOT/project-cli-invoked\"\n"
-                     "exec \"$DOCKPIPE_TEST_ROOT/trusted-cli\" \"$@\"\n");
-    projectCli.close();
-    projectCli.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+    if (!QFile::setPermissions(projectCli, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner))
+        return 26;
 
     qputenv("DOCKPIPE_TEST_ROOT", testRoot.toUtf8());
     const QByteArray previousPath = qgetenv("PATH");
-    qputenv("PATH", trustedBinaryDirectory.toUtf8() + ":" + previousPath);
+    qputenv("PATH", trustedBinaryDirectory.toUtf8() + QDir::listSeparator().toLatin1() + previousPath);
     qunsetenv("DOCKPIPE_BIN");
     explorer.setWorkdir(projectRoot);
     explorer.setNodes({"fixture-node"});
@@ -209,8 +238,11 @@ int main(int argc, char **argv)
         QApplication::processEvents();
         QThread::msleep(10);
     }
-    if (!QFile::exists(operatorArgsPath) || QFile::exists(testRoot + "/project-cli-invoked"))
+    if (!QFile::exists(operatorArgsPath) || QFile::exists(testRoot + "/project-cli-invoked")) {
+        std::fprintf(stderr, "Trusted remote observation fixture did not run: %s\n",
+            qPrintable(explorer.findChild<QLabel *>("executionStatus")->text()));
         return 24;
+    }
     QFile operatorArgs(operatorArgsPath);
     if (!operatorArgs.open(QIODevice::ReadOnly)
         || operatorArgs.readAll() != "remote\nobserve\n--node\nfixture-node\n--auth\nnever\n")
