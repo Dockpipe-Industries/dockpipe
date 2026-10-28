@@ -1,5 +1,10 @@
 # TASK-042 — Provider-Agnostic OIDC Workload Federation
 
+The proposed [TASK-053 adaptive threat detection and remote isolation](../adaptive-remote-threat-containment/index.yaml)
+may consume verified workload identity as signal context. TASK-042 remains the
+owner of token verification and identity mapping; risk scores cannot extend or
+renew a grant.
+
 Repository ownership note: package paths in this record describe external source. Current catalog packages live in [dockpipe-packages](https://github.com/Dockpipe-Industries/dockpipe-packages/tree/master/packages); previously extracted [DorkPipe/MCP](https://github.com/Dockpipe-Industries/dorkpipe/tree/master/packages) and [Pipeon](https://github.com/Dockpipe-Industries/pipeon/tree/master/packages/pipeon) remain in their own repositories. Historical paths and receipts do not recreate a local package tree.
 
 ## CLI-First Implementation Requirement
@@ -163,3 +168,15 @@ shared domain implementations serve CLI, MCP, explicit REST and desktop, with ex
 storage and version lifecycle. Ordinary local execution stays lightweight; required privileged
 controls cannot be bypassed by selecting a lighter interface or execution mode. Domain ownership
 and this task's existing security/acceptance requirements remain intact. Backlog only.
+
+## Security and reliability dependency lifecycle linkage (2026-10-26)
+
+This existing **P1** identity work joins the
+[dependency lifecycle and authentication hardening initiative](../dependency-lifecycle/overview.md).
+TASK-049/050 may authenticate scheduled/local/remote workloads through these
+contracts, but a valid OIDC identity is neither a hardware-backed human assertion
+nor an update/elevation/restart grant. TASK-036/039 own mandatory hardware approval
+and scoped session authority; TASK-041 is optional decision delivery. TASK-052
+must prove token refresh, reconnect and new sessions cannot renew an expired
+lifecycle permission envelope. No new issuer, federation task or authentication
+platform is introduced by dependency management.

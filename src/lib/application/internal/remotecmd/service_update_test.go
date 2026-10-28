@@ -118,7 +118,7 @@ fi
 	if err := os.WriteFile(filepath.Join(root, "worker.json"), credential, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	definition, err := prepareService(root, "worker")
+	definition, err := prepareService(context.Background(), root, "worker")
 	if err != nil {
 		t.Fatal(err)
 	}

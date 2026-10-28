@@ -27,9 +27,9 @@ finding's disposition. A recurring hygiene label does not authorize unrelated
 refactoring or re-open completed work.
 
 Broader platform acceptance belongs to TASK-025 and its platform tasks; live
-remote pairing/delivery belongs to TASK-036; extraction and publication
-qualification belong to TASK-044/045. Their incomplete acceptance is not closed
-by local source or documentation checks.
+remote pairing/delivery belongs to TASK-036. [TASK-044 extraction](../closed/ecosystem-extraction/index.yaml)
+is completed through staging; optional Guest Tools/VM acceptance remains with
+TASK-045. Local documentation checks do not close those wider qualification tasks.
 
 ## Historical evidence
 

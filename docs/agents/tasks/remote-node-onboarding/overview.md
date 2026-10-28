@@ -244,3 +244,351 @@ files and repaired fresh pairing after access removal: explicit pairing rotates 
 credential and still requires a new operator-approved verification code. Tests retain the
 old-credential rejection check. Local development CLI/launcher identities now include the
 build commit and dirty state; release version injection is preserved.
+
+## P1 authentication and lifecycle hardening refinement (2026-10-26)
+
+Part of the [security and reliability initiative](../dependency-lifecycle/overview.md),
+with TASK-039 owning shared authorization contracts, TASK-042 workload identities,
+TASK-041 optional approval delivery and TASK-046 enrollment/passkey assessment.
+This refines existing pairing ownership; no second pairing or identity task is created.
+
+Inspection of `src/lib/infrastructure/remote/{broker,pairing}.go` found hashed
+administrator/worker bearer credentials, operator-opened pairing windows, explicit
+code approval and worker revocation. Invitation expiry is not continuing worker
+session expiry; the inspected authenticated dispatch does not itself establish
+hardware-backed approval or operation-scoped elevated authority. These are design
+gaps to address, not evidence of exploitation or implemented enhancements.
+
+Required P1 scope:
+
+- Define mandatory hardware-backed FIDO2/WebAuthn security-key authentication for
+  remote pairing authorization. Remote feature unlock uses OS authentication;
+  per-operation hardware prompts are deferred configurable policy. Reuse
+  established verification libraries and shared TASK-039 identity/grant contracts.
+  Specify supported authenticators, RP/origin binding, user presence/verification,
+  hardware provenance/attestation policy and enrollment/revocation/recovery.
+  A generic or synced passkey must not automatically satisfy a hardware-key policy.
+- Define bounded worker/admin session expiry, rotation and revocation, plus scoped
+  authorization separate from pairing. Fail closed for missing/expired hardware
+  assertions where required; recovery cannot silently downgrade the mandatory gate.
+- Pairing only enrolls the machine. Installing/updating software, elevation and
+  critical service restarts require exact target/action/plan authority checked by
+  the executor at use. Unattended work requires a separately provisioned bounded
+  policy; it cannot synthesize a hardware assertion or renew a human grant.
+- Coordinate TASK-049/050 existing broker jobs and target recovery. Token renewal,
+  reconnect and result retries cannot renew approvals or replay updates.
+
+Acceptance/tests: reject software-only credentials under hardware-required policy,
+wrong-origin/RP assertions, replay, expired sessions, revoked keys/workers and
+merely paired privileged requests. Verify authorized local/headless human approval,
+scoped unattended policy, loss/replacement of a hardware key, audit attribution,
+and tunnel heartbeat-loss recovery with TASK-052. Preserve existing pairing
+rate limits, private credentials and anonymous-approval rejection tests.
+
+## Remote unlock and global auto-lock policy (2026-10-26 refinement)
+
+User refinement: mandatory physical hardware-key verification applies to approval
+of a new pairing. Routine remote operations use an OS-authenticated remote unlock
+session; a hardware-key touch for every operation is not the initial requirement.
+Per-operation approval rules and remotely delivered approvals remain future work.
+This narrows the earlier hardware-approval wording; it does not relax broker-side
+scope checks or separate maintenance/restart authority.
+
+Provide one global, machine-level Dockpipe **Security > Remote access** policy,
+consumed by the desktop, CLI and shared authorization service. The initial local
+broker implementation is recorded below; remaining platform/hosted qualification
+is still open.
+
+- **Auto-lock after inactivity:** configurable duration; proposed default 5 minutes,
+  with presets such as 1, 5, 15, 30 and 60 minutes plus a validated custom duration.
+  Define supported bounds with the session contract. Changing the timeout must not
+  silently unlock access. Do not add an unlimited session default.
+- **Lock when the computer locks** and **lock on sleep:** separately configurable,
+  enabled by default. Start locked after application/service restart; wake does
+  not restore the old unlock session. Expose an immediate Lock remote access action.
+- Measure inactivity from trusted local human interaction, never broker polling,
+  telemetry, background jobs, API calls or automation. Document OS idle detection
+  and supported fallback; unavailable lock/sleep integration must be visible.
+- Protect the signing credential using the platform authentication/key-storage
+  integration. OS reauthentication unlocks proof for a broker-verified scoped
+  session; a UI flag or static bearer token alone cannot authorize remote actions.
+  Mandatory hardware pairing cannot fall back to an ordinary OS password.
+- Local auto-lock stops signing/issuing requests and invalidates local unlock
+  state. Broker-side expiry and revocation remain authoritative even if the app
+  is bypassed or disconnected. Negotiate a bounded remote session lifetime and
+  refresh rules; background activity cannot extend it. A client preference cannot
+  exceed a stricter broker policy or renew a separate operation approval.
+- Locking prevents new remote actions; already admitted jobs can continue under
+  their existing authority. It does not unpair machines, cancel work implicitly
+  or change the lifetime of worker machine credentials.
+- Keep policy out of project/workflow/package configuration. A repository, resolver,
+  MCP client or background workflow must not weaken the user's global lock settings.
+  Settings changes that weaken security require an authenticated operator context;
+  tightening a policy takes effect immediately. Use one settings owner, not separate
+  CLI/UI/MCP policy stores.
+
+Acceptance/tests: cover inactivity boundaries, trusted versus background activity,
+OS lock/sleep/wake, process restart, immediate lock, timeout changes while unlocked,
+multiple clients, broker expiry/revocation, missing OS integration and a disconnected
+client. Prove a direct API call cannot bypass locked/expired authority, mandatory
+hardware pairing stays enforced, and existing admitted jobs continue correctly.
+Coordinate shared contracts with TASK-039 and qualification with TASK-052.
+
+## Mandatory hardware-key pairing implementation (2026-10-26)
+
+Objective: implement local-owner registration and broker-enforced hardware-key
+pairing for review, including persistent identities on both sides. Per-action
+prompts, OS-authenticated remote unlock/auto-lock, remotely delivered approvals,
+publication and live machine migration remain excluded from this implementation.
+The later global lock policy is machine-level; unlocking authorizes the current
+OS user, not every user on that machine.
+
+Source now adds a pinned Go-compatible WebAuthn verifier, manufacturer CA
+attestation admission, a private localhost ceremony, and broker-side one-use
+approval bound to the pending request. Local registration requires the broker
+stopped; adding a spare requires an existing key and cannot replace trust roots.
+Legacy new/unused file invitations cannot bypass the gate. Existing paired
+workers retain their current access pending deliberate revocation/re-pairing.
+
+New workers persist Ed25519 installation identities and pin the broker identity;
+requests and responses use one-use signed nonce exchanges. These identities belong
+to each private broker/worker state directory, not hostnames or login sessions.
+They are installation identities, not hardware-attested machine identities;
+OS-keystore/system-service storage is still future work. [Remote nodes](../../../runtime/remote-nodes.md#register-pairing-hardware-keys)
+is canonical for commands, trust roots, compatibility and limitations.
+
+Local validation completed:
+
+- Repository Core workflow, `./... -count=1`: passed.
+- Focused race tests for remote, remotecmd, hardwarekey and remoteidentity: passed.
+- Hardware attestation tests reject missing/self/untrusted attestation, backup
+  eligibility, missing presence/verification, wrong origin/RP/challenge and replay.
+- Pairing/machine tests cover both identities, stale status, nonce replay/expiry,
+  scope changes, denial/close, uncertain persistence and per-node capacity.
+- Native CLI build: passed; disposable binary/evidence under a task-owned temporary
+  directory. macOS arm64 and Windows amd64 compile-only checks passed for hardwarekey,
+  remoteidentity and remote packages. These are not native execution qualification.
+- Desktop source-layout checks, local doc links and diff whitespace checks passed.
+  Desktop button text and ceremony timeout were updated; no current native Qt build
+  was available, so its native interaction test remains pending.
+- Independent bounded security review found three issues (historical certificate
+  expiry, global challenge starvation and stale pairing status); all were repaired
+  and covered by regression tests, with no remaining blocker in that review.
+
+Physical-key/browser interaction and M6 native qualification remain unproven.
+The user authorized a local implementation commit after review; no push or CI
+pipeline is authorized or started. Key removal/trust rotation, machine-wide OS-keystore storage, remote
+unlock policy and per-operation/Cloud approvals remain separate work.
+No running broker, physical key, Cloudflare tunnel or remote machine was changed.
+
+## Pre-commit security review (2026-10-26)
+
+A further local review reproduced an active-intermediary replay: a previously
+signed machine challenge plus response could authenticate a later exchange. The
+broker now signs the fresh client nonce into challenge issuance, and the client
+checks it before signing or accepting the response. The regression failed before
+the fix and passes after it.
+
+The same review found that the browser launcher exposed its short-lived capability
+in process arguments on multi-user systems. Browser launch now uses an owner-only
+temporary redirect file; arguments reveal only the file URI, and lifecycle cleanup
+removes the file on completion, failure or cancellation.
+
+Pairing consent metadata/options were also unsigned on the operator channel.
+Consent is now broker-signed and bound to the requested code and a fresh operator
+nonce. The native client verifies it against protected local broker state before
+showing it in the browser. Hosted approvals are explicitly refused in this slice;
+remote approval remains deferred. Small challenge/consent routes have request
+body bounds matched to their wire contracts.
+
+Tests cover transcript replay, substituted consent/keys/options/code, stale
+operator nonces, hosted-approval refusal, private launcher permissions and cleanup,
+and absence of capabilities from opener arguments. Physical-key/browser and M6
+qualification remain pending. The user subsequently authorized a local commit
+and physical-key testing. Push, remote CI, service restart and live-state migration
+remain outside that authorization; physical-key testing begins with isolated state.
+
+
+## Native hardware-key interaction (2026-10-26 refinement)
+
+The user requested a normal Dockpipe dialog and terminal CLI interaction instead
+of either an embedded or external browser. This supersedes the browser ceremony
+presentation described in the initial implementation above; the broker hardware
+attestation, signed consent and persistent machine identities are retained.
+
+- Core owns one native FIDO2 adapter over the existing system libfido2 library.
+  It leaves CTAP/PIN cryptography to libfido2 and produces responses checked by the
+  existing verifier. Native library loading uses supported absolute system paths;
+  missing APIs/platform support fail closed. No dependency is installed implicitly.
+- The GUI owns a normal key-selection/masked-PIN dialog. CLI uses terminal prompts
+  with echo disabled and works without the GUI running. A bounded private child
+  process protocol binds each GUI response to one fresh prompt and retained device.
+  PINs stay out of command arguments, settings and logs. Closing the GUI cancels;
+  terminal cancellation restores input state. Native calls have bounded timeouts.
+- No automatic PIN retry, PIN creation/change, key reset or browser fallback.
+  First/spare registration actions retain explicit manufacturer trust and the
+  stopped-broker requirement. OS-authenticated remote unlock remains separate.
+- The first physical-key attempt reached native signing but failed manufacturer
+  chain validation. Supplemental published intermediates can now complete a path
+  to the explicit self-signed roots; they cannot become independent trust anchors.
+  Regression tests cover missing intermediates, complete chains, wrong roots and
+  intermediate-only rejection. PIN wording explicitly identifies the existing key
+  PIN; it never configures or changes the key.
+- Linux/macOS amd64/arm64 native adapters are implemented. Windows native key
+  interaction currently fails closed; its platform adapter and native qualification
+  remain open under TASK-052. Installation packaging for libfido2 is also pending.
+- Full local Go suite, focused security/race suites, native Qt transport/dialog
+  checks and CLI build pass. Native adapter macOS arm64 and Windows amd64 compile
+  checks pass; the Windows runtime adapter still fails closed as described above.
+- The user's Yubico Security Key registered through the production native dialog
+  and libfido2 adapter in disposable Linux broker state. A second physical-key
+  assertion approved a dummy loopback worker; its signed approval and both saved
+  installation identities matched. An administrator token plus code alone was
+  rejected before that approval. Test broker/worker processes stopped afterward;
+  no services or jobs were installed or run. The PIN was not changed or reset.
+- GUI native-key commands now select an operator-controlled CLI rather than
+  automatically discovering a project executable, preventing a repository from
+  supplying the native PIN endpoint. Explicit absolute host overrides remain
+  supported; missing/invalid choices fail clearly. Regression coverage includes
+  project/CWD/relative-PATH executable refusal.
+- Physical CLI terminal interaction, macOS native key interaction,
+  Windows adapter implementation and packaged-install qualification remain open.
+  A generated response fixture or successful build is not that acceptance.
+
+The user authorized a local commit of this validated native refinement. The earlier
+pairing implementation was committed locally as `794104e9f`. No push, pipeline, production
+service change or live machine migration is authorized by this refinement.
+
+### Local macOS application identity refinement
+
+Bundled remote services now associate with their enclosing app's actual bundle
+identifier, read using the system plist tool with bounded output and cancellation.
+Standalone CLIs do not impersonate an installed application. Packaging gives the
+CLI and workspace reader explicit signing identifiers, preserves nested identifiers
+when signing the app, and includes a local-network permission purpose string.
+Existing service registrations are not rewritten or restarted automatically.
+
+Focused native macOS tests passed for XML/binary plist handling, malformed metadata,
+cancellation, output bounds, enclosing-app association and service update behavior.
+A registered, explicitly ad-hoc-signed temporary app reached a disposable broker
+over verified TLS and submitted signed machine pairing requests. This proves only
+that exact development build's connectivity. Consistent Apple-issued signing and
+installed-app update/privacy continuity still require release qualification;
+ad-hoc identifiers alone do not provide that guarantee. A subsequent fresh
+cross-machine test completed with a physical Yubico assertion in the Linux native
+dialog. The macOS worker received signed approval, both saved
+public machine identities matched the broker state, and authenticated nonce/idle
+polls succeeded. The temporary agents were removed, the disposable enrollment was
+revoked, and the test broker/listener stopped. Installed services and existing
+machine pairings were preserved. This does not qualify a packaged app upgrade or
+macOS-hosted physical-key interaction.
+
+A repeated fresh pairing was personally confirmed by the operator after completing
+the native PIN/touch interaction. The macOS worker again received approval and
+completed authenticated polls, both public machine identities matched, and the
+temporary agents, broker and listener were stopped with the test enrollment
+revoked. This repeat closes the user-observed cross-machine pairing check; it
+does not expand the platform or packaged-upgrade qualification above.
+
+
+### OS-authenticated remote unlock implementation
+
+The local broker now owns one canonical OS-user remote authority, with an
+owner-only Unix socket and kernel-verified caller UID/PID. Its policy location is
+resolved from the OS account database, independently of project roots, `HOME`,
+XDG overrides and per-connection `--state`. A second local broker cannot create a
+second, weaker lock owner. Hosted operator sessions and Windows remain unavailable
+until their corresponding native/protocol adapters are implemented; they cannot
+fall back to static bearer administration.
+
+The authority starts locked. Native OS authentication creates an ephemeral
+in-memory signing credential; it never writes that credential or an unlock lease
+to disk. Each administrative HTTP request needs a scoped, single-use proof bound
+to the broker identity, OS user, session, operation, body digest and a deadline.
+The broker verifies fresh OS state outside the job mutex, then rechecks admission
+and a native suspend generation before dispatch. The administrator bearer alone
+cannot operate the broker. Replies are authenticated against the pinned broker
+identity. A persisted protocol marker makes older strict readers reject hardened
+broker state rather than bypass the new boundary.
+
+Default inactivity timeout is 300 seconds, configurable from 60 to 3600 seconds,
+with an independent one-hour maximum authorization lifetime. Background traffic
+never counts as human input. Native lock/sleep controls default on; unknown
+required capability fails closed. Unknown idle tracking uses a fixed timeout from
+unlock and is clearly disclosed. Security policy changes always leave access
+locked; weakening requires fresh OS authentication, while tightening takes effect
+without an additional prompt. Immediate lock, OS lock, inactivity, sleep/resume,
+restart and cancelled/invalidated authentication cannot restore authority. These
+controls govern new operator actions; admitted worker jobs can finish normally.
+Mandatory physical-key pairing remains an additional independent gate.
+
+The desktop exposes **Settings > Security > Remote access** through the same CLI
+policy owner. CLI commands are `remote security-status`, `remote unlock`,
+`remote lock` and `remote security-policy`. Native dialogs are OS-owned; Dockpipe
+never receives an OS password. Linux uses a dedicated polkit `auth_self` action
+without cached authorization and trusted local-session/lock signals, with native
+GNOME idle tracking. macOS uses a signed native LocalAuthentication helper,
+Quartz idle and suspend clocks. Missing native helpers or lock capabilities are
+reported explicitly. This is process-protected in-memory authority, not a claim
+that existing persisted machine keys are bound to an OS keystore or protected
+against arbitrary compromise of the same OS account.
+
+Validation covers direct bearer rejection, replay/body/path substitution,
+shared-client locking, policy weakening, inactivity and absolute expiry,
+late/cancelled authentication, silent IPC shutdown and admitted work while locked.
+Native OS prompt, installed packaging and cross-platform qualification are
+separate from deterministic test fixtures. No production service replacement,
+per-action hardware prompt, remote approval service or publication is included.
+
+The native helper compiled and passed signature verification on the macOS ARM64
+test host. Its read-only snapshot reported known idle, lock and sleep signals;
+typed OS-registry fixtures cover missing, ambiguous and positively locked console
+states. This check did not invoke LocalAuthentication. The full local Go suite,
+affected race suites and Linux/macOS ARM64 CLI builds passed. The operator approved
+installation of the root-owned packaged polkit action and personally completed
+the native Linux OS prompt against an isolated broker. The authority reported
+unlocked, an authenticated `remote nodes` request succeeded, and the same request
+was rejected after explicit lock. The global five-minute policy was preserved.
+Automatic idle, screen-lock and sleep transitions remain fixture-tested rather
+than operator-observed in this run. Flatpak host authentication integration remains
+unqualified; the native-host results do not establish sandboxed app support.
+The isolated Linux broker reports known idle, screen-lock and sleep capabilities,
+including the GNOME Shell-owned screen-saver endpoint. All four focused desktop
+tests (remote launcher, execution explorer, launcher settings and remote security)
+and the desktop application build passed.
+
+### Action-driven OS re-authentication follow-up
+
+The CLI now owns continuation of a user-requested action across OS unlock. Its
+default `--auth auto` handles only the local authority's typed lock denial before
+HTTP transmission: authenticate once, reacquire the scoped proof once, then send
+the already serialized original request. It never replays an HTTP/network failure.
+`--auth never` preserves noninteractive denial for scripts and passive GUI reads.
+Cancellation, a second denial or unavailable authority stops without execution.
+Hardware-key pairing and worker-local authorization are unchanged.
+
+The GUI delegates user actions to that CLI contract, gives the OS prompt time to
+complete, and uses noninteractive status polling for its remote lock indicator.
+Settings remains an optional policy/manual-lock surface rather than an unlock
+prerequisite. Tests cover bounded continuation, cancellation, text errors that
+must not trigger authentication, no network replay, and original-submission
+snapshot preservation. A live locked CLI machine-list action opened native OS
+authentication and continued successfully to return the existing paired machine.
+The operator also personally confirmed the actual desktop flow: clicking Remote
+Refresh while locked opened OS authentication, continued automatically and showed
+the paired machine without visiting Settings. This proves machine-list
+continuation, not a new workflow execution or current worker health; monitoring
+was unavailable on the paired worker during this run.
+The focused remote/CLI race suites, snapshot-preservation regression, three GUI
+tests (remote launcher, execution explorer and remote security widget), and local
+CLI/desktop builds passed. Observer fixtures distinguish passive polling from
+explicit execution/Docker refresh and verify that only the latter requests
+interactive authentication. The operator approved restoration of the original
+300-second policy, completed OS authentication, and the authority remained locked.
+The local broker service was updated with explicit operator approval for these
+tests; no paired-worker installation or hosted pipeline was changed.
+
+[TASK-053](../adaptive-remote-threat-containment/index.yaml) adds a separate P2
+research proposal for adaptive threat signals and broker-independent worker
+containment. It consumes these authorization outcomes; scores never relax a hard
+denial or replace the authoritative lock boundary.

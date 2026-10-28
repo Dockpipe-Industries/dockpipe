@@ -12,6 +12,7 @@ import (
 
 	contract "dockpipe/src/lib/domain/remote"
 	remoteio "dockpipe/src/lib/infrastructure/remote"
+	"dockpipe/src/lib/infrastructure/remoteidentity"
 )
 
 func pairOnline(ctx context.Context, root, endpoint, node string, allowDelivery bool, timeout int) error {
@@ -46,6 +47,11 @@ func pairOnline(ctx context.Context, root, endpoint, node string, allowDelivery 
 	} else if !os.IsNotExist(err) {
 		return err
 	} else {
+		identity, identityErr := remoteidentity.New()
+		if identityErr != nil {
+			return identityErr
+		}
+		config.MachineKey, config.MachinePrivateKey = identity.PublicKey, identity.PrivateKey
 		config.Token, err = remoteio.Secret()
 		if err != nil {
 			return err
@@ -67,9 +73,25 @@ func pairOnline(ctx context.Context, root, endpoint, node string, allowDelivery 
 	rotated := false
 	for {
 		var status contract.PairingStatus
+		identity := remoteidentity.Identity{PublicKey: config.MachineKey, PrivateKey: config.MachinePrivateKey}
+		if err := identity.Validate(); err != nil {
+			return errors.New("saved pairing needs a machine identity; preserve it and use a separate state directory for fresh pairing")
+		}
 		request := contract.PairingRequest{Node: node, Token: config.Token}
+		if err := remoteio.SignPairingRequest(&request, identity); err != nil {
+			return err
+		}
 		if err := client.Call(ctx, "/v1/pairing-request", request, &status); err != nil {
 			return fmt.Errorf("pairing request failed; open pairing on the broker and retry with the same options: %w", err)
+		}
+		if err := remoteio.VerifyPairingStatus(status, config.MachineKey, config.Token, request.Nonce, config.BrokerKey); err != nil {
+			return err
+		}
+		if config.BrokerKey == "" {
+			config.BrokerKey = status.BrokerKey
+			if err := remoteio.WritePrivate(path, config); err != nil {
+				return err
+			}
 		}
 		if status.Node != node {
 			return errors.New("pairing response changed node identity")
@@ -80,7 +102,7 @@ func pairOnline(ctx context.Context, root, endpoint, node string, allowDelivery 
 			}
 			lastCode = status.Code
 			if status.Status == "pending" {
-				fmt.Fprintf(os.Stderr, "Verification code: %s\nOn your broker, compare this code and approve it in Machines or run: dockpipe remote approve --code %s\n", status.Code, status.Code)
+				fmt.Fprintf(os.Stderr, "Worker machine: %s\nBroker machine: %s\nVerification code: %s\nOn your broker, compare this code and approve it in Machines or run: dockpipe remote approve --code %s\n", remoteidentity.Fingerprint(config.MachineKey), remoteidentity.Fingerprint(config.BrokerKey), status.Code, status.Code)
 			}
 		}
 		switch status.Status {
@@ -124,6 +146,9 @@ func pairOnline(ctx context.Context, root, endpoint, node string, allowDelivery 
 }
 
 func pairingOperator(ctx context.Context, root, command, code string) error {
+	if command == "approve" {
+		return approveWithHardwareKey(ctx, root, code)
+	}
 	client, err := operatorClient(root)
 	if err != nil {
 		return err

@@ -152,6 +152,8 @@ assert(!source.includes("core_from"));
 assert(!source.includes("src/core"));
 assert(!source.includes('language: "pipelang"'));
 assert(source.includes("dockpipe_version"));
+assert(source.includes('"schema", "dockpipe_version", "min_dockpipe_version", "compile"'));
+assert(source.includes("same-release prereleases are below stable"));
 const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json"), "utf8"));
 assert.strictEqual(manifest.publisher + "." + manifest.name, "dockpipe.dockpipe-language-support");
 assert(manifest.extensionDependencies.includes("dockpipe.pipelang-language-support"));

@@ -38,14 +38,29 @@ void DockerObservabilityWidget::changeMachine()
         QTimer::singleShot(0, this, &DockerObservabilityWidget::refresh);
 }
 
-void DockerObservabilityWidget::refreshRemote()
+void DockerObservabilityWidget::refreshRemote(bool allowAuthentication)
 {
     if (!m_active || m_monitorPaused || m_remoteCommand.busy())
         return;
     const QString node = m_machine->currentData().toString();
     const quint64 generation = m_generation;
-    m_remoteCommand.run(DockpipeChoices::preferredDockpipeBinary(QString()),
-        {"remote", "observe", "--node", node}, [this, node, generation](bool ok, const QByteArray &output) {
+    QString error;
+    const QString program = DockpipeChoices::operatorDockpipeBinary(&error);
+    if (program.isEmpty()) {
+        m_snapshot = {};
+        m_selectedResource.clear();
+        m_containers->setRowCount(0);
+        m_networks->setRowCount(0);
+        m_volumes->setRowCount(0);
+        updateGraph(m_snapshot);
+        updateInspector();
+        updateSummary();
+        setStatus(error);
+        return;
+    }
+    m_remoteCommand.run(program,
+        {"remote", "observe", "--node", node, "--auth",
+         allowAuthentication ? "auto" : "never"}, [this, node, generation](bool ok, const QByteArray &output) {
             if (generation != m_generation || !m_active || m_monitorPaused)
                 return;
             const auto envelope = QJsonDocument::fromJson(output).object();
@@ -64,7 +79,7 @@ void DockerObservabilityWidget::refreshRemote()
                 return;
             }
             applyRemoteSnapshot(envelope.value("docker").toObject());
-        }, 5000);
+        }, allowAuthentication ? 150000 : 5000);
 }
 
 void DockerObservabilityWidget::applyRemoteSnapshot(const QJsonObject &snapshot)

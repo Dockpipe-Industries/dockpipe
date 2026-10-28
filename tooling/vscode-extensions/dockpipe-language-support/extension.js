@@ -312,11 +312,12 @@ const PACKAGE_SCRIPT_CONTRACT_INJECTABLES = {
   dockpipe_bin: "Resolved dockpipe CLI path."
 };
 
-const DOCKPIPE_PROJECT_TOP_LEVEL_KEYS = ["schema", "dockpipe_version", "compile", "packages", "secrets"];
+const DOCKPIPE_PROJECT_TOP_LEVEL_KEYS = ["schema", "dockpipe_version", "min_dockpipe_version", "compile", "packages", "secrets"];
 
 const DOCKPIPE_PROJECT_TOP_LEVEL_KEY_DETAILS = {
   schema: "Project config schema version.",
-  dockpipe_version: "Exact released Dockpipe version selected by this project.",
+  dockpipe_version: "Exact running Dockpipe identity, including prerelease and build metadata; use min_dockpipe_version for consumer compatibility.",
+  min_dockpipe_version: "Minimum running Dockpipe version by SemVer precedence; same-release prereleases are below stable. Build metadata is ignored. Requires a versioned executable.",
   compile: "Compile roots and related project-level source discovery settings.",
   packages: "Defaults for package namespace and tarball lookup behavior.",
   secrets: "Project-level secret template and vault defaults."

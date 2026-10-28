@@ -308,7 +308,13 @@ void DashboardWidgetFactory::refreshMachines()
     if (m_machineCommand.busy() || !hasVisibleKind({"machines"}))
         return;
     const quint64 generation = m_generation;
-    m_machineCommand.run(DockpipeChoices::preferredDockpipeBinary(m_workdir), {"remote", "nodes"},
+    QString error;
+    const QString program = DockpipeChoices::operatorDockpipeBinary(&error);
+    if (program.isEmpty()) {
+        emit machinesChanged({}, error);
+        return;
+    }
+    m_machineCommand.run(program, {"remote", "nodes", "--auth", "never"},
         [this, generation](bool ok, const QByteArray &bytes) {
             if (generation != m_generation) {
                 QTimer::singleShot(0, this, &DashboardWidgetFactory::refresh);

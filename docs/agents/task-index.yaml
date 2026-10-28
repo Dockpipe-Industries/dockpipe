@@ -8,12 +8,6 @@ tasks:
   dispatch:
     readiness: unclassified
     ownership: unclaimed
-- id: TASK-044
-  topic: Standalone PipeLang and external package catalog
-  path: docs/agents/tasks/ecosystem-extraction/index.yaml
-  dispatch:
-    readiness: unclassified
-    ownership: unclaimed
 - id: TASK-003
   topic: Managed session volume cleanup and retention
   path: docs/agents/tasks/session-volume-cleanup/index.yaml
@@ -193,6 +187,42 @@ tasks:
   path: docs/agents/tasks/signpath-windows-code-signing/index.yaml
   dispatch:
     readiness: unclassified
+    ownership: unclaimed
+- id: TASK-049
+  topic: Core dependency lifecycle architecture and interfaces
+  path: docs/agents/tasks/dependency-lifecycle/index.yaml
+  dispatch:
+    readiness: decision_ready
+    ownership: unclaimed
+- id: TASK-050
+  topic: Cloudflare Tunnel resolver lifecycle implementation
+  path: docs/agents/tasks/cloudflare-dependency-lifecycle/index.yaml
+  dispatch:
+    readiness: decision_ready
+    ownership: unclaimed
+- id: TASK-051
+  topic: Dependency security advisory monitoring and notifications
+  path: docs/agents/tasks/dependency-advisory-monitoring/index.yaml
+  dispatch:
+    readiness: decision_ready
+    ownership: unclaimed
+- id: TASK-052
+  topic: Dependency upgrade recovery and multi-platform qualification
+  path: docs/agents/tasks/dependency-lifecycle-qualification/index.yaml
+  dispatch:
+    readiness: decision_ready
+    ownership: unclaimed
+- id: TASK-053
+  topic: Adaptive threat detection and automatic remote isolation
+  path: docs/agents/tasks/adaptive-remote-threat-containment/index.yaml
+  dispatch:
+    readiness: unclassified
+    ownership: unclaimed
+- id: TASK-054
+  topic: Coordinated Dockpipe self-updates across CLI, GUI and broker
+  path: docs/agents/tasks/dockpipe-self-update/index.yaml
+  dispatch:
+    readiness: decision_ready
     ownership: unclaimed
 maintenance:
 - Keep tasks open-only and core-owned; external_backlogs route independent owners without claiming their

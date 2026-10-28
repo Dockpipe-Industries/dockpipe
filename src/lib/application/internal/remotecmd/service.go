@@ -42,7 +42,7 @@ func installServiceWithReplacement(ctx context.Context, root, role string, repla
 	if _, err := os.Stat(filepath.Join(root, config)); err != nil {
 		return err
 	}
-	definition, err := prepareService(root, role)
+	definition, err := prepareService(ctx, root, role)
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func activateServiceForPlatform(ctx context.Context, definition serviceDefinitio
 	return run("systemctl", "--user", "enable", "--now", name+".service")
 }
 
-func launchAgent(name string, arguments []string, log string) string {
+func launchAgent(name string, arguments []string, log string, bundleIdentifier string) string {
 	escape := func(value string) string {
 		var buffer bytes.Buffer
 		_ = xml.EscapeText(&buffer, []byte(value))
@@ -135,12 +135,16 @@ func launchAgent(name string, arguments []string, log string) string {
 	for _, argument := range arguments {
 		fmt.Fprintf(&values, "<string>%s</string>\n", escape(argument))
 	}
+	association := ""
+	if bundleIdentifier != "" {
+		association = "<key>AssociatedBundleIdentifiers</key><array><string>" + escape(bundleIdentifier) + "</string></array>\n"
+	}
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>Label</key><string>%s</string>
 <key>ProgramArguments</key><array>%s</array>
-<key>EnvironmentVariables</key><dict><key>PATH</key><string>%s</string></dict>
+%s<key>EnvironmentVariables</key><dict><key>PATH</key><string>%s</string></dict>
 <key>RunAtLoad</key><true/>
 <key>KeepAlive</key><true/>
 <key>ThrottleInterval</key><integer>10</integer>
@@ -148,7 +152,7 @@ func launchAgent(name string, arguments []string, log string) string {
 <key>StandardOutPath</key><string>%s</string>
 <key>StandardErrorPath</key><string>%s</string>
 </dict></plist>
-`, escape(name), values.String(), escape(os.Getenv("PATH")), escape(log), escape(log))
+`, escape(name), values.String(), association, escape(os.Getenv("PATH")), escape(log), escape(log))
 }
 
 func systemdUnit(arguments []string) string {

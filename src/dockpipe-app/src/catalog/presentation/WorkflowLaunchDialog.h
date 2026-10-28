@@ -22,7 +22,7 @@ public:
 
 private:
     const WorkflowInputMeta *findInputByPath(const QString &path) const;
-    void rebuildRoutedPages(const QMap<QString, QString> &currentValues);
+    void rebuildRoutedPages();
     QVector<WorkflowViewPageMeta> routedPagesForSelection(const QString &selectedValue) const;
     void addViewPagesToLayout(QVBoxLayout *layout, const QMap<QString, QString> &currentValues);
     void addViewSectionToLayout(QVBoxLayout *layout, const WorkflowViewSectionMeta &section,
@@ -33,6 +33,7 @@ private:
     QString helpTextForInput(const WorkflowInputMeta &input) const;
 
     WorkflowMeta m_workflow;
+    QMap<QString, QString> m_routedValues;
     QMap<QString, QWidget *> m_editors;
     QVBoxLayout *m_routedPagesHost = nullptr;
     QWidget *m_routedPagesContainer = nullptr;

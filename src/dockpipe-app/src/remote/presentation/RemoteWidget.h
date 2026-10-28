@@ -3,8 +3,10 @@
 #include "RemoteCommand.h"
 #include "WorkflowCatalogData.h"
 #include <QWidget>
+#include <QPointer>
 
 class ResourceCanvas;
+class HardwareKeyDialog;
 class QJsonObject;
 class QLabel;
 class QComboBox;
@@ -15,15 +17,18 @@ class QPushButton;
 class QTableWidget;
 class QStackedWidget;
 class QTimer;
+class QShowEvent;
 
 class RemoteWidget : public QWidget {
     Q_OBJECT
 public:
     explicit RemoteWidget(QWidget *parent = nullptr);
     void setWorkdir(const QString &workdir);
-    void refresh();
+    void refresh(bool allowAuthentication = false);
     void setResolvers(const QVector<ResolverMeta> &resolvers);
     void selectResolver(const QString &name);
+protected:
+    void showEvent(QShowEvent *event) override;
 signals:
     void nodesChanged(const QStringList &nodes);
     void installProviderRequested();
@@ -34,13 +39,15 @@ private:
     QWidget *buildSetup();
     void showPage(int index);
     void updateActions();
-    void refreshPairings();
-    void refreshNodes();
+    void refreshPairings(bool allowAuthentication = false);
+    void refreshNodes(bool allowAuthentication = false);
+    void refreshSecurityStatus();
     void startWorkerService();
     void replaceService(const QString &role);
     void updateServiceNotices(const QJsonObject &info);
     void updateSetup();
-    void run(const QStringList &arguments, RemoteCommand::Completion completion = {}, int timeoutMs = 30000);
+    void run(const QStringList &arguments, RemoteCommand::Completion completion = {}, int timeoutMs = 150000,
+             bool allowAuthentication = true);
     void decidePairing(bool approve);
     ResourceCanvas *m_canvas = nullptr;
     QString m_graphRemoteEndpoint;
@@ -61,9 +68,12 @@ private:
     QLabel *m_pairingAddress = nullptr;
     QPushButton *m_setup = nullptr;
     RemoteCommand m_command;
+    RemoteCommand m_securityStatusCommand;
+    QPointer<HardwareKeyDialog> m_hardwareKeyDialog;
     QLabel *m_status = nullptr;
     QLabel *m_pairingCode = nullptr;
     QLabel *m_overviewHint = nullptr;
+    QLabel *m_securityStatus = nullptr;
     QLabel *m_pairingHint = nullptr;
     QLabel *m_windowHint = nullptr;
     QString m_pendingOutput;
@@ -76,6 +86,7 @@ private:
     QPlainTextEdit *m_output = nullptr;
     QStackedWidget *m_pages = nullptr;
     QTimer *m_pairingTimer = nullptr;
+    QTimer *m_securityStatusTimer = nullptr;
     QPushButton *m_approve = nullptr;
     QPushButton *m_deny = nullptr;
     QPushButton *m_revoke = nullptr;

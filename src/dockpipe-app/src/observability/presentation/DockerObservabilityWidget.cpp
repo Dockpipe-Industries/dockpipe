@@ -284,6 +284,11 @@ DockerObservabilityWidget::DockerObservabilityWidget(QWidget *parent) : QWidget(
     connect(m_autoRefreshTimer, &QTimer::timeout, this, &DockerObservabilityWidget::refreshQuietly);
 
     buildUi();
+    auto *refreshButton = m_inspector->findChild<QPushButton *>("dockerRefresh");
+    if (refreshButton) {
+        connect(&m_remoteCommand, &RemoteCommand::busyChanged, refreshButton,
+                [refreshButton](bool busy) { refreshButton->setEnabled(!busy); });
+    }
 }
 
 void DockerObservabilityWidget::buildUi()
@@ -335,7 +340,12 @@ void DockerObservabilityWidget::buildUi()
             m_canvas->showDetails();
         }
     });
-    connect(m_inspector, &DockerResourceInspector::refreshRequested, this, &DockerObservabilityWidget::refresh);
+    connect(m_inspector, &DockerResourceInspector::refreshRequested, this, [this]() {
+        if (!m_machine->currentData().toString().isEmpty())
+            refreshRemote(true);
+        else
+            refresh();
+    });
     connect(m_inspector, &DockerResourceInspector::pauseChanged, this, [this](bool paused) {
         m_monitorPaused = paused;
         if (paused)
@@ -1249,7 +1259,10 @@ void DockerObservabilityWidget::onContainersContextMenuRequested(const QPoint &p
     } else if (chosen == stopAction) {
         onStopSelectedContainer();
     } else if (chosen == refreshAction) {
-        refresh();
+        if (!m_machine->currentData().toString().isEmpty())
+            refreshRemote(true);
+        else
+            refresh();
     }
 }
 

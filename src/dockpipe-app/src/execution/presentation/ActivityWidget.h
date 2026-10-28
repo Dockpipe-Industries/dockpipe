@@ -18,14 +18,14 @@ public:
     ActivityWidget(SessionManager &sessions, ContextStore &store, QWidget *parent = nullptr);
     void setWorkdir(const QString &workdir);
     void refreshLocal();
-    void refreshRemote();
+    void refreshRemote(bool allowAuthentication = false);
     void setWorkspaceFilter(bool enabled);
     void showRemoteJobs();
 signals:
     void browseWorkflowsRequested();
 private:
-    void run(const QStringList &args, RemoteCommand::Completion completion);
-    void loadRemoteJobs();
+    void run(const QStringList &args, RemoteCommand::Completion completion, bool allowAuthentication = false);
+    void loadRemoteJobs(bool allowAuthentication = false);
     QString selectedJob() const;
     void updateRunControls();
     SessionManager &m_sessions;

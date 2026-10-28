@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"bytes"
 	"os"
 	"testing"
 
@@ -29,5 +30,32 @@ func TestProjectConfigurationSchemaMatchesExactVersionValidation(t *testing.T) {
 	}
 	if err := schema.Validate(map[string]interface{}{"compile": map[string]interface{}{"workflows": []interface{}{}}, "future_key": true}); err != nil {
 		t.Fatalf("schema broke forward-compatible unpinned configuration: %v", err)
+	}
+}
+
+func TestProjectConfigurationSchemaMinimumMatchesRuntime(t *testing.T) {
+	data, err := os.ReadFile("schema/dockpipe.config.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mirror, err := os.ReadFile("../../../tooling/vscode-extensions/dockpipe-language-support/schemas/dockpipe.config.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(data, mirror) {
+		t.Fatal("project schema mirrors differ")
+	}
+	schema, err := jsonschema.CompileString("dockpipe.config.schema.json", string(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, value := range []interface{}{nil, true, 123, "", "1.2.3", "1.2.3-rc.1", "1.2.3+build.1", "v1.2.3", "1.2", "dev", "latest", ">=1.2.3", "1.2.3-01", " 1.2.3"} {
+		schemaValid := schema.Validate(map[string]interface{}{"min_dockpipe_version": value}) == nil
+		minimum, isString := value.(string)
+		config := &domain.DockpipeProjectConfig{MinDockpipeVersion: &minimum}
+		runtimeValid := isString && domain.ValidateDockpipeProjectConfig(config) == nil
+		if schemaValid != runtimeValid {
+			t.Errorf("minimum %v: schema=%v runtime=%v", value, schemaValid, runtimeValid)
+		}
 	}
 }

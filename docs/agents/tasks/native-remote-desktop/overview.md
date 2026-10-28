@@ -14,7 +14,7 @@ is a future capability; existing remote execution support is not desktop qualifi
 
 | Existing work | Reuse / prerequisite; do not duplicate |
 | --- | --- |
-| [TASK-044](../ecosystem-extraction/index.yaml) | Finish package extraction and stabilization before implementation; keep provider/codec implementation in its owning external repository |
+| [TASK-044](../closed/ecosystem-extraction/index.yaml) | Extraction completed through staging; preserve external ownership and pinned dependencies; qualify new provider/codec behavior separately |
 | [TASK-036](../remote-node-onboarding/index.yaml), [remote nodes](../../../runtime/remote-nodes.md) | Existing broker, pairing, revocation, identity and delivery lifecycle; audit enrollment/passkey assumptions and add scoped desktop grants without redesigning the broker |
 | [TASK-043](../configurable-networking/index.yaml) | Shared ingress/egress/proxy policy and diagnostics; own only desktop signaling/media extensions here |
 | [TASK-047](../paired-storage-mounts/index.yaml) | Share provider connectivity setup provisioned through existing pairing; keep RDP authorization, its dedicated tab and storage mounts independent; revisit tab overload before final navigation placement |
@@ -86,3 +86,17 @@ codec-only evidence separate from transport and full-session evidence.
 This record selects no library, purchases no service, claims no codec advantage
 and changes no running process or current VM task. Implementation needs fresh,
 explicit authorization after the current refactor/stabilization milestone.
+
+## P1 shared authentication refinement linkage (2026-10-26)
+
+Link the existing enrollment/passkey and future FIDO2 assessment to the
+[security and reliability initiative](../dependency-lifecycle/overview.md).
+TASK-036/039 now explicitly require mandatory hardware-backed security-key gates
+for pairing authorization. OS-authenticated remote unlock and global auto-lock
+policy are refined in TASK-036; per-operation hardware prompts are deferred. This supersedes an
+optional-only interpretation for those operations; it does not assert hardware
+authentication is implemented or extend the mandate to every desktop action.
+Keep the broader desktop/session policy decision explicit and reuse shared
+registration, key revocation, scoped grants and expiration rather than duplicate
+identity systems. TASK-052 consumes the shared authorization tests; desktop/media
+qualification remains owned here. P1 applies to this shared security refinement.

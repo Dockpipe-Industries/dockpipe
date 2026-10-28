@@ -105,6 +105,23 @@ CLI deadline and bounded Git output apply.
 This adapter serves explicit human actions in an existing project. Autonomous
 agents continue to use the managed [session lifecycle](runtime/git-runtime-sessions.md).
 
+## Remote pairing hardware keys
+
+`dockpipe remote security-key-register --attestation-roots <manufacturer-ca.pem>`
+registers the first physical pairing key locally while the broker is stopped.
+`dockpipe remote security-key-register` adds a spare after verifying an existing
+key. `remote approve --code <code>` now requires protected local broker owner
+state and the local hardware-key ceremony; hosted approval is deferred;
+new file invitations are disabled. See [remote nodes](runtime/remote-nodes.md#register-pairing-hardware-keys)
+for trust roots, recovery, machine identity and legacy-worker boundaries.
+
+Hardware-key commands use native FIDO2 interaction. CLI defaults to
+`--interaction terminal` with hidden PIN entry. The GUI supplies `--interaction gui`
+for a normal Dockpipe dialog, using private, bounded request/response frames over
+child-process pipes. Neither mode uses a browser. Linux/macOS require libfido2 in
+a supported system location; native Windows interaction remains unavailable.
+
+
 ## `dockpipe init`
 
 Local project setup only: **no `git clone`**, no treating **`init`** as a remote bootstrap. Everything runs in the **current working directory**.
@@ -343,3 +360,69 @@ Use `dockpipe sdk shell-env` to initialize the shell SDK.
 `dockpipe sdk path --language shell|powershell|python [--workdir <path>]` returns
 the requested library-owned helper path; no source checkout is required.
 Go consumers use `dockpipe/src/lib/sdk/repotools` from the published SDK.
+
+
+### Remote OS authentication
+
+Locked remote operator actions default to `--auth auto`: OS authentication occurs
+before sending, then the original action continues once. Use `--auth never` for
+scripts and background polling to return a lock error without a prompt. Failed
+HTTP requests are never replayed by this authentication flow. `remote unlock`
+remains available as an explicit standalone action.
+
+`dockpipe remote security-status` prints the shared OS-user remote policy,
+locked state and native capability availability. `remote unlock` requests native
+OS authentication; `remote lock` immediately invalidates remote operator access.
+`remote security-policy --idle-seconds <60..3600>` configures inactivity, with
+optional `--lock-on-screen-lock=true|false` and `--lock-on-sleep=true|false`.
+Omitted policy fields retain their current values. Weakening requires fresh OS
+authentication; any change leaves access locked. These are global security
+settings, not workflow/project configuration. See [remote security](runtime/remote-nodes.md#os-authentication-and-global-remote-auto-lock)
+for native prerequisites, the one-hour maximum lease and migration limitations.
+
+## Dependency lifecycle
+
+`dependency inventory --resolver <name> [--machine <id>] [--workdir <path>]`
+invokes an explicitly trusted resolver's inventory workflow. `dependency assess
+--report <inventory.json>` aggregates its evidence; `dependency plan --report
+<inventory.json> --dry-run` emits a non-executable content-bound review plan.
+Policy names are `manual`, `notify`, `security-only`, `compatible`, and `latest`;
+`--pin <exact-version>` adds a constraint without overriding existing locks.
+Inventory has a bounded `--timeout-seconds <5..120>` (default 60).
+
+Inventory/assessment plans do not mutate installations. The separate explicit
+local change lane below adds no restart, scheduler, remote target or unattended
+policy execution. Provider workflows use ordinary workflow permissions; they must
+be trusted code. See [dependency lifecycle](runtime/dependency-lifecycle.md) for
+wire contracts, unknown/stale status, policy limits and the remaining phases.
+
+### Explicit dependency changes
+
+`dockpipe dependency update --request change.json --dry-run` validates a supported
+provider's exact local change and prints distinct apply/recovery approval IDs.
+`dependency update --request change.json --approve APPLY_ID` applies it;
+`dependency recover --request change.json --dry-run` reviews recovery and
+`dependency recover --request change.json --approve RECOVERY_ID` reconciles or
+restores approved bytes. Each accepts `--workdir` for existing resolver discovery.
+The request binds resolver/version, local machine and provider parameters. These
+are manual operator approvals, not remote authorization or inventory-plan grants.
+No automatic restart or retry occurs; activation-pending is not tunnel-health
+proof. See [the lifecycle contract](runtime/dependency-lifecycle.md#explicit-local-changes-and-recovery)
+and the selected provider's supported-method documentation.
+
+### Supervised dependency activation
+
+`dockpipe dependency activate --request activation.json --dry-run` reviews a
+provider's local connector replacement. `--approve ACTIVATE_ID` sends the exact
+approved contract to the existing OS-authenticated broker. The broker owns
+readiness, running-image verification, signed public HTTPS health and bounded
+fallback even if the CLI disconnects. Installation approval cannot approve
+activation. `dependency activation-status --request activation.json` refreshes
+health without replay. Both use `--workdir` for resolver discovery.
+
+The generic broker interfaces are `remote edge-activate --state <private-root>
+--request <file> --dry-run|--approve <id>` and `remote edge-status --state
+<private-root> --id <id>`. Active/uncertain jobs block replacement; new submissions
+pause during the recovery window. A verified fallback still means activation
+failed. See [supervised activation](runtime/dependency-lifecycle.md#supervised-local-edge-activation)
+for exact process, platform, maintenance and health limits.

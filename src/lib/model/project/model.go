@@ -8,14 +8,15 @@ import (
 
 // DockpipeProjectConfig is repo-root metadata (JSON). Schema may grow; unknown keys are ignored by encoding/json.
 type DockpipeProjectConfig struct {
-	Schema          int                    `json:"schema,omitempty"`
-	DockpipeVersion *string                `json:"dockpipe_version,omitempty"`
-	Compile         DockpipeCompileConfig  `json:"compile,omitempty"`
-	Secrets         DockpipeSecretsConfig  `json:"secrets,omitempty"`
-	Packages        DockpipePackagesConfig `json:"packages,omitempty"`
+	Schema             int                    `json:"schema,omitempty"`
+	MinDockpipeVersion *string                `json:"min_dockpipe_version,omitempty"`
+	DockpipeVersion    *string                `json:"dockpipe_version,omitempty"`
+	Compile            DockpipeCompileConfig  `json:"compile,omitempty"`
+	Secrets            DockpipeSecretsConfig  `json:"secrets,omitempty"`
+	Packages           DockpipePackagesConfig `json:"packages,omitempty"`
 }
 
-// UnmarshalJSON distinguishes an omitted version pin from an explicit null value.
+// UnmarshalJSON distinguishes omitted version declarations from explicit null values.
 func (c *DockpipeProjectConfig) UnmarshalJSON(data []byte) error {
 	type plain DockpipeProjectConfig
 	var decoded plain
@@ -28,6 +29,9 @@ func (c *DockpipeProjectConfig) UnmarshalJSON(data []byte) error {
 	}
 	if _, present := fields["dockpipe_version"]; present && decoded.DockpipeVersion == nil {
 		return fmt.Errorf("dockpipe_version must be an exact semantic version string, not null")
+	}
+	if _, present := fields["min_dockpipe_version"]; present && decoded.MinDockpipeVersion == nil {
+		return fmt.Errorf("min_dockpipe_version must be a complete semantic version string, not null")
 	}
 	*c = DockpipeProjectConfig(decoded)
 	return nil

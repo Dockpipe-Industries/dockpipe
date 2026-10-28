@@ -18,19 +18,27 @@ import (
 )
 
 const usage = `dockpipe remote <command> [options]
+	unlock                                         Authenticate with the OS to unlock remote features
+	lock                                           Immediately lock new operator remote actions
+	security-status                                Show the global remote policy and capabilities
+	security-policy --idle-seconds <60..3600>        Update global remote auto-lock policy
+	                [--lock-on-screen-lock=true] [--lock-on-sleep=true]
   setup   --resolver <name> [--hostname <hostname>]  Package-owned remote setup
+  edge-activate --request <json> --dry-run|--approve <id>  Supervised local edge activation
+  edge-status --id <activation-id>                  Inspect activation and recovery health
   info                                           Show configuration without credentials
   init    [--listen 127.0.0.1:47831]               Initialize a private broker
   serve                                          Run broker and configured edge
+  security-key-register --attestation-roots <pem>  Register a physical pairing key locally (broker stopped)
   pairing-open                                   Accept pairing requests for 15 minutes
   pairings                                       Show pending verification codes
-  approve --code <code>                          Approve the code shown on your worker
+  approve --code <code>                          Verify hardware key and approve the worker code
   deny    --code <code>                          Reject a pairing request
   pairing-close                                  Close pairing and deny pending requests
   nodes                                          List enrolled machines (not live presence)
   pair    --endpoint <https-origin> --node <name> --allow-delivery
                                                  Request approval without transferring files
-  invite  --node <name> --out <private-file>       Issue a 15-minute pairing file
+  invite  --node <name> --out <private-file>       Disabled; use hardware-key pairing
   pair    --invite <file> --allow-delivery        Trust this broker to send workflows
           [--profiles <json-file>]                Or approve installed profiles
   worker                                         Run the outbound worker
@@ -48,6 +56,10 @@ const usage = `dockpipe remote <command> [options]
   revoke  --id <node>                             Revoke a worker
   service --role broker|worker                    Install a user service; --replace updates and restarts it
 All commands accept --state <directory>. Remote nodes currently target Linux/macOS.
+Locked operator actions re-authenticate before sending. Use --auth never for unattended
+or background commands; denial never retries an HTTP request or changes worker execution.
+Hardware-key commands use native FIDO2: --interaction terminal (default) or gui.
+The GUI uses private stdin/stdout interaction; PINs must never be passed as arguments.
 Profiles are local JSON: {"bench":{"workdir":"/absolute/checkout","workflow":"bench",
 "timeout_seconds":3600,"artifacts":["results/bench.json"]}}.
 Secrets stay in private state/pairing files. Do not paste pairing files into chat or logs.
@@ -60,7 +72,12 @@ func Run(args []string, checkDependencies func(string) error) error {
 	}
 	command := args[0]
 	flags := flag.NewFlagSet("remote "+command, flag.ContinueOnError)
+	activationRequest := flags.String("request", "", "exact private edge activation request")
+	activationApproval := flags.String("approve", "", "exact activation approval")
 	state := flags.String("state", "", "private state directory")
+	authentication := flags.String("auth", "auto", "OS re-authentication for locked operator actions: auto or never")
+	attestationRoots := flags.String("attestation-roots", "", "verified hardware-key manufacturer CA PEM bundle (first key only)")
+	interaction := flags.String("interaction", "terminal", "native hardware-key interaction: terminal or gui")
 	listen := flags.String("listen", "127.0.0.1:47831", "loopback origin address")
 	resolver := flags.String("resolver", "", "remote access resolver profile")
 	hostname := flags.String("hostname", "", "public edge hostname")
@@ -87,6 +104,9 @@ func Run(args []string, checkDependencies func(string) error) error {
 	flags.Var(&artifacts, "artifact", "exact result file relative to delivered workdir (repeatable)")
 	replaceService := flags.Bool("replace", false, "replace the user-service definition and restart it")
 	role := flags.String("role", "", "broker or worker service")
+	idleSeconds := flags.Int("idle-seconds", 300, "global remote inactivity timeout in seconds (60..3600)")
+	lockOnScreenLock := flags.Bool("lock-on-screen-lock", true, "lock remote access when the OS session locks")
+	lockOnSleep := flags.Bool("lock-on-sleep", true, "lock remote access after sleep/resume")
 	if err := flags.Parse(args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
@@ -96,13 +116,31 @@ func Run(args []string, checkDependencies func(string) error) error {
 	if *replaceService && command != "service" {
 		return errors.New("--replace is supported only by remote service")
 	}
+	if *authentication != "auto" && *authentication != "never" {
+		return errors.New("--auth must be auto or never")
+	}
+	securityChanges := map[string]bool{}
+	flags.Visit(func(flag *flag.Flag) {
+		if flag.Name == "idle-seconds" || flag.Name == "lock-on-screen-lock" || flag.Name == "lock-on-sleep" {
+			securityChanges[flag.Name] = true
+		}
+	})
+	if len(securityChanges) != 0 && command != "security-policy" {
+		return errors.New("remote lock policy flags are supported only by remote security-policy")
+	}
 	if (*monitorSystem || *monitorDocker || *disableMonitoring) && command != "monitoring" {
 		return errors.New("--system, --docker and --disable are supported only by remote monitoring")
 	}
 	if flags.NArg() != 0 {
 		return errors.New("unexpected remote positional arguments")
 	}
-	if (*dryRun || *expectedDigest != "") && command != "submit" {
+	if *expectedDigest != "" && command != "submit" {
+		return errors.New("--expected-digest is supported only by submit")
+	}
+	if (*activationRequest != "" || *activationApproval != "") && command != "edge-activate" {
+		return errors.New("activation flags require edge-activate")
+	}
+	if *dryRun && command != "submit" && command != "edge-activate" {
 		return errors.New("--dry-run and --expected-digest are supported only by remote submit")
 	}
 	if (*workflow != "" || len(includes)+len(dependencies)+len(artifacts) != 0) && command != "submit" {
@@ -117,17 +155,39 @@ func Run(args []string, checkDependencies func(string) error) error {
 	if *allowDelivery && command != "pair" {
 		return errors.New("--allow-delivery must be approved on the worker with remote pair")
 	}
+	if *attestationRoots != "" && command != "security-key-register" {
+		return errors.New("--attestation-roots is supported only by remote security-key-register")
+	}
+	if *interaction != "terminal" && *interaction != "gui" {
+		return errors.New("--interaction must be terminal or gui")
+	}
+	if *interaction != "terminal" && command != "approve" && command != "security-key-register" {
+		return errors.New("--interaction is supported only by remote approve or security-key-register")
+	}
 	root, err := stateRoot(*state)
 	if err != nil {
 		return err
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	ctx = context.WithValue(ctx, hardwareInteractionModeKey{}, *interaction)
+	ctx = context.WithValue(ctx, remoteAuthenticationKey{}, *authentication == "auto")
 	// Setup hands the terminal to dependency installers and provider authentication.
 	// An outer spinner would overwrite their prompts even when nested operations are quiet.
-	options := infrastructure.OperationOptions{Spinner: command != "setup" && command != "pair"}
+	options := infrastructure.OperationOptions{Spinner: command != "setup" && command != "pair" && command != "approve" && command != "security-key-register" && command != "unlock" && command != "security-policy"}
+	if *authentication == "auto" {
+		options.Spinner = false
+	}
 	return infrastructure.RunOperationWithOptions(os.Stderr, "remote."+command, "Remote "+command, nil, options, func() error {
 		switch command {
+		case "edge-activate":
+			return activateEdge(ctx, root, *activationRequest, *activationApproval, *dryRun)
+		case "edge-status":
+			return edgeStatus(ctx, root, *id)
+		case "unlock", "lock", "security-status", "security-policy":
+			return remoteSecurity(ctx, command, securityChanges, *idleSeconds, *lockOnScreenLock, *lockOnSleep)
+		case "security-key-register":
+			return registerPairingKey(ctx, root, *attestationRoots)
 		case "monitoring":
 			return configureMonitoring(root, *monitorSystem, *monitorDocker, *disableMonitoring)
 		case "observe":

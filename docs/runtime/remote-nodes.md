@@ -120,6 +120,83 @@ command; it does not prove process health, worker presence, or successful workfl
 
 ## Pair and run
 
+### Register pairing hardware keys
+
+New pairings require a physical FIDO2 security key with PIN/user verification and
+trusted manufacturer attestation. A synced passkey, software authenticator or
+code-only approval cannot satisfy this requirement. This change gates pairing;
+it adds no per-action prompts or remote approval service.
+
+On the broker computer, stop the broker service using the operating system's
+service controls, then register a key locally:
+
+```bash
+dockpipe remote security-key-register --attestation-roots /path/to/verified-manufacturer-roots.pem
+```
+
+Obtain the manufacturer's attestation CA certificates through its authenticated
+published documentation or metadata and verify the selected roots independently.
+Include its published intermediate CA certificates in the PEM bundle when a key
+does not return the complete chain. Only explicitly supplied self-signed roots
+become trust anchors; supplemental intermediates must chain back to those roots.
+Do not use your operating system's general HTTPS CA bundle or an unverified
+certificate supplied by a pairing requester. The accepted initial attestation
+formats are `packed` and `fido-u2f` with a certificate chain to these explicit
+anchors, user presence and user verification, and no backup eligibility/state.
+Keys without usable manufacturer attestation are rejected. Certificate validity is
+checked at enrollment; stored keys retain that enrollment-time provenance so later
+attestation-certificate expiry cannot disable the broker. This is not automatic
+manufacturer revocation monitoring. Existing trust anchors
+cannot be replaced through this command or broker HTTP APIs.
+
+Dockpipe uses a native FIDO2 adapter through the installed libfido2 library;
+no browser, localhost listener or browser extension is used. Linux and macOS
+amd64/arm64 adapters load libfido2 only from supported absolute system locations.
+The library must already be installed; this command does not install software.
+Native Windows key interaction is not implemented in this slice and fails closed.
+The existing Windows broker verification and machine identity contracts remain.
+
+From a terminal, the CLI lists connected keys, displays the exact operation and
+verified machine details, and asks for the selected key's existing FIDO2 PIN with
+echo disabled. Then touch the key. A wrong PIN ends the attempt; there is no
+automatic retry, PIN setup, PIN change, reset or fallback to a software credential.
+The PIN belongs to the key, not Dockpipe. This prompt never creates a new PIN.
+Cancellation restores the terminal. In-flight device operations have a bounded
+timeout; device cleanup waits for the native operation to finish.
+
+In the GUI, **Machines → Set up remote access → Pairing security keys** provides
+first-key and spare-key registration. Select independently verified manufacturer
+PEM roots for the first key. Stop the broker before registering; Dockpipe does not
+stop services implicitly. Pairing approval and registration use a normal Dockpipe
+dialog with plain consent text, key selection, a masked PIN field and touch status.
+Closing the dialog cancels the operation.
+
+The GUI invokes the same CLI with `--interaction gui`. Bounded, request-bound JSON
+prompts travel over the child process's private stdout channel and PIN responses
+over its stdin pipe; the host consumes control frames without putting them in
+logs. CLI defaults to `--interaction terminal` and works without the GUI running.
+PINs are not passed in arguments, stored in settings, or written to logs. Owned
+buffers are cleared where practical; ordinary Go/Qt heap and OS transport memory
+are not a guarantee of locked or completely erased secret memory.
+
+The same broker-side WebAuthn verifier checks native authenticator responses,
+manufacturer chains, challenges, user presence and verification. The existing
+`localhost` relying-party ID and client-data origin remain signature namespaces
+for credential compatibility; they do not cause a web page or listener to open.
+No remote administrator token can register keys through HTTP.
+
+Register a spare before relying on a single key. Adding another key uses:
+
+```bash
+dockpipe remote security-key-register
+```
+
+It first verifies an existing key, then registers the additional key against the
+same manufacturer roots. Up to eight keys are supported. Start the broker again
+after registration. Losing every registered key requires deliberate local owner
+recovery; there is no password fallback or remote reset endpoint. Key removal,
+manufacturer trust rotation and automated revocation metadata are not yet exposed.
+
 ### Pair without transferring a file
 
 Use the same updated CLI version on the broker and worker. On the broker, open a
@@ -136,20 +213,52 @@ dockpipe remote pair --endpoint https://your-broker.example.com --node mac-mini 
 ```
 
 The worker prints a verification code and waits. On the broker, list requests and
-approve only the code you can compare on your intended worker:
+approve only after comparing the code and both machine fingerprints on your intended worker:
 
 ```bash
 dockpipe remote pairings
 dockpipe remote approve --code ABCD-1234-5678
 ```
 
-The code is a request identifier, not a bearer credential. The worker generates
-and privately persists its own 256-bit token before requesting approval. Approval
-binds that exact token and node; retries recover the same identity. Pairing never
-replaces an enrolled/revoked node or widens saved worker authority. Unused file
-invitations for the approved name are invalidated. Public requests are accepted
-only during the window, with bounded bodies, 32 retained requests, and a global
-12-new-requests-per-minute limit. Names are untrusted until the code is verified.
+The code identifies the request. Approval opens the native key prompt and
+requires a registered physical key. **Machines → Verify key and approve** uses the
+same CLI and broker check. Code-only HTTP requests are rejected, including local
+requests with the administrator token. Approval currently requires the broker
+computer's local owner state; hosted/remote approval is deferred. Before showing
+consent, the CLI verifies the signed machine details, code and WebAuthn options
+against the protected local broker identity and a fresh operator nonce.
+Pairing challenges expire within two minutes
+and bind the exact code, worker identity and credential, node and pairing expiry.
+Denial, pairing-close, identity changes, restart and consumed challenges invalidate
+approval. Counters and enrollment publish together; uncertain persistence stops
+broker requests until restart and inspection.
+
+Before requesting approval, the worker privately saves its generated token and
+Ed25519 installation identity. The broker likewise persists an independent
+installation identity. The worker verifies the signed pairing response and pins
+the broker key; compare both displayed SHA256 fingerprints as well as the code.
+The configured HTTPS origin protects first contact; this is explicit first-use
+trust, not hardware attestation of the remote computer. Identities belong to the
+saved broker/worker installation state, persist across restarts and hostname
+changes, and must not be copied between machines. Private identity storage still
+uses the existing OS-user service/state boundary; OS-keystore binding and
+machine-wide settings are separate follow-up work.
+
+Newly paired workers prove their private key for each request using a bounded,
+one-use broker nonce whose signed issuance binds a fresh client nonce. Recorded
+challenge/response pairs cannot authenticate a later exchange. Broker responses
+are signed and verified against the pinned
+key. A token alone cannot impersonate either side of a new pairing. Changed broker
+identity fails closed and needs inspection. Older broker binaries strictly reject the migrated private state; preserve it and
+review state compatibility before any downgrade. Existing paired workers retain their
+legacy credential behavior until explicitly revoked and re-paired; they are not
+silently upgraded or retrospectively hardware-verified.
+
+Retries retain identity and authority. Re-pairing after revocation rotates the
+worker credential and requires a fresh hardware-key approval; it cannot widen the
+saved execution permission. Public requests are accepted only during the window,
+with bounded bodies, 32 retained requests and a global 12-new-requests-per-minute
+limit. Names remain untrusted until verified.
 
 Use `remote deny --code <code>` to reject a request or `remote pairing-close` to
 close the window and deny all pending requests. Cancelling the worker's wait
@@ -169,30 +278,98 @@ this role instead of requesting broker-wide jobs. Enrollment or successful servi
 installation does not prove that a workflow has executed; submit a job from the
 managing computer and inspect its result to verify delivery.
 
-### File invitation compatibility
+On macOS, bundled CLI services associate their launch agent with the enclosing
+app's `CFBundleIdentifier`. The app declares why it needs local-network access,
+and packaged helpers retain explicit signing identifiers. Standalone CLI installs
+do not claim an unrelated app identity. Existing service definitions require an
+explicit replacement to adopt the association; installing new bytes alone does
+not restart a running service or transfer a privacy permission.
 
-On the broker, issue a 15-minute invitation:
+Allow the app in **System Settings → Privacy & Security → Local Network** when
+connecting to LAN hosts. Ad-hoc development signatures can test the exact build,
+but reliable identity across updates requires a consistent Apple-issued signing
+identity. Duplicate permission entries do not establish which build is authorized.
 
-```bash
-mkdir -m 700 pairing
-dockpipe remote invite --node mac-mini --out "$PWD/pairing/mac-mini.json"
+### OS authentication and global remote auto-lock
+
+Local broker administration starts locked. A user-requested operator action
+automatically asks for OS authentication when locked and continues with the same
+pending request after success. Settings is not required. Manual controls remain
+available in **Settings > Security > Remote access** and the CLI:
+
+```sh
+dockpipe remote security-status
+dockpipe remote unlock
+dockpipe remote lock
+dockpipe remote security-policy --idle-seconds 300 --lock-on-screen-lock=true --lock-on-sleep=true
 ```
 
-Transfer the private file to the Mac. Do not commit it or paste it into chat. It enrolls one worker
-credential; an exact retry recovers a lost response. It contains no Cloudflare or operator credential.
+`unlock` uses an OS-owned authentication dialog; terminal Linux clients use the
+OS terminal agent. Dockpipe does not collect the operating-system password.
+Physical-key pairing approval still requires the registered key independently.
 
-On the Mac, explicitly authorize workflow delivery from this broker and start the worker:
+Use `--auth never` on unattended or background operator commands to fail closed
+without opening an authentication prompt. Re-authentication responds only to a
+typed lock denial from the local OS authority before HTTP admission. The original
+request body and operation are preserved; authentication is attempted once and
+the proof is reacquired once. Cancellation or failure sends no request. HTTP
+errors, lost replies and expired proofs after transmission never trigger automatic
+replay of remote work. Passive GUI monitoring uses `--auth never`.
 
-```bash
-dockpipe remote pair --invite /private/path/mac-mini.json --allow-delivery
-dockpipe remote worker
-```
+The shared OS-user policy defaults to five minutes of inactivity, with validated
+custom durations from 60 to 3600 seconds. Authorization also expires after one
+hour regardless of activity. OS lock and sleep locking default on. All policy
+changes leave access locked; weakening a setting requires OS authentication,
+while tightening takes effect immediately. The next requested remote action can
+re-authenticate, or use `remote unlock` explicitly.
+Background polling, API requests and running workflows cannot renew inactivity.
+Locking blocks new administrative actions and does not cancel admitted jobs or
+revoke worker machine credentials.
 
-Pairing prints the next command. Use `dockpipe remote service --role worker` instead of the foreground
-worker when you want a persistent user service. `--timeout 3600` is the default local delivery limit;
-it can be set during pairing, up to 86400 seconds. Pairing does not silently change saved authority:
-an exact retry is allowed, but changing profiles or the delivery timeout requires inspecting and
-editing the private worker configuration while the worker is stopped.
+The policy is a private, versioned `policy.json` under the OS account's canonical
+security directory (`~/.local/state/dockpipe/security` on Linux, or
+`~/Library/Application Support/Dockpipe/security` on macOS). Its location ignores
+project, Dockpipe-root, HOME and XDG overrides. The desktop reads and updates the
+same policy through the CLI; it has no separate preference copy. One local broker
+owns the canonical authority; concurrent secondary brokers fail closed.
+
+Linux packages install a dedicated `org.dockpipe.remote.unlock` polkit action.
+Flatpak host authentication integration remains unqualified; native-host results
+do not establish sandboxed app support.
+A source-build CLI needs that reviewed OS action installed before native
+unlock can work. An active local login and a native authentication agent are
+required. GNOME exposes trusted idle duration; other desktops currently use the
+explicitly reported fixed timeout from unlock. If required screen-lock or suspend
+signals are unavailable, access remains locked. macOS packages include a signed
+`dockpipe-system-auth` helper; a bare CLI without its helper cannot unlock.
+`security-status` reports capabilities and unavailable integrations.
+
+Signing credentials and unlock sessions exist only in the authority's memory and
+are discarded on lock/restart. Static administrator credentials alone cannot
+operate the broker; requests and replies carry fresh, scoped cryptographic proof.
+This protects against stolen HTTP bearer credentials, not arbitrary compromise
+of the broker's OS account. Existing persisted installation keys are still
+protected by the existing private-file boundary, rather than an OS keystore.
+
+This changes the local broker protocol. Restart/replace an installed service only
+through an explicit upgrade operation; no service is restarted automatically.
+Older strict binaries reject the hardened state marker. Preserve state before
+migration and do not attempt an older binary against migrated state. Hosted
+broker operator access and the Windows native authority currently fail closed
+until compatible OS-session adapters are available. Public health metadata and
+existing worker identity/heartbeat/result paths do not grant operator access.
+
+### Legacy file invitation recovery
+
+Creating invitations and consuming unused invitation files are disabled because
+they would bypass hardware-key pairing. An already consumed legacy invitation can
+only recover its exact previously enrolled token; it cannot mint a new identity.
+Existing workers can continue running their service without pairing again. New
+workers must use the hardware-key flow above.
+
+The default local delivery timeout is 3600 seconds, up to 86400 with `--timeout`.
+Changing saved profiles or the delivery timeout requires inspecting the private
+worker configuration while the worker is stopped; pairing retries do not widen it.
 
 **Delivery grants this broker permission to execute supplied workflow code as the Mac user.** It is
 not a sandbox. Only pair with your own trusted broker. Existing profile-only workers remain closed

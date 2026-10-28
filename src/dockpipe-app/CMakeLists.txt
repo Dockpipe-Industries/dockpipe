@@ -69,7 +69,7 @@ set(DOCKPIPE_APP_SOURCES
     src/execution/infrastructure/ContextStore.cpp
     src/git/infrastructure/GitHelper.cpp
     src/execution/infrastructure/SessionManager.cpp
-    src/catalog/infrastructure/DockpipeChoices.cpp
+    src/catalog/infrastructure/DockpipeChoices.cpp src/catalog/infrastructure/OperatorDockpipeBinary.cpp
     src/execution/application/ContextDiscovery.cpp
     src/catalog/infrastructure/WorkflowCatalog.cpp src/catalog/domain/WorkflowCatalogData.cpp
     src/shell/infrastructure/LauncherSettings.cpp
@@ -100,7 +100,10 @@ set(DOCKPIPE_APP_SOURCES
     src/execution/presentation/EditContextDialog.cpp
     src/shell/infrastructure/SetupTerminal.cpp
     src/remote/infrastructure/RemoteCommand.cpp
+    src/packages/presentation/DependencyChangeDialog.cpp
     src/remote/presentation/RemoteWidget.cpp
+    src/remote/presentation/RemoteSecurityWidget.cpp
+    src/remote/presentation/HardwareKeyDialog.cpp
     src/execution/presentation/RemoteRunDialog.cpp
     src/execution/presentation/ActivityWidget.cpp
     src/observability/presentation/ExecutionExplorer.cpp
@@ -135,6 +138,7 @@ if(APPLE)
         MACOSX_BUNDLE TRUE
         OUTPUT_NAME DockPipe
         MACOSX_BUNDLE_GUI_IDENTIFIER com.dockpipe.launcher
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/resources/macos/Info.plist.in"
         MACOSX_BUNDLE_BUNDLE_NAME Dockpipe
         MACOSX_BUNDLE_BUNDLE_VERSION "${DOCKPIPE_BUNDLE_VERSION}"
         MACOSX_BUNDLE_SHORT_VERSION_STRING "${DOCKPIPE_BUNDLE_VERSION}"
@@ -188,7 +192,7 @@ if(BUILD_TESTING AND UNIX)
     add_test(NAME global-root-inherited COMMAND global-root-test --inherited)
     add_executable(package-manager-test
         tests/PackageManagerTest.cpp src/packages/presentation/PackageManagerDialog.cpp src/packages/infrastructure/PackageCommand.cpp
-        src/catalog/infrastructure/DockpipeChoices.cpp src/catalog/infrastructure/WorkflowCatalog.cpp src/catalog/domain/WorkflowCatalogData.cpp src/shell/infrastructure/LauncherSettings.cpp src/execution/infrastructure/ContextStore.cpp src/execution/domain/Context.cpp
+        src/catalog/infrastructure/DockpipeChoices.cpp src/catalog/infrastructure/OperatorDockpipeBinary.cpp src/catalog/infrastructure/WorkflowCatalog.cpp src/catalog/domain/WorkflowCatalogData.cpp src/shell/infrastructure/LauncherSettings.cpp src/execution/infrastructure/ContextStore.cpp src/execution/domain/Context.cpp
         src/execution/infrastructure/ContextStore.cpp src/execution/domain/Context.cpp)
     target_include_directories(package-manager-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
     target_link_libraries(package-manager-test PRIVATE Qt6::Widgets)
@@ -256,7 +260,7 @@ if(BUILD_TESTING)
     add_test(NAME project-files COMMAND project-files-test)
     set_tests_properties(project-files PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
     add_executable(project-git-test tests/ProjectGitTest.cpp src/git/presentation/ProjectGitWidget.cpp src/git/infrastructure/ProjectGitClient.cpp src/files/presentation/SourceEditor.cpp src/files/presentation/SourceHighlighter.cpp
-        src/remote/infrastructure/RemoteCommand.cpp src/catalog/infrastructure/DockpipeChoices.cpp src/catalog/infrastructure/WorkflowCatalog.cpp src/catalog/domain/WorkflowCatalogData.cpp src/shell/infrastructure/LauncherSettings.cpp src/execution/infrastructure/ContextStore.cpp src/execution/domain/Context.cpp
+        src/remote/infrastructure/RemoteCommand.cpp src/catalog/infrastructure/DockpipeChoices.cpp src/catalog/infrastructure/OperatorDockpipeBinary.cpp src/catalog/infrastructure/WorkflowCatalog.cpp src/catalog/domain/WorkflowCatalogData.cpp src/shell/infrastructure/LauncherSettings.cpp src/execution/infrastructure/ContextStore.cpp src/execution/domain/Context.cpp
         src/shared-ui/presentation/CanvasIcons.cpp src/shared-ui/presentation/Theme.cpp src/shared-ui/presentation/WindowChrome.cpp src/shared-ui/presentation/WindowControlButton.cpp dockpipe-launcher.qrc)
     target_include_directories(project-git-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
     target_link_libraries(project-git-test PRIVATE Qt6::Widgets)
@@ -267,7 +271,7 @@ endif()
 if(BUILD_TESTING)
     add_executable(execution-explorer-test
         tests/ExecutionExplorerTest.cpp src/observability/presentation/ExecutionExplorer.cpp src/observability/presentation/ExecutionMetricChart.cpp src/observability/presentation/SystemResourceOverview.cpp
-        src/remote/infrastructure/RemoteCommand.cpp src/catalog/infrastructure/DockpipeChoices.cpp src/catalog/infrastructure/WorkflowCatalog.cpp src/catalog/domain/WorkflowCatalogData.cpp src/shell/infrastructure/LauncherSettings.cpp src/execution/infrastructure/ContextStore.cpp src/execution/domain/Context.cpp
+        src/remote/infrastructure/RemoteCommand.cpp src/catalog/infrastructure/DockpipeChoices.cpp src/catalog/infrastructure/OperatorDockpipeBinary.cpp src/catalog/infrastructure/WorkflowCatalog.cpp src/catalog/domain/WorkflowCatalogData.cpp src/shell/infrastructure/LauncherSettings.cpp src/execution/infrastructure/ContextStore.cpp src/execution/domain/Context.cpp
         src/observability/presentation/ResourceCanvas.cpp src/observability/presentation/ResourceLinkItem.cpp src/shared-ui/presentation/CanvasPanel.cpp src/shared-ui/presentation/CanvasIcons.cpp
         src/shared-ui/presentation/Theme.cpp src/shared-ui/presentation/WindowChrome.cpp dockpipe-launcher.qrc)
     target_include_directories(execution-explorer-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
@@ -317,7 +321,7 @@ set(DOCKPIPE_UI_SOURCES
     src/git/infrastructure/ProjectGitClient.cpp src/remote/infrastructure/RemoteCommand.cpp
     src/files/presentation/ProjectFilesWidget.cpp src/files/presentation/FileExplorerView.cpp src/files/presentation/FileExplorerIcons.cpp src/files/presentation/MarkdownPreview.cpp src/files/presentation/MermaidRenderer.cpp src/files/presentation/SourceEditor.cpp src/files/presentation/SourceHighlighter.cpp
     src/shared-ui/presentation/CanvasIcons.cpp src/shared-ui/presentation/Theme.cpp src/shared-ui/presentation/WindowChrome.cpp src/shared-ui/presentation/WindowControlButton.cpp src/execution/domain/Context.cpp
-    src/execution/infrastructure/ContextStore.cpp src/catalog/infrastructure/DockpipeChoices.cpp src/catalog/infrastructure/WorkflowCatalog.cpp src/catalog/domain/WorkflowCatalogData.cpp
+    src/execution/infrastructure/ContextStore.cpp src/catalog/infrastructure/DockpipeChoices.cpp src/catalog/infrastructure/OperatorDockpipeBinary.cpp src/catalog/infrastructure/WorkflowCatalog.cpp src/catalog/domain/WorkflowCatalogData.cpp
     src/shell/infrastructure/LauncherSettings.cpp src/browser/integration/LauncherBrowserServices.cpp
     src/shared-ui/presentation/CanvasPanel.cpp src/dashboards/presentation/DashboardWorkspace.cpp src/dashboards/infrastructure/DashboardStore.cpp src/dashboards/presentation/DashboardDock.cpp src/dashboards/presentation/DashboardFilesWidget.cpp
     src/native-desktop/presentation/DesktopWindowWidget.cpp src/packages/presentation/PackageDisplayWidget.cpp src/native-desktop/infrastructure/DesktopApplicationCatalog.cpp src/native-desktop/infrastructure/DesktopBackground.cpp
@@ -658,7 +662,8 @@ if(BUILD_TESTING)
         SUFFIX "${CMAKE_SHARED_LIBRARY_SUFFIX}"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/workspace-fixture/ui"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/workspace-fixture/ui")
-    add_executable(workspace-package-test tests/WorkspacePackageTest.cpp src/shell/presentation/SettingsDialog.cpp)
+    add_executable(workspace-package-test tests/WorkspacePackageTest.cpp
+        src/shell/presentation/SettingsDialog.cpp src/remote/presentation/RemoteSecurityWidget.cpp)
     target_link_libraries(workspace-package-test PRIVATE dockpipe-launcher-ui)
     if(APPLE)
         dockpipe_target_desktop_permissions(workspace-package-test)
@@ -696,7 +701,9 @@ if(BUILD_TESTING)
     set_tests_properties(project-files-graph PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;DOCKPIPE_WORKSPACE_READER=$<TARGET_FILE:dockpipe-workspace-reader>"
         TIMEOUT 45)
-    add_executable(launcher-settings-test tests/LauncherSettingsTest.cpp src/shell/presentation/SettingsDialog.cpp)
+    add_executable(launcher-settings-test tests/LauncherSettingsTest.cpp
+        src/shell/presentation/SettingsDialog.cpp src/remote/presentation/RemoteSecurityWidget.cpp)
+    target_include_directories(launcher-settings-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
     target_link_libraries(launcher-settings-test PRIVATE dockpipe-launcher-ui)
     if(APPLE)
         dockpipe_target_desktop_permissions(launcher-settings-test)
@@ -800,4 +807,47 @@ if(BUILD_TESTING)
         add_test(NAME app-source-layout
             COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_source_layout.py")
     endif()
+endif()
+
+if(BUILD_TESTING)
+    add_executable(hardware-key-transport-test tests/HardwareKeyTransportTest.cpp
+        src/remote/infrastructure/RemoteCommand.cpp)
+    target_include_directories(hardware-key-transport-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+    target_link_libraries(hardware-key-transport-test PRIVATE Qt6::Core)
+    add_test(NAME hardware-key-transport COMMAND hardware-key-transport-test)
+    set_tests_properties(hardware-key-transport PROPERTIES TIMEOUT 30)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(hardware-key-dialog-test tests/HardwareKeyDialogTest.cpp
+        src/remote/presentation/HardwareKeyDialog.cpp)
+    target_include_directories(hardware-key-dialog-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+    target_link_libraries(hardware-key-dialog-test PRIVATE Qt6::Widgets)
+    add_test(NAME hardware-key-dialog COMMAND hardware-key-dialog-test)
+    set_tests_properties(hardware-key-dialog PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(remote-security-widget-test tests/RemoteSecurityWidgetTest.cpp
+        src/remote/presentation/RemoteSecurityWidget.cpp)
+    target_link_libraries(remote-security-widget-test PRIVATE dockpipe-launcher-ui Qt6::Widgets)
+    add_test(NAME remote-security-widget COMMAND remote-security-widget-test)
+    set_tests_properties(remote-security-widget PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(operator-dockpipe-binary-test tests/OperatorDockpipeBinaryTest.cpp
+        src/catalog/infrastructure/OperatorDockpipeBinary.cpp)
+    target_include_directories(operator-dockpipe-binary-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+    target_link_libraries(operator-dockpipe-binary-test PRIVATE Qt6::Core)
+    add_test(NAME operator-dockpipe-binary COMMAND operator-dockpipe-binary-test)
+endif()
+
+if(BUILD_TESTING AND UNIX)
+    add_executable(dependency-change-dialog-test tests/DependencyChangeDialogTest.cpp
+        src/packages/presentation/DependencyChangeDialog.cpp)
+    target_include_directories(dependency-change-dialog-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+    target_link_libraries(dependency-change-dialog-test PRIVATE Qt6::Widgets)
+    add_test(NAME dependency-change-dialog COMMAND dependency-change-dialog-test)
+    set_tests_properties(dependency-change-dialog PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
 endif()
