@@ -1,6 +1,6 @@
 module dockpipe
 
-go 1.25.0
+go 1.26.0
 
 toolchain go1.26.10
 
@@ -10,7 +10,7 @@ require (
 	github.com/mattn/go-shellwords v1.0.12
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	golang.org/x/mod v0.31.0
-	golang.org/x/term v0.43.0
+	golang.org/x/term v0.47.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -18,7 +18,7 @@ require (
 	github.com/ebitengine/purego v0.11.2
 	github.com/fxamacker/cbor/v2 v2.9.2
 	github.com/go-webauthn/webauthn v0.17.4
-	golang.org/x/sys v0.45.0
+	golang.org/x/sys v0.49.0
 )
 
 require (
