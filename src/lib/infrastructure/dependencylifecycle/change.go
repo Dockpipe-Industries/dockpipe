@@ -34,10 +34,10 @@ func (provider WorkflowProvider) Change(ctx context.Context, workdir string, req
 	if err := request.Validate(); err != nil {
 		return result, err
 	}
-	if operation != "plan" && operation != "apply" && operation != "recover" && operation != "recover-plan" {
+	if operation != "plan" && operation != "apply" && operation != "recover" && operation != "recover-plan" && operation != "activate" && operation != "activation-plan" && operation != "activation-status" {
 		return result, errors.New("unsupported dependency change operation")
 	}
-	if operation != "plan" && operation != "recover-plan" && approval != request.ApprovalID(operation) {
+	if operation != "plan" && operation != "recover-plan" && operation != "activation-plan" && operation != "activation-status" && approval != request.ApprovalID(operation) {
 		return result, errors.New("approval does not match this exact request and operation; run the dry-run first")
 	}
 	if !filepath.IsAbs(provider.Executable) {
@@ -114,10 +114,10 @@ func (provider WorkflowProvider) Change(ctx context.Context, workdir string, req
 	if err := result.Validate(); err != nil {
 		return result, err
 	}
-	if (operation == "apply" || operation == "recover") && result.Status == "ready" {
+	if (operation == "apply" || operation == "recover" || operation == "activate") && result.Status == "ready" {
 		return result, errors.New("provider returned a planning result for an execution operation")
 	}
-	if (operation == "plan" || operation == "recover-plan") && (result.Status == "installed-activation-pending" || result.Status == "recovered-activation-pending") {
+	if (operation == "plan" || operation == "recover-plan" || operation == "activation-plan") && (result.Status == "installed-activation-pending" || result.Status == "recovered-activation-pending" || result.Status == "active-healthy" || result.Status == "activation-recovered") {
 		return result, errors.New("provider returned an execution result for a planning operation")
 	}
 	return result, nil

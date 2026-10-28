@@ -55,7 +55,7 @@ func (result ChangeResult) Validate() error {
 		return errors.New("invalid dependency change result")
 	}
 	switch result.Status {
-	case "ready", "installed-activation-pending", "recovered-activation-pending", "recovery-required", "manual-required":
+	case "active-healthy", "activation-recovered", "ready", "installed-activation-pending", "recovered-activation-pending", "recovery-required", "manual-required":
 		return nil
 	default:
 		return errors.New("unknown dependency change outcome")

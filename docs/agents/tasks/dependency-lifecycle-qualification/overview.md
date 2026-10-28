@@ -119,3 +119,18 @@ disabled premature actions and immutable private request snapshots. They do not
 qualify a native live app, actual Cloudflare connectivity, macOS/Windows replacement,
 a package manager/service/container, broker restart, remote heartbeat recovery or
 application TLS. Those acceptance gates remain open; no live tunnel was updated.
+
+### Activation security and recovery proof (2026-10-28)
+
+Added race-tested supervisor fixtures for readiness failure before cutover, public
+path failure afterward, client observation loss, delayed health loss, finite
+rollback authority, deadline consumed during stop, corrupt/drifted inputs and
+normal baseline startup after rejected preflight. Actual Linux child tests inspect
+executable images and listener ownership, kill a fixture parent abruptly and verify
+both direct connector children die, and preserve legacy script execution without
+incorrectly snapshotting its interpreter. TLS fixtures reject a wrong broker key,
+stale challenges and untrusted certificates; authenticated routes reject bearer-only
+access and maintenance blocks active/uncertain jobs and new submissions. The Qt
+offscreen regression checks distinct activation approval and status refresh through
+the same trusted CLI. This is local fixture proof, not real Cloudflare/M6, full
+native GUI, non-Linux activation or production distribution qualification.

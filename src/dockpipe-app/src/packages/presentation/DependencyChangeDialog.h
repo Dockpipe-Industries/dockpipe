@@ -22,7 +22,7 @@ protected:
 
 private:
     void chooseRequest();
-    void execute(bool recovery, bool dryRun);
+    void execute(const QString &operation, bool dryRun);
     void finish(bool success);
     void readOutput();
     void setBusy(bool busy);
@@ -33,12 +33,13 @@ private:
     QTemporaryDir m_requestDirectory;
     QString m_applyApproval;
     QString m_recoveryApproval;
+    QString m_activateApproval;
     QProcess m_process;
     QTimer m_timeout;
     QByteArray m_stdout;
     QByteArray m_stderr;
     bool m_reviewing = false;
-    bool m_recovery = false;
+    QString m_operation;
     bool m_failed = false;
     QLabel *m_requestLabel = nullptr;
     QPlainTextEdit *m_output = nullptr;
@@ -47,4 +48,7 @@ private:
     QPushButton *m_reviewRecovery = nullptr;
     QPushButton *m_apply = nullptr;
     QPushButton *m_recover = nullptr;
+    QPushButton *m_reviewActivation = nullptr;
+    QPushButton *m_activate = nullptr;
+    QPushButton *m_health = nullptr;
 };

@@ -4,7 +4,7 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QHBoxLayout>
+#include <QGridLayout>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLabel>
@@ -20,7 +20,7 @@ DependencyChangeDialog::DependencyChangeDialog(const QString &workdir, QWidget *
     setWindowTitle(tr("Dependency update and recovery"));
     resize(760, 520);
     auto *layout = new QVBoxLayout(this);
-    auto *hint = new QLabel(tr("Choose a local update request prepared for your installed resolver. Review it before applying or recovering. Use only trusted requests and resolvers. Running processes are not restarted; installed bytes alone do not prove active health."), this);
+    auto *hint = new QLabel(tr("Choose a local update request prepared for your installed resolver. Review it before applying or recovering. Use only trusted requests and resolvers. Install/recover leave processes running. Activation uses the reviewed maintenance policy to replace the connector; the broker owns health checks and bounded recovery even if this dialog closes."), this);
     hint->setWordWrap(true);
     layout->addWidget(hint);
     m_requestLabel = new QLabel(tr("No request selected"), this);
@@ -32,13 +32,24 @@ DependencyChangeDialog::DependencyChangeDialog(const QString &workdir, QWidget *
     m_output = new QPlainTextEdit(this);
     m_output->setReadOnly(true);
     layout->addWidget(m_output);
-    auto *actions = new QHBoxLayout;
+    auto *actions = new QGridLayout;
     m_reviewUpdate = new QPushButton(tr("Review update"), this);
     m_reviewRecovery = new QPushButton(tr("Review recovery"), this);
     m_apply = new QPushButton(tr("Apply reviewed update"), this);
     m_recover = new QPushButton(tr("Recover reviewed update"), this);
-    for (auto *button : {m_reviewUpdate, m_reviewRecovery, m_apply, m_recover})
-        actions->addWidget(button);
+    m_reviewActivation = new QPushButton(tr("Review activation"), this);
+    m_activate = new QPushButton(tr("Activate reviewed connector"), this);
+    m_health = new QPushButton(tr("Refresh activation health"), this);
+    actions->addWidget(m_reviewUpdate, 0, 0);
+    actions->addWidget(m_apply, 0, 1);
+    actions->addWidget(m_reviewRecovery, 1, 0);
+    actions->addWidget(m_recover, 1, 1);
+    actions->addWidget(m_reviewActivation, 2, 0);
+    actions->addWidget(m_activate, 2, 1);
+    actions->addWidget(m_health, 3, 0, 1, 2);
+    m_reviewActivation->setObjectName(QStringLiteral("dependencyReviewActivation"));
+    m_activate->setObjectName(QStringLiteral("dependencyActivate"));
+    m_health->setObjectName(QStringLiteral("dependencyActivationHealth"));
     m_apply->setObjectName(QStringLiteral("dependencyApply"));
     m_recover->setObjectName(QStringLiteral("dependencyRecover"));
     m_reviewUpdate->setObjectName(QStringLiteral("dependencyReviewUpdate"));
@@ -48,10 +59,13 @@ DependencyChangeDialog::DependencyChangeDialog(const QString &workdir, QWidget *
     layout->addWidget(close);
     connect(close, &QPushButton::clicked, this, &QDialog::reject);
     connect(m_choose, &QPushButton::clicked, this, &DependencyChangeDialog::chooseRequest);
-    connect(m_reviewUpdate, &QPushButton::clicked, this, [this]() { execute(false, true); });
-    connect(m_reviewRecovery, &QPushButton::clicked, this, [this]() { execute(true, true); });
-    connect(m_apply, &QPushButton::clicked, this, [this]() { execute(false, false); });
-    connect(m_recover, &QPushButton::clicked, this, [this]() { execute(true, false); });
+    connect(m_reviewUpdate, &QPushButton::clicked, this, [this]() { execute(QStringLiteral("update"), true); });
+    connect(m_reviewRecovery, &QPushButton::clicked, this, [this]() { execute(QStringLiteral("recover"), true); });
+    connect(m_apply, &QPushButton::clicked, this, [this]() { execute(QStringLiteral("update"), false); });
+    connect(m_recover, &QPushButton::clicked, this, [this]() { execute(QStringLiteral("recover"), false); });
+    connect(m_reviewActivation, &QPushButton::clicked, this, [this]() { execute(QStringLiteral("activate"), true); });
+    connect(m_activate, &QPushButton::clicked, this, [this]() { execute(QStringLiteral("activate"), false); });
+    connect(m_health, &QPushButton::clicked, this, [this]() { execute(QStringLiteral("activation-status"), false); });
     connect(&m_process, &QProcess::readyReadStandardOutput, this, &DependencyChangeDialog::readOutput);
     connect(&m_process, &QProcess::readyReadStandardError, this, &DependencyChangeDialog::readOutput);
     connect(&m_process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
@@ -82,6 +96,7 @@ void DependencyChangeDialog::loadRequest(const QString &path)
         return;
     m_applyApproval.clear();
     m_recoveryApproval.clear();
+    m_activateApproval.clear();
     m_request.clear();
     QFile file(path);
     const QFileInfo info(path);
@@ -117,25 +132,32 @@ void DependencyChangeDialog::loadRequest(const QString &path)
     setBusy(false);
 }
 
-void DependencyChangeDialog::execute(bool recovery, bool dryRun)
+void DependencyChangeDialog::execute(const QString &operation, bool dryRun)
 {
     if (m_process.state() != QProcess::NotRunning || m_request.isEmpty())
         return;
-    const QString approval = recovery ? m_recoveryApproval : m_applyApproval;
-    if (!dryRun && approval.isEmpty())
+    QString approval;
+    if (operation == QStringLiteral("recover"))
+        approval = m_recoveryApproval;
+    else if (operation == QStringLiteral("activate"))
+        approval = m_activateApproval;
+    else
+        approval = m_applyApproval;
+    if (!dryRun && operation != QStringLiteral("activation-status") && approval.isEmpty())
         return;
     m_applyApproval.clear();
     m_recoveryApproval.clear();
+    m_activateApproval.clear();
     m_stdout.clear();
     m_stderr.clear();
     m_failed = false;
     m_reviewing = dryRun;
-    m_recovery = recovery;
-    QStringList arguments{QStringLiteral("dependency"), recovery ? QStringLiteral("recover") : QStringLiteral("update"),
+    m_operation = operation;
+    QStringList arguments{QStringLiteral("dependency"), operation,
         QStringLiteral("--request"), m_request, QStringLiteral("--workdir"), m_workdir};
     if (dryRun)
         arguments << QStringLiteral("--dry-run");
-    else
+    else if (operation != QStringLiteral("activation-status"))
         arguments << QStringLiteral("--approve") << approval;
     setBusy(true);
     m_output->setPlainText(tr("Running local Dockpipe validation…"));
@@ -168,11 +190,18 @@ void DependencyChangeDialog::finish(bool success)
     const QString status = result.value(QStringLiteral("status")).toString();
     const QString message = result.value(QStringLiteral("message")).toString();
     if (success && !m_failed && result.value(QStringLiteral("schema")).toString() == QStringLiteral("dockpipe.dependency.change/v1") && m_reviewing && status == QStringLiteral("ready")) {
-        const QString approval = envelope.value(m_recovery ? QStringLiteral("recovery_approval") : QStringLiteral("apply_approval")).toString();
+        QString approvalField = QStringLiteral("apply_approval");
+        if (m_operation == QStringLiteral("recover"))
+            approvalField = QStringLiteral("recovery_approval");
+        else if (m_operation == QStringLiteral("activate"))
+            approvalField = QStringLiteral("activate_approval");
+        const QString approval = envelope.value(approvalField).toString();
         static const QRegularExpression digest(QStringLiteral("^[0-9a-f]{64}$"));
         if (digest.match(approval).hasMatch()) {
-            if (m_recovery)
+            if (m_operation == QStringLiteral("recover"))
                 m_recoveryApproval = approval;
+            else if (m_operation == QStringLiteral("activate"))
+                m_activateApproval = approval;
             else
                 m_applyApproval = approval;
         }
@@ -195,6 +224,9 @@ void DependencyChangeDialog::setBusy(bool busy)
     m_reviewRecovery->setEnabled(!busy && !m_request.isEmpty());
     m_apply->setEnabled(!busy && !m_applyApproval.isEmpty());
     m_recover->setEnabled(!busy && !m_recoveryApproval.isEmpty());
+    m_reviewActivation->setEnabled(!busy && !m_request.isEmpty());
+    m_activate->setEnabled(!busy && !m_activateApproval.isEmpty());
+    m_health->setEnabled(!busy && !m_request.isEmpty());
 }
 
 void DependencyChangeDialog::reject()

@@ -199,3 +199,28 @@ prevent the GUI from approving changed source-file bytes. Existing running image
 tunnel credentials/config and connections remain untouched. Live broker/tunnel
 activation, active-version health, service/package-manager/Docker updates,
 non-Linux apply and remote updates remain implementation/qualification gates.
+
+### Supervised activation milestone (2026-10-28)
+
+Core adds generic broker-owned edge activation, exact native-image snapshots,
+provider-declared HTTP readiness, a fresh broker-signed public TLS round trip,
+maintenance/job admission and bounded single-fallback recovery. Cloudflare launch
+arguments, `/ready` selection, installation journal linkage, advisory floors and
+vulnerable-fallback exceptions remain in the external resolver. The generic Core
+readiness path is not fixed to a vendor endpoint. Initial support remains local
+Linux standalone native cloudflared managed by this broker.
+
+The CLI adds `dependency activate` and `activation-status`; the GUI calls those
+same commands. Lost CLI observations cannot cancel or replay admitted broker work.
+Current jobs block activation; new jobs pause through its rollback window. A failed
+activation reports failure even when its original connector is preserved/restored.
+Recovery checks remaining authority immediately before each replacement. Baseline
+startup is independent of failed new preflight results; failed recovery does not
+loop across service restarts. Linux direct-child parent-death containment and
+pinned startup images prevent orphaned/unreviewed connector startup after a crash.
+
+Security review and isolated regressions cover these boundaries, actual process
+image/listener ownership, abrupt parent death, TLS/identity rejection, provider
+configuration drift and GUI approval separation. Real tunnel cutover and M6
+reconnect, native non-Linux, package-manager/service/Docker and application-specific
+route/TLS matrices remain unqualified. This milestone does not complete TASK-050.

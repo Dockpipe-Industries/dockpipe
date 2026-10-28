@@ -42,6 +42,7 @@ type BrokerState struct {
 }
 
 type Broker struct {
+	edge              *EdgeSupervisor
 	operatorTokenHash string
 	security          *SecurityAuthority
 	pairingChallenges map[string]hardwarePairingChallenge
@@ -147,7 +148,7 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		limit = MaxMonitoringBytes
 	}
 	switch r.URL.Path {
-	case "/v1/health":
+	case "/v1/health", "/v1/edge-health":
 		limit = 1024
 	case "/v1/pairing-request":
 		limit = 4096
@@ -175,6 +176,10 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer b.mutex.Unlock()
 	if b.poisoned {
 		http.Error(w, "broker storage requires restart and inspection", http.StatusServiceUnavailable)
+		return
+	}
+	if r.URL.Path == "/v1/edge-health" {
+		b.respond(w, func() (any, error) { return b.proveEdgeHealth(body) })
 		return
 	}
 	if r.URL.Path == "/v1/health" {
@@ -247,7 +252,35 @@ func (b *Broker) pair(raw []byte) (any, error) {
 }
 
 func (b *Broker) operator(path string, raw []byte) (any, error) {
+	if path == "/v1/submit" && b.edge != nil && b.edge.maintenanceActive() {
+		return nil, errors.New("connector maintenance pauses new workflow submissions")
+	}
 	switch path {
+	case "/v1/edge-plan", "/v1/edge-activate":
+		if b.edge == nil {
+			return nil, errors.New("edge supervision is unavailable")
+		}
+		var request contract.EdgeActivationRequest
+		if err := Decode(raw, &request); err != nil {
+			return nil, err
+		}
+		for _, job := range b.state.Jobs {
+			if job.Status == "running" || job.Status == "queued" || job.Status == "unknown" {
+				return nil, errors.New("active jobs block connector replacement")
+			}
+		}
+		return b.edge.accept(request, path == "/v1/edge-plan")
+	case "/v1/edge-status":
+		if b.edge == nil {
+			return nil, errors.New("edge supervision is unavailable")
+		}
+		var request struct {
+			ID string `json:"id"`
+		}
+		if err := Decode(raw, &request); err != nil || !contract.ValidEdgeDigest(request.ID) {
+			return nil, errors.New("invalid activation identity")
+		}
+		return b.edge.status(request.ID)
 	case "/v1/observe":
 		return b.observeMachine(raw)
 	case "/v1/pairing-open", "/v1/pairing-close", "/v1/pairings", "/v1/approve", "/v1/deny":

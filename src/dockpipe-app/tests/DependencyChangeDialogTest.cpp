@@ -42,7 +42,7 @@ int main(int argc, char **argv)
     cli.write(R"SH(#!/bin/sh
 if [ "$1" != dependency ]; then exit 1; fi
 printf '%s\n' "$@" > "$DOCKPIPE_TEST_ARGS"
-printf '%s\n' '{"result":{"schema":"dockpipe.dependency.change/v1","status":"ready","message":"Verified fixture"},"apply_approval":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","recovery_approval":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}'
+printf '%s\n' '{"result":{"schema":"dockpipe.dependency.change/v1","status":"ready","message":"Verified fixture"},"activate_approval":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","apply_approval":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","recovery_approval":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}'
 )SH");
     cli.close();
     CHECK(cli.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner));
@@ -88,5 +88,26 @@ printf '%s\n' '{"result":{"schema":"dockpipe.dependency.change/v1","status":"rea
     reviewRecovery->click();
     CHECK(waitUntil([&]() { return recover->isEnabled(); }));
     CHECK(!apply->isEnabled());
+    auto *activate = dialog.findChild<QPushButton *>("dependencyActivate");
+    auto *reviewActivation = dialog.findChild<QPushButton *>("dependencyReviewActivation");
+    auto *health = dialog.findChild<QPushButton *>("dependencyActivationHealth");
+    CHECK(activate && reviewActivation && health && !activate->isEnabled());
+    reviewActivation->click();
+    CHECK(waitUntil([&]() { return activate->isEnabled(); }));
+    CHECK(!apply->isEnabled() && !recover->isEnabled());
+    activate->click();
+    CHECK(waitUntil([&]() { return reviewActivation->isEnabled(); }));
+    arguments.close();
+    CHECK(arguments.open(QIODevice::ReadOnly));
+    const QByteArray activateArguments = arguments.readAll();
+    CHECK(activateArguments.contains("dependency\nactivate\n"));
+    CHECK(activateArguments.contains("--approve\ncccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"));
+    health->click();
+    CHECK(waitUntil([&]() { return health->isEnabled(); }));
+    arguments.close();
+    CHECK(arguments.open(QIODevice::ReadOnly));
+    const QByteArray healthArguments = arguments.readAll();
+    CHECK(healthArguments.contains("dependency\nactivation-status\n"));
+    CHECK(!healthArguments.contains("--approve") && !healthArguments.contains("--dry-run"));
     return 0;
 }

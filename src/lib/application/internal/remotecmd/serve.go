@@ -2,11 +2,9 @@ package remotecmd
 
 import (
 	"context"
-	"errors"
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -56,36 +54,27 @@ func serve(ctx context.Context, root string) error {
 	defer server.Close()
 	failures := make(chan error, 2)
 	go func() { failures <- server.Serve(listener) }()
-	edgeContext, cancel := context.WithCancel(ctx)
-	defer cancel()
+
+	var edgeFailures <-chan error
 	var edge contract.EdgeConfig
 	if err := remoteio.ReadPrivate(filepath.Join(root, "edge.json"), &edge); err == nil {
 		if err := validateEdge(edge); err != nil {
 			return err
 		}
-		command := exec.CommandContext(edgeContext, edge.Executable, edge.Arguments...)
-		for _, name := range []string{"PATH", "HOME", "USER", "TMPDIR", "LANG"} {
-			if value, exists := os.LookupEnv(name); exists {
-				command.Env = append(command.Env, name+"="+value)
-			}
-		}
-		command.Stdout, command.Stderr = os.Stderr, os.Stderr
-		command.WaitDelay = 2 * time.Second
-		remoteio.ContainProcess(command)
-		if err := command.Start(); err != nil {
+		closeEdge, failures, err := broker.StartEdgeSupervisor(ctx, root, edge)
+		if err != nil {
 			return err
 		}
-		defer remoteio.CleanupProcess(command)
-		go func() {
-			_ = command.Wait()
-			failures <- errors.New("remote edge process exited")
-		}()
+		defer closeEdge()
+		edgeFailures = failures
 	} else if !os.IsNotExist(err) {
 		return err
 	}
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
+	case err := <-edgeFailures:
+		return err
 	case err := <-failures:
 		return err
 	}

@@ -24,6 +24,8 @@ const usage = `dockpipe remote <command> [options]
 	security-policy --idle-seconds <60..3600>        Update global remote auto-lock policy
 	                [--lock-on-screen-lock=true] [--lock-on-sleep=true]
   setup   --resolver <name> [--hostname <hostname>]  Package-owned remote setup
+  edge-activate --request <json> --dry-run|--approve <id>  Supervised local edge activation
+  edge-status --id <activation-id>                  Inspect activation and recovery health
   info                                           Show configuration without credentials
   init    [--listen 127.0.0.1:47831]               Initialize a private broker
   serve                                          Run broker and configured edge
@@ -70,6 +72,8 @@ func Run(args []string, checkDependencies func(string) error) error {
 	}
 	command := args[0]
 	flags := flag.NewFlagSet("remote "+command, flag.ContinueOnError)
+	activationRequest := flags.String("request", "", "exact private edge activation request")
+	activationApproval := flags.String("approve", "", "exact activation approval")
 	state := flags.String("state", "", "private state directory")
 	authentication := flags.String("auth", "auto", "OS re-authentication for locked operator actions: auto or never")
 	attestationRoots := flags.String("attestation-roots", "", "verified hardware-key manufacturer CA PEM bundle (first key only)")
@@ -130,7 +134,13 @@ func Run(args []string, checkDependencies func(string) error) error {
 	if flags.NArg() != 0 {
 		return errors.New("unexpected remote positional arguments")
 	}
-	if (*dryRun || *expectedDigest != "") && command != "submit" {
+	if *expectedDigest != "" && command != "submit" {
+		return errors.New("--expected-digest is supported only by submit")
+	}
+	if (*activationRequest != "" || *activationApproval != "") && command != "edge-activate" {
+		return errors.New("activation flags require edge-activate")
+	}
+	if *dryRun && command != "submit" && command != "edge-activate" {
 		return errors.New("--dry-run and --expected-digest are supported only by remote submit")
 	}
 	if (*workflow != "" || len(includes)+len(dependencies)+len(artifacts) != 0) && command != "submit" {
@@ -170,6 +180,10 @@ func Run(args []string, checkDependencies func(string) error) error {
 	}
 	return infrastructure.RunOperationWithOptions(os.Stderr, "remote."+command, "Remote "+command, nil, options, func() error {
 		switch command {
+		case "edge-activate":
+			return activateEdge(ctx, root, *activationRequest, *activationApproval, *dryRun)
+		case "edge-status":
+			return edgeStatus(ctx, root, *id)
 		case "unlock", "lock", "security-status", "security-policy":
 			return remoteSecurity(ctx, command, securityChanges, *idleSeconds, *lockOnScreenLock, *lockOnSleep)
 		case "security-key-register":

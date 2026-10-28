@@ -29,7 +29,8 @@ func cmdDependencyChange(operation string, args []string) error {
 		}
 		return err
 	}
-	if flags.NArg() != 0 || *requestPath == "" || (*dryRun && *approve != "") || (!*dryRun && *approve == "") {
+	statusOnly := operation == "activation-status"
+	if flags.NArg() != 0 || *requestPath == "" || (*dryRun && *approve != "") || (!statusOnly && !*dryRun && *approve == "") || (statusOnly && (*dryRun || *approve != "")) {
 		return errors.New("use --request <file> with either --dry-run or --approve <exact-operation-id>")
 	}
 	request, err := lifecycleio.ReadChangeRequest(*requestPath)
@@ -37,14 +38,22 @@ func cmdDependencyChange(operation string, args []string) error {
 		return err
 	}
 	action := "apply"
+	if statusOnly {
+		action = "activation-status"
+	}
+	if operation == "activate" {
+		action = "activate"
+	}
 	if operation == "recover" {
 		action = "recover"
 	}
-	if !*dryRun && *approve != request.ApprovalID(action) {
+	if !statusOnly && !*dryRun && *approve != request.ApprovalID(action) {
 		return errors.New("approval does not match this exact request and operation")
 	}
 	if *dryRun {
-		if action == "recover" {
+		if action == "activate" {
+			action = "activation-plan"
+		} else if action == "recover" {
 			action = "recover-plan"
 		} else {
 			action = "plan"
@@ -72,12 +81,13 @@ func cmdDependencyChange(operation string, args []string) error {
 			response := struct {
 				Result           dependency.ChangeResult `json:"result"`
 				ApplyApproval    string                  `json:"apply_approval"`
+				ActivateApproval string                  `json:"activate_approval"`
 				RecoveryApproval string                  `json:"recovery_approval"`
-			}{result, request.ApprovalID("apply"), request.ApprovalID("recover")}
+			}{result, request.ApprovalID("apply"), request.ApprovalID("activate"), request.ApprovalID("recover")}
 			if err := json.NewEncoder(os.Stdout).Encode(response); err != nil {
 				return err
 			}
-			if result.Status == "recovery-required" || result.Status == "manual-required" {
+			if result.Status == "recovery-required" || result.Status == "manual-required" || result.Status == "activation-recovered" {
 				return fmt.Errorf("dependency change requires attention: %s", result.Message)
 			}
 			return nil

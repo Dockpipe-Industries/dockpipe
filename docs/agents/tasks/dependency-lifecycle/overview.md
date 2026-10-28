@@ -231,3 +231,14 @@ Unattended policy selection, authenticated artifact discovery/download, ecosyste
 lock resolution, manager/service/container/platform methods, remote activation,
 critical-tunnel maintenance, running-version and end-to-end health gates remain
 open. This milestone does not complete TASK-049/050/052 or authorize a live update.
+
+### Broker-owned activation integration (2026-10-28)
+
+Generic local edge supervision now owns exact process snapshots, provider-declared
+HTTP readiness, signed public broker-health challenges, job-safe maintenance
+admission, durable replacement intent and bounded fallback. CLI activation/status
+commands precede the GUI adapter and reuse existing resolver workflow transport
+and OS-session remote authorization. No vendor binary names, advisory floors,
+launch flags or readiness path enter Core. Non-native/wrapper edges retain normal
+execution but cannot silently become pinned native activation targets. Scheduled
+or remote-host updates and installation-owner/platform qualification remain open.

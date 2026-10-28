@@ -24,7 +24,10 @@ const dependencyUsage = `dockpipe dependency: host inventory, review plans and a
   update --request <change.json> [--workdir <path>] (--dry-run | --approve <apply-id>)
   recover --request <change.json> [--workdir <path>] (--dry-run | --approve <recovery-id>)
 Update/recover execute the selected trusted provider's local change workflow.
-No automatic restarts, remote updates or unattended execution are implemented.
+  activate --request <activation.json> [--workdir <path>] (--dry-run | --approve <activate-id>)
+  activation-status --request <activation.json> [--workdir <path>]
+Activation uses broker-owned supervision, exact maintenance approval and existing OS authentication.
+No remote updates or unattended policy execution are implemented.
 Inventory runs trusted resolver workflow code with ordinary workflow permissions;
 the inventory protocol is not an OS sandbox. Assess/plan only read supplied evidence.
 `
@@ -35,7 +38,7 @@ func cmdDependency(args []string) error {
 		return nil
 	}
 	operation := args[0]
-	if operation == "update" || operation == "recover" {
+	if operation == "update" || operation == "recover" || operation == "activate" || operation == "activation-status" {
 		return cmdDependencyChange(operation, args[1:])
 	}
 	if operation != "inventory" && operation != "assess" && operation != "plan" {

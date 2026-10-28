@@ -37,11 +37,11 @@ func (policy RemoteSecurityPolicy) Weakens(previous RemoteSecurityPolicy) bool {
 // OperatorScope admits a known operation, never arbitrary signing or a wildcard.
 func OperatorScope(path string) string {
 	switch path {
-	case "/v1/nodes", "/v1/jobs", "/v1/job", "/v1/observe", "/v1/pairings":
+	case "/v1/edge-status", "/v1/nodes", "/v1/jobs", "/v1/job", "/v1/observe", "/v1/pairings":
 		return "remote.read"
 	case "/v1/submit", "/v1/cancel":
 		return "remote.execute"
-	case "/v1/revoke":
+	case "/v1/revoke", "/v1/edge-plan", "/v1/edge-activate":
 		return "remote.manage"
 	case "/v1/pairing-open", "/v1/pairing-close", "/v1/approve-begin", "/v1/approve", "/v1/deny":
 		return "remote.pair"

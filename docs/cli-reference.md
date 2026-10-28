@@ -409,3 +409,20 @@ are manual operator approvals, not remote authorization or inventory-plan grants
 No automatic restart or retry occurs; activation-pending is not tunnel-health
 proof. See [the lifecycle contract](runtime/dependency-lifecycle.md#explicit-local-changes-and-recovery)
 and the selected provider's supported-method documentation.
+
+### Supervised dependency activation
+
+`dockpipe dependency activate --request activation.json --dry-run` reviews a
+provider's local connector replacement. `--approve ACTIVATE_ID` sends the exact
+approved contract to the existing OS-authenticated broker. The broker owns
+readiness, running-image verification, signed public HTTPS health and bounded
+fallback even if the CLI disconnects. Installation approval cannot approve
+activation. `dependency activation-status --request activation.json` refreshes
+health without replay. Both use `--workdir` for resolver discovery.
+
+The generic broker interfaces are `remote edge-activate --state <private-root>
+--request <file> --dry-run|--approve <id>` and `remote edge-status --state
+<private-root> --id <id>`. Active/uncertain jobs block replacement; new submissions
+pause during the recovery window. A verified fallback still means activation
+failed. See [supervised activation](runtime/dependency-lifecycle.md#supervised-local-edge-activation)
+for exact process, platform, maintenance and health limits.
