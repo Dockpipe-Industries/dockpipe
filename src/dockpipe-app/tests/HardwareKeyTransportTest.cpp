@@ -9,6 +9,10 @@
 #include <QThread>
 #include <QTimer>
 #include <cstdio>
+#ifdef Q_OS_WIN
+#include <fcntl.h>
+#include <io.h>
+#endif
 
 namespace {
 const QString secret = "private-test-pin";
@@ -35,6 +39,11 @@ void writeFrame(QFile &stream, const QJsonObject &frame, bool newline = true)
 
 int fixture(const QString &mode)
 {
+#ifdef Q_OS_WIN
+    // Match Go's byte-preserving private pipes rather than CRT text-mode I/O.
+    if (_setmode(_fileno(stdout), _O_BINARY) == -1 || _setmode(_fileno(stdin), _O_BINARY) == -1)
+        return 13;
+#endif
     QFile output;
     QFile input;
     if (!output.open(stdout, QIODevice::WriteOnly) || !input.open(stdin, QIODevice::ReadOnly))
@@ -80,7 +89,7 @@ int fixture(const QString &mode)
         if (phase == 0 && phases > 1)
             writeFrame(output, prompt(QString(32, mode == "reused-id" ? 'a' : 'b')));
     }
-    output.write("{\"status\":\"complete\"}\n");
+    output.write(mode == "crlf-result" ? "{\"status\":\"complete\"}\r\n" : "{\"status\":\"complete\"}\n");
     output.flush();
     return 0;
 }
@@ -128,14 +137,19 @@ bool transport(const QString &mode, bool gui, bool expectedSuccess, int expected
     }, 3000);
     QTimer::singleShot(6000, &loop, &QEventLoop::quit);
     loop.exec();
+    const QByteArray expectedResult = mode == "crlf-result"
+        ? "{\"status\":\"complete\"}\r\n" : "{\"status\":\"complete\"}\n";
     const bool passed = completed && success == expectedSuccess && prompts == expectedPrompts
         && !displayed.contains(secret) && !streamed.contains(secret.toUtf8())
         && !result.contains(secret.toUtf8()) && !displayed.contains("hardware-key-")
         && !streamed.contains("hardware-key-") && !result.contains("hardware-key-")
         && (!expectedSuccess || mode == "unterminated"
-            || (streamed == "{\"status\":\"complete\"}\n" && statuses == expectedPrompts));
+            || (streamed == expectedResult && statuses == expectedPrompts));
     if (!passed)
-        std::fprintf(stderr, "Hardware-key transport case failed: %s\n", qPrintable(mode));
+        std::fprintf(stderr,
+            "Hardware-key transport case failed: %s; completed=%d success=%d prompts=%d/%d statuses=%d output-bytes=%lld crlf=%d\n",
+            qPrintable(mode), completed, success, prompts, expectedPrompts, statuses,
+            static_cast<long long>(streamed.size()), streamed.endsWith("\r\n"));
     return passed;
 }
 }
@@ -147,6 +161,7 @@ int main(int argc, char **argv)
     if (arguments.value(1) == "--fixture")
         return fixture(arguments.value(2));
     const bool passed = transport("valid", true, true, 1)
+        && transport("crlf-result", true, true, 1)
         && transport("two-phase", true, true, 2)
         && transport("unterminated", true, true, 1)
         && transport("invalid-id", true, false, 0)
