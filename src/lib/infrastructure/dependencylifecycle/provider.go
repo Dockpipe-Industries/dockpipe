@@ -137,7 +137,7 @@ func inventoryEnvironment(base []string, root, executable string) []string {
 	for _, entry := range base {
 		key, _, _ := strings.Cut(entry, "=")
 		switch strings.ToUpper(key) {
-		case "DOCKPIPE_ARTIFACT_ROOT", "DOCKPIPE_OUTPUT_ROOT", "DOCKPIPE_DEPENDENCY_OUTPUT", "DOCKPIPE_DEPENDENCY_MACHINE", "DOCKPIPE_BIN":
+		case "DOCKPIPE_DEPENDENCY_REQUEST", "DOCKPIPE_DEPENDENCY_OPERATION", "DOCKPIPE_ARTIFACT_ROOT", "DOCKPIPE_OUTPUT_ROOT", "DOCKPIPE_DEPENDENCY_OUTPUT", "DOCKPIPE_DEPENDENCY_MACHINE", "DOCKPIPE_BIN":
 			continue
 		}
 		result = append(result, entry)

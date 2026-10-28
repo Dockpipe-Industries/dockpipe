@@ -104,3 +104,18 @@ compile-only and mocked results are labelled and do not satisfy runtime gates.
   authorization failures are exercised; Core remains provider-neutral.
 - [ ] Existing preflight, package, broker and UI contract regressions pass. Reports
   distinguish mocked tests, native runtime proof, publication and actual remediation.
+
+### Standalone change/recovery fixture evidence (2026-10-27)
+
+Local tests cover exact operation/input approvals, versioned provider negotiation,
+strict result transport, stale installed bytes, checksum/pin/owner rejection,
+linked targets, concurrent locks, cancellation before mutation, failed validation
+with safe restoration, corrupt backup/unrelated-target preservation, interrupted
+replacement reconciliation, idempotent completion and separately approved emergency
+vulnerable rollback. A full candidate CLI → resolver workflow → SDK-built helper
+fixture performed dry-run/apply/reconcile/recovery against private fake binaries.
+Qt offscreen checks compile the actual dialog and exercise separate approvals,
+disabled premature actions and immutable private request snapshots. They do not
+qualify a native live app, actual Cloudflare connectivity, macOS/Windows replacement,
+a package manager/service/container, broker restart, remote heartbeat recovery or
+application TLS. Those acceptance gates remain open; no live tunnel was updated.

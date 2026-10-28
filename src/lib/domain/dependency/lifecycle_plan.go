@@ -47,7 +47,7 @@ func BuildDryRunPlan(inventory Inventory, policy UpdatePolicy, pin string, now t
 		Provider: inventory.Provider, Machine: inventory.Machine, Policy: policy, Pin: pin,
 		DryRun: true, Executable: false, Assessment: assessment, Steps: []PlanStep{},
 		Blockers: []string{
-			"Read-only milestone: artifact verification, scoped approval, apply and recovery are not implemented.",
+			"Inventory plans grant no execution authority. A supported local provider change requires a separate exact request and operation approval.",
 			"Package and ecosystem lock constraints have not been resolved; an explicit pin cannot override them.",
 		}}
 	if assessment.Stale {

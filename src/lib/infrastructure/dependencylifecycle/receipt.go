@@ -14,37 +14,42 @@ import (
 // Caller-supplied reports are evidence, not authenticated approval or history.
 func ReadInventory(path string) (dependency.Inventory, error) {
 	var inventory dependency.Inventory
+	err := readReceipt(path, &inventory)
+	return inventory, err
+}
+
+func readReceipt(path string, target any) error {
 	before, err := os.Lstat(path)
 	if err != nil {
-		return inventory, err
+		return err
 	}
 	if !before.Mode().IsRegular() || before.Size() > dependency.MaxInventoryBytes {
-		return inventory, errors.New("dependency receipt must be a bounded regular file")
+		return errors.New("dependency receipt must be a bounded regular file")
 	}
 	file, err := openReceipt(path)
 	if err != nil {
-		return inventory, err
+		return err
 	}
 	defer file.Close()
 	after, err := file.Stat()
 	if err != nil || !os.SameFile(before, after) {
-		return inventory, errors.New("dependency receipt changed before opening")
+		return errors.New("dependency receipt changed before opening")
 	}
 	data, err := io.ReadAll(io.LimitReader(file, dependency.MaxInventoryBytes+1))
 	if err != nil {
-		return inventory, err
+		return err
 	}
 	if len(data) > dependency.MaxInventoryBytes {
-		return inventory, errors.New("dependency receipt exceeds its bound")
+		return errors.New("dependency receipt exceeds its bound")
 	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&inventory); err != nil {
-		return inventory, err
+	if err := decoder.Decode(target); err != nil {
+		return err
 	}
 	var trailing any
 	if err := decoder.Decode(&trailing); err != io.EOF {
-		return inventory, errors.New("dependency receipt contains trailing data")
+		return errors.New("dependency receipt contains trailing data")
 	}
-	return inventory, nil
+	return nil
 }

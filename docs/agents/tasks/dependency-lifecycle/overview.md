@@ -211,3 +211,23 @@ execution, schedules, advisory refresh/notifications and shared GUI/MCP surfaces
 TASK-050 supplies the separate Cloudflare provider; the sealed resolver archive
 also passed an isolated Core CLI inventory/assessment/dry-run integration. TASK-052 remains open for
 native platform, failure/recovery and real tunnel qualification.
+
+### Local change/recovery milestone (2026-10-27)
+
+Core adds a separate versioned `dockpipe.dependency.change/v1` envelope and
+`dependency update/recover --request ... --dry-run|--approve ...`. Each exact
+request and operation has a distinct approval identity; resolver versions are
+revalidated, remote targets rejected, and execution reuses the normal workflow
+runner, cancellation, bounded private transport and operation-event recording.
+Inventory plans still grant no execution authority. The GUI presents the same CLI
+contract through a private request snapshot and distinct review/apply/recover
+controls. No new scheduler, resolver, installer or authentication framework.
+
+The initial provider apply method is deliberately restricted to private standalone
+Linux binaries with an operator-verified artifact checksum. It preserves durable
+backups and journals, compares expected installed bytes, performs atomic replacement
+and reconciles recovery. It reports installed/recovered **activation pending**.
+Unattended policy selection, authenticated artifact discovery/download, ecosystem
+lock resolution, manager/service/container/platform methods, remote activation,
+critical-tunnel maintenance, running-version and end-to-end health gates remain
+open. This milestone does not complete TASK-049/050/052 or authorize a live update.

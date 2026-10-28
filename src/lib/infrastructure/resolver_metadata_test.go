@@ -69,3 +69,22 @@ func TestDependencyInventoryMetadataExposesOnlyNegotiatedSupport(t *testing.T) {
 		}
 	}
 }
+
+func TestDependencyChangeMetadataNegotiatesKnownProtocolOnly(t *testing.T) {
+	root := t.TempDir()
+	profile := filepath.Join(root, "profile")
+	for _, protocol := range []string{"dockpipe.dependency.change/v1", "future"} {
+		data := "DOCKPIPE_DEPENDENCY_CHANGE_PROTOCOL=" + protocol + "\nDOCKPIPE_DEPENDENCY_CHANGE_WORKFLOW=assets/private-change.yml\n"
+		if err := os.WriteFile(profile, []byte(data), 0600); err != nil {
+			t.Fatal(err)
+		}
+		metadata, err := DescribeResolver(profile, "example.lifecycle")
+		if err != nil || metadata.DependencyChanges != (protocol == "dockpipe.dependency.change/v1") {
+			t.Fatal(metadata, err)
+		}
+		encoded, err := json.Marshal(metadata)
+		if err != nil || strings.Contains(string(encoded), "private-change") {
+			t.Fatal("private change hook leaked")
+		}
+	}
+}

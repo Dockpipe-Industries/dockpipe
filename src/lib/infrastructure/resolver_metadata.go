@@ -18,6 +18,7 @@ type ResolverMetadata struct {
 	Description         string          `json:"description,omitempty"`
 	Capability          string          `json:"capability,omitempty"`
 	RemoteSetup         string          `json:"remote_setup,omitempty"`
+	DependencyChanges   bool            `json:"dependency_changes,omitempty"`
 	DependencyInventory bool            `json:"dependency_inventory,omitempty"`
 	Surface             *PackageSurface `json:"surface,omitempty"`
 }
@@ -45,6 +46,7 @@ func DescribeResolver(profilePath, name string) (ResolverMetadata, error) {
 	}
 	result.DependencyInventory = profile["DOCKPIPE_DEPENDENCY_LIFECYCLE_PROTOCOL"] == dependency.InventorySchema &&
 		profile["DOCKPIPE_DEPENDENCY_LIFECYCLE_WORKFLOW"] != ""
+	result.DependencyChanges = profile["DOCKPIPE_DEPENDENCY_CHANGE_PROTOCOL"] == dependency.ChangeSchema && profile["DOCKPIPE_DEPENDENCY_CHANGE_WORKFLOW"] != ""
 	edge := profile["DOCKPIPE_REMOTE_EDGE_SETUP"] != ""
 	hosted := profile["DOCKPIPE_REMOTE_BROKER_SETUP"] != ""
 	if edge && hosted {

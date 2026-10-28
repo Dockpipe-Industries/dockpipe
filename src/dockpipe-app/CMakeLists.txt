@@ -100,6 +100,7 @@ set(DOCKPIPE_APP_SOURCES
     src/execution/presentation/EditContextDialog.cpp
     src/shell/infrastructure/SetupTerminal.cpp
     src/remote/infrastructure/RemoteCommand.cpp
+    src/packages/presentation/DependencyChangeDialog.cpp
     src/remote/presentation/RemoteWidget.cpp
     src/remote/presentation/RemoteSecurityWidget.cpp
     src/remote/presentation/HardwareKeyDialog.cpp
@@ -839,4 +840,13 @@ if(BUILD_TESTING)
     target_include_directories(operator-dockpipe-binary-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
     target_link_libraries(operator-dockpipe-binary-test PRIVATE Qt6::Core)
     add_test(NAME operator-dockpipe-binary COMMAND operator-dockpipe-binary-test)
+endif()
+
+if(BUILD_TESTING AND UNIX)
+    add_executable(dependency-change-dialog-test tests/DependencyChangeDialogTest.cpp
+        src/packages/presentation/DependencyChangeDialog.cpp)
+    target_include_directories(dependency-change-dialog-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+    target_link_libraries(dependency-change-dialog-test PRIVATE Qt6::Widgets)
+    add_test(NAME dependency-change-dialog COMMAND dependency-change-dialog-test)
+    set_tests_properties(dependency-change-dialog PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
 endif()

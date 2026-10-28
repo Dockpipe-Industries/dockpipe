@@ -17,11 +17,14 @@ import (
 	lifecycleio "dockpipe/src/lib/infrastructure/dependencylifecycle"
 )
 
-const dependencyUsage = `dockpipe dependency: host dependency inventory and dry-run planning
+const dependencyUsage = `dockpipe dependency: host inventory, review plans and approved local changes
   inventory --resolver <name> [--machine <id>] [--workdir <path>] [--timeout-seconds <5..120>]
   assess --report <inventory.json>
   plan --report <inventory.json> --dry-run [--policy manual|notify|security-only|compatible|latest] [--pin <exact-version>]
-No install, apply, restart, lockfile rewrite or unattended update is implemented.
+  update --request <change.json> [--workdir <path>] (--dry-run | --approve <apply-id>)
+  recover --request <change.json> [--workdir <path>] (--dry-run | --approve <recovery-id>)
+Update/recover execute the selected trusted provider's local change workflow.
+No automatic restarts, remote updates or unattended execution are implemented.
 Inventory runs trusted resolver workflow code with ordinary workflow permissions;
 the inventory protocol is not an OS sandbox. Assess/plan only read supplied evidence.
 `
@@ -32,6 +35,9 @@ func cmdDependency(args []string) error {
 		return nil
 	}
 	operation := args[0]
+	if operation == "update" || operation == "recover" {
+		return cmdDependencyChange(operation, args[1:])
+	}
 	if operation != "inventory" && operation != "assess" && operation != "plan" {
 		return errors.New(dependencyUsage)
 	}

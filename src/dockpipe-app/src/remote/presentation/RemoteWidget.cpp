@@ -1,4 +1,5 @@
 #include "RemoteWidget.h"
+#include "DependencyChangeDialog.h"
 #include "HardwareKeyDialog.h"
 #include "ResourceCanvas.h"
 #include "DockpipeChoices.h"
@@ -274,6 +275,13 @@ QWidget *RemoteWidget::buildOverview()
         });
     });
     layout->addLayout(management);
+    auto *dependencies = new QPushButton(tr("Dependency update and recovery…"), this);
+    dependencies->setObjectName(QStringLiteral("dependencyChangeNavigation"));
+    layout->addWidget(dependencies, 0, Qt::AlignLeft);
+    connect(dependencies, &QPushButton::clicked, this, [this]() {
+        DependencyChangeDialog dialog(m_workdir, this);
+        dialog.exec();
+    });
     layout->addWidget(textLabel(tr("Paired machines appear under Run on in Workflows. Their connection status is not checked here."), "hintText"));
     auto *setupActions = new QHBoxLayout;
     auto *setup = actionButton(tr("Set up remote access…"), setupActions, "quietButton");

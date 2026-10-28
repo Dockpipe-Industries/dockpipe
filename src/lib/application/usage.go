@@ -81,7 +81,7 @@ var mainUsageSections = []usageSection{
 			{"git --request <file.json>", "Review or perform a human-requested project Git action"},
 			{"session list|inspect|switch|publish", "Inspect and publish runtime-owned Git session workspaces"},
 			{"remote setup|serve|pair|worker|submit", "Pair outbound nodes and execute approved local workflows"},
-			{"dependency inventory|assess|plan", "Inspect resolver-owned host dependencies and emit dry-run review plans"},
+			{"dependency inventory|assess|plan|update|recover", "Inspect dependencies, review plans, and explicitly apply or recover supported local changes"},
 			{"catalog list", "Print the Dockpipe-owned launcher/tooling catalog (workflows, resolvers, strategies, runtimes)"},
 			{"pipelang check|compile|invoke|materialize", "PipeLang typed authoring helpers"},
 			{"doctor", "Check Docker, Bash, and runtime/package resources"},

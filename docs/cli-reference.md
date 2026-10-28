@@ -390,7 +390,22 @@ Policy names are `manual`, `notify`, `security-only`, `compatible`, and `latest`
 `--pin <exact-version>` adds a constraint without overriding existing locks.
 Inventory has a bounded `--timeout-seconds <5..120>` (default 60).
 
-This first slice has no apply, restart, scheduler, remote target or unattended
-update command. Provider workflows use ordinary workflow permissions; they must
+Inventory/assessment plans do not mutate installations. The separate explicit
+local change lane below adds no restart, scheduler, remote target or unattended
+policy execution. Provider workflows use ordinary workflow permissions; they must
 be trusted code. See [dependency lifecycle](runtime/dependency-lifecycle.md) for
 wire contracts, unknown/stale status, policy limits and the remaining phases.
+
+### Explicit dependency changes
+
+`dockpipe dependency update --request change.json --dry-run` validates a supported
+provider's exact local change and prints distinct apply/recovery approval IDs.
+`dependency update --request change.json --approve APPLY_ID` applies it;
+`dependency recover --request change.json --dry-run` reviews recovery and
+`dependency recover --request change.json --approve RECOVERY_ID` reconciles or
+restores approved bytes. Each accepts `--workdir` for existing resolver discovery.
+The request binds resolver/version, local machine and provider parameters. These
+are manual operator approvals, not remote authorization or inventory-plan grants.
+No automatic restart or retry occurs; activation-pending is not tunnel-health
+proof. See [the lifecycle contract](runtime/dependency-lifecycle.md#explicit-local-changes-and-recovery)
+and the selected provider's supported-method documentation.

@@ -175,3 +175,27 @@ a claim of complete vulnerability coverage or verified TLS remediation.
 Neither installed dependencies nor live tunnel/service configuration changed.
 Native macOS/Windows active discovery, Docker/method ownership, authenticated
 release preparation and every mutation/recovery matrix remain unqualified.
+
+### Local standalone apply/recovery milestone (2026-10-27)
+
+The external provider now has a packaged `dependency-change` workflow and helper
+command, invoked through Core's generic change contract. Supported method:
+operator-owned standalone Linux `cloudflared` in a private directory, using an
+already obtained exact artifact and trusted operator checksum. No manager takeover,
+automatic download/elevation, credential access or process restart.
+
+Apply binds expected/desired versions and hashes plus an optional exact pin,
+verifies a private staged snapshot before executing its version probe, locks the
+installation, preserves a verified durable backup, journals replacement intent,
+rechecks the target, atomically replaces and synchronizes directories, and verifies
+installed bytes/version. Recovery reconciles old/new/unknown target identities,
+rejects corrupt backups and unrelated changes, and records an explicitly approved
+emergency exception before restoring a vulnerable release. Candidate validation
+failure attempts bounded safe restore and still reports failed remediation.
+
+The CLI and Qt adapter expose `installed-activation-pending`,
+`recovered-activation-pending` and attention outcomes. Private request snapshots
+prevent the GUI from approving changed source-file bytes. Existing running images,
+tunnel credentials/config and connections remain untouched. Live broker/tunnel
+activation, active-version health, service/package-manager/Docker updates,
+non-Linux apply and remote updates remain implementation/qualification gates.
