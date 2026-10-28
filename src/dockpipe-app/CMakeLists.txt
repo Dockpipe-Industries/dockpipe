@@ -662,7 +662,8 @@ if(BUILD_TESTING)
         SUFFIX "${CMAKE_SHARED_LIBRARY_SUFFIX}"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/workspace-fixture/ui"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/workspace-fixture/ui")
-    add_executable(workspace-package-test tests/WorkspacePackageTest.cpp src/shell/presentation/SettingsDialog.cpp)
+    add_executable(workspace-package-test tests/WorkspacePackageTest.cpp
+        src/shell/presentation/SettingsDialog.cpp src/remote/presentation/RemoteSecurityWidget.cpp)
     target_link_libraries(workspace-package-test PRIVATE dockpipe-launcher-ui)
     if(APPLE)
         dockpipe_target_desktop_permissions(workspace-package-test)
