@@ -32,6 +32,7 @@ public:
     void setNodes(const QStringList &nodes);
 
 private:
+    void refreshWithAuthentication(bool allowAuthentication);
     void render();
     void inspect(const QString &identity);
     void inspectSystem();
@@ -54,6 +55,7 @@ private:
     QPlainTextEdit *m_events;
     QPushButton *m_more;
     QPushButton *m_pause;
+    QPushButton *m_refresh = nullptr;
     QTimer *m_timer;
     RemoteCommand m_command;
     QString m_workdir;

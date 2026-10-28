@@ -48,3 +48,15 @@ claim implementation in the Cloud repository or authorize deployment.
   the integration, and configured human gates remain enforced.
 - Audit links approval identity and decision to execution; notification retries do not repeat applies.
 - Payload review proves infrastructure credentials, Terraform state and full plans are not required.
+
+## P1 security and reliability integration scope (2026-10-26)
+
+Associate this existing approval/notification work with the
+[dependency lifecycle initiative](../dependency-lifecycle/overview.md). TASK-049/050
+consume TASK-039's exact update/restart envelopes; TASK-036/039 own mandatory
+hardware-backed approval policy. Cloud delivery cannot weaken those gates or
+become required for local/manual remediation. TASK-051 owns advisory findings and
+notification deduplication, reusing delivery adapters where available. TASK-052
+must verify expiry, revocation, notification failure and executor-side rejection;
+retrying delivery must not replay an update. P1 applies to this integration scope;
+Cloud product rollout remains optional and separately owned.

@@ -10,6 +10,8 @@
 #include <QVBoxLayout>
 #include <QUuid>
 
+#include <utility>
+
 RemoteRunDialog::RemoteRunDialog(const Context &context, const QString &node, QWidget *parent)
     : QDialog(parent), m_context(context), m_node(node), m_command(this)
 {
@@ -70,7 +72,8 @@ RemoteRunDialog::RemoteRunDialog(const Context &context, const QString &node, QW
         m_preview->clear();
         auto args = arguments();
         args.append(QStringLiteral("--dry-run"));
-        m_command.run(DockpipeChoices::preferredDockpipeBinary(m_context.workdir), args,
+        args << QStringLiteral("--auth") << QStringLiteral("auto");
+        runRemote(args,
                       [this](bool ok, const QByteArray &data) {
             if (!ok) {
                 m_status->setText(tr("Preview failed. Nothing was submitted."));
@@ -81,20 +84,35 @@ RemoteRunDialog::RemoteRunDialog(const Context &context, const QString &node, QW
             m_preview->setPlainText(QString::fromUtf8(doc.toJson(QJsonDocument::Indented)));
             m_send->setEnabled(!m_digest.isEmpty());
             m_status->setText(tr("Review these files. Run will reject changes made after this preview."));
-        }, 120000);
+        });
     });
     connect(m_send, &QPushButton::clicked, this, [this]() {
         auto args = arguments();
         args << "--expected-digest" << m_digest;
-        m_command.run(DockpipeChoices::preferredDockpipeBinary(m_context.workdir), args,
+        args << QStringLiteral("--auth") << QStringLiteral("auto");
+        runRemote(args,
                       [this](bool ok, const QByteArray &) {
             if (ok) {
                 accept();
             } else {
                 m_status->setText(tr("Submission was not confirmed. Retry uses the same job ID; inspect Activity if the response was lost."));
             }
-        }, 120000);
+        });
     });
+}
+
+void RemoteRunDialog::runRemote(const QStringList &arguments, RemoteCommand::Completion completion)
+{
+    QString error;
+    const QString program = DockpipeChoices::operatorDockpipeBinary(&error);
+    if (program.isEmpty()) {
+        if (completion)
+            completion(false, error.toUtf8());
+        m_status->setText(error);
+        m_preview->setPlainText(error);
+        return;
+    }
+    m_command.run(program, arguments, std::move(completion), 150000);
 }
 
 void RemoteRunDialog::invalidatePreview()

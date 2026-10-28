@@ -79,7 +79,7 @@ func operatorClient(root string) (*remoteio.Client, error) {
 		return nil, err
 	}
 	if connection != nil && connection.Mode == "hosted" {
-		return remoteio.NewClient(connection.Endpoint, connection.Token)
+		return nil, errors.New("hosted broker management requires OS-session protocol support; static bearer fallback is disabled")
 	}
 	var config OperatorConfig
 	if err := remoteio.ReadPrivate(filepath.Join(root, "operator.json"), &config); err != nil {
@@ -92,5 +92,18 @@ func operatorClient(root string) (*remoteio.Client, error) {
 		return nil, err
 	}
 	// Locally hosted administration stays on loopback, never on its public edge.
-	return remoteio.NewClient("http://"+config.Listen, config.Token)
+	var brokerState remoteio.BrokerState
+	if err := remoteio.ReadPrivate(filepath.Join(root, "broker.json"), &brokerState); err != nil {
+		return nil, err
+	}
+	if brokerState.OperatorSecurity != contract.OperatorSecurityVersion || brokerState.Identity == nil {
+		return nil, errors.New("local broker requires an explicit updated service restart before OS-authenticated remote access is available")
+	}
+	client, err := remoteio.NewClient("http://"+config.Listen, config.Token)
+	if err != nil {
+		return nil, err
+	}
+	client.ProtectLocalOperator(brokerState.Identity.PublicKey)
+	client.ReauthenticateOperator = reauthenticateRemote
+	return client, nil
 }

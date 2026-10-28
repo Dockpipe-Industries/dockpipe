@@ -20,7 +20,7 @@ setup, a local mount runtime and optional worker-local caching for data jobs.
 | [TASK-036](../remote-node-onboarding/index.yaml) | Existing consenting pairing, machine identity, delivery and revocation are prerequisites; no second connection stack |
 | [TASK-043](../configurable-networking/index.yaml) | Shared network setup, provider connectivity, policy and diagnostics; connectivity does not grant share or desktop access |
 | [TASK-046](../native-remote-desktop/index.yaml) | RDP/remote desktop consumes the connectivity foundation, has its own tab/client and session grants; mounts are independent |
-| [TASK-044](../ecosystem-extraction/index.yaml) | Optional provider/storage implementations stay in the external package owner with pinned dependencies; core remains generic |
+| [TASK-044](../closed/ecosystem-extraction/index.yaml) | Optional provider/storage implementations stay in the external package owner with pinned dependencies; core remains generic |
 
 ## Planned stories
 

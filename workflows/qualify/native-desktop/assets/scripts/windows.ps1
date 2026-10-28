@@ -54,14 +54,17 @@ $developerShell = Join-Path $visualStudio 'Common7/Tools/Launch-VsDevShell.ps1'
 if (-not $env:VCToolsInstallDir) { throw 'The Visual Studio developer environment is incomplete.' }
 cmake -S src/dockpipe-app -B $build -G 'NMake Makefiles' -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release
 if ($LASTEXITCODE -ne 0) { throw 'Native terminal configuration failed.' }
-# Qualify the Core-only transport before compiling the full desktop.
-cmake --build $build --config Release --parallel $Jobs --target terminal-session-win-test
+# Qualify the Core-only transports before compiling the full desktop.
+cmake --build $build --config Release --parallel $Jobs --target terminal-session-win-test hardware-key-transport-test
 if ($LASTEXITCODE -ne 0) { throw 'Native terminal transport compilation failed.' }
-ctest --test-dir $build -C Release --verbose --no-tests=error --parallel $Jobs -R '^terminal-session-win$'
+$transportReport = Join-Path $build ("native-transports-" + [guid]::NewGuid().ToString("N") + ".xml")
+ctest --test-dir $build -C Release --verbose --no-tests=error --parallel $Jobs --output-junit $transportReport -R '^(terminal-session-win|hardware-key-transport)$'
 $transportExit = $LASTEXITCODE
 $transportLog = Join-Path $build 'native-terminal-session-results.txt'
 if (Test-Path -LiteralPath $transportLog) { Get-Content -LiteralPath $transportLog }
-if ($transportExit -ne 0) { throw 'Native terminal transport qualification failed.' }
+if ($transportExit -ne 0) { throw 'Native terminal or security-key transport qualification failed.' }
+python workflows/shared/ctest_result.py --report $transportReport --require terminal-session-win --require hardware-key-transport
+if ($LASTEXITCODE -ne 0) { throw 'Native transport tests did not both produce genuine non-skipped passes.' }
 # Isolate native embedding startup before compiling every desktop test.
 cmake --build $build --config Release --parallel $Jobs --target desktop-app-window-win-test
 if ($LASTEXITCODE -ne 0) { throw 'Native embedding fixture compilation failed.' }

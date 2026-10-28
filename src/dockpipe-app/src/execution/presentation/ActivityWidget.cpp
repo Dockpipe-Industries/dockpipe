@@ -189,13 +189,13 @@ ActivityWidget::ActivityWidget(SessionManager &sessions, ContextStore &store, QW
         refresh->setEnabled(!busy);
         updateRunControls();
     });
-    connect(refresh, &QPushButton::clicked, this, &ActivityWidget::refreshRemote);
+    connect(refresh, &QPushButton::clicked, this, [this]() { refreshRemote(true); });
     connect(cancel, &QPushButton::clicked, this, [this]() {
         if (!selectedJob().isEmpty()) {
             run({"cancel", "--id", selectedJob()}, [this](bool ok, const QByteArray &) {
                 if (ok)
                     refreshRemote();
-            });
+            }, true);
         }
     });
     connect(download, &QPushButton::clicked, this, [this]() {
@@ -209,7 +209,7 @@ ActivityWidget::ActivityWidget(SessionManager &sessions, ContextStore &store, QW
         run({"result", "--id", job, "--out", destination}, [this, destination](bool ok, const QByteArray &) {
             if (ok)
                 m_status->setText(tr("Result and workflow.log saved to %1").arg(destination));
-        });
+        }, true);
     });
     connect(m_local, &QTableWidget::itemSelectionChanged, this, &ActivityWidget::updateRunControls);
     connect(m_jobs, &QTableWidget::itemSelectionChanged, this, &ActivityWidget::updateRunControls);
@@ -304,7 +304,7 @@ QString ActivityWidget::selectedJob() const
     return item ? item->text() : QString();
 }
 
-void ActivityWidget::run(const QStringList &args, RemoteCommand::Completion completion)
+void ActivityWidget::run(const QStringList &args, RemoteCommand::Completion completion, bool allowAuthentication)
 {
     if (m_command.busy())
         return;
@@ -312,20 +312,31 @@ void ActivityWidget::run(const QStringList &args, RemoteCommand::Completion comp
     m_output->hide();
     QStringList command{"remote"};
     command.append(args);
-    m_command.run(DockpipeChoices::preferredDockpipeBinary(m_workdir), command,
+    command << QStringLiteral("--auth")
+            << (allowAuthentication ? QStringLiteral("auto") : QStringLiteral("never"));
+    QString error;
+    const QString program = DockpipeChoices::operatorDockpipeBinary(&error);
+    if (program.isEmpty()) {
+        completion(false, error.toUtf8());
+        m_status->setText(error);
+        m_output->setPlainText(error);
+        m_output->show();
+        return;
+    }
+    m_command.run(program, command,
                   [this, completion](bool ok, const QByteArray &data) {
         m_status->setText(ok ? tr("Up to date with the broker.") : tr("Could not complete the operation. See details below."));
         m_output->setVisible(!ok && !m_output->toPlainText().isEmpty());
         completion(ok, data);
-    });
+    }, allowAuthentication ? 150000 : 30000);
 }
 
-void ActivityWidget::refreshRemote()
+void ActivityWidget::refreshRemote(bool allowAuthentication)
 {
     if (m_command.busy())
         return;
     m_remoteLoaded = false;
-    run({"info"}, [this](bool ok, const QByteArray &data) {
+    run({"info"}, [this, allowAuthentication](bool ok, const QByteArray &data) {
         if (!ok)
             return;
         QJsonParseError error;
@@ -343,11 +354,11 @@ void ActivityWidget::refreshRemote()
                 : tr("This computer is paired to receive workflows. Manage remote jobs from the computer that approved pairing. If worker setup was interrupted, use Start worker service in Machines to finish it."));
             return;
         }
-        loadRemoteJobs();
-    });
+        loadRemoteJobs(allowAuthentication);
+    }, allowAuthentication);
 }
 
-void ActivityWidget::loadRemoteJobs()
+void ActivityWidget::loadRemoteJobs(bool allowAuthentication)
 {
     run({"jobs"}, [this](bool ok, const QByteArray &data) {
         m_remoteLoaded = ok;
@@ -370,5 +381,5 @@ void ActivityWidget::loadRemoteJobs()
         }
         m_jobs->blockSignals(false);
         updateRunControls();
-    });
+    }, allowAuthentication);
 }

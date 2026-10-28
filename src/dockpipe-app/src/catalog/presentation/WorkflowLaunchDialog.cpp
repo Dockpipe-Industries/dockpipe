@@ -51,6 +51,8 @@ bool envLooksSensitive(const WorkflowInputMeta &input)
 bool envLooksPath(const WorkflowInputMeta &input)
 {
     const QString control = inputAttribute(input, QStringLiteral("control")).toLower();
+    if (control == QStringLiteral("text"))
+        return false;
     if (control == QStringLiteral("file") || control == QStringLiteral("path") || control == QStringLiteral("directory")
         || control == QStringLiteral("dir"))
         return true;
@@ -107,6 +109,7 @@ WorkflowLaunchDialog::WorkflowLaunchDialog(const WorkflowMeta &workflow, const Q
                                            QWidget *parent)
     : QDialog(parent)
     , m_workflow(workflow)
+    , m_routedValues(currentValues)
 {
     setWindowTitle(tr("Workflow Settings — %1").arg(workflow.displayName));
     resize(760, 620);
@@ -198,15 +201,15 @@ QVector<WorkflowViewPageMeta> WorkflowLaunchDialog::routedPagesForSelection(cons
     return routed.isEmpty() ? m_workflow.view.pages : routed;
 }
 
-void WorkflowLaunchDialog::rebuildRoutedPages(const QMap<QString, QString> &currentValues)
+void WorkflowLaunchDialog::rebuildRoutedPages()
 {
     if (!m_routedPagesHost || !m_routedPagesContainer)
         return;
 
-    QMap<QString, QString> effectiveValues = currentValues;
     const QMap<QString, QString> liveValues = values();
     for (auto it = liveValues.begin(); it != liveValues.end(); ++it)
-        effectiveValues.insert(it.key(), it.value());
+        m_routedValues.insert(it.key(), it.value());
+    const QMap<QString, QString> effectiveValues = m_routedValues;
 
     for (auto it = m_editors.begin(); it != m_editors.end();) {
         QWidget *widget = it.value();
@@ -299,8 +302,8 @@ void WorkflowLaunchDialog::addViewPagesToLayout(QVBoxLayout *layout, const QMap<
             m_editors.insert(envName, m_entryChoice);
             boxLayout->addWidget(m_entryChoice);
             layout->addWidget(box);
-            connect(m_entryChoice, &QComboBox::currentIndexChanged, this, [this, currentValues](int) {
-                rebuildRoutedPages(currentValues);
+            connect(m_entryChoice, &QComboBox::currentIndexChanged, this, [this](int) {
+                rebuildRoutedPages();
             });
         }
     }
@@ -310,7 +313,7 @@ void WorkflowLaunchDialog::addViewPagesToLayout(QVBoxLayout *layout, const QMap<
     m_routedPagesHost->setContentsMargins(0, 0, 0, 0);
     m_routedPagesHost->setSpacing(12);
     layout->addWidget(m_routedPagesContainer, 1);
-    rebuildRoutedPages(currentValues);
+    rebuildRoutedPages();
 }
 
 void WorkflowLaunchDialog::addViewSectionToLayout(QVBoxLayout *layout, const WorkflowViewSectionMeta &section,
@@ -348,7 +351,7 @@ void WorkflowLaunchDialog::addViewSectionToLayout(QVBoxLayout *layout, const Wor
         }
         const QString envName = input->envName.trimmed();
         QString value = currentValues.value(envName);
-        if (value.isEmpty())
+        if (!currentValues.contains(envName))
             value = input->defaultValue;
         addLeafInputRow(leafForm, *input, value, box);
     }
@@ -417,7 +420,7 @@ void WorkflowLaunchDialog::addInputsToLayout(QVBoxLayout *layout, const QVector<
 
         const QString envName = input.envName.trimmed();
         QString value = currentValues.value(envName);
-        if (value.isEmpty())
+        if (!currentValues.contains(envName))
             value = input.defaultValue;
         QFormLayout *form = ensureGroup(topLevel ? inputAttribute(input, QStringLiteral("group")) : QString());
         addLeafInputRow(form, input, value, form->parentWidget());
@@ -481,7 +484,7 @@ void WorkflowLaunchDialog::addLeafInputRow(QFormLayout *form, const WorkflowInpu
                     || fileMode == QStringLiteral("open-dir") || env.contains(QStringLiteral("DIR"))) {
                     selected = QFileDialog::getExistingDirectory(this, tr("Choose folder"), edit->text());
                 } else if (fileMode == QStringLiteral("save-file")
-                           || (env.contains(QStringLiteral("DISK")) && !env.contains(QStringLiteral("CDROM"))
+                           || (fileMode.isEmpty() && env.contains(QStringLiteral("DISK")) && !env.contains(QStringLiteral("CDROM"))
                                && !env.contains(QStringLiteral("ISO")))) {
                     selected = QFileDialog::getSaveFileName(this, tr("Choose file"), edit->text(),
                                                             tr("All files (*)"));

@@ -1,6 +1,7 @@
 package remotecmd
 
 import (
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -27,7 +28,7 @@ type serviceInfo struct {
 	State string `json:"state"`
 }
 
-func prepareService(root, role string) (serviceDefinition, error) {
+func prepareService(ctx context.Context, root, role string) (serviceDefinition, error) {
 	command := "serve"
 	if role == "worker" {
 		command = "worker"
@@ -57,7 +58,11 @@ func prepareService(root, role string) (serviceDefinition, error) {
 	switch runtime.GOOS {
 	case "darwin":
 		path = filepath.Join(home, "Library", "LaunchAgents", name+".plist")
-		content = launchAgent(name, arguments, filepath.Join(root, role+".log"))
+		bundleIdentifier, err := serviceBundleIdentifier(ctx, executable)
+		if err != nil {
+			return serviceDefinition{}, err
+		}
+		content = launchAgent(name, arguments, filepath.Join(root, role+".log"), bundleIdentifier)
 	case "linux":
 		base := os.Getenv("XDG_CONFIG_HOME")
 		if base == "" {
@@ -113,7 +118,7 @@ func executableFingerprint(path string) (string, error) {
 }
 
 func describeService(root, role string) *serviceInfo {
-	definition, err := prepareService(root, role)
+	definition, err := prepareService(context.Background(), root, role)
 	if err != nil {
 		return &serviceInfo{State: "unavailable"}
 	}

@@ -1,0 +1,19 @@
+schema: 1
+id: TASK-050
+topic: Cloudflare Tunnel resolver lifecycle implementation
+entrypoint: overview.md
+dispatch:
+  readiness: decision_ready
+  ownership: unclaimed
+routes:
+  orientation:
+    read: [overview.md]
+  implementation:
+    read: [overview.md, ../dependency-lifecycle/overview.md]
+documents:
+- path: overview.md
+  role: proposed scope, architecture evidence, dependencies and acceptance
+maintenance:
+- Resolve document paths relative to this index.
+- Keep dispatch metadata synchronized with docs/agents/task-index.yaml.
+- Planning is not implementation, installation, restart or publication authority.

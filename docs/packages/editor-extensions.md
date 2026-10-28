@@ -68,8 +68,13 @@ For external repositories, use the schema from the installed/pinned Dockpipe
 release or a published immutable schema URL for that release. The schema source
 is authoritative; adding this file does not publish a new hosted schema endpoint
 or install an editor extension. `dockpipe_version` requires an exact complete
-SemVer and the CLI enforces it before executing repository commands. Package
-minimum-version metadata has separate compatibility semantics.
+SemVer identity, including build metadata. Consumer repositories should use
+`min_dockpipe_version` for a complete SemVer lower bound instead. Both fields are
+available in project completion and hover; the CLI checks their consistency and
+enforces them before executing repository commands. A JSON schema cannot compare
+two arbitrary semantic versions, so contradictory declarations are rejected by
+the runtime. See [consumer compatibility migration](consumer-cli-compatibility.md).
+Package minimum-version metadata remains independent.
 
 
 Package authors may associate `assets/ui/surface.json` with

@@ -12,11 +12,12 @@ import (
 
 func TestOnlinePairingApprovalAndRecovery(t *testing.T) {
 	root, broker, admin, server := testBroker(t)
+	fixture := loadPairingHardware(t, broker)
 	public, _ := NewClient(server.URL, "")
 	defer public.HTTP.CloseIdleConnections()
 	ctx := context.Background()
 	token, _ := Secret()
-	request := contract.PairingRequest{Node: "mac-mini", Token: token}
+	request, identity := signedTestPairing(t, "mac-mini", token)
 	var status contract.PairingStatus
 	if err := public.Call(ctx, "/v1/pairing-request", request, &status); err == nil {
 		t.Fatal("pairing accepted while closed")
@@ -55,9 +56,7 @@ func TestOnlinePairingApprovalAndRecovery(t *testing.T) {
 	if strings.Contains(string(listed), token) || strings.Contains(string(listed), Hash(token)) {
 		t.Fatal("credential leaked in listing")
 	}
-	if err := admin.Call(ctx, "/v1/approve", map[string]string{"code": code}, nil); err != nil {
-		t.Fatal(err)
-	}
+	approveTestPairing(t, admin, fixture, code)
 	if err := public.Call(ctx, "/v1/pairing-request", request, &status); err != nil || status.Status != "approved" {
 		t.Fatalf("approval not recoverable: %+v %v", status, err)
 	}
@@ -65,6 +64,8 @@ func TestOnlinePairingApprovalAndRecovery(t *testing.T) {
 	if err := admin.Call(ctx, "/v1/submit", submission, nil); err != nil {
 		t.Fatal(err)
 	}
+	worker.Identity = &identity
+	worker.BrokerKey = broker.state.Identity.PublicKey
 	workerSession, _ := Secret()
 	var claimed contract.Job
 	if err := worker.Call(ctx, "/v1/next", map[string]string{"session": workerSession}, &claimed); err != nil || claimed.ID != submission.ID {
@@ -97,15 +98,16 @@ func TestOnlinePairingApprovalAndRecovery(t *testing.T) {
 		t.Fatal(err)
 	}
 	freshRequest := contract.PairingRequest{Node: request.Node, Token: freshToken}
+	if err := SignPairingRequest(&freshRequest, identity); err != nil {
+		t.Fatal(err)
+	}
 	if err := public.Call(ctx, "/v1/pairing-request", freshRequest, &status); err != nil || status.Status != "pending" {
 		t.Fatalf("fresh pairing with revoked name: %+v %v", status, err)
 	}
 	if !broker.state.Nodes[request.Node].Revoked {
 		t.Fatal("pairing request restored access without approval")
 	}
-	if err := admin.Call(ctx, "/v1/approve", map[string]string{"code": status.Code}, nil); err != nil {
-		t.Fatal(err)
-	}
+	approveTestPairing(t, admin, fixture, status.Code)
 	if err := worker.Call(ctx, "/v1/next", nil, nil); err == nil {
 		t.Fatal("old credential authenticated after re-pairing")
 	}
@@ -123,7 +125,7 @@ func TestOnlinePairingExpiryDenialAndLimits(t *testing.T) {
 		t.Fatal(err)
 	}
 	token, _ := Secret()
-	request := contract.PairingRequest{Node: "test-worker", Token: token}
+	request, _ := signedTestPairing(t, "test-worker", token)
 	var status contract.PairingStatus
 	if err := public.Call(ctx, "/v1/pairing-request", request, &status); err != nil {
 		t.Fatal(err)
@@ -147,12 +149,14 @@ func TestOnlinePairingExpiryDenialAndLimits(t *testing.T) {
 	}
 	for i := 0; i < 10; i++ {
 		secret, _ := Secret()
-		if err := public.Call(ctx, "/v1/pairing-request", contract.PairingRequest{Node: "other", Token: secret}, nil); err != nil {
+		other, _ := signedTestPairing(t, "other", secret)
+		if err := public.Call(ctx, "/v1/pairing-request", other, nil); err != nil {
 			t.Fatal(err)
 		}
 	}
 	secret, _ := Secret()
-	if err := public.Call(ctx, "/v1/pairing-request", contract.PairingRequest{Node: "other", Token: secret}, nil); err == nil {
+	other, _ := signedTestPairing(t, "other", secret)
+	if err := public.Call(ctx, "/v1/pairing-request", other, nil); err == nil {
 		t.Fatal("request rate unbounded")
 	}
 	if err := admin.Call(ctx, "/v1/pairing-close", nil, nil); err != nil {

@@ -46,3 +46,45 @@ func TestResolverMetadataSetupContracts(t *testing.T) {
 		})
 	}
 }
+
+func TestDependencyInventoryMetadataExposesOnlyNegotiatedSupport(t *testing.T) {
+	root := t.TempDir()
+	manifest := "schema: 1\nkind: resolver\nname: example.lifecycle\nversion: 1.0.0\ntitle: Example lifecycle\n"
+	if err := os.WriteFile(filepath.Join(root, "package.yml"), []byte(manifest), 0600); err != nil {
+		t.Fatal(err)
+	}
+	profile := filepath.Join(root, "profile")
+	for _, protocol := range []string{"dockpipe.dependency.inventory/v1", "future"} {
+		data := "DOCKPIPE_DEPENDENCY_LIFECYCLE_PROTOCOL=" + protocol + "\nDOCKPIPE_DEPENDENCY_LIFECYCLE_WORKFLOW=assets/private-hook.yml\n"
+		if err := os.WriteFile(profile, []byte(data), 0600); err != nil {
+			t.Fatal(err)
+		}
+		metadata, err := DescribeResolver(profile, "example.lifecycle")
+		if err != nil || metadata.DependencyInventory != (protocol == "dockpipe.dependency.inventory/v1") {
+			t.Fatalf("incorrect lifecycle negotiation: %+v, %v", metadata, err)
+		}
+		encoded, err := json.Marshal(metadata)
+		if err != nil || strings.Contains(string(encoded), "private-hook") {
+			t.Fatal("private resolver hook leaked into catalog")
+		}
+	}
+}
+
+func TestDependencyChangeMetadataNegotiatesKnownProtocolOnly(t *testing.T) {
+	root := t.TempDir()
+	profile := filepath.Join(root, "profile")
+	for _, protocol := range []string{"dockpipe.dependency.change/v1", "future"} {
+		data := "DOCKPIPE_DEPENDENCY_CHANGE_PROTOCOL=" + protocol + "\nDOCKPIPE_DEPENDENCY_CHANGE_WORKFLOW=assets/private-change.yml\n"
+		if err := os.WriteFile(profile, []byte(data), 0600); err != nil {
+			t.Fatal(err)
+		}
+		metadata, err := DescribeResolver(profile, "example.lifecycle")
+		if err != nil || metadata.DependencyChanges != (protocol == "dockpipe.dependency.change/v1") {
+			t.Fatal(metadata, err)
+		}
+		encoded, err := json.Marshal(metadata)
+		if err != nil || strings.Contains(string(encoded), "private-change") {
+			t.Fatal("private change hook leaked")
+		}
+	}
+}

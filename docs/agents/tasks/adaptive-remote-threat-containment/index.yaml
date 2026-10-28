@@ -1,0 +1,19 @@
+schema: 1
+id: TASK-053
+topic: Adaptive threat detection and automatic remote isolation
+entrypoint: overview.md
+dispatch:
+  readiness: unclassified
+  ownership: unclaimed
+routes:
+  orientation:
+    read: [overview.md]
+  design:
+    read: [overview.md, ../remote-node-onboarding/overview.md, ../unified-mcp-gateway/overview.md]
+documents:
+- path: overview.md
+  role: proposed scope, source grounding, ownership boundaries and acceptance
+maintenance:
+- Resolve document paths relative to this index.
+- Keep dispatch metadata synchronized with docs/agents/task-index.yaml.
+- This P2 proposal is design and research backlog, not implementation authority.

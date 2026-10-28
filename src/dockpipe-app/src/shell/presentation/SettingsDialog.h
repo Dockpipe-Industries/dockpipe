@@ -7,6 +7,8 @@
 class QLineEdit;
 class QPlainTextEdit;
 class QCheckBox;
+class QTabWidget;
+class RemoteSecurityWidget;
 
 class SettingsDialog : public QDialog {
     Q_OBJECT
@@ -39,4 +41,6 @@ private:
     QCheckBox *m_showShip = nullptr;
     QCheckBox *m_voiceCommands = nullptr;
     QCheckBox *m_hardwareAcceleration = nullptr;
+    QTabWidget *m_tabs = nullptr;
+    RemoteSecurityWidget *m_remoteSecurity = nullptr;
 };

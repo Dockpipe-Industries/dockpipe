@@ -35,6 +35,8 @@ binary="${DOCKPIPE_RELEASE_BINARY:?An explicit built CLI is required}"
 mkdir -p "${BUILD_DIR}/usr/bin"
 cp "$binary" "${BUILD_DIR}/usr/bin/dockpipe"
 chmod 755 "${BUILD_DIR}/usr/bin/dockpipe"
+install -D -m 644 "${PKG_ROOT}/org.dockpipe.remote.policy" \
+  "${BUILD_DIR}/usr/share/polkit-1/actions/org.dockpipe.remote.policy"
 
 if [[ -n "${DOCKPIPE_RELEASE_STORE:-}" ]]; then
   python3 "${REPO_ROOT}/workflows/release/metadata/assets/scripts/release-artifacts.py" stage-store "$DOCKPIPE_RELEASE_STORE" \

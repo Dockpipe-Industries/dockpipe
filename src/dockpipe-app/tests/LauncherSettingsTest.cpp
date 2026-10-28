@@ -8,6 +8,7 @@
 #include <QJsonObject>
 #include <QScrollArea>
 #include <QTemporaryDir>
+#include <QTabWidget>
 #include <cstdio>
 
 #define CHECK(value) do { if (!(value)) { std::fprintf(stderr, "Settings assertion at %d: %s\n", __LINE__, #value); return 1; } } while (false)
@@ -39,6 +40,11 @@ int main(int argc, char **argv)
     CHECK(defaults.load() && !defaults.tilingEnabled);
 
     SettingsDialog dialog(defaults);
+    auto *settingsTabs = dialog.findChild<QTabWidget *>("settingsTabs");
+    CHECK(settingsTabs && settingsTabs->count() == 2);
+    CHECK(settingsTabs->tabText(0) == QStringLiteral("General"));
+    CHECK(settingsTabs->tabText(1) == QStringLiteral("Security"));
+    CHECK(settingsTabs->widget(1)->objectName() == QStringLiteral("remoteSecurityWidget"));
     auto *showDashboard = dialog.findChild<QCheckBox *>("settingsDefaultDashboardVisible");
     CHECK(showDashboard && showDashboard->isChecked());
     showDashboard->setChecked(false);

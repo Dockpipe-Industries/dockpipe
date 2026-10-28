@@ -86,6 +86,22 @@ int verifySystemMonitoring(const QString &directory)
     auto *processes = explorer.findChild<QTableWidget *>("systemProcesses");
     if (!waitFor([&]() { return processes->rowCount() == 1; }) || processes->item(0, 0)->text() != "remote-worker")
         return 105;
+    QFile passiveObserveArgs(directory + "/observe-args");
+    if (!passiveObserveArgs.open(QIODevice::ReadOnly)
+        || passiveObserveArgs.readAll() != "remote\nobserve\n--node\nmonitor-host\n--auth\nnever\n")
+        return 115;
+    auto *executionRefresh = explorer.findChild<QPushButton *>("executionRefresh");
+    if (!executionRefresh)
+        return 116;
+    executionRefresh->click();
+    QFile automaticObserveArgs(directory + "/observe-auto-args");
+    if (!waitFor([&]() {
+            return automaticObserveArgs.open(QIODevice::ReadOnly)
+                && automaticObserveArgs.readAll().contains("--auth\nauto\n");
+        }))
+        return 117;
+    if (!waitFor([&]() { return executionRefresh->isEnabled(); }))
+        return 121;
     resources.insert("cpu_total", 1200);
     resources.insert("cpu_idle", 600);
     resources.insert("network_received", 9192);
@@ -113,6 +129,21 @@ int verifySystemMonitoring(const QString &directory)
     if (!containers || !waitFor([&]() { return containers->rowCount() == 1; }) || containers->item(0, 0)->text() != "remote-web")
         return 106;
     containers->selectRow(0);
+    QFile priorAutomaticArgs(directory + "/observe-auto-args");
+    if (!priorAutomaticArgs.open(QIODevice::ReadOnly))
+        return 118;
+    const qsizetype previousAutomaticSize = priorAutomaticArgs.size();
+    auto *dockerRefresh = dockerView.findChild<QPushButton *>("dockerRefresh");
+    if (!dockerRefresh)
+        return 119;
+    dockerRefresh->click();
+    if (!waitFor([&]() {
+            QFile updatedArgs(directory + "/observe-auto-args");
+            return updatedArgs.open(QIODevice::ReadOnly) && updatedArgs.size() > previousAutomaticSize;
+        }))
+        return 120;
+    if (!waitFor([&]() { return dockerRefresh->isEnabled(); }))
+        return 122;
     for (auto *button : dockerView.findChildren<QPushButton *>()) {
         if ((button->text() == "Start" || button->text() == "Stop" || button->text().contains("/bin/")) && button->isEnabled())
             return 107;

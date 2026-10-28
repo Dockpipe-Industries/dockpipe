@@ -16,6 +16,8 @@ import (
 	"time"
 
 	contract "dockpipe/src/lib/domain/remote"
+	"dockpipe/src/lib/infrastructure/hardwarekey"
+	"dockpipe/src/lib/infrastructure/remoteidentity"
 )
 
 type Enrollment struct {
@@ -23,26 +25,35 @@ type Enrollment struct {
 	ExpiresAt  time.Time `json:"expires_at"`
 	TokenHash  string    `json:"token_hash,omitempty"`
 	Revoked    bool      `json:"revoked"`
+	MachineKey string    `json:"machine_key,omitempty"`
 }
 
 type BrokerState struct {
-	TerminalArchive bool                      `json:"terminal_archive,omitempty"`
-	Pairings        map[string]PairingSession `json:"pairings,omitempty"`
-	PairingUntil    time.Time                 `json:"pairing_until,omitempty"`
-	Schema          string                    `json:"schema"`
-	AdminHash       string                    `json:"admin_hash"`
-	Nodes           map[string]Enrollment     `json:"nodes"`
-	Jobs            map[string]contract.Job   `json:"jobs"`
+	OperatorSecurity string                    `json:"operator_security,omitempty"`
+	Identity         *remoteidentity.Identity  `json:"machine_identity,omitempty"`
+	PairingKeys      *hardwarekey.Registry     `json:"pairing_keys,omitempty"`
+	TerminalArchive  bool                      `json:"terminal_archive,omitempty"`
+	Pairings         map[string]PairingSession `json:"pairings,omitempty"`
+	PairingUntil     time.Time                 `json:"pairing_until,omitempty"`
+	Schema           string                    `json:"schema"`
+	AdminHash        string                    `json:"admin_hash"`
+	Nodes            map[string]Enrollment     `json:"nodes"`
+	Jobs             map[string]contract.Job   `json:"jobs"`
 }
 
 type Broker struct {
-	monitoring       map[string]MachineSnapshot
-	mutex            sync.Mutex
-	path             string
-	state            BrokerState
-	poisoned         bool
-	pairingRateStart time.Time
-	pairingRateCount int
+	edge              *EdgeSupervisor
+	operatorTokenHash string
+	security          *SecurityAuthority
+	pairingChallenges map[string]hardwarePairingChallenge
+	machineChallenges map[string]machineChallenge
+	monitoring        map[string]MachineSnapshot
+	mutex             sync.Mutex
+	path              string
+	state             BrokerState
+	poisoned          bool
+	pairingRateStart  time.Time
+	pairingRateCount  int
 }
 
 func Hash(value string) string {
@@ -59,8 +70,28 @@ func NewBroker(root string) (*Broker, error) {
 	if err := ReadPrivate(b.path, &b.state); err != nil {
 		return nil, err
 	}
-	if len(b.state.Jobs) > contract.MaxJobs || b.state.Schema != contract.Version || len(b.state.AdminHash) != 64 || b.state.Nodes == nil || b.state.Jobs == nil {
+	if len(b.state.Nodes) > 64 || len(b.state.Jobs) > contract.MaxJobs || b.state.Schema != contract.Version || len(b.state.AdminHash) != 64 || b.state.Nodes == nil || b.state.Jobs == nil {
 		return nil, errors.New("invalid broker state")
+	}
+	if b.state.Identity == nil {
+		identity, err := remoteidentity.New()
+		if err != nil {
+			return nil, err
+		}
+		b.state.Identity = &identity
+	}
+	if b.state.OperatorSecurity != "" && b.state.OperatorSecurity != contract.OperatorSecurityVersion {
+		return nil, errors.New("unsupported broker operator security protocol")
+	}
+	b.state.OperatorSecurity = contract.OperatorSecurityVersion
+	b.operatorTokenHash = b.state.AdminHash
+	if err := b.state.Identity.Validate(); err != nil {
+		return nil, err
+	}
+	if b.state.PairingKeys != nil {
+		if err := b.state.PairingKeys.Validate(); err != nil {
+			return nil, err
+		}
 	}
 	if b.state.Pairings == nil {
 		b.state.Pairings = map[string]PairingSession{}
@@ -116,13 +147,30 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/v1/monitor-publish" {
 		limit = MaxMonitoringBytes
 	}
-	if r.URL.Path == "/v1/pairing-request" {
+	switch r.URL.Path {
+	case "/v1/health", "/v1/edge-health":
 		limit = 1024
+	case "/v1/pairing-request":
+		limit = 4096
+	case "/v1/machine-challenge", "/v1/approve-begin":
+		limit = 1024
+	case "/v1/approve":
+		limit = hardwarekey.MaxResponseBytes + 1024
 	}
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, limit))
 	if err != nil {
 		http.Error(w, "request too large", http.StatusRequestEntityTooLarge)
 		return
+	}
+	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	var admission operatorAdmission
+	var authorizationError error
+	if matches(token, b.operatorTokenHash) && contract.OperatorScope(r.URL.Path) != "" {
+		if b.security == nil || len(r.Header.Values(operatorProofHeader)) != 1 {
+			authorizationError = errors.New("OS-authenticated remote access is locked or unavailable")
+		} else {
+			admission, authorizationError = b.security.Verify(r.Context(), r.Header.Get(operatorProofHeader), r.URL.Path, body)
+		}
 	}
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
@@ -130,7 +178,18 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "broker storage requires restart and inspection", http.StatusServiceUnavailable)
 		return
 	}
-	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if r.URL.Path == "/v1/edge-health" {
+		b.respond(w, func() (any, error) { return b.proveEdgeHealth(body) })
+		return
+	}
+	if r.URL.Path == "/v1/health" {
+		b.respond(w, func() (any, error) {
+			return struct {
+				Schema string `json:"schema"`
+			}{Schema: contract.Version}, nil
+		})
+		return
+	}
 	if r.URL.Path == "/v1/pairing-request" {
 		b.respond(w, func() (any, error) { return b.requestPairing(body) })
 		return
@@ -140,11 +199,15 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if matches(token, b.state.AdminHash) {
-		b.respond(w, func() (any, error) { return b.operator(r.URL.Path, body) })
+		b.serveOperator(w, r, body, admission, authorizationError)
 		return
 	}
 	for node, enrollment := range b.state.Nodes {
 		if !enrollment.Revoked && matches(token, enrollment.TokenHash) {
+			if enrollment.MachineKey != "" {
+				b.serveMachine(w, r, node, enrollment, body)
+				return
+			}
 			b.respond(w, func() (any, error) { return b.worker(node, r.URL.Path, body) })
 			return
 		}
@@ -185,16 +248,39 @@ func (b *Broker) pair(raw []byte) (any, error) {
 		}
 		return map[string]string{"node": request.Node}, nil
 	}
-	if time.Now().After(enrollment.ExpiresAt) {
-		return nil, errors.New("invitation expired")
-	}
-	enrollment.TokenHash = Hash(request.Token)
-	b.state.Nodes[request.Node] = enrollment
-	return map[string]string{"node": request.Node}, b.save()
+	return nil, errors.New("unused file invitations are disabled; request hardware-key pairing")
 }
 
 func (b *Broker) operator(path string, raw []byte) (any, error) {
+	if path == "/v1/submit" && b.edge != nil && b.edge.maintenanceActive() {
+		return nil, errors.New("connector maintenance pauses new workflow submissions")
+	}
 	switch path {
+	case "/v1/edge-plan", "/v1/edge-activate":
+		if b.edge == nil {
+			return nil, errors.New("edge supervision is unavailable")
+		}
+		var request contract.EdgeActivationRequest
+		if err := Decode(raw, &request); err != nil {
+			return nil, err
+		}
+		for _, job := range b.state.Jobs {
+			if job.Status == "running" || job.Status == "queued" || job.Status == "unknown" {
+				return nil, errors.New("active jobs block connector replacement")
+			}
+		}
+		return b.edge.accept(request, path == "/v1/edge-plan")
+	case "/v1/edge-status":
+		if b.edge == nil {
+			return nil, errors.New("edge supervision is unavailable")
+		}
+		var request struct {
+			ID string `json:"id"`
+		}
+		if err := Decode(raw, &request); err != nil || !contract.ValidEdgeDigest(request.ID) {
+			return nil, errors.New("invalid activation identity")
+		}
+		return b.edge.status(request.ID)
 	case "/v1/observe":
 		return b.observeMachine(raw)
 	case "/v1/pairing-open", "/v1/pairing-close", "/v1/pairings", "/v1/approve", "/v1/deny":
@@ -216,22 +302,9 @@ func (b *Broker) operator(path string, raw []byte) (any, error) {
 	case "/v1/health":
 		return map[string]string{"schema": contract.Version}, nil
 	case "/v1/invite":
-		var request struct {
-			Node string `json:"node"`
-		}
-		if err := Decode(raw, &request); err != nil || !contract.ValidID(request.Node) {
-			return nil, errors.New("invalid node")
-		}
-		if _, exists := b.state.Nodes[request.Node]; exists || len(b.state.Nodes) >= 64 {
-			return nil, errors.New("node already exists or node capacity reached")
-		}
-		secret, err := Secret()
-		if err != nil {
-			return nil, err
-		}
-		expires := time.Now().UTC().Add(15 * time.Minute)
-		b.state.Nodes[request.Node] = Enrollment{SecretHash: Hash(secret), ExpiresAt: expires}
-		return contract.Invitation{Schema: contract.Version, Node: request.Node, Secret: secret, ExpiresAt: expires}, b.save()
+		return nil, errors.New("file invitations are disabled; use hardware-key pairing")
+	case "/v1/approve-begin":
+		return b.beginHardwarePairing(raw)
 	case "/v1/submit":
 		var request contract.SubmitRequest
 		if err := Decode(raw, &request); err != nil {

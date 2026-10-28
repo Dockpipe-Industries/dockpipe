@@ -4,6 +4,9 @@ package remotecmd
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -12,7 +15,10 @@ import (
 	"time"
 
 	contract "dockpipe/src/lib/domain/remote"
+	"dockpipe/src/lib/infrastructure/hardwarekey"
 	remoteio "dockpipe/src/lib/infrastructure/remote"
+	"dockpipe/src/lib/internal/testsupport/ossecurity"
+	"dockpipe/src/lib/internal/testsupport/securitykey"
 )
 
 func TestOnlinePairingPersistsIdentityBeforeApproval(t *testing.T) {
@@ -21,13 +27,64 @@ func TestOnlinePairingPersistsIdentityBeforeApproval(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	key := securitykey.New(t)
+	registry, err := hardwarekey.NewRegistry(key.RootsPEM)
+	if err != nil {
+		t.Fatal(err)
+	}
+	options, session, err := registry.BeginRegistration()
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := registry.FinishRegistration(*session, key.Registration(encoded)); err != nil {
+		t.Fatal(err)
+	}
+	var brokerState remoteio.BrokerState
+	if err := remoteio.ReadPrivate(filepath.Join(brokerRoot, "broker.json"), &brokerState); err != nil {
+		t.Fatal(err)
+	}
+	brokerState.PairingKeys = registry
+	if err := remoteio.WritePrivate(filepath.Join(brokerRoot, "broker.json"), brokerState); err != nil {
+		t.Fatal(err)
+	}
 	broker, err := remoteio.NewBroker(brokerRoot)
 	if err != nil {
+		t.Fatal(err)
+	}
+	securityDirectory, err := os.MkdirTemp("", "remote-os-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(securityDirectory)
+	securityDirectory, err = filepath.EvalSymlinks(securityDirectory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stopSecurity, err := broker.StartOperatorSecurity(context.Background(), ossecurity.Platform{Directory: securityDirectory})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stopSecurity()
+	authority := broker.OperatorAuthority()
+	var initialized remoteio.BrokerState
+	if err := remoteio.ReadPrivate(filepath.Join(brokerRoot, "broker.json"), &initialized); err != nil {
+		t.Fatal(err)
+	}
+	brokerIdentity := initialized.Identity.PublicKey
+	if err := authority.Unlock(context.Background(), os.Getpid()); err != nil {
 		t.Fatal(err)
 	}
 	server := httptest.NewServer(broker)
 	defer server.Close()
 	admin, _ := remoteio.NewClient(server.URL, operator.Token)
+	admin.OperatorProof = func(ctx context.Context, path string, body []byte) (remoteio.SecurityProof, error) {
+		digest := sha256.Sum256(body)
+		return authority.Sign(ctx, brokerIdentity, path, hex.EncodeToString(digest[:]))
+	}
 	defer admin.HTTP.CloseIdleConnections()
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
@@ -51,9 +108,7 @@ func TestOnlinePairingPersistsIdentityBeforeApproval(t *testing.T) {
 	if err := remoteio.ReadPrivate(filepath.Join(root, "worker.json"), &saved); err != nil {
 		t.Fatal(err)
 	}
-	if err := admin.Call(ctx, "/v1/approve", map[string]string{"code": pending[0].Code}, nil); err != nil {
-		t.Fatal(err)
-	}
+	approveTestPairing(t, ctx, admin, key, pending[0].Code)
 	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
@@ -94,10 +149,28 @@ func TestOnlinePairingPersistsIdentityBeforeApproval(t *testing.T) {
 	if replacement.Token == saved.Token {
 		t.Fatal("revoked credential was reused")
 	}
-	if err := admin.Call(ctx, "/v1/approve", map[string]string{"code": pending[0].Code}, nil); err != nil {
+	approveTestPairing(t, ctx, admin, key, pending[0].Code)
+	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
-	if err := <-done; err != nil {
+}
+
+func approveTestPairing(t *testing.T, ctx context.Context, admin *remoteio.Client, key *securitykey.Fixture, code string) {
+	t.Helper()
+	nonce, err := remoteio.Secret()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var challenge contract.PairingChallenge
+	if err := admin.Call(ctx, "/v1/approve-begin", contract.PairingChallengeRequest{Code: code, Nonce: nonce}, &challenge); err != nil {
+		t.Fatal(err)
+	}
+	approval := contract.PairingApproval{
+		Code:        code,
+		ChallengeID: challenge.ID,
+		Response:    key.Assertion(challenge.Options),
+	}
+	if err := admin.Call(ctx, "/v1/approve", approval, nil); err != nil {
 		t.Fatal(err)
 	}
 }

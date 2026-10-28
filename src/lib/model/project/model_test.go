@@ -91,3 +91,28 @@ func TestCompileConfigInvalidJSONPreservesDecoderError(t *testing.T) {
 		t.Fatalf("unexpected invalid JSON error: %v", err)
 	}
 }
+
+func TestProjectConfigVersionDeclarationsRoundTrip(t *testing.T) {
+	const authored = `{"dockpipe_version":"1.2.3+build.1","min_dockpipe_version":"1.2.3-rc.1"}`
+	var config DockpipeProjectConfig
+	if err := json.Unmarshal([]byte(authored), &config); err != nil {
+		t.Fatal(err)
+	}
+	if config.DockpipeVersion == nil || *config.DockpipeVersion != "1.2.3+build.1" {
+		t.Fatal("lost exact identity")
+	}
+	if config.MinDockpipeVersion == nil || *config.MinDockpipeVersion != "1.2.3-rc.1" {
+		t.Fatal("lost minimum")
+	}
+	encoded, err := json.Marshal(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded DockpipeProjectConfig
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if *decoded.DockpipeVersion != *config.DockpipeVersion || *decoded.MinDockpipeVersion != *config.MinDockpipeVersion {
+		t.Fatal("version declarations changed during round trip")
+	}
+}

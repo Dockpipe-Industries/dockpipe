@@ -13,6 +13,10 @@ public:
     /// Prefer DOCKPIPE_BIN, then the hinted project's compiled repo-local binary, then plain `dockpipe`.
     static QString preferredDockpipeBinary(const QString &hintWorkdir);
 
+    /// Select an operator-controlled CLI for credential interaction; never discover project binaries.
+    /// An invalid explicit DOCKPIPE_BIN fails without falling back to another executable.
+    static QString operatorDockpipeBinary(QString *error = nullptr);
+
     void scan(const QString &repoRoot, const QString &hintWorkdir = QString());
 
     QStringList workflowNames;

@@ -124,22 +124,31 @@ Materialize a **project-local** store under **`bin/.dockpipe/internal/packages/`
 
 **Repo-root `dockpipe.config.json` (optional)** stores repository settings.
 
-Set the top-level `dockpipe_version` string to pin a repository to one exact
-Dockpipe executable version, for example `"dockpipe_version": "0.6.24"`.
-This belongs in repository configuration rather than `package.yml`, whose
-`min_dockpipe_version` remains a package compatibility lower bound. The pin accepts
-complete SemVer, including prerelease/build identifiers, without a `v` prefix.
-Ranges, `latest`, partial versions, empty strings and development tags are invalid.
-The running executable must match exactly, including build metadata; a project
-`VERSION` file cannot satisfy the check. An unversioned development executable
-also fails an explicit pin. Omitting the field preserves normal behavior.
+Ordinary consumer repositories should declare a top-level `min_dockpipe_version`
+string, for example `"min_dockpipe_version": "0.6.24"`. The running executable
+must meet this complete SemVer lower bound. Prereleases use SemVer precedence:
+`0.6.24-rc.1` is below `0.6.24`, while `0.6.25-rc.1` satisfies `0.6.24`.
+Build metadata does not affect a minimum. Version strings must omit the `v`
+prefix; ranges, partial versions, empty strings and development tags are invalid.
+An explicit project minimum requires a versioned executable; `dev` and `dev+hash`
+fail clearly. Existing package-level development-build compatibility is unchanged.
+
+The legacy top-level `dockpipe_version` remains an **exact executable identity**
+for reproducible producer or qualification projects. It includes prerelease and
+build metadata: `0.6.24+build.1` does not match `0.6.24+build.2`. A project `VERSION`
+file cannot satisfy either constraint. Both fields may coexist only when the exact
+version meets the minimum; execution must still match the exact identity.
+Omitting both fields preserves normal behavior. Package `min_dockpipe_version`
+in `package.yml` remains an independent package compatibility floor.
 
 The CLI checks the current/`--workdir` project's nearest configuration before
 workflow resolution, dependency compilation, or execution commands dispatch.
 Help, version, diagnostics and installation/bootstrap commands remain available
 to repair a mismatch. `--help` passed after the command separator is workflow
-input and does not bypass the check. The pin selects no source checkout and
-compiles no external repository; install the matching release separately.
+input and does not bypass the check. Constraints select no source checkout and
+compile no external repository; install an appropriate release separately.
+See [consumer compatibility migration](consumer-cli-compatibility.md) for removing
+legacy consumer pins while retaining exact bootstrap and qualification locks.
 
 The authoritative editor schema is
 [`dockpipe.config.schema.json`](../../src/lib/infrastructure/schema/dockpipe.config.schema.json).

@@ -81,7 +81,10 @@ class ReleaseWorkflowTests(unittest.TestCase):
                 self.assertEqual(len(ctest_commands), 3)
                 for command in ctest_commands:
                     self.assertIn('--no-tests=error', command)
-                self.assertIn("-R '^terminal-session-win$'", ctest_commands[0])
+                self.assertIn('--target terminal-session-win-test hardware-key-transport-test', scripts)
+                self.assertIn("-R '^(terminal-session-win|hardware-key-transport)$'", ctest_commands[0])
+                self.assertIn('--output-junit $transportReport', ctest_commands[0])
+                self.assertIn('--require terminal-session-win --require hardware-key-transport', scripts)
                 self.assertIn("-R '^desktop-app-window-win$'", ctest_commands[1])
                 self.assertIn('--output-junit $embeddingReport', ctest_commands[1])
                 self.assertIn('--timeout 120 --stop-on-failure', ctest_commands[2])

@@ -1,3 +1,11 @@
+# TASK-044 historical checkpoints
+
+Archived on 2026-10-26. [The completed overview](overview.md) is authoritative.
+Every pending state, approval, machine admission and command below describes its
+original checkpoint, not current work or execution authority. Historical source
+IDs may predate identity-only history correction; preserved release artifacts
+and their original provenance retain their original identities.
+
 # Standalone PipeLang and external packages
 
 Objective contract:
@@ -56,7 +64,7 @@ Ten bootstrap integrity tests pass, five GitHub workflow YAML files parse, and t
 published Linux CLI runs the standalone PipeLang build and bounded test workflows.
 Catalog package workflow compilation also passes with that CLI. Windows ZIP selection
 is covered with a platform simulation; native Windows execution remains pending CI.
-Evidence: `/tmp/dockpipe-extraction/version-pin-checkpoint.json` and its linked logs.
+Evidence: `<local-evidence>/dockpipe-extraction/version-pin-checkpoint.json` and its linked logs.
 
 Remaining preparation: replace the unavailable SDK release pin with a reproducible
 core-owned artifact, remove copied catalog CLI-builder helpers, repair agent image
@@ -89,7 +97,7 @@ Public target availability awaits publication. The authored embed manifest is
 regenerated and checked. git diff --check passes. Existing dirty native SDK work
 and unrelated ForgePipe notes remain preserved.
 
-Evidence lives in /tmp/dockpipe-extraction: version-pin-checkpoint.json,
+Evidence lives in <local-evidence>/dockpipe-extraction: version-pin-checkpoint.json,
 go-sdk-checkpoint.json, catalog-helper-checkpoint.json,
 dirt-bike-optimized-checkpoint.json, agent-image-checkpoint.json,
 final-sealed-pipelang-module.json, final-sealed-core-tests.log,
@@ -128,7 +136,7 @@ No base disk rewrite, credential reset, host policy change or publication occurr
 The earlier prepared publication manifest is stale for core and catalog sources
 and must be regenerated/reviewed after these runtime corrections and Windows
 validation. No pending approval from that older payload authorizes changed bytes.
-Evidence: /tmp/dockpipe-extraction/windows-validation/ and its live desktop log.
+Evidence: <local-evidence>/dockpipe-extraction/windows-validation/ and its live desktop log.
 
 ## Existing Windows guest services repair
 
@@ -184,7 +192,7 @@ session; after verified keyboard delivery the elevated helper reached OpenSSH
 capability installation. SSH, native builds, and the user's restart test remain
 pending. Rebooting Windows preserves this overlay; starting again from the original
 base image with a fresh ephemeral overlay does not preserve guest setup.
-Evidence: /tmp/dockpipe-extraction/windows-validation/guest-tools-decoupling-audit.json,
+Evidence: <local-evidence>/dockpipe-extraction/windows-validation/guest-tools-decoupling-audit.json,
 guest-tools-cd.json and guest-services-durable-tests.log. No commits or publication.
 
 
@@ -205,7 +213,7 @@ match the authoritative content lock (archive SHA-256
 The production latest release remained `v0.6.11`. This removes the catalog's
 previous missing immutable SDK dependency; it does not qualify the remaining
 native packages or a Dockpipe staging runtime release.
-Evidence: `/tmp/dockpipe-extraction/full-launcher-validation/go-sdk-publication.json`.
+Evidence: `<local-evidence>/dockpipe-extraction/full-launcher-validation/go-sdk-publication.json`.
 
 ### Publication source seal correction (2026-10-23)
 
@@ -221,7 +229,7 @@ current transcript-test fixes. Its canonical Go sum is
 Core PipeLang application consumer tests, transcript tests from the sealed module,
 and the standalone bounded test workflow through pinned Dockpipe 0.6.25 pass.
 The prior 680-file module/publication manifest is superseded for release use.
-Evidence: `/tmp/dockpipe-extraction/publication-pipelang-module.json` and
+Evidence: `<local-evidence>/dockpipe-extraction/publication-pipelang-module.json` and
 `full-launcher-validation/publication-{module-core-tests,module-transcript-tests,pipelang-baseline}.log`.
 PipeLang commit `50c17bbf019e4736a9943513931c1c10eb8d1f7d` is now public on
 master/dev/staging with source tag `v0.1.0`. Independent fresh public Go proxy and
@@ -775,4 +783,4 @@ and both 12-page Cloud documentation bundles pass. These are documentation and
 local-example checks, not native platform, VM, provider or release acceptance.
 All three repositories retain their earlier work, unchanged indexes and HEADs;
 the documentation remains unstaged and uncommitted. AI guidance was not audited
-in this pass. Evidence is under `/tmp/dockpipe-human-docs-audit/`.
+in this pass. Evidence is under `<local-evidence>/dockpipe-human-docs-audit/`.

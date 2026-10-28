@@ -42,7 +42,7 @@ private slots:
 
 private:
     void changeMachine();
-    void refreshRemote();
+    void refreshRemote(bool allowAuthentication = false);
     void applyRemoteSnapshot(const QJsonObject &snapshot);
     MonitoringMachineSelector *m_machine = nullptr;
     RemoteCommand m_remoteCommand;
