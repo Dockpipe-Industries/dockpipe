@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -25,7 +26,8 @@ func newTerminalHardwareInteraction() (*terminalHardwareInteraction, error) {
 	file, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
 	if err != nil || !term.IsTerminal(int(file.Fd())) {
 		if file != nil {
-			file.Close()
+			// The terminal is unusable; closing it is best-effort cleanup.
+			_ = file.Close()
 		}
 		return nil, errors.New("native hardware-key interaction requires a terminal; use Dockpipe's GUI or run this command in a terminal")
 	}
@@ -75,11 +77,15 @@ type contextTerminalIO struct {
 }
 
 func (c *contextTerminalIO) Read(buffer []byte) (int, error) {
+	descriptor := c.file.Fd()
+	if descriptor > math.MaxInt32 {
+		return 0, errors.New("terminal file descriptor exceeds the native poll range")
+	}
 	for {
 		if err := c.ctx.Err(); err != nil {
 			return 0, err
 		}
-		poll := []unix.PollFd{{Fd: int32(c.file.Fd()), Events: unix.POLLIN}}
+		poll := []unix.PollFd{{Fd: int32(descriptor), Events: unix.POLLIN}}
 		n, err := unix.Poll(poll, 100)
 		if errors.Is(err, unix.EINTR) {
 			continue
@@ -93,7 +99,7 @@ func (c *contextTerminalIO) Read(buffer []byte) (int, error) {
 		if poll[0].Revents&unix.POLLIN == 0 {
 			return 0, io.EOF
 		}
-		return unix.Read(int(c.file.Fd()), buffer)
+		return unix.Read(int(descriptor), buffer)
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -277,6 +278,49 @@ func TestAdmissionAndTimeoutAreBounded(t *testing.T) {
 	encoded := marshal(t, Device{ID: "0", Name: "key", path: "/private/device"})
 	if bytes.Contains(encoded, []byte("private")) {
 		t.Fatal("device path leaked into JSON")
+	}
+}
+
+func TestNativeTimeoutRejectsInvalidBoundsBeforeDeviceAccess(t *testing.T) {
+	lib := &library{devTimeout: func(uintptr, int32) int32 {
+		t.Fatal("invalid timeout reached the native device")
+		return 0
+	}}
+	for _, maximum := range []time.Duration{0, -time.Second, time.Duration(math.MaxInt32+1) * time.Millisecond} {
+		if err := setTimeout(context.Background(), lib, 1, maximum); err == nil {
+			t.Fatalf("invalid timeout %v was accepted", maximum)
+		}
+	}
+	var received int32
+	lib.devTimeout = func(_ uintptr, milliseconds int32) int32 {
+		received = milliseconds
+		return 0
+	}
+	if err := setTimeout(context.Background(), lib, 1, time.Duration(math.MaxInt32)*time.Millisecond); err != nil || received != math.MaxInt32 {
+		t.Fatalf("maximum native timeout was changed or rejected: %d, %v", received, err)
+	}
+}
+
+func TestNativeCopiesRejectInvalidBounds(t *testing.T) {
+	value := []byte{'a', 0}
+	if _, err := nativeBytes(&value[0], 1, -1); err == nil {
+		t.Fatal("negative native buffer bound was accepted")
+	}
+	if _, err := nativeBytes(&value[0], 2, 1); err == nil {
+		t.Fatal("oversized native buffer was accepted")
+	}
+	for _, maximum := range []int{-1, maxNativeBytes + 1} {
+		if _, err := nativeString(&value[0], maximum); err == nil {
+			t.Fatalf("invalid native string bound %d was accepted", maximum)
+		}
+	}
+	copied, err := nativeBytes(&value[0], 1, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	value[0] = 'b'
+	if string(copied) != "a" {
+		t.Fatal("native buffer escaped without a Go-owned copy")
 	}
 }
 

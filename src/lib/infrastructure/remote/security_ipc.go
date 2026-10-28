@@ -79,7 +79,8 @@ func (broker *Broker) startOperatorSecurityAt(ctx context.Context, platform osau
 		return nil, err
 	}
 	if err := os.Chmod(path, 0o600); err != nil {
-		listener.Close()
+		// Permission setup failed; closing the unused listener is best-effort.
+		_ = listener.Close()
 		unlock()
 		return nil, err
 	}
@@ -122,7 +123,8 @@ func (broker *Broker) startOperatorSecurityAt(ctx context.Context, platform osau
 					authority.serveSecurityConnection(ctx, connection)
 				}()
 			default:
-				connection.Close()
+				// Admission was refused, so this connection has no result to retain.
+				_ = connection.Close()
 			}
 		}
 	}()
@@ -131,8 +133,12 @@ func (broker *Broker) startOperatorSecurityAt(ctx context.Context, platform osau
 		closeOnce.Do(func() {
 			cancel()
 			authority.Lock()
-			listener.Close()
-			connections.Range(func(key, _ any) bool { key.(*net.UnixConn).Close(); return true })
+			// Shutdown is idempotent; already-closed descriptors need no retry.
+			_ = listener.Close()
+			connections.Range(func(key, _ any) bool {
+				_ = key.(*net.UnixConn).Close()
+				return true
+			})
 			workers.Wait()
 			unlock()
 		})
@@ -140,13 +146,18 @@ func (broker *Broker) startOperatorSecurityAt(ctx context.Context, platform osau
 }
 
 func (authority *SecurityAuthority) serveSecurityConnection(parent context.Context, connection *net.UnixConn) {
-	stopClose := context.AfterFunc(parent, func() { connection.Close() })
+	stopClose := context.AfterFunc(parent, func() {
+		// Cancellation discards the exchange; closing is best-effort cleanup.
+		_ = connection.Close()
+	})
 	defer stopClose()
 	uid, pid, err := securityPeer(connection)
 	if err != nil || uid != os.Getuid() || pid <= 0 {
 		return
 	}
-	connection.SetDeadline(time.Now().Add(125 * time.Second))
+	if err := connection.SetDeadline(time.Now().Add(125 * time.Second)); err != nil {
+		return
+	}
 	reader := bufio.NewReaderSize(connection, securityIPCBytes)
 	line, err := reader.ReadSlice('\n')
 	if err != nil || len(line) > securityIPCBytes {
@@ -232,8 +243,13 @@ func callSecurityAt(ctx context.Context, directory string, request SecurityReque
 	if err != nil || uid != os.Getuid() {
 		return response, errors.New("remote security authority has an invalid OS identity")
 	}
-	connection.SetDeadline(time.Now().Add(125 * time.Second))
-	stop := context.AfterFunc(ctx, func() { connection.Close() })
+	if err := connection.SetDeadline(time.Now().Add(125 * time.Second)); err != nil {
+		return response, err
+	}
+	stop := context.AfterFunc(ctx, func() {
+		// Cancellation already owns the error; closing only interrupts I/O.
+		_ = connection.Close()
+	})
 	defer stop()
 	if _, err := connection.Write(append(encoded, '\n')); err != nil {
 		return response, err

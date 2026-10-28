@@ -64,7 +64,7 @@ func snapshotEdgeBinary(source, destination, expected string) error {
 		return errors.New("edge input is not regular")
 	}
 	stat, ok := info.Sys().(*syscall.Stat_t)
-	if !ok || stat.Uid != uint32(os.Geteuid()) || stat.Nlink != 1 || info.Mode().Perm()&0077 != 0 || info.Mode()&(os.ModeSetuid|os.ModeSetgid|os.ModeSticky) != 0 || info.Size() > maximumEdgeBinaryBytes {
+	if !ok || int64(stat.Uid) != int64(os.Geteuid()) || stat.Nlink != 1 || info.Mode().Perm()&0077 != 0 || info.Mode()&(os.ModeSetuid|os.ModeSetgid|os.ModeSticky) != 0 || info.Size() > maximumEdgeBinaryBytes {
 		return errors.New("edge snapshot source must be bounded, private, singly linked and operator owned")
 	}
 	return publishEdgeSnapshot(input, destination, expected)
@@ -167,7 +167,7 @@ func edgePrivateDigest(path string) (string, error) {
 		return "", err
 	}
 	stat, ok := info.Sys().(*syscall.Stat_t)
-	if !ok || stat.Uid != uint32(os.Geteuid()) || stat.Nlink != 1 || info.Mode().Perm()&0077 != 0 || info.Mode()&(os.ModeSetuid|os.ModeSetgid|os.ModeSticky) != 0 {
+	if !ok || int64(stat.Uid) != int64(os.Geteuid()) || stat.Nlink != 1 || info.Mode().Perm()&0077 != 0 || info.Mode()&(os.ModeSetuid|os.ModeSetgid|os.ModeSticky) != 0 {
 		return "", errors.New("edge input is not privately owned")
 	}
 	return hashEdgeFile(file)

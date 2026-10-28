@@ -134,22 +134,29 @@ func (lib *library) bindings() []struct {
 }
 
 func nativeBytes(pointer *byte, length uintptr, maximum int) ([]byte, error) {
-	if length > uintptr(maximum) || (length != 0 && pointer == nil) {
+	if maximum < 0 || length > uintptr(maximum) || (length != 0 && pointer == nil) {
 		return nil, errors.New("security key returned an invalid or oversized field")
 	}
 	if length == 0 {
 		return nil, nil
 	}
-	return append([]byte(nil), unsafe.Slice(pointer, int(length))...), nil
+	// The synchronous libfido2 call retains its object and owns this buffer;
+	// its reported length is checked above, and only a Go-owned copy escapes.
+	return append([]byte(nil), unsafe.Slice(pointer, int(length))...), nil // #nosec G103 -- Audited library-owned buffer, bounded copy before native object release.
 }
 
 func nativeString(pointer *byte, maximum int) (string, error) {
+	if maximum < 0 || maximum > maxNativeBytes {
+		return "", errors.New("invalid native security-key string bound")
+	}
 	if pointer == nil {
 		return "", nil
 	}
 	value := make([]byte, 0, maximum)
 	for offset := 0; offset <= maximum; offset++ {
-		character := *(*byte)(unsafe.Add(unsafe.Pointer(pointer), offset))
+		// libfido2 owns this NUL-terminated string until its live parent object
+		// is freed. Read at most maximum+1 bytes; return only a Go-owned copy.
+		character := *(*byte)(unsafe.Add(unsafe.Pointer(pointer), offset)) // #nosec G103 -- Audited library-owned C string with bounded scan during synchronous object lifetime.
 		if character == 0 {
 			return string(value), nil
 		}

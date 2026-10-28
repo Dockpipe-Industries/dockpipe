@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	contract "dockpipe/src/lib/domain/remote"
@@ -35,7 +36,7 @@ func TestEdgePublicHealthRequiresFreshSignatureAndVerifiedTLS(t *testing.T) {
 
 func TestEdgeActivationRoutesRequireOSAuthorityAndPauseJobs(t *testing.T) {
 	root, broker, admin, server := testBroker(t)
-	base := contract.EdgeConfig{Schema: contract.Version, Endpoint: "https://edge.example.test", Executable: "/private/old", Arguments: []string{"serve"}}
+	base := contract.EdgeConfig{Schema: contract.Version, Endpoint: "https://edge.example.test", Executable: filepath.Join(root, "old-edge"), Arguments: []string{"serve"}}
 	broker.edge = newEdgeSupervisor(context.Background(), root, base, func(context.Context, string) error { return nil })
 	broker.edge.baseline = edgeBaseline{Config: base, Digest: Hash("recovery"), BaseDigest: contract.EdgeConfigDigest(base)}
 	raw, _ := NewClient(server.URL, admin.Token)

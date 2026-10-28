@@ -4,6 +4,7 @@ package osauth
 
 import (
 	"errors"
+	"math"
 	"runtime"
 	"sync"
 	"unsafe"
@@ -81,7 +82,9 @@ func copyNativeSession(value *byte) (string, error) {
 	}
 	var data []byte
 	for index := 0; index < 128; index++ {
-		character := *(*byte)(unsafe.Add(unsafe.Pointer(value), index))
+		// libsystemd returns a malloc-owned NUL-terminated session string. Its
+		// caller keeps it live through this 128-byte scan and frees it afterward.
+		character := *(*byte)(unsafe.Add(unsafe.Pointer(value), index)) // #nosec G103 -- Audited libsystemd string ownership; bounded scan and Go-owned result before free.
 		if character == 0 {
 			if len(data) == 0 {
 				break
@@ -97,6 +100,13 @@ func copyNativeSession(value *byte) (string, error) {
 }
 
 func nativeProcessSession(pid, uid int) (string, error) {
+	if pid <= 0 || pid > math.MaxInt32 {
+		return "", errors.New("caller process ID exceeds the native PID range")
+	}
+	nativeUID, err := checkedNativeUID(uid)
+	if err != nil {
+		return "", err
+	}
 	library, err := loadSystemd()
 	if err != nil {
 		return "", err
@@ -108,7 +118,7 @@ func nativeProcessSession(pid, uid int) (string, error) {
 		// before selecting its active local desktop. A process with a known remote
 		// login session never reaches this fallback.
 		var owner uint32
-		if library.pidOwner(int32(pid), &owner) < 0 || owner != uint32(uid) {
+		if library.pidOwner(int32(pid), &owner) < 0 || owner != nativeUID {
 			return "", errors.New("caller does not belong to a local login session")
 		}
 		return nativeDisplaySession(uid)
@@ -122,12 +132,16 @@ func nativeProcessSession(pid, uid int) (string, error) {
 }
 
 func nativeDisplaySession(uid int) (string, error) {
+	nativeUID, err := checkedNativeUID(uid)
+	if err != nil {
+		return "", err
+	}
 	library, err := loadSystemd()
 	if err != nil {
 		return "", err
 	}
 	var session *byte
-	if library.uidDisplay(uint32(uid), &session) < 0 || session == nil {
+	if library.uidDisplay(nativeUID, &session) < 0 || session == nil {
 		return "", errors.New("no local owner desktop session is available")
 	}
 	defer library.free(session)
@@ -139,10 +153,22 @@ func nativeDisplaySession(uid int) (string, error) {
 }
 
 func verifyNativeSession(library *sessionLibrary, name string, uid int) error {
+	nativeUID, err := checkedNativeUID(uid)
+	if err != nil {
+		return err
+	}
 	var owner uint32
-	if library.sessionUID(name, &owner) < 0 || owner != uint32(uid) ||
+	if library.sessionUID(name, &owner) < 0 || owner != nativeUID ||
 		library.sessionActive(name) != 1 || library.sessionRemote(name) != 0 {
 		return errors.New("remote unlock requires the current account's active local login session")
 	}
 	return nil
+}
+
+func checkedNativeUID(uid int) (uint32, error) {
+	// uid_t reserves UINT32_MAX as the invalid UID sentinel.
+	if uid < 0 || uid >= math.MaxUint32 {
+		return 0, errors.New("account ID exceeds the native UID range")
+	}
+	return uint32(uid), nil
 }

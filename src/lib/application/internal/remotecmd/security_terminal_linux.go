@@ -28,10 +28,12 @@ func startTerminalSecurityAgent(ctx context.Context) (func(), error) {
 	command.Stdin, command.Stdout, command.Stderr = os.Stdin, os.Stderr, os.Stderr
 	command.WaitDelay = time.Second
 	if err := command.Start(); err != nil {
-		writer.Close()
+		// No child inherited this pipe; cleanup cannot recover the failed start.
+		_ = writer.Close()
 		return nil, errors.New("terminal OS authentication requires the installed PolicyKit terminal agent")
 	}
-	writer.Close()
+	// The child owns its inherited descriptor; discard this local duplicate.
+	_ = writer.Close()
 	closeAgent := func() {
 		_ = command.Process.Kill()
 		_ = command.Wait()

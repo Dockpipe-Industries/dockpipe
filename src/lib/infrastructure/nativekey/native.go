@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"math"
 	"os"
 	"runtime"
 	"strconv"
@@ -211,6 +212,9 @@ func setTimeout(ctx context.Context, lib *library, dev uintptr, maximum time.Dur
 	milliseconds := maximum.Milliseconds()
 	if milliseconds < 1 {
 		return context.DeadlineExceeded
+	}
+	if milliseconds > math.MaxInt32 {
+		return errors.New("security-key timeout exceeds the native millisecond range")
 	}
 	return nativeError(lib.devTimeout(dev, int32(milliseconds)))
 }

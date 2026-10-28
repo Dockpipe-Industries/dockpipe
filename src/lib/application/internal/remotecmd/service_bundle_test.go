@@ -1,14 +1,15 @@
 package remotecmd
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func TestServiceBundleInfoPath(t *testing.T) {
 	for _, directory := range []string{"Helpers", "MacOS"} {
-		executable := "/Applications/Dock Pipe.app/Contents/" + directory + "/dockpipe"
-		if path := serviceBundleInfoPath(executable); path != "/Applications/Dock Pipe.app/Contents/Info.plist" {
+		executable := filepath.FromSlash("/Applications/Dock Pipe.app/Contents/" + directory + "/dockpipe")
+		if path := serviceBundleInfoPath(executable); path != filepath.FromSlash("/Applications/Dock Pipe.app/Contents/Info.plist") {
 			t.Fatalf("incorrect app metadata path: %q", path)
 		}
 	}

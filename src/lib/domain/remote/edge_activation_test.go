@@ -1,12 +1,14 @@
 package remote
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func activationContractFixture() EdgeActivationRequest {
-	edge := EdgeConfig{Schema: Version, Endpoint: "https://edge.example.test", Executable: "/private/tool", Arguments: []string{"serve"}}
+	edge := EdgeConfig{Schema: Version, Endpoint: "https://edge.example.test", Executable: filepath.Join(os.TempDir(), "edge-tool"), Arguments: []string{"serve"}}
 	return EdgeActivationRequest{Schema: EdgeActivationSchema, ExpectedConfigDigest: EdgeConfigDigest(edge), Candidate: edge, Recovery: edge,
 		CandidateSHA256: strings.Repeat("a", 64), RecoverySHA256: strings.Repeat("b", 64), ReadinessURL: "http://127.0.0.1:45000/ready", StartupSeconds: 2, StableSeconds: 2, RecoverySeconds: 30, Maintenance: "allow-connector-replacement"}
 }

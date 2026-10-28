@@ -13,6 +13,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"encoding/pem"
+	"math"
 	"math/big"
 	"testing"
 	"time"
@@ -100,6 +101,11 @@ func NewAt(t testing.TB, now time.Time) *Fixture {
 // attestation. Options may be an inner publicKey object or its JSON wrapper.
 func (fixture *Fixture) Registration(options []byte) []byte {
 	fixture.testing.Helper()
+	credentialIDLength := len(fixture.CredentialID)
+	if credentialIDLength > math.MaxUint16 {
+		fixture.testing.Fatal("test credential ID exceeds the WebAuthn length field")
+		return nil
+	}
 	request := fixture.options(options)
 	var user struct {
 		ID string `json:"id"`
@@ -111,7 +117,7 @@ func (fixture *Fixture) Registration(options []byte) []byte {
 	clientData := fixture.clientData(request, "webauthn.create")
 	authenticatorData := fixture.authenticatorData(fixture.Flags | 0x40)
 	authenticatorData = append(authenticatorData, make([]byte, 16)...)
-	authenticatorData = binary.BigEndian.AppendUint16(authenticatorData, uint16(len(fixture.CredentialID)))
+	authenticatorData = binary.BigEndian.AppendUint16(authenticatorData, uint16(credentialIDLength))
 	authenticatorData = append(authenticatorData, fixture.CredentialID...)
 	publicKey := map[int]any{
 		1:  2,

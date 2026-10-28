@@ -176,7 +176,9 @@ func (authority *SecurityAuthority) Sample(ctx context.Context) {
 		authority.locked("OS session locked or lock detection disappeared during authentication.")
 	}
 	if authority.identity != nil {
-		authority.checkLocked()
+		// Sampling applies expiry/lock transitions; callers query the resulting
+		// state through Status, Sign or admission checks instead of this return.
+		_ = authority.checkLocked()
 	}
 }
 
