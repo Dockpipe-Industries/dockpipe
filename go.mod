@@ -16,7 +16,7 @@ require (
 
 require (
 	github.com/ebitengine/purego v0.11.2
-	github.com/fxamacker/cbor/v2 v2.9.2
+	github.com/fxamacker/cbor/v2 v2.9.6
 	github.com/go-webauthn/webauthn v0.17.4
 	golang.org/x/sys v0.45.0
 )
