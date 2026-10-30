@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "package": "dockpipe.cloudflare.r2bulk",
+  "version": "0.1.1",
+  "manifest_url": "https://github.com/Dockpipe-Industries/dockpipe-packages/releases/download/dockpipe.cloudflare.r2bulk-v0.1.1/packages-store-manifest.json",
+  "archive_sha256": "6bf4baede949e8c572d7813421777adab126e3bfce5110bf53fba68a9b0764de",
+  "requirements_lock_sha256": "9b908ad9bb4cd51cfaa696705f87c8e0dd6781d30920c2199c5eaef25706bed6",
+  "manifest_sha256": "1a3a63d6f7186f10c912d6a3e57e8a0560aee6a8e905df3a4bff0c77eb604efe"
+}

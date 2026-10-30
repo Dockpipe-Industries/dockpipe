@@ -1,11 +1,24 @@
 name: publish-runtime-channel
-description: Run the publish runtime channel operation with explicit options after --.
+description: Verify immutable runtime payloads before publishing ordered release metadata.
 docker_preflight: false
 steps:
-  - id: run
+  - id: bootstrap
+    kind: host
+    cwd: repo
+    outputs: bootstrap.env
+    cmd: python3 workflows/publish/r2/assets/scripts/bootstrap.py
+  - id: prepare
     kind: host
     cwd: repo
     scopes:
       source: repo
       artifacts: artifacts
-    cmd: python3 workflows/shared/run.py python3 workflows/publish/r2/assets/scripts/publish-r2.py
+    outputs: publication.env
+    cmd: python3 workflows/shared/run.py python3 workflows/publish/r2/assets/scripts/publish-r2.py --phase prepare
+  - id: payloads
+    workflow: dockpipe.cloudflare.r2bulk
+    package: dockpipe-cloudflare
+  - id: metadata
+    kind: host
+    cwd: repo
+    cmd: python3 workflows/publish/r2/assets/scripts/publish-r2.py --phase metadata
