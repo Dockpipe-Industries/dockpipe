@@ -34,6 +34,15 @@ class ReleaseTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
 
+    def prepared_publication(self, artifacts, apt, version, dry_run, candidate=""):
+        plan = publisher.prepare(artifacts, apt, version, dry_run, candidate)
+        payloads = json.loads(Path(plan["manifest"]).read_text())["objects"]
+        for entry in payloads:
+            publisher.upload(Path(entry["source"]), entry["key"], plan["bucket"], plan["endpoint"], dry_run)
+        Path(plan["state"]).write_text(json.dumps({"schema": 1, "phase": "verified-head",
+                                                  "bucket": plan["bucket"], "endpoint": plan["endpoint"], "identity": plan["bulk_identity"]}))
+        publisher.publish_metadata(plan)
+
     def store(self, directory, core_only=False):
         directory.mkdir(parents=True)
         entries = []
@@ -164,7 +173,7 @@ class ReleaseTests(unittest.TestCase):
         calls = []
         environment = {"DOCKPIPE_RELEASE_CHANNEL": "stable", "DOCKPIPE_RELEASE_BUCKET": "test-packages", "R2_ENDPOINT_URL": "https://example.invalid", "R2_PREFIX": "packages"}
         with patch.dict(os.environ, environment), patch.object(publisher, "upload", side_effect=lambda *args: calls.append(args)), patch.object(publisher, "require_forward_version"), patch.object(publisher, "require_unpublished"):
-            publisher.publish(artifacts, apt, "0.6.0", False)
+            self.prepared_publication(artifacts, apt, "0.6.0", False)
         keys = [call[1] for call in calls]
         self.assertEqual(keys[-1], "packages/runtime/latest.json")
         self.assertNotIn("packages/latest.json", keys)
@@ -174,7 +183,7 @@ class ReleaseTests(unittest.TestCase):
         (apt / "dists/stable/InRelease").unlink()
         with patch.dict(os.environ, environment), patch.object(publisher, "upload") as upload:
             with self.assertRaises(ValueError):
-                publisher.publish(artifacts, apt, "0.6.0", False)
+                self.prepared_publication(artifacts, apt, "0.6.0", False)
             upload.assert_not_called()
 
     def test_staging_publication_is_isolated_and_commits_pointer_last(self):
@@ -192,13 +201,13 @@ class ReleaseTests(unittest.TestCase):
         (apt / "pool/candidate.deb").write_bytes(b"deb")
         environment = {"DOCKPIPE_RELEASE_CHANNEL": "staging", "DOCKPIPE_RELEASE_BUCKET": "example-staging", "R2_ENDPOINT_URL": "https://example.invalid", "R2_PREFIX": "packages"}
         with patch.dict(os.environ, environment), patch.object(publisher, "upload") as upload, patch.object(publisher, "require_forward_version"), patch.object(publisher, "require_unpublished") as guard:
-            publisher.publish(artifacts, apt, "0.6.0", False, candidate)
+            self.prepared_publication(artifacts, apt, "0.6.0", False, candidate)
             prefix = f"packages/candidates/{candidate}"
             keys = [call.args[1] for call in upload.call_args_list]
             self.assertTrue(all(key.startswith((prefix + "/", "apt/")) for key in keys[:-1]))
             self.assertEqual(keys[-2:], ["apt/dists/staging/InRelease", "packages/runtime/latest.json"])
             self.assertNotIn("packages/latest.json", keys)
-            self.assertLess(keys.index(prefix + "/release-manifest.json"), keys.index("apt/pool/candidate.deb"))
+            self.assertLess(keys.index("apt/pool/candidate.deb"), keys.index(prefix + "/release-manifest.json"))
             self.assertLess(keys.index("apt/pool/candidate.deb"), keys.index("apt/dists/staging/InRelease"))
             self.assertIn(prefix + "/apt/pool/candidate.deb", keys)
             self.assertEqual(guard.call_args.args[2], prefix + "/release-manifest.json")
@@ -207,19 +216,80 @@ class ReleaseTests(unittest.TestCase):
             upload.reset_mock()
             guard.side_effect = ValueError("already published")
             with self.assertRaises(ValueError):
-                publisher.publish(artifacts, apt, "0.6.0", False, candidate)
+                self.prepared_publication(artifacts, apt, "0.6.0", False, candidate)
             upload.assert_not_called()
         for channel, identity in (("stable", candidate), ("staging", ""), ("staging", "../escape"), ("", candidate)):
             with patch.dict(os.environ, dict(environment, DOCKPIPE_RELEASE_CHANNEL=channel)), patch.object(publisher, "upload") as upload:
                 with self.assertRaises(ValueError):
-                    publisher.publish(artifacts, apt, "0.6.0", False, identity)
+                    self.prepared_publication(artifacts, apt, "0.6.0", False, identity)
                 upload.assert_not_called()
         catalog["source_sha"] = "b" * 40
         (artifacts / "release-manifest.json").write_text(json.dumps(catalog))
         with patch.dict(os.environ, environment), patch.object(publisher, "upload") as upload:
             with self.assertRaises(ValueError):
-                publisher.publish(artifacts, apt, "0.6.0", False, candidate)
+                self.prepared_publication(artifacts, apt, "0.6.0", False, candidate)
             upload.assert_not_called()
+
+    def test_bulk_failure_or_unverified_state_blocks_every_metadata_write(self):
+        plan = {"bulk_identity": "identity", "bucket": "bucket", "endpoint": "https://example.invalid", "dry_run": False,
+                "state": str(self.root / "bulk-state"),
+                "metadata": [{"source": str(self.root / "catalog"), "key": "release-manifest.json"}]}
+        for phase in ("planned", "transferring", "transferred", "dry-run"):
+            Path(plan["state"]).write_text(json.dumps({"schema": 1, "phase": phase,
+                                                       "bucket": plan["bucket"], "endpoint": plan["endpoint"], "identity": plan["bulk_identity"]}))
+            with self.subTest(phase=phase), patch.object(publisher, "upload") as upload:
+                with self.assertRaisesRegex(ValueError, "verification must complete"):
+                    publisher.publish_metadata(plan)
+                upload.assert_not_called()
+
+    def test_changed_metadata_blocks_all_writes(self):
+        catalog = self.root / "catalog.json"
+        pointer = self.root / "latest.json"
+        catalog.write_bytes(b"catalog")
+        pointer.write_bytes(b"pointer")
+        metadata = []
+        for path in (catalog, pointer):
+            metadata.append({"source": str(path), "key": path.name,
+                             "size": path.stat().st_size,
+                             "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
+        state_path = self.root / "bulk-state"
+        state_path.write_text(json.dumps({"schema": 1, "phase": "verified-head",
+                                         "bucket": "bucket", "endpoint": "https://example.invalid",
+                                         "identity": "identity"}))
+        plan = {"bulk_identity": "identity", "bucket": "bucket", "endpoint": "https://example.invalid",
+                "dry_run": False, "state": str(state_path), "metadata": metadata}
+        pointer.write_bytes(b"changed")
+        with patch.object(publisher, "upload") as upload:
+            with self.assertRaisesRegex(ValueError, "metadata changed"):
+                publisher.publish_metadata(plan)
+            upload.assert_not_called()
+
+    def test_bulk_plan_preserves_headers_and_dry_run_has_no_provider_calls(self):
+        artifacts = self.root / "artifacts"
+        artifacts.mkdir()
+        (artifacts / "release-manifest.json").write_text('{"artifact_class":"runtime"}')
+        (artifacts / "install.sh").write_text("installer")
+        apt = self.root / "apt"
+        (apt / "dists/stable/by-hash/SHA256").mkdir(parents=True)
+        (apt / "dists/stable/by-hash/SHA256/abc").write_bytes(b"index")
+        (apt / "dists/stable/InRelease").write_bytes(b"signed")
+        outputs = self.root / "publication.env"
+        environment = {"DOCKPIPE_RELEASE_CHANNEL": "stable", "DOCKPIPE_RELEASE_BUCKET": "bucket",
+                       "R2_ENDPOINT_URL": "https://example.invalid", "R2_PREFIX": "custom",
+                       "DOCKPIPE_STEP_OUTPUTS_FILE": str(outputs)}
+        with patch.dict(os.environ, environment), patch.object(publisher.subprocess, "run") as provider:
+            plan = publisher.prepare(artifacts, apt, "0.6.0", True,
+                                     plan_directory=self.root / "publication-plan")
+            provider.assert_not_called()
+        self.assertIn("R2_BULK_DRY_RUN=true\n", outputs.read_text())
+        self.assertIn("DOCKPIPE_R2_PUBLICATION_PLAN=", outputs.read_text())
+        objects = json.loads(Path(plan["manifest"]).read_text())["objects"]
+        installer = next(entry for entry in objects if entry["key"].endswith("install.sh"))
+        self.assertEqual(installer["key"], "custom/releases/0.6.0/install.sh")
+        self.assertEqual(installer["cache_control"], "no-cache")
+        self.assertEqual(installer["content_type"], publisher.object_headers(Path("install.sh"))[0])
+        self.assertTrue(any("/by-hash/" in entry["key"] for entry in objects))
+        self.assertFalse(any(entry["key"].endswith(("InRelease", "release-manifest.json")) for entry in objects))
 
     def test_publisher_refuses_existing_versions_and_authentication_failures(self):
         for returncode, stderr in ((0, ""), (1, "AccessDenied")):

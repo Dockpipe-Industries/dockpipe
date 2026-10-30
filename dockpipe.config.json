@@ -6,6 +6,12 @@
     ]
   },
   "packages": {
-    "namespace": "dockpipeproject"
+    "namespace": "dockpipeproject",
+    "sources": [
+      {
+        "kind": "store",
+        "path": ".toolchains/r2bulk/packages"
+      }
+    ]
   }
 }

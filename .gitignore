@@ -68,3 +68,6 @@ Thumbs.db
 .glider-trace/
 .cursor-server/
 .cursor/
+
+# Checksum-pinned external workflow dependencies
+/.toolchains/
