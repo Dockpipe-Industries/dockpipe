@@ -273,11 +273,16 @@ class ReleaseTests(unittest.TestCase):
         (apt / "dists/stable/by-hash/SHA256").mkdir(parents=True)
         (apt / "dists/stable/by-hash/SHA256/abc").write_bytes(b"index")
         (apt / "dists/stable/InRelease").write_bytes(b"signed")
+        outputs = self.root / "publication.env"
         environment = {"DOCKPIPE_RELEASE_CHANNEL": "stable", "DOCKPIPE_RELEASE_BUCKET": "bucket",
-                       "R2_ENDPOINT_URL": "https://example.invalid", "R2_PREFIX": "custom"}
+                       "R2_ENDPOINT_URL": "https://example.invalid", "R2_PREFIX": "custom",
+                       "DOCKPIPE_STEP_OUTPUTS_FILE": str(outputs)}
         with patch.dict(os.environ, environment), patch.object(publisher.subprocess, "run") as provider:
-            plan = publisher.prepare(artifacts, apt, "0.6.0", True)
+            plan = publisher.prepare(artifacts, apt, "0.6.0", True,
+                                     plan_directory=self.root / "publication-plan")
             provider.assert_not_called()
+        self.assertIn("R2_BULK_DRY_RUN=true\n", outputs.read_text())
+        self.assertIn("DOCKPIPE_R2_PUBLICATION_PLAN=", outputs.read_text())
         objects = json.loads(Path(plan["manifest"]).read_text())["objects"]
         installer = next(entry for entry in objects if entry["key"].endswith("install.sh"))
         self.assertEqual(installer["key"], "custom/releases/0.6.0/install.sh")
