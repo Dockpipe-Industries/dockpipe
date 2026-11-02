@@ -292,7 +292,7 @@ jobs:
           DOCKPIPE_ADAPTER_0: ${{ needs.meta.outputs.version }}
         run: python3 workflows/shared/launch.py workflows/build/desktop/smoke-release-macos.yml
 
-      - name: Stage Synology browser desktop bundle
+      - name: Package Synology desktop editions
         if: runner.os == 'Linux'
         env:
           RELEASE_VERSION: ${{ needs.meta.outputs.version }}
@@ -303,6 +303,11 @@ jobs:
             --cli-deb "$PWD/release/artifacts/dockpipe_${RELEASE_VERSION}_${arch}.deb" \
             --desktop-deb "$PWD/release/artifacts/dockpipe-desktop_${RELEASE_VERSION}_${arch}.deb" \
             --arch "$arch" --output-dir "$PWD/release/artifacts"
+          python3 workflows/shared/launch.py workflows/package/synology-desktop-spk/config.yml -- \
+            "$RELEASE_VERSION" "$arch" --binary "$PWD/src/bin/dockpipe" \
+            --cli-deb "$PWD/release/artifacts/dockpipe_${RELEASE_VERSION}_${arch}.deb" \
+            --desktop-deb "$PWD/release/artifacts/dockpipe-desktop_${RELEASE_VERSION}_${arch}.deb" \
+            --output "$PWD/release/artifacts"
 
       - name: Native CLI and workflow smoke test
         shell: bash

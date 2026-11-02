@@ -143,6 +143,7 @@ class ReleaseTests(unittest.TestCase):
                 synology_arch = "x64" if arch == "amd64" else "arm64"
                 names.append(f"dockpipe_{version}_synology_{synology_arch}.spk")
                 names.append(f"dockpipe-desktop_{version}_synology_{arch}.tar.gz")
+                names.append(f"dockpipe-desktop_{version}_synology_{synology_arch}.spk")
             elif platform.startswith("darwin"):
                 names += [f"dockpipe-desktop_{version}_{platform.replace('-', '_')}.{extension}"
                           for extension in ("dmg", "zip")]
@@ -156,8 +157,10 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(catalog["artifact_class"], "runtime")
         for architecture, label in (("amd64", "x64"), ("arm64", "arm64")):
             spk = f"dockpipe_{version}_synology_{label}.spk"
-            desktop = f"dockpipe-desktop_{version}_synology_{architecture}.tar.gz"
-            self.assertEqual(catalog["downloads"][f"synology-{label}"], {"cli": spk, "desktop": desktop})
+            desktop = f"dockpipe-desktop_{version}_synology_{label}.spk"
+            bundle = f"dockpipe-desktop_{version}_synology_{architecture}.tar.gz"
+            self.assertEqual(catalog["downloads"][f"synology-{label}"],
+                             {"cli": spk, "desktop": desktop, "desktop_bundle": bundle})
             self.assertIn(spk, (self.root / "SHA256SUMS.txt").read_text())
             self.assertIn(desktop, (self.root / "SHA256SUMS.txt").read_text())
         self.assertTrue(all(store["count"] == 1 for store in catalog["stores"].values()))
