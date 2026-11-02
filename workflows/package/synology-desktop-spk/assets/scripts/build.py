@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[5]
 ASSETS = Path(__file__).resolve().parents[1]
 DESKTOP_ASSETS = (
     "Dockerfile", "entrypoint.sh", "compose.yml", ".dockerignore",
-    "startwm.sh", "session.sh", "openbox.xml",
+    "desktop.py", "session.sh", "openbox.xml",
 )
 PACKAGE_SCRIPTS = (
     "preinst", "postinst", "preupgrade", "postupgrade", "preuninst", "postuninst", "start-stop-status",
@@ -71,11 +71,11 @@ def payload_checksum(path):
     return checksum.hexdigest()
 
 
-def package_info(version, architecture, checksum):
+def package_info(version, architecture, checksum, package_revision=1):
     fields = {
         "package": "dockpipe-desktop",
         "displayname": "Dockpipe",
-        "version": version + "-1",
+        "version": f"{version}-{package_revision}",
         "arch": CLI_PACKAGING.ARCHITECTURES[architecture][1],
         "os_min_ver": "7.2.1-69057",
         "maintainer": "Dockpipe Industries",
@@ -92,16 +92,20 @@ def package_info(version, architecture, checksum):
         "checkport": "yes",
         "silent_install": "no",
         "silent_upgrade": "yes",
+        "silent_uninstall": "no",
         "checksum": checksum,
     }
     return "".join(f'{key}="{value}"\n' for key, value in fields.items()).encode("utf-8")
 
 
-def build(version, architecture, binary, cli_deb, desktop_deb, output, webtop_image=DEFAULT_WEBTOP_IMAGE):
+def build(version, architecture, binary, cli_deb, desktop_deb, output, webtop_image=DEFAULT_WEBTOP_IMAGE,
+          package_revision=1):
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
         raise ValueError("Expected a numeric release version")
     if any(int(part) > 2**31 - 1 for part in version.split(".")):
         raise ValueError("Version exceeds DSM numeric field limits")
+    if type(package_revision) is not int or not 1 <= package_revision <= 2**31 - 1:
+        raise ValueError("Package revision must be a positive DSM build number")
     if architecture not in CLI_PACKAGING.ARCHITECTURES:
         raise ValueError("Expected amd64 or arm64 architecture")
     CLI_PACKAGING.validate_binary(binary, architecture)
@@ -113,7 +117,8 @@ def build(version, architecture, binary, cli_deb, desktop_deb, output, webtop_im
 
     output.mkdir(parents=True, exist_ok=True)
     label = CLI_PACKAGING.ARCHITECTURES[architecture][0]
-    destination = output / f"dockpipe-desktop_{version}_synology_{label}.spk"
+    suffix = "" if package_revision == 1 else f"_r{package_revision}"
+    destination = output / f"dockpipe-desktop_{version}_synology_{label}{suffix}.spk"
     with tempfile.TemporaryDirectory(prefix=".synology-desktop-", dir=output) as temporary:
         temporary = Path(temporary)
         payload = temporary / "package.tgz"
@@ -134,11 +139,12 @@ def build(version, architecture, binary, cli_deb, desktop_deb, output, webtop_im
         wizard_script = (ASSETS / "install_uifile.sh").read_text().replace("@INSTALL_WIZARD@", wizard)
         package = temporary / destination.name
         with tarfile.open(package, "w", format=tarfile.USTAR_FORMAT) as archive:
-            CLI_PACKAGING.add_bytes(archive, "INFO", package_info(version, architecture, payload_checksum(payload)))
+            CLI_PACKAGING.add_bytes(archive, "INFO", package_info(version, architecture, payload_checksum(payload), package_revision))
             CLI_PACKAGING.add_file(archive, "package.tgz", payload)
             CLI_PACKAGING.add_bytes(archive, "conf/privilege", (json.dumps(privilege, indent=2) + "\n").encode())
             CLI_PACKAGING.add_bytes(archive, "conf/resource", (json.dumps(resource, indent=2) + "\n").encode())
             CLI_PACKAGING.add_bytes(archive, "WIZARD_UIFILES/install_uifile.sh", wizard_script.encode(), 0o755)
+            CLI_PACKAGING.add_file(archive, "WIZARD_UIFILES/uninstall_uifile", ASSETS / "uninstall_uifile")
             for name in PACKAGE_SCRIPTS:
                 CLI_PACKAGING.add_bytes(archive, "scripts/" + name, control, 0o755)
             icons = ROOT / "src/dockpipe-app/resources/icons/hicolor"
@@ -157,11 +163,13 @@ def main():
     parser.add_argument("--desktop-deb", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--webtop-image", default=DEFAULT_WEBTOP_IMAGE)
+    parser.add_argument("--package-revision", type=int, default=1)
     arguments = parser.parse_args()
     try:
         destination = build(
             arguments.version, arguments.architecture, arguments.binary,
             arguments.cli_deb, arguments.desktop_deb, arguments.output, arguments.webtop_image,
+            arguments.package_revision,
         )
     except (ValueError, OSError, subprocess.SubprocessError) as error:
         parser.exit(1, f"Synology desktop packaging failed: {error}\n")

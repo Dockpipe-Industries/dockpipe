@@ -41,8 +41,6 @@ if [ "$username_lines" -ne 0 ] || [ "$password_lines" -ne 0 ] \
     exit 1
 fi
 
-# LinuxServer reads these references before starting its authenticated HTTPS service.
-export PUID PGID
-export FILE__CUSTOM_USER="$settings/username"
-export FILE__PASSWORD="$settings/password"
-exec /init "$@"
+# The DSM worker forces its package UID. Use the upstream session launcher
+# directly, without the root-only LinuxServer init/nginx setup.
+exec python3 /usr/local/lib/dockpipe-desktop/desktop.py "$@"

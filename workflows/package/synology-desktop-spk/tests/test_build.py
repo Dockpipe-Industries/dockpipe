@@ -38,6 +38,7 @@ class DesktopSpkTests(unittest.TestCase):
             (self.assets / "desktop" / name).write_text(f"fixture {name} @WEBTOP_IMAGE@ @ARCH@\n")
         (self.assets / "ui/config").write_text('{".url":{"com.dockpipe.Desktop":{"type":"url"}}}\n')
         (self.assets / "install_uifile").write_text('[{"headline":"Desktop credentials"}]\n')
+        (self.assets / "uninstall_uifile").write_text((PACKAGING.ASSETS / "uninstall_uifile").read_text())
         (self.assets / "install_uifile.sh").write_text("#!/bin/sh\ncat <<'JSON'\n@INSTALL_WIZARD@\nJSON\n")
         (self.assets / "scripts/package-control.sh").write_text('#!/bin/sh\ncase "${0##*/}" in\n*) exit 0;;\nesac\n')
         patcher = mock.patch.object(PACKAGING, "ASSETS", self.assets)
@@ -110,6 +111,12 @@ class DesktopSpkTests(unittest.TestCase):
                         "name": "dockpipe-desktop", "path": "desktop",
                         "build_params": {"force_recreate": True, "build": True},
                     }]}})
+                    self.assertIn('silent_uninstall="no"', info)
+                    removal = json.load(archive.extractfile("WIZARD_UIFILES/uninstall_uifile"))
+                    choice = removal[0]["items"][1]["subitems"][0]
+                    self.assertEqual(choice["key"], "wizard_uninstall_data")
+                    self.assertEqual(choice["defaultValue"], "keep")
+                    self.assertEqual([row[1] for row in choice["store"]["data"]], ["keep", "delete"])
                     wizard = archive.extractfile("WIZARD_UIFILES/install_uifile.sh").read()
                     rendered = subprocess.run(["sh"], input=wizard, capture_output=True, check=True)
                     self.assertEqual(json.loads(rendered.stdout), [{"headline": "Desktop credentials"}])
@@ -141,6 +148,15 @@ class DesktopSpkTests(unittest.TestCase):
                         self.assertIn(architecture, dockerfile)
                         self.assertNotIn("@ARCH@", dockerfile)
                         self.assertNotIn("@WEBTOP_IMAGE@", dockerfile)
+
+    def test_packaging_repair_revision_upgrades_without_rebuilding_product_debs(self):
+        package = self.build(package_revision=2)
+        self.assertEqual(package.name, "dockpipe-desktop_1.2.3_synology_x64_r2.spk")
+        with tarfile.open(package) as archive:
+            self.assertIn('version="1.2.3-2"', archive.extractfile("INFO").read().decode())
+        for revision in (0, -1, 2**31, True, "2"):
+            with self.subTest(revision=revision), self.assertRaisesRegex(ValueError, "Package revision"):
+                self.build(package_revision=revision)
 
     def test_archive_bytes_and_metadata_are_reproducible(self):
         destination = self.build()
