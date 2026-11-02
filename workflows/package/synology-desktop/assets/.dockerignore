@@ -1,0 +1,5 @@
+*
+!Dockerfile
+!packages/
+!packages/cli.deb
+!packages/desktop.deb

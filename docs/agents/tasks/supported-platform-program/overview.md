@@ -53,6 +53,27 @@ Create the canonical matrix schema and inventory current claims/evidence only. L
 owning task and mark unknowns honestly. Do not implement compatibility fixes, add CI, run live hosts
 or VMs, publish artifacts, or promote support claims in this slice.
 
+## Experimental Synology artifacts (2026-11-02)
+
+The user authorized DSM 7+ x64/arm64 CLI SPKs and the full GUI through a browser
+desktop container, with NAS testing before any SynoCommunity submission. The
+release workflow now stages both SPKs and matching GUI project bundles, requires
+them during assembly, and includes them in the download catalog and checksums.
+The GUI bundle reuses released Linux DEBs with a pinned multiarchitecture Ubuntu
+Webtop base; it does not port Qt to DSM or change engine/package ownership.
+
+Local proof includes cross-built CLI SPKs, extraction and a real x64 host workflow,
+packaging/release contract tests, and an x64 container build from checksum-verified
+0.6.35 staging DEBs. The container GUI's installation check and a real host workflow
+pass. HTTPS rejects missing/incorrect credentials; after user sign-in, the streamed
+Qt window, native menu interaction and embedded browser rendering were observed.
+GUI-launched workflow jobs, native arm64 execution, DSM install/upgrade/removal,
+NAS workload compatibility and hosted release execution remain separate evidence.
+No release or community submission was made. See the current
+[Synology installation and acceptance guide](../../../install-synology.md),
+[SPK producer](../../../../workflows/package/synology/README.md) and
+[browser desktop producer](../../../../workflows/package/synology-desktop/README.md).
+
 ## 0.6 release implementation progress
 
 The user authorized a cross-platform release pipeline. It now builds native Linux amd64/arm64, macOS Intel/Apple Silicon, and Windows amd64 artifacts plus separate native package stores. Linux formats are DEB/RPM/APK/Arch and tarball; Windows ZIP/MSI; macOS tarball. Signed APT and versioned R2 publication are implemented, with a credential-free dry-run lane. Host-workflow smoke checks run per target; local Linux package generation and APT tests are distinct from the still-pending hosted matrix and downstream distro/hardware qualification. The initial pipeline excluded Flatpak; the 2026-10-08 scope below supersedes that decision.

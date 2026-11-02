@@ -292,6 +292,18 @@ jobs:
           DOCKPIPE_ADAPTER_0: ${{ needs.meta.outputs.version }}
         run: python3 workflows/shared/launch.py workflows/build/desktop/smoke-release-macos.yml
 
+      - name: Stage Synology browser desktop bundle
+        if: runner.os == 'Linux'
+        env:
+          RELEASE_VERSION: ${{ needs.meta.outputs.version }}
+        shell: bash
+        run: |
+          arch="$(dpkg --print-architecture)"
+          python3 workflows/shared/launch.py workflows/package/synology-desktop/config.yml -- \
+            --cli-deb "$PWD/release/artifacts/dockpipe_${RELEASE_VERSION}_${arch}.deb" \
+            --desktop-deb "$PWD/release/artifacts/dockpipe-desktop_${RELEASE_VERSION}_${arch}.deb" \
+            --arch "$arch" --output-dir "$PWD/release/artifacts"
+
       - name: Native CLI and workflow smoke test
         shell: bash
         run: python3 workflows/shared/launch.py workflows/ci/runtime/smoke-release-unix.yml
@@ -543,6 +555,7 @@ jobs:
             release/artifacts/*.apk
             release/artifacts/*.rpm
             release/artifacts/*.pkg.tar.zst
+            release/artifacts/*.spk
             release/artifacts/*.sha256
             release/artifacts/release-manifest.json
             release/artifacts/install-manifest.json
@@ -637,6 +650,7 @@ jobs:
             release/artifacts/*.apk
             release/artifacts/*.rpm
             release/artifacts/*.pkg.tar.zst
+            release/artifacts/*.spk
             release/artifacts/*.sha256
             release/artifacts/release-manifest.json
             release/artifacts/install-manifest.json

@@ -140,6 +140,9 @@ class ReleaseTests(unittest.TestCase):
                 arch = platform.split("-")[1]
                 names += [f"dockpipe_{version}_{arch}.deb", f"dockpipe-desktop_{version}_{arch}.deb"]
                 names += [f"dockpipe_{version}_linux_{arch}.{ext}" for ext in ("rpm", "apk", "pkg.tar.zst")]
+                synology_arch = "x64" if arch == "amd64" else "arm64"
+                names.append(f"dockpipe_{version}_synology_{synology_arch}.spk")
+                names.append(f"dockpipe-desktop_{version}_synology_{arch}.tar.gz")
             elif platform.startswith("darwin"):
                 names += [f"dockpipe-desktop_{version}_{platform.replace('-', '_')}.{extension}"
                           for extension in ("dmg", "zip")]
@@ -151,12 +154,24 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(catalog["source_sha"], "a" * 40)
         self.assertEqual(catalog["channel"], "staging")
         self.assertEqual(catalog["artifact_class"], "runtime")
+        for architecture, label in (("amd64", "x64"), ("arm64", "arm64")):
+            spk = f"dockpipe_{version}_synology_{label}.spk"
+            desktop = f"dockpipe-desktop_{version}_synology_{architecture}.tar.gz"
+            self.assertEqual(catalog["downloads"][f"synology-{label}"], {"cli": spk, "desktop": desktop})
+            self.assertIn(spk, (self.root / "SHA256SUMS.txt").read_text())
+            self.assertIn(desktop, (self.root / "SHA256SUMS.txt").read_text())
         self.assertTrue(all(store["count"] == 1 for store in catalog["stores"].values()))
         expected = artifacts_module.digest(self.root / "release-manifest.json")
         self.assertIn(expected + "  release-manifest.json", (self.root / "SHA256SUMS.txt").read_text())
         with self.assertRaises(ValueError):
             artifacts_module.prepare(self.root, version, candidate, "b" * 40)
         self.assertEqual(catalog["downloads"]["darwin-arm64"]["desktop"], "dockpipe-desktop_0.6.0_darwin_arm64.dmg")
+        spk = self.root / "dockpipe_0.6.0_synology_arm64.spk"
+        saved = spk.read_bytes()
+        spk.unlink()
+        with self.assertRaisesRegex(ValueError, "Missing release artifact"):
+            artifacts_module.prepare(self.root, version, candidate, "a" * 40)
+        spk.write_bytes(saved)
         (self.root / "dockpipe-desktop_0.6.0_darwin_arm64.dmg").unlink()
         with self.assertRaisesRegex(ValueError, "Missing release artifact"):
             artifacts_module.prepare(self.root, version, candidate, "a" * 40)
