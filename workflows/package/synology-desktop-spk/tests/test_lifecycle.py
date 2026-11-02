@@ -45,7 +45,7 @@ class PackageLifecycleTests(unittest.TestCase):
         }
         self.fake_tools = self.root / "probe tools"
         self.fake_tools.mkdir()
-        self.write_tool("curl", '#!/bin/sh\nprintf "%s" "${FIXTURE_HTTP_CODE:-401}"\nexit "${FIXTURE_CURL_EXIT:-0}"\n')
+        self.write_tool("curl", '#!/bin/sh\ncase "$*" in\n*remote_ip*) printf "%s" "${FIXTURE_REMOTE_IP:-}";;\n*) printf "%s" "${FIXTURE_HTTP_CODE:-401}";;\nesac\nexit "${FIXTURE_CURL_EXIT:-0}"\n')
         self.environment["PATH"] = str(self.fake_tools) + os.pathsep + os.environ["PATH"]
 
     def write_tool(self, name, content):
@@ -157,6 +157,146 @@ class PackageLifecycleTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0)
                 self.assertEqual(self.snapshot(), before)
 
+    def test_upgrade_finds_persistent_settings_after_package_link_removal(self):
+        self.install()
+        volume = self.root / "DSM volume"
+        persistent_home = volume / "@apphome/dockpipe-desktop"
+        persistent_home.parent.mkdir(parents=True)
+        self.home.rename(persistent_home)
+        persistent_data = volume / "@appdata/dockpipe-desktop"
+        persistent_data.parent.mkdir(parents=True)
+        self.data.rename(persistent_data)
+        before = {p.name: p.read_bytes() for p in (persistent_home / "desktop-settings").iterdir()}
+        environment = {
+            "SYNOPKG_PKGDEST_VOL": str(volume), "SYNOPKG_PKG_STATUS": "UPGRADE",
+            "wizard_username": "", "wizard_password": "", "wizard_password_confirm": "",
+        }
+        for action in ("preinst", "postinst", "postupgrade"):
+            with self.subTest(action=action):
+                result = self.run_action(action, overrides=environment)
+                self.assertEqual(result.returncode, 0, result.stderr)
+        after = {p.name: p.read_bytes() for p in (persistent_home / "desktop-settings").iterdir()}
+        self.assertEqual(after, before)
+        self.assertFalse(self.home.exists())
+
+    def test_upgrade_missing_saved_state_does_not_request_install_wizard_credentials(self):
+        result = self.run_action("preinst", overrides={
+            "SYNOPKG_PKG_STATUS": "UPGRADE", "wizard_username": "",
+            "wizard_password": "", "wizard_password_confirm": "",
+        })
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Saved Dockpipe settings are unavailable during upgrade", result.stderr)
+        self.assertNotIn("installation wizard", result.stderr)
+
+    def test_reinstall_refreshes_stale_package_identity_without_changing_sign_in(self):
+        self.install()
+        password = (self.settings / "password").read_bytes()
+        username = (self.settings / "username").read_bytes()
+        (self.settings / "uid").write_text("54321")
+        (self.settings / "gid").write_text("54322")
+        result = self.run_action("postinst")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.settings / "uid").read_text(), str(os.getuid()))
+        self.assertEqual((self.settings / "gid").read_text(), str(os.getgid()))
+        self.assertEqual((self.settings / "password").read_bytes(), password)
+        self.assertEqual((self.settings / "username").read_bytes(), username)
+        self.assertFalse(list(self.home.glob(".desktop-identity.*")))
+
+    def prepare_uninstall_storage(self):
+        self.install()
+        volume = self.root / "DSM volume"
+        home = volume / "@apphome/dockpipe-desktop"
+        data = volume / "@appdata/dockpipe-desktop"
+        home.parent.mkdir(parents=True)
+        data.parent.mkdir(parents=True)
+        self.home.rename(home)
+        self.data.rename(data)
+        self.home, self.data = home, data
+        self.settings = home / "desktop-settings"
+        self.environment["SYNOPKG_PKGDEST_VOL"] = str(volume)
+        (data / "workspace").mkdir()
+        (data / "workspace/result").write_text("retained project")
+
+    def test_uninstall_keep_and_upgrade_delete_choice_preserve_all_data(self):
+        self.prepare_uninstall_storage()
+        before = self.snapshot()
+        for status, choice in [("UNINSTALL", "keep"), ("UPGRADE", "delete"), ("", "delete")]:
+            result = self.run_action("postuninst", overrides={
+                "SYNOPKG_PKG_STATUS": status, "wizard_uninstall_data": choice,
+            })
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(self.snapshot(), before)
+        self.assertEqual(self.run_action("postuninst", overrides={"SYNOPKG_PKG_STATUS": "UNINSTALL"}).returncode, 0)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_explicit_full_uninstall_removes_only_owned_contents_and_keeps_external_symlink_target(self):
+        self.prepare_uninstall_storage()
+        external = self.root / "unrelated workspace"
+        external.mkdir()
+        (external / "keep").write_text("unrelated")
+        (self.data / "external link").symlink_to(external, target_is_directory=True)
+        for attempt in range(2):
+            with self.subTest(attempt=attempt):
+                result = self.run_action("postuninst", overrides={
+                    "SYNOPKG_PKG_STATUS": "UNINSTALL", "wizard_uninstall_data": "delete",
+                })
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(list(self.home.iterdir()), [])
+                self.assertEqual(list(self.data.iterdir()), [])
+                self.assertEqual((external / "keep").read_text(), "unrelated")
+
+    def test_full_uninstall_retains_data_if_service_port_is_still_active(self):
+        self.prepare_uninstall_storage()
+        before = self.snapshot()
+        result = self.run_action("postuninst", overrides={
+            "SYNOPKG_PKG_STATUS": "UNINSTALL", "wizard_uninstall_data": "delete",
+            "FIXTURE_REMOTE_IP": "127.0.0.1",
+        })
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("still active", result.stderr)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_keep_data_uninstall_also_reports_a_port_left_active(self):
+        self.prepare_uninstall_storage()
+        before = self.snapshot()
+        result = self.run_action("postuninst", overrides={
+            "SYNOPKG_PKG_STATUS": "UNINSTALL", "wizard_uninstall_data": "keep",
+            "FIXTURE_REMOTE_IP": "127.0.0.1",
+        })
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("still active", result.stderr)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_full_uninstall_rejects_symbolic_link_root_before_any_data_removal(self):
+        self.prepare_uninstall_storage()
+        saved = self.data.with_name("retained data")
+        self.data.rename(saved)
+        self.data.symlink_to(saved, target_is_directory=True)
+        credential = (self.settings / "password").read_bytes()
+        result = self.run_action("postuninst", overrides={
+            "SYNOPKG_PKG_STATUS": "UNINSTALL", "wizard_uninstall_data": "delete",
+        })
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((self.settings / "password").read_bytes(), credential)
+        self.assertTrue((saved / "workspace/result").exists())
+
+    def test_full_uninstall_checks_find_support_before_framework_removal(self):
+        self.prepare_uninstall_storage()
+        before = self.snapshot()
+        self.write_tool("find", "#!/bin/sh\nexit 1\n")
+        result = self.run_action("preuninst", overrides={
+            "SYNOPKG_PKG_STATUS": "UNINSTALL", "wizard_uninstall_data": "delete",
+        })
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("does not support", result.stderr)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_invalid_uninstall_choice_is_rejected_before_framework_removal(self):
+        result = self.run_action("preuninst", overrides={
+            "SYNOPKG_PKG_STATUS": "UNINSTALL", "wizard_uninstall_data": "unexpected",
+        })
+        self.assertNotEqual(result.returncode, 0)
+
     def test_symlinked_settings_directory_and_files_fail_closed(self):
         self.install()
         saved = self.home / "saved settings"
@@ -253,9 +393,10 @@ class InstallWizardTests(unittest.TestCase):
         self.script.write_text(template.replace("@INSTALL_WIZARD@", wizard))
         self.script.chmod(0o700)
 
-    def render(self):
+    def render(self, overrides=None):
         result = subprocess.run([str(self.script)], env={
             **os.environ, "SYNOPKG_PKGHOME": str(self.home), "SYNOPKG_TEMP_LOGFILE": str(self.output),
+            **(overrides or {}),
         }, capture_output=True, text=True, timeout=5)
         self.assertEqual(result.returncode, 0)
         return json.loads(self.output.read_text())
@@ -276,6 +417,15 @@ class InstallWizardTests(unittest.TestCase):
         for key in ("wizard_username", "wizard_password"):
             expression = fields[key][1]["validator"]["regex"]["expr"]
             self.assertTrue(expression.startswith("/^") and expression.endswith("$/"))
+
+    def test_restore_wizard_uses_persistent_home_when_old_package_link_is_absent(self):
+        volume = self.root / "DSM volume"
+        settings = volume / "@apphome/dockpipe-desktop/desktop-settings"
+        settings.mkdir(parents=True)
+        self.home.rmdir()
+        wizard = self.render({"SYNOPKG_PKGDEST_VOL": str(volume)})
+        self.assertIn("retained", json.dumps(wizard))
+        self.assertNotIn("wizard_password", json.dumps(wizard))
 
     def test_existing_settings_render_restore_message_without_credential_fields(self):
         (self.home / "desktop-settings").mkdir(mode=0o700)

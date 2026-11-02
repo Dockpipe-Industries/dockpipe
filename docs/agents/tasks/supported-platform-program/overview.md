@@ -86,6 +86,15 @@ authenticated HTTPS. On x64, the packaged session opened Dockpipe directly,
 ran a workflow through the GUI and retained working authentication after a
 container restart. ARM64 archive production passed; native ARM64 execution and
 actual DSM lifecycle acceptance remain pending.
+Hardware feedback confirmed CLI installation, but combined 0.6.37-1 failed to
+start: DSM's Docker Project worker forced the unprivileged package UID, while
+Webtop init required root to configure nginx. The packaging repair uses the
+pinned streamer's native unprivileged session/HTTPS/authentication path and
+process-local UID mapping. A revision-2 upgrade candidate is being qualified
+against that worker constraint before further NAS acceptance. Local repair proof
+passed 26 producer/lifecycle/runtime checks, authenticated page/asset/API/WebSocket
+checks and a real GUI-launched workflow under an arbitrary unprivileged UID with
+capabilities dropped except NET_BIND_SERVICE and no-new-privileges enabled.
 See the [combined producer](../../../../workflows/package/synology-desktop-spk/README.md)
 and the current
 [Synology installation and acceptance guide](../../../install-synology.md),
@@ -153,3 +162,14 @@ Still open: native Bazzite, Podman/SELinux, arm64, signed/updating Flatpak remot
 production Flatpak publication and authenticated/provider or VM end-to-end parity. Package
 availability checks do not prove every workflow on every host. See the canonical
 build contract for current test boundaries and host prerequisites.
+
+Synology repair follow-up: hardware upgrade feedback exposed preinst falling back
+to wizard inputs after DSM removed the old package links. Revision 3 resolves
+persistent home/data paths from DSM's install volume and tests the missing-link,
+no-wizard upgrade sequence. NAS upgrade/startup and port cleanup remain pending.
+
+Synology uninstall repair adds an explicit keep/delete saved-data wizard, with
+keep as default. Only real uninstall plus explicit deletion purges owned data;
+upgrade/default callbacks retain it. Simulated destructive-boundary checks cover
+symlink isolation, idempotence and retaining data when the service port is live.
+DSM-managed orphan project recovery and on-NAS uninstall cleanup remain unproven.

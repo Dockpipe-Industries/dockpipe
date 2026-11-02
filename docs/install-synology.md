@@ -17,6 +17,11 @@ package source is required.
 
 ## Combined GUI + CLI installation
 
+Combined build **0.6.37-1** has a confirmed DSM startup bug: the package worker
+forces an unprivileged container UID while that build's Webtop init requires root.
+A packaging repair is undergoing NAS acceptance; use the corrected candidate
+rather than repeatedly reinstalling that build. CLI-only installation is unaffected.
+
 Install Container Manager 20.10.23-1437 or newer on a model supporting it, then
 manually install the combined SPK. Choose your Dockpipe sign-in in the installation
 wizard. Building the application downloads components and can take several minutes.
@@ -31,8 +36,10 @@ Do not forward this desktop port directly to the Internet. A single installation
 has one shared desktop and workspace. The DSM launcher is initially admin-only.
 
 Settings, sign-in and workspace data persist across upgrades/reinstall. Reinstall
-does not reset the password or erase the workspace. Normal uninstall removes the
-project/package but package scripts retain private data. Native commands are at
+does not reset the password or erase the workspace. Corrected builds offer an
+uninstall choice: keep saved data (default), or permanently delete all Dockpipe
+settings and workspace data. Upgrades always retain data. DSM owns project and
+container removal in either case; hardware cleanup acceptance remains pending. Native commands are at
 `/var/packages/dockpipe-desktop/target/bin/dockpipe`; the GUI uses its own matching
 CLI inside the managed application environment.
 

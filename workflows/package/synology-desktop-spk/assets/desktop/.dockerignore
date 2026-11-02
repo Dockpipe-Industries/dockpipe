@@ -1,7 +1,7 @@
 *
 !Dockerfile
 !entrypoint.sh
-!startwm.sh
+!desktop.py
 !session.sh
 !openbox.xml
 !packages/
