@@ -1,0 +1,19 @@
+services:
+  dockpipe-desktop:
+    build:
+      context: .
+      args:
+        WEBTOP_IMAGE: "@WEBTOP_IMAGE@"
+    platform: linux/@ARCH@
+    environment:
+      CUSTOM_USER: ${CUSTOM_USER:?Set CUSTOM_USER in the private .env file}
+      PASSWORD: ${PASSWORD:?Set PASSWORD in the private .env file}
+      PUID: ${PUID:?Set PUID to the NAS user ID owning the config directory}
+      PGID: ${PGID:?Set PGID to the NAS group ID owning the config directory}
+      TZ: ${TZ:-Etc/UTC}
+    volumes:
+      - ./config:/config
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${HTTPS_PORT:-3001}:3001"
+    shm_size: 1gb
+    restart: unless-stopped
