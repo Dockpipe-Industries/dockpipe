@@ -27,10 +27,13 @@ valid_password() {
 }
 
 validate_saved_settings() {
-    [ -d "$settings" ] && [ ! -L "$settings" ] || fail 'Dockpipe private settings are unavailable.'
+    if [ ! -d "$settings" ] || [ -L "$settings" ]; then
+        fail 'Dockpipe private settings are unavailable.'
+    fi
     for name in username password uid gid; do
-        [ -f "$settings/$name" ] && [ ! -L "$settings/$name" ] \
-            || fail 'Dockpipe private settings are incomplete.'
+        if [ ! -f "$settings/$name" ] || [ -L "$settings/$name" ]; then
+            fail 'Dockpipe private settings are incomplete.'
+        fi
     done
     for name in username password; do
         lines=$(wc -l < "$settings/$name" | tr -d ' ')
@@ -61,12 +64,14 @@ install_settings() {
         return
     fi
     validate_wizard
-    [ -d "$package_home" ] && [ ! -L "$package_home/desktop-settings" ] \
-        || fail 'DSM has not prepared the private package home.'
+    if [ ! -d "$package_home" ] || [ -L "$package_home/desktop-settings" ]; then
+        fail 'DSM has not prepared the private package home.'
+    fi
     package_uid=$(id -u)
     package_gid=$(id -g)
-    [ "$package_uid" -ne 0 ] && [ "$package_gid" -ne 0 ] \
-        || fail 'Dockpipe setup must run as its package account.'
+    if [ "$package_uid" -eq 0 ] || [ "$package_gid" -eq 0 ]; then
+        fail 'Dockpipe setup must run as its package account.'
+    fi
     temporary=$(mktemp -d "$package_home/.desktop-settings.XXXXXX")
     cleanup_settings() {
         if [ -n "${temporary:-}" ]; then
