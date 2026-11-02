@@ -52,8 +52,8 @@ and CLI remain their existing implementations; no GUI/runtime boundaries change.
 
 GUI state is bound to DSM's persistent package `var`; private settings are in
 `home`. Both follow the [DSM FHS](https://help.synology.com/developer-guide/integrate_dsm/fhs.html),
-whose framework-managed paths survive upgrades. Scripts do not delete retained
-state on uninstall. The package requests 1 GiB shared memory, exposes only its
+whose framework-managed paths survive upgrades. Uninstall retains that state by
+default; the explicit full-removal choice deletes it. The package requests 1 GiB shared memory, exposes only its
 authenticated HTTPS port and mounts no arbitrary NAS shares or Docker socket.
 It is one shared desktop per installation, not a separate session for every DSM
 user. DSM administrator launcher visibility and Dockpipe sign-in are separate.
