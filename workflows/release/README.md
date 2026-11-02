@@ -13,6 +13,14 @@ stages a matching browser desktop project bundle for each CPU, using the same
 CLI and desktop DEBs and a pinned Ubuntu Webtop base. Assembly also requires these
 bundles. Hardware acceptance and SynoCommunity submission are separate steps.
 
+The primary Synology desktop download is the combined
+[`synology-desktop-spk`](../package/synology-desktop-spk/README.md) package: native
+CLI, DSM launcher/wizard and a Container Manager project governed by Package
+Center. It requires DSM 7.2.1+; the CLI-only edition retains DSM 7+. Assembly requires
+both combined SPKs as well as the existing portable GUI bundles. The catalog's
+`desktop` entry selects the combined SPK; `desktop_bundle` retains the advanced
+Compose bundle. No Synology behavior is added to the engine.
+
 Version allocation, release-notes headers and final artifact validation belong to `release/metadata`. SDK and CLI candidate publication retain their own immutable artifact validators. Shared GitHub release transaction behavior lives under `publish/shared`; APT, R2, Homebrew and release articles have separate owners.
 
 The released bootstrap is pinned by `shared/bootstrap.lock.json`, independently of the produced CLI. Make and GitHub Actions launch these workflows and retain event, platform and secret-reference configuration. Defining a publisher does not upload an artifact; publication remains gated by its concrete release workflow.

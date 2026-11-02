@@ -1,0 +1,11 @@
+name: package-synology-desktop-spk
+description: Package the native CLI and managed browser desktop into one DSM package.
+docker_preflight: false
+steps:
+  - id: package
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/package/synology-desktop-spk/assets/scripts/build.py

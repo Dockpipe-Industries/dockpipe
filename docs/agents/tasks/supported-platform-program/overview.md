@@ -69,7 +69,25 @@ pass. HTTPS rejects missing/incorrect credentials; after user sign-in, the strea
 Qt window, native menu interaction and embedded browser rendering were observed.
 GUI-launched workflow jobs, native arm64 execution, DSM install/upgrade/removal,
 NAS workload compatibility and hosted release execution remain separate evidence.
-No release or community submission was made. See the current
+The initial CLI/portable-GUI artifacts were subsequently published as staging
+`0.6.36-staging.41416259425.1.067d543e3597` from source `067d543e35974f4ce7da46a8be788533dc0b9857`.
+All hosted build/assembly/publication jobs passed and four GitHub download
+assets matched the published catalog and SHA-256 checksums. No community
+submission was made.
+
+The next user-directed slice adds a combined GUI + CLI SPK with a DSM launcher,
+credential wizard and Package Center lifecycle through the official Container
+Manager Docker Project worker. It retains the CLI-only edition and portable GUI
+bundle. This combined installer remains subject to DSM 7.2.1+ hardware acceptance;
+container execution and simulated package scripts do not qualify that boundary.
+Local combined-package proof passed for archive admission/reproducibility, wizard
+and retained-state lifecycle scripts, fail-closed missing/root identities and
+authenticated HTTPS. On x64, the packaged session opened Dockpipe directly,
+ran a workflow through the GUI and retained working authentication after a
+container restart. ARM64 archive production passed; native ARM64 execution and
+actual DSM lifecycle acceptance remain pending.
+See the [combined producer](../../../../workflows/package/synology-desktop-spk/README.md)
+and the current
 [Synology installation and acceptance guide](../../../install-synology.md),
 [SPK producer](../../../../workflows/package/synology/README.md) and
 [browser desktop producer](../../../../workflows/package/synology-desktop/README.md).

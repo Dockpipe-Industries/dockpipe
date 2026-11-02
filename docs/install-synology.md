@@ -1,18 +1,45 @@
 # Dockpipe on Synology (experimental)
 
-Releases include manually installable CLI SPKs for **DSM 7+**, pending NAS
-qualification. Download the matching artifact and `SHA256SUMS.txt` from the same
-release and verify the SPK's SHA-256 before installing:
+Choose **Dockpipe CLI** for SSH/remote workers, or **Dockpipe** for the combined
+browser GUI and CLI. Both are manually installable SPKs, pending NAS qualification.
+Download the matching artifact and `SHA256SUMS.txt` from the same release and verify
+the SPK's SHA-256 before installing:
 
-| NAS CPU | Artifact | DSM architecture family |
+| NAS CPU | CLI only (DSM 7+) | GUI + CLI (DSM 7.2.1+) |
 | --- | --- | --- |
-| Intel/AMD 64-bit | `dockpipe_VERSION_synology_x64.spk` | `x86_64` |
-| ARM 64-bit | `dockpipe_VERSION_synology_arm64.spk` | `armv8` |
+| Intel/AMD 64-bit | `dockpipe_VERSION_synology_x64.spk` | `dockpipe-desktop_VERSION_synology_x64.spk` |
+| ARM 64-bit | `dockpipe_VERSION_synology_arm64.spk` | `dockpipe-desktop_VERSION_synology_arm64.spk` |
 
 These packages do not support 32-bit ARM. Check your model's CPU architecture
 and DSM version before installing. Select **Package Center → Manual Install**
 and choose the SPK. DSM displays a third-party package warning. No SynoCommunity
 package source is required.
+
+## Combined GUI + CLI installation
+
+Install Container Manager 20.10.23-1437 or newer on a model supporting it, then
+manually install the combined SPK. Choose your Dockpipe sign-in in the installation
+wizard. Building the application downloads components and can take several minutes.
+After installation, select **Open** in Package Center or the **Dockpipe** icon in
+DSM. Package Center owns start/stop and the application starts automatically with
+its desktop session; no Compose file or shell setup is required.
+
+Use your separate Dockpipe sign-in to enter the browser GUI. This is not DSM SSO.
+The first connection uses a self-signed HTTPS certificate on port 38139; confirm
+the intended NAS endpoint before trusting it, or configure a trusted reverse proxy.
+Do not forward this desktop port directly to the Internet. A single installation
+has one shared desktop and workspace. The DSM launcher is initially admin-only.
+
+Settings, sign-in and workspace data persist across upgrades/reinstall. Reinstall
+does not reset the password or erase the workspace. Normal uninstall removes the
+project/package but package scripts retain private data. Native commands are at
+`/var/packages/dockpipe-desktop/target/bin/dockpipe`; the GUI uses its own matching
+CLI inside the managed application environment.
+
+The installation/startup flow must still be qualified on actual DSM hardware.
+Local container tests do not establish Synology package-framework acceptance.
+
+## CLI-only installation
 
 Enable SSH in DSM for terminal testing, then run as your normal NAS user:
 
@@ -35,7 +62,7 @@ tools are needed only by workflows using them. Run test workflows in a new
 writable folder and verify required tools first. Installing the SPK does not
 grant access to NAS shared folders or the Docker socket.
 
-## GUI in a browser on the NAS
+## Portable GUI bundle (advanced)
 
 Releases also contain `dockpipe-desktop_VERSION_synology_amd64.tar.gz` and
 `dockpipe-desktop_VERSION_synology_arm64.tar.gz`. These are Container Manager
@@ -60,9 +87,9 @@ Container startup, browser interaction and NAS acceptance are separate checks.
 
 ## Desktop GUI controlling a NAS worker
 
-The current Dockpipe GUI is a native Qt desktop application. This SPK does not
-include a DSM browser GUI. Existing Linux desktop DEBs target Debian/Ubuntu and
-must not be installed on DSM.
+The current Dockpipe GUI is a native Qt desktop application. The CLI-only SPK
+does not include it. The combined SPK provides its own managed application
+environment; existing Linux desktop DEBs must not be installed directly on DSM.
 
 To use the existing GUI with the NAS, install Dockpipe Desktop on a supported
 computer and use the NAS CLI as a remote worker. Follow the
@@ -96,8 +123,13 @@ Record the model, CPU, DSM version and exact release checksum. Test:
    Dockpipe, open a project in the container, execute a host workflow and inspect
    its logs. Restart the container and verify settings/project persistence. Test
    a bundle upgrade with a copy of the persistent state before using real work.
+7. For the combined SPK, verify wizard validation, image preparation, DSM icon/
+   Open navigation, direct GUI launch, Package Center start/stop and startup after
+   reboot. Verify unavailable/unauthenticated service status, then upgrade and
+   reinstall with a copy of saved state. Confirm credentials/workspace are retained.
 
-Package Center manages package files; per-user state and working directories
-belong to the account that ran Dockpipe and are not deleted by package scripts.
+Package Center manages package files. CLI-only state belongs to the account that
+ran Dockpipe; combined-edition private settings and GUI workspace use the package's
+persistent home/var. Package scripts do not delete these retained files.
 Local archive checks cannot establish these NAS results. SynoCommunity submission
 should follow successful hardware testing.

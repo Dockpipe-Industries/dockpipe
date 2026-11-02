@@ -17,7 +17,7 @@ its environment; this source guide defaults to production.
 | Ubuntu 24.04 arm64 | `dockpipe-desktop` DEB plus `dockpipe`; glibc 2.39 or newer | `dockpipe` DEB |
 | Linux amd64 with Flatpak | Combined GUI and CLI bundle, KDE Platform 6.10 | Bundled CLI via `flatpak run`; native packages are separate |
 | Other Linux distributions | See Flatpak requirements and qualification limits | RPM, APK, Arch or portable archive matching your CPU |
-| Synology DSM 7+ x64 / arm64 (experimental) | [Browser desktop container bundle](install-synology.md#gui-in-a-browser-on-the-nas) on models with Container Manager | [Manually installable SPK](install-synology.md); NAS qualification pending |
+| Synology x64 / arm64 (experimental) | [GUI + CLI SPK](install-synology.md#combined-gui--cli-installation), DSM 7.2.1+ with Container Manager | [CLI-only SPK](install-synology.md#cli-only-installation), DSM 7+; NAS qualification pending |
 
 Native host inline commands use Windows PowerShell on Windows and Bash on
 Linux/macOS. Host `.sh` scripts and environment-sourcing setup scripts require

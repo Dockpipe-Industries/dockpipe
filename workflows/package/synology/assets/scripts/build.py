@@ -107,7 +107,7 @@ def build(version, architecture, binary, output):
                 checksum.update(block)
         fields = {
             'package': 'dockpipe',
-            'displayname': 'Dockpipe',
+            'displayname': 'Dockpipe CLI',
             'version': version + '-1',
             'arch': dsm_architecture,
             'os_min_ver': '7.0-40000',
