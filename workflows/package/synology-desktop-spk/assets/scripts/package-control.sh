@@ -200,7 +200,7 @@ remove_saved_data() {
 
 is_ready() {
     code=$(curl --silent --insecure --output /dev/null --write-out '%{http_code}' \
-        --connect-timeout 2 --max-time 3 https://127.0.0.1:38139/) || return 1
+        --connect-timeout 2 --max-time 3 https://127.0.0.1:38139/webman/3rdparty/dockpipe-desktop/desktop/) || return 1
     # This read-only loopback probe accepts only the authentication gate.
     [ "$code" = 401 ]
 }

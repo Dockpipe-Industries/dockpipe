@@ -144,6 +144,8 @@ class ReleaseTests(unittest.TestCase):
                 names.append(f"dockpipe_{version}_synology_{synology_arch}.spk")
                 names.append(f"dockpipe-desktop_{version}_synology_{arch}.tar.gz")
                 names.append(f"dockpipe-desktop_{version}_synology_{synology_arch}.spk")
+                names.append(f"dockpipe-desktop_{version}_synology_{synology_arch}_offline.spk")
+                names.append(f"dockpipe-desktop_{version}_synology_{synology_arch}.image.json")
             elif platform.startswith("darwin"):
                 names += [f"dockpipe-desktop_{version}_{platform.replace('-', '_')}.{extension}"
                           for extension in ("dmg", "zip")]
@@ -160,7 +162,9 @@ class ReleaseTests(unittest.TestCase):
             desktop = f"dockpipe-desktop_{version}_synology_{label}.spk"
             bundle = f"dockpipe-desktop_{version}_synology_{architecture}.tar.gz"
             self.assertEqual(catalog["downloads"][f"synology-{label}"],
-                             {"cli": spk, "desktop": desktop, "desktop_bundle": bundle})
+                             {"cli": spk, "desktop": desktop, "desktop_bundle": bundle,
+                              "desktop_offline": desktop.removesuffix(".spk") + "_offline.spk",
+                              "desktop_image": desktop.removesuffix(".spk") + ".image.json"})
             self.assertIn(spk, (self.root / "SHA256SUMS.txt").read_text())
             self.assertIn(desktop, (self.root / "SHA256SUMS.txt").read_text())
         self.assertTrue(all(store["count"] == 1 for store in catalog["stores"].values()))

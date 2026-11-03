@@ -140,3 +140,21 @@ ran Dockpipe; combined-edition private settings and GUI workspace use the packag
 persistent home/var. Package scripts do not delete these retained files.
 Local archive checks cannot establish these NAS results. SynoCommunity submission
 should follow successful hardware testing.
+
+## Prebuilt standard and offline editions under qualification
+
+The next packaging change prepares the desktop image in CI. The standard SPK
+will download an exact image digest; an explicitly named `_offline.spk` will carry
+the same image for DSM's native preload worker. Neither builds the image on the
+NAS. Install Container Manager first; it is not bundled in the offline SPK.
+
+These are alternative installers for the same Dockpipe package and saved data.
+Standard is the smaller default. Offline is larger and intended for installation
+without registry access. Workflow execution can still require networking.
+Native preload, upgrades between editions and the DSM window experience must be
+qualified on the NAS before these candidates are advertised as tested releases.
+
+The candidate GUI launcher is a real DSM application window containing the
+streamed Qt desktop. Its package-scoped proxy uses your existing HTTPS DSM origin;
+the internal desktop port is loopback-only. Dockpipe sign-in remains separate
+from DSM sign-in. This window integration is pending actual NAS acceptance.

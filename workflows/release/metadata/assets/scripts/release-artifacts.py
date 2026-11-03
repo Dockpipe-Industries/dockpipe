@@ -106,9 +106,12 @@ def prepare(directory, version, candidate="", source_sha=""):
             synology_desktop = f"dockpipe-desktop_{version}_synology_{arch}.tar.gz"
             required.append(synology_desktop)
             desktop_spk = f"dockpipe-desktop_{version}_synology_{synology_arch}.spk"
-            required.append(desktop_spk)
+            offline_spk = f"dockpipe-desktop_{version}_synology_{synology_arch}_offline.spk"
+            image_receipt = f"dockpipe-desktop_{version}_synology_{synology_arch}.image.json"
+            required.extend([desktop_spk, offline_spk, image_receipt])
             downloads[f"synology-{synology_arch}"] = {
-                "cli": spk, "desktop": desktop_spk, "desktop_bundle": synology_desktop,
+                "cli": spk, "desktop": desktop_spk, "desktop_offline": offline_spk,
+                "desktop_image": image_receipt, "desktop_bundle": synology_desktop,
             }
             desktop = f"dockpipe-desktop_{version}_{arch}.deb"
             required.append(desktop)

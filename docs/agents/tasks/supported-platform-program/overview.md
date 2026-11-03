@@ -173,3 +173,14 @@ keep as default. Only real uninstall plus explicit deletion purges owned data;
 upgrade/default callbacks retain it. Simulated destructive-boundary checks cover
 symlink isolation, idempotence and retaining data when the service port is live.
 DSM-managed orphan project recovery and on-NAS uninstall cleanup remain unproven.
+
+### Prebuilt Synology image follow-up
+
+The operator selected CI-prebuilt x64/arm64 images, standard digest-pinned SPKs
+and offline bundled-image SPKs. Synology documents a `docker-project.preload-image`
+resource, preserving the package-account privilege boundary. Candidate producers
+and image/archive admission are implemented in a managed worktree. Native DSM
+preload/startup remains pending; do not equate local Docker import with that proof.
+The operator also selected the existing container Qt desktop inside a real DSM
+application window. Modern AppWindow and a package-scoped same-origin proxy are
+being qualified; the released URL launcher does not satisfy this acceptance item.

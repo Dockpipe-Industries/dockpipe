@@ -19,6 +19,7 @@ DESKTOP_ASSETS = (
     "Dockerfile", "entrypoint.sh", "compose.yml", ".dockerignore",
     "desktop.py", "session.sh", "openbox.xml",
 )
+UI_ASSETS = ("config", "Dockpipe.Desktop.js")
 PACKAGE_SCRIPTS = (
     "preinst", "postinst", "preupgrade", "postupgrade", "preuninst", "postuninst", "start-stop-status",
 )
@@ -34,6 +35,7 @@ def load_helper(name, relative_path):
 CLI_PACKAGING = load_helper("synology_cli_packaging", "workflows/package/synology/assets/scripts/build.py")
 DESKTOP_PACKAGING = load_helper("synology_desktop_packaging", "workflows/package/synology-desktop/assets/scripts/stage.py")
 DEFAULT_WEBTOP_IMAGE = DESKTOP_PACKAGING.DEFAULT_WEBTOP_IMAGE
+IMAGE_RECEIPT = load_helper("synology_image_receipt", "workflows/package/synology-desktop-spk/assets/scripts/image_receipt.py")
 
 
 def render_asset(relative_path, architecture, webtop_image):
@@ -41,21 +43,33 @@ def render_asset(relative_path, architecture, webtop_image):
     return content.replace("@WEBTOP_IMAGE@", webtop_image).replace("@ARCH@", architecture).encode("utf-8")
 
 
-def write_payload(destination, binary, cli_deb, desktop_deb, architecture, webtop_image):
+def write_payload(destination, binary, cli_deb, desktop_deb, architecture, webtop_image, receipt=None, offline_archive=None):
     with destination.open("wb") as stream:
         with gzip.GzipFile(filename="", mode="wb", fileobj=stream, mtime=0) as compressed:
             with tarfile.open(fileobj=compressed, mode="w|", format=tarfile.USTAR_FORMAT) as archive:
                 CLI_PACKAGING.add_file(archive, "bin/dockpipe", binary, 0o755)
                 CLI_PACKAGING.add_file(archive, "share/doc/dockpipe/LICENSE", ROOT / "LICENSE")
                 CLI_PACKAGING.add_file(archive, "port_conf/dockpipe-desktop.sc", ASSETS / "port_conf/dockpipe-desktop.sc")
-                for name in DESKTOP_ASSETS:
-                    mode = 0o755 if name.endswith(".sh") else 0o644
-                    content = render_asset(Path("desktop") / name, architecture, webtop_image)
-                    CLI_PACKAGING.add_bytes(archive, "desktop/" + name, content, mode)
-                CLI_PACKAGING.add_file(archive, "desktop/packages/cli.deb", cli_deb)
-                CLI_PACKAGING.add_file(archive, "desktop/packages/desktop.deb", desktop_deb)
-                ui = render_asset(Path("ui/config"), architecture, webtop_image)
-                CLI_PACKAGING.add_bytes(archive, "ui/config", ui)
+                if receipt is None:
+                    for name in DESKTOP_ASSETS:
+                        mode = 0o755 if name.endswith(".sh") else 0o644
+                        content = render_asset(Path("desktop") / name, architecture, webtop_image)
+                        CLI_PACKAGING.add_bytes(archive, "desktop/" + name, content, mode)
+                    CLI_PACKAGING.add_file(archive, "desktop/packages/cli.deb", cli_deb)
+                    CLI_PACKAGING.add_file(archive, "desktop/packages/desktop.deb", desktop_deb)
+                else:
+                    reference = receipt["offline_image"] if offline_archive else receipt["image"]
+                    compose = (ASSETS / "desktop/compose-prebuilt.yml").read_text()
+                    compose = compose.replace("@IMAGE@", reference).replace("@ARCH@", architecture)
+                    compose = compose.replace("@PULL_POLICY@", "never" if offline_archive else "missing")
+                    CLI_PACKAGING.add_bytes(archive, "desktop/compose.yml", compose.encode())
+                    CLI_PACKAGING.add_bytes(archive, "desktop/image.json", (json.dumps(receipt, indent=2) + "\n").encode())
+                    if offline_archive:
+                        CLI_PACKAGING.add_file(archive, "desktop/image.tar.gz", offline_archive)
+                for name in UI_ASSETS:
+                    ui = render_asset(Path("ui") / name, architecture, webtop_image)
+                    CLI_PACKAGING.add_bytes(archive, "ui/" + name, ui)
+                CLI_PACKAGING.add_file(archive, "nginx/desktop.conf", ASSETS / "nginx/desktop.conf")
                 icons = ROOT / "src/dockpipe-app/resources/icons/hicolor"
                 for dimension in (16, 24, 32, 48, 64, 72, 256):
                     source_dimension = 96 if dimension == 72 else dimension
@@ -85,11 +99,11 @@ def package_info(version, architecture, checksum, package_revision=1):
         "thirdparty": "yes",
         "dsmuidir": "ui",
         "dsmappname": "com.dockpipe.Desktop",
-        "adminprotocol": "https",
-        "adminport": "38139",
-        "adminurl": "/",
+        "dsmapplaunchname": "com.dockpipe.Desktop",
+        "instuninst_restart_services": "nginx.service",
+        "startstop_restart_services": "nginx.service",
         "ctl_stop": "yes",
-        "checkport": "yes",
+        "checkport": "no",
         "silent_install": "no",
         "silent_upgrade": "yes",
         "silent_uninstall": "no",
@@ -99,7 +113,7 @@ def package_info(version, architecture, checksum, package_revision=1):
 
 
 def build(version, architecture, binary, cli_deb, desktop_deb, output, webtop_image=DEFAULT_WEBTOP_IMAGE,
-          package_revision=1):
+          package_revision=1, *, image_receipt=None, offline_archive=None):
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
         raise ValueError("Expected a numeric release version")
     if any(int(part) > 2**31 - 1 for part in version.split(".")):
@@ -115,24 +129,45 @@ def build(version, architecture, binary, cli_deb, desktop_deb, output, webtop_im
     if package_version != version:
         raise ValueError("DEB versions must match the requested release version exactly")
 
+    if offline_archive and image_receipt is None:
+        raise ValueError("Offline packaging requires a prebuilt image receipt")
+    receipt = None
+    if image_receipt is not None:
+        receipt = IMAGE_RECEIPT.load_receipt(
+            image_receipt, version, architecture, cli_path, desktop_path, offline_archive,
+        )
+
     output.mkdir(parents=True, exist_ok=True)
     label = CLI_PACKAGING.ARCHITECTURES[architecture][0]
-    suffix = "" if package_revision == 1 else f"_r{package_revision}"
+    suffix = "_offline" if offline_archive else ""
+    if package_revision != 1:
+        suffix += f"_r{package_revision}"
     destination = output / f"dockpipe-desktop_{version}_synology_{label}{suffix}.spk"
     with tempfile.TemporaryDirectory(prefix=".synology-desktop-", dir=output) as temporary:
         temporary = Path(temporary)
         payload = temporary / "package.tgz"
-        write_payload(payload, binary, cli_path, desktop_path, architecture, webtop_image)
+        write_payload(payload, binary, cli_path, desktop_path, architecture, webtop_image, receipt, offline_archive)
         resource = {
             "port-config": {"protocol-file": "port_conf/dockpipe-desktop.sc"},
+            "web-config": {"nginx-static-config": {"enable": [{
+                "type": "dsm", "relpath": "nginx/desktop.conf",
+            }]}},
             "docker-project": {
                 "projects": [{
                     "name": "dockpipe-desktop",
                     "path": "desktop",
-                    "build_params": {"force_recreate": True, "build": True},
+                    # Prebuilt image references change with image content. Let
+                    # Compose reconcile them without replacing unchanged containers.
+                    "build_params": {
+                        "force_recreate": receipt is None,
+                        "build": receipt is None,
+                        "force_pull": False,
+                    },
                 }],
             },
         }
+        if offline_archive:
+            resource["docker-project"]["preload-image"] = "desktop/image.tar.gz"
         privilege = {"defaults": {"run-as": "package"}}
         control = (ASSETS / "scripts/package-control.sh").read_bytes()
         wizard = (ASSETS / "install_uifile").read_text()
@@ -164,12 +199,15 @@ def main():
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--webtop-image", default=DEFAULT_WEBTOP_IMAGE)
     parser.add_argument("--package-revision", type=int, default=1)
+    parser.add_argument("--image-receipt", type=Path)
+    parser.add_argument("--offline-archive", type=Path)
     arguments = parser.parse_args()
     try:
         destination = build(
             arguments.version, arguments.architecture, arguments.binary,
             arguments.cli_deb, arguments.desktop_deb, arguments.output, arguments.webtop_image,
-            arguments.package_revision,
+            arguments.package_revision, image_receipt=arguments.image_receipt,
+            offline_archive=arguments.offline_archive,
         )
     except (ValueError, OSError, subprocess.SubprocessError) as error:
         parser.exit(1, f"Synology desktop packaging failed: {error}\n")

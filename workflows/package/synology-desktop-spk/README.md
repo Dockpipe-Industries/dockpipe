@@ -7,7 +7,7 @@ installable `dockpipe-desktop_VERSION_synology_x64.spk` or
 
 DSM 7.2.1+ and Container Manager 20.10.23-1437+ are required on a supported model.
 The [Docker Project worker](https://help.synology.com/developer-guide/resource_acquisition/docker-project.html)
-builds the project during installation, starts/stops it with Package Center and
+prepares the project during installation, starts/stops it with Package Center and
 removes it on uninstall. No package script runs Docker, accesses its socket or
 requests an elevated identity. The full minimum dependency version follows the
 first archived stable Container Manager build above the worker's documented
@@ -38,12 +38,22 @@ image build arguments, or Docker's persisted environment. The streamer's public
 health/status endpoints expose liveness/mode metadata; desktop assets, control APIs
 and WebSocket connections require authentication.
 
-The DSM launcher opens HTTPS on port 38139. Package start waits up to two minutes
-for the authentication gate, using bounded loopback probes. Status reports stopped
-when that gate is unavailable. The local readiness probe accepts only HTTP 401;
-it does not send credentials. Container Manager owns actual project start/stop.
-The DSM port-config resource registers the named service for firewall management,
-with automatic router port forwarding disabled.
+The candidate DSM launcher is a module-backed AppInstance/AppWindow, containing
+one fitted iframe. It opens the existing Qt stream inside DSM. A package-scoped
+`web-config` location proxies only `/webman/3rdparty/dockpipe-desktop/desktop/` to
+the fixed loopback desktop listener. Selkies serves that subfolder and keeps
+`frame-ancestors 'self'` and same-origin WebSocket checks. Browser TLS uses DSM's
+existing HTTPS connection; the package-generated backend certificate stays on
+loopback. DSM session cookies are stripped before proxying; Dockpipe still
+requires its separate sign-in. No global framing/browser security settings change.
+The proxy worker and declared nginx reloads own route install/start/stop/removal.
+
+Port 38139 binds only to loopback in candidate Compose files. Start waits up to
+two minutes for HTTP 401 at the prefixed authentication gate, using bounded local
+probes without credentials. The port-config resource reserves the service and
+disables automatic router forwarding. Direct browser access to that port is no
+longer the launcher; use HTTPS DSM. Hardware window/WSS/focus/resize acceptance is
+still required before claiming this integration works.
 
 The desktop session launches Dockpipe directly under a minimal window manager,
 maximizes normal application windows and retains normal dialogs. It does not
@@ -58,7 +68,8 @@ authenticated HTTPS port and mounts no arbitrary NAS shares or Docker socket.
 It is one shared desktop per installation, not a separate session for every DSM
 user. DSM administrator launcher visibility and Dockpipe sign-in are separate.
 
-Build with matching release inputs:
+The historical diagnostic build-on-NAS producer accepts matching release inputs
+(the release pipeline uses `prebuild.yml` below):
 
 ```sh
 python3 workflows/shared/launch.py workflows/package/synology-desktop-spk/config.yml -- \
@@ -111,3 +122,53 @@ When reusing retained settings, postinst refreshes the recorded UID/GID to the
 current unprivileged package account without changing credentials. This supports
 a reinstall where DSM assigns a new identity; runtime still checks for an exact
 identity match. This behavior also requires actual NAS reinstall acceptance.
+
+## Prebuilt image candidates
+
+`prebuild.yml` builds the matching architecture's full desktop image in CI from
+admitted release DEBs. The image gets version/source labels. Its OCI manifest
+and config digests bind these two editions to the same image:
+
+- Standard: the existing SPK filename, a native CLI plus immutable GHCR image
+  reference. Container Manager downloads the image; it does not compile it.
+- Offline: `_offline.spk`, adding a Docker-loadable archive. The official
+  `docker-project.preload-image` worker imports it before creating the project.
+  Compose selects a unique tag derived from the full config hash, with `pull_policy: never`. Registry manifest
+  digests are deliberately not used for offline lookup because image import need
+  not retain them. Config-ID lookup also varies by Docker image-store implementation;
+  the portable tag is admitted against the exact config bytes in the archive.
+
+Both keep the same package ID, account, settings and workspace. They are delivery
+alternatives, not separately installable applications. Both require an already
+installed, compatible Container Manager. Offline describes image installation;
+workflows may still need network access depending on their contents.
+
+The candidate uses `build: false`, `force_pull: false` and `force_recreate: false`
+worker parameters. Immutable image references let Compose detect image upgrades
+without replacing an unchanged container. This does not establish the cause of
+any DSM worker failure; native lifecycle acceptance is still required. No
+package script invokes Docker, mounts its socket, or requests root. Archive
+admission checks byte/member/metadata limits, safe paths, exact config identity,
+Linux architecture, labels, unprivileged user and layer references. The capacity
+contract permits an 8 GiB expanded image archive and requires the final offline
+SPK to fit GitHub's 2 GiB asset limit. The `.image.json` receipt binds the DEBs,
+image identities and archive checksum; release checksums also cover this receipt.
+
+CI retains OCI artifacts separately from public package artifacts. Registry writes
+happen only in the existing staging/production publication jobs after release
+verification. Manual dry runs build images/SPKs without registry writes. Publication
+uses `skopeo copy --preserve-digests` and anonymous digest readback before exposing
+standard SPKs. The GHCR `dockpipe-desktop` package must have Public visibility;
+a new private package fails that gate with setup instructions. Credentials stay
+in a temporary registry auth file, never in image metadata or packages.
+
+Reference: [Synology Docker Project worker](https://help.synology.com/developer-guide/resource_acquisition/docker-project.html).
+Its preload support is documented; actual import and startup on the target NAS
+remain a qualification gate. Local Docker import cannot establish DSM worker behavior.
+
+The CI prebuilder imports the normalized archive and starts the actual desktop
+under the runner's non-root identity, with pulling disabled, all capabilities
+dropped and networking disabled. It requires an unauthenticated 401, authenticated
+HTML with the expected framing policy, a live Qt launcher process, no resolved
+password in persisted container environment/logs, and clean shutdown before
+packaging. This service proof complements native DSM preload/window acceptance.

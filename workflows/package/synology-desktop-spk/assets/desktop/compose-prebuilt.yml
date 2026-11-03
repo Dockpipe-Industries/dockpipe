@@ -1,0 +1,14 @@
+services:
+  dockpipe:
+    image: "@IMAGE@"
+    pull_policy: @PULL_POLICY@
+    platform: linux/@ARCH@
+    environment:
+      TITLE: Dockpipe
+    volumes:
+      - /var/packages/dockpipe-desktop/home:/run/dockpipe-package:ro
+      - /var/packages/dockpipe-desktop/var:/config
+    ports:
+      - "127.0.0.1:38139:3001"
+    shm_size: 1gb
+    restart: unless-stopped

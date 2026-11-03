@@ -31,6 +31,9 @@ class DesktopSpkTests(unittest.TestCase):
         self.assets = self.root / "assets"
         (self.assets / "desktop").mkdir(parents=True)
         (self.assets / "ui").mkdir()
+        (self.assets / "nginx").mkdir()
+        (self.assets / "nginx/desktop.conf").write_text((PACKAGING.ASSETS / "nginx/desktop.conf").read_text())
+        (self.assets / "ui/Dockpipe.Desktop.js").write_text((PACKAGING.ASSETS / "ui/Dockpipe.Desktop.js").read_text())
         (self.assets / "scripts").mkdir()
         (self.assets / "port_conf").mkdir()
         (self.assets / "port_conf/dockpipe-desktop.sc").write_text('[dockpipe_desktop]\nport_forward="no"\ndst.ports="38139/tcp"\n')
@@ -99,17 +102,19 @@ class DesktopSpkTests(unittest.TestCase):
                     for field in (
                         'package="dockpipe-desktop"', 'version="1.2.3-1"', f'arch="{dsm_architecture}"',
                         'os_min_ver="7.2.1-69057"', 'install_dep_packages="ContainerManager>=20.10.23-1437"',
-                        'dsmuidir="ui"', 'dsmappname="com.dockpipe.Desktop"', 'adminprotocol="https"',
-                        'adminport="38139"', 'adminurl="/"', 'ctl_stop="yes"', 'checkport="yes"',
+                        'dsmuidir="ui"', 'dsmappname="com.dockpipe.Desktop"', 'dsmapplaunchname="com.dockpipe.Desktop"',
+                        'instuninst_restart_services="nginx.service"', 'startstop_restart_services="nginx.service"',
+                        'ctl_stop="yes"', 'checkport="no"',
                         'silent_install="no"', 'silent_upgrade="yes"',
                     ):
                         self.assertIn(field, info)
                     self.assertEqual(json.load(archive.extractfile("conf/privilege")), {"defaults": {"run-as": "package"}})
                     resource = json.load(archive.extractfile("conf/resource"))
                     self.assertEqual(resource, {"port-config": {"protocol-file": "port_conf/dockpipe-desktop.sc"},
+                                                "web-config": {"nginx-static-config": {"enable": [{"type": "dsm", "relpath": "nginx/desktop.conf"}]}},
                                                "docker-project": {"projects": [{
                         "name": "dockpipe-desktop", "path": "desktop",
-                        "build_params": {"force_recreate": True, "build": True},
+                        "build_params": {"force_recreate": True, "build": True, "force_pull": False},
                     }]}})
                     self.assertIn('silent_uninstall="no"', info)
                     removal = json.load(archive.extractfile("WIZARD_UIFILES/uninstall_uifile"))
@@ -132,7 +137,8 @@ class DesktopSpkTests(unittest.TestCase):
                     checksum = hashlib.md5(payload, usedforsecurity=False).hexdigest()
                     self.assertIn(f'checksum="{checksum}"', info)
                     with tarfile.open(fileobj=io.BytesIO(payload), mode="r:gz") as content:
-                        expected = {"bin/dockpipe", "share/doc/dockpipe/LICENSE", "ui/config", "port_conf/dockpipe-desktop.sc",
+                        expected = {"bin/dockpipe", "share/doc/dockpipe/LICENSE", "ui/config", "ui/Dockpipe.Desktop.js",
+                                    "nginx/desktop.conf", "port_conf/dockpipe-desktop.sc",
                                     "desktop/packages/cli.deb", "desktop/packages/desktop.deb"}
                         expected.update("desktop/" + name for name in PACKAGING.DESKTOP_ASSETS)
                         expected.update(f"ui/images/icon_{size}.png" for size in (16, 24, 32, 48, 64, 72, 256))
@@ -148,6 +154,60 @@ class DesktopSpkTests(unittest.TestCase):
                         self.assertIn(architecture, dockerfile)
                         self.assertNotIn("@ARCH@", dockerfile)
                         self.assertNotIn("@WEBTOP_IMAGE@", dockerfile)
+
+    def test_prebuilt_editions_share_identity_and_use_native_unprivileged_preload(self):
+        compose = PACKAGING.ROOT / "workflows/package/synology-desktop-spk/assets/desktop/compose-prebuilt.yml"
+        (self.assets / "desktop/compose-prebuilt.yml").write_bytes(compose.read_bytes())
+        config = json.dumps({
+            "os": "linux", "architecture": "amd64", "rootfs": {"diff_ids": []},
+            "config": {"User": "65532:65532", "Labels": {
+                "org.opencontainers.image.version": "1.2.3",
+                "org.opencontainers.image.revision": "a" * 40,
+            }},
+        }).encode()
+        image_id = "sha256:" + hashlib.sha256(config).hexdigest()
+        offline_image = "ghcr.io/example/desktop:offline-" + image_id.removeprefix("sha256:")
+        image = self.root / "image.tar.gz"
+        with tarfile.open(image, "w:gz") as archive:
+            for name, content in (("config.json", config), ("manifest.json", json.dumps([{"Config": "config.json", "Layers": [], "RepoTags": [offline_image]}]).encode())):
+                member = tarfile.TarInfo(name)
+                member.size = len(content)
+                archive.addfile(member, io.BytesIO(content))
+        receipt = {
+            "schema": 1, "version": "1.2.3", "architecture": "amd64", "source_sha": "a" * 40,
+            "image": "ghcr.io/example/desktop@sha256:" + "b" * 64, "image_id": image_id, "offline_image": offline_image,
+            "inputs": {"cli_sha256": hashlib.sha256(self.cli.read_bytes()).hexdigest(),
+                       "desktop_sha256": hashlib.sha256(self.desktop.read_bytes()).hexdigest()},
+            "archive_sha256": hashlib.sha256(image.read_bytes()).hexdigest(),
+        }
+        receipt_path = self.root / "image.json"
+        receipt_path.write_text(json.dumps(receipt))
+        for offline in (False, True):
+            with self.subTest(offline=offline):
+                package = self.build(image_receipt=receipt_path, offline_archive=image if offline else None)
+                self.assertEqual("_offline" in package.name, offline)
+                with tarfile.open(package) as archive:
+                    self.assertEqual(json.loads(archive.extractfile("conf/privilege").read()),
+                                     {"defaults": {"run-as": "package"}})
+                    worker = json.loads(archive.extractfile("conf/resource").read())["docker-project"]
+                    self.assertEqual(worker["projects"][0]["build_params"],
+                                     {"build": False, "force_pull": False, "force_recreate": False})
+                    self.assertEqual("preload-image" in worker, offline)
+                    if offline:
+                        self.assertEqual(worker["preload-image"], "desktop/image.tar.gz")
+                    with tarfile.open(fileobj=io.BytesIO(archive.extractfile("package.tgz").read()), mode="r:gz") as payload:
+                        self.assertNotIn("desktop/Dockerfile", payload.getnames())
+                        self.assertNotIn("desktop/packages/desktop.deb", payload.getnames())
+                        rendered = payload.extractfile("desktop/compose.yml").read().decode()
+                        self.assertNotIn("build:", rendered)
+                        self.assertIn(offline_image if offline else receipt["image"], rendered)
+                        self.assertIn("pull_policy: " + ("never" if offline else "missing"), rendered)
+                        self.assertEqual(json.loads(payload.extractfile("desktop/image.json").read()), receipt)
+                        if offline:
+                            self.assertEqual(payload.extractfile("desktop/image.tar.gz").read(), image.read_bytes())
+        image.write_bytes(b"changed archive")
+        with self.assertRaisesRegex(ValueError, "SHA-256"):
+            self.build(image_receipt=receipt_path, offline_archive=image)
 
     def test_packaging_repair_revision_upgrades_without_rebuilding_product_debs(self):
         package = self.build(package_revision=2)

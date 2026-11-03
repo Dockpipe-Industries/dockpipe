@@ -73,6 +73,8 @@ def main():
         '--public', '--port', '3001', '--enable-https=true',
         '--https-cert', str(certificate), '--https-key', str(key),
         '--enable-basic-auth=true', '--allowed-origins', '',
+        '--subfolder', '/webman/3rdparty/dockpipe-desktop/desktop',
+        '--frame-ancestors', 'self',
         '--ui-title', 'Dockpipe', '--ui-show-logo=false',
         '--web-root', '/usr/share/selkies/selkies-dashboard',
     ]
