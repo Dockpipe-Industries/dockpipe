@@ -2,7 +2,6 @@
 #include "TerminalSession.h"
 #include "TerminalShellCatalog.h"
 #include "TerminalHostLaunch.h"
-#include "SshMachineTransport.h"
 
 #include <QFileInfo>
 #include <QDir>
@@ -25,109 +24,11 @@ TerminalHub::TerminalHub(TerminalLaunchContext context, QObject *parent)
       m_shellCatalog(new TerminalShellCatalog(TerminalShellCatalog::systemDiscovery(context), this)),
       m_launchContext(context)
 {
-    connect(m_shellCatalog, &TerminalShellCatalog::profilesChanged, this, &TerminalHub::shellProfilesChanged);
     m_shellCatalog->refresh();
 }
 
 TerminalShellCatalog &TerminalHub::shellCatalog() const { return *m_shellCatalog; }
 QString TerminalHub::creationError() const { return m_creationError; }
-
-QVector<TerminalShellProfile> TerminalHub::shellProfiles() const
-{
-    QVector<TerminalShellProfile> profiles;
-    if (m_hasSshMachineConnection) {
-        TerminalShellProfile remote;
-        remote.id = QStringLiteral("ssh-machine:") + m_sshMachineConnection.id;
-        remote.label = tr("%1 · %2@%3 · SSH").arg(m_sshMachineConnection.label,
-            m_sshMachineConnection.user, m_sshMachineConnection.host);
-        profiles.append(remote);
-    }
-    QString localLabel = qEnvironmentVariable("DOCKPIPE_LOCAL_MACHINE_LABEL").trimmed().left(160);
-    if (localLabel.isEmpty() && m_hasSshMachineConnection)
-        localLabel = tr("This computer");
-    for (auto profile : m_shellCatalog->profiles()) {
-        if (!localLabel.isEmpty())
-            profile.label = localLabel + QStringLiteral(" · ") + profile.label;
-        profiles.append(profile);
-    }
-    return profiles;
-}
-
-void TerminalHub::setSshMachineConnection(const SshMachineConnection &connection, const QString &stateDirectory)
-{
-    m_hasSshMachineConnection = true;
-    m_sshMachineConnection = connection;
-    m_sshStateDirectory = stateDirectory;
-    emit shellProfilesChanged();
-}
-
-void TerminalHub::clearSshMachineConnection()
-{
-    m_hasSshMachineConnection = false;
-    m_sshMachineConnection = {};
-    m_sshStateDirectory.clear();
-    emit shellProfilesChanged();
-}
-
-bool TerminalHub::hasSshMachineConnection() const { return m_hasSshMachineConnection; }
-SshMachineConnection TerminalHub::sshMachineConnection() const { return m_sshMachineConnection; }
-
-TerminalHub::SessionLaunch TerminalHub::prepareSessionLaunch(const QString &workdir, const QString &shellProfileId) const
-{
-    SessionLaunch launch;
-    launch.context = m_launchContext;
-    TerminalShellProfile selected;
-    QString directory = workdir.isEmpty() ? QDir::homePath() : workdir;
-    const bool remote = m_hasSshMachineConnection && (shellProfileId.isEmpty()
-        || shellProfileId == QStringLiteral("ssh-machine:") + m_sshMachineConnection.id);
-    const auto profiles = shellProfiles();
-    if (remote) {
-        const auto plan = SshMachineTransport::interactive(m_sshMachineConnection, m_sshStateDirectory);
-        if (!plan.valid()) {
-            launch.error = plan.error;
-            return launch;
-        }
-        selected.program = plan.program;
-        selected.arguments = plan.arguments;
-        selected.label = tr("%1 · %2@%3 · SSH").arg(m_sshMachineConnection.label,
-            m_sshMachineConnection.user, m_sshMachineConnection.host);
-        directory = plan.workingDirectory;
-        launch.context = TerminalLaunchContext::Local;
-        launch.remote = true;
-    } else if (!shellProfileId.isEmpty()) {
-        for (const auto &profile : profiles) {
-            if (profile.id == shellProfileId) {
-                selected = profile;
-                break;
-            }
-        }
-        if (selected.program.isEmpty()) {
-            launch.error = tr("This shell is no longer available. Refresh the shell list and try again.");
-            return launch;
-        }
-    } else if (TerminalHostLaunch::required(m_launchContext)) {
-        if (profiles.isEmpty()) {
-            launch.error = m_shellCatalog->discovering()
-                ? tr("Discovering installed host shells…") : tr("No host shells are available. Check Flatpak host access and refresh the shell list.");
-            return launch;
-        }
-        selected = profiles.first();
-    }
-#ifdef Q_OS_WIN
-    if (!remote && shellProfileId.isEmpty() && !profiles.isEmpty())
-        selected = profiles.first();
-#endif
-    launch.program = selected.program;
-    launch.arguments = selected.arguments;
-    launch.workingDirectory = remote ? directory : workdir;
-    launch.environment = selected.environment;
-    launch.label = selected.label;
-    if (!selected.workingDirectoryArgument.isEmpty()) {
-        launch.arguments.prepend(QDir::toNativeSeparators(directory));
-        launch.arguments.prepend(selected.workingDirectoryArgument);
-    }
-    return launch;
-}
 
 QString TerminalHub::createSession(const QString &workdir, const QString &shellProfileId)
 {
@@ -136,22 +37,39 @@ QString TerminalHub::createSession(const QString &workdir, const QString &shellP
         m_creationError = tr("Eight terminals are already open. Close one before opening another.");
         return {};
     }
-    const SessionLaunch launch = prepareSessionLaunch(workdir, shellProfileId);
-    if (!launch.valid()) {
-        m_creationError = launch.error;
-        return {};
+    TerminalShellProfile selected;
+    const auto profiles = m_shellCatalog->profiles();
+    if (!shellProfileId.isEmpty()) {
+        for (const auto &profile : profiles) {
+            if (profile.id == shellProfileId) {
+                selected = profile;
+                break;
+            }
+        }
+        if (selected.program.isEmpty()) {
+            m_creationError = tr("This shell is no longer available. Refresh the shell list and try again.");
+            return {};
+        }
+    } else if (TerminalHostLaunch::required(m_launchContext)) {
+        if (profiles.isEmpty()) {
+            m_creationError = m_shellCatalog->discovering()
+                ? tr("Discovering installed host shells…") : tr("No host shells are available. Check Flatpak host access and refresh the shell list.");
+            return {};
+        }
+        selected = profiles.first();
     }
+#ifdef Q_OS_WIN
+    if (shellProfileId.isEmpty() && !profiles.isEmpty())
+        selected = profiles.first();
+#endif
     const QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    auto *session = new TerminalSession(launch.context, this);
+    auto *session = new TerminalSession(m_launchContext, this);
     Entry entry;
     entry.session = session;
-    const QString directory = launch.workingDirectory.isEmpty() ? QDir::homePath() : launch.workingDirectory;
-    if (launch.remote)
-        entry.title = tr("Terminal %1").arg(m_nextTitle++);
-    else
-        entry.title = tr("Terminal %1 · %2").arg(m_nextTitle++).arg(QDir::toNativeSeparators(directory));
-    if (!launch.label.isEmpty())
-        entry.title = launch.label + QStringLiteral(" · ") + entry.title;
+    const QString directory = workdir.isEmpty() ? QDir::homePath() : workdir;
+    entry.title = tr("Terminal %1 · %2").arg(m_nextTitle++).arg(QDir::toNativeSeparators(directory));
+    if (!selected.label.isEmpty())
+        entry.title = selected.label + QStringLiteral(" · ") + entry.title;
     m_sessions.insert(id, entry);
     m_order.append(id);
     connect(session, &TerminalSession::output, this, [this, id](const QByteArray &bytes) {
@@ -165,7 +83,12 @@ QString TerminalHub::createSession(const QString &workdir, const QString &shellP
         emit outputAvailable(id);
     });
     connect(session, &TerminalSession::stateChanged, this, &TerminalHub::sessionsChanged);
-    session->start(launch.workingDirectory, launch.program, launch.arguments, launch.environment);
+    QStringList arguments = selected.arguments;
+    if (!selected.workingDirectoryArgument.isEmpty()) {
+        arguments.prepend(QDir::toNativeSeparators(directory));
+        arguments.prepend(selected.workingDirectoryArgument);
+    }
+    session->start(workdir, selected.program, arguments, selected.environment);
     emit sessionsChanged();
     return id;
 }

@@ -180,7 +180,14 @@ TerminalShellCatalog::Discovery TerminalShellCatalog::systemDiscovery(TerminalLa
 
 QVector<TerminalShellProfile> TerminalShellCatalog::profiles() const
 {
-    return m_profiles;
+    const QString localLabel = qEnvironmentVariable("DOCKPIPE_LOCAL_MACHINE_LABEL").trimmed().left(160);
+    if (localLabel.isEmpty())
+        return m_profiles;
+
+    auto profiles = m_profiles;
+    for (auto &profile : profiles)
+        profile.label = localLabel + QStringLiteral(" · ") + profile.label;
+    return profiles;
 }
 
 QString TerminalShellCatalog::error() const

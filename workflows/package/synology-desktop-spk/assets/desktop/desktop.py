@@ -39,11 +39,6 @@ def prepare_identity(runtime):
     os.environ['USER'] = 'dockpipe'
     os.environ['LOGNAME'] = 'dockpipe'
     os.environ['DOCKPIPE_LOCAL_MACHINE_LABEL'] = 'GUI container'
-    os.environ['DOCKPIPE_MACHINE_CONNECTION_REQUIRED'] = '1'
-    os.environ['DOCKPIPE_DEFAULT_MACHINE_LABEL'] = 'NAS'
-    os.environ['DOCKPIPE_DEFAULT_MACHINE_HOST'] = '127.0.0.1'
-    os.environ['DOCKPIPE_MACHINE_CONNECTION_STATE'] = '/config/.dockpipe-ssh'
-    os.environ['DOCKPIPE_NATIVE_CLI_PATH'] = '/var/packages/dockpipe-desktop/target/bin/dockpipe'
     os.environ['XDG_RUNTIME_DIR'] = str(runtime)
 
 

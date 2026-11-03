@@ -32,13 +32,11 @@ code must not depend on widgets, process execution, network clients or stores.
 filesystem persistence, CLI transport and platform APIs. `presentation` owns Qt
 widgets and interaction. `integration` adapts separately released components.
 
-SSH machine connection values live in `remote/domain`; the private metadata store
-and system OpenSSH transport live in `remote/infrastructure`. The terminal hub
-owns interactive SSH PTYs, while observability views consume bounded read-only
-host CLI snapshots. The shell composes these services through one explicit host
-profile. SSH owns authentication and host-key verification; profile JSON contains
-no password or private-key bytes. Deployment-specific defaults remain in package
-assets, outside the GUI and native engine.
+Native DSM host authentication/service qualification lives in deployment workflow
+assets under `workflows/qualify/synology-host`. It must establish real DSM session
+and host process identity before a privileged terminal or GUI host connection is
+integrated. The generic native machine snapshot contract remains engine-owned;
+DSM session handling must not enter that contract or the generic engine.
 
 The catalog value types and their display decisions live in
 `catalog/domain/WorkflowCatalogData.*`; `WorkflowCatalog` owns CLI discovery.

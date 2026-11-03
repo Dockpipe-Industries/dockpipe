@@ -1,0 +1,11 @@
+name: qualify-synology-host
+description: Build a read-only native DSM authentication and service qualification SPK.
+docker_preflight: false
+steps:
+  - id: build
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/qualify/synology-host/assets/scripts/build.py

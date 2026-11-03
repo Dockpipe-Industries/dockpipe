@@ -8,16 +8,17 @@ and Workflows. **Executions → Runs & logs** contains session logs and stop
 controls, plus remote jobs with cancellation and result downloads. Successful
 remote submission selects Remote jobs. Apps remains a card library.
 
-## SSH host monitoring
+## Native host monitoring qualification
 
-**Settings → Host connection** configures an explicit SSH machine. Sign in through
-**Open host terminal** and verify its host key. System and Docker views then run
-the installed host CLI's `machine snapshot --json` over that authenticated SSH
-connection. The reported hostname identifies the observed machine; the GUI
-container remains a separately labelled local choice. Failed SSH reads clear
-host data and show unavailable status; they never substitute local counters.
-Docker inventory is read-only and requires the SSH account's existing Docker
-permissions. Background reads never request a password or run `sudo`.
+`dockpipe machine snapshot --json` is the read-only native system/process and
+Docker envelope. It observes the machine running that CLI with the current
+account's permissions. A GUI running inside a container observes the container
+unless an authenticated host transport is explicitly provided.
+
+The Synology native host bridge is undergoing separate DSM authentication and
+service-identity qualification. The superseded SSH candidate is not the intended
+DSM host integration. Host authentication failure must show unavailable data;
+it must never silently substitute container counters.
 
 ## What is observed
 

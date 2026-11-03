@@ -1,8 +1,6 @@
 #include "DockerObservabilityWidget.h"
 #include "DockpipeChoices.h"
 #include "MonitoringMachineSelector.h"
-#include "SshMachineSnapshot.h"
-#include "SshMachineTransport.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QPlainTextEdit>
@@ -12,23 +10,6 @@
 void DockerObservabilityWidget::setNodes(const QStringList &nodes)
 {
     m_machine->setNodes(nodes);
-}
-
-void DockerObservabilityWidget::setSshMachineConnection(const SshMachineConnection &connection,
-    const QString &stateDirectory)
-{
-    m_sshMachineConnection = connection;
-    m_sshStateDirectory = stateDirectory;
-    m_machine->setSshConnection(connection.id, connection.label);
-    changeMachine();
-}
-
-void DockerObservabilityWidget::clearSshMachineConnection()
-{
-    m_sshMachineConnection = {};
-    m_sshStateDirectory.clear();
-    m_machine->clearSshConnection();
-    changeMachine();
 }
 
 void DockerObservabilityWidget::changeMachine()
@@ -68,54 +49,27 @@ void DockerObservabilityWidget::refreshRemote(bool allowAuthentication)
         return;
     const QString node = m_machine->currentData().toString();
     const quint64 generation = m_generation;
-    const bool ssh = node.startsWith("ssh-machine:");
-    const QString sshUnavailable = tr("%1 · SSH Docker monitoring unavailable. Sign in using the host terminal, then refresh.")
-        .arg(m_machine->currentText());
     QString error;
-    QString program;
-    QStringList arguments;
-    if (ssh) {
-        if (m_sshStateDirectory.isEmpty() || node != QStringLiteral("ssh-machine:") + m_sshMachineConnection.id) {
-            clearRemoteSnapshot(sshUnavailable);
-            return;
-        }
-        const auto plan = SshMachineTransport::snapshot(m_sshMachineConnection, m_sshStateDirectory);
-        program = plan.program;
-        arguments = plan.arguments;
-        error = sshUnavailable + " " + plan.error;
-    } else {
-        program = DockpipeChoices::operatorDockpipeBinary(&error);
-        arguments = {"remote", "observe", "--node", node, "--auth", allowAuthentication ? "auto" : "never"};
-    }
+    const QString program = DockpipeChoices::operatorDockpipeBinary(&error);
     if (program.isEmpty()) {
         clearRemoteSnapshot(error);
         return;
     }
-    const auto completion = [this, node, generation, ssh, sshUnavailable](bool ok, const QByteArray &output) {
-        if (generation != m_generation || node != m_machine->currentData().toString() || !m_active || m_monitorPaused)
-            return;
-        if (ssh) {
-            QJsonObject snapshot;
-            if (!ok || !SshMachineSnapshot::parse(output, "docker", &snapshot)) {
-                clearRemoteSnapshot(sshUnavailable);
+    m_remoteCommand.run(program,
+        {"remote", "observe", "--node", node, "--auth",
+         allowAuthentication ? "auto" : "never"}, [this, node, generation](bool ok, const QByteArray &output) {
+            if (generation != m_generation || node != m_machine->currentData().toString()
+                || !m_active || m_monitorPaused)
+                return;
+            const auto envelope = QJsonDocument::fromJson(output).object();
+            if (!ok || envelope.value("schema").toString() != "dockpipe.machine_snapshot.v1"
+                || envelope.value("node").toString() != node || envelope.value("state").toString() != "live"
+                || !envelope.value("docker").isObject()) {
+                clearRemoteSnapshot(tr("%1 · Docker monitoring unavailable or stale. On the paired worker, enable: dockpipe remote monitoring --system --docker. The worker and broker must support monitoring.").arg(node));
                 return;
             }
-            applyRemoteSnapshot(snapshot);
-            return;
-        }
-        const auto envelope = QJsonDocument::fromJson(output).object();
-        if (!ok || envelope.value("schema").toString() != "dockpipe.machine_snapshot.v1"
-            || envelope.value("node").toString() != node || envelope.value("state").toString() != "live"
-            || !envelope.value("docker").isObject()) {
-            clearRemoteSnapshot(tr("%1 · Docker monitoring unavailable or stale. On the paired worker, enable: dockpipe remote monitoring --system --docker. The worker and broker must support monitoring.").arg(node));
-            return;
-        }
-        applyRemoteSnapshot(envelope.value("docker").toObject());
-    };
-    if (ssh)
-        m_remoteCommand.runBounded(program, arguments, completion, 15000, 1024 * 1024);
-    else
-        m_remoteCommand.run(program, arguments, completion, allowAuthentication ? 150000 : 5000);
+            applyRemoteSnapshot(envelope.value("docker").toObject());
+        }, allowAuthentication ? 150000 : 5000);
 }
 
 void DockerObservabilityWidget::applyRemoteSnapshot(const QJsonObject &snapshot)

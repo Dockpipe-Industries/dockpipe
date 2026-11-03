@@ -203,3 +203,11 @@ image returned HTTPS 200 under an unprivileged, read-only host-network probe.
 The candidate therefore uses host networking with only a loopback stream
 listener. Full host-session and new image hardware qualification remain pending;
 this does not advance ARM64 or cold offline installer acceptance.
+
+The SSH host-connection candidate was explicitly rejected as the DSM UX. Native
+host integration now starts with a separate read-only qualification SPK, using
+DSM's documented authenticate.cgi and systemd user-unit contracts. Existing DSM
+login authentication is distinct from Linux user identity and terminal authority;
+neither per-user execution nor native Docker access is accepted until proven on
+hardware. The qualification package does not modify the working desktop install,
+request extra capabilities, or expose terminal/Docker controls.

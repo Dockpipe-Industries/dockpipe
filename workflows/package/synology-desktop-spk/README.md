@@ -1,5 +1,11 @@
 # Dockpipe GUI + CLI SPK
 
+The SSH-based host-connection candidate is superseded. Native DSM host integration
+is being qualified through the separate [read-only native probe](../../qualify/synology-host/README.md)
+before host terminal and Docker controls are connected to this GUI. Existing DSM
+sign-in must establish the authenticated operator; it does not by itself establish
+a host process UID. Host networking and the loopback-only desktop listener remain.
+
 This producer adds the combined DSM edition alongside the lightweight CLI SPK.
 It packages a native CLI and a browser desktop project into one manually
 installable `dockpipe-desktop_VERSION_synology_x64.spk` or

@@ -48,24 +48,24 @@ CLI inside the managed application environment.
 The installation/startup flow must still be qualified on actual DSM hardware.
 Local container tests do not establish Synology package-framework acceptance.
 
-## NAS host connection candidate
+## Native NAS host integration (qualification)
 
-The next desktop candidate uses host networking to restore outbound access on
-NAS setups where the Docker bridge cannot reach the Internet. Its desktop stream
-listens only on `127.0.0.1:38139`; DSM's package proxy provides browser access.
-Host networking shares networking, not the NAS filesystem or process namespace.
+The SSH-based 0.6.38-5 candidate is superseded. The intended DSM experience uses
+existing DSM sign-in and a native package-managed host service for NAS terminal,
+system/process and Docker access. It must not require a separate SSH account,
+password, key or connection profile.
 
-The candidate asks for an SSH host connection. Enable DSM SSH, enter the NAS
-address, SSH port and normal account, then sign in through **Open host terminal**.
-Verify the host key before accepting it. The native CLI path is prefilled with
-`/var/packages/dockpipe-desktop/target/bin/dockpipe`. System/process and Docker
-views select that NAS connection; **GUI container** remains an explicit local
-choice. Docker inventory requires the account's existing Docker permissions.
-Passwords are handled by SSH and are not saved in the connection profile.
+A separate **Dockpipe host qualification** SPK tests native DSM session validation
+and a package-owned native user service. It does not change the working desktop
+package or provide a terminal. See the [qualification workflow](../workflows/qualify/synology-host/README.md).
+DSM session validation returns a username; actual host execution identity and
+permissions remain a hardware proof obligation. The streamed desktop also needs
+an enforced operator identity before host terminal access can be enabled.
 
-The host terminal runs on DSM. Browser, files and ordinary local workflows still
-run in the GUI container. No host root filesystem or Docker socket is mounted.
-Full hardware qualification of this candidate remains pending.
+Host networking remains in the desktop candidate because a same-image NAS test
+confirmed that it restores outbound HTTPS where bridge TCP egress failed. The
+stream listener stays on `127.0.0.1:38139`, behind the package-owned DSM route.
+This network change does not grant host process or filesystem access.
 
 ## CLI-only installation
 

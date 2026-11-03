@@ -1,0 +1,19 @@
+{
+  "Dockpipe.HostQualification.js": {
+    "com.dockpipe.HostQualification": {
+      "type": "app",
+      "title": "Dockpipe host qualification",
+      "desc": "Read-only native authentication and service check",
+      "icon": "images/icon_{0}.png",
+      "appWindow": "com.dockpipe.HostQualification.Window",
+      "depend": ["com.dockpipe.HostQualification.Window"],
+      "allowMultiInstance": false,
+      "allUsers": false
+    },
+    "com.dockpipe.HostQualification.Window": {
+      "type": "lib",
+      "title": "Dockpipe host qualification",
+      "icon": "images/icon_{0}.png"
+    }
+  }
+}
