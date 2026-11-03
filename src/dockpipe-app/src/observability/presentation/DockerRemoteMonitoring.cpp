@@ -96,8 +96,7 @@ void DockerObservabilityWidget::refreshRemote(bool allowAuthentication)
             return;
         if (ssh) {
             QJsonObject snapshot;
-            if (!ok || !SshMachineSnapshot::parse(output, "docker", &snapshot)
-                || !snapshot.value("available").toBool()) {
+            if (!ok || !SshMachineSnapshot::parse(output, "docker", &snapshot)) {
                 clearRemoteSnapshot(sshUnavailable);
                 return;
             }

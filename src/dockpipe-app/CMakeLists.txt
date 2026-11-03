@@ -452,23 +452,27 @@ endforeach()
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
-    add_executable(ssh-machine-connection-test tests/SshMachineConnectionTest.cpp ${DOCKPIPE_SSH_MACHINE_SOURCES})
-    target_include_directories(ssh-machine-connection-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
-    target_link_libraries(ssh-machine-connection-test PRIVATE Qt6::Core Qt6::Test)
-    add_test(NAME ssh-machine-connection COMMAND ssh-machine-connection-test)
-    set_tests_properties(ssh-machine-connection PROPERTIES TIMEOUT 15)
+    # SSH multiplexing and private POSIX state are qualified on these hosts only.
+    # Keep the platform-independent selector and snapshot checks available below.
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR APPLE)
+        add_executable(ssh-machine-connection-test tests/SshMachineConnectionTest.cpp ${DOCKPIPE_SSH_MACHINE_SOURCES})
+        target_include_directories(ssh-machine-connection-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+        target_link_libraries(ssh-machine-connection-test PRIVATE Qt6::Core Qt6::Test)
+        add_test(NAME ssh-machine-connection COMMAND ssh-machine-connection-test)
+        set_tests_properties(ssh-machine-connection PROPERTIES TIMEOUT 15)
 
-    add_executable(terminal-hub-ssh-test tests/TerminalHubSshTest.cpp
-        src/terminal/application/TerminalHub.cpp src/terminal/infrastructure/TerminalShellCatalog.cpp
-        ${DOCKPIPE_TERMINAL_SOURCES} ${DOCKPIPE_SSH_MACHINE_SOURCES}
-        src/remote/presentation/SshMachineConnectionDialog.cpp)
-    target_include_directories(terminal-hub-ssh-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
-    target_link_libraries(terminal-hub-ssh-test PRIVATE Qt6::Core Qt6::Widgets Qt6::Test)
-    if(APPLE)
-        target_link_libraries(terminal-hub-ssh-test PRIVATE proc)
+        add_executable(terminal-hub-ssh-test tests/TerminalHubSshTest.cpp
+            src/terminal/application/TerminalHub.cpp src/terminal/infrastructure/TerminalShellCatalog.cpp
+            ${DOCKPIPE_TERMINAL_SOURCES} ${DOCKPIPE_SSH_MACHINE_SOURCES}
+            src/remote/presentation/SshMachineConnectionDialog.cpp)
+        target_include_directories(terminal-hub-ssh-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+        target_link_libraries(terminal-hub-ssh-test PRIVATE Qt6::Core Qt6::Widgets Qt6::Test)
+        if(APPLE)
+            target_link_libraries(terminal-hub-ssh-test PRIVATE proc)
+        endif()
+        add_test(NAME terminal-hub-ssh COMMAND terminal-hub-ssh-test)
+        set_tests_properties(terminal-hub-ssh PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
     endif()
-    add_test(NAME terminal-hub-ssh COMMAND terminal-hub-ssh-test)
-    set_tests_properties(terminal-hub-ssh PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
 
     add_executable(ssh-monitoring-test tests/SshMonitoringTest.cpp)
     target_include_directories(ssh-monitoring-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
