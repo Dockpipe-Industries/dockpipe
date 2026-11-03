@@ -6,6 +6,7 @@
 #include "SessionManager.h"
 #include "WorkflowCatalogData.h"
 #include "DashboardStore.h"
+#include "SshMachineConnection.h"
 
 #include <QFutureWatcher>
 #include <QMainWindow>
@@ -82,6 +83,8 @@ private slots:
     void onViewIconGrid();
     void onViewCompactList();
     void onOpenSettings();
+    void onHostConnection();
+    void onOpenHostTerminal();
     void onManagePackages();
     void onBasicLaunch(const QString &workflowId);
     void onBasicConfigure(const QString &workflowId);
@@ -99,6 +102,10 @@ private slots:
 
 private:
     void setupMenuBar();
+    void loadHostConnection();
+    void applyHostConnection();
+    SshMachineConnection m_hostConnection;
+    QString m_hostConnectionState;
     void selectPage(int page);
     int selectedPage() const;
     void setupDashboards();

@@ -6,7 +6,7 @@ RUN apt-get update \
     && if [ "$(dpkg --print-architecture)" = arm64 ]; then audio_package=libasound2t64; fi \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         build-essential cmake git dpkg-dev python3-venv patchelf ca-certificates libgl1-mesa-dev \
-        libsdl2-dev xvfb xauth \
+        libsdl2-dev xvfb xauth openssh-client \
         libx11-dev libxcomposite-dev libxrender-dev libxres-dev libxcb1-dev \
         libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
         libxcb-render-util0 libxcb-xinerama0 libxcb-randr0 libxcb-shape0 libxcb-sync1 libxcb-xfixes0 \

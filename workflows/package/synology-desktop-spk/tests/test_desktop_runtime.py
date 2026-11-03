@@ -67,6 +67,21 @@ class DesktopRuntimeTests(unittest.TestCase):
         run.assert_not_called()
         self.assertEqual(key.stat().st_mode & 0o777, 0o600)
 
+    def test_host_network_service_binds_only_loopback_and_keeps_credentials_out_of_argv(self):
+        password = 'fixture-private-password'
+        (self.settings / 'username').write_text('operator')
+        (self.settings / 'password').write_text(password)
+        with patch.object(RUNTIME, 'DATA', self.root), \
+                patch.object(RUNTIME, 'prepare_identity'), \
+                patch.object(RUNTIME, 'prepare_tls', return_value=('certificate', 'key')), \
+                patch.object(RUNTIME.os, 'execv') as execute, patch.dict(os.environ):
+            RUNTIME.main()
+            arguments = execute.call_args.args[1]
+            self.assertNotIn('--public', arguments)
+            self.assertEqual(arguments[arguments.index('--addr') + 1], '127.0.0.1')
+            self.assertEqual(arguments[arguments.index('--port') + 1], '38139')
+            self.assertNotIn(password, ' '.join(arguments))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -2,7 +2,6 @@ package remote
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"path/filepath"
 	"time"
@@ -11,8 +10,8 @@ import (
 	"dockpipe/src/lib/infrastructure/telemetry"
 )
 
-const MonitoringSchema = "dockpipe.machine_snapshot.v1"
-const MaxMonitoringBytes = 1 << 20
+const MonitoringSchema = telemetry.MachineSchema
+const MaxMonitoringBytes = telemetry.MaxMachineSnapshotBytes
 const MonitoringFreshness = 30 * time.Second
 
 // MonitoringPermission is worker-local opt-in, independent of workflow delivery.
@@ -22,14 +21,7 @@ type MonitoringPermission struct {
 	Docker bool `json:"docker"`
 }
 
-type MachineSnapshot struct {
-	Schema     string                    `json:"schema"`
-	Node       string                    `json:"node"`
-	ReceivedAt time.Time                 `json:"received_at"`
-	State      string                    `json:"state"`
-	Execution  *telemetry.Snapshot       `json:"execution,omitempty"`
-	Docker     *telemetry.DockerSnapshot `json:"docker,omitempty"`
-}
+type MachineSnapshot = telemetry.MachineSnapshot
 
 // RunMonitoring belongs to the worker lifetime and operates independently of
 // its job loop. Each collection/publication is bounded; failures never cancel jobs.
@@ -60,43 +52,19 @@ func RunMonitoring(ctx context.Context, root, node string, client *Client) {
 }
 
 func collectMachine(ctx context.Context, permission MonitoringPermission) MachineSnapshot {
-	result := MachineSnapshot{Schema: MonitoringSchema, State: "disabled"}
-	if permission.System {
-		snapshot, err := infrastructure.ReadExecutionSnapshot(ctx, "", true, true)
-		if err == nil {
-			result.Execution = &snapshot
-		}
+	result, err := infrastructure.ReadMachineSnapshot(ctx, permission.System, permission.Docker)
+	if err != nil {
+		result.State = "disabled"
+		result.Execution, result.Docker = nil, nil
 	}
-	if permission.Docker && ctx.Err() == nil {
-		snapshot := infrastructure.CollectDockerInventory(ctx)
-		result.Docker = &snapshot
-	}
-	if permission.System || permission.Docker {
-		result.State = "live"
-	}
+	// Existing v1 brokers may use strict decoding without the local CLI's
+	// additional category diagnostics. Missing categories already mean unavailable.
+	result.Notices = nil
 	return result
 }
 
 func fitMachineSnapshot(snapshot *MachineSnapshot) error {
-	for {
-		data, err := json.Marshal(snapshot)
-		if err != nil {
-			return err
-		}
-		if len(data) <= MaxMonitoringBytes {
-			return nil
-		}
-		if snapshot.Execution != nil && len(snapshot.Execution.Processes) > 0 {
-			snapshot.Execution.Processes = snapshot.Execution.Processes[:len(snapshot.Execution.Processes)/2]
-			snapshot.Execution.Truncated = true
-			continue
-		}
-		if snapshot.Docker != nil && snapshot.Docker.Available {
-			snapshot.Docker = &telemetry.DockerSnapshot{Notices: []string{"Docker inventory exceeds the 1 MiB remote snapshot limit."}}
-			continue
-		}
-		return errors.New("machine snapshot exceeds 1 MiB")
-	}
+	return infrastructure.FitMachineSnapshot(snapshot)
 }
 
 func (b *Broker) publishMonitoring(node string, raw []byte) (any, error) {

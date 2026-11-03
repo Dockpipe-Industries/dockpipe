@@ -18,7 +18,16 @@ import sys
 import urllib.error
 import urllib.request
 
-url = 'https://127.0.0.1:3001/webman/3rdparty/dockpipe-desktop/desktop/'
+url = 'https://127.0.0.1:38139/webman/3rdparty/dockpipe-desktop/desktop/'
+listeners = []
+for table in ('tcp', 'tcp6'):
+    for line in Path('/proc/net/' + table).read_text().splitlines()[1:]:
+        fields = line.split()
+        address, port = fields[1].rsplit(':', 1)
+        if fields[3] == '0A' and int(port, 16) == 38139:
+            listeners.append(address)
+if listeners != ['0100007F']:
+    sys.exit(1)
 context = ssl._create_unverified_context()
 try:
     urllib.request.urlopen(url, context=context, timeout=3)

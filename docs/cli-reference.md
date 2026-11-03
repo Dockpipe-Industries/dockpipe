@@ -1,5 +1,15 @@
 # CLI reference
 
+## Machine inspection
+
+`dockpipe machine snapshot --json` reads system counters, processes and Docker
+inventory on the machine running that CLI. `--system` or `--docker` selects one
+category; without either flag, both are included. The result reports the actual
+hostname and explicitly unavailable categories. Collection uses the current
+account's permissions, an eight-second deadline and a 1 MiB response limit.
+It excludes command arguments, environment values and application logs. The
+command grants no Docker access and cannot execute arbitrary remote commands.
+
 Use `dockpipe -- <command>` for a one-off command or
 `dockpipe --workflow <name> --` for a workflow you created or installed.
 

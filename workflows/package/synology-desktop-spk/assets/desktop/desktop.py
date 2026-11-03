@@ -38,6 +38,12 @@ def prepare_identity(runtime):
     os.environ['HOME'] = str(DATA)
     os.environ['USER'] = 'dockpipe'
     os.environ['LOGNAME'] = 'dockpipe'
+    os.environ['DOCKPIPE_LOCAL_MACHINE_LABEL'] = 'GUI container'
+    os.environ['DOCKPIPE_MACHINE_CONNECTION_REQUIRED'] = '1'
+    os.environ['DOCKPIPE_DEFAULT_MACHINE_LABEL'] = 'NAS'
+    os.environ['DOCKPIPE_DEFAULT_MACHINE_HOST'] = '127.0.0.1'
+    os.environ['DOCKPIPE_MACHINE_CONNECTION_STATE'] = '/config/.dockpipe-ssh'
+    os.environ['DOCKPIPE_NATIVE_CLI_PATH'] = '/var/packages/dockpipe-desktop/target/bin/dockpipe'
     os.environ['XDG_RUNTIME_DIR'] = str(runtime)
 
 
@@ -70,7 +76,7 @@ def main():
     os.environ['SELKIES_BASIC_AUTH_PASSWORD'] = (SETTINGS / 'password').read_text()
     arguments = [
         '/lsiopy/bin/selkies', 'session', '--session', '/usr/local/bin/dockpipe-desktop-session',
-        '--public', '--port', '3001', '--enable-https=true',
+        '--addr', '127.0.0.1', '--port', '38139', '--enable-https=true',
         '--https-cert', str(certificate), '--https-key', str(key),
         '--enable-basic-auth=true', '--allowed-origins', '',
         '--subfolder', '/webman/3rdparty/dockpipe-desktop/desktop',

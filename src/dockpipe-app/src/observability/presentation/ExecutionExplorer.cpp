@@ -7,6 +7,8 @@
 #include "CanvasIcons.h"
 #include "DockpipeChoices.h"
 #include "ResourceCanvas.h"
+#include "SshMachineSnapshot.h"
+#include "SshMachineTransport.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -249,6 +251,34 @@ void ExecutionExplorer::refreshWithAuthentication(bool allowAuthentication)
             args << "--container" << container;
     }
     const QString node = m_machine->currentData().toString();
+    if (node.startsWith("ssh-machine:")) {
+        const QString unavailable = tr("%1 · SSH system monitoring unavailable. Sign in using the host terminal, then refresh.")
+            .arg(m_machine->currentText());
+        if (m_sshStateDirectory.isEmpty()
+            || node != QStringLiteral("ssh-machine:") + m_sshMachineConnection.id) {
+            clearMonitoringSnapshot(unavailable);
+            return;
+        }
+        const auto plan = SshMachineTransport::snapshot(m_sshMachineConnection, m_sshStateDirectory);
+        if (!plan.valid()) {
+            clearMonitoringSnapshot(unavailable + " " + plan.error);
+            return;
+        }
+        const quint64 generation = m_generation;
+        m_command.runBounded(plan.program, plan.arguments,
+            [this, node, generation, unavailable](bool ok, const QByteArray &output) {
+                if (generation != m_generation || node != m_machine->currentData().toString()
+                    || !m_active || m_pause->isChecked())
+                    return;
+                QJsonObject snapshot;
+                if (!ok || !SshMachineSnapshot::parse(output, "execution", &snapshot) || !applySnapshot(snapshot)) {
+                    clearMonitoringSnapshot(unavailable);
+                    return;
+                }
+                m_status->setText(m_machine->currentText() + QStringLiteral(" · ") + m_status->text());
+            }, 15000, 1024 * 1024);
+        return;
+    }
     QString program;
     if (!node.isEmpty()) {
         args = {"remote", "observe", "--node", node, "--auth",
@@ -302,18 +332,45 @@ void ExecutionExplorer::setNodes(const QStringList &nodes)
     m_machine->setNodes(nodes);
 }
 
-void ExecutionExplorer::changeMachine()
+void ExecutionExplorer::setSshMachineConnection(const SshMachineConnection &connection, const QString &stateDirectory)
 {
-    ++m_generation;
-    m_command.cancel();
+    m_sshMachineConnection = connection;
+    m_sshStateDirectory = stateDirectory;
+    m_machine->setSshConnection(connection.id, connection.label);
+    changeMachine();
+}
+
+void ExecutionExplorer::clearSshMachineConnection()
+{
+    m_sshMachineConnection = {};
+    m_sshStateDirectory.clear();
+    m_machine->clearSshConnection();
+    changeMachine();
+}
+
+void ExecutionExplorer::clearMonitoringSnapshot(const QString &status)
+{
     m_selected.clear();
     m_snapshot = {};
     m_records.clear();
     m_cpuCounters.clear();
     m_sampleTime = 0;
+    m_chartSample.clear();
     m_chart->clear();
     m_overview->clear();
     m_system->setRowCount(0);
+    m_canvas->setGraph({}, {}, status);
+    m_events->clear();
+    m_title->setText(tr("Select a process or execution"));
+    m_details->clear();
+    m_status->setText(status);
+}
+
+void ExecutionExplorer::changeMachine()
+{
+    ++m_generation;
+    m_command.cancel();
+    clearMonitoringSnapshot(tr("Waiting for the selected machine…"));
     const bool remote = !m_machine->currentData().toString().isEmpty();
     m_mode->setEnabled(!remote);
     m_global->setEnabled(!remote);

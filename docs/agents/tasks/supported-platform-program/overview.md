@@ -179,8 +179,27 @@ DSM-managed orphan project recovery and on-NAS uninstall cleanup remain unproven
 The operator selected CI-prebuilt x64/arm64 images, standard digest-pinned SPKs
 and offline bundled-image SPKs. Synology documents a `docker-project.preload-image`
 resource, preserving the package-account privilege boundary. Candidate producers
-and image/archive admission are implemented in a managed worktree. Native DSM
-preload/startup remains pending; do not equate local Docker import with that proof.
+and image/archive admission are implemented in a managed worktree. Native x64 DSM
+preload imported the exact candidate image without extra package privileges, but
+the large offline installation did not reliably complete. A cached-image recovery
+installer allowed further testing. One startup failure was traced to a stale
+Container Manager profile name; a guarded, backed-up identity repair restored
+package startup. Clean offline completion and repeatable upgrade/removal remain
+release gates; imported image presence alone does not qualify the installer.
 The operator also selected the existing container Qt desktop inside a real DSM
 application window. Modern AppWindow and a package-scoped same-origin proxy are
-being qualified; the released URL launcher does not satisfy this acceptance item.
+implemented. The user confirmed a working embedded desktop on x64 DSM after
+enabling WebSocket forwarding on an existing frontend reverse proxy. The package
+automatically installs the internal route for direct HTTPS DSM access; users do
+not need to create an additional proxy. Full lifecycle, resize/focus and ARM64
+hardware acceptance remain pending. NAS host-terminal access is newly requested;
+the current PTY remains container-local and host networking does not change that.
+
+The next unsubmitted candidate adds a generic SSH host connection for the native
+NAS terminal, system/process view and read-only Docker inventory. Deployment
+assets select that host explicitly and label the local environment GUI container.
+NAS diagnostics isolated working DNS but blocked bridge TCP egress; the same
+image returned HTTPS 200 under an unprivileged, read-only host-network probe.
+The candidate therefore uses host networking with only a loopback stream
+listener. Full host-session and new image hardware qualification remain pending;
+this does not advance ARM64 or cold offline installer acceptance.

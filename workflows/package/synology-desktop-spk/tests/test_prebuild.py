@@ -16,6 +16,18 @@ SPECIFICATION.loader.exec_module(PREBUILD)
 
 
 class PrebuiltImageTests(unittest.TestCase):
+    def test_host_network_deployments_do_not_publish_or_mount_host_control_sockets(self):
+        assets = ROOT / 'workflows/package/synology-desktop-spk/assets/desktop'
+        for name in ('compose.yml', 'compose-prebuilt.yml'):
+            with self.subTest(name=name):
+                rendered = (assets / name).read_text().replace('@PULL_POLICY@', 'never')
+                service = yaml.safe_load(rendered)['services']['dockpipe']
+                self.assertEqual(service['network_mode'], 'host')
+                self.assertNotIn('ports', service)
+                self.assertNotIn('privileged', service)
+                self.assertNotIn('pid', service)
+                self.assertFalse(any('docker.sock' in volume for volume in service['volumes']))
+
     def test_embedded_container_probe_is_valid_python(self):
         compile(PREBUILD.QUALIFIER.PROBE, "desktop-startup-probe", "exec")
 

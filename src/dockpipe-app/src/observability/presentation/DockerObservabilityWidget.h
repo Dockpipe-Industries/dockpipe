@@ -5,6 +5,7 @@
 #include <QJsonArray>
 #include "ResourceCanvas.h"
 #include "RemoteCommand.h"
+#include "SshMachineConnection.h"
 
 class QLabel;
 class DockerResourceInspector;
@@ -23,6 +24,8 @@ class DockerObservabilityWidget : public QWidget {
 public:
     explicit DockerObservabilityWidget(QWidget *parent = nullptr);
     void setNodes(const QStringList &nodes);
+    void setSshMachineConnection(const SshMachineConnection &connection, const QString &stateDirectory);
+    void clearSshMachineConnection();
 
 public slots:
     void refresh();
@@ -42,12 +45,15 @@ private slots:
 
 private:
     void changeMachine();
+    void clearRemoteSnapshot(const QString &status);
     void refreshRemote(bool allowAuthentication = false);
     void applyRemoteSnapshot(const QJsonObject &snapshot);
     MonitoringMachineSelector *m_machine = nullptr;
     RemoteCommand m_remoteCommand;
     quint64 m_generation = 0;
     quint64 m_localRefreshGeneration = 0;
+    SshMachineConnection m_sshMachineConnection;
+    QString m_sshStateDirectory;
     struct ContainerRowData {
         QString id;
         QString name;

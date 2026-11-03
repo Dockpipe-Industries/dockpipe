@@ -4,6 +4,7 @@
 
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QVariant>
 
 RemoteCommand::RemoteCommand(QObject *parent) : QObject(parent)
 {
@@ -14,7 +15,9 @@ RemoteCommand::RemoteCommand(QObject *parent) : QObject(parent)
     });
     connect(&m_process, &QProcess::readyReadStandardOutput, this, &RemoteCommand::drain);
     connect(&m_process, &QProcess::readyReadStandardError, this, [this]() {
-        emit output(QString::fromUtf8(m_process.readAllStandardError()));
+        const QByteArray data = m_process.readAllStandardError();
+        if (accountOutput(data.size()))
+            emit output(QString::fromUtf8(data));
     });
     connect(&m_process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
             [this](int code, QProcess::ExitStatus status) {
@@ -53,8 +56,26 @@ bool RemoteCommand::busy() const
 void RemoteCommand::run(const QString &program, const QStringList &arguments,
                         Completion completion, int timeoutMs)
 {
+    runBounded(program, arguments, std::move(completion), timeoutMs, 20 * 1024 * 1024);
+}
+
+void RemoteCommand::runBounded(const QString &program, const QStringList &arguments,
+                              Completion completion, int timeoutMs, qsizetype maximumOutputBytes)
+{
     if (busy())
         return;
+    if (maximumOutputBytes <= 0 || maximumOutputBytes > 20 * 1024 * 1024) {
+        emit output(tr("Invalid command response limit.\n"));
+        if (completion)
+            completion(false, {});
+        return;
+    }
+    // Keep the existing exported object's layout and run() symbol compatible.
+    // The process owns these per-invocation counters, including stderr bytes.
+    m_process.setProperty("_dockpipeOutputLimit", qlonglong(maximumOutputBytes));
+    m_process.setProperty("_dockpipeOutputRead", qlonglong(0));
+    const qulonglong invocation = m_process.property("_dockpipeInvocation").toULongLong() + 1;
+    m_process.setProperty("_dockpipeInvocation", invocation);
     m_stdout.clear();
     m_pendingLine.clear();
     const int interactionOption = arguments.indexOf("--interaction");
@@ -72,14 +93,8 @@ void RemoteCommand::run(const QString &program, const QStringList &arguments,
 void RemoteCommand::drain()
 {
     const QByteArray chunk = m_process.readAllStandardOutput();
-    // Keep the existing 20 MiB command-output budget while framing control lines.
-    // Check before retaining a chunk so a missing newline cannot grow the buffer.
-    if (m_stdout.size() + m_pendingLine.size() + chunk.size() > 20 * 1024 * 1024) {
-        emit output(tr("Output exceeded the display limit.\n"));
-        m_pendingLine.clear();
-        cancel();
+    if (!accountOutput(chunk.size()))
         return;
-    }
     m_pendingLine += chunk;
     while (m_pendingLine.contains('\n')) {
         const qsizetype end = m_pendingLine.indexOf('\n');
@@ -89,8 +104,26 @@ void RemoteCommand::drain()
     }
 }
 
+bool RemoteCommand::accountOutput(qsizetype bytes)
+{
+    if (m_cancelled)
+        return false;
+    const qlonglong maximum = m_process.property("_dockpipeOutputLimit").toLongLong();
+    const qlonglong retained = m_process.property("_dockpipeOutputRead").toLongLong();
+    if (bytes > maximum - retained) {
+        emit output(tr("Output exceeded the command response limit.\n"));
+        m_pendingLine.clear();
+        cancel();
+        return false;
+    }
+    m_process.setProperty("_dockpipeOutputRead", retained + bytes);
+    return true;
+}
+
 void RemoteCommand::consumeLine(const QByteArray &line)
 {
+    if (m_cancelled)
+        return;
     const auto event = QJsonDocument::fromJson(line).object();
     const QString eventName = event.value("event").toString();
     // Reserved protocol frames never reach diagnostics, including invalid frames.
@@ -145,7 +178,8 @@ void RemoteCommand::consumeLine(const QByteArray &line)
     }
     m_stdout += line;
     emit standardOutput(line);
-    emit output(QString::fromUtf8(line));
+    if (!m_cancelled)
+        emit output(QString::fromUtf8(line));
 }
 
 void RemoteCommand::submitHardwareKeyResponse(const QString &id, const QString &device,
@@ -179,8 +213,10 @@ void RemoteCommand::cancel()
     m_promptId.clear();
     m_promptDevices.clear();
     m_process.terminate();
-    QTimer::singleShot(2000, &m_process, [this]() {
-        if (m_cancelled && m_process.state() != QProcess::NotRunning)
+    const qulonglong invocation = m_process.property("_dockpipeInvocation").toULongLong();
+    QTimer::singleShot(2000, &m_process, [this, invocation]() {
+        if (m_process.property("_dockpipeInvocation").toULongLong() == invocation
+            && m_cancelled && m_process.state() != QProcess::NotRunning)
             m_process.kill();
     });
 }

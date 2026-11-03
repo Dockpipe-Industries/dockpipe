@@ -1,6 +1,8 @@
 #pragma once
 
 #include "TerminalLaunchContext.h"
+#include "SshMachineConnection.h"
+#include "TerminalShellCatalog.h"
 
 #include <QByteArray>
 #include <QHash>
@@ -8,16 +10,34 @@
 #include <QStringList>
 
 class TerminalSession;
-class TerminalShellCatalog;
 
 // Process lifetime is independent of the page or dashboard displaying it.
 class TerminalHub final : public QObject {
     Q_OBJECT
 public:
+    struct SessionLaunch {
+        QString program;
+        QStringList arguments;
+        QString workingDirectory;
+        QMap<QString, QString> environment;
+        QString label;
+        bool remote = false;
+        TerminalLaunchContext context = TerminalLaunchContext::Automatic;
+        QString error;
+
+        bool valid() const { return error.isEmpty(); }
+    };
+
     explicit TerminalHub(QObject *parent = nullptr);
     explicit TerminalHub(TerminalLaunchContext context, QObject *parent = nullptr);
     QString createSession(const QString &workdir, const QString &shellProfileId = {});
     TerminalShellCatalog &shellCatalog() const;
+    QVector<TerminalShellProfile> shellProfiles() const;
+    void setSshMachineConnection(const SshMachineConnection &connection, const QString &stateDirectory);
+    void clearSshMachineConnection();
+    bool hasSshMachineConnection() const;
+    SshMachineConnection sshMachineConnection() const;
+    SessionLaunch prepareSessionLaunch(const QString &workdir, const QString &shellProfileId = {}) const;
     QString creationError() const;
     QStringList sessionIds() const;
     QString title(const QString &id) const;
@@ -32,6 +52,7 @@ public:
 signals:
     void sessionsChanged();
     void outputAvailable(const QString &id);
+    void shellProfilesChanged();
 
 private:
     struct Entry {
@@ -46,4 +67,7 @@ private:
     TerminalShellCatalog *m_shellCatalog = nullptr;
     TerminalLaunchContext m_launchContext = TerminalLaunchContext::Automatic;
     QString m_creationError;
+    bool m_hasSshMachineConnection = false;
+    SshMachineConnection m_sshMachineConnection;
+    QString m_sshStateDirectory;
 };

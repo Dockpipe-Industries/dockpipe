@@ -30,9 +30,11 @@ DSM. Package Center owns start/stop and the application starts automatically wit
 its desktop session; no Compose file or shell setup is required.
 
 Use your separate Dockpipe sign-in to enter the browser GUI. This is not DSM SSO.
-The first connection uses a self-signed HTTPS certificate on port 38139; confirm
-the intended NAS endpoint before trusting it, or configure a trusted reverse proxy.
-Do not forward this desktop port directly to the Internet. A single installation
+Released URL-launcher builds use a self-signed HTTPS certificate on port 38139;
+confirm the intended NAS endpoint before trusting it, or configure a trusted reverse
+proxy. The DSM-window candidate described below instead uses DSM's existing HTTPS
+connection and needs no additional operator-configured reverse proxy.
+Do not forward the desktop port directly to the Internet. A single installation
 has one shared desktop and workspace. The DSM launcher is initially admin-only.
 
 Settings, sign-in and workspace data persist across upgrades/reinstall. Reinstall
@@ -45,6 +47,25 @@ CLI inside the managed application environment.
 
 The installation/startup flow must still be qualified on actual DSM hardware.
 Local container tests do not establish Synology package-framework acceptance.
+
+## NAS host connection candidate
+
+The next desktop candidate uses host networking to restore outbound access on
+NAS setups where the Docker bridge cannot reach the Internet. Its desktop stream
+listens only on `127.0.0.1:38139`; DSM's package proxy provides browser access.
+Host networking shares networking, not the NAS filesystem or process namespace.
+
+The candidate asks for an SSH host connection. Enable DSM SSH, enter the NAS
+address, SSH port and normal account, then sign in through **Open host terminal**.
+Verify the host key before accepting it. The native CLI path is prefilled with
+`/var/packages/dockpipe-desktop/target/bin/dockpipe`. System/process and Docker
+views select that NAS connection; **GUI container** remains an explicit local
+choice. Docker inventory requires the account's existing Docker permissions.
+Passwords are handled by SSH and are not saved in the connection profile.
+
+The host terminal runs on DSM. Browser, files and ordinary local workflows still
+run in the GUI container. No host root filesystem or Docker socket is mounted.
+Full hardware qualification of this candidate remains pending.
 
 ## CLI-only installation
 
@@ -151,10 +172,24 @@ NAS. Install Container Manager first; it is not bundled in the offline SPK.
 These are alternative installers for the same Dockpipe package and saved data.
 Standard is the smaller default. Offline is larger and intended for installation
 without registry access. Workflow execution can still require networking.
-Native preload, upgrades between editions and the DSM window experience must be
-qualified on the NAS before these candidates are advertised as tested releases.
+Native preload completion and upgrades between editions must be qualified on the
+NAS before these candidates are advertised as tested releases. Image import has
+succeeded on x64 DSM, but the large offline installation has not reliably completed.
 
 The candidate GUI launcher is a real DSM application window containing the
 streamed Qt desktop. Its package-scoped proxy uses your existing HTTPS DSM origin;
 the internal desktop port is loopback-only. Dockpipe sign-in remains separate
-from DSM sign-in. This window integration is pending actual NAS acceptance.
+from DSM sign-in. A working embedded desktop has been confirmed on an x64 NAS;
+the remaining lifecycle and interaction checks still require hardware acceptance.
+
+Open DSM over HTTPS using the NAS address and its configured DSM port, then launch
+Dockpipe from the DSM menu. The package installs its internal route automatically.
+Users accessing DSM directly do not need to create a reverse proxy or expose the
+internal desktop port.
+
+If an existing reverse proxy fronts DSM, it must also forward WebSocket upgrades.
+For Synology Reverse Proxy, edit the matching DSM hostname rule under **Control
+Panel → Login Portal → Advanced → Reverse Proxy**, then select **Custom Header →
+Create → WebSocket** and save. Refresh DSM and reopen Dockpipe. This requirement
+applies to that existing proxy hop; see [Synology's WebSocket troubleshooting
+guide](https://kb.synology.com/en-nz/DSM/tutorial/I_cannot_connect_to_a_virtual_machine_via_Virtual_Machine_Manager_What_can_I_do).

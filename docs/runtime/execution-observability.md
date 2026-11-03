@@ -8,6 +8,17 @@ and Workflows. **Executions → Runs & logs** contains session logs and stop
 controls, plus remote jobs with cancellation and result downloads. Successful
 remote submission selects Remote jobs. Apps remains a card library.
 
+## SSH host monitoring
+
+**Settings → Host connection** configures an explicit SSH machine. Sign in through
+**Open host terminal** and verify its host key. System and Docker views then run
+the installed host CLI's `machine snapshot --json` over that authenticated SSH
+connection. The reported hostname identifies the observed machine; the GUI
+container remains a separately labelled local choice. Failed SSH reads clear
+host data and show unavailable status; they never substitute local counters.
+Docker inventory is read-only and requires the SSH account's existing Docker
+permissions. Background reads never request a password or run `sudo`.
+
 ## What is observed
 
 Host scripts and commands, attached and detached Docker launches, and remote

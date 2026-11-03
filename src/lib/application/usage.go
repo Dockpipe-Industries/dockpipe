@@ -81,6 +81,7 @@ var mainUsageSections = []usageSection{
 			{"git --request <file.json>", "Review or perform a human-requested project Git action"},
 			{"session list|inspect|switch|publish", "Inspect and publish runtime-owned Git session workspaces"},
 			{"remote setup|serve|pair|worker|submit", "Pair outbound nodes and execute approved local workflows"},
+			{"machine snapshot [--json]", "Read local system/process and Docker inventory using this account's permissions"},
 			{"dependency inventory|assess|plan|update|recover|activate|activation-status", "Inspect dependencies, review plans, and explicitly apply or recover supported local changes"},
 			{"catalog list", "Print the Dockpipe-owned launcher/tooling catalog (workflows, resolvers, strategies, runtimes)"},
 			{"pipelang check|compile|invoke|materialize", "PipeLang typed authoring helpers"},

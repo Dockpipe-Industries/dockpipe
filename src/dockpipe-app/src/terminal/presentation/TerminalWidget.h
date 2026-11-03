@@ -22,6 +22,7 @@ public:
     ~TerminalWidget() override;
     void setWorkdir(const QString &workdir);
     QString sessionId() const { return m_sessionId; }
+    void openShell(const QString &shellProfileId);
 
 public slots:
     // Only the packaged terminal document receives this WebChannel object.

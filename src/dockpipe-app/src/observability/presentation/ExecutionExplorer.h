@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RemoteCommand.h"
+#include "SshMachineConnection.h"
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QMap>
@@ -30,6 +31,8 @@ public:
     bool applySnapshot(const QJsonObject &snapshot);
     void refresh();
     void setNodes(const QStringList &nodes);
+    void setSshMachineConnection(const SshMachineConnection &connection, const QString &stateDirectory);
+    void clearSshMachineConnection();
 
 private:
     void refreshWithAuthentication(bool allowAuthentication);
@@ -37,6 +40,7 @@ private:
     void inspect(const QString &identity);
     void inspectSystem();
     void changeMachine();
+    void clearMonitoringSnapshot(const QString &status);
     MonitoringMachineSelector *m_machine;
     SystemResourceOverview *m_overview;
     QString processIdentity(const QJsonObject &process) const;
@@ -59,6 +63,8 @@ private:
     QTimer *m_timer;
     RemoteCommand m_command;
     QString m_workdir;
+    SshMachineConnection m_sshMachineConnection;
+    QString m_sshStateDirectory;
     QString m_selected;
     QJsonObject m_snapshot;
     QMap<QString, double> m_cpuCounters;

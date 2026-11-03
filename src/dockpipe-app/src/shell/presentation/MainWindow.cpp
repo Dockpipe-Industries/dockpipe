@@ -625,6 +625,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     QTimer::singleShot(0, this, [this, startHome]() {
         m_store.load();
         setupDashboards();
+        loadHostConnection();
         setupTray();
         if (startHome) {
             activateHome();
@@ -756,6 +757,8 @@ void MainWindow::setupMenuBar()
 
     QMenu *settingsMenu = menuBar()->addMenu(tr("Settings"));
     settingsMenu->addAction(tr("Preferences…"), this, &MainWindow::onOpenSettings);
+    settingsMenu->addAction(tr("Host connection…"), this, &MainWindow::onHostConnection);
+    settingsMenu->addAction(tr("Open host terminal"), this, &MainWindow::onOpenHostTerminal);
 
     QMenu *packagesMenu = menuBar()->addMenu(tr("Packages"));
     packagesMenu->addAction(tr("Manage Packages…"), this, &MainWindow::onManagePackages);

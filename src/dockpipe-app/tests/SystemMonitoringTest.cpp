@@ -184,5 +184,42 @@ int verifySystemMonitoring(const QString &directory)
     if (!explorer.findChild<QComboBox *>("executionMode")->isEnabled()
         || explorer.findChild<QLabel *>("systemMetric1")->text() != "Unavailable")
         return 112;
+
+    // A configured SSH endpoint is separate from paired nodes. Invalid SSH
+    // metadata must fail before launch and must never inspect this container.
+    SshMachineConnection ssh;
+    ssh.id = "host";
+    ssh.label = "Office host";
+    ssh.host = "-invalid";
+    ssh.user = "operator";
+    ssh.nativeCliPath = "/opt/dockpipe/bin/dockpipe";
+    explorer.setSshMachineConnection(ssh, directory + "/ssh");
+    dockerView.setSshMachineConnection(ssh, directory + "/ssh");
+    explorer.setNodes({"monitor-host"});
+    dockerView.setNodes({"monitor-host"});
+    if (machine->currentData().toString() != "ssh-machine:host"
+        || dockerMachine->currentData().toString() != "ssh-machine:host")
+        return 123;
+    explorer.setActive(true);
+    dockerView.setActive(true);
+    if (!waitFor([&]() {
+            return explorer.findChild<QLabel *>("executionStatus")->text().contains("SSH system monitoring unavailable");
+        }) || processes->rowCount() != 0 || containers->rowCount() != 0)
+        return 124;
+    if (explorer.findChild<QComboBox *>("executionMode")->isEnabled())
+        return 125;
+    explorer.clearSshMachineConnection();
+    dockerView.clearSshMachineConnection();
+    if (machine->currentData().toString() != "ssh-machine:host"
+        || dockerMachine->currentData().toString() != "ssh-machine:host"
+        || !machine->currentText().contains("unavailable")
+        || !dockerMachine->currentText().contains("unavailable"))
+        return 126;
+    explorer.refresh();
+    dockerView.refresh();
+    if (processes->rowCount() != 0 || containers->rowCount() != 0)
+        return 127;
+    explorer.setActive(false);
+    dockerView.setActive(false);
     return 0;
 }

@@ -34,6 +34,11 @@ set(CMAKE_AUTOUIC ON)
 include(cmake/AppSourceLayout.cmake)
 include_directories(${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
 
+set(DOCKPIPE_SSH_MACHINE_SOURCES
+    src/remote/domain/SshMachineConnection.cpp
+    src/remote/infrastructure/SshMachineConnectionStore.cpp
+    src/remote/infrastructure/SshMachineTransport.cpp)
+
 # Qt6Gui depends on WrapOpenGL; without Mesa dev packages, find_package(Qt6) fails obscurely on Linux.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(OpenGL REQUIRED)
@@ -110,6 +115,7 @@ set(DOCKPIPE_APP_SOURCES
     src/observability/presentation/ExecutionMetricChart.cpp
     src/observability/presentation/SystemResourceOverview.cpp
     src/shell/presentation/MainWindow.cpp
+    src/shell/presentation/MainWindowHostConnection.cpp
     src/shell/presentation/MainWindowWorkflows.cpp
     src/shell/presentation/MainWindowDashboards.cpp
     src/shell/presentation/MainWindowSurfaces.cpp
@@ -271,6 +277,7 @@ endif()
 if(BUILD_TESTING)
     add_executable(execution-explorer-test
         tests/ExecutionExplorerTest.cpp src/observability/presentation/ExecutionExplorer.cpp src/observability/presentation/ExecutionMetricChart.cpp src/observability/presentation/SystemResourceOverview.cpp
+        ${DOCKPIPE_SSH_MACHINE_SOURCES}
         src/remote/infrastructure/RemoteCommand.cpp src/catalog/infrastructure/DockpipeChoices.cpp src/catalog/infrastructure/OperatorDockpipeBinary.cpp src/catalog/infrastructure/WorkflowCatalog.cpp src/catalog/domain/WorkflowCatalogData.cpp src/shell/infrastructure/LauncherSettings.cpp src/execution/infrastructure/ContextStore.cpp src/execution/domain/Context.cpp
         src/observability/presentation/ResourceCanvas.cpp src/observability/presentation/ResourceLinkItem.cpp src/shared-ui/presentation/CanvasPanel.cpp src/shared-ui/presentation/CanvasIcons.cpp
         src/shared-ui/presentation/Theme.cpp src/shared-ui/presentation/WindowChrome.cpp dockpipe-launcher.qrc)
@@ -314,6 +321,8 @@ else()
     message(FATAL_ERROR "Unsupported Browser SDK ABI profile: ${DOCKPIPE_BROWSER_ABI_PROFILE}")
 endif()
 set(DOCKPIPE_UI_SOURCES
+    ${DOCKPIPE_SSH_MACHINE_SOURCES}
+    src/remote/presentation/SshMachineConnectionDialog.cpp
     src/workspace-graph/infrastructure/WorkspaceGraphPage.cpp src/workspace-graph/infrastructure/WorkspaceGraphReader.cpp src/workspace-graph/presentation/WorkspaceGraphNode.cpp
     src/workspace-graph/presentation/WorkspaceGraphView.cpp src/workspace-graph/presentation/WorkspaceGraphWidget.cpp
     src/git/presentation/GitCommitQueueModel.cpp src/git/presentation/GitHistoryWidget.cpp src/git/presentation/GitRepositoryWidget.cpp src/git/presentation/GitConflictWidget.cpp
@@ -443,6 +452,37 @@ endforeach()
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    add_executable(ssh-machine-connection-test tests/SshMachineConnectionTest.cpp ${DOCKPIPE_SSH_MACHINE_SOURCES})
+    target_include_directories(ssh-machine-connection-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+    target_link_libraries(ssh-machine-connection-test PRIVATE Qt6::Core Qt6::Test)
+    add_test(NAME ssh-machine-connection COMMAND ssh-machine-connection-test)
+    set_tests_properties(ssh-machine-connection PROPERTIES TIMEOUT 15)
+
+    add_executable(terminal-hub-ssh-test tests/TerminalHubSshTest.cpp
+        src/terminal/application/TerminalHub.cpp src/terminal/infrastructure/TerminalShellCatalog.cpp
+        ${DOCKPIPE_TERMINAL_SOURCES} ${DOCKPIPE_SSH_MACHINE_SOURCES}
+        src/remote/presentation/SshMachineConnectionDialog.cpp)
+    target_include_directories(terminal-hub-ssh-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+    target_link_libraries(terminal-hub-ssh-test PRIVATE Qt6::Core Qt6::Widgets Qt6::Test)
+    if(APPLE)
+        target_link_libraries(terminal-hub-ssh-test PRIVATE proc)
+    endif()
+    add_test(NAME terminal-hub-ssh COMMAND terminal-hub-ssh-test)
+    set_tests_properties(terminal-hub-ssh PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
+
+    add_executable(ssh-monitoring-test tests/SshMonitoringTest.cpp)
+    target_include_directories(ssh-monitoring-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+    target_link_libraries(ssh-monitoring-test PRIVATE Qt6::Core Qt6::Widgets Qt6::Test)
+    add_test(NAME ssh-monitoring COMMAND ssh-monitoring-test)
+    set_tests_properties(ssh-monitoring PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
+
+    add_executable(remote-command-budget-test tests/RemoteCommandBudgetTest.cpp
+        src/remote/infrastructure/RemoteCommand.cpp)
+    target_include_directories(remote-command-budget-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+    target_link_libraries(remote-command-budget-test PRIVATE Qt6::Core Qt6::Test)
+    add_test(NAME remote-command-budget COMMAND remote-command-budget-test)
+    set_tests_properties(remote-command-budget PROPERTIES TIMEOUT 15)
+
     qt_add_executable(desktop-permissions-widget-test
         tests/DesktopPermissionsWidgetTest.cpp src/native-desktop/presentation/DesktopPermissionsWidget.h)
     target_include_directories(desktop-permissions-widget-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})

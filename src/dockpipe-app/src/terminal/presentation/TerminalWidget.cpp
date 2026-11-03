@@ -33,6 +33,12 @@
 #include <QWebEngineUrlRequestInfo>
 #include <QWebEngineView>
 
+
+void TerminalWidget::openShell(const QString &shellProfileId)
+{
+    createTerminal(shellProfileId);
+}
+
 static void initializeTerminalResources()
 {
     Q_INIT_RESOURCE(terminal);
@@ -161,7 +167,7 @@ TerminalWidget::TerminalWidget(TerminalHub &hub, const QString &workdir, QWidget
         m_shellMenu->setObjectName("terminalShellMenu");
         addAction(m_shellMenu->menuAction());
     }
-    connect(&m_hub.shellCatalog(), &TerminalShellCatalog::profilesChanged, this, &TerminalWidget::refreshShells);
+    connect(&m_hub, &TerminalHub::shellProfilesChanged, this, &TerminalWidget::refreshShells);
     connect(&m_hub.shellCatalog(), &TerminalShellCatalog::discoveryFinished, this, [this] {
         refreshShells();
         if (m_mode == Mode::Dashboard && isVisible() && !m_dashboardStarted)
@@ -187,7 +193,7 @@ void TerminalWidget::startDashboardSession()
     if (m_mode != Mode::Dashboard || !m_hubGuard || m_hub.running(m_ownedSessionId))
         return;
     const bool flatpak = !qEnvironmentVariable("FLATPAK_ID").isEmpty() || QFileInfo::exists("/.flatpak-info");
-    if (m_hub.shellCatalog().discovering() && flatpak) {
+    if (!m_hub.hasSshMachineConnection() && m_hub.shellCatalog().discovering() && flatpak) {
         showStatus(tr("Discovering installed host shells…"));
         return;
     }
@@ -217,8 +223,10 @@ void TerminalWidget::refreshShells()
     const QString selected = m_shells->currentData().toString();
     QSignalBlocker blocker(m_shells);
     m_shells->clear();
-    m_shells->addItem(tr("Default shell"), QString());
-    const auto profiles = m_hub.shellCatalog().profiles();
+    const QString defaultLabel = m_hub.hasSshMachineConnection()
+        ? tr("Default · %1 · SSH").arg(m_hub.sshMachineConnection().label) : tr("Default shell");
+    m_shells->addItem(defaultLabel, QString());
+    const auto profiles = m_hub.shellProfiles();
     for (const auto &profile : profiles)
         m_shells->addItem(profile.label, profile.id);
     m_shells->setCurrentIndex(qMax(0, m_shells->findData(selected)));

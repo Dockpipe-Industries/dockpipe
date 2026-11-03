@@ -32,6 +32,14 @@ code must not depend on widgets, process execution, network clients or stores.
 filesystem persistence, CLI transport and platform APIs. `presentation` owns Qt
 widgets and interaction. `integration` adapts separately released components.
 
+SSH machine connection values live in `remote/domain`; the private metadata store
+and system OpenSSH transport live in `remote/infrastructure`. The terminal hub
+owns interactive SSH PTYs, while observability views consume bounded read-only
+host CLI snapshots. The shell composes these services through one explicit host
+profile. SSH owns authentication and host-key verification; profile JSON contains
+no password or private-key bytes. Deployment-specific defaults remain in package
+assets, outside the GUI and native engine.
+
 The catalog value types and their display decisions live in
 `catalog/domain/WorkflowCatalogData.*`; `WorkflowCatalog` owns CLI discovery.
 The compatibility client header includes the model header, while DTO-only views

@@ -47,13 +47,17 @@ existing HTTPS connection; the package-generated backend certificate stays on
 loopback. DSM session cookies are stripped before proxying; Dockpipe still
 requires its separate sign-in. No global framing/browser security settings change.
 The proxy worker and declared nginx reloads own route install/start/stop/removal.
+Direct HTTPS DSM access needs no operator-configured reverse proxy. If DSM already
+sits behind another proxy, that hop must forward WebSocket upgrades too; the
+package cannot configure an operator-owned frontend. An x64 NAS test reached a
+working embedded desktop after enabling WebSocket forwarding on that existing hop.
 
 Port 38139 binds only to loopback in candidate Compose files. Start waits up to
 two minutes for HTTP 401 at the prefixed authentication gate, using bounded local
 probes without credentials. The port-config resource reserves the service and
 disables automatic router forwarding. Direct browser access to that port is no
-longer the launcher; use HTTPS DSM. Hardware window/WSS/focus/resize acceptance is
-still required before claiming this integration works.
+longer the launcher; use HTTPS DSM. Full hardware lifecycle/focus/resize acceptance
+remains separate from the working embedded desktop observation.
 
 The desktop session launches Dockpipe directly under a minimal window manager,
 maximizes normal application windows and retains normal dialogs. It does not
