@@ -1,4 +1,5 @@
 """Exercise actual CMake test properties; platform flags simulated, not native proof."""
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -78,9 +79,16 @@ set_tests_properties(offscreen PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen
         path = root / 'build/observed.txt'
         if path.exists():
             observed = dict(line.split('=', 1) for line in path.read_text().splitlines())
-        generated = root / 'build/CTestTestfile.cmake'
-        if generated.exists():
-            observed['generated_tests'] = generated.read_text()
+        if result.returncode == 0:
+            listing = subprocess.run(
+                ['ctest', '--test-dir', str(root / 'build'), '--show-only=json-v1'],
+                capture_output=True, text=True, timeout=15,
+            )
+            self.assertEqual(0, listing.returncode, listing.stderr)
+            observed['test_commands'] = {
+                test['name']: test['command']
+                for test in json.loads(listing.stdout)['tests']
+            }
         return result, observed, (os_root / 'Fonts').as_posix()
 
     def test_native_offscreen_appends_only_missing_font_fixture(self):
@@ -95,9 +103,9 @@ set_tests_properties(offscreen PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen
         self.assertEqual('23', observed['explicit_timeout'])
         self.assertEqual('17', observed['offscreen_timeout'])
         self.assertEqual('77', observed['offscreen_skip'])
-        self.assertRegex(
-            observed['generated_tests'],
-            r'add_test\(\[=\[offscreen\]=\].*"-E" "echo" "quoted argument"\)',
+        self.assertEqual(
+            ['-E', 'echo', 'quoted argument'],
+            observed['test_commands']['offscreen'][1:],
         )
 
     def test_other_hosts_do_not_acquire_the_windows_fixture(self):
