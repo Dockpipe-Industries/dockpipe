@@ -2,6 +2,8 @@ module dorkpipe.orchestrator
 
 go 1.25.0
 
+toolchain go1.26.10
+
 require dockpipe v0.0.0
 
 require (

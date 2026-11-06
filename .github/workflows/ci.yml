@@ -42,7 +42,7 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
-          go-version: "1.26.9"
+          go-version: "1.26.10"
 
       - name: Verify MCP module without workspace resolution
         working-directory: packages/dorkpipe-mcp
@@ -222,7 +222,7 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
-          go-version: "1.26.9"
+          go-version: "1.26.10"
 
       - name: Runtime Go tests (PipeLang uses separate containment qualification)
         run: bash release/packaging/test-runtime.sh
