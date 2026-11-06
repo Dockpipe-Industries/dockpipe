@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"errors"
 	"io"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -96,7 +97,7 @@ func statusIDs(data, name string) ([4]int, error) {
 		}
 		for index, field := range fields {
 			identifier, err := strconv.ParseUint(field, 10, 32)
-			if err != nil {
+			if err != nil || identifier > uint64(math.MaxInt) {
 				return result, errors.New("invalid process credential metadata")
 			}
 			result[index] = int(identifier)
