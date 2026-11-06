@@ -2,6 +2,7 @@ package application
 
 import (
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -48,20 +49,31 @@ func TestValidateParallelNoHostCommit(t *testing.T) {
 
 // TestParseStepArgv splits shell command lines for container argv and treats blank as nil argv.
 func TestParseStepArgv(t *testing.T) {
-	argv, err := parseStepArgv("echo hello")
-	if err != nil {
-		t.Fatalf("unexpected parse error: %v", err)
+	tests := []struct {
+		name    string
+		command string
+		want    []string
+		wantErr bool
+	}{
+		{name: "simple", command: "echo hello", want: []string{"echo", "hello"}},
+		{name: "blank", command: "   "},
+		{name: "quoted spaces", command: `tool "two words" 'three words'`, want: []string{"tool", "two words", "three words"}},
+		{name: "empty argument", command: `tool ""`, want: []string{"tool", ""}},
+		{name: "hash after empty quotes", command: `tool ""#literal`, want: []string{"tool", "#literal"}},
+		{name: "literal environment syntax", command: `tool '$HOME' "$HOME"`, want: []string{"tool", "$HOME", "$HOME"}},
+		{name: "quoted redirect digits", command: `tool "2">file`, want: []string{"tool", "2"}},
+		{name: "unclosed quote", command: `tool "unfinished`, wantErr: true},
 	}
-	if len(argv) != 2 || argv[0] != "echo" || argv[1] != "hello" {
-		t.Fatalf("unexpected argv: %v", argv)
-	}
-
-	argv, err = parseStepArgv("   ")
-	if err != nil {
-		t.Fatalf("blank command should not error: %v", err)
-	}
-	if argv != nil {
-		t.Fatalf("blank command should return nil argv, got %v", argv)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			argv, err := parseStepArgv(test.command)
+			if (err != nil) != test.wantErr {
+				t.Fatalf("parse error = %v, want error %v", err, test.wantErr)
+			}
+			if !reflect.DeepEqual(argv, test.want) {
+				t.Fatalf("argv = %#v, want %#v", argv, test.want)
+			}
+		})
 	}
 }
 

@@ -66,7 +66,7 @@ class ForgePipeAttestationWorkflowTests(unittest.TestCase):
         self.assertIn('--exports workflows/publish/forgepipe-attestation/assets/forgepipe-public-exports.txt', audit['run'])
         self.assertIn('--tag "$FORGEPIPE_SDK_TAG"', audit['run'])
         self.assertEqual(attest['uses'],
-                         'actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661')
+                         'actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a')
         self.assertEqual(set(attest['with']), {'subject-path'})
         self.assertNotIn('environment', job)
         self.assertNotIn('gh release', yaml.dump(job))
