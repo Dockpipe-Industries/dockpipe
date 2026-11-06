@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -124,8 +123,17 @@ func TestRealInstallerHelperRestoresVolumeStateInBothStagingLayouts(t *testing.T
 	}
 	buildContext, cancelBuild := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancelBuild()
+	compilerRoot := exec.CommandContext(buildContext, "go", "env", "GOROOT")
+	rootOutput, err := compilerRoot.Output()
+	if err != nil {
+		t.Fatalf("locate the selected Go toolchain: %v", err)
+	}
+	root := strings.TrimSpace(string(rootOutput))
+	if !filepath.IsAbs(root) {
+		t.Fatal("Go reported a non-absolute toolchain root")
+	}
 	built := filepath.Join(t.TempDir(), "dockpipe-dsm-host")
-	build := exec.CommandContext(buildContext, filepath.Join(runtime.GOROOT(), "bin/go"), "build", "-buildvcs=false", "-o", built, ".")
+	build := exec.CommandContext(buildContext, filepath.Join(root, "bin/go"), "build", "-buildvcs=false", "-o", built, ".")
 	build.Env = append(os.Environ(), "GOTOOLCHAIN=local", "CGO_ENABLED=0")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build actual installer helper: %v\n%s", err, output)

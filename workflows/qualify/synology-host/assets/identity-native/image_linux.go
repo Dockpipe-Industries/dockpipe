@@ -23,8 +23,6 @@ const sealShrink = 0x0002
 const sealGrow = 0x0004
 const sealWrite = 0x0008
 const requiredSeals = sealWrite | sealShrink | sealGrow | sealSeals
-const memfdCloseOnExec = 0x0001
-const memfdAllowSealing = 0x0002
 const inheritedExecutableFD = 3
 const inheritedExecutablePath = "/proc/self/fd/3"
 

@@ -13,7 +13,6 @@ import (
 	"dockpipe/workflows/internal/synology/dsmauth"
 )
 
-const authenticationHelper = dsmauth.HelperPath
 const serviceSocket = "/var/packages/dockpipe-host-qualification/var/run/probe.sock"
 const requestTimeout = dsmauth.Timeout
 const maximumHelperOutput = dsmauth.MaximumHelperOutput

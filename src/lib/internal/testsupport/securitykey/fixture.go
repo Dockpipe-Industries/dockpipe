@@ -119,12 +119,17 @@ func (fixture *Fixture) Registration(options []byte) []byte {
 	authenticatorData = append(authenticatorData, make([]byte, 16)...)
 	authenticatorData = binary.BigEndian.AppendUint16(authenticatorData, uint16(credentialIDLength))
 	authenticatorData = append(authenticatorData, fixture.CredentialID...)
+	encodedPublicKey, err := fixture.Key.PublicKey.Bytes()
+	if err != nil || len(encodedPublicKey) != 65 || encodedPublicKey[0] != 4 {
+		fixture.testing.Fatalf("test credential requires a valid uncompressed P-256 key: %v", err)
+		return nil
+	}
 	publicKey := map[int]any{
 		1:  2,
 		3:  -7,
 		-1: 1,
-		-2: fixture.Key.PublicKey.X.FillBytes(make([]byte, 32)),
-		-3: fixture.Key.PublicKey.Y.FillBytes(make([]byte, 32)),
+		-2: encodedPublicKey[1:33],
+		-3: encodedPublicKey[33:65],
 	}
 	authenticatorData = append(authenticatorData, fixture.cbor(publicKey)...)
 	attestation := fixture.cbor(map[string]any{
