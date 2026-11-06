@@ -53,6 +53,54 @@ Create the canonical matrix schema and inventory current claims/evidence only. L
 owning task and mark unknowns honestly. Do not implement compatibility fixes, add CI, run live hosts
 or VMs, publish artifacts, or promote support claims in this slice.
 
+## Experimental Synology artifacts (2026-11-02)
+
+The user authorized DSM 7+ x64/arm64 CLI SPKs and the full GUI through a browser
+desktop container, with NAS testing before any SynoCommunity submission. The
+release workflow now stages both SPKs and matching GUI project bundles, requires
+them during assembly, and includes them in the download catalog and checksums.
+The GUI bundle reuses released Linux DEBs with a pinned multiarchitecture Ubuntu
+Webtop base; it does not port Qt to DSM or change engine/package ownership.
+
+Local proof includes cross-built CLI SPKs, extraction and a real x64 host workflow,
+packaging/release contract tests, and an x64 container build from checksum-verified
+0.6.35 staging DEBs. The container GUI's installation check and a real host workflow
+pass. HTTPS rejects missing/incorrect credentials; after user sign-in, the streamed
+Qt window, native menu interaction and embedded browser rendering were observed.
+GUI-launched workflow jobs, native arm64 execution, DSM install/upgrade/removal,
+NAS workload compatibility and hosted release execution remain separate evidence.
+The initial CLI/portable-GUI artifacts were subsequently published as staging
+`0.6.36-staging.41416259425.1.067d543e3597` from source `067d543e35974f4ce7da46a8be788533dc0b9857`.
+All hosted build/assembly/publication jobs passed and four GitHub download
+assets matched the published catalog and SHA-256 checksums. No community
+submission was made.
+
+The next user-directed slice adds a combined GUI + CLI SPK with a DSM launcher,
+credential wizard and Package Center lifecycle through the official Container
+Manager Docker Project worker. It retains the CLI-only edition and portable GUI
+bundle. This combined installer remains subject to DSM 7.2.1+ hardware acceptance;
+container execution and simulated package scripts do not qualify that boundary.
+Local combined-package proof passed for archive admission/reproducibility, wizard
+and retained-state lifecycle scripts, fail-closed missing/root identities and
+authenticated HTTPS. On x64, the packaged session opened Dockpipe directly,
+ran a workflow through the GUI and retained working authentication after a
+container restart. ARM64 archive production passed; native ARM64 execution and
+actual DSM lifecycle acceptance remain pending.
+Hardware feedback confirmed CLI installation, but combined 0.6.37-1 failed to
+start: DSM's Docker Project worker forced the unprivileged package UID, while
+Webtop init required root to configure nginx. The packaging repair uses the
+pinned streamer's native unprivileged session/HTTPS/authentication path and
+process-local UID mapping. A revision-2 upgrade candidate is being qualified
+against that worker constraint before further NAS acceptance. Local repair proof
+passed 26 producer/lifecycle/runtime checks, authenticated page/asset/API/WebSocket
+checks and a real GUI-launched workflow under an arbitrary unprivileged UID with
+capabilities dropped except NET_BIND_SERVICE and no-new-privileges enabled.
+See the [combined producer](../../../../workflows/package/synology-desktop-spk/README.md)
+and the current
+[Synology installation and acceptance guide](../../../install-synology.md),
+[SPK producer](../../../../workflows/package/synology/README.md) and
+[browser desktop producer](../../../../workflows/package/synology-desktop/README.md).
+
 ## 0.6 release implementation progress
 
 The user authorized a cross-platform release pipeline. It now builds native Linux amd64/arm64, macOS Intel/Apple Silicon, and Windows amd64 artifacts plus separate native package stores. Linux formats are DEB/RPM/APK/Arch and tarball; Windows ZIP/MSI; macOS tarball. Signed APT and versioned R2 publication are implemented, with a credential-free dry-run lane. Host-workflow smoke checks run per target; local Linux package generation and APT tests are distinct from the still-pending hosted matrix and downstream distro/hardware qualification. The initial pipeline excluded Flatpak; the 2026-10-08 scope below supersedes that decision.
@@ -114,3 +162,14 @@ Still open: native Bazzite, Podman/SELinux, arm64, signed/updating Flatpak remot
 production Flatpak publication and authenticated/provider or VM end-to-end parity. Package
 availability checks do not prove every workflow on every host. See the canonical
 build contract for current test boundaries and host prerequisites.
+
+Synology repair follow-up: hardware upgrade feedback exposed preinst falling back
+to wizard inputs after DSM removed the old package links. Revision 3 resolves
+persistent home/data paths from DSM's install volume and tests the missing-link,
+no-wizard upgrade sequence. NAS upgrade/startup and port cleanup remain pending.
+
+Synology uninstall repair adds an explicit keep/delete saved-data wizard, with
+keep as default. Only real uninstall plus explicit deletion purges owned data;
+upgrade/default callbacks retain it. Simulated destructive-boundary checks cover
+symlink isolation, idempotence and retaining data when the service port is live.
+DSM-managed orphan project recovery and on-NAS uninstall cleanup remain unproven.

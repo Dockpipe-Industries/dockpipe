@@ -1,0 +1,33 @@
+[
+  {
+    "step_title": "Remove Dockpipe",
+    "items": [
+      {
+        "desc": "Dockpipe will be removed. Choose whether to keep your saved sign-in, workspace and application data for a future reinstall."
+      },
+      {
+        "type": "combobox",
+        "desc": "Saved data",
+        "subitems": [
+          {
+            "key": "wizard_uninstall_data",
+            "desc": "When removing Dockpipe",
+            "defaultValue": "keep",
+            "editable": false,
+            "mode": "local",
+            "displayField": "display",
+            "valueField": "value",
+            "store": {
+              "xtype": "arraystore",
+              "fields": ["display", "value"],
+              "data": [
+                ["Keep my sign-in and workspace for reinstall", "keep"],
+                ["Permanently delete all Dockpipe settings and workspace data", "delete"]
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

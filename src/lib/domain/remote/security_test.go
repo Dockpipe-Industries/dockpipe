@@ -4,14 +4,14 @@ import "testing"
 
 func TestRemoteSecurityPolicyBoundsAndWeakening(t *testing.T) {
 	baseline := DefaultRemoteSecurityPolicy()
-	for _, idle := range []int{-1, 0, 59, 3601} {
+	for _, idle := range []int{-1, 0, 59, 43201} {
 		policy := baseline
 		policy.IdleSeconds = idle
 		if policy.Validate() == nil {
 			t.Fatalf("accepted unsupported inactivity duration %d", idle)
 		}
 	}
-	for _, idle := range []int{60, 300, 3600} {
+	for _, idle := range []int{60, 300, 3600, 43200} {
 		policy := baseline
 		policy.IdleSeconds = idle
 		if err := policy.Validate(); err != nil {
@@ -19,6 +19,23 @@ func TestRemoteSecurityPolicyBoundsAndWeakening(t *testing.T) {
 		}
 		if policy.Weakens(baseline) != (idle > baseline.IdleSeconds) {
 			t.Fatal("incorrect policy weakening classification")
+		}
+	}
+	for _, absolute := range []int{-1, 0, 59, 43201} {
+		policy := baseline
+		policy.AbsoluteSeconds = absolute
+		if policy.Validate() == nil {
+			t.Fatalf("accepted unsupported absolute lifetime %d", absolute)
+		}
+	}
+	for _, absolute := range []int{60, 300, 3600, 43200} {
+		policy := baseline
+		policy.AbsoluteSeconds = absolute
+		if err := policy.Validate(); err != nil {
+			t.Fatal(err)
+		}
+		if policy.Weakens(baseline) != (absolute > baseline.AbsoluteSeconds) {
+			t.Fatalf("incorrect weakening classification for absolute lifetime %d", absolute)
 		}
 	}
 	policy := baseline

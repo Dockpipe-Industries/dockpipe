@@ -21,7 +21,8 @@ const usage = `dockpipe remote <command> [options]
 	unlock                                         Authenticate with the OS to unlock remote features
 	lock                                           Immediately lock new operator remote actions
 	security-status                                Show the global remote policy and capabilities
-	security-policy --idle-seconds <60..3600>        Update global remote auto-lock policy
+	security-policy [--idle-seconds <60..43200>]     Update global remote auto-lock policy
+	                [--absolute-seconds <60..43200>]
 	                [--lock-on-screen-lock=true] [--lock-on-sleep=true]
   setup   --resolver <name> [--hostname <hostname>]  Package-owned remote setup
   edge-activate --request <json> --dry-run|--approve <id>  Supervised local edge activation
@@ -104,7 +105,8 @@ func Run(args []string, checkDependencies func(string) error) error {
 	flags.Var(&artifacts, "artifact", "exact result file relative to delivered workdir (repeatable)")
 	replaceService := flags.Bool("replace", false, "replace the user-service definition and restart it")
 	role := flags.String("role", "", "broker or worker service")
-	idleSeconds := flags.Int("idle-seconds", 300, "global remote inactivity timeout in seconds (60..3600)")
+	idleSeconds := flags.Int("idle-seconds", 300, "global remote inactivity timeout in seconds (60..43200)")
+	absoluteSeconds := flags.Int("absolute-seconds", 3600, "global remote absolute session lifetime in seconds (60..43200)")
 	lockOnScreenLock := flags.Bool("lock-on-screen-lock", true, "lock remote access when the OS session locks")
 	lockOnSleep := flags.Bool("lock-on-sleep", true, "lock remote access after sleep/resume")
 	if err := flags.Parse(args[1:]); err != nil {
@@ -121,7 +123,7 @@ func Run(args []string, checkDependencies func(string) error) error {
 	}
 	securityChanges := map[string]bool{}
 	flags.Visit(func(flag *flag.Flag) {
-		if flag.Name == "idle-seconds" || flag.Name == "lock-on-screen-lock" || flag.Name == "lock-on-sleep" {
+		if flag.Name == "idle-seconds" || flag.Name == "absolute-seconds" || flag.Name == "lock-on-screen-lock" || flag.Name == "lock-on-sleep" {
 			securityChanges[flag.Name] = true
 		}
 	})
@@ -185,7 +187,7 @@ func Run(args []string, checkDependencies func(string) error) error {
 		case "edge-status":
 			return edgeStatus(ctx, root, *id)
 		case "unlock", "lock", "security-status", "security-policy":
-			return remoteSecurity(ctx, command, securityChanges, *idleSeconds, *lockOnScreenLock, *lockOnSleep)
+			return remoteSecurity(ctx, command, securityChanges, *idleSeconds, *absoluteSeconds, *lockOnScreenLock, *lockOnSleep)
 		case "security-key-register":
 			return registerPairingKey(ctx, root, *attestationRoots)
 		case "monitoring":

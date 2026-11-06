@@ -1,0 +1,9 @@
+*
+!Dockerfile
+!entrypoint.sh
+!desktop.py
+!session.sh
+!openbox.xml
+!packages/
+!packages/cli.deb
+!packages/desktop.deb
