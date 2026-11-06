@@ -20,6 +20,8 @@ func dispatchCommand(argv []string) (bool, error) {
 		return true, cmdWindows(argv[1:])
 	case "workflow":
 		return true, cmdWorkflow(argv[1:])
+	case "mcp":
+		return true, cmdMCP(argv[1:])
 	case "catalog":
 		return true, cmdCatalog(argv[1:])
 	case "pipelang":

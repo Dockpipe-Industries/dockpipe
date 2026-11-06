@@ -84,6 +84,7 @@ var mainUsageSections = []usageSection{
 			{"machine snapshot [--json]", "Read local system/process and Docker inventory using this account's permissions"},
 			{"host status|snapshot|terminal|docker|docker-query|worker", "Connect to an authorized native operating-system user worker"},
 			{"dependency inventory|assess|plan|update|recover|activate|activation-status", "Inspect dependencies, review plans, and explicitly apply or recover supported local changes"},
+			{"mcp registry|config|bundle", "Read official registry metadata, validate configured servers or verify local artifacts; never starts servers"},
 			{"catalog list", "Print the Dockpipe-owned launcher/tooling catalog (workflows, resolvers, strategies, runtimes)"},
 			{"pipelang check|compile|invoke|materialize", "PipeLang typed authoring helpers"},
 			{"doctor", "Check Docker, Bash, and runtime/package resources"},
