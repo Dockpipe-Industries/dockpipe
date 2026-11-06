@@ -8,6 +8,18 @@ and Workflows. **Executions → Runs & logs** contains session logs and stop
 controls, plus remote jobs with cancellation and result downloads. Successful
 remote submission selects Remote jobs. Apps remains a card library.
 
+## Native host monitoring qualification
+
+`dockpipe machine snapshot --json` is the read-only native system/process and
+Docker envelope. It observes the machine running that CLI with the current
+account's permissions. A GUI running inside a container observes the container
+unless an authenticated host transport is explicitly provided.
+
+The Synology native host bridge is undergoing separate DSM authentication and
+service-identity qualification. The superseded SSH candidate is not the intended
+DSM host integration. Host authentication failure must show unavailable data;
+it must never silently substitute container counters.
+
 ## What is observed
 
 Host scripts and commands, attached and detached Docker launches, and remote

@@ -13,11 +13,18 @@ business logic. Include the shared CLI/UI parity and process-lifecycle acceptanc
 Backlog; initial architecture requirement, added 2026-10-17. Depends on
 [TASK-039](../unified-mcp-gateway/overview.md) registry, authentication, profiles and lifecycle
 contracts. Implements sections 5 and 14 of the [design request](../unified-mcp-gateway/design-request.md).
-TASK-038 is a sibling, not an implementation dependency. No external server has been connected.
+TASK-038 is a sibling, not an implementation dependency. No external server has been connected
+through a configured Dockpipe runtime/gateway. The internal `mcpsession` owner now
+uses the official Go SDK and existing process-tree supervision; neutral child
+fixtures verify protocol/cancellation/recovery behavior. The internal `mcpimport` seam now requires injected trusted operation authorization
+and an owned runtime lease, binding the existing compiled dockerimage policy.
+Production authorizer/Docker executor, receipt reverification and CLI/gateway
+exposure remain pending; neutral host fixtures do not establish Docker containment.
+See [the precise component boundary](../../../runtime/mcp-registry.md#internal-session-owner-and-pending-application-integration).
 
 ## Scope
 
-Make DockPipe both an MCP server and client. Register local stdio servers and remote HTTP-based
+Make Dockpipe both an MCP server and client. Register local stdio servers and remote HTTP-based
 servers, discover their tools and expose them beside native packages through one endpoint.
 
 - Give each import a stable identity and namespace; reject collisions with native/core tools.
@@ -35,7 +42,7 @@ servers, discover their tools and expose them beside native packages through one
 
 ## Security Boundary
 
-Imported servers and their metadata are untrusted. Authentication to DockPipe does not confer
+Imported servers and their metadata are untrusted. Authentication to Dockpipe does not confer
 privileged downstream credentials. Imported tools receive no native grants automatically, and a
 Terraform grant cannot authorize a direct API/import call by equivalence of intended operation.
 
@@ -48,7 +55,7 @@ access and test direct-call bypasses as well as discovery filtering. No shared s
 
 [TASK-042](../oidc-workload-federation/overview.md) supplies verified upstream workload identities.
 Keep namespace and identity mappings stable, authorize before forwarding, and configure security
-explicitly per import. Do not forward external tokens intended for DockPipe to unrelated downstream
+explicitly per import. Do not forward external tokens intended for Dockpipe to unrelated downstream
 servers. Respect downstream audiences and keep upstream/downstream credentials isolated.
 Federated callers do not inherit downstream permissions; imported servers are not assumed capable
 of enforcing Terraform envelopes. This gates federated-import acceptance, not basic import work.
@@ -56,7 +63,7 @@ of enforcing Terraform envelopes. This gates federated-import acceptance, not ba
 ## Acceptance
 
 1. Import an existing maintained server over stdio and another supported HTTP endpoint through the
-   same DockPipe endpoint as native capabilities. Choose and verify upstream fixtures during work.
+   same Dockpipe endpoint as native capabilities. Choose and verify upstream fixtures during work.
 2. Namespaces, schemas and results survive forwarding; duplicates fail without registry mutation.
 3. Distinct profiles filter listing and reject unauthorized direct calls. Import refresh, restart,
    failure, cancellation and removal do not expand permissions or leak credentials.
@@ -84,3 +91,33 @@ shared domain implementations serve CLI, MCP, explicit REST and desktop, with ex
 storage and version lifecycle. Ordinary local execution stays lightweight; required privileged
 controls cannot be bypassed by selecting a lighter interface or execution mode. Domain ownership
 and this task's existing security/acceptance requirements remain intact. Backlog only.
+
+## Read-Only Registry Foundation
+
+The scoped registry foundation adds CLI search/version metadata and
+validation of `mcp.servers` in the existing project configuration. See
+[the public contract](../../../runtime/mcp-registry.md) for exact behavior, bounds,
+verification and remaining gaps. Registry discovery does not install, connect, launch, authorize or
+expose imported servers. TASK-040's gateway, process lifecycle, policy, desktop and
+federated-import acceptance gates remain open; no external server is connected.
+
+
+## Local artifact milestone
+
+The generic `mcp bundle inspect/install` CLI now verifies and materializes a limited
+MCPB 0.3 native binary subset under the existing project artifact cache. Tests cover
+identity/architecture, traversal/alias rejection, unsupported launch contracts,
+checksum mismatch, cancellation, staging cleanup and no overwrite. This does not
+complete TASK-040: Registry URL selection, configured registration, execution grants,
+shared upstream sessions, lifecycle controls and gateway forwarding remain pending.
+
+
+## Current staging reconciliation
+
+The PR #168 foundation now uses the current dispatcher, preserves project version
+fields and the external PipeLang pin, and wires the MCP property into the current
+project/editor schemas. Removed authored-workflow embedding is not reintroduced.
+The [recorded Linux component verification](../../../runtime/mcp-registry.md#staging-reconciliation-2026-11-06)
+includes model, security, CLI, supervised-session and race checks. This advances
+the foundation only; the production launch, gateway and authorization gates above
+remain open.

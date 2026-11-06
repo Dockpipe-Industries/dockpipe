@@ -1,0 +1,19 @@
+{
+  "Dockpipe.HostTaskQualification.v3.js": {
+    "com.dockpipe.HostTaskQualification": {
+      "type": "app",
+      "title": "Dockpipe NAS access test",
+      "desc": "Run one temporary test task as your DSM account",
+      "icon": "images/icon_{0}.png",
+      "appWindow": "com.dockpipe.HostTaskQualificationWindow",
+      "depend": ["com.dockpipe.HostTaskQualificationWindow"],
+      "allowMultiInstance": false,
+      "allUsers": false
+    },
+    "com.dockpipe.HostTaskQualificationWindow": {
+      "type": "lib",
+      "title": "Dockpipe NAS access test",
+      "icon": "images/icon_{0}.png"
+    }
+  }
+}

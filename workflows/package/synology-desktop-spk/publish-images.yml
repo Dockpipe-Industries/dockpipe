@@ -1,0 +1,11 @@
+name: publish-synology-desktop-images
+description: Publish verified prebuilt desktop images and require anonymous digest readback.
+docker_preflight: false
+steps:
+  - id: publish
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/package/synology-desktop-spk/assets/scripts/publish-images.py

@@ -131,6 +131,15 @@ int main(int argc, char **argv)
         return 1;
     script.write(R"SH(#!/bin/sh
 case "$1:$2" in
+host:status) cat "$DOCKPIPE_TEST_ROOT/native-status.json" ;;
+host:snapshot) cat "$DOCKPIPE_TEST_ROOT/monitor.json" ;;
+host:docker-query)
+  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/native-query-args"
+  if [ -f "$DOCKPIPE_TEST_ROOT/native-query-delay" ]; then sleep 1; fi
+  cat "$DOCKPIPE_TEST_ROOT/native-query.json" ;;
+host:docker)
+  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/native-docker-args"
+  printf '{"schema":"dockpipe.native_host_docker_action.v1","outcome":"Success","action":"%s","id":"%s"}\n' "$3" "$7" ;;
 catalog:list)
   printf '{"workflows":[{"workflow_id":"build","display_name":"Build project","description":"Compile and verify the project","config_path":"%s/work/config.yml"},{"workflow_id":"editor","display_name":"Project editor","category":"app","inputs":[{"field_name":"text","env_name":"DOCKPIPE_VSCODE_INPUT_TEXT","type":"string"},{"field_name":"empty","env_name":"DOCKPIPE_VSCODE_INPUT_EMPTY","type":"string"},{"field_name":"password","env_name":"DOCKPIPE_VSCODE_INPUT_SECRET","type":"string","attributes":{"password":"true","secret":"true"}}]},{"workflow_id":"vscode-noinputs","display_name":"No input launch","category":"app","source":"vscode","source_kind":"launch","source_path":".vscode/launch.json","cloneable":true}],"runtimes":["host"],"resolver_details":[{"name":"example.tunnel","title":"Example Tunnel","version":"1.2.0","capability":"remote.edge","remote_setup":"local"},{"name":"example.hosted","title":"Example Hosted","version":"2.0.0","capability":"remote.broker","remote_setup":"hosted"},{"name":"unrelated.tool","capability":"editor"}]}\n' "$DOCKPIPE_TEST_ROOT" ;;
 remote:info)

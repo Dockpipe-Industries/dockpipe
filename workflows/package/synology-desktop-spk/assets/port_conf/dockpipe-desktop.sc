@@ -1,5 +1,5 @@
 [dockpipe_desktop]
 title="Dockpipe"
-desc="Dockpipe browser desktop"
+desc="Dockpipe private DSM gateway"
 port_forward="no"
-dst.ports="38139/tcp"
+dst.ports="38143/tcp"

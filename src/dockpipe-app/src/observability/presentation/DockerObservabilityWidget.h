@@ -3,6 +3,8 @@
 #include <QFutureWatcher>
 #include <QWidget>
 #include <QJsonArray>
+#include <QJsonObject>
+#include <QPointer>
 #include "ResourceCanvas.h"
 #include "RemoteCommand.h"
 
@@ -17,12 +19,14 @@ class QTableWidget;
 class QTimer;
 class QWidget;
 class MonitoringMachineSelector;
+class NativeHostConnection;
 
 class DockerObservabilityWidget : public QWidget {
     Q_OBJECT
 public:
     explicit DockerObservabilityWidget(QWidget *parent = nullptr);
     void setNodes(const QStringList &nodes);
+    void setNativeHostConnection(NativeHostConnection *connection);
 
 public slots:
     void refresh();
@@ -42,10 +46,26 @@ private slots:
 
 private:
     void changeMachine();
+    void clearRemoteSnapshot(const QString &status);
+    void nativeHostChanged();
+    bool nativeContainerControlsAvailable() const;
+    QString remoteInspectionNotice() const;
+    void runNativeContainerAction(const QString &action, const QString &id, const QString &name);
+    void refreshNativeDetails(const QString &kind, const QString &id);
+    void cancelNativeDetails();
     void refreshRemote(bool allowAuthentication = false);
     void applyRemoteSnapshot(const QJsonObject &snapshot);
     MonitoringMachineSelector *m_machine = nullptr;
     RemoteCommand m_remoteCommand;
+    RemoteCommand m_nativeActionCommand;
+    RemoteCommand m_nativeQueryCommand;
+    QString m_nativeQueryKey;
+    QString m_nativeInspectKey;
+    QString m_nativeDisplayedKey;
+    QJsonObject m_nativeInspect;
+    quint64 m_nativeQuerySerial = 0;
+    QPointer<NativeHostConnection> m_nativeHost;
+    QString m_nativeActionNotice;
     quint64 m_generation = 0;
     quint64 m_localRefreshGeneration = 0;
     struct ContainerRowData {

@@ -1,14 +1,19 @@
 {
-  ".url": {
+  "Dockpipe.Desktop.native-v4.js": {
     "com.dockpipe.Desktop": {
-      "type": "url",
+      "type": "app",
       "title": "Dockpipe",
       "desc": "Your work. Anywhere.",
       "icon": "images/icon_{0}.png",
-      "protocol": "https",
-      "port": "38139",
-      "url": "/",
+      "appWindow": "com.dockpipe.DesktopWindow",
+      "depend": ["com.dockpipe.DesktopWindow"],
+      "allowMultiInstance": false,
       "allUsers": false
+    },
+    "com.dockpipe.DesktopWindow": {
+      "type": "lib",
+      "title": "Dockpipe",
+      "icon": "images/icon_{0}.png"
     }
   }
 }

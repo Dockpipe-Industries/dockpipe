@@ -9,15 +9,151 @@ umask 077
 if [ -n "${SYNOPKG_PKGDEST_VOL:-}" ] && [ "$SYNOPKG_PKGDEST_VOL" != / ]; then
     package_home=${SYNOPKG_PKGDEST_VOL%/}/@apphome/dockpipe-desktop
     package_var=${SYNOPKG_PKGDEST_VOL%/}/@appdata/dockpipe-desktop
+    package_etc=${SYNOPKG_PKGDEST_VOL%/}/@appconf/dockpipe-desktop
 else
     package_home=${SYNOPKG_PKGHOME:-/var/packages/dockpipe-desktop/home}
     package_var=${SYNOPKG_PKGVAR:-/var/packages/dockpipe-desktop/var}
+    package_etc=${SYNOPKG_PKGETC:-/var/packages/dockpipe-desktop/etc}
 fi
 settings=$package_home/desktop-settings
+package_target=${SYNOPKG_PKGDEST:-/var/packages/dockpipe-desktop/target}
+native_binary=$package_target/bin/dockpipe-dsm-host
+native_unit=pkguser-dockpipe-desktop-native-host.service
+native_root=$package_etc/native-host
+worker_socket=$native_root/native-worker.sock
+client_socket=$package_var/native-client/client.sock
 
 fail() {
     echo "$1" >&2
     exit 1
+}
+
+validate_restore_selection() {
+    restore_intent=${wizard_restore_intent:-}
+    case "$restore_intent" in
+        '')
+            # Existing command-line callers still use the saved-settings check.
+            return 0
+            ;;
+        restore|fresh|upgrade)
+            ;;
+        *)
+            fail 'Dockpipe restore selection is invalid. Reopen the installation wizard.'
+            ;;
+    esac
+
+    restore_destination=${SYNOPKG_PKGDEST_VOL:-}
+    case "$restore_destination" in
+        ''|/|[!/]*)
+            fail 'DSM has not identified the installation volume for Dockpipe.'
+            ;;
+    esac
+    restore_destination=${restore_destination%/}
+    restore_selected_volume=${wizard_restore_volume:-}
+    restore_selected_volume=${restore_selected_volume%/}
+    if [ "$restore_intent" = upgrade ] && [ -z "$restore_selected_volume" ]; then
+        # Repair's upgrade wizard has no volume selector. Only DSM's native
+        # upgrade lifecycle may supply the destination without a browser hint.
+        [ "${SYNOPKG_PKG_STATUS:-}" = UPGRADE ] \
+            || fail 'DSM has not confirmed an existing Dockpipe upgrade volume.'
+    else
+        [ "$restore_selected_volume" = "$restore_destination" ] \
+            || fail 'Dockpipe restore selection does not match the installation volume. Reopen the wizard with the intended volume.'
+    fi
+
+    case "$restore_intent" in
+        restore|upgrade)
+            [ -d "$settings" ] && [ ! -L "$settings" ] \
+                || fail 'Saved Dockpipe sign-in settings are unavailable. Keep the retained data and select its original installation volume.'
+            ;;
+        fresh)
+            for retained_path in "$settings" "$package_etc/install-state" \
+                "$package_etc/native-host/endpoint-public/ca.pem"; do
+                if [ -e "$retained_path" ] || [ -L "$retained_path" ]; then
+                    fail 'Saved Dockpipe data already exists on this volume. Reopen the wizard to restore its sign-in and workspace.'
+                fi
+            done
+            ;;
+    esac
+}
+
+publish_restore_state() {
+    restore_marker=$package_etc/install-state
+    if [ -L "$restore_marker" ] || { [ -e "$restore_marker" ] && [ ! -f "$restore_marker" ]; }; then
+        fail 'Dockpipe restore metadata must be a regular file.'
+    fi
+    restore_temporary=$(mktemp "$package_etc/.install-state.XXXXXX") \
+        || fail 'Cannot prepare Dockpipe restore metadata.'
+    if ! printf 'dockpipe.saved-settings.v1\n' > "$restore_temporary" \
+        || ! chmod 644 "$restore_temporary" \
+        || ! mv -f "$restore_temporary" "$restore_marker"; then
+        rm -f "$restore_temporary"
+        fail 'Cannot publish Dockpipe restore metadata.'
+    fi
+}
+
+valid_installer_payload() {
+    payload_root=$1
+    [ -d "$payload_root" ] && [ ! -L "$payload_root" ] \
+        && [ -d "$payload_root/bin" ] && [ ! -L "$payload_root/bin" ] \
+        && [ -d "$payload_root/desktop" ] && [ ! -L "$payload_root/desktop" ] \
+        && [ -f "$payload_root/bin/dockpipe-dsm-host" ] && [ ! -L "$payload_root/bin/dockpipe-dsm-host" ] \
+        && [ -x "$payload_root/bin/dockpipe-dsm-host" ] \
+        && [ -f "$payload_root/desktop/compose.base.yml" ] && [ ! -L "$payload_root/desktop/compose.base.yml" ] \
+        && [ -r "$payload_root/desktop/compose.base.yml" ]
+}
+
+describe_installer_candidate() {
+    candidate_root=$1
+    helper_regular=no
+    helper_executable=no
+    base_regular=no
+    base_readable=no
+    if [ -f "$candidate_root/bin/dockpipe-dsm-host" ] && [ ! -L "$candidate_root/bin/dockpipe-dsm-host" ]; then
+        helper_regular=yes
+    fi
+    if [ -x "$candidate_root/bin/dockpipe-dsm-host" ]; then
+        helper_executable=yes
+    fi
+    if [ -f "$candidate_root/desktop/compose.base.yml" ] && [ ! -L "$candidate_root/desktop/compose.base.yml" ]; then
+        base_regular=yes
+    fi
+    if [ -r "$candidate_root/desktop/compose.base.yml" ]; then
+        base_readable=yes
+    fi
+    printf 'Candidate %s: helper_regular=%s helper_executable=%s base_regular=%s base_readable=%s\n' \
+        "$candidate_root" "$helper_regular" "$helper_executable" "$base_regular" "$base_readable" >&2
+}
+
+select_installer_helper() {
+    installer_temporary=${SYNOPKG_PKGINST_TEMP_DIR:-}
+    case "$installer_temporary" in
+        ''|/|[!/]*)
+            fail 'DSM installer staging must be an absolute temporary directory.'
+            ;;
+    esac
+    temporary_lines=$(printf '%s' "$installer_temporary" | wc -l | tr -d ' ')
+    if [ "$temporary_lines" -ne 0 ] || printf '%s' "$installer_temporary" | LC_ALL=C grep -q '[[:cntrl:]]'; then
+        fail 'DSM installer staging contains invalid path characters.'
+    fi
+    installer_temporary=${installer_temporary%/}
+    selected_payload=
+    candidate_count=0
+    # DSM may identify the extracted payload itself or its enclosing SPK
+    # directory. Never search elsewhere or select an installed old helper.
+    for candidate in "$installer_temporary" "$installer_temporary/package"; do
+        if valid_installer_payload "$candidate"; then
+            selected_payload=$candidate
+            candidate_count=$((candidate_count + 1))
+        fi
+    done
+    if [ "$candidate_count" -ne 1 ]; then
+        printf 'Dockpipe installer staging: %s; matching payloads: %s\n' "$installer_temporary" "$candidate_count" >&2
+        describe_installer_candidate "$installer_temporary"
+        describe_installer_candidate "$installer_temporary/package"
+        fail 'Dockpipe installer helper is unavailable or ambiguous.'
+    fi
+    candidate_native=$selected_payload/bin/dockpipe-dsm-host
 }
 
 valid_username() {
@@ -139,9 +275,11 @@ verify_desktop_stopped() {
     command -v curl >/dev/null 2>&1 || fail 'Cannot verify that Dockpipe stopped. Saved data was retained.'
     # The DSM project worker must already have stopped the published service.
     # Even a non-HTTP listener must prevent deleting data under a live service.
-    peer=$(curl --silent --insecure --output /dev/null --write-out '%{remote_ip}' \
-        --connect-timeout 2 --max-time 3 https://127.0.0.1:38139/ || true)
-    [ -z "$peer" ] || fail 'Dockpipe port 38139 is still active. Saved data was retained; complete project cleanup first.'
+    for port in 38139 38143; do
+        peer=$(curl --silent --insecure --output /dev/null --write-out '%{remote_ip}' \
+            --noproxy '*' --connect-timeout 2 --max-time 3 "https://127.0.0.1:$port/" || true)
+        [ -z "$peer" ] || fail "Dockpipe port $port is still active. Saved data was retained; complete service cleanup first."
+    done
 }
 
 check_removal_tools() {
@@ -169,8 +307,8 @@ remove_saved_data() {
     esac
     volume=$(CDPATH='' cd "$SYNOPKG_PKGDEST_VOL" && pwd -P) \
         || fail 'Cannot resolve the Dockpipe volume. Saved data was retained.'
-    # Validate both roots before deleting anything. Follow no package-root symlink.
-    for directory in "$package_home" "$package_var"; do
+    # Validate every root before deleting anything. Follow no package-root symlink.
+    for directory in "$package_home" "$package_var" "$package_etc"; do
         if [ -L "$directory" ]; then
             fail 'Refusing to remove saved data through a symbolic link.'
         fi
@@ -181,14 +319,14 @@ remove_saved_data() {
         physical=$(CDPATH='' cd "$directory" && pwd -P) \
             || fail 'Cannot resolve a Dockpipe data directory.'
         case "$physical" in
-            "$volume/@apphome/dockpipe-desktop"|"$volume/@appdata/dockpipe-desktop")
+            "$volume/@apphome/dockpipe-desktop"|"$volume/@appdata/dockpipe-desktop"|"$volume/@appconf/dockpipe-desktop")
                 ;;
             *)
                 fail 'Refusing to remove data outside Dockpipe package storage.'
                 ;;
         esac
     done
-    for directory in "$package_home" "$package_var"; do
+    for directory in "$package_home" "$package_var" "$package_etc"; do
         if [ -d "$directory" ]; then
             # Preserve DSM's root directory. Do not follow symlinks or cross
             # filesystem-device boundaries beneath the package's storage.
@@ -198,11 +336,22 @@ remove_saved_data() {
     done
 }
 
-is_ready() {
+stream_ready() {
     code=$(curl --silent --insecure --output /dev/null --write-out '%{http_code}' \
-        --connect-timeout 2 --max-time 3 https://127.0.0.1:38139/) || return 1
+        --noproxy '*' --connect-timeout 2 --max-time 3 https://127.0.0.1:38139/webman/3rdparty/dockpipe-desktop/desktop/) || return 1
     # This read-only loopback probe accepts only the authentication gate.
     [ "$code" = 401 ]
+}
+
+native_ready() {
+    for socket in "$worker_socket" "$client_socket"; do
+        [ ! -L "$socket" ] && [ -S "$socket" ] || return 1
+    done
+    code=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+        --noproxy '*' --proto '=https' --cacert "$native_root/endpoint-public/ca.pem" \
+        --resolve localhost:38143:127.0.0.1 --connect-timeout 2 --max-time 3 \
+        https://localhost:38143/health) || return 1
+    [ "$code" = 204 ]
 }
 
 action=$(basename "$0")
@@ -212,6 +361,8 @@ fi
 case "$action" in
     preinst)
         command -v curl >/dev/null 2>&1 || fail 'DSM HTTPS readiness tools are unavailable.'
+        command -v synosystemctl >/dev/null 2>&1 || fail 'DSM native service tools are unavailable.'
+        validate_restore_selection
         if [ -e "$settings" ] || [ -L "$settings" ]; then
             validate_saved_settings
         elif [ "${SYNOPKG_PKG_STATUS:-}" = UPGRADE ]; then
@@ -219,11 +370,25 @@ case "$action" in
         else
             validate_wizard
         fi
+        # DSM has extracted the candidate payload but has not acquired its
+        # Docker Project resource yet. Change only that staging payload.
+        select_installer_helper
+        "$candidate_native" folder-prepare
         ;;
     postinst)
         install_settings
         [ -d "$package_var" ] || fail 'DSM has not prepared the package data directory.'
         chmod 700 "$package_var"
+        [ -d "$package_etc" ] || fail 'DSM has not prepared the package configuration directory.'
+        [ ! -L "$native_root" ] || fail 'Native host settings must not be a symbolic link.'
+        mkdir -p "$native_root"
+        chmod 755 "$package_etc" "$native_root" "$package_target" "$package_target/bin" \
+            "$package_target/ui" "$package_target/ui/images"
+        "$native_binary" folder-save
+        "$native_binary" endpoint-init
+        # Public, non-secret metadata is published only after private settings
+        # and native initialization have both completed successfully.
+        publish_restore_state
         ;;
     preupgrade|postupgrade|prestart)
         validate_saved_settings
@@ -233,13 +398,19 @@ case "$action" in
         # Image construction happens during installation. Startup gets two minutes
         # for the desktop's HTTPS gate, with individually bounded local probes.
         deadline=$(( $(date +%s) + 120 ))
-        until is_ready; do
+        until stream_ready; do
             [ "$(date +%s)" -lt "$deadline" ] || fail 'Dockpipe did not become ready. Check Package Center logs.'
+            sleep 1
+        done
+        synosystemctl start "$native_unit"
+        deadline=$(( $(date +%s) + 30 ))
+        until native_ready; do
+            [ "$(date +%s)" -lt "$deadline" ] || fail 'Dockpipe native host service did not become ready. Check Package Center logs.'
             sleep 1
         done
         ;;
     status)
-        if is_ready; then
+        if stream_ready && native_ready; then
             exit 0
         fi
         exit 3
@@ -259,8 +430,11 @@ case "$action" in
             remove_saved_data
         fi
         ;;
-    stop|prestop)
-        # The DSM worker stops the project after this script returns.
+    stop)
+        synosystemctl stop "$native_unit"
+        ;;
+    prestop)
+        # The owned stop action stops the unit; DSM then stops the project.
         ;;
     *)
         fail 'Unsupported Dockpipe package lifecycle action.'

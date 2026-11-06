@@ -2,6 +2,8 @@
 #include "LauncherStatusBar.h"
 #include "DashboardPage.h"
 #include "DashboardWidgetFactory.h"
+#include "TerminalHub.h"
+#include "NativeHostConnection.h"
 #include "ProjectFilesWidget.h"
 
 #include <QAction>
@@ -43,6 +45,8 @@ void MainWindow::selectPage(int page)
 void MainWindow::setupDashboards()
 {
     m_dashboardFactory = new DashboardWidgetFactory(m_sessions, m_store, this);
+    if (m_nativeHost)
+        m_dashboardFactory->terminals().setNativeHostConnection(m_nativeHost);
     m_dashboardFactory->setWorkdir(m_settings.projectFolder);
     m_dashboardFactory->setWorkflows(m_workspaceWorkflows);
     connect(m_dashboardFactory, &DashboardWidgetFactory::cloneWorkflow, this, &MainWindow::cloneWorkflow);

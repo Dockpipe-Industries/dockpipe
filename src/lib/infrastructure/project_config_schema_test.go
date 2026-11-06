@@ -15,7 +15,7 @@ func TestProjectConfigurationSchemaMatchesExactVersionValidation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	schema, err := jsonschema.CompileString("dockpipe.config.schema.json", string(data))
+	schema, err := jsonschema.CompileString("schema/dockpipe.config.schema.json", string(data))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestProjectConfigurationSchemaMinimumMatchesRuntime(t *testing.T) {
 	if !bytes.Equal(data, mirror) {
 		t.Fatal("project schema mirrors differ")
 	}
-	schema, err := jsonschema.CompileString("dockpipe.config.schema.json", string(data))
+	schema, err := jsonschema.CompileString("schema/dockpipe.config.schema.json", string(data))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,5 +57,35 @@ func TestProjectConfigurationSchemaMinimumMatchesRuntime(t *testing.T) {
 		if schemaValid != runtimeValid {
 			t.Errorf("minimum %v: schema=%v runtime=%v", value, schemaValid, runtimeValid)
 		}
+	}
+}
+
+func TestProjectConfigurationSchemaLoadsMCPReference(t *testing.T) {
+	schema, err := jsonschema.Compile("schema/dockpipe.config.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	valid := map[string]interface{}{
+		"mcp": map[string]interface{}{
+			"servers": map[string]interface{}{
+				"fixture": map[string]interface{}{
+					"transport": "streamable-http",
+					"remote":    map[string]interface{}{"url": "https://example.com/mcp"},
+				},
+			},
+		},
+	}
+	if err := schema.Validate(valid); err != nil {
+		t.Fatalf("valid project MCP configuration rejected: %v", err)
+	}
+	invalid := map[string]interface{}{
+		"mcp": map[string]interface{}{
+			"servers": map[string]interface{}{
+				"fixture": map[string]interface{}{"transport": "stdio"},
+			},
+		},
+	}
+	if err := schema.Validate(invalid); err == nil {
+		t.Fatal("project schema did not validate the referenced MCP descriptor")
 	}
 }

@@ -9,7 +9,7 @@
 #include <QStringList>
 #include <memory>
 
-// Session-only local interactive shell. DockPipe does not persist terminal bytes;
+// Session-only local PTY process (shell or host bridge). Dockpipe does not persist terminal bytes;
 // the selected shell retains its ordinary startup and history behavior.
 class TerminalSession final : public QObject {
     Q_OBJECT

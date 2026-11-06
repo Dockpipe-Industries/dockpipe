@@ -506,13 +506,12 @@ void TerminalSession::readOutput()
         emit output(bytes);
     if (!guarded || generation != m_state->generation || ended)
         return;
-    // A perpetually readable PTY can outrank UI timers on macOS. Release the
-    // notifier between every nonempty batch, including short producer writes.
-    // The session timer bounds queued work and gives other events a turn.
-    if (!bytes.isEmpty())
-        m_state->readResume->start();
-    else
-        m_state->reader->setEnabled(true);
+    // A perpetually readable PTY can outrank UI timers on macOS. Readiness
+    // can also be stale: an empty/EAGAIN read must yield just like a nonempty
+    // batch, rather than immediately re-arming a high-priority notifier.
+    // Keep one deferred re-arm per session so every activation gives other
+    // events a turn without accumulating queued work.
+    m_state->readResume->start();
 #endif
 }
 

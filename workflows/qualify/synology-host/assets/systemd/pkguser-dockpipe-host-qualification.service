@@ -1,0 +1,10 @@
+[Unit]
+Description=Dockpipe native host qualification (read only)
+
+[Service]
+Type=simple
+ExecStart=/var/packages/dockpipe-host-qualification/target/bin/host-probe serve --socket /var/packages/dockpipe-host-qualification/var/run/probe.sock --auth-listen 127.0.0.1:38140
+Restart=no
+NoNewPrivileges=true
+UMask=0077
+TimeoutStopSec=5

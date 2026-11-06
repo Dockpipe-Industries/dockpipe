@@ -1,6 +1,10 @@
 package application
 
-import "dockpipe/src/lib/application/internal/workspacegitcmd"
+import (
+	"dockpipe/src/lib/application/internal/hostcmd"
+	"dockpipe/src/lib/application/internal/machinecmd"
+	"dockpipe/src/lib/application/internal/workspacegitcmd"
+)
 
 func dispatchCommand(argv []string) (bool, error) {
 	switch argv[0] {
@@ -16,6 +20,8 @@ func dispatchCommand(argv []string) (bool, error) {
 		return true, cmdWindows(argv[1:])
 	case "workflow":
 		return true, cmdWorkflow(argv[1:])
+	case "mcp":
+		return true, cmdMCP(argv[1:])
 	case "catalog":
 		return true, cmdCatalog(argv[1:])
 	case "pipelang":
@@ -34,6 +40,10 @@ func dispatchCommand(argv []string) (bool, error) {
 		return true, workspacegitcmd.Run(argv[1:])
 	case "remote":
 		return true, cmdRemote(argv[1:])
+	case "machine":
+		return true, machinecmd.Run(argv[1:])
+	case "host":
+		return true, hostcmd.Run(argv[1:])
 	case "dependency":
 		return true, cmdDependency(argv[1:])
 	case "install":

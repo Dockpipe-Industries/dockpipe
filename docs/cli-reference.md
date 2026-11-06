@@ -1,5 +1,15 @@
 # CLI reference
 
+## Machine inspection
+
+`dockpipe machine snapshot --json` reads system counters, processes and Docker
+inventory on the machine running that CLI. `--system` or `--docker` selects one
+category; without either flag, both are included. The result reports the actual
+hostname and explicitly unavailable categories. Collection uses the current
+account's permissions, an eight-second deadline and a 1 MiB response limit.
+It excludes command arguments, environment values and application logs. The
+command grants no Docker access and cannot execute arbitrary remote commands.
+
 Use `dockpipe -- <command>` for a one-off command or
 `dockpipe --workflow <name> --` for a workflow you created or installed.
 
@@ -354,6 +364,19 @@ dockpipe --runtime dockerimage --isolate alpine:3.22 -- echo hello
 
 Use `--secret-environment NAME` with a named entry in `dockpipe.config.json` → `secrets.environments`. `vault: environment` requires the selected/default environment; a missing selection or failed load stops execution. `--no-vault` disables both environment resolution and legacy template injection. See [Secret environments](runtime/vault.md) for 1Password, AWS Secrets Manager, Azure Key Vault, and Infisical configuration.
 
+### MCP registry, configuration and local bundles
+
+`dockpipe mcp registry search`, `versions`, and `show` read Official MCP Registry
+metadata. `dockpipe mcp config validate --workdir <project>` validates the existing
+project's `mcp.servers` configuration without resolving secrets or starting servers.
+See [MCP registry discovery](runtime/mcp-registry.md) for arguments, schemas, bounds
+and explicit limitations. These commands do not provide gateway or import execution.
+
+`dockpipe mcp bundle inspect` verifies a local MCPB archive with mandatory SHA-256,
+platform and architecture. `bundle install` additionally materializes the supported
+binary subset in the existing project artifact cache. Neither starts or registers
+servers. See the MCP registry contract for exact limitations.
+
 ## Portable SDK paths
 
 Use `dockpipe sdk shell-env` to initialize the shell SDK.
@@ -373,12 +396,14 @@ remains available as an explicit standalone action.
 `dockpipe remote security-status` prints the shared OS-user remote policy,
 locked state and native capability availability. `remote unlock` requests native
 OS authentication; `remote lock` immediately invalidates remote operator access.
-`remote security-policy --idle-seconds <60..3600>` configures inactivity, with
-optional `--lock-on-screen-lock=true|false` and `--lock-on-sleep=true|false`.
+`remote security-policy --idle-seconds <60..43200>` configures inactivity (default
+300 seconds). `--absolute-seconds <60..43200>` configures the fixed authenticated
+session lifetime (default 3600 seconds). Both permit up to 12 hours; the earlier
+limit wins. The command also accepts `--lock-on-screen-lock=true|false` and `--lock-on-sleep=true|false`.
 Omitted policy fields retain their current values. Weakening requires fresh OS
 authentication; any change leaves access locked. These are global security
 settings, not workflow/project configuration. See [remote security](runtime/remote-nodes.md#os-authentication-and-global-remote-auto-lock)
-for native prerequisites, the one-hour maximum lease and migration limitations.
+for native prerequisites, the bounded session lifetime and migration limitations.
 
 ## Dependency lifecycle
 

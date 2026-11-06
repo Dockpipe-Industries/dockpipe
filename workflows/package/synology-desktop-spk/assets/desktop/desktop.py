@@ -38,6 +38,8 @@ def prepare_identity(runtime):
     os.environ['HOME'] = str(DATA)
     os.environ['USER'] = 'dockpipe'
     os.environ['LOGNAME'] = 'dockpipe'
+    os.environ['DOCKPIPE_LOCAL_MACHINE_LABEL'] = 'Application container'
+    os.environ['DOCKPIPE_NATIVE_HOST_CONNECTION'] = '/config/native-client/connection.json'
     os.environ['XDG_RUNTIME_DIR'] = str(runtime)
 
 
@@ -70,9 +72,14 @@ def main():
     os.environ['SELKIES_BASIC_AUTH_PASSWORD'] = (SETTINGS / 'password').read_text()
     arguments = [
         '/lsiopy/bin/selkies', 'session', '--session', '/usr/local/bin/dockpipe-desktop-session',
-        '--public', '--port', '3001', '--enable-https=true',
+        '--addr', '127.0.0.1', '--port', '38139', '--enable-https=true',
         '--https-cert', str(certificate), '--https-key', str(key),
         '--enable-basic-auth=true', '--allowed-origins', '',
+        '--subfolder', '/webman/3rdparty/dockpipe-desktop/desktop',
+        '--frame-ancestors', 'self',
+        # A single value only changes Selkies' default. Bound the server range so
+        # saved browser preferences and live requests cannot restore 60+ FPS.
+        '--framerate', '30,8-30',
         '--ui-title', 'Dockpipe', '--ui-show-logo=false',
         '--web-root', '/usr/share/selkies/selkies-dashboard',
     ]

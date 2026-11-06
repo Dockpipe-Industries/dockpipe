@@ -1,13 +1,19 @@
 # Dockpipe GUI + CLI SPK
 
+The SSH-based host-connection candidate is superseded. Native DSM host integration
+is being qualified through the separate [read-only native probe](../../qualify/synology-host/README.md)
+before host terminal and Docker controls are connected to this GUI. Existing DSM
+sign-in must establish the authenticated operator; it does not by itself establish
+a host process UID. Host networking and the loopback-only desktop listener remain.
+
 This producer adds the combined DSM edition alongside the lightweight CLI SPK.
 It packages a native CLI and a browser desktop project into one manually
 installable `dockpipe-desktop_VERSION_synology_x64.spk` or
 `dockpipe-desktop_VERSION_synology_arm64.spk`.
 
-DSM 7.2.1+ and Container Manager 20.10.23-1437+ are required on a supported model.
+DSM 7.2.2+ and Container Manager 20.10.23-1437+ are required on a supported model.
 The [Docker Project worker](https://help.synology.com/developer-guide/resource_acquisition/docker-project.html)
-builds the project during installation, starts/stops it with Package Center and
+prepares the project during installation, starts/stops it with Package Center and
 removes it on uninstall. No package script runs Docker, accesses its socket or
 requests an elevated identity. The full minimum dependency version follows the
 first archived stable Container Manager build above the worker's documented
@@ -38,12 +44,26 @@ image build arguments, or Docker's persisted environment. The streamer's public
 health/status endpoints expose liveness/mode metadata; desktop assets, control APIs
 and WebSocket connections require authentication.
 
-The DSM launcher opens HTTPS on port 38139. Package start waits up to two minutes
-for the authentication gate, using bounded loopback probes. Status reports stopped
-when that gate is unavailable. The local readiness probe accepts only HTTP 401;
-it does not send credentials. Container Manager owns actual project start/stop.
-The DSM port-config resource registers the named service for firewall management,
-with automatic router port forwarding disabled.
+The candidate DSM launcher is a module-backed AppInstance/AppWindow, containing
+one fitted iframe. It opens the existing Qt stream inside DSM. A package-scoped
+`web-config` location proxies only `/webman/3rdparty/dockpipe-desktop/desktop/` to
+the fixed loopback desktop listener. Selkies serves that subfolder and keeps
+`frame-ancestors 'self'` and same-origin WebSocket checks. Browser TLS uses DSM's
+existing HTTPS connection; the package-generated backend certificate stays on
+loopback. DSM session cookies are stripped before proxying; Dockpipe still
+requires its separate sign-in. No global framing/browser security settings change.
+The proxy worker and declared nginx reloads own route install/start/stop/removal.
+Direct HTTPS DSM access needs no operator-configured reverse proxy. If DSM already
+sits behind another proxy, that hop must forward WebSocket upgrades too; the
+package cannot configure an operator-owned frontend. An x64 NAS test reached a
+working embedded desktop after enabling WebSocket forwarding on that existing hop.
+
+Port 38139 binds only to loopback in candidate Compose files. Start waits up to
+two minutes for HTTP 401 at the prefixed authentication gate, using bounded local
+probes without credentials. The port-config resource reserves the service and
+disables automatic router forwarding. Direct browser access to that port is no
+longer the launcher; use HTTPS DSM. Full hardware lifecycle/focus/resize acceptance
+remains separate from the working embedded desktop observation.
 
 The desktop session launches Dockpipe directly under a minimal window manager,
 maximizes normal application windows and retains normal dialogs. It does not
@@ -58,7 +78,8 @@ authenticated HTTPS port and mounts no arbitrary NAS shares or Docker socket.
 It is one shared desktop per installation, not a separate session for every DSM
 user. DSM administrator launcher visibility and Dockpipe sign-in are separate.
 
-Build with matching release inputs:
+The historical diagnostic build-on-NAS producer accepts matching release inputs
+(the release pipeline uses `prebuild.yml` below):
 
 ```sh
 python3 workflows/shared/launch.py workflows/package/synology-desktop-spk/config.yml -- \
@@ -111,3 +132,133 @@ When reusing retained settings, postinst refreshes the recorded UID/GID to the
 current unprivileged package account without changing credentials. This supports
 a reinstall where DSM assigns a new identity; runtime still checks for an exact
 identity match. This behavior also requires actual NAS reinstall acceptance.
+
+## Prebuilt image candidates
+
+`prebuild.yml` builds the matching architecture's full desktop image in CI from
+admitted release DEBs. The image gets version/source labels. Its OCI manifest
+and config digests bind these two editions to the same image:
+
+- Standard: the existing SPK filename, a native CLI plus immutable GHCR image
+  reference. Container Manager downloads the image; it does not compile it.
+- Offline: `_offline.spk`, adding a Docker-loadable archive. The official
+  `docker-project.preload-image` worker imports it before creating the project.
+  Compose selects a unique tag derived from the full config hash, with `pull_policy: never`. Registry manifest
+  digests are deliberately not used for offline lookup because image import need
+  not retain them. Config-ID lookup also varies by Docker image-store implementation;
+  the portable tag is admitted against the exact config bytes in the archive.
+
+Both keep the same package ID, account, settings and workspace. They are delivery
+alternatives, not separately installable applications. Both require an already
+installed, compatible Container Manager. Offline describes image installation;
+workflows may still need network access depending on their contents.
+
+The candidate uses `build: false`, `force_pull: false` and `force_recreate: false`
+worker parameters. Immutable image references let Compose detect image upgrades
+without replacing an unchanged container. This does not establish the cause of
+any DSM worker failure; native lifecycle acceptance is still required. No
+package script invokes Docker, mounts its socket, or requests root. Archive
+admission checks byte/member/metadata limits, safe paths, exact config identity,
+Linux architecture, labels, unprivileged user and layer references. The capacity
+contract permits an 8 GiB expanded image archive and requires the final offline
+SPK to fit GitHub's 2 GiB asset limit. The `.image.json` receipt binds the DEBs,
+image identities and archive checksum; release checksums also cover this receipt.
+
+CI retains OCI artifacts separately from public package artifacts. Registry writes
+happen only in the existing staging/production publication jobs after release
+verification. Manual dry runs build images/SPKs without registry writes. Publication
+uses `skopeo copy --preserve-digests` and anonymous digest readback before exposing
+standard SPKs. The GHCR `dockpipe-desktop` package must have Public visibility;
+a new private package fails that gate with setup instructions. Credentials stay
+in a temporary registry auth file, never in image metadata or packages.
+
+Reference: [Synology Docker Project worker](https://help.synology.com/developer-guide/resource_acquisition/docker-project.html).
+Its preload support is documented; actual import and startup on the target NAS
+remain a qualification gate. Local Docker import cannot establish DSM worker behavior.
+
+The CI prebuilder imports the normalized archive and starts the actual desktop
+under the runner's non-root identity, with pulling disabled, all capabilities
+dropped and networking disabled. It requires an unauthenticated 401, authenticated
+HTML with the expected framing policy, a live Qt launcher process, no resolved
+password in persisted container environment/logs, and clean shutdown before
+packaging. This service proof complements native DSM preload/window acceptance.
+
+## Installer host folder mapping
+
+The install/update wizard uses DSM 7.2.2 custom Vue components for a repeatable
+list of up to 16 host folders at `/host/<name>`. Names default to source basenames
+until overridden; each row selects read-only (default) or read/write. Names are
+unique single components limited to 128 UTF-8 bytes, with a 64 KiB aggregate JSON
+budget. Keep reuses the stored list, edit replaces it, and remove-all drops only
+the mappings and never deletes host contents. Legacy r10 settings migrate to the
+v2 list while preserving `/host/source` on Keep. Updating
+restarts the desktop through DSM's existing Docker Project resource lifecycle;
+there is no runtime redeploy API or Compose editor added to the app.
+
+`preinst` runs the candidate helper from
+DSM's staging directory, recognizing the helper at `bin/dockpipe-dsm-host` or
+`package/bin/dockpipe-dsm-host` and rejecting missing or ambiguous candidates.
+The native helper binds its edited payload to the executable actually launched.
+It validates input and
+package-account access, then renders `desktop/compose.yml` from the bundled
+`compose.base.yml` and stages `desktop/host-folder.json`. It changes no persistent
+package settings in this phase. `postinst` stores the desired selection at
+`etc/host-folder.json`, outside the GUI data mount. Both source/prebuilt editions
+must carry identical base/live templates; private cached-image qualification
+packages must patch both templates to the exact cached image.
+
+DSM documents the staging environment variable and worker timing, but its exact
+writable `package/` staging layout and new repeatable wizard controls still require NAS
+acceptance. The test package fails rather than editing an old installed project
+if staging is unavailable. Existing folder ACLs must already grant the package
+account access; no recursive permission changes are performed. Nested mounts
+are rejected because older kernels cannot make them recursively read-only; see
+[Docker's recursive bind mount behavior](https://docs.docker.com/engine/storage/bind-mounts/#recursive-mounts).
+
+
+Each wizard row has a native DSM **Browse…** directory chooser. Selection uses
+`fullpath` (the physical host path), never the share-relative display `path`.
+The picker cannot create folders, excludes remote/tiering selections, and closes
+when its wizard component unmounts. Choosing a directory follows the same default
+name/override rules as typing a path. Manual path entry remains available if the
+vendor picker cannot be opened; no DOM token or credentials are copied into it.
+
+
+The custom wizard's `getValues()` must return a flat map of string environment
+values. Actual DSM `getCustData()` merges the result using `Ext.apply`; an array
+becomes a numeric `0` key containing an object, which is not an installer script
+environment. The regression fixture checks this aggregation contract, not only
+the component's local field values. r11/r12 incorrectly returned an array; the
+repair candidate returns the flat map without changing mount or privilege logic.
+
+The form measures DSM's allocated `.mcontentwrapper` body and gives the folder
+content one scroll area, rather than sizing it against the browser viewport.
+On Next, the candidate wizard applies the selected package-account access through
+the authenticated DSM ACL API and verifies it before advancing. Parent rules grant
+traversal on that folder only; target rules grant the chosen access with folder/file
+inheritance. It preserves existing explicit rules, owner IDs, inheritance settings
+and denials, checks for intervening changes before writes, and does not change
+ownership. Keep and remove-all do not write ACLs.
+
+No separate Check access, Review permissions or native Save action is required.
+The operation is bounded and sequential; failure/cancellation cannot undo writes
+already acknowledged by DSM, and automatic rollback could overwrite later edits.
+The native installer remains authoritative for actual kernel access. Fresh-install
+account timing, automatic ACL writes, mount installation and ACL cleanup across
+uninstall still require DSM qualification before general release.
+
+Restore discovery is shared shell code in `assets/scripts/restore-discovery.sh`,
+inlined into the generated install wizard. It prefers valid DSM volume/home hints
+and otherwise checks at most 64 standard volume roots for this package's FHS
+metadata. It reads no private credentials. A successful postinst atomically writes
+public `@appconf/dockpipe-desktop/install-state` metadata; known older native-host
+public certificate metadata supports retained-state discovery during migration.
+Opaque or conflicting state never produces new-credential fields. The wizard's
+restore intent and volume are checked against the selected DSM volume before ACL
+work and again against the authoritative destination in preinst. Registered
+upgrades use a static upgrade-mode component; no dynamic upgrade script is added.
+DSM repair omits the upgrade wizard's volume selector. In that case the wizard
+sends upgrade intent with an empty volume hint. Preinst accepts this only in DSM's
+native UPGRADE lifecycle, validates its authoritative destination, and requires
+complete retained settings. Fresh/restore flows and explicit mismatched volume
+hints remain blocked; no volume is inferred from the selected host folders.

@@ -1,0 +1,10 @@
+[Unit]
+Description=Dockpipe native DSM task qualification
+
+[Service]
+Type=simple
+ExecStart=/var/packages/dockpipe-host-task-qualification/target/bin/task-host serve
+Restart=no
+NoNewPrivileges=true
+UMask=0077
+TimeoutStopSec=5

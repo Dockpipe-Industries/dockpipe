@@ -1,0 +1,11 @@
+name: prebuild-synology-desktop
+description: Build the native desktop image in CI and package standard and offline SPKs.
+docker_preflight: false
+steps:
+  - id: prebuild
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/package/synology-desktop-spk/assets/scripts/prebuild.py

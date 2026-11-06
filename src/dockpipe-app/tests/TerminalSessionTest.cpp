@@ -1,7 +1,9 @@
 #include "TerminalSession.h"
 #include "TerminalHostLaunch.h"
 
+#include <QCoreApplication>
 #include <QElapsedTimer>
+#include <QEvent>
 #include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
@@ -9,6 +11,7 @@
 #include <QProcess>
 #include <QRegularExpression>
 #include <QSignalSpy>
+#include <QSocketNotifier>
 #include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QTest>
@@ -54,6 +57,7 @@ private slots:
     void explicitProgramAndArguments();
     void nativeFlatpakHostIntegration();
     void rejectsInvalidInputAndDirectory();
+    void emptyReadinessYieldsToEventLoop();
     void outputFloodDoesNotBlockEventLoop_data();
     void outputFloodDoesNotBlockEventLoop();
     void outputCallbackCanRestartSession();
@@ -180,6 +184,37 @@ void TerminalSessionTest::rejectsInvalidInputAndDirectory()
     QVERIFY(terminal.running());
     terminal.stop();
     QVERIFY(!terminal.running());
+}
+
+void TerminalSessionTest::emptyReadinessYieldsToEventLoop()
+{
+#ifdef Q_OS_UNIX
+    TerminalSession terminal(TerminalLaunchContext::Local);
+    QSignalSpy output(&terminal, &TerminalSession::output);
+    QVERIFY(terminal.start({}, QStringLiteral("/bin/sh"),
+        {QStringLiteral("-c"), QStringLiteral("sleep 5")}));
+    QSocketNotifier *reader = nullptr;
+    for (auto *notifier : terminal.findChildren<QSocketNotifier *>()) {
+        if (notifier->type() == QSocketNotifier::Read)
+            reader = notifier;
+    }
+    QVERIFY(reader);
+    QVERIFY(waitForTerminalEvents([&] { return reader->isEnabled(); }, 1000));
+    QCOMPARE(output.size(), 0);
+
+    // Dispatch readiness while the quiet child's nonblocking PTY has no bytes.
+    // Spurious readiness must release the notifier until a later event-loop
+    // turn; immediately re-arming it lets stale activations starve UI timers.
+    QEvent readiness(QEvent::SockAct);
+    QVERIFY(QCoreApplication::sendEvent(reader, &readiness));
+    QCOMPARE(output.size(), 0);
+    QVERIFY(!reader->isEnabled());
+    QVERIFY(waitForTerminalEvents([&] { return reader->isEnabled(); }, 1000));
+    QVERIFY(terminal.running());
+    terminal.stop();
+#else
+    QSKIP("This regression exercises the POSIX PTY readiness notifier.");
+#endif
 }
 
 void TerminalSessionTest::outputFloodDoesNotBlockEventLoop_data()

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RemoteCommand.h"
+#include <QPointer>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QMap>
@@ -19,6 +20,7 @@ class QTableWidget;
 class QTimer;
 class MonitoringMachineSelector;
 class SystemResourceOverview;
+class NativeHostConnection;
 
 // A view over the CLI snapshot contract. It never owns execution or termination.
 class ExecutionExplorer : public QWidget {
@@ -30,6 +32,7 @@ public:
     bool applySnapshot(const QJsonObject &snapshot);
     void refresh();
     void setNodes(const QStringList &nodes);
+    void setNativeHostConnection(NativeHostConnection *connection);
 
 private:
     void refreshWithAuthentication(bool allowAuthentication);
@@ -37,6 +40,8 @@ private:
     void inspect(const QString &identity);
     void inspectSystem();
     void changeMachine();
+    void clearMonitoringSnapshot(const QString &status);
+    void nativeHostChanged();
     MonitoringMachineSelector *m_machine;
     SystemResourceOverview *m_overview;
     QString processIdentity(const QJsonObject &process) const;
@@ -58,6 +63,7 @@ private:
     QPushButton *m_refresh = nullptr;
     QTimer *m_timer;
     RemoteCommand m_command;
+    QPointer<NativeHostConnection> m_nativeHost;
     QString m_workdir;
     QString m_selected;
     QJsonObject m_snapshot;

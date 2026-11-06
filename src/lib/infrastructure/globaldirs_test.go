@@ -40,6 +40,7 @@ func TestGlobalDockpipeDataDirOverride(t *testing.T) {
 }
 
 func TestGlobalDockpipeDataDirNoOverrideHasSep(t *testing.T) {
+	t.Setenv(envGlobalRoot, "")
 	got, err := GlobalDockpipeDataDir()
 	if err != nil {
 		t.Fatal(err)

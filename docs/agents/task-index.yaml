@@ -224,6 +224,13 @@ tasks:
   dispatch:
     readiness: decision_ready
     ownership: unclaimed
+- id: TASK-055
+  topic: Inline typed PipeLang expressions and functions in workflow YAML
+  path: docs/agents/tasks/inline-pipelang-workflows/index.yaml
+  dispatch:
+    readiness: deferred
+    ownership: unclaimed
+
 maintenance:
 - Keep tasks open-only and core-owned; external_backlogs route independent owners without claiming their
   work.

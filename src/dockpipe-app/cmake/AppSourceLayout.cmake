@@ -25,6 +25,7 @@ set(DOCKPIPE_APP_INCLUDE_DIRECTORIES
     "${DOCKPIPE_APP_SOURCE_ROOT}/packages/infrastructure"
     "${DOCKPIPE_APP_SOURCE_ROOT}/packages/presentation"
     "${DOCKPIPE_APP_SOURCE_ROOT}/qualification/application"
+    "${DOCKPIPE_APP_SOURCE_ROOT}/remote/domain"
     "${DOCKPIPE_APP_SOURCE_ROOT}/remote/infrastructure"
     "${DOCKPIPE_APP_SOURCE_ROOT}/remote/presentation"
     "${DOCKPIPE_APP_SOURCE_ROOT}/shared-ui/presentation"

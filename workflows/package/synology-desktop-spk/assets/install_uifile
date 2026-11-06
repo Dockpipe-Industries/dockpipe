@@ -44,11 +44,15 @@
       {
         "type": "password",
         "desc": "Confirm Dockpipe password",
-        "subitems": [{
-          "key": "wizard_password_confirm",
-          "desc": "Confirm password",
-          "validator": {"allowBlank": false}
-        }]
+        "subitems": [
+          {
+            "key": "wizard_password_confirm",
+            "desc": "Confirm password",
+            "validator": {
+              "allowBlank": false
+            }
+          }
+        ]
       }
     ]
   }

@@ -238,7 +238,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: "1.26.10"
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: "22"
       - name: Install macOS Qt
@@ -299,15 +299,31 @@ jobs:
         shell: bash
         run: |
           arch="$(dpkg --print-architecture)"
+          native_host_binary="$RUNNER_TEMP/dockpipe-dsm-host-${arch}"
+          CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath -ldflags='-s -w' \
+            -o "$native_host_binary" ./workflows/package/synology-desktop-spk/assets/native-host
           python3 workflows/shared/launch.py workflows/package/synology-desktop/config.yml -- \
             --cli-deb "$PWD/release/artifacts/dockpipe_${RELEASE_VERSION}_${arch}.deb" \
             --desktop-deb "$PWD/release/artifacts/dockpipe-desktop_${RELEASE_VERSION}_${arch}.deb" \
             --arch "$arch" --output-dir "$PWD/release/artifacts"
-          python3 workflows/shared/launch.py workflows/package/synology-desktop-spk/config.yml -- \
-            "$RELEASE_VERSION" "$arch" --binary "$PWD/src/bin/dockpipe" \
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends skopeo
+          python3 workflows/shared/launch.py workflows/package/synology-desktop-spk/prebuild.yml -- \
+            --version "$RELEASE_VERSION" --architecture "$arch" --source-sha "$GITHUB_SHA" \
+            --repository "ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/dockpipe-desktop" \
+            --binary "$PWD/src/bin/dockpipe" \
+            --native-host-binary "$native_host_binary" \
             --cli-deb "$PWD/release/artifacts/dockpipe_${RELEASE_VERSION}_${arch}.deb" \
             --desktop-deb "$PWD/release/artifacts/dockpipe-desktop_${RELEASE_VERSION}_${arch}.deb" \
-            --output "$PWD/release/artifacts"
+            --output "$PWD/release/artifacts" --image-directory "$PWD/release/synology-images"
+
+      - name: Retain verified Synology images for publication
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          name: synology-image-${{ matrix.platform }}
+          path: release/synology-images/
+          if-no-files-found: error
 
       - name: Native CLI and workflow smoke test
         shell: bash
@@ -326,6 +342,8 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.platform }}
+          # Zero preserves the repository default outside staging release pushes.
+          retention-days: ${{ inputs.staging && github.event_name == 'push' && github.ref == 'refs/heads/staging' && 3 || 0 }}
           path: release/artifacts/
           if-no-files-found: error
 
@@ -352,7 +370,7 @@ jobs:
         with:
           go-version: "1.26.10"
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: "22"
 
@@ -419,6 +437,8 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: release-windows-amd64
+          # Zero preserves the repository default outside staging release pushes.
+          retention-days: ${{ inputs.staging && github.event_name == 'push' && github.ref == 'refs/heads/staging' && 3 || 0 }}
           path: release/artifacts/
           if-no-files-found: error
 
@@ -428,6 +448,7 @@ jobs:
     uses: ./.github/workflows/flatpak.yml
     with:
       version: ${{ needs.meta.outputs.version }}
+      staging: ${{ inputs.staging == true }}
     permissions:
       contents: read
       attestations: read
@@ -495,6 +516,8 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: dockpipe-release-prepared-${{ needs.meta.outputs.version }}
+          # Zero preserves the repository default outside staging release pushes.
+          retention-days: ${{ inputs.staging && github.event_name == 'push' && github.ref == 'refs/heads/staging' && 7 || 0 }}
           path: release/artifacts/
           if-no-files-found: error
 
@@ -506,6 +529,7 @@ jobs:
     environment: release
     permissions:
       contents: write
+      packages: write
     steps:
       - uses: actions/checkout@v7
 
@@ -541,6 +565,25 @@ jobs:
         shell: bash
         run: python3 workflows/shared/launch.py workflows/publish/apt/release.yml
 
+      - name: Download prebuilt Synology images
+        uses: actions/download-artifact@v8
+        with:
+          pattern: synology-image-*
+          merge-multiple: true
+          path: release/synology-images
+
+      - name: Publish exact desktop images and verify public access
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.meta.outputs.version }}
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends skopeo
+          python3 workflows/shared/launch.py workflows/package/synology-desktop-spk/publish-images.yml -- \
+            --directory "$PWD/release/synology-images" --artifacts "$PWD/release/artifacts" \
+            --version "$RELEASE_VERSION" --source-sha "$GITHUB_SHA"
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
@@ -562,6 +605,7 @@ jobs:
             release/artifacts/*.pkg.tar.zst
             release/artifacts/*.spk
             release/artifacts/*.sha256
+            release/artifacts/*.image.json
             release/artifacts/release-manifest.json
             release/artifacts/install-manifest.json
             release/artifacts/install.sh
@@ -588,6 +632,7 @@ jobs:
     environment: release-staging
     permissions:
       contents: write
+      packages: write
     steps:
       - uses: actions/checkout@v7
 
@@ -634,6 +679,25 @@ jobs:
         shell: bash
         run: python3 workflows/shared/launch.py workflows/publish/apt/staging.yml
 
+      - name: Download prebuilt Synology images
+        uses: actions/download-artifact@v8
+        with:
+          pattern: synology-image-*
+          merge-multiple: true
+          path: release/synology-images
+
+      - name: Publish exact desktop images and verify public access
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.meta.outputs.version }}
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends skopeo
+          python3 workflows/shared/launch.py workflows/package/synology-desktop-spk/publish-images.yml -- \
+            --directory "$PWD/release/synology-images" --artifacts "$PWD/release/artifacts" \
+            --version "$RELEASE_VERSION" --source-sha "$GITHUB_SHA"
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
@@ -657,6 +721,7 @@ jobs:
             release/artifacts/*.pkg.tar.zst
             release/artifacts/*.spk
             release/artifacts/*.sha256
+            release/artifacts/*.image.json
             release/artifacts/release-manifest.json
             release/artifacts/install-manifest.json
             release/artifacts/install.sh
