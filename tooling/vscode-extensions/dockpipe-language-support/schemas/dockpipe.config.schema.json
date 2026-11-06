@@ -40,6 +40,10 @@
     },
     "packages": {
       "type": "object"
+    },
+    "mcp": {
+      "$ref": "mcp-config.schema.json",
+      "description": "Explicit upstream MCP server descriptors. Validation does not launch servers or grant authority."
     }
   },
   "additionalProperties": true
