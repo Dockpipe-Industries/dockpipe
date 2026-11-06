@@ -11,7 +11,7 @@ It packages a native CLI and a browser desktop project into one manually
 installable `dockpipe-desktop_VERSION_synology_x64.spk` or
 `dockpipe-desktop_VERSION_synology_arm64.spk`.
 
-DSM 7.2.1+ and Container Manager 20.10.23-1437+ are required on a supported model.
+DSM 7.2.2+ and Container Manager 20.10.23-1437+ are required on a supported model.
 The [Docker Project worker](https://help.synology.com/developer-guide/resource_acquisition/docker-project.html)
 prepares the project during installation, starts/stops it with Package Center and
 removes it on uninstall. No package script runs Docker, accesses its socket or
@@ -182,3 +182,83 @@ dropped and networking disabled. It requires an unauthenticated 401, authenticat
 HTML with the expected framing policy, a live Qt launcher process, no resolved
 password in persisted container environment/logs, and clean shutdown before
 packaging. This service proof complements native DSM preload/window acceptance.
+
+## Installer host folder mapping
+
+The install/update wizard uses DSM 7.2.2 custom Vue components for a repeatable
+list of up to 16 host folders at `/host/<name>`. Names default to source basenames
+until overridden; each row selects read-only (default) or read/write. Names are
+unique single components limited to 128 UTF-8 bytes, with a 64 KiB aggregate JSON
+budget. Keep reuses the stored list, edit replaces it, and remove-all drops only
+the mappings and never deletes host contents. Legacy r10 settings migrate to the
+v2 list while preserving `/host/source` on Keep. Updating
+restarts the desktop through DSM's existing Docker Project resource lifecycle;
+there is no runtime redeploy API or Compose editor added to the app.
+
+`preinst` runs the candidate helper from
+DSM's staging directory, recognizing the helper at `bin/dockpipe-dsm-host` or
+`package/bin/dockpipe-dsm-host` and rejecting missing or ambiguous candidates.
+The native helper binds its edited payload to the executable actually launched.
+It validates input and
+package-account access, then renders `desktop/compose.yml` from the bundled
+`compose.base.yml` and stages `desktop/host-folder.json`. It changes no persistent
+package settings in this phase. `postinst` stores the desired selection at
+`etc/host-folder.json`, outside the GUI data mount. Both source/prebuilt editions
+must carry identical base/live templates; private cached-image qualification
+packages must patch both templates to the exact cached image.
+
+DSM documents the staging environment variable and worker timing, but its exact
+writable `package/` staging layout and new repeatable wizard controls still require NAS
+acceptance. The test package fails rather than editing an old installed project
+if staging is unavailable. Existing folder ACLs must already grant the package
+account access; no recursive permission changes are performed. Nested mounts
+are rejected because older kernels cannot make them recursively read-only; see
+[Docker's recursive bind mount behavior](https://docs.docker.com/engine/storage/bind-mounts/#recursive-mounts).
+
+
+Each wizard row has a native DSM **Browse…** directory chooser. Selection uses
+`fullpath` (the physical host path), never the share-relative display `path`.
+The picker cannot create folders, excludes remote/tiering selections, and closes
+when its wizard component unmounts. Choosing a directory follows the same default
+name/override rules as typing a path. Manual path entry remains available if the
+vendor picker cannot be opened; no DOM token or credentials are copied into it.
+
+
+The custom wizard's `getValues()` must return a flat map of string environment
+values. Actual DSM `getCustData()` merges the result using `Ext.apply`; an array
+becomes a numeric `0` key containing an object, which is not an installer script
+environment. The regression fixture checks this aggregation contract, not only
+the component's local field values. r11/r12 incorrectly returned an array; the
+repair candidate returns the flat map without changing mount or privilege logic.
+
+The form measures DSM's allocated `.mcontentwrapper` body and gives the folder
+content one scroll area, rather than sizing it against the browser viewport.
+On Next, the candidate wizard applies the selected package-account access through
+the authenticated DSM ACL API and verifies it before advancing. Parent rules grant
+traversal on that folder only; target rules grant the chosen access with folder/file
+inheritance. It preserves existing explicit rules, owner IDs, inheritance settings
+and denials, checks for intervening changes before writes, and does not change
+ownership. Keep and remove-all do not write ACLs.
+
+No separate Check access, Review permissions or native Save action is required.
+The operation is bounded and sequential; failure/cancellation cannot undo writes
+already acknowledged by DSM, and automatic rollback could overwrite later edits.
+The native installer remains authoritative for actual kernel access. Fresh-install
+account timing, automatic ACL writes, mount installation and ACL cleanup across
+uninstall still require DSM qualification before general release.
+
+Restore discovery is shared shell code in `assets/scripts/restore-discovery.sh`,
+inlined into the generated install wizard. It prefers valid DSM volume/home hints
+and otherwise checks at most 64 standard volume roots for this package's FHS
+metadata. It reads no private credentials. A successful postinst atomically writes
+public `@appconf/dockpipe-desktop/install-state` metadata; known older native-host
+public certificate metadata supports retained-state discovery during migration.
+Opaque or conflicting state never produces new-credential fields. The wizard's
+restore intent and volume are checked against the selected DSM volume before ACL
+work and again against the authoritative destination in preinst. Registered
+upgrades use a static upgrade-mode component; no dynamic upgrade script is added.
+DSM repair omits the upgrade wizard's volume selector. In that case the wizard
+sends upgrade intent with an empty volume hint. Preinst accepts this only in DSM's
+native UPGRADE lifecycle, validates its authoritative destination, and requires
+complete retained settings. Fresh/restore flows and explicit mismatched volume
+hints remain blocked; no volume is inferred from the selected host folders.

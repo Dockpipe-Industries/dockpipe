@@ -41,10 +41,12 @@ case "$action" in
         fi
         exit 3
         ;;
-    stop|preuninst)
+    stop)
         synosystemctl stop "$unit"
         ;;
-    preupgrade|postupgrade|postuninst)
+    preuninst|preupgrade|postupgrade|postuninst)
+        # DSM stops the service and releases systemd-user-unit before preuninst.
+        # Its registration is already gone here, including during an upgrade.
         ;;
     *)
         echo 'Unsupported qualification lifecycle action.' >&2

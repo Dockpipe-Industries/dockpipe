@@ -7,6 +7,8 @@
 #include "CanvasIcons.h"
 #include "DockpipeChoices.h"
 #include "ResourceCanvas.h"
+#include "NativeHostConnection.h"
+#include "NativeHostSnapshot.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -249,6 +251,35 @@ void ExecutionExplorer::refreshWithAuthentication(bool allowAuthentication)
             args << "--container" << container;
     }
     const QString node = m_machine->currentData().toString();
+    if (node == NativeHostConnection::selectionKey()) {
+        if (!m_nativeHost || !m_nativeHost->available()) {
+            clearMonitoringSnapshot(tr("Native host unavailable. Open this application through its authenticated host session."));
+            return;
+        }
+        const auto plan = m_nativeHost->plan(NativeHostConnection::Operation::Snapshot);
+        if (!plan.valid()) {
+            clearMonitoringSnapshot(plan.error);
+            return;
+        }
+        const quint64 generation = m_generation;
+        const quint64 revision = m_nativeHost->revision();
+        const QString expectedNode = m_nativeHost->status().node;
+        m_command.runBounded(plan.program, plan.arguments,
+            [this, generation, revision, expectedNode](bool ok, const QByteArray &output) {
+                if (generation != m_generation || !m_active || m_pause->isChecked()
+                    || !m_nativeHost || !m_nativeHost->available() || revision != m_nativeHost->revision())
+                    return;
+                QJsonObject snapshot;
+                if (!ok || !NativeHostSnapshot::decode(output, expectedNode, "execution", &snapshot)
+                    || !applySnapshot(snapshot)) {
+                    clearMonitoringSnapshot(tr("Native host system monitoring unavailable. Refresh the authenticated host session."));
+                    m_nativeHost->refresh();
+                    return;
+                }
+                m_status->setText(m_nativeHost->label() + QStringLiteral(" · ") + m_status->text());
+            }, 10000, 1024 * 1024);
+        return;
+    }
     QString program;
     if (!node.isEmpty()) {
         args = {"remote", "observe", "--node", node, "--auth",
@@ -300,6 +331,26 @@ void ExecutionExplorer::refreshWithAuthentication(bool allowAuthentication)
 void ExecutionExplorer::setNodes(const QStringList &nodes)
 {
     m_machine->setNodes(nodes);
+}
+
+void ExecutionExplorer::setNativeHostConnection(NativeHostConnection *connection)
+{
+    if (m_nativeHost)
+        disconnect(m_nativeHost, nullptr, this, nullptr);
+    m_nativeHost = connection;
+    if (connection) {
+        connect(connection, &NativeHostConnection::statusChanged, this, &ExecutionExplorer::nativeHostChanged);
+        connect(connection, &QObject::destroyed, this, &ExecutionExplorer::nativeHostChanged);
+    }
+    m_machine->setNativeHost(connection ? connection->label() : tr("Native host — unavailable"), true);
+    changeMachine();
+}
+
+void ExecutionExplorer::nativeHostChanged()
+{
+    m_machine->setNativeHost(m_nativeHost ? m_nativeHost->label() : tr("Native host — unavailable"), false);
+    if (m_machine->currentData().toString() == NativeHostConnection::selectionKey())
+        changeMachine();
 }
 
 void ExecutionExplorer::clearMonitoringSnapshot(const QString &status)

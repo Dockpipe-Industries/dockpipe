@@ -125,19 +125,6 @@ func TestAuthenticationEnvironmentBudgets(t *testing.T) {
 	}
 }
 
-func TestHelperOutputIsAggregateAndBounded(t *testing.T) {
-	output := &helperOutput{remaining: 4}
-	if _, err := (helperWriter{output: output, retain: true}).Write([]byte("user")); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := (helperWriter{output: output}).Write([]byte("stderr-secret")); err == nil || !output.exhausted {
-		t.Fatal("stderr did not share output budget")
-	}
-	if output.stdout.String() != "user" {
-		t.Fatal("stderr retained")
-	}
-}
-
 func TestAuthenticationHelperProcess(t *testing.T) {
 	switch os.Getenv("DOCKPIPE_QUALIFICATION_TEST_HELPER") {
 	case "success":
@@ -201,7 +188,9 @@ func TestHelperExecutionLimitsAndCancellation(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 			defer cancel()
 			command := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestAuthenticationHelperProcess$")
-			command.Env = append(os.Environ(), "DOCKPIPE_QUALIFICATION_TEST_HELPER="+mode)
+			// Race-instrumented helper subprocesses otherwise sleep for one
+			// second after exit, obscuring the helper's cancellation budget.
+			command.Env = append(os.Environ(), "DOCKPIPE_QUALIFICATION_TEST_HELPER="+mode, "GORACE=atexit_sleep_ms=0")
 			started := time.Now()
 			output, err := executeAuthenticationHelper(command)
 			if mode == "success" {

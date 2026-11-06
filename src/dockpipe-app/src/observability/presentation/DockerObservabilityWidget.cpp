@@ -1,5 +1,6 @@
 #include "DockerObservabilityWidget.h"
 #include "MonitoringMachineSelector.h"
+#include "NativeHostConnection.h"
 #include "DockpipeChoices.h"
 #include "CanvasIcons.h"
 #include "DockerResourceInspector.h"
@@ -348,9 +349,10 @@ void DockerObservabilityWidget::buildUi()
     });
     connect(m_inspector, &DockerResourceInspector::pauseChanged, this, [this](bool paused) {
         m_monitorPaused = paused;
-        if (paused)
+        if (paused) {
             m_autoRefreshTimer->stop();
-        else if (m_active) {
+            cancelNativeDetails();
+        } else if (m_active) {
             m_autoRefreshTimer->start();
             refresh();
         }
@@ -392,6 +394,17 @@ void DockerObservabilityWidget::updateInspector()
 {
     if (!m_inspector)
         return;
+    if (m_machine->currentData().toString() == NativeHostConnection::selectionKey()
+        && m_nativeDisplayedKey != m_selectedResource) {
+        cancelNativeDetails();
+        m_nativeDisplayedKey = m_selectedResource;
+        m_nativeInspectKey.clear();
+        m_nativeInspect = {};
+        m_containerDetails->clear();
+        m_containerLogs->clear();
+        m_networkDetails->clear();
+        m_volumeDetails->clear();
+    }
     DockerInspectorSelection selection;
     selection.key = m_selectedResource;
     const QString kind = m_selectedResource.section(':', 0, 0);
@@ -424,10 +437,16 @@ void DockerObservabilityWidget::updateInspector()
         selection.canStop = selection.canExec || state == "paused" || state == "restarting";
         selection.status = tr("Container · %1").arg(table->item(row, 1)->data(Qt::ToolTipRole).toString());
     }
-    if (m_containerActionBusy || !m_machine->currentData().toString().isEmpty()) {
+    if (m_containerActionBusy) {
         selection.canExec = false;
         selection.canStart = false;
         selection.canStop = false;
+    } else if (!m_machine->currentData().toString().isEmpty()) {
+        selection.canExec = false;
+        if (!nativeContainerControlsAvailable()) {
+            selection.canStart = false;
+            selection.canStop = false;
+        }
     }
     selection.detailsHtml = "<p><b>ID</b><br>" + id.toHtmlEscaped() + "</p>";
     for (int column = 0; column < table->columnCount(); ++column) {
@@ -436,6 +455,26 @@ void DockerObservabilityWidget::updateInspector()
             value = table->item(row, column)->data(Qt::ToolTipRole).toString();
         selection.detailsHtml += "<p><b>" + table->horizontalHeaderItem(column)->text().toHtmlEscaped()
             + "</b><br>" + (value.isEmpty() ? tr("Not reported") : value.toHtmlEscaped()) + "</p>";
+    }
+    if (m_nativeInspectKey == m_selectedResource) {
+        const QStringList sections = {QStringLiteral("State"), QStringLiteral("Config"),
+            QStringLiteral("HostConfig"), QStringLiteral("Mounts"), QStringLiteral("NetworkSettings"),
+            QStringLiteral("IPAM"), QStringLiteral("Containers"), QStringLiteral("Options"),
+            QStringLiteral("Labels"), QStringLiteral("Mountpoint"), QStringLiteral("CreatedAt")};
+        for (const auto &section : sections) {
+            const auto value = m_nativeInspect.value(section);
+            if (value.isUndefined() || value.isNull())
+                continue;
+            QString text;
+            if (value.isObject())
+                text = QString::fromUtf8(QJsonDocument(value.toObject()).toJson(QJsonDocument::Compact));
+            else if (value.isArray())
+                text = QString::fromUtf8(QJsonDocument(value.toArray()).toJson(QJsonDocument::Compact));
+            else
+                text = value.toVariant().toString();
+            selection.detailsHtml += "<p><b>" + section.toHtmlEscaped() + "</b></p><pre>"
+                + text.toHtmlEscaped() + "</pre>";
+        }
     }
     QStringList related;
     const auto append = [&](const QString &relatedKind, const QString &relatedId, const QString &name) {
@@ -822,6 +861,7 @@ void DockerObservabilityWidget::setActive(bool active)
 
     if (m_autoRefreshTimer)
         m_autoRefreshTimer->stop();
+    cancelNativeDetails();
     updateContainerActionState();
     m_pendingContainerDetailId.clear();
     m_pendingNetworkDetailId.clear();
@@ -1108,8 +1148,12 @@ void DockerObservabilityWidget::renderVolumeDetails(const QString &volumeName)
 
 void DockerObservabilityWidget::refreshContainerDetailsAsync(const QString &containerId)
 {
+    if (m_machine->currentData().toString() == NativeHostConnection::selectionKey()) {
+        refreshNativeDetails("container", containerId);
+        return;
+    }
     if (!m_machine->currentData().toString().isEmpty()) {
-        m_containerLogs->setPlainText(tr("Remote monitoring shares inventory and topology. Application logs and interactive controls remain local."));
+        m_containerLogs->setPlainText(remoteInspectionNotice());
         return;
     }
 
@@ -1148,8 +1192,12 @@ void DockerObservabilityWidget::refreshContainerDetailsAsync(const QString &cont
 
 void DockerObservabilityWidget::refreshNetworkDetailsAsync(const QString &networkId)
 {
+    if (m_machine->currentData().toString() == NativeHostConnection::selectionKey()) {
+        refreshNativeDetails("network", networkId);
+        return;
+    }
     if (!m_machine->currentData().toString().isEmpty()) {
-        m_containerLogs->setPlainText(tr("Remote monitoring shares inventory and topology. Application logs and interactive controls remain local."));
+        m_containerLogs->setPlainText(remoteInspectionNotice());
         return;
     }
 
@@ -1179,8 +1227,12 @@ void DockerObservabilityWidget::refreshNetworkDetailsAsync(const QString &networ
 
 void DockerObservabilityWidget::refreshVolumeDetailsAsync(const QString &volumeName)
 {
+    if (m_machine->currentData().toString() == NativeHostConnection::selectionKey()) {
+        refreshNativeDetails("volume", volumeName);
+        return;
+    }
     if (!m_machine->currentData().toString().isEmpty()) {
-        m_containerLogs->setPlainText(tr("Remote monitoring shares inventory and topology. Application logs and interactive controls remain local."));
+        m_containerLogs->setPlainText(remoteInspectionNotice());
         return;
     }
 
@@ -1246,7 +1298,7 @@ void DockerObservabilityWidget::onContainersContextMenuRequested(const QPoint &p
     startAction->setEnabled(state == QStringLiteral("exited") || state == QStringLiteral("created"));
     stopAction->setEnabled(state == QStringLiteral("healthy") || state == QStringLiteral("unhealthy") || state == QStringLiteral("running")
                            || state == QStringLiteral("paused") || state == QStringLiteral("restarting"));
-    if (!m_machine->currentData().toString().isEmpty()) {
+    if (m_containerActionBusy || (!m_machine->currentData().toString().isEmpty() && !nativeContainerControlsAvailable())) {
         startAction->setEnabled(false);
         stopAction->setEnabled(false);
     }
@@ -1309,6 +1361,10 @@ void DockerObservabilityWidget::onStopSelectedContainer()
 
 void DockerObservabilityWidget::runContainerAction(const QString &action)
 {
+    if (nativeContainerControlsAvailable()) {
+        runNativeContainerAction(action, selectedContainerId(), selectedContainerName());
+        return;
+    }
     if (!m_machine->currentData().toString().isEmpty())
         return;
     const QString id = selectedContainerId();

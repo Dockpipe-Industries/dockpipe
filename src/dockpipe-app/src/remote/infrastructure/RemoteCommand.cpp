@@ -124,10 +124,15 @@ void RemoteCommand::consumeLine(const QByteArray &line)
 {
     if (m_cancelled)
         return;
-    const auto event = QJsonDocument::fromJson(line).object();
+    const auto document = QJsonDocument::fromJson(line);
+    const auto event = document.object();
     const QString eventName = event.value("event").toString();
     // Reserved protocol frames never reach diagnostics, including invalid frames.
-    if (eventName.startsWith("hardware-key-") || line.contains("hardware-key-")) {
+    // Ordinary JSON snapshots may include this text in process/account names;
+    // only their top-level event field participates in the interaction protocol.
+    const bool malformedReservedFrame = line.contains("hardware-key-")
+        && (!document.isObject() || (event.contains("event") && !event.value("event").isString()));
+    if (eventName.startsWith("hardware-key-") || malformedReservedFrame) {
         bool valid = !m_cancelled && m_guiInteraction && line.size() <= 8192;
         if (valid && eventName == "hardware-key-prompt") {
             static const QRegularExpression identifier("\\A[0-9a-f]{32}\\z");

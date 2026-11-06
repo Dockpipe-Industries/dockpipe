@@ -14,6 +14,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"dockpipe/workflows/internal/synology/localhttp"
 )
 
 // Diagnostic responses are bounded at 16 KiB. A group list exceeding that
@@ -78,17 +80,6 @@ type loopbackListener struct {
 	slots chan struct{}
 }
 
-type privateConnection struct {
-	net.Conn
-	release func()
-}
-
-func (connection *privateConnection) Close() error {
-	err := connection.Conn.Close()
-	connection.release()
-	return err
-}
-
 func peerUID(connection *net.UnixConn) (uint32, error) {
 	raw, err := connection.SyscallConn()
 	if err != nil {
@@ -126,34 +117,10 @@ func (listener *privateListener) Accept() (net.Conn, error) {
 }
 
 func (listener *loopbackListener) Accept() (net.Conn, error) {
-	for {
-		connection, err := listener.Listener.Accept()
-		if err != nil {
-			return nil, err
-		}
-		address, ok := connection.RemoteAddr().(*net.TCPAddr)
-		if !ok || !address.IP.IsLoopback() {
-			_ = connection.Close()
-			continue
-		}
-		if bounded := reserveConnection(connection, listener.slots); bounded != nil {
-			return bounded, nil
-		}
-	}
+	return localhttp.AcceptLoopback(listener.Listener, listener.slots)
 }
-
 func reserveConnection(connection net.Conn, slots chan struct{}) net.Conn {
-	select {
-	case slots <- struct{}{}:
-		// HTTP can close a connection through multiple cleanup paths.
-		var releaseOnce sync.Once
-		return &privateConnection{Conn: connection, release: func() {
-			releaseOnce.Do(func() { <-slots })
-		}}
-	default:
-		_ = connection.Close()
-		return nil
-	}
+	return localhttp.ReserveConnection(connection, slots)
 }
 
 func serviceHandler() http.Handler {
@@ -180,13 +147,7 @@ func serve(ctx context.Context, socket string) error {
 }
 
 func qualificationServer(handler http.Handler) *http.Server {
-	server := &http.Server{
-		Handler: handler, ReadHeaderTimeout: time.Second,
-		ReadTimeout: requestTimeout, WriteTimeout: requestTimeout,
-		IdleTimeout: time.Second, MaxHeaderBytes: 4096,
-	}
-	server.SetKeepAlivesEnabled(false)
-	return server
+	return localhttp.Server(handler, 4096, requestTimeout)
 }
 
 func serveWithAuthentication(ctx context.Context, socket, authListen string) error {

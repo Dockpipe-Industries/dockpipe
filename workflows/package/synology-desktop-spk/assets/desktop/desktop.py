@@ -38,7 +38,8 @@ def prepare_identity(runtime):
     os.environ['HOME'] = str(DATA)
     os.environ['USER'] = 'dockpipe'
     os.environ['LOGNAME'] = 'dockpipe'
-    os.environ['DOCKPIPE_LOCAL_MACHINE_LABEL'] = 'GUI container'
+    os.environ['DOCKPIPE_LOCAL_MACHINE_LABEL'] = 'Application container'
+    os.environ['DOCKPIPE_NATIVE_HOST_CONNECTION'] = '/config/native-client/connection.json'
     os.environ['XDG_RUNTIME_DIR'] = str(runtime)
 
 
@@ -76,6 +77,9 @@ def main():
         '--enable-basic-auth=true', '--allowed-origins', '',
         '--subfolder', '/webman/3rdparty/dockpipe-desktop/desktop',
         '--frame-ancestors', 'self',
+        # A single value only changes Selkies' default. Bound the server range so
+        # saved browser preferences and live requests cannot restore 60+ FPS.
+        '--framerate', '30,8-30',
         '--ui-title', 'Dockpipe', '--ui-show-logo=false',
         '--web-root', '/usr/share/selkies/selkies-dashboard',
     ]

@@ -4,6 +4,8 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
+import shlex
 from pathlib import Path
 import shutil
 import struct
@@ -33,25 +35,31 @@ class DesktopSpkTests(unittest.TestCase):
         (self.assets / "ui").mkdir()
         (self.assets / "nginx").mkdir()
         (self.assets / "nginx/desktop.conf").write_text((PACKAGING.ASSETS / "nginx/desktop.conf").read_text())
-        (self.assets / "ui/Dockpipe.Desktop.js").write_text((PACKAGING.ASSETS / "ui/Dockpipe.Desktop.js").read_text())
+        for name in PACKAGING.UI_ASSETS:
+            (self.assets / "ui" / name).write_bytes((PACKAGING.ASSETS / "ui" / name).read_bytes())
+        (self.assets / "systemd").mkdir()
+        (self.assets / "systemd" / PACKAGING.NATIVE_HOST_UNIT).write_bytes(
+            (PACKAGING.ASSETS / "systemd" / PACKAGING.NATIVE_HOST_UNIT).read_bytes())
         (self.assets / "scripts").mkdir()
         (self.assets / "port_conf").mkdir()
-        (self.assets / "port_conf/dockpipe-desktop.sc").write_text('[dockpipe_desktop]\nport_forward="no"\ndst.ports="38139/tcp"\n')
+        (self.assets / "port_conf/dockpipe-desktop.sc").write_bytes((PACKAGING.ASSETS / "port_conf/dockpipe-desktop.sc").read_bytes())
         for name in PACKAGING.DESKTOP_ASSETS:
             (self.assets / "desktop" / name).write_text(f"fixture {name} @WEBTOP_IMAGE@ @ARCH@\n")
-        (self.assets / "ui/config").write_text('{".url":{"com.dockpipe.Desktop":{"type":"url"}}}\n')
-        (self.assets / "install_uifile").write_text('[{"headline":"Desktop credentials"}]\n')
+        for name in ("install_uifile", "upgrade_uifile", "host-folders-wizard.js"):
+            (self.assets / name).write_bytes((PACKAGING.ASSETS / name).read_bytes())
         (self.assets / "uninstall_uifile").write_text((PACKAGING.ASSETS / "uninstall_uifile").read_text())
         (self.assets / "install_uifile.sh").write_text("#!/bin/sh\ncat <<'JSON'\n@INSTALL_WIZARD@\nJSON\n")
+        (self.assets / "scripts/restore-discovery.sh").write_bytes((PACKAGING.ASSETS / "scripts/restore-discovery.sh").read_bytes())
         (self.assets / "scripts/package-control.sh").write_text('#!/bin/sh\ncase "${0##*/}" in\n*) exit 0;;\nesac\n')
         patcher = mock.patch.object(PACKAGING, "ASSETS", self.assets)
         patcher.start()
         self.addCleanup(patcher.stop)
         self.binary = self.native_binary("amd64")
+        self.native_host = self.native_binary("amd64", "dockpipe-dsm-host")
         self.cli = self.deb("dockpipe")
         self.desktop = self.deb("dockpipe-desktop")
 
-    def native_binary(self, architecture):
+    def native_binary(self, architecture, name="dockpipe"):
         content = bytearray(120)
         content[:7] = b"\x7fELF\x02\x01\x01"
         machine = PACKAGING.CLI_PACKAGING.ARCHITECTURES[architecture][2]
@@ -59,7 +67,7 @@ class DesktopSpkTests(unittest.TestCase):
         struct.pack_into("<Q", content, 32, 64)
         struct.pack_into("<HH", content, 54, 56, 1)
         struct.pack_into("<I", content, 64, 1)
-        destination = self.root / ("dockpipe-" + architecture)
+        destination = self.root / (name + "-" + architecture)
         destination.write_bytes(content)
         return destination
 
@@ -82,6 +90,7 @@ class DesktopSpkTests(unittest.TestCase):
         arguments = {
             "version": "1.2.3", "architecture": "amd64", "binary": self.binary,
             "cli_deb": self.cli, "desktop_deb": self.desktop, "output": self.output,
+            "native_host_binary": self.native_host,
         }
         arguments.update(overrides)
         return PACKAGING.build(**arguments)
@@ -92,30 +101,40 @@ class DesktopSpkTests(unittest.TestCase):
         ):
             with self.subTest(architecture=architecture):
                 binary = self.native_binary(architecture)
+                native_host = self.native_binary(architecture, "dockpipe-dsm-host")
                 cli = self.deb("dockpipe", architecture=architecture)
                 desktop = self.deb("dockpipe-desktop", architecture=architecture)
-                package = self.build(architecture=architecture, binary=binary, cli_deb=cli, desktop_deb=desktop)
+                package = self.build(architecture=architecture, binary=binary, native_host_binary=native_host,
+                                     cli_deb=cli, desktop_deb=desktop)
                 self.assertEqual(package.name, f"dockpipe-desktop_1.2.3_synology_{filename_architecture}.spk")
                 with tarfile.open(package) as archive:
                     self.assertTrue(all(member.isfile() for member in archive.getmembers()))
                     info = archive.extractfile("INFO").read().decode()
                     for field in (
                         'package="dockpipe-desktop"', 'version="1.2.3-1"', f'arch="{dsm_architecture}"',
-                        'os_min_ver="7.2.1-69057"', 'install_dep_packages="ContainerManager>=20.10.23-1437"',
+                        'os_min_ver="7.2.2-72806"', 'install_dep_packages="ContainerManager>=20.10.23-1437"',
                         'dsmuidir="ui"', 'dsmappname="com.dockpipe.Desktop"', 'dsmapplaunchname="com.dockpipe.Desktop"',
                         'instuninst_restart_services="nginx.service"', 'startstop_restart_services="nginx.service"',
                         'ctl_stop="yes"', 'checkport="no"',
-                        'silent_install="no"', 'silent_upgrade="yes"',
+                        'silent_install="no"', 'silent_upgrade="no"',
                     ):
                         self.assertIn(field, info)
                     self.assertEqual(json.load(archive.extractfile("conf/privilege")), {"defaults": {"run-as": "package"}})
                     resource = json.load(archive.extractfile("conf/resource"))
-                    self.assertEqual(resource, {"port-config": {"protocol-file": "port_conf/dockpipe-desktop.sc"},
+                    self.assertEqual(resource, {"systemd-user-unit": {},
+                                               "port-config": {"protocol-file": "port_conf/dockpipe-desktop.sc"},
                                                 "web-config": {"nginx-static-config": {"enable": [{"type": "dsm", "relpath": "nginx/desktop.conf"}]}},
                                                "docker-project": {"projects": [{
                         "name": "dockpipe-desktop", "path": "desktop",
                         "build_params": {"force_recreate": True, "build": True, "force_pull": False},
                     }]}})
+                    unit = archive.extractfile("conf/systemd/" + PACKAGING.NATIVE_HOST_UNIT).read().decode()
+                    self.assertIn("ExecStart=/var/packages/dockpipe-desktop/target/bin/dockpipe-dsm-host serve", unit)
+                    self.assertIn("NoNewPrivileges=true", unit)
+                    self.assertIn("Restart=no", unit)
+                    self.assertIn("UMask=0077", unit)
+                    self.assertNotIn("WantedBy", unit)
+                    self.assertNotIn("User=root", unit)
                     self.assertIn('silent_uninstall="no"', info)
                     removal = json.load(archive.extractfile("WIZARD_UIFILES/uninstall_uifile"))
                     choice = removal[0]["items"][1]["subitems"][0]
@@ -124,7 +143,14 @@ class DesktopSpkTests(unittest.TestCase):
                     self.assertEqual([row[1] for row in choice["store"]["data"]], ["keep", "delete"])
                     wizard = archive.extractfile("WIZARD_UIFILES/install_uifile.sh").read()
                     rendered = subprocess.run(["sh"], input=wizard, capture_output=True, check=True)
-                    self.assertEqual(json.loads(rendered.stdout), [{"headline": "Desktop credentials"}])
+                    install_pages = json.loads(rendered.stdout)
+                    upgrade_pages = json.load(archive.extractfile("WIZARD_UIFILES/upgrade_uifile"))
+                    self.assertEqual(install_pages[:-1], json.loads((self.assets / "install_uifile").read_text()))
+                    self.assertEqual(install_pages[-1]["custom_render_name"], upgrade_pages[0]["custom_render_name"])
+                    self.assertEqual(install_pages[-1]["custom_render_fn"], (self.assets / "host-folders-wizard.js").read_text())
+                    self.assertEqual(upgrade_pages[0]["custom_render_name"], "dockpipe_host_folders")
+                    self.assertIn('var restoreMode = "upgrade";', upgrade_pages[0]["custom_render_fn"])
+                    self.assertNotIn("@DOCKPIPE_", upgrade_pages[0]["custom_render_fn"])
                     control = (self.assets / "scripts/package-control.sh").read_bytes()
                     for script in PACKAGING.PACKAGE_SCRIPTS:
                         member = archive.getmember("scripts/" + script)
@@ -137,15 +163,26 @@ class DesktopSpkTests(unittest.TestCase):
                     checksum = hashlib.md5(payload, usedforsecurity=False).hexdigest()
                     self.assertIn(f'checksum="{checksum}"', info)
                     with tarfile.open(fileobj=io.BytesIO(payload), mode="r:gz") as content:
-                        expected = {"bin/dockpipe", "share/doc/dockpipe/LICENSE", "ui/config", "ui/Dockpipe.Desktop.js",
+                        expected = {"bin/dockpipe", "bin/dockpipe-dsm-host", "share/doc/dockpipe/LICENSE", "ui/config", "ui/Dockpipe.Desktop.native-v4.js",
                                     "nginx/desktop.conf", "port_conf/dockpipe-desktop.sc",
                                     "desktop/packages/cli.deb", "desktop/packages/desktop.deb"}
+                        expected.add("desktop/compose.base.yml")
                         expected.update("desktop/" + name for name in PACKAGING.DESKTOP_ASSETS)
                         expected.update(f"ui/images/icon_{size}.png" for size in (16, 24, 32, 48, 64, 72, 256))
                         self.assertEqual(set(content.getnames()), expected)
                         self.assertEqual(content.extractfile("bin/dockpipe").read(), binary.read_bytes())
                         self.assertEqual(content.getmember("bin/dockpipe").mode, 0o755)
+                        self.assertEqual(content.extractfile("bin/dockpipe-dsm-host").read(), native_host.read_bytes())
+                        self.assertEqual(content.getmember("bin/dockpipe-dsm-host").mode, 0o755)
+                        javascript = content.extractfile("ui/Dockpipe.Desktop.native-v4.js").read()
+                        shared = PACKAGING.SHARED_DSM_SCRIPT.read_bytes()
+                        entry = (self.assets / "ui/Dockpipe.Desktop.native-v4.js").read_bytes()
+                        self.assertEqual(javascript, shared + b"\n" + entry)
+                        launcher = json.load(content.extractfile("ui/config"))["Dockpipe.Desktop.native-v4.js"]
+                        self.assertEqual(launcher["com.dockpipe.Desktop"]["appWindow"], "com.dockpipe.DesktopWindow")
                         self.assertEqual(content.getmember("desktop/entrypoint.sh").mode, 0o755)
+                        self.assertEqual(content.extractfile("desktop/compose.base.yml").read(),
+                                         content.extractfile("desktop/compose.yml").read())
                         self.assertEqual(content.extractfile("desktop/packages/cli.deb").read(), cli.read_bytes())
                         self.assertEqual(content.extractfile("desktop/packages/desktop.deb").read(), desktop.read_bytes())
                         self.assertEqual(content.extractfile("share/doc/dockpipe/LICENSE").read(), (ROOT / "LICENSE").read_bytes())
@@ -199,6 +236,7 @@ class DesktopSpkTests(unittest.TestCase):
                         self.assertNotIn("desktop/Dockerfile", payload.getnames())
                         self.assertNotIn("desktop/packages/desktop.deb", payload.getnames())
                         rendered = payload.extractfile("desktop/compose.yml").read().decode()
+                        self.assertEqual(payload.extractfile("desktop/compose.base.yml").read().decode(), rendered)
                         self.assertNotIn("build:", rendered)
                         self.assertIn(offline_image if offline else receipt["image"], rendered)
                         self.assertIn("pull_policy: " + ("never" if offline else "missing"), rendered)
@@ -217,6 +255,68 @@ class DesktopSpkTests(unittest.TestCase):
         for revision in (0, -1, 2**31, True, "2"):
             with self.subTest(revision=revision), self.assertRaisesRegex(ValueError, "Package revision"):
                 self.build(package_revision=revision)
+
+    def test_rendered_wizards_embed_the_same_repeatable_folder_module(self):
+        install, upgrade, folder_step = PACKAGING.render_wizards()
+        install_pages = json.loads(install)
+        upgrade_pages = json.loads(upgrade)
+        self.assertEqual(len(upgrade_pages), 1)
+        self.assertEqual(install_pages[-1]["custom_render_name"], upgrade_pages[0]["custom_render_name"])
+        self.assertEqual(json.loads(folder_step), install_pages[-1])
+        self.assertEqual(install_pages[:-1], json.loads((self.assets / "install_uifile").read_text()))
+        self.assertEqual(upgrade_pages[0]["custom_render_name"], "dockpipe_host_folders")
+        self.assertEqual(install_pages[-1]["custom_render_fn"], (self.assets / "host-folders-wizard.js").read_text())
+        self.assertIn('var restoreMode = "upgrade";', upgrade_pages[0]["custom_render_fn"])
+        self.assertNotIn("@DOCKPIPE_", upgrade_pages[0]["custom_render_fn"])
+        self.assertNotIn("wizard_host_folder_path", folder_step)
+        self.assertNotIn("wizard_host_folder_access", folder_step)
+
+    def test_packaged_restore_wizard_includes_folder_step_without_requesting_credentials(self):
+        template = ROOT / "workflows/package/synology-desktop-spk/assets/install_uifile.sh"
+        (self.assets / "install_uifile.sh").write_bytes(template.read_bytes())
+        filesystem = self.root / "filesystem"
+        package_home = filesystem / "volume1/@apphome/dockpipe-desktop"
+        (package_home / "desktop-settings").mkdir(parents=True)
+        output = self.root / "wizard.json"
+        with tarfile.open(self.build()) as archive:
+            script = archive.extractfile("WIZARD_UIFILES/install_uifile.sh").read()
+        self.assertNotIn(b"@HOST_FOLDER_WIZARD@", script)
+        self.assertNotIn(b"@RESTORE_DISCOVERY_HELPERS@", script)
+        script = script.decode().replace("render_install_wizard /", "render_install_wizard " + shlex.quote(str(filesystem))).encode()
+        subprocess.run(["sh"], input=script, check=True, capture_output=True, timeout=5, env={
+            **os.environ,
+            "SYNOPKG_PKGHOME": "",
+            "SYNOPKG_PKGDEST_VOL": "",
+            "SYNOPKG_TEMP_LOGFILE": str(output),
+        })
+        wizard = json.loads(output.read_text())
+        self.assertEqual(wizard[0]["step_title"], "Restore Dockpipe")
+        self.assertNotIn("wizard_password", json.dumps(wizard))
+        self.assertNotIn("wizard_username", json.dumps(wizard))
+        self.assertEqual(wizard[1]["custom_render_name"], "dockpipe_host_folders")
+        self.assertIn('var restoreMode = "restore";', wizard[1]["custom_render_fn"])
+        self.assertIn('volumeList("/volume1")', wizard[1]["custom_render_fn"])
+
+    def test_browser_routes_only_reach_the_pinned_authenticated_native_gateway(self):
+        proxy = (self.assets / "nginx/desktop.conf").read_text()
+        self.assertIn("location = /webman/3rdparty/dockpipe-desktop/native-host.cgi", proxy)
+        self.assertIn("location ^~ /webman/3rdparty/dockpipe-desktop/desktop/", proxy)
+        self.assertEqual(proxy.count("proxy_pass https://127.0.0.1:38143;"), 2)
+        self.assertNotIn("38139", proxy)
+        self.assertNotIn("proxy_ssl_verify off", proxy)
+        self.assertEqual(proxy.count("proxy_ssl_verify on;"), 2)
+        self.assertEqual(proxy.count("proxy_set_header Authorization \"\";"), 2)
+        self.assertEqual(proxy.count("proxy_set_header Cookie $http_cookie;"), 2)
+        self.assertEqual(proxy.count("proxy_set_header X-Syno-Token $http_x_syno_token;"), 2)
+        for name, value in (("Remote-Addr", "$remote_addr"), ("Server-Addr", "$server_addr"),
+                            ("Server-Port", "$server_port"), ("Scheme", "$scheme")):
+            self.assertEqual(proxy.count(f"proxy_set_header X-Dockpipe-{name} {value};"), 2)
+        self.assertIn("client_max_body_size 8k;", proxy)
+        self.assertIn("proxy_read_timeout 5s;", proxy)
+        self.assertIn("proxy_read_timeout 3600s;", proxy)
+        self.assertIn("proxy_set_header Upgrade $http_upgrade;", proxy)
+        self.assertIn("proxy_set_header Connection upgrade;", proxy)
+        self.assertIn("/etc/native-host/endpoint-public/ca.pem", proxy)
 
     def test_archive_bytes_and_metadata_are_reproducible(self):
         destination = self.build()
@@ -239,6 +339,19 @@ class DesktopSpkTests(unittest.TestCase):
         link.symlink_to(self.binary)
         with self.assertRaisesRegex(ValueError, "regular file"):
             self.build(binary=link)
+        self.assertFalse(self.output.exists())
+
+    def test_rejects_invalid_native_gateway_before_publishing_an_artifact(self):
+        with self.assertRaisesRegex(ValueError, "architecture"):
+            self.build(native_host_binary=self.native_binary("arm64", "wrong-gateway"))
+        self.native_host.write_bytes(b"not a native gateway")
+        with self.assertRaisesRegex(ValueError, "ELF64"):
+            self.build()
+        self.native_host = self.native_binary("amd64", "restored-gateway")
+        linked = self.root / "linked-gateway"
+        linked.symlink_to(self.native_host)
+        with self.assertRaisesRegex(ValueError, "regular file"):
+            self.build(native_host_binary=linked)
         self.assertFalse(self.output.exists())
 
     def test_rejects_nonrelease_version_and_unknown_architecture(self):

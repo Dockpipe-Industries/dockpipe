@@ -299,6 +299,9 @@ jobs:
         shell: bash
         run: |
           arch="$(dpkg --print-architecture)"
+          native_host_binary="$RUNNER_TEMP/dockpipe-dsm-host-${arch}"
+          CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath -ldflags='-s -w' \
+            -o "$native_host_binary" ./workflows/package/synology-desktop-spk/assets/native-host
           python3 workflows/shared/launch.py workflows/package/synology-desktop/config.yml -- \
             --cli-deb "$PWD/release/artifacts/dockpipe_${RELEASE_VERSION}_${arch}.deb" \
             --desktop-deb "$PWD/release/artifacts/dockpipe-desktop_${RELEASE_VERSION}_${arch}.deb" \
@@ -309,6 +312,7 @@ jobs:
             --version "$RELEASE_VERSION" --architecture "$arch" --source-sha "$GITHUB_SHA" \
             --repository "ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/dockpipe-desktop" \
             --binary "$PWD/src/bin/dockpipe" \
+            --native-host-binary "$native_host_binary" \
             --cli-deb "$PWD/release/artifacts/dockpipe_${RELEASE_VERSION}_${arch}.deb" \
             --desktop-deb "$PWD/release/artifacts/dockpipe-desktop_${RELEASE_VERSION}_${arch}.deb" \
             --output "$PWD/release/artifacts" --image-directory "$PWD/release/synology-images"

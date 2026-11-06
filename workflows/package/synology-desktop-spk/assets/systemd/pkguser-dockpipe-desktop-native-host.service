@@ -1,0 +1,10 @@
+[Unit]
+Description=Dockpipe native DSM host gateway
+
+[Service]
+Type=simple
+ExecStart=/var/packages/dockpipe-desktop/target/bin/dockpipe-dsm-host serve
+Restart=no
+NoNewPrivileges=true
+UMask=0077
+TimeoutStopSec=5

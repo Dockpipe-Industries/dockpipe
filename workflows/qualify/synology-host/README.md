@@ -20,9 +20,9 @@ authenticated username, effective process identity/capabilities and native
 service status. It excludes session cookies, authentication tokens, environment
 values and authentication-helper diagnostics. No extra login is requested.
 
-Also test the same CGI URL in a logged-out/private browser: it must return an
-unauthenticated response, with no identity report. An expired DSM session must
-likewise fail. Do not share cookies, tokens or request headers.
+Also test the report without a valid DSM session: it must fail with no identity
+report. An expired DSM session must likewise fail. Do not share cookies, tokens
+or request headers.
 
 The native user service uses DSM's `systemd-user-unit` worker and runs as the
 package account. It exposes private Unix status and, in revision 2, one
@@ -55,5 +55,77 @@ a supported production integration.
 Revision 1 hardware feedback confirmed the native service runs on the NAS with
 an unprivileged package UID, no effective capabilities and `no_new_privs` set.
 Its UI symlink, file/directory modes and generic CGI dispatch rule were present,
-but the browser CGI request returned DSM's 404. Revision 2 uses the scoped proxy
-route above; DSM authentication through that route remains a hardware test.
+but the browser CGI request returned DSM's 404. Revision 2 introduced the scoped
+proxy route above, which was subsequently tested on hardware in revision 3.
+
+Revision 3 hardware testing confirmed successful upgrade and native service
+startup. DSM releases the user-service registration after stopping it and before
+running `preuninst`; that hook must not attempt another stop. Older revision 1
+installations require a backed-up repair of their installed hook before upgrading,
+because DSM executes the old hook before unpacking the replacement.
+
+A same-origin browser request with the existing DSM cookie and `X-Syno-Token`
+returned an authenticated username, the NAS hostname and an available native
+service. A bare iframe request did not supply the token and failed authentication.
+Revision 4 sends the token from the DSM-loaded application script in a request
+header and displays the bounded report as text. It does not put the token in the
+report URL, logs or persistent state. Automatic display remains a separate live
+hardware check; successful authentication does not establish Unix identity
+delegation or a host terminal.
+
+## In-app Task Scheduler qualification
+
+The capability-based identity-switching companion was rejected by DSM's privilege
+admission before installation. It is not an installable native-host solution.
+The separate **Dockpipe host task qualification** candidate instead declares only
+`run-as: package` and offers an explicit **Enable NAS access** action inside DSM.
+
+Build this candidate with the standalone producer:
+
+```sh
+python3 workflows/shared/run.py python3 workflows/qualify/synology-host/assets/scripts/build_task.py \
+  --architecture amd64 --output /absolute/private/output
+```
+
+Install the SPK alongside the existing desktop and original qualification package.
+Open its icon from the HTTPS DSM desktop. Opening the window reads status only.
+Enable NAS access uses the existing DSM session to create a disabled one-shot
+Task Scheduler entry for the verified local administrator, reads its owner and
+exact script back, and runs its fixed native probe. It never selects root or
+accepts a caller-supplied command. No SSH configuration or separate login is used.
+
+The result separates the callback's kernel-observed UID/GID/PID from the probe's
+reported host identity, groups, capabilities, local Docker inventory and direct
+HTTPS check. Supplementary-group differences are visible diagnostics, not proof
+of equivalent rights. This qualifies native execution; it is not yet a terminal.
+Docker queries explicitly target the local Unix daemon. Network checks target
+GitHub over verified HTTPS without an environment proxy.
+
+Use **Remove test task** before uninstalling. A timed-out create or delete is an
+uncertain operation: reconcile the exact task instead of blindly repeating it.
+The package cannot promise to remove scheduler entries during uninstall without
+a live authorized DSM session. Challenges/results expire after 15 minutes and
+are invalidated by package restart; disabled tasks may outlive that state.
+
+Local tests cover authentication, nonce ownership/replay, concurrent setup,
+callback framing/shutdown, TLS pins, UI API reconciliation and archive privileges.
+The internal Task Scheduler API, disabled-task manual run, actual NAS identity,
+Docker access and cleanup still require hardware acceptance.
+
+Revision 1 of the task companion installed on DSM and its pinned route reached
+the authenticated native service. Two hardware failures were identified before
+any task execution: DSM can render the parent window before a constructor-added
+`afterrender` listener, and the local account database can legitimately alias
+unrelated system accounts (`anonymous` and `ftp`). Revision 2 starts its initial
+status read after either synchronous or deferred rendering, and rejects UID
+aliases only when they affect the selected operator. These fixes do not relax
+root, package-account or administrator eligibility checks.
+
+Revision 2 hardware testing confirmed that the native report recognizes the
+eligible DSM account after the selected-UID alias fix. The browser still executed
+the revision-1 UI source even though fetching the same script URL returned the
+revision-2 file; normal and hard reloads did not clear that mismatch. The cache
+layer has not been identified. Revision 3 gives the UI script a distinct versioned
+filename and uses DSM's native `SYNO.ux.Button` controls: generic Ext buttons were
+present in the DOM but rendered with zero-size text under DSM's stylesheet.
+Task creation/execution and deletion remain untested on the NAS.

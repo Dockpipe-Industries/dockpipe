@@ -19,7 +19,9 @@ DESKTOP_ASSETS = (
     "Dockerfile", "entrypoint.sh", "compose.yml", ".dockerignore",
     "desktop.py", "session.sh", "openbox.xml",
 )
-UI_ASSETS = ("config", "Dockpipe.Desktop.js")
+UI_ASSETS = ("config", "Dockpipe.Desktop.native-v4.js")
+NATIVE_HOST_UNIT = "pkguser-dockpipe-desktop-native-host.service"
+SHARED_DSM_SCRIPT = ROOT / "workflows/shared/synology/assets/dsm-native-access.js"
 PACKAGE_SCRIPTS = (
     "preinst", "postinst", "preupgrade", "postupgrade", "preuninst", "postuninst", "start-stop-status",
 )
@@ -43,11 +45,30 @@ def render_asset(relative_path, architecture, webtop_image):
     return content.replace("@WEBTOP_IMAGE@", webtop_image).replace("@ARCH@", architecture).encode("utf-8")
 
 
-def write_payload(destination, binary, cli_deb, desktop_deb, architecture, webtop_image, receipt=None, offline_archive=None):
+def render_wizards():
+    folder_step = json.loads((ASSETS / "upgrade_uifile").read_text())[0]
+    folder_step["custom_render_fn"] = (ASSETS / "host-folders-wizard.js").read_text()
+    upgrade_step = dict(folder_step)
+    upgrade_source = folder_step["custom_render_fn"].replace("@DOCKPIPE_RESTORE_MODE@", "upgrade")
+    for slot in ("@DOCKPIPE_RESTORE_VOLUMES@", "@DOCKPIPE_CHECKED_VOLUMES@", "@DOCKPIPE_UNKNOWN_VOLUMES@"):
+        upgrade_source = upgrade_source.replace(slot, "")
+    upgrade_step["custom_render_fn"] = upgrade_source
+    install_pages = json.loads((ASSETS / "install_uifile").read_text())
+    install_pages.append(folder_step)
+    return (
+        json.dumps(install_pages, indent=2, ensure_ascii=False),
+        json.dumps([upgrade_step], indent=2, ensure_ascii=False),
+        json.dumps(folder_step, indent=2, ensure_ascii=False),
+    )
+
+
+def write_payload(destination, binary, native_host_binary, cli_deb, desktop_deb, architecture,
+                  webtop_image, receipt=None, offline_archive=None):
     with destination.open("wb") as stream:
         with gzip.GzipFile(filename="", mode="wb", fileobj=stream, mtime=0) as compressed:
             with tarfile.open(fileobj=compressed, mode="w|", format=tarfile.USTAR_FORMAT) as archive:
                 CLI_PACKAGING.add_file(archive, "bin/dockpipe", binary, 0o755)
+                CLI_PACKAGING.add_file(archive, "bin/dockpipe-dsm-host", native_host_binary, 0o755)
                 CLI_PACKAGING.add_file(archive, "share/doc/dockpipe/LICENSE", ROOT / "LICENSE")
                 CLI_PACKAGING.add_file(archive, "port_conf/dockpipe-desktop.sc", ASSETS / "port_conf/dockpipe-desktop.sc")
                 if receipt is None:
@@ -55,6 +76,8 @@ def write_payload(destination, binary, cli_deb, desktop_deb, architecture, webto
                         mode = 0o755 if name.endswith(".sh") else 0o644
                         content = render_asset(Path("desktop") / name, architecture, webtop_image)
                         CLI_PACKAGING.add_bytes(archive, "desktop/" + name, content, mode)
+                        if name == "compose.yml":
+                            CLI_PACKAGING.add_bytes(archive, "desktop/compose.base.yml", content)
                     CLI_PACKAGING.add_file(archive, "desktop/packages/cli.deb", cli_deb)
                     CLI_PACKAGING.add_file(archive, "desktop/packages/desktop.deb", desktop_deb)
                 else:
@@ -63,11 +86,14 @@ def write_payload(destination, binary, cli_deb, desktop_deb, architecture, webto
                     compose = compose.replace("@IMAGE@", reference).replace("@ARCH@", architecture)
                     compose = compose.replace("@PULL_POLICY@", "never" if offline_archive else "missing")
                     CLI_PACKAGING.add_bytes(archive, "desktop/compose.yml", compose.encode())
+                    CLI_PACKAGING.add_bytes(archive, "desktop/compose.base.yml", compose.encode())
                     CLI_PACKAGING.add_bytes(archive, "desktop/image.json", (json.dumps(receipt, indent=2) + "\n").encode())
                     if offline_archive:
                         CLI_PACKAGING.add_file(archive, "desktop/image.tar.gz", offline_archive)
                 for name in UI_ASSETS:
                     ui = render_asset(Path("ui") / name, architecture, webtop_image)
+                    if name.endswith(".js"):
+                        ui = SHARED_DSM_SCRIPT.read_bytes() + b"\n" + ui
                     CLI_PACKAGING.add_bytes(archive, "ui/" + name, ui)
                 CLI_PACKAGING.add_file(archive, "nginx/desktop.conf", ASSETS / "nginx/desktop.conf")
                 icons = ROOT / "src/dockpipe-app/resources/icons/hicolor"
@@ -91,7 +117,7 @@ def package_info(version, architecture, checksum, package_revision=1):
         "displayname": "Dockpipe",
         "version": f"{version}-{package_revision}",
         "arch": CLI_PACKAGING.ARCHITECTURES[architecture][1],
-        "os_min_ver": "7.2.1-69057",
+        "os_min_ver": "7.2.2-72806",
         "maintainer": "Dockpipe Industries",
         "maintainer_url": "https://dockpipe.com",
         "description": "Dockpipe desktop and command-line tools. Open Dockpipe from DSM.",
@@ -105,7 +131,7 @@ def package_info(version, architecture, checksum, package_revision=1):
         "ctl_stop": "yes",
         "checkport": "no",
         "silent_install": "no",
-        "silent_upgrade": "yes",
+        "silent_upgrade": "no",
         "silent_uninstall": "no",
         "checksum": checksum,
     }
@@ -113,7 +139,7 @@ def package_info(version, architecture, checksum, package_revision=1):
 
 
 def build(version, architecture, binary, cli_deb, desktop_deb, output, webtop_image=DEFAULT_WEBTOP_IMAGE,
-          package_revision=1, *, image_receipt=None, offline_archive=None):
+          package_revision=1, *, native_host_binary, image_receipt=None, offline_archive=None):
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
         raise ValueError("Expected a numeric release version")
     if any(int(part) > 2**31 - 1 for part in version.split(".")):
@@ -123,6 +149,7 @@ def build(version, architecture, binary, cli_deb, desktop_deb, output, webtop_im
     if architecture not in CLI_PACKAGING.ARCHITECTURES:
         raise ValueError("Expected amd64 or arm64 architecture")
     CLI_PACKAGING.validate_binary(binary, architecture)
+    CLI_PACKAGING.validate_binary(native_host_binary, architecture)
     cli_path, desktop_path, package_version = DESKTOP_PACKAGING.validate_inputs(
         cli_deb, desktop_deb, architecture, webtop_image,
     )
@@ -146,8 +173,10 @@ def build(version, architecture, binary, cli_deb, desktop_deb, output, webtop_im
     with tempfile.TemporaryDirectory(prefix=".synology-desktop-", dir=output) as temporary:
         temporary = Path(temporary)
         payload = temporary / "package.tgz"
-        write_payload(payload, binary, cli_path, desktop_path, architecture, webtop_image, receipt, offline_archive)
+        write_payload(payload, binary, native_host_binary, cli_path, desktop_path,
+                      architecture, webtop_image, receipt, offline_archive)
         resource = {
+            "systemd-user-unit": {},
             "port-config": {"protocol-file": "port_conf/dockpipe-desktop.sc"},
             "web-config": {"nginx-static-config": {"enable": [{
                 "type": "dsm", "relpath": "nginx/desktop.conf",
@@ -170,15 +199,21 @@ def build(version, architecture, binary, cli_deb, desktop_deb, output, webtop_im
             resource["docker-project"]["preload-image"] = "desktop/image.tar.gz"
         privilege = {"defaults": {"run-as": "package"}}
         control = (ASSETS / "scripts/package-control.sh").read_bytes()
-        wizard = (ASSETS / "install_uifile").read_text()
-        wizard_script = (ASSETS / "install_uifile.sh").read_text().replace("@INSTALL_WIZARD@", wizard)
+        wizard, upgrade_wizard, host_folder_step = render_wizards()
+        wizard_script = (ASSETS / "install_uifile.sh").read_text()
+        wizard_script = wizard_script.replace("@RESTORE_DISCOVERY_HELPERS@", (ASSETS / "scripts/restore-discovery.sh").read_text())
+        wizard_script = wizard_script.replace("@INSTALL_WIZARD@", wizard)
+        wizard_script = wizard_script.replace("@HOST_FOLDER_WIZARD@", host_folder_step)
         package = temporary / destination.name
         with tarfile.open(package, "w", format=tarfile.USTAR_FORMAT) as archive:
             CLI_PACKAGING.add_bytes(archive, "INFO", package_info(version, architecture, payload_checksum(payload), package_revision))
             CLI_PACKAGING.add_file(archive, "package.tgz", payload)
             CLI_PACKAGING.add_bytes(archive, "conf/privilege", (json.dumps(privilege, indent=2) + "\n").encode())
             CLI_PACKAGING.add_bytes(archive, "conf/resource", (json.dumps(resource, indent=2) + "\n").encode())
+            CLI_PACKAGING.add_file(archive, "conf/systemd/" + NATIVE_HOST_UNIT,
+                                   ASSETS / "systemd" / NATIVE_HOST_UNIT)
             CLI_PACKAGING.add_bytes(archive, "WIZARD_UIFILES/install_uifile.sh", wizard_script.encode(), 0o755)
+            CLI_PACKAGING.add_bytes(archive, "WIZARD_UIFILES/upgrade_uifile", upgrade_wizard.encode())
             CLI_PACKAGING.add_file(archive, "WIZARD_UIFILES/uninstall_uifile", ASSETS / "uninstall_uifile")
             for name in PACKAGE_SCRIPTS:
                 CLI_PACKAGING.add_bytes(archive, "scripts/" + name, control, 0o755)
@@ -194,6 +229,7 @@ def main():
     parser.add_argument("version")
     parser.add_argument("architecture", choices=CLI_PACKAGING.ARCHITECTURES)
     parser.add_argument("--binary", required=True, type=Path)
+    parser.add_argument("--native-host-binary", required=True, type=Path)
     parser.add_argument("--cli-deb", required=True, type=Path)
     parser.add_argument("--desktop-deb", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
@@ -206,7 +242,8 @@ def main():
         destination = build(
             arguments.version, arguments.architecture, arguments.binary,
             arguments.cli_deb, arguments.desktop_deb, arguments.output, arguments.webtop_image,
-            arguments.package_revision, image_receipt=arguments.image_receipt,
+            arguments.package_revision, native_host_binary=arguments.native_host_binary,
+            image_receipt=arguments.image_receipt,
             offline_archive=arguments.offline_archive,
         )
     except (ValueError, OSError, subprocess.SubprocessError) as error:

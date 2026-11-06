@@ -1,0 +1,12 @@
+[Unit]
+Description=Dockpipe bounded native identity qualification
+
+[Service]
+Type=simple
+ExecStart=/var/packages/dockpipe-host-identity-qualification/target/bin/identity-cap-helper
+Restart=no
+# Required only for exec-time acquisition of the explicitly declared file caps.
+# The program verifies exactly cap2, then enables NNP on every thread before listen.
+NoNewPrivileges=false
+UMask=0077
+TimeoutStopSec=5

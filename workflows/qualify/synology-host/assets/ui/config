@@ -5,12 +5,12 @@
       "title": "Dockpipe host qualification",
       "desc": "Read-only native authentication and service check",
       "icon": "images/icon_{0}.png",
-      "appWindow": "com.dockpipe.HostQualification.Window",
-      "depend": ["com.dockpipe.HostQualification.Window"],
+      "appWindow": "com.dockpipe.HostQualificationWindow",
+      "depend": ["com.dockpipe.HostQualificationWindow"],
       "allowMultiInstance": false,
       "allUsers": false
     },
-    "com.dockpipe.HostQualification.Window": {
+    "com.dockpipe.HostQualificationWindow": {
       "type": "lib",
       "title": "Dockpipe host qualification",
       "icon": "images/icon_{0}.png"

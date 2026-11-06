@@ -1,16 +1,16 @@
 {
-  "Dockpipe.Desktop.js": {
+  "Dockpipe.Desktop.native-v4.js": {
     "com.dockpipe.Desktop": {
       "type": "app",
       "title": "Dockpipe",
       "desc": "Your work. Anywhere.",
       "icon": "images/icon_{0}.png",
-      "appWindow": "com.dockpipe.Desktop.Window",
-      "depend": ["com.dockpipe.Desktop.Window"],
+      "appWindow": "com.dockpipe.DesktopWindow",
+      "depend": ["com.dockpipe.DesktopWindow"],
       "allowMultiInstance": false,
       "allUsers": false
     },
-    "com.dockpipe.Desktop.Window": {
+    "com.dockpipe.DesktopWindow": {
       "type": "lib",
       "title": "Dockpipe",
       "icon": "images/icon_{0}.png"

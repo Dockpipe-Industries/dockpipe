@@ -34,6 +34,10 @@ set(CMAKE_AUTOUIC ON)
 include(cmake/AppSourceLayout.cmake)
 include_directories(${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
 
+set(DOCKPIPE_NATIVE_HOST_SOURCES
+    src/remote/domain/NativeHostStatus.cpp
+    src/remote/infrastructure/NativeHostConnection.cpp)
+
 # Qt6Gui depends on WrapOpenGL; without Mesa dev packages, find_package(Qt6) fails obscurely on Linux.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(OpenGL REQUIRED)
@@ -314,6 +318,7 @@ else()
     message(FATAL_ERROR "Unsupported Browser SDK ABI profile: ${DOCKPIPE_BROWSER_ABI_PROFILE}")
 endif()
 set(DOCKPIPE_UI_SOURCES
+    ${DOCKPIPE_NATIVE_HOST_SOURCES}
     src/workspace-graph/infrastructure/WorkspaceGraphPage.cpp src/workspace-graph/infrastructure/WorkspaceGraphReader.cpp src/workspace-graph/presentation/WorkspaceGraphNode.cpp
     src/workspace-graph/presentation/WorkspaceGraphView.cpp src/workspace-graph/presentation/WorkspaceGraphWidget.cpp
     src/git/presentation/GitCommitQueueModel.cpp src/git/presentation/GitHistoryWidget.cpp src/git/presentation/GitRepositoryWidget.cpp src/git/presentation/GitConflictWidget.cpp
@@ -443,6 +448,19 @@ endforeach()
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    add_executable(native-host-connection-test tests/NativeHostConnectionTest.cpp
+        ${DOCKPIPE_NATIVE_HOST_SOURCES}
+        src/remote/infrastructure/RemoteCommand.cpp src/catalog/infrastructure/OperatorDockpipeBinary.cpp
+        src/terminal/application/TerminalHub.cpp src/terminal/infrastructure/TerminalShellCatalog.cpp
+        ${DOCKPIPE_TERMINAL_SOURCES})
+    target_include_directories(native-host-connection-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+    target_link_libraries(native-host-connection-test PRIVATE Qt6::Core Qt6::Widgets Qt6::Test)
+    if(APPLE)
+        target_link_libraries(native-host-connection-test PRIVATE proc)
+    endif()
+    add_test(NAME native-host-connection COMMAND native-host-connection-test)
+    set_tests_properties(native-host-connection PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 20)
+
     add_executable(remote-command-budget-test tests/RemoteCommandBudgetTest.cpp
         src/remote/infrastructure/RemoteCommand.cpp)
     target_include_directories(remote-command-budget-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})

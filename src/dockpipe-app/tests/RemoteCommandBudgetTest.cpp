@@ -42,6 +42,11 @@ int fixture(const QStringList &arguments)
         return 10;
 #endif
     const QString mode = arguments.value(2);
+    if (mode == "machine-json") {
+        std::fputs("{\"processes\":[{\"name\":\"hardware-key-worker\"}]}\n", stdout);
+        std::fflush(stdout);
+        return 0;
+    }
     if (mode == "marker") {
         QFile marker(arguments.value(3));
         return marker.open(QIODevice::WriteOnly) ? 0 : 11;
@@ -127,6 +132,15 @@ bool aggregateBudget()
     const auto stdoutOnly = invoke(command, {"--fixture", "bytes", "33", "0"}, 32);
     return check(stdoutOnly.completed && !stdoutOnly.success, "stdout-only overflow should fail")
         && check(!command.busy(), "finished command should not remain busy");
+}
+
+bool ordinaryMachineJsonIsNotAnInteractionFrame()
+{
+    RemoteCommand command;
+    const auto outcome = invoke(command, {"--fixture", "machine-json"}, 256);
+    return check(outcome.completed && outcome.success && outcome.completions == 1,
+                 "ordinary machine JSON must not become a reserved interaction frame")
+        && check(outcome.result.contains("hardware-key-worker"), "process names must remain intact");
 }
 
 bool cancelledOutputStopsImmediately()
@@ -233,6 +247,7 @@ int main(int argc, char **argv)
     }
     QCoreApplication application(argc, argv);
     return aggregateBudget()
+        && ordinaryMachineJsonIsNotAnInteractionFrame()
         && cancelledOutputStopsImmediately()
         && invocationStateResets()
         && invalidLimitDoesNotSpawn()

@@ -9,130 +9,37 @@ import (
 	"net"
 	"net/http"
 	"os/exec"
-	"strings"
-	"sync"
-	"syscall"
-	"time"
-	"unicode"
-	"unicode/utf8"
+
+	"dockpipe/workflows/internal/synology/dsmauth"
 )
 
-const authenticationHelper = "/usr/syno/synoman/webman/modules/authenticate.cgi"
+const authenticationHelper = dsmauth.HelperPath
 const serviceSocket = "/var/packages/dockpipe-host-qualification/var/run/probe.sock"
-const requestTimeout = 3 * time.Second
-const maximumHelperOutput = 4096
+const requestTimeout = dsmauth.Timeout
+const maximumHelperOutput = dsmauth.MaximumHelperOutput
 
-var errUnauthenticated = errors.New("unauthenticated")
-var errAuthenticationFault = errors.New("authentication unavailable")
+var errUnauthenticated = dsmauth.ErrUnauthenticated
+var errAuthenticationFault = dsmauth.ErrFault
 
-// The qualification endpoint allows 16 KiB cookies plus 16 KiB of CGI routing
-// metadata. Nothing from the general service environment reaches the helper.
+type authenticationFailure = dsmauth.Failure
+type unavailableResponse struct {
+	Error    string `json:"error"`
+	Stage    string `json:"stage"`
+	Reason   string `json:"reason"`
+	ExitCode *int   `json:"helper_exit_code,omitempty"`
+}
+
 func authenticationEnvironment(environment []string) ([]string, error) {
-	allowed := map[string]bool{
-		"HTTP_COOKIE": true, "REMOTE_ADDR": true, "SERVER_ADDR": true,
-		"SERVER_NAME": true, "SERVER_PORT": true, "SERVER_PROTOCOL": true,
-		"HTTP_HOST": true, "GATEWAY_INTERFACE": true,
-		"REQUEST_METHOD": true, "REQUEST_URI": true, "SCRIPT_NAME": true,
-		"QUERY_STRING": true, "HTTPS": true, "HTTP_USER_AGENT": true,
-		"HTTP_X_SYNO_TOKEN": true,
-	}
-	result := []string{"PATH=/usr/bin:/bin", "LANG=C"}
-	seen := make(map[string]bool)
-	total := 0
-	for _, entry := range environment {
-		key, value, found := strings.Cut(entry, "=")
-		if !found || !allowed[key] {
-			continue
-		}
-		limit := 2048
-		if key == "HTTP_COOKIE" {
-			limit = 16 << 10
-		}
-		total += len(entry)
-		if seen[key] || len(value) > limit || total > 32<<10 || strings.ContainsAny(value, "\r\n\x00") {
-			return nil, errors.New("invalid CGI metadata")
-		}
-		seen[key] = true
-		result = append(result, entry)
-	}
-	return result, nil
+	return dsmauth.Environment(environment)
 }
-
-// stdout and stderr share one byte budget. Stderr is never retained or returned.
-type helperOutput struct {
-	mutex     sync.Mutex
-	remaining int
-	stdout    strings.Builder
-	exhausted bool
-}
-
-type helperWriter struct {
-	output *helperOutput
-	retain bool
-}
-
-func (writer helperWriter) Write(data []byte) (int, error) {
-	writer.output.mutex.Lock()
-	defer writer.output.mutex.Unlock()
-	if len(data) > writer.output.remaining {
-		writer.output.exhausted = true
-		return 0, errors.New("helper output limit")
-	}
-	writer.output.remaining -= len(data)
-	if writer.retain {
-		writer.output.stdout.Write(data)
-	}
-	return len(data), nil
-}
-
 func authenticate(ctx context.Context, environment []string) (string, error) {
-	command := exec.CommandContext(ctx, authenticationHelper)
-	command.Env = environment
-	output, err := executeAuthenticationHelper(command)
-	if err != nil {
-		return "", err
-	}
-	return authenticatedUsername(output)
+	return dsmauth.Authenticate(ctx, environment)
 }
-
-// The command parameter is a unit-test seam. Production constructs it above
-// using the fixed DSM helper; neither CGI inputs nor CLI flags select a helper.
 func executeAuthenticationHelper(command *exec.Cmd) (string, error) {
-	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	command.Cancel = func() error {
-		err := syscall.Kill(-command.Process.Pid, syscall.SIGKILL)
-		if err == syscall.ESRCH {
-			return nil
-		}
-		return err
-	}
-	command.WaitDelay = 100 * time.Millisecond
-	defer func() {
-		if command.Process != nil {
-			// Also release descendants when the helper exits before its pipes do.
-			_ = syscall.Kill(-command.Process.Pid, syscall.SIGKILL)
-		}
-	}()
-	output := &helperOutput{remaining: maximumHelperOutput}
-	command.Stdout = helperWriter{output: output, retain: true}
-	command.Stderr = helperWriter{output: output}
-	if command.Run() != nil || output.exhausted {
-		return "", errAuthenticationFault
-	}
-	return output.stdout.String(), nil
+	return dsmauth.Run(command)
 }
-
 func authenticatedUsername(output string) (string, error) {
-	username := strings.TrimSuffix(strings.TrimSuffix(output, "\n"), "\r")
-	if username == "" || len(username) > 256 || !utf8.ValidString(username) {
-		return "", errUnauthenticated
-	}
-	for _, character := range username {
-		if unicode.IsControl(character) || unicode.IsSpace(character) || strings.ContainsRune("/:\x00", character) {
-			return "", errUnauthenticated
-		}
-	}
-	return username, nil
+	return dsmauth.Username(output)
 }
 
 type serviceResult struct {
@@ -173,6 +80,29 @@ func writeFailure(writer http.ResponseWriter, code int, reason string) {
 	_ = json.NewEncoder(writer).Encode(map[string]string{"error": reason})
 }
 
+func writeUnavailable(writer http.ResponseWriter, stage string, err error) {
+	response := unavailableResponse{Error: "unavailable", Stage: stage, Reason: "metadata_unavailable"}
+	if stage == "dsm_authentication" {
+		response.Reason = "helper_process_failed"
+		var failure *authenticationFailure
+		if errors.As(err, &failure) {
+			switch failure.Reason {
+			case "helper_start_failed", "helper_exit_nonzero", "helper_timeout", "helper_cancelled", "helper_output_limit", "helper_process_failed":
+				response.Reason = failure.Reason
+			}
+			if failure.Reason == "helper_exit_nonzero" && failure.ExitCode != nil && *failure.ExitCode > 0 && *failure.ExitCode <= 255 {
+				response.ExitCode = failure.ExitCode
+			}
+		} else if errors.Is(err, context.DeadlineExceeded) {
+			response.Reason = "helper_timeout"
+		} else if errors.Is(err, context.Canceled) {
+			response.Reason = "helper_cancelled"
+		}
+	}
+	writer.WriteHeader(http.StatusServiceUnavailable)
+	_ = json.NewEncoder(writer).Encode(response)
+}
+
 func readOnlyRequest(writer http.ResponseWriter, request *http.Request) bool {
 	if request.Method != http.MethodGet {
 		writer.Header().Set("Allow", "GET")
@@ -199,7 +129,7 @@ func authenticationHandler(environment []string, auth authenticator, query servi
 			if errors.Is(err, errUnauthenticated) {
 				writeFailure(writer, http.StatusUnauthorized, "unauthenticated")
 			} else {
-				writeFailure(writer, http.StatusServiceUnavailable, "unavailable")
+				writeUnavailable(writer, "dsm_authentication", err)
 			}
 			return
 		}
@@ -211,7 +141,7 @@ func authenticationHandler(environment []string, auth authenticator, query servi
 		}
 		metadata, err := currentStatus()
 		if err != nil {
-			writeFailure(writer, http.StatusServiceUnavailable, "unavailable")
+			writeUnavailable(writer, "process_status", err)
 			return
 		}
 		writeBoundedJSON(writer, authenticationResponse{

@@ -39,11 +39,14 @@ def manifest_identity(manifest_bytes):
     return "sha256:" + hashlib.sha256(manifest_bytes).hexdigest(), config
 
 
-def prebuild(version, architecture, source_sha, repository, binary, cli_deb, desktop_deb, output, image_directory):
+def prebuild(version, architecture, source_sha, repository, binary, cli_deb, desktop_deb,
+             output, image_directory, *, native_host_binary, package_revision=1):
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
         raise ValueError("Expected a numeric release version")
     if architecture not in ("amd64", "arm64"):
         raise ValueError("Expected amd64 or arm64")
+    if type(package_revision) is not int or not 1 <= package_revision <= 2**31 - 1:
+        raise ValueError("Package revision must be a positive DSM build number")
     if not re.fullmatch(r"[0-9a-f]{40}", source_sha):
         raise ValueError("Expected a full source commit")
     if not re.fullmatch(r"ghcr\.io/[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*", repository):
@@ -54,6 +57,7 @@ def prebuild(version, architecture, source_sha, repository, binary, cli_deb, des
     if package_version != version:
         raise ValueError("Image packages must match the release version")
     PACKAGING.CLI_PACKAGING.validate_binary(binary, architecture)
+    PACKAGING.CLI_PACKAGING.validate_binary(native_host_binary, architecture)
     output.mkdir(parents=True, exist_ok=True)
     image_directory.mkdir(parents=True, exist_ok=True)
     label = PACKAGING.CLI_PACKAGING.ARCHITECTURES[architecture][0]
@@ -109,8 +113,12 @@ def prebuild(version, architecture, source_sha, repository, binary, cli_deb, des
         PACKAGING.IMAGE_RECEIPT.load_receipt(receipt_path, version, architecture, cli, desktop, compressed)
         QUALIFIER.qualify(compressed, receipt, temporary)
         staged_output = temporary / "packages"
-        standard = PACKAGING.build(version, architecture, binary, cli, desktop, staged_output, image_receipt=receipt_path)
+        standard = PACKAGING.build(version, architecture, binary, cli, desktop, staged_output,
+                                  native_host_binary=native_host_binary, image_receipt=receipt_path,
+                                  package_revision=package_revision)
         offline = PACKAGING.build(version, architecture, binary, cli, desktop, staged_output,
+                                  native_host_binary=native_host_binary,
+                                  package_revision=package_revision,
                                   image_receipt=receipt_path, offline_archive=compressed)
         # GitHub release assets have a 2 GiB per-file limit.
         if offline.stat().st_size >= 2 * 1024**3:
@@ -132,6 +140,8 @@ def main():
     parser.add_argument("--source-sha", required=True)
     parser.add_argument("--repository", required=True)
     parser.add_argument("--binary", type=Path, required=True)
+    parser.add_argument("--native-host-binary", type=Path, required=True)
+    parser.add_argument("--package-revision", type=int, default=1)
     parser.add_argument("--cli-deb", type=Path, required=True)
     parser.add_argument("--desktop-deb", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)

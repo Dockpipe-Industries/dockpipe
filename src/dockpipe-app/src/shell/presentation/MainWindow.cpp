@@ -32,6 +32,7 @@
 #include "WorkflowEditorWidget.h"
 #include "CanvasIcons.h"
 #include "WorkflowCatalog.h"
+#include "NativeHostConnection.h"
 
 #include <QActionGroup>
 #include <QToolButton>
@@ -369,6 +370,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     m_dockerWidget = new DockerObservabilityWidget;
     m_stack->addWidget(m_dockerWidget);
     m_executionExplorer = new ExecutionExplorer;
+    const QString nativeHostReference = qEnvironmentVariable("DOCKPIPE_NATIVE_HOST_CONNECTION");
+    if (!nativeHostReference.isEmpty()) {
+        m_nativeHost = new NativeHostConnection(nativeHostReference, this);
+        m_executionExplorer->setNativeHostConnection(m_nativeHost);
+        m_dockerWidget->setNativeHostConnection(m_nativeHost);
+        connect(m_nativeHost, &NativeHostConnection::statusChanged, this, [this] {
+            statusBar()->showMessage(m_nativeHost->label());
+        });
+    }
     m_executionTabs = new QTabWidget;
     m_executionTabs->setObjectName("executionTabs");
     m_executionTabs->setDocumentMode(true);

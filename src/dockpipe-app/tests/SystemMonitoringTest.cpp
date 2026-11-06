@@ -1,6 +1,7 @@
 #include "DockerObservabilityWidget.h"
 #include "ExecutionExplorer.h"
 #include "SystemResourceOverview.h"
+#include "NativeHostConnection.h"
 #include <QApplication>
 #include <QComboBox>
 #include <QElapsedTimer>
@@ -8,6 +9,7 @@
 #include <QJsonDocument>
 #include <QLabel>
 #include <QPushButton>
+#include <QPlainTextEdit>
 #include <QTableWidget>
 #include <QThread>
 #include <functional>
@@ -184,5 +186,151 @@ int verifySystemMonitoring(const QString &directory)
     if (!explorer.findChild<QComboBox *>("executionMode")->isEnabled()
         || explorer.findChild<QLabel *>("systemMetric1")->text() != "Unavailable")
         return 112;
+
+    // Native monitoring uses the authenticated connection status and the actual
+    // host envelope; paired-node refresh must preserve the native selection.
+    const QString reference = directory + "/native-reference.json";
+    const QString nativeStatusPath = directory + "/native-status.json";
+    QJsonObject nativeStatus{{"schema", "dockpipe.native_host_status.v1"}, {"available", true},
+        {"connected", true}, {"node", "monitor-host"}, {"username", "operator"}, {"uid", 1026},
+        {"gid", 100}, {"groups", QJsonArray{100, 101}}, {"generation", "fixture-one"}};
+    envelope.insert("state", "live");
+    auto nativeDocker = docker;
+    auto nativeContainers = nativeDocker.value("containers").toArray();
+    auto nativeContainer = nativeContainers.first().toObject();
+    const QString nativeContainerID(64, 'a');
+    nativeContainer.insert("ID", nativeContainerID);
+    nativeContainers[0] = nativeContainer;
+    nativeDocker.insert("containers", nativeContainers);
+    envelope.insert("docker", nativeDocker);
+    if (!saveSnapshot(reference, QJsonObject{{"fixture", true}})
+        || !saveSnapshot(nativeStatusPath, nativeStatus) || !saveSnapshot(path, envelope))
+        return 123;
+    NativeHostConnection native(reference);
+    explorer.setNativeHostConnection(&native);
+    dockerView.setNativeHostConnection(&native);
+    explorer.setNodes({"monitor-host"});
+    dockerView.setNodes({"monitor-host"});
+    if (machine->currentData().toString() != NativeHostConnection::selectionKey()
+        || dockerMachine->currentData().toString() != NativeHostConnection::selectionKey()
+        || machine->itemText(0) != "Application container")
+        return 124;
+    native.refresh();
+    if (!waitFor([&]() { return native.available(); }))
+        return 125;
+    explorer.setActive(true);
+    dockerView.setActive(true);
+    if (!waitFor([&]() { return processes->rowCount() == 1 && containers->rowCount() == 1; }))
+        return 126;
+    QJsonObject nativeQuery{{"schema", "dockpipe.native_host_docker_query.v1"}, {"outcome", "Success"},
+        {"kind", "container"}, {"id", nativeContainerID},
+        {"inspect", QJsonObject{{"Id", nativeContainerID},
+            {"Config", QJsonObject{{"Image", "native-image"}, {"Hostname", "<untrusted-host>"}}}}},
+        {"logs", "native recent log"}, {"logs_truncated", true}};
+    const QString queryPath = directory + "/native-query.json";
+    if (!saveSnapshot(queryPath, nativeQuery))
+        return 134;
+    containers->selectRow(0);
+    auto *nativeLogs = dockerView.findChild<QPlainTextEdit *>("dockerSelectedLogs");
+    auto *nativeDetails = dockerView.findChild<QLabel *>("dockerReadableDetails");
+    if (!nativeLogs || !nativeDetails || !waitFor([&]() {
+            return nativeLogs->toPlainText().contains("native recent log");
+        }))
+        return 135;
+    if (!nativeLogs->toPlainText().contains("64 KiB")
+        || !nativeDetails->text().contains("native-image")
+        || !nativeDetails->text().contains("&lt;untrusted-host&gt;"))
+        return 136;
+    bool foundRawInspect = false;
+    for (auto *view : dockerView.findChildren<QPlainTextEdit *>()) {
+        if (view != nativeLogs && view->toPlainText().contains("native-image"))
+            foundRawInspect = true;
+    }
+    if (!foundRawInspect)
+        return 137;
+    QFile queryArguments(directory + "/native-query-args");
+    const QString expectedQueryArguments = "host\ndocker-query\n--connection\n" + reference
+        + "\n--kind\ncontainer\n--id\n" + nativeContainerID + "\n--json\n";
+    if (!queryArguments.open(QIODevice::ReadOnly)
+        || queryArguments.readAll() != expectedQueryArguments.toUtf8())
+        return 138;
+    nativeQuery.insert("logs_error", "docker_logs_unavailable");
+    nativeQuery.insert("logs", "");
+    if (!saveSnapshot(queryPath, nativeQuery))
+        return 139;
+    dockerView.refresh();
+    if (!waitFor([&]() { return nativeLogs->toPlainText().contains("logging driver"); })
+        || !nativeDetails->text().contains("native-image"))
+        return 140;
+    // Pause cancels an in-flight query and rejects its delayed response. It
+    // also blocks explicit refresh until the operator resumes updates.
+    queryArguments.close();
+    if (!queryArguments.remove())
+        return 141;
+    QFile queryDelay(directory + "/native-query-delay");
+    if (!queryDelay.open(QIODevice::WriteOnly))
+        return 146;
+    queryDelay.close();
+    nativeQuery.remove("logs_error");
+    nativeQuery.insert("logs", "late query must not render");
+    if (!saveSnapshot(queryPath, nativeQuery))
+        return 142;
+    dockerView.refresh();
+    if (!waitFor([&]() { return QFile::exists(queryArguments.fileName()); }))
+        return 147;
+    auto *pause = dockerView.findChild<QPushButton *>("dockerPauseUpdates");
+    pause->click();
+    QElapsedTimer cancelledQuery;
+    cancelledQuery.start();
+    if (!waitFor([&]() { return cancelledQuery.elapsed() > 1200; })
+        || !nativeLogs->toPlainText().contains("logging driver"))
+        return 148;
+    if (!queryDelay.remove() || !queryArguments.remove())
+        return 149;
+    nativeQuery.insert("logs", "after resume");
+    if (!saveSnapshot(queryPath, nativeQuery))
+        return 150;
+    dockerView.refresh();
+    QApplication::processEvents();
+    if (QFile::exists(queryArguments.fileName()) || !nativeLogs->toPlainText().contains("logging driver"))
+        return 143;
+    pause->click();
+    if (!waitFor([&]() { return nativeLogs->toPlainText().contains("after resume"); }))
+        return 144;
+    QPushButton *nativeStop = nullptr;
+    for (auto *button : dockerView.findChildren<QPushButton *>()) {
+        if (button->text() == "Stop")
+            nativeStop = button;
+        if (button->text().contains("/bin/") && button->isEnabled())
+            return 130;
+    }
+    if (!nativeStop || !nativeStop->isEnabled())
+        return 131;
+    nativeStop->click();
+    const QString nativeArgumentsPath = directory + "/native-docker-args";
+    if (!waitFor([&]() { return QFile::exists(nativeArgumentsPath) && nativeStop->isEnabled(); }))
+        return 132;
+    QFile nativeArguments(nativeArgumentsPath);
+    const QString expectedNativeArguments = "host\ndocker\nstop\n--connection\n" + reference
+        + "\n--id\n" + nativeContainerID + "\n--json\n";
+    if (!nativeArguments.open(QIODevice::ReadOnly)
+        || nativeArguments.readAll() != expectedNativeArguments.toUtf8())
+        return 133;
+    nativeStatus.insert("available", false);
+    nativeStatus.insert("connected", false);
+    if (!saveSnapshot(nativeStatusPath, nativeStatus))
+        return 127;
+    native.refresh();
+    if (!waitFor([&]() {
+            return !native.available() && processes->rowCount() == 0 && containers->rowCount() == 0;
+        }))
+        return 128;
+    if (machine->currentData().toString() != NativeHostConnection::selectionKey()
+        || dockerMachine->currentData().toString() != NativeHostConnection::selectionKey())
+        return 129;
+    if (!nativeLogs->toPlainText().isEmpty() || nativeDetails->text().contains("native-image"))
+        return 145;
+    explorer.setActive(false);
+    dockerView.setActive(false);
     return 0;
 }

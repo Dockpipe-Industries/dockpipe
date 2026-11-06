@@ -32,11 +32,14 @@ code must not depend on widgets, process execution, network clients or stores.
 filesystem persistence, CLI transport and platform APIs. `presentation` owns Qt
 widgets and interaction. `integration` adapts separately released components.
 
-Native DSM host authentication/service qualification lives in deployment workflow
-assets under `workflows/qualify/synology-host`. It must establish real DSM session
-and host process identity before a privileged terminal or GUI host connection is
-integrated. The generic native machine snapshot contract remains engine-owned;
-DSM session handling must not enter that contract or the generic engine.
+Native DSM authentication and deployment live in workflow assets. Qualification
+under `workflows/qualify/synology-host` established real DSM session and kernel
+process identity. The production gateway under
+`workflows/package/synology-desktop-spk/assets/native-host` owns DSM validation,
+operator binding and browser leases; shared DSM helpers live in
+`workflows/internal/synology`. The generic worker/client transport and native
+machine snapshot contract remain engine-owned. DSM session handling does not
+enter the GUI adapter or generic engine.
 
 The catalog value types and their display decisions live in
 `catalog/domain/WorkflowCatalogData.*`; `WorkflowCatalog` owns CLI discovery.
@@ -88,6 +91,32 @@ changes use the same trusted operator CLI selection. They do not store duplicate
 policy values in `LauncherSettings`. Lock and unlock actions remain reachable if
 status reporting is unavailable; the CLI reports whether the host can perform
 them. Platform capability gaps are shown explicitly.
+
+An optional `DOCKPIPE_NATIVE_HOST_CONNECTION` reference selects an authenticated
+native host for terminal and system/Docker monitoring. MainWindow reads this
+absolute file reference once and shares one `NativeHostConnection` with those
+views and the dashboard terminal hub. Only the trusted operator CLI's bounded
+`host status` response supplies connected host, operator and generation.
+Connection/key contents remain CLI-owned and are never read or saved by Qt.
+
+The native terminal launches `host terminal` through the existing local PTY with
+no container working directory forwarded. The native worker owns the actual host
+PTY, default home and revocation. Status loss or an identity/generation change
+closes native terminal entries and removes their replay buffers. Monitoring
+clears previous data and retains the unavailable host selection. Container
+shells and monitoring remain explicit choices labeled Application container;
+paired monitoring retains its existing read-only contract. Deployment-owned
+authentication and exclusive stream ownership remain outside this adapter.
+Native Docker start/stop actions use the CLI's typed host operation and require a
+matching action/resource success receipt. Failed or cancelled mutations trigger
+inventory reconciliation without retrying the mutation. Read-only native inspection and the last 200 container log lines use the typed,
+bounded `host docker-query` contract. Selection, pause, host identity and generation
+changes cancel pending queries and discard stale responses. Raw inspect is local
+to the authenticated operator view. Container exec remains in the native host
+terminal; paired-node controls remain unavailable.
+Terminal cleanup covers the owned PTY/session. Intentionally detached or
+privilege-changing processes follow normal host terminal semantics and may
+outlive terminal closure.
 
 ## Verification
 

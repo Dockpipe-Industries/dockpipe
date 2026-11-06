@@ -1,14 +1,16 @@
 #pragma once
 
 #include "TerminalLaunchContext.h"
+#include "TerminalShellCatalog.h"
 
 #include <QByteArray>
 #include <QHash>
 #include <QObject>
+#include <QPointer>
 #include <QStringList>
 
 class TerminalSession;
-class TerminalShellCatalog;
+class NativeHostConnection;
 
 // Process lifetime is independent of the page or dashboard displaying it.
 class TerminalHub final : public QObject {
@@ -18,6 +20,10 @@ public:
     explicit TerminalHub(TerminalLaunchContext context, QObject *parent = nullptr);
     QString createSession(const QString &workdir, const QString &shellProfileId = {});
     TerminalShellCatalog &shellCatalog() const;
+    QVector<TerminalShellProfile> shellProfiles() const;
+    void setNativeHostConnection(NativeHostConnection *connection);
+    NativeHostConnection *nativeHostConnection() const;
+    bool nativeHostConfigured() const;
     QString creationError() const;
     QStringList sessionIds() const;
     QString title(const QString &id) const;
@@ -32,13 +38,16 @@ public:
 signals:
     void sessionsChanged();
     void outputAvailable(const QString &id);
+    void shellProfilesChanged();
 
 private:
+    void nativeHostChanged();
     struct Entry {
         TerminalSession *session = nullptr;
         QString title;
         QByteArray output;
         quint64 end = 0;
+        bool native = false;
     };
     QHash<QString, Entry> m_sessions;
     QStringList m_order;
@@ -46,4 +55,6 @@ private:
     TerminalShellCatalog *m_shellCatalog = nullptr;
     TerminalLaunchContext m_launchContext = TerminalLaunchContext::Automatic;
     QString m_creationError;
+    QPointer<NativeHostConnection> m_nativeHost;
+    bool m_nativeHostConfigured = false;
 };

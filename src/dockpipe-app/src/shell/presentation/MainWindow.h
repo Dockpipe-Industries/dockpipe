@@ -43,6 +43,7 @@ class QDialog;
 class QSplitter;
 class LauncherWorkspaceSurface;
 class PackageSurfacePage;
+class NativeHostConnection;
 
 struct AsyncWorkflowCatalogResult {
     QString workdir;
@@ -177,6 +178,7 @@ private:
     RemoteWidget *m_remoteWidget = nullptr;
     ActivityWidget *m_activityWidget = nullptr;
     ExecutionExplorer *m_executionExplorer = nullptr;
+    NativeHostConnection *m_nativeHost = nullptr;
     QTabWidget *m_executionTabs = nullptr;
     QStackedWidget *m_stack = nullptr;
     BasicModeWidget *m_basicWidget = nullptr;

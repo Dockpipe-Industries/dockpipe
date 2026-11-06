@@ -4,7 +4,10 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import struct
+import tempfile
 import unittest
+from unittest import mock
 import yaml
 
 
@@ -27,6 +30,35 @@ class PrebuiltImageTests(unittest.TestCase):
                 self.assertNotIn('privileged', service)
                 self.assertNotIn('pid', service)
                 self.assertFalse(any('docker.sock' in volume for volume in service['volumes']))
+                self.assertFalse(any('/etc' in volume or '@appconf' in volume for volume in service['volumes']))
+
+    def test_invalid_native_gateway_fails_before_docker_or_output_creation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            binaries = {}
+            for architecture in ("amd64", "arm64"):
+                content = bytearray(120)
+                content[:7] = b"\x7fELF\x02\x01\x01"
+                machine = PREBUILD.PACKAGING.CLI_PACKAGING.ARCHITECTURES[architecture][2]
+                struct.pack_into("<HH", content, 16, 2, machine)
+                struct.pack_into("<Q", content, 32, 64)
+                struct.pack_into("<HH", content, 54, 56, 1)
+                struct.pack_into("<I", content, 64, 1)
+                binary = directory / architecture
+                binary.write_bytes(content)
+                binaries[architecture] = binary
+            output = directory / "output"
+            images = directory / "images"
+            metadata = (directory / "cli.deb", directory / "desktop.deb", "1.2.3")
+            with mock.patch.object(PREBUILD.PACKAGING.DESKTOP_PACKAGING, "validate_inputs", return_value=metadata), \
+                    mock.patch.object(PREBUILD, "command") as execute:
+                with self.assertRaisesRegex(ValueError, "architecture"):
+                    PREBUILD.prebuild("1.2.3", "amd64", "a" * 40, "ghcr.io/example/desktop",
+                                      binaries["amd64"], metadata[0], metadata[1], output, images,
+                                      native_host_binary=binaries["arm64"])
+                execute.assert_not_called()
+            self.assertFalse(output.exists())
+            self.assertFalse(images.exists())
 
     def test_embedded_container_probe_is_valid_python(self):
         compile(PREBUILD.QUALIFIER.PROBE, "desktop-startup-probe", "exec")
@@ -58,6 +90,12 @@ class PrebuiltImageTests(unittest.TestCase):
             self.assertLess(names.index("Publish exact desktop images and verify public access"), names.index("Create GitHub release"))
             self.assertIn("needs.meta.outputs.dry_run == 'false'", jobs[name]["if"])
         self.assertNotIn("packages", build["permissions"])
+        package = next(step for step in build["steps"] if step.get("name") == "Package Synology desktop editions")
+        command = package["run"]
+        self.assertIn('CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build', command)
+        self.assertIn('./workflows/package/synology-desktop-spk/assets/native-host', command)
+        self.assertIn('--native-host-binary "$native_host_binary"', command)
+        self.assertLess(command.index('go build'), command.index('synology-desktop-spk/prebuild.yml'))
 
 
 if __name__ == "__main__":

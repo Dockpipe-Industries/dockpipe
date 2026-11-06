@@ -16,7 +16,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[5]
 ASSETS = Path(__file__).resolve().parents[1]
 PACKAGE = "dockpipe-host-qualification"
-VERSION = "0.1.0-2"
+VERSION = "0.1.0-5"
 specification = importlib.util.spec_from_file_location(
     "synology_cli_packaging", ROOT / "workflows/package/synology/assets/scripts/build.py",
 )

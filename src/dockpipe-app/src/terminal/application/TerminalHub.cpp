@@ -2,6 +2,7 @@
 #include "TerminalSession.h"
 #include "TerminalShellCatalog.h"
 #include "TerminalHostLaunch.h"
+#include "NativeHostConnection.h"
 
 #include <QFileInfo>
 #include <QDir>
@@ -24,11 +25,55 @@ TerminalHub::TerminalHub(TerminalLaunchContext context, QObject *parent)
       m_shellCatalog(new TerminalShellCatalog(TerminalShellCatalog::systemDiscovery(context), this)),
       m_launchContext(context)
 {
+    connect(m_shellCatalog, &TerminalShellCatalog::profilesChanged, this, &TerminalHub::shellProfilesChanged);
     m_shellCatalog->refresh();
 }
 
 TerminalShellCatalog &TerminalHub::shellCatalog() const { return *m_shellCatalog; }
 QString TerminalHub::creationError() const { return m_creationError; }
+
+QVector<TerminalShellProfile> TerminalHub::shellProfiles() const
+{
+    QVector<TerminalShellProfile> profiles;
+    if (m_nativeHostConfigured) {
+        TerminalShellProfile native;
+        native.id = NativeHostConnection::selectionKey();
+        native.label = m_nativeHost ? m_nativeHost->label() : tr("Native host — unavailable");
+        profiles.append(native);
+    }
+    for (auto local : m_shellCatalog->profiles()) {
+        if (m_nativeHostConfigured)
+            local.label = tr("Application container · %1").arg(local.label);
+        profiles.append(local);
+    }
+    return profiles;
+}
+
+void TerminalHub::setNativeHostConnection(NativeHostConnection *connection)
+{
+    if (m_nativeHost)
+        disconnect(m_nativeHost, nullptr, this, nullptr);
+    m_nativeHost = connection;
+    m_nativeHostConfigured = true;
+    if (connection) {
+        connect(connection, &NativeHostConnection::statusChanged, this, &TerminalHub::nativeHostChanged);
+        connect(connection, &QObject::destroyed, this, &TerminalHub::nativeHostChanged);
+    }
+    nativeHostChanged();
+}
+
+NativeHostConnection *TerminalHub::nativeHostConnection() const { return m_nativeHost; }
+bool TerminalHub::nativeHostConfigured() const { return m_nativeHostConfigured; }
+
+void TerminalHub::nativeHostChanged()
+{
+    const QStringList existing = m_order;
+    for (const auto &id : existing) {
+        if (m_sessions.value(id).native)
+            closeSession(id);
+    }
+    emit shellProfilesChanged();
+}
 
 QString TerminalHub::createSession(const QString &workdir, const QString &shellProfileId)
 {
@@ -38,8 +83,25 @@ QString TerminalHub::createSession(const QString &workdir, const QString &shellP
         return {};
     }
     TerminalShellProfile selected;
-    const auto profiles = m_shellCatalog->profiles();
-    if (!shellProfileId.isEmpty()) {
+    QString directory = workdir.isEmpty() ? QDir::homePath() : workdir;
+    const bool native = m_nativeHostConfigured && (shellProfileId.isEmpty()
+        || shellProfileId == NativeHostConnection::selectionKey());
+    const auto profiles = shellProfiles();
+    if (native) {
+        if (!m_nativeHost || !m_nativeHost->available()) {
+            m_creationError = tr("Native host unavailable. Open this application through its authenticated host session.");
+            return {};
+        }
+        const auto plan = m_nativeHost->plan(NativeHostConnection::Operation::Terminal);
+        if (!plan.valid()) {
+            m_creationError = plan.error;
+            return {};
+        }
+        selected.program = plan.program;
+        selected.arguments = plan.arguments;
+        selected.label = m_nativeHost->label();
+        directory = plan.workingDirectory;
+    } else if (!shellProfileId.isEmpty()) {
         for (const auto &profile : profiles) {
             if (profile.id == shellProfileId) {
                 selected = profile;
@@ -59,15 +121,18 @@ QString TerminalHub::createSession(const QString &workdir, const QString &shellP
         selected = profiles.first();
     }
 #ifdef Q_OS_WIN
-    if (shellProfileId.isEmpty() && !profiles.isEmpty())
+    if (!native && shellProfileId.isEmpty() && !profiles.isEmpty())
         selected = profiles.first();
 #endif
     const QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    auto *session = new TerminalSession(m_launchContext, this);
+    auto *session = new TerminalSession(native ? TerminalLaunchContext::Local : m_launchContext, this);
     Entry entry;
     entry.session = session;
-    const QString directory = workdir.isEmpty() ? QDir::homePath() : workdir;
-    entry.title = tr("Terminal %1 · %2").arg(m_nextTitle++).arg(QDir::toNativeSeparators(directory));
+    entry.native = native;
+    if (native)
+        entry.title = tr("Terminal %1").arg(m_nextTitle++);
+    else
+        entry.title = tr("Terminal %1 · %2").arg(m_nextTitle++).arg(QDir::toNativeSeparators(directory));
     if (!selected.label.isEmpty())
         entry.title = selected.label + QStringLiteral(" · ") + entry.title;
     m_sessions.insert(id, entry);
@@ -88,7 +153,7 @@ QString TerminalHub::createSession(const QString &workdir, const QString &shellP
         arguments.prepend(QDir::toNativeSeparators(directory));
         arguments.prepend(selected.workingDirectoryArgument);
     }
-    session->start(workdir, selected.program, arguments, selected.environment);
+    session->start(native ? directory : workdir, selected.program, arguments, selected.environment);
     emit sessionsChanged();
     return id;
 }

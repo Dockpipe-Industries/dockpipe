@@ -1,6 +1,7 @@
 package application
 
 import (
+	"dockpipe/src/lib/application/internal/hostcmd"
 	"dockpipe/src/lib/application/internal/machinecmd"
 	"dockpipe/src/lib/application/internal/workspacegitcmd"
 )
@@ -39,6 +40,8 @@ func dispatchCommand(argv []string) (bool, error) {
 		return true, cmdRemote(argv[1:])
 	case "machine":
 		return true, machinecmd.Run(argv[1:])
+	case "host":
+		return true, hostcmd.Run(argv[1:])
 	case "dependency":
 		return true, cmdDependency(argv[1:])
 	case "install":

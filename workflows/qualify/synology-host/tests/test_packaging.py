@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import struct
 import subprocess
@@ -62,6 +63,8 @@ class QualificationPackagingTests(unittest.TestCase):
                         self.assertEqual(contents.extractfile("ui/host-auth.cgi").read(), binary.read_bytes())
                         javascript = contents.extractfile("ui/Dockpipe.HostQualification.js").read().decode()
                         self.assertIn("dockpipe-host-qualification/host-auth.cgi", javascript)
+                        self.assertIn('"X-Syno-Token": sessionToken', javascript)
+                        self.assertNotIn('tag: "iframe"', javascript)
                         self.assertNotIn("password", javascript.lower())
                         proxy = contents.extractfile("nginx/report.conf").read().decode()
                         self.assertIn("location = /webman/3rdparty/dockpipe-host-qualification/host-auth.cgi", proxy)
@@ -81,6 +84,31 @@ class QualificationPackagingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             BUILD.build("amd64", link, self.root)
         self.assertEqual(previous, destination.read_bytes())
+
+    def test_preuninstall_does_not_stop_released_unit_and_stop_preserves_failure(self):
+        destination = BUILD.build("amd64", self.binary("amd64"), self.root)
+        commands = self.root / "commands"
+        commands.mkdir()
+        marker = self.root / "service-stop-called"
+        service_command = commands / "synosystemctl"
+        service_command.write_text('#!/bin/sh\ntouch "$STOP_MARKER"\nexit 1\n')
+        service_command.chmod(0o755)
+        environment = dict(os.environ, PATH=f"{commands}:{os.environ['PATH']}",
+                           STOP_MARKER=str(marker))
+        with tarfile.open(destination) as package:
+            preuninstall = self.root / "preuninst"
+            preuninstall.write_bytes(package.extractfile("scripts/preuninst").read())
+            result = subprocess.run(["sh", str(preuninstall)], env=environment,
+                                    capture_output=True, timeout=5)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertFalse(marker.exists())
+
+            control = self.root / "start-stop-status"
+            control.write_bytes(package.extractfile("scripts/start-stop-status").read())
+            result = subprocess.run(["sh", str(control), "stop"], env=environment,
+                                    capture_output=True, timeout=5)
+            self.assertEqual(result.returncode, 1)
+            self.assertTrue(marker.exists())
 
     def test_archive_is_reproducible_and_receipt_matches_artifact(self):
         binary = self.binary("amd64")

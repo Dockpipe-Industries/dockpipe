@@ -17,6 +17,12 @@ import (
 
 type inventoryOutput struct{ bytes.Buffer }
 
+// Serializing Docker's formatter root also evaluates its Size method, which can
+// enable costly filesystem scans. Request only the fields in our inventory DTOs.
+const containerInventoryFormat = `{"ID":{{json .ID}},"Names":{{json .Names}},"State":{{json .State}},"Status":{{json .Status}},"Image":{{json .Image}},"Ports":{{json .Ports}},"RunningFor":{{json .RunningFor}}}`
+const networkInventoryFormat = `{"ID":{{json .ID}},"Name":{{json .Name}},"Driver":{{json .Driver}},"Scope":{{json .Scope}}}`
+const volumeInventoryFormat = `{"Name":{{json .Name}},"Driver":{{json .Driver}}}`
+
 func (output *inventoryOutput) Write(data []byte) (int, error) {
 	if len(data) > 512*1024-output.Len() {
 		return 0, errors.New("docker inventory exceeds 512 KiB")
@@ -25,10 +31,36 @@ func (output *inventoryOutput) Write(data []byte) (int, error) {
 }
 
 func dockerInventoryCommand(ctx context.Context, args ...string) ([]byte, error) {
+	return runDockerInventoryCommand(ctx, false, args...)
+}
+
+func localDockerInventoryCommand(ctx context.Context, args ...string) ([]byte, error) {
+	return runDockerInventoryCommand(ctx, true, args...)
+}
+
+func dockerInventoryProcess(ctx context.Context, local bool, args ...string) *exec.Cmd {
 	commandName := dockerCommandName()
+	if local {
+		args = append([]string{"--host=unix:///var/run/docker.sock", "--tls=false"}, args...)
+	}
 	command := exec.CommandContext(ctx, commandName, args...)
 	command.Env = dockerCommandEnv(os.Environ(), commandName)
+	if local {
+		environment := make([]string, 0, len(command.Env))
+		for _, entry := range command.Env {
+			name, _, _ := strings.Cut(entry, "=")
+			if !strings.HasPrefix(strings.ToUpper(name), "DOCKER_") {
+				environment = append(environment, entry)
+			}
+		}
+		command.Env = environment
+	}
 	command.WaitDelay = 500 * time.Millisecond
+	return command
+}
+
+func runDockerInventoryCommand(ctx context.Context, local bool, args ...string) ([]byte, error) {
+	command := dockerInventoryProcess(ctx, local, args...)
 	output := &inventoryOutput{}
 	command.Stdout = output
 	command.Stderr = io.Discard
@@ -57,11 +89,21 @@ func inventoryRows[T any](data []byte) ([]T, bool, error) {
 }
 
 func CollectDockerInventory(ctx context.Context) telemetry.DockerSnapshot {
+	return collectDockerInventory(ctx, dockerInventoryCommand)
+}
+
+// CollectLocalDockerInventory pins inventory to the local system Unix daemon,
+// independent of user context, endpoint environment and TLS preferences.
+func CollectLocalDockerInventory(ctx context.Context) telemetry.DockerSnapshot {
+	return collectDockerInventory(ctx, localDockerInventoryCommand)
+}
+
+func collectDockerInventory(ctx context.Context, query func(context.Context, ...string) ([]byte, error)) telemetry.DockerSnapshot {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	result := telemetry.DockerSnapshot{Containers: []telemetry.DockerContainer{}, Networks: []telemetry.DockerNetwork{},
 		Volumes: []telemetry.DockerVolume{}, Topology: []telemetry.DockerTopology{}, Notices: []string{}}
-	containers, err := dockerInventoryCommand(ctx, "container", "ls", "--all", "--no-trunc", "--format", "{{json .}}")
+	containers, err := query(ctx, "container", "ls", "--all", "--no-trunc", "--size=false", "--format", containerInventoryFormat)
 	if err != nil {
 		result.Notices = append(result.Notices, err.Error())
 		return result
@@ -72,7 +114,7 @@ func CollectDockerInventory(ctx context.Context) telemetry.DockerSnapshot {
 		return result
 	}
 	result.Available = true
-	networks, networkErr := dockerInventoryCommand(ctx, "network", "ls", "--no-trunc", "--format", "{{json .}}")
+	networks, networkErr := query(ctx, "network", "ls", "--no-trunc", "--format", networkInventoryFormat)
 	var truncated bool
 	if networkErr == nil {
 		result.Networks, truncated, networkErr = inventoryRows[telemetry.DockerNetwork](networks)
@@ -81,7 +123,7 @@ func CollectDockerInventory(ctx context.Context) telemetry.DockerSnapshot {
 	if networkErr != nil {
 		result.Notices = append(result.Notices, "Network inventory unavailable")
 	}
-	volumes, volumeErr := dockerInventoryCommand(ctx, "volume", "ls", "--format", "{{json .}}")
+	volumes, volumeErr := query(ctx, "volume", "ls", "--format", volumeInventoryFormat)
 	if volumeErr == nil {
 		result.Volumes, truncated, volumeErr = inventoryRows[telemetry.DockerVolume](volumes)
 		result.Truncated = result.Truncated || truncated
@@ -101,7 +143,7 @@ func CollectDockerInventory(ctx context.Context) telemetry.DockerSnapshot {
 		}
 		args = append(args, container.ID)
 	}
-	topology, topologyErr := dockerInventoryCommand(ctx, args...)
+	topology, topologyErr := query(ctx, args...)
 	if topologyErr == nil {
 		result.Topology, truncated, topologyErr = inventoryRows[telemetry.DockerTopology](topology)
 		result.Truncated = result.Truncated || truncated

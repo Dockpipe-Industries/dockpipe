@@ -20,6 +20,17 @@ func ReadMachineSnapshot(ctx context.Context, system, docker bool) (telemetry.Ma
 	return readMachineSnapshot(ctx, hostname, system, docker, ReadExecutionSnapshot, CollectDockerInventory)
 }
 
+// ReadLocalMachineSnapshot uses the same DTO and collectors while pinning Docker
+// inventory to the system Unix daemon. Remote-user contexts cannot change the
+// machine represented by a native host worker's Docker inventory.
+func ReadLocalMachineSnapshot(ctx context.Context, system, docker bool) (telemetry.MachineSnapshot, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return telemetry.MachineSnapshot{}, err
+	}
+	return readMachineSnapshot(ctx, hostname, system, docker, ReadExecutionSnapshot, CollectLocalDockerInventory)
+}
+
 func readMachineSnapshot(ctx context.Context, hostname string, system, docker bool,
 	readSystem func(context.Context, string, bool, bool) (telemetry.Snapshot, error),
 	readDocker func(context.Context) telemetry.DockerSnapshot,

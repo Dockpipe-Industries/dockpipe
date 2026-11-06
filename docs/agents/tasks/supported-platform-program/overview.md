@@ -211,3 +211,82 @@ login authentication is distinct from Linux user identity and terminal authority
 neither per-user execution nor native Docker access is accepted until proven on
 hardware. The qualification package does not modify the working desktop install,
 request extra capabilities, or expose terminal/Docker controls.
+
+### Native host and installer folder qualification (2026-11-04)
+
+The x64 r21 recovery is now running on DSM and the operator confirmed the selected
+folder is accessible at `/host/source`. The installer UI timeout was independently
+traced to a reverse-proxy read deadline; it was corrected through DSM's supported
+per-rule setting. Native Docker Inspector logs/details/raw inspect are being
+qualified with a typed read-only worker query, bounded output and stale-session
+cancellation; local proof does not replace live Inspector acceptance.
+
+The SSH approach was replaced by a native reverse worker launched through a
+verified, fixed DSM one-shot task as the signed-in ordinary account. The operator
+confirmed host terminal, executions/system monitoring, outbound web access and
+Docker inventory on x64 DSM. A generic Docker inventory fix disables unintended
+filesystem size scans. The embedded cursor mismatch was traced to outer-frame raw
+pointer coordinates; using normal frame-relative events passed two live menu
+hover checks. These observations do not qualify ARM64 or the complete lifecycle.
+
+The next test SPK adds **Add Host Folder** to the normal install/update wizard,
+not a live container redeploy feature. One existing shared-folder path maps to
+`/host/source`, with read-only default, explicit read/write, keep, replace and
+remove choices. The candidate installer renders its staged Compose before DSM
+resource acquisition, then persists the desired mapping for later upgrades.
+Folder contents and host ACLs are not modified by setup/removal. Validation uses
+the package account, rejects system roots/symlinks/nested mounts, and preserves
+the existing container/host identity boundaries. Focused local packaging,
+lifecycle and native tests pass. Actual wizard rendering, writable staging layout,
+bind mount access and keep/remove/reinstall behavior on DSM remain test gates.
+
+
+The follow-up installer candidate replaces the one-folder control with DSM
+7.2.2's repeatable custom wizard: up to 16 named mappings under `/host`, basename
+defaults with editable overrides, independent access modes, and collision checks.
+The v2 manifest migrates r10 Keep without renaming `/host/source`. Native and UI
+fixtures cover the list/size/name boundaries; actual updated wizard and multiple
+mount acceptance remain pending on the NAS.
+
+The folder wizard now includes DSM's native directory picker per row. A read-only
+live check opened it, displayed NAS shared folders and verified physical versus
+share-display paths, then cancelled without file changes. The adapter uses only
+the physical path, retains name overrides and handles cancel/unmount safely.
+The updated SPK's complete install/mount acceptance remains pending.
+
+The custom wizard field contract was corrected to return a flat map for DSM's
+`getCustData` merge. The folder preflight inspects the package account's access
+for each selected path and parent within its share. A subsequent layout fix fits
+the scroll area to DSM's allocated body; mouse-wheel access to the bottom controls
+was verified in the live wizard. The permission-review adapter proposes scoped
+additive rules in DSM's native editor: traversal only on a blocking parent, or
+the selected access on the target folder and children. Only the user's native
+Save applies changes; the installer does not change ACLs itself. Full packaged
+permission-review and mount acceptance on DSM remain pending.
+
+The manual permission-review flow was rejected as unnecessary installer UX. Its
+replacement applies the mapped access automatically on the normal Next action
+through DSM's ACL API, with scoped parent traversal, preserved existing rules,
+pre-write conflict detection and post-write verification. There are no separate
+permission buttons/dialogs. The supported wizard getNext false/async transition
+contract and ACL read/self-denial-check contracts were verified live without
+changing NAS permissions. Automatic writes, fresh-install account timing and
+uninstall ACL ownership/cleanup remain explicit hardware acceptance work.
+
+The r17 NAS test passed automatic package-account ACL setup and reached package
+installation. Preinst then failed to locate the helper; DSM had already removed
+the r9 target, while volume-backed data/home/configuration remained intact. The
+retained staging directories contain executable package-owned helpers, readable
+as the package user. The follow-up resolves the two bounded extracted layouts
+and binds preparation to the actual candidate executable, with real role-launch
+tests and retained-data reinstall coverage. The latest failing environment value
+was not captured, so full DSM install/mount acceptance remains pending.
+
+The r18 recovery wizard unexpectedly rendered new credentials. Restore tests had
+supplied a volume hint and did not cover the actual missing-context case. The
+follow-up discovers retained FHS metadata without reading credentials, handles
+opaque private homes through validated public state, and binds restore to DSM's
+selected volume. Explicit fresh setup refuses retained settings; successful
+postinst publishes non-secret restore metadata. Fixtures cover absent hints and
+package links, restricted private state, multiple volumes and destination mismatch.
+Live recovery-wizard and complete mount acceptance remain pending.
