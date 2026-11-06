@@ -152,7 +152,7 @@ func (c *Client) DockerQuery(ctx context.Context, kind, id string) (DockerQueryR
 		return dockerQueryFailure(ctx, kind, id, "native_host_unavailable"), err
 	}
 	defer transport.Close()
-	stop := context.AfterFunc(ctx, func() { transport.Close() })
+	stop := context.AfterFunc(ctx, func() { _ = transport.Close() })
 	defer stop()
 	response, err := transport.receive()
 	if err != nil || response.Kind != "docker-query" || response.DockerQuery == nil || !validDockerQueryResult(*response.DockerQuery, kind, id) {

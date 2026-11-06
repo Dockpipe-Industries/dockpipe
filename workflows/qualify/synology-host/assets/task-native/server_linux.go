@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -178,5 +179,9 @@ func validRuntimeDirectory(path string) bool {
 	if err != nil || !info.IsDir() || info.Mode().Perm() != 0755 || info.Mode()&os.ModeSymlink != 0 {
 		return false
 	}
-	return ownedBy(info, uint32(os.Geteuid()))
+	identifier := os.Geteuid()
+	if identifier < 0 || uint64(identifier) > math.MaxUint32 {
+		return false
+	}
+	return ownedBy(info, uint32(identifier))
 }

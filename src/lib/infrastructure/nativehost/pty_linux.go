@@ -58,13 +58,11 @@ func startPTY(identity Status, request frame) (*ptyProcess, error) {
 		return nil, err
 	}
 	if err := unix.SetNonblock(fd, true); err != nil {
-		unix.Close(fd)
-		return nil, err
+		return nil, errors.Join(err, unix.Close(fd))
 	}
 	master := os.NewFile(uintptr(fd), "native-host-pty")
 	fail := func(err error) (*ptyProcess, error) {
-		master.Close()
-		return nil, err
+		return nil, errors.Join(err, master.Close())
 	}
 	if err := unix.IoctlSetPointerInt(fd, unix.TIOCSPTLCK, 0); err != nil {
 		return fail(err)
@@ -87,7 +85,9 @@ func startPTY(identity Status, request frame) (*ptyProcess, error) {
 	command.Stderr = slave
 	command.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true, Ctty: 0}
 	process := &ptyProcess{master: master, command: command, finished: make(chan struct{}), exited: make(chan struct{}), cleaned: make(chan struct{})}
-	process.Resize(request.Rows, request.Columns)
+	if err := process.Resize(request.Rows, request.Columns); err != nil {
+		return fail(err)
+	}
 	if err := command.Start(); err != nil {
 		return fail(err)
 	}
@@ -127,18 +127,18 @@ func (p *ptyProcess) Resize(rows, columns uint16) error {
 
 func (p *ptyProcess) Close() error {
 	p.closeOnce.Do(func() {
-		p.master.Close()
+		p.cleanupErr = p.master.Close()
 		defer close(p.cleaned)
 		// This non-reaping check also refuses to signal a numeric ID whose
 		// child ownership was unexpectedly lost to an outside reaper.
 		var information unix.Siginfo
 		if err := unix.Waitid(unix.P_PID, p.command.Process.Pid, &information, unix.WEXITED|unix.WNOWAIT|unix.WNOHANG, nil); err != nil {
-			p.cleanupErr = errors.New("native host terminal ownership unavailable")
+			p.cleanupErr = errors.Join(p.cleanupErr, errors.New("native host terminal ownership unavailable"))
 			return
 		}
 		// The shell owns a distinct session. Kill processes still in that
 		// session as well as its process group, including job-control groups.
-		p.cleanupErr = killSession(p.command.Process.Pid)
+		p.cleanupErr = errors.Join(p.cleanupErr, killSession(p.command.Process.Pid))
 	})
 	return p.cleanupErr
 }
@@ -174,8 +174,11 @@ func killSession(session int) error {
 		for _, name := range entries {
 			count++
 			if count > 32768 || time.Now().After(deadline) {
-				syscall.Kill(-session, syscall.SIGKILL)
-				return errors.New("native host terminal cleanup scan limit exceeded")
+				killErr := syscall.Kill(-session, syscall.SIGKILL)
+				if errors.Is(killErr, syscall.ESRCH) {
+					killErr = nil
+				}
+				return errors.Join(errors.New("native host terminal cleanup scan limit exceeded"), killErr)
 			}
 			pid, err := strconv.Atoi(name)
 			if err != nil || pid <= 1 {
@@ -186,8 +189,12 @@ func killSession(session int) error {
 				continue
 			}
 			data := make([]byte, 4096)
-			n, _ := file.Read(data)
-			file.Close()
+			n, readErr := file.Read(data)
+			closeErr := file.Close()
+			if (readErr != nil && readErr != io.EOF) || closeErr != nil {
+				cleanupErr = errors.New("native host terminal process metadata unavailable")
+				continue
+			}
 			text := string(data[:n])
 			end := strings.LastIndex(text, ")")
 			if end < 0 {

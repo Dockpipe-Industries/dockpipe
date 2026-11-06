@@ -35,6 +35,14 @@ func relayTerminal(ctx context.Context, client *nativehost.Client, cwd string) e
 		}
 		defer term.Restore(int(os.Stdin.Fd()), state)
 	}
+	operationErrors := make(chan error, 2)
+	failOperation := func(err error) {
+		select {
+		case operationErrors <- err:
+		default:
+		}
+		cancel()
+	}
 	changes := make(chan os.Signal, 1)
 	signal.Notify(changes, syscall.SIGWINCH)
 	defer signal.Stop(changes)
@@ -43,16 +51,26 @@ func relayTerminal(ctx context.Context, client *nativehost.Client, cwd string) e
 			select {
 			case <-changes:
 				resize()
-				terminal.Resize(rows, columns)
+				if err := terminal.Resize(rows, columns); err != nil {
+					failOperation(err)
+					return
+				}
 			case <-ctx.Done():
 				return
 			}
 		}
 	}()
 	go func() {
-		io.Copy(terminal, os.Stdin)
+		if _, err := io.Copy(terminal, os.Stdin); err != nil {
+			failOperation(err)
+		}
 	}()
 	exit, err := terminal.CopyOutput(os.Stdout)
+	select {
+	case operationErr := <-operationErrors:
+		return operationErr
+	default:
+	}
 	if err != nil {
 		return err
 	}

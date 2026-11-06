@@ -6,6 +6,7 @@ package localaccount
 import (
 	"errors"
 	"io"
+	"math"
 	"os"
 	"sort"
 	"strconv"
@@ -32,7 +33,11 @@ func Resolve(username string) (Account, error) {
 		return Account{}, errors.New("local group database unavailable")
 	}
 	defer groups.Close()
-	return ResolveFiles(username, passwd, groups, uint32(os.Getuid()))
+	identifier := os.Getuid()
+	if identifier < 0 || uint64(identifier) > math.MaxUint32 {
+		return Account{}, errors.New("package account identifier is out of range")
+	}
+	return ResolveFiles(username, passwd, groups, uint32(identifier))
 }
 
 func accountDatabase(reader io.Reader) ([]string, error) {

@@ -100,7 +100,7 @@ func pinnedStreamerTLS(certificate []byte) (*tls.Config, error) {
 	pin := sha256.Sum256(leaf.Raw)
 	return &tls.Config{
 		MinVersion:         tls.VersionTLS12,
-		InsecureSkipVerify: true,
+		InsecureSkipVerify: true, // #nosec G402 -- VerifyConnection below authenticates the exact package certificate and its validity interval.
 		VerifyConnection: func(state tls.ConnectionState) error {
 			if len(state.PeerCertificates) != 1 || sha256.Sum256(state.PeerCertificates[0].Raw) != pin {
 				return errors.New("stream_certificate_pin_mismatch")

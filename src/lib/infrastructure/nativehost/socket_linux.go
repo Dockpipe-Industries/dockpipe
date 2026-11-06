@@ -43,18 +43,22 @@ func listenSocket(path string) (*net.UnixListener, error) {
 	if err != nil {
 		return nil, err
 	}
+	effectiveUID, err := unixIdentityID(os.Geteuid())
+	if err != nil {
+		return nil, err
+	}
 	stat, ok := info.Sys().(*syscall.Stat_t)
-	if !ok || !info.IsDir() || stat.Uid != uint32(os.Geteuid()) || info.Mode().Perm()&0022 != 0 {
+	if !ok || !info.IsDir() || stat.Uid != effectiveUID || info.Mode().Perm()&0022 != 0 {
 		return nil, errors.New("native host socket directory must be owned and not writable by others")
 	}
 	if existing, err := os.Lstat(path); err == nil {
 		owner, ok := existing.Sys().(*syscall.Stat_t)
-		if !ok || owner.Uid != uint32(os.Geteuid()) || existing.Mode()&os.ModeSocket == 0 {
+		if !ok || owner.Uid != effectiveUID || existing.Mode()&os.ModeSocket == 0 {
 			return nil, errors.New("native host socket path occupied")
 		}
 		connection, dialErr := net.DialTimeout("unix", path, 100*time.Millisecond)
 		if dialErr == nil {
-			connection.Close()
+			_ = connection.Close()
 			return nil, errors.New("native host socket already listening")
 		}
 		if !errors.Is(dialErr, syscall.ECONNREFUSED) && !errors.Is(dialErr, syscall.ENOENT) {
@@ -76,7 +80,7 @@ func listenSocket(path string) (*net.UnixListener, error) {
 		return nil, err
 	}
 	if err := os.Chmod(path, 0666); err != nil {
-		listener.Close()
+		_ = listener.Close()
 		return nil, err
 	}
 	return listener, nil

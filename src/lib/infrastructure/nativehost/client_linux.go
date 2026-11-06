@@ -34,19 +34,22 @@ func (c *Client) connect(ctx context.Context, request frame) (*wire, error) {
 	credential, err := peer(connection.(*net.UnixConn))
 	owner, ok := info.Sys().(*syscall.Stat_t)
 	if err != nil || !ok || credential.Uid != owner.Uid {
-		connection.Close()
+		_ = connection.Close()
 		return nil, ErrUnavailable
 	}
 	if deadline, ok := ctx.Deadline(); ok {
-		connection.SetDeadline(deadline)
+		if err := connection.SetDeadline(deadline); err != nil {
+			_ = connection.Close() // Admission failed; discard the untrusted transport.
+			return nil, err
+		}
 	}
 	transport := &wire{ReadWriteCloser: connection}
 	transport.writeLimit, _ = ctx.Deadline()
-	stop := context.AfterFunc(ctx, func() { connection.Close() })
+	stop := context.AfterFunc(ctx, func() { _ = connection.Close() })
 	defer stop()
 	request.Key = key
 	if transport.send(request) != nil {
-		transport.Close()
+		_ = transport.Close()
 		return nil, ErrUnavailable
 	}
 	return transport, nil
@@ -60,7 +63,7 @@ func (c *Client) Status(ctx context.Context) (Status, error) {
 		return unavailableStatus(), err
 	}
 	defer transport.Close()
-	stop := context.AfterFunc(ctx, func() { transport.Close() })
+	stop := context.AfterFunc(ctx, func() { _ = transport.Close() })
 	defer stop()
 	response, err := transport.receive()
 	if err != nil || response.Kind != "status" || response.Status == nil || !response.Status.Available || !response.Status.Connected || !validWorkerStatus(*response.Status, response.Status.UID, response.Status.GID) || response.Status.UID == 0 || response.Status.Schema != StatusSchema {
@@ -78,7 +81,7 @@ func (c *Client) Snapshot(ctx context.Context, system, docker bool) (telemetry.M
 		return snapshot, err
 	}
 	defer transport.Close()
-	stop := context.AfterFunc(ctx, func() { transport.Close() })
+	stop := context.AfterFunc(ctx, func() { _ = transport.Close() })
 	defer stop()
 	response, err := transport.receive()
 	if err != nil || response.Kind != "snapshot" || len(response.Snapshot) > telemetry.MaxMachineSnapshotBytes || json.Unmarshal(response.Snapshot, &snapshot) != nil || snapshot.Schema != telemetry.MachineSchema {
@@ -91,6 +94,7 @@ type Terminal struct {
 	transport *wire
 	closeOnce sync.Once
 	done      chan struct{}
+	closeErr  error
 }
 
 func (c *Client) OpenTerminal(ctx context.Context, options TerminalOptions) (*Terminal, error) {
@@ -101,20 +105,23 @@ func (c *Client) OpenTerminal(ctx context.Context, options TerminalOptions) (*Te
 		return nil, err
 	}
 	connection := transport.ReadWriteCloser.(*net.UnixConn)
-	stop := context.AfterFunc(startup, func() { connection.Close() })
+	stop := context.AfterFunc(startup, func() { _ = connection.Close() })
 	defer stop()
 	response, err := transport.receive()
 	if err != nil || response.Kind != "opened" {
-		transport.Close()
+		_ = transport.Close()
 		return nil, ErrUnavailable
 	}
-	connection.SetDeadline(time.Time{})
+	if err := connection.SetDeadline(time.Time{}); err != nil {
+		_ = transport.Close() // The terminal was never admitted.
+		return nil, err
+	}
 	transport.writeLimit = time.Time{}
 	terminal := &Terminal{transport: transport, done: make(chan struct{})}
 	go func() {
 		select {
 		case <-ctx.Done():
-			terminal.Close()
+			_ = terminal.Close() // Cancellation owns teardown; no caller remains to receive a close error.
 		case <-terminal.done:
 		}
 	}()
@@ -160,7 +167,7 @@ func (t *Terminal) CopyOutput(output io.Writer) (int, error) {
 func (t *Terminal) Close() error {
 	t.closeOnce.Do(func() {
 		close(t.done)
-		t.transport.Close()
+		t.closeErr = t.transport.Close()
 	})
-	return nil
+	return t.closeErr
 }

@@ -51,11 +51,11 @@ func dockerAction(ctx context.Context, client *http.Client, action, id string) D
 		return dockerFailure(ctx, action, id, "docker_unavailable")
 	}
 	data, err := io.ReadAll(io.LimitReader(response.Body, 16385))
-	response.Body.Close()
+	closeErr := response.Body.Close()
 	var version struct {
 		APIVersion string `json:"ApiVersion"`
 	}
-	if err != nil || response.StatusCode != http.StatusOK || len(data) > 16384 || json.Unmarshal(data, &version) != nil || !dockerAPIVersion.MatchString(version.APIVersion) {
+	if err != nil || closeErr != nil || response.StatusCode != http.StatusOK || len(data) > 16384 || json.Unmarshal(data, &version) != nil || !dockerAPIVersion.MatchString(version.APIVersion) {
 		return dockerFailure(ctx, action, id, "docker_unavailable")
 	}
 	path := "http://docker/v" + version.APIVersion + "/containers/" + id + "/" + action
@@ -101,7 +101,7 @@ func (c *Client) Docker(ctx context.Context, action, id string) (DockerResult, e
 		return result, err
 	}
 	defer transport.Close()
-	stop := context.AfterFunc(ctx, func() { transport.Close() })
+	stop := context.AfterFunc(ctx, func() { _ = transport.Close() })
 	defer stop()
 	response, err := transport.receive()
 	if err != nil || response.Kind != "docker" || response.DockerResult == nil {

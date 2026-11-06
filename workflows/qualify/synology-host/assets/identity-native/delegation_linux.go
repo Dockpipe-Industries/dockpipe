@@ -93,6 +93,7 @@ func runProbe() error {
 		return errors.New("invalid qualification challenge")
 	}
 	var parentDeathSignal int32
+	// #nosec G103 -- PR_GET_PDEATHSIG writes one kernel-defined int32; the local pointer does not escape.
 	_, _, errno := syscall.Syscall6(syscall.SYS_PRCTL, 2, uintptr(unsafe.Pointer(&parentDeathSignal)), 0, 0, 0, 0)
 	if errno != 0 || parentDeathSignal != int32(syscall.SIGKILL) || request.ParentPID <= 1 || os.Getppid() != request.ParentPID {
 		return errors.New("delegated child supervision admission failed")
@@ -110,12 +111,12 @@ func verifyChild(report childReport, account localAccount, nonce, hostname strin
 		return false
 	}
 	for _, identifier := range []int{identity.UID, identity.EUID, identity.SavedUID, identity.FSUID} {
-		if uint32(identifier) != account.UID {
+		if int64(identifier) != int64(account.UID) {
 			return false
 		}
 	}
 	for _, identifier := range []int{identity.GID, identity.EGID, identity.SavedGID, identity.FSGID} {
-		if uint32(identifier) != account.GID {
+		if int64(identifier) != int64(account.GID) {
 			return false
 		}
 	}
@@ -125,7 +126,7 @@ func verifyChild(report childReport, account localAccount, nonce, hostname strin
 	groups := append([]int(nil), identity.Groups...)
 	sort.Ints(groups)
 	for index, identifier := range groups {
-		if uint32(identifier) != account.Groups[index] {
+		if int64(identifier) != int64(account.Groups[index]) {
 			return false
 		}
 	}

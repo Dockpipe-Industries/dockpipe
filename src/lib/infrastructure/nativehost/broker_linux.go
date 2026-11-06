@@ -37,7 +37,9 @@ func (b *Broker) ExpectWorker(uid, gid uint32, nonce string, expires time.Time) 
 	if err != nil || uid == 0 || grant.UID != uid || grant.Generation == "" || len(grant.Generation) > 256 || !validToken(nonce) || !expires.After(time.Now()) || expires.After(time.Now().Add(5*time.Minute)) {
 		return ErrUnavailable
 	}
-	b.Revoke()
+	if err := b.Revoke(); err != nil {
+		return err
+	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if b.closed {
@@ -69,11 +71,11 @@ func (b *Broker) Revoke() error {
 func (b *Broker) revokeLocked() {
 	b.expected = nil
 	if b.worker != nil {
-		b.worker.Close()
+		_ = b.worker.Close() // Revocation clears authority even if transport teardown already completed.
 		b.worker = nil
 	}
 	for client := range b.clients {
-		client.Close()
+		_ = client.Close()
 	}
 	for id, responses := range b.pending {
 		close(responses)
@@ -88,7 +90,7 @@ func (b *Broker) Close() error {
 	b.closed = true
 	b.revokeLocked()
 	for _, listener := range b.listeners {
-		listener.Close()
+		_ = listener.Close()
 	}
 	return nil
 }
@@ -100,14 +102,14 @@ func (b *Broker) Serve(ctx context.Context) error {
 	}
 	client, err := listenSocket(b.options.ClientSocket)
 	if err != nil {
-		worker.Close()
+		_ = worker.Close()
 		return err
 	}
 	b.mu.Lock()
 	if b.closed {
 		b.mu.Unlock()
-		worker.Close()
-		client.Close()
+		_ = worker.Close()
+		_ = client.Close()
 		return ErrUnavailable
 	}
 	b.listeners = []*net.UnixListener{worker, client}
@@ -156,7 +158,7 @@ func (b *Broker) accept(ctx context.Context, listener *net.UnixListener, worker 
 				}
 			}()
 		default:
-			connection.Close()
+			_ = connection.Close()
 		}
 	}
 }
@@ -166,7 +168,9 @@ func (b *Broker) registerWorker(connection *net.UnixConn) {
 	if err != nil || credential.Uid == 0 {
 		return
 	}
-	connection.SetDeadline(time.Now().Add(3 * time.Second))
+	if err := connection.SetDeadline(time.Now().Add(3 * time.Second)); err != nil {
+		return
+	}
 	transport := &wire{ReadWriteCloser: connection}
 	hello, err := transport.receive()
 	if err != nil || hello.Kind != "worker" || hello.Status == nil {
@@ -198,7 +202,9 @@ func (b *Broker) registerWorker(connection *net.UnixConn) {
 	if transport.send(frame{Kind: "accepted"}) != nil {
 		return
 	}
-	connection.SetDeadline(time.Time{})
+	if err := connection.SetDeadline(time.Time{}); err != nil {
+		return
+	}
 	for {
 		value, err := transport.receive()
 		if err != nil {
@@ -227,7 +233,9 @@ func (b *Broker) serveClient(ctx context.Context, connection *net.UnixConn) {
 	if err != nil || credential.Uid != b.options.ClientUID {
 		return
 	}
-	connection.SetDeadline(time.Now().Add(3 * time.Second))
+	if err := connection.SetDeadline(time.Now().Add(3 * time.Second)); err != nil {
+		return
+	}
 	transport := &wire{ReadWriteCloser: connection}
 	request, err := transport.receive()
 	if err != nil || len(request.Snapshot) != 0 || request.Status != nil || subtle.ConstantTimeCompare([]byte(request.Key), []byte(b.options.ClientKey)) != 1 {
@@ -236,7 +244,9 @@ func (b *Broker) serveClient(ctx context.Context, connection *net.UnixConn) {
 	request.Key = ""
 	status := b.Status()
 	if !status.Available {
-		transport.send(frame{Kind: "error", Error: "native_host_unavailable", Status: &status})
+		if err := transport.send(frame{Kind: "error", Error: "native_host_unavailable", Status: &status}); err != nil {
+			return
+		}
 		return
 	}
 	b.mu.Lock()
@@ -252,7 +262,9 @@ func (b *Broker) serveClient(ctx context.Context, connection *net.UnixConn) {
 		b.mu.Unlock()
 	}()
 	if request.Kind == "status" {
-		transport.send(frame{Kind: "status", Status: &status})
+		if err := transport.send(frame{Kind: "status", Status: &status}); err != nil {
+			return
+		}
 		return
 	}
 	if request.Kind != "snapshot" && request.Kind != "terminal" && request.Kind != "docker" && request.Kind != "docker-query" {
@@ -283,7 +295,9 @@ func (b *Broker) serveClient(ctx context.Context, connection *net.UnixConn) {
 	}
 	b.mu.Unlock()
 	defer func() {
-		worker.send(frame{Kind: "close", ID: id})
+		if err := worker.send(frame{Kind: "close", ID: id}); err != nil {
+			_ = worker.Close() // A failed cancellation frame invalidates the shared worker transport.
+		}
 		b.mu.Lock()
 		delete(b.pending, id)
 		if request.Kind == "terminal" {
@@ -296,20 +310,24 @@ func (b *Broker) serveClient(ctx context.Context, connection *net.UnixConn) {
 		return
 	}
 	if request.Kind == "snapshot" || request.Kind == "docker" || request.Kind == "docker-query" {
-		connection.SetDeadline(time.Now().Add(8 * time.Second))
+		if err := connection.SetDeadline(time.Now().Add(8 * time.Second)); err != nil {
+			return
+		}
 		timer := time.NewTimer(8 * time.Second)
 		defer timer.Stop()
 		disconnected := make(chan struct{})
 		go func() {
 			// A snapshot connection carries exactly one request. EOF or an
 			// extra request cancels that request's worker operation.
-			transport.receive()
+			_, _ = transport.receive() // Either EOF or an extra frame means the one-shot client is done.
 			close(disconnected)
 		}()
 		select {
 		case response, ok := <-responses:
 			if ok {
-				transport.send(response)
+				if err := transport.send(response); err != nil {
+					return
+				}
 			}
 		case <-timer.C:
 		case <-disconnected:
@@ -317,7 +335,9 @@ func (b *Broker) serveClient(ctx context.Context, connection *net.UnixConn) {
 		}
 		return
 	}
-	connection.SetDeadline(time.Time{})
+	if err := connection.SetDeadline(time.Time{}); err != nil {
+		return
+	}
 	done := make(chan struct{})
 	go func() {
 		defer close(done)

@@ -177,8 +177,7 @@ func run(ctx context.Context, options arguments, output io.Writer) error {
 			defer file.Close()
 			worker.Ready = func() error {
 				_, err := file.Write([]byte{1})
-				file.Close()
-				return err
+				return errors.Join(err, file.Close())
 			}
 		}
 		return nativehost.RunWorker(ctx, worker)
@@ -186,13 +185,19 @@ func run(ctx context.Context, options arguments, output io.Writer) error {
 	client, err := nativehost.NewClient(options.connection)
 	if err != nil {
 		if options.command == "status" {
-			json.NewEncoder(output).Encode(nativehost.Status{Schema: nativehost.StatusSchema, Reason: "native_host_unavailable"})
+			if encodeErr := json.NewEncoder(output).Encode(nativehost.Status{Schema: nativehost.StatusSchema, Reason: "native_host_unavailable"}); encodeErr != nil {
+				return errors.Join(nativehost.ErrUnavailable, encodeErr)
+			}
 		}
 		if options.command == "docker" {
-			json.NewEncoder(output).Encode(nativehost.DockerResult{Schema: nativehost.DockerActionSchema, Outcome: "Failure", Action: options.action, ID: options.resourceID, Reason: "native_host_unavailable"})
+			if encodeErr := json.NewEncoder(output).Encode(nativehost.DockerResult{Schema: nativehost.DockerActionSchema, Outcome: "Failure", Action: options.action, ID: options.resourceID, Reason: "native_host_unavailable"}); encodeErr != nil {
+				return errors.Join(nativehost.ErrUnavailable, encodeErr)
+			}
 		}
 		if options.command == "docker-query" {
-			json.NewEncoder(output).Encode(nativehost.DockerQueryResult{Schema: nativehost.DockerQuerySchema, Outcome: "Failure", Kind: options.resourceKind, ID: options.resourceID, Reason: "native_host_unavailable"})
+			if encodeErr := json.NewEncoder(output).Encode(nativehost.DockerQueryResult{Schema: nativehost.DockerQuerySchema, Outcome: "Failure", Kind: options.resourceKind, ID: options.resourceID, Reason: "native_host_unavailable"}); encodeErr != nil {
+				return errors.Join(nativehost.ErrUnavailable, encodeErr)
+			}
 		}
 		return nativehost.ErrUnavailable
 	}

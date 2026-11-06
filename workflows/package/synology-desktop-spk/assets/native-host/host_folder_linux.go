@@ -75,13 +75,16 @@ func checkHostFolderAccess(path, access string) error {
 	if err != nil {
 		return errors.New("cannot check host folder access")
 	}
-	defer func() { unix.Close(descriptor) }()
+	defer func() { _ = unix.Close(descriptor) }()
 	for _, part := range strings.Split(strings.TrimPrefix(path, "/"), "/") {
 		next, err := unix.Openat(descriptor, part, unix.O_PATH|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
 		if err != nil {
 			return errors.New("host folder must exist, contain no symbolic links, and be readable by the dockpipe-desktop system user")
 		}
-		unix.Close(descriptor)
+		if err := unix.Close(descriptor); err != nil {
+			_ = unix.Close(next)
+			return errors.New("cannot close host folder traversal descriptor")
+		}
 		descriptor = next
 	}
 	mode := uint32(unix.R_OK | unix.X_OK)

@@ -9,7 +9,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"net/http/cgi"
+	"net/http/cgi" // #nosec G504 -- Supported Go >=1.25 fixes Httpoxy; this diagnostic serves CGI and does not create an environment-proxied client.
 	"os"
 	"os/signal"
 	"path/filepath"

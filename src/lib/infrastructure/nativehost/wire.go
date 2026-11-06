@@ -46,7 +46,11 @@ func (w *wire) send(value frame) error {
 		return errors.New("native host payload too large")
 	}
 	data, err := json.Marshal(value)
-	if err != nil || len(data) > maxFrame {
+	if err != nil {
+		return err
+	}
+	size := len(data)
+	if size > maxFrame {
 		return errors.New("native host frame too large")
 	}
 	w.writeMu.Lock()
@@ -56,10 +60,12 @@ func (w *wire) send(value frame) error {
 		if !w.writeLimit.IsZero() && w.writeLimit.Before(deadline) {
 			deadline = w.writeLimit
 		}
-		connection.SetWriteDeadline(deadline)
+		if err := connection.SetWriteDeadline(deadline); err != nil {
+			return err
+		}
 	}
 	var prefix [4]byte
-	binary.BigEndian.PutUint32(prefix[:], uint32(len(data)))
+	binary.BigEndian.PutUint32(prefix[:], uint32(size))
 	if err := writeAll(w.ReadWriteCloser, prefix[:]); err != nil {
 		return err
 	}

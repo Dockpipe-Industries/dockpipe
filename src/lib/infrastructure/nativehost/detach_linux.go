@@ -41,7 +41,9 @@ func DetachWorker(ctx context.Context, options WorkerOptions) error {
 	if err := command.Start(); err != nil {
 		return err
 	}
-	writer.Close()
+	if err := writer.Close(); err != nil {
+		return errors.Join(err, command.Process.Kill(), command.Wait())
+	}
 	startup, cancel := context.WithTimeout(ctx, 18*time.Second)
 	defer cancel()
 	result := make(chan error, 1)
@@ -60,7 +62,11 @@ func DetachWorker(ctx context.Context, options WorkerOptions) error {
 		}
 	case <-startup.Done():
 	}
-	command.Process.Kill()
-	command.Wait()
-	return ErrUnavailable
+	killErr := command.Process.Kill()
+	if errors.Is(killErr, os.ErrProcessDone) {
+		killErr = nil
+	}
+	// Wait reaps the deliberately terminated child; its exit status is expected.
+	_ = command.Wait()
+	return errors.Join(ErrUnavailable, killErr)
 }

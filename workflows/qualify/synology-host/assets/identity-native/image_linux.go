@@ -10,9 +10,9 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"runtime"
 	"syscall"
-	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
 
 const maximumExecutableBytes = 64 << 20
@@ -33,18 +33,13 @@ type sealedImage struct {
 }
 
 func newMemfd() (*os.File, error) {
-	name, err := syscall.BytePtrFromString("dockpipe-identity-qualification")
-	if err != nil {
-		return nil, errors.New("cannot construct sealed executable name")
-	}
 	// CLOEXEC prevents accidental inheritance. ExtraFiles explicitly duplicates
 	// this descriptor to FD3 and clears close-on-exec before the intended exec.
-	descriptor, _, errno := syscall.Syscall(memfdCreateTrap, uintptr(unsafe.Pointer(name)), memfdCloseOnExec|memfdAllowSealing, 0)
-	runtime.KeepAlive(name)
-	if errno != 0 {
+	descriptor, err := unix.MemfdCreate("dockpipe-identity-qualification", unix.MFD_CLOEXEC|unix.MFD_ALLOW_SEALING)
+	if err != nil {
 		return nil, errors.New("sealed executable memory is unavailable")
 	}
-	return os.NewFile(descriptor, "sealed identity executable"), nil
+	return os.NewFile(uintptr(descriptor), "sealed identity executable"), nil
 }
 
 func executableSize(file *os.File) (int64, error) {

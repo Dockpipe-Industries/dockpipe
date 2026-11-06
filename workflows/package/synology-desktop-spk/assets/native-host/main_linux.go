@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -51,9 +52,13 @@ func serve(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	identifier := os.Getuid()
+	if identifier < 0 || uint64(identifier) > math.MaxUint32 {
+		return errors.New("package_account_identifier_invalid")
+	}
 	broker, err := nativehost.NewBroker(nativehost.Options{
 		WorkerSocket: workerSocket, ClientSocket: clientSocket, ClientKey: string(key),
-		ClientUID: uint32(os.Getuid()), Authorize: leases.authorize,
+		ClientUID: uint32(identifier), Authorize: leases.authorize,
 	})
 	if err != nil {
 		return errors.New("native_broker_unavailable")

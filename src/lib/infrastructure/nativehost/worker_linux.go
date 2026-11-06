@@ -17,7 +17,7 @@ import (
 
 func workerIdentity() (Status, error) {
 	real, effective, saved := unix.Getresuid()
-	if real == 0 || real != effective || real != saved {
+	if real <= 0 || real != effective || real != saved {
 		return Status{}, errors.New("native host worker requires an ordinary user")
 	}
 	header := unix.CapUserHeader{Version: unix.LINUX_CAPABILITY_VERSION_3}
@@ -42,9 +42,21 @@ func workerIdentity() (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
-	status := Status{Schema: StatusSchema, Node: hostname, Username: account.Username, Home: account.HomeDir, UID: uint32(real), GID: uint32(os.Getgid())}
+	uid, err := unixIdentityID(real)
+	if err != nil {
+		return Status{}, err
+	}
+	gid, err := unixIdentityID(os.Getgid())
+	if err != nil {
+		return Status{}, err
+	}
+	status := Status{Schema: StatusSchema, Node: hostname, Username: account.Username, Home: account.HomeDir, UID: uid, GID: gid}
 	for _, group := range groups {
-		status.Groups = append(status.Groups, uint32(group))
+		groupID, err := unixIdentityID(group)
+		if err != nil {
+			return Status{}, err
+		}
+		status.Groups = append(status.Groups, groupID)
 	}
 	if !validWorkerStatus(status, status.UID, status.GID) {
 		return Status{}, errors.New("invalid native host worker identity")
@@ -76,7 +88,9 @@ func RunWorker(ctx context.Context, options WorkerOptions) error {
 	}
 	transport := &wire{ReadWriteCloser: connection}
 	defer transport.Close()
-	connection.SetDeadline(time.Now().Add(3 * time.Second))
+	if err := connection.SetDeadline(time.Now().Add(3 * time.Second)); err != nil {
+		return err
+	}
 	if transport.send(frame{Kind: "worker", Nonce: options.Nonce, Status: &identity}) != nil {
 		return ErrUnavailable
 	}
@@ -84,7 +98,9 @@ func RunWorker(ctx context.Context, options WorkerOptions) error {
 	if err != nil || accepted.Kind != "accepted" {
 		return ErrUnavailable
 	}
-	connection.SetDeadline(time.Time{})
+	if err := connection.SetDeadline(time.Time{}); err != nil {
+		return err
+	}
 	if options.Ready != nil {
 		if err := options.Ready(); err != nil {
 			return err
@@ -92,8 +108,15 @@ func RunWorker(ctx context.Context, options WorkerOptions) error {
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	stop := context.AfterFunc(ctx, func() { transport.Close() })
+	stop := context.AfterFunc(ctx, func() { _ = transport.Close() })
 	defer stop()
+	// A response failure invalidates the shared reverse transport. Closing it
+	// wakes the owning receive loop, which cancels all jobs and terminals.
+	sendResponse := func(response frame) {
+		if err := transport.send(response); err != nil {
+			_ = transport.Close()
+		}
+	}
 	var mu sync.Mutex
 	jobs := make(map[uint64]context.CancelFunc)
 	terminals := make(map[uint64]*ptyProcess)
@@ -105,7 +128,7 @@ func RunWorker(ctx context.Context, options WorkerOptions) error {
 			cancelJob()
 		}
 		for _, terminal := range terminals {
-			terminal.Close()
+			_ = terminal.Close() // Worker shutdown has already cancelled this terminal; Wait retains cleanup status.
 		}
 		mu.Unlock()
 		wait.Wait()
@@ -135,25 +158,25 @@ func RunWorker(ctx context.Context, options WorkerOptions) error {
 				}()
 				if request.Kind == "docker-query" {
 					result := runDockerQuery(jobContext, request.ResourceKind, request.ResourceID)
-					transport.send(frame{Kind: "docker-query", ID: request.ID, DockerQuery: &result})
+					sendResponse(frame{Kind: "docker-query", ID: request.ID, DockerQuery: &result})
 					return
 				}
 				if request.Kind == "docker" {
 					result := runDocker(jobContext, request.Action, request.Container)
-					transport.send(frame{Kind: "docker", ID: request.ID, DockerResult: &result})
+					sendResponse(frame{Kind: "docker", ID: request.ID, DockerResult: &result})
 					return
 				}
 				snapshot, err := infrastructure.ReadLocalMachineSnapshot(jobContext, request.System, request.Docker)
 				if err != nil {
-					transport.send(frame{Kind: "error", ID: request.ID, Error: "snapshot_unavailable"})
+					sendResponse(frame{Kind: "error", ID: request.ID, Error: "snapshot_unavailable"})
 					return
 				}
 				data, err := json.Marshal(snapshot)
 				if err != nil || len(data) > 1<<20 {
-					transport.send(frame{Kind: "error", ID: request.ID, Error: "snapshot_unavailable"})
+					sendResponse(frame{Kind: "error", ID: request.ID, Error: "snapshot_unavailable"})
 					return
 				}
-				transport.send(frame{Kind: "snapshot", ID: request.ID, Snapshot: data})
+				sendResponse(frame{Kind: "snapshot", ID: request.ID, Snapshot: data})
 			}(request)
 		case "terminal":
 			if request.ID == 0 || len(terminals) >= 8 || terminals[request.ID] != nil {
@@ -163,7 +186,9 @@ func RunWorker(ctx context.Context, options WorkerOptions) error {
 			terminal, err := startPTY(identity, request)
 			if err != nil {
 				mu.Unlock()
-				transport.send(frame{Kind: "error", ID: request.ID, Error: "terminal_unavailable"})
+				if err := transport.send(frame{Kind: "error", ID: request.ID, Error: "terminal_unavailable"}); err != nil {
+					return err
+				}
 				continue
 			}
 			terminals[request.ID] = terminal
@@ -171,7 +196,10 @@ func RunWorker(ctx context.Context, options WorkerOptions) error {
 			go func(id uint64) {
 				defer wait.Done()
 				defer terminal.Close()
-				transport.send(frame{Kind: "opened", ID: id})
+				if err := transport.send(frame{Kind: "opened", ID: id}); err != nil {
+					_ = transport.Close() // Notify the receive owner and cancel remaining work.
+					return
+				}
 				buffer := make([]byte, 32<<10)
 				for {
 					n, err := terminal.master.Read(buffer)
@@ -183,7 +211,7 @@ func RunWorker(ctx context.Context, options WorkerOptions) error {
 					}
 				}
 				exit := terminal.Wait()
-				transport.send(frame{Kind: "exit", ID: id, Exit: exit})
+				sendResponse(frame{Kind: "exit", ID: id, Exit: exit})
 				mu.Lock()
 				delete(terminals, id)
 				mu.Unlock()
@@ -196,21 +224,33 @@ func RunWorker(ctx context.Context, options WorkerOptions) error {
 			}
 			// PTY writes have a finite deadline so a stopped job cannot hold
 			// the shared reverse transport indefinitely.
-			terminal.master.SetWriteDeadline(time.Now().Add(time.Second))
+			if err := terminal.master.SetWriteDeadline(time.Now().Add(time.Second)); err != nil {
+				mu.Unlock()
+				return err
+			}
 			_, err := terminal.master.Write(request.Data)
 			if err != nil {
-				terminal.Close()
+				if closeErr := terminal.Close(); closeErr != nil {
+					mu.Unlock()
+					return errors.Join(err, closeErr)
+				}
 			}
 		case "resize":
 			if terminal := terminals[request.ID]; terminal != nil {
-				terminal.Resize(request.Rows, request.Columns)
+				if err := terminal.Resize(request.Rows, request.Columns); err != nil {
+					mu.Unlock()
+					return err
+				}
 			}
 		case "close":
 			if cancelJob := jobs[request.ID]; cancelJob != nil {
 				cancelJob()
 			}
 			if terminal := terminals[request.ID]; terminal != nil {
-				terminal.Close()
+				if closeErr := terminal.Close(); closeErr != nil {
+					mu.Unlock()
+					return closeErr
+				}
 			}
 		default:
 			mu.Unlock()

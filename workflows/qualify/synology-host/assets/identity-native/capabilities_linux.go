@@ -36,6 +36,7 @@ func prepareCapabilities(inherited bool) (hostidentity.Status, error) {
 	// through ambient propagation. Remove inheritable/ambient sets immediately.
 	header := struct{ Version, PID uint32 }{Version: 0x20080522}
 	data := [2]struct{ Effective, Permitted, Inheritable uint32 }{{Effective: 0xc0, Permitted: 0xc0}}
+	// #nosec G103 -- Fixed Linux capability structs are kept alive across the synchronous all-thread syscall.
 	_, _, errno := syscall.AllThreadsSyscall(syscall.SYS_CAPSET, uintptr(unsafe.Pointer(&header)), uintptr(unsafe.Pointer(&data)), 0)
 	runtime.KeepAlive(header)
 	runtime.KeepAlive(data)

@@ -1,6 +1,13 @@
 package hostcmd
 
-import "testing"
+import (
+	"context"
+	"errors"
+	"path/filepath"
+	"testing"
+
+	"dockpipe/src/lib/infrastructure/nativehost"
+)
 
 func TestParseHostBoundary(t *testing.T) {
 	for _, args := range [][]string{
@@ -39,5 +46,26 @@ func TestParseDockerQuery(t *testing.T) {
 		if _, err := parse(args); err == nil {
 			t.Fatalf("accepted %v", args)
 		}
+	}
+}
+
+type failingStatusWriter struct {
+	err error
+}
+
+func (w failingStatusWriter) Write([]byte) (int, error) {
+	return 0, w.err
+}
+
+func TestUnavailableResponsesPreserveOutputFailure(t *testing.T) {
+	writeErr := errors.New("output unavailable")
+	for _, command := range []string{"status", "docker", "docker-query"} {
+		t.Run(command, func(t *testing.T) {
+			options := arguments{command: command, connection: filepath.Join(t.TempDir(), "missing.json")}
+			err := run(context.Background(), options, failingStatusWriter{err: writeErr})
+			if !errors.Is(err, writeErr) || !errors.Is(err, nativehost.ErrUnavailable) {
+				t.Fatalf("run error = %v, want output and native-host failures", err)
+			}
+		})
 	}
 }
