@@ -20,7 +20,6 @@ import (
 )
 
 const operatorProofHeader = "X-Dockpipe-Operator-Proof"
-const operatorAbsoluteLifetime = time.Hour
 
 type SecurityCapabilities struct {
 	Idle       bool `json:"idle"`
@@ -33,7 +32,6 @@ type SecurityStatus struct {
 	AuthorityAvailable bool                 `json:"authority_available"`
 	Supported          bool                 `json:"supported"`
 	Locked             bool                 `json:"locked"`
-	AbsoluteSeconds    int                  `json:"absolute_seconds"`
 	ExpiresAt          time.Time            `json:"expires_at,omitempty"`
 	Capabilities       SecurityCapabilities `json:"capabilities"`
 	Detail             string               `json:"detail"`
@@ -216,7 +214,7 @@ func (authority *SecurityAuthority) checkLocked() error {
 		deadline = authority.expiresAt
 	}
 	if !securityBefore(now, deadline) {
-		authority.locked("Remote access auto-locked after inactivity or its one-hour maximum lifetime.")
+		authority.locked("Remote access auto-locked after inactivity or its configured maximum lifetime.")
 		return errors.New(authority.detail)
 	}
 	return nil
@@ -308,7 +306,7 @@ func (authority *SecurityAuthority) Unlock(ctx context.Context, pid int) error {
 	authority.identity = &remoteidentity.Identity{PublicKey: identity.PublicKey, PrivateKey: append([]byte(nil), identity.PrivateKey...)}
 	authority.session = session
 	authority.unlockedAt = authority.now()
-	authority.expiresAt = authority.unlockedAt.Add(operatorAbsoluteLifetime)
+	authority.expiresAt = authority.unlockedAt.Add(time.Duration(authority.policy.AbsoluteSeconds) * time.Second)
 	clear(authority.nonces)
 	if err := authority.checkLocked(); err != nil {
 		return err
@@ -374,7 +372,7 @@ func (authority *SecurityAuthority) Status() SecurityStatus {
 		detail += " Required OS lock/sleep integration is unavailable; remote access cannot unlock with the current policy."
 	}
 	return SecurityStatus{RemoteSecurityPolicy: authority.policy, AuthorityAvailable: true, Supported: supported,
-		Locked: authority.identity == nil, AbsoluteSeconds: int(operatorAbsoluteLifetime.Seconds()),
+		Locked:    authority.identity == nil,
 		ExpiresAt: authority.expiresAt, Detail: detail,
 		Capabilities: SecurityCapabilities{Idle: authority.snapshot.IdleKnown, ScreenLock: authority.snapshot.LockKnown, Sleep: authority.snapshot.SleepKnown}}
 }

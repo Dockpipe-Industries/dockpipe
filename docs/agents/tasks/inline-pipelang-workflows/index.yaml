@@ -1,0 +1,24 @@
+schema: 1
+id: TASK-055
+topic: Inline typed PipeLang expressions and functions in workflow YAML
+entrypoint: overview.md
+dispatch:
+  readiness: deferred
+  ownership: unclaimed
+routes:
+  orientation:
+    read: [overview.md]
+  architecture:
+    read: [architecture-findings.md, ../../workflows/yaml-workflows.md, ../../core/architecture.md]
+  design:
+    read: [overview.md, architecture-findings.md]
+documents:
+- path: overview.md
+  role: deferred proposed syntax, compilation, typed values, dataflow, security, artifacts and acceptance gates
+- path: architecture-findings.md
+  role: verified owning source contracts, integration gaps and execution-format assessment
+maintenance:
+- Resolve document paths relative to this index.
+- Keep dispatch metadata synchronized with docs/agents/task-index.yaml.
+- Recheck owner contracts before implementation; source observations are not installed-release guarantees.
+- This design does not establish supported syntax, select dependencies or authorize implementation.

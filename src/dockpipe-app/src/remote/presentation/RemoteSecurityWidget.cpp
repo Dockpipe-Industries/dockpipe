@@ -79,9 +79,14 @@ RemoteSecurityWidget::RemoteSecurityWidget(QWidget *parent)
     auto *form = new QFormLayout;
     m_idleSeconds = new QSpinBox;
     m_idleSeconds->setObjectName(QStringLiteral("remoteSecurityIdleSeconds"));
-    m_idleSeconds->setRange(60, 3600);
+    m_idleSeconds->setRange(60, 43200);
     m_idleSeconds->setSuffix(tr(" seconds"));
     form->addRow(tr("Lock after idle"), m_idleSeconds);
+    m_absoluteSeconds = new QSpinBox;
+    m_absoluteSeconds->setObjectName(QStringLiteral("remoteSecurityAbsoluteSeconds"));
+    m_absoluteSeconds->setRange(60, 43200);
+    m_absoluteSeconds->setSuffix(tr(" seconds"));
+    form->addRow(tr("Require authentication after"), m_absoluteSeconds);
     policyLayout->addLayout(form);
 
     m_lockOnScreenLock = new QCheckBox(tr("Lock when the screen locks"));
@@ -184,7 +189,6 @@ void RemoteSecurityWidget::applyStatus(const QJsonObject &status)
         && status.value(QStringLiteral("lock_on_screen_lock")).isBool()
         && status.value(QStringLiteral("lock_on_sleep")).isBool()
         && status.value(QStringLiteral("absolute_seconds")).isDouble()
-        && status.value(QStringLiteral("absolute_seconds")).toInt() == 3600
         && status.value(QStringLiteral("expires_at")).isString()
         && status.value(QStringLiteral("capabilities")).isObject();
     if (!m_hasStatus) {
@@ -214,15 +218,25 @@ void RemoteSecurityWidget::applyStatus(const QJsonObject &status)
     }
 
     const int idleSeconds = status.value(QStringLiteral("idle_seconds")).toInt();
-    if (idleSeconds < 60 || idleSeconds > 3600) {
+    if (idleSeconds < 60 || idleSeconds > 43200
+        || status.value(QStringLiteral("idle_seconds")).toDouble() != idleSeconds) {
         setUnavailable(tr("Dockpipe returned an out-of-range idle lock policy."));
         return;
     }
 
+    const int absoluteSeconds = status.value(QStringLiteral("absolute_seconds")).toInt();
+    if (absoluteSeconds < 60 || absoluteSeconds > 43200
+        || status.value(QStringLiteral("absolute_seconds")).toDouble() != absoluteSeconds) {
+        setUnavailable(tr("Dockpipe returned an out-of-range authorization duration policy."));
+        return;
+    }
+
     const QSignalBlocker idleBlocker(m_idleSeconds);
+    const QSignalBlocker absoluteBlocker(m_absoluteSeconds);
     const QSignalBlocker screenBlocker(m_lockOnScreenLock);
     const QSignalBlocker sleepBlocker(m_lockOnSleep);
     m_idleSeconds->setValue(idleSeconds);
+    m_absoluteSeconds->setValue(absoluteSeconds);
     m_lockOnScreenLock->setChecked(status.value(QStringLiteral("lock_on_screen_lock")).toBool());
     m_lockOnSleep->setChecked(status.value(QStringLiteral("lock_on_sleep")).toBool());
 
@@ -244,6 +258,7 @@ void RemoteSecurityWidget::applyStatus(const QJsonObject &status)
         : tr("Idle lock: native idle detection unavailable; conservative duration cap applies.");
     m_capabilities->setText(QStringList{
         idleCapability,
+        tr("Authentication required after %1 seconds.").arg(absoluteSeconds),
         capabilityText(tr("Screen lock"), m_screenLockSupported,
                        m_screenLockSupported
                            ? (m_lockOnScreenLock->isChecked() ? tr("enabled") : tr("disabled"))
@@ -259,6 +274,7 @@ void RemoteSecurityWidget::applyStatus(const QJsonObject &status)
     // Keep policy editable when native event sources are missing so the shared
     // values can still be set; idle enforcement falls back to the duration cap.
     m_idleSeconds->setEnabled(m_authorityAvailable);
+    m_absoluteSeconds->setEnabled(m_authorityAvailable);
     m_lockOnScreenLock->setEnabled(m_authorityAvailable);
     m_lockOnSleep->setEnabled(m_authorityAvailable);
     updateActions();
@@ -280,6 +296,7 @@ void RemoteSecurityWidget::setUnavailable(const QString &detail, bool locked)
     }.join(QStringLiteral("\n")));
     showDetail(detail);
     m_idleSeconds->setEnabled(false);
+    m_absoluteSeconds->setEnabled(false);
     m_lockOnScreenLock->setEnabled(false);
     m_lockOnSleep->setEnabled(false);
     updateActions();
@@ -341,6 +358,7 @@ void RemoteSecurityWidget::savePolicy()
     };
     run({QStringLiteral("security-policy"),
          QStringLiteral("--idle-seconds"), QString::number(m_idleSeconds->value()),
+         QStringLiteral("--absolute-seconds"), QString::number(m_absoluteSeconds->value()),
          booleanArgument(QStringLiteral("--lock-on-screen-lock"), m_lockOnScreenLock->isChecked()),
          booleanArgument(QStringLiteral("--lock-on-sleep"), m_lockOnSleep->isChecked())},
         150000, true, [this](bool succeeded, const QByteArray &output) {
