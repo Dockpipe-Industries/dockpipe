@@ -17,9 +17,7 @@ import (
 
 func startTestBroker(t *testing.T) (*Broker, *Client, func(Grant)) {
 	t.Helper()
-	if os.Getuid() == 0 {
-		t.Skip("native worker deliberately rejects root")
-	}
+	requireTestWorkerIdentity(t)
 	directory, err := os.MkdirTemp("", "nh-")
 	if err != nil {
 		t.Fatal(err)
@@ -156,10 +154,7 @@ func TestSnapshotCancellationReachesWorker(t *testing.T) {
 	if err := broker.ExpectWorker(uint32(os.Getuid()), uint32(os.Getgid()), nonce, time.Now().Add(time.Minute)); err != nil {
 		t.Fatal(err)
 	}
-	identity, err := workerIdentity()
-	if err != nil {
-		t.Fatal(err)
-	}
+	identity := requireTestWorkerIdentity(t)
 	connection, err := net.Dial("unix", broker.options.WorkerSocket)
 	if err != nil {
 		t.Fatal(err)
@@ -196,10 +191,7 @@ func TestBrokerRejectsForgedWorkerAndClient(t *testing.T) {
 	if err := broker.ExpectWorker(uint32(os.Getuid()), uint32(os.Getgid()), nonce, time.Now().Add(time.Minute)); err != nil {
 		t.Fatal(err)
 	}
-	identity, err := workerIdentity()
-	if err != nil {
-		t.Fatal(err)
-	}
+	identity := requireTestWorkerIdentity(t)
 	for _, forged := range []frame{
 		{Kind: "worker", Nonce: strings.Repeat("e", 64), Status: &identity},
 		{Kind: "worker", Nonce: nonce, Status: &Status{UID: 1, GID: 1, Node: "forged", Username: "forged"}},

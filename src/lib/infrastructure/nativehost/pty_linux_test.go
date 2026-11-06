@@ -10,13 +10,7 @@ import (
 )
 
 func TestPTYRetainsExitedLeaderUntilSessionCleanup(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("native worker deliberately rejects root")
-	}
-	identity, err := workerIdentity()
-	if err != nil {
-		t.Fatal(err)
-	}
+	identity := requireTestWorkerIdentity(t)
 	first, err := startPTY(identity, frame{})
 	if err != nil {
 		t.Fatal(err)

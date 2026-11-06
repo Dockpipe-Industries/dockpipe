@@ -29,7 +29,18 @@ func TestNativeServerRealBrokerWorkerLifecycle(t *testing.T) {
 	}
 	accountRecord, err := user.LookupId(strconv.Itoa(os.Getuid()))
 	if err != nil {
-		t.Fatal(err)
+		var unknown user.UnknownUserIdError
+		if !errors.As(err, &unknown) {
+			t.Fatal(err)
+		}
+		workerErr := nativehost.RunWorker(context.Background(), nativehost.WorkerOptions{
+			Socket: "/tmp/native-host-unadmitted-service-worker.sock",
+			Nonce:  strings.Repeat("a", 64),
+		})
+		if workerErr == nil || workerErr.Error() != "native host worker account unavailable" {
+			t.Fatalf("nameless UID worker admission = %v", workerErr)
+		}
+		t.Skip("real worker lifecycle requires an ordinary UID with an actual account; nameless UID rejection verified")
 	}
 	groups, err := os.Getgroups()
 	if err != nil {

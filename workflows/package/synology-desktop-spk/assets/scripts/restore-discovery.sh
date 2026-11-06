@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # Discover retained Dockpipe state from standard DSM FHS metadata only.
 # The caller supplies the filesystem root; packaged callers always use /.
 
