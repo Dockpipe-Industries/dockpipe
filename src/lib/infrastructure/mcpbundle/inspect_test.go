@@ -2,6 +2,7 @@ package mcpbundle
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -9,6 +10,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -97,5 +99,31 @@ func TestUnsupportedLaunchConfiguration(t *testing.T) {
 		if _, err := Inspect(context.Background(), file, sum, "linux", "amd64"); err == nil {
 			t.Fatalf("unsupported configuration %d accepted", i)
 		}
+	}
+}
+
+func TestArchiveHashRejectsGrowthWithinDeclaredReadBudget(t *testing.T) {
+	// Model a file with a 64-byte Stat result that grows while its content is
+	// read. Only 65 bytes may be consumed, even if the reader keeps producing.
+	source := strings.NewReader(strings.Repeat("x", 4096))
+	if _, err := archiveHash(context.Background(), source, 64); err == nil {
+		t.Fatal("growing archive accepted")
+	}
+	if consumed := source.Size() - int64(source.Len()); consumed != 65 {
+		t.Fatalf("hash read exceeded declared size plus one: %d", consumed)
+	}
+	if _, err := archiveHash(context.Background(), strings.NewReader("short"), 64); err == nil {
+		t.Fatal("shrinking archive accepted")
+	}
+	content := []byte("stable archive")
+	actual, err := archiveHash(context.Background(), bytes.NewReader(content), int64(len(content)))
+	expected := sha256.Sum256(content)
+	if err != nil || !bytes.Equal(actual, expected[:]) {
+		t.Fatalf("stable archive hash changed: %v", err)
+	}
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := archiveHash(cancelled, bytes.NewReader(content), int64(len(content))); err == nil {
+		t.Fatal("cancelled hash succeeded")
 	}
 }

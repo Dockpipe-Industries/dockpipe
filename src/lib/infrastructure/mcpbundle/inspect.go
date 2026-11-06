@@ -88,14 +88,14 @@ func InspectConfigured(ctx context.Context, filename, expected, platform, arch s
 	if !stat.Mode().IsRegular() || stat.Size() > MaxArchiveBytes {
 		return result, fmt.Errorf("MCPB must be a regular archive within 512 MiB")
 	}
-	hash := sha256.New()
-	if _, err := copyContext(ctx, hash, file); err != nil {
+	actual, err := archiveHash(ctx, file, stat.Size())
+	if err != nil {
 		return result, err
 	}
-	if !bytes.Equal(hash.Sum(nil), digest) {
+	if !bytes.Equal(actual, digest) {
 		return result, fmt.Errorf("MCPB checksum mismatch")
 	}
-	bundle, err := zip.NewReader(file, stat.Size())
+	bundle, err := openBoundedZIP(ctx, file, stat.Size())
 	if err != nil {
 		return result, err
 	}
@@ -210,6 +210,23 @@ func InspectConfigured(ctx context.Context, filename, expected, platform, arch s
 		}
 	}
 	return Inspection{Schema: "dockpipe.mcpb.inspection/v1", SHA256: strings.ToLower(expected), Name: document.Name, Version: document.Version, Platform: platform, Architecture: arch, EntryPoint: command.EntryPoint, Arguments: arguments, Files: len(bundle.File), ExpandedBytes: total, WorkspaceRoot: workspaceRoot, ConfigurationDigest: configurationDigest}, nil
+}
+
+// The size observed on the opened regular file bounds hashing as well as ZIP
+// parsing. A file that grows after Stat is rejected after one additional byte.
+func archiveHash(ctx context.Context, reader io.Reader, declaredSize int64) ([]byte, error) {
+	if declaredSize < 0 || declaredSize > MaxArchiveBytes {
+		return nil, fmt.Errorf("MCPB exceeds archive budget")
+	}
+	hash := sha256.New()
+	size, err := copyContext(ctx, hash, io.LimitReader(reader, declaredSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if size != declaredSize {
+		return nil, fmt.Errorf("MCPB archive size changed while reading")
+	}
+	return hash.Sum(nil), nil
 }
 
 func safePath(name string) bool {

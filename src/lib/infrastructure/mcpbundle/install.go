@@ -1,7 +1,6 @@
 package mcpbundle
 
 import (
-	"archive/zip"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -87,11 +86,19 @@ func InstallConfigured(ctx context.Context, filename, expected, platform, arch, 
 	if err := root.Mkdir(payload, 0o700); err != nil {
 		return result, err
 	}
-	archive, err := zip.OpenReader(snapshotPath)
+	archiveFile, err := openRegular(snapshotPath)
 	if err != nil {
 		return result, err
 	}
-	defer archive.Close()
+	defer archiveFile.Close()
+	archiveInfo, err := archiveFile.Stat()
+	if err != nil {
+		return result, err
+	}
+	archive, err := openBoundedZIP(ctx, archiveFile, archiveInfo.Size())
+	if err != nil {
+		return result, err
+	}
 	for _, member := range archive.File {
 		if err := ctx.Err(); err != nil {
 			return result, err
@@ -134,7 +141,7 @@ func InstallConfigured(ctx context.Context, filename, expected, platform, arch, 
 			return result, fmt.Errorf("MCPB expansion changed")
 		}
 	}
-	if err := archive.Close(); err != nil {
+	if err := archiveFile.Close(); err != nil {
 		return result, err
 	}
 	// Keep original digest-verified archive beside the payload for independent

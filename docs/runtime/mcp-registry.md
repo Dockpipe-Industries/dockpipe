@@ -315,6 +315,12 @@ and toolchain were retained. The project schema and editor mirror now include th
 same MCP property schema. Verification no longer depends on deleted authored
 workflow embedding. Archive and binding-file inputs reject special files before
 reading, with nonblocking FIFO, cancellation and size-limit regression tests.
+Hashing consumes no more than the opened file's declared size plus one byte and
+rejects growth or shrinkage. ZIP and ZIP64 central directories are checked against
+the 100,000-member limit before the standard library allocates file records.
+Validated directory/end metadata is frozen during parsing to prevent a changed
+source from bypassing those checks. This snapshot uses at most the existing
+512 MiB archive budget; parsing and snapshot reads observe cancellation.
 
 Linux amd64 with Go 1.26.10 passed the affected model/domain/registry/bundle,
 supervised-session, process and internal-import tests; focused CLI tests; race
