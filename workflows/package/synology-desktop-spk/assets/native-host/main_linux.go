@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -58,11 +59,11 @@ func serve(ctx context.Context) error {
 		return errors.New("native_broker_unavailable")
 	}
 	defer broker.Close()
-	username, err := readPrivate(packageRoot + "/home/desktop-settings/username")
+	username, err := readPrivate(filepath.Join(packageRoot, "home", "desktop-settings", "username"))
 	if err != nil {
 		return errors.New("stream_credentials_unavailable")
 	}
-	password, err := readPrivate(packageRoot + "/home/desktop-settings/password")
+	password, err := readPrivate(filepath.Join(packageRoot, "home", "desktop-settings", "password"))
 	if err != nil {
 		return errors.New("stream_credentials_unavailable")
 	}
