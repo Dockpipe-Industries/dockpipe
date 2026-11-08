@@ -2,6 +2,7 @@
 #include "TerminalHub.h"
 #include "CanvasIcons.h"
 #include <QDynamicPropertyChangeEvent>
+#include <QPointer>
 #include <QGridLayout>
 #include <QTextDocument>
 #include <QComboBox>
@@ -44,7 +45,7 @@ SendInputWidget::SendInputWidget(TerminalHub &hub, QWidget *parent)
     connect(shortcut, &QShortcut::activated, this, &SendInputWidget::send);
     connect(&m_hub, &TerminalHub::sessionsChanged, this, &SendInputWidget::refreshTargets);
     connect(m_targets, &QComboBox::currentIndexChanged, this, [this]() {
-        m_send->setEnabled(m_hub.running(m_targets->currentData().toString()));
+        m_send->setEnabled(!m_sendPending && m_hub.running(m_targets->currentData().toString()));
     });
     connect(m_input, &QPlainTextEdit::textChanged, this, [this]() {
         // Bound retained composer state too, not only the transport payload.
@@ -67,25 +68,61 @@ void SendInputWidget::refreshTargets()
     QSignalBlocker blocker(m_targets);
     m_targets->clear();
     m_targets->addItem(tr("Choose a terminal…"), QString());
-    for (const QString &id : m_hub.sessionIds()) {
+    for (const QString &id : m_hub.sessionIds(m_machineCatalog, m_machineRoot)) {
         if (m_hub.running(id))
             m_targets->addItem(m_hub.title(id), id);
     }
     m_targets->setCurrentIndex(qMax(0, m_targets->findData(selected)));
-    m_send->setEnabled(m_hub.running(m_targets->currentData().toString()));
+    m_send->setEnabled(!m_sendPending && m_hub.running(m_targets->currentData().toString()));
+}
+
+bool SendInputWidget::hasPendingInput() const
+{
+    return m_sendPending || !m_input->toPlainText().isEmpty();
+}
+
+bool SendInputWidget::setMachineContext(const QJsonObject &catalog, const QString &root, QString *error)
+{
+    if (error)
+        error->clear();
+    if (m_machineCatalog == catalog && m_machineRoot == root)
+        return true;
+    if (hasPendingInput()) {
+        if (error)
+            *error = tr("Choose a terminal. Input runs with that session's permissions.");
+        return false;
+    }
+    m_machineCatalog = catalog;
+    m_machineRoot = root;
+    m_targets->setCurrentIndex(0);
+    refreshTargets();
+    return true;
 }
 
 void SendInputWidget::send()
 {
-    if (m_input->toPlainText().isEmpty())
+    if (m_sendPending || m_input->toPlainText().isEmpty())
         return;
-    QString error;
-    if (!m_hub.send(m_targets->currentData().toString(), m_input->toPlainText(), &error)) {
-        showStatus(error);
-        return;
-    }
-    m_input->clear();
-    showStatus(tr("Sent to %1").arg(m_hub.title(m_targets->currentData().toString())));
+    const QString text = m_input->toPlainText();
+    const QString id = m_targets->currentData().toString();
+    m_sendPending = true;
+    m_send->setEnabled(false);
+    m_targets->setEnabled(false);
+    const QPointer<SendInputWidget> guard(this);
+    m_hub.sendAsync(id, text, [guard, text, id](bool accepted, const QString &error) {
+        if (!guard)
+            return;
+        guard->m_sendPending = false;
+        guard->m_targets->setEnabled(true);
+        guard->refreshTargets();
+        if (!accepted) {
+            guard->showStatus(error);
+            return;
+        }
+        if (guard->m_input->toPlainText() == text)
+            guard->m_input->clear();
+        guard->showStatus(tr("Sent to %1").arg(guard->m_hub.title(id)));
+    });
 }
 
 

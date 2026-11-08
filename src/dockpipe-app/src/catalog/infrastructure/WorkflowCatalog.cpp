@@ -226,6 +226,8 @@ WorkflowCatalogData WorkflowCatalog::discoverCatalog(const QString &hintWorkdir)
                     action.value("scope").toString(), action.value("workflow").toString(),
                     action.value("workflow_id").toString()});
                 auto &environment = resolver.surface.actions.last().launchEnvironment;
+                for (const auto &extension : action.value("file_extensions").toArray())
+                    resolver.surface.actions.last().fileExtensions.append(extension.toString());
                 const auto platforms = action.value("launch_environment").toObject();
                 for (auto platform = platforms.begin(); platform != platforms.end(); ++platform) {
                     const auto bindings = platform.value().toObject();

@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "WorkspaceMachineMenu.h"
 
 #include "DockpipeChoices.h"
 #include "WorkflowEditorWidget.h"
@@ -7,6 +8,7 @@
 #include "CanvasIcons.h"
 #include "CanvasPanel.h"
 #include "ActivityWidget.h"
+#include "ExecutionExplorer.h"
 #include "RemoteCommand.h"
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -34,16 +36,53 @@
 #include <QSplitter>
 #include <QStatusBar>
 #include <QTimer>
+#include <QTabBar>
+#include <QStackedWidget>
 #include <QVBoxLayout>
 
 void MainWindow::setupAdvancedPage(QWidget *page)
 {
+    page->setObjectName("workflowWorkspacePage");
+    page->setAttribute(Qt::WA_StyledBackground, true);
     auto *root = new QVBoxLayout(page);
     root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(0);
+    auto *header = new QHBoxLayout;
+    header->setContentsMargins(24, 12, 24, 8);
+    auto *title = new QLabel(tr("Workflows"));
+    title->setObjectName("workflowSectionTitle");
+    header->addWidget(title);
+    m_workflowSections = new QTabBar;
+    m_workflowSections->setObjectName("workflowSections");
+    m_workflowSections->setExpanding(false);
+    m_workflowSections->setDrawBase(false);
+    m_workflowSections->addTab(tr("Editor"));
+    m_workflowSections->addTab(tr("Running"));
+    m_workflowSections->addTab(tr("History"));
+    header->addWidget(m_workflowSections);
+    header->addStretch();
+    auto *runLogs = new QPushButton(tr("Logs && remote jobs"));
+    runLogs->setObjectName("workflowRunLogsButton");
+    runLogs->setIcon(CanvasIcons::icon(CanvasIcons::Symbol::Terminal));
+    header->addWidget(runLogs);
+    connect(runLogs, &QPushButton::clicked, this, [this]() { openWorkflowRunLogs(); });
+    root->addLayout(header);
+    m_workflowViews = new QStackedWidget;
+    m_workflowViews->setObjectName("workflowViews");
+    root->addWidget(m_workflowViews, 1);
     m_workflowEditor = new WorkflowEditorWidget(m_settings.projectFolder,
         DockpipeChoices::preferredDockpipeBinary(m_settings.projectFolder), page);
-    root->addWidget(m_workflowEditor);
+    m_workflowViews->addWidget(m_workflowEditor);
+    m_workflowRuns = new ExecutionExplorer;
+    m_workflowViews->addWidget(m_workflowRuns);
+    connect(m_workflowSections, &QTabBar::currentChanged, this, [this](int section) {
+        m_workflowRuns->setHistory(section == 2);
+        m_workflowRuns->setWorkdir(m_settings.projectFolder);
+        m_workflowViews->setCurrentIndex(section == 0 ? 0 : 1);
+        if (m_workspaceBar && m_stack->currentWidget() == m_advancedPage)
+            m_workspaceBar->setVisible(section > 0);
+        m_workflowRuns->setActive(section > 0 && m_advancedPage->isVisible());
+    });
     connect(m_workflowEditor, &WorkflowEditorWidget::browseRequested, this, &MainWindow::openWorkflowPicker);
     connect(m_workflowEditor, &WorkflowEditorWidget::documentChanged, this, [this](const QString &path) {
         m_canvasContext = Context{};
@@ -132,30 +171,7 @@ void MainWindow::setupAdvancedPage(QWidget *page)
     activity->setObjectName("workflowActivityButton");
     activity->setIcon(CanvasIcons::icon(CanvasIcons::Symbol::Workflow));
     bottom->addWidget(activity);
-    connect(activity, &QPushButton::clicked, this, [this]() {
-        if (!m_workflowActivityPanel) {
-            auto *panel = new CanvasPanel("workflowActivity", m_workflowEditor);
-            m_workflowActivityPanel = panel;
-            panel->setObjectName("workflowActivityPanel");
-            auto *layout = new QVBoxLayout(panel);
-            auto *header = new QWidget;
-            auto *row = new QHBoxLayout(header);
-            row->addWidget(new QLabel(tr("Workspace runs · Remote jobs includes all broker jobs")), 1);
-            auto *close = new QPushButton;
-            close->setIcon(CanvasIcons::icon(CanvasIcons::Symbol::Close));
-            close->setAccessibleName(tr("Close runs and logs"));
-            row->addWidget(close);
-            connect(close, &QPushButton::clicked, panel, &QWidget::hide);
-            panel->setDragHandle(header);
-            layout->addWidget(header);
-            m_workflowActivity = new ActivityWidget(m_sessions, m_store, panel);
-            m_workflowActivity->setWorkspaceFilter(true);
-            layout->addWidget(m_workflowActivity, 1);
-        }
-        m_workflowActivity->setWorkdir(m_settings.projectFolder);
-        m_workflowActivity->refreshLocal();
-        m_workflowEditor->setActivityPanel(m_workflowActivityPanel);
-    });
+    connect(activity, &QPushButton::clicked, this, [this]() { openWorkflowRunLogs(); });
     auto *shortcuts = new QPushButton;
     shortcuts->setIcon(CanvasIcons::icon(CanvasIcons::Symbol::Keyboard));
     shortcuts->setObjectName("workflowShortcuts");
@@ -215,6 +231,30 @@ void MainWindow::setupAdvancedPage(QWidget *page)
         }
     });
 
+}
+
+void MainWindow::openWorkflowRunLogs(bool remote)
+{
+    if (!m_workflowRunLogs) {
+        m_workflowRunLogs = new QDialog(this);
+        m_workflowRunLogs->setObjectName("workflowRunLogs");
+        m_workflowRunLogs->setWindowTitle(tr("Workflow logs & remote jobs"));
+        m_workflowRunLogs->resize(1050, 700);
+        auto *layout = new QVBoxLayout(m_workflowRunLogs);
+        auto *scope = new QLabel(tr("Local logs are scoped to this workspace. Remote jobs includes all broker jobs."));
+        scope->setWordWrap(true);
+        layout->addWidget(scope);
+        layout->addWidget(m_activityWidget);
+        m_activityWidget->show();
+        m_activityWidget->setWorkspaceFilter(true);
+    }
+    m_activityWidget->setWorkdir(m_settings.projectFolder);
+    m_activityWidget->refreshLocal();
+    if (remote)
+        m_activityWidget->showRemoteJobs();
+    m_workflowRunLogs->show();
+    m_workflowRunLogs->raise();
+    m_workflowRunLogs->activateWindow();
 }
 
 void MainWindow::setupWorkflowPicker()
@@ -348,8 +388,12 @@ void MainWindow::setupWorkflowPicker()
     connect(file, &QPushButton::clicked, this, [this]() {
         const QString path = QFileDialog::getOpenFileName(m_workflowPicker, tr("Open workflow"),
             m_settings.projectFolder, tr("Workflow YAML (*.yml *.yaml)"));
-        if (!path.isEmpty() && m_workflowEditor->openWorkflow(path))
-            m_workflowPicker->accept();
+        if (!path.isEmpty()) {
+            m_workflowEditor->openWorkflowAsync(path, [this](bool opened) {
+                if (opened)
+                    m_workflowPicker->accept();
+            });
+        }
     });
     connect(refresh, &QPushButton::clicked, this, &MainWindow::startWorkflowCatalogDiscovery);
     connect(cancel, &QPushButton::clicked, m_workflowPicker, &QDialog::reject);
@@ -388,8 +432,10 @@ void MainWindow::openPickedWorkflow()
             tr("This workflow does not expose its YAML source. Refresh the catalog or open a YAML file."));
         return;
     }
-    if (m_workflowEditor->openWorkflow(path))
-        m_workflowPicker->accept();
+    m_workflowEditor->openWorkflowAsync(path, [this](bool opened) {
+        if (opened)
+            m_workflowPicker->accept();
+    });
 }
 
 void MainWindow::setWorkflowConsoleVisible(bool visible)
@@ -405,36 +451,93 @@ Context *MainWindow::activeWorkflowContext()
     return m_canvasContext.workflowFile.isEmpty() ? nullptr : &m_canvasContext;
 }
 
-bool MainWindow::setWorkflowWorkspace(const QString &workdir)
+void MainWindow::setWorkflowWorkspaceAsync(const QString &workdir, std::function<void(bool)> completion)
 {
+    if (m_workspaceMachineMenu && !m_workspaceMachineMenu->currentTarget().isEmpty()) {
+        if (property("workspaceChangePending").toBool() || property("leaveConfirmationPending").toBool()) {
+            completion(false);
+            return;
+        }
+        // Workflow sources keep their local workspace. The shared remote target
+        // must not become a local Files/Git target when source projects change.
+        setProperty("workspaceChangePending", true);
+        m_workflowEditor->setWorkspaceAsync(workdir, DockpipeChoices::preferredDockpipeBinary(workdir),
+            [this, completion = std::move(completion)](bool accepted) {
+                setProperty("workspaceChangePending", false);
+                completion(accepted);
+            });
+        return;
+    }
+    if (property("workspaceChangePending").toBool() || property("leaveConfirmationPending").toBool()) {
+        completion(false);
+        return;
+    }
     if (m_projectGit && m_projectGit->busy()) {
         statusBar()->showMessage(tr("Wait for the Git action to finish, or cancel it in Git before changing projects."), 8000);
-        return false;
+        completion(false);
+        return;
     }
-    if (m_projectGit && !m_projectGit->confirmLeave())
-        return false;
-    if (m_projectFiles && !m_projectFiles->confirmLeave())
-        return false;
-    if (m_workflowEditor && !m_workflowEditor->setWorkspace(workdir, DockpipeChoices::preferredDockpipeBinary(workdir)))
-        return false;
-    if (m_projectFiles)
-        m_projectFiles->setRoot(workdir);
+    setProperty("workspaceChangePending", true);
+    const QPointer<MainWindow> guard(this);
+    auto filesFinished = [guard, workdir, completion = std::move(completion)](bool accepted) mutable {
+        if (!guard)
+            return;
+        if (!accepted) {
+            guard->setProperty("workspaceChangePending", false);
+            completion(false);
+            return;
+        }
+        auto workflowFinished = [guard, workdir, completion = std::move(completion)](bool accepted) mutable {
+            if (!guard)
+                return;
+            if (!accepted) {
+                guard->setProperty("workspaceChangePending", false);
+                completion(false);
+                return;
+            }
+            auto switched = [guard, workdir, completion = std::move(completion)](bool accepted) {
+                if (!guard)
+                    return;
+                if (accepted && guard->m_projectGit)
+                    guard->m_projectGit->setWorkdir(workdir);
+                guard->setProperty("workspaceChangePending", false);
+                completion(accepted);
+            };
+            if (guard->m_projectFiles)
+                guard->m_projectFiles->setRootAsync(workdir, std::move(switched));
+            else
+                switched(true);
+        };
+        if (guard->m_workflowEditor)
+            guard->m_workflowEditor->setWorkspaceAsync(workdir, DockpipeChoices::preferredDockpipeBinary(workdir),
+                                                      std::move(workflowFinished));
+        else
+            workflowFinished(true);
+    };
+    auto gitFinished = [guard, filesFinished = std::move(filesFinished)](bool accepted) mutable {
+        if (!guard)
+            return;
+        if (!accepted) {
+            filesFinished(false);
+            return;
+        }
+        if (guard->m_projectFiles)
+            guard->m_projectFiles->confirmLeaveAsync(std::move(filesFinished));
+        else
+            filesFinished(true);
+    };
     if (m_projectGit)
-        m_projectGit->setWorkdir(workdir);
-    return true;
+        m_projectGit->confirmLeaveAsync(std::move(gitFinished));
+    else
+        gitFinished(true);
 }
 
 void MainWindow::quitLauncher()
 {
-    if (m_projectGit && m_projectGit->busy()) {
-        statusBar()->showMessage(tr("Wait for the Git action to finish, or cancel it in Git before quitting."), 8000);
-        return;
-    }
-    if ((!m_projectGit || m_projectGit->confirmLeave())
-        && (!m_projectFiles || m_projectFiles->confirmLeave())
-        && (!m_workflowEditor || m_workflowEditor->confirmDiscardChanges())
-        && confirmDashboardClose())
-        qApp->quit();
+    confirmQuitAsync([](bool accepted) {
+        if (accepted)
+            qApp->quit();
+    });
 }
 
 void MainWindow::updateWorkflowPreview()

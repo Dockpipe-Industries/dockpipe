@@ -1,11 +1,14 @@
 #pragma once
 
+#include <QCoreApplication>
+
 #include <QComboBox>
 #include <QSignalBlocker>
 
 // Node discovery is owned by the existing Machines connection. Retain a missing
 // selection explicitly; never silently route a remote inspection to localhost.
 class MonitoringMachineSelector : public QComboBox {
+    Q_DECLARE_TR_FUNCTIONS(MonitoringMachineSelector)
 public:
     explicit MonitoringMachineSelector(QWidget *parent = nullptr) : QComboBox(parent)
     {

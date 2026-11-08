@@ -13,6 +13,7 @@ class QPushButton;
 class QWebEngineView;
 class QTimer;
 class QMenu;
+class QTabBar;
 
 class TerminalWidget final : public QWidget {
     Q_OBJECT
@@ -21,6 +22,8 @@ public:
     TerminalWidget(TerminalHub &hub, const QString &workdir, QWidget *parent = nullptr, Mode mode = Mode::Managed);
     ~TerminalWidget() override;
     void setWorkdir(const QString &workdir);
+    bool setMachineContext(const QJsonObject &catalog, const QString &root, QString *error = nullptr);
+    void updateMachineCatalog(const QJsonObject &catalog);
     QString sessionId() const { return m_sessionId; }
 
 public slots:
@@ -50,6 +53,7 @@ private:
     void scheduleOutput();
     void flushOutput();
     void startDashboardSession();
+    void startManagedSession();
     void showSettings();
     void showStatus(const QString &message, bool issue = true);
 
@@ -59,11 +63,16 @@ private:
     QString m_ownedSessionId;
     QStringList m_ownedSessionIds;
     bool m_dashboardStarted = false;
+    bool m_managedStarted = false;
     QAction *m_restart = nullptr;
     QString m_workdir;
+    QJsonObject m_machineCatalog;
+    QString m_machineRoot;
     QString m_sessionId;
     QComboBox *m_sessions;
     QComboBox *m_shells;
+    QTabBar *m_tabs;
+    QWidget *m_empty;
     QMenu *m_shellMenu = nullptr;
     QPushButton *m_close;
     QLabel *m_status;

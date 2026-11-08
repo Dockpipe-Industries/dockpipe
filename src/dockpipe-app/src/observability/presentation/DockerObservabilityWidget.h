@@ -5,8 +5,12 @@
 #include <QJsonArray>
 #include "ResourceCanvas.h"
 #include "RemoteCommand.h"
+#include "RemoteFeatureClient.h"
 
 class QLabel;
+class QComboBox;
+class QResizeEvent;
+class QStackedWidget;
 class DockerResourceInspector;
 class QDialog;
 class QLineEdit;
@@ -22,7 +26,10 @@ class DockerObservabilityWidget : public QWidget {
     Q_OBJECT
 public:
     explicit DockerObservabilityWidget(QWidget *parent = nullptr);
+    ~DockerObservabilityWidget() override;
     void setNodes(const QStringList &nodes);
+    bool controlPending() const { return m_containerActionBusy; }
+    bool setFeatureTarget(const QJsonObject &target, bool canControl, QString *error = nullptr);
 
 public slots:
     void refresh();
@@ -30,6 +37,8 @@ public slots:
 
 protected:
     void showEvent(QShowEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
 
 private slots:
     void onContainersSelectionChanged();
@@ -41,10 +50,24 @@ private slots:
     void onStopSelectedContainer();
 
 private:
+    friend class DockerRemoteFeatureTest;
+    bool isRemoteTarget() const;
+    QString targetNode() const;
+    bool canControlTarget() const;
+    void cancelFeatureRead();
+    void refreshFeatureSnapshot();
+    void runRemoteContainerAction(const QString &action, const QString &id, const QString &name);
     void changeMachine();
     void refreshRemote(bool allowAuthentication = false);
     void applyRemoteSnapshot(const QJsonObject &snapshot);
     MonitoringMachineSelector *m_machine = nullptr;
+    QLabel *m_machineLabel = nullptr;
+    bool m_featureMode = false;
+    bool m_featureCanControl = false;
+    QJsonObject m_featureTarget;
+    RemoteFeatureClient::Cancel m_cancelFeatureRead;
+    bool m_featureReadBusy = false;
+    quint64 m_featureReadGeneration = 0;
     RemoteCommand m_remoteCommand;
     quint64 m_generation = 0;
     quint64 m_localRefreshGeneration = 0;
@@ -105,12 +128,24 @@ private:
     };
 
     void buildUi();
+    QWidget *buildListDashboard();
+    void updateDashboardLayout();
+    void updateListResults();
+    void setDashboardView(bool dashboard);
     void selectResource(const QString &key);
     void updateInspector();
     void openExec(const QString &shell);
     void runContainerAction(const QString &action);
     DockerResourceInspector *m_inspector = nullptr;
     QDialog *m_inventory = nullptr;
+    QStackedWidget *m_views = nullptr;
+    QWidget *m_dashboard = nullptr;
+    QWidget *m_dashboardScroll = nullptr;
+    QSplitter *m_dashboardSplitter = nullptr;
+    QWidget *m_canvasInspectorHost = nullptr;
+    QWidget *m_listMonitoringHost = nullptr;
+    QWidget *m_listInventoryHost = nullptr;
+    bool m_dashboardView = false;
     QString m_selectedResource;
     DockerSnapshot m_snapshot;
     bool m_monitorPaused = false;
@@ -147,6 +182,10 @@ private:
 
     QLabel *m_status = nullptr;
     QLabel *m_containerCount = nullptr;
+    QLabel *m_runningCount = nullptr;
+    QLabel *m_listResults = nullptr;
+    QLabel *m_listEmptyState = nullptr;
+    QComboBox *m_stateFilter = nullptr;
     QLabel *m_networkCount = nullptr;
     QLabel *m_volumeCount = nullptr;
     QLineEdit *m_search = nullptr;

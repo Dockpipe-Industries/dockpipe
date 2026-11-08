@@ -26,6 +26,7 @@ mkdir -p "$app/Contents/Helpers" "$resources" "$work/DockPipe.iconset"
 cp -R "$root/workflows/build/desktop/assets/licenses" "$resources/"
 cp "$root/LICENSE" "$resources/licenses/DockPipe-LICENSE.txt"
 install -m 755 "$(dirname "$app")/dockpipe-workspace-reader" "$app/Contents/MacOS/dockpipe-workspace-reader"
+install -m 755 "$(dirname "$app")/dockpipe-terminal-host" "$app/Contents/MacOS/dockpipe-terminal-host"
 python3 "$root/workflows/dependencies/browser-sdk/assets/scripts/browser-runtime.py" --sdk "$browser_sdk" --platform "darwin-$arch" \
   --runtime "$app/Contents/Frameworks" --licenses "$resources/licenses/SpatialWebBrowser"
 install -m 755 "$root/src/bin/dockpipe" "$app/Contents/Helpers/dockpipe"
@@ -71,6 +72,7 @@ fi
 codesign "${sign_args[@]}" --identifier com.dockpipe.cli "$app/Contents/Helpers/dockpipe"
 codesign "${sign_args[@]}" --identifier com.dockpipe.system-auth "$app/Contents/Helpers/dockpipe-system-auth"
 codesign "${sign_args[@]}" --identifier com.dockpipe.workspace-reader "$app/Contents/MacOS/dockpipe-workspace-reader"
+codesign "${sign_args[@]}" --identifier com.dockpipe.terminal-host "$app/Contents/MacOS/dockpipe-terminal-host"
 codesign "${sign_args[@]}" \
   --entitlements "$webengine_helper/Contents/Resources/QtWebEngineProcess.entitlements" \
   "$webengine_helper"

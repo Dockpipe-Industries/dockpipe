@@ -3,6 +3,7 @@ package remote
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -36,6 +37,31 @@ func RunWorker(ctx context.Context, root, executable string, config contract.Wor
 		return err
 	}
 	defer client.HTTP.CloseIdleConnections()
+	if config.Features && client.Identity == nil {
+		return errors.New("remote features require paired worker and broker machine identities")
+	}
+	if config.Features {
+		instance, err := Secret()
+		if err != nil {
+			return err
+		}
+		featureContext, stopFeatures := context.WithCancel(ctx)
+		featuresDone := make(chan struct{})
+		go func() {
+			defer close(featuresDone)
+			if err := runFeatureWorkerWithInstance(featureContext, root, config, client, instance); err != nil && featureContext.Err() == nil {
+				fmt.Fprintln(os.Stderr, "Remote features stopped; inspect the worker's feature journal and local configuration:", err)
+			}
+		}()
+		terminalsDone := make(chan struct{})
+		go func() {
+			defer close(terminalsDone)
+			if err := runTerminalWorker(featureContext, root, config, client, instance); err != nil && featureContext.Err() == nil {
+				fmt.Fprintln(os.Stderr, "Remote terminal service stopped; inspect worker configuration and session cleanup.")
+			}
+		}()
+		defer func() { stopFeatures(); <-featuresDone; <-terminalsDone }()
+	}
 	monitorContext, stopMonitoring := context.WithCancel(ctx)
 	monitorDone := make(chan struct{})
 	go func() {

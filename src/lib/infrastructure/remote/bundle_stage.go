@@ -14,7 +14,7 @@ import (
 )
 
 func ValidateWorkerAuthority(config contract.WorkerConfig) error {
-	if config.Delivery == nil || len(config.Profiles) > 0 {
+	if config.Delivery == nil && !config.Features || len(config.Profiles) > 0 {
 		if err := ValidateProfiles(config.Profiles); err != nil {
 			return err
 		}

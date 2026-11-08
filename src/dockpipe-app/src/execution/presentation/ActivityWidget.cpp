@@ -237,6 +237,12 @@ void ActivityWidget::setWorkdir(const QString &workdir)
     m_workdir = workdir;
 }
 
+void ActivityWidget::showRemoteJob(const QString &jobId)
+{
+    m_requestedJob = jobId;
+    showRemoteJobs();
+}
+
 void ActivityWidget::showRemoteJobs()
 {
     if (m_location->currentIndex() == 1)
@@ -365,7 +371,9 @@ void ActivityWidget::loadRemoteJobs(bool allowAuthentication)
         updateRunControls();
         if (!ok)
             return;
-        const QString selected = selectedJob();
+        const bool selectingRequestedJob = !m_requestedJob.isEmpty();
+        const QString selected = selectingRequestedJob ? m_requestedJob : selectedJob();
+        bool selectedFound = false;
         const auto jobs = QJsonDocument::fromJson(data).array();
         m_jobs->blockSignals(true);
         m_jobs->setRowCount(0);
@@ -376,9 +384,14 @@ void ActivityWidget::loadRemoteJobs(bool allowAuthentication)
             m_jobs->setItem(row, 0, new QTableWidgetItem(job.value("id").toString()));
             m_jobs->setItem(row, 1, new QTableWidgetItem(job.value("node").toString()));
             m_jobs->setItem(row, 2, new QTableWidgetItem(job.value("status").toString()));
-            if (job.value("id").toString() == selected)
+            if (job.value("id").toString() == selected) {
                 m_jobs->selectRow(row);
+                selectedFound = true;
+            }
         }
+        m_requestedJob.clear();
+        if (selectingRequestedJob && !selectedFound)
+            m_status->setText(tr("This job is no longer available in the broker’s job list."));
         m_jobs->blockSignals(false);
         updateRunControls();
     }, allowAuthentication);

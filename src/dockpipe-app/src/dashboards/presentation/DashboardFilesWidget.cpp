@@ -2,10 +2,10 @@
 #include "FileExplorerView.h"
 #include "FileExplorerIcons.h"
 #include "CanvasIcons.h"
+#include "WorkspaceFileModel.h"
+#include "DashboardFilesController.h"
 
 #include <QDir>
-#include <QFileInfo>
-#include <QFileSystemModel>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
@@ -15,69 +15,29 @@
 #include <QTreeView>
 #include <QVBoxLayout>
 
-namespace {
-bool within(const QString &root, const QString &path)
-{
-    if (root.isEmpty() || path.isEmpty())
-        return false;
-#ifdef Q_OS_WIN
-    constexpr auto sensitivity = Qt::CaseInsensitive;
-#else
-    constexpr auto sensitivity = Qt::CaseSensitive;
-#endif
-    const QString prefix = root.endsWith('/') ? root : root + '/';
-    return path.compare(root, sensitivity) == 0 || path.startsWith(prefix, sensitivity);
-}
-
-bool validPath(const QString &path)
-{
-    return !path.isEmpty() && path.size() <= 4096 && !path.contains(QChar::Null);
-}
-}
-
-// Filter at the model boundary as well as navigation: expanding an outside
-// symlink must not expose its children inside a project-scoped tree.
+// The core has already established entry kinds and scope. Presentation only
+// sorts directory rows and renders icons from names, without inspecting paths.
 class DashboardFilesFilter final : public QSortFilterProxyModel {
 public:
     using QSortFilterProxyModel::QSortFilterProxyModel;
-    void setContext(bool system, const QString &root)
+
+    QVariant data(const QModelIndex &index, int role) const override
     {
-        m_system = system;
-        m_root = root;
-        invalidateFilter();
+        if (role == Qt::DecorationRole)
+            return FileExplorerIcons::instance().iconForEntry(index.data(Qt::DisplayRole).toString(),
+                index.data(WorkspaceFileModel::DirectoryRole).toBool());
+        return QSortFilterProxyModel::data(index, role);
     }
 
 protected:
     bool lessThan(const QModelIndex &left, const QModelIndex &right) const override
     {
-        const auto *files = qobject_cast<QFileSystemModel *>(sourceModel());
-        const bool leftDirectory = files->isDir(left);
-        const bool rightDirectory = files->isDir(right);
+        const bool leftDirectory = left.data(WorkspaceFileModel::DirectoryRole).toBool();
+        const bool rightDirectory = right.data(WorkspaceFileModel::DirectoryRole).toBool();
         if (leftDirectory != rightDirectory)
             return leftDirectory;
         return QSortFilterProxyModel::lessThan(left, right);
     }
-
-    bool filterAcceptsRow(int row, const QModelIndex &parent) const override
-    {
-        if (m_system)
-            return true;
-        if (m_root.isEmpty())
-            return false;
-        const auto *files = qobject_cast<QFileSystemModel *>(sourceModel());
-        const QString path = files->filePath(files->index(row, 0, parent));
-        const QFileInfo entry(path);
-        const QString canonical = entry.canonicalFilePath();
-        if (within(m_root, canonical))
-            return true;
-        // Source-model ancestors are needed to map the selected root index.
-        // A symlink inside the project pointing to an ancestor is not admitted.
-        return QDir::cleanPath(path) == canonical && within(canonical, m_root);
-    }
-
-private:
-    bool m_system = false;
-    QString m_root;
 };
 
 DashboardFilesWidget::DashboardFilesWidget(QWidget *parent) : QWidget(parent)
@@ -118,11 +78,7 @@ DashboardFilesWidget::DashboardFilesWidget(QWidget *parent) : QWidget(parent)
     }
     m_up->setToolTip(tr("Up one folder"));
     m_filesystem->setToolTip(tr("Browse the filesystem and drives"));
-    m_model = new QFileSystemModel(this);
-    m_model->setReadOnly(true);
-    m_model->setIconProvider(&FileExplorerIcons::instance());
-    m_model->setOption(QFileSystemModel::DontUseCustomDirectoryIcons, true);
-    m_model->setFilter(QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot);
+    m_model = new WorkspaceFileModel(this);
     m_filter = new DashboardFilesFilter(this);
     m_filter->setSourceModel(m_model);
     m_explorer = new FileExplorerView;
@@ -137,9 +93,12 @@ DashboardFilesWidget::DashboardFilesWidget(QWidget *parent) : QWidget(parent)
     m_status->setTextFormat(Qt::PlainText);
     m_status->setWordWrap(true);
     layout->addWidget(m_status);
+    new DashboardFilesController(this);
     connect(m_up, &QPushButton::clicked, this, [this] { navigateTo(".."); });
     connect(m_home, &QPushButton::clicked, this, [this] {
-        navigateTo(m_scope == "system" ? QDir::homePath() : m_projectRoot);
+        auto *controller = DashboardFilesController::get(this);
+        navigateTo(controller->remote() ? QStringLiteral("/")
+            : (m_scope == "system" ? QDir::homePath() : m_projectRoot));
     });
     connect(m_filesystem, &QPushButton::clicked, this, &DashboardFilesWidget::showFilesystem);
     connect(m_location, &QLineEdit::returnPressed, this, [this] { navigateTo(m_location->text()); });
@@ -149,117 +108,68 @@ DashboardFilesWidget::DashboardFilesWidget(QWidget *parent) : QWidget(parent)
 
 void DashboardFilesWidget::setContext(const QString &scope, const QString &projectPath)
 {
-    if (scope != "project" && scope != "system") {
-        showStatus(tr("Choose Project or System file scope."));
-        return;
-    }
-    if (scope == "system" && m_scope == "system")
-        return;
-    const QString root = scope == "project" && validPath(projectPath) && QDir::isAbsolutePath(projectPath)
-        ? QFileInfo(projectPath).canonicalFilePath() : QString();
-    if (scope == "project" && (root.isEmpty() || !QFileInfo(root).isDir())) {
-        m_scope = scope;
-        clearProject();
-        return;
-    }
-    if (scope == "project" && m_scope == scope && m_projectRoot == root && !m_directory.isEmpty()) {
-        if (!QFileInfo(m_directory).isDir())
-            navigateTo(root);
-        return;
-    }
-    m_scope = scope;
-    m_projectRoot = root;
-    m_directory.clear();
-    m_filter->setContext(scope == "system", root);
-    m_explorer->setRootIndex({});
-    m_explorer->setAvailable(false);
-    updateControls();
-    navigateTo(scope == "system" ? QDir::homePath() : root);
+    DashboardFilesController::get(this)->setScope(scope, projectPath);
+}
+
+bool DashboardFilesWidget::setMachineContext(const QJsonObject &target, const QString &rootId,
+                                            const QString &localRoot, QString *error)
+{
+    return DashboardFilesController::get(this)->setMachineContext(target, rootId, localRoot, error);
+}
+
+QJsonObject DashboardFilesWidget::machineTarget() const
+{
+    return DashboardFilesController::get(this)->machineTarget();
+}
+
+QString DashboardFilesWidget::remoteRootId() const
+{
+    return DashboardFilesController::get(this)->remoteRootId();
 }
 
 bool DashboardFilesWidget::navigateTo(const QString &path)
 {
-    if (!validPath(path) || (m_scope == "project" && m_projectRoot.isEmpty())
-        || (m_directory.isEmpty() && !QDir::isAbsolutePath(path))) {
-        showStatus(tr("Choose an existing directory."));
-        return false;
-    }
-    const QString candidate = QDir::isAbsolutePath(path) ? path : QDir(m_directory).absoluteFilePath(path);
-    const QFileInfo entry(candidate);
-    const QString canonical = entry.canonicalFilePath();
-    if (canonical.isEmpty() || !entry.isDir() || !entry.isReadable()) {
-        showStatus(tr("This directory is missing or cannot be read."));
-        return false;
-    }
-    if (m_scope == "project" && !within(m_projectRoot, canonical)) {
-        showStatus(tr("Project scope stays inside the selected project, including symbolic links."));
-        return false;
-    }
-    const auto rootIndex = m_model->setRootPath(canonical);
-    m_explorer->setRootIndex(m_filter->mapFromSource(rootIndex));
-    m_tree->collapseAll();
-    m_directory = canonical;
-    m_explorer->setAvailable(true);
-    showStatus({});
-    updateControls();
-    return true;
+    return DashboardFilesController::get(this)->navigate(path);
 }
 
 void DashboardFilesWidget::activate(const QModelIndex &index)
 {
-    if (!index.isValid())
+    if (!index.isValid() || !index.flags().testFlag(Qt::ItemIsEnabled))
         return;
-    const QFileInfo entry(m_model->filePath(m_filter->mapToSource(index)));
-    const QString canonical = entry.canonicalFilePath();
-    if (canonical.isEmpty() || (m_scope == "project" && !within(m_projectRoot, canonical))) {
-        showStatus(tr("This item is unavailable in the current file scope."));
+    const auto *controller = DashboardFilesController::get(this);
+    if (!controller->available())
         return;
-    }
-    if (entry.isDir())
-        navigateTo(canonical);
-    else if (entry.isFile() && entry.isReadable())
-        emit openFileRequested(canonical);
+    const QString relative = index.data(WorkspaceFileModel::RelativePathRole).toString();
+    const QString path = controller->drives() ? relative : QDir(controller->root()).filePath(relative);
+    if (index.data(WorkspaceFileModel::DirectoryRole).toBool())
+        navigateTo(path);
+    else
+        emit openFileRequested(path);
 }
 
 void DashboardFilesWidget::clearProject()
 {
-    m_projectRoot.clear();
-    m_directory.clear();
-    m_filter->setContext(false, {});
-    m_explorer->setRootIndex({});
-    m_explorer->setAvailable(false);
-    m_model->setRootPath({});
+    DashboardFilesController::get(this)->clearView();
     showStatus(tr("Open a project to browse its files."));
-    updateControls();
 }
 
 void DashboardFilesWidget::updateControls()
 {
-    const bool available = m_scope == "system" || !m_projectRoot.isEmpty();
+    const auto *controller = DashboardFilesController::get(this);
+    const bool available = controller->available();
+    const bool remote = controller->remote();
     m_location->setText(QDir::toNativeSeparators(m_directory));
     m_location->setEnabled(available);
     m_home->setEnabled(available);
-    m_home->setToolTip(m_scope == "system" ? tr("Your home directory") : tr("Project root"));
-    m_filesystem->setVisible(m_scope == "system");
-    m_filesystem->setEnabled(m_scope == "system");
-    m_up->setEnabled(available && !m_directory.isEmpty()
-        && (m_scope == "project" ? m_directory != m_projectRoot : !QDir(m_directory).isRoot()));
+    m_home->setToolTip(m_scope == "system" && !remote ? tr("Your home directory") : tr("Project root"));
+    m_filesystem->setVisible(m_scope == "system" && !remote);
+    m_filesystem->setEnabled(m_scope == "system" && !remote && available);
+    m_up->setEnabled(available && !m_directory.isEmpty() && m_directory != controller->root());
 }
 
 void DashboardFilesWidget::showFilesystem()
 {
-    if (m_scope != "system")
-        return;
-#ifdef Q_OS_WIN
-    m_model->setRootPath({});
-    m_explorer->setRootIndex({});
-    m_directory.clear();
-    m_explorer->setAvailable(true);
-    showStatus(tr("Choose a drive."));
-    updateControls();
-#else
-    navigateTo(QDir::rootPath());
-#endif
+    DashboardFilesController::get(this)->showFilesystem();
 }
 
 void DashboardFilesWidget::showStatus(const QString &message)

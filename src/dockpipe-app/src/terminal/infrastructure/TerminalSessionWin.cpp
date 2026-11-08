@@ -1,4 +1,5 @@
 #include "TerminalSessionWin.h"
+#include <QCoreApplication>
 
 #ifdef Q_OS_WIN
 #ifndef NOMINMAX
@@ -65,7 +66,7 @@ public:
 
 QString windowsFailure(const QString &operation, DWORD code)
 {
-    return QStringLiteral("%1 (Windows error %2).").arg(operation).arg(code);
+    return QCoreApplication::translate("TerminalSessionWin", "%1 (Windows error %2).").arg(operation).arg(code);
 }
 
 // CreateProcess receives one mutable command line. Quote each structured argv
@@ -100,6 +101,9 @@ struct TerminalSessionWin::State {
     std::atomic<bool> stopping{false};
     std::atomic<bool> discardOutput{false};
     bool completed = false;
+    bool started = false;
+    bool cleanupVerified = false;
+    quint64 written = 0;
     int exitCode = -1;
     int columns = 80;
     int rows = 24;
@@ -131,7 +135,7 @@ struct TerminalSessionWin::State {
             if (!read || count == 0) {
                 const DWORD failure = read ? ERROR_SUCCESS : GetLastError();
                 if (failure != ERROR_SUCCESS && failure != ERROR_BROKEN_PIPE && failure != ERROR_OPERATION_ABORTED && !stopping.load()) {
-                    fail(windowsFailure(QStringLiteral("Terminal output could not be read"), failure));
+                    fail(windowsFailure(QCoreApplication::translate("TerminalSessionWin", "Terminal output could not be read"), failure));
                     requestStop();
                 }
                 return;
@@ -163,7 +167,7 @@ struct TerminalSessionWin::State {
             DWORD written = 0;
             if (!WriteFile(pipe, bytes.constData(), DWORD(bytes.size()), &written, nullptr) || written == 0) {
                 if (!stopping.load()) {
-                    fail(windowsFailure(QStringLiteral("Terminal input could not be written"), GetLastError()));
+                    fail(windowsFailure(QCoreApplication::translate("TerminalSessionWin", "Terminal input could not be written"), GetLastError()));
                     requestStop();
                 }
                 return;
@@ -172,11 +176,12 @@ struct TerminalSessionWin::State {
             // Keep in-flight input in the queue until acknowledged. Appends
             // cannot circumvent the aggregate pending-input limit.
             input.remove(0, qsizetype(written));
+            this->written += quint64(written);
         }
     }
 
     void run(const QString &directory, const QString &program, const QString &command,
-        const QMap<QString, QString> &environmentOverrides)
+        const QStringList &environmentEntries)
     {
         NativeHandle inputRead;
         NativeHandle inputWrite;
@@ -192,8 +197,11 @@ struct TerminalSessionWin::State {
         const auto cleanup = [&] {
             // Kill the complete job even when the shell exited normally, so
             // detached descendants cannot retain terminal pipes indefinitely.
-            if (job.value && !TerminateJobObject(job.value, 1))
-                fail(windowsFailure(QStringLiteral("Terminal process cleanup failed"), GetLastError()));
+            bool verified = true;
+            if (job.value && !TerminateJobObject(job.value, 1)) {
+                verified = false;
+                fail(windowsFailure(QCoreApplication::translate("TerminalSessionWin", "Terminal process cleanup failed"), GetLastError()));
+            }
             if (process.value && !childResumed)
                 TerminateProcess(process.value, 1);
             requestStop(false);
@@ -217,7 +225,16 @@ struct TerminalSessionWin::State {
             if (reader.joinable())
                 reader.join();
             outputRead.reset();
+            if (process.value && WaitForSingleObject(process.value, 2000) != WAIT_OBJECT_0)
+                verified = false;
+            if (job.value) {
+                JOBOBJECT_BASIC_ACCOUNTING_INFORMATION accounting{};
+                if (!QueryInformationJobObject(job.value, JobObjectBasicAccountingInformation,
+                        &accounting, sizeof(accounting), nullptr) || accounting.ActiveProcesses != 0)
+                    verified = false;
+            }
             std::lock_guard<std::mutex> lock(mutex);
+            cleanupVerified = verified;
             completed = true;
         };
         const auto launch = [&]() -> bool {
@@ -225,7 +242,7 @@ struct TerminalSessionWin::State {
                 return false;
             if (!CreatePipe(&inputRead.value, &inputWrite.value, nullptr, PipeChunk)
                 || !CreatePipe(&outputRead.value, &outputWrite.value, nullptr, PipeChunk)) {
-                fail(windowsFailure(QStringLiteral("Terminal pipes could not be created"), GetLastError()));
+                fail(windowsFailure(QCoreApplication::translate("TerminalSessionWin", "Terminal pipes could not be created"), GetLastError()));
                 return false;
             }
             // Start draining before ConPTY creation, including setup failures.
@@ -237,20 +254,20 @@ struct TerminalSessionWin::State {
             }
             const HRESULT created = consoleApi().create(dimensions, inputRead.value, outputWrite.value, 0, &console);
             if (FAILED(created)) {
-                fail(windowsFailure(QStringLiteral("The Windows pseudoconsole could not be created"), DWORD(created)));
+                fail(windowsFailure(QCoreApplication::translate("TerminalSessionWin", "The Windows pseudoconsole could not be created"), DWORD(created)));
                 return false;
             }
             SIZE_T attributeBytes = 0;
             InitializeProcThreadAttributeList(nullptr, 1, 0, &attributeBytes);
             // A single OS-defined startup attribute never needs a large list.
             if (attributeBytes == 0 || attributeBytes > 64 * 1024) {
-                fail(QStringLiteral("The Windows terminal startup attributes exceeded 64 KiB."));
+                fail(QCoreApplication::translate("TerminalSessionWin", "The Windows terminal startup attributes exceeded 64 KiB."));
                 return false;
             }
             std::vector<unsigned char> attributes(attributeBytes);
             auto *list = reinterpret_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(attributes.data());
             if (!InitializeProcThreadAttributeList(list, 1, 0, &attributeBytes)) {
-                fail(windowsFailure(QStringLiteral("Terminal startup attributes could not be initialized"), GetLastError()));
+                fail(windowsFailure(QCoreApplication::translate("TerminalSessionWin", "Terminal startup attributes could not be initialized"), GetLastError()));
                 return false;
             }
             const auto releaseAttributes = qScopeGuard([list] { DeleteProcThreadAttributeList(list); });
@@ -268,7 +285,7 @@ struct TerminalSessionWin::State {
             const BOOL configured = UpdateProcThreadAttribute(list, 0, pseudoConsoleAttribute, console, sizeof(console), nullptr, nullptr);
             if (!configured) {
                 const DWORD failure = GetLastError();
-                fail(windowsFailure(QStringLiteral("The pseudoconsole startup attribute could not be set"), failure));
+                fail(windowsFailure(QCoreApplication::translate("TerminalSessionWin", "The pseudoconsole startup attribute could not be set"), failure));
                 return false;
             }
             job.value = CreateJobObjectW(nullptr, nullptr);
@@ -276,15 +293,10 @@ struct TerminalSessionWin::State {
             limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
             if (!job.value || !SetInformationJobObject(job.value, JobObjectExtendedLimitInformation, &limits, sizeof(limits))) {
                 const DWORD failure = GetLastError();
-                fail(windowsFailure(QStringLiteral("Terminal process containment could not be created"), failure));
+                fail(windowsFailure(QCoreApplication::translate("TerminalSessionWin", "Terminal process containment could not be created"), failure));
                 return false;
             }
-            auto environment = QProcessEnvironment::systemEnvironment();
-            environment.insert(QStringLiteral("TERM"), QStringLiteral("xterm-256color"));
-            environment.insert(QStringLiteral("COLORTERM"), QStringLiteral("truecolor"));
-            for (auto entry = environmentOverrides.cbegin(); entry != environmentOverrides.cend(); ++entry)
-                environment.insert(entry.key(), entry.value());
-            QStringList entries = environment.toStringList();
+            QStringList entries = environmentEntries;
             std::sort(entries.begin(), entries.end(), [](const QString &left, const QString &right) {
                 return QString::compare(left, right, Qt::CaseInsensitive) < 0;
             });
@@ -294,7 +306,7 @@ struct TerminalSessionWin::State {
             qsizetype environmentCharacters = 1;
             for (const QString &entry : entries) {
                 if (entry.size() > 32767 || entry.size() + 1 > maximumEnvironmentCharacters - environmentCharacters) {
-                    fail(QStringLiteral("The terminal environment exceeds its 1 MiB limit or a variable exceeds 32767 characters."));
+                    fail(QCoreApplication::translate("TerminalSessionWin", "The terminal environment exceeds its 1 MiB limit or a variable exceeds 32767 characters."));
                     return false;
                 }
                 environmentCharacters += entry.size() + 1;
@@ -315,7 +327,7 @@ struct TerminalSessionWin::State {
             DWORD previousErrorMode = 0;
             if (!SetThreadErrorMode(GetThreadErrorMode() | SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX,
                     &previousErrorMode)) {
-                fail(windowsFailure(QStringLiteral("Terminal worker error handling could not be configured"), GetLastError()));
+                fail(windowsFailure(QCoreApplication::translate("TerminalSessionWin", "Terminal worker error handling could not be configured"), GetLastError()));
                 return false;
             }
             const auto restoreErrorMode = qScopeGuard([previousErrorMode] {
@@ -326,7 +338,7 @@ struct TerminalSessionWin::State {
                 reinterpret_cast<LPCWSTR>(directory.utf16()), &startup.StartupInfo, &child);
             const DWORD failure = GetLastError();
             if (!launched) {
-                fail(windowsFailure(QStringLiteral("The terminal shell could not be started"), failure));
+                fail(windowsFailure(QCoreApplication::translate("TerminalSessionWin", "The terminal shell could not be started"), failure));
                 return false;
             }
             process.value = child.hProcess;
@@ -334,7 +346,7 @@ struct TerminalSessionWin::State {
             // Nothing executes before job assignment; failure never leaves an
             // uncontained shell or any descendants behind.
             if (!AssignProcessToJobObject(job.value, process.value)) {
-                fail(windowsFailure(QStringLiteral("The terminal shell could not be contained"), GetLastError()));
+                fail(windowsFailure(QCoreApplication::translate("TerminalSessionWin", "The terminal shell could not be contained"), GetLastError()));
                 return false;
             }
             inputRead.reset();
@@ -343,10 +355,14 @@ struct TerminalSessionWin::State {
             if (stopping.load())
                 return false;
             if (ResumeThread(processThread.value) == DWORD(-1)) {
-                fail(windowsFailure(QStringLiteral("The terminal shell could not be resumed"), GetLastError()));
+                fail(windowsFailure(QCoreApplication::translate("TerminalSessionWin", "The terminal shell could not be resumed"), GetLastError()));
                 return false;
             }
             childResumed = true;
+            {
+                std::lock_guard<std::mutex> lock(mutex);
+                started = true;
+            }
             processThread.reset();
             return true;
         };
@@ -364,7 +380,7 @@ struct TerminalSessionWin::State {
                         break;
                     }
                     if (event != WAIT_OBJECT_0 + 2) {
-                        fail(windowsFailure(QStringLiteral("Terminal process monitoring failed"), GetLastError()));
+                        fail(windowsFailure(QCoreApplication::translate("TerminalSessionWin", "Terminal process monitoring failed"), GetLastError()));
                         break;
                     }
                     COORD dimensions;
@@ -374,11 +390,11 @@ struct TerminalSessionWin::State {
                     }
                     const HRESULT resized = consoleApi().resize(console, dimensions);
                     if (FAILED(resized))
-                        fail(windowsFailure(QStringLiteral("The terminal could not be resized"), DWORD(resized)));
+                        fail(windowsFailure(QCoreApplication::translate("TerminalSessionWin", "The terminal could not be resized"), DWORD(resized)));
                 }
             }
         } catch (const std::exception &) {
-            fail(QStringLiteral("The Windows terminal worker could not allocate its resources."));
+            fail(QCoreApplication::translate("TerminalSessionWin", "The Windows terminal worker could not allocate its resources."));
         }
         cleanup();
     }
@@ -390,9 +406,20 @@ TerminalSessionWin::~TerminalSessionWin() { stop(); }
 bool TerminalSessionWin::start(const QString &directory, const QString &program, const QStringList &arguments,
     int columns, int rows, const QMap<QString, QString> &environment, QString &error)
 {
+    auto inherited = QProcessEnvironment::systemEnvironment();
+    inherited.insert(QStringLiteral("TERM"), QStringLiteral("xterm-256color"));
+    inherited.insert(QStringLiteral("COLORTERM"), QStringLiteral("truecolor"));
+    for (auto entry = environment.begin(); entry != environment.end(); ++entry)
+        inherited.insert(entry.key(), entry.value());
+    return startPrepared(directory, program, arguments, columns, rows, inherited.toStringList(), error);
+}
+
+bool TerminalSessionWin::startPrepared(const QString &directory, const QString &program, const QStringList &arguments,
+    int columns, int rows, const QStringList &environment, QString &error)
+{
     const auto &api = consoleApi();
     if (!api.create || !api.resize || !api.close) {
-        error = QStringLiteral("Interactive terminals require Windows 10 version 1809 or newer (ConPTY).");
+        error = QCoreApplication::translate("TerminalSessionWin", "Interactive terminals require Windows 10 version 1809 or newer (ConPTY).");
         return false;
     }
     QString command = quoteArgument(program);
@@ -400,24 +427,24 @@ bool TerminalSessionWin::start(const QString &directory, const QString &program,
         // CreateProcessW limits the complete command line to 32767 characters,
         // including its terminator. Bound before expanding quoted arguments.
         if (argument.contains(QChar::Null) || argument.size() > 32766 || command.size() + 1 + argument.size() > 32766) {
-            error = QStringLiteral("The terminal shell command exceeds the Windows command-line limit or contains NUL.");
+            error = QCoreApplication::translate("TerminalSessionWin", "The terminal shell command exceeds the Windows command-line limit or contains NUL.");
             return false;
         }
         const QString quoted = quoteArgument(argument);
         if (command.size() + 1 + quoted.size() > 32766) {
-            error = QStringLiteral("The terminal shell command exceeds the Windows command-line limit.");
+            error = QCoreApplication::translate("TerminalSessionWin", "The terminal shell command exceeds the Windows command-line limit.");
             return false;
         }
         command += QLatin1Char(' ') + quoted;
     }
     if (command.size() > 32766) {
-        error = QStringLiteral("The terminal shell command exceeds the Windows command-line limit.");
+        error = QCoreApplication::translate("TerminalSessionWin", "The terminal shell command exceeds the Windows command-line limit.");
         return false;
     }
     unsigned count = activeTransports.load();
     do {
         if (count >= MaximumTransports) {
-            error = QStringLiteral("Windows terminals are still closing. Wait before opening another terminal.");
+            error = QCoreApplication::translate("TerminalSessionWin", "Windows terminals are still closing. Wait before opening another terminal.");
             return false;
         }
     } while (!activeTransports.compare_exchange_weak(count, count + 1));
@@ -429,7 +456,7 @@ bool TerminalSessionWin::start(const QString &directory, const QString &program,
         state->wakeEvent.value = CreateEventW(nullptr, FALSE, FALSE, nullptr);
         if (!state->stopEvent.value || !state->wakeEvent.value) {
             --activeTransports;
-            error = windowsFailure(QStringLiteral("Terminal worker events could not be created"), GetLastError());
+            error = windowsFailure(QCoreApplication::translate("TerminalSessionWin", "Terminal worker events could not be created"), GetLastError());
             return false;
         }
         std::thread worker([state, directory, program, command, environment] {
@@ -441,9 +468,22 @@ bool TerminalSessionWin::start(const QString &directory, const QString &program,
         return true;
     } catch (const std::exception &) {
         --activeTransports;
-        error = QStringLiteral("The Windows terminal worker could not be started.");
+        error = QCoreApplication::translate("TerminalSessionWin", "The Windows terminal worker could not be started.");
         return false;
     }
+}
+
+std::function<int()> TerminalSessionWin::cleanupProbe() const
+{
+    const auto state = m_state;
+    return [state] {
+        if (!state)
+            return 1;
+        std::lock_guard<std::mutex> lock(state->mutex);
+        if (!state->completed)
+            return 0;
+        return state->cleanupVerified ? 1 : -1;
+    };
 }
 
 bool TerminalSessionWin::send(const QByteArray &bytes)
@@ -483,6 +523,8 @@ TerminalSessionWin::Update TerminalSessionWin::takeUpdate()
         std::lock_guard<std::mutex> lock(m_state->mutex);
         update.output.swap(m_state->output);
         update.error = m_state->error;
+        update.started = m_state->started;
+        update.written = m_state->written;
         update.completed = m_state->completed;
         update.exitCode = m_state->exitCode;
     }

@@ -45,6 +45,9 @@ Cloudflare resolver, local profiles, credentials, recovery, and current qualific
 
 ## Project Git
 
+For bounded file reads and edits through the same core service, see
+[workspace file requests and invocation validation](runtime/invocation-validation.md#workspace-file-cli).
+
 The desktop **Git** page operates on the repository containing the selected project
 folder. Its CLI adapter is `dockpipe git --request <file.json>`. A read request is
 `{"workdir":"/path/to/project","action":"status"}`. The response includes the root,

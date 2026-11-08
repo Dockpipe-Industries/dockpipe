@@ -31,7 +31,7 @@ DashboardSettingsDialog::DashboardSettingsDialog(const DashboardOptions &options
     m_autoHideDock->setToolTip(tr("Reveal it at the bottom edge or press Ctrl+Shift+D. Turn off to keep it visible below the workspace."));
     m_autoHideDock->setChecked(options.autoHideDock);
     layout->addWidget(m_autoHideDock);
-    m_headers = new QCheckBox(tr("Show title bars on canvas and floating panels"));
+    m_headers = new QCheckBox(tr("Show widget titles on canvas and floating panels"));
     m_headers->setObjectName("dashboardSettingsHeaders");
     m_headers->setChecked(options.showPanelHeaders);
     layout->addWidget(m_headers);

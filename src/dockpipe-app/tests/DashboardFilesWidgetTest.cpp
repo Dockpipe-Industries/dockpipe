@@ -1,4 +1,8 @@
 #include "DashboardFilesWidget.h"
+#include "DashboardFilesController.h"
+#include "WorkspaceFileModel.h"
+#include "WorkspaceFilesTestSupport.h"
+#include "FileEditorWorkspace.h"
 #include "ProjectFilesWidget.h"
 #include "FileExplorerView.h"
 #include "FileExplorerIcons.h"
@@ -7,7 +11,6 @@
 
 #include <QDir>
 #include <QFile>
-#include <QFileSystemModel>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QSignalSpy>
@@ -19,11 +22,16 @@
 #include <QFileIconProvider>
 #include <QListView>
 #include <QPlainTextEdit>
+#include <QTextDocument>
 #include <QToolButton>
 #include <QStyle>
 #include <QMessageBox>
 #include <QTimer>
 #include <QStandardItemModel>
+#include <QJsonArray>
+#include <QPointer>
+#include <memory>
+#include <vector>
 
 class DashboardFilesWidgetTest final : public QObject {
     Q_OBJECT
@@ -37,6 +45,7 @@ private slots:
     void folderViewUsesSharedIcons();
     void filesPageUsesSharedExplorer();
     void symbolicParentUsesCanonicalNavigation();
+    void boundedPagesAndMachineContexts();
     void enterActivatesBothViews_data();
     void enterActivatesBothViews();
 };
@@ -44,42 +53,43 @@ private slots:
 void DashboardFilesWidgetTest::projectNavigationAndClearing()
 {
     QTemporaryDir directory;
-    QVERIFY(directory.isValid());
     const QString root = directory.path() + "/project";
     QVERIFY(QDir().mkpath(root + "/nested/deeper"));
     DashboardFilesWidget files;
     auto *tree = files.findChild<QTreeView *>("dashboardFiles");
+    auto *model = files.findChild<WorkspaceFileModel *>();
     auto *up = files.findChild<QPushButton *>("dashboardFilesUp");
     auto *home = files.findChild<QPushButton *>("dashboardFilesHome");
     auto *location = files.findChild<QLineEdit *>("dashboardFilesLocation");
-    QCOMPARE(files.scope(), QString("project"));
     QVERIFY(tree->isHidden());
-    QVERIFY(!home->isEnabled() && !location->isEnabled());
+    QVERIFY(!home->isEnabled());
     files.setContext("project", root);
-    QCOMPARE(files.currentDirectory(), QFileInfo(root).canonicalFilePath());
-    QVERIFY(tree->rootIndex().isValid());
+    QTRY_COMPARE(files.currentDirectory(), root);
     QVERIFY(!tree->isHidden());
+    QCOMPARE(model->relativePath({}), QString("."));
     QVERIFY(!up->isEnabled());
     QVERIFY(!files.navigateTo(".."));
     QVERIFY(!files.navigateTo(directory.path()));
     QVERIFY(files.navigateTo("nested/deeper"));
+    QTRY_COMPARE(files.currentDirectory(), root + "/nested/deeper");
     files.setContext("project", root);
-    QCOMPARE(files.currentDirectory(), QFileInfo(root + "/nested/deeper").canonicalFilePath());
+    QCOMPARE(files.currentDirectory(), root + "/nested/deeper");
     up->click();
-    QCOMPARE(files.currentDirectory(), QFileInfo(root + "/nested").canonicalFilePath());
+    QTRY_COMPARE(files.currentDirectory(), root + "/nested");
     location->setText(root);
     QMetaObject::invokeMethod(location, "returnPressed");
-    QCOMPARE(files.currentDirectory(), QFileInfo(root).canonicalFilePath());
+    QTRY_COMPARE(files.currentDirectory(), root);
     QVERIFY(!files.navigateTo(QString("bad") + QChar::Null + "path"));
     QVERIFY(!files.navigateTo(QString(4097, 'x')));
     QVERIFY(!files.navigateTo("https://example.invalid"));
+    QSignalSpy failed(model, &WorkspaceFileModel::listingFailed);
     files.setContext("project", directory.path() + "/missing");
+    QTRY_VERIFY(!failed.isEmpty());
     QVERIFY(files.currentDirectory().isEmpty());
-    QVERIFY(tree->isHidden() && !tree->rootIndex().isValid());
+    QVERIFY(tree->isHidden());
+    files.setContext("project", {});
     QVERIFY(!home->isEnabled() && !location->isEnabled());
     QVERIFY(location->text().isEmpty());
-    files.setContext("project", {});
-    QVERIFY(tree->isHidden());
 }
 
 void DashboardFilesWidgetTest::independentSystemNavigation()
@@ -89,24 +99,24 @@ void DashboardFilesWidgetTest::independentSystemNavigation()
     QVERIFY(QDir().mkpath(directory.path() + "/b"));
     DashboardFilesWidget files;
     files.setContext("system", directory.path() + "/a");
-    QCOMPARE(files.currentDirectory(), QFileInfo(QDir::homePath()).canonicalFilePath());
+    QTRY_COMPARE(files.currentDirectory(), QDir::fromNativeSeparators(QDir::homePath()));
     QVERIFY(files.navigateTo(directory.path() + "/b"));
-    const QString retained = files.currentDirectory();
+    QTRY_COMPARE(files.currentDirectory(), directory.path() + "/b");
     files.setContext("system", directory.path() + "/missing");
-    QCOMPARE(files.currentDirectory(), retained);
+    QCOMPARE(files.currentDirectory(), directory.path() + "/b");
     files.setContext("invalid", {});
     QCOMPARE(files.scope(), QString("system"));
-    QCOMPARE(files.currentDirectory(), retained);
+    QCOMPARE(files.currentDirectory(), directory.path() + "/b");
     files.findChild<QPushButton *>("dashboardFilesFilesystem")->click();
 #ifdef Q_OS_WIN
-    QVERIFY(files.currentDirectory().isEmpty());
-    QVERIFY(!files.findChild<QTreeView *>("dashboardFiles")->rootIndex().isValid());
+    QTRY_VERIFY(files.currentDirectory().isEmpty());
 #else
-    QCOMPARE(files.currentDirectory(), QDir::rootPath());
+    QTRY_COMPARE(files.currentDirectory(), QDir::rootPath());
 #endif
     files.findChild<QPushButton *>("dashboardFilesHome")->click();
-    QCOMPARE(files.currentDirectory(), QFileInfo(QDir::homePath()).canonicalFilePath());
+    QTRY_COMPARE(files.currentDirectory(), QDir::fromNativeSeparators(QDir::homePath()));
     files.setContext("project", directory.path() + "/a");
+    QTRY_COMPARE(files.currentDirectory(), directory.path() + "/a");
     QVERIFY(!files.navigateTo(directory.path() + "/b"));
     QVERIFY(files.findChild<QPushButton *>("dashboardFilesFilesystem")->isHidden());
 }
@@ -121,47 +131,42 @@ void DashboardFilesWidgetTest::linksAndFileOpening()
     QVERIFY(document.open(QIODevice::WriteOnly));
     document.write("fixture");
     document.close();
+#ifndef Q_OS_WIN
+    QVERIFY(QFile::link(directory.path() + "/outside", root + "/outside-link"));
+    QVERIFY(QFile::link(root + "/inside", root + "/inside-link"));
+#endif
     DashboardFilesWidget files;
     files.setContext("project", root);
     auto *tree = files.findChild<QTreeView *>("dashboardFiles");
     auto *filter = qobject_cast<QSortFilterProxyModel *>(tree->model());
-    auto *model = files.findChild<QFileSystemModel *>();
-    QVERIFY(filter && model && model->isReadOnly());
-    QVERIFY(tree->uniformRowHeights());
+    auto *model = files.findChild<WorkspaceFileModel *>();
+    QVERIFY(filter && model && tree->uniformRowHeights());
+    QTRY_COMPARE(files.currentDirectory(), root);
     QSignalSpy opened(&files, &DashboardFilesWidget::openFileRequested);
-    QModelIndex fileIndex;
-    QTRY_VERIFY((fileIndex = filter->mapFromSource(model->index(QFileInfo(document.fileName()).canonicalFilePath()))).isValid());
+    const auto fileIndex = filter->mapFromSource(model->indexForPath("document.txt"));
+    QVERIFY(fileIndex.isValid());
+    QCOMPARE(fileIndex.data(WorkspaceFileModel::SizeBytesRole).toString(), QString("7"));
     QMetaObject::invokeMethod(tree, "doubleClicked", Q_ARG(QModelIndex, fileIndex));
     QCOMPARE(opened.size(), 1);
-    QCOMPARE(opened.first().first().toString(), QFileInfo(document).canonicalFilePath());
-    QModelIndex directoryIndex;
-    QTRY_VERIFY((directoryIndex = filter->mapFromSource(model->index(QFileInfo(root + "/inside").canonicalFilePath()))).isValid());
-    QMetaObject::invokeMethod(tree, "doubleClicked", Q_ARG(QModelIndex, directoryIndex));
-    QCOMPARE(files.currentDirectory(), QFileInfo(root + "/inside").canonicalFilePath());
+    QCOMPARE(opened.first().first().toString(), document.fileName());
 #ifndef Q_OS_WIN
-    QVERIFY(QFile::link(directory.path() + "/outside", root + "/outside-link"));
-    QVERIFY(QFile::link(root + "/inside", root + "/inside-link"));
-    QVERIFY(QFile::link(directory.path(), root + "/parent-link"));
-    QFile outsideDocument(directory.path() + "/outside/private.txt");
-    QVERIFY(outsideDocument.open(QIODevice::WriteOnly));
-    outsideDocument.write("outside fixture");
-    outsideDocument.close();
-    QVERIFY(QFile::link(outsideDocument.fileName(), root + "/outside-file"));
-    QVERIFY(files.navigateTo(root));
-    QVERIFY(!files.navigateTo("outside-link"));
-    QVERIFY(!files.navigateTo("parent-link"));
-    QVERIFY(!filter->mapFromSource(model->index(root + "/outside-link")).isValid());
-    QVERIFY(!filter->mapFromSource(model->index(root + "/parent-link")).isValid());
-    const QModelIndex outsideIndex = filter->mapFromSource(model->index(root + "/outside-file"));
-    QVERIFY(!outsideIndex.isValid());
-    QMetaObject::invokeMethod(tree, "doubleClicked", Q_ARG(QModelIndex, outsideIndex));
+    const auto linkIndex = filter->mapFromSource(model->indexForPath("outside-link"));
+    QVERIFY(linkIndex.isValid());
+    QVERIFY(!linkIndex.flags().testFlag(Qt::ItemIsEnabled));
+    QMetaObject::invokeMethod(tree, "doubleClicked", Q_ARG(QModelIndex, linkIndex));
+    QCOMPARE(files.currentDirectory(), root);
     QCOMPARE(opened.size(), 1);
-    QVERIFY(files.navigateTo("inside-link"));
-    QCOMPARE(files.currentDirectory(), QFileInfo(root + "/inside").canonicalFilePath());
-    files.setContext("system", root);
-    QVERIFY(files.navigateTo(root + "/outside-link"));
-    QCOMPARE(files.currentDirectory(), QFileInfo(directory.path() + "/outside").canonicalFilePath());
+    QSignalSpy failures(model, &WorkspaceFileModel::listingFailed);
+    QVERIFY(files.navigateTo(root + "/inside-link"));
+    QTRY_COMPARE(failures.count(), 1);
+    QVERIFY(files.currentDirectory().isEmpty());
+    QVERIFY(files.navigateTo(root));
+    QTRY_COMPARE(files.currentDirectory(), root);
 #endif
+    const auto directoryIndex = filter->mapFromSource(model->indexForPath("inside"));
+    QVERIFY(directoryIndex.isValid());
+    QMetaObject::invokeMethod(tree, "doubleClicked", Q_ARG(QModelIndex, directoryIndex));
+    QTRY_COMPARE(files.currentDirectory(), root + "/inside");
 }
 
 void DashboardFilesWidgetTest::fileIconPixelDensity_data()
@@ -232,25 +237,25 @@ void DashboardFilesWidgetTest::folderViewUsesSharedIcons()
     auto *explorer = files.findChild<FileExplorerView *>();
     auto *tree = explorer->treeView();
     auto *grid = explorer->iconView();
-    auto *model = files.findChild<QFileSystemModel *>();
+    auto *model = files.findChild<WorkspaceFileModel *>();
     auto *filter = qobject_cast<QSortFilterProxyModel *>(grid->model());
     QVERIFY(tree->header()->isHidden());
     QVERIFY(tree->property("dockpipeFileView").toBool());
     QTRY_COMPARE(filter->rowCount(grid->rootIndex()), 8);
-    QCOMPARE(model->iconProvider()->icon(QFileInfo(root.filePath("Documents"))).pixmap(32, 32).toImage(),
+    QCOMPARE(FileExplorerIcons::instance().iconForEntry("Documents", true).pixmap(32, 32).toImage(),
         CanvasIcons::icon(CanvasIcons::Symbol::Folder).pixmap(32, 32).toImage());
-    const auto highDpiIcon = model->iconProvider()->icon(QFileInfo(root.filePath("README.md")))
+    const auto highDpiIcon = FileExplorerIcons::instance().iconForEntry("README.md", false)
         .pixmap(QSize(18, 18), qreal(2));
     QCOMPARE(highDpiIcon.devicePixelRatio(), qreal(2));
     QCOMPARE(highDpiIcon.size(), QSize(36, 36));
-    QVERIFY(model->iconProvider()->icon(QFileInfo(root.filePath("README.md"))).pixmap(32, 32).toImage()
-        != model->iconProvider()->icon(QFileInfo(root.filePath("main.cpp"))).pixmap(32, 32).toImage());
+    QVERIFY(FileExplorerIcons::instance().iconForEntry("README.md", false).pixmap(32, 32).toImage()
+        != FileExplorerIcons::instance().iconForEntry("main.cpp", false).pixmap(32, 32).toImage());
     const QString images = qEnvironmentVariable("DOCKPIPE_EXPLORER_TEST_IMAGES");
     if (!images.isEmpty()) {
         QVERIFY(QDir().mkpath(images));
         QVERIFY(files.grab().save(QDir(images).filePath("dashboard-tree-" + theme + ".png")));
     }
-    const auto fileIndex = filter->mapFromSource(model->index(QFileInfo(root.filePath("README.md")).canonicalFilePath()));
+    const auto fileIndex = filter->mapFromSource(model->indexForPath("README.md"));
     tree->setCurrentIndex(fileIndex);
     QTest::mouseClick(files.findChild<QToolButton *>("explorerFoldersMode"), Qt::LeftButton);
     QVERIFY(tree->isHidden());
@@ -264,17 +269,19 @@ void DashboardFilesWidgetTest::folderViewUsesSharedIcons()
     if (!images.isEmpty()) {
         QVERIFY(files.grab().save(QDir(images).filePath("dashboard-folders-" + theme + ".png")));
     }
-    const auto folderIndex = filter->mapFromSource(model->index(QFileInfo(root.filePath("Documents")).canonicalFilePath()));
+    const auto folderIndex = filter->mapFromSource(model->indexForPath("Documents"));
     grid->setCurrentIndex(folderIndex);
     QTest::keyClick(grid, Qt::Key_Return);
-    QCOMPARE(files.currentDirectory(), QFileInfo(root.filePath("Documents")).canonicalFilePath());
+    QTRY_COMPARE(files.currentDirectory(), root.filePath("Documents"));
     files.findChild<QPushButton *>("dashboardFilesUp")->click();
-    QCOMPARE(files.currentDirectory(), QFileInfo(root.path()).canonicalFilePath());
+    QTRY_COMPARE(files.currentDirectory(), root.path());
     QCOMPARE(explorer->mode(), FileExplorerView::Mode::Folders);
     files.hide();
     files.show();
     QCOMPARE(explorer->mode(), FileExplorerView::Mode::Folders);
+    QSignalSpy failures(model, &WorkspaceFileModel::listingFailed);
     files.setContext("project", root.filePath("missing"));
+    QTRY_VERIFY(!failures.isEmpty());
     QVERIFY(grid->isHidden());
     QVERIFY(tree->isHidden());
 }
@@ -291,36 +298,29 @@ void DashboardFilesWidgetTest::filesPageUsesSharedExplorer()
     ProjectFilesWidget files;
     files.resize(1180, 760);
     files.show();
-    QVERIFY(files.setRoot(root.path()));
-    QVERIFY(files.openFile(root.filePath("README.md")));
+    QVERIFY(FilesTest::setRoot(files, root.path()));
+    QVERIFY(FilesTest::open(files, root.filePath("README.md")));
     auto *explorer = files.findChild<FileExplorerView *>();
     auto *grid = explorer->iconView();
-    auto *model = files.findChild<QFileSystemModel *>();
+    auto *model = files.findChild<WorkspaceFileModel *>();
+    auto *proxy = qobject_cast<QSortFilterProxyModel *>(grid->model());
     auto *editor = files.findChild<QPlainTextEdit *>("fileTextEditor");
     editor->appendPlainText("Draft");
-    const QString draft = editor->toPlainText();
-    QTest::mouseClick(files.findChild<QToolButton *>("explorerFoldersMode"), Qt::LeftButton);
-    QTRY_VERIFY(grid->isVisible());
-    QModelIndex directory;
-    QTRY_VERIFY((directory = model->index(QFileInfo(root.filePath("nested")).canonicalFilePath())).isValid());
-    grid->setCurrentIndex(directory);
-    grid->setFocus();
+    const QPointer<QTextDocument> draft = files.currentDocument();
+    const QString text = editor->toPlainText();
+    explorer->setMode(FileExplorerView::Mode::Folders);
+    QTRY_VERIFY(model->indexForPath("nested").isValid());
+    grid->setCurrentIndex(proxy->mapFromSource(model->indexForPath("nested")));
     QTest::keyClick(grid, Qt::Key_Return);
-    QCOMPARE(grid->rootIndex(), directory);
-    QCOMPARE(editor->toPlainText(), draft);
-    QTRY_VERIFY(model->index(QFileInfo(root.filePath("nested/other.txt")).canonicalFilePath()).isValid());
-    grid->setCurrentIndex(model->index(QFileInfo(root.filePath("nested/other.txt")).canonicalFilePath()));
-    QTimer::singleShot(0, []() {
-        for (auto *widget : QApplication::topLevelWidgets()) {
-            if (auto *dialog = qobject_cast<QMessageBox *>(widget))
-                dialog->done(QMessageBox::Cancel);
-        }
-    });
+    QTRY_COMPARE(model->relativePath({}), QString("nested"));
+    QTRY_VERIFY(model->indexForPath("nested/other.txt").isValid());
+    grid->setCurrentIndex(proxy->mapFromSource(model->indexForPath("nested/other.txt")));
     QTest::keyClick(grid, Qt::Key_Return);
-    QCOMPARE(files.currentPath(), root.filePath("README.md"));
-    QCOMPARE(editor->toPlainText(), draft);
+    QTRY_COMPARE(files.currentPath(), root.filePath("nested/other.txt"));
+    QVERIFY(draft && draft->isModified());
+    QCOMPARE(draft->toPlainText(), text);
     files.findChild<QToolButton *>("fileExplorerRoot")->click();
-    QCOMPARE(grid->rootIndex(), model->index(QFileInfo(root.path()).canonicalFilePath()));
+    QTRY_COMPARE(model->relativePath({}), QString("."));
     QVERIFY(files.hasUnsavedChanges());
 }
 
@@ -330,54 +330,119 @@ void DashboardFilesWidgetTest::symbolicParentUsesCanonicalNavigation()
     QSKIP("Directory symlinks require host-specific Windows privileges.");
 #else
     QTemporaryDir directory;
-    const QString realRoot = directory.filePath("project");
     QTemporaryDir aliases;
-    const QString parentAlias = aliases.filePath("parent");
-    const QString aliasRoot = parentAlias + "/project";
-    QVERIFY(QDir().mkpath(realRoot + "/nested"));
-    QFile document(realRoot + "/README.md");
-    QVERIFY(document.open(QIODevice::WriteOnly));
-    document.write("fixture");
-    document.close();
-    // macOS /var is an alias of /private/var: reproduce a linked ancestor,
-    // while retaining the editor policy against directly linked root entries.
-    QVERIFY(QFile::link(directory.path(), parentAlias));
-    const QString canonicalRoot = QFileInfo(realRoot).canonicalFilePath();
-
+    const QString root = directory.filePath("project");
+    const QString alias = aliases.filePath("parent");
+    QVERIFY(QDir().mkpath(root + "/nested"));
+    QVERIFY(QFile::link(directory.path(), alias));
     DashboardFilesWidget dashboard;
-    dashboard.setContext("project", aliasRoot);
-    QCOMPARE(dashboard.currentDirectory(), canonicalRoot);
-    auto *dashboardTree = dashboard.findChild<QTreeView *>("dashboardFiles");
-    auto *filter = qobject_cast<QSortFilterProxyModel *>(dashboardTree->model());
-    auto *dashboardModel = dashboard.findChild<QFileSystemModel *>();
-    QModelIndex documentIndex;
-    QTRY_VERIFY((documentIndex = filter->mapFromSource(dashboardModel->index(
-        canonicalRoot + "/README.md"))).isValid());
-    QSignalSpy opened(&dashboard, &DashboardFilesWidget::openFileRequested);
-    QMetaObject::invokeMethod(dashboardTree, "doubleClicked", Q_ARG(QModelIndex, documentIndex));
-    QCOMPARE(opened.size(), 1);
-    QCOMPARE(opened.first().first().toString(), canonicalRoot + "/README.md");
+    dashboard.setContext("project", alias + "/project");
+    // Root selection is trusted composition; core pins it. The view preserves
+    // the selected spelling and performs no canonicalization of host metadata.
+    QTRY_COMPARE(dashboard.currentDirectory(), alias + "/project");
     QVERIFY(!dashboard.navigateTo(".."));
-
-    ProjectFilesWidget files;
-    QVERIFY(files.setRoot(aliasRoot));
-    auto *explorer = files.findChild<FileExplorerView *>();
-    auto *model = files.findChild<QFileSystemModel *>();
-    auto *up = files.findChild<QToolButton *>("fileExplorerUp");
-    QVERIFY(up);
-    QVERIFY(!up->isEnabled());
-    QCOMPARE(model->filePath(explorer->treeView()->rootIndex()), canonicalRoot);
-    explorer->setMode(FileExplorerView::Mode::Folders);
-    QModelIndex nested;
-    QTRY_VERIFY((nested = model->index(canonicalRoot + "/nested")).isValid());
-    explorer->iconView()->setCurrentIndex(nested);
-    QTest::keyClick(explorer->iconView(), Qt::Key_Return);
-    QCOMPARE(model->filePath(explorer->iconView()->rootIndex()), canonicalRoot + "/nested");
-    QVERIFY(up->isEnabled());
-    up->click();
-    QCOMPARE(model->filePath(explorer->iconView()->rootIndex()), canonicalRoot);
-    QVERIFY(!up->isEnabled());
+    QVERIFY(dashboard.navigateTo("nested"));
+    QTRY_COMPARE(dashboard.currentDirectory(), alias + "/project/nested");
+    dashboard.findChild<QPushButton *>("dashboardFilesUp")->click();
+    QTRY_COMPARE(dashboard.currentDirectory(), alias + "/project");
 #endif
+}
+
+void DashboardFilesWidgetTest::boundedPagesAndMachineContexts()
+{
+    struct Call {
+        WorkspaceFilesClient::Context context;
+        QJsonObject request;
+        WorkspaceFilesClient::Completion completion;
+        bool cancelled = false;
+    };
+    std::vector<std::shared_ptr<Call>> calls;
+    const auto dispatch = [&calls](const auto &context, const auto &request, auto completion) {
+        auto call = std::make_shared<Call>();
+        call->context = context;
+        call->request = request;
+        call->completion = std::move(completion);
+        calls.push_back(call);
+        return WorkspaceFilesClient::Cancel([call]() { call->cancelled = true; });
+    };
+    const auto respond = [](const std::shared_ptr<Call> &call, const QString &name) {
+        const QJsonArray entries{QJsonObject{{"name", name}, {"kind", "file"}, {"size_bytes", "9007199254740993"}}};
+        const QJsonObject value{{"schema", "dockpipe.files/v1"}, {"path", call->request.value("path")},
+            {"revision", QString(64, 'c')}, {"entries", entries}};
+        call->completion({WorkspaceFilesClient::Outcome::Success, value, {}, call->context});
+    };
+    QTemporaryDir root;
+    for (int index = 0; index < 151; ++index) {
+        QFile file(root.filePath(QString("local-%1.txt").arg(index, 3, 10, QChar('0'))));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("local"), qint64(5));
+    }
+    DashboardFilesWidget files;
+    files.setContext("project", root.path());
+    auto *model = files.findChild<WorkspaceFileModel *>();
+    auto *controller = DashboardFilesController::get(&files);
+    auto *tree = files.findChild<QTreeView *>("dashboardFiles");
+    auto *proxy = qobject_cast<QSortFilterProxyModel *>(tree->model());
+    QTRY_COMPARE(files.currentDirectory(), root.path());
+    QTRY_VERIFY(model->rowCount() >= 150);
+    if (model->canFetchMore({}))
+        model->fetchMore({});
+    QTRY_COMPARE(model->rowCount(), 151);
+    controller->setRemoteDispatch(dispatch);
+    const QJsonObject invalid{{"node", "worker"}};
+    QString error;
+    QVERIFY(!files.setMachineContext(invalid, "root-a", root.path(), &error));
+    QVERIFY(!error.isEmpty());
+    QCOMPARE(files.machineTarget(), invalid);
+    QVERIFY(files.currentDirectory().isEmpty());
+    QVERIFY(tree->isHidden());
+    QVERIFY(!files.navigateTo(root.path()));
+
+    const QJsonObject first{{"node", "worker-a"}, {"fingerprint", QString(64, 'a')}, {"generation", QString(64, 'b')}};
+    const QJsonObject second{{"node", "worker-b"}, {"fingerprint", QString(64, 'd')}, {"generation", QString(64, 'e')}};
+    QVERIFY(files.setMachineContext(first, "root-a", root.path(), &error));
+    QTRY_VERIFY(!calls.empty());
+    const auto oldCall = calls.back();
+    QCOMPARE(oldCall->context.nodeId, QString("worker-a"));
+    QCOMPARE(oldCall->context.rootId, QString("root-a"));
+    QVERIFY(oldCall->context.localRoot.isEmpty());
+    QVERIFY(files.setMachineContext(second, "root-b", root.path(), &error));
+    QTRY_VERIFY(calls.back() != oldCall);
+    const auto currentCall = calls.back();
+    QVERIFY(oldCall->cancelled);
+    respond(oldCall, "stale-local-looking.txt");
+    respond(currentCall, "hardware-key-remote.txt");
+    QTRY_COMPARE(files.currentDirectory(), QString("/"));
+    QCOMPARE(files.machineTarget(), second);
+    QCOMPARE(files.remoteRootId(), QString("root-b"));
+    QCOMPARE(model->rowCount(), 1);
+    QCOMPARE(model->index(0, 0).data().toString(), QString("hardware-key-remote.txt"));
+    QCOMPARE(model->index(0, 0).data(WorkspaceFileModel::SizeBytesRole).toString(), QString("9007199254740993"));
+    QVERIFY(files.findChild<QPushButton *>("dashboardFilesFilesystem")->isHidden());
+    QSignalSpy opened(&files, &DashboardFilesWidget::openFileRequested);
+    const auto remoteIndex = proxy->mapFromSource(model->index(0, 0));
+    QMetaObject::invokeMethod(tree, "doubleClicked", Q_ARG(QModelIndex, remoteIndex));
+    QCOMPARE(opened.count(), 1);
+    QCOMPARE(opened.first().first().toString(), QString("/hardware-key-remote.txt"));
+    QVERIFY(files.navigateTo("/folder"));
+    QTRY_VERIFY(calls.back() != currentCall);
+    const auto directoryCall = calls.back();
+    QCOMPARE(directoryCall->request.value("path").toString(), QString("folder"));
+    QCOMPARE(directoryCall->context.workerGeneration, QString(64, 'e'));
+    respond(directoryCall, "nested.txt");
+    QTRY_COMPARE(files.currentDirectory(), QString("/folder"));
+    QVERIFY(files.setMachineContext({}, {}, root.path(), &error));
+    QTRY_COMPARE(files.currentDirectory(), root.path());
+    QVERIFY(files.machineTarget().isEmpty());
+    QVERIFY(files.remoteRootId().isEmpty());
+
+    auto pending = std::make_unique<DashboardFilesWidget>();
+    DashboardFilesController::get(pending.get())->setRemoteDispatch(dispatch);
+    QVERIFY(pending->setMachineContext(first, "root-a", {}, &error));
+    const auto ownedCall = calls.back();
+    pending.reset();
+    QVERIFY(ownedCall->cancelled);
+    respond(ownedCall, "ignored-after-destruction.txt");
 }
 
 void DashboardFilesWidgetTest::enterActivatesBothViews_data()

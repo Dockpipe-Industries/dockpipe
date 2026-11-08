@@ -16,6 +16,29 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    QProcessEnvironment startup;
+    startup.insert("DOCKER_CONTEXT", "operator-profile");
+    startup.insert("DESKTOP_STARTUP_ID", "consumed-startup-id");
+    startup.insert("XDG_ACTIVATION_TOKEN", "consumed-activation-token");
+    qputenv("DOCKPIPE_GLOBAL_ROOT", "/saved/preference");
+    qputenv("QT_QUICK_BACKEND", "software");
+    const auto restart = launcherRestartEnvironment(startup);
+    if (restart.contains("DOCKPIPE_GLOBAL_ROOT") || restart.contains("QT_QUICK_BACKEND")
+        || restart.value("DOCKER_CONTEXT") != "operator-profile") {
+        QTextStream(stderr) << "Restart promoted application defaults into operator overrides\n";
+        return 1;
+    }
+#ifdef Q_OS_LINUX
+    if (restart.contains("DESKTOP_STARTUP_ID") || restart.contains("XDG_ACTIVATION_TOKEN"))
+        return 1;
+#endif
+    startup.insert("DOCKPIPE_GLOBAL_ROOT", "/operator/root");
+    startup.insert("QT_QUICK_BACKEND", "operator-backend");
+    const auto explicitRestart = launcherRestartEnvironment(startup);
+    if (explicitRestart.value("DOCKPIPE_GLOBAL_ROOT") != "/operator/root"
+        || explicitRestart.value("QT_QUICK_BACKEND") != "operator-backend")
+        return 1;
+
     const QStringList originalPaths = {
         QStringLiteral("/usr/bin:/bin:/usr/sbin:/sbin"),
         QStringLiteral("/custom tools/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin"),

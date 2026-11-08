@@ -37,7 +37,7 @@ const usage = `dockpipe remote <command> [options]
   deny    --code <code>                          Reject a pairing request
   pairing-close                                  Close pairing and deny pending requests
   nodes                                          List enrolled machines (not live presence)
-  pair    --endpoint <https-origin> --node <name> --allow-delivery
+  pair    --endpoint <https-origin> --node <name> [--allow-delivery] [--allow-features]
                                                  Request approval without transferring files
   invite  --node <name> --out <private-file>       Disabled; use hardware-key pairing
   pair    --invite <file> --allow-delivery        Trust this broker to send workflows
@@ -46,6 +46,14 @@ const usage = `dockpipe remote <command> [options]
   monitoring --system --docker                    Opt in locally on a paired worker
              --disable                           Stop sharing machine snapshots
   observe --node <name>                          Read the latest authorized machine snapshot
+  features                                       List authorized live feature catalogs
+  feature-call --request <json-file|->            Submit one fixed feature intent and await its result
+  feature-status --request <json-file|->          Inspect the captured feature operation without replay
+  feature-cancel --request <json-file|->          Request cancellation of the captured operation
+  features-config [--request <json-file|->]       Inspect or replace worker-local feature permissions
+  terminal --request <intent-file>              Private interactive terminal NDJSON transport
+  terminal-status --request <reference-file>    Inspect the captured terminal session
+  terminal-close --request <reference-file>     Request closure of the captured terminal session
   submit  --node <name> --profile <name> --id <id> Submit once; same ID is idempotent
   submit  --node <name> --workflow-file <path> --id <id>  Deliver local sources
           [--include <path>] [--dependency <package-dir>] [--artifact <path>]
@@ -55,6 +63,7 @@ const usage = `dockpipe remote <command> [options]
   result  --id <id> [--out <new-private-directory>] Inspect/download a result
   cancel  --id <id>                               Request cancellation
   revoke  --id <node>                             Revoke a worker
+  remove  --id <node>                             Remove a saved worker enrollment
   service --role broker|worker                    Install a user service; --replace updates and restarts it
 All commands accept --state <directory>. Remote nodes currently target Linux/macOS.
 Locked operator actions re-authenticate before sending. Use --auth never for unattended
@@ -73,7 +82,7 @@ func Run(args []string, checkDependencies func(string) error) error {
 	}
 	command := args[0]
 	flags := flag.NewFlagSet("remote "+command, flag.ContinueOnError)
-	activationRequest := flags.String("request", "", "exact private edge activation request")
+	activationRequest := flags.String("request", "", "exact edge activation or typed feature JSON request; - reads feature stdin")
 	activationApproval := flags.String("approve", "", "exact activation approval")
 	state := flags.String("state", "", "private state directory")
 	authentication := flags.String("auth", "auto", "OS re-authentication for locked operator actions: auto or never")
@@ -84,13 +93,14 @@ func Run(args []string, checkDependencies func(string) error) error {
 	hostname := flags.String("hostname", "", "public edge hostname")
 	node := flags.String("node", "", "worker name")
 	profile := flags.String("profile", "", "worker-approved workflow profile")
-	id := flags.String("id", "", "stable job ID or node for revoke")
+	id := flags.String("id", "", "stable job ID or node for revoke/remove")
 	out := flags.String("out", "", "private output destination")
 	endpoint := flags.String("endpoint", "", "broker HTTPS origin for online pairing")
 	code := flags.String("code", "", "verification code displayed on the worker")
 	invite := flags.String("invite", "", "pairing file")
 	profiles := flags.String("profiles", "", "locally approved profiles file")
 	allowDelivery := flags.Bool("allow-delivery", false, "approve execution of operator-supplied code as this user")
+	allowFeatures := flags.Bool("allow-features", false, "opt in to separately configured managed features without granting workflow delivery")
 	monitorSystem := flags.Bool("system", false, "share system resources and process identities with this worker's broker")
 	monitorDocker := flags.Bool("docker", false, "share read-only Docker inventory with this worker's broker")
 	disableMonitoring := flags.Bool("disable", false, "disable worker monitoring")
@@ -139,8 +149,11 @@ func Run(args []string, checkDependencies func(string) error) error {
 	if *expectedDigest != "" && command != "submit" {
 		return errors.New("--expected-digest is supported only by submit")
 	}
-	if (*activationRequest != "" || *activationApproval != "") && command != "edge-activate" {
-		return errors.New("activation flags require edge-activate")
+	if *activationApproval != "" && command != "edge-activate" {
+		return errors.New("--approve requires edge-activate")
+	}
+	if *activationRequest != "" && command != "edge-activate" && command != "feature-call" && command != "feature-status" && command != "feature-cancel" && command != "features-config" && command != "terminal" && command != "terminal-status" && command != "terminal-close" {
+		return errors.New("--request requires edge-activate or an explicit feature request command")
 	}
 	if *dryRun && command != "submit" && command != "edge-activate" {
 		return errors.New("--dry-run and --expected-digest are supported only by remote submit")
@@ -156,6 +169,9 @@ func Run(args []string, checkDependencies func(string) error) error {
 	}
 	if *allowDelivery && command != "pair" {
 		return errors.New("--allow-delivery must be approved on the worker with remote pair")
+	}
+	if *allowFeatures && (command != "pair" || *endpoint == "") {
+		return errors.New("--allow-features requires online remote pair with --endpoint")
 	}
 	if *attestationRoots != "" && command != "security-key-register" {
 		return errors.New("--attestation-roots is supported only by remote security-key-register")
@@ -176,7 +192,7 @@ func Run(args []string, checkDependencies func(string) error) error {
 	ctx = context.WithValue(ctx, remoteAuthenticationKey{}, *authentication == "auto")
 	// Setup hands the terminal to dependency installers and provider authentication.
 	// An outer spinner would overwrite their prompts even when nested operations are quiet.
-	options := infrastructure.OperationOptions{Spinner: command != "setup" && command != "pair" && command != "approve" && command != "security-key-register" && command != "unlock" && command != "security-policy"}
+	options := infrastructure.OperationOptions{Spinner: command != "setup" && command != "pair" && command != "approve" && command != "security-key-register" && command != "unlock" && command != "security-policy" && command != "terminal"}
 	if *authentication == "auto" {
 		options.Spinner = false
 	}
@@ -194,6 +210,18 @@ func Run(args []string, checkDependencies func(string) error) error {
 			return configureMonitoring(root, *monitorSystem, *monitorDocker, *disableMonitoring)
 		case "observe":
 			return observeRemote(ctx, root, *node)
+		case "features":
+			return featureCatalog(ctx, root)
+		case "feature-call":
+			return callFeature(ctx, root, *activationRequest)
+		case "feature-status", "feature-cancel":
+			return inspectFeature(ctx, root, *activationRequest, command == "feature-cancel")
+		case "features-config":
+			return configureFeatures(ctx, root, *activationRequest)
+		case "terminal":
+			return remoteTerminal(ctx, root, *activationRequest)
+		case "terminal-status", "terminal-close":
+			return inspectTerminal(ctx, root, *activationRequest, command == "terminal-close")
 		case "info":
 			info, err := describeRemote(root)
 			if err != nil {
@@ -214,7 +242,7 @@ func Run(args []string, checkDependencies func(string) error) error {
 				if *invite != "" || *profiles != "" {
 					return errors.New("online pairing cannot be combined with invitation or profiles files")
 				}
-				return pairOnline(ctx, root, *endpoint, *node, *allowDelivery, *timeout)
+				return pairOnlineWithFeatures(ctx, root, *endpoint, *node, *allowDelivery, *allowFeatures, *timeout)
 			}
 			return pairWithDelivery(ctx, root, *invite, *profiles, *allowDelivery, *timeout)
 		case "worker":
@@ -240,7 +268,7 @@ func Run(args []string, checkDependencies func(string) error) error {
 				return errors.New("delivery options require --workflow-file")
 			}
 			return operator(ctx, root, command, *node, *profile, *id, *out)
-		case "invite", "nodes", "jobs", "result", "cancel", "revoke":
+		case "invite", "nodes", "jobs", "result", "cancel", "revoke", "remove":
 			return operator(ctx, root, command, *node, *profile, *id, *out)
 		default:
 			return fmt.Errorf("unknown remote command %q\n%s", command, usage)

@@ -1,10 +1,19 @@
 #include "DockerObservabilityWidget.h"
+#include <QCoreApplication>
 #include "MonitoringMachineSelector.h"
 #include "DockpipeChoices.h"
 #include "CanvasIcons.h"
 #include "DockerResourceInspector.h"
 #include "SetupTerminal.h"
 #include <QDialog>
+#include <QButtonGroup>
+#include <QSettings>
+#include <QComboBox>
+#include <QResizeEvent>
+#include <QScrollArea>
+#include <QStyledItemDelegate>
+#include <QPainter>
+#include <QStackedWidget>
 #include <QUrl>
 #include <QMessageBox>
 
@@ -19,9 +28,11 @@
 #include <QMenu>
 #include <QPlainTextEdit>
 #include <QProcess>
+#include <QRegularExpression>
 #include <QPushButton>
 #include <QScrollBar>
 #include <QShowEvent>
+#include <QHideEvent>
 #include <QSignalBlocker>
 #include <QSplitter>
 #include <QStyle>
@@ -107,14 +118,42 @@ QString normalizeContainerState(QString state, const QString &statusText)
     return QStringLiteral("other");
 }
 
-QLabel *makeStatusPill(const QString &text, const QString &state, QWidget *parent)
-{
-    auto *label = new QLabel(text, parent);
-    label->setObjectName(QStringLiteral("dockerStatusPill"));
-    label->setProperty("state", state);
-    label->setAlignment(Qt::AlignCenter);
-    return label;
-}
+class ContainerStateDelegate final : public QStyledItemDelegate {
+public:
+    explicit ContainerStateDelegate(QObject *parent) : QStyledItemDelegate(parent) {}
+
+    void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override
+    {
+        QStyledItemDelegate::paint(painter, option, index);
+        const QString state = index.data(Qt::UserRole + 1).toString();
+        const bool dark = option.palette.color(QPalette::Base).lightness() < 128;
+        QColor color(dark ? "#a8b6c8" : "#596b82");
+        if (state == "running" || state == "healthy")
+            color = QColor(dark ? "#83d4b0" : "#226e4c");
+        else if (state == "unhealthy" || state == "dead")
+            color = QColor(dark ? "#f19ba4" : "#ab3544");
+        else if (state == "paused" || state == "restarting")
+            color = QColor(dark ? "#e9c078" : "#896115");
+
+        painter->save();
+        painter->setRenderHint(QPainter::Antialiasing);
+        QFont font = option.font;
+        font.setPixelSize(11);
+        font.setWeight(QFont::DemiBold);
+        painter->setFont(font);
+        const QString text = index.data(Qt::AccessibleTextRole).toString();
+        const int width = qMin(QFontMetrics(font).horizontalAdvance(text) + 20, option.rect.width() - 12);
+        const QRect badge(option.rect.left() + 8, option.rect.center().y() - 12, width, 24);
+        QColor background = color;
+        background.setAlpha(dark ? 32 : 22);
+        painter->setBrush(background);
+        painter->setPen(Qt::NoPen);
+        painter->drawRoundedRect(badge, 5, 5);
+        painter->setPen(color);
+        painter->drawText(badge, Qt::AlignCenter, text);
+        painter->restore();
+    }
+};
 
 QIcon statusIconForState(const QString &state, QWidget *widget)
 {
@@ -284,7 +323,7 @@ DockerObservabilityWidget::DockerObservabilityWidget(QWidget *parent) : QWidget(
     connect(m_autoRefreshTimer, &QTimer::timeout, this, &DockerObservabilityWidget::refreshQuietly);
 
     buildUi();
-    auto *refreshButton = m_inspector->findChild<QPushButton *>("dockerRefresh");
+    auto *refreshButton = findChild<QPushButton *>("dockerRefresh");
     if (refreshButton) {
         connect(&m_remoteCommand, &RemoteCommand::busyChanged, refreshButton,
                 [refreshButton](bool busy) { refreshButton->setEnabled(!busy); });
@@ -293,11 +332,14 @@ DockerObservabilityWidget::DockerObservabilityWidget(QWidget *parent) : QWidget(
 
 void DockerObservabilityWidget::buildUi()
 {
+    setObjectName("dockerObservabilityPage");
+    setAttribute(Qt::WA_StyledBackground, true);
     m_inventory = new QDialog(this);
     m_inventory->setWindowTitle(tr("Docker resources"));
     m_inventory->resize(900, 560);
     auto *inventoryLayout = new QVBoxLayout(m_inventory);
     m_tabs = new QTabWidget;
+    m_tabs->setObjectName("dockerInventoryTabs");
     m_tabs->addTab(buildContainersPage(), tr("Containers"));
     m_tabs->addTab(buildNetworksPage(), tr("Networks"));
     m_tabs->addTab(buildVolumesPage(), tr("Volumes"));
@@ -306,8 +348,12 @@ void DockerObservabilityWidget::buildUi()
     m_containerDetails->parentWidget()->hide();
     m_inspector = new DockerResourceInspector(m_containerLogs,
         {m_containerDetails, m_networkDetails, m_volumeDetails});
+    m_canvasInspectorHost = new QWidget;
+    auto *inspectorLayout = new QVBoxLayout(m_canvasInspectorHost);
+    inspectorLayout->setContentsMargins(0, 0, 0, 0);
+    inspectorLayout->addWidget(m_inspector);
     m_canvas = new ResourceCanvas("docker", tr("Containers"),
-        tr("Solid arrows: declared dependencies · Dashed lines: network or storage attachments"), m_inspector, this, false);
+        tr("Solid arrows: declared dependencies · Dashed lines: network or storage attachments"), m_canvasInspectorHost, this, false);
     m_canvas->setDetailsLabel(tr("Inspector"));
     m_canvas->addKindFilter("container", tr("Containers"));
     m_canvas->addKindFilter("network", tr("Networks"));
@@ -319,15 +365,72 @@ void DockerObservabilityWidget::buildUi()
     auto *machineBar = new QHBoxLayout;
     machineBar->setContentsMargins(20, 12, 20, 4);
     m_machine = new MonitoringMachineSelector;
-    machineBar->addWidget(new QLabel(tr("Machine")));
+    m_machineLabel = new QLabel(tr("Machine"));
+    machineBar->addWidget(m_machineLabel);
     machineBar->addWidget(m_machine);
     machineBar->addStretch();
+    auto *viewButtons = new QButtonGroup(this);
+    auto *dashboardButton = new QPushButton(tr("List"));
+    dashboardButton->setObjectName("dockerDashboardView");
+    dashboardButton->setAccessibleName(tr("Containers list view"));
+    dashboardButton->setCheckable(true);
+    auto *canvasButton = new QPushButton(tr("Canvas"));
+    canvasButton->setObjectName("dockerCanvasView");
+    canvasButton->setAccessibleName(tr("Containers canvas view"));
+    canvasButton->setCheckable(true);
+    viewButtons->addButton(dashboardButton);
+    viewButtons->addButton(canvasButton);
+    auto *viewSwitcher = new QFrame;
+    viewSwitcher->setObjectName("dockerViewSwitcher");
+    auto *viewLayout = new QHBoxLayout(viewSwitcher);
+    viewLayout->setContentsMargins(3, 3, 3, 3);
+    viewLayout->setSpacing(2);
+    canvasButton->setIcon(CanvasIcons::icon(CanvasIcons::Symbol::Branch));
+    dashboardButton->setIcon(CanvasIcons::icon(CanvasIcons::Symbol::List));
+    viewLayout->addWidget(canvasButton);
+    viewLayout->addWidget(dashboardButton);
+    machineBar->addWidget(viewSwitcher);
     canvasLayout->addLayout(machineBar);
-    connect(m_machine, qOverload<int>(&QComboBox::currentIndexChanged), this, &DockerObservabilityWidget::changeMachine);
-    canvasLayout->addWidget(m_canvas);
+    connect(m_machine, qOverload<int>(&QComboBox::currentIndexChanged), this, [this]() {
+        if (!m_featureMode)
+            changeMachine();
+    });
+    m_views = new QStackedWidget;
+    m_views->addWidget(m_canvas);
+    m_dashboard = buildListDashboard();
+    auto *dashboardScroll = new QScrollArea;
+    dashboardScroll->setFrameShape(QFrame::NoFrame);
+    dashboardScroll->setWidgetResizable(true);
+    dashboardScroll->setWidget(m_dashboard);
+    m_dashboardScroll = dashboardScroll;
+    m_views->addWidget(dashboardScroll);
+    canvasLayout->addWidget(m_views);
+    updateSummary();
+    connect(m_tabs, &QTabWidget::currentChanged, this, [this](int index) {
+        m_search->setVisible(index == 0);
+        m_stateFilter->setVisible(index == 0);
+        const QStringList ids{selectedContainerId(), selectedNetworkId(), selectedVolumeName()};
+        const QStringList kinds{"container", "network", "volume"};
+        if (index < 0 || index >= ids.size())
+            return;
+        m_selectedResource.clear();
+        if (!ids[index].isEmpty())
+            selectResource(kinds[index] + ":" + ids[index]);
+        else
+            updateInspector();
+        updateListResults();
+    });
+    connect(dashboardButton, &QPushButton::clicked, this, [this]() { setDashboardView(true); });
+    connect(canvasButton, &QPushButton::clicked, this, [this]() { setDashboardView(false); });
+    const bool dashboard = QSettings().value("docker/viewMode", "canvas").toString() == "dashboard";
+    dashboardButton->setChecked(dashboard);
+    canvasButton->setChecked(!dashboard);
+    setDashboardView(dashboard);
     connect(m_canvas, &ResourceCanvas::resourceSelected, this, &DockerObservabilityWidget::selectResource);
     for (auto *table : {m_containers, m_networks, m_volumes}) {
         connect(table, &QTableWidget::cellDoubleClicked, this, [this](int, int) {
+            if (m_dashboardView)
+                return;
             m_inventory->accept();
             if (!m_canvas->focusResource(m_selectedResource))
                 m_canvas->showDetails();
@@ -335,30 +438,209 @@ void DockerObservabilityWidget::buildUi()
     }
     connect(m_inspector, &DockerResourceInspector::resourceRequested, this, [this](const QString &encoded) {
         const QString key = QUrl::fromPercentEncoding(encoded.toUtf8());
-        if (!m_canvas->focusResource(key)) {
+        if (m_dashboardView) {
+            selectResource(key);
+        } else if (!m_canvas->focusResource(key)) {
             selectResource(key);
             m_canvas->showDetails();
         }
     });
     connect(m_inspector, &DockerResourceInspector::refreshRequested, this, [this]() {
-        if (!m_machine->currentData().toString().isEmpty())
+        if (isRemoteTarget())
             refreshRemote(true);
         else
             refresh();
     });
     connect(m_inspector, &DockerResourceInspector::pauseChanged, this, [this](bool paused) {
         m_monitorPaused = paused;
-        if (paused)
+        if (paused) {
+            cancelFeatureRead();
+            m_remoteCommand.cancel();
             m_autoRefreshTimer->stop();
-        else if (m_active) {
+        } else if (m_active) {
             m_autoRefreshTimer->start();
             refresh();
         }
     });
-    connect(m_inspector, &DockerResourceInspector::inventoryRequested, m_inventory, &QDialog::show);
+    connect(m_inspector, &DockerResourceInspector::inventoryRequested, this, [this]() {
+        if (m_dashboardView)
+            m_tabs->setFocus();
+        else
+            m_inventory->show();
+    });
     connect(m_inspector, &DockerResourceInspector::startRequested, this, &DockerObservabilityWidget::onStartSelectedContainer);
     connect(m_inspector, &DockerResourceInspector::stopRequested, this, &DockerObservabilityWidget::onStopSelectedContainer);
     connect(m_inspector, &DockerResourceInspector::execRequested, this, &DockerObservabilityWidget::openExec);
+}
+
+QWidget *DockerObservabilityWidget::buildListDashboard()
+{
+    auto *page = new QWidget;
+    page->setObjectName("dockerDashboard");
+    auto *layout = new QVBoxLayout(page);
+    layout->setContentsMargins(24, 16, 24, 24);
+    layout->setSpacing(20);
+
+    auto *header = new QHBoxLayout;
+    auto *titles = new QVBoxLayout;
+    titles->setSpacing(4);
+    auto *heading = new QLabel(tr("Containers"));
+    heading->setObjectName("dockerPageTitle");
+    titles->addWidget(heading);
+    auto *description = new QLabel(tr("Manage containers, networks, and persistent storage."));
+    description->setObjectName("dockerPageDescription");
+    titles->addWidget(description);
+    header->addLayout(titles, 1);
+    m_listMonitoringHost = new QWidget;
+    auto *monitoringLayout = new QHBoxLayout(m_listMonitoringHost);
+    monitoringLayout->setContentsMargins(0, 0, 0, 0);
+    header->addWidget(m_listMonitoringHost);
+    layout->addLayout(header);
+
+    auto *summary = new QHBoxLayout;
+    summary->setSpacing(12);
+    const auto addMetric = [summary](const QString &title, const QString &caption, QLabel *&value) {
+        auto *card = new QFrame;
+        card->setObjectName("dockerSummaryCard");
+        auto *cardLayout = new QVBoxLayout(card);
+        cardLayout->setContentsMargins(18, 14, 18, 14);
+        cardLayout->setSpacing(4);
+        auto *label = new QLabel(title);
+        label->setObjectName("dockerMetricTitle");
+        cardLayout->addWidget(label);
+        value = new QLabel(QStringLiteral("—"));
+        value->setObjectName("dockerMetricValue");
+        cardLayout->addWidget(value);
+        auto *hint = new QLabel(caption);
+        hint->setObjectName("dockerMetricCaption");
+        cardLayout->addWidget(hint);
+        summary->addWidget(card, 1);
+    };
+    addMetric(tr("Containers"), tr("Across all states"), m_containerCount);
+    addMetric(tr("Running"), tr("Currently active"), m_runningCount);
+    addMetric(tr("Networks"), tr("Available connections"), m_networkCount);
+    addMetric(tr("Volumes"), tr("Persistent storage"), m_volumeCount);
+    layout->addLayout(summary);
+
+    m_dashboardSplitter = new QSplitter(Qt::Horizontal);
+    m_dashboardSplitter->setObjectName("dockerListSplitter");
+    m_dashboardSplitter->setChildrenCollapsible(false);
+    m_dashboardSplitter->setHandleWidth(12);
+    auto *inventory = new QFrame;
+    inventory->setObjectName("dockerInventoryCard");
+    inventory->setMinimumHeight(400);
+    auto *inventoryLayout = new QVBoxLayout(inventory);
+    inventoryLayout->setContentsMargins(16, 16, 16, 12);
+    inventoryLayout->setSpacing(16);
+    auto *toolbar = new QHBoxLayout;
+    toolbar->setSpacing(12);
+    m_search = new QLineEdit;
+    m_search->setObjectName("dockerContainerSearch");
+    m_search->setPlaceholderText(tr("Search by name, image, or port…"));
+    m_search->setAccessibleName(tr("Search containers"));
+    m_search->setClearButtonEnabled(true);
+    m_search->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Search), QLineEdit::LeadingPosition);
+    toolbar->addWidget(m_search, 1);
+    m_stateFilter = new QComboBox;
+    m_stateFilter->setObjectName("dockerStateFilter");
+    m_stateFilter->setAccessibleName(tr("Filter containers by state"));
+    m_stateFilter->addItem(tr("All states"), "all");
+    m_stateFilter->addItem(tr("Running"), "running");
+    m_stateFilter->addItem(tr("Stopped"), "stopped");
+    m_stateFilter->addItem(tr("Needs attention"), "attention");
+    toolbar->addWidget(m_stateFilter);
+    inventoryLayout->addLayout(toolbar);
+    m_listInventoryHost = new QWidget;
+    auto *inventoryHostLayout = new QVBoxLayout(m_listInventoryHost);
+    inventoryHostLayout->setContentsMargins(0, 0, 0, 0);
+    inventoryLayout->addWidget(m_listInventoryHost, 1);
+    m_listEmptyState = new QLabel(page);
+    m_listEmptyState->setObjectName("dockerListEmptyState");
+    m_listEmptyState->setAlignment(Qt::AlignCenter);
+    m_listEmptyState->setWordWrap(true);
+    m_listEmptyState->setMinimumHeight(140);
+    m_listEmptyState->hide();
+    m_listResults = new QLabel;
+    m_listResults->setObjectName("dockerListResults");
+    inventoryLayout->addWidget(m_listResults);
+    m_dashboardSplitter->addWidget(inventory);
+    m_dashboardSplitter->setStretchFactor(0, 3);
+    layout->addWidget(m_dashboardSplitter, 1);
+    connect(m_search, &QLineEdit::textChanged, this, &DockerObservabilityWidget::onContainerSearchChanged);
+    connect(m_stateFilter, qOverload<int>(&QComboBox::currentIndexChanged), this, [this]() {
+        applyContainerFilter();
+    });
+    return page;
+}
+
+void DockerObservabilityWidget::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    if (m_dashboardView)
+        updateDashboardLayout();
+}
+
+void DockerObservabilityWidget::updateDashboardLayout()
+{
+    // Below this width the table and a readable 360 px inspector no longer fit side by side.
+    const Qt::Orientation orientation = width() < 1180 ? Qt::Vertical : Qt::Horizontal;
+    if (m_dashboardSplitter->orientation() != orientation || m_dashboardSplitter->sizes().value(1) == 0) {
+        m_dashboardSplitter->setOrientation(orientation);
+        m_dashboardSplitter->setSizes(orientation == Qt::Horizontal ? QList<int>{800, 420} : QList<int>{300, 400});
+    }
+}
+
+void DockerObservabilityWidget::updateListResults()
+{
+    for (auto *table : {m_containers, m_networks, m_volumes})
+        table->parentWidget()->show();
+    m_listEmptyState->hide();
+    if (!m_dashboardView)
+        return;
+    const QList<QTableWidget *> tables{m_containers, m_networks, m_volumes};
+    const int index = m_tabs->currentIndex();
+    if (index < 0 || index >= tables.size())
+        return;
+    QTableWidget *table = tables[index];
+    int visible = 0;
+    for (int row = 0; row < table->rowCount(); ++row) {
+        if (!table->isRowHidden(row))
+            ++visible;
+    }
+    const QStringList names{tr("containers"), tr("networks"), tr("volumes")};
+    m_listResults->setText(tr("%1 of %2 %3").arg(visible).arg(table->rowCount()).arg(names[index]));
+    if (visible == 0) {
+        QWidget *page = m_tabs->currentWidget();
+        if (m_listEmptyState->parentWidget() != page)
+            page->layout()->addWidget(m_listEmptyState);
+        m_listEmptyState->setText(table->rowCount() > 0
+            ? tr("No matching containers\nTry a different search or state filter.")
+            : tr("No resources to display\nRefresh to load inventory from the selected machine."));
+        table->parentWidget()->hide();
+        m_listEmptyState->show();
+    }
+}
+
+void DockerObservabilityWidget::setDashboardView(bool dashboard)
+{
+    m_dashboardView = dashboard;
+    m_inventory->hide();
+    if (dashboard) {
+        m_listInventoryHost->layout()->addWidget(m_tabs);
+        m_dashboardSplitter->addWidget(m_inspector);
+        m_views->setCurrentWidget(m_dashboardScroll);
+        updateDashboardLayout();
+    } else {
+        m_inventory->layout()->addWidget(m_tabs);
+        m_canvasInspectorHost->layout()->addWidget(m_inspector);
+        m_views->setCurrentWidget(m_canvas);
+    }
+    m_inspector->setListPresentation(dashboard, m_listMonitoringHost);
+    m_tabs->show();
+    m_inspector->show();
+    applyContainerFilter();
+    updateInspector();
+    QSettings().setValue("docker/viewMode", dashboard ? "dashboard" : "canvas");
 }
 
 void DockerObservabilityWidget::selectResource(const QString &key)
@@ -378,6 +660,14 @@ void DockerObservabilityWidget::selectResource(const QString &key)
     if (row < 0)
         return;
     m_selectedResource = key;
+    const QStringList kinds{"container", "network", "volume"};
+    {
+        const QSignalBlocker blocker(m_tabs);
+        m_tabs->setCurrentIndex(kinds.indexOf(kind));
+    }
+    m_search->setVisible(kind == "container");
+    m_stateFilter->setVisible(kind == "container");
+    updateListResults();
     table->selectRow(row);
     updateInspector();
     if (kind == "container")
@@ -411,7 +701,7 @@ void DockerObservabilityWidget::updateInspector()
     if (row < 0) {
         selection.kind = -1;
         selection.status = m_selectedResource.isEmpty()
-            ? tr("Choose a resource on the canvas.") : tr("This resource is no longer in the current inventory.");
+            ? tr("Choose a resource in the table or on the canvas.") : tr("This resource is no longer in the current inventory.");
         m_inspector->setSelection(selection);
         return;
     }
@@ -424,7 +714,9 @@ void DockerObservabilityWidget::updateInspector()
         selection.canStop = selection.canExec || state == "paused" || state == "restarting";
         selection.status = tr("Container · %1").arg(table->item(row, 1)->data(Qt::ToolTipRole).toString());
     }
-    if (m_containerActionBusy || !m_machine->currentData().toString().isEmpty()) {
+    if (isRemoteTarget())
+        selection.canExec = false;
+    if (m_containerActionBusy || !canControlTarget()) {
         selection.canExec = false;
         selection.canStart = false;
         selection.canStop = false;
@@ -482,14 +774,14 @@ void DockerObservabilityWidget::updateInspector()
                 append("container", containerId, name);
         }
     }
-    selection.relatedHtml = related.isEmpty() ? tr("No related resources in this snapshot.")
+    selection.relatedHtml = related.isEmpty() ? tr("No linked resources.")
         : tr("Related: ") + related.join(" &nbsp; · &nbsp; ");
     m_inspector->setSelection(selection);
 }
 
 void DockerObservabilityWidget::openExec(const QString &shell)
 {
-    if (!m_machine->currentData().toString().isEmpty())
+    if (isRemoteTarget())
         return;
     if (!m_selectedResource.startsWith("container:") || (shell != "/bin/sh" && shell != "/bin/bash"))
         return;
@@ -512,13 +804,19 @@ QWidget *DockerObservabilityWidget::buildContainersPage()
 
     m_containers = new QTableWidget(splitter);
     m_containers->setObjectName(QStringLiteral("dockerTable"));
+    // Keep the header and at least three 48 px rows readable in a stacked layout.
+    m_containers->setMinimumHeight(200);
     m_containers->setColumnCount(5);
+    m_containers->setItemDelegateForColumn(1, new ContainerStateDelegate(m_containers));
     m_containers->setHorizontalHeaderLabels({tr("Name"), tr("State"), tr("Image"), tr("Ports"), tr("Created")});
+    m_containers->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     m_containers->horizontalHeader()->setStretchLastSection(false);
-    m_containers->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    m_containers->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);
+    m_containers->setColumnWidth(0, 220);
     m_containers->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
     m_containers->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
-    m_containers->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+    m_containers->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Interactive);
+    m_containers->setColumnWidth(3, 150);
     m_containers->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
     m_containers->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_containers->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -526,7 +824,9 @@ QWidget *DockerObservabilityWidget::buildContainersPage()
     m_containers->setAlternatingRowColors(true);
     m_containers->setShowGrid(false);
     m_containers->verticalHeader()->setVisible(false);
-    m_containers->verticalHeader()->setDefaultSectionSize(36);
+    m_containers->verticalHeader()->setDefaultSectionSize(48);
+    m_containers->setWordWrap(false);
+    m_containers->setTextElideMode(Qt::ElideRight);
     m_containers->setContextMenuPolicy(Qt::CustomContextMenu);
 
     auto *detailSplitter = new QSplitter(Qt::Horizontal, splitter);
@@ -561,8 +861,11 @@ QWidget *DockerObservabilityWidget::buildNetworksPage()
 
     m_networks = new QTableWidget(splitter);
     m_networks->setObjectName(QStringLiteral("dockerTable"));
+    // Keep the header and at least three 48 px rows readable in a stacked layout.
+    m_networks->setMinimumHeight(200);
     m_networks->setColumnCount(3);
     m_networks->setHorizontalHeaderLabels({tr("Name"), tr("Driver"), tr("Scope")});
+    m_networks->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     m_networks->horizontalHeader()->setStretchLastSection(true);
     m_networks->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     m_networks->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -571,6 +874,7 @@ QWidget *DockerObservabilityWidget::buildNetworksPage()
     m_networks->setAlternatingRowColors(true);
     m_networks->setShowGrid(false);
     m_networks->verticalHeader()->setVisible(false);
+    m_networks->verticalHeader()->setDefaultSectionSize(48);
 
     m_networkDetails = new QPlainTextEdit(splitter);
     m_networkDetails->setObjectName(QStringLiteral("detailConsole"));
@@ -596,8 +900,11 @@ QWidget *DockerObservabilityWidget::buildVolumesPage()
 
     m_volumes = new QTableWidget(splitter);
     m_volumes->setObjectName(QStringLiteral("dockerTable"));
+    // Keep the header and at least three 48 px rows readable in a stacked layout.
+    m_volumes->setMinimumHeight(200);
     m_volumes->setColumnCount(3);
     m_volumes->setHorizontalHeaderLabels({tr("Name"), tr("Driver"), tr("Mountpoint")});
+    m_volumes->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     m_volumes->horizontalHeader()->setStretchLastSection(true);
     m_volumes->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     m_volumes->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -606,6 +913,7 @@ QWidget *DockerObservabilityWidget::buildVolumesPage()
     m_volumes->setAlternatingRowColors(true);
     m_volumes->setShowGrid(false);
     m_volumes->verticalHeader()->setVisible(false);
+    m_volumes->verticalHeader()->setDefaultSectionSize(48);
 
     m_volumeDetails = new QPlainTextEdit(splitter);
     m_volumeDetails->setObjectName(QStringLiteral("detailConsole"));
@@ -662,7 +970,7 @@ DockerObservabilityWidget::DockerSnapshot DockerObservabilityWidget::collectDock
     DockerSnapshot snapshot;
 
     const auto containersResult = runDocker(
-        {QStringLiteral("container"), QStringLiteral("ls"), QStringLiteral("--all"), QStringLiteral("--format"),
+        {QStringLiteral("container"), QStringLiteral("ls"), QStringLiteral("--all"), QStringLiteral("--no-trunc"), QStringLiteral("--format"),
          QStringLiteral("{{json .}}")});
     snapshot.containersOk = containersResult.ok;
     if (!containersResult.ok) {
@@ -765,7 +1073,7 @@ void DockerObservabilityWidget::setStatus(const QString &text)
 
 void DockerObservabilityWidget::refresh()
 {
-    if (!m_machine->currentData().toString().isEmpty()) {
+    if (isRemoteTarget()) {
         refreshRemote();
         return;
     }
@@ -787,7 +1095,7 @@ void DockerObservabilityWidget::refreshQuietly()
 {
     if (!m_active || m_monitorPaused)
         return;
-    if (!m_machine->currentData().toString().isEmpty()) {
+    if (isRemoteTarget()) {
         refreshRemote();
         return;
     }
@@ -820,6 +1128,9 @@ void DockerObservabilityWidget::setActive(bool active)
         return;
     }
 
+    ++m_generation;
+    cancelFeatureRead();
+    m_remoteCommand.cancel();
     if (m_autoRefreshTimer)
         m_autoRefreshTimer->stop();
     updateContainerActionState();
@@ -830,7 +1141,13 @@ void DockerObservabilityWidget::setActive(bool active)
     m_refreshPendingQuiet = false;
     m_currentRefreshQuiet = false;
     setLoadingState(false);
-    setStatus(tr("Docker observability opens cold and refreshes on demand."));
+    setStatus(tr("Refresh to load container inventory."));
+}
+
+void DockerObservabilityWidget::hideEvent(QHideEvent *event)
+{
+    setActive(false);
+    QWidget::hideEvent(event);
 }
 
 void DockerObservabilityWidget::showEvent(QShowEvent *event)
@@ -844,12 +1161,22 @@ void DockerObservabilityWidget::showEvent(QShowEvent *event)
 
 void DockerObservabilityWidget::updateSummary()
 {
-    if (m_containerCount)
-        m_containerCount->setText(tr("Containers %1").arg(m_containers ? m_containers->rowCount() : 0));
-    if (m_networkCount)
-        m_networkCount->setText(tr("Networks %1").arg(m_networks ? m_networks->rowCount() : 0));
-    if (m_volumeCount)
-        m_volumeCount->setText(tr("Volumes %1").arg(m_volumes ? m_volumes->rowCount() : 0));
+    const auto count = [](bool available, int value) {
+        return available ? QString::number(value) : QStringLiteral("—");
+    };
+    int running = 0;
+    for (const auto &container : m_snapshot.containers) {
+        if (container.state == "running" || container.state == "healthy" || container.state == "unhealthy")
+            ++running;
+    }
+    m_containerCount->setText(count(m_snapshot.containersOk, m_containers->rowCount()));
+    m_runningCount->setText(count(m_snapshot.containersOk, running));
+    m_networkCount->setText(count(m_snapshot.networksOk, m_networks->rowCount()));
+    m_volumeCount->setText(count(m_snapshot.volumesOk, m_volumes->rowCount()));
+    m_tabs->setTabText(0, tr("Containers · %1").arg(m_containers->rowCount()));
+    m_tabs->setTabText(1, tr("Networks · %1").arg(m_networks->rowCount()));
+    m_tabs->setTabText(2, tr("Volumes · %1").arg(m_volumes->rowCount()));
+    updateListResults();
 }
 
 void DockerObservabilityWidget::applyContainerFilter()
@@ -857,15 +1184,33 @@ void DockerObservabilityWidget::applyContainerFilter()
     if (!m_containers)
         return;
     const QString needle = m_search ? m_search->text().trimmed().toCaseFolded() : QString();
+    const QString filter = m_stateFilter->currentData().toString();
     for (int row = 0; row < m_containers->rowCount(); ++row) {
         QStringList values;
         for (int col = 0; col < m_containers->columnCount(); ++col) {
-            if (auto *item = m_containers->item(row, col))
+            if (auto *item = m_containers->item(row, col)) {
                 values << item->text();
+                if (col == 1)
+                    values << item->data(Qt::ToolTipRole).toString();
+            }
         }
-        const bool hidden = !needle.isEmpty() && !values.join(QLatin1Char(' ')).toCaseFolded().contains(needle);
-        m_containers->setRowHidden(row, hidden);
+        const QString state = m_containers->item(row, 0)->data(Qt::UserRole + 1).toString();
+        const bool running = state == "running" || state == "healthy" || state == "unhealthy";
+        const bool stopped = state == "exited" || state == "created" || state == "dead";
+        const bool attention = state == "unhealthy" || state == "dead" || state == "restarting";
+        const bool matchesState = filter == "all" || (filter == "running" && running)
+            || (filter == "stopped" && stopped) || (filter == "attention" && attention);
+        const bool matchesSearch = needle.isEmpty() || values.join(QLatin1Char(' ')).toCaseFolded().contains(needle);
+        m_containers->setRowHidden(row, m_dashboardView && (!matchesSearch || !matchesState));
     }
+    if (m_dashboardView && m_tabs->currentIndex() == 0) {
+        const int row = m_containers->currentRow();
+        m_selectedResource.clear();
+        if (row >= 0 && !m_containers->isRowHidden(row))
+            m_selectedResource = "container:" + selectedContainerId();
+        updateInspector();
+    }
+    updateListResults();
     updateContainerActionState();
 }
 
@@ -990,10 +1335,13 @@ void DockerObservabilityWidget::applySnapshot(const DockerSnapshot &snapshot)
             }
             stateItem->setData(Qt::UserRole + 1, state);
             stateItem->setData(Qt::ToolTipRole, rowData.statusText);
-            auto *statePill = makeStatusPill(rowData.statusText, state, m_containers);
-            statePill->ensurePolished();
-            stateItem->setSizeHint(statePill->sizeHint() + QSize(20, 0));
-            m_containers->setCellWidget(row, 1, statePill);
+            QString stateLabel = state;
+            if (state == "exited")
+                stateLabel = tr("Stopped");
+            else if (!stateLabel.isEmpty())
+                stateLabel[0] = stateLabel[0].toUpper();
+            stateItem->setData(Qt::AccessibleTextRole, stateLabel);
+            stateItem->setSizeHint(QSize(120, 48));
             setItemText(m_containers, row, 2, rowData.image);
             setItemText(m_containers, row, 3, rowData.ports);
             setItemText(m_containers, row, 4, rowData.created);
@@ -1073,7 +1421,7 @@ void DockerObservabilityWidget::applySnapshot(const DockerSnapshot &snapshot)
     if (!errors.isEmpty()) {
         setStatus(errors.join("\n"));
     } else if (totalObjects > 0) {
-        setStatus(tr("Docker observability refreshed."));
+        setStatus(tr("Inventory updated."));
     } else if (snapshot.containersOk && snapshot.networksOk && snapshot.volumesOk) {
         setStatus(tr("No Docker objects found."));
     } else {
@@ -1108,8 +1456,8 @@ void DockerObservabilityWidget::renderVolumeDetails(const QString &volumeName)
 
 void DockerObservabilityWidget::refreshContainerDetailsAsync(const QString &containerId)
 {
-    if (!m_machine->currentData().toString().isEmpty()) {
-        m_containerLogs->setPlainText(tr("Remote monitoring shares inventory and topology. Application logs and interactive controls remain local."));
+    if (isRemoteTarget()) {
+        m_containerLogs->setPlainText(tr("Remote inventory shares topology. Container logs and detailed inspection are unavailable for this machine."));
         return;
     }
 
@@ -1130,14 +1478,14 @@ void DockerObservabilityWidget::refreshContainerDetailsAsync(const QString &cont
             snapshot.containerId = containerId;
             const CommandResult inspect = DockerObservabilityWidget::runDocker({QStringLiteral("inspect"), containerId});
             if (!inspect.ok) {
-                snapshot.inspectText = QObject::tr("Could not inspect container.\n\n%1").arg(inspect.stderrText.trimmed());
+                snapshot.inspectText = QCoreApplication::translate("DockerObservabilityWidget", "Could not inspect container.\n\n%1").arg(inspect.stderrText.trimmed());
             } else {
                 snapshot.inspectText = prettyJson(inspect.stdoutText);
             }
             const CommandResult logs =
                 DockerObservabilityWidget::runDocker({QStringLiteral("logs"), QStringLiteral("--tail"), QStringLiteral("200"), containerId}, true);
             if (!logs.ok) {
-                snapshot.logsText = QObject::tr("Could not load docker logs.\n\n%1").arg(logs.stderrText.trimmed());
+                snapshot.logsText = QCoreApplication::translate("DockerObservabilityWidget", "Could not load docker logs.\n\n%1").arg(logs.stderrText.trimmed());
             } else {
                 snapshot.logsText = logs.stdoutText.trimmed();
             }
@@ -1148,8 +1496,8 @@ void DockerObservabilityWidget::refreshContainerDetailsAsync(const QString &cont
 
 void DockerObservabilityWidget::refreshNetworkDetailsAsync(const QString &networkId)
 {
-    if (!m_machine->currentData().toString().isEmpty()) {
-        m_containerLogs->setPlainText(tr("Remote monitoring shares inventory and topology. Application logs and interactive controls remain local."));
+    if (isRemoteTarget()) {
+        m_containerLogs->setPlainText(tr("Remote inventory shares topology. Container logs and detailed inspection are unavailable for this machine."));
         return;
     }
 
@@ -1168,7 +1516,7 @@ void DockerObservabilityWidget::refreshNetworkDetailsAsync(const QString &networ
             const CommandResult inspect =
                 DockerObservabilityWidget::runDocker({QStringLiteral("network"), QStringLiteral("inspect"), networkId});
             if (!inspect.ok) {
-                snapshot.detailText = QObject::tr("Could not inspect network.\n\n%1").arg(inspect.stderrText.trimmed());
+                snapshot.detailText = QCoreApplication::translate("DockerObservabilityWidget", "Could not inspect network.\n\n%1").arg(inspect.stderrText.trimmed());
             } else {
                 snapshot.detailText = prettyJson(inspect.stdoutText);
             }
@@ -1179,8 +1527,8 @@ void DockerObservabilityWidget::refreshNetworkDetailsAsync(const QString &networ
 
 void DockerObservabilityWidget::refreshVolumeDetailsAsync(const QString &volumeName)
 {
-    if (!m_machine->currentData().toString().isEmpty()) {
-        m_containerLogs->setPlainText(tr("Remote monitoring shares inventory and topology. Application logs and interactive controls remain local."));
+    if (isRemoteTarget()) {
+        m_containerLogs->setPlainText(tr("Remote inventory shares topology. Container logs and detailed inspection are unavailable for this machine."));
         return;
     }
 
@@ -1199,7 +1547,7 @@ void DockerObservabilityWidget::refreshVolumeDetailsAsync(const QString &volumeN
             const CommandResult inspect =
                 DockerObservabilityWidget::runDocker({QStringLiteral("volume"), QStringLiteral("inspect"), volumeName});
             if (!inspect.ok) {
-                snapshot.detailText = QObject::tr("Could not inspect volume.\n\n%1").arg(inspect.stderrText.trimmed());
+                snapshot.detailText = QCoreApplication::translate("DockerObservabilityWidget", "Could not inspect volume.\n\n%1").arg(inspect.stderrText.trimmed());
             } else {
                 snapshot.detailText = prettyJson(inspect.stdoutText);
             }
@@ -1246,7 +1594,7 @@ void DockerObservabilityWidget::onContainersContextMenuRequested(const QPoint &p
     startAction->setEnabled(state == QStringLiteral("exited") || state == QStringLiteral("created"));
     stopAction->setEnabled(state == QStringLiteral("healthy") || state == QStringLiteral("unhealthy") || state == QStringLiteral("running")
                            || state == QStringLiteral("paused") || state == QStringLiteral("restarting"));
-    if (!m_machine->currentData().toString().isEmpty()) {
+    if (m_containerActionBusy || !canControlTarget()) {
         startAction->setEnabled(false);
         stopAction->setEnabled(false);
     }
@@ -1259,7 +1607,7 @@ void DockerObservabilityWidget::onContainersContextMenuRequested(const QPoint &p
     } else if (chosen == stopAction) {
         onStopSelectedContainer();
     } else if (chosen == refreshAction) {
-        if (!m_machine->currentData().toString().isEmpty())
+        if (isRemoteTarget())
             refreshRemote(true);
         else
             refresh();
@@ -1309,13 +1657,30 @@ void DockerObservabilityWidget::onStopSelectedContainer()
 
 void DockerObservabilityWidget::runContainerAction(const QString &action)
 {
-    if (!m_machine->currentData().toString().isEmpty())
+    if (!canControlTarget())
         return;
     const QString id = selectedContainerId();
     const QString name = selectedContainerName();
     if (id.isEmpty() || m_containerActionBusy || !m_selectedResource.startsWith("container:"))
         return;
+    static const QRegularExpression fullContainerId(QStringLiteral("^[0-9a-f]{64}$"));
+    if (!fullContainerId.match(id).hasMatch()
+        || (action != QStringLiteral("start") && action != QStringLiteral("stop") && action != QStringLiteral("restart"))) {
+        setStatus(tr("Container control requires a supported action and an exact full container ID."));
+        return;
+    }
+    if (isRemoteTarget()) {
+        runRemoteContainerAction(action, id, name);
+        return;
+    }
+    QString binaryError;
+    const QString binary = DockpipeChoices::operatorDockpipeBinary(&binaryError);
+    if (binary.isEmpty()) {
+        setStatus(binaryError);
+        return;
+    }
     m_containerActionBusy = true;
+    m_machine->setEnabled(false);
     updateInspector();
     setStatus(tr("%1: %2…").arg(name, action));
     auto *watcher = new QFutureWatcher<CommandResult>(this);
@@ -1324,6 +1689,7 @@ void DockerObservabilityWidget::runContainerAction(const QString &action)
         const auto result = watcher->result();
         watcher->deleteLater();
         m_containerActionBusy = false;
+        m_machine->setEnabled(true);
         updateInspector();
         if (generation != m_generation)
             return;
@@ -1333,7 +1699,53 @@ void DockerObservabilityWidget::runContainerAction(const QString &action)
         }
         refresh();
     });
-    watcher->setFuture(QtConcurrent::run([action, id]() { return runDocker({action, id}); }));
+    watcher->setFuture(QtConcurrent::run([binary, action, id]() {
+        CommandResult result;
+        QProcess process;
+        process.setProcessChannelMode(QProcess::MergedChannels);
+        process.start(binary, {QStringLiteral("containers"), QStringLiteral("--request"), QStringLiteral("-")});
+        if (!process.waitForStarted(3000)) {
+            result.stderrText = process.errorString();
+            return result;
+        }
+        const QByteArray request = QJsonDocument(QJsonObject{{"action", action}, {"container", id}}).toJson(QJsonDocument::Compact);
+        if (process.write(request) != request.size()) {
+            process.kill();
+            process.waitForFinished(1000);
+            result.stderrText = QCoreApplication::translate("DockerObservabilityWidget", "Could not send the container control request.");
+            return result;
+        }
+        process.closeWriteChannel();
+        QElapsedTimer elapsed;
+        elapsed.start();
+        QByteArray output;
+        constexpr int maximumResponseBytes = 64 * 1024;
+        while (true) {
+            process.waitForFinished(50);
+            output += process.read(maximumResponseBytes + 1 - output.size());
+            if (output.size() > maximumResponseBytes || elapsed.elapsed() > 21000) {
+                process.kill();
+                process.waitForFinished(1000);
+                result.stderrText = QCoreApplication::translate("DockerObservabilityWidget", "Container control exceeded its deadline or response limit.");
+                return result;
+            }
+            if (process.state() == QProcess::NotRunning)
+                break;
+        }
+        if (process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) {
+            result.stderrText = QString::fromUtf8(output).trimmed();
+            if (result.stderrText.isEmpty())
+                result.stderrText = process.errorString();
+            return result;
+        }
+        const auto response = QJsonDocument::fromJson(output);
+        const auto object = response.object();
+        result.ok = response.isObject() && object.value("schema").toString() == QStringLiteral("dockpipe.containers/v1")
+            && object.value("action").toString() == action && object.value("container").toString() == id;
+        if (!result.ok)
+            result.stderrText = QCoreApplication::translate("DockerObservabilityWidget", "Invalid container control response.");
+        return result;
+    }));
 }
 
 void DockerObservabilityWidget::updateGraph(const DockerSnapshot &snapshot)

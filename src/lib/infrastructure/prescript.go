@@ -18,6 +18,10 @@ import (
 
 // SourceHostScript runs a bash script with set -a (export all) and returns the resulting environment as a map.
 func SourceHostScript(scriptPath string, env []string) (map[string]string, error) {
+	return AdmitSourceHostScript(NativeExecutionAdmission{}, scriptPath, env, sourceHostScript)
+}
+
+func sourceHostScript(scriptPath string, env []string) (map[string]string, error) {
 	bashExe, err := resolveBashExeForEnv(env)
 	if err != nil {
 		hint := ""
@@ -75,6 +79,10 @@ func RunHostScript(scriptPath string, env []string) error {
 // RunHostScriptWithShell applies an explicit host interpreter without changing
 // the host-run registry, cleanup, observation, or signal-forwarding lifecycle.
 func RunHostScriptWithShell(scriptPath string, env []string, shell string) error {
+	return AdmitHostScript(NativeExecutionAdmission{}, scriptPath, env, shell, runHostScriptWithShell)
+}
+
+func runHostScriptWithShell(scriptPath string, env []string, shell string) error {
 	command, commandEnv, err := hostScriptCommand(scriptPath, env, shell)
 	if err != nil {
 		return err
@@ -178,6 +186,10 @@ func RunHostCommand(command string, env []string) error {
 // RunHostCommandWithShell runs inline shell text through the same host process
 // lifecycle as script files. The temporary extension matches its interpreter.
 func RunHostCommandWithShell(command string, env []string, selection string) error {
+	return AdmitHostCommand(NativeExecutionAdmission{}, command, env, selection, runHostCommandWithShell)
+}
+
+func runHostCommandWithShell(command string, env []string, selection string) error {
 	command = strings.TrimSpace(command)
 	if command == "" {
 		return nil

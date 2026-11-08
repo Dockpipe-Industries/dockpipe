@@ -3,6 +3,7 @@
 #include "FlatpakTerminal.h"
 #include "LauncherEnvironment.h"
 #include "LauncherDiagnostics.h"
+#include "LauncherTranslations.h"
 #include "MainWindow.h"
 #include "SingleInstanceGuard.h"
 #include "Theme.h"
@@ -13,7 +14,9 @@
 #endif
 
 #include <QApplication>
+#include <QDir>
 #include <QIcon>
+#include <QMessageBox>
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QSize>
@@ -55,6 +58,39 @@ static QIcon dockpipeLauncherIcon()
     if (icon.isNull())
         icon = QIcon(QStringLiteral(":/icon.png"));
     return icon;
+}
+
+static int runDesktop(QApplication &app, bool startHome, bool allowSecond, bool &restart)
+{
+    SingleInstanceGuard singleGuard;
+    if (!allowSecond && !singleGuard.tryRunPrimaryInstance(startHome))
+        return 0;
+
+    LauncherTranslations::initialize(app);
+    MainWindow window;
+    if (!allowSecond)
+        singleGuard.setActivationTarget(&window);
+    QObject::connect(&window, &MainWindow::restartRequested, &app, [&app, &restart]() {
+        restart = true;
+        // The normal unsaved-work checks have already succeeded. quit() would
+        // send closeEvent again, allowing the tray to hide instead of restarting.
+        app.exit(0);
+    });
+    window.show();
+    if (!qEnvironmentVariableIsEmpty("FLATPAK_ID")) {
+        auto *terminalSetup = new QFutureWatcher<FlatpakTerminal::Result>(&window);
+        QObject::connect(terminalSetup, &QFutureWatcher<FlatpakTerminal::Result>::finished,
+            &window, [&window, terminalSetup]() {
+                const auto result = terminalSetup->result();
+                if (!result.success) {
+                    window.statusBar()->showMessage(result.message);
+                    QTextStream(stderr) << result.message << '\n';
+                }
+                terminalSetup->deleteLater();
+            });
+        terminalSetup->setFuture(QtConcurrent::run(&FlatpakTerminal::setupForCurrentUser));
+    }
+    return app.exec();
 }
 
 int main(int argc, char *argv[])
@@ -136,25 +172,22 @@ int main(int argc, char *argv[])
 #endif
     const bool startHome = app.arguments().contains(QStringLiteral("--start-home"));
     const bool allowSecond = allowSecondInstance(argc, argv);
-    SingleInstanceGuard singleGuard;
-    if (!allowSecond && !singleGuard.tryRunPrimaryInstance(startHome))
-        return 0;
+    bool restart = false;
+    const int exitCode = runDesktop(app, startHome, allowSecond, restart);
+    if (!restart)
+        return exitCode;
 
-    MainWindow w;
-    if (!allowSecond)
-        singleGuard.setActivationTarget(&w);
-    w.show();
-    if (!qEnvironmentVariableIsEmpty("FLATPAK_ID")) {
-        auto *terminalSetup = new QFutureWatcher<FlatpakTerminal::Result>(&w);
-        QObject::connect(terminalSetup, &QFutureWatcher<FlatpakTerminal::Result>::finished, &w, [&w, terminalSetup]() {
-            const auto result = terminalSetup->result();
-            if (!result.success) {
-                w.statusBar()->showMessage(result.message);
-                QTextStream(stderr) << result.message << '\n';
-            }
-            terminalSetup->deleteLater();
-        });
-        terminalSetup->setFuture(QtConcurrent::run(&FlatpakTerminal::setupForCurrentUser));
-    }
-    return app.exec();
+    // The main window, child sessions and single-instance guard are gone before
+    // the replacement starts, so it cannot activate the instance being shut down.
+    QProcess replacement;
+    replacement.setProgram(app.applicationFilePath());
+    replacement.setArguments(app.arguments().mid(1));
+    replacement.setWorkingDirectory(QDir::currentPath());
+    replacement.setProcessEnvironment(launcherRestartEnvironment(startupEnv));
+    if (replacement.startDetached())
+        return 0;
+    QMessageBox::critical(nullptr,
+        QCoreApplication::translate("LauncherRestart", "Could not restart Dockpipe"),
+        QCoreApplication::translate("LauncherRestart", "Your language is saved. Reopen Dockpipe manually to apply it."));
+    return 1;
 }

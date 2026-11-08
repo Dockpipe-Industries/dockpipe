@@ -371,6 +371,10 @@ func DockerNetworkModeFromEnv(m map[string]string) string {
 
 // RunContainer runs docker attach/detach with logging on failure (same contract as the historical bash runner).
 func RunContainer(o RunOpts, argv []string) (int, error) {
+	return AdmitContainer(NativeExecutionAdmission{}, o, argv, runContainer)
+}
+
+func runContainer(o RunOpts, argv []string) (int, error) {
 	if o.Image == "" {
 		return 1, fmt.Errorf("DOCKPIPE_IMAGE is required")
 	}

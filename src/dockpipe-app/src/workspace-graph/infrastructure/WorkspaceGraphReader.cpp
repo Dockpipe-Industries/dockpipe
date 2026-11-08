@@ -4,6 +4,7 @@
 #include <QCoreApplication>
 #include <QJsonDocument>
 #include <QProcess>
+#include <QProcessEnvironment>
 
 namespace {
 // A cancelled helper must exit before any view starts another read. This also
@@ -84,6 +85,11 @@ void WorkspaceGraphReader::startPending()
         return;
     }
     m_process = new QProcess(QCoreApplication::instance());
+    auto environment = QProcessEnvironment::systemEnvironment();
+    const QString language = QCoreApplication::instance()->property("dockpipeTranslationLanguage").toString();
+    if (!language.isEmpty())
+        environment.insert("DOCKPIPE_UI_LANGUAGE", language);
+    m_process->setProcessEnvironment(environment);
     activeHelper = m_process;
     m_abandoned = false;
     m_timedOut = false;

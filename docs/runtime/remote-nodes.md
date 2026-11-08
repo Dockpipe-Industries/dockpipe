@@ -435,7 +435,22 @@ dockpipe remote result --id benchmark-001
 dockpipe remote result --id benchmark-001 --out /private/new-results-directory
 dockpipe remote cancel --id benchmark-001
 dockpipe remote revoke --id mac-mini
+dockpipe remote remove --id mac-mini
 ```
+
+`revoke` disables a machine's credential but keeps its enrollment visible.
+`remove` deletes its enrollment and pairing records, invalidates its credential,
+and removes it from the managed-machine inventory. Recorded jobs and results are
+kept. Cancel or resolve queued, running, or unknown jobs before removing their
+machine. Reconnecting a removed machine requires a fresh approved pairing.
+In the GUI, select a machine and choose **Remove machine…**; this also works for
+entries whose access was already removed. The broker service must run a version
+that supports removal. If Machines detects a missing or outdated local broker
+service, the removal confirmation also explains and requests its update and
+restart before deletion. Declining changes neither the service nor the machine;
+an update failure stops removal. Removal failures expand the command details.
+Broker service updates wait for the OS authority and local HTTP listener to
+respond before reporting completion; this readiness check does not unlock access.
 
 For an installed workflow instead, retain the narrower profile mode. Prepare its source on the Mac
 and supply a local profiles JSON:

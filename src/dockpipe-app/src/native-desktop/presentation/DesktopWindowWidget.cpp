@@ -497,7 +497,10 @@ void DesktopWindowWidget::chooseNativeWindow()
     dialog->setWindowTitle(tr("Choose a desktop window"));
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     auto *layout = new QVBoxLayout(dialog);
-    auto *explanation = new QLabel(tr("The selected window will move into this dashboard. With app management enabled, closing its panel asks the app to close. Otherwise it returns to the desktop."), dialog);
+    const QString explanationText = property("dashboardCanvasPresentation").toBool()
+        ? tr("The selected window will move into this canvas. Closing the widget returns the app to your desktop.")
+        : tr("The selected window will move into this dashboard. With app management enabled, closing its panel asks the app to close. Otherwise it returns to the desktop.");
+    auto *explanation = new QLabel(explanationText, dialog);
     explanation->setWordWrap(true);
     layout->addWidget(explanation);
     auto *windows = new QComboBox(dialog);

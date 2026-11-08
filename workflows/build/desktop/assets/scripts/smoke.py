@@ -42,6 +42,14 @@ def check(launcher, expected_cli, inventory_system_root=None):
         reader = launcher.parent / ("dockpipe-workspace-reader.exe" if os.name == "nt" else "dockpipe-workspace-reader")
         if not reader.is_file():
             raise RuntimeError("Installed workspace reader is missing beside the launcher")
+        terminal_host = launcher.parent / ("dockpipe-terminal-host.exe" if os.name == "nt" else "dockpipe-terminal-host")
+        if not terminal_host.is_file():
+            raise RuntimeError("Installed terminal host is missing beside the launcher")
+        # Invalid arguments exercise dependency loading without opening a shell.
+        terminal_probe = subprocess.run([str(terminal_host)], cwd=home, env=environment,
+                                        capture_output=True, timeout=15)
+        if terminal_probe.returncode != 64:
+            raise RuntimeError("Installed terminal host failed its no-session startup probe")
         page = subprocess.run([str(reader)], input=json.dumps({"root": temporary, "directory": temporary, "limit": 16}),
                               cwd=home, env=environment, check=True, text=True, stdout=subprocess.PIPE, timeout=30)
         response = json.loads(page.stdout)

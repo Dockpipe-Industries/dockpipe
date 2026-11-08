@@ -15,6 +15,11 @@ func checkCLIProjectVersion(argv []string) error {
 		return nil
 	}
 	switch argv[0] {
+	case "terminal":
+		// A private native terminal owns an explicit launch snapshot and does
+		// not load project workflows. Its stream must emit its own admission and
+		// cleanup receipts even when cwd contains a mismatched project pin.
+		return nil
 	case "init", "install", "get", "core", "doctor", "__state", "--version", "version":
 		return nil
 	}

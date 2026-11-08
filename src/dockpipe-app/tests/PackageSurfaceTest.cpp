@@ -276,7 +276,7 @@ void PackageSurfaceTest::coalescesInventoryRequestsUntilSnapshotFinishes()
     QSignalSpy starts(&sessions, &SessionManager::sessionStarted);
     QSignalSpy displays(&page, &PackageSurfacePage::displaysChanged);
     page.refreshInventory();
-    QCOMPARE(starts.count(), 1);
+    QTRY_COMPARE_WITH_TIMEOUT(starts.count(), 1, 10000);
     page.refreshInventory();
     page.refreshInventory();
     QVERIFY(page.inventoryDiagnostic().value("pending_request").toBool());
@@ -291,6 +291,7 @@ void PackageSurfaceTest::coalescesInventoryRequestsUntilSnapshotFinishes()
     page.refreshInventory();
     page.refreshInventory();
     QVERIFY(page.inventoryDiagnostic().value("pending_request").toBool());
+    QTRY_COMPARE_WITH_TIMEOUT(starts.count(), 3, 10000);
     page.setWorkspace(QString(), QString());
     QTest::qWait(300);
     QCOMPARE(starts.count(), 3);
@@ -309,7 +310,7 @@ void PackageSurfaceTest::cancelsOneSnapshotAndRejectsOversizedLines()
     page.setActive(true);
     page.refresh();
     page.refresh();
-    QCOMPARE(starts.count(), 1);
+    QTRY_COMPARE_WITH_TIMEOUT(starts.count(), 1, 10000);
     page.findChild<QPushButton *>("surfaceCancel")->click();
     QTRY_VERIFY_WITH_TIMEOUT(!page.findChild<QPushButton *>("surfaceCancel")->isEnabled(), 10000);
     QVERIFY(page.findChild<QLabel *>("surfaceStatus")->text().contains("cancelled"));

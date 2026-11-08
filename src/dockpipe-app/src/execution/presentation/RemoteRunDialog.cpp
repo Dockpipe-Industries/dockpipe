@@ -93,6 +93,7 @@ RemoteRunDialog::RemoteRunDialog(const Context &context, const QString &node, QW
         runRemote(args,
                       [this](bool ok, const QByteArray &) {
             if (ok) {
+                emit remoteJobSubmitted(m_job, m_context.label);
                 accept();
             } else {
                 m_status->setText(tr("Submission was not confirmed. Retry uses the same job ID; inspect Activity if the response was lost."));

@@ -2,9 +2,14 @@
 #include "TerminalShellCatalog.h"
 #include "TerminalPreferences.h"
 #include "TerminalWidget.h"
+#include "TerminalSettingsDialog.h"
+#include <QTabWidget>
+#include <QTabBar>
+#include <QToolButton>
 #include "SendInputWidget.h"
 #include "DashboardWorkspace.h"
 #include "Theme.h"
+#include "WindowCompositor.h"
 
 #include <QApplication>
 #include <QAction>
@@ -26,6 +31,7 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
+#include <QWindow>
 #include <QWebEnginePage>
 #include <QWebEngineProfile>
 #include <QWebEngineView>
@@ -45,11 +51,129 @@ protected:
 class TerminalWidgetTest final : public QObject {
     Q_OBJECT
 private slots:
+    void firstRendererKeepsHostWindow();
+    void managedOpensOnceAndReusesSessions();
     void terminalAndComposer();
     void compactPanelOwnsOnlyItsSession();
     void canvasTransparencyAndStacking();
     void shellChoicesPreserveExistingSessions();
 };
+
+void TerminalWidgetTest::firstRendererKeepsHostWindow()
+{
+#ifndef Q_OS_UNIX
+    QSKIP("Native renderer startup uses the Unix PTY fixture.");
+#else
+    QTemporaryDir directory;
+    TerminalHub hub(TerminalLaunchContext::Local);
+    QWidget host;
+    prepareLauncherWindowCompositor(host);
+    auto *layout = new QVBoxLayout(&host);
+    host.resize(960, 720);
+    host.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&host));
+    QVERIFY(hub.sessionIds().isEmpty());
+    QVERIFY(!host.findChild<QWebEngineView *>());
+    const WId originalWindow = host.winId();
+    QSignalSpy visibility(host.windowHandle(), &QWindow::visibleChanged);
+    auto *terminal = new TerminalWidget(hub, directory.path(), &host);
+    layout->addWidget(terminal);
+    terminal->show();
+    QTRY_VERIFY_WITH_TIMEOUT(terminal->property("terminalRendererReady").toBool(), 10000);
+    QCOMPARE(host.winId(), originalWindow);
+    QCOMPARE(visibility.size(), 0);
+    for (const QString &id : hub.sessionIds())
+        hub.closeSession(id);
+    QTRY_VERIFY_WITH_TIMEOUT(QCoreApplication::instance()->findChildren<QProcess *>("terminalShell").isEmpty(), 2000);
+#endif
+}
+
+void TerminalWidgetTest::managedOpensOnceAndReusesSessions()
+{
+#ifndef Q_OS_UNIX
+    QSKIP("Managed auto-start integration uses the Unix PTY fixture.");
+#else
+    QTemporaryDir directory;
+    TerminalHub hub(TerminalLaunchContext::Local);
+    TerminalWidget managed(hub, directory.path());
+    managed.resize(1180, 720);
+    QVERIFY(hub.sessionIds().isEmpty());
+    QVERIFY(!managed.findChild<QWebEngineView *>());
+    managed.show();
+    const QString first = managed.sessionId();
+    QVERIFY(!first.isEmpty());
+    QCOMPARE(hub.sessionIds().size(), 1);
+    QTRY_VERIFY(hub.running(first));
+    auto *tabs = managed.findChild<QTabBar *>("terminalTabs");
+    QCOMPARE(tabs->count(), 1);
+    QCOMPARE(tabs->tabData(tabs->currentIndex()).toString(), first);
+    QTRY_VERIFY_WITH_TIMEOUT(managed.property("terminalRendererReady").toBool(), 10000);
+    qInfo() << "Managed terminal geometry" << managed.size() << managed.minimumSize() << managed.minimumSizeHint();
+    QVERIFY(!managed.findChild<QLabel *>("terminalStatus")->isVisible());
+    QVERIFY(!managed.findChild<QComboBox *>("terminalSessions")->isVisible());
+    auto *view = managed.findChild<QWebEngineView *>();
+    const QPointer<QWebEnginePage> page = view->page();
+    managed.hide();
+    managed.show();
+    QCOMPARE(managed.sessionId(), first);
+    QCOMPARE(hub.sessionIds().size(), 1);
+    QCOMPARE(view->page(), page.data());
+    managed.findChild<QPushButton *>("terminalNew")->click();
+    const QString second = managed.sessionId();
+    QVERIFY(second != first);
+    QCOMPARE(tabs->count(), 2);
+    QTRY_VERIFY(hub.running(second));
+    tabs->setCurrentIndex(0);
+    QCOMPARE(managed.sessionId(), first);
+    QCOMPARE(view->page(), page.data());
+    auto *closeSlot = tabs->tabButton(0, QTabBar::RightSide);
+    QVERIFY(closeSlot);
+    auto *close = closeSlot->findChild<QToolButton *>("terminalTabClose");
+    QVERIFY(close);
+    close->click();
+    QCOMPARE(hub.sessionIds(), QStringList({second}));
+    QCOMPARE(managed.sessionId(), second);
+    QVERIFY(hub.send(second, "printf '\\nDockpipe terminal ready\\n'"));
+    QTest::qWait(200);
+    const QString screenshot = qEnvironmentVariable("DOCKPIPE_TERMINAL_SCREENSHOT");
+    if (!screenshot.isEmpty())
+        QVERIFY(managed.grab().save(screenshot));
+    hub.closeSession(second);
+    QCOMPARE(tabs->count(), 0);
+    managed.hide();
+    managed.show();
+    QVERIFY(hub.sessionIds().isEmpty()); // Closing all tabs must not restart a shell.
+    QVERIFY(managed.findChild<QWidget *>("terminalEmpty")->isVisible());
+    managed.hide();
+    const QString shared = hub.createSession(directory.path());
+    QTRY_VERIFY(hub.running(shared));
+    managed.show();
+    QTest::mouseClick(tabs, Qt::LeftButton, {}, tabs->tabRect(0).center());
+    QCOMPARE(managed.sessionId(), shared);
+    QCOMPARE(hub.sessionIds().size(), 1);
+    managed.hide();
+    {
+        TerminalWidget reuse(hub, directory.path());
+        reuse.show();
+        QCOMPARE(reuse.sessionId(), shared);
+        QCOMPARE(hub.sessionIds().size(), 1);
+    }
+    QVERIFY(hub.running(shared));
+    hub.closeSession(shared);
+    {
+        TerminalWidget failed(hub, directory.filePath("missing-directory"));
+        failed.show();
+        QCOMPARE(hub.sessionIds().size(), 1);
+        QVERIFY(!hub.error(failed.sessionId()).isEmpty());
+        failed.hide();
+        failed.show();
+        QCOMPARE(hub.sessionIds().size(), 1); // A failed auto-start cannot loop.
+        hub.closeSession(failed.sessionId());
+    }
+    QVERIFY(hub.sessionIds().isEmpty());
+    QTRY_VERIFY_WITH_TIMEOUT(QCoreApplication::instance()->findChildren<QProcess *>("terminalShell").isEmpty(), 2000);
+#endif
+}
 
 void TerminalWidgetTest::shellChoicesPreserveExistingSessions()
 {
@@ -290,9 +414,7 @@ void TerminalWidgetTest::terminalAndComposer()
     auto *terminal = new TerminalWidget(hub, directory.path());
     QVERIFY(workspace.addPanel("terminal-test", "Terminal", terminal));
     host.show();
-    QCOMPARE(hub.sessionIds().size(), 0);
-    QVERIFY(!terminal->findChild<QWebEngineView *>());
-    terminal->findChild<QPushButton *>("terminalNew")->click();
+    QCOMPARE(hub.sessionIds().size(), 1);
     QCOMPARE(hub.sessionIds().size(), 1);
     QVERIFY(!terminal->isWindow());
     QCOMPARE(terminal->window(), &host);
@@ -697,6 +819,21 @@ int main(int argc, char **argv)
     QApplication application(argc, argv);
     application.setStyle("Fusion");
     applyDockpipeLauncherTheme(application);
+    previewDockpipeLauncherTheme(application, qEnvironmentVariable("DOCKPIPE_TEST_THEME") == "light"
+        ? LauncherThemeMode::Light : LauncherThemeMode::Dark);
+    const QString settingsImages = qEnvironmentVariable("DOCKPIPE_TERMINAL_SETTINGS_IMAGES");
+    if (!settingsImages.isEmpty()) {
+        TerminalSettingsDialog dialog;
+        dialog.show();
+        QTest::qWait(100);
+        if (!dialog.grab().save(settingsImages + "-appearance.png"))
+            return 1;
+        dialog.findChild<QTabWidget *>("settingsTabs")->setCurrentIndex(1);
+        QTest::qWait(100);
+        if (!dialog.grab().save(settingsImages + "-effects.png"))
+            return 1;
+        return 0;
+    }
     TerminalWidgetTest test;
     return QTest::qExec(&test, argc, argv);
 }

@@ -77,7 +77,7 @@ func setUserRepoRootForWorktree(env map[string]string, opts *CliOpts, repoURL st
 	})
 }
 
-func executeWorkflowRun(argv []string, baseEnviron []string, services runExecutionServices) error {
+func executeAdmittedWorkflowRun(argv []string, baseEnviron []string, services runExecutionServices) error {
 
 	repoRoot, err := repoRootAppFn()
 	if err != nil {

@@ -1,11 +1,16 @@
 #pragma once
+
+#include <QCoreApplication>
 #include <QPlainTextEdit>
 
 // Shared native editing behavior for project files and workflow YAML.
 class SourceEditor : public QPlainTextEdit {
+    Q_DECLARE_TR_FUNCTIONS(SourceEditor)
 public:
     explicit SourceEditor(QWidget *parent = nullptr);
     void setPlainText(const QString &text);
+    void loadFileText(const QString &text, const QString &path);
+    void setFileDocument(QTextDocument *document, const QString &path);
     void setFileName(const QString &path);
     QString languageName() const;
     void setLineMapping(const QVector<int> &lines);

@@ -55,6 +55,12 @@ public:
         };
         using S = CanvasIcons::Symbol;
         switch (m_symbol) {
+        case S::Bell:
+            path({{5, 17}, {7, 14}, {7, 9}});
+            painter->drawArc(QRectF(7, 4, 10, 10), 0, 180 * 16);
+            path({{17, 9}, {17, 14}, {19, 17}, {5, 17}});
+            painter->drawArc(QRectF(10, 18, 4, 4), 180 * 16, 180 * 16);
+            break;
         case S::Apps:
             painter->setPen(Qt::NoPen);
             painter->setBrush(color);
@@ -229,6 +235,11 @@ public:
             painter->drawRoundedRect(QRectF(3, 3, 18, 13), 2, 2);
             line(12, 16, 12, 21);
             line(7, 21, 17, 21);
+            break;
+        case S::Windows:
+            path({{8, 8}, {8, 3}, {21, 3}, {21, 16}, {17, 16}});
+            painter->drawRoundedRect(QRectF(3, 8, 14, 13), 1.5, 1.5);
+            line(3, 12, 17, 12);
             break;
         case S::Script:
             path({{5, 3}, {14, 3}, {20, 9}, {20, 21}, {5, 21}, {5, 3}});

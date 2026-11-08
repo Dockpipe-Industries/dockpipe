@@ -30,6 +30,7 @@ signals:
     void hardwareKeyStatus(const QString &message);
 
 private:
+    QProcess &process() const;
     void finish(bool success);
     void drain();
     void consumeLine(const QByteArray &line);

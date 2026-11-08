@@ -35,7 +35,7 @@ def check(runtime):
         sections = subprocess.check_output(["readelf", "-S", "--wide", str(binary)], text=True, timeout=30)
         if re.search(r"\.(?:z?debug)[_.]", sections):
             raise RuntimeError(f"Debug sections shipped in {relative}")
-    for relative in ("bin/dockpipe-workspace-reader", "lib/libSpatialWebBrowser.so.0", "libexec/QtWebEngineProcess", "resources/qtwebengine_resources.pak",
+    for relative in ("bin/dockpipe-workspace-reader", "bin/dockpipe-terminal-host", "lib/libSpatialWebBrowser.so.0", "libexec/QtWebEngineProcess", "resources/qtwebengine_resources.pak",
                      "translations/qtwebengine_locales/en-US.pak", "plugins/platforms/libqxcb.so"):
         if not (runtime / relative).is_file():
             raise RuntimeError(f"Missing deployed runtime file: {relative}")

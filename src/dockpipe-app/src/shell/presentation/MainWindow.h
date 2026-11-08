@@ -11,6 +11,7 @@
 #include <QMainWindow>
 #include <QPointer>
 #include <QSystemTrayIcon>
+#include <functional>
 
 class QCloseEvent;
 class QListWidget;
@@ -21,11 +22,14 @@ class QPlainTextEdit;
 class QFrame;
 class QStackedWidget;
 class QTabWidget;
+class QTabBar;
 class QAction;
 class QActionGroup;
 class BasicModeWidget;
 class BrowserWidget;
 class TerminalWidget;
+class WorkspaceMachineMenu;
+class QHBoxLayout;
 class BrowserLinkRouter;
 class DashboardPage;
 class DashboardWidgetFactory;
@@ -34,6 +38,9 @@ class DockerObservabilityWidget;
 class QTimer;
 class QComboBox;
 class RemoteWidget;
+class RemoteAccessMonitor;
+class RemoteWorkflowMonitor;
+class NotificationBell;
 class ActivityWidget;
 class ExecutionExplorer;
 class WorkflowEditorWidget;
@@ -58,6 +65,9 @@ class MainWindow : public QMainWindow {
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
+
+signals:
+    void restartRequested();
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -117,17 +127,26 @@ private:
     void removeDashboard(const QString &id);
     QVector<DashboardDefinition> dashboardSnapshots() const;
     bool persistDashboards();
-    bool confirmDashboardClose();
+    void confirmDashboardCloseAsync(std::function<void(bool)> completion);
     void releaseDashboardWindows();
     void toggleDashboardFullscreen();
     void updateDashboardFullscreen();
     void updateStatusBarVisibility();
     void ensureBrowser();
     void ensureTerminal();
+    void setupWorkspaceMachineMenu(QHBoxLayout *layout);
+    void refreshWorkspaceMachines();
+    void chooseWorkspaceMachine(const QJsonObject &target, const QString &root);
+    void updateWorkspaceMachineLabels();
+    void updateWorkspaceMachineAccess();
+    QJsonObject currentSharedMachineCatalog() const;
     void ensureCockpit();
     void applyCockpitAvailability();
     bool saveSettings(const LauncherSettings &settings);
+    void offerLanguageRestart();
+    void confirmQuitAsync(std::function<void(bool)> completion);
     void setupAdvancedPage(QWidget *page);
+    void openWorkflowRunLogs(bool remote = false);
     void setupWorkflowPicker();
     void openWorkflowPicker();
     void openPickedWorkflow();
@@ -136,7 +155,7 @@ private:
     bool launchWorkflow(const Context &display);
     void rememberWorkflowRun(const Context &context);
     void setWorkflowConsoleVisible(bool visible);
-    bool setWorkflowWorkspace(const QString &workdir);
+    void setWorkflowWorkspaceAsync(const QString &workdir, std::function<void(bool)> completion);
     void quitLauncher();
     Context *activeWorkflowContext();
     void applyUiMode();
@@ -175,6 +194,9 @@ private:
     QFrame *m_navigationRail = nullptr;
     QComboBox *m_runTarget = nullptr;
     RemoteWidget *m_remoteWidget = nullptr;
+    RemoteAccessMonitor *m_remoteAccess = nullptr;
+    RemoteWorkflowMonitor *m_remoteWorkflows = nullptr;
+    NotificationBell *m_notifications = nullptr;
     ActivityWidget *m_activityWidget = nullptr;
     ExecutionExplorer *m_executionExplorer = nullptr;
     QTabWidget *m_executionTabs = nullptr;
@@ -182,6 +204,7 @@ private:
     BasicModeWidget *m_basicWidget = nullptr;
     BrowserWidget *m_browserWidget = nullptr;
     TerminalWidget *m_terminalWidget = nullptr;
+    WorkspaceMachineMenu *m_workspaceMachineMenu = nullptr;
     BrowserLinkRouter *m_browserLinks = nullptr;
     DashboardWidgetFactory *m_dashboardFactory = nullptr;
     DashboardStore m_dashboardStore;
@@ -209,8 +232,10 @@ private:
     QWidget *m_workspaceBar = nullptr;
     Context m_canvasContext;
     Context m_outputContext;
-    QWidget *m_workflowActivityPanel = nullptr;
-    ActivityWidget *m_workflowActivity = nullptr;
+    QTabBar *m_workflowSections = nullptr;
+    QStackedWidget *m_workflowViews = nullptr;
+    ExecutionExplorer *m_workflowRuns = nullptr;
+    QDialog *m_workflowRunLogs = nullptr;
     QLabel *m_workflowPreview = nullptr;
     QPushButton *m_pickerRun = nullptr;
     QPushButton *m_pickerEdit = nullptr;

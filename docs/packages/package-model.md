@@ -916,3 +916,51 @@ The application no longer produces, installs or discovers a shared core tree.
 Schema-1 store manifests may omit `packages.core` and contain no optional packages.
 Historical core metadata is retained only for immutable artifact accounting.
 See [runtime resource ownership](../concepts/runtime-resource-ownership.md).
+
+### Package file tools
+
+A surface action may use `scope: file`, a contained `workflow`, and
+`file_extensions` (1–16 unique lowercase suffixes without dots). Files offers
+matching actions in its **Tools** menu, grouped by package. A descriptor containing
+only file actions may omit `snapshot`; it contributes no sidebar page and no
+background polling. Other actions still require a snapshot. Discovery never runs
+package workflows. This contract requires the Files-tools-capable desktop/CLI;
+older hosts reject the new action scope instead of silently executing it.
+
+```json
+{
+  "schema": 1,
+  "id": "example.file-tools",
+  "title": "Example file tools",
+  "actions": [
+    {"id": "inspect", "title": "Inspect document", "scope": "file",
+     "file_extensions": ["json"], "workflow": "assets/ui/inspect/config.yml"}
+  ]
+}
+```
+
+Selecting an action runs that ordinary package workflow locally, using the
+operator-selected CLI and current workspace directory. The invocation receives
+`DOCKPIPE_FILE_ROOT`, `DOCKPIPE_FILE_PATH`, `DOCKPIPE_FILE_SURFACE_ID`, and
+`DOCKPIPE_FILE_ACTION_ID`. Context is per invocation, not a saved workflow default.
+Unsaved documents must be saved first. File and workflow references are checked
+against their owning roots again at launch. Packages must validate their own
+inputs; this UI is not a filesystem sandbox. Installed package workflows retain
+normal host execution authority.
+
+File tools finish without interactive prompts and emit exactly one UTF-8 JSON
+result line, with a final newline:
+
+```text
+::dockpipe-file::{"schema":1,"kind":"markdown","text":"# Inspection report\n\nDocument details."}
+```
+
+`markdown` specifies the report presentation, not a Markdown-only tool. The host
+renders the report only after successful workflow completion, with HTML/resource
+loading disabled and links inert. It applies no edits to the open document.
+Malformed/duplicate/missing results and nonzero exits show failures with operation
+details. Each run has a 30-second deadline, a 1 MiB line capacity and 2 MiB total
+output capacity. Closing the result panel cancels the workflow through the normal
+session lifecycle. This first version is an explicit saved-file action/report
+hook; it does not claim formatter edits, diagnostics overlays, language servers,
+custom editor widgets or automatic on-change execution.

@@ -25,6 +25,7 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPlainTextEdit>
+#include <QPointer>
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QPushButton>
@@ -86,7 +87,7 @@ WorkflowEditorWidget::WorkflowEditorWidget(const QString &workdir, const QString
             m_files->closeGraph();
             m_tabs->setCurrentIndex(0);
         } else {
-            openWorkflow(path);
+            openWorkflowAsync(path);
         }
     });
 
@@ -134,8 +135,10 @@ WorkflowEditorWidget::WorkflowEditorWidget(const QString &workdir, const QString
     more->setFixedWidth(32);
     auto *menu = new QMenu(more);
     menu->addAction(CanvasIcons::icon(Symbol::Add), tr("New workflow"), this, [this]() {
-        if (confirmDiscardChanges())
-            newWorkflow();
+        confirmDiscardChangesAsync([this](bool allowed) {
+            if (allowed)
+                newWorkflow();
+        });
     });
     menu->addAction(CanvasIcons::icon(Symbol::Check), tr("Validate workflow"), this, [this]() {
         if (!requireAppliedInspector())
@@ -165,13 +168,18 @@ WorkflowEditorWidget::WorkflowEditorWidget(const QString &workdir, const QString
     auto *addMenu = new QMenu(add);
     for (const QString &type : {QStringLiteral("Command"), QStringLiteral("Script"), QStringLiteral("Workflow"), QStringLiteral("Parallel")}) {
         Symbol icon = Symbol::Terminal;
-        if (type == "Script")
+        QString label = tr("Command");
+        if (type == "Script") {
             icon = Symbol::Script;
-        else if (type == "Workflow")
+            label = tr("Script");
+        } else if (type == "Workflow") {
             icon = Symbol::Workflow;
-        else if (type == "Parallel")
+            label = tr("Workflow");
+        } else if (type == "Parallel") {
             icon = Symbol::Parallel;
-        auto *item = addMenu->addAction(CanvasIcons::icon(icon), type);
+            label = tr("Parallel");
+        }
+        auto *item = addMenu->addAction(CanvasIcons::icon(icon), label);
         item->setObjectName("add" + type);
         connect(item, &QAction::triggered, this, [this, type]() { addStep(type); });
     }
@@ -190,7 +198,7 @@ WorkflowEditorWidget::WorkflowEditorWidget(const QString &workdir, const QString
     save->setToolTip(tr("Save workflow (%1)").arg(QKeySequence(QKeySequence::Save).toString(QKeySequence::NativeText)));
     connect(save, &QPushButton::clicked, this, [this]() {
         if (m_tabs->currentIndex() == 2)
-            m_files->saveFile();
+            m_files->saveFileAsync();
         else
             saveWorkflow(false);
     });
@@ -218,7 +226,7 @@ WorkflowEditorWidget::WorkflowEditorWidget(const QString &workdir, const QString
         return button;
     };
     connect(viewButton(Symbol::Add, "canvasZoomIn", tr("Zoom in")), &QPushButton::clicked, this, [this]() { m_canvas->zoomBy(1.2); });
-    auto *zoomLevel = new QPushButton("100%");
+    auto *zoomLevel = new QPushButton(tr("%1%").arg(100));
     zoomLevel->setObjectName("canvasZoomLevel");
     zoomLevel->setFixedSize(36, 26);
     zoomLevel->setToolTip(tr("Reset zoom to 100%"));
@@ -227,7 +235,7 @@ WorkflowEditorWidget::WorkflowEditorWidget(const QString &workdir, const QString
         m_canvas->zoomBy(1.0 / m_canvas->transform().m11());
     });
     connect(m_canvas, &WorkflowCanvas::zoomChanged, zoomLevel, [zoomLevel](int percent) {
-        zoomLevel->setText(QString::number(percent) + "%");
+        zoomLevel->setText(tr("%1%").arg(percent));
     });
     connect(viewButton(Symbol::Minus, "canvasZoomOut", tr("Zoom out")), &QPushButton::clicked, this, [this]() { m_canvas->zoomBy(1.0 / 1.2); });
     connect(viewButton(Symbol::Fit, "canvasFit", tr("Fit canvas")), &QPushButton::clicked, this, [this]() { m_canvas->fitDocument(); });
@@ -930,8 +938,33 @@ void WorkflowEditorWidget::validateSource(const QString &directory, const std::f
 
 void WorkflowEditorWidget::saveWorkflow(bool run)
 {
-    if (run && m_files->hasUnsavedChanges() && !m_files->saveFile())
+    if (property("workflowFilesContinuationPending").toBool() || m_busy)
         return;
+    if (run && m_files->hasUnsavedChanges()) {
+        const QString path = m_path;
+        const QString workdir = m_workdir;
+        const QString binary = m_binary;
+        const QString source = m_yaml->toPlainText();
+        const QPointer<WorkflowEditorWidget> owner(this);
+        setProperty("workflowFilesContinuationPending", true);
+        m_files->saveAllFilesAsync([owner, path, workdir, binary, source, run](bool saved) {
+            if (!owner)
+                return;
+            owner->setProperty("workflowFilesContinuationPending", false);
+            if (!saved) {
+                owner->showStatus(tr("Could not save all supporting files. Open Files to review the error; your drafts are preserved."), true);
+                return;
+            }
+            if (owner->m_files->hasUnsavedChanges() || owner->m_busy
+                || owner->m_path != path || owner->m_workdir != workdir || owner->m_binary != binary
+                || owner->m_yaml->toPlainText() != source) {
+                owner->showStatus(tr("The workflow or supporting files changed while saving. Review them before running."), true);
+                return;
+            }
+            owner->saveWorkflow(run);
+        });
+        return;
+    }
     if (!requireAppliedInspector())
         return;
     QString destination = m_path;
@@ -1002,11 +1035,75 @@ bool WorkflowEditorWidget::discardChanges()
 
 bool WorkflowEditorWidget::confirmDiscardChanges()
 {
-    if (m_busy) {
+    if (m_busy || property("workflowFilesContinuationPending").toBool()) {
         showStatus(tr("Cancel the current operation before switching workflows or closing."));
         return false;
     }
+    if (property("workflowDiscardConfirmed").toBool())
+        return true;
     return m_files->confirmLeave() && discardChanges();
+}
+
+void WorkflowEditorWidget::confirmDiscardChangesAsync(Completion completion)
+{
+    if (m_busy || property("workflowFilesContinuationPending").toBool()) {
+        showStatus(tr("Cancel the current operation before switching workflows or closing."));
+        if (completion)
+            completion(false);
+        return;
+    }
+    const QString source = m_yaml->toPlainText();
+    const QString inspector = inspectorState();
+    const QString path = m_path;
+    const QString workdir = m_workdir;
+    const QString binary = m_binary;
+    if (!discardChanges()) {
+        if (completion)
+            completion(false);
+        return;
+    }
+    const QPointer<WorkflowEditorWidget> owner(this);
+    // Files is the final guard: its reviewed Discard proof remains valid while
+    // the continuation changes roots, without surviving another modal dialog.
+    m_files->confirmLeaveAsync([owner, source, inspector, path, workdir, binary, completion](bool allowed) {
+        if (!owner)
+            return;
+        allowed = allowed && !owner->m_busy && owner->m_path == path && owner->m_workdir == workdir
+            && owner->m_binary == binary && owner->m_yaml->toPlainText() == source
+            && owner->inspectorState() == inspector;
+        if (allowed) {
+            owner->setProperty("workflowDiscardConfirmed", true);
+            QTimer::singleShot(0, owner, [owner]() {
+                if (owner)
+                    owner->setProperty("workflowDiscardConfirmed", false);
+            });
+        }
+        if (completion)
+            completion(allowed);
+    });
+}
+
+void WorkflowEditorWidget::openWorkflowAsync(const QString &path, Completion completion)
+{
+    confirmDiscardChangesAsync([this, path, completion](bool allowed) {
+        const bool opened = allowed && openWorkflow(path);
+        if (completion)
+            completion(opened);
+    });
+}
+
+void WorkflowEditorWidget::setWorkspaceAsync(const QString &workdir, const QString &binary, Completion completion)
+{
+    if (m_workdir == workdir && m_binary == binary) {
+        if (completion)
+            completion(true);
+        return;
+    }
+    confirmDiscardChangesAsync([this, workdir, binary, completion](bool allowed) {
+        const bool changed = allowed && setWorkspace(workdir, binary);
+        if (completion)
+            completion(changed);
+    });
 }
 
 bool WorkflowEditorWidget::setWorkspace(const QString &workdir, const QString &binary)

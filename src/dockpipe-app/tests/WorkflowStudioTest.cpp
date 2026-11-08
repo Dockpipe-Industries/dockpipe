@@ -1,10 +1,14 @@
 #include "WorkflowCanvas.h"
 #include "WorkflowEditorWidget.h"
 #include "ProjectFilesWidget.h"
+#include "WorkspaceFilesTestSupport.h"
+#include "FileEditorWorkspace.h"
+#include "SourceEditor.h"
 #include "Theme.h"
 
 #include <QApplication>
 #include <QAction>
+#include <QAbstractButton>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileDialog>
@@ -12,6 +16,7 @@
 #include <QGraphicsScene>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QTabWidget>
@@ -47,6 +52,10 @@ bool containsLabel(QWidget *widget, const QString &text)
 
 QPushButton *button(QWidget *widget, const QString &text)
 {
+    if (text == "Save") {
+        if (auto *save = widget->findChild<QPushButton *>("canvasSaveButton"))
+            return save;
+    }
     for (auto *candidate : widget->findChildren<QPushButton *>()) {
         if (candidate->text() == text)
             return candidate;
@@ -234,9 +243,18 @@ steps:
     file.close();
     if (!saved.contains("echo changed") || runs != 0)
         return 13;
+    // Run saves supporting-file drafts once, then continues without another click.
+    if (!FilesTest::create(*workflowFiles, "support.txt"))
+        return 45;
+    workflowFiles->findChild<FileEditorWorkspace *>("fileEditorWorkspace")->activeEditor()->insertPlainText("supporting draft\n");
+    button(&editor, "Run")->click();
     button(&editor, "Run")->click();
     if (!waitUntil([&]() { return runs == 1; }))
         return 14;
+    QFile supporting(temporary.filePath("support.txt"));
+    if (!supporting.open(QIODevice::ReadOnly) || supporting.readAll() != "supporting draft\n"
+        || workflowFiles->hasUnsavedChanges() || saves != 2)
+        return 46;
 
     // Invalid YAML never replaces the existing file or emits a run request.
     editor.findChild<QTabWidget *>()->setCurrentIndex(1);
@@ -293,6 +311,30 @@ steps:
         return 32;
     if (scriptYaml->toPlainText().contains(temporary.path()))
         return 33;
+    // Both workflow and supporting drafts can be discarded in one continuation.
+    // The Files approval must not expire inside the workflow confirmation dialog.
+    yaml->appendPlainText("# unsaved workflow draft");
+    if (!FilesTest::open(*workflowFiles, temporary.filePath("support.txt")))
+        return 47;
+    workflowFiles->findChild<FileEditorWorkspace *>("fileEditorWorkspace")->activeEditor()->insertPlainText("unsaved supporting draft\n");
+    QTemporaryDir nextWorkspace;
+    QTimer discard;
+    int discardPrompts = 0;
+    QObject::connect(&discard, &QTimer::timeout, &editor, [&]() {
+        auto *dialog = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+        if (dialog && dialog->button(QMessageBox::Discard)) {
+            ++discardPrompts;
+            dialog->button(QMessageBox::Discard)->click();
+        }
+    });
+    discard.start(10);
+    bool switched = false;
+    editor.setWorkspaceAsync(nextWorkspace.path(), cli, [&](bool success) { switched = success; });
+    if (!waitUntil([&]() { return switched; }) || discardPrompts != 2
+        || !workflowFiles->rootPath().isEmpty() || workflowFiles->hasUnsavedChanges()
+        || editor.workdir() != nextWorkspace.path() || !editor.workflowPath().isEmpty())
+        return 48;
+    discard.stop();
     std::puts("Workflow studio real-CLI editing, comment preservation, save, validation, conflict and run routing passed.");
     return 0;
 }

@@ -1,5 +1,7 @@
 #include "DashboardPage.h"
 #include <QShortcut>
+#include <QPointer>
+#include <QMetaMethod>
 #include "DashboardSettingsDialog.h"
 #include "DashboardTourDialog.h"
 #include "DesktopBackground.h"
@@ -13,6 +15,10 @@
 #include <QDir>
 #include "DashboardWorkspace.h"
 #include "DesktopWindowWidget.h"
+#include "DashboardRepositoryPanel.h"
+#include "DashboardFilePreview.h"
+#include "FileEditorWorkspace.h"
+#include "DashboardGitPreview.h"
 #include "PackageDisplayWidget.h"
 #include "DashboardDock.h"
 #include "DashboardAppsDialog.h"
@@ -41,6 +47,9 @@
 DashboardPage::DashboardPage(const DashboardDefinition &definition, DashboardWidgetFactory *factory, QWidget *parent)
     : QWidget(parent), m_definition(definition), m_factory(factory)
 {
+    setProperty("dashboardSharedMachineConfigured", true);
+    setProperty("dashboardSharedMachineCatalog", factory->sharedMachineCatalog());
+    setProperty("dashboardSharedMachineRootId", factory->sharedMachineRootId());
     m_tilingEnabled = LauncherSettings::current().tilingEnabled;
     setObjectName("dashboardPage");
     setProperty("dashboardId", definition.id);
@@ -58,11 +67,13 @@ DashboardPage::DashboardPage(const DashboardDefinition &definition, DashboardWid
     m_sidebarButton->hide();
     connect(m_sidebarButton, &QPushButton::clicked, this, &DashboardPage::sidebarRequested);
     toolbar->addWidget(m_sidebarButton);
-    m_title = new QLabel(definition.name);
+    const QString displayName = definition.id == DashboardStore::defaultDashboardId() && definition.name == "Dashboard"
+        ? tr("Dashboard") : definition.name;
+    m_title = new QLabel(displayName);
     m_title->setTextFormat(Qt::PlainText);
     m_title->setObjectName("dashboardTitle");
     m_title->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-    m_title->setToolTip(definition.name);
+    m_title->setToolTip(displayName);
     auto font = m_title->font();
     font.setPointSize(font.pointSize() + 4);
     font.setBold(true);
@@ -198,18 +209,45 @@ DashboardPage::DashboardPage(const DashboardDefinition &definition, DashboardWid
             removePanel(id, workspace);
         });
     }
+    connect(m_factory, &DashboardWidgetFactory::filePreviewRequested, this,
+        [this](QWidget *source, const QString &root, const QString &path) {
+            if (isAncestorOf(source)) {
+                auto machine = m_factory->widgetMachineContext(source);
+                machine.insert("mode", machine.value("target").toObject().isEmpty() ? "local" : "remote");
+                openCanvasTool("file-preview", {{"root", root}, {"path", path}, {"machine", machine}});
+            }
+        });
+    connect(m_factory, &DashboardWidgetFactory::gitPreviewRequested, this,
+        [this](QWidget *source, const QString &root, const QString &path, bool staged) {
+            if (isAncestorOf(source)) {
+                auto machine = m_factory->widgetMachineContext(source);
+                machine.insert("mode", machine.value("target").toObject().isEmpty() ? "local" : "remote");
+                openCanvasTool("git-preview", {{"root", root}, {"path", path}, {"staged", staged}, {"machine", machine}});
+            }
+        });
+    connect(m_factory, &DashboardWidgetFactory::canvasViewRequested, this,
+        [this](QWidget *source, const QString &kind, const QString &root) {
+            if (isAncestorOf(source))
+                openCanvasTool(kind, {{"root", root}, {"machine", m_factory->widgetMachineContext(source)}});
+        });
+    connect(m_factory, &DashboardWidgetFactory::widgetMachineContextChanged, this, [this](QWidget *source) {
+        if (isAncestorOf(source))
+            scheduleSave();
+    });
     // Native windows and sharing grants only belong to the current visit.
     const bool removedDesktopPanels = m_definition.panels.removeIf([](const DashboardPanelDefinition &panel) {
         return panel.kind == "desktop-window" || panel.kind == "package-display";
     }) > 0;
     for (const auto &panel : m_definition.panels) {
-        auto *content = createContent(panel.kind, panel.environment);
+        const auto context = m_definition.layout.value("panelContexts").toObject().value(panel.id).toObject();
+        auto *content = createContent(panel.kind, panel.environment, context);
         auto *workspace = workspaceFor(panel.environment);
         if (!workspace->addPanel(panel.id, panelTitle(panel.kind), content)) {
             delete content;
             continue;
         }
         bindWindow(panel.id, content);
+        bindRepositoryPanel(panel.id, content);
     }
     for (const QString &mode : {QString("canvas"), QString("tiling")}) {
         auto *workspace = workspaceFor(mode);
@@ -276,15 +314,222 @@ DashboardDefinition DashboardPage::snapshot() const
     canvas.layout = m_canvasWorkspace->saveLayout();
     DashboardDefinition tiling = definition;
     tiling.layout = m_tilingWorkspace->saveLayout();
+    QJsonObject contexts;
+    const auto existingContexts = m_definition.layout.value("panelContexts").toObject();
+    for (const auto &panel : definition.panels) {
+        auto context = existingContexts.value(panel.id).toObject();
+        auto *workspace = workspaceFor(panel.environment);
+        auto *frame = workspace->findChild<QWidget *>("dashboardPanel_" + panel.id);
+        if (frame) {
+            if (auto *view = frame->findChild<DashboardRepositoryPanel *>())
+                context = view->context();
+            if (auto *preview = frame->findChild<DashboardFilePreview *>()) {
+                if (!preview->currentPath().isEmpty())
+                    context = {{"root", preview->rootPath()}, {"path", preview->currentPath()},
+                        {"machine", preview->property("dashboardMachineContext").toJsonObject()}};
+            }
+            if (auto *preview = frame->findChild<DashboardGitPreview *>())
+                context.insert("machine", preview->property("dashboardMachineContext").toJsonObject());
+            const QStringList machineKinds{"files", "git", "containers", "terminal", "send-input"};
+            if (machineKinds.contains(panel.kind)) {
+                if (auto *compact = frame->findChild<QWidget *>("dashboardWidget_" + panel.kind)) {
+                    const auto machine = m_factory->widgetMachineContext(compact);
+                    if (!machine.isEmpty())
+                        context.insert("machine", machine);
+                }
+            }
+        }
+        if (!context.isEmpty())
+            contexts[panel.id] = context;
+    }
     definition.layout = {{"version", 2}, {"mode", environment()},
                          {"canvas", DashboardStore::layoutForEnvironment(canvas, "canvas")},
-                         {"tiling", DashboardStore::layoutForEnvironment(tiling, "tiling")}};
+                         {"tiling", DashboardStore::layoutForEnvironment(tiling, "tiling")}, {"panelContexts", contexts}};
     return definition;
 }
 
 bool DashboardPage::hasPendingChanges() const
 {
     return m_saveTimer->isActive();
+}
+
+bool DashboardPage::confirmPanelLeave(const QString &id, DashboardWorkspace *workspace)
+{
+    auto *frame = workspace->findChild<QWidget *>("dashboardPanel_" + id);
+    if (!frame)
+        return true;
+    if (auto *view = frame->findChild<DashboardRepositoryPanel *>())
+        return view->confirmLeave();
+    if (auto *preview = frame->findChild<DashboardFilePreview *>())
+        return preview->confirmLeave();
+    return true;
+}
+
+bool DashboardPage::confirmLeave()
+{
+    for (const auto &panel : m_definition.panels) {
+        if (!confirmPanelLeave(panel.id, workspaceFor(panel.environment)))
+            return false;
+    }
+    return true;
+}
+
+namespace {
+void confirmDashboardContents(QPointer<DashboardPage> owner, QList<QPointer<QWidget>> contents,
+                              std::function<void(bool)> completion)
+{
+    if (!owner)
+        return;
+    while (!contents.isEmpty() && !contents.first())
+        contents.removeFirst();
+    if (contents.isEmpty()) {
+        completion(true);
+        return;
+    }
+    const QPointer<QWidget> content = contents.takeFirst();
+    auto next = [owner, contents = std::move(contents), completion = std::move(completion)](bool accepted) mutable {
+        if (!owner)
+            return;
+        if (!accepted) {
+            completion(false);
+            return;
+        }
+        confirmDashboardContents(owner, std::move(contents), std::move(completion));
+    };
+    if (auto *view = qobject_cast<DashboardRepositoryPanel *>(content.data()))
+        view->confirmLeaveAsync(std::move(next));
+    else if (auto *preview = qobject_cast<DashboardFilePreview *>(content.data()))
+        preview->confirmLeaveAsync(std::move(next));
+    else
+        next(true);
+}
+}
+
+void DashboardPage::confirmLeaveAsync(std::function<void(bool)> completion)
+{
+    QList<QPointer<QWidget>> contents;
+    for (const auto &panel : m_definition.panels) {
+        auto *frame = workspaceFor(panel.environment)->findChild<QWidget *>("dashboardPanel_" + panel.id);
+        if (!frame)
+            continue;
+        if (auto *view = frame->findChild<DashboardRepositoryPanel *>())
+            contents.append(view);
+        else if (auto *preview = frame->findChild<DashboardFilePreview *>())
+            contents.append(preview);
+    }
+    confirmDashboardContents(this, std::move(contents), std::move(completion));
+}
+
+void DashboardPage::confirmPanelLeaveAsync(const QString &id, DashboardWorkspace *workspace,
+                                         std::function<void(bool)> completion)
+{
+    auto *frame = workspace->findChild<QWidget *>("dashboardPanel_" + id);
+    if (frame) {
+        if (auto *view = frame->findChild<DashboardRepositoryPanel *>()) {
+            view->confirmLeaveAsync(std::move(completion));
+            return;
+        }
+        if (auto *preview = frame->findChild<DashboardFilePreview *>()) {
+            preview->confirmLeaveAsync(std::move(completion));
+            return;
+        }
+    }
+    completion(true);
+}
+
+void DashboardPage::openCanvasTool(const QString &kind, const QJsonObject &context)
+{
+    setEnvironment("canvas");
+    if (kind == "file-preview" || kind == "git-preview") {
+        const auto contexts = m_definition.layout.value("panelContexts").toObject();
+        for (const auto &panel : m_definition.panels) {
+            if (panel.kind == kind && panel.environment == "canvas"
+                && contexts.value(panel.id).toObject() == context) {
+                m_canvasWorkspace->activatePanel(panel.id);
+                if (auto *frame = m_canvasWorkspace->findChild<QWidget *>("dashboardPanel_" + panel.id)) {
+                    frame->raise();
+                    if (auto *preview = frame->findChild<DashboardGitPreview *>())
+                        preview->refresh();
+                }
+                return;
+            }
+        }
+    }
+    addPanel(kind, false, context);
+}
+
+void DashboardPage::bindRepositoryPanel(const QString &id, QWidget *content)
+{
+    if (auto *view = qobject_cast<DashboardRepositoryPanel *>(content)) {
+        connect(view, &DashboardRepositoryPanel::contextChanged, this, &DashboardPage::scheduleSave);
+        connect(view, &DashboardRepositoryPanel::contextChanged, this, &DashboardPage::refreshDock);
+        connect(view, &DashboardRepositoryPanel::workflowRunRequested, this,
+            [this, view](const QString &repository, const QString &path) {
+            const auto target = view->property("dashboardMachineTarget").toJsonObject();
+            const auto root = view->property("dashboardMachineRootId").toString();
+            if (isSignalConnected(QMetaMethod::fromSignal(&DashboardPage::workflowRunOnMachineRequested))) {
+                emit workflowRunOnMachineRequested(repository, path, target, root);
+            } else if (target.isEmpty()) {
+                emit workflowRunRequested(repository, path);
+            } else {
+                showSaveError(tr("Remote workflow launch is unavailable for this view."));
+            }
+        });
+        connect(view, &DashboardRepositoryPanel::duplicateRequested, this, [this, view]() {
+            openCanvasTool(view->property("dashboardFullKind").toString(), view->context());
+        });
+        connect(view, &DashboardRepositoryPanel::workflowOpenRequested, this,
+            [this](const QString &root, const QString &path) {
+                openCanvasTool("workflows-full", {{"root", root}, {"path", path}});
+            });
+    }
+    if (auto *preview = qobject_cast<DashboardFilePreview *>(content)) {
+        const auto savePreviewContext = [this, id, preview]() {
+            if (!preview->currentPath().isEmpty()) {
+                auto contexts = m_definition.layout.value("panelContexts").toObject();
+                contexts[id] = QJsonObject{{"root", preview->rootPath()}, {"path", preview->currentPath()},
+                    {"machine", preview->property("dashboardMachineContext").toJsonObject()}};
+                m_definition.layout["panelContexts"] = contexts;
+            }
+            scheduleSave();
+        };
+        connect(preview, &DashboardFilePreview::fileSaved, this, savePreviewContext);
+        if (auto *editors = preview->findChild<FileEditorWorkspace *>())
+            connect(editors, &FileEditorWorkspace::currentChanged, this, savePreviewContext);
+        connect(preview, &DashboardFilePreview::workflowOpenRequested, this, [this, preview](const QString &path) {
+            preview->confirmLeaveAsync([this, preview, path](bool accepted) {
+                if (accepted)
+                    openCanvasTool("workflows-full", {{"root", preview->rootPath()}, {"path", path}});
+            });
+        });
+    }
+    // Titles identify each repository or document when several views coexist.
+    QString title;
+    if (auto *view = qobject_cast<DashboardRepositoryPanel *>(content)) {
+        const auto updateTitle = [this, id, view]() {
+            for (const auto &panel : m_definition.panels) {
+                if (panel.id == id) {
+                    QString title = panelTitle(panel.kind);
+                    if (!view->repository().isEmpty())
+                        title += " · " + QFileInfo(view->repository()).fileName();
+                    workspaceFor(panel.environment)->setPanelTitle(id, title);
+                    break;
+                }
+            }
+        };
+        connect(view, &DashboardRepositoryPanel::contextChanged, this, updateTitle);
+        updateTitle();
+    } else if (auto *file = qobject_cast<DashboardFilePreview *>(content)) {
+        title = QFileInfo(file->rootPath()).fileName() + " · " + QFileInfo(file->currentPath()).fileName();
+    } else if (auto *git = qobject_cast<DashboardGitPreview *>(content)) {
+        title = tr("Diff · %1 · %2").arg(QFileInfo(git->rootPath()).fileName(), git->currentPath());
+    }
+    if (!title.isEmpty()) {
+        for (const auto &panel : m_definition.panels) {
+            if (panel.id == id)
+                workspaceFor(panel.environment)->setPanelTitle(id, title);
+        }
+    }
 }
 
 void DashboardPage::setName(const QString &name)
@@ -309,6 +554,16 @@ void DashboardPage::setCanAddPanel(std::function<bool()> check)
 
 QString DashboardPage::panelTitle(const QString &kind) const
 {
+    if (kind == "files-full")
+        return tr("Files · Full view");
+    if (kind == "git-full")
+        return tr("Git · Full view");
+    if (kind == "workflows-full")
+        return tr("Workflows · Full view");
+    if (kind == "file-preview")
+        return tr("File preview");
+    if (kind == "git-preview")
+        return tr("Change preview");
     if (kind == "desktop-window" || kind == "package-display")
         return tr("Desktop window");
     for (const auto &descriptor : DashboardWidgetFactory::catalog()) {
@@ -318,20 +573,50 @@ QString DashboardPage::panelTitle(const QString &kind) const
     return kind;
 }
 
-QWidget *DashboardPage::createContent(const QString &kind, const QString &mode)
+QWidget *DashboardPage::createContent(const QString &kind, const QString &mode, const QJsonObject &context)
 {
+    const QString root = context.contains("root") ? context.value("root").toString() : m_factory->workdir();
+    auto machine = context.value("machine").toObject();
+    if ((kind == "file-preview" || kind == "git-preview") && !context.contains("machine"))
+        machine.insert("mode", "local");
+    const auto selected = resolveMachineCatalog(machine);
+    const auto rootId = resolveMachineRoot(machine);
+    if (kind == "files-full" || kind == "git-full" || kind == "workflows-full") {
+        const QString localRoot = !selected.isEmpty()
+            ? context.value("localRoot").toString(m_factory->workdir()) : root;
+        auto *view = new DashboardRepositoryPanel(kind, localRoot, selected, rootId);
+        installMachineMenu(view, kind, machine);
+        if (context.contains("path") && (selected.isEmpty() || context.contains("machine")))
+            view->restoreContext(context);
+        return view;
+    }
+    if (kind == "file-preview") {
+        auto *view = new DashboardFilePreview(root, context.value("path").toString(), selected, rootId);
+        installMachineMenu(view, kind, machine);
+        return view;
+    }
+    if (kind == "git-preview") {
+        auto *view = new DashboardGitPreview(root, context.value("path").toString(), context.value("staged").toBool(), selected, rootId);
+        installMachineMenu(view, kind, machine);
+        return view;
+    }
     if (kind == "package-display")
         return new PackageDisplayWidget;
-    if (kind == "desktop-window")
-        return new DesktopWindowWidget;
+    if (kind == "desktop-window") {
+        auto *window = new DesktopWindowWidget;
+        window->setProperty("dashboardCanvasPresentation", mode == "canvas");
+        return window;
+    }
     const QString scope = mode == "tiling" ? m_definition.options.tilingFileScope : m_definition.options.canvasFileScope;
-    if (auto *widget = m_factory->create(kind, nullptr, scope)) {
+    if (auto *widget = m_factory->create(kind, nullptr, scope, machine)) {
         const bool canvas = mode == "canvas";
         widget->setProperty("dashboardCanvasPresentation", canvas);
         for (auto *child : widget->findChildren<QWidget *>())
             child->setProperty("dashboardCanvasPresentation", canvas);
         if (canvas && kind == "browser") {
             if (auto *browser = widget->findChild<BrowserWidget *>()) {
+                browser->setCanvasViewportMode(false);
+                browser->setChromeVisible(true);
                 connect(browser, &BrowserWidget::tabTearOutRequested, this,
                     [this, browser](QWebEngineView *view, const QPoint &position) {
                         tearOutBrowserTab(browser, view, position);
@@ -383,11 +668,9 @@ bool DashboardPage::addWidgetKind(const QString &kind)
     return addPanel(kind, true);
 }
 
-bool DashboardPage::addPanel(const QString &kind, bool chooseWindow)
+bool DashboardPage::addPanel(const QString &kind, bool chooseWindow, const QJsonObject &context)
 {
-    if (kind == "desktop-window" && environment() != "tiling")
-        return false;
-    bool known = kind == "desktop-window" || kind == "package-display";
+    bool known = QStringList{"desktop-window", "package-display", "files-full", "git-full", "workflows-full", "file-preview", "git-preview"}.contains(kind);
     for (const auto &descriptor : DashboardWidgetFactory::catalog())
         known = known || descriptor.id == kind;
     if (!known)
@@ -397,21 +680,28 @@ bool DashboardPage::addPanel(const QString &kind, bool chooseWindow)
         return false;
     }
     const QString id = DashboardStore::newId();
-    auto *content = createContent(kind, environment());
+    auto *content = createContent(kind, environment(), context);
     if (!m_workspace->addPanel(id, panelTitle(kind), content)) {
         delete content;
         return false;
     }
     m_definition.panels.append({id, kind, environment()});
+    if (!context.isEmpty()) {
+        auto contexts = m_definition.layout.value("panelContexts").toObject();
+        contexts[id] = context;
+        m_definition.layout["panelContexts"] = contexts;
+    }
     bindWindow(id, content);
+    bindRepositoryPanel(id, content);
     refreshDock();
     m_workspace->activatePanel(id);
     m_dock->setActivePanel(id);
     scheduleSave();
     if (chooseWindow && kind == "desktop-window") {
         auto *window = qobject_cast<DesktopWindowWidget *>(content);
-        QTimer::singleShot(0, window, [this, window]() {
-            if (isVisible() && environment() == "tiling")
+        const QString mode = environment();
+        QTimer::singleShot(0, window, [this, window, mode]() {
+            if (isVisible() && environment() == mode)
                 window->chooseWindow();
         });
     }
@@ -433,6 +723,14 @@ void DashboardPage::refreshDock()
         QString title = panelTitle(panel.kind);
         QIcon icon;
         if (auto *frame = m_workspace->findChild<QWidget *>("dashboardPanel_" + panel.id)) {
+            if (auto *view = frame->findChild<DashboardRepositoryPanel *>()) {
+                if (!view->repository().isEmpty())
+                    title += " · " + QFileInfo(view->repository()).fileName();
+            } else if (auto *preview = frame->findChild<DashboardFilePreview *>()) {
+                title = QFileInfo(preview->rootPath()).fileName() + " · " + QFileInfo(preview->currentPath()).fileName();
+            } else if (auto *preview = frame->findChild<DashboardGitPreview *>()) {
+                title = tr("Diff · %1 · %2").arg(QFileInfo(preview->rootPath()).fileName(), preview->currentPath());
+            }
             if (auto *window = frame->findChild<DesktopWindowWidget *>()) {
                 if (!window->acquiredWindowTitle().isEmpty())
                     title = window->acquiredWindowTitle();
@@ -441,7 +739,7 @@ void DashboardPage::refreshDock()
         }
         panels.append({panel.id, title, panel.kind, icon});
     }
-    m_dock->setDesktopAppsEnabled(environment() == "tiling");
+    m_dock->setDesktopAppsEnabled(true);
     m_dock->setPanels(panels);
     m_dock->positionOverlay();
 }
@@ -544,7 +842,7 @@ bool DashboardPage::attachPackageDisplay(const PackageDisplayMeta &display, QStr
 
 void DashboardPage::addWindowForApplication(const QString &name)
 {
-    if (environment() != "tiling" || !addWidgetKind("desktop-window"))
+    if (!addWidgetKind("desktop-window"))
         return;
     const QString id = m_definition.panels.last().id;
     if (auto *frame = m_workspace->findChild<QWidget *>("dashboardPanel_" + id)) {
@@ -658,11 +956,17 @@ void DashboardPage::chooseWidget()
     updateDisplays();
     connect(m_factory, &DashboardWidgetFactory::packageDisplaysChanged, dialog, updateDisplays);
     m_factory->requestPackageDisplayInventory();
-    if (environment() == "tiling") {
-        auto *desktop = new QListWidgetItem(tr("Desktop window\nChoose an app window. Available capture and control depend on your desktop."), list);
-        desktop->setData(Qt::UserRole, "desktop-window");
-        desktop->setSizeHint(QSize(420, 64));
+    const QString desktopDescription = environment() == "canvas"
+        ? tr("Desktop window\nEmbed an app window on this canvas. Close returns it to your desktop.")
+        : tr("Desktop window\nChoose an app window. Capture and control depend on your desktop.");
+    for (const QString &kind : {QString("workflows-full"), QString("files-full"), QString("git-full")}) {
+        auto *full = new QListWidgetItem(panelTitle(kind) + tr("\nIndependent repository · add multiple views for cross-repo work"), list);
+        full->setData(Qt::UserRole, kind);
+        full->setSizeHint(QSize(420, 64));
     }
+    auto *desktop = new QListWidgetItem(desktopDescription, list);
+    desktop->setData(Qt::UserRole, "desktop-window");
+    desktop->setSizeHint(QSize(420, 64));
     layout->addWidget(list);
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     buttons->button(QDialogButtonBox::Ok)->setText(tr("Add widget"));
@@ -693,7 +997,15 @@ void DashboardPage::setTilingEnabled(bool enabled)
     m_tilingEnabled = enabled;
     m_tiling->setVisible(enabled);
     if (!enabled) {
-        releaseDesktopWindows();
+        // Disabling the optional tiling workspace must not detach one-off canvas apps.
+        for (auto *window : m_tilingWorkspace->findChildren<DesktopWindowWidget *>())
+            window->releaseWindow();
+        const auto panels = m_definition.panels;
+        for (const auto &panel : panels) {
+            if (panel.environment == "tiling"
+                && (panel.kind == "desktop-window" || panel.kind == "package-display"))
+                removePanel(panel.id, m_tilingWorkspace);
+        }
         setEnvironment("canvas");
     }
 }
@@ -822,11 +1134,25 @@ void DashboardPage::closePanel(const QString &id, DashboardWorkspace *workspace)
 
 void DashboardPage::removePanel(const QString &id, DashboardWorkspace *workspace)
 {
-    m_automaticPanels.remove(id);
-    m_definition.panels.removeIf([&id](const DashboardPanelDefinition &panel) { return panel.id == id; });
-    workspace->removePanel(id);
-    refreshDock();
-    scheduleSave();
+    const QPointer<DashboardWorkspace> guardedWorkspace(workspace);
+    confirmPanelLeaveAsync(id, workspace, [this, id, guardedWorkspace](bool accepted) {
+        if (!accepted || !guardedWorkspace)
+            return;
+        auto *workspace = guardedWorkspace.data();
+        // Detach the foreign client before Qt destroys its native ancestor window.
+        if (auto *frame = workspace->findChild<QWidget *>("dashboardPanel_" + id)) {
+            for (auto *window : frame->findChildren<DesktopWindowWidget *>())
+                window->releaseWindow();
+        }
+        m_automaticPanels.remove(id);
+        m_definition.panels.removeIf([&id](const DashboardPanelDefinition &panel) { return panel.id == id; });
+        auto contexts = m_definition.layout.value("panelContexts").toObject();
+        contexts.remove(id);
+        m_definition.layout["panelContexts"] = contexts;
+        workspace->removePanel(id);
+        refreshDock();
+        scheduleSave();
+    });
 }
 
 void DashboardPage::bindWindow(const QString &id, QWidget *content)

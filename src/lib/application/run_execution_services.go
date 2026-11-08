@@ -9,6 +9,7 @@ import (
 // Legacy package seams remain composition adapters for compatibility tests;
 // running sessions and their nested steps use their captured dependencies.
 type runExecutionServices struct {
+	admission    infrastructure.NativeExecutionAdmission
 	sourceScript func(string, []string) (map[string]string, error)
 	hostScript   func(string, []string) error
 	container    func(infrastructure.RunOpts, []string) (int, error)

@@ -109,6 +109,7 @@ struct PackageSurfaceActionMeta {
     QString workflow;
     QString workflowId;
     QMap<QString, QMap<QString, PackageSurfaceEnvironmentBinding>> launchEnvironment;
+    QStringList fileExtensions;
 };
 
 struct PackageSurfaceMeta {

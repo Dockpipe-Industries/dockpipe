@@ -33,6 +33,8 @@ type WorkspaceGitCommit struct {
 	Parents []string `json:"parents"`
 	Subject string   `json:"subject"`
 	Author  string   `json:"author"`
+	Date    string   `json:"date,omitempty"`
+	Refs    []string `json:"refs,omitempty"`
 }
 
 type WorkspaceGitBranch struct {
@@ -76,7 +78,7 @@ func readWorkspaceGitCatalog(ctx context.Context, snapshot *WorkspaceGitSnapshot
 		for _, row := range strings.Split(strings.TrimSpace(string(commits)), "\n") {
 			fields := strings.SplitN(row, "\x00", 4)
 			if len(fields) == 4 {
-				catalog.Commits = append(catalog.Commits, WorkspaceGitCommit{fields[0], strings.Fields(fields[1]), fields[3], fields[2]})
+				catalog.Commits = append(catalog.Commits, WorkspaceGitCommit{ID: fields[0], Parents: strings.Fields(fields[1]), Subject: fields[3], Author: fields[2]})
 			}
 		}
 	}

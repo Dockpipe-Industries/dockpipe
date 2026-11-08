@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Context.h"
+#include "LauncherUiExport.h"
 
 #include <QHash>
 #include <QObject>
@@ -23,7 +24,7 @@ struct SessionInfo {
     bool stopRequested = false;
 };
 
-class SessionManager : public QObject {
+class DOCKPIPE_LAUNCHER_UI_EXPORT SessionManager : public QObject {
     Q_OBJECT
 public:
     explicit SessionManager(QObject *parent = nullptr);
@@ -36,6 +37,8 @@ public:
     static QStringList dockpipeArguments(const Context &ctx);
     static QString readinessMarker();
 
+    // True admits an asynchronous start. Observe sessionStarted/sessionFailed
+    // for the result; false rejects the request before a process is admitted.
     bool launch(const Context &ctx, const QString &logsDir);
     void stop(const QString &contextId);
     void sendInput(const QString &contextId, const QString &text);

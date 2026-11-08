@@ -18,12 +18,14 @@ void MainWindow::syncPackageSurfaces(const QVector<ResolverMeta> &providers)
 {
     QMap<QString, QVector<ResolverMeta>> groups;
     for (const auto &provider : providers) {
-        if (provider.surface.id.isEmpty())
+        if (provider.surface.id.isEmpty() || provider.surface.snapshot.isEmpty())
             continue;
         ResolverMeta contribution = provider;
         for (int index = contribution.surface.actions.size() - 1; index >= 0; --index) {
             const auto &action = contribution.surface.actions[index];
-            if (!action.workflowId.isEmpty()) {
+            if (action.scope == "file") {
+                contribution.surface.actions.removeAt(index);
+            } else if (!action.workflowId.isEmpty()) {
                 const auto workflow = findWorkflowMeta(m_settings.projectFolder, action.workflowId, QString());
                 if (workflow.workflowId.isEmpty() || !workflow.supported)
                     contribution.surface.actions.removeAt(index);

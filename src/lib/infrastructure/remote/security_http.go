@@ -16,7 +16,15 @@ func (broker *Broker) serveOperator(w http.ResponseWriter, request *http.Request
 		http.Error(w, "invalid, locked or expired remote authority", http.StatusLocked)
 		return
 	}
-	value, operationError := broker.operator(request.URL.Path, body)
+	var value any
+	var operationError error
+	if terminalPath(request.URL.Path) {
+		value, operationError = broker.terminalOperator(request.URL.Path, body, admission)
+	} else if featureOperatorPath(request.URL.Path) {
+		value, operationError = broker.featureOperator(request.URL.Path, body, admission)
+	} else {
+		value, operationError = broker.operator(request.URL.Path, body)
+	}
 	status := http.StatusOK
 	payload, err := json.Marshal(value)
 	if operationError != nil {

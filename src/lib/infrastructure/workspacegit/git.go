@@ -99,9 +99,9 @@ func workspaceGitMissingRef(err error) bool {
 	return errors.As(err, &exitError) && exitError.ExitCode() == 1
 }
 
-// RunWorkspaceGit owns the Git lifecycle for project-level human actions. No
-// force pushes, implicit commits, automatic stashes, rebases, or merges occur.
-func RunWorkspaceGit(ctx context.Context, request WorkspaceGitRequest) (*WorkspaceGitSnapshot, error) {
+// executeWorkspaceGit owns repository checks and effects after native admission.
+// No force pushes, implicit commits, automatic stashes, rebases, or merges occur.
+func executeWorkspaceGit(ctx context.Context, request WorkspaceGitRequest) (*WorkspaceGitSnapshot, error) {
 	if strings.TrimSpace(request.Workdir) == "" {
 		return nil, errors.New("select a project directory first")
 	}

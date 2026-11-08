@@ -61,6 +61,9 @@ type runStepsOpts struct {
 //   - Outputs: after all parallel steps finish, outputs files are merged in YAML order
 //     into the shared env for the next blocking step.
 func runSteps(o runStepsOpts) error {
+	if err := domain.ValidateLoadedWorkflow(o.wf); err != nil {
+		return err
+	}
 	o.services = o.executionServices()
 	dockerEnv := domain.EnvSliceToMap(o.opts.ExtraEnvLines)
 	if err := applyWorkflowContainerMountEnv(&o); err != nil {

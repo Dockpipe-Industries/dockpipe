@@ -1,4 +1,5 @@
 #include "RemoteSecurityWidget.h"
+#include <QCoreApplication>
 
 #include "DockpipeChoices.h"
 
@@ -32,10 +33,10 @@ QLabel *securityLabel(const QString &text, const QString &name)
 QString capabilityText(const QString &name, bool available, const QString &state = {})
 {
     if (!available)
-        return QObject::tr("%1: unavailable on this host").arg(name);
+        return QCoreApplication::translate("RemoteSecurityWidget", "%1: unavailable on this host").arg(name);
     if (state.isEmpty())
-        return QObject::tr("%1: available").arg(name);
-    return QObject::tr("%1: %2").arg(name, state);
+        return QCoreApplication::translate("RemoteSecurityWidget", "%1: available").arg(name);
+    return QCoreApplication::translate("RemoteSecurityWidget", "%1: %2").arg(name, state);
 }
 
 } // namespace

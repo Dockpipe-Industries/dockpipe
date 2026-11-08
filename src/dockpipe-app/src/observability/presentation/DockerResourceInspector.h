@@ -27,6 +27,7 @@ public:
     DockerResourceInspector(QPlainTextEdit *logs, const QList<QPlainTextEdit *> &inspect, QWidget *parent = nullptr);
     void setSelection(const DockerInspectorSelection &selection);
     void setStatus(const QString &text);
+    void setListPresentation(bool list, QWidget *monitoringHost);
 
 signals:
     void resourceRequested(const QString &key);
@@ -39,6 +40,11 @@ signals:
 
 private:
     QString m_key;
+    QWidget *m_monitoringControls;
+    QWidget *m_monitoringHost;
+    QWidget *m_resourceActions;
+    QLabel *m_emptySelection;
+    QPushButton *m_inventory;
     QLabel *m_title;
     QLabel *m_state;
     QLabel *m_details;

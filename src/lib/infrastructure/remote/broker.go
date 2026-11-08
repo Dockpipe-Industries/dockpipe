@@ -42,6 +42,8 @@ type BrokerState struct {
 }
 
 type Broker struct {
+	terminals         *terminalBroker
+	features          *featureBroker
 	edge              *EdgeSupervisor
 	operatorTokenHash string
 	security          *SecurityAuthority
@@ -116,6 +118,9 @@ func NewBroker(root string) (*Broker, error) {
 	if err := b.save(); err != nil {
 		return nil, err
 	}
+	if err := b.loadFeatures(); err != nil {
+		return nil, err
+	}
 	return b, nil
 }
 
@@ -144,6 +149,9 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	limit := int64(contract.MaxBody)
+	if terminalPath(r.URL.Path) {
+		limit = contract.MaxTerminalBody
+	}
 	if r.URL.Path == "/v1/monitor-publish" {
 		limit = MaxMonitoringBytes
 	}
@@ -283,6 +291,8 @@ func (b *Broker) operator(path string, raw []byte) (any, error) {
 		return b.edge.status(request.ID)
 	case "/v1/observe":
 		return b.observeMachine(raw)
+	case "/v1/remove":
+		return b.removeNode(raw)
 	case "/v1/pairing-open", "/v1/pairing-close", "/v1/pairings", "/v1/approve", "/v1/deny":
 		return b.pairingOperator(path, raw)
 	case "/v1/nodes":
@@ -388,6 +398,12 @@ func (b *Broker) operator(path string, raw []byte) (any, error) {
 }
 
 func (b *Broker) worker(node, path string, raw []byte) (any, error) {
+	if path == "/v1/terminal-worker" {
+		return b.terminalWorker(node, raw)
+	}
+	if featureOperatorPath(path) {
+		return b.featureWorker(node, path, raw)
+	}
 	switch path {
 	case "/v1/monitor-publish":
 		return b.publishMonitoring(node, raw)

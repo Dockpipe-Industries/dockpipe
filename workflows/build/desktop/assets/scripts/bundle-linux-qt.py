@@ -112,6 +112,10 @@ def deploy(launcher, qt, stage, private_debug, version, browser_sdk=None, platfo
     if not reader.is_file():
         raise RuntimeError("Workspace reader must ship beside the launcher")
 
+    terminal_host = launcher.parent / "dockpipe-terminal-host"
+    if not terminal_host.is_file():
+        raise RuntimeError("Terminal host must ship beside the launcher")
+
     runtime = stage / "usr/lib/dockpipe"
     notices = stage / "usr/share/doc/dockpipe-desktop/qt"
     runtime.mkdir(parents=True, exist_ok=True)
@@ -137,6 +141,7 @@ def deploy(launcher, qt, stage, private_debug, version, browser_sdk=None, platfo
 
     copy_binary(launcher, runtime / "bin/dockpipe-launcher", owned=True)
     copy_binary(reader, runtime / "bin/dockpipe-workspace-reader", owned=True)
+    copy_binary(terminal_host, runtime / "bin/dockpipe-terminal-host", owned=True)
     copy_binary(qt / "libexec/QtWebEngineProcess", runtime / "libexec/QtWebEngineProcess")
     for name in PLATFORMS:
         copy_binary(qt / "plugins/platforms" / name, runtime / "plugins/platforms" / name)

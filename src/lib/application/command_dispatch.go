@@ -1,6 +1,11 @@
 package application
 
-import "dockpipe/src/lib/application/internal/workspacegitcmd"
+import (
+	"dockpipe/src/lib/application/internal/containerscmd"
+	"dockpipe/src/lib/application/internal/terminalcmd"
+	"dockpipe/src/lib/application/internal/workspacefilescmd"
+	"dockpipe/src/lib/application/internal/workspacegitcmd"
+)
 
 func dispatchCommand(argv []string) (bool, error) {
 	switch argv[0] {
@@ -32,8 +37,14 @@ func dispatchCommand(argv []string) (bool, error) {
 		return true, cmdSession(argv[1:])
 	case "git":
 		return true, workspacegitcmd.Run(argv[1:])
+	case "files":
+		return true, workspacefilescmd.Run(argv[1:])
+	case "containers":
+		return true, containerscmd.Run(argv[1:])
 	case "remote":
 		return true, cmdRemote(argv[1:])
+	case "terminal":
+		return true, terminalcmd.Run(argv[1:])
 	case "dependency":
 		return true, cmdDependency(argv[1:])
 	case "install":

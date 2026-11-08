@@ -22,6 +22,7 @@ GitRepositoryWidget::GitRepositoryWidget(QWidget *parent)
     m_controls = new QWidget;
     auto *content = new QVBoxLayout(m_controls);
     content->setContentsMargins(0, 0, 0, 0);
+    content->setSpacing(14);
     auto *toolbar = new QHBoxLayout;
     m_remotes = new QLabel;
     m_remotes->setTextFormat(Qt::PlainText);
@@ -41,10 +42,16 @@ GitRepositoryWidget::GitRepositoryWidget(QWidget *parent)
 
     auto *splitter = new QSplitter;
     splitter->setChildrenCollapsible(false);
+    splitter->setHandleWidth(12);
     auto *branches = new QWidget;
+    branches->setProperty("gitCard", true);
+    branches->setAttribute(Qt::WA_StyledBackground);
     auto *branchLayout = new QVBoxLayout(branches);
-    branchLayout->setContentsMargins(0, 0, 8, 0);
-    branchLayout->addWidget(new QLabel(tr("Branches")));
+    branchLayout->setContentsMargins(16, 16, 16, 16);
+    branchLayout->setSpacing(12);
+    auto *branchHeading = new QLabel(tr("Branches"));
+    branchHeading->setObjectName("gitPanelTitle");
+    branchLayout->addWidget(branchHeading);
     m_branches = new QListWidget;
     m_branches->setObjectName("gitRepositoryBranches");
     branchLayout->addWidget(m_branches, 1);
@@ -73,9 +80,14 @@ GitRepositoryWidget::GitRepositoryWidget(QWidget *parent)
     splitter->addWidget(branches);
 
     auto *stashes = new QWidget;
+    stashes->setProperty("gitCard", true);
+    stashes->setAttribute(Qt::WA_StyledBackground);
     auto *stashLayout = new QVBoxLayout(stashes);
-    stashLayout->setContentsMargins(8, 0, 0, 0);
-    stashLayout->addWidget(new QLabel(tr("Stashes")));
+    stashLayout->setContentsMargins(16, 16, 16, 16);
+    stashLayout->setSpacing(12);
+    auto *stashHeading = new QLabel(tr("Stashes"));
+    stashHeading->setObjectName("gitPanelTitle");
+    stashLayout->addWidget(stashHeading);
     m_stashes = new QListWidget;
     m_stashes->setObjectName("gitRepositoryStashes");
     stashLayout->addWidget(m_stashes, 1);

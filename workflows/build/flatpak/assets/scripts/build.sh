@@ -106,6 +106,7 @@ flatpak build --env=FLATPAK_DEST=/app --env="FLATPAK_ARCH=$arch" "$app" \
 install -m755 "$out/qt-build/dockpipe-launcher" "$app/files/libexec/dockpipe/dockpipe-launcher"
 cp -a "$out/qt-build"/libdockpipe-launcher-ui.so* "$app/files/libexec/dockpipe/"
 install -m755 "$out/qt-build/dockpipe-workspace-reader" "$app/files/libexec/dockpipe/dockpipe-workspace-reader"
+install -m755 "$out/qt-build/dockpipe-terminal-host" "$app/files/libexec/dockpipe/dockpipe-terminal-host"
 # Release compilation can still inherit private symbol/debug sections from
 # linked objects. Enforce the public payload contract after deployment.
 # The attested Browser SDK is dependency-owned and must remain byte-identical.
@@ -114,7 +115,7 @@ install -m755 "$out/qt-build/dockpipe-workspace-reader" "$app/files/libexec/dock
 # shellcheck disable=SC2016
 flatpak build "$app" bash -c '
   set -euo pipefail
-  for binary in /app/libexec/dockpipe/dockpipe-launcher /app/libexec/dockpipe/dockpipe-workspace-reader /app/libexec/dockpipe/libdockpipe-launcher-ui.so* /app/lib/libXRes.so*; do
+  for binary in /app/libexec/dockpipe/dockpipe-launcher /app/libexec/dockpipe/dockpipe-terminal-host /app/libexec/dockpipe/dockpipe-workspace-reader /app/libexec/dockpipe/libdockpipe-launcher-ui.so* /app/lib/libXRes.so*; do
     strip --strip-unneeded "$binary"
     if readelf --wide --sections "$binary" | grep -E "\\.(z?debug[_.]|symtab[[:space:]]|gnu_debugdata[[:space:]]|gdb_index[[:space:]])" >/dev/null; then
       echo "Private symbol sections remain in public Flatpak binary: $binary" >&2

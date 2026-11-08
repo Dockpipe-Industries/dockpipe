@@ -24,9 +24,9 @@ constexpr qsizetype commandOutputLimit = 16 * 1024;
 constexpr qsizetype plasmaConfigLimit = 1024 * 1024;
 constexpr int commandBudgetMs = 2000;
 
-DesktopBackgroundResult failure(const char *message)
+DesktopBackgroundResult failure(const QString &message)
 {
-    return {{}, QCoreApplication::translate("DesktopBackground", message)};
+    return {{}, message};
 }
 
 QString unquote(QString text, bool *valid)
@@ -137,39 +137,39 @@ CommandResult readSetting(const QString &program, const QStringList &arguments,
 DesktopBackgroundResult DesktopBackground::localImage(const QString &pathOrUrl)
 {
     if (pathOrUrl.isEmpty())
-        return failure("The desktop has no configured wallpaper image; it may use a solid color.");
+        return failure(QCoreApplication::translate("DesktopBackground", "The desktop has no configured wallpaper image; it may use a solid color."));
     if (pathOrUrl.size() > 4096 || pathOrUrl.contains(QChar::Null))
-        return failure("The desktop wallpaper path is invalid or too long.");
+        return failure(QCoreApplication::translate("DesktopBackground", "The desktop wallpaper path is invalid or too long."));
     QString path = pathOrUrl;
     if (!QDir::isAbsolutePath(path)) {
         // Desktop settings may contain display-form file URLs with literal spaces.
         const QUrl url(path, QUrl::TolerantMode);
         if (!url.isValid() || !url.isLocalFile() || (!url.host().isEmpty() && url.host() != "localhost")
             || url.hasQuery() || url.hasFragment())
-            return failure("Only local static wallpaper images can be inherited; network or dynamic wallpaper URLs are unsupported.");
+            return failure(QCoreApplication::translate("DesktopBackground", "Only local static wallpaper images can be inherited; network or dynamic wallpaper URLs are unsupported."));
         path = url.toLocalFile();
     }
     if (path.startsWith("//") || path.startsWith("\\\\"))
-        return failure("Network wallpaper paths are unsupported.");
+        return failure(QCoreApplication::translate("DesktopBackground", "Network wallpaper paths are unsupported."));
     const QFileInfo image(path);
     if (!image.exists() || !image.isReadable())
-        return failure("The configured desktop wallpaper image is missing or unreadable.");
+        return failure(QCoreApplication::translate("DesktopBackground", "The configured desktop wallpaper image is missing or unreadable."));
     if (!image.isFile())
-        return failure("The desktop uses a wallpaper package or folder. Choose a static image instead.");
+        return failure(QCoreApplication::translate("DesktopBackground", "The desktop uses a wallpaper package or folder. Choose a static image instead."));
     const QString suffix = image.suffix().toLower();
     if (suffix == "xml")
-        return failure("The desktop uses a timed wallpaper slideshow. Choose a static image instead.");
+        return failure(QCoreApplication::translate("DesktopBackground", "The desktop uses a timed wallpaper slideshow. Choose a static image instead."));
     if (!QStringList{"png", "jpg", "jpeg", "webp", "bmp"}.contains(suffix))
-        return failure("This wallpaper format is unsupported. Choose a PNG, JPEG, WebP or BMP image.");
+        return failure(QCoreApplication::translate("DesktopBackground", "This wallpaper format is unsupported. Choose a PNG, JPEG, WebP or BMP image."));
     if (image.size() > 20 * 1024 * 1024)
-        return failure("The desktop wallpaper exceeds the 20 MiB image limit.");
+        return failure(QCoreApplication::translate("DesktopBackground", "The desktop wallpaper exceeds the 20 MiB image limit."));
     return {image.absoluteFilePath(), {}};
 }
 
 DesktopBackgroundResult DesktopBackground::fromGSettings(const QByteArray &configuration, bool preferDark)
 {
     if (configuration.size() > commandOutputLimit)
-        return failure("Desktop wallpaper settings exceed the 16 KiB read limit.");
+        return failure(QCoreApplication::translate("DesktopBackground", "Desktop wallpaper settings exceed the 16 KiB read limit."));
     QMap<QString, QString> values;
     for (const QByteArray &raw : configuration.split('\n')) {
         const QString line = QString::fromUtf8(raw).trimmed();
@@ -180,26 +180,26 @@ DesktopBackgroundResult DesktopBackground::fromGSettings(const QByteArray &confi
         values.insert(line.mid(first + 1, second - first - 1), line.mid(second + 1).trimmed());
     }
     if (values.value("slideshow-enabled") == "true")
-        return failure("The desktop uses a wallpaper slideshow. Choose a static image instead.");
+        return failure(QCoreApplication::translate("DesktopBackground", "The desktop uses a wallpaper slideshow. Choose a static image instead."));
     const QString monitors = values.value("picture-uri-list");
     if (!monitors.isEmpty() && monitors != "[]" && monitors != "@aa{sv} []")
-        return failure("Per-monitor Cinnamon wallpaper settings are not supported. Choose a static image instead.");
+        return failure(QCoreApplication::translate("DesktopBackground", "Per-monitor Cinnamon wallpaper settings are not supported. Choose a static image instead."));
     bool valid = false;
     if (values.contains("picture-options") && unquote(values.value("picture-options"), &valid) == "none")
-        return failure("The desktop background is a solid color, not a wallpaper image.");
+        return failure(QCoreApplication::translate("DesktopBackground", "The desktop background is a solid color, not a wallpaper image."));
     QString selected = values.value(preferDark ? "picture-uri-dark" : "picture-uri");
     if (selected.isEmpty())
         selected = values.value("picture-uri");
     const QString path = unquote(selected, &valid);
     if (!valid)
-        return failure("The desktop did not provide a supported wallpaper image setting.");
+        return failure(QCoreApplication::translate("DesktopBackground", "The desktop did not provide a supported wallpaper image setting."));
     return localImage(path);
 }
 
 DesktopBackgroundResult DesktopBackground::fromPlasmaConfig(const QByteArray &configuration)
 {
     if (configuration.size() > plasmaConfigLimit)
-        return failure("Plasma wallpaper configuration exceeds the 1 MiB read limit.");
+        return failure(QCoreApplication::translate("DesktopBackground", "Plasma wallpaper configuration exceeds the 1 MiB read limit."));
     const QRegularExpression header("^\\[Containments\\]\\[([0-9]+)\\](.*)$");
     QMap<QString, QMap<QString, QString>> containments;
     QString id;
@@ -228,16 +228,16 @@ DesktopBackgroundResult DesktopBackground::fromPlasmaConfig(const QByteArray &co
             continue;
         active = true;
         if (entry.value("wallpaperplugin") != "org.kde.image")
-            return failure("The primary Plasma desktop uses a slideshow, color or wallpaper plugin. Choose a static image instead.");
+            return failure(QCoreApplication::translate("DesktopBackground", "The primary Plasma desktop uses a slideshow, color or wallpaper plugin. Choose a static image instead."));
         const QString candidate = entry.value("Image");
         if (candidate.contains('\\'))
-            return failure("This Plasma wallpaper path uses unsupported configuration escaping. Choose a static image instead.");
+            return failure(QCoreApplication::translate("DesktopBackground", "This Plasma wallpaper path uses unsupported configuration escaping. Choose a static image instead."));
         if (!image.isEmpty() && image != candidate)
-            return failure("Plasma has different wallpapers across activities. Choose the image for this dashboard explicitly.");
+            return failure(QCoreApplication::translate("DesktopBackground", "Plasma has different wallpapers across activities. Choose the image for this dashboard explicitly."));
         image = candidate;
     }
     if (!active)
-        return failure("No primary-screen static wallpaper was found in Plasma's desktop configuration.");
+        return failure(QCoreApplication::translate("DesktopBackground", "No primary-screen static wallpaper was found in Plasma's desktop configuration."));
     return localImage(image);
 }
 
@@ -248,26 +248,26 @@ DesktopBackgroundResult DesktopBackground::resolveLinux(const QString &desktop,
     if (name.contains("kde") || name.contains("plasma")) {
         QFile configuration(plasmaConfigFile);
         if (!configuration.open(QIODevice::ReadOnly))
-            return failure("Plasma's desktop configuration is missing or unreadable.");
+            return failure(QCoreApplication::translate("DesktopBackground", "Plasma's desktop configuration is missing or unreadable."));
         return fromPlasmaConfig(configuration.read(plasmaConfigLimit + 1));
     }
     const bool cinnamon = name.contains("cinnamon");
     if (!cinnamon && !name.contains("gnome") && !name.contains("pop") && !name.contains("unity"))
-        return failure("Desktop wallpaper inheritance is unsupported on this desktop. Choose an image instead.");
+        return failure(QCoreApplication::translate("DesktopBackground", "Desktop wallpaper inheritance is unsupported on this desktop. Choose an image instead."));
     if (!QCoreApplication::instance())
-        return failure("Desktop wallpaper resolution requires an application runtime.");
+        return failure(QCoreApplication::translate("DesktopBackground", "Desktop wallpaper resolution requires an application runtime."));
     QElapsedTimer deadline;
     deadline.start();
     qsizetype remaining = commandOutputLimit;
     const QString schema = cinnamon ? "org.cinnamon.desktop.background" : "org.gnome.desktop.background";
     const auto configuration = readSetting(settingsProgram, {"list-recursively", schema}, deadline, remaining);
     if (!configuration.success)
-        return failure("Could not read desktop wallpaper settings within the 2 second / 16 KiB limit. The gsettings utility and desktop schema are required.");
+        return failure(QCoreApplication::translate("DesktopBackground", "Could not read desktop wallpaper settings within the 2 second / 16 KiB limit. The gsettings utility and desktop schema are required."));
     bool preferDark = false;
     if (!cinnamon) {
         const auto style = readSetting(settingsProgram, {"get", "org.gnome.desktop.interface", "color-scheme"}, deadline, remaining);
         if (style.exhausted)
-            return failure("Reading desktop wallpaper settings exceeded the 2 second / 16 KiB limit.");
+            return failure(QCoreApplication::translate("DesktopBackground", "Reading desktop wallpaper settings exceeded the 2 second / 16 KiB limit."));
         bool valid = false;
         preferDark = style.success && unquote(QString::fromUtf8(style.output), &valid) == "prefer-dark" && valid;
     }
@@ -276,7 +276,7 @@ DesktopBackgroundResult DesktopBackground::resolveLinux(const QString &desktop,
         const auto slideshow = readSetting(settingsProgram,
             {"get", "org.cinnamon.desktop.background.slideshow", "slideshow-enabled"}, deadline, remaining);
         if (slideshow.exhausted)
-            return failure("Reading desktop wallpaper settings exceeded the 2 second / 16 KiB limit.");
+            return failure(QCoreApplication::translate("DesktopBackground", "Reading desktop wallpaper settings exceeded the 2 second / 16 KiB limit."));
         if (slideshow.success && slideshow.output.trimmed() == "true")
             values += "\norg.cinnamon.desktop.background.slideshow slideshow-enabled true\n";
     }
@@ -292,11 +292,11 @@ DesktopBackgroundResult DesktopBackground::resolve()
 #elif defined(Q_OS_WIN)
     WCHAR path[MAX_PATH]{};
     if (!SystemParametersInfoW(SPI_GETDESKWALLPAPER, MAX_PATH, path, 0))
-        return failure("Windows could not provide its current desktop wallpaper path.");
+        return failure(QCoreApplication::translate("DesktopBackground", "Windows could not provide its current desktop wallpaper path."));
     return localImage(QString::fromWCharArray(path));
 #elif defined(Q_OS_MACOS)
     return resolveMacDesktopBackground();
 #else
-    return failure("Desktop wallpaper inheritance is unsupported on this platform.");
+    return failure(QCoreApplication::translate("DesktopBackground", "Desktop wallpaper inheritance is unsupported on this platform."));
 #endif
 }

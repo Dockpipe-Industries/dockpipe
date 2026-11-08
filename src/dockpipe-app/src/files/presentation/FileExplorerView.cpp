@@ -181,6 +181,7 @@ FileExplorerView::FileExplorerView(QWidget *parent) : QWidget(parent)
     connect(m_tree, &QTreeView::doubleClicked, this, &FileExplorerView::activated);
     connect(m_tree, &QTreeView::clicked, this, &FileExplorerView::clicked);
     connect(m_icons, &QListView::activated, this, &FileExplorerView::activated);
+    connect(m_icons, &QListView::clicked, this, &FileExplorerView::clicked);
     updateVisibility();
 }
 

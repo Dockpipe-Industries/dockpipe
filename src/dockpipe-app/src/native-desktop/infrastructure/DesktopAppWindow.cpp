@@ -262,20 +262,20 @@ QString DesktopAppWindow::unavailableReason()
 {
 #if defined(DOCKPIPE_X11_BILLBOARDS) && QT_CONFIG(xcb)
     if (QGuiApplication::platformName() != "xcb")
-        return QObject::tr("App billboards currently require a Linux X11 session. Wayland capture and control are not supported yet.");
+        return QCoreApplication::translate("DesktopAppWindow", "App billboards currently require a Linux X11 session. Wayland capture and control are not supported yet.");
     if (QFile::exists("/.flatpak-info"))
-        return QObject::tr("App billboards are unavailable in the Flatpak sandbox.");
+        return QCoreApplication::translate("DesktopAppWindow", "App billboards are unavailable in the Flatpak sandbox.");
     auto *native = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
     if (!native)
-        return QObject::tr("This Qt build cannot embed X11 app windows.");
+        return QCoreApplication::translate("DesktopAppWindow", "This Qt build cannot embed X11 app windows.");
     int event = 0;
     int error = 0;
     if (!XCompositeQueryExtension(native->display(), &event, &error)
         || !XRenderQueryExtension(native->display(), &event, &error))
-        return QObject::tr("The desktop does not provide Composite and Render support.");
+        return QCoreApplication::translate("DesktopAppWindow", "The desktop does not provide Composite and Render support.");
     return {};
 #else
-    return QObject::tr("App billboards are unavailable in this build. The experiment requires Linux X11 support.");
+    return QCoreApplication::translate("DesktopAppWindow", "App billboards are unavailable in this build. The experiment requires Linux X11 support.");
 #endif
 }
 
@@ -288,7 +288,7 @@ QVector<DesktopAppChoice> DesktopAppWindow::availableWindows(QString &error, qui
         return choices;
     Display *display = XOpenDisplay(nullptr);
     if (!display) {
-        error = QObject::tr("Cannot connect to the desktop.");
+        error = QCoreApplication::translate("DesktopAppWindow", "Cannot connect to the desktop.");
         return choices;
     }
     {
@@ -297,7 +297,7 @@ QVector<DesktopAppChoice> DesktopAppWindow::availableWindows(QString &error, qui
         bool validClients = false;
         const auto clients = property(display, DefaultRootWindow(display), "_NET_CLIENT_LIST", XA_WINDOW, 256, &validClients);
         if (!validClients || errors.failed())
-            error = QObject::tr("Cannot read the desktop window list, or it exceeds 256 entries.");
+            error = QCoreApplication::translate("DesktopAppWindow", "Cannot read the desktop window list, or it exceeds 256 entries.");
         for (int offset = 0; offset + int(sizeof(Window)) <= clients.size(); offset += sizeof(Window)) {
             Window window = 0;
             memcpy(&window, clients.constData() + offset, sizeof(window));
@@ -374,13 +374,13 @@ std::optional<DesktopAppChoice> DesktopAppWindow::replacement(QString &error) co
 #if defined(DOCKPIPE_X11_BILLBOARDS) && QT_CONFIG(xcb)
     if (!m_native->display || m_native->processStart.isEmpty()
         || processStart(m_native->pid) != m_native->processStart) {
-        error = QObject::tr("The selected application has exited.");
+        error = QCoreApplication::translate("DesktopAppWindow", "The selected application has exited.");
         return {};
     }
     if (alive())
         return {};
     if (m_native->applicationClass.isEmpty()) {
-        error = QObject::tr("The application has no window identity. Select its new window manually.");
+        error = QCoreApplication::translate("DesktopAppWindow", "The application has no window identity. Select its new window manually.");
         return {};
     }
     const auto windows = availableWindows(error);
@@ -395,7 +395,7 @@ std::optional<DesktopAppChoice> DesktopAppWindow::replacement(QString &error) co
         if (processId(m_native->display, candidate.id) != m_native->pid || errors.failed())
             continue;
         if (match) {
-            error = QObject::tr("Several replacement windows match. Select the application's window manually.");
+            error = QCoreApplication::translate("DesktopAppWindow", "Several replacement windows match. Select the application's window manually.");
             return {};
         }
         match = candidate;
@@ -458,33 +458,33 @@ QImage DesktopAppWindow::capture(QString &error)
     error.clear();
 #if defined(DOCKPIPE_X11_BILLBOARDS) && QT_CONFIG(xcb)
     if (!alive()) {
-        error = QObject::tr("Window closed. Choose it again before the next flight.");
+        error = QCoreApplication::translate("DesktopAppWindow", "Window closed. Choose it again before the next flight.");
         return {};
     }
     Display *display = m_native->display;
     XErrorScope errors(display);
     XWindowAttributes attributes{};
     if (!XGetWindowAttributes(display, m_choice.id, &attributes) || attributes.map_state != IsViewable) {
-        error = QObject::tr("Window is minimized or unavailable.");
+        error = QCoreApplication::translate("DesktopAppWindow", "Window is minimized or unavailable.");
         return {};
     }
     // Source remains server-side. Read back only a 1280 x 720 texture (~3.6 MiB).
     // Reject oversized surfaces before naming a pixmap: at most an 8K desktop.
     if (attributes.width <= 0 || attributes.height <= 0 || attributes.width > 7680 || attributes.height > 4320) {
-        error = QObject::tr("Window exceeds the 7680 × 4320 capture limit.");
+        error = QCoreApplication::translate("DesktopAppWindow", "Window exceeds the 7680 × 4320 capture limit.");
         return {};
     }
     if (!m_native->redirected) {
         XCompositeRedirectWindow(display, m_choice.id, CompositeRedirectAutomatic);
         if (errors.failed()) {
-            error = QObject::tr("The desktop refused window capture.");
+            error = QCoreApplication::translate("DesktopAppWindow", "The desktop refused window capture.");
             return {};
         }
         m_native->redirected = true;
     }
     const Pixmap source = XCompositeNameWindowPixmap(display, m_choice.id);
     if (errors.failed()) {
-        error = QObject::tr("This window cannot be streamed.");
+        error = QCoreApplication::translate("DesktopAppWindow", "This window cannot be streamed.");
         return {};
     }
     const QSize size = QSize(attributes.width, attributes.height).scaled(1280, 720, Qt::KeepAspectRatio);
@@ -492,7 +492,7 @@ QImage DesktopAppWindow::capture(QString &error)
     auto *outputFormat = XRenderFindStandardFormat(display, PictStandardRGB24);
     if (!format || !outputFormat) {
         XFreePixmap(display, source);
-        error = QObject::tr("Unsupported window pixel format.");
+        error = QCoreApplication::translate("DesktopAppWindow", "Unsupported window pixel format.");
         return {};
     }
     const Pixmap output = XCreatePixmap(display, DefaultRootWindow(display), size.width(), size.height(), 24);
@@ -526,7 +526,7 @@ QImage DesktopAppWindow::capture(QString &error)
     XFreePixmap(display, output);
     XFreePixmap(display, source);
     if (image.isNull())
-        error = QObject::tr("Window capture failed. Stop sharing and select the window again.");
+        error = QCoreApplication::translate("DesktopAppWindow", "Window capture failed. Stop sharing and select the window again.");
     if (image.isNull())
         return {};
     QImage preview(1280, 720, QImage::Format_RGB32);
@@ -547,14 +547,14 @@ bool DesktopAppWindow::prepareControl(QString &error)
     if (m_native->saved)
         return true;
     if (!alive()) {
-        error = QObject::tr("The selected window has closed.");
+        error = QCoreApplication::translate("DesktopAppWindow", "The selected window has closed.");
         return false;
     }
     if (m_native->redirected) {
         XErrorScope errors(m_native->display);
         XCompositeUnredirectWindow(m_native->display, m_choice.id, CompositeRedirectAutomatic);
         if (errors.failed()) {
-            error = QObject::tr("Cannot release the preview surface for app control.");
+            error = QCoreApplication::translate("DesktopAppWindow", "Cannot release the preview surface for app control.");
             return false;
         }
         m_native->redirected = false;
@@ -571,7 +571,7 @@ bool DesktopAppWindow::prepareControl(QString &error)
             || !XTranslateCoordinates(m_native->display, m_choice.id, DefaultRootWindow(m_native->display), 0, 0, &x, &y, &child)
             || !desktopProperties(m_native->display, m_choice.id, m_native->originalProperties)
             || errors.failed()) {
-            error = QObject::tr("Cannot read the selected window.");
+            error = QCoreApplication::translate("DesktopAppWindow", "Cannot read the selected window.");
             return false;
         }
     }
@@ -583,7 +583,7 @@ bool DesktopAppWindow::prepareControl(QString &error)
     auto *failure = xcb_request_check(connection, xcb_change_save_set_checked(connection, XCB_SET_MODE_INSERT, m_choice.id));
     if (failure) {
         free(failure);
-        error = QObject::tr("Cannot protect the app window during embedding.");
+        error = QCoreApplication::translate("DesktopAppWindow", "Cannot protect the app window during embedding.");
         return false;
     }
     m_native->saved = true;
@@ -594,7 +594,7 @@ bool DesktopAppWindow::prepareControl(QString &error)
         XErrorScope errors(m_native->display);
         XWithdrawWindow(m_native->display, m_choice.id, DefaultScreen(m_native->display));
         if (errors.failed()) {
-            error = QObject::tr("The desktop refused to release this window.");
+            error = QCoreApplication::translate("DesktopAppWindow", "The desktop refused to release this window.");
             return false;
         }
     }
@@ -636,13 +636,13 @@ QWidget *DesktopAppWindow::takeControl(QWidget *parent, QString &error)
     if (m_native->container)
         return m_native->container;
     if (!controlReady()) {
-        error = QObject::tr("The desktop has not released this window yet.");
+        error = QCoreApplication::translate("DesktopAppWindow", "The desktop has not released this window yet.");
         return nullptr;
     }
     m_native->foreign = QWindow::fromWinId(m_choice.id);
     if (!m_native->foreign) {
         releaseControl();
-        error = QObject::tr("Qt could not embed this app window.");
+        error = QCoreApplication::translate("DesktopAppWindow", "Qt could not embed this app window.");
         return nullptr;
     }
     m_native->container = QWidget::createWindowContainer(m_native->foreign, parent);
@@ -898,7 +898,7 @@ bool DesktopAppWindow::requestClose(QString &error)
     error.clear();
 #if defined(DOCKPIPE_X11_BILLBOARDS) && QT_CONFIG(xcb)
     if (!alive()) {
-        error = QObject::tr("The desktop window is no longer available.");
+        error = QCoreApplication::translate("DesktopAppWindow", "The desktop window is no longer available.");
         return false;
     }
     XErrorScope errors(m_native->display);
@@ -914,7 +914,7 @@ bool DesktopAppWindow::requestClose(QString &error)
         supportsClose |= protocol == deleteWindow;
     }
     if (!validProtocols || !supportsClose) {
-        error = QObject::tr("This app does not support a normal window-close request. Close it using its own controls.");
+        error = QCoreApplication::translate("DesktopAppWindow", "This app does not support a normal window-close request. Close it using its own controls.");
         return false;
     }
     XEvent event{};
@@ -926,7 +926,7 @@ bool DesktopAppWindow::requestClose(QString &error)
     event.xclient.data.l[1] = CurrentTime;
     const bool sent = XSendEvent(m_native->display, m_choice.id, False, NoEventMask, &event);
     if (!sent || errors.failed()) {
-        error = QObject::tr("Could not send a close request to this desktop window.");
+        error = QCoreApplication::translate("DesktopAppWindow", "Could not send a close request to this desktop window.");
         return false;
     }
     return true;

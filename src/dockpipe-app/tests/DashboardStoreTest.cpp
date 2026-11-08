@@ -1,6 +1,7 @@
 #include "DashboardStore.h"
 
 #include <QCoreApplication>
+#include <QDir>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -22,6 +23,7 @@ private slots:
     void optionsRoundTripAndSafeDefaults();
     void invalidV2Fields_data();
     void invalidV2Fields();
+    void machineContextsRoundTripWithoutCredentials();
 };
 
 namespace {
@@ -320,7 +322,7 @@ void DashboardStoreTest::optionsRoundTripAndSafeDefaults()
     QVERIFY(!readback.save(invalid, error));
     invalid = definitions;
     invalid.first().panels.first().kind = "desktop-window";
-    QVERIFY(!readback.save(invalid, error));
+    QVERIFY(readback.save(invalid, error));
     definitions.first().options.canvasBackground = "desktop";
     definitions.first().options.canvasImagePath.clear();
     QVERIFY(readback.save(definitions, error));
@@ -375,6 +377,62 @@ void DashboardStoreTest::invalidV2Fields()
     QCOMPARE(definitions.first().id, retainedId);
     QVERIFY(!store.save({}, error));
     QCOMPARE(storeBytes(), original);
+}
+
+void DashboardStoreTest::machineContextsRoundTripWithoutCredentials()
+{
+    const QJsonObject target{{"node", "worker"}, {"fingerprint", QString(64, 'a')}, {"generation", QString(64, 'b')}};
+    const QJsonObject machine{{"mode", "remote"}, {"target", target}, {"rootId", "source"}};
+    DashboardDefinition definition{DashboardStore::newId(), "Remote contexts", {}, {}};
+    QJsonObject contexts;
+    for (const QString &kind : {QString("files"), QString("git"), QString("containers"), QString("terminal"), QString("send-input")}) {
+        const QString id = DashboardStore::newId();
+        definition.panels.append({id, kind});
+        contexts[id] = QJsonObject{{"machine", machine}, {"localRoot", QDir::tempPath()}};
+    }
+    definition.layout["panelContexts"] = contexts;
+    DashboardStore store;
+    QVector<DashboardDefinition> loaded;
+    QString error;
+    QVERIFY(store.load(loaded, error));
+    QVERIFY2(store.save({definition}, error), qPrintable(error));
+    DashboardStore reader;
+    QVERIFY(reader.load(loaded, error));
+    QCOMPARE(loaded.first().layout.value("panelContexts").toObject(), contexts);
+
+    const auto reject = [&](const QJsonObject &invalid) {
+        auto changed = definition;
+        auto entries = contexts;
+        entries[definition.panels.first().id] = QJsonObject{{"machine", invalid}};
+        changed.layout["panelContexts"] = entries;
+        return !DashboardStore::validate({changed}, error);
+    };
+    auto invalid = machine;
+    invalid["token"] = "must-never-be-layout-data";
+    QVERIFY(reject(invalid));
+    invalid = machine;
+    auto badTarget = target;
+    badTarget["fingerprint"] = QString(64, 'z');
+    invalid["target"] = badTarget;
+    QVERIFY(reject(invalid));
+    invalid = machine;
+    badTarget = target;
+    badTarget["credential"] = "forbidden";
+    invalid["target"] = badTarget;
+    QVERIFY(reject(invalid));
+    invalid = machine;
+    invalid["target"] = QJsonObject{};
+    QVERIFY(reject(invalid));
+    invalid = machine;
+    invalid["rootId"] = "../local-path";
+    QVERIFY(reject(invalid));
+    invalid = machine;
+    invalid["mode"] = "local";
+    QVERIFY(reject(invalid));
+    invalid = {{"mode", "follow"}};
+    QVERIFY(!reject(invalid));
+    invalid = {{"mode", "local"}};
+    QVERIFY(!reject(invalid));
 }
 
 int main(int argc, char **argv)

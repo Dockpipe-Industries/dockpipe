@@ -1,5 +1,7 @@
 #include "GitConflictWidget.h"
 #include "ProjectFilesWidget.h"
+#include "RemoteGitContext.h"
+#include "WorkspaceFilesController.h"
 
 #include <QDir>
 #include <QHBoxLayout>
@@ -8,6 +10,8 @@
 #include <QListWidget>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QPointer>
+#include <QScrollArea>
 #include <QSplitter>
 #include <QVBoxLayout>
 
@@ -16,6 +20,7 @@ GitConflictWidget::GitConflictWidget(QWidget *parent) : QWidget(parent)
     setObjectName("gitConflictGuide");
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(14);
     m_heading = new QLabel(tr("No operation in progress"));
     m_heading->setObjectName("gitConflictHeading");
     m_heading->setTextFormat(Qt::PlainText);
@@ -24,16 +29,23 @@ GitConflictWidget::GitConflictWidget(QWidget *parent) : QWidget(parent)
     auto *guide = new QLabel(tr("1. Open each conflicted file, edit the conflict markers, and save.\n"
                                "2. Stage each saved resolution, or choose a version below.\n"
                                "3. Continue once all conflicts are resolved."));
-    guide->setObjectName("editorMuted");
+    guide->setObjectName("gitConflictSteps");
     guide->setWordWrap(true);
     layout->addWidget(guide);
 
     auto *splitter = new QSplitter;
+    splitter->setObjectName("gitConflictWorkspace");
     splitter->setChildrenCollapsible(false);
+    splitter->setHandleWidth(12);
     auto *sidebar = new QWidget;
+    sidebar->setProperty("gitCard", true);
+    sidebar->setAttribute(Qt::WA_StyledBackground);
     auto *sidebarLayout = new QVBoxLayout(sidebar);
-    sidebarLayout->setContentsMargins(0, 0, 8, 0);
-    sidebarLayout->addWidget(new QLabel(tr("Unresolved files")));
+    sidebarLayout->setContentsMargins(14, 14, 14, 14);
+    sidebarLayout->setSpacing(12);
+    auto *filesHeading = new QLabel(tr("Unresolved files"));
+    filesHeading->setObjectName("gitPanelTitle");
+    sidebarLayout->addWidget(filesHeading);
     m_conflicts = new QListWidget;
     m_conflicts->setObjectName("gitConflictFiles");
     sidebarLayout->addWidget(m_conflicts, 1);
@@ -62,7 +74,14 @@ GitConflictWidget::GitConflictWidget(QWidget *parent) : QWidget(parent)
     versions->setObjectName("editorMuted");
     versions->setWordWrap(true);
     sidebarLayout->addWidget(versions);
-    splitter->addWidget(sidebar);
+    auto *sidebarScroll = new QScrollArea;
+    sidebarScroll->setObjectName("gitConflictSidebarScroll");
+    sidebarScroll->setWidgetResizable(true);
+    sidebarScroll->setFrameShape(QFrame::NoFrame);
+    sidebarScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    sidebarScroll->setMinimumWidth(270);
+    sidebarScroll->setWidget(sidebar);
+    splitter->addWidget(sidebarScroll);
     m_editor = new ProjectFilesWidget;
     m_editor->setObjectName("gitConflictEditor");
     // This editor shares its width with the conflict list. Its preferred file
@@ -73,7 +92,10 @@ GitConflictWidget::GitConflictWidget(QWidget *parent) : QWidget(parent)
     splitter->setSizes({280, 800});
     layout->addWidget(splitter, 1);
 
-    auto *operationActions = new QHBoxLayout;
+    auto *operationBar = new QWidget;
+    operationBar->setObjectName("gitConflictOperationBar");
+    auto *operationActions = new QHBoxLayout(operationBar);
+    operationActions->setContentsMargins(0, 0, 0, 0);
     m_status = new QLabel;
     m_status->setObjectName("gitConflictStatus");
     m_status->setTextFormat(Qt::PlainText);
@@ -83,27 +105,41 @@ GitConflictWidget::GitConflictWidget(QWidget *parent) : QWidget(parent)
     m_continue->setObjectName("gitConflictContinue");
     operationActions->addWidget(m_continue);
     connect(m_continue, &QPushButton::clicked, this, [this] {
-        const QString reviewedSnapshot = m_snapshotToken;
-        if (confirmLeave())
-            emit actionRequested(QJsonObject{{"action", "operation-continue"}, {"snapshot", reviewedSnapshot}});
+        requestOperation(QStringLiteral("operation-continue"));
     });
     m_skip = new QPushButton(tr("Skip current commit"));
     m_skip->setObjectName("gitConflictSkip");
     operationActions->addWidget(m_skip);
     connect(m_skip, &QPushButton::clicked, this, [this] {
-        const QString reviewedSnapshot = m_snapshotToken;
-        if (confirmLeave() && confirm(tr("Skip commit"), tr("Discard the current commit's conflict resolution and skip this commit?")))
-            emit actionRequested(QJsonObject{{"action", "operation-skip"}, {"confirm", true}, {"snapshot", reviewedSnapshot}});
+        requestOperation(QStringLiteral("operation-skip"), tr("Skip commit"),
+            tr("Discard the current commit's conflict resolution and skip this commit?"));
     });
     m_abort = new QPushButton(tr("Abort operation"));
     m_abort->setObjectName("gitConflictAbort");
     operationActions->addWidget(m_abort);
     connect(m_abort, &QPushButton::clicked, this, [this] {
-        const QString reviewedSnapshot = m_snapshotToken;
-        if (confirmLeave() && confirm(tr("Abort operation"), tr("Abort the active Git operation and restore its starting state? Saved conflict-resolution edits may be discarded.")))
-            emit actionRequested(QJsonObject{{"action", "operation-abort"}, {"confirm", true}, {"snapshot", reviewedSnapshot}});
+        requestOperation(QStringLiteral("operation-abort"), tr("Abort operation"),
+            tr("Abort the active Git operation and restore its starting state? Saved conflict-resolution edits may be discarded."));
     });
-    layout->addLayout(operationActions);
+    layout->addWidget(operationBar);
+    auto *empty = new QWidget;
+    empty->setObjectName("gitConflictEmpty");
+    empty->setProperty("gitCard", true);
+    empty->setAttribute(Qt::WA_StyledBackground);
+    auto *emptyLayout = new QVBoxLayout(empty);
+    emptyLayout->addStretch();
+    auto *emptyTitle = new QLabel(tr("No conflicts to resolve"));
+    emptyTitle->setObjectName("gitEmptyTitle");
+    emptyTitle->setAlignment(Qt::AlignCenter);
+    emptyTitle->setWordWrap(true);
+    emptyLayout->addWidget(emptyTitle);
+    auto *emptyHint = new QLabel(tr("If a merge, cherry-pick, or stash needs your attention, you can resolve it here."));
+    emptyHint->setObjectName("gitEmptyHint");
+    emptyHint->setAlignment(Qt::AlignCenter);
+    emptyHint->setWordWrap(true);
+    emptyLayout->addWidget(emptyHint);
+    emptyLayout->addStretch();
+    layout->addWidget(empty, 1);
     connect(m_conflicts, &QListWidget::currentItemChanged, this, [this] { updateControls(); });
     connect(m_editor, &ProjectFilesWidget::dirtyChanged, this, [this] { updateControls(); });
     connect(m_editor, &ProjectFilesWidget::fileSaved, this, [this] { emit refreshRequested(); });
@@ -112,8 +148,15 @@ GitConflictWidget::GitConflictWidget(QWidget *parent) : QWidget(parent)
 
 void GitConflictWidget::setSnapshot(const QString &workdir, const QJsonObject &snapshot)
 {
+    const bool remote = RemoteGitContext::isRemote(this);
+    if (remote && (WorkspaceFilesController::get(m_editor)->reader->context().kind
+            != WorkspaceFilesClient::Context::Kind::Remote
+        || (!workdir.isEmpty() && workdir != QStringLiteral("/")))) {
+        m_status->setText(tr("The remote conflict editor context is unavailable. Select the authorized machine and root again."));
+        return;
+    }
     if (m_workdir != workdir) {
-        if (!m_editor->setRoot(workdir)) {
+        if (!remote && !m_editor->setRoot(workdir)) {
             m_status->setText(tr("Project change cancelled; the conflict editor still contains the previous project."));
             return;
         }
@@ -153,7 +196,7 @@ void GitConflictWidget::setSnapshot(const QString &workdir, const QJsonObject &s
         m_conflicts->setCurrentRow(0);
     if (m_reloadAfterResolution && !m_editor->hasUnsavedChanges()) {
         m_reloadAfterResolution = false;
-        m_editor->reloadFile();
+        m_editor->reloadFileAsync();
     }
     // The existing editor is deliberately not reloaded: saved or unsaved review
     // state must survive status refreshes and completion of individual stages.
@@ -177,6 +220,31 @@ bool GitConflictWidget::confirmLeave()
     return m_editor->confirmLeave();
 }
 
+void GitConflictWidget::confirmLeaveAsync(std::function<void(bool)> completion)
+{
+    m_editor->confirmLeaveAsync(std::move(completion));
+}
+
+void GitConflictWidget::requestOperation(const QString &action, const QString &title, const QString &question)
+{
+    const QString reviewedSnapshot = m_snapshotToken;
+    const QPointer<GitConflictWidget> guard(this);
+    confirmLeaveAsync([guard, reviewedSnapshot, action, title, question](bool allowed) {
+        if (!guard || !allowed)
+            return;
+        if (guard->m_busy || reviewedSnapshot != guard->m_snapshotToken) {
+            guard->m_status->setText(tr("The saved resolution changed the review. Refresh and review it before continuing."));
+            return;
+        }
+        if (!question.isEmpty() && !guard->confirm(title, question))
+            return;
+        QJsonObject request{{"action", action}, {"snapshot", reviewedSnapshot}};
+        if (!question.isEmpty())
+            request.insert(QStringLiteral("confirm"), true);
+        emit guard->actionRequested(request);
+    });
+}
+
 bool GitConflictWidget::hasUnsavedChanges() const
 {
     return m_editor->hasUnsavedChanges();
@@ -196,10 +264,15 @@ void GitConflictWidget::openSelected()
     if (!item || m_busy)
         return;
     const QString path = item->data(Qt::UserRole).toString();
-    if (!m_editor->openFile(QDir(m_workdir).filePath(path)))
-        m_status->setText(tr("Could not open %1. Check the editor message; binary or missing files can be resolved by choosing a version or deleting.").arg(path));
-    else
-        m_status->setText(tr("Edit and save %1, then stage its resolution.").arg(path));
+    const QPointer<GitConflictWidget> guard(this);
+    m_editor->openFileAsync(QDir(m_workdir).filePath(path), [guard, path](bool opened) {
+        if (!guard)
+            return;
+        if (!opened)
+            guard->m_status->setText(tr("Could not open %1. Check the editor message; binary or missing files can be resolved by choosing a version or deleting.").arg(path));
+        else
+            guard->m_status->setText(tr("Edit and save %1, then stage its resolution.").arg(path));
+    });
 }
 
 void GitConflictWidget::resolveSelected(const QString &action)
@@ -209,8 +282,6 @@ void GitConflictWidget::resolveSelected(const QString &action)
         return;
     const QString path = item->data(Qt::UserRole).toString();
     const QString reviewedSnapshot = m_snapshotToken;
-    if (!confirmLeave())
-        return;
     QString question;
     if (action == "resolve-stage")
         question = tr("Stage the saved working-file resolution for %1? Verify that conflict markers have been removed.").arg(path);
@@ -219,16 +290,32 @@ void GitConflictWidget::resolveSelected(const QString &action)
     else
         question = tr("Replace %1 with Git's %2 version and stage that resolution?")
             .arg(path, action == "resolve-ours" ? tr("ours") : tr("theirs"));
-    if (!confirm(tr("Resolve selected conflict"), question))
-        return;
-    if (action != "resolve-stage" && m_editor->currentPath() == QDir(m_workdir).filePath(path))
-        m_reloadAfterResolution = true;
-    emit actionRequested(QJsonObject{{"action", action}, {"paths", QJsonArray{path}}, {"confirm", true}, {"snapshot", reviewedSnapshot}});
+    const QPointer<GitConflictWidget> guard(this);
+    confirmLeaveAsync([guard, reviewedSnapshot, path, action, question](bool allowed) {
+        if (!guard || !allowed)
+            return;
+        if (guard->m_busy || reviewedSnapshot != guard->m_snapshotToken) {
+            guard->m_status->setText(tr("The saved resolution changed the review. Refresh and review it before staging a resolution."));
+            return;
+        }
+        if (!guard->confirm(tr("Resolve selected conflict"), question))
+            return;
+        if (action != "resolve-stage" && guard->m_editor->currentPath() == QDir(guard->m_workdir).filePath(path))
+            guard->m_reloadAfterResolution = true;
+        emit guard->actionRequested(QJsonObject{{"action", action}, {"paths", QJsonArray{path}},
+            {"confirm", true}, {"snapshot", reviewedSnapshot}});
+    });
 }
 
 void GitConflictWidget::updateControls()
 {
     const bool active = !m_operation.value("kind").toString().isEmpty();
+    const bool showWorkspace = active || m_editor->hasUnsavedChanges();
+    m_heading->setVisible(showWorkspace);
+    findChild<QLabel *>("gitConflictSteps")->setVisible(showWorkspace);
+    findChild<QSplitter *>("gitConflictWorkspace")->setVisible(showWorkspace);
+    findChild<QWidget *>("gitConflictOperationBar")->setVisible(showWorkspace);
+    findChild<QWidget *>("gitConflictEmpty")->setVisible(!showWorkspace);
     const bool selected = m_conflicts->currentItem() != nullptr;
     m_conflicts->setEnabled(!m_busy);
     m_open->setEnabled(!m_busy && selected);

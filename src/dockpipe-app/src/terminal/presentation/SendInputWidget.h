@@ -1,5 +1,6 @@
 #pragma once
 #include <QWidget>
+#include <QJsonObject>
 class TerminalHub;
 class QComboBox;
 class QPlainTextEdit;
@@ -13,6 +14,8 @@ class SendInputWidget final : public QWidget {
 public:
     explicit SendInputWidget(TerminalHub &hub, QWidget *parent = nullptr);
     void setCanvasPresentationEnabled(bool enabled);
+    bool setMachineContext(const QJsonObject &catalog, const QString &root, QString *error = nullptr);
+    bool hasPendingInput() const;
     bool canvasPresentationEnabled() const { return m_canvasPresentation; }
 
 protected:
@@ -24,6 +27,9 @@ private:
     void updateSendIcon();
     void showStatus(const QString &message);
     bool m_canvasPresentation = false;
+    bool m_sendPending = false;
+    QJsonObject m_machineCatalog;
+    QString m_machineRoot;
     qreal m_documentMargin = 0;
     QGridLayout *m_layout;
     TerminalHub &m_hub;

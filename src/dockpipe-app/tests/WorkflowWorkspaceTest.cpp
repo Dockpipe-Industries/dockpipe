@@ -6,6 +6,8 @@
 #include "ActivityWidget.h"
 #include <QTableWidget>
 #include "LauncherSettings.h"
+#include "LauncherTranslations.h"
+#include "SettingsDialog.h"
 #include "WorkflowCanvas.h"
 #include "CanvasPanel.h"
 #include <QMouseEvent>
@@ -18,6 +20,8 @@
 
 #include <QApplication>
 #include <QDialog>
+#include <QDialogButtonBox>
+#include <QTabBar>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
@@ -31,6 +35,7 @@
 #include <QPushButton>
 #include <QProxyStyle>
 #include <QStyle>
+#include <QSettings>
 #include <QTabWidget>
 #include <QTemporaryDir>
 #include <QThread>
@@ -142,6 +147,8 @@ esac
     app.setStyle(new StockDialogIconStyle);
     app.setOrganizationName("DockpipeWorkspaceTest");
     app.setApplicationName("CanvasWorkspaceTest");
+    QSettings::setDefaultFormat(QSettings::IniFormat);
+    QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, temporary.filePath("preferences"));
     applyDockpipeLauncherTheme(app);
     qputenv("DOCKPIPE_VSCODE_CATALOG_TEST", "1");
     const auto importedCatalog = WorkflowCatalog::discoverCatalog(temporary.path());
@@ -225,6 +232,67 @@ steps:
     MainWindow window;
     window.resize(1380, 900);
     window.show();
+    if (QCoreApplication::arguments().contains("--language-restart")) {
+        app.setProperty("dockpipeTranslationLanguage", "en");
+        auto *workflow = window.findChild<WorkflowEditorWidget *>();
+        if (!workflow || !waitUntil([&]() { return containsLabel(workflow, "0 steps"); }))
+            return 75;
+        int restarts = 0;
+        int prompts = 0;
+        int cancellations = 0;
+        QObject::connect(&window, &MainWindow::restartRequested, &window, [&]() { ++restarts; });
+        const auto saveLanguage = [&](const QString &language, bool restartNow) {
+            QTimer automate;
+            automate.setInterval(10);
+            QObject::connect(&automate, &QTimer::timeout, &window, [&]() {
+                auto *modal = QApplication::activeModalWidget();
+                if (auto *settingsDialog = qobject_cast<SettingsDialog *>(modal)) {
+                    auto *languages = settingsDialog->findChild<QComboBox *>("settingsLanguage");
+                    languages->setCurrentIndex(languages->findData(language));
+                    settingsDialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
+                } else if (auto *message = qobject_cast<QMessageBox *>(modal)) {
+                    if (message->objectName() == "languageRestartPrompt") {
+                        ++prompts;
+                        message->findChild<QPushButton *>(restartNow
+                            ? "languageRestartNow" : "languageRestartLater")->click();
+                    } else if (message->windowTitle() == "Unsaved workflow") {
+                        ++cancellations;
+                        message->button(QMessageBox::Cancel)->click();
+                    }
+                }
+            });
+            automate.start();
+            QMetaObject::invokeMethod(&window, "onOpenSettings", Qt::DirectConnection);
+            automate.stop();
+        };
+        saveLanguage("en", true);
+        if (prompts != 0 || restarts != 0)
+            return 70;
+        saveLanguage("fr", false);
+        if (prompts != 1 || restarts != 0 || LauncherTranslations::savedLanguage() != "fr")
+            return 71;
+        auto *source = workflow->findChild<QPlainTextEdit *>("workflowYaml");
+        if (!workflow->openWorkflow(path) || !source)
+            return 72;
+        auto *documentTabs = workflow->findChild<QTabWidget *>("canvasDocument");
+        if (!waitUntil([&]() { return documentTabs->isEnabled(); }))
+            return 76;
+        QFile savedWorkflow(path);
+        if (!savedWorkflow.open(QIODevice::ReadOnly))
+            return 77;
+        const QString savedSource = QString::fromUtf8(savedWorkflow.readAll());
+        source->appendPlainText("# unsaved restart fixture");
+        saveLanguage("fr", true);
+        if (prompts != 2 || cancellations != 1 || restarts != 0
+            || !source->toPlainText().contains("# unsaved restart fixture"))
+            return 73;
+        source->setPlainText(savedSource);
+        saveLanguage("fr", true);
+        if (prompts != 3 || restarts != 1)
+            return 74;
+        std::puts("Language restart, Later, unchanged language and unsaved-work cancellation passed.");
+        return 0;
+    }
     if (surfaceTest) {
         auto *navigation = window.findChild<QListWidget *>("workspaceNavigation");
         auto *stack = window.findChild<QStackedWidget *>("workspacePages");
@@ -539,10 +607,21 @@ steps:
     if (!quickRan || yaml->toPlainText() != draft || editor->workflowPath() != path
         || !waitUntil([&]() { return output->toPlainText().contains("Application ready"); }))
         return 35;
+    auto *sections = window.findChild<QTabBar *>("workflowSections");
+    if (!sections || sections->count() != 3)
+        return 36;
+    sections->setCurrentIndex(1);
+    if (editor->isVisible())
+        return 39;
+    capture("-workflow-running");
+    sections->setCurrentIndex(2);
+    capture("-workflow-history");
+    sections->setCurrentIndex(0);
+    if (!editor->isVisible() || yaml->toPlainText() != draft || editor->workflowPath() != path)
+        return 40;
     window.findChild<QPushButton *>("workflowActivityButton")->click();
-    auto *activityPanel = editor->findChild<CanvasPanel *>("workflowActivityPanel");
-    if (!activityPanel || !activityPanel->isVisible()
-        || !editor->rect().contains(activityPanel->geometry()))
+    auto *activityPanel = window.findChild<QDialog *>("workflowRunLogs");
+    if (!activityPanel || !activityPanel->isVisible())
         return 36;
     auto *activity = activityPanel->findChild<ActivityWidget *>();
     auto *localRuns = activity->findChild<QTableWidget *>("localActivityRuns");

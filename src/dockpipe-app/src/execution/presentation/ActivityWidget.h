@@ -21,6 +21,7 @@ public:
     void refreshRemote(bool allowAuthentication = false);
     void setWorkspaceFilter(bool enabled);
     void showRemoteJobs();
+    void showRemoteJob(const QString &jobId);
 signals:
     void browseWorkflowsRequested();
 private:
@@ -44,6 +45,7 @@ private:
     QPushButton *m_downloadResult;
     QPushButton *m_openLogs;
     QPushButton *m_stopRun;
+    QString m_requestedJob;
     bool m_remoteLoaded = false;
     bool m_workspaceOnly = false;
 };

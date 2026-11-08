@@ -1,9 +1,12 @@
 #include "ContextStore.h"
 #include "DashboardWidgetFactory.h"
 #include "DashboardLogWidget.h"
+#include "DashboardFilesWidget.h"
 #include "SessionManager.h"
 #include "TerminalHub.h"
 #include "TerminalWidget.h"
+#include "WorkspaceMachineMenu.h"
+#include "WorkspaceFileModel.h"
 
 #include <QAction>
 #include <QApplication>
@@ -40,6 +43,7 @@ class DashboardWidgetFactoryTest final : public QObject {
     Q_OBJECT
 private slots:
     void catalogAndCompactWorkflowActions();
+    void monitoringAndRunLinksHaveSeparateDestinations();
     void boundedSnapshotViewsAndFailure();
     void systemCountersWithoutUnixOnlyMetrics();
     void filesRequireProjectAndLogsAreScoped();
@@ -49,6 +53,20 @@ private slots:
     void unchangedLogTailPreservesSelectionAndRunModel();
     void terminalHasContextActionsWithoutInnerChrome();
 };
+
+void DashboardWidgetFactoryTest::monitoringAndRunLinksHaveSeparateDestinations()
+{
+    SessionManager sessions;
+    ContextStore store;
+    DashboardWidgetFactory factory(sessions, store);
+    QSignalSpy opened(&factory, &DashboardWidgetFactory::openFullView);
+    std::unique_ptr<QWidget> system(factory.create("system"));
+    system->findChild<QPushButton *>("dashboardOpenFullView")->click();
+    QCOMPARE(opened.takeFirst().first().toString(), QString("system"));
+    std::unique_ptr<QWidget> runs(factory.create("executions"));
+    runs->findChild<QPushButton *>("dashboardOpenFullView")->click();
+    QCOMPARE(opened.takeFirst().first().toString(), QString("executions"));
+}
 
 void DashboardWidgetFactoryTest::systemCountersWithoutUnixOnlyMetrics()
 {
@@ -99,7 +117,12 @@ void DashboardWidgetFactoryTest::terminalHasContextActionsWithoutInnerChrome()
     auto *terminal = panel->findChild<TerminalWidget *>();
     auto *footer = panel->findChild<QWidget *>("dashboardWidgetFooter");
     QVERIFY(terminal && footer);
-    QVERIFY(footer->isHidden());
+    QVERIFY(!footer->isHidden());
+    QVERIFY(footer->findChild<WorkspaceMachineMenu *>("dashboardWidgetMachine"));
+    QVERIFY(panel->findChild<QPushButton *>("dashboardOpenFullView")->isHidden());
+    auto *scoped = panel->findChild<DashboardWidgetFactory *>();
+    QVERIFY(scoped);
+    QCOMPARE(&scoped->terminals(), &factory.terminals());
     QVERIFY(terminal->findChild<QWidget *>("terminalToolbar")->isHidden());
     QVERIFY(factory.terminals().sessionIds().isEmpty());
     auto *open = terminal->findChild<QAction *>("terminalOpenFullViewAction");
@@ -149,8 +172,14 @@ void DashboardWidgetFactoryTest::catalogAndCompactWorkflowActions()
     search->setText("missing");
     QVERIFY(!launch->isEnabled());
     QSignalSpy openSpy(&factory, &DashboardWidgetFactory::openFullView);
-    widget->findChild<QPushButton *>("dashboardOpenFullView")->click();
-    QCOMPARE(openSpy[0][0].toString(), QString("workflows"));
+    QSignalSpy canvasSpy(&factory, &DashboardWidgetFactory::canvasViewRequested);
+    QVERIFY(widget->findChild<QPushButton *>("dashboardOpenFullView")->isHidden());
+    widget->findChild<QPushButton *>("dashboardOpenCanvasView")->click();
+    QCOMPARE(canvasSpy.size(), 1);
+    QVERIFY(widget->isAncestorOf(qvariant_cast<QWidget *>(canvasSpy[0][0])));
+    QCOMPARE(canvasSpy[0][1].toString(), QString("workflows-full"));
+    QCOMPARE(canvasSpy[0][2].toString(), factory.workdir());
+    QVERIFY(openSpy.isEmpty());
     search->clear();
     QCOMPARE(list->count(), 40);
     WorkflowMeta imported;
@@ -228,6 +257,31 @@ void DashboardWidgetFactoryTest::boundedSnapshotViewsAndFailure()
     emit factory.gitChanged({{"branch", "feature"}, {"changes", QJsonArray{QJsonObject{{"status", "M"}, {"path", "sample.cpp"}}}}}, {});
     QCOMPARE(git->findChild<QLabel *>("dashboardGitBranch")->text(), QString("feature"));
     QCOMPARE(git->findChild<QListWidget *>("dashboardGitChanges")->count(), 1);
+    QTemporaryDir repository;
+    factory.setWorkdir(repository.path());
+    QSignalSpy gitPreview(&factory, &DashboardWidgetFactory::gitPreviewRequested);
+    QSignalSpy sidebar(&factory, &DashboardWidgetFactory::openFullView);
+    QSignalSpy globalFile(&factory, &DashboardWidgetFactory::openFile);
+    emit factory.gitChanged({{"branch", "feature"}, {"changes", QJsonArray{
+        QJsonObject{{"status", "MM"}, {"path", "both.cpp"}},
+        QJsonObject{{"status", "M "}, {"path", "staged.cpp"}},
+        QJsonObject{{"status", "??"}, {"path", "new.cpp"}},
+        QJsonObject{{"status", "UU"}, {"path", "conflict.cpp"}}}}}, {});
+    auto *changes = git->findChild<QListWidget *>("dashboardGitChanges");
+    QCOMPARE(changes->count(), 5);
+    const QStringList expectedPaths{"both.cpp", "both.cpp", "staged.cpp", "new.cpp", "conflict.cpp"};
+    const QList<bool> expectedStaged{false, true, true, false, false};
+    for (int index = 0; index < changes->count(); ++index) {
+        emit changes->itemActivated(changes->item(index));
+        QCOMPARE(gitPreview.size(), index + 1);
+        const auto request = gitPreview.at(index);
+        QVERIFY(git->isAncestorOf(qvariant_cast<QWidget *>(request[0])));
+        QCOMPARE(request[1].toString(), repository.path());
+        QCOMPARE(request[2].toString(), expectedPaths[index]);
+        QCOMPARE(request[3].toBool(), expectedStaged[index]);
+    }
+    QVERIFY(sidebar.isEmpty());
+    QVERIFY(globalFile.isEmpty());
     emit factory.gitChanged({}, "Git unavailable");
     QCOMPARE(git->findChild<QListWidget *>("dashboardGitChanges")->count(), 0);
     QVERIFY(git->findChild<QLabel *>("dashboardGitBranch")->text().isEmpty());
@@ -248,8 +302,27 @@ void DashboardWidgetFactoryTest::filesRequireProjectAndLogsAreScoped()
     QVERIFY(tree->isHidden());
     QTemporaryDir project;
     factory.setWorkdir(project.path());
-    QVERIFY(!tree->isHidden());
-    QVERIFY(tree->rootIndex().isValid());
+    QTRY_VERIFY(!tree->isHidden());
+    QCOMPARE(files->findChild<WorkspaceFileModel *>()->relativePath({}), QString("."));
+    auto *browser = files->findChild<DashboardFilesWidget *>();
+    QVERIFY(browser);
+    QSignalSpy preview(&factory, &DashboardWidgetFactory::filePreviewRequested);
+    QSignalSpy sidebar(&factory, &DashboardWidgetFactory::openFullView);
+    QSignalSpy globalFile(&factory, &DashboardWidgetFactory::openFile);
+    const QString path = project.filePath("notes.txt");
+    emit browser->openFileRequested(path);
+    QCOMPARE(preview.size(), 1);
+    QCOMPARE(qvariant_cast<QWidget *>(preview[0][0]), browser);
+    QCOMPARE(preview[0][1].toString(), project.path());
+    QCOMPARE(preview[0][2].toString(), path);
+    QSignalSpy canvas(&factory, &DashboardWidgetFactory::canvasViewRequested);
+    files->findChild<QPushButton *>("dashboardOpenCanvasView")->click();
+    QCOMPARE(canvas.size(), 1);
+    QCOMPARE(qvariant_cast<QWidget *>(canvas[0][0]), browser);
+    QCOMPARE(canvas[0][1].toString(), QString("files-full"));
+    QCOMPARE(canvas[0][2].toString(), project.path());
+    QVERIFY(sidebar.isEmpty());
+    QVERIFY(globalFile.isEmpty());
     factory.setWorkdir({});
     QVERIFY(tree->isHidden());
     std::unique_ptr<QWidget> logs(factory.create("logs"));
@@ -445,8 +518,8 @@ void DashboardWidgetFactoryTest::hiddenAndDestroyedWidgetsReleaseObservationRead
     QElapsedTimer shutdown;
     shutdown.start();
     factory.reset();
-    QVERIFY2(shutdown.elapsed() < 2500, "Reader shutdown exceeded its terminate/kill budget");
-    QVERIFY(!helperAlive(second));
+    QVERIFY2(shutdown.elapsed() < 100, "Reader destruction blocked the UI thread");
+    QTRY_VERIFY_WITH_TIMEOUT(!helperAlive(second), 3000);
 #endif
 }
 

@@ -184,6 +184,7 @@ ResourceCanvas::ResourceCanvas(const QString &identity, const QString &title, co
     m_notice->setMargin(12);
     m_details = new CanvasPanel(identity + "Details", this);
     m_details->setObjectName(identity + "DetailsPanel");
+    m_details->installEventFilter(this);
     auto *panelLayout = new QVBoxLayout(m_details);
     panelLayout->setContentsMargins(12, 10, 12, 12);
     auto *header = new QWidget;
@@ -421,6 +422,16 @@ void ResourceCanvas::setDetailsLabel(const QString &label)
     m_detailsButton->setText(label);
 }
 
+void ResourceCanvas::setCompactDetails(bool compact)
+{
+    m_compactDetails = compact;
+    if (!compact) {
+        m_details->setMinimumSize(0, 0);
+        m_details->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+    }
+    arrange();
+}
+
 bool ResourceCanvas::focusResource(const QString &id)
 {
     auto *node = m_nodes.value(id, nullptr);
@@ -491,6 +502,8 @@ void ResourceCanvas::fitGraph()
 
 bool ResourceCanvas::eventFilter(QObject *watched, QEvent *event)
 {
+    if (watched == m_details && event->type() == QEvent::LayoutRequest && m_compactDetails)
+        arrange();
     if (watched == m_view->viewport()
         && (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::Wheel))
         m_userAdjusted = true;
@@ -533,5 +546,17 @@ void ResourceCanvas::arrange()
     m_controls->adjustSize();
     m_controls->move(qMax(16, width() - m_controls->width() - 16), height() - m_controls->height() - 16);
     m_notice->setGeometry(16, height() - 150, qMax(200, qMin(700, width() - 32)), 80);
-    m_details->placeDefault(QRect(qMax(16, width() - 760), 100, 730, qMax(300, height() - 180)));
+    if (m_compactDetails) {
+        const int panelWidth = qMin(520, qMax(280, width() - 32));
+        int contentHeight = m_details->layout()->totalHeightForWidth(panelWidth);
+        if (contentHeight < 0)
+            contentHeight = m_details->sizeHint().height();
+        const int panelHeight = qMin(qMax(180, contentHeight), qMax(180, height() - 120));
+        const QSize panelSize(panelWidth, panelHeight);
+        if (m_details->size() != panelSize || m_details->maximumSize() != panelSize)
+            m_details->setFixedSize(panelSize);
+        m_details->placeDefault(QRect(qMax(16, width() - panelWidth - 16), 80, panelWidth, panelHeight));
+    } else {
+        m_details->placeDefault(QRect(qMax(16, width() - 760), 100, 730, qMax(300, height() - 180)));
+    }
 }

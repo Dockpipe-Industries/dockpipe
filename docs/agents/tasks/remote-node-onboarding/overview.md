@@ -592,3 +592,21 @@ tests; no paired-worker installation or hosted pipeline was changed.
 research proposal for adaptive threat signals and broker-independent worker
 containment. It consumes these authorization outcomes; scores never relax a hard
 denial or replace the authoritative lock boundary.
+
+
+### Remote workspace features implementation in progress (2026-11-08)
+
+The native shell now has an explicit shared machine/root choice for Files, Git,
+Containers and Terminal. Dashboard instances can follow that choice or retain an
+independent captured target. Saved remote targets include the node fingerprint,
+worker generation and root grant ID; missing or changed grants remain unavailable
+and never become local operations. File/Git previews retain their original target.
+
+Authenticated feature calls and interactive terminal sessions are implemented as
+bounded typed protocols through the core admission boundary. Passive catalog
+refresh never prompts for authentication. Loopback/fake-CLI fixtures and local
+native PTY tests are implementation evidence; live paired-worker, Windows,
+installed Flatpak and cross-platform UI qualification remain open. Unknown mutation
+receipts still require explicit operator reconciliation, whose UX is outstanding.
+Remote workflow delivery remains its existing separate contract; per-widget
+workflow launch target handoff and private-endpoint RDP are not qualified here.

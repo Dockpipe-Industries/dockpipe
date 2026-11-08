@@ -71,6 +71,11 @@ func installServiceWithReplacement(ctx context.Context, root, role string, repla
 	if err := activateService(ctx, definition, replace); err != nil {
 		return fmt.Errorf("service activation failed; registration is preserved; retry remote service --role %s --replace: %w", role, err)
 	}
+	if role == "broker" {
+		if err := waitForBrokerService(ctx, root); err != nil {
+			return err
+		}
+	}
 	return os.Remove(pendingPath)
 }
 

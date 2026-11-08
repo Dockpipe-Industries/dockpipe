@@ -275,7 +275,7 @@ QWidget *DashboardWidgetFactory::createContainers(QWidget *parent)
     auto *status = notice(widget, tr("Waiting for Docker…"));
     layout->addWidget(status);
     connect(this, &DashboardWidgetFactory::containersChanged, widget,
-        [table, status](const QJsonArray &containers, const QString &error) {
+        [this, table, status](const QJsonArray &containers, const QString &error) {
             table->setRowCount(0);
             if (!error.isEmpty()) {
                 status->setText(error);
@@ -285,7 +285,7 @@ QWidget *DashboardWidgetFactory::createContainers(QWidget *parent)
                 const auto entry = containers[index].toObject();
                 addRow(table, {entry.value("Names").toString(), entry.value("State").toString(), entry.value("Image").toString()});
             }
-            status->setText(containers.isEmpty() ? tr("No local Docker containers.")
+            status->setText(containers.isEmpty() && m_sharedMachine.isEmpty() ? tr("No local Docker containers.")
                 : tr("%1 of %2 containers · includes stopped containers").arg(table->rowCount()).arg(containers.size()));
         });
     connect(table, &QTableWidget::cellDoubleClicked, this, [this]() { emit openFullView("containers"); });
@@ -295,16 +295,15 @@ QWidget *DashboardWidgetFactory::createContainers(QWidget *parent)
 QWidget *DashboardWidgetFactory::createFiles(QWidget *parent, const QString &scope)
 {
     auto *widget = new DashboardFilesWidget(parent);
+    widget->setMachineContext(machineTarget(), m_sharedRoot, m_workdir);
     widget->setContext(scope, m_workdir);
     connect(this, &DashboardWidgetFactory::workdirChanged, widget, [widget](const QString &project) {
         widget->setContext(widget->scope(), project);
     });
     connect(widget, &DashboardFilesWidget::openFileRequested, widget, [this, widget](const QString &path) {
-        if (widget->scope() == "project") {
-            emit openFile(path);
-        } else if (!QDesktopServices::openUrl(QUrl::fromLocalFile(path))) {
-            QMessageBox::warning(widget, tr("Open file"), tr("The system could not open this file."));
-        }
+        const QString root = !widget->machineTarget().isEmpty() ? QStringLiteral("/")
+            : (widget->scope() == "project" ? m_workdir : widget->currentDirectory());
+        emit filePreviewRequested(widget, root, path);
     });
     return widget;
 }
@@ -323,7 +322,7 @@ QWidget *DashboardWidgetFactory::createGit(QWidget *parent)
     auto *status = notice(widget, tr("Waiting for Git status…"));
     layout->addWidget(status);
     connect(this, &DashboardWidgetFactory::gitChanged, widget,
-        [branch, list, status](const QJsonObject &snapshot, const QString &error) {
+        [this, branch, list, status](const QJsonObject &snapshot, const QString &error) {
             list->clear();
             branch->clear();
             if (!error.isEmpty()) {
@@ -332,14 +331,31 @@ QWidget *DashboardWidgetFactory::createGit(QWidget *parent)
             }
             branch->setText(snapshot.value("branch").toString().isEmpty() ? tr("Detached HEAD") : snapshot.value("branch").toString());
             const auto changes = snapshot.value("changes").toArray();
-            for (int index = 0; index < qMin(32, int(changes.size())); ++index) {
-                const auto entry = changes[index].toObject();
-                list->addItem(entry.value("status").toString() + "  " + entry.value("path").toString());
+            for (const auto &value : changes) {
+                if (list->count() >= 32)
+                    break;
+                const auto entry = value.toObject();
+                const QString code = entry.value("status").toString();
+                const bool conflict = code.contains('U') || code == "AA" || code == "DD";
+                const bool staged = !conflict && code.size() >= 2 && code.front() != ' ' && code.front() != '?';
+                const bool unstaged = conflict || code == "??" || code.size() < 2 || code.at(1) != ' ';
+                for (bool stagedArea : {false, true}) {
+                    if ((stagedArea && !staged) || (!stagedArea && !unstaged) || list->count() >= 32)
+                        continue;
+                    const QString caption = stagedArea ? tr("Staged") : tr("Working tree");
+                    auto *item = new QListWidgetItem(caption + " · " + entry.value("path").toString(), list);
+                    item->setData(Qt::UserRole, entry.value("path").toString());
+                    item->setData(Qt::UserRole + 1, m_sharedMachine.isEmpty() ? m_workdir : QStringLiteral("/"));
+                    item->setData(Qt::UserRole + 2, stagedArea);
+                }
             }
             status->setText(changes.isEmpty() ? tr("Working tree is clean.")
-                : tr("%1 of %2 changes · review and commit in Git").arg(list->count()).arg(changes.size()));
+                : tr("%1 changed files · %2 review entries shown").arg(changes.size()).arg(list->count()));
         });
-    connect(list, &QListWidget::itemDoubleClicked, this, [this]() { emit openFullView("git"); });
+    connect(list, &QListWidget::itemActivated, widget, [this, widget](QListWidgetItem *item) {
+        emit gitPreviewRequested(widget, item->data(Qt::UserRole + 1).toString(),
+            item->data(Qt::UserRole).toString(), item->data(Qt::UserRole + 2).toBool());
+    });
     return widget;
 }
 
