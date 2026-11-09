@@ -274,7 +274,11 @@ void TerminalWidget::startManagedSession()
 
 void TerminalWidget::createTerminal(const QString &shellProfileId)
 {
-    const QString id = m_hub.createSession(m_workdir, shellProfileId, m_machineCatalog, m_machineRoot);
+    QString id;
+    if (m_containerId.isEmpty())
+        id = m_hub.createSession(m_workdir, shellProfileId, m_machineCatalog, m_machineRoot);
+    else
+        id = m_hub.createContainerSession(m_machineCatalog, m_containerId, m_containerShell);
     if (id.isEmpty()) {
         showStatus(m_hub.creationError());
         return;
@@ -348,20 +352,35 @@ void TerminalWidget::setWorkdir(const QString &workdir) { m_workdir = workdir; }
 
 bool TerminalWidget::setMachineContext(const QJsonObject &catalog, const QString &root, QString *error)
 {
+    return setTerminalContext(catalog, root, {}, {}, error);
+}
+
+bool TerminalWidget::setContainerContext(const QJsonObject &catalog, const QString &container, const QString &shell, QString *error)
+{
+    return setTerminalContext(catalog, "container:" + container + ":" + shell, container, shell, error);
+}
+
+bool TerminalWidget::setTerminalContext(const QJsonObject &catalog, const QString &root,
+                                       const QString &container, const QString &shell, QString *error)
+{
     if (error)
         error->clear();
     if (m_machineCatalog == catalog && m_machineRoot == root)
         return true;
     m_machineCatalog = catalog;
     m_machineRoot = root;
+    m_containerId = container;
+    m_containerShell = shell;
     m_managedStarted = false;
     m_dashboardStarted = false;
     m_ownedSessionId.clear();
     selectSession({});
-    bool allowed = catalog.isEmpty();
+    bool allowed = catalog.isEmpty() && container.isEmpty();
+    if (!container.isEmpty())
+        allowed = catalog.value("docker_exec").toBool() && catalog.value("docker_read").toBool();
     for (const auto &value : catalog.value("roots").toArray()) {
         const auto permission = value.toObject();
-        if (permission.value("id").toString() == root && permission.value("terminal").toBool())
+        if (container.isEmpty() && permission.value("id").toString() == root && permission.value("terminal").toBool())
             allowed = true;
     }
     auto *newTerminal = findChild<QPushButton *>("terminalNew");
@@ -393,10 +412,10 @@ void TerminalWidget::updateMachineCatalog(const QJsonObject &catalog)
     // Only new explicit launches use a refreshed broker epoch. Existing session
     // IDs keep their original backend/reference and are never resumed or replayed.
     m_machineCatalog = catalog;
-    bool allowed = false;
+    bool allowed = !m_containerId.isEmpty() && catalog.value("docker_exec").toBool() && catalog.value("docker_read").toBool();
     for (const auto &value : catalog.value("roots").toArray()) {
         const auto root = value.toObject();
-        if (root.value("id").toString() == m_machineRoot && root.value("terminal").toBool())
+        if (m_containerId.isEmpty() && root.value("id").toString() == m_machineRoot && root.value("terminal").toBool())
             allowed = true;
     }
     if (auto *create = findChild<QPushButton *>("terminalNew"))

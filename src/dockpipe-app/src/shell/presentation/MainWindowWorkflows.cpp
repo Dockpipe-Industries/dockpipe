@@ -188,20 +188,8 @@ void MainWindow::setupAdvancedPage(QWidget *page)
     m_runTarget->setToolTip(tr("Choose the computer to run this workflow"));
     m_runTarget->addItem(CanvasIcons::icon(CanvasIcons::Symbol::Monitor), tr("This computer"), QString());
     m_runTarget->setMinimumWidth(160);
-    const QString lastTarget = QSettings().value("workflowStudio/lastRunTarget").toString();
-    if (!lastTarget.isEmpty()) {
-        m_runTarget->addItem(lastTarget + tr(" — unavailable"), lastTarget);
-        m_runTarget->setItemData(1, true, Qt::UserRole + 1);
-        m_runTarget->setCurrentIndex(1);
-    }
-    connect(m_runTarget, &QComboBox::currentIndexChanged, this, [this](int index) {
-        QSettings().setValue("workflowStudio/lastRunTarget", m_runTarget->currentData());
-        if (m_pickerTarget) {
-            const QSignalBlocker blocker(m_pickerTarget);
-            m_pickerTarget->setCurrentIndex(index);
-        }
-        updateWorkflowPreview();
-    });
+    m_runTarget->setEnabled(false);
+    m_runTarget->setToolTip(tr("Choose the computer with the shared machine selector."));
     bottom->addWidget(m_runTarget);
     m_workflowEditor->setConsoleWidgets(m_consolePanel, bottomBar);
 
@@ -345,6 +333,8 @@ void MainWindow::setupWorkflowPicker()
     m_pickerTarget = new QComboBox;
     m_pickerTarget->setObjectName("workflowPickerTarget");
     m_pickerTarget->setAccessibleName(tr("Run on"));
+    m_pickerTarget->setEnabled(false);
+    m_pickerTarget->setToolTip(tr("Choose the computer with the shared machine selector."));
     m_pickerTarget->setModel(m_runTarget->model());
     m_pickerTarget->setCurrentIndex(m_runTarget->currentIndex());
     connect(m_pickerTarget, &QComboBox::activated, this, [this](int index) {
@@ -545,7 +535,19 @@ void MainWindow::updateWorkflowPreview()
     if (!m_workflowPreview || !m_pickerRun || !m_pickerEdit)
         return;
     const Context *selected = currentAdvancedDisplayContext();
-    const bool unavailable = m_runTarget->currentData(Qt::UserRole + 1).toBool();
+    bool unavailable = property("workspaceMachineCommitFailed").toBool();
+    if (m_workspaceMachineMenu && !m_workspaceMachineMenu->currentTarget().isEmpty()) {
+        bool present = false;
+        for (const auto &entry : m_workspaceMachineMenu->catalog()) {
+            const auto catalog = entry.toObject();
+            if (catalog.value("target").toObject() != m_workspaceMachineMenu->currentTarget())
+                continue;
+            present = m_workspaceMachineMenu->currentRoot().isEmpty();
+            for (const auto &grant : catalog.value("roots").toArray())
+                present = present || grant.toObject().value("id").toString() == m_workspaceMachineMenu->currentRoot();
+        }
+        unavailable = unavailable || !present;
+    }
     m_pickerRun->setEnabled(selected && !unavailable && !m_advancedDiscoveryLoading);
     const WorkflowMeta selectedMeta = selected
         ? findWorkflowMeta(selected->workdir, selected->workflow, selected->workflowFile) : WorkflowMeta{};

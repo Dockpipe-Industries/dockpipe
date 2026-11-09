@@ -582,7 +582,6 @@ Przeglądaj pakiety, aby dodać używane narzędzia.</translation>
             <source>Project scope stays inside the selected project, including symbolic links.</source>
             <translation>Zakres projektu pozostaje wewnątrz wybranego projektu, także w przypadku dowiązań symbolicznych.</translation>
         </message>
-        
         <message>
             <location line="+17" />
             <source>Open a project to browse its files.</source>
@@ -919,7 +918,6 @@ Niezależne repozytorium · dodaj wiele widoków do pracy między repozytoriami<
             <source>Desktop background unavailable: %1 Your previous background was kept.</source>
             <translation>Tło pulpitu niedostępne: %1 Zachowano poprzednie tło.</translation>
         </message>
-    
         <message>
             <location line="+219" />
             <source>Remote workflow launch is unavailable for this view.</source>
@@ -1704,10 +1702,8 @@ Niezależne repozytorium · dodaj wiele widoków do pracy między repozytoriami<
             <source>%1 of %2 machines · access status does not imply online</source>
             <translation>%1 z %2 maszyn · stan dostępu nie oznacza dostępności online</translation>
         </message>
-    
-        
         <message>
-            <location filename="../src/dashboards/presentation/DashboardMachineContext.cpp" line="70"/>
+            <location filename="../src/dashboards/presentation/DashboardMachineContext.cpp" line="70" />
             <source>Save open drafts and wait for active operations before changing machines.</source>
             <translation>Zapisz otwarte szkice i poczekaj na zakończenie aktywnych operacji przed zmianą maszyny.</translation>
         </message>
@@ -3090,26 +3086,6 @@ Odśwież, aby wczytać inwentarz wybranej maszyny.</translation>
             <translation>Wybierz wolumen, aby sprawdzić szczegóły użycia.</translation>
         </message>
         <message>
-            <location line="+33" />
-            <source>Docker query exceeded its 15-second or 32-MiB response limit.</source>
-            <translation>Zapytanie Docker przekroczyło limit odpowiedzi 15 sekund lub 32 MiB.</translation>
-        </message>
-        <message>
-            <location line="+103" />
-            <source>Some Docker relationships could not be read. Inspect the selected object for details.</source>
-            <translation>Nie udało się odczytać niektórych relacji Docker. Sprawdź wybrany obiekt, aby uzyskać szczegóły.</translation>
-        </message>
-        <message>
-            <location line="+3" />
-            <source>Relationships unavailable: %1</source>
-            <translation>Relacje niedostępne: %1</translation>
-        </message>
-        <message>
-            <location line="+3" />
-            <source> Relationships shown for the first 256 containers. Full inventory is available in Details &amp; actions.</source>
-            <translation> Relacje pokazano dla pierwszych 256 kontenerów. Pełny inwentarz jest dostępny w Szczegółach i akcjach.</translation>
-        </message>
-        <message>
             <location line="+21" />
             <location line="+4" />
             <location line="+24" />
@@ -3219,7 +3195,6 @@ Odśwież, aby wczytać inwentarz wybranej maszyny.</translation>
             <source>Docker refresh completed with errors.</source>
             <translation>Odświeżanie Docker zakończone z błędami.</translation>
         </message>
-        
         <message>
             <location line="-62" />
             <source>Loading container details…</source>
@@ -3376,7 +3351,6 @@ Odśwież, aby wczytać inwentarz wybranej maszyny.</translation>
             <source>%1 · Docker monitoring unavailable or stale. On the paired worker, enable: dockpipe remote monitoring --system --docker. The worker and broker must support monitoring.</source>
             <translation>%1 · Monitorowanie Docker jest niedostępne lub nieaktualne. Na sparowanym procesie roboczym włącz: dockpipe remote monitoring --system --docker. Proces roboczy i broker muszą obsługiwać monitorowanie.</translation>
         </message>
-        
         <message>
             <location line="+12" />
             <source>Remote Docker inventory unavailable. </source>
@@ -3396,11 +3370,6 @@ Odśwież, aby wczytać inwentarz wybranej maszyny.</translation>
             <location line="+2" />
             <source> · Remote inventory · read-only</source>
             <translation> · Inwentarz zdalny · tylko do odczytu</translation>
-        </message>
-    
-        <message>
-            <source>Remote inventory shares topology. Container logs and detailed inspection are unavailable for this machine.</source>
-            <translation>Zdalny spis udostępnia topologię. Dzienniki kontenerów i szczegółowa inspekcja są niedostępne dla tej maszyny.</translation>
         </message>
         <message>
             <source>Container control requires a supported action and an exact full container ID.</source>
@@ -3449,6 +3418,54 @@ Odśwież, aby wczytać inwentarz wybranej maszyny.</translation>
         <message>
             <source> · Remote inventory</source>
             <translation> · Zdalny spis</translation>
+        </message>
+        <message>
+            <source>Container inventory exceeds its object limit.</source>
+            <translation>Spis kontenerów przekracza limit obiektów.</translation>
+        </message>
+        <message>
+            <source>Container query cancelled or exceeded its deadline or response limit.</source>
+            <translation>Zapytanie o kontenery anulowano lub przekroczono termin albo limit odpowiedzi.</translation>
+        </message>
+        <message>
+            <source>Container query cancelled or the trusted Dockpipe CLI is unavailable.</source>
+            <translation>Zapytanie o kontenery anulowano lub zaufany interfejs CLI Dockpipe jest niedostępny.</translation>
+        </message>
+        <message>
+            <source>Could not inspect resource: %1</source>
+            <translation>Nie można sprawdzić zasobu: %1</translation>
+        </message>
+        <message>
+            <source>Could not load container logs: %1</source>
+            <translation>Nie można wczytać dzienników kontenera: %1</translation>
+        </message>
+        <message>
+            <source>Could not send the container request.</source>
+            <translation>Nie można wysłać żądania kontenera.</translation>
+        </message>
+        <message>
+            <source>Detailed inspection requires the paired worker's Docker read feature.</source>
+            <translation>Szczegółowa inspekcja wymaga funkcji odczytu Docker sparowanego wykonawcy.</translation>
+        </message>
+        <message>
+            <source>Invalid container detail response.</source>
+            <translation>Nieprawidłowa odpowiedź ze szczegółami kontenera.</translation>
+        </message>
+        <message>
+            <source>Invalid log receipt.</source>
+            <translation>Nieprawidłowe potwierdzenie dzienników.</translation>
+        </message>
+        <message>
+            <source>Invalid resource receipt.</source>
+            <translation>Nieprawidłowe potwierdzenie zasobu.</translation>
+        </message>
+        <message>
+            <source>Loading resource details…</source>
+            <translation>Wczytywanie szczegółów zasobu…</translation>
+        </message>
+        <message>
+            <source>Select for details</source>
+            <translation>Wybierz, aby zobaczyć szczegóły</translation>
         </message>
     </context>
     <context>
@@ -4603,7 +4620,6 @@ Pozostałe:
             <source>Resolve selected conflict</source>
             <translation>Rozwiąż wybrany konflikt</translation>
         </message>
-    
         <message>
             <source>The remote conflict editor context is unavailable. Select the authorized machine and root again.</source>
             <translation>Kontekst zdalnego edytora konfliktów jest niedostępny. Wybierz ponownie autoryzowaną maszynę i katalog główny.</translation>
@@ -5708,7 +5724,6 @@ Jeśli przepływ pracy wymaga narzędzi zewnętrznych, instalujesz je samodzieln
             <source>Show</source>
             <translation>Pokaż</translation>
         </message>
-        
         <message>
             <location line="+63" />
             <source>No project selected</source>
@@ -6212,16 +6227,23 @@ Wybierz kartę, aby edytować jej właściwości</translation>
             <source>Cloned workflow to %1</source>
             <translation>Sklonowano przepływ pracy do %1</translation>
         </message>
-    
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="112"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="112" />
             <source>This machine or root changed. Refresh machines and select it again.</source>
             <translation>Ta maszyna lub katalog główny uległy zmianie. Odśwież listę maszyn i wybierz ponownie.</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="124"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="124" />
             <source>Save or discard open drafts and finish active operations before changing machines.</source>
             <translation>Zapisz lub odrzuć otwarte szkice i zakończ aktywne operacje przed zmianą maszyny.</translation>
+        </message>
+        <message>
+            <source>Choose the computer with the shared machine selector.</source>
+            <translation>Wybierz komputer za pomocą wspólnego selektora maszyn.</translation>
+        </message>
+        <message>
+            <source>Container terminal · %1 · %2</source>
+            <translation>Terminal kontenera · %1 · %2</translation>
         </message>
     </context>
     <context>
@@ -7107,7 +7129,6 @@ Limit podglądu Mermaid: diagramy po pierwszych 16 są pokazywane jako źródło
             <source>Folder name</source>
             <translation>Nazwa folderu</translation>
         </message>
-        
         <message>
             <location line="+20" />
             <location line="+1" />
@@ -7306,7 +7327,6 @@ Limit podglądu Mermaid: diagramy po pierwszych 16 są pokazywane jako źródło
             <source>Workflow YAML · shared with the canvas and YAML view</source>
             <translation>YAML przepływu pracy · współdzielony z płótnem i widokiem YAML</translation>
         </message>
-        
         <message>
             <location line="+8" />
             <source>This file is binary, is not UTF-8, or exceeds the 1 MiB editor limit.</source>
@@ -7322,7 +7342,6 @@ Limit podglądu Mermaid: diagramy po pierwszych 16 są pokazywane jako źródło
             <source>The file exceeds 1 MiB or its location changed. Your edits are still here.</source>
             <translation>Plik przekracza 1 MiB lub zmienił lokalizację. Twoje poprawki nadal są tutaj.</translation>
         </message>
-        
         <message>
             <location line="+8" />
             <source>Cannot save: %1</source>
@@ -7333,12 +7352,6 @@ Limit podglądu Mermaid: diagramy po pierwszych 16 są pokazywane jako źródło
             <source>Saved %1</source>
             <translation>Zapisano %1</translation>
         </message>
-        
-        
-        
-        
-        
-        
         <message>
             <location line="+11" />
             <source>No file open</source>
@@ -7379,20 +7392,19 @@ Limit podglądu Mermaid: diagramy po pierwszych 16 są pokazywane jako źródło
             <source>%1   ·   UTF-8   ·   %2                         Ln %3, Col %4</source>
             <translation>%1   ·   UTF-8   ·   %2                         Wiersz %3, Kol. %4</translation>
         </message>
-    
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="141"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="141" />
             <source>Refresh files</source>
             <translation>Odśwież pliki</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="319"/>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="353"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="319" />
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="353" />
             <source>A file operation is still running. Your open files are preserved.</source>
             <translation>Operacja na plikach jest w toku. Otwarte pliki zostały zachowane.</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="534"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="534" />
             <source>Invalid workspace file response.</source>
             <translation>Nieprawidłowa odpowiedź plików obszaru roboczego.</translation>
         </message>
@@ -7416,16 +7428,14 @@ Limit podglądu Mermaid: diagramy po pierwszych 16 są pokazywane jako źródło
             <translation>Operacja Git nie powiodła się lub została anulowana. Odśwież przed ponowieniem.
 %1</translation>
         </message>
-    
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="552"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="552" />
             <source>The selected remote Git context is unavailable. Select an authorized machine and root, then refresh.</source>
             <translation>Wybrany kontekst zdalnego Git jest niedostępny. Wybierz autoryzowaną maszynę i katalog główny, a następnie odśwież.</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="585"/>
-            <source>The remote Git outcome is unavailable or uncertain. Refresh the captured machine and root before another write; the operation was not retried.</source>
-            <translation>Wynik zdalnego Git jest niedostępny lub niepewny. Odśwież przechwyconą maszynę i katalog główny przed kolejnym zapisem; operacja nie została ponowiona.</translation>
+            <source>The remote Git outcome is unavailable or uncertain. Refresh the captured machine and root before another write; inspect Uncertain operations when a mutation is retained.</source>
+            <translation>Wynik zdalnej operacji Git jest niedostępny lub niepewny. Odśwież zapisaną maszynę i katalog główny przed kolejnym zapisem; sprawdź Niepewne operacje, gdy zmiana jest zachowana.</translation>
         </message>
     </context>
     <context>
@@ -8050,19 +8060,18 @@ Limit podglądu Mermaid: diagramy po pierwszych 16 są pokazywane jako źródło
             <source>Select a script inside the workspace folder. This file was shared separately by Flatpak, so its temporary document path cannot be saved in a portable workflow.</source>
             <translation>Wybierz skrypt wewnątrz folderu przestrzeni roboczej. Ten plik został udostępniony osobno przez Flatpak, więc jego tymczasowa ścieżka dokumentu nie może zostać zapisana w przenośnym przepływie pracy.</translation>
         </message>
-    
         <message>
-            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="22"/>
+            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="22" />
             <source>Wait for all Git operations before changing machines or roots.</source>
             <translation>Poczekaj na zakończenie wszystkich operacji Git przed zmianą maszyny lub katalogu głównego.</translation>
         </message>
         <message>
-            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="29"/>
+            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="29" />
             <source>Save or discard the conflict draft before changing machines or roots.</source>
             <translation>Zapisz lub odrzuć szkic konfliktu przed zmianą maszyny lub katalogu głównego.</translation>
         </message>
         <message>
-            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="76"/>
+            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="76" />
             <source>Select an absolute local project folder.</source>
             <translation>Wybierz lokalny folder projektu z bezwzględną ścieżką.</translation>
         </message>
@@ -10378,12 +10387,6 @@ Ta maszyna nie znajduje się już w dostępnym inwentarzu.</translation>
             <source>This terminal is already running.</source>
             <translation>Ten terminal już działa.</translation>
         </message>
-        
-        
-        
-        
-        
-        
         <message>
             <location line="+13" />
             <source>Could not configure the interactive terminal device.</source>
@@ -10445,13 +10448,11 @@ Ta maszyna nie znajduje się już w dostępnym inwentarzu.</translation>
             <source>Terminal cleanup reached its process-inspection limit. Some detached jobs may remain.</source>
             <translation>Czyszczenie terminala osiągnęło limit inspekcji procesów. Niektóre odłączone zadania mogą pozostać.</translation>
         </message>
-    
         <message>
             <location line="+16" />
             <source>Host terminal bridges are unavailable on Windows.</source>
             <translation>Mosty terminala hosta są niedostępne w systemie Windows.</translation>
         </message>
-    
         <message>
             <location line="+4" />
             <source>The prepared terminal launch is invalid.</source>
@@ -11063,14 +11064,13 @@ $ Gotowy na następne polecenie</translation>
             <source>Restart DockPipe to enable terminal transparency with compatible browser rendering.</source>
             <translation>Uruchom DockPipe ponownie, aby włączyć przezroczystość terminala ze zgodnym renderowaniem przeglądarki.</translation>
         </message>
-    
         <message>
-            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="456"/>
+            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="456" />
             <source>Connecting to remote terminal…</source>
             <translation>Łączenie ze zdalnym terminalem…</translation>
         </message>
         <message>
-            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="374"/>
+            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="374" />
             <source>Remote terminal access is unavailable for this machine or root.</source>
             <translation>Zdalny terminal jest niedostępny dla tej maszyny.</translation>
         </message>
@@ -11505,11 +11505,6 @@ Jeśli ten Dockpipe nie obsługuje edytora, zaktualizuj CLI i GUI razem.</transl
             <translation>Nie można odczytać przepływu pracy lub przekracza on limit edytora 1 MiB.</translation>
         </message>
         <message>
-            <location line="+6" />
-            <source>Workflow must be UTF-8. The file was not changed.</source>
-            <translation>Przepływ pracy musi być w UTF-8. Plik nie został zmieniony.</translation>
-        </message>
-        <message>
             <location line="+42" />
             <location line="+287" />
             <source>Workflow exceeds the 1 MiB editor limit.</source>
@@ -11576,34 +11571,9 @@ Jeśli ten Dockpipe nie obsługuje edytora, zaktualizuj CLI i GUI razem.</transl
             <translation>YAML przepływu pracy (*.yml *.yaml)</translation>
         </message>
         <message>
-            <location line="+5" />
-            <source>Open the real workflow file instead of overwriting a symbolic link.</source>
-            <translation>Otwórz rzeczywisty plik przepływu pracy zamiast nadpisywać dowiązanie symboliczne.</translation>
-        </message>
-        <message>
             <location line="+8" />
             <source>Cannot safely read the existing workflow.</source>
             <translation>Nie można bezpiecznie odczytać istniejącego przepływu pracy.</translation>
-        </message>
-        <message>
-            <location line="+5" />
-            <source>The existing workflow grew beyond the editor limit. Your draft has been kept.</source>
-            <translation>Istniejący przepływ pracy przekroczył limit edytora. Szkic zachowano.</translation>
-        </message>
-        <message>
-            <location line="+4" />
-            <source>This workflow changed on disk. Open it again before saving; your draft has been kept.</source>
-            <translation>Ten przepływ pracy zmienił się na dysku. Otwórz go ponownie przed zapisaniem; szkic zachowano.</translation>
-        </message>
-        <message>
-            <location line="+8" />
-            <source>The file changed during validation. Your draft has been kept.</source>
-            <translation>Plik zmienił się podczas walidacji. Szkic zachowano.</translation>
-        </message>
-        <message>
-            <location line="+5" />
-            <source>Cannot save workflow: %1</source>
-            <translation>Nie można zapisać przepływu pracy: %1</translation>
         </message>
         <message>
             <location line="+13" />
@@ -11630,16 +11600,25 @@ Jeśli ten Dockpipe nie obsługuje edytora, zaktualizuj CLI i GUI razem.</transl
             <source>Apply your inspector changes before changing selection, switching views, or saving.</source>
             <translation>Zastosuj zmiany inspektora przed zmianą wyboru, przełączaniem widoków lub zapisaniem.</translation>
         </message>
-    
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="247"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="247" />
             <source>Could not save all supporting files. Open Files to review the error; your drafts are preserved.</source>
             <translation>Nie można zapisać wszystkich plików pomocniczych. Otwórz Pliki, aby sprawdzić błąd; szkice zostały zachowane.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="253"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="253" />
             <source>The workflow or supporting files changed while saving. Review them before running.</source>
             <translation>Przepływ pracy lub pliki pomocnicze zmieniły się podczas zapisywania. Sprawdź je przed uruchomieniem.</translation>
+        </message>
+        <message>
+            <source>Cannot save workflow: %1
+The file may have changed on disk. Your draft has been kept; refresh before retrying.</source>
+            <translation>Nie można zapisać przepływu pracy: %1
+Plik mógł zmienić się na dysku. Zachowano wersję roboczą; odśwież przed ponowieniem próby.</translation>
+        </message>
+        <message>
+            <source>The workflow changed during validation. Your draft has been kept.</source>
+            <translation>Przepływ pracy zmienił się podczas weryfikacji. Zachowano wersję roboczą.</translation>
         </message>
     </context>
     <context>
@@ -12028,19 +12007,28 @@ Wysokość elementu używa logarytmicznej skali rozmiaru, ograniczonej dla czyte
             <translation>Poprzedni odczyt katalogu nadal się zatrzymuje. Spróbuj ponownie za chwilę.</translation>
         </message>
         <message>
-            <location line="+27" />
-            <source>Cannot start the directory reader: %1</source>
-            <translation>Nie można uruchomić czytnika katalogu: %1</translation>
+            <source>Binary file · Open in the file viewer for details.</source>
+            <translation>Plik binarny · Otwórz w przeglądarce plików, aby uzyskać szczegóły.</translation>
         </message>
         <message>
-            <location line="+20" />
-            <source>Directory response exceeds the 2 MiB limit. Reduce the page size.</source>
-            <translation>Odpowiedź katalogu przekracza limit 2 MiB. Zmniejsz rozmiar strony.</translation>
+            <source>Directory page exceeds the graph node limit.</source>
+            <translation>Strona katalogu przekracza limit węzłów grafu.</translation>
         </message>
         <message>
-            <location line="+22" />
-            <source>Directory read failed. Refresh to retry.</source>
-            <translation>Odczyt katalogu nie powiódł się. Odśwież, aby ponowić.</translation>
+            <source>Directory reader returned a different workspace path.</source>
+            <translation>Czytnik katalogów zwrócił inną ścieżkę obszaru roboczego.</translation>
+        </message>
+        <message>
+            <source>Invalid directory page response.</source>
+            <translation>Nieprawidłowa odpowiedź strony katalogu.</translation>
+        </message>
+        <message>
+            <source>Invalid local workspace graph request.</source>
+            <translation>Nieprawidłowe żądanie lokalnego grafu obszaru roboczego.</translation>
+        </message>
+        <message>
+            <source>Non-UTF-8 file · Text preview unavailable.</source>
+            <translation>Plik inny niż UTF-8 · Podgląd tekstu niedostępny.</translation>
         </message>
     </context>
     <context>
@@ -12461,65 +12449,85 @@ Wysokość elementu używa logarytmicznej skali rozmiaru, ograniczonej dla czyte
     <context>
         <name>RemoteFeatureClient</name>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="64"/>
-            <source>Remote operation timed out. Refresh state before retrying a write.</source>
-            <translation>Operacja zdalna przekroczyła limit czasu. Odśwież stan przed ponowną próbą zapisu.</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="105"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="105" />
             <source>Invalid remote feature request bounds.</source>
             <translation>Nieprawidłowe limity żądania funkcji zdalnej.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="131"/>
-            <source>Remote request delivery is uncertain. Refresh state before retrying a write.</source>
-            <translation>Dostarczenie żądania zdalnego jest niepewne. Odśwież stan przed ponowną próbą zapisu.</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="138"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="138" />
             <source>Could not start the trusted Dockpipe remote client.</source>
             <translation>Nie można uruchomić zaufanego klienta zdalnego Dockpipe.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="159"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="159" />
             <source>Remote response exceeded its transport limit.</source>
             <translation>Zdalna odpowiedź przekroczyła limit transportu.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="182"/>
-            <source>Remote result is unavailable. Refresh state before retrying a write.</source>
-            <translation>Wynik zdalny jest niedostępny. Odśwież stan przed ponowną próbą zapisu.</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="187"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="187" />
             <source>Remote machine catalog is unavailable.</source>
             <translation>Katalog maszyn zdalnych jest niedostępny.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="199"/>
-            <source>Remote result identity changed. Refresh the selected machine.</source>
-            <translation>Tożsamość wyniku zdalnego uległa zmianie. Odśwież wybraną maszynę.</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="211"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="211" />
             <source>Remote result does not match the captured operation.</source>
             <translation>Wynik zdalny nie pasuje do przechwyconej operacji.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="224"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="224" />
             <source>Cancellation requested for the original remote operation. Refresh state before retrying a write.</source>
             <translation>Zażądano anulowania pierwotnej operacji zdalnej. Odśwież stan przed ponowną próbą zapisu.</translation>
+        </message>
+        <message>
+            <source>Cannot retain remote mutation recovery metadata. Resolve saved operations or repair settings before another write.</source>
+            <translation>Nie można zachować metadanych odzyskiwania zdalnej zmiany. Rozstrzygnij zapisane operacje lub napraw ustawienia przed kolejnym zapisem.</translation>
+        </message>
+        <message>
+            <source>Core could not prepare the exact captured remote operation. No operation was dispatched.</source>
+            <translation>Rdzeń nie mógł przygotować dokładnie zapisanej operacji zdalnej. Nie wysłano żadnej operacji.</translation>
+        </message>
+        <message>
+            <source>Invalid recovery receipt. The original operation remains uncertain.</source>
+            <translation>Nieprawidłowe potwierdzenie odzyskiwania. Pierwotna operacja nadal jest niepewna.</translation>
+        </message>
+        <message>
+            <source>Prepared remote request exceeds its transport limit.</source>
+            <translation>Przygotowane żądanie zdalne przekracza limit transportu.</translation>
+        </message>
+        <message>
+            <source>Remote operation preparation exhausted its deadline.</source>
+            <translation>Przygotowanie operacji zdalnej wyczerpało limit czasu.</translation>
+        </message>
+        <message>
+            <source>Remote operation timed out. Inspect its original receipt before another write.</source>
+            <translation>Upłynął limit czasu operacji zdalnej. Sprawdź jej pierwotne potwierdzenie przed kolejnym zapisem.</translation>
+        </message>
+        <message>
+            <source>Remote request delivery is uncertain. Inspect the original operation.</source>
+            <translation>Dostarczenie żądania zdalnego jest niepewne. Sprawdź pierwotną operację.</translation>
+        </message>
+        <message>
+            <source>Remote result identity changed. Inspect the original captured operation.</source>
+            <translation>Tożsamość wyniku zdalnego uległa zmianie. Sprawdź pierwotnie zapisaną operację.</translation>
+        </message>
+        <message>
+            <source>Remote result is unavailable. Inspect the original operation before another write.</source>
+            <translation>Wynik zdalny jest niedostępny. Sprawdź pierwotną operację przed kolejnym zapisem.</translation>
+        </message>
+        <message>
+            <source>The recovery strategy does not match the captured mutation.</source>
+            <translation>Strategia odzyskiwania nie pasuje do zapisanej zmiany.</translation>
         </message>
     </context>
     <context>
         <name>WorkspaceFileModel</name>
         <message>
-            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="227"/>
+            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="227" />
             <source>Too many pending workspace directory requests; refresh to continue.</source>
             <translation>Zbyt wiele oczekujących żądań katalogów obszaru roboczego; odśwież, aby kontynuować.</translation>
         </message>
         <message>
-            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="273"/>
+            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="273" />
             <source>Invalid workspace directory page.</source>
             <translation>Nieprawidłowa strona katalogu obszaru roboczego.</translation>
         </message>
@@ -12527,63 +12535,63 @@ Wysokość elementu używa logarytmicznej skali rozmiaru, ograniczonej dla czyte
     <context>
         <name>WorkspaceFilesClient</name>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="44"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="44" />
             <source>Workspace file operation timed out; its effect may need refresh.</source>
             <translation>Operacja na plikach obszaru roboczego przekroczyła limit czasu; odśwież, aby sprawdzić możliwy skutek.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="84"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="84" />
             <source>A workspace file operation is already running.</source>
             <translation>Operacja na plikach obszaru roboczego już trwa.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="90"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="90" />
             <source>Workspace file request exceeds its transport contract.</source>
             <translation>Żądanie plików obszaru roboczego przekracza limit transportu.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="96"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="96" />
             <source>The selected remote Files context is unavailable.</source>
             <translation>Wybrany zdalny kontekst Plików jest niedostępny.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="100"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="100" />
             <source>Workspace Files requires an absolute selected root.</source>
             <translation>Pliki obszaru roboczego wymagają wybranego katalogu głównego z bezwzględną ścieżką.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="152"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="152" />
             <source>Could not send the workspace file request.</source>
             <translation>Nie można wysłać żądania plików obszaru roboczego.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="168"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="168" />
             <source>Workspace file helper failed (exit %1). Check the installed Dockpipe CLI.</source>
             <translation>Pomocnik plików obszaru roboczego nie powiódł się (kod wyjścia %1). Sprawdź zainstalowany Dockpipe CLI.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="176"/>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="247"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="176" />
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="247" />
             <source>Invalid workspace file response.</source>
             <translation>Nieprawidłowa odpowiedź plików obszaru roboczego.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="196"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="196" />
             <source>Workspace file response exceeded its transport limit.</source>
             <translation>Odpowiedź plików obszaru roboczego przekroczyła limit transportu.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="206"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="206" />
             <source>Workspace file operation was cancelled; refresh before retrying a write.</source>
             <translation>Operacja na plikach obszaru roboczego została anulowana; odśwież przed ponowną próbą zapisu.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="270"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="270" />
             <source>The workspace file context changed before completion.</source>
             <translation>Kontekst plików obszaru roboczego zmienił się przed zakończeniem.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteWorkspaceFilesDispatch.cpp" line="34"/>
+            <location filename="../src/remote/infrastructure/RemoteWorkspaceFilesDispatch.cpp" line="34" />
             <source>Remote file result is uncertain. Refresh before retrying a write.</source>
             <translation>Wynik zdalnego pliku jest niepewny. Odśwież przed ponowną próbą zapisu.</translation>
         </message>
@@ -12591,55 +12599,55 @@ Wysokość elementu używa logarytmicznej skali rozmiaru, ograniczonej dla czyte
     <context>
         <name>WorkspaceMachineMenu</name>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="50"/>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="92"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="50" />
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="92" />
             <source>Follow main machine</source>
             <translation>Podążaj za maszyną główną</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="51"/>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="85"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="51" />
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="85" />
             <source>Shared machine selection. Dashboard widgets can choose their own machine.</source>
             <translation>Wspólny wybór maszyny. Widżety pulpitu mogą wybrać własną maszynę.</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="55"/>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="97"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="55" />
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="97" />
             <source>This computer</source>
             <translation>Ten komputer</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="56"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="56" />
             <source>Choose the machine for Containers, Files, Git, Terminal and the dashboard.</source>
             <translation>Wybierz maszynę dla Kontenerów, Plików, Git, Terminala i pulpitu.</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="81"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="81" />
             <source> · Locked</source>
             <translation> · Zablokowana</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="83"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="83" />
             <source> · Unavailable</source>
             <translation> · Niedostępna</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="103"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="103" />
             <source>Unlock remote access…</source>
             <translation>Odblokuj dostęp zdalny…</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="106"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="106" />
             <source>No remote workspaces available</source>
             <translation>Brak dostępnych zdalnych obszarów roboczych</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="127"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="127" />
             <source>Containers</source>
             <translation>Kontenery</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="133"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="133" />
             <source>Refresh machines</source>
             <translation>Odśwież maszyny</translation>
         </message>
@@ -12647,49 +12655,41 @@ Wysokość elementu używa logarytmicznej skali rozmiaru, ograniczonej dla czyte
     <context>
         <name>RemoteTerminalSession</name>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="86"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="114"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="86" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="114" />
             <source>Could not start the trusted remote terminal client.</source>
             <translation>Nie można uruchomić zaufanego klienta zdalnego terminala.</translation>
         </message>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="69"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="69" />
             <source>Remote terminal access is unavailable for this machine or root.</source>
             <translation>Zdalny terminal jest niedostępny dla tej maszyny lub katalogu głównego.</translation>
         </message>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="154"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="176"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="183"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="192"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="203"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="217"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="223"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="248"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="257"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="154" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="176" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="183" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="192" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="203" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="217" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="223" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="248" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="257" />
             <source>The remote terminal returned an invalid response.</source>
             <translation>Zdalny terminal zwrócił nieprawidłową odpowiedź.</translation>
         </message>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="38"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="124"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="199"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="245"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="312"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="321"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="329"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="38" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="124" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="199" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="245" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="312" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="321" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="329" />
             <source>The remote terminal connection was lost. Pending input was not replayed.</source>
             <translation>Utracono połączenie ze zdalnym terminalem. Oczekujące dane wejściowe nie zostały wysłane ponownie.</translation>
         </message>
     </context>
-
-
-
-
-
-
-
-
     <context>
         <name>ManagedTerminalSession</name>
         <message>
@@ -12750,6 +12750,111 @@ Wysokość elementu używa logarytmicznej skali rozmiaru, ograniczonej dla czyte
             <location line="+35" />
             <source>The terminal requires an existing directory and an absolute executable path.</source>
             <translation>Terminal wymaga istniejącego katalogu i bezwzględnej ścieżki do pliku wykonywalnego.</translation>
+        </message>
+    </context>
+    <context>
+        <name>RemoteFeatureRecoveryDialog</name>
+        <message>
+            <source>Choose a retained operation.</source>
+            <translation>Wybierz zachowaną operację.</translation>
+        </message>
+        <message>
+            <source>Close</source>
+            <translation>Zamknij</translation>
+        </message>
+        <message>
+            <source>Contacting the original captured machine…</source>
+            <translation>Łączenie z pierwotnie zapisaną maszyną…</translation>
+        </message>
+        <message>
+            <source>Inspect the original operation before another write. Cancellation does not prove that a mutation had no effect.</source>
+            <translation>Sprawdź pierwotną operację przed kolejnym zapisem. Anulowanie nie dowodzi, że zmiana nie miała skutku.</translation>
+        </message>
+        <message>
+            <source>Machine: %1
+Fingerprint: %2
+Generation: %3
+Root: %4
+Action: %5
+Operation: %6</source>
+            <translation>Maszyna: %1
+Odcisk: %2
+Generacja: %3
+Katalog główny: %4
+Działanie: %5
+Operacja: %6</translation>
+        </message>
+        <message>
+            <source>No uncertain mutations are retained.</source>
+            <translation>Nie zachowano żadnych niepewnych zmian.</translation>
+        </message>
+        <message>
+            <source>Original operation status: %1. No operation was replayed.</source>
+            <translation>Stan pierwotnej operacji: %1. Nie wykonano ponownie żadnej operacji.</translation>
+        </message>
+        <message>
+            <source>Refresh status</source>
+            <translation>Odśwież stan</translation>
+        </message>
+        <message>
+            <source>Request cancellation</source>
+            <translation>Zażądaj anulowania</translation>
+        </message>
+        <message>
+            <source>The mutation outcome remains uncertain. Refresh its original status before another write.</source>
+            <translation>Wynik zmiany nadal jest niepewny. Odśwież jej pierwotny stan przed kolejnym zapisem.</translation>
+        </message>
+        <message>
+            <source>Uncertain operations…</source>
+            <translation>Niepewne operacje…</translation>
+        </message>
+        <message>
+            <source>Uncertain remote operations</source>
+            <translation>Niepewne operacje zdalne</translation>
+        </message>
+        <message>
+            <source>unknown</source>
+            <translation>nieznany</translation>
+        </message>
+        <message>
+            <source>Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write.</source>
+            <translation>Potwierdzono uporządkowanie; wynik zmiany nadal jest nieznany. Odśwież Pliki, Git lub dostawcę kontenerów i sprawdź objęty zmianą stan przed kolejnym zapisem.</translation>
+        </message>
+        <message>
+            <source>Container terminal cleanup remains uncertain. The original session reference is retained.</source>
+            <translation>Uporządkowanie terminala kontenera nadal jest niepewne. Zachowano odwołanie do pierwotnej sesji.</translation>
+        </message>
+        <message>
+            <source>Container terminal cleanup was verified for the original captured session.</source>
+            <translation>Potwierdzono uporządkowanie terminala kontenera dla pierwotnie zapisanej sesji.</translation>
+        </message>
+        <message>
+            <source>Explicitly remove the original exact container after native client cleanup. Requires the worker's independent Docker recovery grant. Volumes and images are retained.</source>
+            <translation>Jawnie usuń dokładnie pierwotny kontener po uporządkowaniu klienta natywnego. Wymaga niezależnego uprawnienia wykonawcy do odzyskiwania Docker. Wolumeny i obrazy zostają zachowane.</translation>
+        </message>
+        <message>
+            <source>Remove container %1 on %2 to fence delayed daemon work for operation %3? This removes the container and its writable layer. Volumes and images are retained. The original mutation outcome remains unknown.</source>
+            <translation>Usunąć kontener %1 na %2, aby zablokować opóźnione działania demona dla operacji %3? Spowoduje to usunięcie kontenera i jego warstwy zapisywalnej. Wolumeny i obrazy zostają zachowane. Wynik pierwotnej zmiany nadal jest nieznany.</translation>
+        </message>
+        <message>
+            <source>Retire container…</source>
+            <translation>Wycofaj kontener…</translation>
+        </message>
+        <message>
+            <source>Retire the captured container?</source>
+            <translation>Wycofać zapisany kontener?</translation>
+        </message>
+        <message>
+            <source>Revoke the original invocation and verify its native cleanup evidence. Boot-fenced workers require a host reboot for uncertain process-backed operations. The mutation outcome remains unknown.</source>
+            <translation>Unieważnij pierwotne wywołanie i sprawdź dowody jego natywnego uporządkowania. Wykonawcy z izolacją według uruchomienia wymagają ponownego uruchomienia hosta przy niepewnych operacjach opartych na procesach. Wynik zmiany nadal jest nieznany.</translation>
+        </message>
+        <message>
+            <source>Verify cleanup</source>
+            <translation>Sprawdź uporządkowanie</translation>
+        </message>
+        <message>
+            <source>Refreshing the worker's retained terminal metadata. No cleanup was requested.</source>
+            <translation>Odświeżanie metadanych terminala zachowanych przez wykonawcę. Nie zażądano uporządkowania.</translation>
         </message>
     </context>
 </TS>

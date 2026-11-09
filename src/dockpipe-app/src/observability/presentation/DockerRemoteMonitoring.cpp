@@ -53,6 +53,8 @@ bool DockerObservabilityWidget::setFeatureTarget(const QJsonObject &target, bool
     }
     m_featureMode = true;
     m_featureTarget = target;
+    if (m_featureCatalog.value("target").toObject() != target)
+        m_featureCatalog = {};
     m_featureCanControl = canControl;
     m_machine->hide();
     m_machineLabel->hide();
@@ -63,14 +65,98 @@ bool DockerObservabilityWidget::setFeatureTarget(const QJsonObject &target, bool
     return true;
 }
 
+bool DockerObservabilityWidget::setFeatureCatalog(const QJsonObject &catalog, QString *error)
+{
+    if (!setFeatureTarget(catalog.value("target").toObject(), catalog.value("docker_control").toBool(), error))
+        return false;
+    m_featureCatalog = catalog;
+    updateInspector();
+    return true;
+}
+
 void DockerObservabilityWidget::cancelFeatureRead()
 {
+    m_localReadCancelled->store(true);
+    m_localReadCancelled = std::make_shared<std::atomic_bool>(false);
+    cancelFeatureDetails();
     ++m_featureReadGeneration;
     auto cancel = std::move(m_cancelFeatureRead);
     m_cancelFeatureRead = {};
     m_featureReadBusy = false;
     if (cancel)
         cancel();
+}
+
+void DockerObservabilityWidget::cancelFeatureDetails()
+{
+    ++m_featureDetailGeneration;
+    m_featureDetailKey.clear();
+    auto cancel = std::move(m_cancelFeatureDetail);
+    m_cancelFeatureDetail = {};
+    if (cancel)
+        cancel();
+}
+
+void DockerObservabilityWidget::refreshFeatureDetails(const QString &kind, const QString &object)
+{
+    if (!m_active || m_monitorPaused || m_containerActionBusy || object.isEmpty())
+        return;
+    const auto key = kind + ":" + object;
+    if (m_featureDetailKey == key)
+        return;
+    cancelFeatureDetails();
+    m_featureDetailKey = key;
+    const auto target = m_featureTarget;
+    const auto generation = m_generation;
+    const auto detailGeneration = m_featureDetailGeneration;
+    auto *details = m_containerDetails;
+    if (kind == "network")
+        details = m_networkDetails;
+    else if (kind == "volume")
+        details = m_volumeDetails;
+    details->setPlainText(tr("Loading resource details…"));
+    if (kind == "container")
+        m_containerLogs->setPlainText(tr("Loading container logs…"));
+    const auto intent = RemoteFeatureClient::prepareIntent(target, {}, "containers.inspect", {{"kind", kind}, {"object", object}});
+    m_cancelFeatureDetail = RemoteFeatureClient::invoke(this, intent,
+        [this, target, generation, detailGeneration, key, kind, object, details](const auto &result) {
+            if (generation != m_generation || detailGeneration != m_featureDetailGeneration
+                || target != m_featureTarget || m_selectedResource != key || !m_active || m_monitorPaused)
+                return;
+            m_cancelFeatureDetail = {};
+            const auto receipt = result.value.toObject();
+            const bool valid = result.outcome == RemoteFeatureClient::Outcome::Success
+                && receipt.value("schema").toString() == "dockpipe.containers/v1"
+                && receipt.value("action").toString() == "inspect"
+                && receipt.value("kind").toString() == kind && receipt.value("object").toString() == object
+                && receipt.value("inspect").isArray() && receipt.value("inspect").toArray().size() == 1;
+            if (valid) {
+                details->setPlainText(QString::fromUtf8(QJsonDocument(receipt.value("inspect").toArray()).toJson(QJsonDocument::Indented)));
+            } else {
+                details->setPlainText(tr("Could not inspect resource: %1").arg(result.error.isEmpty() ? tr("Invalid resource receipt.") : result.error));
+            }
+            if (kind != "container") {
+                m_featureDetailKey.clear();
+                return;
+            }
+            const auto logsIntent = RemoteFeatureClient::prepareIntent(target, {}, "containers.logs", {{"kind", kind}, {"object", object}});
+            m_cancelFeatureDetail = RemoteFeatureClient::invoke(this, logsIntent,
+                [this, target, generation, detailGeneration, key, object](const auto &logs) {
+                    if (generation != m_generation || detailGeneration != m_featureDetailGeneration
+                        || target != m_featureTarget || m_selectedResource != key || !m_active || m_monitorPaused)
+                        return;
+                    m_cancelFeatureDetail = {};
+                    m_featureDetailKey.clear();
+                    const auto receipt = logs.value.toObject();
+                    const bool valid = logs.outcome == RemoteFeatureClient::Outcome::Success
+                        && receipt.value("schema").toString() == "dockpipe.containers/v1"
+                        && receipt.value("action").toString() == "logs"
+                        && receipt.value("kind").toString() == "container" && receipt.value("object").toString() == object
+                        && (!receipt.contains("logs") || receipt.value("logs").isString());
+                    m_containerLogs->setPlainText(valid ? receipt.value("logs").toString()
+                        : tr("Could not load container logs: %1").arg(logs.error.isEmpty() ? tr("Invalid log receipt.") : logs.error));
+                });
+        });
 }
 
 void DockerObservabilityWidget::refreshFeatureSnapshot()
@@ -115,6 +201,8 @@ void DockerObservabilityWidget::runRemoteContainerAction(const QString &action, 
         if (result.outcome != RemoteFeatureClient::Outcome::Success
             || receipt.value("schema").toString() != "dockpipe.containers/v1"
             || receipt.value("action").toString() != action || receipt.value("container").toString() != id) {
+            if (result.outcome == RemoteFeatureClient::Outcome::Success)
+                RemoteFeatureClient::retainUncertain(result.reference);
             const QString reason = result.error.isEmpty() ? tr("Invalid container control receipt.") : result.error;
             setStatus(tr("%1 · %2 failed for %3: %4").arg(targetNode(), action, name, reason));
             return;

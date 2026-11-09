@@ -33,6 +33,15 @@ type terminalRecord struct {
 	rows            int
 	output          *terminalBuffer
 	finalCursor     uint64
+	changed         chan struct{}
+	inputWaiting    bool
+}
+
+func (record *terminalRecord) notify() {
+	if record.changed != nil {
+		close(record.changed)
+	}
+	record.changed = make(chan struct{})
 }
 
 func (record *terminalRecord) release() {
@@ -44,6 +53,7 @@ func (record *terminalRecord) release() {
 		clear(record.output.data[:])
 	}
 	record.input, record.output, record.released = nil, nil, true
+	record.notify()
 }
 
 func (broker *Broker) terminalState() *terminalBroker {
@@ -68,6 +78,7 @@ func (broker *Broker) publishTerminalCatalog(catalog contract.FeatureCatalog) co
 	for index := range catalog.Roots {
 		catalog.Roots[index].Terminal = catalog.Roots[index].Terminal && available
 	}
+	catalog.DockerExec = catalog.DockerExec && available
 	if available {
 		catalog.TerminalEpoch = state.epoch
 	}
@@ -81,6 +92,13 @@ func terminalRoot(catalog contract.FeatureCatalog, root string) bool {
 		}
 	}
 	return false
+}
+
+func terminalSelectionAllowed(catalog contract.FeatureCatalog, request contract.TerminalOpen) bool {
+	if request.Container != "" {
+		return catalog.DockerExec && catalog.DockerRead && request.Root == ""
+	}
+	return terminalRoot(catalog, request.Root)
 }
 
 func (record *terminalRecord) view(cursor *uint64) (contract.TerminalView, error) {
@@ -123,7 +141,7 @@ func (broker *Broker) terminalOperator(path string, raw []byte, admission operat
 		}
 		catalog, exists := state.catalogs[request.Target.Node]
 		if !now.Before(request.Deadline) || request.Deadline.Sub(now) > contract.FeatureLifetime || !exists ||
-			catalog.Target != request.Target || !broker.featureCatalogCurrent(catalog) || !terminalRoot(catalog, request.Root) {
+			catalog.Target != request.Target || !broker.featureCatalogCurrent(catalog) || !terminalSelectionAllowed(catalog, request) {
 			return nil, errors.New("terminal target, grant, or open deadline is unavailable")
 		}
 		retained, onNode := 0, 0
@@ -188,6 +206,7 @@ func (broker *Broker) terminalOperator(path string, raw []byte, admission operat
 	}
 	if path == "/v1/terminal-close" {
 		record.close = true
+		record.notify()
 		if record.state == "queued" {
 			record.state, record.reason = "closed", "closed"
 			if record.input != nil {
@@ -216,12 +235,14 @@ func (broker *Broker) terminalOperator(path string, raw []byte, admission operat
 			}
 			if input.Sequence == record.input.Sequence {
 				record.close = true
+				record.notify()
 			}
 			return nil, errors.New("terminal input pending or changed retry")
 		}
 		if input.Sequence != record.ackSequence+1 {
 			if input.Sequence == record.ackSequence {
 				record.close = true
+				record.notify()
 			}
 			return nil, errors.New("terminal input sequence is not next")
 		}
@@ -247,7 +268,7 @@ func (broker *Broker) terminalLease(record *terminalRecord) int64 {
 		return 0
 	}
 	catalog, exists := broker.terminalState().catalogs[record.open.Target.Node]
-	if !exists || catalog.Target != record.open.Target || !broker.featureCatalogCurrent(catalog) || !terminalRoot(catalog, record.open.Root) {
+	if !exists || catalog.Target != record.open.Target || !broker.featureCatalogCurrent(catalog) || !terminalSelectionAllowed(catalog, record.open) {
 		return 0
 	}
 	until := time.Now().Add(contract.FeatureLease)
@@ -275,7 +296,16 @@ func (broker *Broker) terminalWorker(node string, raw []byte) (any, error) {
 	}
 	exchange.Catalog.ReceivedAt = time.Now().UTC()
 	state.catalogs[node] = exchange.Catalog
-	broker.features.catalogs[node] = exchange.Catalog
+	catalog := exchange.Catalog
+	catalog.ContainerTerminals = nil
+	catalog.HostTerminals = nil
+	// Only the feature worker publishes durable recovery discovery. A terminal
+	// heartbeat renews its matching catalog without erasing those references.
+	if previous, exists := broker.features.catalogs[node]; exists && previous.Target == catalog.Target {
+		catalog.ContainerTerminals = append([]contract.ContainerTerminalReference(nil), previous.ContainerTerminals...)
+		catalog.HostTerminals = append([]contract.HostTerminalReference(nil), previous.HostTerminals...)
+	}
+	broker.features.catalogs[node] = catalog
 	for _, report := range exchange.Reports {
 		if report.Validate() != nil || report.Reference.Epoch != state.epoch || report.Reference.Target != exchange.Catalog.Target {
 			return nil, errors.New("invalid terminal report identity")
@@ -291,6 +321,11 @@ func (broker *Broker) terminalWorker(node string, raw []byte) (any, error) {
 		if record.released {
 			response.Forget = append(response.Forget, report.Reference)
 			continue
+		}
+		beforeAck, beforeState, beforeReason := record.ackSequence, record.state, record.reason
+		beforeEnd := record.finalCursor
+		if record.output != nil {
+			beforeEnd = record.output.end
 		}
 		if report.AckSequence != record.ackSequence {
 			if report.AckSequence != record.pendingSequence || report.AckDigest != record.pendingDigest {
@@ -319,6 +354,13 @@ func (broker *Broker) terminalWorker(node string, raw []byte) (any, error) {
 				record.input = nil
 			}
 		}
+		afterEnd := record.finalCursor
+		if record.output != nil {
+			afterEnd = record.output.end
+		}
+		if beforeAck != record.ackSequence || beforeState != record.state || beforeReason != record.reason || beforeEnd != afterEnd {
+			record.notify()
+		}
 		// Once native cleanup is proven and the original owner is no longer
 		// admitted, discard private output and free quota. Keep only the open
 		// tombstone until its deadline; unknown cleanup is never reclaimed here.
@@ -337,6 +379,7 @@ func (broker *Broker) terminalWorker(node string, raw []byte) (any, error) {
 		if record.open.Target != exchange.Catalog.Target {
 			if record.state != "closed" {
 				record.state, record.reason, record.close = "unknown", "authority-lost", true
+				record.notify()
 			}
 			continue
 		}
@@ -364,4 +407,100 @@ func (broker *Broker) terminalWorker(node string, raw []byte) (any, error) {
 		response.Directives = append(response.Directives, directive)
 	}
 	return response, nil
+}
+
+// completeContainerTerminalRecovery runs under the broker's existing request
+// lock after authenticated feature completion. It acknowledges only verified
+// closure of the original terminal; no input is replayed or declared successful.
+func (broker *Broker) completeContainerTerminalRecovery(request contract.FeatureRequest, result contract.FeatureResult) error {
+	if request.Action != "containers.terminal-recover" || result.Status != "success" {
+		return nil
+	}
+	var receipt struct {
+		Schema     string                     `json:"schema"`
+		Reference  contract.TerminalReference `json:"reference"`
+		Container  string                     `json:"container"`
+		Reconciled bool                       `json:"reconciled"`
+	}
+	if decodeFeature(result.Payload, &receipt) != nil || receipt.Schema != containerTerminalReceiptSchema ||
+		receipt.Reference.Validate() != nil || !receipt.Reconciled || len(receipt.Container) != 64 ||
+		strings.Trim(receipt.Container, "0123456789abcdef") != "" ||
+		receipt.Reference.Target.Node != request.Target.Node || receipt.Reference.Target.Fingerprint != request.Target.Fingerprint {
+		return errors.New("container terminal recovery completion changed identity")
+	}
+	if broker.terminals == nil {
+		return nil
+	}
+	record := broker.terminals.records[receipt.Reference.ID]
+	if record == nil {
+		return nil
+	}
+	if len(request.Payload) != 0 {
+		var selected terminalRecoveryPayload
+		if decodeFeature(request.Payload, &selected) != nil || receipt.Reference != selected.Reference ||
+			selected.ExpectedContainer != "" && selected.ExpectedContainer != receipt.Container {
+			return errors.New("container terminal recovery changed the reviewed selection")
+		}
+	}
+	if record.open.Reference() != receipt.Reference || record.open.Container != receipt.Container {
+		return errors.New("container terminal recovery changed the original session")
+	}
+	record.state, record.reason, record.close = "closed", "closed", true
+	record.release()
+	return nil
+}
+
+func (broker *Broker) revokeHostTerminalRecovery(request contract.FeatureRequest) error {
+	var payload hostTerminalRecoveryPayload
+	if decodeFeature(request.Payload, &payload) != nil || payload.Reference.Validate() != nil ||
+		payload.Reference.Target.Node != request.Target.Node || payload.Reference.Target.Fingerprint != request.Target.Fingerprint {
+		return errors.New("host terminal recovery changed the original paired identity")
+	}
+	if broker.terminals == nil {
+		return nil
+	}
+	record := broker.terminals.records[payload.Reference.ID]
+	if record == nil {
+		return nil
+	}
+	if record.open.Reference() != payload.Reference || record.open.Root != request.Root || record.open.Container != "" {
+		return errors.New("host terminal recovery changed the original reference or root")
+	}
+	// Preserve original ownership and input acknowledgment metadata, while
+	// permanently revoking every opening/input lease for this exact transport.
+	record.close = true
+	record.notify()
+	record.admission.deadline = time.Time{}
+	if record.input != nil {
+		clear(record.input.Data)
+		record.input = nil
+	}
+	return nil
+}
+
+func (broker *Broker) completeHostTerminalRecovery(request contract.FeatureRequest, proof contract.HostTerminalRecovery) error {
+	if request.Action != "terminal.host-recover" || proof.Validate() != nil || proof.Root != request.Root ||
+		proof.Reference.Target.Node != request.Target.Node || proof.Reference.Target.Fingerprint != request.Target.Fingerprint {
+		return errors.New("host terminal recovery proof changed paired identity or root")
+	}
+	if len(request.Payload) != 0 {
+		var payload hostTerminalRecoveryPayload
+		if decodeFeature(request.Payload, &payload) != nil || payload.Reference != proof.Reference {
+			return errors.New("host terminal recovery changed the selected reference")
+		}
+	}
+	if broker.terminals == nil {
+		return nil
+	}
+	record := broker.terminals.records[proof.Reference.ID]
+	if record == nil {
+		return nil
+	}
+	if record.open.Reference() != proof.Reference || record.open.Root != proof.Root || record.open.Container != "" {
+		return errors.New("host terminal recovery changed the original session")
+	}
+	record.close, record.state, record.reason = true, "closed", "closed"
+	record.admission.deadline = time.Time{}
+	record.release()
+	return nil
 }

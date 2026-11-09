@@ -108,6 +108,12 @@ endif()
 add_test(NAME app-remote-terminal-session COMMAND app-remote-terminal-session-test)
 set_tests_properties(app-remote-terminal-session PROPERTIES TIMEOUT 30)
 
+add_executable(app-remote-terminal-recovery-test
+    tests/RemoteTerminalRecoveryDialogTest.cpp)
+target_link_libraries(app-remote-terminal-recovery-test PRIVATE dockpipe-launcher-ui Qt6::Widgets Qt6::Test)
+add_test(NAME app-remote-terminal-recovery COMMAND app-remote-terminal-recovery-test)
+set_tests_properties(app-remote-terminal-recovery PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+
 add_executable(app-docker-remote-feature-test
     tests/DockerRemoteFeatureTest.cpp
     src/observability/presentation/DockerObservabilityWidget.cpp
@@ -140,3 +146,13 @@ add_executable(app-managed-terminal-session-test
 target_link_libraries(app-managed-terminal-session-test PRIVATE Qt6::Core Qt6::Test)
 add_test(NAME app-managed-terminal-session COMMAND app-managed-terminal-session-test)
 set_tests_properties(app-managed-terminal-session PROPERTIES TIMEOUT 30)
+
+add_executable(app-remote-workspace-files-test
+    tests/RemoteWorkspaceFilesDispatchTest.cpp
+    src/files/infrastructure/WorkspaceFilesClient.cpp
+    src/remote/infrastructure/RemoteWorkspaceFilesDispatch.cpp
+    src/remote/infrastructure/RemoteFeatureClient.cpp
+    src/catalog/infrastructure/OperatorDockpipeBinary.cpp)
+target_link_libraries(app-remote-workspace-files-test PRIVATE Qt6::Core Qt6::Test)
+add_test(NAME app-remote-workspace-files COMMAND app-remote-workspace-files-test)
+set_tests_properties(app-remote-workspace-files PROPERTIES TIMEOUT 30)

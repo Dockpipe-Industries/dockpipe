@@ -2,7 +2,9 @@ package remotecmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -52,3 +54,61 @@ func TestTerminalIntentCanonicalizesOnlyExistingNonce(t *testing.T) {
 		t.Fatal("CLI invented a launch nonce")
 	}
 }
+
+func TestContainerTerminalPreparationMustBeAcknowledgedBeforeRemoteOpen(t *testing.T) {
+	request := contract.TerminalOpen{Schema: contract.TerminalVersion, Target: contract.FeatureTarget{Node: "worker", Fingerprint: strings.Repeat("a", 64), Generation: strings.Repeat("b", 64)},
+		Epoch: strings.Repeat("c", 64), Nonce: strings.Repeat("d", 64), Deadline: time.Now().Add(time.Second), Container: strings.Repeat("e", 64), Shell: "/bin/sh", Columns: 80, Rows: 24}
+	request.ID, _ = request.Digest()
+	reference := request.Reference()
+	wrong := reference
+	wrong.ID = strings.Repeat("f", 64)
+	for _, command := range []terminalCommand{
+		{Type: "prepared-ack", Reference: &wrong},
+		{Type: "input", Sequence: 1, Data: []byte("never execute")},
+	} {
+		data, _ := json.Marshal(command)
+		output := &terminalPreparationOutput{}
+		// A nil client deliberately proves that invalid acknowledgments cannot
+		// reach remote open. No socket or authenticated request is constructed.
+		err := streamTerminal(context.Background(), nil, request, io.NopCloser(bytes.NewReader(append(data, '\n'))), output)
+		if err == nil {
+			t.Fatal("unacknowledged container open reached effects")
+		}
+		var event terminalEvent
+		if json.Unmarshal(bytes.TrimSpace(output.Bytes()), &event) != nil || event.Type != "prepared" || event.Reference == nil || *event.Reference != reference {
+			t.Fatal("canonical original reference was not prepared")
+		}
+	}
+	valid, _ := json.Marshal(terminalCommand{Type: "prepared-ack", Reference: &reference})
+	if _, err := decodeTerminalCommand(valid); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestHostTerminalOptInPreparationPreventsOpenWithoutExactAcknowledgment(t *testing.T) {
+	request := contract.TerminalOpen{Schema: contract.TerminalVersion, Target: contract.FeatureTarget{Node: "worker", Fingerprint: strings.Repeat("a", 64), Generation: strings.Repeat("b", 64)},
+		Epoch: strings.Repeat("c", 64), Root: "project", Nonce: strings.Repeat("d", 64), Deadline: time.Now().Add(time.Second), Columns: 80, Rows: 24}
+	request.ID, _ = request.Digest()
+	reference := request.Reference()
+	wrong := reference
+	wrong.Target.Generation = strings.Repeat("f", 64)
+	bad, _ := json.Marshal(terminalCommand{Type: "prepared-ack", Reference: &wrong})
+	for _, data := range [][]byte{nil, append(bad, '\n')} {
+		output := &terminalPreparationOutput{}
+		// A nil client proves no authenticated remote-open call is possible.
+		if err := streamTerminalPrepared(context.Background(), nil, request, io.NopCloser(bytes.NewReader(data)), output, true); err == nil {
+			t.Fatal("host opening reached effects without its exact prepared ACK")
+		}
+		var event terminalEvent
+		if json.Unmarshal(bytes.TrimSpace(output.Bytes()), &event) != nil || event.Type != "prepared" || event.Reference == nil || *event.Reference != reference {
+			t.Fatal("host preparation did not retain the canonical original reference")
+		}
+	}
+	if err := Run([]string{"nodes", "--prepare"}, nil); err == nil {
+		t.Fatal("terminal preparation flag broadened an unrelated command")
+	}
+}
+
+type terminalPreparationOutput struct{ bytes.Buffer }
+
+func (output *terminalPreparationOutput) Close() error { return nil }

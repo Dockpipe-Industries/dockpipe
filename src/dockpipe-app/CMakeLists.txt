@@ -340,6 +340,7 @@ else()
     message(FATAL_ERROR "Unsupported Browser SDK ABI profile: ${DOCKPIPE_BROWSER_ABI_PROFILE}")
 endif()
 set(DOCKPIPE_UI_SOURCES
+    src/remote/presentation/RemoteFeatureRecoveryDialog.cpp
     src/remote/presentation/WorkspaceMachineMenu.cpp
     src/files/infrastructure/WorkspaceFilesClient.cpp src/files/presentation/WorkspaceFileModel.cpp src/files/presentation/WorkspaceFilesController.cpp
     src/dashboards/presentation/DashboardFilesController.cpp
@@ -840,7 +841,8 @@ if(BUILD_TESTING)
     target_include_directories(git-commit-queue-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
     add_test(NAME git-commit-queue COMMAND git-commit-queue-test)
     set_tests_properties(git-commit-queue PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
-    add_executable(git-repository-conflict-test tests/GitRepositoryConflictTest.cpp dockpipe-launcher.qrc)
+    add_executable(git-repository-conflict-test tests/GitRepositoryConflictTest.cpp
+        src/git/presentation/ProjectGitWidget.cpp dockpipe-launcher.qrc)
     target_link_libraries(git-repository-conflict-test PRIVATE dockpipe-launcher-ui Qt6::Test)
     target_include_directories(git-repository-conflict-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
     if(WIN32)

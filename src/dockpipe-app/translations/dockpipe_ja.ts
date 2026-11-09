@@ -582,7 +582,6 @@ Browse packages to add the tools you use.</source>
             <source>Project scope stays inside the selected project, including symbolic links.</source>
             <translation>プロジェクトの範囲は、シンボリックリンクも含め選択したプロジェクト内に制限されます。</translation>
         </message>
-        
         <message>
             <location line="+17" />
             <source>Open a project to browse its files.</source>
@@ -919,7 +918,6 @@ Independent repository · add multiple views for cross-repo work</source>
             <source>Desktop background unavailable: %1 Your previous background was kept.</source>
             <translation>デスクトップ背景を利用できません: %1 以前の背景は保持されています。</translation>
         </message>
-    
         <message>
             <location line="+219" />
             <source>Remote workflow launch is unavailable for this view.</source>
@@ -1704,10 +1702,8 @@ Independent repository · add multiple views for cross-repo work</source>
             <source>%1 of %2 machines · access status does not imply online</source>
             <translation>マシン %2 台中 %1 台 · アクセス状態はオンラインを意味しません</translation>
         </message>
-    
-        
         <message>
-            <location filename="../src/dashboards/presentation/DashboardMachineContext.cpp" line="70"/>
+            <location filename="../src/dashboards/presentation/DashboardMachineContext.cpp" line="70" />
             <source>Save open drafts and wait for active operations before changing machines.</source>
             <translation>マシンを変更する前に、開いている下書きを保存し、実行中の操作を完了してください。</translation>
         </message>
@@ -3090,26 +3086,6 @@ Refresh to load inventory from the selected machine.</source>
             <translation>ボリュームを選択して使用状況の詳細を確認します。</translation>
         </message>
         <message>
-            <location line="+33" />
-            <source>Docker query exceeded its 15-second or 32-MiB response limit.</source>
-            <translation>Docker のクエリが応答の上限 15 秒または 32 MiB を超えました。</translation>
-        </message>
-        <message>
-            <location line="+103" />
-            <source>Some Docker relationships could not be read. Inspect the selected object for details.</source>
-            <translation>一部の Docker の関連情報を読み取れませんでした。選択したオブジェクトを検査して詳細を確認してください。</translation>
-        </message>
-        <message>
-            <location line="+3" />
-            <source>Relationships unavailable: %1</source>
-            <translation>関連情報を利用できません: %1</translation>
-        </message>
-        <message>
-            <location line="+3" />
-            <source> Relationships shown for the first 256 containers. Full inventory is available in Details &amp; actions.</source>
-            <translation> 最初の 256 コンテナーの関連情報を表示しています。全体の一覧は「詳細と操作」で確認できます。</translation>
-        </message>
-        <message>
             <location line="+21" />
             <location line="+4" />
             <location line="+24" />
@@ -3219,7 +3195,6 @@ Refresh to load inventory from the selected machine.</source>
             <source>Docker refresh completed with errors.</source>
             <translation>Docker の更新がエラー付きで完了しました。</translation>
         </message>
-        
         <message>
             <location line="-62" />
             <source>Loading container details…</source>
@@ -3376,7 +3351,6 @@ Refresh to load inventory from the selected machine.</source>
             <source>%1 · Docker monitoring unavailable or stale. On the paired worker, enable: dockpipe remote monitoring --system --docker. The worker and broker must support monitoring.</source>
             <translation>%1 · Docker の監視を利用できないか古い状態です。ペア設定済みワーカーで有効にしてください: dockpipe remote monitoring --system --docker. ワーカーとブローカーが監視に対応している必要があります。</translation>
         </message>
-        
         <message>
             <location line="+12" />
             <source>Remote Docker inventory unavailable. </source>
@@ -3396,11 +3370,6 @@ Refresh to load inventory from the selected machine.</source>
             <location line="+2" />
             <source> · Remote inventory · read-only</source>
             <translation> · リモートの一覧 · 読み取り専用</translation>
-        </message>
-    
-        <message>
-            <source>Remote inventory shares topology. Container logs and detailed inspection are unavailable for this machine.</source>
-            <translation>リモートインベントリはトポロジを共有します。このマシンではコンテナーのログと詳細な検査を利用できません。</translation>
         </message>
         <message>
             <source>Container control requires a supported action and an exact full container ID.</source>
@@ -3449,6 +3418,54 @@ Refresh to load inventory from the selected machine.</source>
         <message>
             <source> · Remote inventory</source>
             <translation> · リモートインベントリ</translation>
+        </message>
+        <message>
+            <source>Container inventory exceeds its object limit.</source>
+            <translation>コンテナー一覧がオブジェクト数の上限を超えています。</translation>
+        </message>
+        <message>
+            <source>Container query cancelled or exceeded its deadline or response limit.</source>
+            <translation>コンテナーの照会がキャンセルされたか、期限または応答の上限を超えました。</translation>
+        </message>
+        <message>
+            <source>Container query cancelled or the trusted Dockpipe CLI is unavailable.</source>
+            <translation>コンテナーの照会がキャンセルされたか、信頼された Dockpipe CLI を利用できません。</translation>
+        </message>
+        <message>
+            <source>Could not inspect resource: %1</source>
+            <translation>リソースを検査できませんでした: %1</translation>
+        </message>
+        <message>
+            <source>Could not load container logs: %1</source>
+            <translation>コンテナーのログを読み込めませんでした: %1</translation>
+        </message>
+        <message>
+            <source>Could not send the container request.</source>
+            <translation>コンテナーへの要求を送信できませんでした。</translation>
+        </message>
+        <message>
+            <source>Detailed inspection requires the paired worker's Docker read feature.</source>
+            <translation>詳細な検査には、ペアリング済みワーカーの Docker 読み取り機能が必要です。</translation>
+        </message>
+        <message>
+            <source>Invalid container detail response.</source>
+            <translation>コンテナーの詳細応答が無効です。</translation>
+        </message>
+        <message>
+            <source>Invalid log receipt.</source>
+            <translation>ログの受領証が無効です。</translation>
+        </message>
+        <message>
+            <source>Invalid resource receipt.</source>
+            <translation>リソースの受領証が無効です。</translation>
+        </message>
+        <message>
+            <source>Loading resource details…</source>
+            <translation>リソースの詳細を読み込み中…</translation>
+        </message>
+        <message>
+            <source>Select for details</source>
+            <translation>選択して詳細を表示</translation>
         </message>
     </context>
     <context>
@@ -4603,7 +4620,6 @@ Remaining:
             <source>Resolve selected conflict</source>
             <translation>選択した競合を解決</translation>
         </message>
-    
         <message>
             <source>The remote conflict editor context is unavailable. Select the authorized machine and root again.</source>
             <translation>リモート競合エディターのコンテキストを利用できません。許可されたマシンとルートを選択し直してください。</translation>
@@ -5708,7 +5724,6 @@ If a workflow needs external tools, you install them yourself from official sour
             <source>Show</source>
             <translation>表示</translation>
         </message>
-        
         <message>
             <location line="+63" />
             <source>No project selected</source>
@@ -6212,16 +6227,23 @@ Ctrl / ⌘ + `     出力を切り替え
             <source>Cloned workflow to %1</source>
             <translation>ワークフローを %1 に複製しました</translation>
         </message>
-    
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="112"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="112" />
             <source>This machine or root changed. Refresh machines and select it again.</source>
             <translation>このマシンまたはルートが変更されました。マシンを更新して再度選択してください。</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="124"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="124" />
             <source>Save or discard open drafts and finish active operations before changing machines.</source>
             <translation>マシンを変更する前に、開いている下書きを保存または破棄し、実行中の操作を完了してください。</translation>
+        </message>
+        <message>
+            <source>Choose the computer with the shared machine selector.</source>
+            <translation>共通のマシン選択でコンピューターを選んでください。</translation>
+        </message>
+        <message>
+            <source>Container terminal · %1 · %2</source>
+            <translation>コンテナーターミナル · %1 · %2</translation>
         </message>
     </context>
     <context>
@@ -7107,7 +7129,6 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
             <source>Folder name</source>
             <translation>フォルダー名</translation>
         </message>
-        
         <message>
             <location line="+20" />
             <location line="+1" />
@@ -7304,7 +7325,6 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
             <source>Workflow YAML · shared with the canvas and YAML view</source>
             <translation>ワークフロー YAML · キャンバスおよび YAML ビューと共有</translation>
         </message>
-        
         <message>
             <location line="+8" />
             <source>This file is binary, is not UTF-8, or exceeds the 1 MiB editor limit.</source>
@@ -7320,7 +7340,6 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
             <source>The file exceeds 1 MiB or its location changed. Your edits are still here.</source>
             <translation>ファイルが 1 MiB を超えているか、場所が変更されました。編集内容は保持されています。</translation>
         </message>
-        
         <message>
             <location line="+8" />
             <source>Cannot save: %1</source>
@@ -7331,12 +7350,6 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
             <source>Saved %1</source>
             <translation>%1 を保存しました</translation>
         </message>
-        
-        
-        
-        
-        
-        
         <message>
             <location line="+11" />
             <source>No file open</source>
@@ -7377,20 +7390,19 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
             <source>%1   ·   UTF-8   ·   %2                         Ln %3, Col %4</source>
             <translation>%1   ·   UTF-8   ·   %2                         行 %3、列 %4</translation>
         </message>
-    
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="141"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="141" />
             <source>Refresh files</source>
             <translation>ファイルを更新</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="319"/>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="353"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="319" />
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="353" />
             <source>A file operation is still running. Your open files are preserved.</source>
             <translation>ファイル操作がまだ実行中です。開いているファイルは保持されています。</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="534"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="534" />
             <source>Invalid workspace file response.</source>
             <translation>ワークスペースファイルの応答が無効です。</translation>
         </message>
@@ -7414,16 +7426,14 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
             <translation>Git 操作に失敗したかキャンセルされました。更新してから再試行してください。
 %1</translation>
         </message>
-    
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="552"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="552" />
             <source>The selected remote Git context is unavailable. Select an authorized machine and root, then refresh.</source>
             <translation>選択したリモート Git コンテキストを利用できません。許可されたマシンとルートを選択し、更新してください。</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="585"/>
-            <source>The remote Git outcome is unavailable or uncertain. Refresh the captured machine and root before another write; the operation was not retried.</source>
-            <translation>リモート Git の結果を取得できないか、結果が不確かです。次の書き込みの前に、取得済みのマシンとルートを更新してください。操作は再試行されていません。</translation>
+            <source>The remote Git outcome is unavailable or uncertain. Refresh the captured machine and root before another write; inspect Uncertain operations when a mutation is retained.</source>
+            <translation>リモート Git の結果を取得できないか、結果が不確定です。次の書き込みの前に、記録されたマシンとルートを更新してください。変更が保持されている場合は「不確定な操作」を確認してください。</translation>
         </message>
     </context>
     <context>
@@ -8048,19 +8058,18 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
             <source>Select a script inside the workspace folder. This file was shared separately by Flatpak, so its temporary document path cannot be saved in a portable workflow.</source>
             <translation>ワークスペースフォルダー内のスクリプトを選択してください。このファイルは Flatpak で個別に共有されているため、一時的なドキュメントパスを移植可能なワークフローに保存できません。</translation>
         </message>
-    
         <message>
-            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="22"/>
+            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="22" />
             <source>Wait for all Git operations before changing machines or roots.</source>
             <translation>マシンまたはルートを変更する前に、すべての Git 操作が完了するまでお待ちください。</translation>
         </message>
         <message>
-            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="29"/>
+            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="29" />
             <source>Save or discard the conflict draft before changing machines or roots.</source>
             <translation>マシンまたはルートを変更する前に、競合の下書きを保存するか破棄してください。</translation>
         </message>
         <message>
-            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="76"/>
+            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="76" />
             <source>Select an absolute local project folder.</source>
             <translation>絶対パスのローカルプロジェクトフォルダーを選択してください。</translation>
         </message>
@@ -10376,12 +10385,6 @@ This machine is no longer in the available inventory.</source>
             <source>This terminal is already running.</source>
             <translation>このターミナルは既に実行中です。</translation>
         </message>
-        
-        
-        
-        
-        
-        
         <message>
             <location line="+13" />
             <source>Could not configure the interactive terminal device.</source>
@@ -10443,13 +10446,11 @@ This machine is no longer in the available inventory.</source>
             <source>Terminal cleanup reached its process-inspection limit. Some detached jobs may remain.</source>
             <translation>ターミナルのクリーンアップがプロセス検査の上限に達しました。一部の切り離されたジョブが残る可能性があります。</translation>
         </message>
-    
         <message>
             <location line="+16" />
             <source>Host terminal bridges are unavailable on Windows.</source>
             <translation>Windowsではホストターミナルブリッジを利用できません。</translation>
         </message>
-    
         <message>
             <location line="+4" />
             <source>The prepared terminal launch is invalid.</source>
@@ -11061,14 +11062,13 @@ $ 次のコマンドを入力してください</translation>
             <source>Restart DockPipe to enable terminal transparency with compatible browser rendering.</source>
             <translation>対応するブラウザー描画とターミナルの透明化を有効にするには DockPipe を再起動してください。</translation>
         </message>
-    
         <message>
-            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="456"/>
+            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="456" />
             <source>Connecting to remote terminal…</source>
             <translation>リモートターミナルに接続中…</translation>
         </message>
         <message>
-            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="374"/>
+            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="374" />
             <source>Remote terminal access is unavailable for this machine or root.</source>
             <translation>このマシンではリモートターミナルにアクセスできません。</translation>
         </message>
@@ -11503,11 +11503,6 @@ If this Dockpipe does not support the editor, update the CLI and GUI together.</
             <translation>ワークフローを読み取れないか、エディターの上限 1 MiB を超えています。</translation>
         </message>
         <message>
-            <location line="+6" />
-            <source>Workflow must be UTF-8. The file was not changed.</source>
-            <translation>ワークフローは UTF-8 である必要があります。ファイルは変更していません。</translation>
-        </message>
-        <message>
             <location line="+42" />
             <location line="+287" />
             <source>Workflow exceeds the 1 MiB editor limit.</source>
@@ -11574,34 +11569,9 @@ If this Dockpipe does not support the editor, update the CLI and GUI together.</
             <translation>ワークフロー YAML (*.yml *.yaml)</translation>
         </message>
         <message>
-            <location line="+5" />
-            <source>Open the real workflow file instead of overwriting a symbolic link.</source>
-            <translation>シンボリックリンクを上書きせず、実際のワークフローファイルを開いてください。</translation>
-        </message>
-        <message>
             <location line="+8" />
             <source>Cannot safely read the existing workflow.</source>
             <translation>既存のワークフローを安全に読み取れません。</translation>
-        </message>
-        <message>
-            <location line="+5" />
-            <source>The existing workflow grew beyond the editor limit. Your draft has been kept.</source>
-            <translation>既存のワークフローがエディターの上限を超えました。下書きは保持されています。</translation>
-        </message>
-        <message>
-            <location line="+4" />
-            <source>This workflow changed on disk. Open it again before saving; your draft has been kept.</source>
-            <translation>このワークフローはディスク上で変更されました。保存前に再度開いてください。下書きは保持されています。</translation>
-        </message>
-        <message>
-            <location line="+8" />
-            <source>The file changed during validation. Your draft has been kept.</source>
-            <translation>検証中にファイルが変更されました。下書きは保持されています。</translation>
-        </message>
-        <message>
-            <location line="+5" />
-            <source>Cannot save workflow: %1</source>
-            <translation>ワークフローを保存できません: %1</translation>
         </message>
         <message>
             <location line="+13" />
@@ -11628,16 +11598,25 @@ If this Dockpipe does not support the editor, update the CLI and GUI together.</
             <source>Apply your inspector changes before changing selection, switching views, or saving.</source>
             <translation>選択の変更、ビューの切り替え、保存の前にインスペクターの変更を適用してください。</translation>
         </message>
-    
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="247"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="247" />
             <source>Could not save all supporting files. Open Files to review the error; your drafts are preserved.</source>
             <translation>すべてのサポートファイルを保存できませんでした。ファイルを開いてエラーを確認してください。下書きは保持されています。</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="253"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="253" />
             <source>The workflow or supporting files changed while saving. Review them before running.</source>
             <translation>保存中にワークフローまたはサポートファイルが変更されました。実行する前に確認してください。</translation>
+        </message>
+        <message>
+            <source>Cannot save workflow: %1
+The file may have changed on disk. Your draft has been kept; refresh before retrying.</source>
+            <translation>ワークフローを保存できません: %1
+ディスク上のファイルが変更された可能性があります。下書きは保持されています。再試行の前に更新してください。</translation>
+        </message>
+        <message>
+            <source>The workflow changed during validation. Your draft has been kept.</source>
+            <translation>検証中にワークフローが変更されました。下書きは保持されています。</translation>
         </message>
     </context>
     <context>
@@ -12026,19 +12005,28 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
             <translation>前回のディレクトリ読み取りは停止処理中です。しばらくしてから再試行してください。</translation>
         </message>
         <message>
-            <location line="+27" />
-            <source>Cannot start the directory reader: %1</source>
-            <translation>ディレクトリリーダーを開始できません: %1</translation>
+            <source>Binary file · Open in the file viewer for details.</source>
+            <translation>バイナリファイル · 詳細はファイルビューアーで開いて確認してください。</translation>
         </message>
         <message>
-            <location line="+20" />
-            <source>Directory response exceeds the 2 MiB limit. Reduce the page size.</source>
-            <translation>ディレクトリの応答が上限 2 MiB を超えています。ページサイズを小さくしてください。</translation>
+            <source>Directory page exceeds the graph node limit.</source>
+            <translation>ディレクトリのページがグラフのノード上限を超えています。</translation>
         </message>
         <message>
-            <location line="+22" />
-            <source>Directory read failed. Refresh to retry.</source>
-            <translation>ディレクトリの読み取りに失敗しました。更新して再試行してください。</translation>
+            <source>Directory reader returned a different workspace path.</source>
+            <translation>ディレクトリリーダーが異なるワークスペースパスを返しました。</translation>
+        </message>
+        <message>
+            <source>Invalid directory page response.</source>
+            <translation>ディレクトリページの応答が無効です。</translation>
+        </message>
+        <message>
+            <source>Invalid local workspace graph request.</source>
+            <translation>ローカルワークスペースグラフの要求が無効です。</translation>
+        </message>
+        <message>
+            <source>Non-UTF-8 file · Text preview unavailable.</source>
+            <translation>UTF-8 以外のファイル · テキストプレビューは利用できません。</translation>
         </message>
     </context>
     <context>
@@ -12459,65 +12447,85 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     <context>
         <name>RemoteFeatureClient</name>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="64"/>
-            <source>Remote operation timed out. Refresh state before retrying a write.</source>
-            <translation>リモート操作がタイムアウトしました。書き込みを再試行する前に状態を更新してください。</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="105"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="105" />
             <source>Invalid remote feature request bounds.</source>
             <translation>リモート機能リクエストの上限が無効です。</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="131"/>
-            <source>Remote request delivery is uncertain. Refresh state before retrying a write.</source>
-            <translation>リモートリクエストの配信結果が不確かです。書き込みを再試行する前に状態を更新してください。</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="138"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="138" />
             <source>Could not start the trusted Dockpipe remote client.</source>
             <translation>信頼された Dockpipe リモートクライアントを起動できませんでした。</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="159"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="159" />
             <source>Remote response exceeded its transport limit.</source>
             <translation>リモート応答が転送上限を超えました。</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="182"/>
-            <source>Remote result is unavailable. Refresh state before retrying a write.</source>
-            <translation>リモート結果を利用できません。書き込みを再試行する前に状態を更新してください。</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="187"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="187" />
             <source>Remote machine catalog is unavailable.</source>
             <translation>リモートマシンカタログを利用できません。</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="199"/>
-            <source>Remote result identity changed. Refresh the selected machine.</source>
-            <translation>リモート結果の ID が変わりました。選択したマシンを更新してください。</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="211"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="211" />
             <source>Remote result does not match the captured operation.</source>
             <translation>リモート結果が取得済みの操作と一致しません。</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="224"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="224" />
             <source>Cancellation requested for the original remote operation. Refresh state before retrying a write.</source>
             <translation>元のリモート操作のキャンセルが要求されました。書き込みを再試行する前に状態を更新してください。</translation>
+        </message>
+        <message>
+            <source>Cannot retain remote mutation recovery metadata. Resolve saved operations or repair settings before another write.</source>
+            <translation>リモート変更の復旧メタデータを保持できません。次の書き込みの前に、保存された操作を解決するか設定を修復してください。</translation>
+        </message>
+        <message>
+            <source>Core could not prepare the exact captured remote operation. No operation was dispatched.</source>
+            <translation>コアは記録されたリモート操作を正確に準備できませんでした。操作は送信されていません。</translation>
+        </message>
+        <message>
+            <source>Invalid recovery receipt. The original operation remains uncertain.</source>
+            <translation>復旧の受領証が無効です。元の操作は不確定なままです。</translation>
+        </message>
+        <message>
+            <source>Prepared remote request exceeds its transport limit.</source>
+            <translation>準備されたリモート要求が転送の上限を超えています。</translation>
+        </message>
+        <message>
+            <source>Remote operation preparation exhausted its deadline.</source>
+            <translation>リモート操作の準備中に期限に達しました。</translation>
+        </message>
+        <message>
+            <source>Remote operation timed out. Inspect its original receipt before another write.</source>
+            <translation>リモート操作がタイムアウトしました。次の書き込みの前に元の受領証を確認してください。</translation>
+        </message>
+        <message>
+            <source>Remote request delivery is uncertain. Inspect the original operation.</source>
+            <translation>リモート要求の配送状況が不確定です。元の操作を確認してください。</translation>
+        </message>
+        <message>
+            <source>Remote result identity changed. Inspect the original captured operation.</source>
+            <translation>リモート結果の識別情報が変わりました。記録された元の操作を確認してください。</translation>
+        </message>
+        <message>
+            <source>Remote result is unavailable. Inspect the original operation before another write.</source>
+            <translation>リモート結果を取得できません。次の書き込みの前に元の操作を確認してください。</translation>
+        </message>
+        <message>
+            <source>The recovery strategy does not match the captured mutation.</source>
+            <translation>復旧方法が記録された変更と一致しません。</translation>
         </message>
     </context>
     <context>
         <name>WorkspaceFileModel</name>
         <message>
-            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="227"/>
+            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="227" />
             <source>Too many pending workspace directory requests; refresh to continue.</source>
             <translation>保留中のワークスペースディレクトリリクエストが多すぎます。続行するには更新してください。</translation>
         </message>
         <message>
-            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="273"/>
+            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="273" />
             <source>Invalid workspace directory page.</source>
             <translation>ワークスペースディレクトリのページが無効です。</translation>
         </message>
@@ -12525,63 +12533,63 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     <context>
         <name>WorkspaceFilesClient</name>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="44"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="44" />
             <source>Workspace file operation timed out; its effect may need refresh.</source>
             <translation>ワークスペースファイル操作がタイムアウトしました。影響を確認するには更新してください。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="84"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="84" />
             <source>A workspace file operation is already running.</source>
             <translation>ワークスペースファイル操作はすでに実行中です。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="90"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="90" />
             <source>Workspace file request exceeds its transport contract.</source>
             <translation>ワークスペースファイルリクエストが転送契約の上限を超えています。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="96"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="96" />
             <source>The selected remote Files context is unavailable.</source>
             <translation>選択したリモートの「ファイル」コンテキストを利用できません。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="100"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="100" />
             <source>Workspace Files requires an absolute selected root.</source>
             <translation>ワークスペースファイルには、絶対パスの選択済みルートが必要です。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="152"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="152" />
             <source>Could not send the workspace file request.</source>
             <translation>ワークスペースファイルリクエストを送信できませんでした。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="168"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="168" />
             <source>Workspace file helper failed (exit %1). Check the installed Dockpipe CLI.</source>
             <translation>ワークスペースファイルヘルパーが失敗しました（終了コード %1）。インストール済みの Dockpipe CLI を確認してください。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="176"/>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="247"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="176" />
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="247" />
             <source>Invalid workspace file response.</source>
             <translation>ワークスペースファイルの応答が無効です。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="196"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="196" />
             <source>Workspace file response exceeded its transport limit.</source>
             <translation>ワークスペースファイルの応答が転送上限を超えました。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="206"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="206" />
             <source>Workspace file operation was cancelled; refresh before retrying a write.</source>
             <translation>ワークスペースファイル操作はキャンセルされました。書き込みを再試行する前に更新してください。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="270"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="270" />
             <source>The workspace file context changed before completion.</source>
             <translation>完了前にワークスペースファイルのコンテキストが変更されました。</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteWorkspaceFilesDispatch.cpp" line="34"/>
+            <location filename="../src/remote/infrastructure/RemoteWorkspaceFilesDispatch.cpp" line="34" />
             <source>Remote file result is uncertain. Refresh before retrying a write.</source>
             <translation>リモートファイルの結果が不確かです。書き込みを再試行する前に更新してください。</translation>
         </message>
@@ -12589,55 +12597,55 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     <context>
         <name>WorkspaceMachineMenu</name>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="50"/>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="92"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="50" />
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="92" />
             <source>Follow main machine</source>
             <translation>メインマシンに従う</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="51"/>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="85"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="51" />
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="85" />
             <source>Shared machine selection. Dashboard widgets can choose their own machine.</source>
             <translation>共有マシンの選択です。ダッシュボードウィジェットでは個別のマシンを選択できます。</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="55"/>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="97"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="55" />
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="97" />
             <source>This computer</source>
             <translation>このコンピューター</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="56"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="56" />
             <source>Choose the machine for Containers, Files, Git, Terminal and the dashboard.</source>
             <translation>コンテナー、ファイル、Git、ターミナル、ダッシュボードに使うマシンを選択します。</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="81"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="81" />
             <source> · Locked</source>
             <translation> · ロック中</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="83"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="83" />
             <source> · Unavailable</source>
             <translation> · 利用不可</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="103"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="103" />
             <source>Unlock remote access…</source>
             <translation>リモートアクセスをロック解除…</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="106"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="106" />
             <source>No remote workspaces available</source>
             <translation>利用可能なリモートワークスペースはありません</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="127"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="127" />
             <source>Containers</source>
             <translation>コンテナー</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="133"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="133" />
             <source>Refresh machines</source>
             <translation>マシンを更新</translation>
         </message>
@@ -12645,49 +12653,41 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     <context>
         <name>RemoteTerminalSession</name>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="86"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="114"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="86" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="114" />
             <source>Could not start the trusted remote terminal client.</source>
             <translation>信頼されたリモートターミナルクライアントを起動できませんでした。</translation>
         </message>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="69"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="69" />
             <source>Remote terminal access is unavailable for this machine or root.</source>
             <translation>このマシンまたはルートではリモートターミナルにアクセスできません。</translation>
         </message>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="154"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="176"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="183"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="192"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="203"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="217"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="223"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="248"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="257"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="154" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="176" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="183" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="192" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="203" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="217" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="223" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="248" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="257" />
             <source>The remote terminal returned an invalid response.</source>
             <translation>リモートターミナルから無効な応答が返されました。</translation>
         </message>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="38"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="124"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="199"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="245"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="312"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="321"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="329"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="38" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="124" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="199" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="245" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="312" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="321" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="329" />
             <source>The remote terminal connection was lost. Pending input was not replayed.</source>
             <translation>リモートターミナルへの接続が失われました。保留中の入力は再送されていません。</translation>
         </message>
     </context>
-
-
-
-
-
-
-
-
     <context>
         <name>ManagedTerminalSession</name>
         <message>
@@ -12748,6 +12748,111 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
             <location line="+35" />
             <source>The terminal requires an existing directory and an absolute executable path.</source>
             <translation>ターミナルには既存のディレクトリと実行ファイルの絶対パスが必要です。</translation>
+        </message>
+    </context>
+    <context>
+        <name>RemoteFeatureRecoveryDialog</name>
+        <message>
+            <source>Choose a retained operation.</source>
+            <translation>保持された操作を選んでください。</translation>
+        </message>
+        <message>
+            <source>Close</source>
+            <translation>閉じる</translation>
+        </message>
+        <message>
+            <source>Contacting the original captured machine…</source>
+            <translation>記録された元のマシンに接続中…</translation>
+        </message>
+        <message>
+            <source>Inspect the original operation before another write. Cancellation does not prove that a mutation had no effect.</source>
+            <translation>次の書き込みの前に元の操作を確認してください。キャンセルしても、変更に影響がなかったことの証明にはなりません。</translation>
+        </message>
+        <message>
+            <source>Machine: %1
+Fingerprint: %2
+Generation: %3
+Root: %4
+Action: %5
+Operation: %6</source>
+            <translation>マシン: %1
+フィンガープリント: %2
+世代: %3
+ルート: %4
+アクション: %5
+操作: %6</translation>
+        </message>
+        <message>
+            <source>No uncertain mutations are retained.</source>
+            <translation>不確定な変更は保持されていません。</translation>
+        </message>
+        <message>
+            <source>Original operation status: %1. No operation was replayed.</source>
+            <translation>元の操作の状態: %1。操作は再実行されていません。</translation>
+        </message>
+        <message>
+            <source>Refresh status</source>
+            <translation>状態を更新</translation>
+        </message>
+        <message>
+            <source>Request cancellation</source>
+            <translation>キャンセルを要求</translation>
+        </message>
+        <message>
+            <source>The mutation outcome remains uncertain. Refresh its original status before another write.</source>
+            <translation>変更の結果は不確定なままです。次の書き込みの前に元の状態を更新してください。</translation>
+        </message>
+        <message>
+            <source>Uncertain operations…</source>
+            <translation>不確定な操作…</translation>
+        </message>
+        <message>
+            <source>Uncertain remote operations</source>
+            <translation>不確定なリモート操作</translation>
+        </message>
+        <message>
+            <source>unknown</source>
+            <translation>不明</translation>
+        </message>
+        <message>
+            <source>Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write.</source>
+            <translation>クリーンアップを確認済みですが、変更の結果は不明のままです。次の書き込みの前に「ファイル」、Git、またはコンテナープロバイダーを更新し、影響を受けた状態を確認してください。</translation>
+        </message>
+        <message>
+            <source>Container terminal cleanup remains uncertain. The original session reference is retained.</source>
+            <translation>コンテナーターミナルのクリーンアップは不確定なままです。元のセッション参照は保持されています。</translation>
+        </message>
+        <message>
+            <source>Container terminal cleanup was verified for the original captured session.</source>
+            <translation>記録された元のセッションについて、コンテナーターミナルのクリーンアップを確認しました。</translation>
+        </message>
+        <message>
+            <source>Explicitly remove the original exact container after native client cleanup. Requires the worker's independent Docker recovery grant. Volumes and images are retained.</source>
+            <translation>ネイティブクライアントのクリーンアップ後に、元のコンテナーそのものを明示的に削除します。ワーカーの独立した Docker 復旧権限が必要です。ボリュームとイメージは保持されます。</translation>
+        </message>
+        <message>
+            <source>Remove container %1 on %2 to fence delayed daemon work for operation %3? This removes the container and its writable layer. Volumes and images are retained. The original mutation outcome remains unknown.</source>
+            <translation>操作 %3 の遅延したデーモン処理を遮断するため、%2 上のコンテナー %1 を削除しますか？コンテナーとその書き込み可能レイヤーが削除されます。ボリュームとイメージは保持されます。元の変更の結果は不明のままです。</translation>
+        </message>
+        <message>
+            <source>Retire container…</source>
+            <translation>コンテナーを廃止…</translation>
+        </message>
+        <message>
+            <source>Retire the captured container?</source>
+            <translation>記録されたコンテナーを廃止しますか？</translation>
+        </message>
+        <message>
+            <source>Revoke the original invocation and verify its native cleanup evidence. Boot-fenced workers require a host reboot for uncertain process-backed operations. The mutation outcome remains unknown.</source>
+            <translation>元の呼び出しを失効させ、ネイティブなクリーンアップの証拠を確認します。起動境界で保護されたワーカーでは、プロセスを伴う不確定な操作に対してホストの再起動が必要です。変更の結果は不明のままです。</translation>
+        </message>
+        <message>
+            <source>Verify cleanup</source>
+            <translation>クリーンアップを確認</translation>
+        </message>
+        <message>
+            <source>Refreshing the worker's retained terminal metadata. No cleanup was requested.</source>
+            <translation>ワーカーが保持するターミナルのメタデータを更新中です。クリーンアップは要求されていません。</translation>
         </message>
     </context>
 </TS>

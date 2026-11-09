@@ -431,3 +431,24 @@ The generic broker interfaces are `remote edge-activate --state <private-root>
 pause during the recovery window. A verified fallback still means activation
 failed. See [supervised activation](runtime/dependency-lifecycle.md#supervised-local-edge-activation)
 for exact process, platform, maintenance and health limits.
+
+## Native workspace capabilities
+
+The desktop and CLI share the typed boundaries documented in
+[Native invocation validation](runtime/invocation-validation.md).
+
+| Command | Purpose |
+| --- | --- |
+| `dockpipe files --request <file.json\|->` | Bounded file listing, exact-byte reads and revision-checked mutations. |
+| `dockpipe containers --request <file.json\|->` | Typed inventory, exact-object inspect/logs, and container start/stop/restart. |
+| `dockpipe containers exec --container <full-id> --shell /bin/sh` | Admitted local container shell with inherited terminal streams; `/bin/bash` is also supported. |
+| `dockpipe remote terminal --prepare --request <intent.json>` | Retain and acknowledge a canonical host-terminal reference before opening effects. Container sessions always require this exchange; older host streams remain supported without the flag. |
+| `dockpipe remote feature-call --request <file.json\|->` with `terminal.host-recover` | Recover an exact original host-terminal reference under its root Terminal grant after its captured kernel boot changes; legacy sessions without a receipt remain unverified. |
+| `dockpipe remote feature-prepare --request <file.json\|->` | Prepare canonical routing metadata locally before dispatch. |
+| `dockpipe remote feature-status --request <metadata.json\|->` | Inspect the original operation without reconstructing or replaying it. |
+| `dockpipe remote feature-cancel --request <metadata.json\|->` | Request cancellation; acknowledgment alone does not establish the mutation outcome. |
+| `dockpipe remote feature-reconcile --request <metadata.json\|->` | Revoke a file mutation's old admission and await worker cleanup proof; a reconciled unknown remains unknown. Git/container reconciliation is unavailable without process cleanup proof. |
+
+Captured workflow deliveries use `--expected-fingerprint`, `--expected-generation`
+and optional `--expected-root` to retain a desktop selection. They still require
+the existing reviewed bundle and independent workflow-delivery grant.

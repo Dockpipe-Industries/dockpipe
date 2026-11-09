@@ -85,7 +85,7 @@ func workspaceGitCommand(ctx context.Context, root string, args ...string) ([]by
 	command.WaitDelay = time.Second
 	var stdout, stderr workspaceGitBuffer
 	command.Stdout, command.Stderr = &stdout, &stderr
-	if err := process.Run(command); err != nil {
+	if err := process.RunWithScope(ctx, command); err != nil {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}

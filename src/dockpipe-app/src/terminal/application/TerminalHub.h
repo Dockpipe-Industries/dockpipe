@@ -23,6 +23,7 @@ public:
     QString createSession(const QString &workdir, const QString &shellProfileId = {});
     QString createSession(const QString &workdir, const QString &shellProfileId,
                           const QJsonObject &catalog, const QString &root);
+    QString createContainerSession(const QJsonObject &catalog, const QString &container, const QString &shell);
     TerminalShellCatalog &shellCatalog() const;
     QString creationError() const;
     QStringList sessionIds() const;
@@ -36,6 +37,8 @@ public:
     void sendAsync(const QString &id, const QString &text, std::function<void(bool, const QString &)> completion);
     void resize(const QString &id, int columns, int rows);
     void closeSession(const QString &id);
+    void releaseRecoveredSession(const QJsonObject &reference);
+    void releaseRecoveredContainerSession(const QJsonObject &reference);
     QByteArray readOutput(const QString &id, quint64 &cursor, bool &truncated) const;
 
 signals:
@@ -43,6 +46,7 @@ signals:
     void outputAvailable(const QString &id);
 
 private:
+    QString createRemoteSession(const QJsonObject &catalog, const QString &root, const QString &container, const QString &shell);
     struct Entry {
         ManagedTerminalSession *session = nullptr;
         RemoteTerminalSession *remote = nullptr;

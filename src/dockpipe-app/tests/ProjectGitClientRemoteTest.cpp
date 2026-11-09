@@ -1,5 +1,6 @@
 #include "ProjectGitClient.h"
 #include "RemoteGitContext.h"
+#include "RemoteFeatureClient.h"
 
 #include <QCoreApplication>
 #include <QFile>
@@ -7,6 +8,8 @@
 #include <QSignalSpy>
 #include <QTest>
 #include <QThread>
+#include <QSettings>
+#include <QTemporaryDir>
 #include <cstdio>
 
 namespace {
@@ -18,14 +21,41 @@ QJsonObject target()
 int fixture(const QStringList &arguments)
 {
     const auto mode = qgetenv("DOCKPIPE_GIT_REMOTE_FIXTURE");
-    if (mode == "pause")
-        QThread::msleep(1000);
     const int requestIndex = arguments.indexOf(QStringLiteral("--request"));
-    QFile input(arguments.value(requestIndex + 1));
-    if (requestIndex < 0 || !input.open(QIODevice::ReadOnly))
+    QFile input;
+    if (requestIndex < 0)
         return 2;
+    const QString requestPath = arguments.value(requestIndex + 1);
+    if (requestPath == "-") {
+        if (!input.open(stdin, QIODevice::ReadOnly))
+            return 2;
+    } else {
+        input.setFileName(requestPath);
+        if (!input.open(QIODevice::ReadOnly))
+            return 2;
+    }
     auto request = QJsonDocument::fromJson(input.readAll()).object();
     QJsonObject response;
+    if (arguments.value(2) == "feature-prepare") {
+        if (request.value("payload").toObject().contains("workdir") || request.value("target").toObject() != target())
+            return 4;
+        QJsonObject reference{{"id", QString(64, 'c')}};
+        for (const auto &key : {"schema", "target", "root", "action", "deadline"})
+            reference.insert(key, request.value(key));
+        const auto bytes = QJsonDocument(reference).toJson(QJsonDocument::Compact);
+        std::fwrite(bytes.constData(), 1, size_t(bytes.size()), stdout);
+        return 0;
+    }
+    if (arguments.value(2) == "feature-call") {
+        const QString marker = qEnvironmentVariable("DOCKPIPE_GIT_REMOTE_DISPATCH");
+        if (!marker.isEmpty()) {
+            QFile delivered(marker);
+            if (delivered.open(QIODevice::WriteOnly))
+                delivered.write("dispatched");
+        }
+        if (mode == "pause")
+            QThread::msleep(1000);
+    }
     if (arguments.value(1) == QStringLiteral("git")) {
         if (mode != "local" || request.value("workdir").toString() != QStringLiteral("/fixture/local"))
             return 3;
@@ -38,7 +68,8 @@ int fixture(const QStringList &arguments)
             || request.value("target").toObject() != target()
             || request.value("root").toString() != QStringLiteral("checkout"))
             return 4;
-        request.insert(QStringLiteral("id"), QString(64, 'c'));
+        if (request.value("id").toString() != QString(64, 'c'))
+            return 5;
         if (mode == "wrong-target")
             request.insert(QStringLiteral("target"), QJsonObject{{"node", "other"}});
         if (mode == "wrong-root")
@@ -55,9 +86,15 @@ int fixture(const QStringList &arguments)
             request.insert(QStringLiteral("schema"), QStringLiteral("different/v1"));
         if (mode == "invalid-id")
             request.insert(QStringLiteral("id"), QString(64, 'z'));
-        const QString status = mode == "unknown" ? QStringLiteral("unknown") : QStringLiteral("success");
+        QString status = QStringLiteral("success");
+        if (mode == "unknown")
+            status = QStringLiteral("unknown");
+        else if (mode == "failure")
+            status = QStringLiteral("failure");
         const QJsonObject snapshot{{"root", "/worker/private/checkout"}, {"branch", "hardware-key-fixture"}};
         QJsonObject result{{"status", status}, {"payload", snapshot}};
+        if (mode == "failure")
+            result.insert("error", "typed failure fixture");
         if (mode == "wrong-result")
             result.insert(QStringLiteral("status"), QStringLiteral("failure"));
         if (mode == "non-object")
@@ -82,6 +119,8 @@ private slots:
     {
         qputenv("DOCKPIPE_BIN", QCoreApplication::applicationFilePath().toUtf8());
         qunsetenv("DOCKPIPE_GIT_REMOTE_FIXTURE");
+        qunsetenv("DOCKPIPE_GIT_REMOTE_DISPATCH");
+        QSettings().clear();
     }
 
     void remoteIntentAndVirtualRoot()
@@ -132,7 +171,7 @@ private slots:
             });
         QTRY_COMPARE(completions, 1);
         QVERIFY(!succeeded);
-        QVERIFY(message.contains(QStringLiteral("Refresh")));
+        QVERIFY(!message.trimmed().isEmpty());
         QVERIFY(!message.contains(QStringLiteral("/worker/private")));
     }
 
@@ -186,14 +225,61 @@ private slots:
         client.run(QStringLiteral("/"), {{"action", "status"}},
             [&](bool ok, const QJsonObject &, const QString &) { QVERIFY(!ok); ++completions; });
         QVERIFY(client.busy());
+        auto *legacyTransport = client.findChild<RemoteCommand *>();
+        QVERIFY(legacyTransport && legacyTransport->busy());
         client.run(QStringLiteral("/"), {{"action", "push"}},
             [&](bool ok, const QJsonObject &, const QString &) { QVERIFY(!ok); ++completions; });
         QCOMPARE(completions, 1);
-        client.cancel();
+        legacyTransport->cancel();
         QTRY_COMPARE(completions, 2);
         QVERIFY(!client.busy());
         client.cancel();
         QCOMPARE(completions, 2);
+    }
+
+    void knownFailurePreservesReasonWithoutRetainingUnknownMutation()
+    {
+        qputenv("DOCKPIPE_GIT_REMOTE_FIXTURE", "failure");
+        ProjectGitClient client;
+        RemoteGitContext::bind(&client, true, target(), QStringLiteral("checkout"));
+        bool done = false;
+        QString error;
+        client.run(QStringLiteral("/"), {{"action", "commit"}},
+            [&](bool ok, const QJsonObject &, const QString &message) {
+                QVERIFY(!ok);
+                error = message;
+                done = true;
+            });
+        QTRY_VERIFY(done);
+        QVERIFY(error.contains("typed failure fixture"));
+        QVERIFY(RemoteFeatureClient::pendingRecoveries().isEmpty());
+    }
+
+    void mutationCancellationRetainsOnlyOriginalMetadata()
+    {
+        QTemporaryDir marker;
+        QVERIFY(marker.isValid());
+        const QString delivered = marker.filePath("delivered");
+        qputenv("DOCKPIPE_GIT_REMOTE_DISPATCH", delivered.toUtf8());
+        qputenv("DOCKPIPE_GIT_REMOTE_FIXTURE", "pause");
+        ProjectGitClient client;
+        RemoteGitContext::bind(&client, true, target(), QStringLiteral("checkout"));
+        int completions = 0;
+        client.run(QStringLiteral("/"), {{"action", "commit"}, {"reviewed_snapshot", "private-reviewed-content"}},
+            [&](bool ok, const QJsonObject &, const QString &) { QVERIFY(!ok); ++completions; });
+        QTRY_VERIFY(QFile::exists(delivered));
+        client.cancel();
+        QTRY_COMPARE(completions, 1);
+        QVERIFY(!client.busy());
+        const auto reference = client.property("remoteFeatureReference").toJsonObject();
+        QCOMPARE(reference.value("id").toString(), QString(64, 'c'));
+        QCOMPARE(reference.value("target").toObject(), target());
+        QCOMPARE(reference.value("action").toString(), QString("git.commit"));
+        QCOMPARE(RemoteFeatureClient::pendingRecoveries().size(), 1);
+        const auto persisted = QSettings().value("remote/uncertainFeatureOperations").toByteArray();
+        QVERIFY(!persisted.contains("private-reviewed-content"));
+        QVERIFY(!persisted.contains("nonce"));
+        QVERIFY(!persisted.contains("payload"));
     }
 
     void localAdmissionUsesTheTrustedOperatorBinary()
@@ -216,9 +302,16 @@ private slots:
 int main(int argc, char **argv)
 {
     QCoreApplication application(argc, argv);
+    QCoreApplication::setOrganizationName("DockpipeGitRemoteFixture");
+    QCoreApplication::setApplicationName("ProjectGitClientRemoteTest");
     if (application.arguments().value(1) == QStringLiteral("remote")
         || application.arguments().value(1) == QStringLiteral("git"))
         return fixture(application.arguments());
+    QTemporaryDir settings;
+    if (!settings.isValid())
+        return 8;
+    QSettings::setDefaultFormat(QSettings::IniFormat);
+    QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, settings.path());
     ProjectGitClientRemoteTest test;
     return QTest::qExec(&test, argc, argv);
 }

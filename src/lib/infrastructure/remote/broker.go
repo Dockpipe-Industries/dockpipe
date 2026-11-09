@@ -340,6 +340,9 @@ func (b *Broker) operator(path string, raw []byte) (any, error) {
 		if !exists || node.Revoked || node.TokenHash == "" {
 			return nil, errors.New("node is not enrolled")
 		}
+		if err := b.validateDeliveryTarget(request.Submission); err != nil {
+			return nil, err
+		}
 		jobs, retired, err := b.jobsForAdmission()
 		if err != nil {
 			return nil, err
@@ -421,6 +424,25 @@ func (b *Broker) worker(node, path string, raw []byte) (any, error) {
 		if !changed {
 			return b.withResult(*selected)
 		}
+		if targetErr := b.validateDeliveryTarget(selected.Submission); targetErr != nil {
+			// No assignment has left the broker. Record the refusal as a terminal
+			// failure so this obsolete queued target cannot stop the worker loop.
+			result := &contract.Result{Status: "failure", ExitCode: -1, Log: targetErr.Error()}
+			digest, err := resultHash(result)
+			if err != nil {
+				return nil, err
+			}
+			completed, _, err := selected.Complete(result, digest)
+			if err != nil {
+				return nil, err
+			}
+			if err := b.storeResult(&completed, result); err != nil {
+				b.poisoned = true
+				return nil, err
+			}
+			b.state.Jobs[completed.ID] = completed
+			return nil, b.save()
+		}
 		b.state.Jobs[selected.ID] = *selected
 		return selected, b.save()
 	case "/v1/pulse", "/v1/result", "/v1/bundle":
@@ -441,10 +463,13 @@ func (b *Broker) worker(node, path string, raw []byte) (any, error) {
 			return nil, err
 		}
 		if path == "/v1/bundle" {
+			if err := b.validateDeliveryTarget(job.Submission); err != nil {
+				return nil, err
+			}
 			return b.loadBundle(job)
 		}
 		if path == "/v1/pulse" {
-			return map[string]bool{"cancel": job.CancelRequested}, nil
+			return map[string]bool{"cancel": job.CancelRequested || b.validateDeliveryTarget(job.Submission) != nil}, nil
 		}
 		if request.Result == nil {
 			return nil, errors.New("result required")

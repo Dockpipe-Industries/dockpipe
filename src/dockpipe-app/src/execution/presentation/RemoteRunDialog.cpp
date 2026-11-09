@@ -102,6 +102,15 @@ RemoteRunDialog::RemoteRunDialog(const Context &context, const QString &node, QW
     });
 }
 
+void RemoteRunDialog::setCapturedTarget(const QJsonObject &target, const QString &root)
+{
+    if (m_command.busy())
+        return;
+    invalidatePreview();
+    setProperty("capturedWorkflowTarget", target);
+    setProperty("capturedWorkflowRoot", root);
+}
+
 void RemoteRunDialog::runRemote(const QStringList &arguments, RemoteCommand::Completion completion)
 {
     QString error;
@@ -127,6 +136,14 @@ QStringList RemoteRunDialog::arguments() const
 {
     QStringList args{"remote", "submit", "--node", m_node, "--id", m_job,
                      "--workdir", m_context.workdir, "--workflow-file", m_context.workflowFile};
+    const auto target = property("capturedWorkflowTarget").toJsonObject();
+    if (!target.isEmpty()) {
+        args << "--expected-fingerprint" << target.value("fingerprint").toString()
+             << "--expected-generation" << target.value("generation").toString();
+        const QString root = property("capturedWorkflowRoot").toString();
+        if (!root.isEmpty())
+            args << "--expected-root" << root;
+    }
     auto append = [&args](const QString &flag, QPlainTextEdit *field) {
         for (const QString &line : field->toPlainText().split('\n')) {
             if (!line.trimmed().isEmpty())

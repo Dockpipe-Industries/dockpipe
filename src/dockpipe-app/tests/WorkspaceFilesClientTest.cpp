@@ -196,6 +196,74 @@ private slots:
         QVERIFY(model.indexForPath("docs/guide.md").isValid());
     }
 
+    void cachedNavigationRevalidatesWithoutBlankingAndRecovers()
+    {
+        WorkspaceFileModel model;
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+        WorkspaceFilesClient::Context context;
+        context.kind = WorkspaceFilesClient::Context::Kind::Remote;
+        context.nodeId = "worker";
+        context.fingerprint = "fingerprint";
+        context.workerGeneration = "first-generation";
+        context.rootId = "root";
+        int childListings = 0;
+        bool fail = false;
+        QString filename = "before.txt";
+        QSignalSpy failures(&model, &WorkspaceFileModel::listingFailed);
+        model.setRemoteDispatch([&](const auto &captured, const auto &request, auto completion) {
+            const QString path = request.value("path").toString();
+            if (path == "docs")
+                ++childListings;
+            WorkspaceFilesClient::Result result;
+            result.context = captured;
+            result.outcome = fail ? WorkspaceFilesClient::Outcome::Failure : WorkspaceFilesClient::Outcome::Success;
+            result.error = fail ? "offline" : QString();
+            const QJsonArray entries = path == "."
+                ? QJsonArray{QJsonObject{{"name", "docs"}, {"kind", "directory"}}}
+                : QJsonArray{QJsonObject{{"name", filename}, {"kind", "file"}}};
+            result.value = {{"schema", "dockpipe.files/v1"}, {"path", path},
+                {"revision", QString(64, filename == "before.txt" ? 'a' : 'b')},
+                {"entries", entries}, {"more", false}};
+            QTimer::singleShot(40, &model, [completion, result]() { completion(result); });
+            return WorkspaceFilesClient::Cancel{};
+        });
+        model.setContext(context);
+        model.setActive(true);
+        QTRY_VERIFY(childListings > 0);
+        QTest::qWait(100);
+        const auto prefetched = model.indexForPath("docs");
+        model.fetchMore(prefetched);
+        QCOMPARE(model.rowCount(prefetched), 1);
+        QCOMPARE(model.index(0, 0, prefetched).data().toString(), QString("before.txt"));
+        model.setDirectory("docs");
+        // A prefetched folder is usable in this event-loop turn, before any RPC.
+        QCOMPARE(model.rowCount(), 1);
+        QCOMPARE(model.index(0, 0).data().toString(), QString("before.txt"));
+        QTest::qWait(100);
+        fail = true;
+        model.revalidate();
+        QCOMPARE(model.rowCount(), 1);
+        QTRY_VERIFY(!failures.isEmpty());
+        QCOMPARE(model.index(0, 0).data().toString(), QString("before.txt"));
+        fail = false;
+        filename = "after.txt";
+        model.revalidate();
+        QCOMPARE(model.index(0, 0).data().toString(), QString("before.txt"));
+        QTRY_COMPARE(model.index(0, 0).data().toString(), QString("after.txt"));
+        model.setActive(false);
+        model.revalidate();
+        filename = "replacement.txt";
+        context.workerGeneration = "replacement-generation";
+        model.setContext(context);
+        // An authority/context change must never reuse the old folder cache.
+        QCOMPARE(model.rowCount(), 0);
+        QTRY_COMPARE(model.rowCount(), 1);
+        model.setDirectory("docs");
+        QCOMPARE(model.rowCount(), 0);
+        QTRY_COMPARE(model.rowCount(), 1);
+        QCOMPARE(model.index(0, 0).data().toString(), QString("replacement.txt"));
+    }
+
     void remoteContextBindingAndLateResponses()
     {
         WorkspaceFilesClient client;

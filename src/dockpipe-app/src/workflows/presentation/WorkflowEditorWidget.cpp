@@ -1,5 +1,6 @@
 #include "WorkflowEditorWidget.h"
 #include "WorkflowScriptPath.h"
+#include "WorkspaceFilesClient.h"
 #include "ProjectFilesWidget.h"
 #include "SourceEditor.h"
 #include "WorkflowCanvas.h"
@@ -30,7 +31,6 @@
 #include <QProcessEnvironment>
 #include <QPushButton>
 #include <QRegularExpression>
-#include <QSaveFile>
 #include <QSet>
 #include <QScrollArea>
 #include <QSettings>
@@ -62,6 +62,8 @@ QString shellQuote(QString value)
 WorkflowEditorWidget::WorkflowEditorWidget(const QString &workdir, const QString &binary, QWidget *parent)
     : QWidget(parent), m_workdir(workdir), m_binary(binary)
 {
+    auto *sourceFiles = new WorkspaceFilesClient(this);
+    sourceFiles->setObjectName("workflowSourceFiles");
     using Symbol = CanvasIcons::Symbol;
     setObjectName("workflowStudio");
     setWindowTitle(tr("Workflow studio"));
@@ -396,6 +398,11 @@ WorkflowEditorWidget::WorkflowEditorWidget(const QString &workdir, const QString
         m_process->kill();
     });
     connect(m_cancel, &QPushButton::clicked, this, [this]() {
+        auto *sourceFiles = findChild<WorkspaceFilesClient *>("workflowSourceFiles");
+        if (sourceFiles->busy()) {
+            sourceFiles->cancel();
+            return;
+        }
         m_processFailure = tr("Operation cancelled. Your draft is unchanged.");
         m_process->kill();
     });
@@ -459,6 +466,7 @@ WorkflowEditorWidget::~WorkflowEditorWidget()
         m_process->kill();
         m_process->waitForFinished(1000);
     }
+    delete findChild<WorkspaceFilesClient *>("workflowSourceFiles");
     delete m_validationFile;
 }
 
@@ -491,6 +499,7 @@ void WorkflowEditorWidget::showStatus(const QString &message, bool failure)
 void WorkflowEditorWidget::setBusy(bool busy)
 {
     m_busy = busy;
+    setProperty("workspaceOperationPending", operationPending());
     m_actions->setEnabled(!busy);
     m_tabs->setEnabled(!busy);
     m_palette->setEnabled(!busy);
@@ -559,6 +568,10 @@ void WorkflowEditorWidget::finishCli()
 
 void WorkflowEditorWidget::newWorkflow()
 {
+    // Consume the reviewed Files leave decision before resetting its shared
+    // workflow document can invalidate that decision through textChanged.
+    if (!m_files->setRoot({}))
+        return;
     m_inspectorBaseline.clear();
     m_path.clear();
     m_document = {};
@@ -569,7 +582,6 @@ void WorkflowEditorWidget::newWorkflow()
     m_properties->setChecked(false);
     m_savedSource = "name: my-workflow\ndescription: \"\"\ndocker_preflight: false\nsteps: []\n";
     m_yaml->setPlainText(m_savedSource);
-    m_files->setRoot({});
     m_files->setWorkflowDocument({}, m_yaml->document());
     m_refreshing = true;
     m_tabs->setCurrentIndex(0);
@@ -584,39 +596,10 @@ void WorkflowEditorWidget::newWorkflow()
 
 bool WorkflowEditorWidget::openWorkflow(const QString &path)
 {
-    if (m_busy)
+    if (m_busy || property("workflowFilesContinuationPending").toBool())
         return false;
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly) || file.size() > maxSourceBytes) {
-        showStatus(tr("Cannot read workflow, or it exceeds the 1 MiB editor limit."), true);
-        return false;
-    }
-    const QByteArray bytes = file.read(maxSourceBytes + 1);
-    const QString source = QString::fromUtf8(bytes);
-    if (source.toUtf8() != bytes) {
-        showStatus(tr("Workflow must be UTF-8. The file was not changed."), true);
-        return false;
-    }
-    if (!confirmDiscardChanges())
-        return false;
-    m_inspectorBaseline.clear();
-    m_properties->setChecked(false);
-    m_refreshing = true;
-    m_tabs->setCurrentIndex(0);
-    m_refreshing = false;
-    m_restoreLayout = true;
-    m_path = QFileInfo(path).absoluteFilePath();
-    m_document = {};
-    m_canvas->setDocument({});
-    m_diskBytes = bytes;
-    m_savedSource = source;
-    m_history.clear();
-    m_yaml->setPlainText(source);
-    m_files->setRoot(QFileInfo(m_path).absolutePath());
-    m_files->setWorkflowDocument(m_path, m_yaml->document());
-    updateDocumentTitle();
-    emit documentChanged(m_path);
-    refreshCanvas();
+    // Compatibility entrypoint reports acceptance; completion is asynchronous.
+    openWorkflowAsync(path);
     return true;
 }
 
@@ -947,10 +930,12 @@ void WorkflowEditorWidget::saveWorkflow(bool run)
         const QString source = m_yaml->toPlainText();
         const QPointer<WorkflowEditorWidget> owner(this);
         setProperty("workflowFilesContinuationPending", true);
+        setProperty("workspaceOperationPending", true);
         m_files->saveAllFilesAsync([owner, path, workdir, binary, source, run](bool saved) {
             if (!owner)
                 return;
             owner->setProperty("workflowFilesContinuationPending", false);
+            owner->setProperty("workspaceOperationPending", owner->operationPending());
             if (!saved) {
                 owner->showStatus(tr("Could not save all supporting files. Open Files to review the error; your drafts are preserved."), true);
                 return;
@@ -973,55 +958,101 @@ void WorkflowEditorWidget::saveWorkflow(bool run)
         if (destination.isEmpty())
             return;
     }
-    if (QFileInfo(destination).isSymLink()) {
-        showStatus(tr("Open the real workflow file instead of overwriting a symbolic link."), true);
+    destination = QFileInfo(destination).absoluteFilePath();
+    const QString editorSource = m_yaml->toPlainText();
+    QByteArray source = editorSource.toUtf8();
+    if (destination == m_path) {
+        if (editorSource == m_savedSource) {
+            source = m_diskBytes;
+        } else {
+            const QByteArray withoutCrLf = QByteArray(m_diskBytes).replace("\r\n", "");
+            if (m_diskBytes.contains("\r\n") && !withoutCrLf.contains('\n'))
+                source.replace("\n", "\r\n");
+            if (m_diskBytes.startsWith("\xef\xbb\xbf") && !source.startsWith("\xef\xbb\xbf"))
+                source.prepend("\xef\xbb\xbf");
+        }
+    }
+    const QString inspector = inspectorState();
+    const QJsonObject positions = m_canvas->positions();
+    auto publish = [this, destination, source, editorSource, inspector, positions, run](bool existing, const QString &revision) {
+        validateSource(QFileInfo(destination).absolutePath(), [this, destination, source, editorSource, inspector, positions, existing, revision, run]() {
+            if (m_yaml->toPlainText() != editorSource || inspectorState() != inspector) {
+                showStatus(tr("The workflow changed during validation. Your draft has been kept."), true);
+                return;
+            }
+            auto *sourceFiles = findChild<WorkspaceFilesClient *>("workflowSourceFiles");
+            WorkspaceFilesClient::Context context;
+            context.localRoot = QFileInfo(destination).absolutePath();
+            sourceFiles->setContext(context);
+            QJsonObject request{{"schema", "dockpipe.files/v1"},
+                {"action", existing ? "write" : "create"},
+                {"path", QFileInfo(destination).fileName()},
+                {"content", QString::fromLatin1(source.toBase64())}};
+            if (existing)
+                request.insert("revision", revision);
+            setBusy(true);
+            sourceFiles->run(request, this, [this, destination, source, editorSource, inspector, positions, run](const auto &result) {
+                setBusy(false);
+                if (!result.success()) {
+                    showStatus(tr("Cannot save workflow: %1\nThe file may have changed on disk. Your draft has been kept; refresh before retrying.").arg(result.error), true);
+                    return;
+                }
+                m_path = destination;
+                m_files->setRoot(QFileInfo(destination).absolutePath());
+                m_files->setWorkflowDocument(destination, m_yaml->document());
+                m_diskBytes = source;
+                m_savedSource = editorSource;
+                QSettings settings;
+                const QString digest = QString::fromLatin1(QCryptographicHash::hash(editorSource.toUtf8(), QCryptographicHash::Sha256).toHex());
+                settings.setValue(layoutKey(), QJsonDocument(QJsonObject{{"sourceHash", digest}, {"positions", positions}}).toJson(QJsonDocument::Compact));
+                updateDocumentTitle();
+                setWindowTitle(tr("Workflow studio"));
+                showStatus(tr("Workflow saved."));
+                const QPointer<WorkflowEditorWidget> guard(this);
+                emit documentChanged(destination);
+                if (!guard)
+                    return;
+                emit workflowSaved(destination);
+                if (!guard)
+                    return;
+                if (run && m_yaml->toPlainText() == editorSource && inspectorState() == inspector)
+                    emit runRequested(destination);
+            });
+        });
+    };
+    if (destination == m_path) {
+        publish(true, QString::fromLatin1(QCryptographicHash::hash(m_diskBytes, QCryptographicHash::Sha256).toHex()));
         return;
     }
-    QFile current(destination);
-    QByteArray expected;
-    const bool existed = current.exists();
-    if (existed) {
-        if (!current.open(QIODevice::ReadOnly) || current.size() > maxSourceBytes) {
-            showStatus(tr("Cannot safely read the existing workflow."), true);
+    // The chooser already reviewed replacement. Capture any existing bytes via
+    // core before validation; an unreadable/missing destination may only create,
+    // which cannot overwrite an existing entry.
+    auto *sourceFiles = findChild<WorkspaceFilesClient *>("workflowSourceFiles");
+    WorkspaceFilesClient::Context context;
+    context.localRoot = QFileInfo(destination).absolutePath();
+    sourceFiles->setContext(context);
+    setBusy(true);
+    sourceFiles->run({{"schema", "dockpipe.files/v1"}, {"action", "read"},
+        {"path", QFileInfo(destination).fileName()}}, this, [this, destination, publish](const auto &result) {
+        setBusy(false);
+        if (result.outcome == WorkspaceFilesClient::Outcome::Cancelled
+            || result.outcome == WorkspaceFilesClient::Outcome::Busy) {
+            showStatus(result.error, true);
             return;
         }
-        expected = current.read(maxSourceBytes + 1);
-        if (expected.size() > maxSourceBytes) {
-            showStatus(tr("The existing workflow grew beyond the editor limit. Your draft has been kept."), true);
-            return;
+        if (result.success()) {
+            const auto bytes = QByteArray::fromBase64Encoding(result.value.value("content").toString().toLatin1(),
+                QByteArray::AbortOnBase64DecodingErrors);
+            const QString revision = QString::fromLatin1(QCryptographicHash::hash(bytes.decoded, QCryptographicHash::Sha256).toHex());
+            if (!bytes || result.value.value("path").toString() != QFileInfo(destination).fileName()
+                || result.value.value("revision").toString() != revision) {
+                showStatus(tr("Cannot safely read the existing workflow."), true);
+                return;
+            }
+            publish(true, revision);
+        } else {
+            publish(false, {});
         }
-        if (destination == m_path && expected != m_diskBytes) {
-            showStatus(tr("This workflow changed on disk. Open it again before saving; your draft has been kept."), true);
-            return;
-        }
-    }
-    const QByteArray source = m_yaml->toPlainText().toUtf8();
-    validateSource(QFileInfo(destination).absolutePath(), [this, destination, source, expected, existed, run]() {
-        QFile check(destination);
-        if (QFileInfo(destination).isSymLink() || check.exists() != existed || (existed && (!check.open(QIODevice::ReadOnly) || check.read(maxSourceBytes+1) != expected))) {
-            showStatus(tr("The file changed during validation. Your draft has been kept."), true);
-            return;
-        }
-        QSaveFile file(destination);
-        if (!file.open(QIODevice::WriteOnly) || file.write(source) != source.size() || !file.commit()) {
-            showStatus(tr("Cannot save workflow: %1").arg(file.errorString()), true);
-            return;
-        }
-        m_path = destination;
-        m_files->setRoot(QFileInfo(destination).absolutePath());
-        m_files->setWorkflowDocument(destination, m_yaml->document());
-        m_diskBytes = source;
-        m_savedSource = QString::fromUtf8(source);
-        QSettings settings;
-        const QString digest = QString::fromLatin1(QCryptographicHash::hash(source, QCryptographicHash::Sha256).toHex());
-        settings.setValue(layoutKey(), QJsonDocument(QJsonObject{{"sourceHash", digest}, {"positions", m_canvas->positions()}}).toJson(QJsonDocument::Compact));
-        updateDocumentTitle();
-        setWindowTitle(tr("Workflow studio"));
-        showStatus(tr("Workflow saved."));
-        emit documentChanged(destination);
-        emit workflowSaved(destination);
-        if (run)
-            emit runRequested(destination);
     });
 }
 
@@ -1031,6 +1062,11 @@ bool WorkflowEditorWidget::discardChanges()
         return true;
     return QMessageBox::question(this, tr("Unsaved workflow"), tr("Discard the unsaved changes to this workflow?"),
                                  QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Cancel) == QMessageBox::Discard;
+}
+
+bool WorkflowEditorWidget::operationPending() const
+{
+    return m_busy || property("workflowFilesContinuationPending").toBool();
 }
 
 bool WorkflowEditorWidget::confirmDiscardChanges()
@@ -1085,10 +1121,71 @@ void WorkflowEditorWidget::confirmDiscardChangesAsync(Completion completion)
 
 void WorkflowEditorWidget::openWorkflowAsync(const QString &path, Completion completion)
 {
-    confirmDiscardChangesAsync([this, path, completion](bool allowed) {
-        const bool opened = allowed && openWorkflow(path);
+    if (m_busy || property("workflowFilesContinuationPending").toBool()) {
         if (completion)
-            completion(opened);
+            completion(false);
+        return;
+    }
+    const QString absolutePath = QFileInfo(path).absoluteFilePath();
+    auto *sourceFiles = findChild<WorkspaceFilesClient *>("workflowSourceFiles");
+    WorkspaceFilesClient::Context context;
+    // Workflow authoring remains local even when other screens select a worker.
+    context.localRoot = QFileInfo(absolutePath).absolutePath();
+    sourceFiles->setContext(context);
+    setBusy(true);
+    sourceFiles->run({{"schema", "dockpipe.files/v1"}, {"action", "read"},
+        {"path", QFileInfo(absolutePath).fileName()}}, this,
+        [this, absolutePath, completion](const auto &result) {
+        setBusy(false);
+        if (!result.success()) {
+            showStatus(result.error, true);
+            if (completion)
+                completion(false);
+            return;
+        }
+        const auto decoded = QByteArray::fromBase64Encoding(result.value.value("content").toString().toLatin1(),
+            QByteArray::AbortOnBase64DecodingErrors);
+        const QByteArray bytes = decoded.decoded;
+        const QByteArray textBytes = bytes.startsWith("\xef\xbb\xbf") ? bytes.mid(3) : bytes;
+        const QString source = QString::fromUtf8(textBytes);
+        const QString revision = QString::fromLatin1(QCryptographicHash::hash(bytes, QCryptographicHash::Sha256).toHex());
+        if (!decoded || result.value.value("path").toString() != QFileInfo(absolutePath).fileName()
+            || bytes.size() > maxSourceBytes || source.toUtf8() != textBytes
+            || result.value.value("revision").toString() != revision) {
+            showStatus(tr("Cannot read workflow, or it exceeds the 1 MiB editor limit."), true);
+            if (completion)
+                completion(false);
+            return;
+        }
+        confirmDiscardChangesAsync([this, absolutePath, bytes, source, completion](bool allowed) {
+            if (!allowed || !m_files->setRoot(QFileInfo(absolutePath).absolutePath())) {
+                if (completion)
+                    completion(false);
+                return;
+            }
+            m_inspectorBaseline.clear();
+            m_properties->setChecked(false);
+            m_refreshing = true;
+            m_tabs->setCurrentIndex(0);
+            m_refreshing = false;
+            m_restoreLayout = true;
+            m_path = absolutePath;
+            m_document = {};
+            m_canvas->setDocument({});
+            m_diskBytes = bytes;
+            m_history.clear();
+            m_yaml->setPlainText(source);
+            m_savedSource = m_yaml->toPlainText();
+            m_files->setWorkflowDocument(m_path, m_yaml->document());
+            updateDocumentTitle();
+            const QPointer<WorkflowEditorWidget> guard(this);
+            emit documentChanged(m_path);
+            if (!guard)
+                return;
+            refreshCanvas();
+            if (completion)
+                completion(true);
+        });
     });
 }
 
@@ -1110,7 +1207,7 @@ bool WorkflowEditorWidget::setWorkspace(const QString &workdir, const QString &b
 {
     if (m_workdir == workdir && m_binary == binary)
         return true;
-    if (!confirmDiscardChanges())
+    if (!confirmDiscardChanges() || !m_files->setRoot({}))
         return false;
     m_workdir = workdir;
     m_binary = binary;

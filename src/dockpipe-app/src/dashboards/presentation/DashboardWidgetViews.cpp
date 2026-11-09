@@ -256,7 +256,7 @@ QWidget *DashboardWidgetFactory::createWorkflows(QWidget *parent)
     });
     const auto launchSelected = [this, list]() {
         if (list->currentItem() && list->currentItem()->data(Qt::UserRole + 1).toBool())
-            emit launchWorkflow(list->currentItem()->data(Qt::UserRole).toString());
+            emit launchWorkflowOnMachine(list->currentItem()->data(Qt::UserRole).toString(), machineTarget(), m_sharedRoot);
     };
     connect(launch, &QPushButton::clicked, this, launchSelected);
     connect(list, &QListWidget::itemDoubleClicked, this, launchSelected);

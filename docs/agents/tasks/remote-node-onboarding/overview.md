@@ -1,5 +1,44 @@
 # TASK-036 Remote Node Onboarding
 
+## Remote feature continuation (2026-11-08)
+
+Remote container terminals now have an independent worker grant, exact prepared
+references and daemon/ExecID recovery metadata. Git/native mutation recovery uses
+an owner-selected delegated Linux cgroup or pre-effect kernel boot fence; uncertain
+Docker control requires separately authorized retirement of the captured container.
+See [the canonical coverage guide](../../../runtime/invocation-validation.md) for
+the trust boundary, macOS reboot requirement and legacy-receipt limits.
+
+The reviewed broker and Darwin arm64 worker updates were approved and applied,
+with fresh hardware-key pairing and scoped test grants. Live Files, Git commit,
+host PTY, actual container shell/resize/verified close and typed container controls
+passed. Live findings repaired EOF close, receipt publication locking, catalog
+heartbeat preservation and known cancellation receipts; the original uncertain
+terminal obligation remained intact through same-boot rejection. After a separately
+approved reboot, exact-reference container reconciliation and retirement passed;
+readback confirmed resource absence and catalog release. A real interrupted Git
+commit likewise passed same-boot rejection and exact-reference post-reboot
+reconciliation, preserving unknown status and repository head without replay. The
+worker returned automatically after restart. The subsequent host-terminal pass
+added pre-effect boot receipts and exact-reference recovery, fixed Darwin exited-PID
+inspection, and hardened desktop close/quota validation. Actual interrupted host
+recovery and normal Homebrew Colima login startup passed on the paired worker;
+existing containers were preserved. The old receipt-less host reference remains
+historically unknown, without an active orphan entry or invented cleanup proof.
+See the canonical coverage guide for proof and remaining platform limits.
+RDP/Cloudflare configuration changes stay last and have not begun.
+
+The visible-app follow-up repaired missing local terminal companion packaging,
+bounded remote typing latency and native Darwin whole-system monitoring. Installed
+terminal I/O/resize/cleanup, paired-worker timing and live metric samples passed;
+see the canonical coverage guide and
+[platform support](../../../runtime/execution-observability.md#platform-and-transport-support).
+Feature grants and monitoring opt-in remain independent.
+
+Files/Git now also refresh while visible and avoid repeated navigation/review work;
+the canonical coverage guide documents the bounded Files cache and its authority
+invalidation. This does not expand worker grants or index the whole machine.
+
 ## Completed-job capacity and replay safety (2026-10-24)
 
 - A consenting native validation worker reached the documented lifetime limit of 128
@@ -606,7 +645,27 @@ Authenticated feature calls and interactive terminal sessions are implemented as
 bounded typed protocols through the core admission boundary. Passive catalog
 refresh never prompts for authentication. Loopback/fake-CLI fixtures and local
 native PTY tests are implementation evidence; live paired-worker, Windows,
-installed Flatpak and cross-platform UI qualification remain open. Unknown mutation
-receipts still require explicit operator reconciliation, whose UX is outstanding.
-Remote workflow delivery remains its existing separate contract; per-widget
-workflow launch target handoff and private-endpoint RDP are not qualified here.
+installed Flatpak and cross-platform UI qualification remain open.
+
+Desktop clients now prepare canonical IDs before dispatch and retain only bounded
+mutation metadata for the nonmodal Uncertain operations dialog. File reconciliation
+revokes the original admission and requires the serial worker's cleanup proof;
+`unknown` remains unknown and no write is replayed. Git/container unknowns remain
+blocked because descendant-process cleanup proof is unavailable. Reconciled unknown
+broker receipts remain within the existing 128-operation/storage bounds.
+
+Compact and full dashboard workflow launchers now hand off the captured local or
+remote target explicitly. Remote deliveries retain fingerprint, worker generation
+and selected root identity through broker/worker checks and heartbeats, using the
+existing reviewed bundle and independent delivery permission. Workflow authoring
+stays local. Workflow-source and active graph I/O use the admitted asynchronous
+Files client. Fifteen affected native suites now pass, including the full shell,
+workflow-source/graph behavior, captured dashboard targets, remote Files/Git/container
+transports, recovery and close/discard continuations. Save-and-run blocks machine
+changes during preparation; relaunch retains its original target while stopping.
+Full affected Go suites and focused races pass. The Linux desktop/helper and Linux,
+Windows amd64 and macOS arm64 CLI builds pass; cross-builds are compile/link evidence,
+not native platform or live-provider acceptance. All 17 catalogs have 2,412 finished
+messages and pass extraction/lrelease checks. Canonical coverage and explicit
+constraints remain in [invocation validation](../../../runtime/invocation-validation.md).
+Private-endpoint RDP/Cloudflare infrastructure remains last and has not begun.

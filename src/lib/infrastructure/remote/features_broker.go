@@ -23,12 +23,13 @@ type featureBroker struct {
 	state      featureBrokerState
 	catalogs   map[string]contract.FeatureCatalog
 	admissions map[string]operatorAdmission
+	recoveries map[string]operatorAdmission
 }
 
 func (broker *Broker) loadFeatures() error {
 	features := &featureBroker{
 		state:    featureBrokerState{Schema: contract.FeatureVersion, Operations: map[string]contract.FeatureOperation{}},
-		catalogs: map[string]contract.FeatureCatalog{}, admissions: map[string]operatorAdmission{},
+		catalogs: map[string]contract.FeatureCatalog{}, admissions: map[string]operatorAdmission{}, recoveries: map[string]operatorAdmission{},
 	}
 	path := filepath.Join(filepath.Dir(broker.path), "feature-operations.json")
 	ledger := featureLedger{Schema: contract.FeatureVersion, Records: map[string]featureReceipt{}}
@@ -44,7 +45,8 @@ func (broker *Broker) loadFeatures() error {
 		}
 		result := recoveredFeatureResult(receipt.Status)
 		features.state.Operations[id] = contract.FeatureOperation{Request: receipt.requestMetadata(), Status: result.Status,
-			Result: &result, CancelRequested: receipt.CancelRequested, ReceiptOnly: true, ResultDigest: receipt.ResultDigest}
+			Result: &result, CancelRequested: receipt.CancelRequested, ReceiptOnly: true, ResultDigest: receipt.ResultDigest,
+			RecoveryRequested: receipt.RecoveryRequested, Reconciled: receipt.Reconciled, RecoveryChoice: receipt.RecoveryChoice, RecoveryResource: receipt.RecoveryResource, RecoveryError: receipt.RecoveryError, HostRecovery: receipt.HostRecovery}
 	}
 	broker.features = features
 	return nil
@@ -81,7 +83,14 @@ func (broker *Broker) storeFeature(operation contract.FeatureOperation) error {
 		if !retained.ReceiptOnly {
 			digest = featureResultDigest(retained.Result)
 		}
-		ledger.Records[id] = receiptFor(retained.Request, retained.Status, retained.CancelRequested, digest)
+		receipt := receiptFor(retained.Request, retained.Status, retained.CancelRequested, digest)
+		receipt.RecoveryRequested = retained.RecoveryRequested
+		receipt.Reconciled = retained.Reconciled
+		receipt.RecoveryChoice = retained.RecoveryChoice
+		receipt.RecoveryResource = retained.RecoveryResource
+		receipt.RecoveryError = retained.RecoveryError
+		receipt.HostRecovery = retained.HostRecovery
+		ledger.Records[id] = receipt
 	}
 	if err := WritePrivate(filepath.Join(filepath.Dir(broker.path), "feature-operations.json"), ledger); err != nil {
 		broker.poisoned = true
@@ -148,6 +157,18 @@ func (broker *Broker) featureOperator(path string, raw []byte, admission operato
 			return nil, errors.New("remote feature operation capacity reached")
 		}
 		operation := contract.FeatureOperation{Request: request, Status: "queued"}
+		if request.Action == "terminal.host-recover" {
+			if err := broker.revokeHostTerminalRecovery(request); err != nil {
+				return nil, err
+			}
+		}
+		if strings.HasPrefix(request.Action, "containers.") && request.Action != "containers.terminal-recover" && contract.FeatureAccess(request.Action) == "write" {
+			var input featureContainerRequest
+			if decodeFeature(request.Payload, &input) != nil {
+				return nil, errors.New("invalid container recovery identity")
+			}
+			operation.RecoveryResource = input.Container
+		}
 		if err := broker.storeFeature(operation); err != nil {
 			return nil, err
 		}
@@ -155,7 +176,20 @@ func (broker *Broker) featureOperator(path string, raw []byte, admission operato
 		return operation, nil
 	}
 	var reference contract.FeatureReference
-	if err := decodeFeature(raw, &reference); err != nil || reference.Validate() != nil {
+	choice := "verify"
+	reviewedResource := ""
+	if path == "/v1/features-reconcile" {
+		var recovery contract.FeatureRecoveryRequest
+		if decodeFeature(raw, &recovery) != nil || recovery.FeatureReference.Validate() != nil ||
+			recovery.Choice != "" && recovery.Choice != "verify" && recovery.Choice != "retire-container" {
+			return nil, errors.New("invalid feature recovery request")
+		}
+		reference = recovery.FeatureReference
+		if recovery.Choice != "" {
+			choice = recovery.Choice
+		}
+		reviewedResource = recovery.Resource
+	} else if err := decodeFeature(raw, &reference); err != nil || reference.Validate() != nil {
 		return nil, errors.New("invalid feature operation reference")
 	}
 	operation, exists := broker.features.state.Operations[reference.ID]
@@ -172,6 +206,9 @@ func (broker *Broker) featureOperator(path string, raw []byte, admission operato
 			previous.session == admission.session && previous.generation == admission.generation {
 			broker.features.admissions[reference.ID] = admission
 		}
+		if previous, exists := broker.features.recoveries[reference.ID]; exists && previous.session == admission.session && previous.generation == admission.generation {
+			broker.features.recoveries[reference.ID] = admission
+		}
 		return operation, nil
 	case "/v1/features-cancel":
 		operation.CancelRequested = true
@@ -180,6 +217,42 @@ func (broker *Broker) featureOperator(path string, raw []byte, admission operato
 			operation.Result = &contract.FeatureResult{Status: "cancelled"}
 		}
 		return operation, broker.storeFeature(operation)
+	case "/v1/features-reconcile":
+		if access == "read" || choice == "retire-container" && !strings.HasPrefix(operation.Request.Action, "containers.") {
+			return nil, errors.New("recovery strategy does not match the captured mutation")
+		}
+		if choice == "retire-container" {
+			catalog, exists := broker.features.catalogs[reference.Target.Node]
+			if !exists || !broker.featureCatalogCurrent(catalog) || !catalog.DockerRecovery || catalog.Target.Fingerprint != reference.Target.Fingerprint ||
+				!validMachineNonce(reviewedResource) || operation.RecoveryResource != reviewedResource {
+				return nil, errors.New("container retirement requires its exact resource and an independent live worker recovery grant")
+			}
+		}
+		if operation.Status == "queued" {
+			operation.CancelRequested = true
+			operation.Status = "cancelled"
+			operation.Result = &contract.FeatureResult{Status: "cancelled"}
+			delete(broker.features.admissions, reference.ID)
+			if err := broker.storeFeature(operation); err != nil {
+				return nil, err
+			}
+			return featureMetadataOperation(operation), nil
+		}
+		if operation.Status != "running" && operation.Status != "unknown" {
+			return featureMetadataOperation(operation), nil
+		}
+		// Revocation is permanent for this captured intent. Status polling cannot
+		// recreate the removed admission, and no new assignment can execute it.
+		operation.CancelRequested = true
+		operation.RecoveryRequested = true
+		operation.RecoveryChoice = choice
+		operation.RecoveryError = ""
+		delete(broker.features.admissions, reference.ID)
+		broker.features.recoveries[reference.ID] = admission
+		if err := broker.storeFeature(operation); err != nil {
+			return nil, err
+		}
+		return featureMetadataOperation(operation), nil
 	default:
 		return nil, errors.New("unknown operator feature operation")
 	}
@@ -193,7 +266,17 @@ func (broker *Broker) featureCatalogCurrent(catalog contract.FeatureCatalog) boo
 
 func featureCatalogAllows(catalog contract.FeatureCatalog, request contract.FeatureRequest) bool {
 	access := contract.FeatureAccess(request.Action)
+	if request.Action == "terminal.host-recover" {
+		return terminalRoot(catalog, request.Root)
+	}
 	if strings.HasPrefix(request.Action, "containers.") {
+		if request.Action == "containers.terminal-recover" {
+			var payload terminalRecoveryPayload
+			if decodeFeature(request.Payload, &payload) != nil {
+				return false
+			}
+			return catalog.DockerRead && (payload.Retire && catalog.DockerRecovery || !payload.Retire && catalog.DockerExec)
+		}
 		return access == "read" && catalog.DockerRead || access == "write" && catalog.DockerControl
 	}
 	for _, root := range catalog.Roots {
@@ -240,9 +323,27 @@ func (broker *Broker) featureWorker(node, path string, raw []byte) (any, error) 
 		}
 		catalog.ReceivedAt = time.Now().UTC()
 		broker.features.catalogs[node] = catalog
+		// Recoveries do not execute work. An unrelated unknown receipt must not
+		// prevent the worker from acknowledging the specifically revoked intent.
+		for _, operation := range broker.features.state.Operations {
+			if operation.Request.Target.Node == node && operation.RecoveryRequested && !operation.Reconciled &&
+				(operation.Status == "running" || operation.Status == "unknown") {
+				lease := broker.featureRecoveryLease(operation)
+				if operation.RecoveryChoice == "retire-container" && lease.Cancel {
+					return nil, nil
+				}
+				assignment := contract.FeatureAssignment{Request: featureMetadataOperation(operation).Request, Reconcile: true, RecoveryChoice: operation.RecoveryChoice, RecoveryResource: operation.RecoveryResource}
+				if operation.RecoveryChoice == "retire-container" {
+					assignment.LeaseMillis = lease.LeaseMillis
+					admission := broker.features.recoveries[operation.Request.ID]
+					assignment.Operator = Hash(fmt.Sprintf("%s:%d", admission.session, admission.generation))
+				}
+				return assignment, nil
+			}
+		}
 		// One operation per worker serializes all root writes and container control.
 		for _, operation := range broker.features.state.Operations {
-			if operation.Request.Target.Node == node && (operation.Status == "running" || operation.Status == "unknown") {
+			if operation.Request.Target.Node == node && (operation.Status == "running" || operation.Status == "unknown" && !operation.Reconciled) {
 				lease := broker.featureLease(operation)
 				if contract.FeatureAccess(operation.Request.Action) == "read" && (lease.Cancel || operation.Request.Target != catalog.Target) {
 					operation.Status = "cancelled"
@@ -285,6 +386,23 @@ func (broker *Broker) featureWorker(node, path string, raw []byte) (any, error) 
 		}
 		return nil, nil
 	}
+	if path == "/v1/features-reconciled" {
+		return broker.featureReconciled(node, raw)
+	}
+	if path == "/v1/features-recovery-pulse" {
+		var reference contract.FeatureReference
+		if decodeFeature(raw, &reference) != nil || reference.Validate() != nil || reference.Target.Node != node {
+			return nil, errors.New("invalid recovery lease reference")
+		}
+		operation, exists := broker.features.state.Operations[reference.ID]
+		if !exists || operation.Request.Target != reference.Target {
+			return nil, errors.New("recovery operation identity changed")
+		}
+		return broker.featureRecoveryLease(operation), nil
+	}
+	if path == "/v1/features-recovery-failed" {
+		return broker.featureRecoveryFailed(node, raw)
+	}
 	var reference contract.FeatureReference
 	var completion contract.FeatureCompletion
 	if path == "/v1/features-result" {
@@ -300,12 +418,15 @@ func (broker *Broker) featureWorker(node, path string, raw []byte) (any, error) 
 		} else if completion.ResultDigest != featureResultDigest(&completion.Result) {
 			return nil, errors.New("feature result digest mismatch")
 		}
+		if completion.Reconciled && (!completion.ReceiptOnly || completion.Result.Status != "unknown") {
+			return nil, errors.New("invalid reconciliation receipt")
+		}
 		reference = completion.Reference
 	} else if decodeFeature(raw, &reference) != nil {
 		return nil, errors.New("invalid feature reference")
 	}
 	operation, exists := broker.features.state.Operations[reference.ID]
-	if !exists && path == "/v1/features-result" && completion.ReceiptOnly && completion.Result.Status != "unknown" &&
+	if !exists && path == "/v1/features-result" && completion.ReceiptOnly && (completion.Result.Status != "unknown" || completion.Reconciled) &&
 		reference.Validate() == nil && reference.Target.Node == node && reference.Target.Fingerprint == remoteidentity.Fingerprint(enrollment.MachineKey) && !time.Now().Before(completion.Deadline) {
 		// The paired worker may discard an expired metadata-only receipt. This
 		// neither creates an operation nor authorizes execution of missing work.
@@ -328,6 +449,31 @@ func (broker *Broker) featureWorker(node, path string, raw []byte) (any, error) 
 	if !completion.Deadline.Equal(operation.Request.Deadline) {
 		return nil, errors.New("feature completion deadline changed")
 	}
+	if operation.Request.Action == "containers.terminal-recover" && completion.Result.Status == "success" && !completion.ReceiptOnly {
+		if err := broker.completeContainerTerminalRecovery(operation.Request, completion.Result); err != nil {
+			return nil, err
+		}
+	}
+	if completion.RecoveryResource != "" {
+		if !validMachineNonce(completion.RecoveryResource) || operation.RecoveryResource != "" && operation.RecoveryResource != completion.RecoveryResource {
+			return nil, errors.New("completion changed the captured recovery resource")
+		}
+		if operation.RecoveryResource == "" && operation.Request.Action != "containers.terminal-recover" {
+			return nil, errors.New("completion introduced an unrelated recovery resource")
+		}
+		operation.RecoveryResource = completion.RecoveryResource
+	}
+	if completion.Reconciled && !operation.Reconciled {
+		return nil, errors.New("reconciliation requires the worker cleanup protocol")
+	}
+	if operation.Reconciled {
+		if completion.HostRecovery != nil {
+			return nil, errors.New("reconciled feature outcome cannot acquire a different terminal recovery result")
+		}
+		// A late pre-reconciliation completion cannot erase the acknowledgment
+		// or relabel the unknown outcome as success.
+		return contract.FeatureResultAck{Reference: reference, Expired: !time.Now().Before(operation.Request.Deadline)}, nil
+	}
 	if operation.Status != "running" && operation.Status != "unknown" {
 		digest := operation.ResultDigest
 		if !operation.ReceiptOnly {
@@ -336,9 +482,20 @@ func (broker *Broker) featureWorker(node, path string, raw []byte) (any, error) 
 		if digest != completion.ResultDigest {
 			return nil, errors.New("feature result changed after publication")
 		}
+		if err := broker.acceptHostTerminalCompletion(&operation, completion); err != nil {
+			return nil, err
+		}
 		return contract.FeatureResultAck{Reference: reference, Expired: !time.Now().Before(operation.Request.Deadline)}, nil
 	}
+	if err := broker.acceptHostTerminalCompletion(&operation, completion); err != nil {
+		return nil, err
+	}
 	operation.Result = &completion.Result
+	if completion.Result.Status == "unknown" && operation.RecoveryError != "" {
+		result := completion.Result
+		result.Error = recoveryFailureMessage(operation.RecoveryError)
+		operation.Result = &result
+	}
 	operation.Status = completion.Result.Status
 	operation.ReceiptOnly = operation.ReceiptOnly || completion.ReceiptOnly
 	operation.ResultDigest = completion.ResultDigest

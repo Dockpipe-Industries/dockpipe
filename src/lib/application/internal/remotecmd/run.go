@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"syscall"
 
 	contract "dockpipe/src/lib/domain/remote"
@@ -47,9 +48,13 @@ const usage = `dockpipe remote <command> [options]
              --disable                           Stop sharing machine snapshots
   observe --node <name>                          Read the latest authorized machine snapshot
   features                                       List authorized live feature catalogs
+  feature-prepare --request <json-file|->         Validate one intent locally and emit its metadata reference
   feature-call --request <json-file|->            Submit one fixed feature intent and await its result
   feature-status --request <json-file|->          Inspect the captured feature operation without replay
   feature-cancel --request <json-file|->          Request cancellation of the captured operation
+  feature-reconcile --request <json-file|->       Revoke a mutation and verify its native cleanup evidence
+          [--recovery verify|retire-container]    Retirement requires independent worker recovery permission
+          [--expected-container <full-id>]        Required exact reviewed resource for container retirement
   features-config [--request <json-file|->]       Inspect or replace worker-local feature permissions
   terminal --request <intent-file>              Private interactive terminal NDJSON transport
   terminal-status --request <reference-file>    Inspect the captured terminal session
@@ -83,7 +88,10 @@ func Run(args []string, checkDependencies func(string) error) error {
 	command := args[0]
 	flags := flag.NewFlagSet("remote "+command, flag.ContinueOnError)
 	activationRequest := flags.String("request", "", "exact edge activation or typed feature JSON request; - reads feature stdin")
+	prepareTerminal := flags.Bool("prepare", false, "require canonical prepared-reference acknowledgment before host terminal opening")
 	activationApproval := flags.String("approve", "", "exact activation approval")
+	recoveryChoice := flags.String("recovery", "verify", "feature recovery strategy: verify or retire-container (explicitly removes the exact container, without volumes/images)")
+	expectedContainer := flags.String("expected-container", "", "exact reviewed full container ID for explicit retirement")
 	state := flags.String("state", "", "private state directory")
 	authentication := flags.String("auth", "auto", "OS re-authentication for locked operator actions: auto or never")
 	attestationRoots := flags.String("attestation-roots", "", "verified hardware-key manufacturer CA PEM bundle (first key only)")
@@ -108,6 +116,9 @@ func Run(args []string, checkDependencies func(string) error) error {
 	workflow := flags.String("workflow-file", "", "local workflow to deliver with its source directory")
 	workdir := flags.String("workdir", ".", "source project directory")
 	expectedDigest := flags.String("expected-digest", "", "require the exact previously previewed bundle digest")
+	expectedFingerprint := flags.String("expected-fingerprint", "", "require the captured paired machine fingerprint for workflow delivery")
+	expectedGeneration := flags.String("expected-generation", "", "require the captured feature worker generation for workflow delivery")
+	expectedRoot := flags.String("expected-root", "", "retain the captured root grant identity for workflow delivery")
 	dryRun := flags.Bool("dry-run", false, "preview delivery files and digest without submitting")
 	var includes, dependencies, artifacts stringList
 	flags.Var(&includes, "include", "additional source path inside workdir (repeatable)")
@@ -128,6 +139,15 @@ func Run(args []string, checkDependencies func(string) error) error {
 	if *replaceService && command != "service" {
 		return errors.New("--replace is supported only by remote service")
 	}
+	if *prepareTerminal && command != "terminal" {
+		return errors.New("--prepare is supported only by remote terminal")
+	}
+	if (*recoveryChoice != "verify" && *recoveryChoice != "retire-container") || *recoveryChoice != "verify" && command != "feature-reconcile" {
+		return errors.New("--recovery requires feature-reconcile and verify or retire-container")
+	}
+	if (*expectedContainer != "" || *recoveryChoice == "retire-container") && (command != "feature-reconcile" || *recoveryChoice != "retire-container" || len(*expectedContainer) != 64 || strings.Trim(*expectedContainer, "0123456789abcdef") != "") {
+		return errors.New("container retirement requires --expected-container with its exact reviewed full ID")
+	}
 	if *authentication != "auto" && *authentication != "never" {
 		return errors.New("--auth must be auto or never")
 	}
@@ -146,13 +166,20 @@ func Run(args []string, checkDependencies func(string) error) error {
 	if flags.NArg() != 0 {
 		return errors.New("unexpected remote positional arguments")
 	}
+	var capturedTarget contract.FeatureTarget
+	if *expectedFingerprint != "" || *expectedGeneration != "" || *expectedRoot != "" {
+		capturedTarget = contract.FeatureTarget{Node: *node, Fingerprint: *expectedFingerprint, Generation: *expectedGeneration}
+		if command != "submit" || *workflow == "" || capturedTarget.Validate() != nil || (*expectedRoot != "" && !contract.ValidID(*expectedRoot)) {
+			return errors.New("captured target flags require workflow delivery and an exact valid machine identity")
+		}
+	}
 	if *expectedDigest != "" && command != "submit" {
 		return errors.New("--expected-digest is supported only by submit")
 	}
 	if *activationApproval != "" && command != "edge-activate" {
 		return errors.New("--approve requires edge-activate")
 	}
-	if *activationRequest != "" && command != "edge-activate" && command != "feature-call" && command != "feature-status" && command != "feature-cancel" && command != "features-config" && command != "terminal" && command != "terminal-status" && command != "terminal-close" {
+	if *activationRequest != "" && command != "edge-activate" && command != "feature-prepare" && command != "feature-call" && command != "feature-status" && command != "feature-cancel" && command != "feature-reconcile" && command != "features-config" && command != "terminal" && command != "terminal-status" && command != "terminal-close" {
 		return errors.New("--request requires edge-activate or an explicit feature request command")
 	}
 	if *dryRun && command != "submit" && command != "edge-activate" {
@@ -181,6 +208,11 @@ func Run(args []string, checkDependencies func(string) error) error {
 	}
 	if *interaction != "terminal" && command != "approve" && command != "security-key-register" {
 		return errors.New("--interaction is supported only by remote approve or security-key-register")
+	}
+	if command == "feature-prepare" {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		return prepareFeature(ctx, *activationRequest, os.Stdout)
 	}
 	root, err := stateRoot(*state)
 	if err != nil {
@@ -216,10 +248,12 @@ func Run(args []string, checkDependencies func(string) error) error {
 			return callFeature(ctx, root, *activationRequest)
 		case "feature-status", "feature-cancel":
 			return inspectFeature(ctx, root, *activationRequest, command == "feature-cancel")
+		case "feature-reconcile":
+			return reconcileFeature(ctx, root, *activationRequest, *recoveryChoice, *expectedContainer)
 		case "features-config":
 			return configureFeatures(ctx, root, *activationRequest)
 		case "terminal":
-			return remoteTerminal(ctx, root, *activationRequest)
+			return remoteTerminal(ctx, root, *activationRequest, *prepareTerminal)
 		case "terminal-status", "terminal-close":
 			return inspectTerminal(ctx, root, *activationRequest, command == "terminal-close")
 		case "info":
@@ -262,7 +296,7 @@ func Run(args []string, checkDependencies func(string) error) error {
 				if *profile != "" {
 					return errors.New("choose --workflow-file or --profile, not both")
 				}
-				return submitDelivery(ctx, root, *node, *id, *workdir, *workflow, includes, dependencies, artifacts, *dryRun, *expectedDigest)
+				return submitCapturedDelivery(ctx, root, *node, *id, *workdir, *workflow, includes, dependencies, artifacts, *dryRun, *expectedDigest, capturedTarget, *expectedRoot)
 			}
 			if *dryRun || *expectedDigest != "" || len(includes)+len(dependencies)+len(artifacts) != 0 {
 				return errors.New("delivery options require --workflow-file")

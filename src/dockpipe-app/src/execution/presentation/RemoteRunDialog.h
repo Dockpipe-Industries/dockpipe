@@ -12,6 +12,7 @@ class RemoteRunDialog : public QDialog {
     Q_OBJECT
 public:
     RemoteRunDialog(const Context &context, const QString &node, QWidget *parent = nullptr);
+    void setCapturedTarget(const QJsonObject &target, const QString &root);
 signals:
     void remoteJobSubmitted(const QString &jobId, const QString &title);
 private:

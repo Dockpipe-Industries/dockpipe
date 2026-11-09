@@ -14,10 +14,13 @@ const MaxFeaturePermissionBytes = 1 << 20
 // FeaturePermissions is private worker-local configuration. Enrollment and
 // workflow delivery never create these grants. Root paths are never advertised.
 type FeaturePermissions struct {
+	ProcessRecovery string                  `json:"process_recovery,omitempty"`
 	Schema          string                  `json:"schema"`
 	Roots           []FeatureRootPermission `json:"roots"`
 	DockerRead      bool                    `json:"docker_read"`
 	DockerControl   bool                    `json:"docker_control"`
+	DockerExec      bool                    `json:"docker_exec,omitempty"`
+	DockerRecovery  bool                    `json:"docker_recovery,omitempty"`
 	TerminalProfile *TerminalProfile        `json:"terminal_profile,omitempty"`
 }
 
@@ -27,11 +30,17 @@ type FeatureRootPermission struct {
 }
 
 func (permissions FeaturePermissions) Validate() error {
+	if permissions.ProcessRecovery != "" && permissions.ProcessRecovery != "host-reboot" && permissions.ProcessRecovery != "cgroup-v2" {
+		return errors.New("process_recovery must select cgroup-v2 or host-reboot")
+	}
 	if permissions.Schema != contract.FeatureVersion || len(permissions.Roots) > 32 {
 		return errors.New("invalid worker-local feature permissions")
 	}
 	if permissions.DockerControl && !permissions.DockerRead {
 		return errors.New("Docker control requires Docker read permission")
+	}
+	if (permissions.DockerExec || permissions.DockerRecovery) && !permissions.DockerRead {
+		return errors.New("Docker exec requires Docker read permission")
 	}
 	seen := map[string]bool{}
 	terminalRoots := 0
@@ -65,7 +74,7 @@ func (permissions FeaturePermissions) catalog(target contract.FeatureTarget) con
 		published.Terminal = published.Terminal && terminalSupported()
 		roots = append(roots, published)
 	}
-	return contract.FeatureCatalog{Schema: contract.FeatureVersion, Target: target, Roots: roots, DockerRead: permissions.DockerRead, DockerControl: permissions.DockerControl}
+	return contract.FeatureCatalog{Schema: contract.FeatureVersion, Target: target, Roots: roots, DockerRead: permissions.DockerRead, DockerControl: permissions.DockerControl, DockerExec: permissions.DockerExec && terminalSupported(), DockerRecovery: permissions.DockerRecovery, ProcessRecovery: permissions.ProcessRecovery}
 }
 
 func loadFeaturePermissions(root string) (FeaturePermissions, error) {

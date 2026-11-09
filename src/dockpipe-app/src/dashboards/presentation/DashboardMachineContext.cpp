@@ -43,6 +43,20 @@ bool DashboardWidgetFactory::canChangeWidgetMachineContext(QWidget *widget, QStr
 {
     if (error)
         error->clear();
+    // Owners with async continuations can be pending between child processes.
+    // This presentation contract avoids linking private editor types into SDK UI.
+    bool operationPending = widget->property("workspaceOperationPending").toBool();
+    for (const auto *owner : widget->findChildren<QObject *>()) {
+        if (owner->property("workspaceOperationPending").toBool()) {
+            operationPending = true;
+            break;
+        }
+    }
+    if (operationPending) {
+        if (error)
+            *error = guardedChangeMessage();
+        return false;
+    }
     for (const auto *files : widget->findChildren<ProjectFilesWidget *>()) {
         if (files->hasUnsavedChanges() || files->filesOperationPending()) {
             if (error)

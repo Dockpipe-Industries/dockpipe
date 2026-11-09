@@ -113,11 +113,11 @@ new execution or authorization path.
 | --- | --- | --- | --- |
 | Host/Docker/worker lifecycle metadata | Implemented, local tests | Implemented, cross-build only | Implemented, cross-build only |
 | Process start identity and System discovery | `/proc`, including boot identity | BSD creation seconds/microseconds; native focused tests | Creation FILETIME; native limited-user tests |
-| Host CPU and resident memory | Implemented | Unavailable | Cumulative process CPU; resident memory unavailable |
+| Host process CPU and resident memory | Implemented | Unavailable | Cumulative process CPU; resident memory unavailable |
 | Selected Docker resource metrics | Docker CLI; fixture-qualified | Same CLI contract; native unqualified | Same CLI contract; native unqualified |
 | QEMU host association/start verification | Existing VM runtime adapter | Package adapter implemented; native identity tests pass; complete association qualification pending | Package adapter implemented; native identity tests pass; complete association qualification pending |
-| Whole-system resources | CPU, memory, swap, root disk, network, uptime/load | Unavailable | CPU, physical memory, system-volume capacity, network and uptime; native qualification pending |
-| Opted-in remote monitoring | Outbound snapshots | Docker inventory; native resources unavailable | Worker runtime unsupported |
+| Whole-system resources | CPU, memory, swap, root disk, network, uptime/load | Native CPU, memory, swap, root disk, network, uptime/load; Darwin arm64 live-qualified | CPU, physical memory, system-volume capacity, network and uptime; native qualification pending |
+| Opted-in remote monitoring | Outbound snapshots | Native system/process metadata and Docker inventory; paired-worker qualified | Worker runtime unsupported |
 
 Remote worker execution uses the same local recorder on the worker. Existing
 broker job status and raw logs are available in **Executions → Runs & logs**. Remote monitoring adds an
@@ -142,6 +142,15 @@ collector's mount namespace. Network rates sum non-loopback interfaces, includin
 virtual interfaces; bridge/VPN traffic may be counted at multiple interfaces.
 The CPU chart retains 60 samples. CPU and network rates need two measurements;
 reboots, counter resets and machine changes reset their baselines.
+
+On macOS, native Mach counters supply cumulative CPU ticks and memory measurements;
+available memory is free plus inactive pages. Native kernel interfaces supply
+swap, root-filesystem capacity, non-loopback network counters, uptime and load.
+These describe the Mac host, including when Docker runs in a separate VM. Failed
+sources remain unavailable. CPU and network rates require a nonempty boot identity
+and two samples. This does not add per-process CPU or resident-memory counters.
+Darwin arm64 native tests and two distinct live paired-worker snapshots have
+qualified this path; Darwin amd64 has compile-only coverage.
 
 On Windows, whole-system measurements use native Windows APIs through the same
 CLI snapshot contract. CPU and network rates appear after two samples. Disk

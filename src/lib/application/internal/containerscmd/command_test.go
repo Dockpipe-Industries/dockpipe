@@ -110,3 +110,60 @@ func TestControlCancellationAndFailureDoNotProduceReceipt(t *testing.T) {
 		})
 	}
 }
+
+func TestTypedReadsUseStrictWireAndExactResourceReceipts(t *testing.T) {
+	dockerFixture(t, `case "$1:$2" in
+container:inspect) printf '%s' '[{"Id":"`+containerID+`"}]' ;;
+container:logs) printf fixture-logs ;;
+*) exit 7 ;;
+esac
+`)
+	for _, action := range []string{"inspect", "logs"} {
+		var output bytes.Buffer
+		input := `{"action":"` + action + `","kind":"container","object":"` + containerID + `"}`
+		if err := handle(context.Background(), strings.NewReader(input), &output); err != nil {
+			t.Fatal(err)
+		}
+		var result infrastructure.ContainerReadResult
+		if err := json.Unmarshal(output.Bytes(), &result); err != nil || result.Action != action || result.Object != containerID || result.Kind != "container" {
+			t.Fatalf("invalid detail response: %s (%v)", output.Bytes(), err)
+		}
+	}
+	for _, input := range []string{
+		`{"action":"inspect","kind":"network","object":"short"}`,
+		`{"action":"logs","kind":"volume","object":"data"}`,
+		`{"action":"inspect","kind":"volume","object":"data","args":["--all"]}`,
+		`{"action":"inspect","kind":"volume","object":"data","object":"other"}`,
+		`{"action":"inspect","kind":"volume","object":"data","container":"` + containerID + `"}`,
+		`{"action":"snapshot","kind":"volume","object":"data"}`,
+		`{"action":"start","container":"` + containerID + `","kind":"volume","object":"data"}`,
+	} {
+		if err := handle(context.Background(), strings.NewReader(input), new(bytes.Buffer)); err == nil {
+			t.Fatalf("invalid read/control request accepted: %s", input)
+		}
+	}
+}
+
+func TestExecArgumentsRejectExtraProgramsFlagsAndAmbiguousTargets(t *testing.T) {
+	for _, arguments := range [][]string{
+		{},
+		{"--container", "short", "--shell", "/bin/sh"},
+		{"--container", containerID, "--shell", "/bin/sh -c code"},
+		{"--container", containerID, "--program", "/bin/sh"},
+		{"--container", containerID, "--container", containerID},
+		{"--shell", "/bin/sh", "--shell", "/bin/bash"},
+		{"--container", containerID, "--shell", "/bin/sh", "--privileged"},
+	} {
+		if _, err := decodeExecArguments(arguments); err == nil {
+			t.Fatalf("invalid exec arguments accepted: %q", arguments)
+		}
+	}
+	for _, arguments := range [][]string{
+		{"--container", containerID, "--shell", "/bin/sh"},
+		{"--shell", "/bin/bash", "--container", containerID},
+	} {
+		if request, err := decodeExecArguments(arguments); err != nil || request.Container != containerID {
+			t.Fatalf("typed exec selection rejected: %+v (%v)", request, err)
+		}
+	}
+}

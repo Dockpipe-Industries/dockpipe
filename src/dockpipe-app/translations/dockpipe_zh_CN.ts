@@ -582,7 +582,6 @@ Browse packages to add the tools you use.</source>
             <source>Project scope stays inside the selected project, including symbolic links.</source>
             <translation>项目范围仅限于所选项目内部，包括符号链接。</translation>
         </message>
-        
         <message>
             <location line="+17" />
             <source>Open a project to browse its files.</source>
@@ -919,7 +918,6 @@ Independent repository · add multiple views for cross-repo work</source>
             <source>Desktop background unavailable: %1 Your previous background was kept.</source>
             <translation>桌面背景不可用：%1 已保留之前的背景。</translation>
         </message>
-    
         <message>
             <location line="+219" />
             <source>Remote workflow launch is unavailable for this view.</source>
@@ -1704,10 +1702,8 @@ Independent repository · add multiple views for cross-repo work</source>
             <source>%1 of %2 machines · access status does not imply online</source>
             <translation>%1 台，共 %2 台计算机 · 访问状态并不表示在线</translation>
         </message>
-    
-        
         <message>
-            <location filename="../src/dashboards/presentation/DashboardMachineContext.cpp" line="70"/>
+            <location filename="../src/dashboards/presentation/DashboardMachineContext.cpp" line="70" />
             <source>Save open drafts and wait for active operations before changing machines.</source>
             <translation>更换机器前，请保存打开的草稿并等待活动操作完成。</translation>
         </message>
@@ -3090,26 +3086,6 @@ Refresh to load inventory from the selected machine.</source>
             <translation>选择卷以检查使用详情。</translation>
         </message>
         <message>
-            <location line="+33" />
-            <source>Docker query exceeded its 15-second or 32-MiB response limit.</source>
-            <translation>Docker 查询超过 15 秒或 32 MiB 响应限制。</translation>
-        </message>
-        <message>
-            <location line="+103" />
-            <source>Some Docker relationships could not be read. Inspect the selected object for details.</source>
-            <translation>无法读取部分 Docker 关系。请检查选定对象以查看详情。</translation>
-        </message>
-        <message>
-            <location line="+3" />
-            <source>Relationships unavailable: %1</source>
-            <translation>关系不可用：%1</translation>
-        </message>
-        <message>
-            <location line="+3" />
-            <source> Relationships shown for the first 256 containers. Full inventory is available in Details &amp; actions.</source>
-            <translation> 显示前 256 个容器的关系。完整清单可在“详细信息与操作”中查看。</translation>
-        </message>
-        <message>
             <location line="+21" />
             <location line="+4" />
             <location line="+24" />
@@ -3219,7 +3195,6 @@ Refresh to load inventory from the selected machine.</source>
             <source>Docker refresh completed with errors.</source>
             <translation>Docker 刷新已完成，但出现错误。</translation>
         </message>
-        
         <message>
             <location line="-62" />
             <source>Loading container details…</source>
@@ -3376,7 +3351,6 @@ Refresh to load inventory from the selected machine.</source>
             <source>%1 · Docker monitoring unavailable or stale. On the paired worker, enable: dockpipe remote monitoring --system --docker. The worker and broker must support monitoring.</source>
             <translation>%1 · Docker 监控不可用或已过期。请在已配对的工作节点上启用：dockpipe remote monitoring --system --docker。工作节点和代理必须支持监控。</translation>
         </message>
-        
         <message>
             <location line="+12" />
             <source>Remote Docker inventory unavailable. </source>
@@ -3396,11 +3370,6 @@ Refresh to load inventory from the selected machine.</source>
             <location line="+2" />
             <source> · Remote inventory · read-only</source>
             <translation> · 远程清单 · 只读</translation>
-        </message>
-    
-        <message>
-            <source>Remote inventory shares topology. Container logs and detailed inspection are unavailable for this machine.</source>
-            <translation>远程清单共享拓扑。此机器无法查看容器日志和详细检查信息。</translation>
         </message>
         <message>
             <source>Container control requires a supported action and an exact full container ID.</source>
@@ -3449,6 +3418,54 @@ Refresh to load inventory from the selected machine.</source>
         <message>
             <source> · Remote inventory</source>
             <translation> · 远程清单</translation>
+        </message>
+        <message>
+            <source>Container inventory exceeds its object limit.</source>
+            <translation>容器清单超出了对象数量限制。</translation>
+        </message>
+        <message>
+            <source>Container query cancelled or exceeded its deadline or response limit.</source>
+            <translation>容器查询已取消，或超出了截止时间或响应限制。</translation>
+        </message>
+        <message>
+            <source>Container query cancelled or the trusted Dockpipe CLI is unavailable.</source>
+            <translation>容器查询已取消，或受信任的 Dockpipe CLI 不可用。</translation>
+        </message>
+        <message>
+            <source>Could not inspect resource: %1</source>
+            <translation>无法检查资源：%1</translation>
+        </message>
+        <message>
+            <source>Could not load container logs: %1</source>
+            <translation>无法加载容器日志：%1</translation>
+        </message>
+        <message>
+            <source>Could not send the container request.</source>
+            <translation>无法发送容器请求。</translation>
+        </message>
+        <message>
+            <source>Detailed inspection requires the paired worker's Docker read feature.</source>
+            <translation>详细检查需要已配对工作节点的 Docker 读取功能。</translation>
+        </message>
+        <message>
+            <source>Invalid container detail response.</source>
+            <translation>容器详细信息响应无效。</translation>
+        </message>
+        <message>
+            <source>Invalid log receipt.</source>
+            <translation>日志回执无效。</translation>
+        </message>
+        <message>
+            <source>Invalid resource receipt.</source>
+            <translation>资源回执无效。</translation>
+        </message>
+        <message>
+            <source>Loading resource details…</source>
+            <translation>正在加载资源详细信息…</translation>
+        </message>
+        <message>
+            <source>Select for details</source>
+            <translation>选择以查看详细信息</translation>
         </message>
     </context>
     <context>
@@ -4603,7 +4620,6 @@ Remaining:
             <source>Resolve selected conflict</source>
             <translation>解决选定冲突</translation>
         </message>
-    
         <message>
             <source>The remote conflict editor context is unavailable. Select the authorized machine and root again.</source>
             <translation>远程冲突编辑器上下文不可用。请重新选择已授权的机器和根目录。</translation>
@@ -5708,7 +5724,6 @@ If a workflow needs external tools, you install them yourself from official sour
             <source>Show</source>
             <translation>显示</translation>
         </message>
-        
         <message>
             <location line="+63" />
             <source>No project selected</source>
@@ -6212,16 +6227,23 @@ Ctrl / ⌘ + `     切换输出
             <source>Cloned workflow to %1</source>
             <translation>工作流已克隆到 %1</translation>
         </message>
-    
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="112"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="112" />
             <source>This machine or root changed. Refresh machines and select it again.</source>
             <translation>此机器或根目录已更改。请刷新机器列表并重新选择。</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="124"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="124" />
             <source>Save or discard open drafts and finish active operations before changing machines.</source>
             <translation>更换机器前，请保存或放弃打开的草稿并完成活动操作。</translation>
+        </message>
+        <message>
+            <source>Choose the computer with the shared machine selector.</source>
+            <translation>请通过共享计算机选择器选择计算机。</translation>
+        </message>
+        <message>
+            <source>Container terminal · %1 · %2</source>
+            <translation>容器终端 · %1 · %2</translation>
         </message>
     </context>
     <context>
@@ -7107,7 +7129,6 @@ Mermaid 预览限制：前 16 个之后的图表将显示为源代码。
             <source>Folder name</source>
             <translation>文件夹名称</translation>
         </message>
-        
         <message>
             <location line="+20" />
             <location line="+1" />
@@ -7304,7 +7325,6 @@ Mermaid 预览限制：前 16 个之后的图表将显示为源代码。
             <source>Workflow YAML · shared with the canvas and YAML view</source>
             <translation>工作流 YAML · 与画布和 YAML 视图共享</translation>
         </message>
-        
         <message>
             <location line="+8" />
             <source>This file is binary, is not UTF-8, or exceeds the 1 MiB editor limit.</source>
@@ -7320,7 +7340,6 @@ Mermaid 预览限制：前 16 个之后的图表将显示为源代码。
             <source>The file exceeds 1 MiB or its location changed. Your edits are still here.</source>
             <translation>文件超过 1 MiB 或位置已更改。您的编辑仍保留在此。</translation>
         </message>
-        
         <message>
             <location line="+8" />
             <source>Cannot save: %1</source>
@@ -7331,12 +7350,6 @@ Mermaid 预览限制：前 16 个之后的图表将显示为源代码。
             <source>Saved %1</source>
             <translation>已保存 %1</translation>
         </message>
-        
-        
-        
-        
-        
-        
         <message>
             <location line="+11" />
             <source>No file open</source>
@@ -7377,20 +7390,19 @@ Mermaid 预览限制：前 16 个之后的图表将显示为源代码。
             <source>%1   ·   UTF-8   ·   %2                         Ln %3, Col %4</source>
             <translation>%1   ·   UTF-8   ·   %2                         第 %3 行，第 %4 列</translation>
         </message>
-    
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="141"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="141" />
             <source>Refresh files</source>
             <translation>刷新文件</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="319"/>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="353"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="319" />
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="353" />
             <source>A file operation is still running. Your open files are preserved.</source>
             <translation>文件操作仍在进行中。已保留打开的文件。</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="534"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="534" />
             <source>Invalid workspace file response.</source>
             <translation>工作区文件响应无效。</translation>
         </message>
@@ -7414,16 +7426,14 @@ Mermaid 预览限制：前 16 个之后的图表将显示为源代码。
             <translation>Git 操作失败或已取消。重试前请刷新。
 %1</translation>
         </message>
-    
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="552"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="552" />
             <source>The selected remote Git context is unavailable. Select an authorized machine and root, then refresh.</source>
             <translation>所选远程 Git 上下文不可用。请选择已授权的机器和根目录，然后刷新。</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="585"/>
-            <source>The remote Git outcome is unavailable or uncertain. Refresh the captured machine and root before another write; the operation was not retried.</source>
-            <translation>远程 Git 结果不可用或不确定。再次写入前，请刷新已捕获的机器和根目录；未重试该操作。</translation>
+            <source>The remote Git outcome is unavailable or uncertain. Refresh the captured machine and root before another write; inspect Uncertain operations when a mutation is retained.</source>
+            <translation>远程 Git 结果不可用或不确定。再次写入前，请刷新已记录的计算机和根目录；如果保留了变更，请检查“不确定的操作”。</translation>
         </message>
     </context>
     <context>
@@ -8048,19 +8058,18 @@ Mermaid 预览限制：前 16 个之后的图表将显示为源代码。
             <source>Select a script inside the workspace folder. This file was shared separately by Flatpak, so its temporary document path cannot be saved in a portable workflow.</source>
             <translation>请选择工作区文件夹内的脚本。此文件由 Flatpak 单独共享，因此不能将其临时文档路径保存到可移植工作流中。</translation>
         </message>
-    
         <message>
-            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="22"/>
+            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="22" />
             <source>Wait for all Git operations before changing machines or roots.</source>
             <translation>更换机器或根目录前，请等待所有 Git 操作完成。</translation>
         </message>
         <message>
-            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="29"/>
+            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="29" />
             <source>Save or discard the conflict draft before changing machines or roots.</source>
             <translation>更换机器或根目录前，请保存或放弃冲突草稿。</translation>
         </message>
         <message>
-            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="76"/>
+            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="76" />
             <source>Select an absolute local project folder.</source>
             <translation>请选择具有绝对路径的本地项目文件夹。</translation>
         </message>
@@ -10376,12 +10385,6 @@ This machine is no longer in the available inventory.</source>
             <source>This terminal is already running.</source>
             <translation>此终端已在运行。</translation>
         </message>
-        
-        
-        
-        
-        
-        
         <message>
             <location line="+13" />
             <source>Could not configure the interactive terminal device.</source>
@@ -10443,13 +10446,11 @@ This machine is no longer in the available inventory.</source>
             <source>Terminal cleanup reached its process-inspection limit. Some detached jobs may remain.</source>
             <translation>终端清理达到进程检查上限。可能仍有部分分离的作业。</translation>
         </message>
-    
         <message>
             <location line="+16" />
             <source>Host terminal bridges are unavailable on Windows.</source>
             <translation>Windows 上无法使用主机终端桥接。</translation>
         </message>
-    
         <message>
             <location line="+4" />
             <source>The prepared terminal launch is invalid.</source>
@@ -11061,14 +11062,13 @@ $ 准备接收您的下一个命令</translation>
             <source>Restart DockPipe to enable terminal transparency with compatible browser rendering.</source>
             <translation>重启 DockPipe 以启用兼容浏览器渲染的终端透明效果。</translation>
         </message>
-    
         <message>
-            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="456"/>
+            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="456" />
             <source>Connecting to remote terminal…</source>
             <translation>正在连接远程终端…</translation>
         </message>
         <message>
-            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="374"/>
+            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="374" />
             <source>Remote terminal access is unavailable for this machine or root.</source>
             <translation>此机器无法使用远程终端。</translation>
         </message>
@@ -11503,11 +11503,6 @@ If this Dockpipe does not support the editor, update the CLI and GUI together.</
             <translation>无法读取工作流，或超过编辑器的 1 MiB 上限。</translation>
         </message>
         <message>
-            <location line="+6" />
-            <source>Workflow must be UTF-8. The file was not changed.</source>
-            <translation>工作流必须为 UTF-8。文件未更改。</translation>
-        </message>
-        <message>
             <location line="+42" />
             <location line="+287" />
             <source>Workflow exceeds the 1 MiB editor limit.</source>
@@ -11574,34 +11569,9 @@ If this Dockpipe does not support the editor, update the CLI and GUI together.</
             <translation>工作流 YAML (*.yml *.yaml)</translation>
         </message>
         <message>
-            <location line="+5" />
-            <source>Open the real workflow file instead of overwriting a symbolic link.</source>
-            <translation>请打开实际工作流文件，而不是覆盖符号链接。</translation>
-        </message>
-        <message>
             <location line="+8" />
             <source>Cannot safely read the existing workflow.</source>
             <translation>无法安全读取现有工作流。</translation>
-        </message>
-        <message>
-            <location line="+5" />
-            <source>The existing workflow grew beyond the editor limit. Your draft has been kept.</source>
-            <translation>现有工作流增长至超过编辑器上限。您的草稿已保留。</translation>
-        </message>
-        <message>
-            <location line="+4" />
-            <source>This workflow changed on disk. Open it again before saving; your draft has been kept.</source>
-            <translation>此工作流在磁盘上已更改。保存前请重新打开；您的草稿已保留。</translation>
-        </message>
-        <message>
-            <location line="+8" />
-            <source>The file changed during validation. Your draft has been kept.</source>
-            <translation>验证期间文件已更改。您的草稿已保留。</translation>
-        </message>
-        <message>
-            <location line="+5" />
-            <source>Cannot save workflow: %1</source>
-            <translation>无法保存工作流：%1</translation>
         </message>
         <message>
             <location line="+13" />
@@ -11628,16 +11598,25 @@ If this Dockpipe does not support the editor, update the CLI and GUI together.</
             <source>Apply your inspector changes before changing selection, switching views, or saving.</source>
             <translation>更改选择、切换视图或保存前，请应用检查器中的更改。</translation>
         </message>
-    
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="247"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="247" />
             <source>Could not save all supporting files. Open Files to review the error; your drafts are preserved.</source>
             <translation>无法保存所有支持文件。请打开“文件”查看错误；草稿已保留。</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="253"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="253" />
             <source>The workflow or supporting files changed while saving. Review them before running.</source>
             <translation>保存期间工作流或支持文件已更改。运行前请检查。</translation>
+        </message>
+        <message>
+            <source>Cannot save workflow: %1
+The file may have changed on disk. Your draft has been kept; refresh before retrying.</source>
+            <translation>无法保存工作流：%1
+磁盘上的文件可能已更改。已保留草稿；请刷新后再试。</translation>
+        </message>
+        <message>
+            <source>The workflow changed during validation. Your draft has been kept.</source>
+            <translation>工作流在验证期间发生了更改。已保留草稿。</translation>
         </message>
     </context>
     <context>
@@ -12026,19 +12005,28 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
             <translation>上一次目录读取仍在停止中。请稍后重试。</translation>
         </message>
         <message>
-            <location line="+27" />
-            <source>Cannot start the directory reader: %1</source>
-            <translation>无法启动目录读取器：%1</translation>
+            <source>Binary file · Open in the file viewer for details.</source>
+            <translation>二进制文件 · 在文件查看器中打开以查看详情。</translation>
         </message>
         <message>
-            <location line="+20" />
-            <source>Directory response exceeds the 2 MiB limit. Reduce the page size.</source>
-            <translation>目录响应超过 2 MiB 上限。请减小页面大小。</translation>
+            <source>Directory page exceeds the graph node limit.</source>
+            <translation>目录页超出了图的节点数量限制。</translation>
         </message>
         <message>
-            <location line="+22" />
-            <source>Directory read failed. Refresh to retry.</source>
-            <translation>目录读取失败。请刷新后重试。</translation>
+            <source>Directory reader returned a different workspace path.</source>
+            <translation>目录读取器返回了不同的工作区路径。</translation>
+        </message>
+        <message>
+            <source>Invalid directory page response.</source>
+            <translation>目录页响应无效。</translation>
+        </message>
+        <message>
+            <source>Invalid local workspace graph request.</source>
+            <translation>本地工作区图请求无效。</translation>
+        </message>
+        <message>
+            <source>Non-UTF-8 file · Text preview unavailable.</source>
+            <translation>非 UTF-8 文件 · 文本预览不可用。</translation>
         </message>
     </context>
     <context>
@@ -12459,65 +12447,85 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     <context>
         <name>RemoteFeatureClient</name>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="64"/>
-            <source>Remote operation timed out. Refresh state before retrying a write.</source>
-            <translation>远程操作已超时。重试写入前请刷新状态。</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="105"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="105" />
             <source>Invalid remote feature request bounds.</source>
             <translation>远程功能请求限制无效。</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="131"/>
-            <source>Remote request delivery is uncertain. Refresh state before retrying a write.</source>
-            <translation>远程请求的送达状态不确定。重试写入前请刷新状态。</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="138"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="138" />
             <source>Could not start the trusted Dockpipe remote client.</source>
             <translation>无法启动受信任的 Dockpipe 远程客户端。</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="159"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="159" />
             <source>Remote response exceeded its transport limit.</source>
             <translation>远程响应超出传输限制。</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="182"/>
-            <source>Remote result is unavailable. Refresh state before retrying a write.</source>
-            <translation>远程结果不可用。重试写入前请刷新状态。</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="187"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="187" />
             <source>Remote machine catalog is unavailable.</source>
             <translation>远程机器目录不可用。</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="199"/>
-            <source>Remote result identity changed. Refresh the selected machine.</source>
-            <translation>远程结果标识已更改。请刷新所选机器。</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="211"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="211" />
             <source>Remote result does not match the captured operation.</source>
             <translation>远程结果与已捕获的操作不匹配。</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="224"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="224" />
             <source>Cancellation requested for the original remote operation. Refresh state before retrying a write.</source>
             <translation>已请求取消原始远程操作。重试写入前请刷新状态。</translation>
+        </message>
+        <message>
+            <source>Cannot retain remote mutation recovery metadata. Resolve saved operations or repair settings before another write.</source>
+            <translation>无法保留远程变更的恢复元数据。再次写入前，请解决已保存的操作或修复设置。</translation>
+        </message>
+        <message>
+            <source>Core could not prepare the exact captured remote operation. No operation was dispatched.</source>
+            <translation>核心无法准确准备已记录的远程操作。未发送任何操作。</translation>
+        </message>
+        <message>
+            <source>Invalid recovery receipt. The original operation remains uncertain.</source>
+            <translation>恢复回执无效。原始操作仍不确定。</translation>
+        </message>
+        <message>
+            <source>Prepared remote request exceeds its transport limit.</source>
+            <translation>已准备的远程请求超出了传输限制。</translation>
+        </message>
+        <message>
+            <source>Remote operation preparation exhausted its deadline.</source>
+            <translation>远程操作准备已超出截止时间。</translation>
+        </message>
+        <message>
+            <source>Remote operation timed out. Inspect its original receipt before another write.</source>
+            <translation>远程操作已超时。再次写入前，请检查其原始回执。</translation>
+        </message>
+        <message>
+            <source>Remote request delivery is uncertain. Inspect the original operation.</source>
+            <translation>远程请求的送达状态不确定。请检查原始操作。</translation>
+        </message>
+        <message>
+            <source>Remote result identity changed. Inspect the original captured operation.</source>
+            <translation>远程结果的身份已更改。请检查已记录的原始操作。</translation>
+        </message>
+        <message>
+            <source>Remote result is unavailable. Inspect the original operation before another write.</source>
+            <translation>远程结果不可用。再次写入前，请检查原始操作。</translation>
+        </message>
+        <message>
+            <source>The recovery strategy does not match the captured mutation.</source>
+            <translation>恢复策略与已记录的变更不匹配。</translation>
         </message>
     </context>
     <context>
         <name>WorkspaceFileModel</name>
         <message>
-            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="227"/>
+            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="227" />
             <source>Too many pending workspace directory requests; refresh to continue.</source>
             <translation>待处理的工作区目录请求过多；请刷新后继续。</translation>
         </message>
         <message>
-            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="273"/>
+            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="273" />
             <source>Invalid workspace directory page.</source>
             <translation>工作区目录页无效。</translation>
         </message>
@@ -12525,63 +12533,63 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     <context>
         <name>WorkspaceFilesClient</name>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="44"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="44" />
             <source>Workspace file operation timed out; its effect may need refresh.</source>
             <translation>工作区文件操作已超时；请刷新以确认可能产生的影响。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="84"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="84" />
             <source>A workspace file operation is already running.</source>
             <translation>工作区文件操作已在进行中。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="90"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="90" />
             <source>Workspace file request exceeds its transport contract.</source>
             <translation>工作区文件请求超出传输约定。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="96"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="96" />
             <source>The selected remote Files context is unavailable.</source>
             <translation>所选远程“文件”上下文不可用。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="100"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="100" />
             <source>Workspace Files requires an absolute selected root.</source>
             <translation>工作区文件需要选择具有绝对路径的根目录。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="152"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="152" />
             <source>Could not send the workspace file request.</source>
             <translation>无法发送工作区文件请求。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="168"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="168" />
             <source>Workspace file helper failed (exit %1). Check the installed Dockpipe CLI.</source>
             <translation>工作区文件助手失败（退出代码 %1）。请检查已安装的 Dockpipe CLI。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="176"/>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="247"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="176" />
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="247" />
             <source>Invalid workspace file response.</source>
             <translation>工作区文件响应无效。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="196"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="196" />
             <source>Workspace file response exceeded its transport limit.</source>
             <translation>工作区文件响应超出传输限制。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="206"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="206" />
             <source>Workspace file operation was cancelled; refresh before retrying a write.</source>
             <translation>工作区文件操作已取消；重试写入前请刷新。</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="270"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="270" />
             <source>The workspace file context changed before completion.</source>
             <translation>工作区文件上下文在完成前已更改。</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteWorkspaceFilesDispatch.cpp" line="34"/>
+            <location filename="../src/remote/infrastructure/RemoteWorkspaceFilesDispatch.cpp" line="34" />
             <source>Remote file result is uncertain. Refresh before retrying a write.</source>
             <translation>远程文件结果不确定。重试写入前请刷新。</translation>
         </message>
@@ -12589,55 +12597,55 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     <context>
         <name>WorkspaceMachineMenu</name>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="50"/>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="92"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="50" />
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="92" />
             <source>Follow main machine</source>
             <translation>跟随主机器</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="51"/>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="85"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="51" />
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="85" />
             <source>Shared machine selection. Dashboard widgets can choose their own machine.</source>
             <translation>共享机器选择。仪表板小组件可以选择各自的机器。</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="55"/>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="97"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="55" />
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="97" />
             <source>This computer</source>
             <translation>此计算机</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="56"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="56" />
             <source>Choose the machine for Containers, Files, Git, Terminal and the dashboard.</source>
             <translation>选择用于容器、文件、Git、终端和仪表板的机器。</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="81"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="81" />
             <source> · Locked</source>
             <translation> · 已锁定</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="83"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="83" />
             <source> · Unavailable</source>
             <translation> · 不可用</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="103"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="103" />
             <source>Unlock remote access…</source>
             <translation>解锁远程访问…</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="106"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="106" />
             <source>No remote workspaces available</source>
             <translation>没有可用的远程工作区</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="127"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="127" />
             <source>Containers</source>
             <translation>容器</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="133"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="133" />
             <source>Refresh machines</source>
             <translation>刷新机器</translation>
         </message>
@@ -12645,49 +12653,41 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     <context>
         <name>RemoteTerminalSession</name>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="86"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="114"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="86" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="114" />
             <source>Could not start the trusted remote terminal client.</source>
             <translation>无法启动受信任的远程终端客户端。</translation>
         </message>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="69"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="69" />
             <source>Remote terminal access is unavailable for this machine or root.</source>
             <translation>此机器或根目录无法使用远程终端。</translation>
         </message>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="154"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="176"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="183"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="192"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="203"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="217"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="223"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="248"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="257"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="154" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="176" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="183" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="192" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="203" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="217" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="223" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="248" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="257" />
             <source>The remote terminal returned an invalid response.</source>
             <translation>远程终端返回了无效响应。</translation>
         </message>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="38"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="124"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="199"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="245"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="312"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="321"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="329"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="38" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="124" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="199" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="245" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="312" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="321" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="329" />
             <source>The remote terminal connection was lost. Pending input was not replayed.</source>
             <translation>远程终端连接已断开。未重新发送待处理的输入。</translation>
         </message>
     </context>
-
-
-
-
-
-
-
-
     <context>
         <name>ManagedTerminalSession</name>
         <message>
@@ -12748,6 +12748,111 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
             <location line="+35" />
             <source>The terminal requires an existing directory and an absolute executable path.</source>
             <translation>终端需要一个现有目录以及可执行文件的绝对路径。</translation>
+        </message>
+    </context>
+    <context>
+        <name>RemoteFeatureRecoveryDialog</name>
+        <message>
+            <source>Choose a retained operation.</source>
+            <translation>请选择保留的操作。</translation>
+        </message>
+        <message>
+            <source>Close</source>
+            <translation>关闭</translation>
+        </message>
+        <message>
+            <source>Contacting the original captured machine…</source>
+            <translation>正在联系已记录的原始计算机…</translation>
+        </message>
+        <message>
+            <source>Inspect the original operation before another write. Cancellation does not prove that a mutation had no effect.</source>
+            <translation>再次写入前，请检查原始操作。取消并不能证明变更未产生影响。</translation>
+        </message>
+        <message>
+            <source>Machine: %1
+Fingerprint: %2
+Generation: %3
+Root: %4
+Action: %5
+Operation: %6</source>
+            <translation>计算机：%1
+指纹：%2
+代次：%3
+根目录：%4
+动作：%5
+操作：%6</translation>
+        </message>
+        <message>
+            <source>No uncertain mutations are retained.</source>
+            <translation>未保留任何不确定的变更。</translation>
+        </message>
+        <message>
+            <source>Original operation status: %1. No operation was replayed.</source>
+            <translation>原始操作状态：%1。未重新执行任何操作。</translation>
+        </message>
+        <message>
+            <source>Refresh status</source>
+            <translation>刷新状态</translation>
+        </message>
+        <message>
+            <source>Request cancellation</source>
+            <translation>请求取消</translation>
+        </message>
+        <message>
+            <source>The mutation outcome remains uncertain. Refresh its original status before another write.</source>
+            <translation>变更结果仍不确定。再次写入前，请刷新其原始状态。</translation>
+        </message>
+        <message>
+            <source>Uncertain operations…</source>
+            <translation>不确定的操作…</translation>
+        </message>
+        <message>
+            <source>Uncertain remote operations</source>
+            <translation>不确定的远程操作</translation>
+        </message>
+        <message>
+            <source>unknown</source>
+            <translation>未知</translation>
+        </message>
+        <message>
+            <source>Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write.</source>
+            <translation>已验证清理；变更结果仍未知。再次写入前，请刷新“文件”、Git 或容器提供程序，并检查受影响的状态。</translation>
+        </message>
+        <message>
+            <source>Container terminal cleanup remains uncertain. The original session reference is retained.</source>
+            <translation>容器终端的清理状态仍不确定。已保留原始会话引用。</translation>
+        </message>
+        <message>
+            <source>Container terminal cleanup was verified for the original captured session.</source>
+            <translation>已验证已记录的原始会话的容器终端清理。</translation>
+        </message>
+        <message>
+            <source>Explicitly remove the original exact container after native client cleanup. Requires the worker's independent Docker recovery grant. Volumes and images are retained.</source>
+            <translation>在原生客户端清理后，明确删除原始的确切容器。需要工作节点独立授予的 Docker 恢复权限。卷和镜像会保留。</translation>
+        </message>
+        <message>
+            <source>Remove container %1 on %2 to fence delayed daemon work for operation %3? This removes the container and its writable layer. Volumes and images are retained. The original mutation outcome remains unknown.</source>
+            <translation>是否删除 %2 上的容器 %1，以阻止操作 %3 的延迟守护进程工作？这将删除容器及其可写层。卷和镜像会保留。原始变更结果仍未知。</translation>
+        </message>
+        <message>
+            <source>Retire container…</source>
+            <translation>停用容器…</translation>
+        </message>
+        <message>
+            <source>Retire the captured container?</source>
+            <translation>停用已记录的容器？</translation>
+        </message>
+        <message>
+            <source>Revoke the original invocation and verify its native cleanup evidence. Boot-fenced workers require a host reboot for uncertain process-backed operations. The mutation outcome remains unknown.</source>
+            <translation>撤销原始调用并验证其原生清理证据。对于不确定的进程操作，采用启动隔离的工作节点需要重启主机。变更结果仍未知。</translation>
+        </message>
+        <message>
+            <source>Verify cleanup</source>
+            <translation>验证清理</translation>
+        </message>
+        <message>
+            <source>Refreshing the worker's retained terminal metadata. No cleanup was requested.</source>
+            <translation>正在刷新工作节点保留的终端元数据。未请求清理。</translation>
         </message>
     </context>
 </TS>

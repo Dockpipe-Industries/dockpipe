@@ -17,6 +17,8 @@ class QTemporaryFile;
 class QPushButton;
 class QTreeWidget;
 class QStackedWidget;
+class QShowEvent;
+class QHideEvent;
 
 class ProjectGitWidget : public QWidget {
     Q_OBJECT
@@ -30,7 +32,12 @@ public:
     void confirmLeaveAsync(std::function<void(bool)> completion);
     void setWorkdirAsync(const QString &workdir, std::function<void(bool)> completion = {});
 
+protected:
+    void showEvent(QShowEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
+
 private:
+    void refreshVisible();
     void runAction(const QString &action);
     void runRequest(QJsonObject request);
     void render(const QJsonObject &snapshot);

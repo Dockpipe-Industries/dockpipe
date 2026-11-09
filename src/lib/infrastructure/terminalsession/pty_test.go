@@ -229,10 +229,10 @@ func TestPTYBlockingInputCancellationClosesSession(t *testing.T) {
 func TestPTYInterruptUsesForegroundTerminalGroup(t *testing.T) {
 	manager := testManager(t, "-i")
 	session := openTestSession(t, manager)
-	if err := session.Input(context.Background(), 1, []byte("stty -echo; sh -c 'printf __JOB_READY__; exec sleep 30'\n")); err != nil {
+	if err := session.Input(context.Background(), 1, []byte("stty -echo; sh -c 'printf \"__%s__\\n\" JOB_READY; exec sleep 30'\n")); err != nil {
 		t.Fatal(err)
 	}
-	waitOutput(t, session, "__JOB_READY__")
+	waitOutput(t, session, "__JOB_READY__\r\n")
 	if err := session.Input(context.Background(), 2, []byte{3}); err != nil {
 		t.Fatal(err)
 	}

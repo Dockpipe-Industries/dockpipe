@@ -8,13 +8,20 @@
 #include "ProjectGitWidget.h"
 #include "RemoteAccessMonitor.h"
 #include "RemoteFeatureClient.h"
+#include "RemoteFeatureRecoveryDialog.h"
 #include "RemoteGitContext.h"
 #include "RemoteWorkspaceFilesDispatch.h"
 #include "TerminalWidget.h"
+#include "TerminalHub.h"
 #include "WorkspaceFilesController.h"
 #include "WorkspaceMachineMenu.h"
+#include "WorkflowEditorWidget.h"
 
 #include <QHBoxLayout>
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QComboBox>
+#include <QSignalBlocker>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
@@ -25,6 +32,11 @@ void MainWindow::setupWorkspaceMachineMenu(QHBoxLayout *layout)
 {
     m_workspaceMachineMenu = new WorkspaceMachineMenu(this);
     layout->addWidget(m_workspaceMachineMenu);
+    layout->addWidget(RemoteFeatureRecoveryDialog::createButton(this,
+        [this](const QJsonObject &reference, const QJsonObject &) {
+            if (m_dashboardFactory)
+                m_dashboardFactory->terminals().releaseRecoveredSession(reference);
+        }));
     connect(m_workspaceMachineMenu, &WorkspaceMachineMenu::contextRequested,
             this, &MainWindow::chooseWorkspaceMachine);
     connect(m_workspaceMachineMenu, &WorkspaceMachineMenu::refreshRequested,
@@ -39,7 +51,9 @@ void MainWindow::setupWorkspaceMachineMenu(QHBoxLayout *layout)
         if (unlocked && m_workspaceMachineMenu->catalog().isEmpty())
             refreshWorkspaceMachines();
     });
-    m_dockerWidget->setFeatureTarget({}, true);
+    connect(m_dockerWidget, &DockerObservabilityWidget::remoteExecRequested,
+            this, &MainWindow::openRemoteContainerExec);
+    m_dockerWidget->setFeatureCatalog({});
     updateWorkspaceMachineAccess();
     if (m_remoteAccess->state() == RemoteAccessMonitor::State::Unlocked)
         QTimer::singleShot(0, this, &MainWindow::refreshWorkspaceMachines);
@@ -86,6 +100,10 @@ void MainWindow::refreshWorkspaceMachines()
         }
         const auto catalog = result.value.toArray();
         m_workspaceMachineMenu->setCatalog(catalog);
+        const auto selectedCatalog = currentSharedMachineCatalog();
+        m_dockerWidget->setFeatureCatalog(selectedCatalog);
+        m_dockerWidget->setEnabled(m_workspaceMachineMenu->currentTarget().isEmpty()
+            || selectedCatalog.value("docker_read").toBool());
         if (m_terminalWidget)
             m_terminalWidget->updateMachineCatalog(currentSharedMachineCatalog());
         if (m_dashboardFactory)
@@ -95,6 +113,7 @@ void MainWindow::refreshWorkspaceMachines()
                 page->setMachineCatalog(catalog);
         }
         updateWorkspaceMachineAccess();
+        updateWorkspaceMachineLabels();
     });
 }
 
@@ -103,6 +122,12 @@ void MainWindow::updateWorkspaceMachineLabels()
     if (!m_workspaceMachineMenu)
         return;
     const bool local = m_workspaceMachineMenu->currentTarget().isEmpty();
+    const QSignalBlocker runBlocker(m_runTarget);
+    const QSignalBlocker pickerBlocker(m_pickerTarget);
+    m_runTarget->clear();
+    m_runTarget->addItem(m_workspaceMachineMenu->text());
+    m_pickerTarget->setCurrentIndex(0);
+    updateWorkflowPreview();
     m_workspaceButton->setEnabled(local);
     if (local)
         return;
@@ -144,7 +169,8 @@ void MainWindow::chooseWorkspaceMachine(const QJsonObject &target, const QString
         }
     }
 
-    bool protectedWork = m_projectFiles->hasUnsavedChanges() || m_projectFiles->filesOperationPending()
+    bool protectedWork = (m_workflowEditor && m_workflowEditor->operationPending())
+        || m_projectFiles->hasUnsavedChanges() || m_projectFiles->filesOperationPending()
         || !m_projectGit->confirmLeave() || m_dockerWidget->controlPending();
     for (auto *client : m_projectGit->findChildren<ProjectGitClient *>())
         protectedWork = protectedWork || client->busy();
@@ -199,8 +225,7 @@ void MainWindow::chooseWorkspaceMachine(const QJsonObject &target, const QString
     const bool gitAccepted = target.isEmpty()
         ? RemoteGitContext::configureLocal(m_projectGit, m_settings.projectFolder, &error)
         : RemoteGitContext::configure(m_projectGit, target, root, &error);
-    const bool containersAccepted = m_dockerWidget->setFeatureTarget(target,
-        target.isEmpty() || catalog.value("docker_control").toBool(), &error);
+    const bool containersAccepted = m_dockerWidget->setFeatureCatalog(catalog, &error);
     if (!filesAccepted || !gitAccepted || !containersAccepted) {
         denyCommit(error);
         return;
@@ -236,4 +261,26 @@ void MainWindow::chooseWorkspaceMachine(const QJsonObject &target, const QString
     setProperty("workspaceMachineSwitching", false);
     if (m_projectGit->isEnabled())
         m_projectGit->refresh();
+}
+
+void MainWindow::openRemoteContainerExec(const QJsonObject &catalog, const QString &container, const QString &shell)
+{
+    if (!m_dashboardFactory)
+        return;
+    auto *dialog = new QDialog(this);
+    dialog->setObjectName("remoteContainerTerminal");
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setWindowTitle(tr("Container terminal · %1 · %2")
+        .arg(catalog.value("target").toObject().value("node").toString(), container.left(12)));
+    dialog->resize(1000, 640);
+    auto *layout = new QVBoxLayout(dialog);
+    auto *terminal = new TerminalWidget(m_dashboardFactory->terminals(), {}, dialog, TerminalWidget::Mode::Dashboard);
+    QString error;
+    if (!terminal->setContainerContext(catalog, container, shell, &error)) {
+        dialog->deleteLater();
+        statusBar()->showMessage(error, 10000);
+        return;
+    }
+    layout->addWidget(terminal);
+    dialog->show();
 }

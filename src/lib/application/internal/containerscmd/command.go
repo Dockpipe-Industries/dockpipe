@@ -18,6 +18,11 @@ import (
 const maxRequestBytes = 4096
 
 func Run(arguments []string) error {
+	if len(arguments) > 0 && arguments[0] == "exec" {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		return runExec(ctx, arguments[1:], os.Stdin, os.Stdout, os.Stderr)
+	}
 	if len(arguments) != 2 || arguments[0] != "--request" {
 		return errors.New("usage: dockpipe containers --request <file.json|->")
 	}
@@ -69,7 +74,7 @@ func handle(ctx context.Context, input io.Reader, output io.Writer) error {
 		return err
 	}
 	if request.Action == "snapshot" {
-		if request.Container != "" {
+		if request.Container != "" || request.Kind != "" || request.Object != "" {
 			return errors.New("container snapshot does not accept a container target")
 		}
 		result, err := infrastructure.CollectLocalContainerInventory(ctx)
@@ -78,15 +83,35 @@ func handle(ctx context.Context, input io.Reader, output io.Writer) error {
 		}
 		return json.NewEncoder(output).Encode(result)
 	}
-	result, err := infrastructure.ControlContainer(ctx, request)
+	if request.Action == "inspect" || request.Action == "logs" {
+		if request.Container != "" {
+			return errors.New("container read selects kind and object, not a control target")
+		}
+		result, err := infrastructure.ReadContainer(ctx, infrastructure.ContainerReadRequest{Action: request.Action, Kind: request.Kind, Object: request.Object})
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(output).Encode(result)
+	}
+	if request.Kind != "" || request.Object != "" {
+		return errors.New("container control does not accept read targets")
+	}
+	result, err := infrastructure.ControlContainer(ctx, infrastructure.ContainerControlRequest{Action: request.Action, Container: request.Container})
 	if err != nil {
 		return err
 	}
 	return json.NewEncoder(output).Encode(result)
 }
 
-func decodeRequest(data []byte) (infrastructure.ContainerControlRequest, error) {
-	var request infrastructure.ContainerControlRequest
+type containerRequest struct {
+	Action    string
+	Container string
+	Kind      string
+	Object    string
+}
+
+func decodeRequest(data []byte) (containerRequest, error) {
+	var request containerRequest
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	opening, err := decoder.Token()
 	if err != nil || opening != json.Delim('{') {
@@ -99,7 +124,7 @@ func decodeRequest(data []byte) (infrastructure.ContainerControlRequest, error) 
 			return request, err
 		}
 		name, ok := field.(string)
-		if !ok || seen[name] || (name != "action" && name != "container") {
+		if !ok || seen[name] || (name != "action" && name != "container" && name != "kind" && name != "object") {
 			return request, errors.New("unknown or duplicate container request field")
 		}
 		seen[name] = true
@@ -111,10 +136,15 @@ func decodeRequest(data []byte) (infrastructure.ContainerControlRequest, error) 
 		if !ok {
 			return request, errors.New("container request fields must be strings")
 		}
-		if name == "action" {
+		switch name {
+		case "action":
 			request.Action = value
-		} else {
+		case "container":
 			request.Container = value
+		case "kind":
+			request.Kind = value
+		case "object":
+			request.Object = value
 		}
 	}
 	if _, err := decoder.Token(); err != nil {
@@ -124,4 +154,36 @@ func decodeRequest(data []byte) (infrastructure.ContainerControlRequest, error) 
 		return request, errors.New("container request must contain one JSON object")
 	}
 	return request, nil
+}
+
+func runExec(ctx context.Context, arguments []string, stdin, stdout, stderr *os.File) error {
+	request, err := decodeExecArguments(arguments)
+	if err != nil {
+		return err
+	}
+	return infrastructure.ExecLocalContainerWithAdmission(infrastructure.NativeExecutionAdmission{Context: ctx}, request, stdin, stdout, stderr)
+}
+
+func decodeExecArguments(arguments []string) (infrastructure.ContainerExecRequest, error) {
+	var request infrastructure.ContainerExecRequest
+	if len(arguments) != 4 {
+		return request, errors.New("usage: dockpipe containers exec --container <full-id> --shell </bin/sh|/bin/bash>")
+	}
+	seen := map[string]bool{}
+	for index := 0; index < len(arguments); index += 2 {
+		flag, value := arguments[index], arguments[index+1]
+		if seen[flag] {
+			return request, errors.New("unknown or duplicate container exec flag")
+		}
+		seen[flag] = true
+		switch flag {
+		case "--container":
+			request.Container = value
+		case "--shell":
+			request.Shell = value
+		default:
+			return request, errors.New("unknown or duplicate container exec flag")
+		}
+	}
+	return request, infrastructure.ValidateContainerExecRequest(request)
 }

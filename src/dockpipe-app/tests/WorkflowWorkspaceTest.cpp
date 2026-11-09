@@ -129,6 +129,11 @@ catalog:list)
         exit 0
     fi
     printf '{"workflows":[{"workflow_id":"demo","display_name":"Development","config_path":"%s/config.yml"}]}' "$DOCKPIPE_TEST_ROOT" ;;
+files:--request)
+    if [ -n "$DOCKPIPE_STUDIO_TEST_CLI" ]; then
+        exec "$DOCKPIPE_STUDIO_TEST_CLI" "$@"
+    fi
+    exit 1 ;;
 workflow:document|workflow:validate)
     if [ -n "$DOCKPIPE_STUDIO_TEST_CLI" ]; then
         exec "$DOCKPIPE_STUDIO_TEST_CLI" "$@"
@@ -441,13 +446,13 @@ steps:
             if (!prefix.isEmpty())
                 picker->grab().save(prefix + "-picker-dialog.png");
             window.findChild<QPushButton *>("openWorkflowOnCanvas")->click();
-            picked = editor->workflowPath() == path;
+            picked = true;
         }
         if (picker && picker->isVisible())
             picker->reject();
     });
     window.findChild<QPushButton *>("workflowPickerButton")->click();
-    if (!picked || !waitUntil([&]() { return containsLabel(editor, "3 steps"); }))
+    if (!picked || !waitUntil([&]() { return editor->workflowPath() == path && containsLabel(editor, "3 steps"); }))
         return 10;
     bool safeClose = false;
     QTimer::singleShot(0, &window, [&]() {
@@ -641,9 +646,21 @@ steps:
                 message->done(QMessageBox::Cancel);
         });
     };
-    cancelDiscard();
-    if (editor->openWorkflow(path) || yaml->toPlainText() != draft)
+    QTimer cancelOpen;
+    QObject::connect(&cancelOpen, &QTimer::timeout, &window, [&]() {
+        if (auto *message = qobject_cast<QMessageBox *>(QApplication::activeModalWidget()))
+            message->done(QMessageBox::Cancel);
+    });
+    cancelOpen.start(10);
+    bool openCompleted = false;
+    bool openSucceeded = true;
+    editor->openWorkflowAsync(path, [&](bool success) {
+        openCompleted = true;
+        openSucceeded = success;
+    });
+    if (!waitUntil([&]() { return openCompleted; }) || openSucceeded || yaml->toPlainText() != draft)
         return 15;
+    cancelOpen.stop();
     cancelDiscard();
     if (editor->setWorkspace(temporary.filePath("other"), cli) || editor->workdir() != temporary.path())
         return 16;

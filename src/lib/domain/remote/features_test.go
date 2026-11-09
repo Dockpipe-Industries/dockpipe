@@ -36,7 +36,7 @@ func TestFeatureRoutesSeparateReadWriteAndUnknown(t *testing.T) {
 			t.Fatal("read feature route has wrong scope")
 		}
 	}
-	for _, path := range []string{"/v1/features-write-submit", "/v1/features-write-status", "/v1/features-cancel"} {
+	for _, path := range []string{"/v1/features-write-submit", "/v1/features-write-status", "/v1/features-cancel", "/v1/features-reconcile"} {
 		if OperatorScope(path) != "remote.execute" {
 			t.Fatal("write feature route lacks execution scope")
 		}

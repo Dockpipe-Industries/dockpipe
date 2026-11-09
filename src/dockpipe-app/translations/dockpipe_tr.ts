@@ -582,7 +582,6 @@ Kullandığınız araçları eklemek için Paketlere göz atın.</translation>
             <source>Project scope stays inside the selected project, including symbolic links.</source>
             <translation>Proje kapsamı, sembolik bağlantılar dahil seçili projenin dışına çıkmaz.</translation>
         </message>
-        
         <message>
             <location line="+17" />
             <source>Open a project to browse its files.</source>
@@ -919,7 +918,6 @@ Bağımsız depo · depolar arası çalışma için birden çok görünüm ekley
             <source>Desktop background unavailable: %1 Your previous background was kept.</source>
             <translation>Masaüstü arka planı kullanılamıyor: %1 Önceki arka planınız korundu.</translation>
         </message>
-    
         <message>
             <location line="+219" />
             <source>Remote workflow launch is unavailable for this view.</source>
@@ -1704,10 +1702,8 @@ Bağımsız depo · depolar arası çalışma için birden çok görünüm ekley
             <source>%1 of %2 machines · access status does not imply online</source>
             <translation>%2 makineden %1 tanesi · erişim durumu çevrimiçi olduğunu göstermez</translation>
         </message>
-    
-        
         <message>
-            <location filename="../src/dashboards/presentation/DashboardMachineContext.cpp" line="70"/>
+            <location filename="../src/dashboards/presentation/DashboardMachineContext.cpp" line="70" />
             <source>Save open drafts and wait for active operations before changing machines.</source>
             <translation>Makineyi değiştirmeden önce açık taslakları kaydedin ve etkin işlemlerin tamamlanmasını bekleyin.</translation>
         </message>
@@ -3090,26 +3086,6 @@ Seçili makinedeki envanteri yüklemek için yenileyin.</translation>
             <translation>Kullanım ayrıntılarını incelemek için bir birim seçin.</translation>
         </message>
         <message>
-            <location line="+33" />
-            <source>Docker query exceeded its 15-second or 32-MiB response limit.</source>
-            <translation>Docker sorgusu 15 saniye veya 32 MiB yanıt sınırını aştı.</translation>
-        </message>
-        <message>
-            <location line="+103" />
-            <source>Some Docker relationships could not be read. Inspect the selected object for details.</source>
-            <translation>Bazı Docker ilişkileri okunamadı. Ayrıntılar için seçili nesneyi inceleyin.</translation>
-        </message>
-        <message>
-            <location line="+3" />
-            <source>Relationships unavailable: %1</source>
-            <translation>İlişkiler kullanılamıyor: %1</translation>
-        </message>
-        <message>
-            <location line="+3" />
-            <source> Relationships shown for the first 256 containers. Full inventory is available in Details &amp; actions.</source>
-            <translation> İlk 256 kapsayıcının ilişkileri gösteriliyor. Envanterin tamamı Ayrıntılar ve işlemler bölümünde.</translation>
-        </message>
-        <message>
             <location line="+21" />
             <location line="+4" />
             <location line="+24" />
@@ -3219,7 +3195,6 @@ Seçili makinedeki envanteri yüklemek için yenileyin.</translation>
             <source>Docker refresh completed with errors.</source>
             <translation>Docker yenilemesi hatalarla tamamlandı.</translation>
         </message>
-        
         <message>
             <location line="-62" />
             <source>Loading container details…</source>
@@ -3376,7 +3351,6 @@ Seçili makinedeki envanteri yüklemek için yenileyin.</translation>
             <source>%1 · Docker monitoring unavailable or stale. On the paired worker, enable: dockpipe remote monitoring --system --docker. The worker and broker must support monitoring.</source>
             <translation>%1 · Docker izleme kullanılamıyor veya güncel değil. Eşleştirilmiş çalışan üzerinde şu komutu etkinleştirin: dockpipe remote monitoring --system --docker. Çalışan ve aracı izlemeyi desteklemelidir.</translation>
         </message>
-        
         <message>
             <location line="+12" />
             <source>Remote Docker inventory unavailable. </source>
@@ -3396,11 +3370,6 @@ Seçili makinedeki envanteri yüklemek için yenileyin.</translation>
             <location line="+2" />
             <source> · Remote inventory · read-only</source>
             <translation> · Uzak envanter · salt okunur</translation>
-        </message>
-    
-        <message>
-            <source>Remote inventory shares topology. Container logs and detailed inspection are unavailable for this machine.</source>
-            <translation>Uzak envanter topolojiyi paylaşır. Bu makinede kapsayıcı günlükleri ve ayrıntılı inceleme kullanılamaz.</translation>
         </message>
         <message>
             <source>Container control requires a supported action and an exact full container ID.</source>
@@ -3449,6 +3418,54 @@ Seçili makinedeki envanteri yüklemek için yenileyin.</translation>
         <message>
             <source> · Remote inventory</source>
             <translation> · Uzak envanter</translation>
+        </message>
+        <message>
+            <source>Container inventory exceeds its object limit.</source>
+            <translation>Kapsayıcı envanteri nesne sınırını aşıyor.</translation>
+        </message>
+        <message>
+            <source>Container query cancelled or exceeded its deadline or response limit.</source>
+            <translation>Kapsayıcı sorgusu iptal edildi ya da süre veya yanıt sınırını aştı.</translation>
+        </message>
+        <message>
+            <source>Container query cancelled or the trusted Dockpipe CLI is unavailable.</source>
+            <translation>Kapsayıcı sorgusu iptal edildi veya güvenilen Dockpipe CLI kullanılamıyor.</translation>
+        </message>
+        <message>
+            <source>Could not inspect resource: %1</source>
+            <translation>Kaynak incelenemedi: %1</translation>
+        </message>
+        <message>
+            <source>Could not load container logs: %1</source>
+            <translation>Kapsayıcı günlükleri yüklenemedi: %1</translation>
+        </message>
+        <message>
+            <source>Could not send the container request.</source>
+            <translation>Kapsayıcı isteği gönderilemedi.</translation>
+        </message>
+        <message>
+            <source>Detailed inspection requires the paired worker's Docker read feature.</source>
+            <translation>Ayrıntılı inceleme, eşleştirilmiş çalışanın Docker okuma özelliğini gerektirir.</translation>
+        </message>
+        <message>
+            <source>Invalid container detail response.</source>
+            <translation>Geçersiz kapsayıcı ayrıntı yanıtı.</translation>
+        </message>
+        <message>
+            <source>Invalid log receipt.</source>
+            <translation>Geçersiz günlük alındısı.</translation>
+        </message>
+        <message>
+            <source>Invalid resource receipt.</source>
+            <translation>Geçersiz kaynak alındısı.</translation>
+        </message>
+        <message>
+            <source>Loading resource details…</source>
+            <translation>Kaynak ayrıntıları yükleniyor…</translation>
+        </message>
+        <message>
+            <source>Select for details</source>
+            <translation>Ayrıntılar için seçin</translation>
         </message>
     </context>
     <context>
@@ -4603,7 +4620,6 @@ Kalan:
             <source>Resolve selected conflict</source>
             <translation>Seçili çakışmayı çöz</translation>
         </message>
-    
         <message>
             <source>The remote conflict editor context is unavailable. Select the authorized machine and root again.</source>
             <translation>Uzak çakışma düzenleyicisinin bağlamı kullanılamıyor. Yetkili makineyi ve kök dizini yeniden seçin.</translation>
@@ -5708,7 +5724,6 @@ Bir iş akışı harici araçlara ihtiyaç duyarsa bunları resmî kaynaklardan 
             <source>Show</source>
             <translation>Göster</translation>
         </message>
-        
         <message>
             <location line="+63" />
             <source>No project selected</source>
@@ -6212,16 +6227,23 @@ Yakınlaştırmak için kaydırın · Kaydırmak için arka planı sürükleyin
             <source>Cloned workflow to %1</source>
             <translation>İş akışı %1 konumuna klonlandı</translation>
         </message>
-    
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="112"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="112" />
             <source>This machine or root changed. Refresh machines and select it again.</source>
             <translation>Bu makine veya kök dizin değişti. Makine listesini yenileyip yeniden seçin.</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="124"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="124" />
             <source>Save or discard open drafts and finish active operations before changing machines.</source>
             <translation>Makineyi değiştirmeden önce açık taslakları kaydedin veya atın ve etkin işlemleri tamamlayın.</translation>
+        </message>
+        <message>
+            <source>Choose the computer with the shared machine selector.</source>
+            <translation>Bilgisayarı ortak makine seçicisiyle seçin.</translation>
+        </message>
+        <message>
+            <source>Container terminal · %1 · %2</source>
+            <translation>Kapsayıcı terminali · %1 · %2</translation>
         </message>
     </context>
     <context>
@@ -7107,7 +7129,6 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
             <source>Folder name</source>
             <translation>Klasör adı</translation>
         </message>
-        
         <message>
             <location line="+20" />
             <location line="+1" />
@@ -7304,7 +7325,6 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
             <source>Workflow YAML · shared with the canvas and YAML view</source>
             <translation>İş akışı YAML'ı · tuval ve YAML görünümüyle paylaşılır</translation>
         </message>
-        
         <message>
             <location line="+8" />
             <source>This file is binary, is not UTF-8, or exceeds the 1 MiB editor limit.</source>
@@ -7320,7 +7340,6 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
             <source>The file exceeds 1 MiB or its location changed. Your edits are still here.</source>
             <translation>Dosya 1 MiB sınırını aşıyor veya konumu değişti. Düzenlemeleriniz hâlâ burada.</translation>
         </message>
-        
         <message>
             <location line="+8" />
             <source>Cannot save: %1</source>
@@ -7331,12 +7350,6 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
             <source>Saved %1</source>
             <translation>%1 kaydedildi</translation>
         </message>
-        
-        
-        
-        
-        
-        
         <message>
             <location line="+11" />
             <source>No file open</source>
@@ -7377,20 +7390,19 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
             <source>%1   ·   UTF-8   ·   %2                         Ln %3, Col %4</source>
             <translation>%1   ·   UTF-8   ·   %2                         Sat %3, Süt %4</translation>
         </message>
-    
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="141"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="141" />
             <source>Refresh files</source>
             <translation>Dosyaları yenile</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="319"/>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="353"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="319" />
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="353" />
             <source>A file operation is still running. Your open files are preserved.</source>
             <translation>Bir dosya işlemi hâlâ çalışıyor. Açık dosyalarınız korundu.</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="534"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="534" />
             <source>Invalid workspace file response.</source>
             <translation>Geçersiz çalışma alanı dosya yanıtı.</translation>
         </message>
@@ -7414,16 +7426,14 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
             <translation>Git işlemi başarısız oldu veya iptal edildi. Yeniden denemeden önce yenileyin.
 %1</translation>
         </message>
-    
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="552"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="552" />
             <source>The selected remote Git context is unavailable. Select an authorized machine and root, then refresh.</source>
             <translation>Seçilen uzak Git bağlamı kullanılamıyor. Yetkili bir makine ve kök dizin seçip yenileyin.</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="585"/>
-            <source>The remote Git outcome is unavailable or uncertain. Refresh the captured machine and root before another write; the operation was not retried.</source>
-            <translation>Uzak Git sonucu kullanılamıyor veya belirsiz. Yeni bir yazma işleminden önce yakalanan makineyi ve kök dizini yenileyin; işlem yinelenmedi.</translation>
+            <source>The remote Git outcome is unavailable or uncertain. Refresh the captured machine and root before another write; inspect Uncertain operations when a mutation is retained.</source>
+            <translation>Uzak Git sonucu kullanılamıyor veya belirsiz. Başka bir yazma işleminden önce kaydedilen makineyi ve kökü yenileyin; bir değişiklik tutulduğunda Belirsiz işlemler bölümünü inceleyin.</translation>
         </message>
     </context>
     <context>
@@ -8048,19 +8058,18 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
             <source>Select a script inside the workspace folder. This file was shared separately by Flatpak, so its temporary document path cannot be saved in a portable workflow.</source>
             <translation>Çalışma alanı klasörünün içinden bir betik seçin. Bu dosya Flatpak ile ayrı olarak paylaşıldığından geçici belge yolu taşınabilir bir iş akışına kaydedilemez.</translation>
         </message>
-    
         <message>
-            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="22"/>
+            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="22" />
             <source>Wait for all Git operations before changing machines or roots.</source>
             <translation>Makineyi veya kök dizini değiştirmeden önce tüm Git işlemlerinin bitmesini bekleyin.</translation>
         </message>
         <message>
-            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="29"/>
+            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="29" />
             <source>Save or discard the conflict draft before changing machines or roots.</source>
             <translation>Makineyi veya kök dizini değiştirmeden önce çakışma taslağını kaydedin ya da atın.</translation>
         </message>
         <message>
-            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="76"/>
+            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="76" />
             <source>Select an absolute local project folder.</source>
             <translation>Mutlak yola sahip bir yerel proje klasörü seçin.</translation>
         </message>
@@ -10376,12 +10385,6 @@ Bu makine artık kullanılabilir envanterde değil.</translation>
             <source>This terminal is already running.</source>
             <translation>Bu terminal zaten çalışıyor.</translation>
         </message>
-        
-        
-        
-        
-        
-        
         <message>
             <location line="+13" />
             <source>Could not configure the interactive terminal device.</source>
@@ -10443,13 +10446,11 @@ Bu makine artık kullanılabilir envanterde değil.</translation>
             <source>Terminal cleanup reached its process-inspection limit. Some detached jobs may remain.</source>
             <translation>Terminal temizleme işlemi süreç inceleme sınırına ulaştı. Ayrılmış bazı işler kalabilir.</translation>
         </message>
-    
         <message>
             <location line="+16" />
             <source>Host terminal bridges are unavailable on Windows.</source>
             <translation>Ana makine terminal köprüleri Windows'ta kullanılamıyor.</translation>
         </message>
-    
         <message>
             <location line="+4" />
             <source>The prepared terminal launch is invalid.</source>
@@ -11061,14 +11062,13 @@ $ Sonraki komutunuz için hazır</translation>
             <source>Restart DockPipe to enable terminal transparency with compatible browser rendering.</source>
             <translation>Uyumlu tarayıcı işlemeyle terminal saydamlığını etkinleştirmek için DockPipe'ı yeniden başlatın.</translation>
         </message>
-    
         <message>
-            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="456"/>
+            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="456" />
             <source>Connecting to remote terminal…</source>
             <translation>Uzak terminale bağlanılıyor…</translation>
         </message>
         <message>
-            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="374"/>
+            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="374" />
             <source>Remote terminal access is unavailable for this machine or root.</source>
             <translation>Uzak terminal erişimi bu makine için kullanılamıyor.</translation>
         </message>
@@ -11503,11 +11503,6 @@ Bu Dockpipe düzenleyiciyi desteklemiyorsa CLI ve GUI'ı birlikte güncelleyin.<
             <translation>İş akışı okunamıyor veya düzenleyicinin 1 MiB sınırını aşıyor.</translation>
         </message>
         <message>
-            <location line="+6" />
-            <source>Workflow must be UTF-8. The file was not changed.</source>
-            <translation>İş akışı UTF-8 olmalıdır. Dosya değiştirilmedi.</translation>
-        </message>
-        <message>
             <location line="+42" />
             <location line="+287" />
             <source>Workflow exceeds the 1 MiB editor limit.</source>
@@ -11574,34 +11569,9 @@ Bu Dockpipe düzenleyiciyi desteklemiyorsa CLI ve GUI'ı birlikte güncelleyin.<
             <translation>İş akışı YAML (*.yml *.yaml)</translation>
         </message>
         <message>
-            <location line="+5" />
-            <source>Open the real workflow file instead of overwriting a symbolic link.</source>
-            <translation>Sembolik bağlantının üzerine yazmak yerine gerçek iş akışı dosyasını açın.</translation>
-        </message>
-        <message>
             <location line="+8" />
             <source>Cannot safely read the existing workflow.</source>
             <translation>Mevcut iş akışı güvenli biçimde okunamıyor.</translation>
-        </message>
-        <message>
-            <location line="+5" />
-            <source>The existing workflow grew beyond the editor limit. Your draft has been kept.</source>
-            <translation>Mevcut iş akışı düzenleyici sınırını aştı. Taslağınız korundu.</translation>
-        </message>
-        <message>
-            <location line="+4" />
-            <source>This workflow changed on disk. Open it again before saving; your draft has been kept.</source>
-            <translation>Bu iş akışı diskte değişti. Kaydetmeden önce yeniden açın; taslağınız korundu.</translation>
-        </message>
-        <message>
-            <location line="+8" />
-            <source>The file changed during validation. Your draft has been kept.</source>
-            <translation>Doğrulama sırasında dosya değişti. Taslağınız korundu.</translation>
-        </message>
-        <message>
-            <location line="+5" />
-            <source>Cannot save workflow: %1</source>
-            <translation>İş akışı kaydedilemiyor: %1</translation>
         </message>
         <message>
             <location line="+13" />
@@ -11628,16 +11598,25 @@ Bu Dockpipe düzenleyiciyi desteklemiyorsa CLI ve GUI'ı birlikte güncelleyin.<
             <source>Apply your inspector changes before changing selection, switching views, or saving.</source>
             <translation>Seçimi değiştirmeden, görünümler arasında geçmeden veya kaydetmeden önce denetçi değişikliklerinizi uygulayın.</translation>
         </message>
-    
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="247"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="247" />
             <source>Could not save all supporting files. Open Files to review the error; your drafts are preserved.</source>
             <translation>Tüm destek dosyaları kaydedilemedi. Hatayı incelemek için Dosyalar'ı açın; taslaklarınız korundu.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="253"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="253" />
             <source>The workflow or supporting files changed while saving. Review them before running.</source>
             <translation>Kaydetme sırasında iş akışı veya destek dosyaları değişti. Çalıştırmadan önce gözden geçirin.</translation>
+        </message>
+        <message>
+            <source>Cannot save workflow: %1
+The file may have changed on disk. Your draft has been kept; refresh before retrying.</source>
+            <translation>İş akışı kaydedilemiyor: %1
+Dosya diskte değişmiş olabilir. Taslağınız korundu; yeniden denemeden önce yenileyin.</translation>
+        </message>
+        <message>
+            <source>The workflow changed during validation. Your draft has been kept.</source>
+            <translation>İş akışı doğrulama sırasında değişti. Taslağınız korundu.</translation>
         </message>
     </context>
     <context>
@@ -12026,19 +12005,28 @@ Yonga yüksekliği, okunabilirlik için sınırlandırılmış logaritmik dosya 
             <translation>Önceki dizin okuması hâlâ durduruluyor. Birazdan yeniden deneyin.</translation>
         </message>
         <message>
-            <location line="+27" />
-            <source>Cannot start the directory reader: %1</source>
-            <translation>Dizin okuyucusu başlatılamıyor: %1</translation>
+            <source>Binary file · Open in the file viewer for details.</source>
+            <translation>İkili dosya · Ayrıntılar için dosya görüntüleyicisinde açın.</translation>
         </message>
         <message>
-            <location line="+20" />
-            <source>Directory response exceeds the 2 MiB limit. Reduce the page size.</source>
-            <translation>Dizin yanıtı 2 MiB sınırını aşıyor. Sayfa boyutunu azaltın.</translation>
+            <source>Directory page exceeds the graph node limit.</source>
+            <translation>Dizin sayfası grafın düğüm sınırını aşıyor.</translation>
         </message>
         <message>
-            <location line="+22" />
-            <source>Directory read failed. Refresh to retry.</source>
-            <translation>Dizin okuma başarısız oldu. Yeniden denemek için yenileyin.</translation>
+            <source>Directory reader returned a different workspace path.</source>
+            <translation>Dizin okuyucusu farklı bir çalışma alanı yolu döndürdü.</translation>
+        </message>
+        <message>
+            <source>Invalid directory page response.</source>
+            <translation>Geçersiz dizin sayfası yanıtı.</translation>
+        </message>
+        <message>
+            <source>Invalid local workspace graph request.</source>
+            <translation>Geçersiz yerel çalışma alanı graf isteği.</translation>
+        </message>
+        <message>
+            <source>Non-UTF-8 file · Text preview unavailable.</source>
+            <translation>UTF-8 olmayan dosya · Metin önizlemesi kullanılamıyor.</translation>
         </message>
     </context>
     <context>
@@ -12459,65 +12447,85 @@ Yonga yüksekliği, okunabilirlik için sınırlandırılmış logaritmik dosya 
     <context>
         <name>RemoteFeatureClient</name>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="64"/>
-            <source>Remote operation timed out. Refresh state before retrying a write.</source>
-            <translation>Uzak işlemin süresi doldu. Yazma işlemini yeniden denemeden önce durumu yenileyin.</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="105"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="105" />
             <source>Invalid remote feature request bounds.</source>
             <translation>Geçersiz uzak özellik isteği sınırları.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="131"/>
-            <source>Remote request delivery is uncertain. Refresh state before retrying a write.</source>
-            <translation>Uzak isteğin iletimi belirsiz. Yazma işlemini yeniden denemeden önce durumu yenileyin.</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="138"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="138" />
             <source>Could not start the trusted Dockpipe remote client.</source>
             <translation>Güvenilir Dockpipe uzak istemcisi başlatılamadı.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="159"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="159" />
             <source>Remote response exceeded its transport limit.</source>
             <translation>Uzak yanıt aktarım sınırını aştı.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="182"/>
-            <source>Remote result is unavailable. Refresh state before retrying a write.</source>
-            <translation>Uzak sonuç kullanılamıyor. Yazma işlemini yeniden denemeden önce durumu yenileyin.</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="187"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="187" />
             <source>Remote machine catalog is unavailable.</source>
             <translation>Uzak makine kataloğu kullanılamıyor.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="199"/>
-            <source>Remote result identity changed. Refresh the selected machine.</source>
-            <translation>Uzak sonuç kimliği değişti. Seçili makineyi yenileyin.</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="211"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="211" />
             <source>Remote result does not match the captured operation.</source>
             <translation>Uzak sonuç, yakalanan işlemle eşleşmiyor.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="224"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="224" />
             <source>Cancellation requested for the original remote operation. Refresh state before retrying a write.</source>
             <translation>Özgün uzak işlemin iptali istendi. Yazma işlemini yeniden denemeden önce durumu yenileyin.</translation>
+        </message>
+        <message>
+            <source>Cannot retain remote mutation recovery metadata. Resolve saved operations or repair settings before another write.</source>
+            <translation>Uzak değişikliğin kurtarma üst verileri saklanamıyor. Başka bir yazma işleminden önce kayıtlı işlemleri çözümleyin veya ayarları onarın.</translation>
+        </message>
+        <message>
+            <source>Core could not prepare the exact captured remote operation. No operation was dispatched.</source>
+            <translation>Çekirdek, kaydedilen uzak işlemin aynısını hazırlayamadı. Hiçbir işlem gönderilmedi.</translation>
+        </message>
+        <message>
+            <source>Invalid recovery receipt. The original operation remains uncertain.</source>
+            <translation>Geçersiz kurtarma alındısı. Asıl işlem belirsizliğini koruyor.</translation>
+        </message>
+        <message>
+            <source>Prepared remote request exceeds its transport limit.</source>
+            <translation>Hazırlanan uzak istek taşıma sınırını aşıyor.</translation>
+        </message>
+        <message>
+            <source>Remote operation preparation exhausted its deadline.</source>
+            <translation>Uzak işlem hazırlığı süresini tüketti.</translation>
+        </message>
+        <message>
+            <source>Remote operation timed out. Inspect its original receipt before another write.</source>
+            <translation>Uzak işlem zaman aşımına uğradı. Başka bir yazma işleminden önce asıl alındıyı inceleyin.</translation>
+        </message>
+        <message>
+            <source>Remote request delivery is uncertain. Inspect the original operation.</source>
+            <translation>Uzak isteğin teslimi belirsiz. Asıl işlemi inceleyin.</translation>
+        </message>
+        <message>
+            <source>Remote result identity changed. Inspect the original captured operation.</source>
+            <translation>Uzak sonucun kimliği değişti. Kaydedilen asıl işlemi inceleyin.</translation>
+        </message>
+        <message>
+            <source>Remote result is unavailable. Inspect the original operation before another write.</source>
+            <translation>Uzak sonuç kullanılamıyor. Başka bir yazma işleminden önce asıl işlemi inceleyin.</translation>
+        </message>
+        <message>
+            <source>The recovery strategy does not match the captured mutation.</source>
+            <translation>Kurtarma stratejisi, kaydedilen değişiklikle eşleşmiyor.</translation>
         </message>
     </context>
     <context>
         <name>WorkspaceFileModel</name>
         <message>
-            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="227"/>
+            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="227" />
             <source>Too many pending workspace directory requests; refresh to continue.</source>
             <translation>Bekleyen çalışma alanı dizin isteği sayısı fazla; devam etmek için yenileyin.</translation>
         </message>
         <message>
-            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="273"/>
+            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="273" />
             <source>Invalid workspace directory page.</source>
             <translation>Geçersiz çalışma alanı dizin sayfası.</translation>
         </message>
@@ -12525,63 +12533,63 @@ Yonga yüksekliği, okunabilirlik için sınırlandırılmış logaritmik dosya 
     <context>
         <name>WorkspaceFilesClient</name>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="44"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="44" />
             <source>Workspace file operation timed out; its effect may need refresh.</source>
             <translation>Çalışma alanı dosya işleminin süresi doldu; olası etkisini denetlemek için yenileyin.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="84"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="84" />
             <source>A workspace file operation is already running.</source>
             <translation>Bir çalışma alanı dosya işlemi zaten sürüyor.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="90"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="90" />
             <source>Workspace file request exceeds its transport contract.</source>
             <translation>Çalışma alanı dosya isteği aktarım sözleşmesini aşıyor.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="96"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="96" />
             <source>The selected remote Files context is unavailable.</source>
             <translation>Seçilen uzak Dosyalar bağlamı kullanılamıyor.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="100"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="100" />
             <source>Workspace Files requires an absolute selected root.</source>
             <translation>Çalışma Alanı Dosyaları, mutlak yola sahip seçili bir kök dizin gerektirir.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="152"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="152" />
             <source>Could not send the workspace file request.</source>
             <translation>Çalışma alanı dosya isteği gönderilemedi.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="168"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="168" />
             <source>Workspace file helper failed (exit %1). Check the installed Dockpipe CLI.</source>
             <translation>Çalışma alanı dosya yardımcısı başarısız oldu (çıkış kodu %1). Yüklü Dockpipe CLI'ını denetleyin.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="176"/>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="247"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="176" />
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="247" />
             <source>Invalid workspace file response.</source>
             <translation>Geçersiz çalışma alanı dosya yanıtı.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="196"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="196" />
             <source>Workspace file response exceeded its transport limit.</source>
             <translation>Çalışma alanı dosya yanıtı aktarım sınırını aştı.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="206"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="206" />
             <source>Workspace file operation was cancelled; refresh before retrying a write.</source>
             <translation>Çalışma alanı dosya işlemi iptal edildi; yazmayı yeniden denemeden önce yenileyin.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="270"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="270" />
             <source>The workspace file context changed before completion.</source>
             <translation>Çalışma alanı dosyası bağlamı tamamlanmadan önce değişti.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteWorkspaceFilesDispatch.cpp" line="34"/>
+            <location filename="../src/remote/infrastructure/RemoteWorkspaceFilesDispatch.cpp" line="34" />
             <source>Remote file result is uncertain. Refresh before retrying a write.</source>
             <translation>Uzak dosya sonucu belirsiz. Yazmayı yeniden denemeden önce yenileyin.</translation>
         </message>
@@ -12589,55 +12597,55 @@ Yonga yüksekliği, okunabilirlik için sınırlandırılmış logaritmik dosya 
     <context>
         <name>WorkspaceMachineMenu</name>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="50"/>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="92"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="50" />
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="92" />
             <source>Follow main machine</source>
             <translation>Ana makineyi izle</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="51"/>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="85"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="51" />
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="85" />
             <source>Shared machine selection. Dashboard widgets can choose their own machine.</source>
             <translation>Paylaşılan makine seçimi. Pano bileşenleri kendi makinelerini seçebilir.</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="55"/>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="97"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="55" />
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="97" />
             <source>This computer</source>
             <translation>Bu bilgisayar</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="56"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="56" />
             <source>Choose the machine for Containers, Files, Git, Terminal and the dashboard.</source>
             <translation>Kapsayıcılar, Dosyalar, Git, Terminal ve pano için makineyi seçin.</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="81"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="81" />
             <source> · Locked</source>
             <translation> · Kilitli</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="83"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="83" />
             <source> · Unavailable</source>
             <translation> · Kullanılamıyor</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="103"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="103" />
             <source>Unlock remote access…</source>
             <translation>Uzak erişimin kilidini aç…</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="106"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="106" />
             <source>No remote workspaces available</source>
             <translation>Kullanılabilir uzak çalışma alanı yok</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="127"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="127" />
             <source>Containers</source>
             <translation>Kapsayıcılar</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="133"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="133" />
             <source>Refresh machines</source>
             <translation>Makineleri yenile</translation>
         </message>
@@ -12645,49 +12653,41 @@ Yonga yüksekliği, okunabilirlik için sınırlandırılmış logaritmik dosya 
     <context>
         <name>RemoteTerminalSession</name>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="86"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="114"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="86" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="114" />
             <source>Could not start the trusted remote terminal client.</source>
             <translation>Güvenilir uzak terminal istemcisi başlatılamadı.</translation>
         </message>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="69"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="69" />
             <source>Remote terminal access is unavailable for this machine or root.</source>
             <translation>Uzak terminal erişimi bu makine veya kök dizin için kullanılamıyor.</translation>
         </message>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="154"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="176"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="183"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="192"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="203"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="217"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="223"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="248"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="257"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="154" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="176" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="183" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="192" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="203" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="217" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="223" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="248" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="257" />
             <source>The remote terminal returned an invalid response.</source>
             <translation>Uzak terminal geçersiz bir yanıt döndürdü.</translation>
         </message>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="38"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="124"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="199"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="245"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="312"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="321"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="329"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="38" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="124" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="199" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="245" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="312" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="321" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="329" />
             <source>The remote terminal connection was lost. Pending input was not replayed.</source>
             <translation>Uzak terminal bağlantısı kesildi. Bekleyen giriş yeniden gönderilmedi.</translation>
         </message>
     </context>
-
-
-
-
-
-
-
-
     <context>
         <name>ManagedTerminalSession</name>
         <message>
@@ -12748,6 +12748,111 @@ Yonga yüksekliği, okunabilirlik için sınırlandırılmış logaritmik dosya 
             <location line="+35" />
             <source>The terminal requires an existing directory and an absolute executable path.</source>
             <translation>Terminal için mevcut bir dizin ve yürütülebilir dosyanın mutlak yolu gerekir.</translation>
+        </message>
+    </context>
+    <context>
+        <name>RemoteFeatureRecoveryDialog</name>
+        <message>
+            <source>Choose a retained operation.</source>
+            <translation>Saklanan bir işlem seçin.</translation>
+        </message>
+        <message>
+            <source>Close</source>
+            <translation>Kapat</translation>
+        </message>
+        <message>
+            <source>Contacting the original captured machine…</source>
+            <translation>Kaydedilen asıl makineye bağlanılıyor…</translation>
+        </message>
+        <message>
+            <source>Inspect the original operation before another write. Cancellation does not prove that a mutation had no effect.</source>
+            <translation>Başka bir yazma işleminden önce asıl işlemi inceleyin. İptal, bir değişikliğin etkisiz kaldığını kanıtlamaz.</translation>
+        </message>
+        <message>
+            <source>Machine: %1
+Fingerprint: %2
+Generation: %3
+Root: %4
+Action: %5
+Operation: %6</source>
+            <translation>Makine: %1
+Parmak izi: %2
+Nesil: %3
+Kök: %4
+Eylem: %5
+İşlem: %6</translation>
+        </message>
+        <message>
+            <source>No uncertain mutations are retained.</source>
+            <translation>Saklanan belirsiz değişiklik yok.</translation>
+        </message>
+        <message>
+            <source>Original operation status: %1. No operation was replayed.</source>
+            <translation>Asıl işlem durumu: %1. Hiçbir işlem yeniden yürütülmedi.</translation>
+        </message>
+        <message>
+            <source>Refresh status</source>
+            <translation>Durumu yenile</translation>
+        </message>
+        <message>
+            <source>Request cancellation</source>
+            <translation>İptal iste</translation>
+        </message>
+        <message>
+            <source>The mutation outcome remains uncertain. Refresh its original status before another write.</source>
+            <translation>Değişikliğin sonucu belirsizliğini koruyor. Başka bir yazma işleminden önce asıl durumunu yenileyin.</translation>
+        </message>
+        <message>
+            <source>Uncertain operations…</source>
+            <translation>Belirsiz işlemler…</translation>
+        </message>
+        <message>
+            <source>Uncertain remote operations</source>
+            <translation>Belirsiz uzak işlemler</translation>
+        </message>
+        <message>
+            <source>unknown</source>
+            <translation>bilinmiyor</translation>
+        </message>
+        <message>
+            <source>Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write.</source>
+            <translation>Temizlik doğrulandı; değişikliğin sonucu hâlâ bilinmiyor. Başka bir yazma işleminden önce Dosyalar, Git veya kapsayıcı sağlayıcısını yenileyip etkilenen durumu inceleyin.</translation>
+        </message>
+        <message>
+            <source>Container terminal cleanup remains uncertain. The original session reference is retained.</source>
+            <translation>Kapsayıcı terminalinin temizliği belirsizliğini koruyor. Asıl oturum referansı saklanıyor.</translation>
+        </message>
+        <message>
+            <source>Container terminal cleanup was verified for the original captured session.</source>
+            <translation>Kapsayıcı terminalinin temizliği, kaydedilen asıl oturum için doğrulandı.</translation>
+        </message>
+        <message>
+            <source>Explicitly remove the original exact container after native client cleanup. Requires the worker's independent Docker recovery grant. Volumes and images are retained.</source>
+            <translation>Yerel istemci temizliğinden sonra tam olarak asıl kapsayıcıyı açıkça kaldırın. Çalışanın bağımsız Docker kurtarma iznini gerektirir. Birimler ve imajlar korunur.</translation>
+        </message>
+        <message>
+            <source>Remove container %1 on %2 to fence delayed daemon work for operation %3? This removes the container and its writable layer. Volumes and images are retained. The original mutation outcome remains unknown.</source>
+            <translation>%3 işlemi için gecikmiş arka plan hizmeti çalışmalarını engellemek üzere %2 üzerindeki %1 kapsayıcısı kaldırılsın mı? Bu işlem kapsayıcıyı ve yazılabilir katmanını kaldırır. Birimler ve imajlar korunur. Asıl değişikliğin sonucu hâlâ bilinmiyor.</translation>
+        </message>
+        <message>
+            <source>Retire container…</source>
+            <translation>Kapsayıcıyı kullanımdan kaldır…</translation>
+        </message>
+        <message>
+            <source>Retire the captured container?</source>
+            <translation>Kaydedilen kapsayıcı kullanımdan kaldırılsın mı?</translation>
+        </message>
+        <message>
+            <source>Revoke the original invocation and verify its native cleanup evidence. Boot-fenced workers require a host reboot for uncertain process-backed operations. The mutation outcome remains unknown.</source>
+            <translation>Asıl çağrıyı iptal edin ve yerel temizlik kanıtını doğrulayın. Önyüklemeyle sınırlandırılmış çalışanlarda, belirsiz süreç tabanlı işlemler için ana makinenin yeniden başlatılması gerekir. Değişikliğin sonucu hâlâ bilinmiyor.</translation>
+        </message>
+        <message>
+            <source>Verify cleanup</source>
+            <translation>Temizliği doğrula</translation>
+        </message>
+        <message>
+            <source>Refreshing the worker's retained terminal metadata. No cleanup was requested.</source>
+            <translation>Çalışanın sakladığı terminal üst verileri yenileniyor. Temizlik istenmedi.</translation>
         </message>
     </context>
 </TS>

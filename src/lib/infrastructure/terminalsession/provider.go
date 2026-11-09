@@ -24,3 +24,14 @@ func NewWithProvider(profile Profile, authority Authority, provider ProviderFact
 	}
 	return newManager(profile, authority, provider)
 }
+
+// NewOwnedProvider is for trusted compiled composition of a native capability
+// with this session protocol. Profiles and factories never come from caller
+// JSON. Remote callers still need authenticated target-bound authority on every
+// session action; this does not grant a caller a generic provider selection.
+func NewOwnedProvider(profile Profile, authority Authority, provider ProviderFactory) (*Manager, error) {
+	if provider == nil || profile.Route == "host" || profile.EnvironmentMode == "inherit-host" {
+		return nil, ErrInvalid
+	}
+	return newManager(profile, authority, provider)
+}

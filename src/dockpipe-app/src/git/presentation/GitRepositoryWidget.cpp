@@ -10,6 +10,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSplitter>
+#include <QShowEvent>
 #include <QTimer>
 #include <QVBoxLayout>
 
@@ -31,7 +32,12 @@ GitRepositoryWidget::GitRepositoryWidget(QWidget *parent)
     auto *refreshButton = new QPushButton(CanvasIcons::icon(CanvasIcons::Symbol::Refresh), tr("Refresh"));
     refreshButton->setObjectName("gitRepositoryRefresh");
     toolbar->addWidget(refreshButton);
-    connect(refreshButton, &QPushButton::clicked, this, &GitRepositoryWidget::refresh);
+    connect(refreshButton, &QPushButton::clicked, this, [this] {
+        // An explicit refresh re-reads repository metadata. Automatic status
+        // presentation can reuse the catalog already supplied by that status.
+        setProperty("gitRepositorySnapshotCatalog", false);
+        refresh();
+    });
     auto *fetch = new QPushButton(CanvasIcons::icon(CanvasIcons::Symbol::Download), tr("Fetch"));
     fetch->setObjectName("gitRepositoryFetch");
     toolbar->addWidget(fetch);
@@ -118,7 +124,7 @@ GitRepositoryWidget::GitRepositoryWidget(QWidget *parent)
     layout->addWidget(m_status);
     connect(&m_reader, &ProjectGitClient::busyChanged, this, [this](bool busy) {
         updateControls();
-        if (!busy && m_refreshPending)
+        if (!busy && m_refreshPending && isVisible())
             QTimer::singleShot(0, this, &GitRepositoryWidget::refresh);
     });
     updateControls();
@@ -132,38 +138,80 @@ void GitRepositoryWidget::setSnapshot(const QString &workdir, const QJsonObject 
         m_workdir = workdir;
         m_branches->clear();
         m_stashes->clear();
+        setProperty("gitRepositoryRenderedCatalog", QVariant());
+        setProperty("gitRepositoryRenderedBranch", QVariant());
         m_branchName->clear();
         m_stashMessage->clear();
         m_status->clear();
     }
-    m_snapshotToken = snapshot.value("snapshot").toString();
+    const QString token = snapshot.value("snapshot").toString();
+    if (!m_snapshotToken.isEmpty() && token != m_snapshotToken) {
+        ++m_generation;
+        m_reader.cancel();
+    }
+    m_snapshotToken = token;
     m_currentBranch = snapshot.value("branch").toString();
     const auto operation = snapshot.value("operation").toObject();
     m_operationActive = !operation.value("kind").toString().isEmpty();
-    if (snapshot.contains("catalog"))
+    const bool catalogAvailable = snapshot.value("catalog").isObject();
+    setProperty("gitRepositorySnapshotCatalog", catalogAvailable);
+    if (catalogAvailable)
         renderBranches(snapshot.value("catalog").toObject());
     m_refreshPending = true;
-    refresh();
+    updateControls();
+    // Hidden branch/stash panels must not add remote round trips to opening
+    // Changes or comparing files. The current snapshot token remains fresh.
+    if (isVisible())
+        refresh();
 }
 
 void GitRepositoryWidget::setBusy(bool busy)
 {
     m_busy = busy;
     updateControls();
-    if (!busy && m_refreshPending)
+    if (!busy && m_refreshPending && isVisible())
         refresh();
 }
 
 void GitRepositoryWidget::refresh()
 {
+    if (!isVisible()) {
+        m_refreshPending = true;
+        return;
+    }
     if (m_workdir.isEmpty() || m_busy || m_reader.busy())
         return;
     m_refreshPending = false;
     const auto generation = m_generation;
     const auto workdir = m_workdir;
     m_status->setText(tr("Loading branches and stashes…"));
+    auto loadStashes = [this, generation, workdir] {
+        if (!isVisible()) {
+            setProperty("gitRepositorySnapshotCatalog", true);
+            m_refreshPending = true;
+            return;
+        }
+        m_reader.run(workdir, QJsonObject{{"action", "stash-list"}},
+            [this, generation](bool ok, const QJsonObject &reply, const QString &error) {
+                if (generation != m_generation)
+                    return;
+                if (ok) {
+                    renderStashes(reply);
+                    m_status->setText(m_catalogNotice);
+                } else {
+                    m_status->setText(error);
+                }
+                updateControls();
+            });
+    };
+    const bool catalogAvailable = property("gitRepositorySnapshotCatalog").toBool();
+    setProperty("gitRepositorySnapshotCatalog", false);
+    if (catalogAvailable) {
+        loadStashes();
+        return;
+    }
     m_reader.run(workdir, QJsonObject{{"action", "catalog"}},
-        [this, generation, workdir](bool ok, const QJsonObject &reply, const QString &error) {
+        [this, generation, loadStashes](bool ok, const QJsonObject &reply, const QString &error) {
             if (generation != m_generation)
                 return;
             if (!ok) {
@@ -171,23 +219,25 @@ void GitRepositoryWidget::refresh()
                 return;
             }
             renderBranches(reply.value("catalog").toObject());
-            m_reader.run(workdir, QJsonObject{{"action", "stash-list"}},
-                [this, generation](bool stashOk, const QJsonObject &stashes, const QString &stashError) {
-                    if (generation != m_generation)
-                        return;
-                    if (stashOk) {
-                        renderStashes(stashes);
-                        m_status->setText(m_catalogNotice);
-                    } else {
-                        m_status->setText(stashError);
-                    }
-                    updateControls();
-                });
+            loadStashes();
         });
+}
+
+void GitRepositoryWidget::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    if (m_refreshPending)
+        QTimer::singleShot(0, this, &GitRepositoryWidget::refresh);
 }
 
 void GitRepositoryWidget::renderBranches(const QJsonObject &catalog)
 {
+    if (property("gitRepositoryRenderedCatalog").isValid()
+        && property("gitRepositoryRenderedCatalog").toJsonObject() == catalog
+        && property("gitRepositoryRenderedBranch").toString() == m_currentBranch)
+        return;
+    setProperty("gitRepositoryRenderedCatalog", catalog);
+    setProperty("gitRepositoryRenderedBranch", m_currentBranch);
     QString selected;
     if (m_branches->currentItem())
         selected = m_branches->currentItem()->data(Qt::UserRole).toString();

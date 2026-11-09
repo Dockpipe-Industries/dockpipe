@@ -104,3 +104,43 @@ func (client *Client) CancelFeature(ctx context.Context, reference contract.Feat
 	}
 	return client.Call(ctx, "/v1/features-cancel", reference, nil)
 }
+
+// CancelFeatureResult retains the broker's synchronous operation receipt. Its
+// terminal result can outlive broker reclamation; cancellation alone is never
+// proof that an executed native mutation had no effects.
+func (client *Client) CancelFeatureResult(ctx context.Context, reference contract.FeatureReference) (contract.FeatureOperation, error) {
+	var operation contract.FeatureOperation
+	if err := reference.Validate(); err != nil {
+		return operation, err
+	}
+	err := client.Call(ctx, "/v1/features-cancel", reference, &operation)
+	if err == nil && operation.Request.Reference() != reference {
+		return contract.FeatureOperation{}, errors.New("feature cancellation response identity changed")
+	}
+	return operation, err
+}
+
+// ReconcileFeature revokes the captured invocation and asks the idle worker for
+// cleanup proof. It never resubmits a payload or infers a successful mutation.
+func (client *Client) ReconcileFeature(ctx context.Context, reference contract.FeatureReference) (contract.FeatureOperation, error) {
+	return client.ReconcileFeatureChoice(ctx, reference, "verify")
+}
+
+func (client *Client) ReconcileFeatureChoice(ctx context.Context, reference contract.FeatureReference, choice string) (contract.FeatureOperation, error) {
+	return client.ReconcileFeatureRecovery(ctx, reference, choice, "")
+}
+
+func (client *Client) ReconcileFeatureRecovery(ctx context.Context, reference contract.FeatureReference, choice, resource string) (contract.FeatureOperation, error) {
+	var operation contract.FeatureOperation
+	if err := reference.Validate(); err != nil {
+		return operation, err
+	}
+	if choice != "verify" && choice != "retire-container" {
+		return operation, errors.New("unsupported feature recovery choice")
+	}
+	err := client.Call(ctx, "/v1/features-reconcile", contract.FeatureRecoveryRequest{FeatureReference: reference, Choice: choice, Resource: resource}, &operation)
+	if err == nil && operation.Request.Reference() != reference {
+		return operation, errors.New("feature reconciliation response identity changed")
+	}
+	return operation, err
+}

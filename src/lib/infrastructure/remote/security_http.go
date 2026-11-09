@@ -19,7 +19,11 @@ func (broker *Broker) serveOperator(w http.ResponseWriter, request *http.Request
 	var value any
 	var operationError error
 	if terminalPath(request.URL.Path) {
-		value, operationError = broker.terminalOperator(request.URL.Path, body, admission)
+		if request.URL.Path == "/v1/terminal-input" {
+			value, operationError = broker.terminalInputAndWait(request.Context(), body, admission)
+		} else {
+			value, operationError = broker.terminalOperator(request.URL.Path, body, admission)
+		}
 	} else if featureOperatorPath(request.URL.Path) {
 		value, operationError = broker.featureOperator(request.URL.Path, body, admission)
 	} else {

@@ -15,6 +15,8 @@
 #include "DockerObservabilityWidget.h"
 #include "RemoteWidget.h"
 #include "RemoteRunDialog.h"
+#include "WorkspaceMachineMenu.h"
+#include "DashboardWidgetFactory.h"
 #include "ActivityWidget.h"
 #include "PackageManagerDialog.h"
 #include "LauncherSettings.h"
@@ -197,6 +199,10 @@ int main(int argc, char **argv)
     qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
     qputenv("DOCKPIPE_GLOBAL_ROOT", directory.filePath("global").toUtf8());
     qputenv("DOCKPIPE_TEST_ROOT", directory.path().toUtf8());
+    const QString runningContainerId(64, 'a');
+    const QString databaseContainerId(64, 'b');
+    const QString stoppedContainerId(64, 'c');
+    const QString networkId(64, 'd');
     const QString cli = directory.filePath("dockpipe");
     QFile script(cli);
     if (!script.open(QIODevice::WriteOnly))
@@ -208,6 +214,117 @@ case "$1:$2" in
 --workflow:notification-failure)
   echo 'Notification fixture failed.'
   exit 7 ;;
+containers:exec)
+  if [ -n "$DOCKPIPE_STUDIO_TEST_CLI" ]; then
+    exec "$DOCKPIPE_STUDIO_TEST_CLI" "$@"
+  fi
+  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/container-exec-args"
+  ;;
+containers:--request)
+  if [ -n "$DOCKPIPE_STUDIO_TEST_CLI" ]; then
+    exec "$DOCKPIPE_STUDIO_TEST_CLI" "$@"
+  fi
+  request=$(cat)
+  case "$request" in
+    *'"action":"snapshot"'*)
+      cat <<'DOCKER_SNAPSHOT'
+{
+  "available": true,
+  "containers": [
+    {
+      "ID": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "Names": "pipeon",
+      "State": "running",
+      "Status": "Up 2 hours",
+      "Image": "example/pipeon:test",
+      "Ports": "127.0.0.1:8080->8080/tcp"
+    },
+    {
+      "ID": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "Names": "database",
+      "State": "running",
+      "Status": "Up 2 hours (unhealthy)",
+      "Image": "postgres:test"
+    },
+    {
+      "ID": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "Names": "old-worker",
+      "State": "exited",
+      "Status": "Exited (0) 2 hours ago",
+      "Image": "example/worker:test"
+    }
+  ],
+  "networks": [
+    {
+      "ID": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "Name": "workspace",
+      "Driver": "bridge",
+      "Scope": "local"
+    }
+  ],
+  "volumes": [
+    {
+      "Name": "data",
+      "Driver": "local"
+    }
+  ],
+  "topology": [
+    {
+      "Id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "Name": "/pipeon",
+      "Labels": {
+        "com.docker.compose.project": "demo",
+        "com.docker.compose.service": "web",
+        "com.docker.compose.depends_on": "db:service_healthy:false"
+      },
+      "Networks": {
+        "workspace": {}
+      },
+      "Mounts": [
+        {
+          "Type": "volume",
+          "Name": "data",
+          "Destination": "/data"
+        }
+      ]
+    },
+    {
+      "Id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "Name": "/database",
+      "Labels": {
+        "com.docker.compose.project": "demo",
+        "com.docker.compose.service": "db"
+      },
+      "Networks": {
+        "workspace": {}
+      },
+      "Mounts": []
+    },
+    {
+      "Id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "Name": "/old-worker",
+      "Labels": {},
+      "Networks": {
+        "workspace": {}
+      },
+      "Mounts": []
+    }
+  ],
+  "notices": []
+}
+DOCKER_SNAPSHOT
+      ;;
+    *'"action":"inspect"'*|*'"action":"logs"'*)
+      kind=$(printf '%s' "$request" | sed -n 's/.*"kind":"\([a-z]*\)".*/\1/p')
+      object=$(printf '%s' "$request" | sed -n 's/.*"object":"\([a-z0-9]*\)".*/\1/p')
+      case "$request" in
+        *'"action":"logs"'*)
+          printf '{"schema":"dockpipe.containers/v1","action":"logs","kind":"container","object":"%s","logs":"Fixture logs ready\\nFixture error stream"}\n' "$object" ;;
+        *)
+          printf '{"schema":"dockpipe.containers/v1","action":"inspect","kind":"%s","object":"%s","inspect":[{"Id":"%s","Name":"fixture-resource"}]}\n' "$kind" "$object" "$object" ;;
+      esac ;;
+    *) echo 'Fixture start rejected' >&2; exit 1 ;;
+  esac ;;
 catalog:list)
   printf '{"workflows":[{"workflow_id":"build","display_name":"Build project","description":"Compile and verify the project","config_path":"%s/work/config.yml"},{"workflow_id":"editor","display_name":"Project editor","category":"app","inputs":[{"field_name":"text","env_name":"DOCKPIPE_VSCODE_INPUT_TEXT","type":"string"},{"field_name":"empty","env_name":"DOCKPIPE_VSCODE_INPUT_EMPTY","type":"string"},{"field_name":"password","env_name":"DOCKPIPE_VSCODE_INPUT_SECRET","type":"string","attributes":{"password":"true","secret":"true"}}]},{"workflow_id":"vscode-noinputs","display_name":"No input launch","category":"app","source":"vscode","source_kind":"launch","source_path":".vscode/launch.json","cloneable":true}],"runtimes":["host"],"resolver_details":[{"name":"example.tunnel","title":"Example Tunnel","version":"1.2.0","capability":"remote.edge","remote_setup":"local"},{"name":"example.hosted","title":"Example Hosted","version":"2.0.0","capability":"remote.broker","remote_setup":"hosted"},{"name":"unrelated.tool","capability":"editor"}]}\n' "$DOCKPIPE_TEST_ROOT" ;;
 remote:info)
@@ -308,18 +425,22 @@ esac
     docker.write(R"SH(#!/bin/sh
 case "$1:$2" in
 container:ls)
-    echo '{"ID":"fixture","Names":"pipeon","State":"running","Status":"Up 2 hours","Image":"example/pipeon:test","Ports":"127.0.0.1:8080->8080/tcp"}'
-    echo '{"ID":"database","Names":"database","State":"running","Status":"Up 2 hours (unhealthy)","Image":"postgres:test"}'
-    echo '{"ID":"stopped","Names":"old-worker","State":"exited","Status":"Exited (0) 2 hours ago","Image":"example/worker:test"}' ;;
+    echo '{"ID":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","Names":"pipeon","State":"running","Status":"Up 2 hours","Image":"example/pipeon:test","Ports":"127.0.0.1:8080->8080/tcp"}'
+    echo '{"ID":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","Names":"database","State":"running","Status":"Up 2 hours (unhealthy)","Image":"postgres:test"}'
+    echo '{"ID":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","Names":"old-worker","State":"exited","Status":"Exited (0) 2 hours ago","Image":"example/worker:test"}' ;;
 container:inspect)
-    echo '{"Id":"fixture","Name":"/pipeon","Labels":{"com.docker.compose.project":"demo","com.docker.compose.service":"web","com.docker.compose.depends_on":"db:service_healthy:false"},"Networks":{"workspace":{}},"Mounts":[{"Type":"volume","Name":"data","Destination":"/data"}]}'
-    echo '{"Id":"database","Name":"/database","Labels":{"com.docker.compose.project":"demo","com.docker.compose.service":"db"},"Networks":{"workspace":{}},"Mounts":[]}'
-    echo '{"Id":"stopped","Name":"/old-worker","Labels":{},"Networks":{"workspace":{}},"Mounts":[]}' ;;
-inspect:*) echo '[{"Id":"fixture","Name":"/pipeon"}]' ;;
-start:*) echo 'Fixture start rejected' >&2; exit 1 ;;
-logs:*) echo 'Fixture logs ready'; echo 'Fixture error stream' >&2 ;;
-network:inspect) echo '[{"Name":"workspace","Driver":"bridge"}]' ;;
-network:ls) echo '{"ID":"network","Name":"workspace","Driver":"bridge","Scope":"local"}' ;;
+    if [ "$3" != "--format" ]; then
+        printf '[{"Id":"%s","Name":"/fixture-resource"}]\n' "$3"
+        exit 0
+    fi
+    echo '{"Id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","Name":"/pipeon","Labels":{"com.docker.compose.project":"demo","com.docker.compose.service":"web","com.docker.compose.depends_on":"db:service_healthy:false"},"Networks":{"workspace":{}},"Mounts":[{"Type":"volume","Name":"data","Destination":"/data"}]}'
+    echo '{"Id":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","Name":"/database","Labels":{"com.docker.compose.project":"demo","com.docker.compose.service":"db"},"Networks":{"workspace":{}},"Mounts":[]}'
+    echo '{"Id":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","Name":"/old-worker","Labels":{},"Networks":{"workspace":{}},"Mounts":[]}' ;;
+inspect:*) echo '[{"Id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","Name":"/pipeon"}]' ;;
+container:start) echo 'Fixture start rejected' >&2; exit 1 ;;
+container:logs) echo 'Fixture logs ready'; echo 'Fixture error stream' >&2 ;;
+network:inspect) echo '[{"Id":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","Name":"workspace","Driver":"bridge"}]' ;;
+network:ls) echo '{"ID":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","Name":"workspace","Driver":"bridge","Scope":"local"}' ;;
 volume:ls) echo '{"Name":"data","Driver":"local"}' ;;
 volume:inspect) echo '[{"Name":"data","Mountpoint":"/fixture/data"}]' ;;
 *) echo 'Unexpected Docker fixture command' >&2; exit 1 ;;
@@ -646,7 +767,7 @@ exec "$@"
             ++dependencies;
         if (item->toolTip().startsWith("Network attachment") || item->toolTip().startsWith("Mounted at"))
             ++attachments;
-        if (item->data(0).toString() == "container:fixture")
+        if (item->data(0).toString() == "container:" + runningContainerId)
             containerCard = item;
     }
     if (dependencies != 1 || attachments != 4 || !containerCard)
@@ -680,14 +801,14 @@ exec "$@"
         dockerPage->grab().save(qEnvironmentVariable("DOCKPIPE_DOCKER_LOCAL_CAPTURE"));
     dockerPage->findChild<QPushButton *>("dockerCanvasView")->click();
     auto *related = dockerPage->findChild<QLabel *>("dockerRelatedResources");
-    if (!related->text().contains("network%3Anetwork") || !related->text().contains("volume%3Adata"))
+    if (!related->text().contains("network%3A" + networkId) || !related->text().contains("volume%3Adata"))
         return 61;
-    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "network%3Anetwork"));
+    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "network%3A" + networkId));
     auto *resourceTitle = dockerPage->findChild<QLabel *>("dockerResourceTitle");
     if (resourceTitle->text() != "workspace")
         return 62;
     capture("-docker-network-inspector");
-    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "container%3Afixture"));
+    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "container%3A" + runningContainerId));
     if (resourceTitle->text() != "pipeon")
         return 63;
     auto *exec = dockerPage->findChild<QPushButton *>("dockerExec");
@@ -699,9 +820,17 @@ exec "$@"
         std::fprintf(stderr, "Container shell did not reach the terminal fixture\n");
         return 65;
     }
+    QByteArray terminalCommand = cli.toUtf8() + "\ncontainers\nexec\n--container\n"
+        + runningContainerId.toUtf8() + "\n--shell\n/bin/sh\n";
+    if (QFile::exists("/.flatpak-info")) {
+        QSettings info("/.flatpak-info", QSettings::IniFormat);
+        terminalCommand = QByteArray("flatpak\nrun\n--command=dockpipe\n")
+            + info.value("Application/name").toString().toUtf8()
+            + "\ncontainers\nexec\n--container\n" + runningContainerId.toUtf8() + "\n--shell\n/bin/sh\n";
+    }
     QFile arguments(terminalArgs);
     if (!arguments.open(QIODevice::ReadOnly)
-        || !arguments.readAll().endsWith("docker\nexec\n-it\nfixture\n/bin/sh\n"))
+        || !arguments.readAll().endsWith(terminalCommand))
         return 66;
     arguments.close();
     if (QFile::exists("/.flatpak-info")) {
@@ -721,14 +850,14 @@ exec "$@"
         }
         return nullptr;
     };
-    auto *stoppedCard = resource("container:stopped");
+    auto *stoppedCard = resource("container:" + stoppedContainerId);
     if (!stoppedCard || !stoppedCard->data(4).toBool()
         || !(stoppedCard->flags() & QGraphicsItem::ItemIsSelectable)
         || !stoppedCard->toolTip().contains("Stopped")
-        || !resource("container:fixture")->toolTip().contains("Running")
-        || !resource("container:database")->toolTip().contains("Unhealthy"))
+        || !resource("container:" + runningContainerId)->toolTip().contains("Running")
+        || !resource("container:" + databaseContainerId)->toolTip().contains("Unhealthy"))
         return 43;
-    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "container%3Astopped"));
+    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "container%3A" + stoppedContainerId));
     if (exec->isEnabled() || resourceTitle->text() != "old-worker")
         return 67;
     auto *start = dockerPage->findChild<QPushButton *>("dockerStart");
@@ -736,9 +865,9 @@ exec "$@"
     if (start->isEnabled())
         return 68;
     if (!waitUntil([&]() { return dockerPage->findChild<QLabel *>("dockerInspectorStatus")->text()
-        .contains("Fixture start rejected") && start->isEnabled(); }))
+        .contains("start failed for old-worker") && start->isEnabled(); }))
         return 69;
-    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "container%3Afixture"));
+    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "container%3A" + runningContainerId));
     auto *motion = dockerPage->findChild<QPushButton *>("dockerFilter_motion");
     auto *animation = dockerPage->findChild<QTimer *>("dependencyAnimationTimer");
     if (!motion || !animation || !animation->isActive())
@@ -765,7 +894,7 @@ exec "$@"
     if (!animation->isActive())
         return 56;
     dependenciesToggle->setChecked(true);
-    const QPointF networkPosition = resource("network:network")->pos();
+    const QPointF networkPosition = resource("network:" + networkId)->pos();
     networksToggle->setChecked(false);
     volumesToggle->setChecked(false);
     stoppedToggle->setChecked(false);
@@ -776,7 +905,7 @@ exec "$@"
         if (dynamic_cast<QGraphicsPathItem *>(item) && item->isVisible())
             return 44;
     }
-    if (stoppedCard->isVisible() || resource("network:network")->isVisible()
+    if (stoppedCard->isVisible() || resource("network:" + networkId)->isVisible()
         || resource("volume:data")->isVisible() || !containerCard->isVisible())
         return 45;
     dockerPage->findChild<QWidget *>("dockerDetailsPanel")->hide();
@@ -790,21 +919,21 @@ exec "$@"
         if (previousCard)
             return false;
         for (auto *item : graph->scene()->items()) {
-            if (item->data(0).toString() == "container:fixture")
+            if (item->data(0).toString() == "container:" + runningContainerId)
                 return item->pos() == movedPosition && item->isSelected()
                     && graph->transform() == graphTransform;
         }
         return false;
     }))
         return 42;
-    if (resource("container:stopped")->isVisible() || resource("network:network")->isVisible())
+    if (resource("container:" + stoppedContainerId)->isVisible() || resource("network:" + networkId)->isVisible())
         return 46;
     networksToggle->setChecked(true);
     volumesToggle->setChecked(true);
     stoppedToggle->setChecked(true);
     dependenciesToggle->setChecked(true);
-    if (!resource("container:stopped")->isVisible()
-        || resource("network:network")->pos() != networkPosition)
+    if (!resource("container:" + stoppedContainerId)->isVisible()
+        || resource("network:" + networkId)->pos() != networkPosition)
         return 47;
     if (!animation->isActive())
         return 52;
@@ -1293,7 +1422,12 @@ exec "$@"
     context.label = "Build project";
     context.workdir = directory.path();
     context.workflowFile = directory.filePath("work/config.yml");
+    const QJsonObject capturedTarget{{"node", "mac-mini"}, {"fingerprint", QString(64, 'a')},
+        {"generation", QString(64, 'b')}};
+    const QJsonObject capturedCatalog{{"target", capturedTarget},
+        {"roots", QJsonArray{QJsonObject{{"id", "project"}, {"files_read", true}}}}};
     RemoteRunDialog dialog(context, "mac-mini");
+    dialog.setCapturedTarget(capturedTarget, "project");
     int confirmedSubmissions = 0;
     QString confirmedJob;
     QString confirmedTitle;
@@ -1336,6 +1470,9 @@ exec "$@"
         return 11;
     const QByteArray submittedArguments = submitted.readAll();
     if (!submittedArguments.contains("--expected-digest\nabc123\n")
+        || !submittedArguments.contains("--expected-fingerprint\n" + QByteArray(64, 'a') + "\n")
+        || !submittedArguments.contains("--expected-generation\n" + QByteArray(64, 'b') + "\n")
+        || !submittedArguments.contains("--expected-root\nproject\n")
         || !submittedArguments.endsWith("--auth\nauto\n"))
         return 11;
     if (QFile::exists(directory.filePath("project-cli-invoked")))
@@ -1619,13 +1756,24 @@ exec "$@"
         return nodeIndex >= 0 && !target->itemData(nodeIndex, Qt::UserRole + 1).toBool();
     }))
         return 202;
-    target->setCurrentIndex(target->findData("mac-mini"));
+    auto *sharedMachine = window.findChild<WorkspaceMachineMenu *>("workspaceMachineMenu");
+    auto *workflowFactory = dashboard->findChild<DashboardWidgetFactory *>();
+    if (!sharedMachine || !workflowFactory)
+        return 430;
+    sharedMachine->setCatalog({capturedCatalog});
+    sharedMachine->setCurrent({}, {});
+    workflowFactory->setMachineCatalog({capturedCatalog});
+    if (!workflowFactory->setWidgetMachineContext(dashboardLaunch,
+        {{"mode", "remote"}, {"target", capturedTarget}, {"rootId", "project"}}))
+        return 431;
     bool sawDashboardRunReview = false;
     QTimer dismissDashboardRun;
     dismissDashboardRun.setInterval(20);
     QObject::connect(&dismissDashboardRun, &QTimer::timeout, &window, [&]() {
         if (auto *review = qobject_cast<RemoteRunDialog *>(QApplication::activeModalWidget())) {
-            sawDashboardRunReview = button(review, "Run on mac-mini") != nullptr;
+            sawDashboardRunReview = button(review, "Run on mac-mini") != nullptr
+                && review->property("capturedWorkflowTarget").toJsonObject() == capturedTarget
+                && review->property("capturedWorkflowRoot").toString() == "project";
             review->reject();
             dismissDashboardRun.stop();
         } else if (auto *unexpected = qobject_cast<QDialog *>(QApplication::activeModalWidget())) {
@@ -1770,9 +1918,18 @@ exec "$@"
     // rather than pretending an unavailable tray can reopen it.
     if (QSystemTrayIcon::isSystemTrayAvailable() || window.findChild<QSystemTrayIcon *>())
         return 31;
+    auto *studio = window.findChild<QWidget *>("workflowStudio");
+    auto *cancelOperation = button(studio, "Cancel operation");
+    if (!waitUntil([&]() {
+        return !window.findChild<ProjectGitWidget *>()->busy()
+            && cancelOperation && cancelOperation->isHidden();
+    }))
+        return 432;
     window.close();
-    if (window.isVisible())
+    if (!waitUntil([&]() { return !window.isVisible(); })) {
+        std::fprintf(stderr, "Close refused: %s\n", qPrintable(window.statusBar()->currentMessage()));
         return 32;
+    }
     DashboardStore dashboardStore;
     QVector<DashboardDefinition> restoredDashboards;
     QString dashboardError;
@@ -1828,7 +1985,7 @@ exec "$@"
         }
     });
     reopened.close();
-    if (reopened.isVisible() || !discardedConflictClose || !dashboardStore.load(restoredDashboards, dashboardError)
+    if (!waitUntil([&]() { return !reopened.isVisible(); }) || !discardedConflictClose || !dashboardStore.load(restoredDashboards, dashboardError)
         || restoredDashboards.last().name != "Externally saved dashboard")
         return 193;
     if (const int monitoringResult = verifySystemMonitoring(directory.path()))

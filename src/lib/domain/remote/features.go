@@ -39,8 +39,8 @@ type FeatureRequest struct {
 	Target   FeatureTarget   `json:"target"`
 	Root     string          `json:"root,omitempty"`
 	Action   string          `json:"action"`
-	Payload  json.RawMessage `json:"payload"`
-	Nonce    string          `json:"nonce"`
+	Payload  json.RawMessage `json:"payload,omitempty"`
+	Nonce    string          `json:"nonce,omitempty"`
 	Deadline time.Time       `json:"deadline"`
 }
 
@@ -64,7 +64,7 @@ func (request FeatureRequest) Validate() error {
 	if FeatureAccess(request.Action) == "" {
 		return errors.New("unsupported remote feature action")
 	}
-	if strings.HasPrefix(request.Action, "files.") || strings.HasPrefix(request.Action, "git.") {
+	if FeatureUsesRoot(request.Action) {
 		if !ValidID(request.Root) {
 			return errors.New("feature root identifier required")
 		}
@@ -81,16 +81,22 @@ func (request FeatureRequest) Validate() error {
 // FeatureAccess is an operation allowlist, not an arbitrary command bridge.
 func FeatureAccess(action string) string {
 	switch action {
-	case "files.list", "files.read", "git.status", "git.diff", "git.review-status", "git.compare", "git.catalog", "git.history", "git.commit-review", "git.stash-list", "containers.snapshot":
+	case "terminal.host-recover":
+		return "write"
+	case "files.list", "files.read", "git.status", "git.diff", "git.review-status", "git.compare", "git.catalog", "git.history", "git.commit-review", "git.stash-list", "containers.snapshot", "containers.inspect", "containers.logs":
 		return "read"
 	case "files.write", "files.create", "files.rename", "files.delete", "files.mkdir",
-		"git.commit", "git.pull", "git.stage", "git.unstage", "git.discard", "git.commit-index", "git.branch-create", "git.branch-switch", "git.branch-delete", "git.fetch", "git.merge", "git.stash-save", "git.stash-apply", "git.stash-pop", "git.stash-drop", "git.revert", "git.cherry-pick", "git.operation-continue", "git.operation-skip", "git.operation-abort", "git.resolve-stage", "git.resolve-ours", "git.resolve-theirs", "git.resolve-delete", "containers.start", "containers.stop", "containers.restart":
+		"git.commit", "git.pull", "git.stage", "git.unstage", "git.discard", "git.commit-index", "git.branch-create", "git.branch-switch", "git.branch-delete", "git.fetch", "git.merge", "git.stash-save", "git.stash-apply", "git.stash-pop", "git.stash-drop", "git.revert", "git.cherry-pick", "git.operation-continue", "git.operation-skip", "git.operation-abort", "git.resolve-stage", "git.resolve-ours", "git.resolve-theirs", "git.resolve-delete", "containers.start", "containers.stop", "containers.restart", "containers.terminal-recover":
 		return "write"
 	case "git.push", "git.tag-publish":
 		return "publish"
 	default:
 		return ""
 	}
+}
+
+func FeatureUsesRoot(action string) bool {
+	return strings.HasPrefix(action, "files.") || strings.HasPrefix(action, "git.") || action == "terminal.host-recover"
 }
 
 type FeatureRoot struct {
@@ -105,18 +111,40 @@ type FeatureRoot struct {
 }
 
 type FeatureCatalog struct {
-	Schema        string        `json:"schema"`
-	Target        FeatureTarget `json:"target"`
-	Roots         []FeatureRoot `json:"roots"`
-	DockerRead    bool          `json:"docker_read"`
-	DockerControl bool          `json:"docker_control"`
-	ReceivedAt    time.Time     `json:"received_at"`
-	TerminalEpoch string        `json:"terminal_epoch,omitempty"`
+	Schema             string                       `json:"schema"`
+	Target             FeatureTarget                `json:"target"`
+	Roots              []FeatureRoot                `json:"roots"`
+	DockerRead         bool                         `json:"docker_read"`
+	DockerControl      bool                         `json:"docker_control"`
+	DockerExec         bool                         `json:"docker_exec,omitempty"`
+	DockerRecovery     bool                         `json:"docker_recovery,omitempty"`
+	ReceivedAt         time.Time                    `json:"received_at"`
+	TerminalEpoch      string                       `json:"terminal_epoch,omitempty"`
+	ProcessRecovery    string                       `json:"process_recovery,omitempty"`
+	ContainerTerminals []ContainerTerminalReference `json:"container_terminals,omitempty"`
+	HostTerminals      []HostTerminalReference      `json:"host_terminals,omitempty"`
 }
 
 func (catalog FeatureCatalog) Validate() error {
-	if catalog.Schema != FeatureVersion || catalog.Target.Validate() != nil || len(catalog.Roots) > 32 {
+	if catalog.ProcessRecovery != "" && catalog.ProcessRecovery != "cgroup-v2" && catalog.ProcessRecovery != "host-reboot" && catalog.ProcessRecovery != "unavailable" {
+		return errors.New("invalid worker process recovery mode")
+	}
+	if catalog.Schema != FeatureVersion || catalog.Target.Validate() != nil || len(catalog.Roots) > 32 || (catalog.DockerExec || catalog.DockerRecovery) && !catalog.DockerRead {
 		return errors.New("invalid feature catalog")
+	}
+	if len(catalog.ContainerTerminals)+len(catalog.HostTerminals) > MaxTerminalSessions {
+		return errors.New("container terminal recovery catalog exceeds its session budget")
+	}
+	for _, receipt := range catalog.HostTerminals {
+		if receipt.Reference.Validate() != nil || !ValidID(receipt.Root) || receipt.Reference.Target.Node != catalog.Target.Node || receipt.Reference.Target.Fingerprint != catalog.Target.Fingerprint ||
+			receipt.Phase != "planned" && receipt.Phase != "start-requested" && receipt.Phase != "running" {
+			return errors.New("host terminal recovery catalog changed identity or phase")
+		}
+	}
+	for _, receipt := range catalog.ContainerTerminals {
+		if receipt.Reference.Validate() != nil || !featureDigest(receipt.Container) || receipt.Reference.Target.Node != catalog.Target.Node || receipt.Reference.Target.Fingerprint != catalog.Target.Fingerprint {
+			return errors.New("container terminal recovery catalog changed machine identity")
+		}
 	}
 	seen := map[string]bool{}
 	terminalRoots := 0
@@ -140,6 +168,9 @@ func (catalog FeatureCatalog) Validate() error {
 func (catalog FeatureCatalog) ValidateOperatorCatalog() error {
 	if err := catalog.Validate(); err != nil {
 		return err
+	}
+	if catalog.DockerExec && !featureDigest(catalog.TerminalEpoch) {
+		return errors.New("container terminal catalog is missing its live broker epoch")
 	}
 	for _, root := range catalog.Roots {
 		if root.Terminal && !featureDigest(catalog.TerminalEpoch) {
@@ -187,18 +218,28 @@ func (result FeatureResult) Validate() error {
 type FeatureOperation struct {
 	// ReceiptOnly responses contain routing metadata, not a replayable Request.
 	// Input and result bodies are intentionally unavailable after restart.
-	Request         FeatureRequest `json:"request"`
-	Status          string         `json:"status"`
-	Result          *FeatureResult `json:"result,omitempty"`
-	CancelRequested bool           `json:"cancel_requested"`
-	ReceiptOnly     bool           `json:"receipt_only,omitempty"`
-	ResultDigest    string         `json:"result_digest,omitempty"`
+	Request           FeatureRequest `json:"request"`
+	Status            string         `json:"status"`
+	Result            *FeatureResult `json:"result,omitempty"`
+	CancelRequested   bool           `json:"cancel_requested"`
+	ReceiptOnly       bool           `json:"receipt_only,omitempty"`
+	ResultDigest      string         `json:"result_digest,omitempty"`
+	RecoveryRequested bool           `json:"recovery_requested,omitempty"`
+	// Reconciled acknowledges stopped execution, never a successful mutation.
+	Reconciled       bool                  `json:"reconciled,omitempty"`
+	RecoveryChoice   string                `json:"recovery_choice,omitempty"`
+	RecoveryResource string                `json:"recovery_resource,omitempty"`
+	RecoveryError    string                `json:"recovery_error,omitempty"`
+	HostRecovery     *HostTerminalRecovery `json:"host_recovery,omitempty"`
 }
 
 type FeatureAssignment struct {
-	Request     FeatureRequest `json:"request"`
-	LeaseMillis int64          `json:"lease_millis"`
-	Operator    string         `json:"operator"`
+	Request          FeatureRequest `json:"request"`
+	LeaseMillis      int64          `json:"lease_millis"`
+	Operator         string         `json:"operator"`
+	Reconcile        bool           `json:"reconcile,omitempty"`
+	RecoveryChoice   string         `json:"recovery_choice,omitempty"`
+	RecoveryResource string         `json:"recovery_resource,omitempty"`
 }
 
 type FeaturePulse struct {
@@ -207,11 +248,28 @@ type FeaturePulse struct {
 }
 
 type FeatureCompletion struct {
-	Reference    FeatureReference `json:"reference"`
-	Result       FeatureResult    `json:"result"`
-	ReceiptOnly  bool             `json:"receipt_only,omitempty"`
-	ResultDigest string           `json:"result_digest,omitempty"`
-	Deadline     time.Time        `json:"deadline"`
+	Reference        FeatureReference      `json:"reference"`
+	Result           FeatureResult         `json:"result"`
+	ReceiptOnly      bool                  `json:"receipt_only,omitempty"`
+	ResultDigest     string                `json:"result_digest,omitempty"`
+	Deadline         time.Time             `json:"deadline"`
+	Reconciled       bool                  `json:"reconciled,omitempty"`
+	RecoveryResource string                `json:"recovery_resource,omitempty"`
+	HostRecovery     *HostTerminalRecovery `json:"host_recovery,omitempty"`
+}
+
+// FeatureReconciliation is emitted only by an idle, exclusively locked worker.
+// It binds the old operation and the current authenticated worker lifetime.
+type FeatureReconciliation struct {
+	Reference FeatureReference `json:"reference"`
+	Worker    FeatureTarget    `json:"worker"`
+	Resource  string           `json:"resource,omitempty"`
+}
+
+type FeatureRecoveryRequest struct {
+	FeatureReference
+	Choice   string `json:"choice,omitempty"`
+	Resource string `json:"resource,omitempty"`
 }
 
 type FeatureResultAck struct {

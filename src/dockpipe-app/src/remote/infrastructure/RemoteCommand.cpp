@@ -7,6 +7,25 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
+namespace {
+class ExternalOperation final : public QObject {
+public:
+    ExternalOperation(QObject *parent, std::function<void()> cancellation)
+        : QObject(parent), cancel(std::move(cancellation))
+    {
+        setObjectName(QStringLiteral("remoteExternalOperation"));
+    }
+    std::function<void()> cancel;
+    QMetaObject::Connection ownerDestroyed;
+};
+
+ExternalOperation *externalOperation(const RemoteCommand *command)
+{
+    return static_cast<ExternalOperation *>(command->findChild<QObject *>(
+        QStringLiteral("remoteExternalOperation"), Qt::FindDirectChildrenOnly));
+}
+}
+
 RemoteCommand::RemoteCommand(QObject *parent) : QObject(parent)
 {
     auto *child = new QProcess(this);
@@ -88,6 +107,30 @@ RemoteCommand::~RemoteCommand()
 bool RemoteCommand::busy() const
 {
     return bool(m_completion);
+}
+
+bool RemoteCommand::trackExternalOperation(QObject *owner, std::function<void()> cancel)
+{
+    if (!owner || !cancel || busy())
+        return false;
+    auto *operation = new ExternalOperation(this, std::move(cancel));
+    operation->ownerDestroyed = connect(owner, &QObject::destroyed, this, &RemoteCommand::completeExternalOperation);
+    // Existing compiled clients inline through busy(), which must still reflect
+    // this transport. The sentinel is never an external operation completion.
+    m_completion = [](bool, const QByteArray &) {};
+    emit busyChanged(true);
+    return true;
+}
+
+void RemoteCommand::completeExternalOperation()
+{
+    auto *operation = externalOperation(this);
+    if (!operation)
+        return;
+    disconnect(operation->ownerDestroyed);
+    delete operation;
+    m_completion = {};
+    emit busyChanged(false);
 }
 
 void RemoteCommand::run(const QString &program, const QStringList &arguments,
@@ -233,6 +276,11 @@ void RemoteCommand::submitHardwareKeyResponse(const QString &id, const QString &
 
 void RemoteCommand::cancel()
 {
+    if (auto *operation = externalOperation(this)) {
+        const auto cancellation = operation->cancel;
+        cancellation();
+        return;
+    }
     if (!busy() || m_cancelled)
         return;
     m_cancelled = true;

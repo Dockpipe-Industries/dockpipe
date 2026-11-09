@@ -123,6 +123,7 @@ func TestRemoveCleanupMarkersForContainerName(t *testing.T) {
 }
 
 func TestApplyHostCleanup_RunScopedOnlyStopsTrackedContainer(t *testing.T) {
+	selectedDocker := dockerProviderFixture(t)
 	root := t.TempDir()
 	runs := HostRunsDir(root)
 	cleanup := filepath.Join(root, DockpipeDirRel, "cleanup")
@@ -163,7 +164,7 @@ func TestApplyHostCleanup_RunScopedOnlyStopsTrackedContainer(t *testing.T) {
 		})
 	})
 
-	want := [][]string{{"docker", "stop", "-t", "10", "tracked-container"}}
+	want := [][]string{{selectedDocker, "stop", "-t", "10", "tracked-container"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("docker calls mismatch:\n got %#v\nwant %#v", got, want)
 	}
@@ -275,6 +276,7 @@ func TestApplyHostCleanup_RunScopedKillsTrackedPID(t *testing.T) {
 }
 
 func TestTryStopDockerAndRemoveMarkerLogsFailedStopResult(t *testing.T) {
+	dockerProviderFixture(t)
 	root := t.TempDir()
 	marker := filepath.Join(root, "docker-session")
 	if err := os.WriteFile(marker, []byte("tracked-container\n"), 0o644); err != nil {
@@ -296,7 +298,7 @@ func TestTryStopDockerAndRemoveMarkerLogsFailedStopResult(t *testing.T) {
 	defer func() { hostCleanupExecCommandFn = old }()
 
 	stderr := captureHostCleanupStderr(t, func() {
-		stopped := tryStopDockerAndRemoveMarker(context.Background(), "tracked-container", marker)
+		stopped := tryStopDockerAndRemoveMarker(context.Background(), "tracked-container", marker, os.Environ())
 		if stopped {
 			t.Fatal("expected stop failure")
 		}

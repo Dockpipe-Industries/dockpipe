@@ -44,19 +44,30 @@ func ControlContainerWithAuthority(ctx context.Context, request ContainerControl
 	id := invocation.ID{Capability: "dockpipe.containers", Action: request.Action, Version: "1"}
 	definition := invocation.Definition{ID: id, Target: target, RequireAuthorization: authorize != nil || target.Kind == invocation.Remote}
 	native, err := invocation.New(definition, func(_ context.Context, owned ContainerControlRequest) (invocation.Prepared[ContainerControlResult], error) {
+		environment := os.Environ()
 		prepared := invocation.Prepared[ContainerControlResult]{Execute: func(ctx context.Context) (ContainerControlResult, error) {
-			name := dockerCommandName()
+			name, err := resolveDockerCommandFromEnvironment(environment)
+			if err != nil {
+				return ContainerControlResult{}, err
+			}
+			receipt, err := observeContainerStart(ctx, name, environment, owned.Container)
+			if err != nil {
+				return ContainerControlResult{}, err
+			}
 			command := exec.CommandContext(ctx, name, "container", owned.Action, owned.Container)
-			command.Env = dockerCommandEnv(os.Environ(), name)
+			command.Env = dockerCommandEnv(environment, name)
 			command.Stdout, command.Stderr = io.Discard, io.Discard
 			command.WaitDelay = time.Second
-			if err := process.Run(command); err != nil {
+			if err := process.RunWithScope(ctx, command); err != nil {
+				return ContainerControlResult{}, err
+			}
+			if err := observeContainerCompletion(ctx, receipt); err != nil {
 				return ContainerControlResult{}, err
 			}
 			return ContainerControlResult{Schema: "dockpipe.containers/v1", Action: owned.Action, Container: owned.Container}, nil
 		}}
 		if definition.RequireAuthorization {
-			prepared.Digest = NativeExecutionDigest([]string{owned.Action, owned.Container})
+			prepared.Digest = NativeExecutionDigest([]string{owned.Action, owned.Container}, environment)
 		}
 		return prepared, nil
 	}, authorize)

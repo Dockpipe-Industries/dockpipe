@@ -81,6 +81,7 @@ var mainUsageSections = []usageSection{
 			{"git --request <file.json>", "Review or perform a human-requested project Git action"},
 			{"files --request <file.json|->", "Read or edit workspace files with bounded native validation"},
 			{"containers --request <file.json|->", "Inspect or control exact containers with bounded native validation"},
+			{"containers exec --container <id> --shell <path>", "Open an admitted local container shell"},
 			{"session list|inspect|switch|publish", "Inspect and publish runtime-owned Git session workspaces"},
 			{"remote setup|serve|pair|worker|submit", "Pair outbound nodes and execute approved local workflows"},
 			{"terminal --stdio", "Run one admitted local terminal through a private native-provider stream"},

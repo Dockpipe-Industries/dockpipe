@@ -578,18 +578,18 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     connect(m_remoteWidget, &RemoteWidget::nodesChanged, this, [this](const QStringList &nodes) {
         m_executionExplorer->setNodes(nodes);
         m_dockerWidget->setNodes(nodes);
-        const QSignalBlocker blocker(m_runTarget);
+        // Legacy combo instances remain read-only mirrors of the shared choice.
+        const QSignalBlocker runBlocker(m_runTarget);
         const QSignalBlocker pickerBlocker(m_pickerTarget);
-        const QString selected = m_runTarget->currentData().toString();
+        const QString selected = m_workspaceMachineMenu->currentTarget().value("node").toString();
         m_runTarget->clear();
-        m_runTarget->addItem(CanvasIcons::icon(CanvasIcons::Symbol::Monitor), tr("This computer"), QString());
+        m_runTarget->addItem(tr("This computer"), QString());
         for (const auto &node : nodes)
-            m_runTarget->addItem(CanvasIcons::icon(CanvasIcons::Symbol::Monitor), node, node);
+            m_runTarget->addItem(node, node);
         int index = m_runTarget->findData(selected);
         if (index < 0) {
             m_runTarget->addItem(selected + tr(" — unavailable"), selected);
             index = m_runTarget->count() - 1;
-            m_runTarget->setItemData(index, true, Qt::UserRole + 1);
         }
         m_runTarget->setCurrentIndex(index);
         m_pickerTarget->setCurrentIndex(index);
@@ -1661,6 +1661,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
         return;
     }
     if (property("closeConfirmed").toBool()) {
+        setProperty("closeConfirmed", false);
         QMainWindow::closeEvent(event);
         return;
     }
@@ -1670,8 +1671,17 @@ void MainWindow::closeEvent(QCloseEvent *event)
             return;
         releaseDashboardWindows();
         setProperty("closeConfirmed", true);
-        close();
+        // A nested QWidget::close() can be ignored while the originating close
+        // event is active. Async approval retries after that event has returned.
+        QTimer::singleShot(0, this, [this] {
+            if (isVisible())
+                close();
+        });
     });
+    if (property("closeConfirmed").toBool()) {
+        setProperty("closeConfirmed", false);
+        QMainWindow::closeEvent(event);
+    }
 }
 
 MainWindow::~MainWindow()
@@ -2057,10 +2067,26 @@ void MainWindow::onLaunch()
 
 bool MainWindow::launchWorkflow(const Context &display)
 {
-    if (m_runTarget->currentData(Qt::UserRole + 1).toBool()) {
-        QMessageBox::information(this, tr("Run target unavailable"),
-            tr("Choose another computer or reconnect this machine before running."));
-        return false;
+    return launchWorkflow(display, m_workspaceMachineMenu->currentTarget(), m_workspaceMachineMenu->currentRoot());
+}
+
+bool MainWindow::launchWorkflow(const Context &display, const QJsonObject &target, const QString &root)
+{
+    if (!target.isEmpty()) {
+        bool available = false;
+        for (const auto &value : m_workspaceMachineMenu->catalog()) {
+            const auto catalog = value.toObject();
+            if (catalog.value("target").toObject() != target)
+                continue;
+            available = root.isEmpty();
+            for (const auto &grant : catalog.value("roots").toArray())
+                available = available || grant.toObject().value("id").toString() == root;
+        }
+        if (!available) {
+            QMessageBox::information(this, tr("Run target unavailable"),
+                tr("Choose another computer or reconnect this machine before running."));
+            return false;
+        }
     }
     Context *c = ensureStoredContextForDisplay(display);
     const WorkflowMeta meta = findWorkflowMeta(c->workdir, c->workflow, c->workflowFile);
@@ -2068,8 +2094,8 @@ bool MainWindow::launchWorkflow(const Context &display)
         QMessageBox::information(this, tr("Workflow unavailable"), meta.catalogDescription());
         return false;
     }
-    const QString node = m_runTarget->currentData().toString();
-    if (!node.isEmpty()) {
+    const QString node = target.value("node").toString();
+    if (!target.isEmpty()) {
         if (meta.source == "vscode") {
             QMessageBox::information(this, tr("Clone for remote execution"),
                 tr("Clone this VS Code entry to workflows before running it on another computer."));
@@ -2089,6 +2115,7 @@ bool MainWindow::launchWorkflow(const Context &display)
             return false;
         }
         RemoteRunDialog dialog(remoteContext, node, this);
+        dialog.setCapturedTarget(target, root);
         connect(&dialog, &RemoteRunDialog::remoteJobSubmitted, this,
             [this](const QString &job, const QString &title) {
                 if (!m_remoteWorkflows->track(job, title))
@@ -2125,20 +2152,22 @@ void MainWindow::onRelaunch()
         return;
     Context *c = ensureStoredContextForDisplay(*display);
     const Context restart = *c;
+    const auto target = m_workspaceMachineMenu->currentTarget();
+    const QString root = m_workspaceMachineMenu->currentRoot();
     if (!m_sessions.isRunning(restart.id)) {
-        launchWorkflow(restart);
+        launchWorkflow(restart, target, root);
         return;
     }
     if (m_sessions.info(restart.id).stopRequested)
         return;
     auto *pending = new QObject(this);
     connect(&m_sessions, &SessionManager::sessionStopped, pending,
-        [this, pending, restart](const QString &id, int, QProcess::ExitStatus) {
+        [this, pending, restart, target, root](const QString &id, int, QProcess::ExitStatus) {
             if (id != restart.id)
                 return;
             pending->disconnect();
             pending->deleteLater();
-            QTimer::singleShot(0, this, [this, restart]() { launchWorkflow(restart); });
+            QTimer::singleShot(0, this, [this, restart, target, root]() { launchWorkflow(restart, target, root); });
         });
     connect(&m_sessions, &SessionManager::sessionFailed, pending,
         [pending, expected = restart.id](const QString &id, const QString &) {

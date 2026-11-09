@@ -57,20 +57,10 @@ QTableWidgetItem *roItem(const QString &text, const QString &id = QString())
     return item;
 }
 
-QString prettyJson(const QString &text)
+QString inspectedObjectText(const QString &response)
 {
-    const QJsonDocument doc = QJsonDocument::fromJson(text.toUtf8());
-    if (doc.isNull())
-        return text;
-    return QString::fromUtf8(doc.toJson(QJsonDocument::Indented));
-}
-
-QString firstIdFromInspect(const QString &inspectJson)
-{
-    const QJsonDocument doc = QJsonDocument::fromJson(inspectJson.toUtf8());
-    if (!doc.isArray() || doc.array().isEmpty() || !doc.array().first().isObject())
-        return {};
-    return doc.array().first().toObject().value(QStringLiteral("Id")).toString();
+    const auto receipt = QJsonDocument::fromJson(response.toUtf8()).object();
+    return QString::fromUtf8(QJsonDocument(receipt.value("inspect").toArray()).toJson(QJsonDocument::Indented));
 }
 
 QLabel *makeMetricPill(const QString &title)
@@ -259,7 +249,7 @@ DockerObservabilityWidget::DockerObservabilityWidget(QWidget *parent) : QWidget(
     connect(m_refreshWatcher, &QFutureWatcher<DockerSnapshot>::finished, this, [this]() {
         const bool quiet = m_currentRefreshQuiet;
         m_currentRefreshQuiet = false;
-        if (m_localRefreshGeneration == m_generation) {
+        if (m_localRefreshGeneration == m_generation && m_active && !m_monitorPaused) {
             applySnapshot(m_refreshWatcher->result());
             m_hasLoadedOnce = true;
         }
@@ -278,7 +268,7 @@ DockerObservabilityWidget::DockerObservabilityWidget(QWidget *parent) : QWidget(
 
     m_containerDetailWatcher = new QFutureWatcher<ContainerDetailSnapshot>(this);
     connect(m_containerDetailWatcher, &QFutureWatcher<ContainerDetailSnapshot>::finished, this, [this]() {
-        if (m_containerDetailWatcher->property("generation").toULongLong() != m_generation)
+        if (m_containerDetailWatcher->property("generation").toULongLong() != m_generation || !m_active || m_monitorPaused)
             return;
         const ContainerDetailSnapshot snapshot = m_containerDetailWatcher->result();
         if (snapshot.containerId != m_pendingContainerDetailId) {
@@ -294,7 +284,7 @@ DockerObservabilityWidget::DockerObservabilityWidget(QWidget *parent) : QWidget(
 
     m_networkDetailWatcher = new QFutureWatcher<ObjectDetailSnapshot>(this);
     connect(m_networkDetailWatcher, &QFutureWatcher<ObjectDetailSnapshot>::finished, this, [this]() {
-        if (m_networkDetailWatcher->property("generation").toULongLong() != m_generation)
+        if (m_networkDetailWatcher->property("generation").toULongLong() != m_generation || !m_active || m_monitorPaused)
             return;
         const ObjectDetailSnapshot snapshot = m_networkDetailWatcher->result();
         if (snapshot.objectId != m_pendingNetworkDetailId) {
@@ -307,7 +297,7 @@ DockerObservabilityWidget::DockerObservabilityWidget(QWidget *parent) : QWidget(
 
     m_volumeDetailWatcher = new QFutureWatcher<ObjectDetailSnapshot>(this);
     connect(m_volumeDetailWatcher, &QFutureWatcher<ObjectDetailSnapshot>::finished, this, [this]() {
-        if (m_volumeDetailWatcher->property("generation").toULongLong() != m_generation)
+        if (m_volumeDetailWatcher->property("generation").toULongLong() != m_generation || !m_active || m_monitorPaused)
             return;
         const ObjectDetailSnapshot snapshot = m_volumeDetailWatcher->result();
         if (snapshot.objectId != m_pendingVolumeDetailId) {
@@ -699,6 +689,7 @@ void DockerObservabilityWidget::updateInspector()
     }
     const int row = table ? rowForId(table, id) : -1;
     if (row < 0) {
+        cancelFeatureDetails();
         selection.kind = -1;
         selection.status = m_selectedResource.isEmpty()
             ? tr("Choose a resource in the table or on the canvas.") : tr("This resource is no longer in the current inventory.");
@@ -715,8 +706,13 @@ void DockerObservabilityWidget::updateInspector()
         selection.status = tr("Container · %1").arg(table->item(row, 1)->data(Qt::ToolTipRole).toString());
     }
     if (isRemoteTarget())
-        selection.canExec = false;
-    if (m_containerActionBusy || !canControlTarget()) {
+        selection.canExec = selection.canExec && m_featureCatalog.value("docker_exec").toBool()
+            && !m_featureCatalog.value("terminal_epoch").toString().isEmpty();
+    if (!canControlTarget()) {
+        selection.canStart = false;
+        selection.canStop = false;
+    }
+    if (m_containerActionBusy) {
         selection.canExec = false;
         selection.canStart = false;
         selection.canStop = false;
@@ -781,15 +777,22 @@ void DockerObservabilityWidget::updateInspector()
 
 void DockerObservabilityWidget::openExec(const QString &shell)
 {
-    if (isRemoteTarget())
-        return;
     if (!m_selectedResource.startsWith("container:") || (shell != "/bin/sh" && shell != "/bin/bash"))
         return;
     const QString state = selectedContainerState();
     if (state != "running" && state != "healthy" && state != "unhealthy")
         return;
+    if (isRemoteTarget()) {
+        if (m_featureCatalog.value("docker_exec").toBool()
+            && m_featureCatalog.value("target").toObject() == m_featureTarget
+            && !m_featureCatalog.value("terminal_epoch").toString().isEmpty())
+            emit remoteExecRequested(m_featureCatalog, selectedContainerId(), shell);
+        return;
+    }
     QString error;
-    if (!openCommandTerminal("docker", {"exec", "-it", selectedContainerId(), shell}, &error))
+    const QString binary = DockpipeChoices::operatorDockpipeBinary(&error);
+    if (binary.isEmpty() || !openDockpipeTerminal(binary,
+            {"containers", "exec", "--container", selectedContainerId(), "--shell", shell}, &error))
         QMessageBox::warning(this, tr("Could not open container terminal"), error);
 }
 
@@ -928,140 +931,133 @@ QWidget *DockerObservabilityWidget::buildVolumesPage()
     return page;
 }
 
-DockerObservabilityWidget::CommandResult DockerObservabilityWidget::runDocker(const QStringList &args, bool mergeOutput)
+DockerObservabilityWidget::CommandResult DockerObservabilityWidget::runContainerRequest(
+    const QString &binary, const QJsonObject &request, const std::shared_ptr<std::atomic_bool> &cancelled)
 {
-    QProcess proc;
     CommandResult result;
-    if (mergeOutput)
-        proc.setProcessChannelMode(QProcess::MergedChannels);
-    proc.start(QStringLiteral("docker"), args);
-    if (!proc.waitForStarted(3000)) {
-        result.stderrText = proc.errorString();
+    if (binary.isEmpty() || (cancelled && cancelled->load())) {
+        result.stderrText = tr("Container query cancelled or the trusted Dockpipe CLI is unavailable.");
         return result;
     }
+    QProcess process;
+    process.start(binary, {"containers", "--request", "-"});
+    if (!process.waitForStarted(3000)) {
+        result.stderrText = process.errorString();
+        return result;
+    }
+    const auto stop = [&process]() {
+        process.terminate();
+        if (!process.waitForFinished(1500)) {
+            process.kill();
+            process.waitForFinished(1000);
+        }
+    };
+    const auto input = QJsonDocument(request).toJson(QJsonDocument::Compact);
+    if (process.write(input) != input.size()) {
+        stop();
+        result.stderrText = tr("Could not send the container request.");
+        return result;
+    }
+    process.closeWriteChannel();
     QElapsedTimer elapsed;
     elapsed.start();
     QByteArray output;
     QByteArray errors;
-    constexpr int maximumBytes = 32 * 1024 * 1024;
+    // Escaped 512-KiB diagnostics and the existing inventory fit this wire budget.
+    constexpr int maximumBytes = 4 * 1024 * 1024;
     while (true) {
-        proc.waitForFinished(50);
-        output += proc.readAllStandardOutput();
-        errors += proc.readAllStandardError();
-        if (output.size() + errors.size() > maximumBytes || elapsed.elapsed() > 15000) {
-            proc.kill();
-            proc.waitForFinished(1000);
-            result.stderrText = tr("Docker query exceeded its 15-second or 32-MiB response limit.");
+        process.waitForFinished(50);
+        bool oversized = false;
+        for (const auto channel : {QProcess::StandardOutput, QProcess::StandardError}) {
+            process.setReadChannel(channel);
+            QByteArray &retained = channel == QProcess::StandardOutput ? output : errors;
+            while (process.bytesAvailable() > 0) {
+                const QByteArray chunk = process.read(8192);
+                if (chunk.size() > maximumBytes - output.size() - errors.size()) {
+                    oversized = true;
+                    break;
+                }
+                retained += chunk;
+            }
+            if (oversized)
+                break;
+        }
+        if (oversized || elapsed.elapsed() > 21000
+            || (cancelled && cancelled->load())) {
+            stop();
+            result.stderrText = tr("Container query cancelled or exceeded its deadline or response limit.");
             return result;
         }
-        if (proc.state() == QProcess::NotRunning)
+        if (process.state() == QProcess::NotRunning)
             break;
     }
-    result.ok = proc.exitStatus() == QProcess::NormalExit && proc.exitCode() == 0;
-    result.stdoutText = QString::fromLocal8Bit(output);
-    result.stderrText = QString::fromLocal8Bit(errors);
+    result.ok = process.exitStatus() == QProcess::NormalExit && process.exitCode() == 0;
+    result.stdoutText = QString::fromUtf8(output);
+    result.stderrText = QString::fromUtf8(errors);
     if (!result.ok && result.stderrText.trimmed().isEmpty())
-        result.stderrText = mergeOutput ? result.stdoutText : proc.errorString();
+        result.stderrText = process.errorString();
+    if (result.ok && request.value("action").toString() != "snapshot") {
+        const auto receipt = QJsonDocument::fromJson(output).object();
+        result.ok = receipt.value("schema").toString() == "dockpipe.containers/v1"
+            && receipt.value("action") == request.value("action")
+            && receipt.value("kind") == request.value("kind")
+            && receipt.value("object") == request.value("object");
+        if (result.ok && request.value("action").toString() == "inspect") {
+            const auto rows = receipt.value("inspect").toArray();
+            result.ok = receipt.value("inspect").isArray() && rows.size() == 1 && rows.first().isObject();
+        }
+        if (result.ok && request.value("action").toString() == "logs")
+            result.ok = !receipt.contains("logs") || receipt.value("logs").isString();
+        if (!result.ok)
+            result.stderrText = tr("Invalid container detail response.");
+    }
     return result;
 }
 
-DockerObservabilityWidget::DockerSnapshot DockerObservabilityWidget::collectDockerSnapshot()
+DockerObservabilityWidget::DockerSnapshot DockerObservabilityWidget::collectDockerSnapshot(
+    const QString &binary, const std::shared_ptr<std::atomic_bool> &cancelled)
 {
     DockerSnapshot snapshot;
-
-    const auto containersResult = runDocker(
-        {QStringLiteral("container"), QStringLiteral("ls"), QStringLiteral("--all"), QStringLiteral("--no-trunc"), QStringLiteral("--format"),
-         QStringLiteral("{{json .}}")});
-    snapshot.containersOk = containersResult.ok;
-    if (!containersResult.ok) {
-        snapshot.containersError = containersResult.stderrText.trimmed();
-    } else {
-        const QStringList lines = containersResult.stdoutText.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-        for (const QString &line : lines) {
-            const QJsonDocument doc = QJsonDocument::fromJson(line.toUtf8());
-            if (!doc.isObject())
-                continue;
-            const QJsonObject o = doc.object();
-            ContainerRowData row;
-            row.id = o.value(QStringLiteral("ID")).toString();
-            row.name = o.value(QStringLiteral("Names")).toString();
-            row.statusText = o.value(QStringLiteral("Status")).toString();
-            row.state = normalizeContainerState(o.value(QStringLiteral("State")).toString(), row.statusText);
-            row.image = o.value(QStringLiteral("Image")).toString();
-            row.ports = o.value(QStringLiteral("Ports")).toString();
-            row.created = o.value(QStringLiteral("RunningFor")).toString();
-            snapshot.containers.append(row);
+    const auto result = runContainerRequest(binary, {{"action", "snapshot"}}, cancelled);
+    const auto document = QJsonDocument::fromJson(result.stdoutText.toUtf8());
+    const auto inventory = document.object();
+    snapshot.containersOk = result.ok && document.isObject() && inventory.value("available").toBool();
+    snapshot.networksOk = snapshot.containersOk;
+    snapshot.volumesOk = snapshot.containersOk;
+    QStringList notices;
+    for (const auto &notice : inventory.value("notices").toArray())
+        notices.append(notice.toString());
+    snapshot.topologyNotice = notices.join(" · ");
+    for (const auto &kind : {"containers", "networks", "volumes", "topology"}) {
+        if (inventory.value(kind).toArray().size() > 256) {
+            snapshot.containersOk = snapshot.networksOk = snapshot.volumesOk = false;
+            snapshot.topologyNotice = tr("Container inventory exceeds its object limit.");
         }
     }
-
-    const auto networksResult = runDocker(
-        {QStringLiteral("network"), QStringLiteral("ls"), QStringLiteral("--format"), QStringLiteral("{{json .}}")});
-    snapshot.networksOk = networksResult.ok;
-    if (!networksResult.ok) {
-        snapshot.networksError = networksResult.stderrText.trimmed();
-    } else {
-        const QStringList lines = networksResult.stdoutText.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-        for (const QString &line : lines) {
-            const QJsonDocument doc = QJsonDocument::fromJson(line.toUtf8());
-            if (!doc.isObject())
-                continue;
-            const QJsonObject o = doc.object();
-            NetworkRowData row;
-            row.id = o.value(QStringLiteral("ID")).toString();
-            row.name = o.value(QStringLiteral("Name")).toString();
-            row.driver = o.value(QStringLiteral("Driver")).toString();
-            row.scope = o.value(QStringLiteral("Scope")).toString();
-            snapshot.networks.append(row);
-        }
+    if (!snapshot.containersOk) {
+        snapshot.containersError = result.stderrText.isEmpty() ? snapshot.topologyNotice : result.stderrText;
+        snapshot.networksError = snapshot.volumesError = snapshot.containersError;
+        return snapshot;
     }
-
-    const auto volumesResult = runDocker(
-        {QStringLiteral("volume"), QStringLiteral("ls"), QStringLiteral("--format"), QStringLiteral("{{json .}}")});
-    snapshot.volumesOk = volumesResult.ok;
-    if (!volumesResult.ok) {
-        snapshot.volumesError = volumesResult.stderrText.trimmed();
-    } else {
-        const QStringList lines = volumesResult.stdoutText.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-        for (const QString &line : lines) {
-            const QJsonDocument doc = QJsonDocument::fromJson(line.toUtf8());
-            if (!doc.isObject())
-                continue;
-            const QJsonObject o = doc.object();
-            VolumeRowData row;
-            row.name = o.value(QStringLiteral("Name")).toString();
-            row.driver = o.value(QStringLiteral("Driver")).toString();
-            const auto inspect = runDocker({QStringLiteral("volume"), QStringLiteral("inspect"), row.name});
-            if (inspect.ok) {
-                const QJsonDocument inspectDoc = QJsonDocument::fromJson(inspect.stdoutText.toUtf8());
-                if (inspectDoc.isArray() && !inspectDoc.array().isEmpty() && inspectDoc.array().first().isObject())
-                    row.mountpoint = inspectDoc.array().first().toObject().value(QStringLiteral("Mountpoint")).toString();
-            }
-            snapshot.volumes.append(row);
-        }
+    for (const auto &value : inventory.value("containers").toArray()) {
+        const auto row = value.toObject();
+        const auto status = row.value("Status").toString();
+        snapshot.containers.append({row.value("ID").toString(), row.value("Names").toString(),
+            normalizeContainerState(row.value("State").toString(), status), status,
+            row.value("Image").toString(), row.value("Ports").toString(), row.value("RunningFor").toString()});
     }
-
-    // Keep discovery bounded and omit environment values from topology data.
-    QStringList inspectArgs{"container", "inspect", "--format",
-        R"({"Id":{{json .Id}},"Name":{{json .Name}},"Labels":{{json .Config.Labels}},"Networks":{{json .NetworkSettings.Networks}},"Mounts":{{json .Mounts}}})"};
-    constexpr int maximumGraphContainers = 256;
-    for (int i = 0; i < qMin(maximumGraphContainers, int(snapshot.containers.size())); ++i)
-        inspectArgs.append(snapshot.containers[i].id);
-    if (!snapshot.containers.isEmpty()) {
-        const auto topology = runDocker(inspectArgs);
-        if (topology.ok) {
-            for (const auto &line : topology.stdoutText.split('\n', Qt::SkipEmptyParts)) {
-                const auto document = QJsonDocument::fromJson(line.toUtf8());
-                if (document.isObject())
-                    snapshot.topology.append(document.object());
-                else
-                    snapshot.topologyNotice = tr("Some Docker relationships could not be read. Inspect the selected object for details.");
-            }
-        } else {
-            snapshot.topologyNotice = tr("Relationships unavailable: %1").arg(topology.stderrText);
-        }
-        if (snapshot.containers.size() > maximumGraphContainers)
-            snapshot.topologyNotice += tr(" Relationships shown for the first 256 containers. Full inventory is available in Details & actions.");
+    for (const auto &value : inventory.value("networks").toArray()) {
+        const auto row = value.toObject();
+        snapshot.networks.append({row.value("ID").toString(), row.value("Name").toString(),
+            row.value("Driver").toString(), row.value("Scope").toString()});
     }
+    for (const auto &value : inventory.value("volumes").toArray()) {
+        const auto row = value.toObject();
+        snapshot.volumes.append({row.value("Name").toString(), row.value("Driver").toString(), tr("Select for details")});
+    }
+    snapshot.topology = inventory.value("topology").toArray();
+    if (inventory.value("truncated").toBool())
+        snapshot.topologyNotice += tr(" Inventory limited to 256 objects of each kind.");
     return snapshot;
 }
 
@@ -1087,8 +1083,19 @@ void DockerObservabilityWidget::refresh()
 
     setLoadingState(true, tr("Loading Docker objects…"));
     m_localRefreshGeneration = m_generation;
-    if (m_refreshWatcher)
-        m_refreshWatcher->setFuture(QtConcurrent::run([]() { return DockerObservabilityWidget::collectDockerSnapshot(); }));
+    if (m_refreshWatcher) {
+        QString binaryError;
+        const auto binary = DockpipeChoices::operatorDockpipeBinary(&binaryError);
+        if (binary.isEmpty()) {
+            setLoadingState(false);
+            setStatus(binaryError);
+            return;
+        }
+        const auto cancelled = m_localReadCancelled;
+        m_refreshWatcher->setFuture(QtConcurrent::run([binary, cancelled]() {
+            return DockerObservabilityWidget::collectDockerSnapshot(binary, cancelled);
+        }));
+    }
 }
 
 void DockerObservabilityWidget::refreshQuietly()
@@ -1111,8 +1118,19 @@ void DockerObservabilityWidget::refreshQuietly()
     if (!hasAnyObjects())
         setLoadingState(true, tr("Loading Docker objects…"));
     m_localRefreshGeneration = m_generation;
-    if (m_refreshWatcher)
-        m_refreshWatcher->setFuture(QtConcurrent::run([]() { return DockerObservabilityWidget::collectDockerSnapshot(); }));
+    if (m_refreshWatcher) {
+        QString binaryError;
+        const auto binary = DockpipeChoices::operatorDockpipeBinary(&binaryError);
+        if (binary.isEmpty()) {
+            setLoadingState(false);
+            setStatus(binaryError);
+            return;
+        }
+        const auto cancelled = m_localReadCancelled;
+        m_refreshWatcher->setFuture(QtConcurrent::run([binary, cancelled]() {
+            return DockerObservabilityWidget::collectDockerSnapshot(binary, cancelled);
+        }));
+    }
 }
 
 void DockerObservabilityWidget::setActive(bool active)
@@ -1457,7 +1475,10 @@ void DockerObservabilityWidget::renderVolumeDetails(const QString &volumeName)
 void DockerObservabilityWidget::refreshContainerDetailsAsync(const QString &containerId)
 {
     if (isRemoteTarget()) {
-        m_containerLogs->setPlainText(tr("Remote inventory shares topology. Container logs and detailed inspection are unavailable for this machine."));
+        if (m_featureMode)
+            refreshFeatureDetails("container", containerId);
+        else
+            m_containerLogs->setPlainText(tr("Detailed inspection requires the paired worker's Docker read feature."));
         return;
     }
 
@@ -1472,22 +1493,29 @@ void DockerObservabilityWidget::refreshContainerDetailsAsync(const QString &cont
     if (m_containerDetailWatcher->isRunning())
         return;
     if (m_containerDetailWatcher) {
+        QString binaryError;
+        const auto binary = DockpipeChoices::operatorDockpipeBinary(&binaryError);
+        if (binary.isEmpty()) {
+            setStatus(binaryError);
+            return;
+        }
+        const auto cancelled = m_localReadCancelled;
         m_containerDetailWatcher->setProperty("generation", QVariant::fromValue(m_generation));
-        m_containerDetailWatcher->setFuture(QtConcurrent::run([containerId]() {
+        m_containerDetailWatcher->setFuture(QtConcurrent::run([containerId, binary, cancelled]() {
             ContainerDetailSnapshot snapshot;
             snapshot.containerId = containerId;
-            const CommandResult inspect = DockerObservabilityWidget::runDocker({QStringLiteral("inspect"), containerId});
+            const CommandResult inspect = DockerObservabilityWidget::runContainerRequest(binary, {{"action", "inspect"}, {"kind", "container"}, {"object", containerId}}, cancelled);
             if (!inspect.ok) {
                 snapshot.inspectText = QCoreApplication::translate("DockerObservabilityWidget", "Could not inspect container.\n\n%1").arg(inspect.stderrText.trimmed());
             } else {
-                snapshot.inspectText = prettyJson(inspect.stdoutText);
+                snapshot.inspectText = inspectedObjectText(inspect.stdoutText);
             }
             const CommandResult logs =
-                DockerObservabilityWidget::runDocker({QStringLiteral("logs"), QStringLiteral("--tail"), QStringLiteral("200"), containerId}, true);
+                DockerObservabilityWidget::runContainerRequest(binary, {{"action", "logs"}, {"kind", "container"}, {"object", containerId}}, cancelled);
             if (!logs.ok) {
                 snapshot.logsText = QCoreApplication::translate("DockerObservabilityWidget", "Could not load docker logs.\n\n%1").arg(logs.stderrText.trimmed());
             } else {
-                snapshot.logsText = logs.stdoutText.trimmed();
+                snapshot.logsText = QJsonDocument::fromJson(logs.stdoutText.toUtf8()).object().value("logs").toString().trimmed();
             }
             return snapshot;
         }));
@@ -1497,7 +1525,10 @@ void DockerObservabilityWidget::refreshContainerDetailsAsync(const QString &cont
 void DockerObservabilityWidget::refreshNetworkDetailsAsync(const QString &networkId)
 {
     if (isRemoteTarget()) {
-        m_containerLogs->setPlainText(tr("Remote inventory shares topology. Container logs and detailed inspection are unavailable for this machine."));
+        if (m_featureMode)
+            refreshFeatureDetails("network", networkId);
+        else
+            m_containerLogs->setPlainText(tr("Detailed inspection requires the paired worker's Docker read feature."));
         return;
     }
 
@@ -1509,16 +1540,23 @@ void DockerObservabilityWidget::refreshNetworkDetailsAsync(const QString &networ
     if (m_networkDetailWatcher->isRunning())
         return;
     if (m_networkDetailWatcher) {
+        QString binaryError;
+        const auto binary = DockpipeChoices::operatorDockpipeBinary(&binaryError);
+        if (binary.isEmpty()) {
+            setStatus(binaryError);
+            return;
+        }
+        const auto cancelled = m_localReadCancelled;
         m_networkDetailWatcher->setProperty("generation", QVariant::fromValue(m_generation));
-        m_networkDetailWatcher->setFuture(QtConcurrent::run([networkId]() {
+        m_networkDetailWatcher->setFuture(QtConcurrent::run([networkId, binary, cancelled]() {
             ObjectDetailSnapshot snapshot;
             snapshot.objectId = networkId;
             const CommandResult inspect =
-                DockerObservabilityWidget::runDocker({QStringLiteral("network"), QStringLiteral("inspect"), networkId});
+                DockerObservabilityWidget::runContainerRequest(binary, {{"action", "inspect"}, {"kind", "network"}, {"object", networkId}}, cancelled);
             if (!inspect.ok) {
                 snapshot.detailText = QCoreApplication::translate("DockerObservabilityWidget", "Could not inspect network.\n\n%1").arg(inspect.stderrText.trimmed());
             } else {
-                snapshot.detailText = prettyJson(inspect.stdoutText);
+                snapshot.detailText = inspectedObjectText(inspect.stdoutText);
             }
             return snapshot;
         }));
@@ -1528,7 +1566,10 @@ void DockerObservabilityWidget::refreshNetworkDetailsAsync(const QString &networ
 void DockerObservabilityWidget::refreshVolumeDetailsAsync(const QString &volumeName)
 {
     if (isRemoteTarget()) {
-        m_containerLogs->setPlainText(tr("Remote inventory shares topology. Container logs and detailed inspection are unavailable for this machine."));
+        if (m_featureMode)
+            refreshFeatureDetails("volume", volumeName);
+        else
+            m_containerLogs->setPlainText(tr("Detailed inspection requires the paired worker's Docker read feature."));
         return;
     }
 
@@ -1540,16 +1581,23 @@ void DockerObservabilityWidget::refreshVolumeDetailsAsync(const QString &volumeN
     if (m_volumeDetailWatcher->isRunning())
         return;
     if (m_volumeDetailWatcher) {
+        QString binaryError;
+        const auto binary = DockpipeChoices::operatorDockpipeBinary(&binaryError);
+        if (binary.isEmpty()) {
+            setStatus(binaryError);
+            return;
+        }
+        const auto cancelled = m_localReadCancelled;
         m_volumeDetailWatcher->setProperty("generation", QVariant::fromValue(m_generation));
-        m_volumeDetailWatcher->setFuture(QtConcurrent::run([volumeName]() {
+        m_volumeDetailWatcher->setFuture(QtConcurrent::run([volumeName, binary, cancelled]() {
             ObjectDetailSnapshot snapshot;
             snapshot.objectId = volumeName;
             const CommandResult inspect =
-                DockerObservabilityWidget::runDocker({QStringLiteral("volume"), QStringLiteral("inspect"), volumeName});
+                DockerObservabilityWidget::runContainerRequest(binary, {{"action", "inspect"}, {"kind", "volume"}, {"object", volumeName}}, cancelled);
             if (!inspect.ok) {
                 snapshot.detailText = QCoreApplication::translate("DockerObservabilityWidget", "Could not inspect volume.\n\n%1").arg(inspect.stderrText.trimmed());
             } else {
-                snapshot.detailText = prettyJson(inspect.stdoutText);
+                snapshot.detailText = inspectedObjectText(inspect.stdoutText);
             }
             return snapshot;
         }));

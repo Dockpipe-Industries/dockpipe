@@ -8,7 +8,11 @@
 #include "GitHistoryWidget.h"
 #include "GitRepositoryWidget.h"
 #include "GitConflictWidget.h"
+#include "ProjectFilesWidget.h"
+#include "RemoteGitContext.h"
 #include <QTabWidget>
+#include <QShowEvent>
+#include <QHideEvent>
 #include <QStackedWidget>
 #include <QMessageBox>
 
@@ -434,6 +438,12 @@ ProjectGitWidget::ProjectGitWidget(QWidget *parent) : QWidget(parent), m_command
         cancel->setVisible(busy);
     });
 
+    auto *passive = new ProjectGitClient(this);
+    passive->setObjectName(QStringLiteral("projectGitPassiveReader"));
+    auto *poll = new QTimer(this);
+    poll->setObjectName(QStringLiteral("projectGitStatusPoll"));
+    poll->setInterval(5000);
+    connect(poll, &QTimer::timeout, this, &ProjectGitWidget::refreshVisible);
     setFolderView(QSettings().value("git/changesView", "list").toString() == "folders");
 }
 
@@ -466,6 +476,58 @@ void ProjectGitWidget::setWorkdir(const QString &workdir)
     m_heading->setText(QFileInfo(workdir).fileName());
     m_heading->setToolTip(workdir);
     m_status->setText(tr("Refresh to review this project's changes."));
+    if (isVisible())
+        QTimer::singleShot(0, this, &ProjectGitWidget::refreshVisible);
+}
+
+void ProjectGitWidget::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    findChild<QTimer *>(QStringLiteral("projectGitStatusPoll"))->start();
+    QTimer::singleShot(0, this, &ProjectGitWidget::refreshVisible);
+}
+
+void ProjectGitWidget::hideEvent(QHideEvent *event)
+{
+    findChild<QTimer *>(QStringLiteral("projectGitStatusPoll"))->stop();
+    if (auto *passive = findChild<ProjectGitClient *>(QStringLiteral("projectGitPassiveReader")); passive && passive->busy())
+        passive->cancel();
+    // Hiding a view stops discovery only. An admitted mutation keeps its
+    // original owner, target and completion; it must not be interrupted here.
+    QWidget::hideEvent(event);
+}
+
+void ProjectGitWidget::refreshVisible()
+{
+    if (!isVisible() || m_workdir.isEmpty() || m_conflicts->hasUnsavedChanges()
+        || m_message->hasFocus() || !m_message->text().isEmpty())
+        return;
+    for (const auto *client : findChildren<ProjectGitClient *>()) {
+        if (client->busy())
+            return;
+    }
+    if (auto *editor = m_conflicts->findChild<ProjectFilesWidget *>(); editor && editor->filesOperationPending())
+        return;
+    auto *reader = findChild<ProjectGitClient *>(QStringLiteral("projectGitPassiveReader"));
+    const QString root = m_workdir;
+    const QJsonObject before = m_snapshot;
+    const QJsonObject target = RemoteGitContext::target(this);
+    const QString grant = RemoteGitContext::root(this);
+    reader->run(root, {{"action", "status"}},
+        [this, root, before, target, grant](bool ok, const QJsonObject &snapshot, const QString &) {
+            if (!ok || !isVisible() || m_workdir != root || m_snapshot != before || busy()
+                || RemoteGitContext::target(this) != target || RemoteGitContext::root(this) != grant
+                || m_conflicts->hasUnsavedChanges() || m_message->hasFocus() || !m_message->text().isEmpty())
+                return;
+            if (auto *editor = m_conflicts->findChild<ProjectFilesWidget *>(); editor && editor->filesOperationPending())
+                return;
+            // This passive status never drives the mutation client's busy UI.
+            // A changed listing offers an explicit new comparison; unchanged
+            // listings retain the already reviewed diff and viewport untouched.
+            setProperty("projectGitPassiveApply", true);
+            render(snapshot);
+            setProperty("projectGitPassiveApply", false);
+        });
 }
 
 void ProjectGitWidget::refresh() { runAction("status"); }
@@ -484,10 +546,9 @@ void ProjectGitWidget::runAction(const QString &action)
             return;
         const QString reviewedPath = m_activeFiles->currentItem()->data(Qt::UserRole).toString();
         request["paths"] = QJsonArray{reviewedPath};
-        m_diffTitle->setText(reviewedPath);
-        m_diffTitle->setToolTip(reviewedPath);
+        // Keep the completed review and its title visible while the next
+        // comparison is in flight. Mutations remain disabled until completion.
         findChild<QStackedWidget *>("gitReviewStack")->setCurrentIndex(0);
-        m_diff->clear();
         if (action == "compare")
             request["comparison"] = m_activeFiles == m_staged ? "staged" : "unstaged";
     }
@@ -544,6 +605,8 @@ void ProjectGitWidget::runRequest(QJsonObject request)
 {
     if (busy() || m_workdir.isEmpty())
         return;
+    if (auto *passive = findChild<ProjectGitClient *>(QStringLiteral("projectGitPassiveReader")); passive && passive->busy())
+        passive->cancel();
     const QString action = request.value("action").toString();
     if (!request.contains("snapshot"))
         request["snapshot"] = m_snapshot.value("snapshot");
@@ -580,6 +643,8 @@ void ProjectGitWidget::runRequest(QJsonObject request)
                     review.insert("patch", snapshot.value("diff").toString());
                 }
                 m_diff->setReview(review);
+                m_diffTitle->setText(reviewedPath);
+                m_diffTitle->setToolTip(reviewedPath);
                 const QString notice = review.value("notice").toString();
                 if (!notice.isEmpty())
                     m_status->setText(notice);
@@ -600,6 +665,17 @@ void ProjectGitWidget::runRequest(QJsonObject request)
 
 void ProjectGitWidget::render(const QJsonObject &snapshot)
 {
+    if (!m_snapshot.isEmpty() && snapshot == m_snapshot) {
+        // The core has just revalidated this exact reviewed state, including
+        // file revisions. Preserve selection, scroll and the completed diff
+        // instead of clearing it and issuing another identical comparison.
+        if (!property("projectGitPassiveApply").toBool())
+            m_repository->setSnapshot(m_workdir, snapshot);
+        updateCommitState();
+        m_status->setText(snapshot.value("notice").toString(snapshot.value("changes").toArray().isEmpty()
+            ? tr("Working tree is clean.") : tr("Stage changes to prepare your next commit.")));
+        return;
+    }
     const bool hadOperation = !m_snapshot.value("operation").toObject().value("kind").toString().isEmpty();
     m_snapshot = snapshot;
     m_history->setSnapshot(m_workdir, snapshot);
@@ -691,7 +767,8 @@ void ProjectGitWidget::render(const QJsonObject &snapshot)
     }
     if (selected) {
         m_activeFiles->setCurrentItem(selected);
-        selectFile(m_activeFiles);
+        if (!property("projectGitPassiveApply").toBool())
+            selectFile(m_activeFiles);
     }
 }
 

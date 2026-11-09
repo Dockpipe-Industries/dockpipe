@@ -43,6 +43,7 @@ class DashboardWidgetFactoryTest final : public QObject {
     Q_OBJECT
 private slots:
     void catalogAndCompactWorkflowActions();
+    void compactWorkflowLaunchRetainsIndependentMachine();
     void monitoringAndRunLinksHaveSeparateDestinations();
     void boundedSnapshotViewsAndFailure();
     void systemCountersWithoutUnixOnlyMetrics();
@@ -135,6 +136,49 @@ void DashboardWidgetFactoryTest::terminalHasContextActionsWithoutInnerChrome()
     QVERIFY(factory.terminals().sessionIds().isEmpty());
 }
 
+void DashboardWidgetFactoryTest::compactWorkflowLaunchRetainsIndependentMachine()
+{
+    SessionManager sessions;
+    ContextStore store;
+    DashboardWidgetFactory factory(sessions, store);
+    WorkflowMeta workflow;
+    workflow.workflowId = "build";
+    workflow.displayName = "Build";
+    factory.setWorkflows({workflow});
+    const QJsonObject target{{"node", "worker"}, {"fingerprint", QString(64, 'a')},
+        {"generation", QString(64, 'b')}};
+    const QJsonObject catalog{{"target", target},
+        {"roots", QJsonArray{QJsonObject{{"id", "project"}, {"files_read", true}}}}};
+    factory.setMachineCatalog({catalog});
+    QVERIFY(factory.setSharedMachineContext(catalog, "project"));
+    std::unique_ptr<QWidget> local(factory.create("workflows", nullptr, "project", {{"mode", "local"}}));
+    std::unique_ptr<QWidget> remote(factory.create("workflows", nullptr, "project",
+        {{"mode", "remote"}, {"target", target}, {"rootId", "project"}}));
+    QVERIFY(local && remote);
+    auto *continuation = new QObject(remote.get());
+    continuation->setProperty("workspaceOperationPending", true);
+    QString switchError;
+    QVERIFY(!factory.setWidgetMachineContext(remote.get(), {{"mode", "local"}}, &switchError));
+    QVERIFY(!switchError.isEmpty());
+    QCOMPARE(factory.widgetMachineContext(remote.get()).value("target").toObject(), target);
+    continuation->setProperty("workspaceOperationPending", false);
+    QVERIFY(local->findChild<WorkspaceMachineMenu *>("dashboardWidgetMachine"));
+    QSignalSpy launched(&factory, &DashboardWidgetFactory::launchWorkflowOnMachine);
+    local->findChild<QPushButton *>("dashboardLaunchWorkflow")->click();
+    QCOMPARE(launched.size(), 1);
+    QVERIFY(launched.takeFirst().at(1).toJsonObject().isEmpty());
+    QVERIFY(factory.setSharedMachineContext({}, {}));
+    factory.setMachineCatalog({});
+    remote->findChild<QPushButton *>("dashboardLaunchWorkflow")->click();
+    QCOMPARE(launched.size(), 1);
+    const auto captured = launched.takeFirst();
+    QCOMPARE(captured.at(0).toString(), QString("build"));
+    QCOMPARE(captured.at(1).toJsonObject(), target);
+    QCOMPARE(captured.at(2).toString(), QString("project"));
+    // Losing discovery never turns the captured remote intent into local work.
+    QVERIFY(factory.widgetMachineContext(remote.get()).value("target").toObject() == target);
+}
+
 void DashboardWidgetFactoryTest::catalogAndCompactWorkflowActions()
 {
     SessionManager sessions;
@@ -163,7 +207,7 @@ void DashboardWidgetFactoryTest::catalogAndCompactWorkflowActions()
     auto *search = widget->findChild<QLineEdit *>("dashboardWorkflowSearch");
     auto *launch = widget->findChild<QPushButton *>("dashboardLaunchWorkflow");
     QCOMPARE(list->count(), 40);
-    QSignalSpy launchSpy(&factory, &DashboardWidgetFactory::launchWorkflow);
+    QSignalSpy launchSpy(&factory, &DashboardWidgetFactory::launchWorkflowOnMachine);
     search->setText("build-59");
     QCOMPARE(list->count(), 1);
     launch->click();

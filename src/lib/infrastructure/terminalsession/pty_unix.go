@@ -5,6 +5,7 @@ package terminalsession
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"sync"
@@ -93,7 +94,9 @@ func (terminal *unixTerminal) Wait() (int, error) {
 func (terminal *unixTerminal) Stop() error {
 	terminal.stopOnce.Do(func() {
 		members, err := sessionMembers(terminal.session)
-		terminal.stopError = err
+		if err != nil {
+			terminal.stopError = fmt.Errorf("initial terminal session snapshot session=%d: %w", terminal.session, err)
+		}
 		// A failed/bounded enumeration must still stop the owned shell. Go's
 		// Process handle guards a completed process against PID reuse.
 		defer terminal.command.Process.Kill()
@@ -106,7 +109,8 @@ func (terminal *unixTerminal) Stop() error {
 					continue
 				}
 				if inspectError != nil {
-					terminal.stopError = errors.Join(terminal.stopError, ErrCleanupIncomplete)
+					terminal.stopError = errors.Join(terminal.stopError,
+						fmt.Errorf("%w: recheck pid=%d group=%d session=%d birth=%s: %w", ErrCleanupIncomplete, member.pid, member.group, member.session, member.birth, inspectError))
 					continue
 				}
 				if current.birth != member.birth || current.session != terminal.session || current.group != member.group || current.zombie {
@@ -115,7 +119,8 @@ func (terminal *unixTerminal) Stop() error {
 				remaining = true
 				if member.group > 1 && member.group != unix.Getpgrp() {
 					if err := unix.Kill(-member.group, unix.SIGKILL); err != nil && !errors.Is(err, unix.ESRCH) {
-						terminal.stopError = errors.Join(terminal.stopError, ErrCleanupIncomplete)
+						terminal.stopError = errors.Join(terminal.stopError,
+							fmt.Errorf("%w: kill group=%d via pid=%d session=%d birth=%s: %w", ErrCleanupIncomplete, member.group, member.pid, member.session, member.birth, err))
 					}
 				}
 			}
@@ -124,7 +129,7 @@ func (terminal *unixTerminal) Stop() error {
 				// snapshot. Reinspect before claiming the session is drained.
 				latest, err := sessionMembers(terminal.session)
 				if err != nil {
-					terminal.stopError = errors.Join(terminal.stopError, err)
+					terminal.stopError = errors.Join(terminal.stopError, fmt.Errorf("final terminal session snapshot session=%d: %w", terminal.session, err))
 					break
 				}
 				members = members[:0]
@@ -138,7 +143,8 @@ func (terminal *unixTerminal) Stop() error {
 				}
 			}
 			if !time.Now().Before(deadline) {
-				terminal.stopError = errors.Join(terminal.stopError, ErrCleanupIncomplete)
+				terminal.stopError = errors.Join(terminal.stopError,
+					fmt.Errorf("%w: terminal session drain deadline session=%d members=%d", ErrCleanupIncomplete, terminal.session, len(members)))
 				break
 			}
 			time.Sleep(5 * time.Millisecond)

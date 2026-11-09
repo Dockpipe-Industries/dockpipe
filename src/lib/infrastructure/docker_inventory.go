@@ -15,19 +15,24 @@ import (
 	"dockpipe/src/lib/infrastructure/telemetry"
 )
 
-type inventoryOutput struct{ bytes.Buffer }
-
-func (output *inventoryOutput) Write(data []byte) (int, error) {
-	if len(data) > 512*1024-output.Len() {
-		return 0, errors.New("docker inventory exceeds 512 KiB")
-	}
-	return output.Buffer.Write(data)
+type inventoryOutput struct {
+	buffer bytes.Buffer
 }
 
-func dockerInventoryCommand(ctx context.Context, args ...string) ([]byte, error) {
-	commandName := dockerCommandName()
+func (output *inventoryOutput) Write(data []byte) (int, error) {
+	if len(data) > 512*1024-output.buffer.Len() {
+		return 0, errors.New("docker inventory exceeds 512 KiB")
+	}
+	return output.buffer.Write(data)
+}
+
+func dockerInventoryCommand(ctx context.Context, environment []string, args ...string) ([]byte, error) {
+	commandName, err := resolveDockerCommandFromEnvironment(environment)
+	if err != nil {
+		return nil, errors.New("Docker inventory executable unavailable")
+	}
 	command := exec.CommandContext(ctx, commandName, args...)
-	command.Env = dockerCommandEnv(os.Environ(), commandName)
+	command.Env = dockerCommandEnv(environment, commandName)
 	command.WaitDelay = 500 * time.Millisecond
 	output := &inventoryOutput{}
 	command.Stdout = output
@@ -35,7 +40,7 @@ func dockerInventoryCommand(ctx context.Context, args ...string) ([]byte, error)
 	if err := process.Run(command); err != nil {
 		return nil, errors.New("docker inventory unavailable or query limit exceeded")
 	}
-	return output.Bytes(), nil
+	return output.buffer.Bytes(), nil
 }
 
 func inventoryRows[T any](data []byte) ([]T, bool, error) {
@@ -57,11 +62,15 @@ func inventoryRows[T any](data []byte) ([]T, bool, error) {
 }
 
 func CollectDockerInventory(ctx context.Context) telemetry.DockerSnapshot {
+	return collectDockerInventory(ctx, os.Environ())
+}
+
+func collectDockerInventory(ctx context.Context, environment []string) telemetry.DockerSnapshot {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	result := telemetry.DockerSnapshot{Containers: []telemetry.DockerContainer{}, Networks: []telemetry.DockerNetwork{},
 		Volumes: []telemetry.DockerVolume{}, Topology: []telemetry.DockerTopology{}, Notices: []string{}}
-	containers, err := dockerInventoryCommand(ctx, "container", "ls", "--all", "--no-trunc", "--format", "{{json .}}")
+	containers, err := dockerInventoryCommand(ctx, environment, "container", "ls", "--all", "--no-trunc", "--format", "{{json .}}")
 	if err != nil {
 		result.Notices = append(result.Notices, err.Error())
 		return result
@@ -72,7 +81,7 @@ func CollectDockerInventory(ctx context.Context) telemetry.DockerSnapshot {
 		return result
 	}
 	result.Available = true
-	networks, networkErr := dockerInventoryCommand(ctx, "network", "ls", "--no-trunc", "--format", "{{json .}}")
+	networks, networkErr := dockerInventoryCommand(ctx, environment, "network", "ls", "--no-trunc", "--format", "{{json .}}")
 	var truncated bool
 	if networkErr == nil {
 		result.Networks, truncated, networkErr = inventoryRows[telemetry.DockerNetwork](networks)
@@ -81,7 +90,7 @@ func CollectDockerInventory(ctx context.Context) telemetry.DockerSnapshot {
 	if networkErr != nil {
 		result.Notices = append(result.Notices, "Network inventory unavailable")
 	}
-	volumes, volumeErr := dockerInventoryCommand(ctx, "volume", "ls", "--format", "{{json .}}")
+	volumes, volumeErr := dockerInventoryCommand(ctx, environment, "volume", "ls", "--format", "{{json .}}")
 	if volumeErr == nil {
 		result.Volumes, truncated, volumeErr = inventoryRows[telemetry.DockerVolume](volumes)
 		result.Truncated = result.Truncated || truncated
@@ -101,7 +110,7 @@ func CollectDockerInventory(ctx context.Context) telemetry.DockerSnapshot {
 		}
 		args = append(args, container.ID)
 	}
-	topology, topologyErr := dockerInventoryCommand(ctx, args...)
+	topology, topologyErr := dockerInventoryCommand(ctx, environment, args...)
 	if topologyErr == nil {
 		result.Topology, truncated, topologyErr = inventoryRows[telemetry.DockerTopology](topology)
 		result.Truncated = result.Truncated || truncated

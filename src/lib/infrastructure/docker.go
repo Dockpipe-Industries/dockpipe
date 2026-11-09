@@ -177,7 +177,9 @@ func dockerReinitVolume(stderr, stdin *os.File, force bool, volume string) error
 		dockerCmd := dockerCommandName()
 		cmd := execCommandFn(dockerCmd, "volume", "rm", volume)
 		cmd.Env = dockerCommandEnv(os.Environ(), dockerCmd)
-		_ = cmd.Run()
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("remove Docker data volume: %w", err)
+		}
 		reinitIDs["result"] = "reinitialized"
 		return nil
 	})
@@ -198,14 +200,7 @@ var (
 
 // DockerBuild runs docker build -q -t image -f Dir/Dockerfile context.
 func DockerBuild(image, dockerfileDir, contextDir string) error {
-	dockerCmd := dockerCommandName()
-	df := filepath.Join(dockerfileDir, "Dockerfile")
-
-	cmd := execCommandFn(dockerCmd, "build", "-q", "-t", image, "-f", df, contextDir)
-	cmd.Env = dockerBuildEnv(os.Environ(), dockerCmd)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return DockerBuildWithAdmission(NativeExecutionAdmission{}, image, dockerfileDir, contextDir)
 }
 
 func dockerBuildEnv(env []string, dockerCmd string) []string {
@@ -274,35 +269,12 @@ func normalizePathForCompare(path string) string {
 
 // DockerImageExists reports whether a local docker image reference currently resolves.
 func DockerImageExists(image string) (bool, error) {
-	image = strings.TrimSpace(image)
-	if image == "" {
-		return false, fmt.Errorf("image is empty")
-	}
-	dockerCmd := dockerCommandName()
-	cmd := execCommandFn(dockerCmd, "image", "inspect", image)
-	cmd.Env = dockerCommandEnv(os.Environ(), dockerCmd)
-	err := cmd.Run()
-	if err == nil {
-		return true, nil
-	}
-	if _, ok := err.(*exec.ExitError); ok {
-		return false, nil
-	}
-	return false, err
+	return DockerImageExistsWithAdmission(NativeExecutionAdmission{}, image)
 }
 
 // DockerPull pulls a normal OCI image reference into the local daemon.
 func DockerPull(image string) error {
-	image = strings.TrimSpace(image)
-	if image == "" {
-		return fmt.Errorf("image is empty")
-	}
-	dockerCmd := dockerCommandName()
-	cmd := execCommandFn(dockerCmd, "pull", image)
-	cmd.Env = dockerCommandEnv(os.Environ(), dockerCmd)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return DockerPullWithAdmission(NativeExecutionAdmission{}, image)
 }
 
 // RunOpts is passed to RunContainer.

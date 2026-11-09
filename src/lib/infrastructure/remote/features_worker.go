@@ -13,14 +13,21 @@ import (
 	"dockpipe/src/lib/domain/invocation"
 	contract "dockpipe/src/lib/domain/remote"
 	"dockpipe/src/lib/infrastructure"
+	"dockpipe/src/lib/infrastructure/process"
 	"dockpipe/src/lib/infrastructure/remoteidentity"
 )
 
 type featureWorkerRecord struct {
-	Request      contract.FeatureRequest `json:"request"`
-	Result       *contract.FeatureResult `json:"result,omitempty"`
-	ReceiptOnly  bool
-	ResultDigest string
+	Request          contract.FeatureRequest `json:"request"`
+	Result           *contract.FeatureResult `json:"result,omitempty"`
+	ReceiptOnly      bool
+	ResultDigest     string
+	Reconciled       bool
+	Supervised       bool
+	Scope            *process.ScopeReference
+	ExecutionStopped bool
+	Docker           *infrastructure.ContainerLifecycleReceipt
+	HostRecovery     *contract.HostTerminalRecovery
 }
 
 type featureWorkerJournal struct {
@@ -43,7 +50,8 @@ func readFeatureJournal(root string) (featureWorkerJournal, error) {
 			return journal, errors.New("invalid worker feature intent")
 		}
 		result := recoveredFeatureResult(receipt.Status)
-		journal.Records[id] = featureWorkerRecord{Request: receipt.requestMetadata(), Result: &result, ReceiptOnly: true, ResultDigest: receipt.ResultDigest}
+		journal.Records[id] = featureWorkerRecord{Request: receipt.requestMetadata(), Result: &result, ReceiptOnly: true, ResultDigest: receipt.ResultDigest, Reconciled: receipt.Reconciled,
+			Supervised: receipt.Supervised, Scope: receipt.Scope, ExecutionStopped: receipt.ExecutionStopped, Docker: receipt.Docker, HostRecovery: receipt.HostRecovery}
 	}
 	return journal, nil
 }
@@ -62,7 +70,15 @@ func writeFeatureJournal(root string, journal featureWorkerJournal) error {
 		if !record.ReceiptOnly {
 			digest = featureResultDigest(record.Result)
 		}
-		ledger.Records[id] = receiptFor(record.Request, status, false, digest)
+		receipt := receiptFor(record.Request, status, record.Reconciled, digest)
+		receipt.RecoveryRequested = record.Reconciled
+		receipt.Reconciled = record.Reconciled
+		receipt.Supervised = record.Supervised
+		receipt.Scope = record.Scope
+		receipt.ExecutionStopped = record.ExecutionStopped
+		receipt.Docker = record.Docker
+		receipt.HostRecovery = record.HostRecovery
+		ledger.Records[id] = receipt
 	}
 	if len(ledger.Records) == 0 {
 		if _, err := os.Lstat(filepath.Join(root, "feature-worker.json")); os.IsNotExist(err) {
@@ -130,7 +146,12 @@ func runFeatureWorkerWithInstance(ctx context.Context, root string, config contr
 		if acknowledgement.Reference != completion.Reference {
 			return errors.New("feature receipt acknowledgement identity changed")
 		}
-		if acknowledgement.Expired && record.Result.Status != "unknown" {
+		if record.HostRecovery != nil && record.Result.Status == "success" {
+			if err := removeHostTerminalReceipt(root, record.HostRecovery.Reference); err != nil && !os.IsNotExist(err) {
+				return err
+			}
+		}
+		if acknowledgement.Expired && (record.Result.Status != "unknown" || record.Reconciled) {
 			delete(journal.Records, id)
 		}
 	}
@@ -152,6 +173,18 @@ func runFeatureWorkerWithInstance(ctx context.Context, root string, config contr
 		policy := permissionFingerprint(permissions)
 		target := contract.FeatureTarget{Node: config.Node, Fingerprint: remoteidentity.Fingerprint(config.MachineKey), Generation: Hash(instance + policy)}
 		catalog := permissions.catalog(target)
+		catalog.ProcessRecovery = permissions.ProcessRecovery
+		if catalog.ProcessRecovery == "" {
+			catalog.ProcessRecovery = process.RecoveryMode()
+		}
+		catalog, err = ContainerTerminalRecoveryCatalog(root, catalog)
+		if err != nil {
+			return err
+		}
+		catalog, err = HostTerminalRecoveryCatalog(root, catalog)
+		if err != nil {
+			return err
+		}
 		if err := catalog.Validate(); err != nil {
 			return err
 		}
@@ -171,6 +204,50 @@ func runFeatureWorkerWithInstance(ctx context.Context, root string, config contr
 			}
 			continue
 		}
+		if assignment.Reconcile {
+			if err := validateFileReconciliation(*assignment, target); err != nil {
+				return err
+			}
+			record, exists := journal.Records[assignment.Request.ID]
+			failure := ""
+			if !exists && assignment.Request.Target != target {
+				failure = "original-receipt-unavailable"
+			}
+			if exists && (record.Result == nil || record.Request.Reference() != assignment.Request.Reference() ||
+				record.Request.Root != assignment.Request.Root || record.Request.Action != assignment.Request.Action ||
+				!record.Request.Deadline.Equal(assignment.Request.Deadline)) {
+				failure = "original-receipt-unavailable"
+			}
+			if failure == "" {
+				failure = recoverWorkerFeature(ctx, client, root, target, permissions, *assignment, record, exists)
+			}
+			if failure != "" {
+				if err := client.callWithRetry(ctx, "/v1/features-recovery-failed", featureRecoveryFailure{Reference: assignment.Request.Reference(), Reason: failure}, nil); err != nil {
+					return err
+				}
+				continue
+			}
+			proof := contract.FeatureReconciliation{Reference: assignment.Request.Reference(), Worker: target, Resource: assignment.RecoveryResource}
+			var acknowledgement contract.FeatureResultAck
+			if err := client.callWithRetry(ctx, "/v1/features-reconciled", proof, &acknowledgement); err != nil {
+				return err
+			}
+			if acknowledgement.Reference != proof.Reference {
+				return errors.New("feature reconciliation acknowledgement identity changed")
+			}
+			if exists {
+				record.Request = assignment.Request
+				result := recoveredFeatureResult("unknown")
+				record.Result = &result
+				record.ReceiptOnly = true
+				record.Reconciled = true
+				journal.Records[proof.Reference.ID] = record
+				if err := writeFeatureJournal(root, journal); err != nil {
+					return err
+				}
+			}
+			continue
+		}
 		if assignment.Request.Validate() != nil || assignment.Request.Target != target || !validMachineNonce(assignment.Operator) || !featureCatalogAllows(catalog, assignment.Request) {
 			return errors.New("broker returned a feature outside this worker's identity or grants")
 		}
@@ -181,7 +258,7 @@ func runFeatureWorkerWithInstance(ctx context.Context, root string, config contr
 		record, exists := journal.Records[assignment.Request.ID]
 		if !exists {
 			for id, previous := range journal.Records {
-				if previous.Result != nil && previous.Result.Status != "unknown" && time.Now().After(previous.Request.Deadline) && time.Now().After(retainedUntil[id]) {
+				if previous.Result != nil && (previous.Result.Status != "unknown" || previous.Reconciled) && time.Now().After(previous.Request.Deadline) && time.Now().After(retainedUntil[id]) {
 					delete(journal.Records, id)
 					delete(retainedUntil, id)
 				}
@@ -190,6 +267,8 @@ func runFeatureWorkerWithInstance(ctx context.Context, root string, config contr
 				return errors.New("worker feature journal capacity reached")
 			}
 			record = featureWorkerRecord{Request: assignment.Request}
+			record.Supervised = contract.FeatureAccess(record.Request.Action) != "read" &&
+				(strings.HasPrefix(record.Request.Action, "git.") || strings.HasPrefix(record.Request.Action, "containers."))
 			journal.Records[record.Request.ID] = record
 			retainedUntil[record.Request.ID] = time.Now().Add(contract.FeatureLifetime)
 			if contract.FeatureAccess(record.Request.Action) != "read" {
@@ -197,7 +276,46 @@ func runFeatureWorkerWithInstance(ctx context.Context, root string, config contr
 					return err
 				}
 			}
-			result := executeLeasedFeature(ctx, client, root, permissions, policy, catalog, *assignment, deadline)
+			executionContext := WithTerminalStateRoot(ctx, root)
+			executionContext = context.WithValue(executionContext, hostRecoveryObserverKey{}, func(proof contract.HostTerminalRecovery) error {
+				record.HostRecovery = &proof
+				payload, err := json.Marshal(proof)
+				if err != nil {
+					return err
+				}
+				completed := record
+				completed.Result = &contract.FeatureResult{Status: "success", Payload: payload}
+				// The boot proof and completed metadata are one atomic receipt.
+				// Restart can report it without retaining or replaying a payload.
+				journal.Records[record.Request.ID] = completed
+				return writeFeatureJournal(root, journal)
+			})
+			var scope *process.Scope
+			if record.Supervised {
+				executionContext, scope = process.WithScopeMode(executionContext, record.Request.ID, catalog.ProcessRecovery, func(reference process.ScopeReference) error {
+					record.Scope = &reference
+					journal.Records[record.Request.ID] = record
+					return writeFeatureJournal(root, journal)
+				})
+				executionContext = infrastructure.WithContainerLifecycle(executionContext, func(receipt infrastructure.ContainerLifecycleReceipt) error {
+					record.Docker = &receipt
+					journal.Records[record.Request.ID] = record
+					return writeFeatureJournal(root, journal)
+				})
+			}
+			result := executeLeasedFeature(executionContext, client, root, permissions, policy, catalog, *assignment, deadline)
+			if scope != nil {
+				cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+				err := scope.Stop(cleanup)
+				cancel()
+				record.ExecutionStopped = err == nil
+				if err != nil && !(errors.Is(err, process.ErrRebootRequired) && (result.Status == "success" || result.Status == "failure")) {
+					result = contract.FeatureResult{Status: "unknown", Error: "Native operation cleanup is unconfirmed; reconcile the captured process scope before new work."}
+				}
+			}
+			if record.Docker != nil && !record.Docker.Completed && result.Status != "success" {
+				result = contract.FeatureResult{Status: "unknown", Error: "Docker daemon completion is uncertain; native client exit does not cancel daemon work. Inspect or explicitly retire the captured container."}
+			}
 			record.Result = &result
 			journal.Records[record.Request.ID] = record
 			if contract.FeatureAccess(record.Request.Action) != "read" {
@@ -217,6 +335,11 @@ func runFeatureWorkerWithInstance(ctx context.Context, root string, config contr
 		if acknowledgement.Reference != completion.Reference {
 			return errors.New("feature result acknowledgement identity changed")
 		}
+		if record.HostRecovery != nil && record.Result.Status == "success" {
+			if err := removeHostTerminalReceipt(root, record.HostRecovery.Reference); err != nil && !os.IsNotExist(err) {
+				return err
+			}
+		}
 		// The broker acknowledged delivery. Keep only the mutation identity/status
 		// needed to prevent replay; plaintext output is not a worker cache.
 		digest := featureResultDigest(record.Result)
@@ -225,7 +348,11 @@ func runFeatureWorkerWithInstance(ctx context.Context, root string, config contr
 		}
 		receipt := receiptFor(record.Request, record.Result.Status, false, digest)
 		metadata := recoveredFeatureResult(receipt.Status)
-		journal.Records[record.Request.ID] = featureWorkerRecord{Request: receipt.requestMetadata(), Result: &metadata, ReceiptOnly: true, ResultDigest: digest}
+		record.Request = receipt.requestMetadata()
+		record.Result = &metadata
+		record.ReceiptOnly = true
+		record.ResultDigest = digest
+		journal.Records[record.Request.ID] = record
 	}
 	return ctx.Err()
 }
@@ -235,8 +362,16 @@ func featureCompletionFor(record featureWorkerRecord) contract.FeatureCompletion
 	if !record.ReceiptOnly {
 		digest = featureResultDigest(record.Result)
 	}
-	return contract.FeatureCompletion{Reference: record.Request.Reference(), Result: *record.Result,
-		ReceiptOnly: record.ReceiptOnly, ResultDigest: digest, Deadline: record.Request.Deadline}
+	resource := ""
+	if record.Docker != nil {
+		resource = record.Docker.Container
+	}
+	var hostRecovery *contract.HostTerminalRecovery
+	if record.Result.Status == "success" {
+		hostRecovery = record.HostRecovery
+	}
+	return contract.FeatureCompletion{Reference: record.Request.Reference(), Result: *record.Result, RecoveryResource: resource, HostRecovery: hostRecovery,
+		ReceiptOnly: record.ReceiptOnly, ResultDigest: digest, Deadline: record.Request.Deadline, Reconciled: record.Reconciled}
 }
 
 func featureLeaseDeadline(started time.Time, milliseconds int64) (time.Time, error) {

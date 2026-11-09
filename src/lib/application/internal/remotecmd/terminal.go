@@ -16,11 +16,12 @@ import (
 // Terminal transport is private NDJSON on stdin/stdout. It never echoes input,
 // places bytes in argv, logs stdout, or uses the workflow execution journal.
 type terminalCommand struct {
-	Type     string `json:"type"`
-	Sequence uint64 `json:"sequence,omitempty"`
-	Data     []byte `json:"data,omitempty"`
-	Columns  int    `json:"columns,omitempty"`
-	Rows     int    `json:"rows,omitempty"`
+	Type      string                      `json:"type"`
+	Reference *contract.TerminalReference `json:"reference,omitempty"`
+	Sequence  uint64                      `json:"sequence,omitempty"`
+	Data      []byte                      `json:"data,omitempty"`
+	Columns   int                         `json:"columns,omitempty"`
+	Rows      int                         `json:"rows,omitempty"`
 }
 
 type terminalEvent struct {
@@ -54,7 +55,14 @@ func decodeTerminalCommand(data []byte) (terminalCommand, error) {
 	if err := decodeFeatureInput(data, &command); err != nil {
 		return command, err
 	}
+	if command.Type != "prepared-ack" && command.Reference != nil {
+		return command, errors.New("terminal data command cannot select another reference")
+	}
 	switch command.Type {
+	case "prepared-ack":
+		if command.Reference == nil || command.Reference.Validate() != nil || command.Sequence != 0 || len(command.Data) != 0 || command.Columns != 0 || command.Rows != 0 {
+			return command, errors.New("invalid terminal preparation acknowledgment")
+		}
 	case "input":
 		if command.Sequence == 0 || len(command.Data) == 0 || len(command.Data) > contract.MaxTerminalInput || command.Columns != 0 || command.Rows != 0 {
 			return command, errors.New("invalid terminal input command")
@@ -73,7 +81,7 @@ func decodeTerminalCommand(data []byte) (terminalCommand, error) {
 	return command, nil
 }
 
-func remoteTerminal(ctx context.Context, root, path string) error {
+func remoteTerminal(ctx context.Context, root, path string, prepareHost bool) error {
 	if path == "" || path == "-" {
 		return errors.New("remote terminal requires --request <intent-file>; stdin is reserved for private NDJSON")
 	}
@@ -90,7 +98,7 @@ func remoteTerminal(ctx context.Context, root, path string) error {
 		return err
 	}
 	defer client.HTTP.CloseIdleConnections()
-	return streamTerminal(ctx, client, request, os.Stdin, os.Stdout)
+	return streamTerminalPrepared(ctx, client, request, os.Stdin, os.Stdout, prepareHost)
 }
 
 func inspectTerminal(ctx context.Context, root, path string, closeSession bool) error {
@@ -128,6 +136,10 @@ func inspectTerminal(ctx context.Context, root, path string, closeSession bool) 
 }
 
 func streamTerminal(parent context.Context, client *remoteio.Client, request contract.TerminalOpen, input io.ReadCloser, output io.WriteCloser) error {
+	return streamTerminalPrepared(parent, client, request, input, output, false)
+}
+
+func streamTerminalPrepared(parent context.Context, client *remoteio.Client, request contract.TerminalOpen, input io.ReadCloser, output io.WriteCloser, prepareHost bool) error {
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
 	defer input.Close()
@@ -136,6 +148,27 @@ func streamTerminal(parent context.Context, client *remoteio.Client, request con
 	defer interruptOutput()
 	reference := request.Reference()
 	encoder := json.NewEncoder(output)
+	scanner := bufio.NewScanner(input)
+	scanner.Buffer(make([]byte, 4096), 96*1024)
+	// Containers always require the preparation handshake. Host consumers can
+	// opt in while older host transports retain their one-way announcement.
+	if request.Container != "" || prepareHost {
+		if err := encoder.Encode(terminalEvent{Type: "prepared", Reference: &reference}); err != nil {
+			return err
+		}
+		preparation, stop := context.WithDeadline(ctx, request.Deadline)
+		interrupt := context.AfterFunc(preparation, func() { _ = input.Close() })
+		scanned := scanner.Scan()
+		interrupt()
+		stop()
+		if !scanned {
+			return errors.New("terminal preparation was not acknowledged")
+		}
+		acknowledgment, err := decodeTerminalCommand(scanner.Bytes())
+		if err != nil || acknowledgment.Type != "prepared-ack" || acknowledgment.Reference == nil || *acknowledgment.Reference != reference {
+			return errors.New("terminal preparation reference changed")
+		}
+	}
 	// Capture the original identity before an ambiguous submission response.
 	if err := encoder.Encode(terminalEvent{Type: "session", Reference: &reference}); err != nil {
 		return err
@@ -154,11 +187,12 @@ func streamTerminal(parent context.Context, client *remoteio.Client, request con
 	commands := make(chan terminalCommand)
 	inputError := make(chan error, 1)
 	go func() {
-		scanner := bufio.NewScanner(input)
-		scanner.Buffer(make([]byte, 4096), 96*1024) // 64 KiB base64 plus fixed JSON fields
 		for scanner.Scan() {
 			command, err := decodeTerminalCommand(scanner.Bytes())
-			if err != nil {
+			if err != nil || command.Type == "prepared-ack" {
+				if err == nil {
+					err = errors.New("duplicate terminal preparation acknowledgment")
+				}
 				inputError <- err
 				return
 			}
@@ -175,11 +209,40 @@ func streamTerminal(parent context.Context, client *remoteio.Client, request con
 		}
 		inputError <- io.EOF
 	}()
-	ticker := time.NewTicker(200 * time.Millisecond)
-	defer ticker.Stop()
+	poll := time.NewTimer(200 * time.Millisecond)
+	defer poll.Stop()
+	var interactiveUntil time.Time
+	resetPoll := func() {
+		interval := 200 * time.Millisecond
+		if time.Now().Before(interactiveUntil) {
+			interval = 20 * time.Millisecond
+		}
+		if !poll.Stop() {
+			select {
+			case <-poll.C:
+			default:
+			}
+		}
+		poll.Reset(interval)
+	}
 	var cursor, acknowledged, pending uint64
 	lastState := ""
+	pollImmediately := false
+	viewHasOutput := false
 	for {
+		if view.AckSequence > acknowledged && view.AckSequence != pending {
+			return errors.New("terminal input acknowledgement changed")
+		}
+		if viewHasOutput && (len(view.Data) > 0 || view.Truncated) {
+			if err := encoder.Encode(terminalEvent{Type: "output", View: &view}); err != nil {
+				return err
+			}
+			cursor = view.Cursor
+			lastState = view.State
+			view.Data = nil
+			view.Truncated = false
+		}
+		viewHasOutput = false
 		if view.State != lastState {
 			stateView := view
 			stateView.Data = nil
@@ -208,6 +271,18 @@ func streamTerminal(parent context.Context, client *remoteio.Client, request con
 			closedView.Truncated = false
 			return encoder.Encode(terminalEvent{Type: "closed", View: &closedView})
 		}
+		if pollImmediately {
+			pollImmediately = false
+			callContext, stop := context.WithTimeout(ctx, 2*time.Second)
+			view, err = client.PollTerminal(callContext, reference, cursor)
+			viewHasOutput = true
+			stop()
+			if err != nil {
+				return err
+			}
+			resetPoll()
+			continue
+		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -233,25 +308,22 @@ func streamTerminal(parent context.Context, client *remoteio.Client, request con
 				pending = command.Sequence
 				view, err = client.InputTerminal(callContext, contract.TerminalInput{Reference: reference, Sequence: command.Sequence, Data: command.Data})
 				clear(command.Data)
+				interactiveUntil = time.Now().Add(250 * time.Millisecond)
+				pollImmediately = true
 			}
 			stop()
 			if err != nil {
 				return err
 			} // no implicit input replay on ambiguous errors
-		case <-ticker.C:
+		case <-poll.C:
 			callContext, stop := context.WithTimeout(ctx, 2*time.Second)
 			view, err = client.PollTerminal(callContext, reference, cursor)
+			viewHasOutput = true
 			stop()
 			if err != nil {
 				return err
 			}
-			if len(view.Data) > 0 || view.Truncated {
-				if err := encoder.Encode(terminalEvent{Type: "output", View: &view}); err != nil {
-					return err
-				}
-				cursor = view.Cursor
-				lastState = view.State
-			}
+			resetPoll()
 		}
 	}
 }

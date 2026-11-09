@@ -19,6 +19,7 @@ public:
     explicit RemoteTerminalSession(QObject *parent = nullptr);
     ~RemoteTerminalSession() override;
     bool start(const QJsonObject &catalog, const QString &root);
+    bool startContainer(const QJsonObject &catalog, const QString &container, const QString &shell);
     bool send(const QByteArray &data);
     bool sendAcknowledged(const QByteArray &data, std::function<void(bool)> completion);
     void resize(int columns, int rows);
@@ -27,6 +28,11 @@ public:
     bool active() const { return m_active; }
     bool ready() const { return m_started && running(); }
     QString error() const { return m_error; }
+    bool containerSession() const { return !m_intent.value("container").toString().isEmpty(); }
+    bool cleanupVerified() const { return m_cleanupVerified || m_reference.isEmpty(); }
+    bool confirmRecovery(const QJsonObject &reference);
+    bool confirmContainerRecovery(const QJsonObject &reference);
+    QJsonObject reference() const { return m_reference; }
 
 signals:
     void output(const QByteArray &data, quint64 cursor, bool truncated);
@@ -34,6 +40,7 @@ signals:
     void finished(int exitCode);
 
 private:
+    bool startSelected(const QJsonObject &catalog, const QString &root, const QString &container, const QString &shell);
     void drain();
     void consume(const QByteArray &line);
     void acknowledge(quint64 sequence);
@@ -62,6 +69,8 @@ private:
     QString m_error;
     int m_columns = 80;
     int m_rows = 24;
+    bool m_cleanupVerified = false;
+    bool m_prepared = false;
     bool m_active = false;
     bool m_started = false;
     bool m_nativeClosed = false;

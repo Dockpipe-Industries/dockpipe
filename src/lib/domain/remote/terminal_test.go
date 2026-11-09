@@ -57,3 +57,33 @@ func TestTerminalScopesAndCatalogPublicationBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestContainerTerminalIntentIsTypedAndBindsContainerAndShell(t *testing.T) {
+	request := validTerminalIntent()
+	request.Root, request.Container, request.Shell = "", strings.Repeat("e", 64), "/bin/sh"
+	request.ID, _ = request.Digest()
+	if err := request.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	for _, mutate := range []func(*TerminalOpen){
+		func(value *TerminalOpen) { value.Container = strings.Repeat("f", 64) },
+		func(value *TerminalOpen) { value.Shell = "/bin/bash" },
+	} {
+		changed := request
+		mutate(&changed)
+		if changed.Validate() == nil {
+			t.Fatal("changed container selection retained session identity")
+		}
+	}
+	for _, invalid := range []TerminalOpen{
+		{Root: "project", Container: request.Container, Shell: "/bin/sh"},
+		{Container: "short", Shell: "/bin/sh"},
+		{Container: request.Container, Shell: "/bin/sh -c arbitrary"},
+	} {
+		invalid.Schema, invalid.Target, invalid.Epoch, invalid.Nonce, invalid.Deadline, invalid.Columns, invalid.Rows = request.Schema, request.Target, request.Epoch, request.Nonce, request.Deadline, request.Columns, request.Rows
+		invalid.ID, _ = invalid.Digest()
+		if invalid.Validate() == nil {
+			t.Fatal("invalid container exec selection accepted")
+		}
+	}
+}

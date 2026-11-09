@@ -8,6 +8,7 @@
 #include "WorkspaceFileModel.h"
 #include "WorkspaceFilesController.h"
 #include <QHideEvent>
+#include <QShowEvent>
 
 #include <QDir>
 #include <QApplication>
@@ -139,6 +140,13 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     });
     explorerLayout->addWidget(m_controls);
     m_model = new WorkspaceFileModel(this);
+    auto *refreshTimer = new QTimer(this);
+    refreshTimer->setObjectName("filesAutomaticRefresh");
+    refreshTimer->setInterval(5000);
+    connect(refreshTimer, &QTimer::timeout, this, [this]() {
+        if (isVisible() && isEnabled() && !filesOperationPending())
+            m_model->revalidate();
+    });
     files->filter->setSourceModel(m_model);
     m_model->setShowHidden(true);
     m_explorer = new FileExplorerView;
@@ -175,13 +183,21 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     });
     connect(rootButton, &QToolButton::clicked, this, [this]() { navigateExplorer(m_root); });
     connect(m_model, &WorkspaceFileModel::directoryLoaded, this, [this](const QString &directory) {
+        const QString listingError = property("filesListingError").toString();
+        if (!listingError.isEmpty() && property("filesListingErrorPath").toString() == directory
+            && m_status->text() == listingError) {
+            setProperty("filesListingError", QString());
+            showMessage({});
+        }
         if (!m_root.isEmpty() && directory == QDir(m_root).relativeFilePath(m_explorerDirectory)) {
             auto *files = WorkspaceFilesController::get(this);
             m_explorer->setRootIndex(files->filter->mapFromSource(m_model->indexForPath(directory)));
             m_explorer->setAvailable(true);
         }
     });
-    connect(m_model, &WorkspaceFileModel::listingFailed, this, [this](const QString &, const QString &error) {
+    connect(m_model, &WorkspaceFileModel::listingFailed, this, [this](const QString &directory, const QString &error) {
+        setProperty("filesListingError", error);
+        setProperty("filesListingErrorPath", directory);
         showMessage(error);
     });
     explorerLayout->addWidget(m_explorer, 1);
@@ -1258,6 +1274,8 @@ void ProjectFilesWidget::closeGraph()
 void ProjectFilesWidget::hideEvent(QHideEvent *event)
 {
     QWidget::hideEvent(event);
+    findChild<QTimer *>("filesAutomaticRefresh")->stop();
+    m_model->setActive(false);
     // Adding an OpenGL viewport to an already visible Files page can recreate
     // its native window with a synchronous hide/show. Let that transaction
     // finish before deciding whether the user actually left this page.
@@ -1266,4 +1284,11 @@ void ProjectFilesWidget::hideEvent(QHideEvent *event)
         if (hiddenGraph && m_graph == hiddenGraph && !isVisible())
             closeGraph();
     });
+}
+
+void ProjectFilesWidget::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    m_model->setActive(isEnabled());
+    findChild<QTimer *>("filesAutomaticRefresh")->start();
 }

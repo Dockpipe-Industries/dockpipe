@@ -102,6 +102,13 @@ Services use systemd user units on Linux and LaunchAgents on macOS. They retain 
 user's PATH. They are user-session services, not a promise of operation before login or while the
 machine sleeps. Configure power/session policy separately for an always-on benchmark worker.
 
+Docker availability has its own provider lifecycle. A worker returning after login
+does not imply that its Docker VM has started. For an existing Colima installation,
+`brew services start colima` starts its Homebrew service and registers it for future
+logins; coordinate any existing foreground owner and active containers first.
+See [Homebrew service semantics](https://docs.brew.sh/Manpage#services-subcommand).
+This is user-login startup, not operation before the operating system unlocks.
+
 After installing a new Dockpipe version, open **Machines**. The Dockpipe app reports when a
 registered service differs from the current CLI installation, including when the binary
 has changed at the same path. **Update broker service…** or **Update worker service…**
@@ -626,6 +633,9 @@ credentials remain unable to authenticate after replacement.
 Updated workers can opt into sharing system/process or Docker inventory snapshots
 with their existing broker using `dockpipe remote monitoring --system --docker`.
 Use the worker's existing `--state` directory; `--disable` revokes both categories.
+The running worker reloads this opt-in without restarting. Feature grants alone
+do not enable monitoring. macOS workers provide native whole-system counters and
+process metadata; per-process CPU and resident memory remain unavailable.
 This does not change pairing or workflow-delivery permission. Updated operators
 can select that machine in **Executions → System** or **Containers**, or run
 `dockpipe remote observe --node <name>`. Remote Docker is read-only inventory and

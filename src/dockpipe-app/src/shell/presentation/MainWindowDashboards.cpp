@@ -56,13 +56,12 @@ void MainWindow::setupDashboards()
             this, &MainWindow::refreshWorkspaceMachines);
     m_dashboardFactory->setWorkflows(m_workspaceWorkflows);
     connect(m_dashboardFactory, &DashboardWidgetFactory::cloneWorkflow, this, &MainWindow::cloneWorkflow);
-    connect(m_dashboardFactory, &DashboardWidgetFactory::launchWorkflow, this, [this](const QString &workflowId) {
+    connect(m_dashboardFactory, &DashboardWidgetFactory::launchWorkflowOnMachine, this,
+        [this](const QString &workflowId, const QJsonObject &target, const QString &root) {
         for (const auto &context : m_advancedSourceContexts) {
             if (context.workflow == workflowId) {
-                // Use the same configuration, selected target and approval flow
-                // as the full Workflows page, including non-app workflows.
                 const Context selected = context;
-                launchWorkflow(selected);
+                launchWorkflow(selected, target, root);
                 return;
             }
         }
@@ -203,14 +202,14 @@ void MainWindow::ensureDashboard(int page)
             auto *anchor = dashboard->findChild<QPushButton *>("dashboardFullscreenSidebar");
             menu->popup(anchor->mapToGlobal(QPoint(0, anchor->height())));
         });
-        connect(dashboard, &DashboardPage::workflowRunRequested, this,
-            [this](const QString &repository, const QString &path) {
+        connect(dashboard, &DashboardPage::workflowRunOnMachineRequested, this,
+            [this](const QString &repository, const QString &path, const QJsonObject &target, const QString &root) {
                 Context context = Context::createNew();
                 context.workdir = repository;
                 context.workflowFile = path;
                 context.label = QFileInfo(path).completeBaseName();
                 context.dockpipeBinary = DockpipeChoices::preferredDockpipeBinary(repository);
-                launchWorkflow(context);
+                launchWorkflow(context, target, root);
             });
         connect(dashboard, &DashboardPage::cloneWorkflowRequested, this, &MainWindow::cloneWorkflow);
         connect(dashboard, &DashboardPage::appWorkflowRequested, this, [this, dashboard](const QString &workflowId) {
@@ -218,7 +217,7 @@ void MainWindow::ensureDashboard(int page)
                 if (context.workflow != workflowId)
                     continue;
                 const Context selected = context;
-                const bool local = m_runTarget->currentData().toString().isEmpty();
+                const bool local = m_workspaceMachineMenu->currentTarget().isEmpty();
                 if (launchWorkflow(selected) && local)
                     dashboard->addWindowForApplication(selected.label);
                 return;

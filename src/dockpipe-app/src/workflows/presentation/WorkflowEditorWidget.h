@@ -26,9 +26,11 @@ public:
     using Completion = std::function<void(bool)>;
     explicit WorkflowEditorWidget(const QString &workdir, const QString &binary, QWidget *parent = nullptr);
     ~WorkflowEditorWidget() override;
+    // Compatibility entrypoint reports request acceptance. Use the async method for completion.
     bool openWorkflow(const QString &path);
     bool setWorkspace(const QString &workdir, const QString &binary);
     bool confirmDiscardChanges();
+    bool operationPending() const;
     void confirmDiscardChangesAsync(Completion completion);
     void setWorkspaceAsync(const QString &workdir, const QString &binary, Completion completion = {});
     void openWorkflowAsync(const QString &path, Completion completion = {});

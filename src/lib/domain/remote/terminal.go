@@ -22,15 +22,17 @@ const (
 // queue's 32 MiB. Ninety-six reservations cover a 256 KiB ring, 64 KiB pending
 // input and bounded metadata each. No terminal content enters durable receipts.
 type TerminalOpen struct {
-	Schema   string        `json:"schema"`
-	ID       string        `json:"id"`
-	Target   FeatureTarget `json:"target"`
-	Epoch    string        `json:"epoch"`
-	Root     string        `json:"root"`
-	Nonce    string        `json:"nonce"`
-	Deadline time.Time     `json:"deadline"`
-	Columns  int           `json:"columns"`
-	Rows     int           `json:"rows"`
+	Schema    string        `json:"schema"`
+	ID        string        `json:"id"`
+	Target    FeatureTarget `json:"target"`
+	Epoch     string        `json:"epoch"`
+	Root      string        `json:"root"`
+	Container string        `json:"container,omitempty"`
+	Shell     string        `json:"shell,omitempty"`
+	Nonce     string        `json:"nonce"`
+	Deadline  time.Time     `json:"deadline"`
+	Columns   int           `json:"columns"`
+	Rows      int           `json:"rows"`
 }
 
 func (request TerminalOpen) Digest() (string, error) {
@@ -46,9 +48,16 @@ func (request TerminalOpen) Digest() (string, error) {
 func (request TerminalOpen) Validate() error {
 	digest, err := request.Digest()
 	if err != nil || request.Schema != TerminalVersion || request.ID != digest || !featureDigest(request.Epoch) ||
-		!featureDigest(request.Nonce) || request.Target.Validate() != nil || !ValidID(request.Root) || request.Deadline.IsZero() ||
+		!featureDigest(request.Nonce) || request.Target.Validate() != nil || request.Deadline.IsZero() ||
 		!ValidTerminalSize(request.Columns, request.Rows) {
 		return errors.New("invalid terminal open intent")
+	}
+	if request.Container == "" {
+		if !ValidID(request.Root) || request.Shell != "" {
+			return errors.New("terminal shell requires an owner root")
+		}
+	} else if request.Root != "" || !featureDigest(request.Container) || request.Shell != "/bin/sh" && request.Shell != "/bin/bash" {
+		return errors.New("container terminal requires an exact container ID and supported shell")
 	}
 	return nil
 }
@@ -167,4 +176,33 @@ type TerminalExchangeResult struct {
 	Epoch      string              `json:"epoch"`
 	Directives []TerminalDirective `json:"directives"`
 	Forget     []TerminalReference `json:"forget,omitempty"`
+}
+
+// ContainerTerminalReference is recovery routing only, never replayable input.
+type ContainerTerminalReference struct {
+	Reference TerminalReference `json:"reference"`
+	Container string            `json:"container"`
+	Phase     string            `json:"phase"`
+}
+
+const HostTerminalReceiptVersion = "dockpipe.host-terminal-receipt/v1"
+
+type HostTerminalReference struct {
+	Reference TerminalReference `json:"reference"`
+	Root      string            `json:"root"`
+	Phase     string            `json:"phase"`
+}
+
+type HostTerminalRecovery struct {
+	Schema     string            `json:"schema"`
+	Reference  TerminalReference `json:"reference"`
+	Root       string            `json:"root"`
+	Reconciled bool              `json:"reconciled"`
+}
+
+func (receipt HostTerminalRecovery) Validate() error {
+	if receipt.Schema != HostTerminalReceiptVersion || receipt.Reference.Validate() != nil || !ValidID(receipt.Root) || !receipt.Reconciled {
+		return errors.New("invalid host terminal recovery proof")
+	}
+	return nil
 }

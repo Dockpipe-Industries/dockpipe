@@ -582,7 +582,6 @@ Browse packages to add the tools you use.</source>
             <source>Project scope stays inside the selected project, including symbolic links.</source>
             <translation>프로젝트 범위는 심볼릭 링크를 포함해 선택한 프로젝트 내부로 제한됩니다.</translation>
         </message>
-        
         <message>
             <location line="+17" />
             <source>Open a project to browse its files.</source>
@@ -919,7 +918,6 @@ Independent repository · add multiple views for cross-repo work</source>
             <source>Desktop background unavailable: %1 Your previous background was kept.</source>
             <translation>데스크톱 배경을 사용할 수 없습니다: %1 이전 배경은 유지됩니다.</translation>
         </message>
-    
         <message>
             <location line="+219" />
             <source>Remote workflow launch is unavailable for this view.</source>
@@ -1704,10 +1702,8 @@ Independent repository · add multiple views for cross-repo work</source>
             <source>%1 of %2 machines · access status does not imply online</source>
             <translation>머신 %2개 중 %1개 · 액세스 상태는 온라인 여부를 의미하지 않음</translation>
         </message>
-    
-        
         <message>
-            <location filename="../src/dashboards/presentation/DashboardMachineContext.cpp" line="70"/>
+            <location filename="../src/dashboards/presentation/DashboardMachineContext.cpp" line="70" />
             <source>Save open drafts and wait for active operations before changing machines.</source>
             <translation>머신을 변경하기 전에 열린 초안을 저장하고 활성 작업이 끝날 때까지 기다리세요.</translation>
         </message>
@@ -3090,26 +3086,6 @@ Refresh to load inventory from the selected machine.</source>
             <translation>볼륨을 선택하여 사용 세부 정보를 확인하세요.</translation>
         </message>
         <message>
-            <location line="+33" />
-            <source>Docker query exceeded its 15-second or 32-MiB response limit.</source>
-            <translation>Docker 쿼리가 응답 한도인 15초 또는 32 MiB를 초과했습니다.</translation>
-        </message>
-        <message>
-            <location line="+103" />
-            <source>Some Docker relationships could not be read. Inspect the selected object for details.</source>
-            <translation>일부 Docker 관계를 읽지 못했습니다. 선택한 개체를 검사하여 세부 정보를 확인하세요.</translation>
-        </message>
-        <message>
-            <location line="+3" />
-            <source>Relationships unavailable: %1</source>
-            <translation>관계를 사용할 수 없음: %1</translation>
-        </message>
-        <message>
-            <location line="+3" />
-            <source> Relationships shown for the first 256 containers. Full inventory is available in Details &amp; actions.</source>
-            <translation> 처음 256개 컨테이너의 관계를 표시합니다. 전체 목록은 세부 정보 및 작업에서 확인할 수 있습니다.</translation>
-        </message>
-        <message>
             <location line="+21" />
             <location line="+4" />
             <location line="+24" />
@@ -3219,7 +3195,6 @@ Refresh to load inventory from the selected machine.</source>
             <source>Docker refresh completed with errors.</source>
             <translation>Docker 새로 고침이 오류와 함께 완료되었습니다.</translation>
         </message>
-        
         <message>
             <location line="-62" />
             <source>Loading container details…</source>
@@ -3376,7 +3351,6 @@ Refresh to load inventory from the selected machine.</source>
             <source>%1 · Docker monitoring unavailable or stale. On the paired worker, enable: dockpipe remote monitoring --system --docker. The worker and broker must support monitoring.</source>
             <translation>%1 · Docker 모니터링을 사용할 수 없거나 오래되었습니다. 페어링된 워커에서 다음을 실행하세요: dockpipe remote monitoring --system --docker. 워커와 브로커가 모니터링을 지원해야 합니다.</translation>
         </message>
-        
         <message>
             <location line="+12" />
             <source>Remote Docker inventory unavailable. </source>
@@ -3396,11 +3370,6 @@ Refresh to load inventory from the selected machine.</source>
             <location line="+2" />
             <source> · Remote inventory · read-only</source>
             <translation> · 원격 목록 · 읽기 전용</translation>
-        </message>
-    
-        <message>
-            <source>Remote inventory shares topology. Container logs and detailed inspection are unavailable for this machine.</source>
-            <translation>원격 인벤토리는 토폴로지를 공유합니다. 이 머신에서는 컨테이너 로그와 세부 검사를 사용할 수 없습니다.</translation>
         </message>
         <message>
             <source>Container control requires a supported action and an exact full container ID.</source>
@@ -3449,6 +3418,54 @@ Refresh to load inventory from the selected machine.</source>
         <message>
             <source> · Remote inventory</source>
             <translation> · 원격 인벤토리</translation>
+        </message>
+        <message>
+            <source>Container inventory exceeds its object limit.</source>
+            <translation>컨테이너 목록이 개체 수 한도를 초과합니다.</translation>
+        </message>
+        <message>
+            <source>Container query cancelled or exceeded its deadline or response limit.</source>
+            <translation>컨테이너 쿼리가 취소되었거나 기한 또는 응답 한도를 초과했습니다.</translation>
+        </message>
+        <message>
+            <source>Container query cancelled or the trusted Dockpipe CLI is unavailable.</source>
+            <translation>컨테이너 쿼리가 취소되었거나 신뢰할 수 있는 Dockpipe CLI를 사용할 수 없습니다.</translation>
+        </message>
+        <message>
+            <source>Could not inspect resource: %1</source>
+            <translation>리소스를 검사할 수 없습니다: %1</translation>
+        </message>
+        <message>
+            <source>Could not load container logs: %1</source>
+            <translation>컨테이너 로그를 불러올 수 없습니다: %1</translation>
+        </message>
+        <message>
+            <source>Could not send the container request.</source>
+            <translation>컨테이너 요청을 보낼 수 없습니다.</translation>
+        </message>
+        <message>
+            <source>Detailed inspection requires the paired worker's Docker read feature.</source>
+            <translation>상세 검사에는 페어링된 작업자의 Docker 읽기 기능이 필요합니다.</translation>
+        </message>
+        <message>
+            <source>Invalid container detail response.</source>
+            <translation>컨테이너 세부 정보 응답이 잘못되었습니다.</translation>
+        </message>
+        <message>
+            <source>Invalid log receipt.</source>
+            <translation>로그 수신 확인서가 잘못되었습니다.</translation>
+        </message>
+        <message>
+            <source>Invalid resource receipt.</source>
+            <translation>리소스 수신 확인서가 잘못되었습니다.</translation>
+        </message>
+        <message>
+            <source>Loading resource details…</source>
+            <translation>리소스 세부 정보 불러오는 중…</translation>
+        </message>
+        <message>
+            <source>Select for details</source>
+            <translation>선택하여 세부 정보 보기</translation>
         </message>
     </context>
     <context>
@@ -4603,7 +4620,6 @@ Remaining:
             <source>Resolve selected conflict</source>
             <translation>선택한 충돌 해결</translation>
         </message>
-    
         <message>
             <source>The remote conflict editor context is unavailable. Select the authorized machine and root again.</source>
             <translation>원격 충돌 편집기 컨텍스트를 사용할 수 없습니다. 권한이 있는 머신과 루트를 다시 선택하세요.</translation>
@@ -5708,7 +5724,6 @@ If a workflow needs external tools, you install them yourself from official sour
             <source>Show</source>
             <translation>표시</translation>
         </message>
-        
         <message>
             <location line="+63" />
             <source>No project selected</source>
@@ -6212,16 +6227,23 @@ Ctrl / ⌘ + `     출력 전환
             <source>Cloned workflow to %1</source>
             <translation>워크플로를 %1에 복제했습니다</translation>
         </message>
-    
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="112"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="112" />
             <source>This machine or root changed. Refresh machines and select it again.</source>
             <translation>이 머신 또는 루트가 변경되었습니다. 머신을 새로 고친 후 다시 선택하세요.</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="124"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="124" />
             <source>Save or discard open drafts and finish active operations before changing machines.</source>
             <translation>머신을 변경하기 전에 열린 초안을 저장하거나 버리고 활성 작업을 완료하세요.</translation>
+        </message>
+        <message>
+            <source>Choose the computer with the shared machine selector.</source>
+            <translation>공유 머신 선택기에서 컴퓨터를 선택하세요.</translation>
+        </message>
+        <message>
+            <source>Container terminal · %1 · %2</source>
+            <translation>컨테이너 터미널 · %1 · %2</translation>
         </message>
     </context>
     <context>
@@ -7107,7 +7129,6 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
             <source>Folder name</source>
             <translation>폴더 이름</translation>
         </message>
-        
         <message>
             <location line="+20" />
             <location line="+1" />
@@ -7304,7 +7325,6 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
             <source>Workflow YAML · shared with the canvas and YAML view</source>
             <translation>워크플로 YAML · 캔버스 및 YAML 보기와 공유</translation>
         </message>
-        
         <message>
             <location line="+8" />
             <source>This file is binary, is not UTF-8, or exceeds the 1 MiB editor limit.</source>
@@ -7320,7 +7340,6 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
             <source>The file exceeds 1 MiB or its location changed. Your edits are still here.</source>
             <translation>파일이 1 MiB를 초과하거나 위치가 변경되었습니다. 편집 내용은 그대로 있습니다.</translation>
         </message>
-        
         <message>
             <location line="+8" />
             <source>Cannot save: %1</source>
@@ -7331,12 +7350,6 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
             <source>Saved %1</source>
             <translation>%1 저장됨</translation>
         </message>
-        
-        
-        
-        
-        
-        
         <message>
             <location line="+11" />
             <source>No file open</source>
@@ -7377,20 +7390,19 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
             <source>%1   ·   UTF-8   ·   %2                         Ln %3, Col %4</source>
             <translation>%1   ·   UTF-8   ·   %2                         %3행, %4열</translation>
         </message>
-    
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="141"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="141" />
             <source>Refresh files</source>
             <translation>파일 새로 고침</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="319"/>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="353"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="319" />
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="353" />
             <source>A file operation is still running. Your open files are preserved.</source>
             <translation>파일 작업이 아직 실행 중입니다. 열려 있는 파일은 보존됩니다.</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="534"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="534" />
             <source>Invalid workspace file response.</source>
             <translation>잘못된 작업공간 파일 응답입니다.</translation>
         </message>
@@ -7414,16 +7426,14 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
             <translation>Git 작업이 실패했거나 취소되었습니다. 다시 시도하기 전에 새로 고침하세요.
 %1</translation>
         </message>
-    
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="552"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="552" />
             <source>The selected remote Git context is unavailable. Select an authorized machine and root, then refresh.</source>
             <translation>선택한 원격 Git 컨텍스트를 사용할 수 없습니다. 권한이 있는 머신과 루트를 선택한 다음 새로 고치세요.</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="585"/>
-            <source>The remote Git outcome is unavailable or uncertain. Refresh the captured machine and root before another write; the operation was not retried.</source>
-            <translation>원격 Git 결과를 사용할 수 없거나 불확실합니다. 다음 쓰기 전에 캡처된 머신과 루트를 새로 고치세요. 작업을 재시도하지 않았습니다.</translation>
+            <source>The remote Git outcome is unavailable or uncertain. Refresh the captured machine and root before another write; inspect Uncertain operations when a mutation is retained.</source>
+            <translation>원격 Git 결과를 사용할 수 없거나 결과가 불확실합니다. 다시 쓰기 전에 기록된 머신과 루트를 새로 고치고, 변경이 보관된 경우 불확실한 작업을 확인하세요.</translation>
         </message>
     </context>
     <context>
@@ -8048,19 +8058,18 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
             <source>Select a script inside the workspace folder. This file was shared separately by Flatpak, so its temporary document path cannot be saved in a portable workflow.</source>
             <translation>작업 공간 폴더 안의 스크립트를 선택하세요. 이 파일은 Flatpak에서 별도로 공유되었으므로 임시 문서 경로를 이식 가능한 워크플로에 저장할 수 없습니다.</translation>
         </message>
-    
         <message>
-            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="22"/>
+            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="22" />
             <source>Wait for all Git operations before changing machines or roots.</source>
             <translation>머신이나 루트를 변경하기 전에 모든 Git 작업이 완료될 때까지 기다리세요.</translation>
         </message>
         <message>
-            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="29"/>
+            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="29" />
             <source>Save or discard the conflict draft before changing machines or roots.</source>
             <translation>머신이나 루트를 변경하기 전에 충돌 초안을 저장하거나 버리세요.</translation>
         </message>
         <message>
-            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="76"/>
+            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="76" />
             <source>Select an absolute local project folder.</source>
             <translation>절대 경로가 있는 로컬 프로젝트 폴더를 선택하세요.</translation>
         </message>
@@ -10376,12 +10385,6 @@ This machine is no longer in the available inventory.</source>
             <source>This terminal is already running.</source>
             <translation>이 터미널은 이미 실행 중입니다.</translation>
         </message>
-        
-        
-        
-        
-        
-        
         <message>
             <location line="+13" />
             <source>Could not configure the interactive terminal device.</source>
@@ -10443,13 +10446,11 @@ This machine is no longer in the available inventory.</source>
             <source>Terminal cleanup reached its process-inspection limit. Some detached jobs may remain.</source>
             <translation>터미널 정리가 프로세스 검사 한도에 도달했습니다. 일부 분리된 작업이 남아 있을 수 있습니다.</translation>
         </message>
-    
         <message>
             <location line="+16" />
             <source>Host terminal bridges are unavailable on Windows.</source>
             <translation>Windows에서는 호스트 터미널 브리지를 사용할 수 없습니다.</translation>
         </message>
-    
         <message>
             <location line="+4" />
             <source>The prepared terminal launch is invalid.</source>
@@ -11061,14 +11062,13 @@ $ 다음 명령을 입력할 준비가 되었습니다</translation>
             <source>Restart DockPipe to enable terminal transparency with compatible browser rendering.</source>
             <translation>호환되는 브라우저 렌더링과 터미널 투명 효과를 사용하려면 DockPipe를 다시 시작하세요.</translation>
         </message>
-    
         <message>
-            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="456"/>
+            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="456" />
             <source>Connecting to remote terminal…</source>
             <translation>원격 터미널에 연결 중…</translation>
         </message>
         <message>
-            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="374"/>
+            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="374" />
             <source>Remote terminal access is unavailable for this machine or root.</source>
             <translation>이 머신에서 원격 터미널을 사용할 수 없습니다.</translation>
         </message>
@@ -11503,11 +11503,6 @@ If this Dockpipe does not support the editor, update the CLI and GUI together.</
             <translation>워크플로를 읽을 수 없거나 편집기 한도인 1 MiB를 초과합니다.</translation>
         </message>
         <message>
-            <location line="+6" />
-            <source>Workflow must be UTF-8. The file was not changed.</source>
-            <translation>워크플로는 UTF-8이어야 합니다. 파일은 변경되지 않았습니다.</translation>
-        </message>
-        <message>
             <location line="+42" />
             <location line="+287" />
             <source>Workflow exceeds the 1 MiB editor limit.</source>
@@ -11574,34 +11569,9 @@ If this Dockpipe does not support the editor, update the CLI and GUI together.</
             <translation>워크플로 YAML (*.yml *.yaml)</translation>
         </message>
         <message>
-            <location line="+5" />
-            <source>Open the real workflow file instead of overwriting a symbolic link.</source>
-            <translation>심볼릭 링크를 덮어쓰는 대신 실제 워크플로 파일을 여세요.</translation>
-        </message>
-        <message>
             <location line="+8" />
             <source>Cannot safely read the existing workflow.</source>
             <translation>기존 워크플로를 안전하게 읽을 수 없습니다.</translation>
-        </message>
-        <message>
-            <location line="+5" />
-            <source>The existing workflow grew beyond the editor limit. Your draft has been kept.</source>
-            <translation>기존 워크플로가 편집기 한도를 초과했습니다. 초안은 유지됩니다.</translation>
-        </message>
-        <message>
-            <location line="+4" />
-            <source>This workflow changed on disk. Open it again before saving; your draft has been kept.</source>
-            <translation>이 워크플로가 디스크에서 변경되었습니다. 저장하기 전에 다시 여세요. 초안은 유지됩니다.</translation>
-        </message>
-        <message>
-            <location line="+8" />
-            <source>The file changed during validation. Your draft has been kept.</source>
-            <translation>검증 중 파일이 변경되었습니다. 초안은 유지됩니다.</translation>
-        </message>
-        <message>
-            <location line="+5" />
-            <source>Cannot save workflow: %1</source>
-            <translation>워크플로를 저장할 수 없음: %1</translation>
         </message>
         <message>
             <location line="+13" />
@@ -11628,16 +11598,25 @@ If this Dockpipe does not support the editor, update the CLI and GUI together.</
             <source>Apply your inspector changes before changing selection, switching views, or saving.</source>
             <translation>선택을 변경하거나 보기를 전환하거나 저장하기 전에 검사기 변경 사항을 적용하세요.</translation>
         </message>
-    
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="247"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="247" />
             <source>Could not save all supporting files. Open Files to review the error; your drafts are preserved.</source>
             <translation>모든 지원 파일을 저장할 수 없습니다. 파일을 열어 오류를 검토하세요. 초안은 보존됩니다.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="253"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="253" />
             <source>The workflow or supporting files changed while saving. Review them before running.</source>
             <translation>저장하는 동안 워크플로 또는 지원 파일이 변경되었습니다. 실행하기 전에 검토하세요.</translation>
+        </message>
+        <message>
+            <source>Cannot save workflow: %1
+The file may have changed on disk. Your draft has been kept; refresh before retrying.</source>
+            <translation>워크플로를 저장할 수 없습니다: %1
+디스크의 파일이 변경되었을 수 있습니다. 초안은 보관되었습니다. 다시 시도하기 전에 새로 고치세요.</translation>
+        </message>
+        <message>
+            <source>The workflow changed during validation. Your draft has been kept.</source>
+            <translation>검증 중에 워크플로가 변경되었습니다. 초안은 보관되었습니다.</translation>
         </message>
     </context>
     <context>
@@ -12026,19 +12005,28 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
             <translation>이전 디렉터리 읽기가 아직 중지 중입니다. 잠시 후 다시 시도하세요.</translation>
         </message>
         <message>
-            <location line="+27" />
-            <source>Cannot start the directory reader: %1</source>
-            <translation>디렉터리 판독기를 시작할 수 없음: %1</translation>
+            <source>Binary file · Open in the file viewer for details.</source>
+            <translation>바이너리 파일 · 세부 정보는 파일 뷰어에서 여세요.</translation>
         </message>
         <message>
-            <location line="+20" />
-            <source>Directory response exceeds the 2 MiB limit. Reduce the page size.</source>
-            <translation>디렉터리 응답이 2 MiB 한도를 초과합니다. 페이지 크기를 줄이세요.</translation>
+            <source>Directory page exceeds the graph node limit.</source>
+            <translation>디렉터리 페이지가 그래프의 노드 한도를 초과합니다.</translation>
         </message>
         <message>
-            <location line="+22" />
-            <source>Directory read failed. Refresh to retry.</source>
-            <translation>디렉터리 읽기가 실패했습니다. 새로 고침하여 다시 시도하세요.</translation>
+            <source>Directory reader returned a different workspace path.</source>
+            <translation>디렉터리 리더가 다른 작업 공간 경로를 반환했습니다.</translation>
+        </message>
+        <message>
+            <source>Invalid directory page response.</source>
+            <translation>디렉터리 페이지 응답이 잘못되었습니다.</translation>
+        </message>
+        <message>
+            <source>Invalid local workspace graph request.</source>
+            <translation>로컬 작업 공간 그래프 요청이 잘못되었습니다.</translation>
+        </message>
+        <message>
+            <source>Non-UTF-8 file · Text preview unavailable.</source>
+            <translation>UTF-8이 아닌 파일 · 텍스트 미리 보기 사용 불가.</translation>
         </message>
     </context>
     <context>
@@ -12459,65 +12447,85 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     <context>
         <name>RemoteFeatureClient</name>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="64"/>
-            <source>Remote operation timed out. Refresh state before retrying a write.</source>
-            <translation>원격 작업 시간이 초과되었습니다. 쓰기를 재시도하기 전에 상태를 새로 고치세요.</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="105"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="105" />
             <source>Invalid remote feature request bounds.</source>
             <translation>원격 기능 요청 한도가 잘못되었습니다.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="131"/>
-            <source>Remote request delivery is uncertain. Refresh state before retrying a write.</source>
-            <translation>원격 요청 전달 여부가 불확실합니다. 쓰기를 재시도하기 전에 상태를 새로 고치세요.</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="138"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="138" />
             <source>Could not start the trusted Dockpipe remote client.</source>
             <translation>신뢰할 수 있는 Dockpipe 원격 클라이언트를 시작할 수 없습니다.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="159"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="159" />
             <source>Remote response exceeded its transport limit.</source>
             <translation>원격 응답이 전송 한도를 초과했습니다.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="182"/>
-            <source>Remote result is unavailable. Refresh state before retrying a write.</source>
-            <translation>원격 결과를 사용할 수 없습니다. 쓰기를 재시도하기 전에 상태를 새로 고치세요.</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="187"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="187" />
             <source>Remote machine catalog is unavailable.</source>
             <translation>원격 머신 카탈로그를 사용할 수 없습니다.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="199"/>
-            <source>Remote result identity changed. Refresh the selected machine.</source>
-            <translation>원격 결과 ID가 변경되었습니다. 선택한 머신을 새로 고치세요.</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="211"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="211" />
             <source>Remote result does not match the captured operation.</source>
             <translation>원격 결과가 캡처된 작업과 일치하지 않습니다.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="224"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="224" />
             <source>Cancellation requested for the original remote operation. Refresh state before retrying a write.</source>
             <translation>원래 원격 작업의 취소가 요청되었습니다. 쓰기를 재시도하기 전에 상태를 새로 고치세요.</translation>
+        </message>
+        <message>
+            <source>Cannot retain remote mutation recovery metadata. Resolve saved operations or repair settings before another write.</source>
+            <translation>원격 변경의 복구 메타데이터를 보관할 수 없습니다. 다시 쓰기 전에 저장된 작업을 해결하거나 설정을 복구하세요.</translation>
+        </message>
+        <message>
+            <source>Core could not prepare the exact captured remote operation. No operation was dispatched.</source>
+            <translation>코어가 기록된 원격 작업을 정확히 준비하지 못했습니다. 작업을 전송하지 않았습니다.</translation>
+        </message>
+        <message>
+            <source>Invalid recovery receipt. The original operation remains uncertain.</source>
+            <translation>복구 수신 확인서가 잘못되었습니다. 원래 작업은 여전히 불확실합니다.</translation>
+        </message>
+        <message>
+            <source>Prepared remote request exceeds its transport limit.</source>
+            <translation>준비된 원격 요청이 전송 한도를 초과합니다.</translation>
+        </message>
+        <message>
+            <source>Remote operation preparation exhausted its deadline.</source>
+            <translation>원격 작업을 준비하는 동안 기한이 만료되었습니다.</translation>
+        </message>
+        <message>
+            <source>Remote operation timed out. Inspect its original receipt before another write.</source>
+            <translation>원격 작업 시간이 초과되었습니다. 다시 쓰기 전에 원래 수신 확인서를 검사하세요.</translation>
+        </message>
+        <message>
+            <source>Remote request delivery is uncertain. Inspect the original operation.</source>
+            <translation>원격 요청의 전달 여부가 불확실합니다. 원래 작업을 검사하세요.</translation>
+        </message>
+        <message>
+            <source>Remote result identity changed. Inspect the original captured operation.</source>
+            <translation>원격 결과의 식별 정보가 변경되었습니다. 기록된 원래 작업을 검사하세요.</translation>
+        </message>
+        <message>
+            <source>Remote result is unavailable. Inspect the original operation before another write.</source>
+            <translation>원격 결과를 사용할 수 없습니다. 다시 쓰기 전에 원래 작업을 검사하세요.</translation>
+        </message>
+        <message>
+            <source>The recovery strategy does not match the captured mutation.</source>
+            <translation>복구 전략이 기록된 변경과 일치하지 않습니다.</translation>
         </message>
     </context>
     <context>
         <name>WorkspaceFileModel</name>
         <message>
-            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="227"/>
+            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="227" />
             <source>Too many pending workspace directory requests; refresh to continue.</source>
             <translation>대기 중인 작업공간 디렉터리 요청이 너무 많습니다. 계속하려면 새로 고치세요.</translation>
         </message>
         <message>
-            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="273"/>
+            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="273" />
             <source>Invalid workspace directory page.</source>
             <translation>잘못된 작업공간 디렉터리 페이지입니다.</translation>
         </message>
@@ -12525,63 +12533,63 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     <context>
         <name>WorkspaceFilesClient</name>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="44"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="44" />
             <source>Workspace file operation timed out; its effect may need refresh.</source>
             <translation>작업공간 파일 작업 시간이 초과되었습니다. 영향을 확인하려면 새로 고치세요.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="84"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="84" />
             <source>A workspace file operation is already running.</source>
             <translation>작업공간 파일 작업이 이미 진행 중입니다.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="90"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="90" />
             <source>Workspace file request exceeds its transport contract.</source>
             <translation>작업공간 파일 요청이 전송 계약을 초과합니다.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="96"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="96" />
             <source>The selected remote Files context is unavailable.</source>
             <translation>선택한 원격 파일 컨텍스트를 사용할 수 없습니다.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="100"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="100" />
             <source>Workspace Files requires an absolute selected root.</source>
             <translation>작업공간 파일에는 절대 경로가 있는 선택된 루트가 필요합니다.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="152"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="152" />
             <source>Could not send the workspace file request.</source>
             <translation>작업공간 파일 요청을 보낼 수 없습니다.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="168"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="168" />
             <source>Workspace file helper failed (exit %1). Check the installed Dockpipe CLI.</source>
             <translation>작업공간 파일 도우미 실패(종료 코드 %1). 설치된 Dockpipe CLI를 확인하세요.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="176"/>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="247"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="176" />
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="247" />
             <source>Invalid workspace file response.</source>
             <translation>잘못된 작업공간 파일 응답입니다.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="196"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="196" />
             <source>Workspace file response exceeded its transport limit.</source>
             <translation>작업공간 파일 응답이 전송 한도를 초과했습니다.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="206"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="206" />
             <source>Workspace file operation was cancelled; refresh before retrying a write.</source>
             <translation>작업공간 파일 작업이 취소되었습니다. 쓰기를 재시도하기 전에 새로 고치세요.</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="270"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="270" />
             <source>The workspace file context changed before completion.</source>
             <translation>완료 전에 작업공간 파일 컨텍스트가 변경되었습니다.</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteWorkspaceFilesDispatch.cpp" line="34"/>
+            <location filename="../src/remote/infrastructure/RemoteWorkspaceFilesDispatch.cpp" line="34" />
             <source>Remote file result is uncertain. Refresh before retrying a write.</source>
             <translation>원격 파일 결과가 불확실합니다. 쓰기를 재시도하기 전에 새로 고치세요.</translation>
         </message>
@@ -12589,55 +12597,55 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     <context>
         <name>WorkspaceMachineMenu</name>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="50"/>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="92"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="50" />
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="92" />
             <source>Follow main machine</source>
             <translation>기본 머신 따르기</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="51"/>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="85"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="51" />
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="85" />
             <source>Shared machine selection. Dashboard widgets can choose their own machine.</source>
             <translation>공유 머신 선택입니다. 대시보드 위젯은 각자 머신을 선택할 수 있습니다.</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="55"/>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="97"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="55" />
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="97" />
             <source>This computer</source>
             <translation>이 컴퓨터</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="56"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="56" />
             <source>Choose the machine for Containers, Files, Git, Terminal and the dashboard.</source>
             <translation>컨테이너, 파일, Git, 터미널 및 대시보드에 사용할 머신을 선택하세요.</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="81"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="81" />
             <source> · Locked</source>
             <translation> · 잠김</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="83"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="83" />
             <source> · Unavailable</source>
             <translation> · 사용할 수 없음</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="103"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="103" />
             <source>Unlock remote access…</source>
             <translation>원격 액세스 잠금 해제…</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="106"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="106" />
             <source>No remote workspaces available</source>
             <translation>사용 가능한 원격 작업공간이 없습니다</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="127"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="127" />
             <source>Containers</source>
             <translation>컨테이너</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="133"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="133" />
             <source>Refresh machines</source>
             <translation>머신 새로 고침</translation>
         </message>
@@ -12645,49 +12653,41 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     <context>
         <name>RemoteTerminalSession</name>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="86"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="114"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="86" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="114" />
             <source>Could not start the trusted remote terminal client.</source>
             <translation>신뢰할 수 있는 원격 터미널 클라이언트를 시작할 수 없습니다.</translation>
         </message>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="69"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="69" />
             <source>Remote terminal access is unavailable for this machine or root.</source>
             <translation>이 머신 또는 루트에서 원격 터미널을 사용할 수 없습니다.</translation>
         </message>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="154"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="176"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="183"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="192"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="203"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="217"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="223"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="248"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="257"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="154" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="176" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="183" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="192" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="203" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="217" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="223" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="248" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="257" />
             <source>The remote terminal returned an invalid response.</source>
             <translation>원격 터미널에서 잘못된 응답을 반환했습니다.</translation>
         </message>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="38"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="124"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="199"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="245"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="312"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="321"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="329"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="38" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="124" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="199" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="245" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="312" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="321" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="329" />
             <source>The remote terminal connection was lost. Pending input was not replayed.</source>
             <translation>원격 터미널 연결이 끊겼습니다. 대기 중인 입력은 다시 보내지 않았습니다.</translation>
         </message>
     </context>
-
-
-
-
-
-
-
-
     <context>
         <name>ManagedTerminalSession</name>
         <message>
@@ -12748,6 +12748,111 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
             <location line="+35" />
             <source>The terminal requires an existing directory and an absolute executable path.</source>
             <translation>터미널에는 기존 디렉터리와 실행 파일의 절대 경로가 필요합니다.</translation>
+        </message>
+    </context>
+    <context>
+        <name>RemoteFeatureRecoveryDialog</name>
+        <message>
+            <source>Choose a retained operation.</source>
+            <translation>보관된 작업을 선택하세요.</translation>
+        </message>
+        <message>
+            <source>Close</source>
+            <translation>닫기</translation>
+        </message>
+        <message>
+            <source>Contacting the original captured machine…</source>
+            <translation>기록된 원래 머신에 연결하는 중…</translation>
+        </message>
+        <message>
+            <source>Inspect the original operation before another write. Cancellation does not prove that a mutation had no effect.</source>
+            <translation>다시 쓰기 전에 원래 작업을 검사하세요. 취소는 변경에 아무런 영향이 없었음을 증명하지 않습니다.</translation>
+        </message>
+        <message>
+            <source>Machine: %1
+Fingerprint: %2
+Generation: %3
+Root: %4
+Action: %5
+Operation: %6</source>
+            <translation>머신: %1
+지문: %2
+세대: %3
+루트: %4
+동작: %5
+작업: %6</translation>
+        </message>
+        <message>
+            <source>No uncertain mutations are retained.</source>
+            <translation>보관된 불확실한 변경이 없습니다.</translation>
+        </message>
+        <message>
+            <source>Original operation status: %1. No operation was replayed.</source>
+            <translation>원래 작업 상태: %1. 어떤 작업도 다시 실행하지 않았습니다.</translation>
+        </message>
+        <message>
+            <source>Refresh status</source>
+            <translation>상태 새로 고침</translation>
+        </message>
+        <message>
+            <source>Request cancellation</source>
+            <translation>취소 요청</translation>
+        </message>
+        <message>
+            <source>The mutation outcome remains uncertain. Refresh its original status before another write.</source>
+            <translation>변경 결과는 여전히 불확실합니다. 다시 쓰기 전에 원래 상태를 새로 고치세요.</translation>
+        </message>
+        <message>
+            <source>Uncertain operations…</source>
+            <translation>불확실한 작업…</translation>
+        </message>
+        <message>
+            <source>Uncertain remote operations</source>
+            <translation>불확실한 원격 작업</translation>
+        </message>
+        <message>
+            <source>unknown</source>
+            <translation>알 수 없음</translation>
+        </message>
+        <message>
+            <source>Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write.</source>
+            <translation>정리는 확인되었지만 변경 결과는 여전히 알 수 없습니다. 다시 쓰기 전에 파일, Git 또는 컨테이너 공급자를 새로 고치고 영향을 받은 상태를 검토하세요.</translation>
+        </message>
+        <message>
+            <source>Container terminal cleanup remains uncertain. The original session reference is retained.</source>
+            <translation>컨테이너 터미널 정리는 여전히 불확실합니다. 원래 세션 참조는 보관됩니다.</translation>
+        </message>
+        <message>
+            <source>Container terminal cleanup was verified for the original captured session.</source>
+            <translation>기록된 원래 세션에 대해 컨테이너 터미널 정리가 확인되었습니다.</translation>
+        </message>
+        <message>
+            <source>Explicitly remove the original exact container after native client cleanup. Requires the worker's independent Docker recovery grant. Volumes and images are retained.</source>
+            <translation>네이티브 클라이언트 정리 후 정확히 원래 컨테이너를 명시적으로 제거합니다. 작업자의 별도 Docker 복구 권한이 필요합니다. 볼륨과 이미지는 유지됩니다.</translation>
+        </message>
+        <message>
+            <source>Remove container %1 on %2 to fence delayed daemon work for operation %3? This removes the container and its writable layer. Volumes and images are retained. The original mutation outcome remains unknown.</source>
+            <translation>작업 %3에 대한 데몬의 지연된 작업을 차단하기 위해 %2의 컨테이너 %1을 제거하시겠습니까? 컨테이너와 쓰기 가능한 계층이 제거됩니다. 볼륨과 이미지는 유지됩니다. 원래 변경 결과는 여전히 알 수 없습니다.</translation>
+        </message>
+        <message>
+            <source>Retire container…</source>
+            <translation>컨테이너 폐기…</translation>
+        </message>
+        <message>
+            <source>Retire the captured container?</source>
+            <translation>기록된 컨테이너를 폐기하시겠습니까?</translation>
+        </message>
+        <message>
+            <source>Revoke the original invocation and verify its native cleanup evidence. Boot-fenced workers require a host reboot for uncertain process-backed operations. The mutation outcome remains unknown.</source>
+            <translation>원래 호출을 취소하고 네이티브 정리 증거를 확인합니다. 부팅 경계로 보호되는 작업자는 불확실한 프로세스 기반 작업에 대해 호스트를 재부팅해야 합니다. 변경 결과는 여전히 알 수 없습니다.</translation>
+        </message>
+        <message>
+            <source>Verify cleanup</source>
+            <translation>정리 확인</translation>
+        </message>
+        <message>
+            <source>Refreshing the worker's retained terminal metadata. No cleanup was requested.</source>
+            <translation>작업자가 보관한 터미널 메타데이터를 새로 고치는 중입니다. 정리는 요청하지 않았습니다.</translation>
         </message>
     </context>
 </TS>

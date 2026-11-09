@@ -50,6 +50,17 @@ RemoteTerminalSession::~RemoteTerminalSession()
 
 bool RemoteTerminalSession::start(const QJsonObject &catalog, const QString &root)
 {
+    return startSelected(catalog, root, {}, {});
+}
+
+bool RemoteTerminalSession::startContainer(const QJsonObject &catalog, const QString &container, const QString &shell)
+{
+    return startSelected(catalog, {}, container, shell);
+}
+
+bool RemoteTerminalSession::startSelected(const QJsonObject &catalog, const QString &root,
+                                         const QString &container, const QString &shell)
+{
     if (m_active || m_process)
         return false;
     static const QRegularExpression identifier(QStringLiteral("\\A[A-Za-z0-9][A-Za-z0-9_-]{0,63}\\z"));
@@ -61,7 +72,14 @@ bool RemoteTerminalSession::start(const QJsonObject &catalog, const QString &roo
         if (permission.value("id").toString() == root && permission.value("terminal").toBool())
             granted = true;
     }
-    if (!granted || !identifier.match(root).hasMatch()
+    if (!container.isEmpty()) {
+        granted = catalog.value("docker_exec").toBool() && catalog.value("docker_read").toBool()
+            && root.isEmpty() && digest.match(container).hasMatch()
+            && (shell == "/bin/sh" || shell == "/bin/bash");
+    } else if (!identifier.match(root).hasMatch() || !shell.isEmpty()) {
+        granted = false;
+    }
+    if (!granted
         || !identifier.match(target.value("node").toString()).hasMatch()
         || !digest.match(target.value("fingerprint").toString()).hasMatch()
         || !digest.match(target.value("generation").toString()).hasMatch()
@@ -80,6 +98,10 @@ bool RemoteTerminalSession::start(const QJsonObject &catalog, const QString &roo
         {"nonce", QUuid::createUuid().toString(QUuid::Id128) + QUuid::createUuid().toString(QUuid::Id128)},
         {"deadline", QDateTime::currentDateTimeUtc().addSecs(25).toString(Qt::ISODateWithMs)},
         {"columns", m_columns}, {"rows", m_rows}};
+    if (!container.isEmpty()) {
+        m_intent["container"] = container;
+        m_intent["shell"] = shell;
+    }
     m_request = std::make_unique<QTemporaryFile>();
     const auto intent = QJsonDocument(m_intent).toJson(QJsonDocument::Compact);
     if (!m_request->open() || m_request->write(intent) != intent.size() || !m_request->flush()) {
@@ -125,7 +147,7 @@ bool RemoteTerminalSession::start(const QJsonObject &catalog, const QString &roo
         finish(code);
     });
     m_openDeadline->start(30000);
-    process->start(binary, {"remote", "terminal", "--request", m_request->fileName(), "--auth", "never"});
+    process->start(binary, {"remote", "terminal", "--prepare", "--request", m_request->fileName(), "--auth", "never"});
     return true;
 }
 
@@ -177,9 +199,21 @@ void RemoteTerminalSession::consume(const QByteArray &line)
         return;
     }
     const QString type = event.value("type").toString();
+    if (type == "prepared") {
+        const auto reference = event.value("reference").toObject();
+        if (m_prepared || !matchesReference(reference)) {
+            fail(tr("The remote terminal returned an invalid response."));
+            return;
+        }
+        m_reference = reference;
+        m_prepared = true;
+        if (!sendFrame({{"type", "prepared-ack"}, {"reference", reference}}))
+            fail(tr("The remote terminal connection was lost. Pending input was not replayed."));
+        return;
+    }
     if (type == "session") {
         const auto reference = event.value("reference").toObject();
-        if (!matchesReference(reference)) {
+        if (!m_prepared || !matchesReference(reference)) {
             fail(tr("The remote terminal returned an invalid response."));
             return;
         }
@@ -227,9 +261,17 @@ void RemoteTerminalSession::consume(const QByteArray &line)
     }
     const QString state = view.value("state").toString();
     const bool closingState = state == "closed" || state == "unknown";
+    if ((type == "closed" && (!closingState || cursor != end || !decoded.decoded.isEmpty()))
+        || (ack > m_acknowledged
+            && (m_inFlight.isEmpty() || ack != m_sequence || ack != m_acknowledged + 1))) {
+        fail(tr("The remote terminal returned an invalid response."));
+        return;
+    }
     const bool firstClosed = closingState && !m_nativeClosed;
-    if (closingState)
+    if (closingState) {
         m_nativeClosed = true;
+        m_cleanupVerified = state == "closed";
+    }
     m_cursor = cursor;
     const QPointer<RemoteTerminalSession> guard(this);
     if (!decoded.decoded.isEmpty())
@@ -246,10 +288,6 @@ void RemoteTerminalSession::consume(const QByteArray &line)
         if (state == "unknown" || view.value("reason") == "authority-lost")
             m_error = tr("The remote terminal connection was lost. Pending input was not replayed.");
         if (type == "closed") {
-            if (cursor != end || !decoded.decoded.isEmpty()) {
-                fail(tr("The remote terminal returned an invalid response."));
-                return;
-            }
             stop();
         } else if (firstClosed) {
             emit stateChanged();
@@ -422,4 +460,19 @@ void RemoteTerminalSession::releaseProcess()
         if (process->state() != QProcess::NotRunning)
             process->kill();
     });
+}
+
+bool RemoteTerminalSession::confirmRecovery(const QJsonObject &reference)
+{
+    if (m_reference.isEmpty() || reference != m_reference)
+        return false;
+    m_cleanupVerified = true;
+    m_nativeClosed = true;
+    stop();
+    return true;
+}
+
+bool RemoteTerminalSession::confirmContainerRecovery(const QJsonObject &reference)
+{
+    return containerSession() && confirmRecovery(reference);
 }

@@ -582,7 +582,6 @@ Browse packages to add the tools you use.</source>
             <source>Project scope stays inside the selected project, including symbolic links.</source>
             <translation>प्रोजेक्ट का दायरा प्रतीकात्मक लिंक सहित चुने गए प्रोजेक्ट के भीतर रहता है।</translation>
         </message>
-        
         <message>
             <location line="+17" />
             <source>Open a project to browse its files.</source>
@@ -919,7 +918,6 @@ Independent repository · add multiple views for cross-repo work</source>
             <source>Desktop background unavailable: %1 Your previous background was kept.</source>
             <translation>डेस्कटॉप पृष्ठभूमि उपलब्ध नहीं है: %1 पिछली पृष्ठभूमि रखी गई है।</translation>
         </message>
-    
         <message>
             <location line="+219" />
             <source>Remote workflow launch is unavailable for this view.</source>
@@ -1704,10 +1702,8 @@ Independent repository · add multiple views for cross-repo work</source>
             <source>%1 of %2 machines · access status does not imply online</source>
             <translation>%2 में से %1 मशीनें · पहुँच स्थिति ऑनलाइन होने का संकेत नहीं है</translation>
         </message>
-    
-        
         <message>
-            <location filename="../src/dashboards/presentation/DashboardMachineContext.cpp" line="70"/>
+            <location filename="../src/dashboards/presentation/DashboardMachineContext.cpp" line="70" />
             <source>Save open drafts and wait for active operations before changing machines.</source>
             <translation>मशीन बदलने से पहले खुले ड्राफ़्ट सहेजें और सक्रिय कार्रवाइयाँ पूरी होने दें।</translation>
         </message>
@@ -3090,26 +3086,6 @@ Refresh to load inventory from the selected machine.</source>
             <translation>उपयोग विवरण जाँचने के लिए वॉल्यूम चुनें।</translation>
         </message>
         <message>
-            <location line="+33" />
-            <source>Docker query exceeded its 15-second or 32-MiB response limit.</source>
-            <translation>Docker क्वेरी 15 सेकंड या 32 MiB प्रतिक्रिया सीमा से अधिक हो गई।</translation>
-        </message>
-        <message>
-            <location line="+103" />
-            <source>Some Docker relationships could not be read. Inspect the selected object for details.</source>
-            <translation>कुछ Docker संबंध नहीं पढ़े जा सके। विवरण के लिए चुना गया ऑब्जेक्ट जाँचें।</translation>
-        </message>
-        <message>
-            <location line="+3" />
-            <source>Relationships unavailable: %1</source>
-            <translation>संबंध उपलब्ध नहीं: %1</translation>
-        </message>
-        <message>
-            <location line="+3" />
-            <source> Relationships shown for the first 256 containers. Full inventory is available in Details &amp; actions.</source>
-            <translation> पहले 256 कंटेनर के संबंध दिखाए गए हैं। पूरी सूची विवरण और कार्रवाइयाँ में उपलब्ध है।</translation>
-        </message>
-        <message>
             <location line="+21" />
             <location line="+4" />
             <location line="+24" />
@@ -3219,7 +3195,6 @@ Refresh to load inventory from the selected machine.</source>
             <source>Docker refresh completed with errors.</source>
             <translation>Docker रीफ़्रेश त्रुटियों के साथ पूरा हुआ।</translation>
         </message>
-        
         <message>
             <location line="-62" />
             <source>Loading container details…</source>
@@ -3376,7 +3351,6 @@ Refresh to load inventory from the selected machine.</source>
             <source>%1 · Docker monitoring unavailable or stale. On the paired worker, enable: dockpipe remote monitoring --system --docker. The worker and broker must support monitoring.</source>
             <translation>%1 · Docker निगरानी अनुपलब्ध या पुरानी है। युग्मित वर्कर पर सक्षम करें: dockpipe remote monitoring --system --docker. वर्कर और ब्रोकर को निगरानी का समर्थन करना चाहिए।</translation>
         </message>
-        
         <message>
             <location line="+12" />
             <source>Remote Docker inventory unavailable. </source>
@@ -3396,11 +3370,6 @@ Refresh to load inventory from the selected machine.</source>
             <location line="+2" />
             <source> · Remote inventory · read-only</source>
             <translation> · दूरस्थ सूची · केवल पढ़ने के लिए</translation>
-        </message>
-    
-        <message>
-            <source>Remote inventory shares topology. Container logs and detailed inspection are unavailable for this machine.</source>
-            <translation>दूरस्थ इन्वेंटरी टोपोलॉजी साझा करती है। इस मशीन के लिए कंटेनर लॉग और विस्तृत निरीक्षण उपलब्ध नहीं हैं।</translation>
         </message>
         <message>
             <source>Container control requires a supported action and an exact full container ID.</source>
@@ -3449,6 +3418,54 @@ Refresh to load inventory from the selected machine.</source>
         <message>
             <source> · Remote inventory</source>
             <translation> · दूरस्थ इन्वेंटरी</translation>
+        </message>
+        <message>
+            <source>Container inventory exceeds its object limit.</source>
+            <translation>कंटेनर सूची में ऑब्जेक्ट की संख्या सीमा से अधिक है।</translation>
+        </message>
+        <message>
+            <source>Container query cancelled or exceeded its deadline or response limit.</source>
+            <translation>कंटेनर क्वेरी रद्द कर दी गई या उसकी समय-सीमा या प्रतिक्रिया सीमा पार हो गई।</translation>
+        </message>
+        <message>
+            <source>Container query cancelled or the trusted Dockpipe CLI is unavailable.</source>
+            <translation>कंटेनर क्वेरी रद्द कर दी गई या विश्वसनीय Dockpipe CLI उपलब्ध नहीं है।</translation>
+        </message>
+        <message>
+            <source>Could not inspect resource: %1</source>
+            <translation>संसाधन का निरीक्षण नहीं किया जा सका: %1</translation>
+        </message>
+        <message>
+            <source>Could not load container logs: %1</source>
+            <translation>कंटेनर लॉग लोड नहीं किए जा सके: %1</translation>
+        </message>
+        <message>
+            <source>Could not send the container request.</source>
+            <translation>कंटेनर अनुरोध नहीं भेजा जा सका।</translation>
+        </message>
+        <message>
+            <source>Detailed inspection requires the paired worker's Docker read feature.</source>
+            <translation>विस्तृत निरीक्षण के लिए युग्मित वर्कर की Docker पढ़ने की सुविधा आवश्यक है।</translation>
+        </message>
+        <message>
+            <source>Invalid container detail response.</source>
+            <translation>कंटेनर विवरण की प्रतिक्रिया अमान्य है।</translation>
+        </message>
+        <message>
+            <source>Invalid log receipt.</source>
+            <translation>लॉग की रसीद अमान्य है।</translation>
+        </message>
+        <message>
+            <source>Invalid resource receipt.</source>
+            <translation>संसाधन की रसीद अमान्य है।</translation>
+        </message>
+        <message>
+            <source>Loading resource details…</source>
+            <translation>संसाधन विवरण लोड हो रहे हैं…</translation>
+        </message>
+        <message>
+            <source>Select for details</source>
+            <translation>विवरण के लिए चुनें</translation>
         </message>
     </context>
     <context>
@@ -4603,7 +4620,6 @@ Remaining:
             <source>Resolve selected conflict</source>
             <translation>चुना विरोध हल करें</translation>
         </message>
-    
         <message>
             <source>The remote conflict editor context is unavailable. Select the authorized machine and root again.</source>
             <translation>दूरस्थ मर्ज-संघर्ष संपादक का संदर्भ उपलब्ध नहीं है। अधिकृत मशीन और रूट फिर से चुनें।</translation>
@@ -5708,7 +5724,6 @@ If a workflow needs external tools, you install them yourself from official sour
             <source>Show</source>
             <translation>दिखाएँ</translation>
         </message>
-        
         <message>
             <location line="+63" />
             <source>No project selected</source>
@@ -6212,16 +6227,23 @@ Ctrl / ⌘ + `     आउटपुट बदलें
             <source>Cloned workflow to %1</source>
             <translation>वर्कफ़्लो %1 में क्लोन हुआ</translation>
         </message>
-    
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="112"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="112" />
             <source>This machine or root changed. Refresh machines and select it again.</source>
             <translation>यह मशीन या रूट बदल गया है। मशीनें रीफ़्रेश करें और इसे फिर से चुनें।</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="124"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="124" />
             <source>Save or discard open drafts and finish active operations before changing machines.</source>
             <translation>मशीन बदलने से पहले खुले ड्राफ़्ट सहेजें या छोड़ें और सक्रिय कार्रवाइयाँ पूरी करें।</translation>
+        </message>
+        <message>
+            <source>Choose the computer with the shared machine selector.</source>
+            <translation>साझा मशीन चयनकर्ता से कंप्यूटर चुनें।</translation>
+        </message>
+        <message>
+            <source>Container terminal · %1 · %2</source>
+            <translation>कंटेनर टर्मिनल · %1 · %2</translation>
         </message>
     </context>
     <context>
@@ -7107,7 +7129,6 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
             <source>Folder name</source>
             <translation>फ़ोल्डर का नाम</translation>
         </message>
-        
         <message>
             <location line="+20" />
             <location line="+1" />
@@ -7305,7 +7326,6 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
             <source>Workflow YAML · shared with the canvas and YAML view</source>
             <translation>वर्कफ़्लो YAML · कैनवस और YAML दृश्य के साथ साझा</translation>
         </message>
-        
         <message>
             <location line="+8" />
             <source>This file is binary, is not UTF-8, or exceeds the 1 MiB editor limit.</source>
@@ -7321,7 +7341,6 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
             <source>The file exceeds 1 MiB or its location changed. Your edits are still here.</source>
             <translation>फ़ाइल 1 MiB से बड़ी है या उसका स्थान बदल गया है। आपके बदलाव अभी भी यहाँ हैं।</translation>
         </message>
-        
         <message>
             <location line="+8" />
             <source>Cannot save: %1</source>
@@ -7332,12 +7351,6 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
             <source>Saved %1</source>
             <translation>%1 सहेजा गया</translation>
         </message>
-        
-        
-        
-        
-        
-        
         <message>
             <location line="+11" />
             <source>No file open</source>
@@ -7378,20 +7391,19 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
             <source>%1   ·   UTF-8   ·   %2                         Ln %3, Col %4</source>
             <translation>%1   ·   UTF-8   ·   %2                         पंक्ति %3, स्तंभ %4</translation>
         </message>
-    
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="141"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="141" />
             <source>Refresh files</source>
             <translation>फ़ाइलें रीफ़्रेश करें</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="319"/>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="353"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="319" />
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="353" />
             <source>A file operation is still running. Your open files are preserved.</source>
             <translation>फ़ाइल कार्रवाई अभी चल रही है। आपकी खुली फ़ाइलें सुरक्षित रखी गई हैं।</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="534"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="534" />
             <source>Invalid workspace file response.</source>
             <translation>वर्कस्पेस फ़ाइल प्रतिक्रिया अमान्य है।</translation>
         </message>
@@ -7415,16 +7427,14 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
             <translation>Git कार्रवाई विफल हुई या रद्द कर दी गई। फिर प्रयास करने से पहले रीफ़्रेश करें।
 %1</translation>
         </message>
-    
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="552"/>
+            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="552" />
             <source>The selected remote Git context is unavailable. Select an authorized machine and root, then refresh.</source>
             <translation>चुना गया दूरस्थ Git संदर्भ उपलब्ध नहीं है। अधिकृत मशीन और रूट चुनें, फिर रीफ़्रेश करें।</translation>
         </message>
         <message>
-            <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="585"/>
-            <source>The remote Git outcome is unavailable or uncertain. Refresh the captured machine and root before another write; the operation was not retried.</source>
-            <translation>दूरस्थ Git परिणाम उपलब्ध नहीं है या अनिश्चित है। अगली लिखने की कार्रवाई से पहले दर्ज मशीन और रूट रीफ़्रेश करें; कार्रवाई दोबारा नहीं की गई।</translation>
+            <source>The remote Git outcome is unavailable or uncertain. Refresh the captured machine and root before another write; inspect Uncertain operations when a mutation is retained.</source>
+            <translation>दूरस्थ Git का परिणाम अनुपलब्ध या अनिश्चित है। दोबारा लिखने से पहले दर्ज मशीन और मूल निर्देशिका को रीफ़्रेश करें; कोई बदलाव सुरक्षित होने पर अनिश्चित ऑपरेशन देखें।</translation>
         </message>
     </context>
     <context>
@@ -8049,19 +8059,18 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
             <source>Select a script inside the workspace folder. This file was shared separately by Flatpak, so its temporary document path cannot be saved in a portable workflow.</source>
             <translation>वर्कस्पेस फ़ोल्डर के भीतर स्क्रिप्ट चुनें। यह फ़ाइल Flatpak ने अलग से साझा की थी, इसलिए इसका अस्थायी दस्तावेज़ पथ पोर्टेबल वर्कफ़्लो में सहेजा नहीं जा सकता।</translation>
         </message>
-    
         <message>
-            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="22"/>
+            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="22" />
             <source>Wait for all Git operations before changing machines or roots.</source>
             <translation>मशीन या रूट बदलने से पहले सभी Git कार्रवाइयाँ पूरी होने दें।</translation>
         </message>
         <message>
-            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="29"/>
+            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="29" />
             <source>Save or discard the conflict draft before changing machines or roots.</source>
             <translation>मशीन या रूट बदलने से पहले मर्ज-संघर्ष ड्राफ़्ट सहेजें या छोड़ दें।</translation>
         </message>
         <message>
-            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="76"/>
+            <location filename="../src/git/infrastructure/RemoteGitContextWidget.cpp" line="76" />
             <source>Select an absolute local project folder.</source>
             <translation>पूर्ण पथ वाला स्थानीय प्रोजेक्ट फ़ोल्डर चुनें।</translation>
         </message>
@@ -10377,12 +10386,6 @@ This machine is no longer in the available inventory.</source>
             <source>This terminal is already running.</source>
             <translation>यह टर्मिनल पहले से चल रहा है।</translation>
         </message>
-        
-        
-        
-        
-        
-        
         <message>
             <location line="+13" />
             <source>Could not configure the interactive terminal device.</source>
@@ -10444,13 +10447,11 @@ This machine is no longer in the available inventory.</source>
             <source>Terminal cleanup reached its process-inspection limit. Some detached jobs may remain.</source>
             <translation>टर्मिनल की सफ़ाई प्रक्रिया निरीक्षण की सीमा तक पहुँच गई। कुछ अलग हुए कार्य बचे रह सकते हैं।</translation>
         </message>
-    
         <message>
             <location line="+16" />
             <source>Host terminal bridges are unavailable on Windows.</source>
             <translation>Windows पर होस्ट टर्मिनल ब्रिज उपलब्ध नहीं हैं।</translation>
         </message>
-    
         <message>
             <location line="+4" />
             <source>The prepared terminal launch is invalid.</source>
@@ -11062,14 +11063,13 @@ $ आपके अगले कमांड के लिए तैयार</tr
             <source>Restart DockPipe to enable terminal transparency with compatible browser rendering.</source>
             <translation>संगत ब्राउज़र रेंडरिंग के साथ टर्मिनल पारदर्शिता सक्षम करने के लिए DockPipe फिर शुरू करें।</translation>
         </message>
-    
         <message>
-            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="456"/>
+            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="456" />
             <source>Connecting to remote terminal…</source>
             <translation>दूरस्थ टर्मिनल से कनेक्ट हो रहा है…</translation>
         </message>
         <message>
-            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="374"/>
+            <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="374" />
             <source>Remote terminal access is unavailable for this machine or root.</source>
             <translation>इस मशीन के लिए दूरस्थ टर्मिनल पहुँच उपलब्ध नहीं है।</translation>
         </message>
@@ -11504,11 +11504,6 @@ If this Dockpipe does not support the editor, update the CLI and GUI together.</
             <translation>वर्कफ़्लो पढ़ा नहीं जा सकता, या यह संपादक की 1 MiB सीमा से अधिक है।</translation>
         </message>
         <message>
-            <location line="+6" />
-            <source>Workflow must be UTF-8. The file was not changed.</source>
-            <translation>वर्कफ़्लो UTF-8 होना चाहिए। फ़ाइल बदली नहीं गई।</translation>
-        </message>
-        <message>
             <location line="+42" />
             <location line="+287" />
             <source>Workflow exceeds the 1 MiB editor limit.</source>
@@ -11575,34 +11570,9 @@ If this Dockpipe does not support the editor, update the CLI and GUI together.</
             <translation>वर्कफ़्लो YAML (*.yml *.yaml)</translation>
         </message>
         <message>
-            <location line="+5" />
-            <source>Open the real workflow file instead of overwriting a symbolic link.</source>
-            <translation>सांकेतिक लिंक पर लिखने के बजाय वास्तविक वर्कफ़्लो फ़ाइल खोलें।</translation>
-        </message>
-        <message>
             <location line="+8" />
             <source>Cannot safely read the existing workflow.</source>
             <translation>मौजूदा वर्कफ़्लो सुरक्षित रूप से पढ़ा नहीं जा सकता।</translation>
-        </message>
-        <message>
-            <location line="+5" />
-            <source>The existing workflow grew beyond the editor limit. Your draft has been kept.</source>
-            <translation>मौजूदा वर्कफ़्लो संपादक की सीमा से बड़ा हो गया। आपका मसौदा सुरक्षित है।</translation>
-        </message>
-        <message>
-            <location line="+4" />
-            <source>This workflow changed on disk. Open it again before saving; your draft has been kept.</source>
-            <translation>यह वर्कफ़्लो डिस्क पर बदल गया है। सहेजने से पहले इसे फिर खोलें; आपका मसौदा सुरक्षित है।</translation>
-        </message>
-        <message>
-            <location line="+8" />
-            <source>The file changed during validation. Your draft has been kept.</source>
-            <translation>सत्यापन के दौरान फ़ाइल बदल गई। आपका मसौदा सुरक्षित है।</translation>
-        </message>
-        <message>
-            <location line="+5" />
-            <source>Cannot save workflow: %1</source>
-            <translation>वर्कफ़्लो सहेजा नहीं जा सकता: %1</translation>
         </message>
         <message>
             <location line="+13" />
@@ -11629,16 +11599,25 @@ If this Dockpipe does not support the editor, update the CLI and GUI together.</
             <source>Apply your inspector changes before changing selection, switching views, or saving.</source>
             <translation>चयन बदलने, दृश्य बदलने या सहेजने से पहले निरीक्षक में किए बदलाव लागू करें।</translation>
         </message>
-    
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="247"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="247" />
             <source>Could not save all supporting files. Open Files to review the error; your drafts are preserved.</source>
             <translation>सभी सहायक फ़ाइलें सहेजी नहीं जा सकीं। त्रुटि देखने के लिए फ़ाइलें खोलें; आपके ड्राफ़्ट सुरक्षित रखे गए हैं।</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="253"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="253" />
             <source>The workflow or supporting files changed while saving. Review them before running.</source>
             <translation>सहेजते समय वर्कफ़्लो या सहायक फ़ाइलें बदल गईं। चलाने से पहले उनकी समीक्षा करें।</translation>
+        </message>
+        <message>
+            <source>Cannot save workflow: %1
+The file may have changed on disk. Your draft has been kept; refresh before retrying.</source>
+            <translation>वर्कफ़्लो सहेजा नहीं जा सकता: %1
+डिस्क पर फ़ाइल बदल गई हो सकती है। आपका मसौदा सुरक्षित रखा गया है; दोबारा कोशिश करने से पहले रीफ़्रेश करें।</translation>
+        </message>
+        <message>
+            <source>The workflow changed during validation. Your draft has been kept.</source>
+            <translation>सत्यापन के दौरान वर्कफ़्लो बदल गया। आपका मसौदा सुरक्षित रखा गया है।</translation>
         </message>
     </context>
     <context>
@@ -12027,19 +12006,28 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
             <translation>पिछला डायरेक्टरी पठन अभी रुक रहा है। थोड़ी देर में पुनः प्रयास करें।</translation>
         </message>
         <message>
-            <location line="+27" />
-            <source>Cannot start the directory reader: %1</source>
-            <translation>डायरेक्टरी रीडर शुरू नहीं किया जा सकता: %1</translation>
+            <source>Binary file · Open in the file viewer for details.</source>
+            <translation>बाइनरी फ़ाइल · विवरण के लिए फ़ाइल व्यूअर में खोलें।</translation>
         </message>
         <message>
-            <location line="+20" />
-            <source>Directory response exceeds the 2 MiB limit. Reduce the page size.</source>
-            <translation>डायरेक्टरी प्रतिक्रिया 2 MiB सीमा से अधिक है। पृष्ठ का आकार घटाएँ।</translation>
+            <source>Directory page exceeds the graph node limit.</source>
+            <translation>निर्देशिका पृष्ठ ग्राफ़ की नोड सीमा से अधिक है।</translation>
         </message>
         <message>
-            <location line="+22" />
-            <source>Directory read failed. Refresh to retry.</source>
-            <translation>डायरेक्टरी पढ़ना विफल हुआ। पुनः प्रयास के लिए रीफ़्रेश करें।</translation>
+            <source>Directory reader returned a different workspace path.</source>
+            <translation>निर्देशिका रीडर ने अलग कार्यक्षेत्र पथ लौटाया।</translation>
+        </message>
+        <message>
+            <source>Invalid directory page response.</source>
+            <translation>निर्देशिका पृष्ठ की प्रतिक्रिया अमान्य है।</translation>
+        </message>
+        <message>
+            <source>Invalid local workspace graph request.</source>
+            <translation>स्थानीय कार्यक्षेत्र ग्राफ़ का अनुरोध अमान्य है।</translation>
+        </message>
+        <message>
+            <source>Non-UTF-8 file · Text preview unavailable.</source>
+            <translation>गैर-UTF-8 फ़ाइल · पाठ पूर्वावलोकन अनुपलब्ध।</translation>
         </message>
     </context>
     <context>
@@ -12460,65 +12448,85 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     <context>
         <name>RemoteFeatureClient</name>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="64"/>
-            <source>Remote operation timed out. Refresh state before retrying a write.</source>
-            <translation>दूरस्थ कार्रवाई का समय समाप्त हो गया। लिखने की कार्रवाई दोहराने से पहले स्थिति रीफ़्रेश करें।</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="105"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="105" />
             <source>Invalid remote feature request bounds.</source>
             <translation>दूरस्थ सुविधा अनुरोध की सीमाएँ अमान्य हैं।</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="131"/>
-            <source>Remote request delivery is uncertain. Refresh state before retrying a write.</source>
-            <translation>दूरस्थ अनुरोध की डिलीवरी अनिश्चित है। लिखने की कार्रवाई दोहराने से पहले स्थिति रीफ़्रेश करें।</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="138"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="138" />
             <source>Could not start the trusted Dockpipe remote client.</source>
             <translation>विश्वसनीय Dockpipe दूरस्थ क्लाइंट शुरू नहीं हो सका।</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="159"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="159" />
             <source>Remote response exceeded its transport limit.</source>
             <translation>दूरस्थ प्रतिक्रिया ने ट्रांसपोर्ट सीमा पार कर दी।</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="182"/>
-            <source>Remote result is unavailable. Refresh state before retrying a write.</source>
-            <translation>दूरस्थ परिणाम उपलब्ध नहीं है। लिखने की कार्रवाई दोहराने से पहले स्थिति रीफ़्रेश करें।</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="187"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="187" />
             <source>Remote machine catalog is unavailable.</source>
             <translation>दूरस्थ मशीन कैटलॉग उपलब्ध नहीं है।</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="199"/>
-            <source>Remote result identity changed. Refresh the selected machine.</source>
-            <translation>दूरस्थ परिणाम की पहचान बदल गई। चुनी गई मशीन रीफ़्रेश करें।</translation>
-        </message>
-        <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="211"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="211" />
             <source>Remote result does not match the captured operation.</source>
             <translation>दूरस्थ परिणाम दर्ज कार्रवाई से मेल नहीं खाता।</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="224"/>
+            <location filename="../src/remote/infrastructure/RemoteFeatureClient.cpp" line="224" />
             <source>Cancellation requested for the original remote operation. Refresh state before retrying a write.</source>
             <translation>मूल दूरस्थ कार्रवाई को रद्द करने का अनुरोध किया गया। लिखने की कार्रवाई दोहराने से पहले स्थिति रीफ़्रेश करें।</translation>
+        </message>
+        <message>
+            <source>Cannot retain remote mutation recovery metadata. Resolve saved operations or repair settings before another write.</source>
+            <translation>दूरस्थ बदलाव की पुनर्प्राप्ति मेटाडेटा सुरक्षित नहीं रखी जा सकती। दोबारा लिखने से पहले सहेजे गए ऑपरेशन सुलझाएँ या सेटिंग सुधारें।</translation>
+        </message>
+        <message>
+            <source>Core could not prepare the exact captured remote operation. No operation was dispatched.</source>
+            <translation>कोर दर्ज किए गए दूरस्थ ऑपरेशन को ठीक उसी रूप में तैयार नहीं कर सका। कोई ऑपरेशन नहीं भेजा गया।</translation>
+        </message>
+        <message>
+            <source>Invalid recovery receipt. The original operation remains uncertain.</source>
+            <translation>पुनर्प्राप्ति रसीद अमान्य है। मूल ऑपरेशन अब भी अनिश्चित है।</translation>
+        </message>
+        <message>
+            <source>Prepared remote request exceeds its transport limit.</source>
+            <translation>तैयार किया गया दूरस्थ अनुरोध अपनी परिवहन सीमा से अधिक है।</translation>
+        </message>
+        <message>
+            <source>Remote operation preparation exhausted its deadline.</source>
+            <translation>दूरस्थ ऑपरेशन की तैयारी में समय-सीमा समाप्त हो गई।</translation>
+        </message>
+        <message>
+            <source>Remote operation timed out. Inspect its original receipt before another write.</source>
+            <translation>दूरस्थ ऑपरेशन का समय समाप्त हो गया। दोबारा लिखने से पहले उसकी मूल रसीद जाँचें।</translation>
+        </message>
+        <message>
+            <source>Remote request delivery is uncertain. Inspect the original operation.</source>
+            <translation>दूरस्थ अनुरोध का पहुँचना अनिश्चित है। मूल ऑपरेशन जाँचें।</translation>
+        </message>
+        <message>
+            <source>Remote result identity changed. Inspect the original captured operation.</source>
+            <translation>दूरस्थ परिणाम की पहचान बदल गई। दर्ज किया गया मूल ऑपरेशन जाँचें।</translation>
+        </message>
+        <message>
+            <source>Remote result is unavailable. Inspect the original operation before another write.</source>
+            <translation>दूरस्थ परिणाम उपलब्ध नहीं है। दोबारा लिखने से पहले मूल ऑपरेशन जाँचें।</translation>
+        </message>
+        <message>
+            <source>The recovery strategy does not match the captured mutation.</source>
+            <translation>पुनर्प्राप्ति रणनीति दर्ज किए गए बदलाव से मेल नहीं खाती।</translation>
         </message>
     </context>
     <context>
         <name>WorkspaceFileModel</name>
         <message>
-            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="227"/>
+            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="227" />
             <source>Too many pending workspace directory requests; refresh to continue.</source>
             <translation>वर्कस्पेस डायरेक्टरी के बहुत अधिक अनुरोध लंबित हैं; जारी रखने के लिए रीफ़्रेश करें।</translation>
         </message>
         <message>
-            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="273"/>
+            <location filename="../src/files/presentation/WorkspaceFileModel.cpp" line="273" />
             <source>Invalid workspace directory page.</source>
             <translation>वर्कस्पेस डायरेक्टरी पृष्ठ अमान्य है।</translation>
         </message>
@@ -12526,63 +12534,63 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     <context>
         <name>WorkspaceFilesClient</name>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="44"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="44" />
             <source>Workspace file operation timed out; its effect may need refresh.</source>
             <translation>वर्कस्पेस फ़ाइल कार्रवाई का समय समाप्त हो गया; संभावित प्रभाव जाँचने के लिए रीफ़्रेश करें।</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="84"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="84" />
             <source>A workspace file operation is already running.</source>
             <translation>वर्कस्पेस फ़ाइल कार्रवाई पहले से चल रही है।</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="90"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="90" />
             <source>Workspace file request exceeds its transport contract.</source>
             <translation>वर्कस्पेस फ़ाइल अनुरोध ट्रांसपोर्ट अनुबंध से बड़ा है।</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="96"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="96" />
             <source>The selected remote Files context is unavailable.</source>
             <translation>चुना गया दूरस्थ फ़ाइलें संदर्भ उपलब्ध नहीं है।</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="100"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="100" />
             <source>Workspace Files requires an absolute selected root.</source>
             <translation>वर्कस्पेस फ़ाइलों के लिए पूर्ण पथ वाला चुना हुआ रूट आवश्यक है।</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="152"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="152" />
             <source>Could not send the workspace file request.</source>
             <translation>वर्कस्पेस फ़ाइल अनुरोध नहीं भेजा जा सका।</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="168"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="168" />
             <source>Workspace file helper failed (exit %1). Check the installed Dockpipe CLI.</source>
             <translation>वर्कस्पेस फ़ाइल हेल्पर विफल हुआ (एग्ज़िट कोड %1)। इंस्टॉल किया हुआ Dockpipe CLI जाँचें।</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="176"/>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="247"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="176" />
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="247" />
             <source>Invalid workspace file response.</source>
             <translation>वर्कस्पेस फ़ाइल प्रतिक्रिया अमान्य है।</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="196"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="196" />
             <source>Workspace file response exceeded its transport limit.</source>
             <translation>वर्कस्पेस फ़ाइल प्रतिक्रिया ने ट्रांसपोर्ट सीमा पार कर दी।</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="206"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="206" />
             <source>Workspace file operation was cancelled; refresh before retrying a write.</source>
             <translation>वर्कस्पेस फ़ाइल कार्रवाई रद्द कर दी गई; लिखने की कार्रवाई दोहराने से पहले रीफ़्रेश करें।</translation>
         </message>
         <message>
-            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="270"/>
+            <location filename="../src/files/infrastructure/WorkspaceFilesClient.cpp" line="270" />
             <source>The workspace file context changed before completion.</source>
             <translation>पूरा होने से पहले वर्कस्पेस फ़ाइल संदर्भ बदल गया।</translation>
         </message>
         <message>
-            <location filename="../src/remote/infrastructure/RemoteWorkspaceFilesDispatch.cpp" line="34"/>
+            <location filename="../src/remote/infrastructure/RemoteWorkspaceFilesDispatch.cpp" line="34" />
             <source>Remote file result is uncertain. Refresh before retrying a write.</source>
             <translation>दूरस्थ फ़ाइल परिणाम अनिश्चित है। लिखने की कार्रवाई दोहराने से पहले रीफ़्रेश करें।</translation>
         </message>
@@ -12590,55 +12598,55 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     <context>
         <name>WorkspaceMachineMenu</name>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="50"/>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="92"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="50" />
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="92" />
             <source>Follow main machine</source>
             <translation>मुख्य मशीन का अनुसरण करें</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="51"/>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="85"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="51" />
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="85" />
             <source>Shared machine selection. Dashboard widgets can choose their own machine.</source>
             <translation>साझा मशीन चयन। डैशबोर्ड विजेट अपनी मशीन चुन सकते हैं।</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="55"/>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="97"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="55" />
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="97" />
             <source>This computer</source>
             <translation>यह कंप्यूटर</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="56"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="56" />
             <source>Choose the machine for Containers, Files, Git, Terminal and the dashboard.</source>
             <translation>कंटेनर, फ़ाइलें, Git, टर्मिनल और डैशबोर्ड के लिए मशीन चुनें।</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="81"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="81" />
             <source> · Locked</source>
             <translation> · लॉक है</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="83"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="83" />
             <source> · Unavailable</source>
             <translation> · उपलब्ध नहीं है</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="103"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="103" />
             <source>Unlock remote access…</source>
             <translation>दूरस्थ पहुँच अनलॉक करें…</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="106"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="106" />
             <source>No remote workspaces available</source>
             <translation>कोई दूरस्थ वर्कस्पेस उपलब्ध नहीं है</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="127"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="127" />
             <source>Containers</source>
             <translation>कंटेनर</translation>
         </message>
         <message>
-            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="133"/>
+            <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="133" />
             <source>Refresh machines</source>
             <translation>मशीनें रीफ़्रेश करें</translation>
         </message>
@@ -12646,49 +12654,41 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     <context>
         <name>RemoteTerminalSession</name>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="86"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="114"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="86" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="114" />
             <source>Could not start the trusted remote terminal client.</source>
             <translation>विश्वसनीय दूरस्थ टर्मिनल क्लाइंट शुरू नहीं हो सका।</translation>
         </message>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="69"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="69" />
             <source>Remote terminal access is unavailable for this machine or root.</source>
             <translation>इस मशीन या रूट के लिए दूरस्थ टर्मिनल पहुँच उपलब्ध नहीं है।</translation>
         </message>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="154"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="176"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="183"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="192"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="203"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="217"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="223"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="248"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="257"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="154" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="176" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="183" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="192" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="203" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="217" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="223" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="248" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="257" />
             <source>The remote terminal returned an invalid response.</source>
             <translation>दूरस्थ टर्मिनल ने अमान्य प्रतिक्रिया दी।</translation>
         </message>
         <message>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="38"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="124"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="199"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="245"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="312"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="321"/>
-            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="329"/>
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="38" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="124" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="199" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="245" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="312" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="321" />
+            <location filename="../src/terminal/infrastructure/RemoteTerminalSession.cpp" line="329" />
             <source>The remote terminal connection was lost. Pending input was not replayed.</source>
             <translation>दूरस्थ टर्मिनल कनेक्शन टूट गया। लंबित इनपुट दोबारा नहीं भेजा गया।</translation>
         </message>
     </context>
-
-
-
-
-
-
-
-
     <context>
         <name>ManagedTerminalSession</name>
         <message>
@@ -12749,6 +12749,111 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
             <location line="+35" />
             <source>The terminal requires an existing directory and an absolute executable path.</source>
             <translation>टर्मिनल के लिए मौजूदा डायरेक्टरी और एक्ज़ीक्यूटेबल का पूर्ण पथ आवश्यक है।</translation>
+        </message>
+    </context>
+    <context>
+        <name>RemoteFeatureRecoveryDialog</name>
+        <message>
+            <source>Choose a retained operation.</source>
+            <translation>सुरक्षित रखा गया ऑपरेशन चुनें।</translation>
+        </message>
+        <message>
+            <source>Close</source>
+            <translation>बंद करें</translation>
+        </message>
+        <message>
+            <source>Contacting the original captured machine…</source>
+            <translation>दर्ज की गई मूल मशीन से संपर्क हो रहा है…</translation>
+        </message>
+        <message>
+            <source>Inspect the original operation before another write. Cancellation does not prove that a mutation had no effect.</source>
+            <translation>दोबारा लिखने से पहले मूल ऑपरेशन जाँचें। रद्द करना यह साबित नहीं करता कि बदलाव का कोई प्रभाव नहीं पड़ा।</translation>
+        </message>
+        <message>
+            <source>Machine: %1
+Fingerprint: %2
+Generation: %3
+Root: %4
+Action: %5
+Operation: %6</source>
+            <translation>मशीन: %1
+फ़िंगरप्रिंट: %2
+जनरेशन: %3
+मूल निर्देशिका: %4
+कार्रवाई: %5
+ऑपरेशन: %6</translation>
+        </message>
+        <message>
+            <source>No uncertain mutations are retained.</source>
+            <translation>कोई अनिश्चित बदलाव सुरक्षित नहीं रखा गया है।</translation>
+        </message>
+        <message>
+            <source>Original operation status: %1. No operation was replayed.</source>
+            <translation>मूल ऑपरेशन की स्थिति: %1। कोई ऑपरेशन दोबारा नहीं चलाया गया।</translation>
+        </message>
+        <message>
+            <source>Refresh status</source>
+            <translation>स्थिति रीफ़्रेश करें</translation>
+        </message>
+        <message>
+            <source>Request cancellation</source>
+            <translation>रद्द करने का अनुरोध करें</translation>
+        </message>
+        <message>
+            <source>The mutation outcome remains uncertain. Refresh its original status before another write.</source>
+            <translation>बदलाव का परिणाम अब भी अनिश्चित है। दोबारा लिखने से पहले उसकी मूल स्थिति रीफ़्रेश करें।</translation>
+        </message>
+        <message>
+            <source>Uncertain operations…</source>
+            <translation>अनिश्चित ऑपरेशन…</translation>
+        </message>
+        <message>
+            <source>Uncertain remote operations</source>
+            <translation>अनिश्चित दूरस्थ ऑपरेशन</translation>
+        </message>
+        <message>
+            <source>unknown</source>
+            <translation>अज्ञात</translation>
+        </message>
+        <message>
+            <source>Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write.</source>
+            <translation>सफ़ाई सत्यापित है; बदलाव का परिणाम अब भी अज्ञात है। दोबारा लिखने से पहले फ़ाइलें, Git या कंटेनर प्रदाता रीफ़्रेश करें और प्रभावित स्थिति की समीक्षा करें।</translation>
+        </message>
+        <message>
+            <source>Container terminal cleanup remains uncertain. The original session reference is retained.</source>
+            <translation>कंटेनर टर्मिनल की सफ़ाई अब भी अनिश्चित है। मूल सत्र का संदर्भ सुरक्षित रखा गया है।</translation>
+        </message>
+        <message>
+            <source>Container terminal cleanup was verified for the original captured session.</source>
+            <translation>दर्ज किए गए मूल सत्र के लिए कंटेनर टर्मिनल की सफ़ाई सत्यापित की गई।</translation>
+        </message>
+        <message>
+            <source>Explicitly remove the original exact container after native client cleanup. Requires the worker's independent Docker recovery grant. Volumes and images are retained.</source>
+            <translation>मूल क्लाइंट की सफ़ाई के बाद ठीक उसी मूल कंटेनर को स्पष्ट रूप से हटाएँ। इसके लिए वर्कर की स्वतंत्र Docker पुनर्प्राप्ति अनुमति आवश्यक है। वॉल्यूम और इमेज सुरक्षित रखे जाते हैं।</translation>
+        </message>
+        <message>
+            <source>Remove container %1 on %2 to fence delayed daemon work for operation %3? This removes the container and its writable layer. Volumes and images are retained. The original mutation outcome remains unknown.</source>
+            <translation>क्या ऑपरेशन %3 के लिए डेमन का विलंबित काम रोकने हेतु %2 पर कंटेनर %1 हटाएँ? इससे कंटेनर और उसकी लिखने योग्य परत हट जाएगी। वॉल्यूम और इमेज सुरक्षित रहेंगे। मूल बदलाव का परिणाम अब भी अज्ञात रहेगा।</translation>
+        </message>
+        <message>
+            <source>Retire container…</source>
+            <translation>कंटेनर सेवा से हटाएँ…</translation>
+        </message>
+        <message>
+            <source>Retire the captured container?</source>
+            <translation>दर्ज किया गया कंटेनर सेवा से हटाएँ?</translation>
+        </message>
+        <message>
+            <source>Revoke the original invocation and verify its native cleanup evidence. Boot-fenced workers require a host reboot for uncertain process-backed operations. The mutation outcome remains unknown.</source>
+            <translation>मूल आह्वान निरस्त करें और उसकी मूल सफ़ाई के प्रमाण जाँचें। बूट सीमाओं से सुरक्षित वर्कर पर अनिश्चित प्रक्रिया-आधारित ऑपरेशन के लिए होस्ट को दोबारा चालू करना आवश्यक है। बदलाव का परिणाम अब भी अज्ञात है।</translation>
+        </message>
+        <message>
+            <source>Verify cleanup</source>
+            <translation>सफ़ाई सत्यापित करें</translation>
+        </message>
+        <message>
+            <source>Refreshing the worker's retained terminal metadata. No cleanup was requested.</source>
+            <translation>वर्कर द्वारा सुरक्षित रखी गई टर्मिनल मेटाडेटा रीफ़्रेश हो रही है। सफ़ाई का कोई अनुरोध नहीं किया गया।</translation>
         </message>
     </context>
 </TS>

@@ -55,6 +55,7 @@ signals:
     void packageDisplayInventoryRequested();
     void openFullView(const QString &pageKey);
     void launchWorkflow(const QString &workflowId);
+    void launchWorkflowOnMachine(const QString &workflowId, const QJsonObject &target, const QString &root);
     void cloneWorkflow(const QString &workflowId);
     void openFile(const QString &path);
     void filePreviewRequested(QWidget *source, const QString &root, const QString &path);

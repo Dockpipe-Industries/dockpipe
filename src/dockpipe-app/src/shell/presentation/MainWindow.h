@@ -134,6 +134,7 @@ private:
     void updateStatusBarVisibility();
     void ensureBrowser();
     void ensureTerminal();
+    void openRemoteContainerExec(const QJsonObject &catalog, const QString &container, const QString &shell);
     void setupWorkspaceMachineMenu(QHBoxLayout *layout);
     void refreshWorkspaceMachines();
     void chooseWorkspaceMachine(const QJsonObject &target, const QString &root);
@@ -153,6 +154,7 @@ private:
     void runPickedWorkflow();
     void updateWorkflowPreview();
     bool launchWorkflow(const Context &display);
+    bool launchWorkflow(const Context &display, const QJsonObject &target, const QString &root);
     void rememberWorkflowRun(const Context &context);
     void setWorkflowConsoleVisible(bool visible);
     void setWorkflowWorkspaceAsync(const QString &workdir, std::function<void(bool)> completion);

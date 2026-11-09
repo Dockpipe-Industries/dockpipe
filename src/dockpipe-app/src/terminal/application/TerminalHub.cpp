@@ -46,41 +46,8 @@ QString TerminalHub::createSession(const QString &workdir, const QString &shellP
         m_creationError = tr("Eight terminals are already open. Close one before opening another.");
         return {};
     }
-    if (!catalog.isEmpty()) {
-        const QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
-        auto *session = new RemoteTerminalSession(this);
-        Entry entry;
-        entry.remote = session;
-        entry.catalog = catalog;
-        entry.root = root;
-        entry.title = tr("Terminal %1 · %2").arg(m_nextTitle++)
-            .arg(catalog.value("target").toObject().value("node").toString() + QStringLiteral(" · ") + root);
-        m_sessions.insert(id, entry);
-        m_order.append(id);
-        connect(session, &RemoteTerminalSession::output, this,
-            [this, id](const QByteArray &bytes, quint64 cursor, bool truncated) {
-                auto it = m_sessions.find(id);
-                if (it == m_sessions.end())
-                    return;
-                if (truncated || cursor - quint64(bytes.size()) != it->end)
-                    it->output.clear();
-                it->end = cursor;
-                it->output.append(bytes);
-                if (it->output.size() > outputLimit)
-                    it->output.remove(0, it->output.size() - outputLimit);
-                emit outputAvailable(id);
-            });
-        connect(session, &RemoteTerminalSession::stateChanged, this, &TerminalHub::sessionsChanged);
-        if (!session->start(catalog, root)) {
-            m_creationError = session->error();
-            m_sessions.remove(id);
-            m_order.removeAll(id);
-            session->deleteLater();
-            return {};
-        }
-        emit sessionsChanged();
-        return id;
-    }
+    if (!catalog.isEmpty())
+        return createRemoteSession(catalog, root, {}, {});
     TerminalShellProfile selected;
     const auto profiles = m_shellCatalog->profiles();
     if (!shellProfileId.isEmpty()) {
@@ -137,6 +104,55 @@ QString TerminalHub::createSession(const QString &workdir, const QString &shellP
     const auto profile = NativeTerminalLaunch::resolve(workdir, selected.program, arguments, selected.environment,
         m_launchContext, selected.id.isEmpty() ? QStringLiteral("native-default") : selected.id);
     if (!session->start(profile)) {
+        m_creationError = session->error();
+        m_sessions.remove(id);
+        m_order.removeAll(id);
+        session->deleteLater();
+        return {};
+    }
+    emit sessionsChanged();
+    return id;
+}
+
+QString TerminalHub::createContainerSession(const QJsonObject &catalog, const QString &container, const QString &shell)
+{
+    m_creationError.clear();
+    if (catalog.isEmpty() || m_sessions.size() + m_closingSessions.size() >= sessionLimit) {
+        m_creationError = tr("Eight terminals are already open. Close one before opening another.");
+        return {};
+    }
+    return createRemoteSession(catalog, "container:" + container + ":" + shell, container, shell);
+}
+
+QString TerminalHub::createRemoteSession(const QJsonObject &catalog, const QString &root,
+                                       const QString &container, const QString &shell)
+{
+    const QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    auto *session = new RemoteTerminalSession(this);
+    Entry entry;
+    entry.remote = session;
+    entry.catalog = catalog;
+    entry.root = root;
+    entry.title = tr("Terminal %1 · %2").arg(m_nextTitle++)
+        .arg(catalog.value("target").toObject().value("node").toString() + QStringLiteral(" · ") + root);
+    m_sessions.insert(id, entry);
+    m_order.append(id);
+    connect(session, &RemoteTerminalSession::output, this,
+        [this, id](const QByteArray &bytes, quint64 cursor, bool truncated) {
+            auto it = m_sessions.find(id);
+            if (it == m_sessions.end())
+                return;
+            if (truncated || cursor - quint64(bytes.size()) != it->end)
+                it->output.clear();
+            it->end = cursor;
+            it->output.append(bytes);
+            if (it->output.size() > outputLimit)
+                it->output.remove(0, it->output.size() - outputLimit);
+            emit outputAvailable(id);
+        });
+    connect(session, &RemoteTerminalSession::stateChanged, this, &TerminalHub::sessionsChanged);
+    const bool started = container.isEmpty() ? session->start(catalog, root) : session->startContainer(catalog, container, shell);
+    if (!started) {
         m_creationError = session->error();
         m_sessions.remove(id);
         m_order.removeAll(id);
@@ -254,18 +270,21 @@ void TerminalHub::closeSession(const QString &id)
         auto *session = it->remote;
         m_sessions.erase(it);
         m_order.removeAll(id);
-        if (session->active()) {
+        if (!session->cleanupVerified()) {
             m_closingSessions.insert(session);
             connect(session, &RemoteTerminalSession::finished, this, [this, session] {
-                m_closingSessions.remove(session);
+                if (session->cleanupVerified()) {
+                    m_closingSessions.remove(session);
+                    session->deleteLater();
+                }
                 emit sessionsChanged();
             });
-            connect(session, &QObject::destroyed, this, [this, session] { m_closingSessions.remove(session); });
         }
-        connect(session, &RemoteTerminalSession::finished, session, &QObject::deleteLater);
         session->stop();
-        if (!session->active())
+        if (session->cleanupVerified()) {
+            m_closingSessions.remove(session);
             session->deleteLater();
+        }
         emit sessionsChanged();
         return;
     }
@@ -290,6 +309,29 @@ void TerminalHub::closeSession(const QString &id)
         m_closingSessions.insert(session);
     }
     emit sessionsChanged();
+}
+
+void TerminalHub::releaseRecoveredSession(const QJsonObject &reference)
+{
+    for (auto &entry : m_sessions) {
+        if (entry.remote)
+            entry.remote->confirmRecovery(reference);
+    }
+    const auto closing = m_closingSessions;
+    for (auto *object : closing) {
+        auto *session = qobject_cast<RemoteTerminalSession *>(object);
+        if (session && session->confirmRecovery(reference)) {
+            m_closingSessions.remove(session);
+            if (!session->active())
+                session->deleteLater();
+        }
+    }
+    emit sessionsChanged();
+}
+
+void TerminalHub::releaseRecoveredContainerSession(const QJsonObject &reference)
+{
+    releaseRecoveredSession(reference);
 }
 
 QByteArray TerminalHub::readOutput(const QString &id, quint64 &cursor, bool &truncated) const

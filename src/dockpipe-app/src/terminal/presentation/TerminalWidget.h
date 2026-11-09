@@ -23,6 +23,7 @@ public:
     ~TerminalWidget() override;
     void setWorkdir(const QString &workdir);
     bool setMachineContext(const QJsonObject &catalog, const QString &root, QString *error = nullptr);
+    bool setContainerContext(const QJsonObject &catalog, const QString &container, const QString &shell, QString *error = nullptr);
     void updateMachineCatalog(const QJsonObject &catalog);
     QString sessionId() const { return m_sessionId; }
 
@@ -44,6 +45,7 @@ protected:
     void paintEvent(QPaintEvent *event) override;
 
 private:
+    bool setTerminalContext(const QJsonObject &catalog, const QString &root, const QString &container, const QString &shell, QString *error);
     void refreshSessions();
     void refreshShells();
     void createTerminal(const QString &shellProfileId = {});
@@ -68,6 +70,8 @@ private:
     QString m_workdir;
     QJsonObject m_machineCatalog;
     QString m_machineRoot;
+    QString m_containerId;
+    QString m_containerShell;
     QString m_sessionId;
     QComboBox *m_sessions;
     QComboBox *m_shells;

@@ -19,6 +19,30 @@ import (
 
 const featureCommandTimeout = 25 * time.Second
 
+func prepareFeature(ctx context.Context, input string, output io.Writer) error {
+	ctx, cancel := context.WithTimeout(ctx, featureCommandTimeout)
+	defer cancel()
+	data, err := readFeatureInput(ctx, input)
+	if err != nil {
+		return err
+	}
+	request, err := decodeFeatureRequest(data, time.Now())
+	if err != nil {
+		return err
+	}
+	// Preparation never resolves operator state or contacts a broker. Emit only
+	// metadata so a caller can retain this canonical identity before dispatch.
+	metadata := struct {
+		Schema   string                 `json:"schema"`
+		ID       string                 `json:"id"`
+		Target   contract.FeatureTarget `json:"target"`
+		Root     string                 `json:"root,omitempty"`
+		Action   string                 `json:"action"`
+		Deadline time.Time              `json:"deadline"`
+	}{Schema: request.Schema, ID: request.ID, Target: request.Target, Root: request.Root, Action: request.Action, Deadline: request.Deadline}
+	return json.NewEncoder(output).Encode(metadata)
+}
+
 // The UI supplies the fixed nonce and deadline before dispatch. Omitting only
 // ID delegates Go's canonical encoding to the CLI without creating a new intent.
 func decodeFeatureRequest(data []byte, now time.Time) (contract.FeatureRequest, error) {
@@ -107,7 +131,7 @@ func decodeFeatureReceipt(data []byte) (contract.FeatureRequest, error) {
 	if request.Reference().Validate() != nil || contract.FeatureAccess(request.Action) == "" || request.Deadline.IsZero() {
 		return request, errors.New("invalid feature operation receipt")
 	}
-	rootRequired := strings.HasPrefix(request.Action, "files.") || strings.HasPrefix(request.Action, "git.")
+	rootRequired := contract.FeatureUsesRoot(request.Action)
 	if rootRequired && !contract.ValidID(request.Root) || !rootRequired && request.Root != "" {
 		return request, errors.New("feature receipt root does not match its action")
 	}
@@ -133,11 +157,7 @@ func inspectFeature(ctx context.Context, root, input string, cancelOperation boo
 	var operation contract.FeatureOperation
 	if cancelOperation {
 		ctx = context.WithValue(ctx, remoteAuthenticationKey{}, false)
-		err = client.CancelFeature(ctx, request.Reference())
-		operation = unknownFeatureReceipt(request, err == nil)
-		if err == nil {
-			operation.Result.Error = "Cancellation requested; inspect the captured operation to learn its outcome."
-		}
+		operation, err = cancelFeatureReceipt(ctx, client, request)
 	} else {
 		operation, err = client.FeatureStatusReference(ctx, request.Reference(), request.Action)
 		if err == nil {
@@ -157,6 +177,36 @@ func inspectFeature(ctx context.Context, root, input string, cancelOperation boo
 		return errors.New("feature receipt query could not be confirmed; no operation was submitted or replayed")
 	}
 	return nil
+}
+
+type featureCancellationClient interface {
+	CancelFeatureResult(context.Context, contract.FeatureReference) (contract.FeatureOperation, error)
+}
+
+func cancelFeatureReceipt(ctx context.Context, client featureCancellationClient, request contract.FeatureRequest) (contract.FeatureOperation, error) {
+	operation, err := client.CancelFeatureResult(ctx, request.Reference())
+	if err == nil {
+		err = validateFeatureOperation(operation, request)
+	}
+	if err == nil && !operation.CancelRequested {
+		err = errors.New("feature cancellation response did not acknowledge the request")
+	}
+	if err != nil {
+		return unknownFeatureReceipt(request, false), err
+	}
+	switch operation.Status {
+	case "success", "failure", "cancelled":
+		operation.Request.Payload = nil
+		operation.Request.Nonce = ""
+		operation.ReceiptOnly = true
+		operation.Result = &contract.FeatureResult{Status: operation.Status,
+			Error: "The original operation's terminal status is confirmed. Cancellation does not prove prior native effects are absent; refresh the affected state before new work."}
+		return operation, nil
+	default:
+		unknown := unknownFeatureReceipt(request, true)
+		unknown.Result.Error = "Cancellation requested; inspect the captured operation to learn its outcome."
+		return unknown, nil
+	}
 }
 
 type featureClient interface {
@@ -214,6 +264,19 @@ func unknownFeatureReceipt(request contract.FeatureRequest, cancelRequested bool
 }
 
 func validateFeatureOperation(operation contract.FeatureOperation, request contract.FeatureRequest) error {
+	if proof := operation.HostRecovery; proof != nil {
+		if request.Action != "terminal.host-recover" || operation.Status != "success" || proof.Validate() != nil || proof.Root != request.Root ||
+			proof.Reference.Target.Node != request.Target.Node || proof.Reference.Target.Fingerprint != request.Target.Fingerprint {
+			return errors.New("host terminal recovery metadata changed identity or root")
+		}
+	}
+	if operation.Reconciled && (!operation.RecoveryRequested || !operation.CancelRequested || !operation.ReceiptOnly ||
+		operation.Status != "unknown" || contract.FeatureAccess(request.Action) == "read") {
+		return errors.New("feature response has an invalid reconciliation acknowledgment")
+	}
+	if operation.ReceiptOnly && (len(operation.Request.Payload) != 0 || operation.Request.Nonce != "" || operation.Result != nil && len(operation.Result.Payload) != 0) {
+		return errors.New("feature receipt response contains replayable input or result content")
+	}
 	if operation.Request.Schema != contract.FeatureVersion || operation.Request.ID != request.ID || operation.Request.Target != request.Target {
 		return errors.New("feature response changed the captured operation identity")
 	}

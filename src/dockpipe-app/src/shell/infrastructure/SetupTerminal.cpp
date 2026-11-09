@@ -85,3 +85,12 @@ bool openCommandTerminal(const QString &program, const QStringList &arguments, Q
 {
     return openTerminal(program, arguments, error, false);
 }
+
+bool openDockpipeTerminal(const QString &program, const QStringList &arguments, QString *error)
+{
+#ifdef Q_OS_LINUX
+    return openTerminal(program, arguments, error, true);
+#else
+    return openTerminal(program, arguments, error, false);
+#endif
+}

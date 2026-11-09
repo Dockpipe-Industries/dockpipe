@@ -40,12 +40,32 @@ int fixture(QCoreApplication &application)
     if (!requestFile.open(QIODevice::ReadOnly))
         return 3;
     const auto intent = QJsonDocument::fromJson(requestFile.readAll()).object();
-    QJsonObject reference{{"schema", intent.value("schema")}, {"target", intent.value("target")},
-        {"epoch", intent.value("epoch")}, {"id", QString(64, 'd')}};
     const auto mode = qgetenv("DOCKPIPE_TERMINAL_FIXTURE");
+    const bool prepare = arguments.contains("--prepare") || !intent.value("container").toString().isEmpty();
+    const auto identifier = prepare ? intent.value("nonce") : QJsonValue(QString(64, 'd'));
+    QJsonObject reference{{"schema", intent.value("schema")}, {"target", intent.value("target")},
+        {"epoch", intent.value("epoch")}, {"id", identifier}};
     if (mode == "wrong-target")
         reference["target"] = QJsonObject{{"node", "wrong"}};
+    QFile input;
+    if (!input.open(stdin, QIODevice::ReadOnly))
+        return 4;
+    if (prepare) {
+        if (!intent.value("container").toString().isEmpty()
+            && (intent.value("root").toString() != QString()
+                || (intent.value("shell").toString() != "/bin/sh" && intent.value("shell").toString() != "/bin/bash")))
+            return 5;
+        print({{"type", "prepared"}, {"reference", reference}});
+        const auto acknowledgment = QJsonDocument::fromJson(input.readLine(96 * 1024)).object();
+        if (acknowledgment.value("type").toString() != "prepared-ack"
+            || acknowledgment.value("reference").toObject() != reference)
+            return 6;
+        if (mode == "lost-open")
+            return 7;
+    }
     print({{"type", "session"}, {"reference", reference}});
+    if (mode == "lost-host-open")
+        return 7;
     quint64 cursor = 0;
     quint64 acknowledged = 0;
     auto view = [&](const QString &state, const QByteArray &data = {}) {
@@ -55,6 +75,15 @@ int fixture(QCoreApplication &application)
             {"data", QString::fromLatin1(data.toBase64())}, {"truncated", false}};
     };
     print({{"type", "output"}, {"view", view("running")}});
+    if (mode == "malformed-close" || mode == "malformed-close-ack") {
+        auto final = view("closed");
+        if (mode == "malformed-close")
+            final["end"] = 1;
+        else
+            final["ack_sequence"] = 1;
+        print({{"type", "closed"}, {"view", final}});
+        return 0;
+    }
     if (mode == "tail") {
         QTimer::singleShot(100, &application, [&] {
             for (int index = 0; index < 3; ++index) {
@@ -66,9 +95,6 @@ int fixture(QCoreApplication &application)
             application.quit();
         });
     }
-    QFile input;
-    if (!input.open(stdin, QIODevice::ReadOnly))
-        return 4;
     QSocketNotifier notifier(0, QSocketNotifier::Read);
     QObject::connect(&notifier, &QSocketNotifier::activated, &application, [&] {
         const auto line = input.readLine(96 * 1024);
@@ -112,6 +138,159 @@ private slots:
         qputenv("DOCKPIPE_BIN", QCoreApplication::applicationFilePath().toUtf8());
         qunsetenv("DOCKPIPE_TERMINAL_FIXTURE");
     }
+    void containerGrantIsIndependentAndPreparedBeforeAmbiguousOpen()
+    {
+        auto context = catalog();
+        context["roots"] = QJsonArray{};
+        context["docker_read"] = true;
+        context["docker_control"] = false;
+        RemoteTerminalSession denied;
+        QVERIFY(!denied.startContainer(context, QString(64, 'e'), "/bin/sh"));
+        context["docker_exec"] = true;
+        qputenv("DOCKPIPE_TERMINAL_FIXTURE", "lost-open");
+        RemoteTerminalSession session;
+        QSignalSpy finished(&session, &RemoteTerminalSession::finished);
+        QVERIFY(session.startContainer(context, QString(64, 'e'), "/bin/sh"));
+        QTRY_COMPARE(finished.size(), 1);
+        QVERIFY(!session.reference().isEmpty());
+        QCOMPARE(session.reference().value("target"), context.value("target"));
+        QVERIFY(!session.cleanupVerified());
+        auto changed = session.reference();
+        changed["id"] = QString(64, 'f');
+        QVERIFY(!session.confirmContainerRecovery(changed));
+        QVERIFY(session.confirmContainerRecovery(session.reference()));
+        QVERIFY(session.cleanupVerified());
+    }
+
+    void containerSessionsFreezeTargetAndShareQuota()
+    {
+        TerminalHub hub;
+        auto first = catalog();
+        first["docker_read"] = true;
+        first["docker_exec"] = true;
+        first["docker_control"] = false;
+        auto second = first;
+        auto target = second.value("target").toObject();
+        target["generation"] = QString(64, 'e');
+        second["target"] = target;
+        const QString container(64, 'f');
+        const auto firstId = hub.createContainerSession(first, container, "/bin/sh");
+        const auto secondId = hub.createContainerSession(second, container, "/bin/bash");
+        QVERIFY(!firstId.isEmpty() && !secondId.isEmpty());
+        QCOMPARE(hub.sessionIds(first, "container:" + container + ":/bin/sh"), QStringList{firstId});
+        QCOMPARE(hub.sessionIds(second, "container:" + container + ":/bin/bash"), QStringList{secondId});
+        QStringList hostSessions;
+        for (int index = 0; index < 6; ++index) {
+            const auto id = hub.createSession({}, {}, first, "project");
+            QVERIFY(!id.isEmpty());
+            hostSessions.append(id);
+        }
+        QVERIFY(hub.createContainerSession(first, container, "/bin/sh").isEmpty());
+        QTRY_VERIFY(!hub.connecting(firstId) && !hub.connecting(secondId));
+        bool acknowledged = false;
+        hub.sendAsync(firstId, "selected-container", [&](bool accepted, const QString &) { acknowledged = accepted; });
+        QTRY_VERIFY(acknowledged);
+        quint64 cursor = 0;
+        bool truncated = false;
+        QVERIFY(hub.readOutput(secondId, cursor, truncated).isEmpty());
+        for (const auto &id : hub.sessionIds())
+            hub.closeSession(id);
+    }
+
+    void unknownContainerQuotaRequiresExactVerifiedRecovery()
+    {
+        qputenv("DOCKPIPE_TERMINAL_FIXTURE", "lost-open");
+        TerminalHub hub;
+        auto context = catalog();
+        context["docker_read"] = true;
+        context["docker_exec"] = true;
+        QStringList sessions;
+        for (int index = 0; index < 8; ++index) {
+            const auto id = hub.createContainerSession(context, QString(64, 'e'), "/bin/sh");
+            QVERIFY(!id.isEmpty());
+            sessions.append(id);
+        }
+        QTRY_VERIFY(([&] {
+            for (auto *session : hub.findChildren<RemoteTerminalSession *>()) {
+                if (session->active())
+                    return false;
+            }
+            return true;
+        })());
+        const auto reference = hub.findChildren<RemoteTerminalSession *>().first()->reference();
+        QVERIFY(!reference.isEmpty());
+        for (const auto &id : sessions)
+            hub.closeSession(id);
+        QVERIFY(hub.createContainerSession(context, QString(64, 'e'), "/bin/sh").isEmpty());
+        auto changed = reference;
+        changed["epoch"] = QString(64, 'f');
+        hub.releaseRecoveredContainerSession(changed);
+        QVERIFY(hub.createContainerSession(context, QString(64, 'e'), "/bin/sh").isEmpty());
+        hub.releaseRecoveredContainerSession(reference);
+        qunsetenv("DOCKPIPE_TERMINAL_FIXTURE");
+        const auto replacement = hub.createContainerSession(context, QString(64, 'e'), "/bin/sh");
+        QVERIFY(!replacement.isEmpty());
+        QVERIFY(hub.createContainerSession(context, QString(64, 'e'), "/bin/sh").isEmpty());
+        hub.closeSession(replacement);
+    }
+
+    void unknownHostQuotaRequiresExactVerifiedRecovery()
+    {
+        qputenv("DOCKPIPE_TERMINAL_FIXTURE", "lost-host-open");
+        TerminalHub hub;
+        const auto context = catalog();
+        QStringList sessions;
+        for (int index = 0; index < 8; ++index) {
+            const auto id = hub.createSession({}, {}, context, "project");
+            QVERIFY(!id.isEmpty());
+            sessions.append(id);
+        }
+        QTRY_VERIFY(([&] {
+            for (auto *session : hub.findChildren<RemoteTerminalSession *>()) {
+                if (session->active())
+                    return false;
+            }
+            return true;
+        })());
+        auto *retained = hub.findChildren<RemoteTerminalSession *>().first();
+        const auto reference = retained->reference();
+        QVERIFY(!reference.isEmpty());
+        QVERIFY(!retained->confirmContainerRecovery(reference));
+        QVERIFY(!retained->cleanupVerified());
+        for (const auto &id : sessions)
+            hub.closeSession(id);
+        QVERIFY(hub.createSession({}, {}, context, "project").isEmpty());
+        auto changed = reference;
+        changed["epoch"] = QString(64, 'f');
+        hub.releaseRecoveredSession(changed);
+        QVERIFY(hub.createSession({}, {}, context, "project").isEmpty());
+        hub.releaseRecoveredSession(reference);
+        qunsetenv("DOCKPIPE_TERMINAL_FIXTURE");
+        const auto replacement = hub.createSession({}, {}, context, "project");
+        QVERIFY(!replacement.isEmpty());
+        QVERIFY(hub.createSession({}, {}, context, "project").isEmpty());
+        hub.closeSession(replacement);
+    }
+
+    void malformedFinalFrameCannotVerifyCleanup_data()
+    {
+        QTest::addColumn<QByteArray>("mode");
+        QTest::newRow("cursor") << QByteArray("malformed-close");
+        QTest::newRow("acknowledgment") << QByteArray("malformed-close-ack");
+    }
+
+    void malformedFinalFrameCannotVerifyCleanup()
+    {
+        QFETCH(QByteArray, mode);
+        qputenv("DOCKPIPE_TERMINAL_FIXTURE", mode);
+        RemoteTerminalSession session;
+        QSignalSpy finished(&session, &RemoteTerminalSession::finished);
+        QVERIFY(session.start(catalog(), "project"));
+        QTRY_COMPARE(finished.size(), 1);
+        QVERIFY(!session.reference().isEmpty());
+        QVERIFY(!session.cleanupVerified());
+    }
+
     void coalescesInputUntilAcknowledged()
     {
         RemoteTerminalSession session;
@@ -233,6 +412,13 @@ private slots:
             sessions.append(id);
         }
         QVERIFY(hub.createSession({}, {}, context, "project").isEmpty());
+        QTRY_VERIFY(([&] {
+            for (const auto &id : sessions) {
+                if (hub.connecting(id))
+                    return false;
+            }
+            return true;
+        })());
         hub.closeSession(sessions.takeFirst());
         QVERIFY(hub.createSession({}, {}, context, "project").isEmpty());
         QString replacementId;

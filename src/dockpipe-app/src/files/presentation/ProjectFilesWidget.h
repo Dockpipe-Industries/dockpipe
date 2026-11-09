@@ -68,6 +68,7 @@ signals:
 
 protected:
     void hideEvent(QHideEvent *event) override;
+    void showEvent(QShowEvent *event) override;
     bool eventFilter(QObject *object, QEvent *event) override;
 
 private:

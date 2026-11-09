@@ -40,8 +40,9 @@ func RunWorker(ctx context.Context, root, executable string, config contract.Wor
 	if config.Features && client.Identity == nil {
 		return errors.New("remote features require paired worker and broker machine identities")
 	}
+	instance := ""
 	if config.Features {
-		instance, err := Secret()
+		instance, err = Secret()
 		if err != nil {
 			return err
 		}
@@ -120,9 +121,19 @@ func RunWorker(ctx context.Context, root, executable string, config contract.Wor
 			if job.CancelRequested {
 				journal.Result = &contract.Result{Status: "cancelled", ExitCode: -1}
 			} else if job.BundleHash != "" {
-				profile, err = deliveryProfile(ctx, client, root, *job, config.Delivery)
-				approved = err == nil
-				if err != nil {
+				if err := validateWorkerDeliveryTarget(root, config, instance, job.Submission); err != nil {
+					journal.Result = &contract.Result{Status: "failure", ExitCode: -1, Log: err.Error()}
+				}
+				if journal.Result == nil {
+					profile, err = deliveryProfile(ctx, client, root, *job, config.Delivery)
+					approved = err == nil
+					if err != nil {
+						journal.Result = &contract.Result{Status: "failure", ExitCode: -1, Log: err.Error()}
+					}
+				}
+			}
+			if journal.Result == nil {
+				if err := validateWorkerDeliveryTarget(root, config, instance, job.Submission); err != nil {
 					journal.Result = &contract.Result{Status: "failure", ExitCode: -1, Log: err.Error()}
 				}
 			}

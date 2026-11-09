@@ -2,6 +2,7 @@
 
 #include <QCoreApplication>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QJsonValue>
 #include <QObject>
 #include <QPointer>
@@ -20,6 +21,7 @@ public:
         Outcome outcome = Outcome::Failure;
         QJsonValue value;
         QString error;
+        QJsonObject reference;
     };
     using Completion = std::function<void(const Result &)>;
     using Cancel = std::function<void()>;
@@ -29,13 +31,28 @@ public:
     static Cancel catalog(QObject *owner, Completion completion, int timeoutMs = 30000);
     static Cancel invoke(QObject *owner, const QJsonObject &intent, Completion completion,
                          int timeoutMs = 30000);
+    static Cancel inspect(QObject *owner, const QJsonObject &reference, Completion completion,
+                          int timeoutMs = 30000);
+    static Cancel cancelOperation(QObject *owner, const QJsonObject &reference, Completion completion,
+                                  int timeoutMs = 30000);
+    static Cancel reconcile(QObject *owner, const QJsonObject &reference, Completion completion,
+                            int timeoutMs = 30000);
+    static Cancel retireContainer(QObject *owner, const QJsonObject &reference, Completion completion,
+                                  int timeoutMs = 30000);
+    // Only bounded mutation identity/status metadata is persisted, never intent content.
+    static QJsonArray pendingRecoveries();
+    // Domain adapters restore the receipt if a transport success has an invalid payload.
+    static void retainUncertain(const QJsonObject &reference);
     ~RemoteFeatureClient() override;
 
 private:
     RemoteFeatureClient(QObject *owner, QJsonObject intent, bool catalog, Completion completion);
     static Cancel start(QObject *owner, const QJsonObject &intent, bool catalog,
                         Completion completion, int timeoutMs);
+    static Cancel recover(QObject *owner, const QJsonObject &reference, const QString &command,
+                          Completion completion, int timeoutMs);
     void launch(int timeoutMs);
+    void launchProcess(const QString &command, const QJsonObject &input);
     void drain();
     void cancel();
     void stop(Outcome outcome, const QString &error);

@@ -44,11 +44,37 @@ private slots:
     void folderViewUsesSharedIcons_data();
     void folderViewUsesSharedIcons();
     void filesPageUsesSharedExplorer();
+    void filesPageRefreshesOnlyWhileVisible();
     void symbolicParentUsesCanonicalNavigation();
     void boundedPagesAndMachineContexts();
     void enterActivatesBothViews_data();
     void enterActivatesBothViews();
 };
+
+void DashboardFilesWidgetTest::filesPageRefreshesOnlyWhileVisible()
+{
+    QTemporaryDir directory;
+    ProjectFilesWidget files;
+    QVERIFY(FilesTest::setRoot(files, directory.path()));
+    auto *model = files.findChild<WorkspaceFileModel *>();
+    files.show();
+    QFile first(directory.filePath("first.txt"));
+    QVERIFY(first.open(QIODevice::WriteOnly));
+    first.close();
+    QTRY_VERIFY_WITH_TIMEOUT(model->indexForPath("first.txt").isValid(), 7000);
+    files.hide();
+    // Finish the existing read, then verify hidden pages do not poll.
+    QTest::qWait(100);
+    QSignalSpy loaded(model, &WorkspaceFileModel::directoryLoaded);
+    QFile second(directory.filePath("second.txt"));
+    QVERIFY(second.open(QIODevice::WriteOnly));
+    second.close();
+    QTest::qWait(5200);
+    QCOMPARE(loaded.count(), 0);
+    QVERIFY(!model->indexForPath("second.txt").isValid());
+    files.show();
+    QTRY_VERIFY_WITH_TIMEOUT(model->indexForPath("second.txt").isValid(), 2000);
+}
 
 void DashboardFilesWidgetTest::projectNavigationAndClearing()
 {

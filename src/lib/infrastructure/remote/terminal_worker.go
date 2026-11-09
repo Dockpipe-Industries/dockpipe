@@ -5,23 +5,33 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"time"
 
 	"dockpipe/src/lib/domain/invocation"
 	contract "dockpipe/src/lib/domain/remote"
+	"dockpipe/src/lib/infrastructure"
 	"dockpipe/src/lib/infrastructure/osauth"
+	"dockpipe/src/lib/infrastructure/process"
 	"dockpipe/src/lib/infrastructure/remoteidentity"
 	"dockpipe/src/lib/infrastructure/terminalsession"
 )
 
 const terminalPollInterval = 200 * time.Millisecond
+const terminalInteractiveInterval = 20 * time.Millisecond
+const terminalInteractiveBurst = 250 * time.Millisecond
 
 type terminalWorkerRecord struct {
 	mutex       sync.Mutex
 	open        contract.TerminalOpen
 	operator    string
 	session     *terminalsession.Session
+	manager     *terminalsession.Manager
+	scope       *process.Scope
+	journal     *containerTerminalJournal
+	hostJournal *hostTerminalJournal
+	recovered   bool
 	cancel      context.CancelFunc
 	leaseUntil  time.Time
 	ackSequence uint64
@@ -35,18 +45,21 @@ type terminalWorkerRecord struct {
 }
 
 type terminalWorkerService struct {
-	root            string
-	client          *Client
-	config          contract.WorkerConfig
-	instance        string
-	epoch           string
-	policy          string
-	catalog         contract.FeatureCatalog
-	manager         *terminalsession.Manager
-	records         map[string]*terminalWorkerRecord
-	environment     []string
-	suspendClock    osauth.SuspendClock
-	sleepGeneration uint64
+	root             string
+	client           *Client
+	config           contract.WorkerConfig
+	instance         string
+	epoch            string
+	policy           string
+	processRecovery  string
+	catalog          contract.FeatureCatalog
+	manager          *terminalsession.Manager
+	records          map[string]*terminalWorkerRecord
+	environment      []string
+	suspendClock     osauth.SuspendClock
+	sleepGeneration  uint64
+	wake             chan struct{}
+	interactiveUntil time.Time
 }
 
 // runTerminalWorker is independent of durable feature reconciliation and workflow
@@ -61,7 +74,7 @@ func runTerminalWorker(ctx context.Context, root string, config contract.WorkerC
 	}
 	defer unlock()
 	service := &terminalWorkerService{root: root, client: client, config: config, instance: instance,
-		records: map[string]*terminalWorkerRecord{}, environment: os.Environ()}
+		records: map[string]*terminalWorkerRecord{}, environment: os.Environ(), wake: make(chan struct{}, 1)}
 	if terminalSupported() {
 		platform, err := osauth.New()
 		if err != nil {
@@ -143,7 +156,7 @@ func runTerminalWorker(ctx context.Context, root string, config contract.WorkerC
 				return err
 			}
 		}
-		if !pause(ctx, terminalPollInterval) {
+		if !service.waitForWork(ctx) {
 			break
 		}
 	}
@@ -169,6 +182,10 @@ func (service *terminalWorkerService) checkSuspend() error {
 
 func (service *terminalWorkerService) configure(permissions FeaturePermissions, policy string) error {
 	service.policy = policy
+	service.processRecovery = permissions.ProcessRecovery
+	if service.processRecovery == "" {
+		service.processRecovery = process.RecoveryMode()
+	}
 	target := contract.FeatureTarget{Node: service.config.Node, Fingerprint: remoteidentity.Fingerprint(service.config.MachineKey), Generation: Hash(service.instance + policy)}
 	service.catalog = permissions.catalog(target)
 	service.records = map[string]*terminalWorkerRecord{}
@@ -211,8 +228,29 @@ func (service *terminalWorkerService) cancelSessions() error {
 	for _, record := range service.records {
 		if record.session != nil {
 			result, err := record.session.Wait(ctx)
-			if err != nil || result.CleanupError != nil {
+			if err != nil || result.CleanupError != nil && !record.recovered {
+				if record.journal != nil {
+					_ = record.journal.markUncertain()
+				}
+				if record.hostJournal != nil {
+					_ = record.hostJournal.finish(false)
+				}
 				return errors.New("terminal cleanup could not be verified")
+			}
+			if record.hostJournal != nil && !record.recovered {
+				if err := record.hostJournal.finish(true); err != nil {
+					return err
+				}
+			}
+			if record.scope != nil && !record.recovered {
+				if service.processRecovery != "host-reboot" {
+					if err := record.scope.Stop(ctx); err != nil {
+						return err
+					}
+				}
+				if err := record.journal.clientStopped(); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -223,6 +261,16 @@ func (service *terminalWorkerService) shutdown() error {
 	if err := service.cancelSessions(); err != nil {
 		return err
 	}
+	for _, record := range service.records {
+		if record.manager != nil && record.manager != service.manager && !record.recovered {
+			cleanup, stop := context.WithTimeout(context.Background(), 2*time.Second)
+			err := record.manager.Shutdown(cleanup)
+			stop()
+			if err != nil {
+				return err
+			}
+		}
+	}
 	if service.manager != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
@@ -232,13 +280,38 @@ func (service *terminalWorkerService) shutdown() error {
 }
 
 func (service *terminalWorkerService) exchange(ctx context.Context) (contract.TerminalExchangeResult, error) {
+	// Drain only notifications already represented by the snapshot below. An
+	// event arriving after this point stays queued for the next exchange.
+	select {
+	case <-service.wake:
+	default:
+	}
+	for _, record := range service.records {
+		if record.session != nil {
+			select {
+			case <-record.session.OutputReady():
+			default:
+			}
+		}
+	}
 	reports := make([]contract.TerminalReport, 0, len(service.records))
 	for _, record := range service.records {
+		if record.hostJournal != nil {
+			if receipt, err := loadHostTerminalReceipt(service.root, record.open.Reference()); err == nil && receipt.Reconciled {
+				record.state, record.reason, record.recovered = "closed", "closed", true
+			}
+		}
+		if record.journal != nil {
+			receipt, err := loadContainerTerminalReceipt(service.root, record.open.Reference())
+			if err == nil && receipt.Reconciled {
+				record.state, record.reason, record.recovered = "closed", "closed", true
+			}
+		}
 		record.mutex.Lock()
 		report := contract.TerminalReport{Reference: record.open.Reference(), State: record.state, AckSequence: record.ackSequence, AckDigest: record.ackDigest,
 			OutputStart: record.outputAck, Reason: record.reason}
 		record.mutex.Unlock()
-		if record.session != nil {
+		if record.session != nil && !record.recovered {
 			if output, err := record.session.Read(ctx, report.OutputStart, contract.MaxTerminalChunk); err == nil {
 				report.Data, report.Truncated = output.Data, output.Truncated
 				report.OutputStart = output.Cursor - uint64(len(output.Data))
@@ -247,7 +320,29 @@ func (service *terminalWorkerService) exchange(ctx context.Context) (contract.Te
 			case <-record.session.Done():
 				result, _ := record.session.Wait(ctx)
 				report.State, report.Reason = "closed", "exited"
+				if record.hostJournal != nil {
+					if err := record.hostJournal.finish(result.CleanupError == nil); err != nil {
+						result.CleanupError = err
+					}
+				}
+				if result.CleanupError == nil && record.scope != nil {
+					if service.processRecovery == "host-reboot" {
+						result.CleanupError = record.journal.clientStopped()
+					} else {
+						cleanup, stop := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
+						result.CleanupError = record.scope.Stop(cleanup)
+						stop()
+						if result.CleanupError == nil {
+							result.CleanupError = record.journal.clientStopped()
+						}
+					}
+				}
 				if result.CleanupError != nil {
+					if record.journal != nil {
+						if err := record.journal.markUncertain(); err != nil {
+							return contract.TerminalExchangeResult{}, err
+						}
+					}
 					report.State, report.Reason = "unknown", "cleanup-unverified"
 				}
 				if result.Cause != nil && report.State == "closed" {
@@ -291,6 +386,16 @@ func (service *terminalWorkerService) forget(ctx context.Context, reference cont
 	if record == nil {
 		return nil
 	}
+	if record.journal != nil {
+		if receipt, err := loadContainerTerminalReceipt(service.root, reference); err == nil && receipt.Reconciled {
+			record.recovered = true
+		}
+	}
+	if record.hostJournal != nil {
+		if receipt, err := loadHostTerminalReceipt(service.root, reference); err == nil && receipt.Reconciled {
+			record.recovered = true
+		}
+	}
 	if record.cancel != nil {
 		record.cancel()
 	}
@@ -298,10 +403,22 @@ func (service *terminalWorkerService) forget(ctx context.Context, reference cont
 		wait, cancel := context.WithTimeout(ctx, 2*time.Second)
 		result, err := record.session.Wait(wait)
 		cancel()
-		if err != nil || result.CleanupError != nil {
+		if err != nil || result.CleanupError != nil && !record.recovered {
 			return errors.New("terminal cleanup remains uncertain")
 		}
-		if err := service.manager.Release(ctx, record.session.ID()); err != nil {
+		if !record.recovered {
+			if err := record.manager.Release(ctx, record.session.ID()); err != nil {
+				return err
+			}
+		}
+	}
+	if record.journal != nil {
+		if err := removeContainerTerminalReceipt(service.root, reference); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	if record.hostJournal != nil {
+		if err := removeHostTerminalReceipt(service.root, reference); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return err
 		}
 	}
@@ -312,7 +429,7 @@ func (service *terminalWorkerService) forget(ctx context.Context, reference cont
 func (service *terminalWorkerService) apply(ctx context.Context, directive contract.TerminalDirective, started time.Time) error {
 	request := directive.Open
 	if request.Validate() != nil || request.Epoch != service.epoch || request.Target != service.catalog.Target || !validMachineNonce(directive.Operator) ||
-		!terminalRoot(service.catalog, request.Root) || !contract.ValidTerminalSize(directive.Columns, directive.Rows) {
+		!terminalSelectionAllowed(service.catalog, request) || !contract.ValidTerminalSize(directive.Columns, directive.Rows) {
 		return errors.New("terminal directive changed identity or permission")
 	}
 	if directive.Forget {
@@ -335,7 +452,7 @@ func (service *terminalWorkerService) apply(ctx context.Context, directive contr
 		// Absolute open deadlines belong to the broker's clock. The worker
 		// admits only the signed remaining duration measured from its own
 		// monotonic request start, never a cross-machine wall-clock comparison.
-		if err != nil || service.manager == nil {
+		if err != nil || request.Container == "" && service.manager == nil {
 			return errors.New("terminal launch lease expired")
 		}
 		record.leaseUntil = deadline
@@ -345,7 +462,8 @@ func (service *terminalWorkerService) apply(ctx context.Context, directive contr
 		policy, target, root := service.policy, request.Target, service.root
 		clock, sleepGeneration := service.suspendClock, service.sleepGeneration
 		authorize := func(ctx context.Context, binding invocation.Binding) error {
-			if binding.Target != terminalInvocationTarget(target) || binding.Identity != identity || binding.Contract.Capability != "dockpipe.terminal" || binding.Contract.Version != "1" {
+			if binding.Target != terminalInvocationTarget(target) || binding.Identity != identity || binding.Contract.Version != "1" ||
+				binding.Contract.Capability != "dockpipe.terminal" && !(request.Container != "" && binding.Contract.Capability == "dockpipe.containers" && binding.Contract.Action == "exec") {
 				return errors.New("terminal admission changed")
 			}
 			record.mutex.Lock()
@@ -360,19 +478,76 @@ func (service *terminalWorkerService) apply(ctx context.Context, directive contr
 					return errors.New("terminal worker resumed from suspend")
 				}
 			}
+			if request.Container == "" && binding.Contract.Action == "open" {
+				if err := service.containerCapacity(request.ID); err != nil {
+					return err
+				}
+			}
 			permissions, err := loadFeaturePermissions(root)
 			if err != nil || permissionFingerprint(permissions) != policy {
 				return errors.New("terminal owner permissions changed")
 			}
 			return ctx.Err()
 		}
-		session, err := service.manager.OpenAs(lifetime, terminalsession.Size{Columns: request.Columns, Rows: request.Rows}, time.Until(deadline), identity, authorize)
+		var session *terminalsession.Session
+		if request.Container == "" {
+			record.manager = service.manager
+			if err = service.containerCapacity(request.ID); err == nil {
+				record.hostJournal, err = prepareHostTerminalJournal(service.root, request.Reference(), request.Root)
+			}
+			if err == nil {
+				err = record.hostJournal.phase("start-requested")
+			}
+			if err == nil {
+				session, err = service.manager.OpenAs(lifetime, terminalsession.Size{Columns: request.Columns, Rows: request.Rows}, time.Until(deadline), identity, authorize)
+			}
+			if err == nil {
+				err = record.hostJournal.phase("running")
+			}
+		} else {
+			if err = service.containerCapacity(request.ID); err == nil {
+				record.journal = &containerTerminalJournal{root: service.root, value: containerTerminalReceipt{
+					Schema: containerTerminalReceiptSchema, Reference: request.Reference()}}
+				lifetime, record.scope = process.WithScopeMode(lifetime, request.ID, service.processRecovery, record.journal.observeScope)
+				var terminal infrastructure.DockerTerminal
+				terminal, err = infrastructure.OpenContainerTerminal(lifetime,
+					infrastructure.ContainerExecRequest{Container: request.Container, Shell: request.Shell},
+					service.environment, terminalInvocationTarget(target), identity, authorize,
+					terminalsession.Size{Columns: request.Columns, Rows: request.Rows}, time.Until(deadline), record.journal.observe)
+				record.manager, session = terminal.Manager, terminal.Session
+			}
+		}
 		if err != nil {
 			cancel()
 			record.reason = "launch-failed"
+			if record.hostJournal != nil {
+				if session != nil {
+					record.session, record.state, record.reason = session, "unknown", "cleanup-unverified"
+				}
+				if err := record.hostJournal.finish(session == nil); err != nil {
+					return err
+				}
+			}
+			if record.journal != nil {
+				if receipt, loadErr := loadContainerTerminalReceipt(service.root, request.Reference()); loadErr == nil {
+					if receipt.Resource.Phase == "start-requested" || receipt.Resource.Phase == "running" {
+						record.state, record.reason = "unknown", "cleanup-unverified"
+						if err := record.journal.markUncertain(); err != nil {
+							return err
+						}
+					} else if record.scope != nil {
+						cleanup, stop := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
+						if record.scope.Stop(cleanup) == nil {
+							_ = removeContainerTerminalReceipt(service.root, request.Reference())
+						}
+						stop()
+					}
+				}
+			}
 			return nil
 		}
 		record.session, record.state, record.reason = session, "running", ""
+		service.notifyWork()
 	}
 	if record.session == nil {
 		return nil
@@ -422,20 +597,83 @@ func (service *terminalWorkerService) apply(ctx context.Context, directive contr
 			return nil
 		}
 		record.inputBusy = true
+		service.interactiveUntil = time.Now().Add(terminalInteractiveBurst)
 		record.mutex.Unlock()
 		go func() {
 			defer clear(input.Data)
 			err := record.session.Input(ctx, input.Sequence, input.Data)
 			record.mutex.Lock()
-			defer record.mutex.Unlock()
 			record.inputBusy = false
 			if err != nil {
 				record.reason = "input-uncertain"
 				record.cancel()
-				return
+			} else {
+				record.ackSequence, record.ackDigest = input.Sequence, contract.TerminalInputDigest(input.Data)
 			}
-			record.ackSequence, record.ackDigest = input.Sequence, contract.TerminalInputDigest(input.Data)
+			record.mutex.Unlock()
+			service.notifyWork()
 		}()
+	}
+	return nil
+}
+
+func (service *terminalWorkerService) notifyWork() {
+	select {
+	case service.wake <- struct{}{}:
+	default:
+	}
+}
+
+func (service *terminalWorkerService) waitForWork(ctx context.Context) bool {
+	interval := terminalPollInterval
+	if time.Now().Before(service.interactiveUntil) {
+		interval = terminalInteractiveInterval
+	}
+	timer := time.NewTimer(interval)
+	defer timer.Stop()
+	cases := []reflect.SelectCase{
+		{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ctx.Done())},
+		{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(timer.C)},
+		{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(service.wake)},
+	}
+	// The existing eight-session contract bounds this wait to 19 channels.
+	// No polling goroutine or retained output copy exists per session.
+	for _, record := range service.records {
+		record.mutex.Lock()
+		running := record.state == "running"
+		record.mutex.Unlock()
+		if record.session != nil && running {
+			cases = append(cases,
+				reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(record.session.OutputReady())},
+				reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(record.session.Done())})
+		}
+	}
+	selected, _, _ := reflect.Select(cases)
+	return selected != 0
+}
+
+func (service *terminalWorkerService) containerCapacity(current string) error {
+	receipts, err := containerTerminalReceipts(service.root)
+	if err != nil {
+		return err
+	}
+	hosts, err := hostTerminalReceipts(service.root)
+	if err != nil {
+		return err
+	}
+	retained := len(service.records)
+	for _, receipt := range receipts {
+		if !receipt.Reconciled && receipt.Reference.ID != current && service.records[receipt.Reference.ID] == nil {
+			retained++
+		}
+	}
+	for _, receipt := range hosts {
+		if !receipt.Reconciled && !receipt.CleanupVerified && receipt.Reference.ID != current && service.records[receipt.Reference.ID] == nil {
+			retained++
+		}
+	}
+	if retained > contract.MaxTerminalSessions {
+		return errors.New("retained container terminal cleanup consumes the session budget")
 	}
 	return nil
 }

@@ -1,10 +1,18 @@
 #include "GitConflictWidget.h"
+#include "ProjectGitWidget.h"
+#include "GitDiffWidget.h"
 #include "GitRepositoryWidget.h"
 #include "ProjectFilesWidget.h"
+#include "WorkspaceFilesTestSupport.h"
 #include "Theme.h"
 
 #include <QApplication>
 #include <QCheckBox>
+#include <QElapsedTimer>
+#include <QScrollBar>
+#include <QTabWidget>
+#include <QTextDocument>
+#include <QThread>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
@@ -16,6 +24,7 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSignalSpy>
+#include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
@@ -23,6 +32,7 @@
 
 namespace {
 const QString stashId(40, 'a');
+QByteArray filesTestBinary;
 
 QJsonObject catalogReply()
 {
@@ -63,6 +73,7 @@ private slots:
     void initTestCase();
     void repositoryReadsCatalogAndEmitsExactSelections();
     void repositoryBusyAndOperationGuard();
+    void changesAvoidHiddenReadsAndPreserveUnchangedReview();
     void conflictPreservesDraftAndGuardsProjectSwitch();
     void conflictSaveRefreshAndConfirmedResolution();
     void conflictControlsFollowOperationState();
@@ -71,6 +82,7 @@ private slots:
 
 void GitRepositoryConflictTest::initTestCase()
 {
+    filesTestBinary = qgetenv("DOCKPIPE_BIN");
     qputenv("DOCKPIPE_BIN", QCoreApplication::applicationFilePath().toUtf8());
 }
 
@@ -80,6 +92,7 @@ void GitRepositoryConflictTest::repositoryReadsCatalogAndEmitsExactSelections()
     QVERIFY(root.isValid());
     GitRepositoryWidget widget;
     QSignalSpy actions(&widget, &GitRepositoryWidget::actionRequested);
+    widget.show();
     widget.setSnapshot(root.path(), QJsonObject{{"branch", "main"}, {"snapshot", "repository-reviewed-token"}});
     auto *branches = widget.findChild<QListWidget *>("gitRepositoryBranches");
     auto *stashes = widget.findChild<QListWidget *>("gitRepositoryStashes");
@@ -136,8 +149,116 @@ void GitRepositoryConflictTest::repositoryBusyAndOperationGuard()
     QVERIFY(!fetch->isEnabled());
 }
 
+void GitRepositoryConflictTest::changesAvoidHiddenReadsAndPreserveUnchangedReview()
+{
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    const QString logPath = root.filePath("requests.txt");
+    qputenv("DOCKPIPE_GIT_RESPONSIVENESS_LOG", logPath.toUtf8());
+    qputenv("DOCKPIPE_GIT_RESPONSIVENESS_DELAY", "80");
+    const auto restore = qScopeGuard([] {
+        qunsetenv("DOCKPIPE_GIT_RESPONSIVENESS_LOG");
+        qunsetenv("DOCKPIPE_GIT_RESPONSIVENESS_DELAY");
+        qunsetenv("DOCKPIPE_GIT_RESPONSIVENESS_REVISION");
+    });
+    auto requests = [&] {
+        QFile log(logPath);
+        if (!log.open(QIODevice::ReadOnly))
+            return QStringList{};
+        return QString::fromUtf8(log.readAll()).split('\n', Qt::SkipEmptyParts);
+    };
+    ProjectGitWidget widget;
+    widget.resize(1180, 760);
+    widget.show();
+    widget.setWorkdir(root.path());
+    auto *review = widget.findChild<GitDiffWidget *>("projectGitDiff")->findChild<QPlainTextEdit *>("gitDiffAfterEditor");
+    auto *tabs = widget.findChild<QTabWidget *>();
+    QVERIFY(review && tabs);
+    QElapsedTimer elapsed;
+    elapsed.start();
+    widget.refresh();
+    QTRY_VERIFY2(!widget.busy() && review->toPlainText().contains("initial-content"),
+        qPrintable(QString("status=%1 requests=%2 text=%3").arg(widget.findChild<QLabel *>("gitStatus")->text(),
+            requests().join(','), review->toPlainText().left(160))));
+    const qint64 initialMilliseconds = elapsed.elapsed();
+    QCOMPARE(requests(), QStringList({"status", "compare"}));
+    QVERIFY(review->verticalScrollBar()->maximum() > 0);
+    review->verticalScrollBar()->setValue(review->verticalScrollBar()->maximum());
+    const int scroll = review->verticalScrollBar()->value();
+    const int revision = review->document()->revision();
+    auto *branches = widget.findChild<QListWidget *>("gitRepositoryBranches");
+    QVERIFY(branches && branches->count() == 2);
+    const auto *firstBranch = branches->item(0);
+    elapsed.restart();
+    widget.refresh();
+    QTRY_VERIFY(!widget.busy());
+    const qint64 unchangedMilliseconds = elapsed.elapsed();
+    QCOMPARE(requests(), QStringList({"status", "compare", "status"}));
+    QCOMPARE(review->document()->revision(), revision);
+    QCOMPARE(review->verticalScrollBar()->value(), scroll);
+    QCOMPARE(branches->item(0), firstBranch);
+    qInfo() << "Git 80-ms CLI fixture: initial status+comparison" << initialMilliseconds
+            << "ms; unchanged status preserving review" << unchangedMilliseconds << "ms";
+
+    auto *repository = widget.findChild<GitRepositoryWidget *>();
+    QVERIFY(repository);
+    tabs->setCurrentWidget(repository);
+    auto *stashes = repository->findChild<QListWidget *>("gitRepositoryStashes");
+    QTRY_COMPARE(stashes->count(), 2);
+    // Fresh status already supplied branches. Opening the lazy panel adds only
+    // the stash read, with no second catalog round trip.
+    QCOMPARE(requests(), QStringList({"status", "compare", "status", "stash-list"}));
+    tabs->setCurrentIndex(0);
+    qputenv("DOCKPIPE_GIT_RESPONSIVENESS_REVISION", "changed");
+    widget.refresh();
+    QTRY_VERIFY(!widget.busy() && review->toPlainText().contains("updated-content"));
+    QCOMPARE(requests(), QStringList({"status", "compare", "status", "stash-list", "status", "compare"}));
+    QVERIFY(review->document()->revision() != revision);
+
+    auto *poll = widget.findChild<QTimer *>("projectGitStatusPoll");
+    auto *message = widget.findChild<QLineEdit *>("gitCommitMessage");
+    QVERIFY(poll && poll->isActive() && poll->interval() == 5000 && message);
+    message->setText("Keep this commit draft while polling is paused.");
+    QVERIFY(QMetaObject::invokeMethod(poll, "timeout", Qt::DirectConnection));
+    QCOMPARE(requests().size(), 6);
+    QCOMPARE(message->text(), QString("Keep this commit draft while polling is paused."));
+    message->clear();
+    review->setFocus();
+    QVERIFY(QMetaObject::invokeMethod(poll, "timeout", Qt::DirectConnection));
+    auto *passive = widget.findChild<ProjectGitClient *>("projectGitPassiveReader");
+    QVERIFY(passive && passive->busy());
+    QVERIFY(!widget.busy());
+    QVERIFY(message->isEnabled());
+    QVERIFY(widget.findChild<QListWidget *>("gitChangedFiles")->isEnabled());
+    for (int index = 0; index < 5; ++index)
+        QVERIFY(QMetaObject::invokeMethod(poll, "timeout", Qt::DirectConnection));
+    QTRY_VERIFY(!passive->busy());
+    QCOMPARE(requests().size(), 7); // Poll bursts cannot queue status operations.
+    widget.hide();
+    QVERIFY(!poll->isActive());
+    QVERIFY(QMetaObject::invokeMethod(poll, "timeout", Qt::DirectConnection));
+    QTest::qWait(100);
+    QCOMPARE(requests().size(), 7);
+    widget.show();
+    QTRY_COMPARE(requests().size(), 8); // On-entry refresh, without a user click.
+    QTRY_VERIFY(!passive->busy());
+    QVERIFY(QMetaObject::invokeMethod(poll, "timeout", Qt::DirectConnection));
+    QTRY_COMPARE(requests().size(), 9);
+    widget.hide();
+    QTRY_VERIFY(!passive->busy());
+    QVERIFY(!widget.busy());
+    QCOMPARE(requests().size(), 9);
+}
+
 void GitRepositoryConflictTest::conflictPreservesDraftAndGuardsProjectSwitch()
 {
+    if (filesTestBinary.isEmpty())
+        QSKIP("Set DOCKPIPE_BIN to the trusted core CLI for admitted conflict file I/O.");
+    const auto restoreBinary = qScopeGuard([previous = qgetenv("DOCKPIPE_BIN")] {
+        qputenv("DOCKPIPE_BIN", previous);
+    });
+    qputenv("DOCKPIPE_BIN", filesTestBinary);
+
     QTemporaryDir root;
     QTemporaryDir other;
     QVERIFY(writeFile(root.filePath("conflict.txt"), "original\n"));
@@ -147,23 +268,30 @@ void GitRepositoryConflictTest::conflictPreservesDraftAndGuardsProjectSwitch()
     auto *files = widget.findChild<ProjectFilesWidget *>("gitConflictEditor");
     auto *editor = files->findChild<QPlainTextEdit *>("fileTextEditor");
     QVERIFY(editor);
+    QTRY_COMPARE(editor->toPlainText(), QString("original\n"));
     editor->insertPlainText("unsaved draft\n");
     const auto draft = editor->toPlainText();
     QVERIFY(widget.hasUnsavedChanges());
     widget.setSnapshot(root.path(), conflictSnapshot());
     QCOMPARE(editor->toPlainText(), draft);
     QVERIFY(widget.hasUnsavedChanges());
-    answerNextDialog(QMessageBox::Cancel);
     widget.setSnapshot(other.path(), {});
     QCOMPARE(files->currentPath(), root.filePath("conflict.txt"));
     QCOMPARE(editor->toPlainText(), draft);
     answerNextDialog(QMessageBox::Cancel);
-    QVERIFY(!widget.confirmLeave());
+    QVERIFY(!FilesTest::await([&](auto completion) { widget.confirmLeaveAsync(std::move(completion)); }));
     QVERIFY(widget.hasUnsavedChanges());
 }
 
 void GitRepositoryConflictTest::conflictSaveRefreshAndConfirmedResolution()
 {
+    if (filesTestBinary.isEmpty())
+        QSKIP("Set DOCKPIPE_BIN to the trusted core CLI for admitted conflict file I/O.");
+    const auto restoreBinary = qScopeGuard([previous = qgetenv("DOCKPIPE_BIN")] {
+        qputenv("DOCKPIPE_BIN", previous);
+    });
+    qputenv("DOCKPIPE_BIN", filesTestBinary);
+
     QTemporaryDir root;
     QVERIFY(writeFile(root.filePath("conflict.txt"), "original\n"));
     GitConflictWidget widget;
@@ -173,8 +301,9 @@ void GitRepositoryConflictTest::conflictSaveRefreshAndConfirmedResolution()
     widget.findChild<QPushButton *>("gitConflictOpen")->click();
     auto *files = widget.findChild<ProjectFilesWidget *>("gitConflictEditor");
     auto *editor = files->findChild<QPlainTextEdit *>("fileTextEditor");
+    QTRY_COMPARE(editor->toPlainText(), QString("original\n"));
     editor->setPlainText("resolved\n");
-    QVERIFY(files->saveFile());
+    QVERIFY(FilesTest::save(*files));
     QCOMPARE(refresh.count(), 1);
     answerNextDialog(QMessageBox::Cancel);
     widget.findChild<QPushButton *>("gitConflict-resolve-stage")->click();
@@ -197,7 +326,7 @@ void GitRepositoryConflictTest::conflictSaveRefreshAndConfirmedResolution()
     widget.findChild<QPushButton *>("gitConflict-resolve-ours")->click();
     QVERIFY(writeFile(root.filePath("conflict.txt"), "chosen ours\n"));
     widget.setSnapshot(root.path(), conflictSnapshot());
-    QCOMPARE(editor->toPlainText(), "chosen ours\n");
+    QTRY_COMPARE(editor->toPlainText(), QString("chosen ours\n"));
 }
 
 void GitRepositoryConflictTest::conflictControlsFollowOperationState()
@@ -230,6 +359,13 @@ void GitRepositoryConflictTest::conflictControlsFollowOperationState()
 
 void GitRepositoryConflictTest::compactConflictEditorRetainsControls()
 {
+    if (filesTestBinary.isEmpty())
+        QSKIP("Set DOCKPIPE_BIN to the trusted core CLI for admitted conflict file I/O.");
+    const auto restoreBinary = qScopeGuard([previous = qgetenv("DOCKPIPE_BIN")] {
+        qputenv("DOCKPIPE_BIN", previous);
+    });
+    qputenv("DOCKPIPE_BIN", filesTestBinary);
+
     applyDockpipeLauncherTheme(*qobject_cast<QApplication *>(qApp));
     QTemporaryDir root;
     QVERIFY(writeFile(root.filePath("conflict.txt"), "<<<<<<< ours\nours\n=======\ntheirs\n>>>>>>> theirs\n"));
@@ -248,6 +384,7 @@ void GitRepositoryConflictTest::compactConflictEditorRetainsControls()
         QVERIFY2(widget.rect().contains(QRect(button->mapTo(&widget, QPoint()), button->size())), name);
     }
     auto *editor = widget.findChild<QPlainTextEdit *>("fileTextEditor");
+    QTRY_VERIFY(editor && editor->isVisible());
     QVERIFY(editor && editor->isVisible() && editor->width() >= 180);
     const QString image = qEnvironmentVariable("DOCKPIPE_CONFLICT_COMPACT_SCREENSHOT");
     if (!image.isEmpty())
@@ -261,8 +398,36 @@ int main(int argc, char **argv)
         if (!file.open(QIODevice::ReadOnly))
             return 2;
         const auto request = QJsonDocument::fromJson(file.readAll()).object();
+        const QString action = request.value("action").toString();
+        const QString logPath = qEnvironmentVariable("DOCKPIPE_GIT_RESPONSIVENESS_LOG");
+        if (!logPath.isEmpty()) {
+            QFile log(logPath);
+            if (log.open(QIODevice::WriteOnly | QIODevice::Append))
+                log.write(action.toUtf8() + '\n');
+        }
+        const int delay = qEnvironmentVariableIntValue("DOCKPIPE_GIT_RESPONSIVENESS_DELAY");
+        if (delay > 0)
+            QThread::msleep(static_cast<unsigned long>(delay));
         QJsonObject reply;
-        if (request.value("action") == "catalog") {
+        if (action == "status") {
+            reply = catalogReply();
+            reply.insert("root", "/fixture");
+            reply.insert("branch", "main");
+            reply.insert("head", QString(40, 'b'));
+            reply.insert("snapshot", qEnvironmentVariable("DOCKPIPE_GIT_RESPONSIVENESS_REVISION", "initial"));
+            reply.insert("changes", QJsonArray{QJsonObject{{"path", "example.txt"}, {"status", " M"},
+                {"revision", qEnvironmentVariable("DOCKPIPE_GIT_RESPONSIVENESS_REVISION", "initial")}}});
+        } else if (action == "compare") {
+            const QString version = qEnvironmentVariable("DOCKPIPE_GIT_RESPONSIVENESS_REVISION", "initial");
+            if (request.value("snapshot").toString() != version)
+                return 6; // A changed review must never be served from old state.
+            const QString content = version == "changed" ? "updated-content" : "initial-content";
+            QString patch = "--- a/example.txt\n+++ b/example.txt\n@@ -1,200 +1,200 @@\n-old-content\n+" + content + "\n";
+            for (int line = 1; line < 200; ++line)
+                patch += " unchanged line " + QString::number(line) + "\n";
+            reply.insert("review", QJsonObject{{"path", "example.txt"}, {"patch", patch},
+                {"before_label", "HEAD"}, {"after_label", "Working tree"}});
+        } else if (action == "catalog") {
             reply = catalogReply();
         } else if (request.value("action") == "stash-list") {
             reply.insert("stashes", QJsonArray{

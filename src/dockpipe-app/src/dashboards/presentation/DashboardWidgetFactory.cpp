@@ -1,4 +1,5 @@
 #include "DashboardWidgetFactory.h"
+#include <QMetaMethod>
 
 #include "DashboardLogWidget.h"
 #include "DashboardFilesWidget.h"
@@ -176,11 +177,12 @@ QWidget *DashboardWidgetFactory::create(const QString &kind, QWidget *parent, co
 QWidget *DashboardWidgetFactory::create(const QString &kind, QWidget *parent, const QString &fileScope,
                                       const QJsonObject &machineContext)
 {
-    const QStringList scopedKinds{"files", "git", "containers", "terminal", "send-input"};
+    const QStringList scopedKinds{"files", "git", "containers", "terminal", "send-input", "workflows"};
     if (!m_upstream && scopedKinds.contains(kind)) {
         auto *factory = new DashboardWidgetFactory(m_sessions, m_store, m_terminals, this);
         factory->m_upstream = this;
         factory->m_workdir = m_workdir;
+        factory->m_workflows = m_workflows;
         factory->m_machineCatalog = m_machineCatalog;
         const QString mode = machineContext.value("mode").toString("follow");
         factory->m_followMain = mode == "follow";
@@ -221,6 +223,17 @@ QWidget *DashboardWidgetFactory::create(const QString &kind, QWidget *parent, co
                 emit factory->containersChanged(snapshot, error);
         });
         connect(this, &DashboardWidgetFactory::workdirChanged, factory, &DashboardWidgetFactory::setWorkdir);
+        connect(this, &DashboardWidgetFactory::workflowsChanged, factory, [this, factory] {
+            factory->setWorkflows(m_workflows);
+        });
+        connect(factory, &DashboardWidgetFactory::launchWorkflowOnMachine, this,
+            [this](const QString &workflow, const QJsonObject &target, const QString &root) {
+            if (isSignalConnected(QMetaMethod::fromSignal(&DashboardWidgetFactory::launchWorkflowOnMachine)))
+                emit launchWorkflowOnMachine(workflow, target, root);
+            else if (target.isEmpty())
+                emit launchWorkflow(workflow);
+        });
+        connect(factory, &DashboardWidgetFactory::cloneWorkflow, this, &DashboardWidgetFactory::cloneWorkflow);
         connect(factory, &DashboardWidgetFactory::filePreviewRequested, this, &DashboardWidgetFactory::filePreviewRequested);
         connect(factory, &DashboardWidgetFactory::gitPreviewRequested, this, &DashboardWidgetFactory::gitPreviewRequested);
         connect(factory, &DashboardWidgetFactory::canvasViewRequested, this, &DashboardWidgetFactory::canvasViewRequested);
