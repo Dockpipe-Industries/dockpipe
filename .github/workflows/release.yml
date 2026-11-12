@@ -238,7 +238,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: "1.26.10"
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: "22"
       - name: Install macOS Qt
@@ -335,7 +335,7 @@ jobs:
         with:
           go-version: "1.26.10"
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: "22"
 
@@ -525,7 +525,7 @@ jobs:
         run: python3 workflows/shared/launch.py workflows/publish/apt/release.yml
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           tag_name: ${{ needs.meta.outputs.tag }}
           target_commitish: ${{ github.sha }}
@@ -617,7 +617,7 @@ jobs:
         run: python3 workflows/shared/launch.py workflows/publish/apt/staging.yml
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           prerelease: true
           make_latest: false
