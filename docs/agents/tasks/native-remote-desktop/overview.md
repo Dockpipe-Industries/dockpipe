@@ -1,5 +1,16 @@
 # TASK-046 — Native remote desktop and codec benchmarking
 
+The 2026-11-12 contained-client follow-up passed one live Flatpak Platform
+view-only session with strict GNU 15.2 / Qt 6.10.3 admission, three software-decoded
+1920×1080 frames and exact package/Core/native closure. No pixels were saved and
+the view-only session disabled input/clipboard. A separate fresh control session
+verified one physical shortcut and one generated-fixture phase change, followed
+by exact package/Core/native closure and fixture-process/file cleanup. Clipboard
+sharing stayed disabled. A different active session was preserved during a
+preliminary reservation conflict. Installed Flatpak GUI, contained clipboard and
+distribution qualification remain open; see
+[remote feature qualification](../../../runtime/remote-platforms.md).
+
 The next viewer follow-up adds automatic completion of an explicit rich paste
 shortcut and copy-only file drops into the active remote application, with
 preparation/acknowledged-byte/verification progress. It binds one gesture to the

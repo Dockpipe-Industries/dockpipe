@@ -13,7 +13,7 @@ execution, monitoring, or browser network relays.
 | --- | --- | --- |
 | Generic desktop session and relay | Independent view/input grants, exact provider identity, bounded signaling and encrypted-channel relay | Provider implementation and OS permission readiness remain separate. |
 | Native desktop viewer package | Linux amd64, Qt 6.10.3, X11 physical keyboard mapping | Native Linux-to-Darwin private-preview proof exists. Flatpak, contained GUI, other Linux desktop environments and distribution closure need their own execution evidence. |
-| Flatpak viewer candidate | Separate KDE 6.10 / Qt 6.10.3 / GNU 15.2 build profile, viewer-only payload | SDK and Platform component suites and strict factory/runtime-load checks pass. Installed GUI, paired-session and distribution qualification remain distinct. No released Flatpak DisplaySDK pin is implied. |
+| Flatpak viewer candidate | Separate KDE 6.10 / Qt 6.10.3 / GNU 15.2 build profile, viewer-only payload | SDK/Platform component suites, strict factory/runtime loading, live viewing and generated-fixture control to Darwin passed. Installed GUI and distribution qualification remain separate. No released Flatpak DisplaySDK pin is implied. |
 | Native desktop sender package | Darwin arm64, macOS 13 or newer, stable application identity | Permission, capture/input, clipboard, display and keep-awake evidence are separate. A smaller captured display or synthetic 4K decoding does not prove live 4K capture. |
 | Windows or Linux native capture | No backend in the current native package | A working VM display, cross-build or portable fixture does not implement a desktop sender. |
 | Windows or Darwin native viewing | No viewer artifact in the current native package | Do not infer viewing support from the generic GUI or session API. |
@@ -27,6 +27,20 @@ Both guest installation forms were inspected and cancelled. This qualifies that
 bounded display/UI path, not installation or execution of a Windows or Linux
 guest OS. GUI automatic launches require a compatible embedded frontend and
 QEMU DBus display; explicit external-display choices remain available.
+
+The bounded Flatpak Platform client decoded three nonuniform 1920×1080 software
+frames without saving pixels, sending input or using the clipboard. Its exact
+session reached package/Core closure with ACK 1, zero lease, no remaining signals,
+a cleared journal and independent native channel/child absence. This is a live
+component client proof, not installed Flatpak application qualification.
+
+A separate fresh control session delivered one physical shortcut to a generated
+fixture and verified exactly one phase change. Clipboard sharing stayed disabled.
+Its package/Core closure, cleared journal, native channel/child absence and exact
+fixture-process/file cleanup passed independently. A competing session was
+preserved during a preliminary reservation conflict; its blocked intent journal
+remains separate from successful closure proof. These bounded checks do not
+qualify contained clipboard transfers, every keyboard layout or the installed GUI.
 
 The host launches desktop display resolvers through the generic
 `dockpipe.remote.desktop-display/v1` envelope. The selected package validates its
