@@ -4,6 +4,7 @@
 #include "RemoteGitContext.h"
 #include "WorkspaceMachineMenu.h"
 #include "TerminalWidget.h"
+#include "RemoteBrowserWidget.h"
 #include "SendInputWidget.h"
 
 #include <QCoreApplication>
@@ -103,7 +104,8 @@ bool DashboardWidgetFactory::canChangeSharedMachineContext(QString *error) const
             return false;
     }
     for (const auto &widget : m_widgets) {
-        if (widget && !canChangeWidgetMachineContext(widget, error))
+        if (widget && widget->property("dashboardKind").toString() != "remote-desktop"
+            && !canChangeWidgetMachineContext(widget, error))
             return false;
     }
     return true;
@@ -170,12 +172,15 @@ void DashboardWidgetFactory::setMachineCatalog(const QJsonArray &catalog)
             terminal->updateMachineCatalog(m_sharedMachine);
     }
     updateMachineMenus();
+    updateBrowserMachines();
 }
 
 void DashboardWidgetFactory::updateMachineMenus()
 {
     for (const auto &widget : m_widgets) {
         if (!widget)
+            continue;
+        if (widget->property("dashboardKind").toString() == "browser")
             continue;
         for (auto *menu : widget->findChildren<WorkspaceMachineMenu *>()) {
             menu->setCatalog(m_machineCatalog);
@@ -188,6 +193,13 @@ void DashboardWidgetFactory::updateMachineMenus()
 
 QJsonObject DashboardWidgetFactory::widgetMachineContext(QWidget *widget) const
 {
+    if (auto *browser = widget->findChild<RemoteBrowserWidget *>()) {
+        const auto target = browser->machineTarget();
+        QJsonObject context{{"mode", target.isEmpty() ? "local" : "remote"}};
+        if (!target.isEmpty())
+            context.insert("target", target);
+        return context;
+    }
     if (auto *factory = owningFactory(widget)) {
         QJsonObject context{{"mode", factory->m_followMain ? "follow" : (factory->m_sharedMachine.isEmpty() ? "local" : "remote")}};
         if (!factory->m_sharedMachine.isEmpty()) {
@@ -201,6 +213,14 @@ QJsonObject DashboardWidgetFactory::widgetMachineContext(QWidget *widget) const
 
 bool DashboardWidgetFactory::setWidgetMachineContext(QWidget *widget, const QJsonObject &context, QString *error)
 {
+    if (auto *browser = widget->findChild<RemoteBrowserWidget *>()) {
+        const auto mode = context.value("mode").toString("local");
+        if (mode != "local" && mode != "remote")
+            return false;
+        browser->setMachineContext(mode == "remote" ? context.value("target").toObject() : QJsonObject{});
+        emit widgetMachineContextChanged(widget);
+        return true;
+    }
     auto *factory = owningFactory(widget);
     if (!factory || !canChangeWidgetMachineContext(widget, error))
         return false;
@@ -252,6 +272,11 @@ bool DashboardWidgetFactory::setWidgetMachineContext(QWidget *widget, const QJso
 
 void DashboardWidgetFactory::applyMachineContext(QWidget *widget)
 {
+    // Remote Desktop owns an explicit paired-machine selector and session. Its
+    // authority never follows the dashboard's file/workflow workspace choice.
+    const auto kind = widget->property("dashboardKind").toString();
+    if (kind == "remote-desktop" || kind == "browser")
+        return;
     const auto target = machineTarget();
     const bool remote = !m_sharedMachine.isEmpty();
     widget->setProperty("dashboardMachineTarget", target);

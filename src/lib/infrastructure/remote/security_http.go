@@ -18,7 +18,11 @@ func (broker *Broker) serveOperator(w http.ResponseWriter, request *http.Request
 	}
 	var value any
 	var operationError error
-	if terminalPath(request.URL.Path) {
+	if request.URL.Path == "/v1/network-catalog" || request.URL.Path == "/v1/network-connect" || request.URL.Path == "/v1/network-pulse" || request.URL.Path == "/v1/network-trust" {
+		value, operationError = broker.networkOperator(request.URL.Path, body, admission)
+	} else if desktopOperatorPath(request.URL.Path) {
+		value, operationError = broker.desktopOperator(request.URL.Path, body, admission)
+	} else if terminalPath(request.URL.Path) {
 		if request.URL.Path == "/v1/terminal-input" {
 			value, operationError = broker.terminalInputAndWait(request.Context(), body, admission)
 		} else {

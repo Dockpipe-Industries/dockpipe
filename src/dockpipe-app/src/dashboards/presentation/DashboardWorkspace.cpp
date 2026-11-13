@@ -919,7 +919,7 @@ QRect DashboardWorkspace::defaultGeometry(const QString &id, const QMap<QString,
             natural = QSize(520, 96);
         else if (kind == "system")
             natural = QSize(420, 260);
-        else if (kind == "browser")
+        else if (kind == "browser" || kind == "remote-desktop")
             natural = QSize(680, 420);
         else if (kind == "files")
             natural = QSize(480, 340);
@@ -1902,7 +1902,9 @@ void DashboardWorkspace::applyPanelChrome(const QString &id, bool tiled)
     auto *menuButton = panel.frame->findChild<QToolButton *>("dashboardPanelMenuButton");
     auto *closeButton = panel.frame->findChild<QToolButton *>("dashboardPanelClose");
     auto *expandButton = panel.expand;
-    auto *browserTabRow = panel.frame->findChild<QHBoxLayout *>("browserTabRow");
+    auto *browserTabRow = panel.frame->findChild<QHBoxLayout *>("browserNetworkToolbar");
+    if (!browserTabRow)
+        browserTabRow = panel.frame->findChild<QHBoxLayout *>("browserTabRow");
     auto *dragBand = panel.frame->findChild<QWidget *>("dashboardBrowserDragBand");
     if (viewportBrowser && menuButton && browserTabRow) {
         if (!dragBand) {

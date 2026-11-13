@@ -42,7 +42,9 @@ type BrokerState struct {
 }
 
 type Broker struct {
+	networks          *networkBroker
 	terminals         *terminalBroker
+	desktops          *desktopBroker
 	features          *featureBroker
 	edge              *EdgeSupervisor
 	operatorTokenHash string
@@ -144,11 +146,28 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+	if r.URL.Path == contract.NetworkRelayPath {
+		b.serveNetworkRelay(w, r)
+		return
+	}
+	if r.URL.Path == contract.DesktopRelayPath {
+		b.serveDesktopRelay(w, r)
+		return
+	}
 	if r.Method != http.MethodPost || r.URL.RawQuery != "" {
 		http.Error(w, "POST required", http.StatusMethodNotAllowed)
 		return
 	}
 	limit := int64(contract.MaxBody)
+	if strings.HasPrefix(r.URL.Path, "/v1/network-") {
+		limit = 4096
+	}
+	if r.URL.Path == "/v1/network-trust-publish" {
+		limit = contract.MaxNetworkTrustBody
+	}
+	if desktopPath(r.URL.Path) {
+		limit = contract.MaxDesktopBody
+	}
 	if terminalPath(r.URL.Path) {
 		limit = contract.MaxTerminalBody
 	}
@@ -305,7 +324,7 @@ func (b *Broker) operator(path string, raw []byte) (any, error) {
 			if enrollment.Revoked {
 				status = "revoked"
 			}
-			nodes = append(nodes, contract.NodeStatus{Node: name, Status: status})
+			nodes = append(nodes, contract.NodeStatus{Node: name, Status: status, Fingerprint: remoteidentity.Fingerprint(enrollment.MachineKey)})
 		}
 		sort.Slice(nodes, func(i, j int) bool { return nodes[i].Node < nodes[j].Node })
 		return nodes, nil
@@ -401,6 +420,18 @@ func (b *Broker) operator(path string, raw []byte) (any, error) {
 }
 
 func (b *Broker) worker(node, path string, raw []byte) (any, error) {
+	if path == "/v1/network-trust-publish" {
+		return b.publishNetworkTrust(node, raw)
+	}
+	if path == "/v1/network-worker" {
+		return b.networkWorker(node, raw)
+	}
+	if path == contract.DesktopRelayTicketPath {
+		return b.desktopRelayTicket(raw, "worker", node, operatorAdmission{})
+	}
+	if path == "/v1/desktop-worker" {
+		return b.desktopWorker(node, raw)
+	}
 	if path == "/v1/terminal-worker" {
 		return b.terminalWorker(node, raw)
 	}

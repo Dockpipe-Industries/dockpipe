@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "RemoteBrowserWidget.h"
 
 #include "DashboardPage.h"
 #include "DashboardWidgetFactory.h"
@@ -100,6 +101,8 @@ void MainWindow::refreshWorkspaceMachines()
         }
         const auto catalog = result.value.toArray();
         m_workspaceMachineMenu->setCatalog(catalog);
+        if (m_browserWidget)
+            m_browserWidget->setMachineCatalog(catalog, m_remoteAccess->state() == RemoteAccessMonitor::State::Unlocked);
         const auto selectedCatalog = currentSharedMachineCatalog();
         m_dockerWidget->setFeatureCatalog(selectedCatalog);
         m_dockerWidget->setEnabled(m_workspaceMachineMenu->currentTarget().isEmpty()

@@ -7,6 +7,7 @@
 
 class DesktopWindowWidget;
 class LauncherDisplaySurface;
+class NativeDisplaySession;
 class LauncherNativeLibraryScope;
 class QLabel;
 class QPluginLoader;
@@ -21,12 +22,19 @@ public:
     ~PackageDisplayWidget() override;
     void setDisplay(const PackageDisplayMeta &display);
     void clearDisplay();
+    void requestClose();
+    bool updatePresentationOptions(const QJsonObject &options);
+    QJsonObject surfaceMetadata(const QByteArray &propertyName) const;
+    void setCloseOnHide(bool enabled) { m_closeOnHide = enabled; }
+    void setKeepSessionOnHide(bool enabled) { m_keepSessionOnHide = enabled; }
+    bool isClosing() const { return m_closing; }
     static bool validateOptions(const QJsonObject &options, QString &error);
     static QString platformName();
     bool hasPackageSurface() const { return m_surface != nullptr; }
 
 signals:
     void displayFailed(const QString &error);
+    void displayCloseCompleted(const QJsonObject &result);
 
 protected:
     void showEvent(QShowEvent *event) override;
@@ -44,4 +52,9 @@ private:
     std::unique_ptr<LauncherNativeLibraryScope> m_nativeLibrary;
     std::unique_ptr<QPluginLoader> m_loader;
     bool m_handedOff = false;
+    bool m_closing = false;
+    bool m_closeOnHide = false;
+    bool m_keepSessionOnHide = false;
+    quint64 m_closeGeneration = 0;
+    NativeDisplaySession *m_closeSession;
 };

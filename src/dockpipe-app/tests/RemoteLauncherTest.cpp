@@ -503,11 +503,13 @@ exec "$@"
     auto *apps = window.findChild<BasicModeWidget *>();
     if (!apps || !apps->findChildren<QTabWidget *>().isEmpty()
         || window.findChildren<DockerObservabilityWidget *>().size() != 1
-        || navigation->count() != 11 || navigation->item(4)->text() != "Containers"
+        || navigation->count() != 12 || navigation->item(4)->text() != "Containers"
         || navigation->item(5)->text() != "System"
         || navigation->item(8)->text() != "Browser"
         || navigation->item(9)->text() != "Terminal"
         || navigation->item(9)->data(Qt::UserRole).toInt() != 9
+        || navigation->item(10)->text() != "Remote Desktop"
+        || navigation->item(10)->data(Qt::UserRole).toInt() != 10
         || window.findChild<TerminalWidget *>()
         || window.findChild<BrowserWidget *>())
         return 13;
@@ -541,8 +543,9 @@ exec "$@"
     navigation->setCurrentRow(8);
     auto *browser = window.findChild<BrowserWidget *>();
     auto *workspacePages = window.findChild<QStackedWidget *>("workspacePages");
-    if (!browser || !workspacePages || workspacePages->currentWidget() != browser
-        || navigation->item(8)->isHidden() || !navigation->item(10)->isHidden()
+    auto *browserPage = workspacePages ? workspacePages->currentWidget() : nullptr;
+    if (!browser || !browserPage || (browserPage != browser && !browserPage->isAncestorOf(browser))
+        || navigation->item(8)->isHidden() || !navigation->item(11)->isHidden()
         || LauncherSettings::current().cockpit.enabled)
         return 160;
     navigation->setCurrentRow(9);
@@ -569,7 +572,7 @@ exec "$@"
         return 431;
     navigation->setCurrentRow(1);
     navigation->setCurrentRow(8);
-    if (workspacePages->currentWidget() != browser
+    if (workspacePages->currentWidget() != browserPage
         || window.findChildren<BrowserWidget *>().size() != 1)
         return 161;
     if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE")) {
@@ -1710,10 +1713,10 @@ exec "$@"
         return 180;
     nameDialog->setTextValue("Operations dashboard");
     nameDialog->accept();
-    if (!waitUntil([&]() { return navigation->count() == 13; })
+    if (!waitUntil([&]() { return navigation->count() == 14; })
         || navigation->item(8)->text() != "Browser"
-        || navigation->item(11)->text() != "Operations dashboard"
-        || navigation->item(12)->text() != "Cockpit · Experimental")
+        || navigation->item(12)->text() != "Operations dashboard"
+        || navigation->item(13)->text() != "Cockpit · Experimental")
         return 172;
     auto *dashboard = qobject_cast<DashboardPage *>(workspacePages->currentWidget());
     if (!dashboard || !dashboard->addWidgetKind("browser") || !dashboard->addWidgetKind("logs")
@@ -1897,20 +1900,20 @@ exec "$@"
         return 185;
     renameDialog->setTextValue("Daily work");
     renameDialog->accept();
-    if (navigation->item(11)->text() != "Daily work")
+    if (navigation->item(12)->text() != "Daily work")
         return 186;
     temporaryDashboard->removeRequested();
     auto *removeDialog = window.findChild<QMessageBox *>("dashboardRemoveConfirmation");
     if (!removeDialog)
         return 187;
     removeDialog->done(QMessageBox::Yes);
-    if (navigation->count() != 12 || navigation->item(10)->text() != "Daily work"
-        || navigation->item(11)->text() != "Cockpit · Experimental")
+    if (navigation->count() != 13 || navigation->item(11)->text() != "Daily work"
+        || navigation->item(12)->text() != "Cockpit · Experimental")
         return 188;
     navigation->setCurrentRow(8);
-    if (workspacePages->currentWidget() != browser)
+    if (workspacePages->currentWidget() != browserPage)
         return 176;
-    navigation->setCurrentRow(10);
+    navigation->setCurrentRow(11);
     if (workspacePages->currentWidget() != dashboard || !dashboardBrowser)
         return 177;
     // Closing immediately after rearranging must flush the debounce save.
@@ -1943,9 +1946,9 @@ exec "$@"
     if (!reopenedNotifications || reopenedNotifications->unreadCount() != 0)
         return 430;
     auto *reopenedNavigation = reopened.findChild<QListWidget *>("workspaceNavigation");
-    if (!reopenedNavigation || !waitUntil([&]() { return reopenedNavigation->count() == 12; }))
+    if (!reopenedNavigation || !waitUntil([&]() { return reopenedNavigation->count() == 13; }))
         return 189;
-    reopenedNavigation->setCurrentRow(10);
+    reopenedNavigation->setCurrentRow(11);
     auto *reopenedDashboard = reopened.findChild<DashboardPage *>();
     if (!reopenedDashboard || reopenedDashboard->snapshot().panels.size() != 3
         || reopenedDashboard->snapshot().name != "Daily work")

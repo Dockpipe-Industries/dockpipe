@@ -5,6 +5,7 @@
 #include "DashboardGitPreview.h"
 #include "DashboardWorkspace.h"
 #include "WorkspaceMachineMenu.h"
+#include "RemoteBrowserWidget.h"
 
 #include <QHBoxLayout>
 #include <QLayout>
@@ -81,8 +82,13 @@ bool DashboardPage::setSharedMachineContext(const QJsonObject &catalog, const QS
 void DashboardPage::setMachineCatalog(const QJsonArray &catalog)
 {
     m_factory->setMachineCatalog(catalog);
-    for (auto *menu : findChildren<WorkspaceMachineMenu *>())
+    for (auto *menu : findChildren<WorkspaceMachineMenu *>()) {
+        // Browsers discover the independent network grant rather than inheriting
+        // the repository feature catalog's generation and readiness.
+        if (qobject_cast<RemoteBrowserWidget *>(menu->parentWidget()))
+            continue;
         menu->setCatalog(catalog);
+    }
 }
 
 bool DashboardPage::applyPanelMachineContext(QWidget *content, const QJsonObject &machine, QString *error)

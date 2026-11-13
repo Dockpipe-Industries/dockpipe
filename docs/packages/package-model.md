@@ -738,6 +738,20 @@ including the root, nonempty keys of at most 64 characters, and strings of at mo
 enforces aggregate byte, node and depth limits before calling package code.
 Options and native panels remain session-only and are not saved into layouts.
 
+The remote desktop shell selects a resolver with capability `remote.desktop` whose
+identity and version match the selected desktop catalog. Its display receives
+`schema: dockpipe.remote.desktop-display/v1`, the trusted operator `cli` absolute
+path, `state_directory`, the exact `catalog`, and `mode` (`view` or `control`).
+The `capture` object carries quality, frame-rate, display-source and opted-in
+clipboard preferences; `display` carries scaling, cursor and key-mapping
+preferences; `decoder` carries the requested local decoding mode. These are
+provider-independent preference hints, not a transport selection or authority
+grant. Providers validate supported settings and report unsupported requests
+instead of silently weakening explicit requirements. Clipboard preferences are
+omitted for view-only sessions. Providers own native capture, input, negotiation,
+transport and platform integration. This launch envelope does not change the
+published DisplayPackage/1.0 virtual interface.
+
 The installed host SDK exports `LauncherDisplayPackage.h`, interface
 `com.dockpipe.launcher.DisplayPackage/1.0`. A Qt plugin implements
 `initialize(packageRoot)` and `createDisplay(options, parent)`. Its

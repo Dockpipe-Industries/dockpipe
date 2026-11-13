@@ -360,6 +360,14 @@ signals are unavailable, access remains locked. macOS packages include a signed
 `dockpipe-system-auth` helper; a bare CLI without its helper cannot unlock.
 `security-status` reports capabilities and unavailable integrations.
 
+Canceled requests remain denied. An OS sample interrupted solely by caller
+cancellation cannot overwrite global security evidence, refresh its timestamps
+or renew authorization. Affirmative lock/resume evidence still invalidates the
+session unless superseded by a newer independent sample. The sampler's own
+two-second timeout, genuine OS errors and invalid input-age data remain failures;
+required OS evidence older than three seconds remains unavailable. Background
+sampling, idle/absolute expiry and one-use proof checks are unchanged.
+
 Signing credentials and unlock sessions exist only in the authority's memory and
 are discarded on lock/restart. Static administrator credentials alone cannot
 operate the broker; requests and replies carry fresh, scoped cryptographic proof.

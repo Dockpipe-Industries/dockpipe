@@ -44,33 +44,41 @@ func ReadPrivate(path string, target any) error {
 }
 
 func readPrivateBounded(path string, target any, maximum int64) error {
-	info, err := os.Lstat(path)
+	data, err := readPrivateData(path, maximum)
 	if err != nil {
 		return err
 	}
+	return Decode(data, target)
+}
+
+func readPrivateData(path string, maximum int64) ([]byte, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
 	if !info.Mode().IsRegular() || info.Size() > maximum {
-		return errors.New("remote state must be a bounded private regular file")
+		return nil, errors.New("remote state must be a bounded private regular file")
 	}
 	if err := infrastructure.ValidatePrivatePath(path, false); err != nil {
-		return err
+		return nil, err
 	}
 	file, err := os.OpenInRoot(filepath.Dir(path), filepath.Base(path))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer file.Close()
 	opened, err := file.Stat()
 	if err != nil || !opened.Mode().IsRegular() || opened.Size() > maximum || !os.SameFile(info, opened) {
-		return errors.New("remote state changed while being opened")
+		return nil, errors.New("remote state changed while being opened")
 	}
 	data, err := io.ReadAll(io.LimitReader(file, maximum+1))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if int64(len(data)) > maximum {
-		return errors.New("remote state exceeds size limit")
+		return nil, errors.New("remote state exceeds size limit")
 	}
-	return Decode(data, target)
+	return data, nil
 }
 
 // WritePrivate publishes a complete file only after flushing its contents.

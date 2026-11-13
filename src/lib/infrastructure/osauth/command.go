@@ -3,6 +3,7 @@ package osauth
 import (
 	"bytes"
 	"context"
+	contract "dockpipe/src/lib/domain/remote"
 	"errors"
 	"os/exec"
 	"time"
@@ -31,12 +32,20 @@ func (output *boundedOutput) String() string {
 }
 
 func runSystemCommand(ctx context.Context, program string, arguments ...string) ([]byte, error) {
+	return runSystemCommandBounded(ctx, program, 64<<10, arguments...)
+}
+
+func runNetworkTrustCommand(ctx context.Context, program string, arguments ...string) ([]byte, error) {
+	return runSystemCommandBounded(ctx, program, contract.MaxNetworkTrustBody, arguments...)
+}
+
+func runSystemCommandBounded(ctx context.Context, program string, maximum int, arguments ...string) ([]byte, error) {
 	command := exec.CommandContext(ctx, program, arguments...)
 	// OS services are selected explicitly. Project environment, dynamic loader
 	// overrides, user PATH and caller-selected D-Bus addresses are not inherited.
 	command.Env = []string{"PATH=/usr/bin:/bin", "LANG=C", "LC_ALL=C"}
 	command.WaitDelay = time.Second
-	output := &boundedOutput{maximum: 64 << 10}
+	output := &boundedOutput{maximum: maximum}
 	command.Stdout = output
 	command.Stderr = &boundedOutput{maximum: 4096}
 	if err := command.Run(); err != nil {

@@ -14,6 +14,9 @@
 #include "WorkspaceMachineMenu.h"
 #include "RemoteFeatureClient.h"
 #include "RemoteGitContext.h"
+#include "RemoteDesktopWidget.h"
+#include "RemoteBrowserWidget.h"
+#include "RemoteAccessMonitor.h"
 
 #include <QEvent>
 #include <QJsonDocument>
@@ -23,6 +26,26 @@
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
+
+namespace {
+class DashboardDesktopState final : public QObject {
+public:
+    explicit DashboardDesktopState(QObject *parent) : QObject(parent) {}
+    QVector<ResolverMeta> resolvers;
+    QPointer<RemoteAccessMonitor> access;
+    QJsonArray machines;
+    QVector<QPointer<RemoteDesktopWidget>> widgets;
+};
+
+DashboardDesktopState *desktopState(DashboardWidgetFactory *factory, bool create = true)
+{
+    for (auto *child : factory->children()) {
+        if (auto *state = dynamic_cast<DashboardDesktopState *>(child))
+            return state;
+    }
+    return create ? new DashboardDesktopState(factory) : nullptr;
+}
+}
 
 DashboardWidgetFactory::DashboardWidgetFactory(SessionManager &sessions, ContextStore &store, QObject *parent)
     : DashboardWidgetFactory(sessions, store, nullptr, parent)
@@ -52,6 +75,11 @@ DashboardWidgetFactory::DashboardWidgetFactory(SessionManager &sessions, Context
     });
     if (!terminals)
         slowTimer->start();
+    connect(this, &DashboardWidgetFactory::machinesChanged, this,
+        [this](const QJsonArray &machines, const QString &error) {
+        if (error.isEmpty())
+            setRemoteDesktopMachines(machines);
+    });
 }
 
 QVector<DashboardWidgetDescriptor> DashboardWidgetFactory::catalog()
@@ -65,7 +93,8 @@ QVector<DashboardWidgetDescriptor> DashboardWidgetFactory::catalog()
         {"files", tr("File manager"), tr("Browse project files in Canvas or the filesystem from Home in Tiling. Change either scope in dashboard settings.")},
         {"git", tr("Git changes"), tr("Current branch and a compact list of changes from the DockPipe Git service.")},
         {"machines", tr("Machines"), tr("Managed machine access states from the existing remote service.")},
-        {"browser", tr("Browser"), tr("A live browser with shared settings, tabs, downloads and extensions.")},
+        {"remote-desktop", tr("Remote Desktop"), tr("Connect to a paired computer using native Remote Desktop.")},
+        {"browser", tr("Browser"), tr("Browse locally or through a paired machine with a separate browsing context.")},
         {"terminal", tr("Terminal"), tr("A shell that starts when its panel is first shown. Closing the panel stops its shell.")},
         {"send-input", tr("Send input"), tr("Send text to an explicitly selected terminal session.")}
     };
@@ -121,7 +150,7 @@ QWidget *DashboardWidgetFactory::wrap(const QString &kind, const QString &pageKe
         });
         connect(machine, &WorkspaceMachineMenu::refreshRequested, this, &DashboardWidgetFactory::machineCatalogRefreshRequested);
     }
-    if (kind != "browser" && kind != "files" && kind != "terminal" && kind != "send-input") {
+    if (kind != "browser" && kind != "files" && kind != "terminal" && kind != "send-input" && kind != "remote-desktop") {
         auto *refreshButton = new QPushButton(tr("Refresh"));
         refreshButton->setObjectName("dashboardWidgetRefresh");
         connect(refreshButton, &QPushButton::clicked, this, &DashboardWidgetFactory::refresh);
@@ -158,8 +187,10 @@ QWidget *DashboardWidgetFactory::wrap(const QString &kind, const QString &pageKe
     }
     footer->addWidget(open);
     layout->addWidget(footerWidget);
-    if (kind == "terminal")
+    if (kind == "terminal" || kind == "remote-desktop")
         open->hide();
+    if (kind == "remote-desktop" || kind == "browser")
+        footerWidget->hide();
     widget->installEventFilter(this);
     m_widgets.append(widget);
     applyMachineContext(widget);
@@ -175,7 +206,7 @@ QWidget *DashboardWidgetFactory::create(const QString &kind, QWidget *parent, co
 }
 
 QWidget *DashboardWidgetFactory::create(const QString &kind, QWidget *parent, const QString &fileScope,
-                                      const QJsonObject &machineContext)
+                                      const QJsonObject &machineContext, const QString &browserContextId)
 {
     const QStringList scopedKinds{"files", "git", "containers", "terminal", "send-input", "workflows"};
     if (!m_upstream && scopedKinds.contains(kind)) {
@@ -265,13 +296,37 @@ QWidget *DashboardWidgetFactory::create(const QString &kind, QWidget *parent, co
     } else if (kind == "machines") {
         content = createMachines(nullptr);
     } else if (kind == "browser") {
-        content = createBrowser(nullptr);
+        content = createBrowser(nullptr, browserContextId);
+        auto *browser = static_cast<RemoteBrowserWidget *>(content);
+        if (machineContext.contains("mode"))
+            browser->setMachineContext(machineContext.value("target").toObject());
+        connect(browser, &RemoteBrowserWidget::machineContextChanged, this,
+            [this, browser](const QJsonObject &, const QString &) {
+                if (auto *widget = browser->parentWidget())
+                    emit widgetMachineContextChanged(widget);
+            });
     } else if (kind == "terminal") {
         auto *terminal = new TerminalWidget(*m_terminals, m_workdir, nullptr, TerminalWidget::Mode::Dashboard);
         terminal->setMachineContext(m_sharedMachine, m_sharedRoot);
         connect(this, &DashboardWidgetFactory::workdirChanged, terminal, &TerminalWidget::setWorkdir);
         connect(terminal, &TerminalWidget::openFullViewRequested, this, [this] { emit openFullView("terminal"); });
         content = terminal;
+    } else if (kind == "remote-desktop") {
+        auto *state = desktopState(this);
+        auto *desktop = new RemoteDesktopWidget;
+        desktop->setCompactPresentation(true);
+        desktop->setResolvers(state->resolvers);
+        desktop->setAccessMonitor(state->access);
+        desktop->setPairedMachines(state->machines);
+        state->widgets.append(desktop);
+        connect(desktop, &QObject::destroyed, state, [state] {
+            state->widgets.removeIf([](const auto &widget) { return widget.isNull(); });
+        });
+        connect(desktop, &RemoteDesktopWidget::installProviderRequested,
+            this, &DashboardWidgetFactory::remoteDesktopInstallProviderRequested);
+        connect(desktop, &RemoteDesktopWidget::providerSetupRequested,
+            this, &DashboardWidgetFactory::remoteDesktopProviderSetupRequested);
+        content = desktop;
     } else if (kind == "send-input") {
         auto *input = new SendInputWidget(*m_terminals);
         input->setMachineContext(m_sharedMachine, m_sharedRoot);
@@ -281,6 +336,73 @@ QWidget *DashboardWidgetFactory::create(const QString &kind, QWidget *parent, co
         return nullptr;
     }
     return wrap(kind, page, content, parent);
+}
+
+void DashboardWidgetFactory::setBrowserAccessMonitor(RemoteAccessMonitor *monitor)
+{
+    if (m_browserAccess == monitor)
+        return;
+    if (m_browserAccess)
+        disconnect(m_browserAccess, nullptr, this, nullptr);
+    m_browserAccess = monitor;
+    if (monitor) {
+        connect(monitor, &RemoteAccessMonitor::changed, this, &DashboardWidgetFactory::updateBrowserMachines);
+        connect(monitor, &QObject::destroyed, this, &DashboardWidgetFactory::updateBrowserMachines);
+    }
+    updateBrowserMachines();
+}
+
+void DashboardWidgetFactory::updateBrowserMachines()
+{
+    const bool unlocked = m_browserAccess && m_browserAccess->state() == RemoteAccessMonitor::State::Unlocked;
+    for (const auto &widget : m_widgets) {
+        if (!widget)
+            continue;
+        if (auto *browser = widget->findChild<RemoteBrowserWidget *>())
+            browser->setMachineCatalog(m_machineCatalog, unlocked);
+    }
+}
+
+void DashboardWidgetFactory::setRemoteDesktopResolvers(const QVector<ResolverMeta> &resolvers)
+{
+    auto *state = desktopState(this);
+    state->resolvers = resolvers;
+    for (const auto &widget : state->widgets) {
+        if (widget)
+            widget->setResolvers(resolvers);
+    }
+}
+
+void DashboardWidgetFactory::setRemoteDesktopAccessMonitor(RemoteAccessMonitor *monitor)
+{
+    auto *state = desktopState(this);
+    state->access = monitor;
+    for (const auto &widget : state->widgets) {
+        if (widget)
+            widget->setAccessMonitor(monitor);
+    }
+}
+
+void DashboardWidgetFactory::setRemoteDesktopMachines(const QJsonArray &machines)
+{
+    auto *state = desktopState(this);
+    state->machines = machines.size() <= 64 ? machines : QJsonArray{};
+    for (const auto &widget : state->widgets) {
+        if (widget)
+            widget->setPairedMachines(state->machines);
+    }
+}
+
+void DashboardWidgetFactory::refreshRemoteDesktopMetadata()
+{
+    // This focused path is also used for pairing changes. It must not refresh
+    // unrelated Git/container/workflow panels or acquire a desktop surface.
+    if (auto *state = desktopState(this, false)) {
+        for (const auto &desktop : state->widgets) {
+            if (desktop && desktop->isVisible())
+                desktop->refresh();
+        }
+    }
 }
 
 void DashboardWidgetFactory::setWorkdir(const QString &workdir)
@@ -359,6 +481,7 @@ void DashboardWidgetFactory::refresh()
     refreshGit();
     refreshMachines();
     emit workflowsChanged();
+    refreshRemoteDesktopMetadata();
     for (const auto &widget : m_widgets) {
         if (widget && widget->isVisible()) {
             if (auto *logs = widget->findChild<DashboardLogWidget *>())

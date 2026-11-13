@@ -43,6 +43,12 @@ class SourceLayoutTests(unittest.TestCase):
             relative = path.parent.relative_to(SOURCE_ROOT).as_posix()
             self.assertIn('${DOCKPIPE_APP_SOURCE_ROOT}/' + relative + '"', layout)
 
+    def test_native_worker_dispatch_precedes_gui_initialization(self):
+        main = (SOURCE_ROOT / "bootstrap/composition/main.cpp").read_text()
+        dispatch = main.index("if (const auto nativeWorker = dispatchNativeWorkerHost(argc, argv))")
+        self.assertLess(dispatch, main.index("QApplication app(argc, argv)"))
+        self.assertLess(dispatch, main.index("const bool allowSecond = allowSecondInstance"))
+
     def test_display_sdk_headers_are_available_to_build_tree_consumers(self):
         sdk_root = APP_ROOT / "display-sdk"
         cmake = (sdk_root / "CMakeLists.txt").read_text()

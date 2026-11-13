@@ -47,6 +47,20 @@ const usage = `dockpipe remote <command> [options]
   monitoring --system --docker                    Opt in locally on a paired worker
              --disable                           Stop sharing machine snapshots
   observe --node <name>                          Read the latest authorized machine snapshot
+  desktop-config [--request <json|->]           Inspect or replace independent worker desktop grants
+  desktop-catalog                               List native provider readiness and desktop identity
+  desktop-prepare --request <json|->             Prepare exact native desktop reference locally
+  desktop-open|desktop-status|desktop-pulse|desktop-signal|desktop-close --request <json|->
+                                                Bounded native desktop control; never carries media/input
+  desktop --stdio --request <intent-file>        Private viewer signaling bridge
+  desktop-worker --stdio                        Private native provider signaling bridge
+  desktop-cleanup --stdio --request <private-file> Exact revoked desktop cleanup with native proof
+  desktop-relay --stdio --request <private-file> Opaque binary relay for an existing desktop session
+  network-config [--request <private-file>]       Inspect or replace independent TCP network grants
+  network-catalog                                List live paired TCP network targets
+  network-trust --request <private-file>           Read exact authenticated public TLS anchors
+  network-proxy --stdio --request <private-file>   Authenticated loopback HTTP/CONNECT proxy
+  network-worker --stdio                         Paired worker TCP service
   features                                       List authorized live feature catalogs
   feature-prepare --request <json-file|->         Validate one intent locally and emit its metadata reference
   feature-call --request <json-file|->            Submit one fixed feature intent and await its result
@@ -88,6 +102,7 @@ func Run(args []string, checkDependencies func(string) error) error {
 	command := args[0]
 	flags := flag.NewFlagSet("remote "+command, flag.ContinueOnError)
 	activationRequest := flags.String("request", "", "exact edge activation or typed feature JSON request; - reads feature stdin")
+	desktopStdio := flags.Bool("stdio", false, "private bridge stdin/stdout transport and lifetime")
 	prepareTerminal := flags.Bool("prepare", false, "require canonical prepared-reference acknowledgment before host terminal opening")
 	activationApproval := flags.String("approve", "", "exact activation approval")
 	recoveryChoice := flags.String("recovery", "verify", "feature recovery strategy: verify or retire-container (explicitly removes the exact container, without volumes/images)")
@@ -136,6 +151,15 @@ func Run(args []string, checkDependencies func(string) error) error {
 		}
 		return err
 	}
+	if *desktopStdio && command != "desktop" && command != "desktop-worker" && command != "desktop-relay" && command != "desktop-cleanup" && command != "network-proxy" && command != "network-worker" {
+		return errors.New("--stdio requires a private desktop or network bridge")
+	}
+	if (command == "network-proxy" || command == "network-worker") && !*desktopStdio {
+		return errors.New("network bridges require --stdio private lifetime transport")
+	}
+	if (command == "desktop" || command == "desktop-worker" || command == "desktop-relay" || command == "desktop-cleanup") && !*desktopStdio {
+		return errors.New("desktop bridges require --stdio private signaling transport")
+	}
 	if *replaceService && command != "service" {
 		return errors.New("--replace is supported only by remote service")
 	}
@@ -179,7 +203,7 @@ func Run(args []string, checkDependencies func(string) error) error {
 	if *activationApproval != "" && command != "edge-activate" {
 		return errors.New("--approve requires edge-activate")
 	}
-	if *activationRequest != "" && command != "edge-activate" && command != "feature-prepare" && command != "feature-call" && command != "feature-status" && command != "feature-cancel" && command != "feature-reconcile" && command != "features-config" && command != "terminal" && command != "terminal-status" && command != "terminal-close" {
+	if *activationRequest != "" && command != "edge-activate" && command != "feature-prepare" && command != "feature-call" && command != "feature-status" && command != "feature-cancel" && command != "feature-reconcile" && command != "features-config" && command != "terminal" && command != "terminal-status" && command != "terminal-close" && !desktopRequestCommand(command) && command != "network-config" && command != "network-proxy" && command != "network-trust" {
 		return errors.New("--request requires edge-activate or an explicit feature request command")
 	}
 	if *dryRun && command != "submit" && command != "edge-activate" {
@@ -209,6 +233,11 @@ func Run(args []string, checkDependencies func(string) error) error {
 	if *interaction != "terminal" && command != "approve" && command != "security-key-register" {
 		return errors.New("--interaction is supported only by remote approve or security-key-register")
 	}
+	if command == "desktop-prepare" {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		return prepareDesktop(ctx, *activationRequest, os.Stdout)
+	}
 	if command == "feature-prepare" {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
@@ -224,12 +253,24 @@ func Run(args []string, checkDependencies func(string) error) error {
 	ctx = context.WithValue(ctx, remoteAuthenticationKey{}, *authentication == "auto")
 	// Setup hands the terminal to dependency installers and provider authentication.
 	// An outer spinner would overwrite their prompts even when nested operations are quiet.
-	options := infrastructure.OperationOptions{Spinner: command != "setup" && command != "pair" && command != "approve" && command != "security-key-register" && command != "unlock" && command != "security-policy" && command != "terminal"}
+	options := infrastructure.OperationOptions{Spinner: command != "setup" && command != "pair" && command != "approve" && command != "security-key-register" && command != "unlock" && command != "security-policy" && command != "terminal" && command != "desktop" && command != "desktop-worker" && command != "desktop-relay" && command != "desktop-cleanup" && command != "network-proxy" && command != "network-worker"}
 	if *authentication == "auto" {
 		options.Spinner = false
 	}
 	return infrastructure.RunOperationWithOptions(os.Stderr, "remote."+command, "Remote "+command, nil, options, func() error {
 		switch command {
+		case "network-config", "network-catalog", "network-proxy", "network-worker", "network-trust":
+			return networkCommand(ctx, root, command, *activationRequest)
+		case "desktop":
+			return desktopViewer(ctx, root, *activationRequest)
+		case "desktop-relay":
+			return desktopRelayBridge(ctx, root, *activationRequest)
+		case "desktop-cleanup":
+			return desktopCleanupBridge(ctx, root, *activationRequest)
+		case "desktop-worker":
+			return desktopWorkerBridge(ctx, root)
+		case "desktop-config", "desktop-catalog", "desktop-open", "desktop-status", "desktop-pulse", "desktop-signal", "desktop-close":
+			return desktopCommand(ctx, root, command, *activationRequest)
 		case "edge-activate":
 			return activateEdge(ctx, root, *activationRequest, *activationApproval, *dryRun)
 		case "edge-status":

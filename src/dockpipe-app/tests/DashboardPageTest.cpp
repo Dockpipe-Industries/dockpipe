@@ -2,6 +2,7 @@
 #include "DashboardAppsDialog.h"
 #include <QListWidget>
 #include "BrowserWidget.h"
+#include "RemoteBrowserWidget.h"
 #include "SendInputWidget.h"
 #include <QWebEngineView>
 #include <QTcpServer>
@@ -630,6 +631,7 @@ private slots:
     void packageDisplayPickersOfferLiveResourcesInBothLayouts();
     void tourLifecycle();
     void canvasGadgetsAndBrowserTearOut();
+    void browserWidgetsPreserveIndependentRoutes();
     void fileScopesAndCanvasProjectPicker();
     void desktopBackgroundLifecycle();
 };
@@ -2514,6 +2516,37 @@ void DashboardPageTest::desktopBackgroundLifecycle()
 #endif
 }
 
+void DashboardPageTest::browserWidgetsPreserveIndependentRoutes()
+{
+    SessionManager sessions;
+    ContextStore contexts;
+    DashboardWidgetFactory factory(sessions, contexts);
+    auto definition = emptyDashboard();
+    QJsonObject savedContexts;
+    for (const QString &node : {QString("worker-a"), QString("worker-b")}) {
+        const QString id = DashboardStore::newId();
+        definition.panels.append({id, "browser"});
+        const QJsonObject target{{"node", node}, {"fingerprint", QString(64, 'a')}, {"generation", QString(64, 'b')}};
+        savedContexts[id] = QJsonObject{{"browserContextId", DashboardStore::newId()},
+            {"machine", QJsonObject{{"mode", "remote"}, {"target", target}}}};
+    }
+    definition.layout["panelContexts"] = savedContexts;
+    DashboardPage page(definition, &factory);
+    QCOMPARE(page.findChildren<RemoteBrowserWidget *>().size(), 2);
+    QCOMPARE(page.snapshot().layout.value("panelContexts").toObject(), savedContexts);
+
+    QString error;
+    QVERIFY2(page.setSharedMachineContext({}, {}, &error), qPrintable(error));
+    page.setMachineCatalog({});
+    QCOMPARE(page.snapshot().layout.value("panelContexts").toObject(), savedContexts);
+    for (auto *browser : page.findChildren<RemoteBrowserWidget *>()) {
+        QVERIFY(!browser->machineTarget().isEmpty());
+        QVERIFY(!browser->localBrowser());
+        QVERIFY(browser->findChild<QHBoxLayout *>("browserNetworkToolbar"));
+    }
+    QVERIFY2(DashboardStore::validate({page.snapshot()}, error), qPrintable(error));
+}
+
 void DashboardPageTest::canvasGadgetsAndBrowserTearOut()
 {
     SessionManager sessions;
@@ -2616,7 +2649,7 @@ void DashboardPageTest::fileScopesAndCanvasProjectPicker()
     auto *canvasExplorer = canvasFiles->findChild<FileExplorerView *>();
     QVERIFY(canvasExplorer);
     canvasExplorer->setMode(FileExplorerView::Mode::Folders);
-    QCOMPARE(canvasFiles->currentDirectory(), QFileInfo(firstProject.path()).canonicalFilePath());
+    QTRY_COMPARE(canvasFiles->currentDirectory(), QFileInfo(firstProject.path()).canonicalFilePath());
     auto *picker = page.findChild<QPushButton *>("dashboardCanvasProject");
     QVERIFY(picker && picker->isVisible());
     QSignalSpy projectRequested(&page, &DashboardPage::projectChangeRequested);
@@ -2631,23 +2664,25 @@ void DashboardPageTest::fileScopesAndCanvasProjectPicker()
     auto *tilingExplorer = systemFiles->findChild<FileExplorerView *>();
     QVERIFY(tilingExplorer);
     tilingExplorer->setMode(FileExplorerView::Mode::Folders);
-    QCOMPARE(systemFiles->currentDirectory(), QFileInfo(QDir::homePath()).canonicalFilePath());
+    QTRY_COMPARE(systemFiles->currentDirectory(), QFileInfo(QDir::homePath()).canonicalFilePath());
     QVERIFY(systemFiles->navigateTo(firstProject.path()));
+    QTRY_COMPARE(systemFiles->currentDirectory(), QFileInfo(firstProject.path()).canonicalFilePath());
     factory.setWorkdir(secondProject.path());
-    QCOMPARE(canvasFiles->currentDirectory(), QFileInfo(secondProject.path()).canonicalFilePath());
-    QCOMPARE(systemFiles->currentDirectory(), QFileInfo(firstProject.path()).canonicalFilePath());
+    QTRY_COMPARE(canvasFiles->currentDirectory(), QFileInfo(secondProject.path()).canonicalFilePath());
+    QTRY_COMPARE(systemFiles->currentDirectory(), QFileInfo(firstProject.path()).canonicalFilePath());
     QVERIFY(picker->toolTip().contains(QDir::toNativeSeparators(secondProject.path())));
     auto options = page.snapshot().options;
     options.canvasFileScope = "system";
     options.tilingFileScope = "project";
     QVERIFY(page.applyOptions(options));
     QCOMPARE(systemFiles->scope(), QString("project"));
-    QCOMPARE(systemFiles->currentDirectory(), QFileInfo(secondProject.path()).canonicalFilePath());
+    QTRY_COMPARE(systemFiles->currentDirectory(), QFileInfo(secondProject.path()).canonicalFilePath());
     QCOMPARE(canvasFiles->scope(), QString("system"));
-    QCOMPARE(canvasFiles->currentDirectory(), QFileInfo(QDir::homePath()).canonicalFilePath());
+    QTRY_COMPARE(canvasFiles->currentDirectory(), QFileInfo(QDir::homePath()).canonicalFilePath());
     QVERIFY(captureIfRequested(page, "file-scopes-tiling"));
     // Capture synthetic fixture names rather than the operator's home contents.
     QVERIFY(canvasFiles->navigateTo(secondProject.path()));
+    QTRY_COMPARE(canvasFiles->currentDirectory(), QFileInfo(secondProject.path()).canonicalFilePath());
     page.setEnvironment("canvas");
     QVERIFY(picker->isVisible());
     QCOMPARE(canvas->findChild<DashboardFilesWidget *>(), canvasFiles);
@@ -2665,7 +2700,7 @@ void DashboardPageTest::fileScopesAndCanvasProjectPicker()
     QCOMPARE(previews.size(), 1);
     auto *preview = previews.first();
     QCOMPARE(preview->rootPath(), QFileInfo(secondProject.path()).canonicalFilePath());
-    QCOMPARE(preview->currentPath(), previewPath);
+    QTRY_COMPARE(preview->currentPath(), previewPath);
     QCOMPARE(page.environment(), QString("canvas"));
     QCOMPARE(otherPage.panelCount(), 0);
     QVERIFY(sidebar.isEmpty());
@@ -2674,7 +2709,7 @@ void DashboardPageTest::fileScopesAndCanvasProjectPicker()
     // A system Files panel keeps its chosen folder when the shell project
     // changes; both the existing editor and a repeated request retain that root.
     factory.setWorkdir(firstProject.path());
-    QCOMPARE(canvasFiles->currentDirectory(), QFileInfo(secondProject.path()).canonicalFilePath());
+    QTRY_COMPARE(canvasFiles->currentDirectory(), QFileInfo(secondProject.path()).canonicalFilePath());
     QCOMPARE(preview->rootPath(), QFileInfo(secondProject.path()).canonicalFilePath());
     QCOMPARE(preview->currentPath(), previewPath);
     emit canvasFiles->openFileRequested(previewPath);

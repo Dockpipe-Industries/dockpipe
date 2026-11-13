@@ -24,6 +24,8 @@ private slots:
     void invalidV2Fields_data();
     void invalidV2Fields();
     void machineContextsRoundTripWithoutCredentials();
+    void browserContextsRoundTripIndependently();
+    void desktopTileRoundTripHasNoAuthorityContext();
 };
 
 namespace {
@@ -379,6 +381,26 @@ void DashboardStoreTest::invalidV2Fields()
     QCOMPARE(storeBytes(), original);
 }
 
+void DashboardStoreTest::desktopTileRoundTripHasNoAuthorityContext()
+{
+    DashboardStore store;
+    QVector<DashboardDefinition> loaded;
+    QString error;
+    QVERIFY(store.load(loaded, error));
+    const QString panelId = DashboardStore::newId();
+    DashboardDefinition definition{DashboardStore::newId(), "Desktop", {{panelId, "remote-desktop"}}, {}};
+    QVERIFY2(store.save({definition}, error), qPrintable(error));
+    DashboardStore restored;
+    QVERIFY(restored.load(loaded, error));
+    QCOMPARE(loaded.first().panels.first().kind, QString("remote-desktop"));
+    QVERIFY(loaded.first().layout.value("panelContexts").toObject().isEmpty());
+    QVERIFY(!storeBytes().contains("fingerprint"));
+    QVERIFY(!storeBytes().contains("capture_options"));
+    // A tile cannot persist a target, root, lease or consent in dashboard state.
+    definition.layout["panelContexts"] = QJsonObject{{panelId, QJsonObject{{"machine", QJsonObject{{"mode", "local"}}}}}};
+    QVERIFY(!DashboardStore::validate({definition}, error));
+}
+
 void DashboardStoreTest::machineContextsRoundTripWithoutCredentials()
 {
     const QJsonObject target{{"node", "worker"}, {"fingerprint", QString(64, 'a')}, {"generation", QString(64, 'b')}};
@@ -433,6 +455,46 @@ void DashboardStoreTest::machineContextsRoundTripWithoutCredentials()
     QVERIFY(!reject(invalid));
     invalid = {{"mode", "local"}};
     QVERIFY(!reject(invalid));
+}
+
+void DashboardStoreTest::browserContextsRoundTripIndependently()
+{
+    DashboardDefinition definition{DashboardStore::newId(), "Network browsers", {}, {}};
+    QJsonObject contexts;
+    for (const QString &node : {QString("worker-a"), QString("worker-b")}) {
+        const QString id = DashboardStore::newId();
+        const QJsonObject target{{"node", node}, {"fingerprint", QString(64, 'a')}, {"generation", QString(64, 'b')}};
+        definition.panels.append({id, "browser"});
+        contexts[id] = QJsonObject{{"browserContextId", DashboardStore::newId()},
+            {"machine", QJsonObject{{"mode", "remote"}, {"target", target}}}};
+    }
+    definition.layout["panelContexts"] = contexts;
+    DashboardStore store;
+    QVector<DashboardDefinition> loaded;
+    QString error;
+    QVERIFY2(store.load(loaded, error), qPrintable(error));
+    QVERIFY2(store.save({definition}, error), qPrintable(error));
+    DashboardStore reader;
+    QVERIFY2(reader.load(loaded, error), qPrintable(error));
+    QCOMPARE(loaded.first().layout.value("panelContexts").toObject(), contexts);
+
+    auto changed = definition;
+    auto invalidContexts = contexts;
+    auto invalid = contexts.value(definition.panels.first().id).toObject();
+    invalid["browserContextId"] = "../../other-profile";
+    invalidContexts[definition.panels.first().id] = invalid;
+    changed.layout["panelContexts"] = invalidContexts;
+    QVERIFY(!DashboardStore::validate({changed}, error));
+
+    invalid = contexts.value(definition.panels.first().id).toObject();
+    invalid["machine"] = QJsonObject{{"mode", "follow"}};
+    invalidContexts[definition.panels.first().id] = invalid;
+    changed.layout["panelContexts"] = invalidContexts;
+    QVERIFY(!DashboardStore::validate({changed}, error));
+
+    // Existing browser panels without saved context metadata stay valid.
+    definition.layout.remove("panelContexts");
+    QVERIFY2(DashboardStore::validate({definition}, error), qPrintable(error));
 }
 
 int main(int argc, char **argv)

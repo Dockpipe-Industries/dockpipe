@@ -1,10 +1,13 @@
 package remote
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func activationContractFixture() EdgeActivationRequest {
@@ -51,5 +54,39 @@ func TestEdgeActivationContractBindsPolicyAndRejectsUnsafeProbes(t *testing.T) {
 		if OperatorScope(path) == "" {
 			t.Fatal("missing OS authorization scope", path)
 		}
+	}
+}
+
+func TestEdgeManualRecoveryApprovalBindsFreshIdentityWithoutChangingLegacyShape(t *testing.T) {
+	legacy := activationContractFixture()
+	encoded, err := json.Marshal(legacy)
+	if err != nil || bytes.Contains(encoded, []byte("manual_recovery")) {
+		t.Fatal("legacy activation shape changed", err)
+	}
+	request := legacy
+	request.Recovery = request.Candidate
+	request.RecoverySHA256 = request.CandidateSHA256
+	request.ManualRecovery = &EdgeManualRecovery{FailedActivationID: strings.Repeat("c", 64), Nonce: strings.Repeat("d", 64), ExpiresAt: time.Now().Add(time.Minute).UTC()}
+	if err := request.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	originalID := request.ID()
+	request.ManualRecovery.Nonce = strings.Repeat("e", 64)
+	if request.ID() == originalID {
+		t.Fatal("fresh nonce did not change exact approval")
+	}
+	originalID = request.ID()
+	request.ManualRecovery.ExpiresAt = request.ManualRecovery.ExpiresAt.Add(time.Second)
+	if request.ID() == originalID {
+		t.Fatal("expiry did not change exact approval")
+	}
+	request.ManualRecovery.Nonce = ""
+	if request.Validate() == nil {
+		t.Fatal("manual recovery accepted missing fresh nonce")
+	}
+	request.ManualRecovery.Nonce = strings.Repeat("e", 64)
+	request.RecoverySHA256 = strings.Repeat("f", 64)
+	if request.Validate() == nil {
+		t.Fatal("manual recovery accepted a second fallback image")
 	}
 }

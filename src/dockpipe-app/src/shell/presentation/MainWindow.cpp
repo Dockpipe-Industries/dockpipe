@@ -10,12 +10,14 @@
 
 #include "BasicModeWidget.h"
 #include "BrowserWidget.h"
+#include "RemoteBrowserWidget.h"
 #include "BrowserLinkRouter.h"
 #include "DashboardWidgetFactory.h"
 #include "TerminalWidget.h"
 #include "WorkspaceMachineMenu.h"
 #include "TerminalPreferences.h"
 #include "RemoteWidget.h"
+#include "RemoteDesktopWidget.h"
 #include "RemoteAccessMonitor.h"
 #include "RemoteWorkflowMonitor.h"
 #include "NotificationBell.h"
@@ -93,6 +95,7 @@ namespace {
 constexpr int browserPageIndex = 7;
 constexpr int cockpitPageIndex = 8;
 constexpr int terminalPageIndex = 9;
+constexpr int desktopPageIndex = 10;
 
 QString statusLabel(SessionManager &sm, const QString &id, bool *runningOut, bool *failedOut)
 {
@@ -416,6 +419,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     auto *terminalPlaceholder = new QWidget;
     terminalPlaceholder->setObjectName("terminalPlaceholder");
     m_stack->addWidget(terminalPlaceholder);
+    m_remoteDesktopWidget = new RemoteDesktopWidget;
+    m_remoteDesktopWidget->setAccessMonitor(m_remoteAccess);
+    connect(m_remoteDesktopWidget, &RemoteDesktopWidget::installProviderRequested, this, &MainWindow::onManagePackages);
+    connect(m_remoteDesktopWidget, &RemoteDesktopWidget::providerSetupRequested, this, [this](const QString &workflow, const QString &surface, const QString &action) {
+        launchSurfaceWorkflow(workflow, surface, action, {});
+    });
+    m_stack->addWidget(m_remoteDesktopWidget);
     connect(&m_sessions, &SessionManager::sessionStarted, m_workflowRuns, &ExecutionExplorer::refresh);
     connect(&m_sessions, &SessionManager::sessionStopped, m_workflowRuns, &ExecutionExplorer::refresh);
     connect(&m_sessions, &SessionManager::sessionFailed, m_workflowRuns, &ExecutionExplorer::refresh);
@@ -513,7 +523,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
             ensureBrowser();
         if (page == terminalPageIndex)
             ensureTerminal();
-        if (page > terminalPageIndex)
+        if (page > desktopPageIndex)
             ensureDashboard(page);
         m_stack->setCurrentIndex(page);
         if (page != 2)
@@ -526,7 +536,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
         }
         updateDashboardFullscreen();
         m_workspaceBar->setVisible(page == 0 || (page == 1 && m_workflowSections->currentIndex() > 0)
-            || page == 3 || page == 5 || page == 6 || page >= terminalPageIndex);
+            || page == 3 || page == 5 || page == 6 || (page >= terminalPageIndex && page != desktopPageIndex));
         m_dockerWidget->setActive(page == 3 || (page == cockpitPageIndex && m_cockpit && m_cockpit->resourceSection() == "containers"));
         m_executionExplorer->setWorkdir(m_settings.projectFolder);
         m_executionExplorer->setActive(page == 4
@@ -576,6 +586,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
         startWorkflowCatalogDiscovery();
     });
     connect(m_remoteWidget, &RemoteWidget::nodesChanged, this, [this](const QStringList &nodes) {
+        if (m_dashboardFactory)
+            m_dashboardFactory->refreshRemoteDesktopMetadata();
         m_executionExplorer->setNodes(nodes);
         m_dockerWidget->setNodes(nodes);
         // Legacy combo instances remain read-only mirrors of the shared choice.
@@ -800,7 +812,7 @@ void MainWindow::setupMenuBar()
     view->setObjectName("workspaceViewMenu");
     auto *modeGroup = new QActionGroup(this);
     m_pageGroup = modeGroup;
-    const QStringList pages{tr("Apps"), tr("Workflows"), tr("Machines"), tr("Containers"), tr("System"), tr("Files"), tr("Git"), tr("Browser"), tr("Cockpit · Experimental"), tr("Terminal")};
+    const QStringList pages{tr("Apps"), tr("Workflows"), tr("Machines"), tr("Containers"), tr("System"), tr("Files"), tr("Git"), tr("Browser"), tr("Cockpit · Experimental"), tr("Terminal"), tr("Remote Desktop")};
     for (int page = 0; page < pages.size(); ++page) {
         auto *action = view->addAction(pages[page]);
         action->setCheckable(true);
@@ -810,8 +822,8 @@ void MainWindow::setupMenuBar()
             selectPage(page);
         });
     }
-    view->removeAction(m_pageActions[terminalPageIndex]);
-    view->insertAction(m_pageActions[cockpitPageIndex], m_pageActions[terminalPageIndex]);
+    view->removeAction(m_pageActions[cockpitPageIndex]);
+    view->addAction(m_pageActions[cockpitPageIndex]);
     m_addDashboardAction = view->addAction(tr("New dashboard…"), this, &MainWindow::createDashboard);
     m_addDashboardAction->setObjectName("newDashboardAction");
     m_fullscreenAction = view->addAction(tr("Full screen"), this, &MainWindow::toggleDashboardFullscreen);
@@ -1069,7 +1081,17 @@ void MainWindow::ensureBrowser()
     if (m_browserWidget)
         return;
 
-    m_browserWidget = new BrowserWidget(m_stack);
+    m_browserWidget = new RemoteBrowserWidget(QStringLiteral("main-browser"), m_stack);
+    const auto updateAccess = [this] {
+        m_browserWidget->setMachineCatalog(m_workspaceMachineMenu ? m_workspaceMachineMenu->catalog() : QJsonArray{},
+            m_remoteAccess && m_remoteAccess->state() == RemoteAccessMonitor::State::Unlocked);
+    };
+    updateAccess();
+    if (m_remoteAccess) {
+        connect(m_remoteAccess, &RemoteAccessMonitor::changed, m_browserWidget, updateAccess);
+        connect(m_browserWidget, &RemoteBrowserWidget::unlockRequested, m_remoteAccess, &RemoteAccessMonitor::unlock);
+    }
+    connect(m_browserWidget, &RemoteBrowserWidget::refreshRequested, this, &MainWindow::refreshWorkspaceMachines);
     const QSignalBlocker blocker(m_stack);
     QWidget *placeholder = m_stack->widget(browserPageIndex);
     m_stack->removeWidget(placeholder);
@@ -1852,6 +1874,9 @@ void MainWindow::startWorkflowCatalogDiscovery()
         m_workspaceWorkflows.clear();
         m_advancedSourceContexts.clear();
         m_remoteWidget->setResolvers({});
+        m_remoteDesktopWidget->setResolvers({});
+        if (m_dashboardFactory)
+            m_dashboardFactory->setRemoteDesktopResolvers({});
         syncPackageSurfaces({});
         m_remoteWidget->setWorkdir(workdir);
     }
@@ -1898,6 +1923,9 @@ void MainWindow::applyWorkflowCatalogResult(const AsyncWorkflowCatalogResult &re
 {
     WorkflowCatalogData catalog = result.catalog;
     m_remoteWidget->setResolvers(catalog.resolverDetails);
+    m_remoteDesktopWidget->setResolvers(catalog.resolverDetails);
+    if (m_dashboardFactory)
+        m_dashboardFactory->setRemoteDesktopResolvers(catalog.resolverDetails);
     m_workspaceWorkflows = catalog.workflows;
     syncPackageSurfaces(catalog.resolverDetails);
     for (auto *files : findChildren<ProjectFilesWidget *>())

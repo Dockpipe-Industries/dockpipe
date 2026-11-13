@@ -1,0 +1,18 @@
+schema: 1
+id: TASK-056
+topic: Local browser contexts routed through paired worker networks
+status: in_progress
+entrypoint: overview.md
+dispatch:
+  readiness: ready
+  ownership: unclaimed
+routes:
+  orientation:
+    read: [overview.md]
+  implementation:
+    read: [overview.md, ../../../runtime/network-relay.md]
+documents:
+  - path: overview.md
+    role: current scope, proof limits and remaining acceptance
+  - path: ../../../runtime/network-relay.md
+    role: generic TCP relay authority and resource contract

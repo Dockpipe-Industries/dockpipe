@@ -265,14 +265,21 @@ bool DashboardStore::validate(const QVector<DashboardDefinition> &dashboards, QS
             });
             if (panel == dashboard.panels.cend() || !entry.value().isObject()
                 || !QStringList{"files-full", "git-full", "workflows-full", "file-preview", "git-preview",
-                    "files", "git", "containers", "terminal", "send-input"}.contains(panel->kind)) {
+                    "files", "git", "containers", "terminal", "send-input", "browser"}.contains(panel->kind)) {
                 error = QCoreApplication::translate("DashboardStore", "Invalid dashboard repository context identity.");
                 return false;
             }
             const auto context = entry.value().toObject();
             for (auto value = context.begin(); value != context.end(); ++value) {
                 if (value.key() == "machine") {
+                    if (panel->kind == "browser" && value.value().toObject().value("mode") == "follow") {
+                        error = QCoreApplication::translate("DashboardStore", "Browser widgets require an independent machine selection.");
+                        return false;
+                    }
                     if (validMachineContext(value.value()))
+                        continue;
+                } else if (value.key() == "browserContextId" && panel->kind == "browser") {
+                    if (value.value().isString() && validId(value.value().toString()))
                         continue;
                 } else if (value.key() == "staged") {
                     if (value.value().isBool())

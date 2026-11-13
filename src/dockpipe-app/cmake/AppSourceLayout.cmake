@@ -4,6 +4,8 @@ get_filename_component(DOCKPIPE_APP_SOURCE_ROOT "${CMAKE_CURRENT_LIST_DIR}/../sr
 set(DOCKPIPE_APP_INCLUDE_DIRECTORIES
     "${DOCKPIPE_APP_SOURCE_ROOT}/bootstrap/composition"
     "${DOCKPIPE_APP_SOURCE_ROOT}/browser/integration"
+    "${DOCKPIPE_APP_SOURCE_ROOT}/browser/infrastructure"
+    "${DOCKPIPE_APP_SOURCE_ROOT}/browser/presentation"
     "${DOCKPIPE_APP_SOURCE_ROOT}/catalog/domain"
     "${DOCKPIPE_APP_SOURCE_ROOT}/catalog/infrastructure"
     "${DOCKPIPE_APP_SOURCE_ROOT}/catalog/presentation"

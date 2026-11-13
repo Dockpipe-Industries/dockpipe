@@ -432,6 +432,16 @@ pause during the recovery window. A verified fallback still means activation
 failed. See [supervised activation](runtime/dependency-lifecycle.md#supervised-local-edge-activation)
 for exact process, platform, maintenance and health limits.
 
+To recover an absent connector after a failed cutover, prepare a fresh activation
+request with `manual_recovery: {failed_activation_id, nonce, expires_at}`. Both image
+selections must be the same exact prior approved candidate or recovery snapshot;
+provider inputs/readiness remain unchanged. The nonce must be 64 lowercase hex
+characters and expiry within five minutes of admission. Existing `--dry-run` and
+exact `--approve <id>` apply through OS-session authorization. This grants one
+bounded start, preserves the failed journal byte-for-byte, and authorizes no boot
+replay or automatic retry. See [explicit edge recovery](runtime/dependency-lifecycle.md)
+for the complete binding and lifecycle contract.
+
 ## Native workspace capabilities
 
 The desktop and CLI share the typed boundaries documented in

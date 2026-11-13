@@ -47,7 +47,9 @@ int runMachineFixture(int argc, char **argv)
     QStringList arguments;
     for (int index = 1; index < argc; ++index)
         arguments.append(QString::fromLocal8Bit(argv[index]));
-    const bool remote = arguments.value(0) == "remote" && arguments.value(1) == "feature-call";
+    const bool preparation = arguments.value(1) == "feature-prepare";
+    const bool remote = arguments.value(0) == "remote"
+        && (preparation || arguments.value(1) == "feature-call");
     QFile log(qEnvironmentVariable("DOCKPIPE_DASHBOARD_MACHINE_LOG"));
     if (!log.open(QIODevice::WriteOnly | QIODevice::Append))
         return 2;
@@ -71,6 +73,15 @@ int runMachineFixture(int argc, char **argv)
     auto request = QJsonDocument::fromJson(input.readAll()).object();
     log.write(QJsonDocument(QJsonObject{{"remote", remote}, {"request", request}}).toJson(QJsonDocument::Compact) + '\n');
     log.close();
+    if (remote && preparation) {
+        QJsonObject reference;
+        for (const auto &key : {"schema", "target", "root", "action", "deadline"})
+            reference.insert(key, request.value(key));
+        reference.insert("id", QString(64, 'f'));
+        const auto bytes = QJsonDocument(reference).toJson(QJsonDocument::Compact);
+        std::fwrite(bytes.constData(), 1, size_t(bytes.size()), stdout);
+        return 0;
+    }
     const QString node = remote ? request.value("target").toObject().value("node").toString() : QStringLiteral("local");
     const QString action = remote ? request.value("action").toString()
         : "files." + request.value("request").toObject().value("action").toString();

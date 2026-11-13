@@ -10,6 +10,7 @@ class WorkspaceMachineMenu final : public QToolButton {
     Q_OBJECT
 public:
     explicit WorkspaceMachineMenu(QWidget *parent = nullptr);
+    void setNodeOnlyMode(bool enabled);
     void setCatalog(const QJsonArray &catalog);
     void setCurrent(const QJsonObject &target, const QString &root);
     void setAccessUnlocked(bool unlocked);
@@ -31,6 +32,7 @@ private:
     QJsonObject m_target;
     QString m_root;
     bool m_unlocked = false;
+    bool m_nodeOnly = false;
     bool m_widgetMode = false;
     bool m_followsMain = false;
 };

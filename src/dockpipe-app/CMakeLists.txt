@@ -104,6 +104,9 @@ set(DOCKPIPE_APP_SOURCES
     src/packages/presentation/DependencyChangeDialog.cpp
     src/remote/presentation/WorkspaceMachineMenu.cpp
     src/remote/presentation/RemoteWidget.cpp
+    src/remote/presentation/RemoteDesktopWidget.cpp
+    src/remote/presentation/RemoteDesktopSettingsDialog.cpp
+    src/remote/presentation/RemoteDesktopRecoveryDialog.cpp
     src/remote/presentation/RemoteSecurityWidget.cpp
     src/remote/presentation/HardwareKeyDialog.cpp
     src/execution/presentation/RemoteRunDialog.cpp
@@ -122,6 +125,7 @@ set(DOCKPIPE_APP_SOURCES
     src/shell/presentation/MainWindowWorkflows.cpp
     src/shell/presentation/MainWindowDashboards.cpp
     src/shell/presentation/MainWindowSurfaces.cpp
+    src/packages/infrastructure/NativeWorkerHost.cpp
     src/packages/presentation/PackageSurfacePage.cpp
     src/dashboards/presentation/DashboardPage.cpp src/dashboards/presentation/DashboardPageMachineContext.cpp
     src/dashboards/presentation/DashboardSettingsDialog.cpp
@@ -143,6 +147,10 @@ endif()
 dockpipe_target_desktop_permissions(dockpipe-launcher)
 
 if(APPLE)
+    target_sources(dockpipe-launcher PRIVATE src/packages/infrastructure/NativeWorkerHostMac.mm)
+    set_target_properties(dockpipe-launcher PROPERTIES OBJCXX_STANDARD 17 OBJCXX_STANDARD_REQUIRED ON)
+    set_source_files_properties(src/packages/infrastructure/NativeWorkerHostMac.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+    target_link_libraries(dockpipe-launcher PRIVATE "-framework Foundation" "-framework Security")
     set_target_properties(dockpipe-launcher PROPERTIES
         MACOSX_BUNDLE TRUE
         OUTPUT_NAME DockPipe
@@ -340,6 +348,9 @@ else()
     message(FATAL_ERROR "Unsupported Browser SDK ABI profile: ${DOCKPIPE_BROWSER_ABI_PROFILE}")
 endif()
 set(DOCKPIPE_UI_SOURCES
+    src/remote/presentation/RemoteDesktopWidget.cpp
+    src/remote/presentation/RemoteDesktopSettingsDialog.cpp
+    src/remote/presentation/RemoteDesktopRecoveryDialog.cpp
     src/remote/presentation/RemoteFeatureRecoveryDialog.cpp
     src/remote/presentation/WorkspaceMachineMenu.cpp
     src/files/infrastructure/WorkspaceFilesClient.cpp src/files/presentation/WorkspaceFileModel.cpp src/files/presentation/WorkspaceFilesController.cpp
@@ -365,7 +376,7 @@ set(DOCKPIPE_UI_SOURCES
     src/execution/infrastructure/ContextStore.cpp src/catalog/infrastructure/DockpipeChoices.cpp src/catalog/infrastructure/OperatorDockpipeBinary.cpp src/catalog/infrastructure/WorkflowCatalog.cpp src/catalog/domain/WorkflowCatalogData.cpp
     src/shell/infrastructure/LauncherSettings.cpp src/shell/infrastructure/LauncherTranslations.cpp src/browser/integration/LauncherBrowserServices.cpp
     src/shared-ui/presentation/CanvasPanel.cpp src/dashboards/presentation/DashboardWorkspace.cpp src/dashboards/infrastructure/DashboardStore.cpp src/dashboards/presentation/DashboardDock.cpp src/dashboards/presentation/DashboardFilesWidget.cpp
-    src/native-desktop/presentation/DesktopWindowWidget.cpp src/packages/presentation/PackageDisplayWidget.cpp src/native-desktop/infrastructure/DesktopApplicationCatalog.cpp src/native-desktop/infrastructure/DesktopBackground.cpp
+    src/native-desktop/presentation/DesktopWindowWidget.cpp src/packages/presentation/PackageDisplayWidget.cpp src/packages/infrastructure/NativeDisplaySession.cpp src/native-desktop/infrastructure/DesktopApplicationCatalog.cpp src/native-desktop/infrastructure/DesktopBackground.cpp
     src/packages/infrastructure/PackageCommand.cpp src/packages/infrastructure/WorkspacePackageManager.cpp src/packages/application/SurfaceLaunchEnvironment.cpp)
 if(WIN32)
     list(APPEND DOCKPIPE_UI_SOURCES src/native-desktop/infrastructure/DesktopAppWindowWin.cpp)
@@ -476,6 +487,10 @@ if(APPLE)
     target_link_libraries(dockpipe-terminal-host PRIVATE proc)
 endif()
 add_library(dockpipe-browser STATIC
+    src/browser/infrastructure/BrowserNetworkTrust.cpp
+    src/browser/infrastructure/BrowserNetworkHost.cpp
+    src/browser/infrastructure/BrowserNetworkContext.cpp
+    src/browser/presentation/RemoteBrowserWidget.cpp
     src/browser/integration/WebMermaidRenderer.cpp src/browser/integration/WebMermaidRenderer.h mermaid.qrc
     ${DOCKPIPE_TERMINAL_SOURCES} src/terminal/infrastructure/ManagedTerminalSession.cpp src/terminal/infrastructure/RemoteTerminalSession.cpp src/terminal/infrastructure/TerminalShellCatalog.cpp src/terminal/application/TerminalHub.cpp src/terminal/presentation/TerminalWidget.cpp src/terminal/presentation/TerminalBridge.h src/terminal/infrastructure/TerminalPreferences.cpp src/terminal/presentation/TerminalSettingsDialog.cpp
     src/terminal/presentation/SendInputWidget.cpp terminal.qrc)
@@ -484,6 +499,10 @@ target_include_directories(dockpipe-browser PUBLIC
     "$<INSTALL_INTERFACE:include/dockpipe-launcher>"
     "$<INSTALL_INTERFACE:include>")
 target_link_libraries(dockpipe-browser PUBLIC Qt6::WebEngineWidgets Qt6::PrintSupport Qt6::WebChannel dockpipe-launcher-ui)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    find_package(X11 REQUIRED)
+    target_link_libraries(dockpipe-browser PRIVATE X11::X11)
+endif()
 include(cmake/LauncherSDK.cmake)
 if(APPLE)
     target_link_libraries(dockpipe-browser PRIVATE proc)
@@ -513,6 +532,12 @@ if(BUILD_TESTING)
 
     add_executable(package-native-display-harness tests/PackageDisplayHarness.cpp)
     target_link_libraries(package-native-display-harness PRIVATE dockpipe-launcher-ui Qt6::Widgets)
+
+    add_executable(native-display-session-test tests/NativeDisplaySessionTest.cpp src/packages/infrastructure/NativeDisplaySession.cpp)
+    target_include_directories(native-display-session-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+    target_link_libraries(native-display-session-test PRIVATE Qt6::Widgets Qt6::Test)
+    add_test(NAME native-display-session COMMAND native-display-session-test)
+    set_tests_properties(native-display-session PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
 
     add_executable(package-native-display-test tests/PackageDisplayTest.cpp)
     target_link_libraries(package-native-display-test PRIVATE dockpipe-launcher-ui Qt6::Widgets Qt6::Test)
@@ -947,6 +972,13 @@ if(BUILD_TESTING)
 endif()
 
 if(BUILD_TESTING)
+    add_executable(remote-desktop-widget-test tests/RemoteDesktopWidgetTest.cpp)
+    target_link_libraries(remote-desktop-widget-test PRIVATE dockpipe-launcher-ui Qt6::Widgets Qt6::Test)
+    add_test(NAME remote-desktop-widget COMMAND remote-desktop-widget-test)
+    set_tests_properties(remote-desktop-widget PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+endif()
+
+if(BUILD_TESTING)
     add_executable(remote-security-widget-test tests/RemoteSecurityWidgetTest.cpp
         src/remote/presentation/RemoteSecurityWidget.cpp)
     target_link_libraries(remote-security-widget-test PRIVATE dockpipe-launcher-ui Qt6::Widgets)
@@ -971,4 +1003,31 @@ if(BUILD_TESTING AND UNIX)
     set_tests_properties(dependency-change-dialog PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
 endif()
 
+if(BUILD_TESTING AND UNIX)
+    find_package(Qt6 REQUIRED COMPONENTS Test)
+    enable_language(C)
+    add_executable(native-worker-package-contract-test tests/NativeWorkerPackageContractTest.c)
+    target_include_directories(native-worker-package-contract-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+    target_compile_features(native-worker-package-contract-test PRIVATE c_std_11)
+    set_target_properties(native-worker-package-contract-test PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+    add_test(NAME native-worker-package-contract COMMAND native-worker-package-contract-test)
+    add_executable(native-worker-host-test tests/NativeWorkerHostTest.cpp src/packages/infrastructure/NativeWorkerHost.cpp)
+    target_include_directories(native-worker-host-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+    target_link_libraries(native-worker-host-test PRIVATE Qt6::Core Qt6::Test)
+    if(APPLE)
+        target_sources(native-worker-host-test PRIVATE src/packages/infrastructure/NativeWorkerHostMac.mm)
+        set_target_properties(native-worker-host-test PROPERTIES OBJCXX_STANDARD 17 OBJCXX_STANDARD_REQUIRED ON)
+        target_link_libraries(native-worker-host-test PRIVATE "-framework Foundation" "-framework Security")
+    endif()
+    add_test(NAME native-worker-host COMMAND native-worker-host-test)
+    set_tests_properties(native-worker-host native-worker-package-contract PROPERTIES TIMEOUT 15)
+endif()
+
 include(cmake/LauncherTranslations.cmake)
+
+if(BUILD_TESTING)
+    add_executable(browser-network-host-test tests/BrowserNetworkHostTest.cpp)
+    target_link_libraries(browser-network-host-test PRIVATE dockpipe-browser Qt6::Test)
+    add_test(NAME browser-network-host COMMAND browser-network-host-test)
+    set_tests_properties(browser-network-host PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+endif()

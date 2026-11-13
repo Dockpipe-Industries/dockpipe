@@ -187,8 +187,8 @@ struct StdioState final {
         // Block SIGPIPE only on this private writer. Terminal children retain
         // their ordinary signal disposition and never inherit an ignored one.
         sigset_t blocked;
-        ::sigemptyset(&blocked);
-        ::sigaddset(&blocked, SIGPIPE);
+        sigemptyset(&blocked);
+        sigaddset(&blocked, SIGPIPE);
         ::pthread_sigmask(SIG_BLOCK, &blocked, nullptr);
 #endif
         while (true) {

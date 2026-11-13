@@ -230,6 +230,12 @@ tasks:
   dispatch:
     readiness: deferred
     ownership: unclaimed
+- id: TASK-056
+  topic: Local browser contexts routed through paired worker networks
+  path: docs/agents/tasks/remote-browser-contexts/index.yaml
+  dispatch:
+    readiness: ready
+    ownership: unclaimed
 
 maintenance:
 - Keep tasks open-only and core-owned; external_backlogs route independent owners without claiming their

@@ -63,6 +63,18 @@ func RunWorker(ctx context.Context, root, executable string, config contract.Wor
 		}()
 		defer func() { stopFeatures(); <-featuresDone; <-terminalsDone }()
 	}
+	networkContext, stopNetwork := context.WithCancel(ctx)
+	networkDone := make(chan struct{})
+	go func() {
+		defer close(networkDone)
+		runNetworkService(networkContext, root, func(networkContext context.Context) error {
+			return RunNetworkWorker(networkContext, root, config, client, nil)
+		})
+	}()
+	defer func() {
+		stopNetwork()
+		<-networkDone
+	}()
 	monitorContext, stopMonitoring := context.WithCancel(ctx)
 	monitorDone := make(chan struct{})
 	go func() {

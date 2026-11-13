@@ -18,7 +18,7 @@ void MainWindow::syncPackageSurfaces(const QVector<ResolverMeta> &providers)
 {
     QMap<QString, QVector<ResolverMeta>> groups;
     for (const auto &provider : providers) {
-        if (provider.surface.id.isEmpty() || provider.surface.snapshot.isEmpty())
+        if (provider.capability == "remote.desktop" || provider.surface.id.isEmpty() || provider.surface.snapshot.isEmpty())
             continue;
         ResolverMeta contribution = provider;
         for (int index = contribution.surface.actions.size() - 1; index >= 0; --index) {

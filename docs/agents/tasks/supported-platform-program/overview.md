@@ -27,6 +27,12 @@ work beyond maintaining those existing baselines.
 
 ## Scope
 
+The current [remote feature qualification matrix](../../../runtime/remote-platforms.md)
+separates desktop operator/provider roles, native backend availability, contained
+hosting restrictions, browser presentation and VM package surfaces. It records
+implementation boundaries rather than promoting broad platform support. Live
+Windows, Linux VM and contained-viewer parity remains pending independent proof.
+
 - Define canonical support terms, maturity levels, release/architecture lifecycle, revocation, and
   evidence freshness.
 - Maintain a matrix for artifact availability, install/upgrade, CLI, packages/resolvers/workflows,

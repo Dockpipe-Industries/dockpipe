@@ -14,6 +14,11 @@ WorkspaceMachineMenu::WorkspaceMachineMenu(QWidget *parent) : QToolButton(parent
     updateLabel();
 }
 
+void WorkspaceMachineMenu::setNodeOnlyMode(bool enabled)
+{
+    m_nodeOnly = enabled;
+}
+
 void WorkspaceMachineMenu::setCatalog(const QJsonArray &catalog)
 {
     // Core validates catalogs. Bound the presentation independently so a broken
@@ -64,7 +69,7 @@ void WorkspaceMachineMenu::updateLabel()
             continue;
         const auto roots = catalog.value(QStringLiteral("roots")).toArray();
         if (m_root.isEmpty())
-            available = true;
+            available = !m_nodeOnly || catalog.value("enabled").toBool();
         for (const auto &rootValue : roots) {
             const auto root = rootValue.toObject();
             if (root.value(QStringLiteral("id")).toString() == m_root) {
@@ -108,9 +113,18 @@ void WorkspaceMachineMenu::rebuildMenu()
         for (const auto &value : m_catalog) {
             const auto catalog = value.toObject();
             const auto target = catalog.value(QStringLiteral("target")).toObject();
-            const QString node = target.value(QStringLiteral("node")).toString();
+            QString node = target.value(QStringLiteral("node")).toString();
             if (node.isEmpty())
                 continue;
+            if (m_nodeOnly) {
+                auto *action = menu()->addAction(node.replace('&', "&&"));
+                action->setCheckable(true);
+                action->setChecked(target == m_target);
+                if (!catalog.value("enabled").toBool())
+                    action->setText(action->text() + tr(" · Unavailable"));
+                connect(action, &QAction::triggered, this, [this, target] { emit contextRequested(target, {}); });
+                continue;
+            }
             auto *machine = menu()->addMenu(node);
             const auto roots = catalog.value(QStringLiteral("roots")).toArray();
             for (qsizetype index = 0; index < roots.size() && index < 32; ++index) {

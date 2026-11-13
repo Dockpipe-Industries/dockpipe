@@ -7,11 +7,16 @@
 #include "TerminalWidget.h"
 #include "WorkspaceMachineMenu.h"
 #include "WorkspaceFileModel.h"
+#include "RemoteDesktopWidget.h"
+#include "RemoteAccessMonitor.h"
+#include "PackageDisplayWidget.h"
 
 #include <QAction>
 #include <QApplication>
 #include <QCoreApplication>
 #include <QComboBox>
+#include <QCheckBox>
+#include <QMenu>
 #include <QDir>
 #include <QPlainTextEdit>
 #include <QTextCursor>
@@ -53,6 +58,7 @@ private slots:
     void hiddenAndDestroyedWidgetsReleaseObservationReaders();
     void unchangedLogTailPreservesSelectionAndRunModel();
     void terminalHasContextActionsWithoutInnerChrome();
+    void desktopTilesReuseLockedIndependentViewsAndUpdates();
 };
 
 void DashboardWidgetFactoryTest::monitoringAndRunLinksHaveSeparateDestinations()
@@ -136,6 +142,110 @@ void DashboardWidgetFactoryTest::terminalHasContextActionsWithoutInnerChrome()
     QVERIFY(factory.terminals().sessionIds().isEmpty());
 }
 
+void DashboardWidgetFactoryTest::desktopTilesReuseLockedIndependentViewsAndUpdates()
+{
+    SessionManager sessions;
+    ContextStore store;
+    DashboardWidgetFactory factory(sessions, store);
+    const QJsonArray paired{QJsonObject{{"node", "first"}, {"status", "paired"}, {"fingerprint", QString(64, 'a')}}};
+    factory.setRemoteDesktopMachines(paired);
+    std::unique_ptr<QWidget> first(factory.create("remote-desktop"));
+    std::unique_ptr<QWidget> second(factory.create("remote-desktop"));
+    QVERIFY(first && second);
+    auto *left = first->findChild<RemoteDesktopWidget *>();
+    auto *right = second->findChild<RemoteDesktopWidget *>();
+    QVERIFY(left && right && left != right);
+    auto *leftDisplay = left->findChild<PackageDisplayWidget *>();
+    auto *rightDisplay = right->findChild<PackageDisplayWidget *>();
+    QVERIFY(leftDisplay && rightDisplay && leftDisplay != rightDisplay);
+    QVERIFY(!leftDisplay->hasPackageSurface());
+    QVERIFY(!rightDisplay->hasPackageSurface());
+    QVERIFY(!left->findChild<QCheckBox *>("desktopKeepConnected")->isChecked());
+    QVERIFY(!right->findChild<QCheckBox *>("desktopKeepConnected")->isChecked());
+    QVERIFY(!left->findChild<QPushButton *>("desktopConnect")->isEnabled());
+    QVERIFY(first->findChild<QWidget *>("dashboardWidgetFooter")->isHidden());
+    QVERIFY(!first->findChild<WorkspaceMachineMenu *>());
+    QVERIFY(factory.widgetMachineContext(first.get()).isEmpty());
+    QCOMPARE(left->findChild<QComboBox *>("desktopMachine")->count(), 1);
+    QCOMPARE(right->findChild<QComboBox *>("desktopMachine")->count(), 1);
+
+    // Exercise the real monitor adapter without dispatching its deferred CLI.
+    // Checking/locked admission still refuses Connect for every dashboard copy.
+    auto access = std::make_unique<RemoteAccessMonitor>();
+    factory.setRemoteDesktopAccessMonitor(access.get());
+    QVERIFY(left->findChild<QPushButton *>("desktopUnlock")->isEnabled());
+    QVERIFY(right->findChild<QPushButton *>("desktopUnlock")->isEnabled());
+    QVERIFY(!left->findChild<QPushButton *>("desktopConnect")->isEnabled());
+    factory.setRemoteDesktopAccessMonitor(nullptr);
+    access.reset();
+    QVERIFY(!left->findChild<QPushButton *>("desktopUnlock")->isEnabled());
+
+    const QJsonArray changed{QJsonObject{{"node", "second"}, {"status", "paired"}, {"fingerprint", QString(64, 'b')}}};
+    factory.setRemoteDesktopMachines(changed);
+    QCOMPARE(left->findChild<QComboBox *>("desktopMachine")->itemText(0), QString("second"));
+    QCOMPARE(right->findChild<QComboBox *>("desktopMachine")->itemText(0), QString("second"));
+    const QJsonObject workspaceTarget{{"node", "workspace"}, {"fingerprint", QString(64, 'c')},
+        {"generation", QString(64, 'd')}};
+    left->setProperty("workspaceOperationPending", true);
+    QVERIFY(factory.setSharedMachineContext({{"target", workspaceTarget}}, "source"));
+    left->setProperty("workspaceOperationPending", false);
+    QCOMPARE(left->findChild<QComboBox *>("desktopMachine")->itemText(0), QString("second"));
+    QVERIFY(!first->property("dashboardMachineTarget").isValid());
+    QVERIFY(factory.widgetMachineContext(first.get()).isEmpty());
+    QSignalSpy setup(&factory, &DashboardWidgetFactory::remoteDesktopProviderSetupRequested);
+    ResolverMeta resolver;
+    resolver.name = "fixture.desktop";
+    resolver.title = "Updated desktop provider";
+    resolver.capability = "remote.desktop";
+    resolver.surface.id = "desktop";
+    PackageSurfaceActionMeta action;
+    action.id = "setup";
+    action.scope = "surface";
+    action.workflowId = "setup.changed";
+    resolver.surface.actions = {action};
+    factory.setRemoteDesktopResolvers({resolver});
+    bool selectedUpdatedProvider = false;
+    QTimer::singleShot(0, left, [left, &selectedUpdatedProvider] {
+        if (auto *menu = left->findChild<QMenu *>()) {
+            for (auto *entry : menu->actions()) {
+                if (entry->text() == "Updated desktop provider") {
+                    selectedUpdatedProvider = true;
+                    entry->trigger();
+                    break;
+                }
+            }
+            menu->close();
+        }
+    });
+    QTimer::singleShot(250, left, [left] {
+        if (auto *menu = left->findChild<QMenu *>())
+            menu->close();
+    });
+    left->findChild<QPushButton *>("desktopSetup")->click();
+    QVERIFY(selectedUpdatedProvider);
+    QCOMPARE(setup.size(), 1);
+    QCOMPARE(setup.first().at(0).toString(), QString("setup.changed"));
+    QCOMPARE(setup.first().at(1).toString(), QString("desktop"));
+    QCOMPARE(setup.first().at(2).toString(), QString("setup"));
+
+    first->show();
+    second->show();
+    QSignalSpy unrelatedWorkflowRefresh(&factory, &DashboardWidgetFactory::workflowsChanged);
+    factory.refreshRemoteDesktopMetadata();
+    QCOMPARE(unrelatedWorkflowRefresh.size(), 0);
+    factory.refresh();
+    QCoreApplication::processEvents();
+    QVERIFY(!leftDisplay->hasPackageSurface());
+    QVERIFY(!rightDisplay->hasPackageSurface());
+    QVERIFY(!left->findChild<QPushButton *>("desktopConnect")->isEnabled());
+    first->hide();
+    second->hide();
+    first.reset();
+    factory.setRemoteDesktopMachines({});
+    QCOMPARE(right->findChild<QComboBox *>("desktopMachine")->count(), 0);
+    QVERIFY(!rightDisplay->hasPackageSurface());
+}
+
 void DashboardWidgetFactoryTest::compactWorkflowLaunchRetainsIndependentMachine()
 {
     SessionManager sessions;
@@ -192,7 +302,8 @@ void DashboardWidgetFactoryTest::catalogAndCompactWorkflowActions()
         QVERIFY(!kinds.contains(entry.id));
         kinds.insert(entry.id);
     }
-    QCOMPARE(kinds.size(), 11);
+    QCOMPARE(kinds.size(), 12);
+    QVERIFY(kinds.contains("remote-desktop"));
     QVERIFY(!factory.create("unknown"));
     QVector<WorkflowMeta> workflows;
     for (int index = 0; index < 60; ++index) {

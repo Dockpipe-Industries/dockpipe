@@ -55,7 +55,7 @@ int fixture(QCoreApplication &application)
     auto output = [&](const QByteArray &bytes) {
         cursor += quint64(bytes.size());
         print({{"type", "output"}, {"id", 0}, {"data", QString::fromLatin1(bytes.toBase64())},
-            {"cursor", double(cursor)}, {"oldest", 0}, {"truncated", false}});
+            {"cursor", double(cursor)}}); // Match the core's omitted zero/default fields.
     };
     auto close = [&] {
         print({{"type", "closed"}, {"id", 0}, {"exit_code", mode == "tail" ? 37 : 0},
@@ -121,6 +121,11 @@ int fixture(QCoreApplication &application)
                 return;
             }
             QTimer::singleShot(150, &application, [&, id, bytes] {
+                if (mode == "invalid-oldest") {
+                    print({{"type", "output"}, {"id", 0}, {"data", "YQ=="},
+                        {"cursor", 1}, {"oldest", QJsonValue::Null}});
+                    return;
+                }
                 if (mode == "bad-output") {
                     print({{"type", "output"}, {"id", 0}, {"data", "!!!"},
                         {"cursor", 3}, {"oldest", 0}, {"truncated", false}});
@@ -249,6 +254,7 @@ private slots:
         QTest::newRow("partial-byte-count") << QByteArray("short-ack");
         QTest::newRow("wrong-request-id") << QByteArray("wrong-ack");
         QTest::newRow("malformed-output") << QByteArray("bad-output");
+        QTest::newRow("null-oldest-cursor") << QByteArray("invalid-oldest");
         QTest::newRow("oversize-output") << QByteArray("large-output");
         QTest::newRow("unreported-output-gap") << QByteArray("cursor-gap");
         QTest::newRow("lost-core") << QByteArray("lost-core");

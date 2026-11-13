@@ -5,6 +5,9 @@
 #include <QUrl>
 
 #include "BrowserWidget.h"
+#include "RemoteBrowserWidget.h"
+#include "RemoteAccessMonitor.h"
+#include <QUuid>
 #include "SystemResourceOverview.h"
 
 #include <QComboBox>
@@ -387,7 +390,16 @@ QWidget *DashboardWidgetFactory::createMachines(QWidget *parent)
     return widget;
 }
 
-QWidget *DashboardWidgetFactory::createBrowser(QWidget *parent)
+QWidget *DashboardWidgetFactory::createBrowser(QWidget *parent, const QString &contextId)
 {
-    return new BrowserWidget(parent);
+    const QString identity = contextId.isEmpty() ? QUuid::createUuid().toString(QUuid::WithoutBraces) : contextId;
+    auto *browser = new RemoteBrowserWidget(identity, parent);
+    const bool unlocked = m_browserAccess && m_browserAccess->state() == RemoteAccessMonitor::State::Unlocked;
+    browser->setMachineCatalog(m_machineCatalog, unlocked);
+    connect(browser, &RemoteBrowserWidget::refreshRequested, this, &DashboardWidgetFactory::machineCatalogRefreshRequested);
+    connect(browser, &RemoteBrowserWidget::unlockRequested, this, [this] {
+        if (m_browserAccess)
+            m_browserAccess->unlock();
+    });
+    return browser;
 }

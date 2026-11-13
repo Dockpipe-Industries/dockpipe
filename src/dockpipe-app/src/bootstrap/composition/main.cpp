@@ -1,10 +1,12 @@
 #include "BuildVersion.h"
+#include "BrowserNetworkHost.h"
 #include "DockpipeChoices.h"
 #include "FlatpakTerminal.h"
 #include "LauncherEnvironment.h"
 #include "LauncherDiagnostics.h"
 #include "LauncherTranslations.h"
 #include "MainWindow.h"
+#include "NativeWorkerHost.h"
 #include "SingleInstanceGuard.h"
 #include "Theme.h"
 #include "WebMermaidRenderer.h"
@@ -95,6 +97,12 @@ static int runDesktop(QApplication &app, bool startHome, bool allowSecond, bool 
 
 int main(int argc, char *argv[])
 {
+    if (const auto browserHost = dispatchBrowserNetworkHost(argc, argv))
+        return *browserHost;
+
+    if (const auto nativeWorker = dispatchNativeWorkerHost(argc, argv))
+        return *nativeWorker;
+
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--version") == 0) {
             QTextStream(stdout) << DOCKPIPE_RELEASE_VERSION << '\n';

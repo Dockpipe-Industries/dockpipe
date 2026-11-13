@@ -26,8 +26,9 @@ type PairingStatus struct {
 }
 
 type NodeStatus struct {
-	Node   string `json:"node"`
-	Status string `json:"status"`
+	Fingerprint string `json:"fingerprint,omitempty"`
+	Node        string `json:"node"`
+	Status      string `json:"status"`
 }
 
 type PairingChallengeRequest struct {

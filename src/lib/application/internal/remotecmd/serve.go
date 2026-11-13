@@ -36,6 +36,8 @@ func serve(ctx context.Context, root string) error {
 	if err != nil {
 		return err
 	}
+	defer broker.CloseDesktopRelays()
+	defer broker.CloseNetworkRelays()
 	listener, err := net.Listen("tcp", config.Listen)
 	if err != nil {
 		return err

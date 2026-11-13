@@ -24,6 +24,7 @@
 #include "DashboardAppsDialog.h"
 #include "CanvasIcons.h"
 #include "BrowserWidget.h"
+#include "RemoteBrowserWidget.h"
 #include <QWebEngineView>
 
 #include <QApplication>
@@ -330,6 +331,10 @@ DashboardDefinition DashboardPage::snapshot() const
             }
             if (auto *preview = frame->findChild<DashboardGitPreview *>())
                 context.insert("machine", preview->property("dashboardMachineContext").toJsonObject());
+            if (auto *browser = frame->findChild<RemoteBrowserWidget *>()) {
+                context.insert("browserContextId", browser->contextId());
+                context.insert("machine", m_factory->widgetMachineContext(frame));
+            }
             const QStringList machineKinds{"files", "git", "containers", "terminal", "send-input"};
             if (machineKinds.contains(panel.kind)) {
                 if (auto *compact = frame->findChild<QWidget *>("dashboardWidget_" + panel.kind)) {
@@ -608,18 +613,21 @@ QWidget *DashboardPage::createContent(const QString &kind, const QString &mode, 
         return window;
     }
     const QString scope = mode == "tiling" ? m_definition.options.tilingFileScope : m_definition.options.canvasFileScope;
-    if (auto *widget = m_factory->create(kind, nullptr, scope, machine)) {
+    const QString browserContextId = kind == "browser"
+        ? context.value("browserContextId").toString(DashboardStore::newId()) : QString();
+    if (auto *widget = m_factory->create(kind, nullptr, scope, machine, browserContextId)) {
         const bool canvas = mode == "canvas";
         widget->setProperty("dashboardCanvasPresentation", canvas);
         for (auto *child : widget->findChildren<QWidget *>())
             child->setProperty("dashboardCanvasPresentation", canvas);
         if (canvas && kind == "browser") {
-            if (auto *browser = widget->findChild<BrowserWidget *>()) {
+            if (auto *browser = widget->findChild<RemoteBrowserWidget *>()) {
                 browser->setCanvasViewportMode(false);
                 browser->setChromeVisible(true);
-                connect(browser, &BrowserWidget::tabTearOutRequested, this,
+                connect(browser, &RemoteBrowserWidget::tabTearOutRequested, this,
                     [this, browser](QWebEngineView *view, const QPoint &position) {
-                        tearOutBrowserTab(browser, view, position);
+                        if (browser->machineTarget().isEmpty())
+                            tearOutBrowserTab(browser->localBrowser(), view, position);
                     });
             }
         }

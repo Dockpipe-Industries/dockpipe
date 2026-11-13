@@ -13,6 +13,7 @@
 class ContextStore;
 class SessionManager;
 class TerminalHub;
+class RemoteAccessMonitor;
 class QTimer;
 class QWidget;
 
@@ -29,7 +30,7 @@ public:
     DashboardWidgetFactory(SessionManager &sessions, ContextStore &store, QObject *parent = nullptr);
     static QVector<DashboardWidgetDescriptor> catalog();
     QWidget *create(const QString &kind, QWidget *parent = nullptr, const QString &fileScope = "project");
-    QWidget *create(const QString &kind, QWidget *parent, const QString &fileScope, const QJsonObject &machineContext);
+    QWidget *create(const QString &kind, QWidget *parent, const QString &fileScope, const QJsonObject &machineContext, const QString &browserContextId = {});
     bool canChangeSharedMachineContext(QString *error = nullptr) const;
     bool setSharedMachineContext(const QJsonObject &catalog, const QString &rootId, QString *error = nullptr);
     void setMachineCatalog(const QJsonArray &catalog);
@@ -45,12 +46,20 @@ public:
     void setWorkflows(const QVector<WorkflowMeta> &workflows);
     QVector<WorkflowMeta> workflows() const { return m_workflows; }
     void refresh();
+    void setBrowserAccessMonitor(RemoteAccessMonitor *monitor);
+    void updateBrowserMachines();
+    void setRemoteDesktopResolvers(const QVector<ResolverMeta> &resolvers);
+    void setRemoteDesktopAccessMonitor(RemoteAccessMonitor *monitor);
+    void setRemoteDesktopMachines(const QJsonArray &machines);
+    void refreshRemoteDesktopMetadata();
     void setPackageDisplays(const QString &source, const QVector<PackageDisplayMeta> &displays);
     QVector<PackageDisplayMeta> packageDisplays() const;
     void requestPackageDisplayInventory() { emit packageDisplayInventoryRequested(); }
     TerminalHub &terminals() const { return *m_terminals; }
 
 signals:
+    void remoteDesktopInstallProviderRequested();
+    void remoteDesktopProviderSetupRequested(const QString &workflowId, const QString &surfaceId, const QString &actionId);
     void packageDisplaysChanged();
     void packageDisplayInventoryRequested();
     void openFullView(const QString &pageKey);
@@ -86,7 +95,7 @@ private:
     QWidget *createExecutions(QWidget *parent);
     QWidget *createWorkflows(QWidget *parent);
     QWidget *createContainers(QWidget *parent);
-    QWidget *createBrowser(QWidget *parent);
+    QWidget *createBrowser(QWidget *parent, const QString &contextId);
     QWidget *createFiles(QWidget *parent, const QString &scope);
     QWidget *createGit(QWidget *parent);
     QWidget *createMachines(QWidget *parent);
@@ -108,6 +117,7 @@ private:
     QJsonObject m_sharedMachine;
     QString m_sharedRoot;
     QJsonArray m_machineCatalog;
+    QPointer<RemoteAccessMonitor> m_browserAccess;
     QPointer<DashboardWidgetFactory> m_upstream;
     QVector<QPointer<DashboardWidgetFactory>> m_scopedFactories;
     bool m_followMain = true;

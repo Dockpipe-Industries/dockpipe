@@ -196,9 +196,12 @@ void ManagedTerminalSession::consume(const QByteArray &line)
     if (type == "output") {
         quint64 cursor = 0;
         quint64 oldest = 0;
+        // The core omits zero-valued oldest cursors from its JSON events.
+        const auto oldestValue = frame.value("oldest");
+        const bool validOldest = oldestValue.isUndefined() || integer(oldestValue, oldest);
         const auto data = QByteArray::fromBase64Encoding(frame.value("data").toString().toLatin1(),
             QByteArray::AbortOnBase64DecodingErrors);
-        if (id != 0 || !m_ready || !integer(frame.value("cursor"), cursor) || !integer(frame.value("oldest"), oldest)
+        if (id != 0 || !m_ready || !integer(frame.value("cursor"), cursor) || !validOldest
             || !data || data.decoded.size() > 32 * 1024 || cursor < m_cursor || oldest > cursor
             || cursor < quint64(data.decoded.size())) {
             fail(tr("The terminal core returned an invalid response."));

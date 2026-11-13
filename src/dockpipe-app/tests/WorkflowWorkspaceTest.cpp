@@ -293,8 +293,13 @@ steps:
             return 73;
         source->setPlainText(savedSource);
         saveLanguage("fr", true);
-        if (prompts != 3 || restarts != 1)
+        // Quit completion includes asynchronous surface shutdown.
+        if (prompts != 3 || !waitUntil([&]() { return restarts == 1; })) {
+            std::fprintf(stderr, "Restart completion failed: prompts=%d restarts=%d cancellations=%d pending=%d sourceRestored=%d\n",
+                prompts, restarts, cancellations, window.property("leaveConfirmationPending").toBool(),
+                source->toPlainText() == savedSource);
             return 74;
+        }
         std::puts("Language restart, Later, unchanged language and unsaved-work cancellation passed.");
         return 0;
     }

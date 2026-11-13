@@ -48,6 +48,14 @@ void MainWindow::setupDashboards()
 {
     m_dashboardFactory = new DashboardWidgetFactory(m_sessions, m_store, this);
     m_dashboardFactory->setWorkdir(m_settings.projectFolder);
+    m_dashboardFactory->setRemoteDesktopAccessMonitor(m_remoteAccess);
+    m_dashboardFactory->setBrowserAccessMonitor(m_remoteAccess);
+    connect(m_dashboardFactory, &DashboardWidgetFactory::remoteDesktopInstallProviderRequested,
+        this, &MainWindow::onManagePackages);
+    connect(m_dashboardFactory, &DashboardWidgetFactory::remoteDesktopProviderSetupRequested, this,
+        [this](const QString &workflow, const QString &surface, const QString &action) {
+        launchSurfaceWorkflow(workflow, surface, action, {});
+    });
     if (m_workspaceMachineMenu) {
         m_dashboardFactory->setMachineCatalog(m_workspaceMachineMenu->catalog());
         m_dashboardFactory->setSharedMachineContext(currentSharedMachineCatalog(), m_workspaceMachineMenu->currentRoot());
@@ -75,7 +83,7 @@ void MainWindow::setupDashboards()
     });
     connect(m_dashboardFactory, &DashboardWidgetFactory::openFullView, this, [this](const QString &key) {
         const QMap<QString, int> pages{{"workflows", 1}, {"machines", 2}, {"containers", 3},
-            {"system", 4}, {"executions", 1}, {"logs", 1}, {"files", 5}, {"git", 6}, {"browser", 7}, {"terminal", 9}};
+            {"system", 4}, {"executions", 1}, {"logs", 1}, {"files", 5}, {"git", 6}, {"browser", 7}, {"terminal", 9}, {"remote-desktop", 10}};
         if (!pages.contains(key))
             return;
         selectPage(pages.value(key));
@@ -160,7 +168,7 @@ void MainWindow::applyDefaultDashboardVisibility()
 
 void MainWindow::ensureDashboard(int page)
 {
-    if (!m_dashboardFactory || page < 10 || page >= m_stack->count())
+    if (!m_dashboardFactory || page < 11 || page >= m_stack->count())
         return;
     const QString id = m_stack->widget(page)->property("dashboardId").toString();
     if (m_dashboardPages.value(id))

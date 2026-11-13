@@ -24,14 +24,19 @@ type workerInfo struct {
 }
 
 type remoteInfo struct {
-	Broker *connectionInfo `json:"broker,omitempty"`
-	Worker *workerInfo     `json:"worker,omitempty"`
+	StateDirectory string          `json:"state_directory"`
+	Broker         *connectionInfo `json:"broker,omitempty"`
+	Worker         *workerInfo     `json:"worker,omitempty"`
 }
 
 // describeRemote reads configuration only; it neither probes services nor emits
 // tokens, profile values, edge arguments, or provider-owned private state.
 func describeRemote(root string) (remoteInfo, error) {
-	var result remoteInfo
+	absoluteRoot, err := filepath.Abs(root)
+	if err != nil {
+		return remoteInfo{}, err
+	}
+	result := remoteInfo{StateDirectory: absoluteRoot}
 	connection, err := readConnection(root)
 	if err != nil {
 		return result, err
