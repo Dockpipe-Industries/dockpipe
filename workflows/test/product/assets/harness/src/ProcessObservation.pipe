@@ -1,0 +1,13 @@
+module Dockpipe.Product;
+
+public Record ProcessObservation {
+    public int invocationId;
+    public bool exited;
+    public int exitCode;
+    public bool treeComplete;
+    public bool forced;
+    public string stdoutText;
+    public string stderrText;
+    public string scopePath;
+    public int reapedChildren;
+}

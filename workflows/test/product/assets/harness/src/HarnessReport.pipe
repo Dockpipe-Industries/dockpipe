@@ -1,0 +1,7 @@
+module Dockpipe.Product;
+import PipeLang.Testing.Async;
+
+public Record HarnessReport {
+    public List<AsyncTestResult> cases;
+    public bool success;
+}

@@ -1,0 +1,26 @@
+name: product-host-journey
+description: Build and run source-owned host failure, recovery and graceful cancellation cases with explicit tool identities.
+platforms: [linux, deb]
+vault: none
+docker_preflight: false
+steps:
+  - id: prepare
+    kind: host
+    cwd: artifacts
+    scopes:
+      source: repo
+      artifacts: artifacts
+    run: assets/scripts/prepare.sh
+    outputs: product.env
+  - id: prove
+    kind: host
+    cwd: artifacts
+    scopes:
+      source: repo
+      artifacts: artifacts
+    run: assets/scripts/prove.sh
+finally:
+  - id: preserve
+    kind: host
+    cwd: artifacts
+    run: assets/scripts/preserve.sh

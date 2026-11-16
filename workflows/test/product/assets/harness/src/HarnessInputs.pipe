@@ -1,0 +1,8 @@
+module Dockpipe.Product;
+
+public Record HarnessInputs {
+    public string runId;
+    public string recoveryProject;
+    public string cancellationProject;
+    public string workflowFile;
+}

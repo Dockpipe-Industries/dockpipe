@@ -1,0 +1,3 @@
+module Dockpipe.Product;
+
+public Enum ProcessOperation { Workflow, ScopeQuery }

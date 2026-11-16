@@ -196,6 +196,23 @@ same host observation, signal and cleanup lifecycle, without Git Bash. An explic
 `shell` retains its existing interpreter semantics. This inference applies to
 script files, not inline `cmd` text.
 
+On Linux, a host job launched without a controlling terminal or attached standard
+terminal descriptors receives its own process group. Dockpipe forwards `SIGINT`,
+`SIGHUP`, `SIGTERM`, and `SIGQUIT` received while waiting to that group, including
+foreground subprocesses such as a shell's active command. The leader remains
+unreaped until forwarding has stopped, so a later job cannot receive a signal
+intended for the completed one. Terminal-attached jobs, or launches where terminal
+absence cannot be verified, retain the existing process topology and direct-child
+forwarding. This preserves interactive input and shell stop/resume behavior.
+
+This is graceful signaling of the inherited job group, not a guarantee that
+uncooperative processes terminate or that descendants which create a new session
+or process group remain attached. It does not add a forced deadline, scan other
+processes, or replace resource-specific cleanup. Normal workflow `finally` steps
+still run through the existing workflow lifecycle after the host step returns.
+Docker attach retains direct-child forwarding; Windows and other Unix hosts
+retain their existing host signal behavior.
+
 Inherited native Windows environment keys are case-insensitive. Dockpipe
 canonicalizes them before merging its host context so `Path` and `PATH` cannot
 randomly replace one another when the process environment is built. Ordered

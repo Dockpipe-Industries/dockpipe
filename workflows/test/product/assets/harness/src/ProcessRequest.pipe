@@ -1,0 +1,12 @@
+module Dockpipe.Product;
+
+public Record ProcessRequest {
+    public ProcessOperation operation;
+    public string workdir;
+    public string workflowFile;
+    // ScopeQuery reference; Workflow invocations leave this empty.
+    public string workflowScope;
+    public string mode;
+    public string correlation;
+    public int outputLimitBytes;
+}

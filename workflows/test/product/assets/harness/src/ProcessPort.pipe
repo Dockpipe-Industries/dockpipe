@@ -1,0 +1,10 @@
+module Dockpipe.Product;
+
+public Interface ProcessPort {
+    Result<int,string> Start(ProcessRequest request);
+    Task<Result<ProcessObservation,string>> Observe(int invocationId, int waitMilliseconds, CancellationToken token);
+    // True means the OS accepted a signal for the owned CLI, not that its handler ran.
+    // False means no signal was accepted and does not release child-tree ownership.
+    Result<bool,string> Interrupt(int invocationId);
+    Task<Result<ProcessObservation,string>> ForceDispose(int waitMilliseconds, CancellationToken token);
+}

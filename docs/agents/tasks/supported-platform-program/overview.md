@@ -179,3 +179,24 @@ keep as default. Only real uninstall plus explicit deletion purges owned data;
 upgrade/default callbacks retain it. Simulated destructive-boundary checks cover
 symlink isolation, idempotence and retaining data when the service port is live.
 DSM-managed orphan project recovery and on-NAS uninstall cleanup remain unproven.
+
+
+## PipeLang testing and first local-host family (2026-11-16)
+
+The [local-host product workflow](../../../../workflows/test/product/README.md)
+uses an explicitly selected installed PipeLang SDK and immutable testing library.
+PipeLang owns stable cases, typed assertions and setup/body/cleanup outcomes;
+Dockpipe workflows and bounded native ports own execution and observation.
+Exact final-SDK normal and full producer/consumer ASan/UBSan/LSan Linux runs passed
+failure/recovery and graceful cancellation after readiness, with accepted SIGINT,
+product cleanup and complete owned trees. No forced disposal, unreaped process or
+infrastructure failure was accepted. The private general Linux CLI signal repair
+has focused CLI/PTY/failure, infrastructure race and Darwin/Windows compile proof.
+
+The same SDK passed its complete declared Linux regression with all subset
+selectors unset, an explicit GNU compiler resource profile and opt-in STATIC linked
+runtime. Header-only defaults and SDK pins remain unchanged; the original
+header-only full-debug project gate remains unqualified. This qualifies one local
+host family and one executable runtime link domain. Broader platform, VM, GUI,
+property/replay/debugger and full-product work remains open. The earlier guest
+campaign remains paused. No publication, deployment or release promotion occurred.

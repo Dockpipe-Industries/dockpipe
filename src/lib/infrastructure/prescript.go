@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -132,8 +133,9 @@ func runHostScriptProcess(scriptPath string, cmd *exec.Cmd, env []string) error 
 	go streamHostScriptPipe(stdoutPipe, os.Stdout, stopSpinnerOnce, &copyWG)
 	go streamHostScriptPipe(stderrPipe, os.Stderr, stopSpinnerOnce, &copyWG)
 	if err := WriteHostRunRecord(runFile, runID, cmd.Process.Pid, envGet(env, "DOCKPIPE_WORKDIR"), scriptPath); err != nil {
-		_ = cmd.Process.Kill()
+		terminationErr := terminateRunHostProcess(cmd)
 		_ = cmd.Wait()
+		err = errors.Join(err, terminationErr)
 		observation.Finish(cmd, err)
 		stopSpinnerOnce()
 		copyWG.Wait()
