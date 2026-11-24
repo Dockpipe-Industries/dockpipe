@@ -397,7 +397,7 @@ Browse packages to add the tools you use.</source>
 <context>
     <name>BrowserNetworkContext</name>
     <message>
-        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+64"/>
+        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+65"/>
         <source>Remote browser is disconnected.</source>
         <translation>リモートブラウザーは切断されています。</translation>
     </message>
@@ -415,6 +415,11 @@ Browse packages to add the tools you use.</source>
         <location line="+9"/>
         <source>Remote browser embedding is currently supported on Linux X11 only.</source>
         <translation>リモートブラウザーの埋め込みは現在 Linux X11 のみでサポートされています。</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Remote browser is unavailable in this build. The Browser SDK lacks isolated session support.</source>
+        <translation>このビルドではリモートブラウザーを使用できません。ブラウザー SDK は分離セッションに対応していません。</translation>
     </message>
     <message>
         <location line="+4"/>
@@ -9492,7 +9497,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
 <context>
     <name>RemoteDesktopSettingsDialog</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+15"/>
+        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+16"/>
         <source>Remote desktop settings</source>
         <translation>リモートデスクトップの設定</translation>
     </message>
@@ -9572,17 +9577,27 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>デスクトップ上でローカルカーソルを隠す</translation>
     </message>
     <message>
-        <location line="+34"/>
-        <source>Quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
-        <translation>画質とフレームレートは次回の接続から適用されます。解像度は上限、ビットレートは目標値です。</translation>
+        <location line="+35"/>
+        <source>Desktop, quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
+        <translation>デスクトップの選択、画質、フレームレートは次回の接続から適用されます。解像度は上限、ビットレートは目標値です。</translation>
     </message>
     <message>
-        <location line="+33"/>
+        <location line="+40"/>
+        <source>Display %1 · %2×%3 (primary)</source>
+        <translation>ディスプレイ %1 · %2×%3（プライマリ）</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Display %1 · %2×%3</source>
+        <translation>ディスプレイ %1 · %2×%3</translation>
+    </message>
+    <message>
+        <location line="+29"/>
         <source>Clipboard sharing is unavailable on the selected computer.</source>
         <translation>Clipboard シェアは、選択したコンピュータで利用できません。</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+12"/>
         <source>The selected computer shares its current desktop.</source>
         <translation>選択したコンピュータは現在のデスクトップを共有します。</translation>
     </message>
@@ -9592,7 +9607,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>選択したコンピュータのビデオには、カルサーが含まれていません。</translation>
     </message>
     <message>
-        <location line="-119"/>
+        <location line="-162"/>
         <source>Current desktop</source>
         <translation>現在のデスクトップ</translation>
     </message>
@@ -9607,12 +9622,12 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>デスクトップ</translation>
     </message>
     <message>
-        <location line="+69"/>
+        <location line="+70"/>
         <source>Virtual desktop uses the selected resolution. Changes apply on the next connection.</source>
         <translation>仮想デスクトップは選択した解像度を使用します。変更は次回の接続時に適用されます。</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-23"/>
         <source>Share text clipboard</source>
         <translation>クリップボードのテキストを共有</translation>
     </message>
@@ -9650,14 +9665,14 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
 <context>
     <name>RemoteDesktopWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+124"/>
-        <location line="+222"/>
+        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+142"/>
+        <location line="+237"/>
         <location line="+320"/>
         <source>Remote Desktop</source>
         <translation>リモートデスクトップ</translation>
     </message>
     <message>
-        <location line="-529"/>
+        <location line="-544"/>
         <source>View or control an existing desktop through its authorized native provider.</source>
         <translation>認可されたネイティブプロバイダーを通じて、既存のデスクトップを表示または操作します。</translation>
     </message>
@@ -9739,7 +9754,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>接続を維持</translation>
     </message>
     <message>
-        <location line="+52"/>
+        <location line="+67"/>
         <source>Some settings will apply on the next connection.</source>
         <translation>一部の設定は次回の接続から適用されます。</translation>
     </message>
@@ -9835,7 +9850,12 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>選択したデスクトップの識別情報または権限が変更されました。更新してから再接続してください。</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+25"/>
+        <source>The saved display is no longer available. Choose a display in Settings.</source>
+        <translation>保存済みのディスプレイは使用できなくなりました。設定でディスプレイを選択してください。</translation>
+    </message>
+    <message>
+        <location line="+20"/>
         <source>Opening the selected desktop with administrator control…</source>
         <translation>管理者コントロールで選択したデスクトップを開く...</translation>
     </message>
@@ -9845,12 +9865,12 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>選択したデスクトップを開いています…</translation>
     </message>
     <message>
-        <location line="-427"/>
+        <location line="-461"/>
         <source>Disconnected locally. The native provider reports any unconfirmed remote cleanup.</source>
         <translation>ローカルで切断しました。未確認のリモートクリーンアップがある場合は、ネイティブプロバイダーが報告します。</translation>
     </message>
     <message>
-        <location line="+438"/>
+        <location line="+472"/>
         <source>Closing the selected desktop…</source>
         <translation>選択したデスクトップを終了しています…</translation>
     </message>

@@ -397,7 +397,7 @@ Browse packages to add the tools you use.</source>
 <context>
     <name>BrowserNetworkContext</name>
     <message>
-        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+64"/>
+        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+65"/>
         <source>Remote browser is disconnected.</source>
         <translation>المتصفح البعيد غير متصل.</translation>
     </message>
@@ -415,6 +415,11 @@ Browse packages to add the tools you use.</source>
         <location line="+9"/>
         <source>Remote browser embedding is currently supported on Linux X11 only.</source>
         <translation>تضمين المتصفح البعيد مدعوم حاليًا على Linux X11 فقط.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Remote browser is unavailable in this build. The Browser SDK lacks isolated session support.</source>
+        <translation>المتصفح البعيد غير متاح في هذا الإصدار. لا تدعم حزمة تطوير المتصفح (Browser SDK) الجلسات المعزولة.</translation>
     </message>
     <message>
         <location line="+4"/>
@@ -9497,7 +9502,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
 <context>
     <name>RemoteDesktopSettingsDialog</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+15"/>
+        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+16"/>
         <source>Remote desktop settings</source>
         <translation>إعدادات سطح المكتب البعيد</translation>
     </message>
@@ -9577,17 +9582,27 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>إخفاء المؤشر المحلي فوق سطح المكتب</translation>
     </message>
     <message>
-        <location line="+34"/>
-        <source>Quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
-        <translation>تُطبق الجودة ومعدل الإطارات عند الاتصال التالي. الدقة حد أقصى، ومعدل البت قيمة مستهدفة.</translation>
+        <location line="+35"/>
+        <source>Desktop, quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
+        <translation>تُطبَّق إعدادات سطح المكتب والجودة ومعدل الإطارات عند الاتصال التالي. الدقة حد أقصى، ومعدل البت قيمة مستهدفة.</translation>
     </message>
     <message>
-        <location line="+33"/>
+        <location line="+40"/>
+        <source>Display %1 · %2×%3 (primary)</source>
+        <translation>الشاشة %1 · %2×%3 (أساسية)</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Display %1 · %2×%3</source>
+        <translation>الشاشة %1 · %2×%3</translation>
+    </message>
+    <message>
+        <location line="+29"/>
         <source>Clipboard sharing is unavailable on the selected computer.</source>
         <translation>لم يتم توفير مشاركة Clipboard على جهاز الكمبيوتر المحدد.</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+12"/>
         <source>The selected computer shares its current desktop.</source>
         <translation>يشارك الكمبيوتر المختار سطح المكتب الحالي.</translation>
     </message>
@@ -9597,7 +9612,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>فيديو الكمبيوتر المختار لا يحتوي على محرك.</translation>
     </message>
     <message>
-        <location line="-119"/>
+        <location line="-162"/>
         <source>Current desktop</source>
         <translation>سطح المكتب الحالي</translation>
     </message>
@@ -9612,12 +9627,12 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>سطح المكتب</translation>
     </message>
     <message>
-        <location line="+69"/>
+        <location line="+70"/>
         <source>Virtual desktop uses the selected resolution. Changes apply on the next connection.</source>
         <translation>يستخدم سطح المكتب الافتراضي الدقة المحددة. تُطبّق التغييرات عند الاتصال التالي.</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-23"/>
         <source>Share text clipboard</source>
         <translation>مشاركة نص الحافظة</translation>
     </message>
@@ -9655,14 +9670,14 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
 <context>
     <name>RemoteDesktopWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+124"/>
-        <location line="+222"/>
+        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+142"/>
+        <location line="+237"/>
         <location line="+320"/>
         <source>Remote Desktop</source>
         <translation>سطح المكتب البعيد</translation>
     </message>
     <message>
-        <location line="-529"/>
+        <location line="-544"/>
         <source>View or control an existing desktop through its authorized native provider.</source>
         <translation>اعرض سطح مكتب موجودًا أو تحكّم به عبر المزوّد الأصلي المخوّل.</translation>
     </message>
@@ -9744,7 +9759,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>إبقاء الاتصال</translation>
     </message>
     <message>
-        <location line="+52"/>
+        <location line="+67"/>
         <source>Some settings will apply on the next connection.</source>
         <translation>ستُطبق بعض الإعدادات عند الاتصال التالي.</translation>
     </message>
@@ -9840,7 +9855,12 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>تغيّرت هوية سطح المكتب المحدّد أو أذوناته. حدّث وأعِد الاتصال.</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+25"/>
+        <source>The saved display is no longer available. Choose a display in Settings.</source>
+        <translation>لم تعد الشاشة المحفوظة متاحة. اختر شاشة من الإعدادات.</translation>
+    </message>
+    <message>
+        <location line="+20"/>
         <source>Opening the selected desktop with administrator control…</source>
         <translation>فتح سطح المكتب المحدد مع التحكم في المدير ...</translation>
     </message>
@@ -9850,12 +9870,12 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>جارٍ فتح سطح المكتب المحدّد…</translation>
     </message>
     <message>
-        <location line="-427"/>
+        <location line="-461"/>
         <source>Disconnected locally. The native provider reports any unconfirmed remote cleanup.</source>
         <translation>تم قطع الاتصال محليًا. يُبلغ المزوّد الأصلي عن أي تنظيف بعيد لم يتأكد اكتماله.</translation>
     </message>
     <message>
-        <location line="+438"/>
+        <location line="+472"/>
         <source>Closing the selected desktop…</source>
         <translation>جارٍ إغلاق سطح المكتب المحدد…</translation>
     </message>

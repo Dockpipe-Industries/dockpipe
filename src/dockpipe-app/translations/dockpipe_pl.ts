@@ -397,7 +397,7 @@ Przeglądaj pakiety, aby dodać używane narzędzia.</translation>
 <context>
     <name>BrowserNetworkContext</name>
     <message>
-        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+64"/>
+        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+65"/>
         <source>Remote browser is disconnected.</source>
         <translation>Przeglądarka zdalna jest rozłączona.</translation>
     </message>
@@ -415,6 +415,11 @@ Przeglądaj pakiety, aby dodać używane narzędzia.</translation>
         <location line="+9"/>
         <source>Remote browser embedding is currently supported on Linux X11 only.</source>
         <translation>Osadzanie przeglądarki zdalnej jest obecnie obsługiwane tylko w systemie Linux X11.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Remote browser is unavailable in this build. The Browser SDK lacks isolated session support.</source>
+        <translation>Przeglądarka zdalna jest niedostępna w tej kompilacji. Pakiet SDK przeglądarki nie obsługuje izolowanych sesji.</translation>
     </message>
     <message>
         <location line="+4"/>
@@ -9494,7 +9499,7 @@ Limit podglądu Mermaid: diagramy po pierwszych 16 są pokazywane jako źródło
 <context>
     <name>RemoteDesktopSettingsDialog</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+15"/>
+        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+16"/>
         <source>Remote desktop settings</source>
         <translation>Ustawienia pulpitu zdalnego</translation>
     </message>
@@ -9574,17 +9579,27 @@ Limit podglądu Mermaid: diagramy po pierwszych 16 są pokazywane jako źródło
         <translation>Ukryj lokalny kursor nad pulpitem</translation>
     </message>
     <message>
-        <location line="+34"/>
-        <source>Quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
-        <translation>Jakość i liczba klatek na sekundę obowiązują od następnego połączenia. Rozdzielczość to maksimum, a przepływność to wartość docelowa.</translation>
+        <location line="+35"/>
+        <source>Desktop, quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
+        <translation>Wybór pulpitu, jakość i liczba klatek na sekundę obowiązują od następnego połączenia. Rozdzielczość to wartość maksymalna, a przepływność to wartość docelowa.</translation>
     </message>
     <message>
-        <location line="+33"/>
+        <location line="+40"/>
+        <source>Display %1 · %2×%3 (primary)</source>
+        <translation>Ekran %1 · %2×%3 (główny)</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Display %1 · %2×%3</source>
+        <translation>Ekran %1 · %2×%3</translation>
+    </message>
+    <message>
+        <location line="+29"/>
         <source>Clipboard sharing is unavailable on the selected computer.</source>
         <translation>Udostępnianie klipów nie jest dostępne na wybranym komputerze.</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+12"/>
         <source>The selected computer shares its current desktop.</source>
         <translation>Wybrany komputer udostępnia swój aktualny desktop.</translation>
     </message>
@@ -9594,7 +9609,7 @@ Limit podglądu Mermaid: diagramy po pierwszych 16 są pokazywane jako źródło
         <translation>Wideo wybranego komputera nie zawiera kursora.</translation>
     </message>
     <message>
-        <location line="-119"/>
+        <location line="-162"/>
         <source>Current desktop</source>
         <translation>Bieżący pulpit</translation>
     </message>
@@ -9609,12 +9624,12 @@ Limit podglądu Mermaid: diagramy po pierwszych 16 są pokazywane jako źródło
         <translation>Pulpit</translation>
     </message>
     <message>
-        <location line="+69"/>
+        <location line="+70"/>
         <source>Virtual desktop uses the selected resolution. Changes apply on the next connection.</source>
         <translation>Pulpit wirtualny używa wybranej rozdzielczości. Zmiany zostaną zastosowane przy następnym połączeniu.</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-23"/>
         <source>Share text clipboard</source>
         <translation>Udostępniaj tekst ze schowka</translation>
     </message>
@@ -9652,14 +9667,14 @@ Limit podglądu Mermaid: diagramy po pierwszych 16 są pokazywane jako źródło
 <context>
     <name>RemoteDesktopWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+124"/>
-        <location line="+222"/>
+        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+142"/>
+        <location line="+237"/>
         <location line="+320"/>
         <source>Remote Desktop</source>
         <translation>Pulpit zdalny</translation>
     </message>
     <message>
-        <location line="-529"/>
+        <location line="-544"/>
         <source>View or control an existing desktop through its authorized native provider.</source>
         <translation>Wyświetlaj istniejący pulpit lub steruj nim przez autoryzowanego dostawcę natywnego.</translation>
     </message>
@@ -9741,7 +9756,7 @@ Limit podglądu Mermaid: diagramy po pierwszych 16 są pokazywane jako źródło
         <translation>Zachowaj połączenie</translation>
     </message>
     <message>
-        <location line="+52"/>
+        <location line="+67"/>
         <source>Some settings will apply on the next connection.</source>
         <translation>Niektóre ustawienia zostaną zastosowane przy następnym połączeniu.</translation>
     </message>
@@ -9837,7 +9852,12 @@ Limit podglądu Mermaid: diagramy po pierwszych 16 są pokazywane jako źródło
         <translation>Tożsamość lub uprawnienia wybranego pulpitu uległy zmianie. Odśwież i połącz ponownie.</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+25"/>
+        <source>The saved display is no longer available. Choose a display in Settings.</source>
+        <translation>Zapisany ekran nie jest już dostępny. Wybierz ekran w ustawieniach.</translation>
+    </message>
+    <message>
+        <location line="+20"/>
         <source>Opening the selected desktop with administrator control…</source>
         <translation>Otwieranie wybranego pulpitu z kontrolą administratora...</translation>
     </message>
@@ -9847,12 +9867,12 @@ Limit podglądu Mermaid: diagramy po pierwszych 16 są pokazywane jako źródło
         <translation>Otwieranie wybranego pulpitu…</translation>
     </message>
     <message>
-        <location line="-427"/>
+        <location line="-461"/>
         <source>Disconnected locally. The native provider reports any unconfirmed remote cleanup.</source>
         <translation>Rozłączono lokalnie. Dostawca natywny zgłasza wszelkie niepotwierdzone operacje porządkowania zdalnego.</translation>
     </message>
     <message>
-        <location line="+438"/>
+        <location line="+472"/>
         <source>Closing the selected desktop…</source>
         <translation>Zamykanie wybranego pulpitu…</translation>
     </message>

@@ -397,7 +397,7 @@ Durchsuche Pakete, um deine Werkzeuge hinzuzufügen.</translation>
 <context>
     <name>BrowserNetworkContext</name>
     <message>
-        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+64"/>
+        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+65"/>
         <source>Remote browser is disconnected.</source>
         <translation>Der entfernte Browser ist getrennt.</translation>
     </message>
@@ -415,6 +415,11 @@ Durchsuche Pakete, um deine Werkzeuge hinzuzufügen.</translation>
         <location line="+9"/>
         <source>Remote browser embedding is currently supported on Linux X11 only.</source>
         <translation>Die Einbettung des entfernten Browsers wird derzeit nur unter Linux X11 unterstützt.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Remote browser is unavailable in this build. The Browser SDK lacks isolated session support.</source>
+        <translation>Der entfernte Browser ist in diesem Build nicht verfügbar. Das Browser-SDK unterstützt keine isolierten Sitzungen.</translation>
     </message>
     <message>
         <location line="+4"/>
@@ -9493,7 +9498,7 @@ Mermaid-Vorschaulimit: Diagramme nach den ersten 16 werden als Quelltext angezei
 <context>
     <name>RemoteDesktopSettingsDialog</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+15"/>
+        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+16"/>
         <source>Remote desktop settings</source>
         <translation>Remote-Desktop-Einstellungen</translation>
     </message>
@@ -9573,17 +9578,27 @@ Mermaid-Vorschaulimit: Diagramme nach den ersten 16 werden als Quelltext angezei
         <translation>Lokalen Mauszeiger über dem Desktop ausblenden</translation>
     </message>
     <message>
-        <location line="+34"/>
-        <source>Quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
-        <translation>Qualität und Bildrate gelten ab der nächsten Verbindung. Die Auflösung ist ein Maximum, die Bitrate ein Zielwert.</translation>
+        <location line="+35"/>
+        <source>Desktop, quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
+        <translation>Desktop-Auswahl, Qualität und Bildrate gelten ab der nächsten Verbindung. Die Auflösung ist ein Höchstwert, die Bitrate ein Zielwert.</translation>
     </message>
     <message>
-        <location line="+33"/>
+        <location line="+40"/>
+        <source>Display %1 · %2×%3 (primary)</source>
+        <translation>Bildschirm %1 · %2×%3 (primär)</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Display %1 · %2×%3</source>
+        <translation>Bildschirm %1 · %2×%3</translation>
+    </message>
+    <message>
+        <location line="+29"/>
         <source>Clipboard sharing is unavailable on the selected computer.</source>
         <translation>Clipboard-Sparting ist auf dem ausgewählten Computer nicht verfügbar.</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+12"/>
         <source>The selected computer shares its current desktop.</source>
         <translation>Der ausgewählte Computer teilt seinen aktuellen Desktop.</translation>
     </message>
@@ -9593,7 +9608,7 @@ Mermaid-Vorschaulimit: Diagramme nach den ersten 16 werden als Quelltext angezei
         <translation>Das gewählte Computer-Video enthält keinen Kursor.</translation>
     </message>
     <message>
-        <location line="-119"/>
+        <location line="-162"/>
         <source>Current desktop</source>
         <translation>Aktueller Desktop</translation>
     </message>
@@ -9608,12 +9623,12 @@ Mermaid-Vorschaulimit: Diagramme nach den ersten 16 werden als Quelltext angezei
         <translation>Desktop</translation>
     </message>
     <message>
-        <location line="+69"/>
+        <location line="+70"/>
         <source>Virtual desktop uses the selected resolution. Changes apply on the next connection.</source>
         <translation>Der virtuelle Desktop verwendet die ausgewählte Auflösung. Änderungen gelten ab der nächsten Verbindung.</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-23"/>
         <source>Share text clipboard</source>
         <translation>Zwischenablagetext teilen</translation>
     </message>
@@ -9651,14 +9666,14 @@ Mermaid-Vorschaulimit: Diagramme nach den ersten 16 werden als Quelltext angezei
 <context>
     <name>RemoteDesktopWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+124"/>
-        <location line="+222"/>
+        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+142"/>
+        <location line="+237"/>
         <location line="+320"/>
         <source>Remote Desktop</source>
         <translation>Remotedesktop</translation>
     </message>
     <message>
-        <location line="-529"/>
+        <location line="-544"/>
         <source>View or control an existing desktop through its authorized native provider.</source>
         <translation>Einen vorhandenen Desktop über seinen autorisierten nativen Anbieter anzeigen oder steuern.</translation>
     </message>
@@ -9740,7 +9755,7 @@ Mermaid-Vorschaulimit: Diagramme nach den ersten 16 werden als Quelltext angezei
         <translation>Verbunden bleiben</translation>
     </message>
     <message>
-        <location line="+52"/>
+        <location line="+67"/>
         <source>Some settings will apply on the next connection.</source>
         <translation>Einige Einstellungen gelten ab der nächsten Verbindung.</translation>
     </message>
@@ -9836,7 +9851,12 @@ Mermaid-Vorschaulimit: Diagramme nach den ersten 16 werden als Quelltext angezei
         <translation>Die Identität oder Berechtigung des ausgewählten Desktops hat sich geändert. Aktualisieren Sie die Ansicht und verbinden Sie sich erneut.</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+25"/>
+        <source>The saved display is no longer available. Choose a display in Settings.</source>
+        <translation>Der gespeicherte Bildschirm ist nicht mehr verfügbar. Wählen Sie in den Einstellungen einen Bildschirm aus.</translation>
+    </message>
+    <message>
+        <location line="+20"/>
         <source>Opening the selected desktop with administrator control…</source>
         <translation>Öffnen des ausgewählten Desktops mit Administrator-Control...</translation>
     </message>
@@ -9846,12 +9866,12 @@ Mermaid-Vorschaulimit: Diagramme nach den ersten 16 werden als Quelltext angezei
         <translation>Ausgewählter Desktop wird geöffnet…</translation>
     </message>
     <message>
-        <location line="-427"/>
+        <location line="-461"/>
         <source>Disconnected locally. The native provider reports any unconfirmed remote cleanup.</source>
         <translation>Lokal getrennt. Der native Anbieter meldet eine unbestätigte Bereinigung auf dem Remotecomputer.</translation>
     </message>
     <message>
-        <location line="+438"/>
+        <location line="+472"/>
         <source>Closing the selected desktop…</source>
         <translation>Ausgewählter Desktop wird geschlossen…</translation>
     </message>

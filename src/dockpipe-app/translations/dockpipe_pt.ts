@@ -397,7 +397,7 @@ Explore pacotes para adicionar as ferramentas que você usa.</translation>
 <context>
     <name>BrowserNetworkContext</name>
     <message>
-        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+64"/>
+        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+65"/>
         <source>Remote browser is disconnected.</source>
         <translation>O navegador remoto está desconectado.</translation>
     </message>
@@ -415,6 +415,11 @@ Explore pacotes para adicionar as ferramentas que você usa.</translation>
         <location line="+9"/>
         <source>Remote browser embedding is currently supported on Linux X11 only.</source>
         <translation>A incorporação do navegador remoto é atualmente compatível apenas com Linux X11.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Remote browser is unavailable in this build. The Browser SDK lacks isolated session support.</source>
+        <translation>O navegador remoto está indisponível nesta compilação. O SDK do navegador não oferece suporte a sessões isoladas.</translation>
     </message>
     <message>
         <location line="+4"/>
@@ -9493,7 +9498,7 @@ Limite da prévia Mermaid: diagramas após os primeiros 16 são exibidos como c�
 <context>
     <name>RemoteDesktopSettingsDialog</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+15"/>
+        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+16"/>
         <source>Remote desktop settings</source>
         <translation>Configurações da área de trabalho remota</translation>
     </message>
@@ -9573,17 +9578,27 @@ Limite da prévia Mermaid: diagramas após os primeiros 16 são exibidos como c�
         <translation>Ocultar o cursor local sobre a área de trabalho</translation>
     </message>
     <message>
-        <location line="+34"/>
-        <source>Quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
-        <translation>A qualidade e a taxa de quadros se aplicam na próxima conexão. A resolução é um máximo; a taxa de bits é uma meta.</translation>
+        <location line="+35"/>
+        <source>Desktop, quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
+        <translation>A seleção da área de trabalho, a qualidade e a taxa de quadros se aplicam na próxima conexão. A resolução é um valor máximo; a taxa de bits é um valor desejado.</translation>
     </message>
     <message>
-        <location line="+33"/>
+        <location line="+40"/>
+        <source>Display %1 · %2×%3 (primary)</source>
+        <translation>Tela %1 · %2×%3 (principal)</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Display %1 · %2×%3</source>
+        <translation>Tela %1 · %2×%3</translation>
+    </message>
+    <message>
+        <location line="+29"/>
         <source>Clipboard sharing is unavailable on the selected computer.</source>
         <translation>A partilha de clipsboard não está disponível no computador selecionado.</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+12"/>
         <source>The selected computer shares its current desktop.</source>
         <translation>O computador selecionado compartilha seu desktop atual.</translation>
     </message>
@@ -9593,7 +9608,7 @@ Limite da prévia Mermaid: diagramas após os primeiros 16 são exibidos como c�
         <translation>O vídeo do computador selecionado não inclui um cursor.</translation>
     </message>
     <message>
-        <location line="-119"/>
+        <location line="-162"/>
         <source>Current desktop</source>
         <translation>Área de trabalho atual</translation>
     </message>
@@ -9608,12 +9623,12 @@ Limite da prévia Mermaid: diagramas após os primeiros 16 são exibidos como c�
         <translation>Área de trabalho</translation>
     </message>
     <message>
-        <location line="+69"/>
+        <location line="+70"/>
         <source>Virtual desktop uses the selected resolution. Changes apply on the next connection.</source>
         <translation>A área de trabalho virtual usa a resolução selecionada. As alterações são aplicadas na próxima conexão.</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-23"/>
         <source>Share text clipboard</source>
         <translation>Partilhar texto da área de transferência</translation>
     </message>
@@ -9651,14 +9666,14 @@ Limite da prévia Mermaid: diagramas após os primeiros 16 são exibidos como c�
 <context>
     <name>RemoteDesktopWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+124"/>
-        <location line="+222"/>
+        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+142"/>
+        <location line="+237"/>
         <location line="+320"/>
         <source>Remote Desktop</source>
         <translation>Área de trabalho remota</translation>
     </message>
     <message>
-        <location line="-529"/>
+        <location line="-544"/>
         <source>View or control an existing desktop through its authorized native provider.</source>
         <translation>Ver ou controlar uma área de trabalho existente pelo fornecedor nativo autorizado.</translation>
     </message>
@@ -9740,7 +9755,7 @@ Limite da prévia Mermaid: diagramas após os primeiros 16 são exibidos como c�
         <translation>Manter conectado</translation>
     </message>
     <message>
-        <location line="+52"/>
+        <location line="+67"/>
         <source>Some settings will apply on the next connection.</source>
         <translation>Algumas configurações serão aplicadas na próxima conexão.</translation>
     </message>
@@ -9836,7 +9851,12 @@ Limite da prévia Mermaid: diagramas após os primeiros 16 são exibidos como c�
         <translation>A identidade ou a permissão da área de trabalho selecionada mudou. Atualize e conecte novamente.</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+25"/>
+        <source>The saved display is no longer available. Choose a display in Settings.</source>
+        <translation>A tela salva não está mais disponível. Escolha uma tela em Configurações.</translation>
+    </message>
+    <message>
+        <location line="+20"/>
         <source>Opening the selected desktop with administrator control…</source>
         <translation>Abrir o desktop selecionado com controle de administrador...</translation>
     </message>
@@ -9846,12 +9866,12 @@ Limite da prévia Mermaid: diagramas após os primeiros 16 são exibidos como c�
         <translation>Abrindo a área de trabalho selecionada…</translation>
     </message>
     <message>
-        <location line="-427"/>
+        <location line="-461"/>
         <source>Disconnected locally. The native provider reports any unconfirmed remote cleanup.</source>
         <translation>Desconectado localmente. O fornecedor nativo informa qualquer limpeza remota não confirmada.</translation>
     </message>
     <message>
-        <location line="+438"/>
+        <location line="+472"/>
         <source>Closing the selected desktop…</source>
         <translation>Fechando a área de trabalho selecionada…</translation>
     </message>

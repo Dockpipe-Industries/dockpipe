@@ -397,7 +397,7 @@ Browse packages to add the tools you use.</source>
 <context>
     <name>BrowserNetworkContext</name>
     <message>
-        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+64"/>
+        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+65"/>
         <source>Remote browser is disconnected.</source>
         <translation>원격 브라우저의 연결이 끊어졌습니다.</translation>
     </message>
@@ -415,6 +415,11 @@ Browse packages to add the tools you use.</source>
         <location line="+9"/>
         <source>Remote browser embedding is currently supported on Linux X11 only.</source>
         <translation>원격 브라우저 임베딩은 현재 Linux X11에서만 지원됩니다.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Remote browser is unavailable in this build. The Browser SDK lacks isolated session support.</source>
+        <translation>이 빌드에서는 원격 브라우저를 사용할 수 없습니다. 브라우저 SDK가 격리된 세션을 지원하지 않습니다.</translation>
     </message>
     <message>
         <location line="+4"/>
@@ -9492,7 +9497,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
 <context>
     <name>RemoteDesktopSettingsDialog</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+15"/>
+        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+16"/>
         <source>Remote desktop settings</source>
         <translation>원격 데스크톱 설정</translation>
     </message>
@@ -9572,17 +9577,27 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>데스크톱 위에서 로컬 커서 숨기기</translation>
     </message>
     <message>
-        <location line="+34"/>
-        <source>Quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
-        <translation>화질과 프레임 속도는 다음 연결부터 적용됩니다. 해상도는 최대값이고 비트 전송률은 목표값입니다.</translation>
+        <location line="+35"/>
+        <source>Desktop, quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
+        <translation>데스크톱 선택, 화질, 프레임 속도는 다음 연결부터 적용됩니다. 해상도는 최대값이고 비트 전송률은 목표값입니다.</translation>
     </message>
     <message>
-        <location line="+33"/>
+        <location line="+40"/>
+        <source>Display %1 · %2×%3 (primary)</source>
+        <translation>디스플레이 %1 · %2×%3 (주 디스플레이)</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Display %1 · %2×%3</source>
+        <translation>디스플레이 %1 · %2×%3</translation>
+    </message>
+    <message>
+        <location line="+29"/>
         <source>Clipboard sharing is unavailable on the selected computer.</source>
         <translation>Clipboard 공유는 선택한 컴퓨터에서 사용할 수 없습니다.</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+12"/>
         <source>The selected computer shares its current desktop.</source>
         <translation>선택한 컴퓨터는 현재의 데스크톱을 공유합니다.</translation>
     </message>
@@ -9592,7 +9607,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>선택한 컴퓨터의 비디오에는 코서가 포함되지 않습니다.</translation>
     </message>
     <message>
-        <location line="-119"/>
+        <location line="-162"/>
         <source>Current desktop</source>
         <translation>현재 데스크톱</translation>
     </message>
@@ -9607,12 +9622,12 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>데스크톱</translation>
     </message>
     <message>
-        <location line="+69"/>
+        <location line="+70"/>
         <source>Virtual desktop uses the selected resolution. Changes apply on the next connection.</source>
         <translation>가상 데스크톱은 선택한 해상도를 사용합니다. 변경 사항은 다음 연결부터 적용됩니다.</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-23"/>
         <source>Share text clipboard</source>
         <translation>클립보드 텍스트 공유</translation>
     </message>
@@ -9650,14 +9665,14 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
 <context>
     <name>RemoteDesktopWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+124"/>
-        <location line="+222"/>
+        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+142"/>
+        <location line="+237"/>
         <location line="+320"/>
         <source>Remote Desktop</source>
         <translation>원격 데스크톱</translation>
     </message>
     <message>
-        <location line="-529"/>
+        <location line="-544"/>
         <source>View or control an existing desktop through its authorized native provider.</source>
         <translation>인증된 네이티브 공급자를 통해 기존 데스크톱을 보거나 제어합니다.</translation>
     </message>
@@ -9739,7 +9754,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>연결 유지</translation>
     </message>
     <message>
-        <location line="+52"/>
+        <location line="+67"/>
         <source>Some settings will apply on the next connection.</source>
         <translation>일부 설정은 다음 연결부터 적용됩니다.</translation>
     </message>
@@ -9835,7 +9850,12 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>선택한 데스크톱의 ID 또는 권한이 변경되었습니다. 새로 고친 후 다시 연결하세요.</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+25"/>
+        <source>The saved display is no longer available. Choose a display in Settings.</source>
+        <translation>저장된 디스플레이를 더 이상 사용할 수 없습니다. 설정에서 디스플레이를 선택하세요.</translation>
+    </message>
+    <message>
+        <location line="+20"/>
         <source>Opening the selected desktop with administrator control…</source>
         <translation>관리자 컨트롤을 사용하여 선택한 데스크톱을 열기...</translation>
     </message>
@@ -9845,12 +9865,12 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>선택한 데스크톱을 여는 중…</translation>
     </message>
     <message>
-        <location line="-427"/>
+        <location line="-461"/>
         <source>Disconnected locally. The native provider reports any unconfirmed remote cleanup.</source>
         <translation>로컬 연결을 해제했습니다. 확인되지 않은 원격 정리가 있으면 네이티브 공급자가 알립니다.</translation>
     </message>
     <message>
-        <location line="+438"/>
+        <location line="+472"/>
         <source>Closing the selected desktop…</source>
         <translation>선택한 데스크톱을 닫는 중…</translation>
     </message>

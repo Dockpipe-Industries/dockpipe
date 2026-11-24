@@ -397,7 +397,7 @@ Bekijk pakketten om de hulpmiddelen toe te voegen die u gebruikt.</translation>
 <context>
     <name>BrowserNetworkContext</name>
     <message>
-        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+64"/>
+        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+65"/>
         <source>Remote browser is disconnected.</source>
         <translation>De externe browser is niet verbonden.</translation>
     </message>
@@ -415,6 +415,11 @@ Bekijk pakketten om de hulpmiddelen toe te voegen die u gebruikt.</translation>
         <location line="+9"/>
         <source>Remote browser embedding is currently supported on Linux X11 only.</source>
         <translation>Het insluiten van de externe browser wordt momenteel alleen op Linux X11 ondersteund.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Remote browser is unavailable in this build. The Browser SDK lacks isolated session support.</source>
+        <translation>De externe browser is niet beschikbaar in deze build. De browser-SDK ondersteunt geen geïsoleerde sessies.</translation>
     </message>
     <message>
         <location line="+4"/>
@@ -9493,7 +9498,7 @@ Mermaid-voorbeeldlimiet: diagrammen na de eerste 16 worden als broncode getoond.
 <context>
     <name>RemoteDesktopSettingsDialog</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+15"/>
+        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+16"/>
         <source>Remote desktop settings</source>
         <translation>Instellingen voor extern bureaublad</translation>
     </message>
@@ -9573,17 +9578,27 @@ Mermaid-voorbeeldlimiet: diagrammen na de eerste 16 worden als broncode getoond.
         <translation>Lokale cursor boven het bureaublad verbergen</translation>
     </message>
     <message>
-        <location line="+34"/>
-        <source>Quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
-        <translation>Kwaliteit en beeldsnelheid gelden vanaf de volgende verbinding. De resolutie is een maximum; de bitsnelheid is een streefwaarde.</translation>
+        <location line="+35"/>
+        <source>Desktop, quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
+        <translation>De bureaubladkeuze, kwaliteit en beeldsnelheid gelden vanaf de volgende verbinding. De resolutie is een maximum; de bitsnelheid is een streefwaarde.</translation>
     </message>
     <message>
-        <location line="+33"/>
+        <location line="+40"/>
+        <source>Display %1 · %2×%3 (primary)</source>
+        <translation>Scherm %1 · %2×%3 (primair)</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Display %1 · %2×%3</source>
+        <translation>Scherm %1 · %2×%3</translation>
+    </message>
+    <message>
+        <location line="+29"/>
         <source>Clipboard sharing is unavailable on the selected computer.</source>
         <translation>Clipboard sharing is niet beschikbaar op de geselecteerde computer.</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+12"/>
         <source>The selected computer shares its current desktop.</source>
         <translation>De geselecteerde computer deelt zijn huidige desktop.</translation>
     </message>
@@ -9593,7 +9608,7 @@ Mermaid-voorbeeldlimiet: diagrammen na de eerste 16 worden als broncode getoond.
         <translation>De video van de geselecteerde computer bevat geen cursor.</translation>
     </message>
     <message>
-        <location line="-119"/>
+        <location line="-162"/>
         <source>Current desktop</source>
         <translation>Huidig bureaublad</translation>
     </message>
@@ -9608,12 +9623,12 @@ Mermaid-voorbeeldlimiet: diagrammen na de eerste 16 worden als broncode getoond.
         <translation>Bureaublad</translation>
     </message>
     <message>
-        <location line="+69"/>
+        <location line="+70"/>
         <source>Virtual desktop uses the selected resolution. Changes apply on the next connection.</source>
         <translation>Het virtuele bureaublad gebruikt de geselecteerde resolutie. Wijzigingen gelden vanaf de volgende verbinding.</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-23"/>
         <source>Share text clipboard</source>
         <translation>Klembordtekst delen</translation>
     </message>
@@ -9651,14 +9666,14 @@ Mermaid-voorbeeldlimiet: diagrammen na de eerste 16 worden als broncode getoond.
 <context>
     <name>RemoteDesktopWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+124"/>
-        <location line="+222"/>
+        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+142"/>
+        <location line="+237"/>
         <location line="+320"/>
         <source>Remote Desktop</source>
         <translation>Extern bureaublad</translation>
     </message>
     <message>
-        <location line="-529"/>
+        <location line="-544"/>
         <source>View or control an existing desktop through its authorized native provider.</source>
         <translation>Bekijk of bedien een bestaand bureaublad via de bevoegde native provider.</translation>
     </message>
@@ -9740,7 +9755,7 @@ Mermaid-voorbeeldlimiet: diagrammen na de eerste 16 worden als broncode getoond.
         <translation>Verbonden blijven</translation>
     </message>
     <message>
-        <location line="+52"/>
+        <location line="+67"/>
         <source>Some settings will apply on the next connection.</source>
         <translation>Sommige instellingen gelden vanaf de volgende verbinding.</translation>
     </message>
@@ -9836,7 +9851,12 @@ Mermaid-voorbeeldlimiet: diagrammen na de eerste 16 worden als broncode getoond.
         <translation>De identiteit of machtiging van het geselecteerde bureaublad is gewijzigd. Vernieuw en verbind opnieuw.</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+25"/>
+        <source>The saved display is no longer available. Choose a display in Settings.</source>
+        <translation>Het opgeslagen scherm is niet meer beschikbaar. Kies een scherm in Instellingen.</translation>
+    </message>
+    <message>
+        <location line="+20"/>
         <source>Opening the selected desktop with administrator control…</source>
         <translation>Het openen van de geselecteerde desktop met administratorcontrole...</translation>
     </message>
@@ -9846,12 +9866,12 @@ Mermaid-voorbeeldlimiet: diagrammen na de eerste 16 worden als broncode getoond.
         <translation>Geselecteerd bureaublad openen…</translation>
     </message>
     <message>
-        <location line="-427"/>
+        <location line="-461"/>
         <source>Disconnected locally. The native provider reports any unconfirmed remote cleanup.</source>
         <translation>Lokaal verbroken. De native provider meldt eventuele onbevestigde externe opruiming.</translation>
     </message>
     <message>
-        <location line="+438"/>
+        <location line="+472"/>
         <source>Closing the selected desktop…</source>
         <translation>Het geselecteerde bureaublad wordt gesloten…</translation>
     </message>

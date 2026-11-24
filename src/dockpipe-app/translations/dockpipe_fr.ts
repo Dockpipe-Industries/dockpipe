@@ -397,7 +397,7 @@ Parcourez les paquets pour ajouter les outils que vous utilisez.</translation>
 <context>
     <name>BrowserNetworkContext</name>
     <message>
-        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+64"/>
+        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+65"/>
         <source>Remote browser is disconnected.</source>
         <translation>Le navigateur distant est déconnecté.</translation>
     </message>
@@ -415,6 +415,11 @@ Parcourez les paquets pour ajouter les outils que vous utilisez.</translation>
         <location line="+9"/>
         <source>Remote browser embedding is currently supported on Linux X11 only.</source>
         <translation>L’intégration du navigateur distant est actuellement prise en charge uniquement sous Linux X11.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Remote browser is unavailable in this build. The Browser SDK lacks isolated session support.</source>
+        <translation>Le navigateur distant est indisponible dans cette version. Le SDK du navigateur ne prend pas en charge les sessions isolées.</translation>
     </message>
     <message>
         <location line="+4"/>
@@ -9493,7 +9498,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
 <context>
     <name>RemoteDesktopSettingsDialog</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+15"/>
+        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+16"/>
         <source>Remote desktop settings</source>
         <translation>Paramètres du bureau à distance</translation>
     </message>
@@ -9573,27 +9578,37 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Masquer le curseur local sur le bureau</translation>
     </message>
     <message>
-        <location line="+34"/>
-        <source>Quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
-        <translation>La qualité et la fréquence d’images s’appliquent à la prochaine connexion. La résolution est un maximum et le débit une valeur cible.</translation>
+        <location line="+35"/>
+        <source>Desktop, quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
+        <translation>Le choix du bureau, la qualité et la fréquence d’images s’appliquent à la prochaine connexion. La résolution est une valeur maximale et le débit une valeur cible.</translation>
     </message>
     <message>
-        <location line="+33"/>
+        <location line="+40"/>
+        <source>Display %1 · %2×%3 (primary)</source>
+        <translation>Écran %1 · %2×%3 (principal)</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Display %1 · %2×%3</source>
+        <translation>Écran %1 · %2×%3</translation>
+    </message>
+    <message>
+        <location line="+29"/>
         <source>Clipboard sharing is unavailable on the selected computer.</source>
         <translation>Le partage Clipboard n’est pas disponible sur l’ordinateur sélectionné.</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+12"/>
         <source>The selected computer shares its current desktop.</source>
-        <translation>L'ordinateur sélectionné partage son bureau actuel.</translation>
+        <translation>L&apos;ordinateur sélectionné partage son bureau actuel.</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>The selected computer&apos;s video does not include a cursor.</source>
-        <translation>La vidéo de l'ordinateur sélectionné n'inclut pas un cursor.</translation>
+        <translation>La vidéo de l&apos;ordinateur sélectionné n&apos;inclut pas un cursor.</translation>
     </message>
     <message>
-        <location line="-119"/>
+        <location line="-162"/>
         <source>Current desktop</source>
         <translation>Bureau actuel</translation>
     </message>
@@ -9608,12 +9623,12 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Bureau</translation>
     </message>
     <message>
-        <location line="+69"/>
+        <location line="+70"/>
         <source>Virtual desktop uses the selected resolution. Changes apply on the next connection.</source>
         <translation>Le bureau virtuel utilise la résolution sélectionnée. Les modifications prennent effet à la prochaine connexion.</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-23"/>
         <source>Share text clipboard</source>
         <translation>Partager le texte du presse-papiers</translation>
     </message>
@@ -9651,14 +9666,14 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
 <context>
     <name>RemoteDesktopWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+124"/>
-        <location line="+222"/>
+        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+142"/>
+        <location line="+237"/>
         <location line="+320"/>
         <source>Remote Desktop</source>
         <translation>Bureau à distance</translation>
     </message>
     <message>
-        <location line="-529"/>
+        <location line="-544"/>
         <source>View or control an existing desktop through its authorized native provider.</source>
         <translation>Afficher ou contrôler un bureau existant via son fournisseur natif autorisé.</translation>
     </message>
@@ -9740,7 +9755,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Rester connecté</translation>
     </message>
     <message>
-        <location line="+52"/>
+        <location line="+67"/>
         <source>Some settings will apply on the next connection.</source>
         <translation>Certains paramètres s’appliqueront à la prochaine connexion.</translation>
     </message>
@@ -9787,7 +9802,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
     <message>
         <location line="+0"/>
         <source>No paired computers are available. Add a computer in Environments.</source>
-        <translation>Aucun ordinateur n'est disponible. ajoutez un ordinateur dans Environnements.</translation>
+        <translation>Aucun ordinateur n&apos;est disponible. ajoutez un ordinateur dans Environnements.</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -9836,7 +9851,12 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>L’identité ou l’autorisation du bureau sélectionné a changé. Actualisez et reconnectez-vous.</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+25"/>
+        <source>The saved display is no longer available. Choose a display in Settings.</source>
+        <translation>L’écran enregistré n’est plus disponible. Choisissez un écran dans les paramètres.</translation>
+    </message>
+    <message>
+        <location line="+20"/>
         <source>Opening the selected desktop with administrator control…</source>
         <translation>Ouvrir le bureau sélectionné avec le contrôle de l’administrateur...</translation>
     </message>
@@ -9846,12 +9866,12 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Ouverture du bureau sélectionné…</translation>
     </message>
     <message>
-        <location line="-427"/>
+        <location line="-461"/>
         <source>Disconnected locally. The native provider reports any unconfirmed remote cleanup.</source>
         <translation>Déconnecté localement. Le fournisseur natif signale tout nettoyage distant non confirmé.</translation>
     </message>
     <message>
-        <location line="+438"/>
+        <location line="+472"/>
         <source>Closing the selected desktop…</source>
         <translation>Fermeture du bureau sélectionné…</translation>
     </message>

@@ -397,7 +397,7 @@ Browse packages to add the tools you use.</source>
 <context>
     <name>BrowserNetworkContext</name>
     <message>
-        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+64"/>
+        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+65"/>
         <source>Remote browser is disconnected.</source>
         <translation>遠端瀏覽器已中斷連線。</translation>
     </message>
@@ -415,6 +415,11 @@ Browse packages to add the tools you use.</source>
         <location line="+9"/>
         <source>Remote browser embedding is currently supported on Linux X11 only.</source>
         <translation>目前僅在 Linux X11 上支援嵌入遠端瀏覽器。</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Remote browser is unavailable in this build. The Browser SDK lacks isolated session support.</source>
+        <translation>此建置版本無法使用遠端瀏覽器。瀏覽器 SDK 不支援隔離工作階段。</translation>
     </message>
     <message>
         <location line="+4"/>
@@ -9492,7 +9497,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
 <context>
     <name>RemoteDesktopSettingsDialog</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+15"/>
+        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+16"/>
         <source>Remote desktop settings</source>
         <translation>遠端桌面設定</translation>
     </message>
@@ -9572,17 +9577,27 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>在桌面上隱藏本機游標</translation>
     </message>
     <message>
-        <location line="+34"/>
-        <source>Quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
-        <translation>畫質與畫格率將於下次連線時生效。解析度為最大值，位元率為目標值。</translation>
+        <location line="+35"/>
+        <source>Desktop, quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
+        <translation>桌面選擇、畫質與畫格率將於下次連線時生效。解析度為上限，位元率為目標值。</translation>
     </message>
     <message>
-        <location line="+33"/>
+        <location line="+40"/>
+        <source>Display %1 · %2×%3 (primary)</source>
+        <translation>顯示器 %1 · %2×%3（主要）</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Display %1 · %2×%3</source>
+        <translation>顯示器 %1 · %2×%3</translation>
+    </message>
+    <message>
+        <location line="+29"/>
         <source>Clipboard sharing is unavailable on the selected computer.</source>
         <translation>Clipboard 共享在所選擇的計算機上不可用。</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+12"/>
         <source>The selected computer shares its current desktop.</source>
         <translation>選擇的計算機共享其當前的桌面。</translation>
     </message>
@@ -9592,7 +9607,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>所選擇的計算機的影片不包含一個切換器。</translation>
     </message>
     <message>
-        <location line="-119"/>
+        <location line="-162"/>
         <source>Current desktop</source>
         <translation>目前桌面</translation>
     </message>
@@ -9607,12 +9622,12 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>桌面</translation>
     </message>
     <message>
-        <location line="+69"/>
+        <location line="+70"/>
         <source>Virtual desktop uses the selected resolution. Changes apply on the next connection.</source>
         <translation>虛擬桌面使用所選解析度。變更將在下次連線時生效。</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-23"/>
         <source>Share text clipboard</source>
         <translation>共用剪貼簿文字</translation>
     </message>
@@ -9650,14 +9665,14 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
 <context>
     <name>RemoteDesktopWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+124"/>
-        <location line="+222"/>
+        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+142"/>
+        <location line="+237"/>
         <location line="+320"/>
         <source>Remote Desktop</source>
         <translation>遠端桌面</translation>
     </message>
     <message>
-        <location line="-529"/>
+        <location line="-544"/>
         <source>View or control an existing desktop through its authorized native provider.</source>
         <translation>透過獲授權的原生提供者檢視或控制現有桌面。</translation>
     </message>
@@ -9739,7 +9754,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>保持連線</translation>
     </message>
     <message>
-        <location line="+52"/>
+        <location line="+67"/>
         <source>Some settings will apply on the next connection.</source>
         <translation>部分設定將於下次連線時生效。</translation>
     </message>
@@ -9835,7 +9850,12 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>所選桌面的身分或權限已變更。請重新整理並再次連線。</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+25"/>
+        <source>The saved display is no longer available. Choose a display in Settings.</source>
+        <translation>已儲存的顯示器已無法使用。請在設定中選擇顯示器。</translation>
+    </message>
+    <message>
+        <location line="+20"/>
         <source>Opening the selected desktop with administrator control…</source>
         <translation>開啟所選擇的桌面與管理員控制...</translation>
     </message>
@@ -9845,12 +9865,12 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>正在開啟所選桌面…</translation>
     </message>
     <message>
-        <location line="-427"/>
+        <location line="-461"/>
         <source>Disconnected locally. The native provider reports any unconfirmed remote cleanup.</source>
         <translation>已在本機中斷連線。原生提供者會回報任何尚未確認完成的遠端清理。</translation>
     </message>
     <message>
-        <location line="+438"/>
+        <location line="+472"/>
         <source>Closing the selected desktop…</source>
         <translation>正在關閉所選桌面…</translation>
     </message>

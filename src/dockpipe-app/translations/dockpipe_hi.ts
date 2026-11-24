@@ -397,7 +397,7 @@ Browse packages to add the tools you use.</source>
 <context>
     <name>BrowserNetworkContext</name>
     <message>
-        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+64"/>
+        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+65"/>
         <source>Remote browser is disconnected.</source>
         <translation>रिमोट ब्राउज़र डिस्कनेक्ट है।</translation>
     </message>
@@ -415,6 +415,11 @@ Browse packages to add the tools you use.</source>
         <location line="+9"/>
         <source>Remote browser embedding is currently supported on Linux X11 only.</source>
         <translation>रिमोट ब्राउज़र को एम्बेड करना अभी केवल Linux X11 पर समर्थित है।</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Remote browser is unavailable in this build. The Browser SDK lacks isolated session support.</source>
+        <translation>इस बिल्ड में रिमोट ब्राउज़र उपलब्ध नहीं है। ब्राउज़र SDK पृथक सत्रों का समर्थन नहीं करता।</translation>
     </message>
     <message>
         <location line="+4"/>
@@ -9493,7 +9498,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
 <context>
     <name>RemoteDesktopSettingsDialog</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+15"/>
+        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+16"/>
         <source>Remote desktop settings</source>
         <translation>रिमोट डेस्कटॉप सेटिंग</translation>
     </message>
@@ -9573,17 +9578,27 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>डेस्कटॉप पर स्थानीय कर्सर छिपाएँ</translation>
     </message>
     <message>
-        <location line="+34"/>
-        <source>Quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
-        <translation>गुणवत्ता और फ़्रेम दर अगले कनेक्शन पर लागू होंगी। रिज़ॉल्यूशन अधिकतम है; बिट दर एक लक्ष्य है।</translation>
+        <location line="+35"/>
+        <source>Desktop, quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
+        <translation>डेस्कटॉप का चयन, गुणवत्ता और फ़्रेम दर अगले कनेक्शन से लागू होंगे। रिज़ॉल्यूशन की अधिकतम सीमा है और बिट दर एक लक्ष्य है।</translation>
     </message>
     <message>
-        <location line="+33"/>
+        <location line="+40"/>
+        <source>Display %1 · %2×%3 (primary)</source>
+        <translation>डिस्प्ले %1 · %2×%3 (मुख्य)</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Display %1 · %2×%3</source>
+        <translation>डिस्प्ले %1 · %2×%3</translation>
+    </message>
+    <message>
+        <location line="+29"/>
         <source>Clipboard sharing is unavailable on the selected computer.</source>
         <translation>क्लिपबोर्ड साझा करना चुने हुए कंप्यूटर पर उपलब्ध नहीं है।</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+12"/>
         <source>The selected computer shares its current desktop.</source>
         <translation>चयनित कंप्यूटर अपने वर्तमान डेस्कटॉप को साझा करता है।</translation>
     </message>
@@ -9593,7 +9608,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>चुने हुए कंप्यूटर के वीडियो में एक क्यूसर शामिल नहीं है।</translation>
     </message>
     <message>
-        <location line="-119"/>
+        <location line="-162"/>
         <source>Current desktop</source>
         <translation>वर्तमान डेस्कटॉप</translation>
     </message>
@@ -9608,12 +9623,12 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>डेस्कटॉप</translation>
     </message>
     <message>
-        <location line="+69"/>
+        <location line="+70"/>
         <source>Virtual desktop uses the selected resolution. Changes apply on the next connection.</source>
         <translation>वर्चुअल डेस्कटॉप चयनित रिज़ॉल्यूशन का उपयोग करता है। बदलाव अगले कनेक्शन पर लागू होंगे।</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-23"/>
         <source>Share text clipboard</source>
         <translation>क्लिपबोर्ड का टेक्स्ट साझा करें</translation>
     </message>
@@ -9651,14 +9666,14 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
 <context>
     <name>RemoteDesktopWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+124"/>
-        <location line="+222"/>
+        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+142"/>
+        <location line="+237"/>
         <location line="+320"/>
         <source>Remote Desktop</source>
         <translation>दूरस्थ डेस्कटॉप</translation>
     </message>
     <message>
-        <location line="-529"/>
+        <location line="-544"/>
         <source>View or control an existing desktop through its authorized native provider.</source>
         <translation>अधिकृत नेटिव प्रदाता से मौजूदा डेस्कटॉप देखें या नियंत्रित करें।</translation>
     </message>
@@ -9740,7 +9755,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>कनेक्ट रहें</translation>
     </message>
     <message>
-        <location line="+52"/>
+        <location line="+67"/>
         <source>Some settings will apply on the next connection.</source>
         <translation>कुछ सेटिंग अगले कनेक्शन पर लागू होंगी।</translation>
     </message>
@@ -9836,7 +9851,12 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>चुने हुए डेस्कटॉप की पहचान या अनुमति बदल गई है। रीफ़्रेश करके फिर कनेक्ट करें।</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+25"/>
+        <source>The saved display is no longer available. Choose a display in Settings.</source>
+        <translation>सहेजा गया डिस्प्ले अब उपलब्ध नहीं है। सेटिंग्स में कोई डिस्प्ले चुनें।</translation>
+    </message>
+    <message>
+        <location line="+20"/>
         <source>Opening the selected desktop with administrator control…</source>
         <translation>प्रबंधक नियंत्रण के साथ चुने हुए डेस्कटॉप को खोलना ...</translation>
     </message>
@@ -9846,12 +9866,12 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>चुना हुआ डेस्कटॉप खोला जा रहा है…</translation>
     </message>
     <message>
-        <location line="-427"/>
+        <location line="-461"/>
         <source>Disconnected locally. The native provider reports any unconfirmed remote cleanup.</source>
         <translation>स्थानीय रूप से डिस्कनेक्ट किया गया। नेटिव प्रदाता दूरस्थ सफ़ाई के किसी अपुष्ट परिणाम की जानकारी देता है।</translation>
     </message>
     <message>
-        <location line="+438"/>
+        <location line="+472"/>
         <source>Closing the selected desktop…</source>
         <translation>चयनित डेस्कटॉप बंद किया जा रहा है…</translation>
     </message>

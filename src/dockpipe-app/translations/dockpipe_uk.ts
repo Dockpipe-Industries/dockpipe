@@ -397,7 +397,7 @@ Browse packages to add the tools you use.</source>
 <context>
     <name>BrowserNetworkContext</name>
     <message>
-        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+64"/>
+        <location filename="../src/browser/infrastructure/BrowserNetworkContext.cpp" line="+65"/>
         <source>Remote browser is disconnected.</source>
         <translation>Віддалений браузер від’єднано.</translation>
     </message>
@@ -415,6 +415,11 @@ Browse packages to add the tools you use.</source>
         <location line="+9"/>
         <source>Remote browser embedding is currently supported on Linux X11 only.</source>
         <translation>Вбудовування віддаленого браузера наразі підтримується лише в Linux X11.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Remote browser is unavailable in this build. The Browser SDK lacks isolated session support.</source>
+        <translation>Віддалений браузер недоступний у цій збірці. SDK браузера не підтримує ізольовані сеанси.</translation>
     </message>
     <message>
         <location line="+4"/>
@@ -9494,7 +9499,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
 <context>
     <name>RemoteDesktopSettingsDialog</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+15"/>
+        <location filename="../src/remote/presentation/RemoteDesktopSettingsDialog.cpp" line="+16"/>
         <source>Remote desktop settings</source>
         <translation>Налаштування віддаленого робочого столу</translation>
     </message>
@@ -9574,27 +9579,37 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>Приховувати локальний курсор над робочим столом</translation>
     </message>
     <message>
-        <location line="+34"/>
-        <source>Quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
-        <translation>Якість і частота кадрів застосовуються під час наступного підключення. Роздільність — максимум, бітрейт — цільове значення.</translation>
+        <location line="+35"/>
+        <source>Desktop, quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target.</source>
+        <translation>Вибір робочого столу, якість і частота кадрів застосовуються під час наступного підключення. Роздільність — максимальне значення, бітрейт — цільове.</translation>
     </message>
     <message>
-        <location line="+33"/>
+        <location line="+40"/>
+        <source>Display %1 · %2×%3 (primary)</source>
+        <translation>Дисплей %1 · %2×%3 (основний)</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Display %1 · %2×%3</source>
+        <translation>Дисплей %1 · %2×%3</translation>
+    </message>
+    <message>
+        <location line="+29"/>
         <source>Clipboard sharing is unavailable on the selected computer.</source>
-        <translation>Розповсюдження Clipboard не доступно на вибраному комп'ютері.</translation>
+        <translation>Розповсюдження Clipboard не доступно на вибраному комп&apos;ютері.</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+12"/>
         <source>The selected computer shares its current desktop.</source>
-        <translation>Вибраний комп'ютер ділиться своїм поточним робочим столом.</translation>
+        <translation>Вибраний комп&apos;ютер ділиться своїм поточним робочим столом.</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>The selected computer&apos;s video does not include a cursor.</source>
-        <translation>Відео вибраного комп'ютера не включає курсора.</translation>
+        <translation>Відео вибраного комп&apos;ютера не включає курсора.</translation>
     </message>
     <message>
-        <location line="-119"/>
+        <location line="-162"/>
         <source>Current desktop</source>
         <translation>Поточний робочий стіл</translation>
     </message>
@@ -9609,12 +9624,12 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>Робочий стіл</translation>
     </message>
     <message>
-        <location line="+69"/>
+        <location line="+70"/>
         <source>Virtual desktop uses the selected resolution. Changes apply on the next connection.</source>
         <translation>Віртуальний робочий стіл використовує вибрану роздільність. Зміни набудуть чинності під час наступного підключення.</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-23"/>
         <source>Share text clipboard</source>
         <translation>Спільний текстовий буфер обміну</translation>
     </message>
@@ -9652,14 +9667,14 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
 <context>
     <name>RemoteDesktopWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+124"/>
-        <location line="+222"/>
+        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+142"/>
+        <location line="+237"/>
         <location line="+320"/>
         <source>Remote Desktop</source>
         <translation>Віддалений робочий стіл</translation>
     </message>
     <message>
-        <location line="-529"/>
+        <location line="-544"/>
         <source>View or control an existing desktop through its authorized native provider.</source>
         <translation>Переглядайте наявний робочий стіл і керуйте ним через авторизованого нативного постачальника.</translation>
     </message>
@@ -9741,7 +9756,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>Зберігати підключення</translation>
     </message>
     <message>
-        <location line="+52"/>
+        <location line="+67"/>
         <source>Some settings will apply on the next connection.</source>
         <translation>Деякі налаштування застосуються під час наступного підключення.</translation>
     </message>
@@ -9788,7 +9803,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
     <message>
         <location line="+0"/>
         <source>No paired computers are available. Add a computer in Environments.</source>
-        <translation>Немає платних комп'ютерів. Додайте комп'ютер в середовища.</translation>
+        <translation>Немає платних комп&apos;ютерів. Додайте комп&apos;ютер в середовища.</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -9837,7 +9852,12 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>Ідентифікатор або дозволи вибраного робочого столу змінилися. Оновіть відомості та під’єднайтеся знову.</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+25"/>
+        <source>The saved display is no longer available. Choose a display in Settings.</source>
+        <translation>Збережений дисплей більше недоступний. Виберіть дисплей у налаштуваннях.</translation>
+    </message>
+    <message>
+        <location line="+20"/>
         <source>Opening the selected desktop with administrator control…</source>
         <translation>Відкриття вибраного робочого столу з контролем адміністратора...</translation>
     </message>
@@ -9847,12 +9867,12 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>Відкриття вибраного робочого столу…</translation>
     </message>
     <message>
-        <location line="-427"/>
+        <location line="-461"/>
         <source>Disconnected locally. The native provider reports any unconfirmed remote cleanup.</source>
         <translation>Локальне підключення закрито. Нативний постачальник повідомляє про непідтверджене очищення на віддаленому боці.</translation>
     </message>
     <message>
-        <location line="+438"/>
+        <location line="+472"/>
         <source>Closing the selected desktop…</source>
         <translation>Закриття вибраного робочого столу…</translation>
     </message>
