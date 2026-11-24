@@ -121,7 +121,11 @@ mkdir -p "$test_bin"
 install -m 755 "$root/src/bin/dockpipe" "$test_bin/dockpipe"
 install -m 755 "$build/dockpipe-terminal-host" "$test_bin/dockpipe-terminal-host"
 (
+  # The workflow runner exposes its bootstrap CLI. CTest needs the candidate.
+  unset DOCKPIPE_BIN
   export PATH="$test_bin:$PATH"
+  TMPDIR="$(cd "${TMPDIR:-/tmp}" && pwd -P)"
+  export TMPDIR
   if [[ -n "$diagnostic_product_source" ]]; then
     python3 "$root/workflows/build/desktop/assets/scripts/layout-diagnostics.py" ctest \
       --build "$build" --evidence "$diagnostic_output"

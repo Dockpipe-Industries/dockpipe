@@ -66,8 +66,10 @@ try {
     Copy-Item -LiteralPath (Join-Path $root "src/bin/dockpipe.exe") -Destination $testBin
     Copy-Item -LiteralPath (Join-Path $build "dockpipe-terminal-host.exe") -Destination $testBin
     $testPath = $env:PATH
+    $testCli = $env:DOCKPIPE_BIN
     try {
         $env:PATH = @($testBin, (Join-Path $browserSdk "bin"), $testPath) -join [IO.Path]::PathSeparator
+        $env:DOCKPIPE_BIN = $null
         $testReport = Join-Path $build ("desktop-regression-" + [guid]::NewGuid().ToString("N") + ".xml")
         if (Test-Path -LiteralPath $testReport) {
             throw "CTest report must be fresh"
@@ -82,6 +84,7 @@ try {
         }
     } finally {
         $env:PATH = $testPath
+        $env:DOCKPIPE_BIN = $testCli
     }
     New-Item -ItemType Directory -Path $StageDir | Out-Null
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot "../licenses") -Destination $StageDir -Recurse

@@ -260,7 +260,7 @@ steps:
                         ++prompts;
                         message->findChild<QPushButton *>(restartNow
                             ? "languageRestartNow" : "languageRestartLater")->click();
-                    } else if (message->windowTitle() == "Unsaved workflow") {
+                    } else if (message->button(QMessageBox::Discard) && message->button(QMessageBox::Cancel)) {
                         ++cancellations;
                         message->button(QMessageBox::Cancel)->click();
                     }
