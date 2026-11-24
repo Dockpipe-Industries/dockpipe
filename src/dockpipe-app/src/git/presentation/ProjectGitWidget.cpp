@@ -141,6 +141,7 @@ ProjectGitWidget::ProjectGitWidget(QWidget *parent) : QWidget(parent), m_command
     int iconIndex = 0;
     for (const auto &entry : QList<QPair<QString, QString>>{{tr("Refresh"), "status"}, {tr("Pull"), "pull"}, {tr("Push"), "push"}}) {
         auto *button = new QPushButton(CanvasIcons::icon(icons[iconIndex++]), entry.first);
+        button->setObjectName("gitHeader-" + entry.second);
         button->setToolTip(entry.second == "pull" ? tr("Pull fast-forward changes into a clean checkout")
             : entry.second == "push" ? tr("Push this branch to origin") : tr("Refresh saved project changes"));
         controls->addWidget(button);
@@ -419,6 +420,10 @@ ProjectGitWidget::ProjectGitWidget(QWidget *parent) : QWidget(parent), m_command
     m_status->setWordWrap(true);
     footer->addWidget(m_status, 1);
     auto *cancel = new QPushButton(CanvasIcons::icon(CanvasIcons::Symbol::Close), tr("Cancel operation"));
+    // Showing the cancel action during a refresh must not resize the review viewport.
+    auto cancelSizePolicy = cancel->sizePolicy();
+    cancelSizePolicy.setRetainSizeWhenHidden(true);
+    cancel->setSizePolicy(cancelSizePolicy);
     cancel->hide();
     footer->addWidget(cancel);
     layout->addLayout(footer);
@@ -431,7 +436,7 @@ ProjectGitWidget::ProjectGitWidget(QWidget *parent) : QWidget(parent), m_command
         m_unstagedTree->setEnabled(!busy);
         m_stagedTree->setEnabled(!busy);
         updateCommitState();
-        m_fileActions->setEnabled(!busy && m_activeFiles->currentItem());
+        m_fileActions->setEnabled(!busy && m_activeFiles->currentItem() && RemoteGitContext::canWrite(this));
         m_history->setBusy(busy);
         m_repository->setBusy(busy);
         m_conflicts->setBusy(busy);
@@ -605,12 +610,20 @@ void ProjectGitWidget::runRequest(QJsonObject request)
 {
     if (busy() || m_workdir.isEmpty())
         return;
+    const QString action = request.value("action").toString();
+    const bool readOnly = action == "status" || action == "diff" || action == "compare";
+    if (!readOnly) {
+        const bool publish = action == "push" || action == "tag-publish";
+        const bool allowed = publish ? RemoteGitContext::canPublish(this) : RemoteGitContext::canWrite(this);
+        if (!allowed) {
+            m_status->setText(tr("The selected Git root does not grant this operation."));
+            return;
+        }
+    }
     if (auto *passive = findChild<ProjectGitClient *>(QStringLiteral("projectGitPassiveReader")); passive && passive->busy())
         passive->cancel();
-    const QString action = request.value("action").toString();
     if (!request.contains("snapshot"))
         request["snapshot"] = m_snapshot.value("snapshot");
-    const bool readOnly = action == "status" || action == "diff" || action == "compare";
     if (!readOnly && !confirmLeave())
         return;
     // Saving a conflict draft can start a refresh. Require another explicit action afterwards.
@@ -774,7 +787,11 @@ void ProjectGitWidget::render(const QJsonObject &snapshot)
 
 void ProjectGitWidget::updateCommitState()
 {
-    const bool available = !busy() && !m_snapshot.isEmpty()
+    const bool writable = RemoteGitContext::canWrite(this);
+    findChild<QPushButton *>("gitHeader-pull")->setEnabled(writable);
+    findChild<QPushButton *>("gitHeader-push")->setEnabled(RemoteGitContext::canPublish(this));
+    m_message->setReadOnly(!writable);
+    const bool available = writable && !busy() && !m_snapshot.isEmpty()
         && m_snapshot.value("operation").toObject().value("kind").toString().isEmpty();
     if (m_staged->count() == 0)
         m_selection->setText(tr("No staged files"));
@@ -805,7 +822,7 @@ void ProjectGitWidget::selectFile(QListWidget *group)
     findChild<QPushButton *>("gitFile-stage")->setVisible(!staged);
     findChild<QPushButton *>("gitFile-unstage")->setVisible(staged);
     findChild<QPushButton *>("gitFile-discard")->setVisible(!staged);
-    m_fileActions->setEnabled(true);
+    m_fileActions->setEnabled(RemoteGitContext::canWrite(this));
     runAction("compare");
 }
 

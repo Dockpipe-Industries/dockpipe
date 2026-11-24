@@ -77,6 +77,10 @@ int main(int argc, char **argv)
     for (int attempt = 1; attempt <= 2; ++attempt) {
         if (!check(manager.launch(context, directory.path()), "missing executable request was not admitted"))
             return 1;
+        if (!check(failures == attempt - 1 && manager.isRunning(context.id)
+                   && manager.info(context.id).status == SessionStatus::Starting,
+                   "failed start was published before launch returned"))
+            return 1;
         if (!check(waitFor([&]() { return failures == attempt; }), "missing executable failure did not arrive"))
             return 1;
         QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);

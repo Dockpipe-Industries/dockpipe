@@ -13,6 +13,7 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QComboBox>
+#include <QScrollBar>
 #include <QStackedWidget>
 #include <QTimer>
 #include <QTableWidget>
@@ -38,7 +39,7 @@ QTableWidget *makeTable(const QStringList &headers)
 }
 
 ActivityWidget::ActivityWidget(SessionManager &sessions, ContextStore &store, QWidget *parent)
-    : QWidget(parent), m_sessions(sessions), m_store(store), m_command(this)
+    : QWidget(parent), m_sessions(sessions), m_store(store), m_command(this), m_logCommand(this)
 {
     setObjectName("runHistoryPage");
     setAttribute(Qt::WA_StyledBackground, true);
@@ -141,6 +142,13 @@ ActivityWidget::ActivityWidget(SessionManager &sessions, ContextStore &store, QW
     m_remotePages->addWidget(emptyState(false));
     m_remotePages->addWidget(m_jobs);
     remoteLayout->addWidget(m_remotePages, 1);
+    m_remoteLog = new QPlainTextEdit;
+    m_remoteLog->setObjectName("remoteLiveLog");
+    m_remoteLog->setAccessibleName(tr("Live workflow log"));
+    m_remoteLog->setReadOnly(true);
+    m_remoteLog->setMaximumHeight(180);
+    m_remoteLog->hide();
+    remoteLayout->addWidget(m_remoteLog);
     auto *remoteButtons = new QHBoxLayout;
     auto *refresh = new QPushButton(tr("Refresh jobs"));
     m_cancelJob = new QPushButton(tr("Cancel selected job"));
@@ -160,6 +168,7 @@ ActivityWidget::ActivityWidget(SessionManager &sessions, ContextStore &store, QW
     connect(m_location, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int index) {
         m_output->hide();
         m_status->clear();
+        clearRemoteLog();
         updateRunControls();
         if (index == 1)
             refreshRemote();
@@ -174,6 +183,10 @@ ActivityWidget::ActivityWidget(SessionManager &sessions, ContextStore &store, QW
             refreshRemote();
     });
     refreshTimer->start();
+    auto *logTimer = new QTimer(this);
+    logTimer->setInterval(2000);
+    connect(logTimer, &QTimer::timeout, this, &ActivityWidget::refreshRemoteLog);
+    logTimer->start();
     m_output = new QPlainTextEdit;
     m_output->setObjectName("detailConsole");
     m_output->setReadOnly(true);
@@ -213,6 +226,7 @@ ActivityWidget::ActivityWidget(SessionManager &sessions, ContextStore &store, QW
     });
     connect(m_local, &QTableWidget::itemSelectionChanged, this, &ActivityWidget::updateRunControls);
     connect(m_jobs, &QTableWidget::itemSelectionChanged, this, &ActivityWidget::updateRunControls);
+    connect(m_jobs, &QTableWidget::itemSelectionChanged, this, &ActivityWidget::refreshRemoteLog);
     updateRunControls();
     connect(&sessions, &SessionManager::sessionStarted, this, &ActivityWidget::refreshLocal);
     connect(&sessions, &SessionManager::sessionStopped, this, &ActivityWidget::refreshLocal);
@@ -310,6 +324,74 @@ QString ActivityWidget::selectedJob() const
     return item ? item->text() : QString();
 }
 
+QString ActivityWidget::selectedRunningJob() const
+{
+    if (!isVisible() || m_location->currentIndex() != 1)
+        return {};
+
+    const int row = m_jobs->currentRow();
+    const auto *status = row >= 0 ? m_jobs->item(row, 2) : nullptr;
+    if (!status || status->text() != QStringLiteral("running"))
+        return {};
+
+    return selectedJob();
+}
+
+void ActivityWidget::clearRemoteLog()
+{
+    m_displayedLogJob.clear();
+    m_remoteLog->clear();
+    m_remoteLog->hide();
+}
+
+void ActivityWidget::refreshRemoteLog()
+{
+    const QString job = selectedRunningJob();
+    if (job != m_displayedLogJob || job.isEmpty())
+        clearRemoteLog();
+
+    if (job.isEmpty() || m_logCommand.busy())
+        return;
+
+    const QString program = DockpipeChoices::operatorDockpipeBinary();
+    if (program.isEmpty())
+        return;
+
+    m_logCommand.run(program, {"remote", "job-log", "--id", job, "--auth", "never"},
+                     [this, job](bool ok, const QByteArray &data) {
+        if (selectedRunningJob() != job)
+            return;
+
+        const auto preview = QJsonDocument::fromJson(data).object();
+        if (!ok || preview.value("id").toString() != job || preview.value("status").toString() != QStringLiteral("running")) {
+            clearRemoteLog();
+            return;
+        }
+
+        const auto log = preview.value("log").toObject();
+        const auto decoded = QByteArray::fromBase64Encoding(log.value("data").toString().toLatin1(), QByteArray::AbortOnBase64DecodingErrors);
+        if (!decoded || decoded.decoded.isEmpty() || decoded.decoded.size() > 64 * 1024) {
+            clearRemoteLog();
+            return;
+        }
+
+        QString text = QString::fromUtf8(decoded.decoded);
+        if (log.value("truncated").toBool())
+            text += tr("\nLive preview limit reached. Download the results for the full retained log.");
+
+        if (m_remoteLog->toPlainText() != text) {
+            auto *scroll = m_remoteLog->verticalScrollBar();
+            const int previous = scroll->value();
+            const bool follow = previous == scroll->maximum();
+            m_remoteLog->setPlainText(text);
+            scroll->setValue(follow ? scroll->maximum() : previous);
+        }
+
+        m_displayedLogJob = job;
+        m_remoteLog->show();
+    }, 5000);
+}
+
 void ActivityWidget::run(const QStringList &args, RemoteCommand::Completion completion, bool allowAuthentication)
 {
     if (m_command.busy())
@@ -394,5 +476,6 @@ void ActivityWidget::loadRemoteJobs(bool allowAuthentication)
             m_status->setText(tr("This job is no longer available in the broker’s job list."));
         m_jobs->blockSignals(false);
         updateRunControls();
+        refreshRemoteLog();
     }, allowAuthentication);
 }

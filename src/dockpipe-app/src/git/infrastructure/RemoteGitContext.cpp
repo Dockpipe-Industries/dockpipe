@@ -8,6 +8,8 @@ namespace {
 constexpr auto RemoteMode = "dockpipeRemoteGitMode";
 constexpr auto Target = "dockpipeRemoteGitTarget";
 constexpr auto Root = "dockpipeRemoteGitRoot";
+constexpr auto WriteGrant = "dockpipeRemoteGitWrite";
+constexpr auto PublishGrant = "dockpipeRemoteGitPublish";
 
 QVariant inheritedProperty(const QObject *object, const char *name)
 {
@@ -23,6 +25,16 @@ QVariant inheritedProperty(const QObject *object, const char *name)
 bool RemoteGitContext::isRemote(const QObject *object)
 {
     return inheritedProperty(object, RemoteMode).toBool();
+}
+
+bool RemoteGitContext::canWrite(const QObject *object)
+{
+    return !isRemote(object) || inheritedProperty(object, WriteGrant).toBool();
+}
+
+bool RemoteGitContext::canPublish(const QObject *object)
+{
+    return !isRemote(object) || inheritedProperty(object, PublishGrant).toBool();
 }
 
 QJsonObject RemoteGitContext::target(const QObject *object)
@@ -45,10 +57,13 @@ bool RemoteGitContext::validTarget(const QJsonObject &target, const QString &roo
         && identifier.match(root).hasMatch();
 }
 
-void RemoteGitContext::bind(QObject *object, bool remote, const QJsonObject &target, const QString &root)
+void RemoteGitContext::bind(QObject *object, bool remote, const QJsonObject &target, const QString &root,
+                            const QJsonObject &grant)
 {
     object->setProperty(RemoteMode, remote);
     object->setProperty(Target, target);
     object->setProperty(Root, root);
+    object->setProperty(WriteGrant, grant.value("git_write").toBool());
+    object->setProperty(PublishGrant, grant.value("git_publish").toBool());
 }
 

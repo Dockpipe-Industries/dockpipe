@@ -504,14 +504,18 @@ void RemoteFeatureClient::completed(int exitCode, bool normalExit)
             finish({Outcome::Unknown, {}, tr("Invalid recovery receipt. The original operation remains uncertain.")});
             return;
         }
-        if (normalExit && (status == "success" || status == "failure") && result.value("status") == status)
+        const bool confirmedCancellation = normalExit && exitCode == 0 && status == "cancelled"
+            && result.value("status") == status;
+        if (confirmedCancellation || (normalExit && (status == "success" || status == "failure") && result.value("status") == status))
             saveRecovery(current->reference, true);
         if (normalExit && exitCode == 0 && status == "unknown" && operation.value("receipt_only").toBool()
             && operation.value("recovery_requested").toBool() && operation.value("cancel_requested").toBool()
             && operation.value("reconciled").toBool())
             saveRecovery(current->reference, false, true);
         Outcome outcome = Outcome::Unknown;
-        if (normalExit && exitCode == 0 && status == "success")
+        if (confirmedCancellation)
+            outcome = Outcome::Cancelled;
+        else if (normalExit && exitCode == 0 && status == "success")
             outcome = Outcome::Success;
         else if (normalExit && status == "failure")
             outcome = Outcome::Failure;

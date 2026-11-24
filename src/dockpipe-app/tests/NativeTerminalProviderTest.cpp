@@ -51,6 +51,10 @@ class NativeTerminalProviderTest final : public QObject {
     Q_OBJECT
 private slots:
     void frozenEnvironmentAndInvocationPath();
+#ifdef Q_OS_WIN
+    void dropsWindowsEnvironmentMarker();
+    void resolvesWindowsEnvironmentInChild();
+#endif
     void rejectsIncompleteAndUnknownProfiles();
     void actualWriteAndEofCleanup();
     void partialNativeWriteIsUncertain();
@@ -81,6 +85,49 @@ void NativeTerminalProviderTest::frozenEnvironmentAndInvocationPath()
     QSKIP("Unix executable symlink fixture.");
 #endif
 }
+
+#ifdef Q_OS_WIN
+void NativeTerminalProviderTest::dropsWindowsEnvironmentMarker()
+{
+    QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
+    environment.insert(QStringLiteral("DOCKPIPE_TERMINAL_TEST_CHILD"), QStringLiteral("1"));
+    environment.insert(QStringLiteral("=::"), QStringLiteral("::\\"));
+    environment.insert(QStringLiteral("=C:"), QStringLiteral("C:\\"));
+
+    QProcess child;
+    child.setProcessEnvironment(environment);
+    child.start(QCoreApplication::applicationFilePath(), {QStringLiteral("resolvesWindowsEnvironmentInChild")});
+    QVERIFY2(child.waitForStarted(), qPrintable(child.errorString()));
+    QVERIFY2(child.waitForFinished(10000), qPrintable(child.errorString()));
+    QCOMPARE(child.exitStatus(), QProcess::NormalExit);
+    QVERIFY2(child.exitCode() == 0, child.readAllStandardOutput().constData());
+}
+
+void NativeTerminalProviderTest::resolvesWindowsEnvironmentInChild()
+{
+    if (qEnvironmentVariable("DOCKPIPE_TERMINAL_TEST_CHILD") != QStringLiteral("1"))
+        QSKIP("Requires the child process environment fixture.");
+
+    const auto environment = QProcessEnvironment::systemEnvironment();
+    QCOMPARE(environment.value(QStringLiteral("=C:")), QStringLiteral("C:\\"));
+    QCOMPARE(environment.value(QStringLiteral("=::")), QStringLiteral("::\\"));
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+
+    const auto snapshot = NativeTerminalLaunch::resolve(directory.path(), QCoreApplication::applicationFilePath(),
+        {}, {}, TerminalLaunchContext::Local);
+    QVERIFY2(snapshot.error.isEmpty(), qPrintable(snapshot.error));
+    QVERIFY(snapshot.environment.contains(QStringLiteral("=C:=C:\\")));
+    QVERIFY(!snapshot.environment.contains(QStringLiteral("=::=::\\")));
+
+    auto roundtrip = NativeTerminalLaunch::Snapshot{};
+    QVERIFY(NativeTerminalLaunch::fromJson(snapshot.toJson(), roundtrip));
+    QCOMPARE(roundtrip.environment, snapshot.environment);
+
+    roundtrip.environment.append(QStringLiteral("=::=::\\"));
+    QVERIFY(!NativeTerminalLaunch::fromJson(roundtrip.toJson(), roundtrip));
+}
+#endif
 
 void NativeTerminalProviderTest::rejectsIncompleteAndUnknownProfiles()
 {

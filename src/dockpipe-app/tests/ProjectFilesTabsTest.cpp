@@ -410,7 +410,9 @@ void ProjectFilesTabsTest::remoteContextDoesNotReuseLocalWorkflow()
     context.rootId = "opaque-root";
     context.generation = 44;
     QByteArray remoteBytes("remote document\n");
+    QString remoteReadPath;
     int remoteReads = 0;
+    int remoteWrites = 0;
     auto dispatch = [&](const auto &captured, const auto &request, auto completion) {
         QJsonObject value{{"schema", "dockpipe.files/v1"}, {"path", request.value("path")}};
         if (captured.rootId != context.rootId)
@@ -418,8 +420,10 @@ void ProjectFilesTabsTest::remoteContextDoesNotReuseLocalWorkflow()
         const QString action = request.value("action").toString();
         if (action == "read") {
             ++remoteReads;
+            remoteReadPath = request.value("path").toString();
             value.insert("content", QString::fromLatin1(remoteBytes.toBase64()));
         } else if (action == "write") {
+            ++remoteWrites;
             remoteBytes = QByteArray::fromBase64(request.value("content").toString().toLatin1());
         } else {
             value.insert("entries", QJsonArray());
@@ -442,14 +446,34 @@ void ProjectFilesTabsTest::remoteContextDoesNotReuseLocalWorkflow()
     QVERIFY(configured);
     QCOMPARE(discard.count, 1);
     QVERIFY(localDraft.isNull());
-    QVERIFY(FilesTest::open(fixture.files, path));
+    QVERIFY(!FilesTest::open(fixture.files, QStringLiteral("C:/workflow.yml")));
+    QVERIFY(FilesTest::open(fixture.files, QStringLiteral("/workflow.yml")));
     QCOMPARE(remoteReads, 1);
+    QCOMPARE(remoteReadPath, QStringLiteral("workflow.yml"));
     QVERIFY(fixture.files.currentDocument() != localWorkflow.document());
     QCOMPARE(fixture.files.currentDocument()->toPlainText(), QString("remote document\n"));
     QVERIFY(fixture.files.findChild<QPushButton *>("fileOpenWorkflow")->isHidden());
     QVERIFY(!fixture.files.findChild<QPushButton *>("openWorkspaceGraph")->isEnabled());
+    auto *workspace = fixture.workspace();
+    auto *editor = workspace->activeEditor();
+    QVERIFY(editor->isReadOnly());
+    QTest::keyClicks(editor, "blocked edit");
+    QCOMPARE(editor->toPlainText(), QString("remote document\n"));
+    workspace->split(Qt::Horizontal);
+    QVERIFY(workspace->openInOtherPane(QStringLiteral("/workflow.yml")));
+    QVERIFY(workspace->activeEditor()->isReadOnly());
+    QVERIFY(!fixture.files.findChild<QPushButton *>("editorSave")->isEnabled());
+    QVERIFY(!FilesTest::save(fixture.files));
+    QCOMPARE(remoteWrites, 0);
+
+    context.writeGranted = true;
+    ++context.generation;
+    QVERIFY(WorkspaceFilesController::configure(&fixture.files, context, dispatch));
+    QVERIFY(FilesTest::open(fixture.files, QStringLiteral("/workflow.yml")));
+    QVERIFY(!workspace->activeEditor()->isReadOnly());
     fixture.replaceText("remote saved\n");
     QVERIFY(FilesTest::save(fixture.files));
+    QCOMPARE(remoteWrites, 1);
     QCOMPARE(remoteBytes, QByteArray("remote saved\n"));
     QCOMPARE(readBytes(path), QByteArray("local disk\n"));
     QCOMPARE(localWorkflow.toPlainText(), QString("local shared document\n"));

@@ -4,6 +4,7 @@
 #include "RemoteWorkspaceFilesDispatch.h"
 
 #include <QDir>
+#include <QJsonArray>
 #include <QVBoxLayout>
 
 DashboardFilePreview::DashboardFilePreview(const QString &root, const QString &path, QWidget *parent)
@@ -39,8 +40,15 @@ DashboardFilePreview::DashboardFilePreview(const QString &root, const QString &p
         context.workerGeneration = target.value("generation").toString();
         context.rootId = rootId;
         context.generation = 1;
+        for (const auto &value : catalog.value("roots").toArray()) {
+            const auto grant = value.toObject();
+            if (grant.value("id").toString() == rootId) {
+                context.writeGranted = grant.value("files_write").toBool();
+                break;
+            }
+        }
         if (WorkspaceFilesController::configure(m_files, context, RemoteWorkspaceFilesDispatch::create(m_files)))
-            m_files->openFileAsync(QDir(QStringLiteral("/")).absoluteFilePath(path));
+            m_files->openFileAsync(path.startsWith('/') ? path : '/' + path);
     } else {
         m_files->setRootAsync(root, [this, path](bool accepted) {
             if (accepted)

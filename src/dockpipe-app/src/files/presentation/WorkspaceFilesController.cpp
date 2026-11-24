@@ -51,6 +51,9 @@ void WorkspaceFilesController::setContext(const WorkspaceFilesClient::Context &c
     revisions.clear();
     reader->setContext(context);
     writer->setContext(context);
+
+    auto *widget = qobject_cast<ProjectFilesWidget *>(parent());
+    widget->setWriteAvailable(context.canWrite());
 }
 
 void WorkspaceFilesController::beginWrite()

@@ -66,6 +66,34 @@ private slots:
         QCOMPARE(editor->rootPath(), local.path());
     }
 
+    void writeAndPublishControlsFollowSeparateGrants()
+    {
+        ProjectGitWidget widget;
+        const auto node = target(QStringLiteral("first"));
+        const auto *refresh = widget.findChild<QPushButton *>("gitHeader-status");
+        const auto *pull = widget.findChild<QPushButton *>("gitHeader-pull");
+        const auto *push = widget.findChild<QPushButton *>("gitHeader-push");
+        QVERIFY(refresh && pull && push);
+
+        QVERIFY(RemoteGitContext::configure(&widget, node, "read-only", {{"git_read", true}}));
+        QVERIFY(refresh->isEnabled());
+        QVERIFY(!pull->isEnabled());
+        QVERIFY(!push->isEnabled());
+
+        QVERIFY(RemoteGitContext::configure(&widget, node, "write", {{"git_read", true}, {"git_write", true}}));
+        QVERIFY(pull->isEnabled());
+        QVERIFY(!push->isEnabled());
+
+        QVERIFY(RemoteGitContext::configure(&widget, node, "publish", {{"git_read", true}, {"git_publish", true}}));
+        QVERIFY(!pull->isEnabled());
+        QVERIFY(push->isEnabled());
+
+        QTemporaryDir local;
+        QVERIFY(RemoteGitContext::configureLocal(&widget, local.path()));
+        QVERIFY(pull->isEnabled());
+        QVERIFY(push->isEnabled());
+    }
+
     void refusesBusyChildClientWithoutChangingTarget()
     {
         ProjectGitWidget widget;
@@ -80,7 +108,7 @@ private slots:
             [&](bool, const QJsonObject &, const QString &) { completed = true; });
         QVERIFY(client->busy());
         QString error;
-        QVERIFY(!RemoteGitContext::configure(&widget, target(QStringLiteral("second")), QStringLiteral("other"), &error));
+        QVERIFY(!RemoteGitContext::configure(&widget, target(QStringLiteral("second")), QStringLiteral("other"), {}, &error));
         QVERIFY(!error.isEmpty());
         QCOMPARE(RemoteGitContext::target(&widget), first);
         for (const auto *child : widget.findChildren<ProjectGitClient *>())
@@ -94,7 +122,8 @@ private slots:
     {
         ProjectGitWidget widget;
         const auto first = target(QStringLiteral("first"));
-        QVERIFY(RemoteGitContext::configure(&widget, first, QStringLiteral("checkout")));
+        const QJsonObject grants{{"files_read", true}, {"files_write", true}};
+        QVERIFY(RemoteGitContext::configure(&widget, first, QStringLiteral("checkout"), grants));
         QTest::qWait(20);
         auto *conflicts = widget.findChild<GitConflictWidget *>();
         auto *editor = widget.findChild<ProjectFilesWidget *>(QStringLiteral("gitConflictEditor"));
@@ -135,7 +164,7 @@ private slots:
         editor->currentDocument()->setPlainText(QStringLiteral("resolved remotely\n"));
         editor->currentDocument()->setModified(true);
         QString error;
-        QVERIFY(!RemoteGitContext::configure(&widget, target(QStringLiteral("second")), QStringLiteral("other"), &error));
+        QVERIFY(!RemoteGitContext::configure(&widget, target(QStringLiteral("second")), QStringLiteral("other"), {}, &error));
         QVERIFY(!error.isEmpty());
         QVERIFY(editor->hasUnsavedChanges());
         QCOMPARE(RemoteGitContext::target(&widget), first);

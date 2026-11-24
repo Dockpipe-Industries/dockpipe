@@ -4,7 +4,7 @@
 <context>
     <name>ActivityWidget</name>
     <message>
-        <location filename="../src/execution/presentation/ActivityWidget.cpp" line="+48"/>
+        <location filename="../src/execution/presentation/ActivityWidget.cpp" line="+49"/>
         <source>Runs &amp; logs</source>
         <translation>実行とログ</translation>
     </message>
@@ -15,12 +15,12 @@
     </message>
     <message>
         <location line="+10"/>
-        <location line="+211"/>
+        <location line="+224"/>
         <source>This computer</source>
         <translation>このコンピューター</translation>
     </message>
     <message>
-        <location line="-211"/>
+        <location line="-224"/>
         <source>Remote jobs</source>
         <translation>リモートジョブ</translation>
     </message>
@@ -104,7 +104,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>状態</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+15"/>
         <source>Refresh jobs</source>
         <translation>ジョブを更新</translation>
     </message>
@@ -124,7 +124,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>結果の成果物とワークフローログを保存します。</translation>
     </message>
     <message>
-        <location line="+57"/>
+        <location line="+62"/>
         <source>Save result inside folder</source>
         <translation>結果をフォルダーに保存</translation>
     </message>
@@ -134,7 +134,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>結果と workflow.log を %1 に保存しました</translation>
     </message>
     <message>
-        <location line="+62"/>
+        <location line="+63"/>
         <source>Finished / stopped</source>
         <translation>完了 / 停止</translation>
     </message>
@@ -169,7 +169,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>リモートジョブ %1 件</translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+100"/>
         <source>Up to date with the broker.</source>
         <translation>ブローカーと同期済みです。</translation>
     </message>
@@ -197,6 +197,18 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <location line="+34"/>
         <source>This job is no longer available in the broker’s job list.</source>
         <translation>このジョブはブローカーのジョブ一覧で利用できなくなりました。</translation>
+    </message>
+    <message>
+        <location line="-329"/>
+        <source>Live workflow log</source>
+        <translation>ワークフローのライブ ログ</translation>
+    </message>
+    <message>
+        <location line="+233"/>
+        <source>
+Live preview limit reached. Download the results for the full retained log.</source>
+        <translation>
+ライブ プレビューの上限に達しました。保存された完全なログを確認するには、結果をダウンロードしてください。</translation>
     </message>
 </context>
 <context>
@@ -1029,7 +1041,7 @@ Independent repository · add multiple views for cross-repo work</source>
 <context>
     <name>DashboardRepositoryPanel</name>
     <message>
-        <location filename="../src/dashboards/presentation/DashboardRepositoryPanel.cpp" line="+38"/>
+        <location filename="../src/dashboards/presentation/DashboardRepositoryPanel.cpp" line="+39"/>
         <source>Repository…</source>
         <translation>リポジトリ…</translation>
     </message>
@@ -1054,7 +1066,7 @@ Independent repository · add multiple views for cross-repo work</source>
         <translation>このビューで使用するリポジトリを選択</translation>
     </message>
     <message>
-        <location line="+81"/>
+        <location line="+90"/>
         <source>Unsaved commit message</source>
         <translation>未保存のコミットメッセージ</translation>
     </message>
@@ -3243,7 +3255,7 @@ Refresh to load inventory from the selected machine.</source>
     <message>
         <location line="+2"/>
         <location line="+232"/>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+119"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+118"/>
         <source>Loading container logs…</source>
         <translation>コンテナーログを読み込み中…</translation>
     </message>
@@ -3517,7 +3529,7 @@ Refresh to load inventory from the selected machine.</source>
         <translation>コンテナー操作の応答が無効です。</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-298"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-297"/>
         <source>Wait for the current container control operation before changing machines.</source>
         <translation>マシンを変更する前に、現在のコンテナー操作が完了するまでお待ちください。</translation>
     </message>
@@ -3527,7 +3539,7 @@ Refresh to load inventory from the selected machine.</source>
         <translation>フィンガープリントとワーカー世代が検証済みのマシンを選択してください。</translation>
     </message>
     <message>
-        <location line="+128"/>
+        <location line="+127"/>
         <source>%1 · Remote Docker inventory unavailable: %2</source>
         <translation>%1 · リモート Docker インベントリを利用できません: %2</translation>
     </message>
@@ -3818,6 +3830,780 @@ Select a row to get started.</source>
         <location line="+8"/>
         <source>Env (*.env *.sh);;All files (*)</source>
         <translation>環境 (*.env *.sh);;すべてのファイル (*)</translation>
+    </message>
+</context>
+<context>
+    <name>EnvironmentDefinitionsClient</name>
+    <message>
+        <location filename="../src/environments/infrastructure/EnvironmentDefinitionsClient.cpp" line="+150"/>
+        <source>Could not start Dockpipe to read environment definitions.</source>
+        <translation>Dockpipe は環境の定義を読み始めることはできません。</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Dockpipe could not list environment definitions.</source>
+        <translation>Dockpipeは、環境定義をリストすることができませんでした。</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Dockpipe returned an invalid environment definition list.</source>
+        <translation>Dockpipe は不適切な環境定義リストを返しました。</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Reading environment definitions timed out.</source>
+        <translation>環境の定義を読み取る。</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>The environment definition list exceeds its size limit.</source>
+        <translation>環境定義リストはそのサイズ制限を超える。</translation>
+    </message>
+</context>
+<context>
+    <name>EnvironmentsPage</name>
+    <message>
+        <location filename="../src/environments/presentation/EnvironmentsPage.cpp" line="+86"/>
+        <source>← Environments</source>
+        <translation>← 環境</translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>Canvas</source>
+        <translation>キャンバス</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>List</source>
+        <translation>一覧</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Refresh</source>
+        <translation>更新</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <location line="+247"/>
+        <source>Add Environment</source>
+        <translation>環境を追加</translation>
+    </message>
+    <message>
+        <location line="-233"/>
+        <location line="+9"/>
+        <source>Environments</source>
+        <translation>環境</translation>
+    </message>
+    <message>
+        <location line="-8"/>
+        <source>Hosts, virtual machines, and containers</source>
+        <translation>ホスト、仮想機械、コンテナ</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Details</source>
+        <translation>詳細</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <location line="+331"/>
+        <location line="+121"/>
+        <source>Name</source>
+        <translation>名前</translation>
+    </message>
+    <message>
+        <location line="-452"/>
+        <source>Type</source>
+        <translation>種類</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Location</source>
+        <translation>場所</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Status</source>
+        <translation>ステータス</translation>
+    </message>
+    <message>
+        <location line="+201"/>
+        <source>Reading environment definitions…</source>
+        <translation>環境の定義を読む...</translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <location line="+727"/>
+        <source>Remote machine</source>
+        <translation>遠隔機械</translation>
+    </message>
+    <message>
+        <location line="-727"/>
+        <source>Pair another computer with Dockpipe.</source>
+        <translation>Dockpipe で別のコンピュータを組み合わせる。</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+722"/>
+        <location line="+71"/>
+        <source>Virtual machine</source>
+        <translation>仮想機械</translation>
+    </message>
+    <message>
+        <location line="-793"/>
+        <source>Choose an operating system and configure a VM.</source>
+        <translation>オペレーティングシステムを選択し、VMを設定します。</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+794"/>
+        <source>Container</source>
+        <translation>コンテナー</translation>
+    </message>
+    <message>
+        <location line="-794"/>
+        <source>Choose an image and configure a Docker container.</source>
+        <translation>画像を選択して Docker コンテナを設定します。</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Import YAML</source>
+        <translation>輸入 YAML</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Open existing environment definitions.</source>
+        <translation>既存の環境定義を明確にする。</translation>
+    </message>
+    <message>
+        <location line="+61"/>
+        <source>Add Virtual Machine</source>
+        <translation>仮想マシンを追加する</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Runs on this computer’s VM provider.</source>
+        <translation>このコンピュータのVMプロバイダーで実行します。</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Development VM</source>
+        <translation>開発 VM</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <location line="+611"/>
+        <source>Ubuntu</source>
+        <translation>Ubuntu</translation>
+    </message>
+    <message>
+        <location line="-610"/>
+        <location line="+610"/>
+        <source>Debian</source>
+        <translation>Debian</translation>
+    </message>
+    <message>
+        <location line="-609"/>
+        <location line="+609"/>
+        <source>Fedora</source>
+        <translation>フェデラ</translation>
+    </message>
+    <message>
+        <location line="-608"/>
+        <location line="+609"/>
+        <source>Other Linux</source>
+        <translation>他のLinux</translation>
+    </message>
+    <message>
+        <location line="-608"/>
+        <location line="+608"/>
+        <source>Windows 11</source>
+        <translation>ウィンドウ11</translation>
+    </message>
+    <message>
+        <location line="-603"/>
+        <location line="+3"/>
+        <source> GiB</source>
+        <translation>ギブ</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Installer ISO file</source>
+        <translation>インストール ISO ファイル</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Browse…</source>
+        <translation>参照…</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Select Installer ISO</source>
+        <translation>インストラクター ISO を選択</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>ISO images (*.iso *.ISO)</source>
+        <translation>ISO画像 (*.iso *. ISO )</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <location line="+120"/>
+        <location line="+580"/>
+        <source>Personal</source>
+        <translation>個人</translation>
+    </message>
+    <message>
+        <location line="-699"/>
+        <location line="+120"/>
+        <source>YAML file</source>
+        <translation>YAML ファイル</translation>
+    </message>
+    <message>
+        <location line="-118"/>
+        <source>Operating system</source>
+        <translation>オペレーティングシステム</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>CPUs</source>
+        <translation>CPU</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>RAM</source>
+        <translation>ラム</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Disk size</source>
+        <translation>ディスクサイズ</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Installer ISO</source>
+        <translation>インストール ISO</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+121"/>
+        <source>Save to</source>
+        <translation>保存する</translation>
+    </message>
+    <message>
+        <location line="-118"/>
+        <source>The ISO is optional when saving a definition. Disk size applies when the virtual disk is first created.</source>
+        <translation>ISO は定義を保存する際のオプションです ディスクサイズは、仮想ディスクが最初に作成されたときに適用されます。</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <location line="+151"/>
+        <source>Save Definition</source>
+        <translation>定義保存</translation>
+    </message>
+    <message>
+        <location line="-150"/>
+        <source>Create VM</source>
+        <translation>VMを作る</translation>
+    </message>
+    <message>
+        <location line="+66"/>
+        <source>Add Container</source>
+        <translation>コンテナを追加</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Runs on this computer’s Docker engine.</source>
+        <translation>このコンピュータのDockerエンジンで動作します。</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>General</source>
+        <translation>一般</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Test Docker</source>
+        <translation>テスト Docker</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Use letters, numbers, dots, underscores, or hyphens. Spaces become hyphens.</source>
+        <translation>文字、数字、ポイント、サブスコア、またはヒフェンを使用します。</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Ubuntu 24.04</source>
+        <translation>Ubuntu 24.04</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Debian 13 Slim</source>
+        <translation>Debian 13 スリム</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Alpine 3.22</source>
+        <translation>Alpine 3.22</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>NGINX on Alpine</source>
+        <translation>NGINX で Alpine</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Custom image</source>
+        <translation>カスタムイメージ</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Keep running for Terminal</source>
+        <translation>ターミナルに向かって走り続ける</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Run the image’s command</source>
+        <translation>画像のコマンドを実行する</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Bridge</source>
+        <translation>橋</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+457"/>
+        <source>No network</source>
+        <translation>ネットワークなし</translation>
+    </message>
+    <message>
+        <location line="-455"/>
+        <source>Standard</source>
+        <translation>標準</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+456"/>
+        <source>Restricted capabilities</source>
+        <translation>限られた能力</translation>
+    </message>
+    <message>
+        <location line="-455"/>
+        <source>Both profiles block privilege escalation. Restricted also drops all Linux capabilities.</source>
+        <translation>両方のプロファイルは特権のエスカレーションをブロックします. 制限はまた、Linuxのすべての機能を落とします。</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Base OS or image</source>
+        <translation>ベース OS または画像</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Docker image</source>
+        <translation>Docker 画像</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Startup</source>
+        <translation>スタートアップ</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Network</source>
+        <translation>ネットワーク</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Security</source>
+        <translation>セキュリティ</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Advanced</source>
+        <translation>詳細設定</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Use the image’s user</source>
+        <translation>画像のユーザーを使用する</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Non-root user</source>
+        <translation>非ルートユーザー</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Writable</source>
+        <translation>書く</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Read-only</source>
+        <translation>読むだけ</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Do not restart</source>
+        <translation>再起動しないで</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Restart unless stopped</source>
+        <translation>停止しない限り再起動</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>No separate volume</source>
+        <translation>別量なし</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Persistent Docker volume</source>
+        <translation>持続可能 Docker 容量</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Publish a port on this computer</source>
+        <translation>このコンピュータにポートを投稿する</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Run as</source>
+        <translation>走るように</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Root filesystem</source>
+        <translation>ルートファイルシステム</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Restart policy</source>
+        <translation>政策再開</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Storage</source>
+        <translation>ストレージ</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Folder inside container</source>
+        <translation>コンテナ内部のコンテナ</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Local port</source>
+        <translation>地元港</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Container port</source>
+        <translation>コンテナポート</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Create Container</source>
+        <translation>コンテナを作る</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Default (run the image’s command)</source>
+        <translation>デフォルト(画像のコマンドを実行)</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Default (keep running for Terminal)</source>
+        <translation>デフォルト(ターミナル向けの継続)</translation>
+    </message>
+    <message>
+        <location line="+56"/>
+        <source>Save environment definition</source>
+        <translation>環境の定義を守る</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+141"/>
+        <source>Environment definitions (*.yaml *.yml)</source>
+        <translation>環境の定義 (*.yaml *.yml)</translation>
+    </message>
+    <message>
+        <location line="-135"/>
+        <source>Choose a YAML file and include at most 2,048 definitions.</source>
+        <translation>YAML ファイルを選択し、最大 2,048 の定義を含みます。</translation>
+    </message>
+    <message>
+        <location line="+36"/>
+        <source>Dockpipe could not save the environment definition.</source>
+        <translation>Dockpipeは環境定義を保存できなかった。</translation>
+    </message>
+    <message>
+        <location line="+66"/>
+        <source>Edit YAML</source>
+        <translation>編集 YAML</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Apply</source>
+        <translation>適用</translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Include environment definition files</source>
+        <translation>環境定義ファイルを含む</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Choose at most 2,048 definition files.</source>
+        <translation>最大 2,048 の定義ファイルを選択します。</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>This definition file is unavailable. Refresh the definitions and try again.</source>
+        <translation>この定義ファイルは利用できません. 定義を更新し、再度試してみてください。</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Could not open the selected environment definition.</source>
+        <translation>選択した環境の定義を開くことはできません。</translation>
+    </message>
+    <message>
+        <location line="+49"/>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <location line="+41"/>
+        <source>This machine</source>
+        <translation>この機械</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Remote</source>
+        <translation>リモート</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Local</source>
+        <translation>地元</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>No environments yet. Choose Add Environment to get started.</source>
+        <translation>まだ環境はありません. スタートするには環境を追加することを選択します。</translation>
+    </message>
+    <message>
+        <location line="+32"/>
+        <source>Open terminal</source>
+        <translation>オープンターミナル</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Open VM console</source>
+        <translation>オープンVMコンソール</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Manage VM</source>
+        <translation>管理 VM</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Connection settings</source>
+        <translation>接続設定</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Machine settings</source>
+        <translation>マシン設定</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Choose Add Environment to get started.</source>
+        <translation>スタートするために環境を追加することを選択します。</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Select an environment to see its status and actions.</source>
+        <translation>環境を選択してその状態と行動を見る。</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Environment details</source>
+        <translation>環境詳細</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Type  %1</source>
+        <translation>タイプ %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Image  %1</source>
+        <translation>画像 %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Bridge network</source>
+        <translation>橋ネットワーク</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Read-only root filesystem</source>
+        <translation>Read-only root ファイルシステム</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Local port  %1 → %2</source>
+        <translation>地元ポート %1 → %2</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Persistent volume  %1</source>
+        <translation>持続量 %1</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Operating system  %1</source>
+        <translation>オペレーティングシステム %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>%1 CPU(s) · %2 GiB RAM · %3 GiB disk</source>
+        <translation>%1 CPU(s) · %2 GiB RAM · %3 GiB ディスク</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Installer ISO  %1</source>
+        <translation>インストール ISO %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Choose an installer ISO before the first boot.</source>
+        <translation>最初の起動前に ISO インストールを選択します。</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Provisioning workflow  %1</source>
+        <translation>%1 プロバイダーワークフロー</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Package  %1</source>
+        <translation>パッケージ %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Storage profile  %1</source>
+        <translation>ストレージ プロフィール %1</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>Managing broker</source>
+        <translation>管理ブローカー</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Local computer</source>
+        <translation>地元コンピュータ</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Host  This computer</source>
+        <translation>このコンピュータをホスト</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Workflows</source>
+        <translation>ワークフロー</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Containers</source>
+        <translation>コンテナー</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Files</source>
+        <translation>ファイル</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Git</source>
+        <translation>Git</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Terminal</source>
+        <translation>ターミナル</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Reported access  %1</source>
+        <translation>レポートアクセス %1</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <location line="+2"/>
+        <source>, </source>
+        <translation>☆☆☆</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Workspace roots  %1</source>
+        <translation>ワークスペース ルーツ %1</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Last report  %1</source>
+        <translation>最後のレポート %1</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>No workspace feature report is available.</source>
+        <translation>ワークスペース機能レポートは利用できません。</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Definition file missing</source>
+        <translation>欠けているファイルの定義</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Name differs from filename</source>
+        <translation>名前はフィルネームとは異なります</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Invalid definition</source>
+        <translation>障害定義</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Saved definition</source>
+        <translation>保存定義</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Selected file</source>
+        <translation>選択したファイル</translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>Observed running</source>
+        <translation>観測走行</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Observed stopped</source>
+        <translation>観察停止</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Runtime unavailable</source>
+        <translation>実行時間不利用</translation>
     </message>
 </context>
 <context>
@@ -4352,12 +5138,12 @@ Start a workflow from the editor to follow it here.</source>
 <context>
     <name>FileEditorWorkspace</name>
     <message>
-        <location filename="../src/files/presentation/FileEditorWorkspace.cpp" line="+63"/>
+        <location filename="../src/files/presentation/FileEditorWorkspace.cpp" line="+64"/>
         <source>Open a file in this pane</source>
         <translation>このペインでファイルを開く</translation>
     </message>
     <message>
-        <location line="+67"/>
+        <location line="+73"/>
         <source>Open in other pane</source>
         <translation>別のペインで開く</translation>
     </message>
@@ -4377,7 +5163,7 @@ Start a workflow from the editor to follow it here.</source>
         <translation>他を閉じる</translation>
     </message>
     <message>
-        <location line="+162"/>
+        <location line="+178"/>
         <location line="+165"/>
         <source>Close %1</source>
         <translation>%1 を閉じる</translation>
@@ -4991,7 +5777,7 @@ This change may contain only a rename, file metadata, or merge information.</sou
 <context>
     <name>GitHistoryWidget</name>
     <message>
-        <location filename="../src/git/presentation/GitHistoryWidget.cpp" line="+45"/>
+        <location filename="../src/git/presentation/GitHistoryWidget.cpp" line="+46"/>
         <source>Search commits…</source>
         <translation>コミットを検索…</translation>
     </message>
@@ -5261,7 +6047,7 @@ This change may contain only a rename, file metadata, or merge information.</sou
 <context>
     <name>GitRepositoryWidget</name>
     <message>
-        <location filename="../src/git/presentation/GitRepositoryWidget.cpp" line="+32"/>
+        <location filename="../src/git/presentation/GitRepositoryWidget.cpp" line="+33"/>
         <source>Refresh</source>
         <translation>更新</translation>
     </message>
@@ -5372,7 +6158,7 @@ Upstream: %3
         <translation>%1  %2</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+37"/>
         <source>Merge branch</source>
         <translation>ブランチをマージ</translation>
     </message>
@@ -5521,21 +6307,21 @@ Upstream: %3
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="+334"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="+340"/>
         <source>Dockpipe — %1</source>
         <translation>Dockpipe — %1</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+108"/>
-        <location line="+259"/>
-        <location line="+745"/>
+        <location line="+170"/>
+        <location line="+258"/>
+        <location line="+755"/>
         <location line="+51"/>
-        <location line="+120"/>
+        <location line="+140"/>
         <location line="+6"/>
         <location line="+5"/>
         <location line="+24"/>
-        <location line="+309"/>
+        <location line="+299"/>
         <location line="+47"/>
         <location line="+162"/>
         <location line="+118"/>
@@ -5543,13 +6329,13 @@ Upstream: %3
         <translation>Dockpipe</translation>
     </message>
     <message>
-        <location line="-1898"/>
-        <location line="+424"/>
+        <location line="-1943"/>
+        <location line="+449"/>
         <source>System</source>
         <translation>システム</translation>
     </message>
     <message>
-        <location line="-369"/>
+        <location line="-368"/>
         <source>Your work. Anywhere.</source>
         <translation>あなたの作業を、どこでも。</translation>
     </message>
@@ -5560,18 +6346,18 @@ Upstream: %3
     </message>
     <message>
         <location line="+4"/>
-        <location line="+404"/>
+        <location line="+403"/>
         <source>Packages</source>
         <translation>パッケージ</translation>
     </message>
     <message>
-        <location line="-403"/>
-        <location line="+400"/>
+        <location line="-402"/>
+        <location line="+399"/>
         <source>Settings</source>
         <translation>設定</translation>
     </message>
     <message>
-        <location line="-385"/>
+        <location line="-384"/>
         <source>WORKSPACE</source>
         <translation>ワークスペース</translation>
     </message>
@@ -5581,29 +6367,24 @@ Upstream: %3
         <translation>フォルダーを開く…</translation>
     </message>
     <message>
-        <location line="+107"/>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+189"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+151"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+190"/>
         <source>This computer</source>
         <translation>このコンピューター</translation>
     </message>
     <message>
-        <location line="+5"/>
-        <source> — unavailable</source>
-        <translation> — 利用不可</translation>
-    </message>
-    <message>
-        <location line="+46"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="+155"/>
         <source>Workflow</source>
         <translation>ワークフロー</translation>
     </message>
     <message>
-        <location line="+21"/>
-        <location line="+1631"/>
+        <location line="+23"/>
+        <location line="+1651"/>
         <source>%1 logs</source>
         <translation>%1 のログ</translation>
     </message>
     <message>
-        <location line="-1621"/>
+        <location line="-1641"/>
         <source>Remote workflow</source>
         <translation>リモートワークフロー</translation>
     </message>
@@ -5639,12 +6420,12 @@ Upstream: %3
     </message>
     <message>
         <location line="+2"/>
-        <location line="+848"/>
+        <location line="+878"/>
         <source>Quit</source>
         <translation>終了</translation>
     </message>
     <message>
-        <location line="-846"/>
+        <location line="-876"/>
         <source>View</source>
         <translation>表示</translation>
     </message>
@@ -5659,11 +6440,6 @@ Upstream: %3
         <location line="+200"/>
         <source>Workflows</source>
         <translation>ワークフロー</translation>
-    </message>
-    <message>
-        <location line="+0"/>
-        <source>Machines</source>
-        <translation>マシン</translation>
     </message>
     <message>
         <location line="+0"/>
@@ -5694,6 +6470,11 @@ Upstream: %3
         <location line="+0"/>
         <source>Terminal</source>
         <translation>ターミナル</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Environments</source>
+        <translation>環境</translation>
     </message>
     <message>
         <location line="+12"/>
@@ -5801,7 +6582,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>後で</translation>
     </message>
     <message>
-        <location line="+188"/>
+        <location line="+195"/>
         <source>Workflow studio</source>
         <translation>ワークフロースタジオ</translation>
     </message>
@@ -5821,7 +6602,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>プロジェクトフォルダーを開く</translation>
     </message>
     <message>
-        <location line="+101"/>
+        <location line="+104"/>
         <source>Open a project</source>
         <translation>プロジェクトを開く</translation>
     </message>
@@ -5832,19 +6613,19 @@ If a workflow needs external tools, you install them yourself from official sour
     </message>
     <message>
         <location line="+22"/>
-        <location line="+652"/>
-        <location filename="../src/shell/presentation/MainWindowSurfaces.cpp" line="+109"/>
+        <location line="+662"/>
+        <location filename="../src/shell/presentation/MainWindowSurfaces.cpp" line="+151"/>
         <source>Workflow unavailable</source>
         <translation>ワークフローを利用できません</translation>
     </message>
     <message>
-        <location line="-624"/>
-        <location line="+673"/>
+        <location line="-634"/>
+        <location line="+683"/>
         <source>Could not start dockpipe (see stderr).</source>
         <translation>dockpipe を開始できませんでした（stderr を確認してください）。</translation>
     </message>
     <message>
-        <location line="-600"/>
+        <location line="-593"/>
         <source>VS Code workflow</source>
         <translation>VS Code ワークフロー</translation>
     </message>
@@ -5854,7 +6635,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>宣言された入力がありません。この設定を編集するには「ワークフローに複製」を使用してください。</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+50"/>
         <source>This workflow does not expose app-managed settings.</source>
         <translation>このワークフローはアプリ管理の設定を公開していません。</translation>
     </message>
@@ -5924,7 +6705,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>準備完了</translation>
     </message>
     <message>
-        <location line="+168"/>
+        <location line="+158"/>
         <source>Received an invalid Dockpipe prompt payload.</source>
         <translation>無効な Dockpipe プロンプトデータを受信しました。</translation>
     </message>
@@ -5945,7 +6726,7 @@ If a workflow needs external tools, you install them yourself from official sour
     </message>
     <message>
         <location line="+1"/>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+213"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+121"/>
         <source>Choose another computer or reconnect this machine before running.</source>
         <translation>実行前に別のコンピューターを選択するか、このマシンを再接続してください。</translation>
     </message>
@@ -6068,7 +6849,7 @@ If a workflow needs external tools, you install them yourself from official sour
 </translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowDashboards.cpp" line="+76"/>
+        <location filename="../src/shell/presentation/MainWindowDashboards.cpp" line="+78"/>
         <source>This workflow is no longer in the project catalog. Refresh Workflows and try again.</source>
         <translation>このワークフローはプロジェクトのカタログにありません。「ワークフロー」を更新して再試行してください。</translation>
     </message>
@@ -6267,7 +7048,7 @@ Ctrl / ⌘ + `     出力を切り替え
         <translation>ワークフローはまだありません</translation>
     </message>
     <message>
-        <location line="+56"/>
+        <location line="+53"/>
         <source>Open YAML file…</source>
         <translation>YAML ファイルを開く…</translation>
     </message>
@@ -6307,7 +7088,7 @@ Ctrl / ⌘ + `     出力を切り替え
         <translation>ワークフロー YAML (*.yml *.yaml)</translation>
     </message>
     <message>
-        <location line="+41"/>
+        <location line="+45"/>
         <source>Workflow source unavailable</source>
         <translation>ワークフローソースを利用できません</translation>
     </message>
@@ -6322,12 +7103,17 @@ Ctrl / ⌘ + `     出力を切り替え
         <translation>Git 操作が完了するのを待つか、Git でキャンセルしてからプロジェクトを変更してください。</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="-1376"/>
+        <location line="+122"/>
+        <source>This run target is unavailable. Choose another computer or reconnect it in Environments.</source>
+        <translation>この実行ターゲットは利用できません. 別のコンピュータを選択するか、環境で再接続します。</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="-1396"/>
         <source>Wait for the Git action to finish, or cancel it in Git before quitting.</source>
         <translation>Git 操作が完了するのを待つか、Git でキャンセルしてから終了してください。</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+94"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-23"/>
         <source>&lt;h3&gt;Select a workflow&lt;/h3&gt;&lt;p&gt;Review its purpose and inputs here, then choose Run or Edit on canvas.&lt;/p&gt;</source>
         <translation>&lt;h3&gt;ワークフローを選択&lt;/h3&gt;&lt;p&gt;ここで目的と入力を確認してから、「実行」または「キャンバスで編集」を選択してください。&lt;/p&gt;</translation>
     </message>
@@ -6362,12 +7148,7 @@ Ctrl / ⌘ + `     出力を切り替え
         <translation>選択したコンピューターには、このワークフローに必要なツールとプラットフォームが必要です。</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>This run target is unavailable. Choose another computer or reconnect it in Machines.</source>
-        <translation>この実行先は利用できません。別のコンピューターを選択するか、「マシン」で再接続してください。</translation>
-    </message>
-    <message>
-        <location line="+41"/>
+        <location line="+45"/>
         <source>Clone failed</source>
         <translation>複製に失敗</translation>
     </message>
@@ -6382,7 +7163,12 @@ Ctrl / ⌘ + `     出力を切り替え
         <translation>ワークフローを %1 に複製しました</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-43"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-96"/>
+        <source>%1 · Workflow access unavailable</source>
+        <translation>%1 · ワークフローアクセス不利用</translation>
+    </message>
+    <message>
+        <location line="+53"/>
         <source>This machine or root changed. Refresh machines and select it again.</source>
         <translation>このマシンまたはルートが変更されました。マシンを更新して再度選択してください。</translation>
     </message>
@@ -6392,13 +7178,12 @@ Ctrl / ⌘ + `     出力を切り替え
         <translation>マシンを変更する前に、開いている下書きを保存または破棄し、実行中の操作を完了してください。</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-435"/>
-        <location line="+145"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-443"/>
         <source>Choose the computer with the shared machine selector.</source>
         <translation>共通のマシン選択でコンピューターを選んでください。</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+93"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+130"/>
         <source>Container terminal · %1 · %2</source>
         <translation>コンテナーターミナル · %1 · %2</translation>
     </message>
@@ -6406,6 +7191,17 @@ Ctrl / ⌘ + `     出力を切り替え
         <location filename="../src/shell/presentation/MainWindow.cpp" line="-209"/>
         <source>Remote Desktop</source>
         <translation>リモートデスクトップ</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-216"/>
+        <location line="+28"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · 利用不可</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+145"/>
+        <source>Use the shared machine or choose a worker for this workflow.</source>
+        <translation>共有マシンを使用するか、このワークフロー用のワーカーを選択してください。</translation>
     </message>
 </context>
 <context>
@@ -6525,12 +7321,12 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>ターミナルプロファイルで上書きできる環境変数は最大64個です。</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+56"/>
         <source>The terminal launch exceeds its bounded profile or environment contract.</source>
         <translation>ターミナルの起動内容が、プロファイルまたは環境の上限を超えています。</translation>
     </message>
     <message>
-        <location line="-45"/>
+        <location line="-50"/>
         <source>The terminal profile contains an invalid environment variable.</source>
         <translation>ターミナルプロファイルに無効な環境変数が含まれています。</translation>
     </message>
@@ -7018,7 +7814,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
 <context>
     <name>PackageSurfacePage</name>
     <message>
-        <location filename="../src/packages/presentation/PackageSurfacePage.cpp" line="+50"/>
+        <location filename="../src/packages/presentation/PackageSurfacePage.cpp" line="+52"/>
         <source>View</source>
         <translation>表示</translation>
     </message>
@@ -7083,13 +7879,13 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>操作がタイムアウトしました。更新して現在の状態を確認してください。</translation>
     </message>
     <message>
-        <location line="+91"/>
+        <location line="+95"/>
         <location line="+18"/>
         <source>Refresh paused. Displayed state is stale.</source>
         <translation>更新は一時停止中です。表示中の状態は古い情報です。</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+28"/>
         <source>State has not been refreshed.</source>
         <translation>状態はまだ更新されていません。</translation>
     </message>
@@ -7099,7 +7895,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>インストール済みパッケージの起動操作が不明確か利用できません。</translation>
     </message>
     <message>
-        <location line="+114"/>
+        <location line="+133"/>
         <source>Refreshing… Previous state is retained.</source>
         <translation>更新中… 以前の状態を保持しています。</translation>
     </message>
@@ -7124,7 +7920,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>パッケージが無効なサーフェスイベントを返しました。</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+54"/>
         <source>Package operation failed or returned no snapshot. Displayed state is stale.</source>
         <translation>パッケージ操作が失敗したか、スナップショットが返されませんでした。表示中の状態は古い情報です。</translation>
     </message>
@@ -7139,7 +7935,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>操作が完了しました。状態を更新中…</translation>
     </message>
     <message>
-        <location line="+25"/>
+        <location line="+69"/>
         <source>Unsupported package surface event schema.</source>
         <translation>未対応のパッケージサーフェスイベントスキーマです。</translation>
     </message>
@@ -7164,7 +7960,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>パッケージリソースのフィールドがサーフェスの契約を超えています。</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+16"/>
         <source>Invalid package widget display options or missing installed factory.</source>
         <translation>パッケージウィジェットの表示オプションが無効か、インストール済みファクトリーがありません。</translation>
     </message>
@@ -7187,6 +7983,213 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <location line="+7"/>
         <source>Invalid package resource action.</source>
         <translation>無効なパッケージリソースの操作です。</translation>
+    </message>
+</context>
+<context>
+    <name>PipeLangEditorSession</name>
+    <message>
+        <location filename="../src/files/presentation/PipeLangEditorSession.cpp" line="+139"/>
+        <source>Browse…</source>
+        <translation>参照…</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Connect</source>
+        <translation>接続</translation>
+    </message>
+    <message>
+        <location line="-33"/>
+        <source>Connect PipeLang language server</source>
+        <translation>PipeLang 言語サーバーに接続</translation>
+    </message>
+    <message>
+        <location line="-19"/>
+        <source>Connect an explicitly selected installed language server for .pipe diagnostics and hover</source>
+        <translation>明示的に選択したインストール済みの言語サーバーに接続し、.pipe ファイルの診断とホバー情報を表示します</translation>
+    </message>
+    <message>
+        <location line="+47"/>
+        <source>Node executable</source>
+        <translation>Node の実行ファイル</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>PipeLang compiler executable</source>
+        <translation>PipeLang コンパイラの実行ファイル</translation>
+    </message>
+    <message>
+        <location line="-43"/>
+        <source>PipeLang language server disconnected.</source>
+        <translation>PipeLang 言語サーバーとの接続が切断されました。</translation>
+    </message>
+    <message>
+        <location line="-7"/>
+        <source>PipeLang server…</source>
+        <translation>PipeLang サーバー…</translation>
+    </message>
+    <message>
+        <location line="+41"/>
+        <source>Select installed tool</source>
+        <translation>インストール済みのツールを選択</translation>
+    </message>
+    <message>
+        <location line="-1"/>
+        <source>Select source root</source>
+        <translation>ソースのルートディレクトリを選択</translation>
+    </message>
+    <message>
+        <location line="-18"/>
+        <source>Select trusted installed tools. Connecting runs the selected Node and server on this host. Paths are used only for this session; project files cannot configure executable paths. An optional source root authorizes compiler analysis of imports beneath that directory.</source>
+        <translation>信頼できるインストール済みのツールを選択してください。接続すると、選択した Node とサーバーがこのコンピューター上で実行されます。パスはこのセッションでのみ使用されます。プロジェクトファイルから実行ファイルのパスを設定することはできません。任意でソースのルートディレクトリを指定すると、そのディレクトリ以下のインポートをコンパイラが解析できます。</translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Server JavaScript entrypoint</source>
+        <translation>サーバーの JavaScript エントリーポイント</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Source root (optional)</source>
+        <translation>ソースのルートディレクトリ（任意）</translation>
+    </message>
+    <message>
+        <location line="-47"/>
+        <source>Stop</source>
+        <translation>停止</translation>
+    </message>
+</context>
+<context>
+    <name>PipeLangLanguageClient</name>
+    <message>
+        <location filename="../src/files/infrastructure/PipeLangLanguageClient.cpp" line="+374"/>
+        <source>Invalid PipeLang JSON-RPC message.</source>
+        <translation>PipeLang の JSON-RPC メッセージが無効です。</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Invalid PipeLang JSON-RPC version.</source>
+        <translation>PipeLang の JSON-RPC バージョンが無効です。</translation>
+    </message>
+    <message>
+        <location line="-35"/>
+        <source>Invalid PipeLang protocol Content-Length.</source>
+        <translation>PipeLang プロトコルの Content-Length の値が無効です。</translation>
+    </message>
+    <message>
+        <location line="-224"/>
+        <source>Invalid absolute installed PipeLang selection (%1).</source>
+        <translation>選択したインストール済み PipeLang ツールの絶対パスが無効です（%1）。</translation>
+    </message>
+    <message>
+        <location line="-10"/>
+        <source>Node executable: %1</source>
+        <translation>Node の実行ファイル: %1</translation>
+    </message>
+    <message>
+        <location line="+305"/>
+        <source>PipeLang compiler diagnostics and hover connected.</source>
+        <translation>PipeLang コンパイラの診断とホバー情報が利用可能になりました。</translation>
+    </message>
+    <message>
+        <location line="-178"/>
+        <source>PipeLang document limit exceeded (1 MiB per file, 16 MiB total, 32 files).</source>
+        <translation>PipeLang のドキュメント上限を超えました（1 ファイルあたり 1 MiB、合計 16 MiB、32 ファイル）。</translation>
+    </message>
+    <message>
+        <location line="-208"/>
+        <source>PipeLang hover timed out.</source>
+        <translation>PipeLang のホバー情報の取得がタイムアウトしました。</translation>
+    </message>
+    <message>
+        <location line="+301"/>
+        <location line="+4"/>
+        <source>PipeLang protocol header limit exceeded.</source>
+        <translation>PipeLang プロトコルのヘッダーの上限を超えました。</translation>
+    </message>
+    <message>
+        <location line="-14"/>
+        <source>PipeLang protocol input limit exceeded.</source>
+        <translation>PipeLang プロトコルの入力上限を超えました。</translation>
+    </message>
+    <message>
+        <location line="-126"/>
+        <source>PipeLang protocol output limit exceeded.</source>
+        <translation>PipeLang プロトコルの出力上限を超えました。</translation>
+    </message>
+    <message>
+        <location line="+157"/>
+        <source>PipeLang protocol requires one Content-Length header.</source>
+        <translation>PipeLang プロトコルには Content-Length ヘッダーが 1 つだけ必要です。</translation>
+    </message>
+    <message>
+        <location line="-151"/>
+        <source>PipeLang protocol write failed.</source>
+        <translation>PipeLang プロトコルへの書き込みに失敗しました。</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>PipeLang request identity space exhausted; restart the editor session.</source>
+        <translation>PipeLang のリクエスト ID を使い切りました。エディターセッションを再起動してください。</translation>
+    </message>
+    <message>
+        <location line="-144"/>
+        <source>PipeLang server could not start: %1</source>
+        <translation>PipeLang サーバーを起動できませんでした: %1</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>PipeLang server exited (%1). Reconnect explicitly.</source>
+        <translation>PipeLang サーバーが終了しました（%1）。手動で再接続してください。</translation>
+    </message>
+    <message>
+        <location line="-40"/>
+        <source>PipeLang server lifecycle deadline exceeded.</source>
+        <translation>PipeLang サーバーのライフサイクル処理が制限時間を超えました。</translation>
+    </message>
+    <message>
+        <location line="+383"/>
+        <source>PipeLang server rejected shutdown.</source>
+        <translation>PipeLang サーバーがシャットダウン要求を拒否しました。</translation>
+    </message>
+    <message>
+        <location line="-385"/>
+        <source>PipeLang server required forced termination after stdin closure.</source>
+        <translation>stdin を閉じた後、PipeLang サーバーを強制終了する必要がありました。</translation>
+    </message>
+    <message>
+        <location line="+42"/>
+        <source>PipeLang server stopped.</source>
+        <translation>PipeLang サーバーが停止しました。</translation>
+    </message>
+    <message>
+        <location line="+332"/>
+        <source>Selected PipeLang server does not provide the required UTF-16 hover contract.</source>
+        <translation>選択した PipeLang サーバーは、ホバーに必要な UTF-16 の仕様を満たしていません。</translation>
+    </message>
+    <message>
+        <location line="-269"/>
+        <source>Starting selected PipeLang server…</source>
+        <translation>選択した PipeLang サーバーを起動しています…</translation>
+    </message>
+    <message>
+        <location line="-34"/>
+        <source>Stop the current PipeLang server before reconnecting.</source>
+        <translation>再接続する前に現在の PipeLang サーバーを停止してください。</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>compiler executable: %1</source>
+        <translation>コンパイラの実行ファイル: %1</translation>
+    </message>
+    <message>
+        <location line="-2"/>
+        <source>server entrypoint: %1</source>
+        <translation>サーバーのエントリーポイント: %1</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>source directory: %1</source>
+        <translation>ソースディレクトリ: %1</translation>
     </message>
 </context>
 <context>
@@ -7301,12 +8304,12 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
     <name>ProjectFilesWidget</name>
     <message>
         <location filename="../src/files/presentation/ProjectFilesWidget.cpp" line="+62"/>
-        <location line="+172"/>
+        <location line="+175"/>
         <source>Files</source>
         <translation>ファイル</translation>
     </message>
     <message>
-        <location line="-169"/>
+        <location line="-172"/>
         <source>Browse and edit your workspace.</source>
         <translation>ワークスペースを参照して編集します。</translation>
     </message>
@@ -7317,13 +8320,13 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
     </message>
     <message>
         <location line="+5"/>
-        <location line="+26"/>
+        <location line="+29"/>
         <source>New file</source>
         <translation>新しいファイル</translation>
     </message>
     <message>
-        <location line="-26"/>
-        <location line="+225"/>
+        <location line="-29"/>
+        <location line="+228"/>
         <source>Path relative to this folder</source>
         <translation>このフォルダーからの相対パス</translation>
     </message>
@@ -7403,12 +8406,12 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
     <message>
         <location line="+13"/>
         <location line="+3"/>
-        <location line="+888"/>
+        <location line="+945"/>
         <source>Preview Markdown</source>
         <translation>Markdown をプレビュー</translation>
     </message>
     <message>
-        <location line="-882"/>
+        <location line="-939"/>
         <source>Find in file (Ctrl+F)</source>
         <translation>ファイル内を検索（Ctrl+F）</translation>
     </message>
@@ -7489,11 +8492,12 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
     </message>
     <message>
         <location line="+3"/>
+        <location line="+222"/>
         <source>Select a file to edit, or create something new.</source>
         <translation>編集するファイルを選択するか、新しく作成してください。</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="-218"/>
         <source>Create a file</source>
         <translation>ファイルを作成</translation>
     </message>
@@ -7503,7 +8507,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>「%1」に一致する項目がありません。</translation>
     </message>
     <message>
-        <location line="+189"/>
+        <location line="+243"/>
         <source>Unsaved file</source>
         <translation>未保存のファイル</translation>
     </message>
@@ -7575,7 +8579,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>%1 を保存しました</translation>
     </message>
     <message>
-        <location line="+175"/>
+        <location line="+177"/>
         <source>No file open</source>
         <translation>ファイルが開いていません</translation>
     </message>
@@ -7595,7 +8599,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>ワークスペースのルート</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="+23"/>
         <source>Hide Markdown preview</source>
         <translation>Markdown プレビューを隠す</translation>
     </message>
@@ -7615,12 +8619,12 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>%1   ·   UTF-8   ·   %2                         行 %3、列 %4</translation>
     </message>
     <message>
-        <location line="-1070"/>
+        <location line="-1127"/>
         <source>Refresh files</source>
         <translation>ファイルを更新</translation>
     </message>
     <message>
-        <location line="+463"/>
+        <location line="+517"/>
         <location line="+34"/>
         <source>A file operation is still running. Your open files are preserved.</source>
         <translation>ファイル操作がまだ実行中です。開いているファイルは保持されています。</translation>
@@ -7629,6 +8633,11 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <location line="+341"/>
         <source>Invalid workspace file response.</source>
         <translation>ワークスペースファイルの応答が無効です。</translation>
+    </message>
+    <message>
+        <location line="-440"/>
+        <source>Select a file to read.</source>
+        <translation>読み取るファイルを選択してください。</translation>
     </message>
 </context>
 <context>
@@ -7730,7 +8739,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>プッシュ</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+3"/>
         <source>Pull fast-forward changes into a clean checkout</source>
         <translation>クリーンなチェックアウトにファストフォワードの変更をプル</translation>
     </message>
@@ -7747,12 +8756,12 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
     <message>
         <location line="+12"/>
         <location line="+27"/>
-        <location line="+288"/>
+        <location line="+292"/>
         <source>Changed files</source>
         <translation>変更されたファイル</translation>
     </message>
     <message>
-        <location line="-315"/>
+        <location line="-319"/>
         <source>Staged files</source>
         <translation>ステージ済みファイル</translation>
     </message>
@@ -7799,30 +8808,30 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
     </message>
     <message>
         <location line="+4"/>
-        <location line="+639"/>
+        <location line="+655"/>
         <source>Unstage all</source>
         <translation>すべてのステージを解除</translation>
     </message>
     <message>
-        <location line="-639"/>
-        <location line="+638"/>
+        <location line="-655"/>
+        <location line="+654"/>
         <source>Stage all</source>
         <translation>すべてステージ</translation>
     </message>
     <message>
-        <location line="-589"/>
-        <location line="+566"/>
+        <location line="-605"/>
+        <location line="+582"/>
         <source>Stage changes to include them in your commit.</source>
         <translation>コミットに含める変更をステージしてください。</translation>
     </message>
     <message>
-        <location line="-566"/>
-        <location line="+568"/>
+        <location line="-582"/>
+        <location line="+584"/>
         <source>No unstaged changes.</source>
         <translation>未ステージの変更はありません。</translation>
     </message>
     <message>
-        <location line="-544"/>
+        <location line="-560"/>
         <source>Commit changes</source>
         <translation>変更をコミット</translation>
     </message>
@@ -7848,20 +8857,20 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
     </message>
     <message>
         <location line="+12"/>
-        <location line="+145"/>
-        <location line="+260"/>
+        <location line="+149"/>
+        <location line="+268"/>
         <location line="+4"/>
         <source>Select a file to review</source>
         <translation>確認するファイルを選択</translation>
     </message>
     <message>
-        <location line="-398"/>
-        <location line="+465"/>
+        <location line="-410"/>
+        <location line="+481"/>
         <source>Unstaged changes</source>
         <translation>未ステージの変更</translation>
     </message>
     <message>
-        <location line="-462"/>
+        <location line="-478"/>
         <source>Stage</source>
         <translation>ステージ</translation>
     </message>
@@ -7887,20 +8896,20 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
     </message>
     <message>
         <location line="+21"/>
-        <location line="+96"/>
-        <location line="+163"/>
+        <location line="+100"/>
+        <location line="+171"/>
         <source>Your changes, in focus</source>
         <translation>変更に集中</translation>
     </message>
     <message>
-        <location line="-254"/>
-        <location line="+92"/>
-        <location line="+163"/>
+        <location line="-266"/>
+        <location line="+96"/>
+        <location line="+171"/>
         <source>Refresh the repository, then select a file to review its changes.</source>
         <translation>リポジトリを更新してから、ファイルを選択して変更を確認してください。</translation>
     </message>
     <message>
-        <location line="-243"/>
+        <location line="-255"/>
         <source>Changes</source>
         <translation>変更</translation>
     </message>
@@ -7920,7 +8929,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>操作をキャンセル</translation>
     </message>
     <message>
-        <location line="+57"/>
+        <location line="+61"/>
         <source>Refresh to review this project&apos;s changes.</source>
         <translation>更新してこのプロジェクトの変更を確認してください。</translation>
     </message>
@@ -7930,7 +8939,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>先にプロジェクトフォルダーを開いてください。</translation>
     </message>
     <message>
-        <location line="+80"/>
+        <location line="+88"/>
         <source>Refresh the repository before changing it.</source>
         <translation>変更する前にリポジトリを更新してください。</translation>
     </message>
@@ -7997,7 +9006,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>次のコミットを準備するため変更をステージしてください。</translation>
     </message>
     <message>
-        <location line="+40"/>
+        <location line="+44"/>
         <source>No staged files</source>
         <translation>ステージ済みファイルなし</translation>
     </message>
@@ -8030,6 +9039,11 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <location line="+1"/>
         <source>Unstage shown</source>
         <translation>表示項目のステージを解除</translation>
+    </message>
+    <message>
+        <location line="-263"/>
+        <source>The selected Git root does not grant this operation.</source>
+        <translation>選択した Git ルートではこの操作は許可されていません。</translation>
     </message>
 </context>
 <context>
@@ -8269,7 +9283,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>ターミナルの自動設定が無効なホスト環境を受信しました。</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="-710"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="-774"/>
         <source>Running</source>
         <translation>実行中</translation>
     </message>
@@ -8299,7 +9313,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>マシンまたはルートを変更する前に、競合の下書きを保存するか破棄してください。</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+49"/>
         <source>Select an absolute local project folder.</source>
         <translation>絶対パスのローカルプロジェクトフォルダーを選択してください。</translation>
     </message>
@@ -8391,7 +9405,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
     </message>
     <message>
         <location line="+125"/>
-        <location line="+73"/>
+        <location line="+77"/>
         <source>Output exceeded the display limit.
 </source>
         <translation>出力が表示上限を超えました。
@@ -8563,7 +9577,22 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>画質とフレームレートは次回の接続から適用されます。解像度は上限、ビットレートは目標値です。</translation>
     </message>
     <message>
-        <location line="-73"/>
+        <location line="+33"/>
+        <source>Clipboard sharing is unavailable on the selected computer.</source>
+        <translation>Clipboard シェアは、選択したコンピュータで利用できません。</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>The selected computer shares its current desktop.</source>
+        <translation>選択したコンピュータは現在のデスクトップを共有します。</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>The selected computer&apos;s video does not include a cursor.</source>
+        <translation>選択したコンピュータのビデオには、カルサーが含まれていません。</translation>
+    </message>
+    <message>
+        <location line="-119"/>
         <source>Current desktop</source>
         <translation>現在のデスクトップ</translation>
     </message>
@@ -8621,14 +9650,14 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
 <context>
     <name>RemoteDesktopWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+89"/>
-        <location line="+209"/>
-        <location line="+313"/>
+        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+124"/>
+        <location line="+222"/>
+        <location line="+320"/>
         <source>Remote Desktop</source>
         <translation>リモートデスクトップ</translation>
     </message>
     <message>
-        <location line="-509"/>
+        <location line="-529"/>
         <source>View or control an existing desktop through its authorized native provider.</source>
         <translation>認可されたネイティブプロバイダーを通じて、既存のデスクトップを表示または操作します。</translation>
     </message>
@@ -8710,7 +9739,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>接続を維持</translation>
     </message>
     <message>
-        <location line="+39"/>
+        <location line="+52"/>
         <source>Some settings will apply on the next connection.</source>
         <translation>一部の設定は次回の接続から適用されます。</translation>
     </message>
@@ -8750,14 +9779,14 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>%1（ペアリングの更新が必要）</translation>
     </message>
     <message>
-        <location line="+63"/>
-        <source>No paired computers are available. Add a computer in Machines.</source>
-        <translation>利用可能なペアリング済みコンピューターがありません。「マシン」で追加してください。</translation>
+        <location line="+68"/>
+        <source>Choose a paired computer.</source>
+        <translation>ペアリング済みのコンピューターを選択してください。</translation>
     </message>
     <message>
         <location line="+0"/>
-        <source>Choose a paired computer.</source>
-        <translation>ペアリング済みのコンピューターを選択してください。</translation>
+        <source>No paired computers are available. Add a computer in Environments.</source>
+        <translation>パイアードコンピュータは利用できません. 環境にコンピュータを追加します。</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -8801,22 +9830,27 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>デスクトップの準備状態カタログが無効です。</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+29"/>
         <source>The selected desktop identity or permission changed. Refresh and connect again.</source>
         <translation>選択したデスクトップの識別情報または権限が変更されました。更新してから再接続してください。</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+26"/>
+        <source>Opening the selected desktop with administrator control…</source>
+        <translation>管理者コントロールで選択したデスクトップを開く...</translation>
+    </message>
+    <message>
+        <location line="+1"/>
         <source>Opening the selected desktop…</source>
         <translation>選択したデスクトップを開いています…</translation>
     </message>
     <message>
-        <location line="-401"/>
+        <location line="-427"/>
         <source>Disconnected locally. The native provider reports any unconfirmed remote cleanup.</source>
         <translation>ローカルで切断しました。未確認のリモートクリーンアップがある場合は、ネイティブプロバイダーが報告します。</translation>
     </message>
     <message>
-        <location line="+412"/>
+        <location line="+438"/>
         <source>Closing the selected desktop…</source>
         <translation>選択したデスクトップを終了しています…</translation>
     </message>
@@ -8849,7 +9883,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>リモートマシンカタログを利用できません。</translation>
     </message>
     <message>
-        <location line="+66"/>
+        <location line="+70"/>
         <source>Remote result does not match the captured operation.</source>
         <translation>リモート結果が取得済みの操作と一致しません。</translation>
     </message>
@@ -8859,7 +9893,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>元のリモート操作のキャンセルが要求されました。書き込みを再試行する前に状態を更新してください。</translation>
     </message>
     <message>
-        <location line="-157"/>
+        <location line="-161"/>
         <source>Cannot retain remote mutation recovery metadata. Resolve saved operations or repair settings before another write.</source>
         <translation>リモート変更の復旧メタデータを保持できません。次の書き込みの前に、保存された操作を解決するか設定を修復してください。</translation>
     </message>
@@ -8912,7 +9946,7 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
 <context>
     <name>RemoteFeatureRecoveryDialog</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteFeatureRecoveryDialog.cpp" line="+62"/>
+        <location filename="../src/remote/presentation/RemoteFeatureRecoveryDialog.cpp" line="+63"/>
         <source>Choose a retained operation.</source>
         <translation>保持された操作を選んでください。</translation>
     </message>
@@ -8922,17 +9956,17 @@ Mermaid プレビューの上限: 最初の 16 個を超える図はソースと
         <translation>閉じる</translation>
     </message>
     <message>
-        <location line="+148"/>
+        <location line="+165"/>
         <source>Contacting the original captured machine…</source>
         <translation>記録された元のマシンに接続中…</translation>
     </message>
     <message>
-        <location line="-180"/>
+        <location line="-197"/>
         <source>Inspect the original operation before another write. Cancellation does not prove that a mutation had no effect.</source>
         <translation>次の書き込みの前に元の操作を確認してください。キャンセルしても、変更に影響がなかったことの証明にはなりません。</translation>
     </message>
     <message>
-        <location line="+146"/>
+        <location line="+155"/>
         <source>Machine: %1
 Fingerprint: %2
 Generation: %3
@@ -8948,17 +9982,17 @@ Operation: %6</source>
     </message>
     <message>
         <location line="-1"/>
-        <location line="+18"/>
+        <location line="+20"/>
         <source>No uncertain mutations are retained.</source>
         <translation>不確定な変更は保持されていません。</translation>
     </message>
     <message>
-        <location line="+77"/>
+        <location line="+85"/>
         <source>Original operation status: %1. No operation was replayed.</source>
         <translation>元の操作の状態: %1。操作は再実行されていません。</translation>
     </message>
     <message>
-        <location line="-222"/>
+        <location line="-241"/>
         <source>Refresh status</source>
         <translation>状態を更新</translation>
     </message>
@@ -8968,30 +10002,30 @@ Operation: %6</source>
         <translation>キャンセルを要求</translation>
     </message>
     <message>
-        <location line="+144"/>
-        <location line="+47"/>
+        <location line="+155"/>
+        <location line="+53"/>
         <location line="+22"/>
         <source>The mutation outcome remains uncertain. Refresh its original status before another write.</source>
         <translation>変更の結果は不確定なままです。次の書き込みの前に元の状態を更新してください。</translation>
     </message>
     <message>
-        <location line="+36"/>
+        <location line="+39"/>
         <source>Uncertain operations…</source>
         <translation>不確定な操作…</translation>
     </message>
     <message>
-        <location line="-272"/>
+        <location line="-292"/>
         <source>Uncertain remote operations</source>
         <translation>不確定なリモート操作</translation>
     </message>
     <message>
-        <location line="+243"/>
+        <location line="+262"/>
         <source>unknown</source>
         <translation>不明</translation>
     </message>
     <message>
-        <location line="-79"/>
-        <location line="+43"/>
+        <location line="-87"/>
+        <location line="+49"/>
         <location line="+24"/>
         <location line="+7"/>
         <source>Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write.</source>
@@ -9008,27 +10042,27 @@ Operation: %6</source>
         <translation>記録された元のセッションについて、コンテナーターミナルのクリーンアップを確認しました。</translation>
     </message>
     <message>
-        <location line="-179"/>
+        <location line="-196"/>
         <source>Explicitly remove the original exact container after native client cleanup. Requires the worker&apos;s independent Docker recovery grant. Volumes and images are retained.</source>
         <translation>ネイティブクライアントのクリーンアップ後に、元のコンテナーそのものを明示的に削除します。ワーカーの独立した Docker 復旧権限が必要です。ボリュームとイメージは保持されます。</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+23"/>
         <source>Remove container %1 on %2 to fence delayed daemon work for operation %3? This removes the container and its writable layer. Volumes and images are retained. The original mutation outcome remains unknown.</source>
         <translation>操作 %3 の遅延したデーモン処理を遮断するため、%2 上のコンテナー %1 を削除しますか？コンテナーとその書き込み可能レイヤーが削除されます。ボリュームとイメージは保持されます。元の変更の結果は不明のままです。</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-25"/>
         <source>Retire container…</source>
         <translation>コンテナーを廃止…</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+24"/>
         <source>Retire the captured container?</source>
         <translation>記録されたコンテナーを廃止しますか？</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-25"/>
         <source>Revoke the original invocation and verify its native cleanup evidence. Boot-fenced workers require a host reboot for uncertain process-backed operations. The mutation outcome remains unknown.</source>
         <translation>元の呼び出しを失効させ、ネイティブなクリーンアップの証拠を確認します。起動境界で保護されたワーカーでは、プロセスを伴う不確定な操作に対してホストの再起動が必要です。変更の結果は不明のままです。</translation>
     </message>
@@ -9038,9 +10072,14 @@ Operation: %6</source>
         <translation>クリーンアップを確認</translation>
     </message>
     <message>
-        <location line="+154"/>
+        <location line="+171"/>
         <source>Refreshing the worker&apos;s retained terminal metadata. No cleanup was requested.</source>
         <translation>ワーカーが保持するターミナルのメタデータを更新中です。クリーンアップは要求されていません。</translation>
+    </message>
+    <message>
+        <location line="+62"/>
+        <source>The original operation was cancelled. Refresh the affected state before another write.</source>
+        <translation>元の操作はキャンセルされました。再度書き込む前に、影響を受けた状態を更新してください。</translation>
     </message>
 </context>
 <context>
@@ -9370,7 +10409,7 @@ Operation: %6</source>
 <context>
     <name>RemoteWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteWidget.cpp" line="+133"/>
+        <location filename="../src/remote/presentation/RemoteWidget.cpp" line="+172"/>
         <location line="+21"/>
         <source>Show details</source>
         <translation>詳細を表示</translation>
@@ -9386,14 +10425,14 @@ Operation: %6</source>
         <translation>詳細を隠す</translation>
     </message>
     <message>
-        <location line="+60"/>
-        <location line="+32"/>
-        <location line="+706"/>
+        <location line="+65"/>
+        <location line="+33"/>
+        <location line="+872"/>
         <source>Machines</source>
         <translation>マシン</translation>
     </message>
     <message>
-        <location line="-737"/>
+        <location line="-904"/>
         <source>Pairing and access relationships · Connection health is not checked here</source>
         <translation>ペア設定とアクセスの関係 · ここでは接続状態を確認しません</translation>
     </message>
@@ -9404,25 +10443,25 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+16"/>
-        <location line="+720"/>
+        <location line="+887"/>
         <source>Machine setup</source>
         <translation>マシンのセットアップ</translation>
     </message>
     <message>
-        <location line="-706"/>
+        <location line="-872"/>
         <source>Manage trusted computers and workflow access.</source>
         <translation>信頼するコンピューターとワークフローへのアクセスを管理します。</translation>
     </message>
     <message>
         <location line="+2"/>
-        <location line="+61"/>
-        <location line="+212"/>
-        <location line="+430"/>
+        <location line="+62"/>
+        <location line="+216"/>
+        <location line="+591"/>
         <source>Add machine</source>
         <translation>マシンを追加</translation>
     </message>
     <message>
-        <location line="-692"/>
+        <location line="-858"/>
         <source>Canvas</source>
         <translation>キャンバス</translation>
     </message>
@@ -9442,18 +10481,18 @@ Operation: %6</source>
         <translation>マシンの一覧表示</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+48"/>
         <source>Refresh</source>
         <translation>更新</translation>
     </message>
     <message>
         <location line="+3"/>
-        <location line="+432"/>
+        <location line="+475"/>
         <source>Connection settings</source>
         <translation>接続設定</translation>
     </message>
     <message>
-        <location line="-421"/>
+        <location line="-463"/>
         <source>Remote connection</source>
         <translation>リモート接続</translation>
     </message>
@@ -9474,13 +10513,13 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+16"/>
-        <location line="+334"/>
-        <location line="+266"/>
+        <location line="+343"/>
+        <location line="+421"/>
         <source>Connect this computer</source>
         <translation>このコンピューターを接続</translation>
     </message>
     <message>
-        <location line="-596"/>
+        <location line="-760"/>
         <source>Checking remote access lock status…</source>
         <translation>リモートアクセスのロック状態を確認中…</translation>
     </message>
@@ -9496,12 +10535,12 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+10"/>
-        <location line="+239"/>
+        <location line="+247"/>
         <source>Machine</source>
         <translation>マシン</translation>
     </message>
     <message>
-        <location line="-239"/>
+        <location line="-247"/>
         <source>Access</source>
         <translation>アクセス</translation>
     </message>
@@ -9537,34 +10576,34 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+657"/>
+        <location line="+830"/>
         <source>Paired</source>
         <translation>ペア設定済み</translation>
     </message>
     <message>
-        <location line="-656"/>
+        <location line="-829"/>
         <source>Invitations</source>
         <translation>招待</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+662"/>
+        <location line="+836"/>
         <source>Access removed</source>
         <translation>アクセス削除済み</translation>
     </message>
     <message>
-        <location line="-659"/>
+        <location line="-833"/>
         <source>Refresh to load managed machines.</source>
         <translation>更新して管理対象マシンを読み込んでください。</translation>
     </message>
     <message>
         <location line="+9"/>
-        <location line="+1079"/>
+        <location line="+1270"/>
         <source>Select a machine to view its settings.</source>
         <translation>マシンを選択して設定を表示してください。</translation>
     </message>
     <message>
-        <location line="-1075"/>
+        <location line="-1266"/>
         <source>Configure this computer…</source>
         <translation>このコンピューターを設定…</translation>
     </message>
@@ -9626,20 +10665,21 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+8"/>
-        <location line="+343"/>
-        <location line="+433"/>
+        <location line="+435"/>
+        <location line="+519"/>
         <source>Set up remote access…</source>
         <translation>リモートアクセスを設定…</translation>
     </message>
     <message>
-        <location line="-759"/>
-        <location line="+165"/>
-        <location line="+133"/>
+        <location line="-934"/>
+        <location line="+170"/>
+        <location line="+212"/>
+        <location line="+208"/>
         <source>← Machines</source>
         <translation>← マシン</translation>
     </message>
     <message>
-        <location line="-276"/>
+        <location line="-568"/>
         <source>Add another computer</source>
         <translation>別のコンピューターを追加</translation>
     </message>
@@ -9655,12 +10695,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+3"/>
-        <location line="+442"/>
+        <location line="+608"/>
         <source>Start pairing</source>
         <translation>ペア設定を開始</translation>
     </message>
     <message>
-        <location line="-437"/>
+        <location line="-603"/>
         <source>Connect this computer instead</source>
         <translation>代わりにこのコンピューターを接続</translation>
     </message>
@@ -9675,12 +10715,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>もう一方のコンピューターで</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>Open Dockpipe → Machines → Add machine → Connect this computer instead. Enter this address and request pairing.</source>
-        <translation>Dockpipe → マシン → マシンを追加 → 代わりにこのコンピューターを接続を開きます。このアドレスを入力してペア設定を要求してください。</translation>
-    </message>
-    <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Copy address</source>
         <translation>アドレスをコピー</translation>
     </message>
@@ -9691,12 +10726,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+3"/>
-        <location line="+601"/>
+        <location line="+775"/>
         <source>Review request</source>
         <translation>リクエストを確認</translation>
     </message>
     <message>
-        <location line="-597"/>
+        <location line="-771"/>
         <source>Check again</source>
         <translation>再確認</translation>
     </message>
@@ -9721,7 +10756,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>リクエストを選択し、もう一方のコンピューターのコードと比較してください。一致する場合のみ承認してください。</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+7"/>
         <source>Verification code</source>
         <translation>確認コード</translation>
     </message>
@@ -9757,11 +10792,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+1"/>
+        <location line="+119"/>
         <source>Done</source>
         <translation>完了</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="-106"/>
         <source>1 of 3 · Prepare</source>
         <translation>1 / 3 · 準備</translation>
     </message>
@@ -9781,22 +10817,22 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>ペア設定完了</translation>
     </message>
     <message>
-        <location line="+24"/>
+        <location line="+25"/>
         <source>Enter the address shown on the computer you are connecting to.</source>
         <translation>接続先のコンピューターに表示されたアドレスを入力してください。</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+5"/>
         <source>https://your-broker.example.com</source>
         <translation>https://your-broker.example.com</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+5"/>
         <source>Remote address</source>
         <translation>リモートアドレス</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+2"/>
         <source>Name for this computer</source>
         <translation>このコンピューターの名前</translation>
     </message>
@@ -9806,12 +10842,22 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>管理コンピューターからのワークフローを自分のユーザーとして実行することを許可</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+3"/>
         <source>Connect only to a computer you trust. Its workflows run as your user and can access your files and tools.</source>
         <translation>信頼するコンピューターのみに接続してください。そのワークフローは自分のユーザーとして実行され、ファイルやツールにアクセスできます。</translation>
     </message>
     <message>
         <location line="+1"/>
+        <source>Allow Terminal access as my user</source>
+        <translation>ターミナルアクセスを私のユーザーとして許可する</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Terminal opens in your home folder and runs with your account&apos;s permissions.</source>
+        <translation>ターミナルはホーム フォルダーで開き、アカウントの許可で実行されます。</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>After approval, Dockpipe starts a background worker service for your user so this computer can receive workflows.</source>
         <translation>承認後、Dockpipe がユーザー用のバックグラウンドワーカーサービスを開始し、このコンピューターがワークフローを受信できるようにします。</translation>
     </message>
@@ -9821,17 +10867,12 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>ペア設定を要求</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+22"/>
         <source>Waiting for approval. Compare the code below on the managing computer.</source>
         <translation>承認を待っています。下のコードを管理コンピューターで比較してください。</translation>
     </message>
     <message>
-        <location line="+7"/>
-        <source>Already paired? Recovery options</source>
-        <translation>ペア設定済みですか？復旧オプション</translation>
-    </message>
-    <message>
-        <location line="+6"/>
+        <location line="+13"/>
         <source>Restart receiving workflows without pairing again. Keep this computer awake while work runs.</source>
         <translation>再度ペア設定せずにワークフローの受信を再開します。作業中はこのコンピューターをスリープさせないでください。</translation>
     </message>
@@ -9841,7 +10882,18 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>ワーカーサービスを開始</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+2"/>
+        <location line="+6"/>
+        <source>Enable Terminal</source>
+        <translation>ターミナルを有効にする</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Allow the managing computer to open a shell with your account&apos;s permissions, starting in your home folder? Dockpipe will briefly restart the background worker.</source>
+        <translation>管理コンピュータがあなたのアカウントの許可でシールを開くことを許可し、ホーム フォルダーから始まりますか? Dockpipe は、背景作業員をすぐに再起動します。</translation>
+    </message>
+    <message>
+        <location line="+23"/>
         <source>Connection settings · Update available</source>
         <translation>接続設定 · 更新あり</translation>
     </message>
@@ -9886,22 +10938,52 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>サービスの更新は完了しませんでした。ペア設定は保持されています。詳細を確認してから、サービスの更新を再試行してください。</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <source>Worker service started. Choose this computer under Run on from your managing computer.</source>
-        <translation>ワーカーサービスを開始しました。管理コンピューターの実行先でこのコンピューターを選択してください。</translation>
-    </message>
-    <message>
-        <location line="+1"/>
+        <location line="+10"/>
         <source>Could not start the worker service. Your pairing is preserved. See details, then choose Start worker service to retry.</source>
         <translation>ワーカーサービスを開始できませんでした。ペア設定は保持されています。詳細を確認してから、「ワーカーサービスを開始」で再試行してください。</translation>
     </message>
     <message>
         <location line="+2"/>
+        <source>Background worker startup requested. Terminal setup failed. Use Manage access to retry.</source>
+        <translation>背景労働者スタートアップが要求されました. ターミナル設定が失敗しました. 利用管理 退職へのアクセス。</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Pairing is complete. Windows could not start administrator input approval.</source>
+        <translation>Windows は管理者入力承認を開始することはできませんでした。</translation>
+    </message>
+    <message>
+        <location line="+6"/>
         <source>Starting the background worker service…</source>
         <translation>バックグラウンドワーカーサービスを開始中…</translation>
     </message>
     <message>
         <location line="+11"/>
+        <source>Dockpipe could not enable Terminal. See details in Connection setup.</source>
+        <translation>Dockpipe は Terminal を有効にすることはできませんでした。</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Terminal access enabled. Refresh Terminal on the managing computer.</source>
+        <translation>ターミナルアクセスが有効です 管理コンピュータのターミナルをリフレッシュします。</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Terminal access is saved. Start the worker service to bring it online.</source>
+        <translation>ターミナルアクセスが保存されます. オンラインで提供するために労働者サービスを開始します。</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Restarting the background worker…</source>
+        <translation>背景労働者を再起動...</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Enabling Terminal access…</source>
+        <translation>ターミナルへのアクセス...</translation>
+    </message>
+    <message>
+        <location line="+16"/>
         <location line="+47"/>
         <source>Set up remote access</source>
         <translation>リモートアクセスを設定</translation>
@@ -9928,12 +11010,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+3"/>
-        <location line="+435"/>
+        <location line="+521"/>
         <source>Install provider…</source>
         <translation>プロバイダーをインストール…</translation>
     </message>
     <message>
-        <location line="-425"/>
+        <location line="-511"/>
         <source>Check connection</source>
         <translation>接続を確認</translation>
     </message>
@@ -9948,12 +11030,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>%2 を使用して %1 を設定しますか？依存関係のインストール、公開トンネルと DNS レコードの作成、ブローカーユーザーサービスの開始を行う場合があります。</translation>
     </message>
     <message>
-        <location line="+13"/>
-        <source>Continue setup in the terminal. When it finishes, return to Machines and refresh to check access.</source>
-        <translation>ターミナルで設定を続行してください。完了したら「マシン」に戻って更新し、アクセスを確認してください。</translation>
-    </message>
-    <message>
-        <location line="+4"/>
+        <location line="+18"/>
         <source>Pairing security keys</source>
         <translation>ペア設定用セキュリティキー</translation>
     </message>
@@ -9998,12 +11075,17 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>セキュリティキーの登録は完了しませんでした。詳細を確認してから再試行してください。</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+114"/>
+        <source>← Environments</source>
+        <translation>← 環境</translation>
+    </message>
+    <message>
+        <location line="+6"/>
         <source>Connection setup</source>
         <translation>接続のセットアップ</translation>
     </message>
     <message>
-        <location line="+34"/>
+        <location line="+39"/>
         <source>Set up connection</source>
         <translation>接続を設定</translation>
     </message>
@@ -10013,7 +11095,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>処理中…</translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location line="+21"/>
         <source>Could not complete this step. See details for the error; saved setup is preserved.</source>
         <translation>この手順を完了できませんでした。エラーの詳細を確認してください。保存済みの設定は保持されています。</translation>
     </message>
@@ -10023,12 +11105,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>管理対象マシンを読み込めませんでした。再試行するか、「このコンピューターを接続」で設定済みのマシンに参加してください。</translation>
     </message>
     <message>
-        <location line="+17"/>
-        <source>Allowed to receive workflows</source>
-        <translation>ワークフローの受信を許可済み</translation>
-    </message>
-    <message>
-        <location line="+3"/>
+        <location line="+23"/>
         <source>Invitation created</source>
         <translation>招待を作成済み</translation>
     </message>
@@ -10043,7 +11120,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>再度ペア設定してアクセスを復元</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+13"/>
         <source>Settings</source>
         <translation>設定</translation>
     </message>
@@ -10063,7 +11140,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>ここでコンピューターを追加し、ワークフローの起動時に選択してください。</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+17"/>
         <source>Remote access lock status unavailable: %1</source>
         <translation>リモートアクセスのロック状態を利用できません: %1</translation>
     </message>
@@ -10176,12 +11253,7 @@ Approve only if you can verify it on that machine.</source>
 そのマシンで確認できた場合のみ承認してください。</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <source>%1 is paired. On that computer, choose Start worker service to receive workflows.</source>
-        <translation>%1 をペア設定しました。そのコンピューターで「ワーカーサービスを開始」を選択すると、ワークフローを受信できます。</translation>
-    </message>
-    <message>
-        <location line="+1"/>
+        <location line="+10"/>
         <source>Request from %1 denied.</source>
         <translation>%1 からのリクエストを拒否しました。</translation>
     </message>
@@ -10312,12 +11384,27 @@ The provider is configured on the managing computer.</source>
         <translation>このブローカー用のワーカーを設定済み。接続は未検証です</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+8"/>
+        <source>Pairing · %1</source>
+        <translation>カップル · %1</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Unknown</source>
+        <translation>不明</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Machine fingerprint · %1…</source>
+        <translation>機械指紋 · %1 ...</translation>
+    </message>
+    <message>
+        <location line="+3"/>
         <source>Access relationship: %1</source>
         <translation>アクセスの関係: %1</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+52"/>
         <source>Managed machine inventory is unavailable. Refresh to check access.</source>
         <translation>管理対象マシンの一覧を利用できません。更新してアクセスを確認してください。</translation>
     </message>
@@ -10347,22 +11434,23 @@ The provider is configured on the managing computer.</source>
         <translation>マシン %2 台中 %1 台</translation>
     </message>
     <message>
-        <location line="+23"/>
+        <location line="+21"/>
         <source>%1 settings</source>
         <translation>%1 の設定</translation>
     </message>
     <message>
-        <location line="+29"/>
+        <location line="+32"/>
+        <source>Machine fingerprint · %1</source>
+        <translation>機械指紋 · %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>%1 · %2
 
-%3
-
-Connection health is not checked here.</source>
+%3</source>
         <translation>%1 · %2
 
-%3
-
-ここでは接続状態を確認しません。</translation>
+%3</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -10398,6 +11486,56 @@ This machine is no longer in the available inventory.</source>
         <translation>%1
 
 このマシンは利用可能な一覧にありません。</translation>
+    </message>
+    <message>
+        <location line="-987"/>
+        <source>Enter a valid remote address starting with https://.</source>
+        <translation>https:// で始まる有効なリモートアドレスを入力してください。</translation>
+    </message>
+    <message>
+        <location line="-123"/>
+        <source>In Dockpipe, open connection setup for that computer, select Connect this computer, then enter this address and request pairing.</source>
+        <translation>Dockpipe では、そのコンピュータのための接続設定を開いて、このコンピュータに接続するを選択し、その後、このアドレスを入力し、カップリングを要求します。</translation>
+    </message>
+    <message>
+        <location line="+44"/>
+        <source>Connect a physical FIDO2 security key to this computer before approving. If you have not registered a key, use Register pairing key in connection setup.</source>
+        <translation>承認する前に、物理 FIDO2 セキュリティキーをこのコンピューターに接続してください。キーをまだ登録していない場合は、接続設定の「ペア設定キーを登録」を使用してください。</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>No accessible security key was detected. Plug in your registered key and try again. If it is already connected, check your device permissions.</source>
+        <translation>使用可能なセキュリティキーが見つかりませんでした。登録済みのキーを接続してから再試行してください。すでに接続している場合は、デバイスのアクセス権限を確認してください。</translation>
+    </message>
+    <message>
+        <location line="+94"/>
+        <source>The managing computer needs a registered physical FIDO2 security key to approve pairing.</source>
+        <translation>ペア設定を承認するには、管理側のコンピューターに登録済みの物理 FIDO2 セキュリティキーが必要です。</translation>
+    </message>
+    <message>
+        <location line="+32"/>
+        <source>Already paired? Manage access</source>
+        <translation>すでにパイア? アクセス管理</translation>
+    </message>
+    <message>
+        <location line="+219"/>
+        <source>Continue setup in the terminal. When it finishes, choose Check connection.</source>
+        <translation>ターミナルで設定を継続します. 終了すると、チェック接続を選択します。</translation>
+    </message>
+    <message>
+        <location line="+266"/>
+        <source>Broker enrollment is active.</source>
+        <translation>ブローカー登録はアクティブです。</translation>
+    </message>
+    <message>
+        <location line="+165"/>
+        <source>%1 is paired. Start the worker on that computer to receive workflows.</source>
+        <translation>%1 のペア設定が完了しました。ワークフローを受信するには、そのコンピューターでワーカーを起動してください。</translation>
+    </message>
+    <message>
+        <location line="-552"/>
+        <source>Background worker startup requested. Check this computer under Run on from your managing computer.</source>
+        <translation>バックグラウンド ワーカーの起動を要求しました。管理側のコンピューターで「実行先」にこのコンピューターが表示されるか確認してください。</translation>
     </message>
 </context>
 <context>
@@ -10528,7 +11666,7 @@ This machine is no longer in the available inventory.</source>
 <context>
     <name>SessionManager</name>
     <message>
-        <location filename="../src/execution/infrastructure/SessionManager.cpp" line="+147"/>
+        <location filename="../src/execution/infrastructure/SessionManager.cpp" line="+170"/>
         <location line="+34"/>
         <source>Workflow output exceeded the consumer&apos;s line capacity.</source>
         <translation>ワークフロー出力が受信側の行容量を超えました。</translation>
@@ -11260,13 +12398,14 @@ This machine is no longer in the available inventory.</source>
 <context>
     <name>TerminalHub</name>
     <message>
-        <location filename="../src/terminal/application/TerminalHub.cpp" line="+46"/>
-        <location line="+75"/>
+        <location filename="../src/terminal/application/TerminalHub.cpp" line="+48"/>
+        <location line="+48"/>
+        <location line="+57"/>
         <source>Eight terminals are already open. Close one before opening another.</source>
         <translation>既に 8 個のターミナルが開いています。別のターミナルを開く前に 1 つ閉じてください。</translation>
     </message>
     <message>
-        <location line="-60"/>
+        <location line="-90"/>
         <source>This shell is no longer available. Refresh the shell list and try again.</source>
         <translation>このシェルは利用できなくなりました。シェル一覧を更新して再試行してください。</translation>
     </message>
@@ -11281,13 +12420,19 @@ This machine is no longer in the available inventory.</source>
         <translation>利用可能なホストシェルがありません。Flatpak のホストアクセスを確認し、シェル一覧を更新してください。</translation>
     </message>
     <message>
-        <location line="+14"/>
-        <location line="+55"/>
+        <location line="+10"/>
+        <location line="+32"/>
+        <location line="+57"/>
         <source>Terminal %1 · %2</source>
         <translation>ターミナル %1 · %2</translation>
     </message>
     <message>
-        <location line="+65"/>
+        <location line="-67"/>
+        <source>The container terminal target is unavailable.</source>
+        <translation>コンテナターミナルターミナルは利用できません。</translation>
+    </message>
+    <message>
+        <location line="+132"/>
         <location line="+32"/>
         <source>This terminal session is closed.</source>
         <translation>このターミナルセッションは終了しています。</translation>
@@ -11832,12 +12977,17 @@ $ 次のコマンドを入力してください</translation>
 <context>
     <name>TerminalWidget</name>
     <message>
-        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+84"/>
+        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+92"/>
         <source>Terminal</source>
         <translation>ターミナル</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+6"/>
+        <source>Terminal target</source>
+        <translation>ターミナルターゲット</translation>
+    </message>
+    <message>
+        <location line="+23"/>
         <source>Shells and sessions</source>
         <translation>シェルとセッション</translation>
     </message>
@@ -11874,12 +13024,12 @@ $ 次のコマンドを入力してください</translation>
     </message>
     <message>
         <location line="+6"/>
-        <location line="+541"/>
+        <location line="+742"/>
         <source>Restart DockPipe to enable desktop transparency. Your desktop must support compositing.</source>
         <translation>デスクトップの透明化を有効にするには DockPipe を再起動してください。デスクトップがコンポジットに対応している必要があります。</translation>
     </message>
     <message>
-        <location line="-532"/>
+        <location line="-733"/>
         <source>No terminals open</source>
         <translation>開いているターミナルなし</translation>
     </message>
@@ -11910,12 +13060,17 @@ $ 次のコマンドを入力してください</translation>
         <translation>インストール済みのホストシェルを検出中…</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+10"/>
+        <source>The selected terminal target is unavailable.</source>
+        <translation>選択したターミナルターゲットは利用できません。</translation>
+    </message>
+    <message>
+        <location line="+27"/>
         <source>Default shell</source>
         <translation>既定のシェル</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+9"/>
         <source>New default shell</source>
         <translation>新しい既定のシェル</translation>
     </message>
@@ -11930,7 +13085,40 @@ $ 次のコマンドを入力してください</translation>
         <translation>新しい %1</translation>
     </message>
     <message>
-        <location line="+116"/>
+        <location line="+135"/>
+        <location line="+3"/>
+        <source>This computer</source>
+        <translation>このコンピューター</translation>
+    </message>
+    <message>
+        <location line="+30"/>
+        <source>Terminal unavailable</source>
+        <translation>ターミナル不利用</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Remote access locked</source>
+        <translation>遠隔アクセス ロック</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+11"/>
+        <location line="+8"/>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <location line="-2"/>
+        <source>%1 · Container</source>
+        <translation>%1 · コンテナ</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · 利用不可</translation>
+    </message>
+    <message>
+        <location line="+120"/>
         <source>Choose a terminal…</source>
         <translation>ターミナルを選択…</translation>
     </message>
@@ -12572,12 +13760,12 @@ The file may have changed on disk. Your draft has been kept; refresh before retr
         <translation>起動</translation>
     </message>
     <message>
-        <location line="+134"/>
+        <location line="+135"/>
         <source>Start</source>
         <translation>開始</translation>
     </message>
     <message>
-        <location line="+111"/>
+        <location line="+113"/>
         <source>Inputs</source>
         <translation>入力</translation>
     </message>
@@ -13394,7 +14582,7 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
 <context>
     <name>WorkspaceMachineMenu</name>
     <message>
-        <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="+55"/>
+        <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="+62"/>
         <location line="+42"/>
         <source>Follow main machine</source>
         <translation>メインマシンに従う</translation>
@@ -13423,12 +14611,13 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     </message>
     <message>
         <location line="+2"/>
-        <location line="+36"/>
+        <location line="+40"/>
+        <location line="+22"/>
         <source> · Unavailable</source>
         <translation> · 利用不可</translation>
     </message>
     <message>
-        <location line="-16"/>
+        <location line="-41"/>
         <source>Unlock remote access…</source>
         <translation>リモートアクセスをロック解除…</translation>
     </message>
@@ -13438,12 +14627,22 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
         <translation>利用可能なリモートワークスペースはありません</translation>
     </message>
     <message>
-        <location line="+30"/>
+        <location line="+34"/>
         <source>Containers</source>
         <translation>コンテナー</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+12"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · 利用不可</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>%1 · Locked</source>
+        <translation>%1 · ロック</translation>
+    </message>
+    <message>
+        <location line="+4"/>
         <source>Refresh machines</source>
         <translation>マシンを更新</translation>
     </message>

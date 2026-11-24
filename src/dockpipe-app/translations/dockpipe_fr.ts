@@ -4,7 +4,7 @@
 <context>
     <name>ActivityWidget</name>
     <message>
-        <location filename="../src/execution/presentation/ActivityWidget.cpp" line="+48"/>
+        <location filename="../src/execution/presentation/ActivityWidget.cpp" line="+49"/>
         <source>Runs &amp; logs</source>
         <translation>Exécutions &amp; journaux</translation>
     </message>
@@ -15,12 +15,12 @@
     </message>
     <message>
         <location line="+10"/>
-        <location line="+211"/>
+        <location line="+224"/>
         <source>This computer</source>
         <translation>Cet ordinateur</translation>
     </message>
     <message>
-        <location line="-211"/>
+        <location line="-224"/>
         <source>Remote jobs</source>
         <translation>Tâches distantes</translation>
     </message>
@@ -104,7 +104,7 @@ Actualisez pour vérifier les mises à jour ou gérez les connexions dans Machin
         <translation>État</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+15"/>
         <source>Refresh jobs</source>
         <translation>Actualiser les tâches</translation>
     </message>
@@ -124,7 +124,7 @@ Actualisez pour vérifier les mises à jour ou gérez les connexions dans Machin
         <translation>Enregistrer les artefacts de résultat et les journaux du workflow.</translation>
     </message>
     <message>
-        <location line="+57"/>
+        <location line="+62"/>
         <source>Save result inside folder</source>
         <translation>Enregistrer le résultat dans un dossier</translation>
     </message>
@@ -134,7 +134,7 @@ Actualisez pour vérifier les mises à jour ou gérez les connexions dans Machin
         <translation>Résultat et workflow.log enregistrés dans %1</translation>
     </message>
     <message>
-        <location line="+62"/>
+        <location line="+63"/>
         <source>Finished / stopped</source>
         <translation>Terminée / arrêtée</translation>
     </message>
@@ -169,7 +169,7 @@ Actualisez pour vérifier les mises à jour ou gérez les connexions dans Machin
         <translation>%1 tâches distantes</translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+100"/>
         <source>Up to date with the broker.</source>
         <translation>À jour avec le courtier.</translation>
     </message>
@@ -197,6 +197,18 @@ Actualisez pour vérifier les mises à jour ou gérez les connexions dans Machin
         <location line="+34"/>
         <source>This job is no longer available in the broker’s job list.</source>
         <translation>Cette tâche n’est plus disponible dans la liste des tâches du courtier.</translation>
+    </message>
+    <message>
+        <location line="-329"/>
+        <source>Live workflow log</source>
+        <translation>Journal du workflow en direct</translation>
+    </message>
+    <message>
+        <location line="+233"/>
+        <source>
+Live preview limit reached. Download the results for the full retained log.</source>
+        <translation>
+La limite de l’aperçu en direct est atteinte. Téléchargez les résultats pour consulter le journal complet conservé.</translation>
     </message>
 </context>
 <context>
@@ -1029,7 +1041,7 @@ Dépôt indépendant · ajoutez plusieurs vues pour travailler entre dépôts</t
 <context>
     <name>DashboardRepositoryPanel</name>
     <message>
-        <location filename="../src/dashboards/presentation/DashboardRepositoryPanel.cpp" line="+38"/>
+        <location filename="../src/dashboards/presentation/DashboardRepositoryPanel.cpp" line="+39"/>
         <source>Repository…</source>
         <translation>Dépôt…</translation>
     </message>
@@ -1054,7 +1066,7 @@ Dépôt indépendant · ajoutez plusieurs vues pour travailler entre dépôts</t
         <translation>Choisissez un dépôt pour cette vue</translation>
     </message>
     <message>
-        <location line="+81"/>
+        <location line="+90"/>
         <source>Unsaved commit message</source>
         <translation>Message de commit non enregistré</translation>
     </message>
@@ -3243,7 +3255,7 @@ Actualisez pour charger l’inventaire de la machine sélectionnée.</translatio
     <message>
         <location line="+2"/>
         <location line="+232"/>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+119"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+118"/>
         <source>Loading container logs…</source>
         <translation>Chargement des journaux du conteneur…</translation>
     </message>
@@ -3517,7 +3529,7 @@ Actualisez pour charger l’inventaire de la machine sélectionnée.</translatio
         <translation>Réponse de contrôle du conteneur invalide.</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-298"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-297"/>
         <source>Wait for the current container control operation before changing machines.</source>
         <translation>Attendez la fin de l’opération de contrôle du conteneur avant de changer de machine.</translation>
     </message>
@@ -3527,7 +3539,7 @@ Actualisez pour charger l’inventaire de la machine sélectionnée.</translatio
         <translation>Sélectionnez une machine dont l’empreinte et la génération du worker sont vérifiées.</translation>
     </message>
     <message>
-        <location line="+128"/>
+        <location line="+127"/>
         <source>%1 · Remote Docker inventory unavailable: %2</source>
         <translation>%1 · Inventaire Docker distant indisponible : %2</translation>
     </message>
@@ -3818,6 +3830,780 @@ Sélectionnez une ligne pour commencer.</translation>
         <location line="+8"/>
         <source>Env (*.env *.sh);;All files (*)</source>
         <translation>Environnement (*.env *.sh);;Tous les fichiers (*)</translation>
+    </message>
+</context>
+<context>
+    <name>EnvironmentDefinitionsClient</name>
+    <message>
+        <location filename="../src/environments/infrastructure/EnvironmentDefinitionsClient.cpp" line="+150"/>
+        <source>Could not start Dockpipe to read environment definitions.</source>
+        <translation>Dockpipe ne peut pas commencer à lire les définitions environnementales.</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Dockpipe could not list environment definitions.</source>
+        <translation>Dockpipe ne pouvait pas énumérer les définitions environnementales.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Dockpipe returned an invalid environment definition list.</source>
+        <translation>Dockpipe a restitué une liste de définition environnementale invalide.</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Reading environment definitions timed out.</source>
+        <translation>La définition de l’environnement est terminée.</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>The environment definition list exceeds its size limit.</source>
+        <translation>La liste de définition environnementale dépasse sa limite de taille.</translation>
+    </message>
+</context>
+<context>
+    <name>EnvironmentsPage</name>
+    <message>
+        <location filename="../src/environments/presentation/EnvironmentsPage.cpp" line="+86"/>
+        <source>← Environments</source>
+        <translation>← Environnement</translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>Canvas</source>
+        <translation>Canevas</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>List</source>
+        <translation>Liste</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Refresh</source>
+        <translation>Actualiser</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <location line="+247"/>
+        <source>Add Environment</source>
+        <translation>Ajoutez l’environnement</translation>
+    </message>
+    <message>
+        <location line="-233"/>
+        <location line="+9"/>
+        <source>Environments</source>
+        <translation>Environnements</translation>
+    </message>
+    <message>
+        <location line="-8"/>
+        <source>Hosts, virtual machines, and containers</source>
+        <translation>Hosts, machines virtuelles et conteneurs</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Details</source>
+        <translation>Détails</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <location line="+331"/>
+        <location line="+121"/>
+        <source>Name</source>
+        <translation>Nom</translation>
+    </message>
+    <message>
+        <location line="-452"/>
+        <source>Type</source>
+        <translation>Type</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Location</source>
+        <translation>Localisation</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Status</source>
+        <translation>État</translation>
+    </message>
+    <message>
+        <location line="+201"/>
+        <source>Reading environment definitions…</source>
+        <translation>Les définitions environnementales...</translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <location line="+727"/>
+        <source>Remote machine</source>
+        <translation>La machine à distance</translation>
+    </message>
+    <message>
+        <location line="-727"/>
+        <source>Pair another computer with Dockpipe.</source>
+        <translation>Couper un autre ordinateur avec Dockpipe .</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+722"/>
+        <location line="+71"/>
+        <source>Virtual machine</source>
+        <translation>Machine virtuelle</translation>
+    </message>
+    <message>
+        <location line="-793"/>
+        <source>Choose an operating system and configure a VM.</source>
+        <translation>Choisissez un système d'exploitation et configurez un VM.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+794"/>
+        <source>Container</source>
+        <translation>Conteneur</translation>
+    </message>
+    <message>
+        <location line="-794"/>
+        <source>Choose an image and configure a Docker container.</source>
+        <translation>Choisissez une image et configurez un conteneur Docker.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Import YAML</source>
+        <translation>Mise à jour YAML</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Open existing environment definitions.</source>
+        <translation>Définitions environnementales existantes.</translation>
+    </message>
+    <message>
+        <location line="+61"/>
+        <source>Add Virtual Machine</source>
+        <translation>Ajoutez une machine virtuelle</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Runs on this computer’s VM provider.</source>
+        <translation>Il fonctionne sur le fournisseur de VM de cet ordinateur.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Development VM</source>
+        <translation>Développement VM</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <location line="+611"/>
+        <source>Ubuntu</source>
+        <translation>Ubuntu</translation>
+    </message>
+    <message>
+        <location line="-610"/>
+        <location line="+610"/>
+        <source>Debian</source>
+        <translation>Debian</translation>
+    </message>
+    <message>
+        <location line="-609"/>
+        <location line="+609"/>
+        <source>Fedora</source>
+        <translation>La Fedora</translation>
+    </message>
+    <message>
+        <location line="-608"/>
+        <location line="+609"/>
+        <source>Other Linux</source>
+        <translation>Les autres Linux</translation>
+    </message>
+    <message>
+        <location line="-608"/>
+        <location line="+608"/>
+        <source>Windows 11</source>
+        <translation>Windows 11</translation>
+    </message>
+    <message>
+        <location line="-603"/>
+        <location line="+3"/>
+        <source> GiB</source>
+        <translation>JB</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Installer ISO file</source>
+        <translation>Installer le fichier ISO</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Browse…</source>
+        <translation>Parcourir…</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Select Installer ISO</source>
+        <translation>Sélectionnez Installer ISO</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>ISO images (*.iso *.ISO)</source>
+        <translation>ISO images (*.iso *. ISO )</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <location line="+120"/>
+        <location line="+580"/>
+        <source>Personal</source>
+        <translation>personnelle</translation>
+    </message>
+    <message>
+        <location line="-699"/>
+        <location line="+120"/>
+        <source>YAML file</source>
+        <translation>fichier YAML</translation>
+    </message>
+    <message>
+        <location line="-118"/>
+        <source>Operating system</source>
+        <translation>Système d’exploitation</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>CPUs</source>
+        <translation>Les CPUs</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>RAM</source>
+        <translation>RAM</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Disk size</source>
+        <translation>taille disque</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Installer ISO</source>
+        <translation>Installateur ISO</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+121"/>
+        <source>Save to</source>
+        <translation>Sauver à</translation>
+    </message>
+    <message>
+        <location line="-118"/>
+        <source>The ISO is optional when saving a definition. Disk size applies when the virtual disk is first created.</source>
+        <translation>Le ISO est facultatif lors de l'économie d'une définition. la taille du disque s'applique lorsque le disque virtuel est créé pour la première fois.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <location line="+151"/>
+        <source>Save Definition</source>
+        <translation>Sauvez la définition</translation>
+    </message>
+    <message>
+        <location line="-150"/>
+        <source>Create VM</source>
+        <translation>Création de VM</translation>
+    </message>
+    <message>
+        <location line="+66"/>
+        <source>Add Container</source>
+        <translation>Ajoutez le conteneur</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Runs on this computer’s Docker engine.</source>
+        <translation>Il fonctionne sur le moteur Docker de cet ordinateur.</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>General</source>
+        <translation>Général</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Test Docker</source>
+        <translation>Télécharger Docker</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Use letters, numbers, dots, underscores, or hyphens. Spaces become hyphens.</source>
+        <translation>Utilisez des lettres, des nombres, des points, des sous-cores ou des hyphens.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Ubuntu 24.04</source>
+        <translation>Ubuntu 24.04</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Debian 13 Slim</source>
+        <translation>Debian 13 Slim</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Alpine 3.22</source>
+        <translation>Alpine 3.22</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>NGINX on Alpine</source>
+        <translation>NGINX sur Alpine</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Custom image</source>
+        <translation>Image personnalisée</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Keep running for Terminal</source>
+        <translation>Continuez à courir pour le terminal</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Run the image’s command</source>
+        <translation>Exécuter le commandement de l'image</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Bridge</source>
+        <translation>Le pont</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+457"/>
+        <source>No network</source>
+        <translation>Pas de réseau</translation>
+    </message>
+    <message>
+        <location line="-455"/>
+        <source>Standard</source>
+        <translation>Standard</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+456"/>
+        <source>Restricted capabilities</source>
+        <translation>Capacités restreintes</translation>
+    </message>
+    <message>
+        <location line="-455"/>
+        <source>Both profiles block privilege escalation. Restricted also drops all Linux capabilities.</source>
+        <translation>Les deux profils bloquent l'escalade des privilèges. Restricted réduit également toutes les capacités Linux.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Base OS or image</source>
+        <translation>Base OS ou image</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Docker image</source>
+        <translation>Docker image</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Startup</source>
+        <translation>Démarrage</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Network</source>
+        <translation>Réseau</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Security</source>
+        <translation>Sécurité</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Advanced</source>
+        <translation>Avancé</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Use the image’s user</source>
+        <translation>Utiliser l’utilisateur de l’image</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Non-root user</source>
+        <translation>Utilisateur non-root</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Writable</source>
+        <translation>écrite</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Read-only</source>
+        <translation>Lire uniquement</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Do not restart</source>
+        <translation>Ne redémarrez pas</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Restart unless stopped</source>
+        <translation>Récupérer si ce n'est pas arrêté</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>No separate volume</source>
+        <translation>Pas de volume séparé</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Persistent Docker volume</source>
+        <translation>Volume Docker Persistant</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Publish a port on this computer</source>
+        <translation>Créer un portail sur cet ordinateur</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Run as</source>
+        <translation>Courir comme</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Root filesystem</source>
+        <translation>Système de fichiers root</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Restart policy</source>
+        <translation>Rétablir la politique</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Storage</source>
+        <translation>stockage</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Folder inside container</source>
+        <translation>L’intérieur du conteneur</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Local port</source>
+        <translation>Le port local</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Container port</source>
+        <translation>Port de conteneur</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Create Container</source>
+        <translation>Créer un conteneur</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Default (run the image’s command)</source>
+        <translation>Défaut (exécuter le commandement de l’image)</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Default (keep running for Terminal)</source>
+        <translation>Défaut (permanent pour le terminal)</translation>
+    </message>
+    <message>
+        <location line="+56"/>
+        <source>Save environment definition</source>
+        <translation>Définition de l’environnement</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+141"/>
+        <source>Environment definitions (*.yaml *.yml)</source>
+        <translation>Définitions environnementales (*.yaml *.yml)</translation>
+    </message>
+    <message>
+        <location line="-135"/>
+        <source>Choose a YAML file and include at most 2,048 definitions.</source>
+        <translation>Choisissez un fichier YAML et incluez au maximum 2 048 définitions.</translation>
+    </message>
+    <message>
+        <location line="+36"/>
+        <source>Dockpipe could not save the environment definition.</source>
+        <translation>Dockpipe ne pouvait pas sauver la définition environnementale.</translation>
+    </message>
+    <message>
+        <location line="+66"/>
+        <source>Edit YAML</source>
+        <translation>Mise à jour YAML</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Apply</source>
+        <translation>Appliquer</translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Include environment definition files</source>
+        <translation>Inclut les fichiers de définition environnementale</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Choose at most 2,048 definition files.</source>
+        <translation>Choisissez au maximum 2.048 fichiers de définition.</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>This definition file is unavailable. Refresh the definitions and try again.</source>
+        <translation>Ce fichier de définition n'est pas disponible. réparer les définitions et essayer à nouveau.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Could not open the selected environment definition.</source>
+        <translation>Il ne peut pas ouvrir la définition de l'environnement sélectionnée.</translation>
+    </message>
+    <message>
+        <location line="+49"/>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <location line="+41"/>
+        <source>This machine</source>
+        <translation>Cette machine</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Remote</source>
+        <translation>Distant</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Local</source>
+        <translation>La localité</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>No environments yet. Choose Add Environment to get started.</source>
+        <translation>Aucun environnement encore. Choisissez Ajouter environnement pour commencer.</translation>
+    </message>
+    <message>
+        <location line="+32"/>
+        <source>Open terminal</source>
+        <translation>Terminal ouvert</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Open VM console</source>
+        <translation>La console VM ouverte</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Manage VM</source>
+        <translation>Gestion de VM</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Connection settings</source>
+        <translation>Paramètres de connexion</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Machine settings</source>
+        <translation>Paramètres de la machine</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Choose Add Environment to get started.</source>
+        <translation>Choisissez Add Environment pour commencer.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Select an environment to see its status and actions.</source>
+        <translation>Choisissez un environnement pour voir son état et ses actions.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Environment details</source>
+        <translation>détails environnemental</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Type  %1</source>
+        <translation>Type %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Image  %1</source>
+        <translation>Image de %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Bridge network</source>
+        <translation>Réseau de pont</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Read-only root filesystem</source>
+        <translation>Le système de fichiers root</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Local port  %1 → %2</source>
+        <translation>Port local %1 → %2</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Persistent volume  %1</source>
+        <translation>Volume persistant %1</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Operating system  %1</source>
+        <translation>Système d'exploitation %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>%1 CPU(s) · %2 GiB RAM · %3 GiB disk</source>
+        <translation>%1 CPU(s) · %2 GIB RAM · %3 GIB disque</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Installer ISO  %1</source>
+        <translation>Installateur ISO %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Choose an installer ISO before the first boot.</source>
+        <translation>Choisissez un installateur ISO avant le premier déclenchement.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Provisioning workflow  %1</source>
+        <translation>Fournir le flux de travail %1</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Package  %1</source>
+        <translation>Mise à jour %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Storage profile  %1</source>
+        <translation>Profil de stockage %1</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>Managing broker</source>
+        <translation>Courtier de gestion</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Local computer</source>
+        <translation>ordinateur local</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Host  This computer</source>
+        <translation>Mise à disposition de cet ordinateur</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Workflows</source>
+        <translation>Workflows</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Containers</source>
+        <translation>Conteneurs</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Files</source>
+        <translation>Fichiers</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Git</source>
+        <translation>Git</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Terminal</source>
+        <translation>Terminal</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Reported access  %1</source>
+        <translation>Accès rapporté %1</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <location line="+2"/>
+        <source>, </source>
+        <translation>,</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Workspace roots  %1</source>
+        <translation>Les racines de l'espace de travail %1</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Last report  %1</source>
+        <translation>Résumé : %1</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>No workspace feature report is available.</source>
+        <translation>Aucun rapport de fonctionnalité de l'espace de travail n'est disponible.</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Definition file missing</source>
+        <translation>Définition du fichier manquant</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Name differs from filename</source>
+        <translation>Le nom diffère du filename</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Invalid definition</source>
+        <translation>Définition Invalide</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Saved definition</source>
+        <translation>Définition sauvée</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Selected file</source>
+        <translation>fichier sélectionné</translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>Observed running</source>
+        <translation>Observé courant</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Observed stopped</source>
+        <translation>Observé arrêté</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Runtime unavailable</source>
+        <translation>Résultats inaccessibles</translation>
     </message>
 </context>
 <context>
@@ -4352,12 +5138,12 @@ Démarrez un workflow depuis l’éditeur pour le suivre ici.</translation>
 <context>
     <name>FileEditorWorkspace</name>
     <message>
-        <location filename="../src/files/presentation/FileEditorWorkspace.cpp" line="+63"/>
+        <location filename="../src/files/presentation/FileEditorWorkspace.cpp" line="+64"/>
         <source>Open a file in this pane</source>
         <translation>Ouvrir un fichier dans ce volet</translation>
     </message>
     <message>
-        <location line="+67"/>
+        <location line="+73"/>
         <source>Open in other pane</source>
         <translation>Ouvrir dans l’autre volet</translation>
     </message>
@@ -4377,7 +5163,7 @@ Démarrez un workflow depuis l’éditeur pour le suivre ici.</translation>
         <translation>Fermer les autres</translation>
     </message>
     <message>
-        <location line="+162"/>
+        <location line="+178"/>
         <location line="+165"/>
         <source>Close %1</source>
         <translation>Fermer %1</translation>
@@ -4991,7 +5777,7 @@ Cette modification peut ne contenir qu’un renommage, des métadonnées de fich
 <context>
     <name>GitHistoryWidget</name>
     <message>
-        <location filename="../src/git/presentation/GitHistoryWidget.cpp" line="+45"/>
+        <location filename="../src/git/presentation/GitHistoryWidget.cpp" line="+46"/>
         <source>Search commits…</source>
         <translation>Rechercher des commits…</translation>
     </message>
@@ -5261,7 +6047,7 @@ Cette modification peut ne contenir qu’un renommage, des métadonnées de fich
 <context>
     <name>GitRepositoryWidget</name>
     <message>
-        <location filename="../src/git/presentation/GitRepositoryWidget.cpp" line="+32"/>
+        <location filename="../src/git/presentation/GitRepositoryWidget.cpp" line="+33"/>
         <source>Refresh</source>
         <translation>Actualiser</translation>
     </message>
@@ -5372,7 +6158,7 @@ Amont : %3
         <translation>%1  %2</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+37"/>
         <source>Merge branch</source>
         <translation>Fusionner une branche</translation>
     </message>
@@ -5521,21 +6307,21 @@ Amont : %3
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="+334"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="+340"/>
         <source>Dockpipe — %1</source>
         <translation>Dockpipe — %1</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+108"/>
-        <location line="+259"/>
-        <location line="+745"/>
+        <location line="+170"/>
+        <location line="+258"/>
+        <location line="+755"/>
         <location line="+51"/>
-        <location line="+120"/>
+        <location line="+140"/>
         <location line="+6"/>
         <location line="+5"/>
         <location line="+24"/>
-        <location line="+309"/>
+        <location line="+299"/>
         <location line="+47"/>
         <location line="+162"/>
         <location line="+118"/>
@@ -5543,13 +6329,13 @@ Amont : %3
         <translation>Dockpipe</translation>
     </message>
     <message>
-        <location line="-1898"/>
-        <location line="+424"/>
+        <location line="-1943"/>
+        <location line="+449"/>
         <source>System</source>
         <translation>Système</translation>
     </message>
     <message>
-        <location line="-369"/>
+        <location line="-368"/>
         <source>Your work. Anywhere.</source>
         <translation>Votre travail. Partout.</translation>
     </message>
@@ -5560,18 +6346,18 @@ Amont : %3
     </message>
     <message>
         <location line="+4"/>
-        <location line="+404"/>
+        <location line="+403"/>
         <source>Packages</source>
         <translation>Paquets</translation>
     </message>
     <message>
-        <location line="-403"/>
-        <location line="+400"/>
+        <location line="-402"/>
+        <location line="+399"/>
         <source>Settings</source>
         <translation>Paramètres</translation>
     </message>
     <message>
-        <location line="-385"/>
+        <location line="-384"/>
         <source>WORKSPACE</source>
         <translation>ESPACE DE TRAVAIL</translation>
     </message>
@@ -5581,29 +6367,24 @@ Amont : %3
         <translation>Ouvrir un dossier…</translation>
     </message>
     <message>
-        <location line="+107"/>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+189"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+151"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+190"/>
         <source>This computer</source>
         <translation>Cet ordinateur</translation>
     </message>
     <message>
-        <location line="+5"/>
-        <source> — unavailable</source>
-        <translation> — indisponible</translation>
-    </message>
-    <message>
-        <location line="+46"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="+155"/>
         <source>Workflow</source>
         <translation>Workflow</translation>
     </message>
     <message>
-        <location line="+21"/>
-        <location line="+1631"/>
+        <location line="+23"/>
+        <location line="+1651"/>
         <source>%1 logs</source>
         <translation>Journaux de %1</translation>
     </message>
     <message>
-        <location line="-1621"/>
+        <location line="-1641"/>
         <source>Remote workflow</source>
         <translation>Workflow distant</translation>
     </message>
@@ -5639,12 +6420,12 @@ Amont : %3
     </message>
     <message>
         <location line="+2"/>
-        <location line="+848"/>
+        <location line="+878"/>
         <source>Quit</source>
         <translation>Quitter</translation>
     </message>
     <message>
-        <location line="-846"/>
+        <location line="-876"/>
         <source>View</source>
         <translation>Affichage</translation>
     </message>
@@ -5659,11 +6440,6 @@ Amont : %3
         <location line="+200"/>
         <source>Workflows</source>
         <translation>Workflows</translation>
-    </message>
-    <message>
-        <location line="+0"/>
-        <source>Machines</source>
-        <translation>Machines</translation>
     </message>
     <message>
         <location line="+0"/>
@@ -5694,6 +6470,11 @@ Amont : %3
         <location line="+0"/>
         <source>Terminal</source>
         <translation>Terminal</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Environments</source>
+        <translation>Environnements</translation>
     </message>
     <message>
         <location line="+12"/>
@@ -5801,7 +6582,7 @@ Si un workflow nécessite des outils externes, installez-les vous-même depuis l
         <translation>Plus tard</translation>
     </message>
     <message>
-        <location line="+188"/>
+        <location line="+195"/>
         <source>Workflow studio</source>
         <translation>Studio de workflows</translation>
     </message>
@@ -5821,7 +6602,7 @@ Si un workflow nécessite des outils externes, installez-les vous-même depuis l
         <translation>Ouvrir le dossier du projet</translation>
     </message>
     <message>
-        <location line="+101"/>
+        <location line="+104"/>
         <source>Open a project</source>
         <translation>Ouvrir un projet</translation>
     </message>
@@ -5832,19 +6613,19 @@ Si un workflow nécessite des outils externes, installez-les vous-même depuis l
     </message>
     <message>
         <location line="+22"/>
-        <location line="+652"/>
-        <location filename="../src/shell/presentation/MainWindowSurfaces.cpp" line="+109"/>
+        <location line="+662"/>
+        <location filename="../src/shell/presentation/MainWindowSurfaces.cpp" line="+151"/>
         <source>Workflow unavailable</source>
         <translation>Workflow indisponible</translation>
     </message>
     <message>
-        <location line="-624"/>
-        <location line="+673"/>
+        <location line="-634"/>
+        <location line="+683"/>
         <source>Could not start dockpipe (see stderr).</source>
         <translation>Impossible de démarrer dockpipe (voir stderr).</translation>
     </message>
     <message>
-        <location line="-600"/>
+        <location line="-593"/>
         <source>VS Code workflow</source>
         <translation>Workflow VS Code</translation>
     </message>
@@ -5854,7 +6635,7 @@ Si un workflow nécessite des outils externes, installez-les vous-même depuis l
         <translation>Aucune saisie déclarée. Utilisez Cloner dans les workflows pour modifier cette configuration.</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+50"/>
         <source>This workflow does not expose app-managed settings.</source>
         <translation>Ce workflow n’expose aucun paramètre géré par l’application.</translation>
     </message>
@@ -5924,7 +6705,7 @@ Si un workflow nécessite des outils externes, installez-les vous-même depuis l
         <translation>Prêt</translation>
     </message>
     <message>
-        <location line="+168"/>
+        <location line="+158"/>
         <source>Received an invalid Dockpipe prompt payload.</source>
         <translation>Une demande de saisie Dockpipe non valide a été reçue.</translation>
     </message>
@@ -5945,7 +6726,7 @@ Si un workflow nécessite des outils externes, installez-les vous-même depuis l
     </message>
     <message>
         <location line="+1"/>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+213"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+121"/>
         <source>Choose another computer or reconnect this machine before running.</source>
         <translation>Choisissez un autre ordinateur ou reconnectez cette machine avant l’exécution.</translation>
     </message>
@@ -6068,7 +6849,7 @@ Si un workflow nécessite des outils externes, installez-les vous-même depuis l
 </translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowDashboards.cpp" line="+76"/>
+        <location filename="../src/shell/presentation/MainWindowDashboards.cpp" line="+78"/>
         <source>This workflow is no longer in the project catalog. Refresh Workflows and try again.</source>
         <translation>Ce workflow ne figure plus dans le catalogue du projet. Actualisez Workflows et réessayez.</translation>
     </message>
@@ -6267,7 +7048,7 @@ Sélectionnez une carte pour modifier ses propriétés</translation>
         <translation>Aucun workflow pour le moment</translation>
     </message>
     <message>
-        <location line="+56"/>
+        <location line="+53"/>
         <source>Open YAML file…</source>
         <translation>Ouvrir un fichier YAML…</translation>
     </message>
@@ -6307,7 +7088,7 @@ Sélectionnez une carte pour modifier ses propriétés</translation>
         <translation>Workflow YAML (*.yml *.yaml)</translation>
     </message>
     <message>
-        <location line="+41"/>
+        <location line="+45"/>
         <source>Workflow source unavailable</source>
         <translation>Source du workflow indisponible</translation>
     </message>
@@ -6322,12 +7103,17 @@ Sélectionnez une carte pour modifier ses propriétés</translation>
         <translation>Attendez la fin de l’action Git ou annulez-la dans Git avant de changer de projet.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="-1376"/>
+        <location line="+122"/>
+        <source>This run target is unavailable. Choose another computer or reconnect it in Environments.</source>
+        <translation>Choisissez un autre ordinateur ou le reconnectez dans Environnements.</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="-1396"/>
         <source>Wait for the Git action to finish, or cancel it in Git before quitting.</source>
         <translation>Attendez la fin de l’action Git ou annulez-la dans Git avant de quitter.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+94"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-23"/>
         <source>&lt;h3&gt;Select a workflow&lt;/h3&gt;&lt;p&gt;Review its purpose and inputs here, then choose Run or Edit on canvas.&lt;/p&gt;</source>
         <translation>&lt;h3&gt;Sélectionnez un workflow&lt;/h3&gt;&lt;p&gt;Examinez ici son objectif et ses saisies, puis choisissez Exécuter ou Modifier sur le canevas.&lt;/p&gt;</translation>
     </message>
@@ -6362,12 +7148,7 @@ Sélectionnez une carte pour modifier ses propriétés</translation>
         <translation>L’ordinateur sélectionné doit disposer des outils et de la plateforme requis par ce workflow.</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>This run target is unavailable. Choose another computer or reconnect it in Machines.</source>
-        <translation>Cette cible d’exécution n’est pas disponible. Choisissez un autre ordinateur ou reconnectez-la dans Machines.</translation>
-    </message>
-    <message>
-        <location line="+41"/>
+        <location line="+45"/>
         <source>Clone failed</source>
         <translation>Échec du clonage</translation>
     </message>
@@ -6382,7 +7163,12 @@ Sélectionnez une carte pour modifier ses propriétés</translation>
         <translation>Workflow cloné dans %1</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-43"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-96"/>
+        <source>%1 · Workflow access unavailable</source>
+        <translation>%1 · Accès au flux de travail inaccessible</translation>
+    </message>
+    <message>
+        <location line="+53"/>
         <source>This machine or root changed. Refresh machines and select it again.</source>
         <translation>Cette machine ou cette racine a changé. Actualisez la liste des machines et sélectionnez-la à nouveau.</translation>
     </message>
@@ -6392,13 +7178,12 @@ Sélectionnez une carte pour modifier ses propriétés</translation>
         <translation>Enregistrez ou abandonnez les brouillons ouverts et terminez les opérations actives avant de changer de machine.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-435"/>
-        <location line="+145"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-443"/>
         <source>Choose the computer with the shared machine selector.</source>
         <translation>Choisissez l’ordinateur avec le sélecteur de machine partagé.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+93"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+130"/>
         <source>Container terminal · %1 · %2</source>
         <translation>Terminal du conteneur · %1 · %2</translation>
     </message>
@@ -6406,6 +7191,17 @@ Sélectionnez une carte pour modifier ses propriétés</translation>
         <location filename="../src/shell/presentation/MainWindow.cpp" line="-209"/>
         <source>Remote Desktop</source>
         <translation>Bureau à distance</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-216"/>
+        <location line="+28"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · Indisponible</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+145"/>
+        <source>Use the shared machine or choose a worker for this workflow.</source>
+        <translation>Utilisez la machine partagée ou choisissez un agent pour ce workflow.</translation>
     </message>
 </context>
 <context>
@@ -6525,12 +7321,12 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Un profil de terminal peut remplacer au maximum 64 variables d’environnement.</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+56"/>
         <source>The terminal launch exceeds its bounded profile or environment contract.</source>
         <translation>Le lancement du terminal dépasse les limites du profil ou de l’environnement.</translation>
     </message>
     <message>
-        <location line="-45"/>
+        <location line="-50"/>
         <source>The terminal profile contains an invalid environment variable.</source>
         <translation>Le profil du terminal contient une variable d’environnement invalide.</translation>
     </message>
@@ -7018,7 +7814,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
 <context>
     <name>PackageSurfacePage</name>
     <message>
-        <location filename="../src/packages/presentation/PackageSurfacePage.cpp" line="+50"/>
+        <location filename="../src/packages/presentation/PackageSurfacePage.cpp" line="+52"/>
         <source>View</source>
         <translation>Affichage</translation>
     </message>
@@ -7083,13 +7879,13 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>L’opération a dépassé le délai imparti. Actualisez pour examiner l’état actuel.</translation>
     </message>
     <message>
-        <location line="+91"/>
+        <location line="+95"/>
         <location line="+18"/>
         <source>Refresh paused. Displayed state is stale.</source>
         <translation>Actualisation suspendue. L’état affiché est périmé.</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+28"/>
         <source>State has not been refreshed.</source>
         <translation>L’état n’a pas été actualisé.</translation>
     </message>
@@ -7099,7 +7895,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>L’action de lancement du paquet installé est ambiguë ou indisponible.</translation>
     </message>
     <message>
-        <location line="+114"/>
+        <location line="+133"/>
         <source>Refreshing… Previous state is retained.</source>
         <translation>Actualisation… L’état précédent est conservé.</translation>
     </message>
@@ -7124,7 +7920,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Le paquet a renvoyé un événement de surface non valide.</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+54"/>
         <source>Package operation failed or returned no snapshot. Displayed state is stale.</source>
         <translation>L’opération du paquet a échoué ou n’a renvoyé aucun instantané. L’état affiché est périmé.</translation>
     </message>
@@ -7139,7 +7935,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Opération terminée. Actualisation de l’état…</translation>
     </message>
     <message>
-        <location line="+25"/>
+        <location line="+69"/>
         <source>Unsupported package surface event schema.</source>
         <translation>Schéma d’événement de surface de paquet non pris en charge.</translation>
     </message>
@@ -7164,7 +7960,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Les champs de la ressource du paquet dépassent le contrat de surface.</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+16"/>
         <source>Invalid package widget display options or missing installed factory.</source>
         <translation>Options d’affichage du widget de paquet non valides ou fabrique installée manquante.</translation>
     </message>
@@ -7187,6 +7983,213 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <location line="+7"/>
         <source>Invalid package resource action.</source>
         <translation>Action de ressource de paquet non valide.</translation>
+    </message>
+</context>
+<context>
+    <name>PipeLangEditorSession</name>
+    <message>
+        <location filename="../src/files/presentation/PipeLangEditorSession.cpp" line="+139"/>
+        <source>Browse…</source>
+        <translation>Parcourir…</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Connect</source>
+        <translation>Se connecter</translation>
+    </message>
+    <message>
+        <location line="-33"/>
+        <source>Connect PipeLang language server</source>
+        <translation>Se connecter au serveur de langage PipeLang</translation>
+    </message>
+    <message>
+        <location line="-19"/>
+        <source>Connect an explicitly selected installed language server for .pipe diagnostics and hover</source>
+        <translation>Se connecter à un serveur de langage installé et explicitement sélectionné pour obtenir les diagnostics des fichiers .pipe et les informations au survol</translation>
+    </message>
+    <message>
+        <location line="+47"/>
+        <source>Node executable</source>
+        <translation>Exécutable Node</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>PipeLang compiler executable</source>
+        <translation>Exécutable du compilateur PipeLang</translation>
+    </message>
+    <message>
+        <location line="-43"/>
+        <source>PipeLang language server disconnected.</source>
+        <translation>Le serveur de langage PipeLang a été déconnecté.</translation>
+    </message>
+    <message>
+        <location line="-7"/>
+        <source>PipeLang server…</source>
+        <translation>Serveur PipeLang…</translation>
+    </message>
+    <message>
+        <location line="+41"/>
+        <source>Select installed tool</source>
+        <translation>Sélectionner un outil installé</translation>
+    </message>
+    <message>
+        <location line="-1"/>
+        <source>Select source root</source>
+        <translation>Sélectionner la racine des sources</translation>
+    </message>
+    <message>
+        <location line="-18"/>
+        <source>Select trusted installed tools. Connecting runs the selected Node and server on this host. Paths are used only for this session; project files cannot configure executable paths. An optional source root authorizes compiler analysis of imports beneath that directory.</source>
+        <translation>Sélectionnez des outils installés de confiance. La connexion exécute le programme Node et le serveur sélectionnés sur cette machine. Les chemins sont utilisés uniquement pour cette session. Les fichiers du projet ne peuvent pas définir les chemins des exécutables. Une racine des sources facultative autorise le compilateur à analyser les importations sous ce répertoire.</translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Server JavaScript entrypoint</source>
+        <translation>Point d’entrée JavaScript du serveur</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Source root (optional)</source>
+        <translation>Racine des sources (facultative)</translation>
+    </message>
+    <message>
+        <location line="-47"/>
+        <source>Stop</source>
+        <translation>Arrêter</translation>
+    </message>
+</context>
+<context>
+    <name>PipeLangLanguageClient</name>
+    <message>
+        <location filename="../src/files/infrastructure/PipeLangLanguageClient.cpp" line="+374"/>
+        <source>Invalid PipeLang JSON-RPC message.</source>
+        <translation>Message JSON-RPC PipeLang non valide.</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Invalid PipeLang JSON-RPC version.</source>
+        <translation>Version JSON-RPC PipeLang non valide.</translation>
+    </message>
+    <message>
+        <location line="-35"/>
+        <source>Invalid PipeLang protocol Content-Length.</source>
+        <translation>Valeur Content-Length non valide dans le protocole PipeLang.</translation>
+    </message>
+    <message>
+        <location line="-224"/>
+        <source>Invalid absolute installed PipeLang selection (%1).</source>
+        <translation>Sélection non valide d’un outil PipeLang installé par chemin absolu (%1).</translation>
+    </message>
+    <message>
+        <location line="-10"/>
+        <source>Node executable: %1</source>
+        <translation>Exécutable Node : %1</translation>
+    </message>
+    <message>
+        <location line="+305"/>
+        <source>PipeLang compiler diagnostics and hover connected.</source>
+        <translation>Les diagnostics du compilateur PipeLang et les informations au survol sont disponibles.</translation>
+    </message>
+    <message>
+        <location line="-178"/>
+        <source>PipeLang document limit exceeded (1 MiB per file, 16 MiB total, 32 files).</source>
+        <translation>Limite de documents PipeLang dépassée (1 MiB par fichier, 16 MiB au total, 32 fichiers).</translation>
+    </message>
+    <message>
+        <location line="-208"/>
+        <source>PipeLang hover timed out.</source>
+        <translation>Délai d’obtention des informations PipeLang au survol dépassé.</translation>
+    </message>
+    <message>
+        <location line="+301"/>
+        <location line="+4"/>
+        <source>PipeLang protocol header limit exceeded.</source>
+        <translation>Limite des en-têtes du protocole PipeLang dépassée.</translation>
+    </message>
+    <message>
+        <location line="-14"/>
+        <source>PipeLang protocol input limit exceeded.</source>
+        <translation>Limite d’entrée du protocole PipeLang dépassée.</translation>
+    </message>
+    <message>
+        <location line="-126"/>
+        <source>PipeLang protocol output limit exceeded.</source>
+        <translation>Limite de sortie du protocole PipeLang dépassée.</translation>
+    </message>
+    <message>
+        <location line="+157"/>
+        <source>PipeLang protocol requires one Content-Length header.</source>
+        <translation>Le protocole PipeLang exige exactement un en-tête Content-Length.</translation>
+    </message>
+    <message>
+        <location line="-151"/>
+        <source>PipeLang protocol write failed.</source>
+        <translation>Échec de l’écriture dans le protocole PipeLang.</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>PipeLang request identity space exhausted; restart the editor session.</source>
+        <translation>Identifiants de requête PipeLang épuisés. Redémarrez la session de l’éditeur.</translation>
+    </message>
+    <message>
+        <location line="-144"/>
+        <source>PipeLang server could not start: %1</source>
+        <translation>Impossible de démarrer le serveur PipeLang : %1</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>PipeLang server exited (%1). Reconnect explicitly.</source>
+        <translation>Le serveur PipeLang s’est arrêté (%1). Reconnectez-le manuellement.</translation>
+    </message>
+    <message>
+        <location line="-40"/>
+        <source>PipeLang server lifecycle deadline exceeded.</source>
+        <translation>Délai du cycle de vie du serveur PipeLang dépassé.</translation>
+    </message>
+    <message>
+        <location line="+383"/>
+        <source>PipeLang server rejected shutdown.</source>
+        <translation>Le serveur PipeLang a refusé de s’arrêter.</translation>
+    </message>
+    <message>
+        <location line="-385"/>
+        <source>PipeLang server required forced termination after stdin closure.</source>
+        <translation>Le serveur PipeLang a dû être arrêté de force après la fermeture de stdin.</translation>
+    </message>
+    <message>
+        <location line="+42"/>
+        <source>PipeLang server stopped.</source>
+        <translation>Le serveur PipeLang est arrêté.</translation>
+    </message>
+    <message>
+        <location line="+332"/>
+        <source>Selected PipeLang server does not provide the required UTF-16 hover contract.</source>
+        <translation>Le serveur PipeLang sélectionné ne prend pas en charge le contrat UTF-16 requis pour les informations au survol.</translation>
+    </message>
+    <message>
+        <location line="-269"/>
+        <source>Starting selected PipeLang server…</source>
+        <translation>Démarrage du serveur PipeLang sélectionné…</translation>
+    </message>
+    <message>
+        <location line="-34"/>
+        <source>Stop the current PipeLang server before reconnecting.</source>
+        <translation>Arrêtez le serveur PipeLang actuel avant de vous reconnecter.</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>compiler executable: %1</source>
+        <translation>Exécutable du compilateur : %1</translation>
+    </message>
+    <message>
+        <location line="-2"/>
+        <source>server entrypoint: %1</source>
+        <translation>Point d’entrée du serveur : %1</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>source directory: %1</source>
+        <translation>Répertoire des sources : %1</translation>
     </message>
 </context>
 <context>
@@ -7301,12 +8304,12 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
     <name>ProjectFilesWidget</name>
     <message>
         <location filename="../src/files/presentation/ProjectFilesWidget.cpp" line="+62"/>
-        <location line="+172"/>
+        <location line="+175"/>
         <source>Files</source>
         <translation>Fichiers</translation>
     </message>
     <message>
-        <location line="-169"/>
+        <location line="-172"/>
         <source>Browse and edit your workspace.</source>
         <translation>Parcourir et modifier votre espace de travail.</translation>
     </message>
@@ -7317,13 +8320,13 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
     </message>
     <message>
         <location line="+5"/>
-        <location line="+26"/>
+        <location line="+29"/>
         <source>New file</source>
         <translation>Nouveau fichier</translation>
     </message>
     <message>
-        <location line="-26"/>
-        <location line="+225"/>
+        <location line="-29"/>
+        <location line="+228"/>
         <source>Path relative to this folder</source>
         <translation>Chemin relatif à ce dossier</translation>
     </message>
@@ -7403,12 +8406,12 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
     <message>
         <location line="+13"/>
         <location line="+3"/>
-        <location line="+888"/>
+        <location line="+945"/>
         <source>Preview Markdown</source>
         <translation>Afficher l’aperçu Markdown</translation>
     </message>
     <message>
-        <location line="-882"/>
+        <location line="-939"/>
         <source>Find in file (Ctrl+F)</source>
         <translation>Rechercher dans le fichier (Ctrl+F)</translation>
     </message>
@@ -7489,11 +8492,12 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
     </message>
     <message>
         <location line="+3"/>
+        <location line="+222"/>
         <source>Select a file to edit, or create something new.</source>
         <translation>Sélectionnez un fichier à modifier ou créez quelque chose de nouveau.</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="-218"/>
         <source>Create a file</source>
         <translation>Créer un fichier</translation>
     </message>
@@ -7503,7 +8507,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Aucun résultat pour « %1 ».</translation>
     </message>
     <message>
-        <location line="+189"/>
+        <location line="+243"/>
         <source>Unsaved file</source>
         <translation>Fichier non enregistré</translation>
     </message>
@@ -7576,7 +8580,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>%1 enregistré</translation>
     </message>
     <message>
-        <location line="+175"/>
+        <location line="+177"/>
         <source>No file open</source>
         <translation>Aucun fichier ouvert</translation>
     </message>
@@ -7596,7 +8600,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Racine de l’espace de travail</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="+23"/>
         <source>Hide Markdown preview</source>
         <translation>Masquer l’aperçu Markdown</translation>
     </message>
@@ -7616,12 +8620,12 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>%1   ·   UTF-8   ·   %2                         Lig %3, Col %4</translation>
     </message>
     <message>
-        <location line="-1070"/>
+        <location line="-1127"/>
         <source>Refresh files</source>
         <translation>Actualiser les fichiers</translation>
     </message>
     <message>
-        <location line="+463"/>
+        <location line="+517"/>
         <location line="+34"/>
         <source>A file operation is still running. Your open files are preserved.</source>
         <translation>Une opération sur les fichiers est en cours. Vos fichiers ouverts sont conservés.</translation>
@@ -7630,6 +8634,11 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <location line="+341"/>
         <source>Invalid workspace file response.</source>
         <translation>Réponse des fichiers de l’espace de travail invalide.</translation>
+    </message>
+    <message>
+        <location line="-440"/>
+        <source>Select a file to read.</source>
+        <translation>Sélectionnez un fichier à lire.</translation>
     </message>
 </context>
 <context>
@@ -7731,7 +8740,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Envoyer</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+3"/>
         <source>Pull fast-forward changes into a clean checkout</source>
         <translation>Intégrer les modifications en avance rapide dans une copie de travail propre</translation>
     </message>
@@ -7748,12 +8757,12 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
     <message>
         <location line="+12"/>
         <location line="+27"/>
-        <location line="+288"/>
+        <location line="+292"/>
         <source>Changed files</source>
         <translation>Fichiers modifiés</translation>
     </message>
     <message>
-        <location line="-315"/>
+        <location line="-319"/>
         <source>Staged files</source>
         <translation>Fichiers indexés</translation>
     </message>
@@ -7800,30 +8809,30 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
     </message>
     <message>
         <location line="+4"/>
-        <location line="+639"/>
+        <location line="+655"/>
         <source>Unstage all</source>
         <translation>Tout désindexer</translation>
     </message>
     <message>
-        <location line="-639"/>
-        <location line="+638"/>
+        <location line="-655"/>
+        <location line="+654"/>
         <source>Stage all</source>
         <translation>Tout indexer</translation>
     </message>
     <message>
-        <location line="-589"/>
-        <location line="+566"/>
+        <location line="-605"/>
+        <location line="+582"/>
         <source>Stage changes to include them in your commit.</source>
         <translation>Indexez les modifications à inclure dans votre commit.</translation>
     </message>
     <message>
-        <location line="-566"/>
-        <location line="+568"/>
+        <location line="-582"/>
+        <location line="+584"/>
         <source>No unstaged changes.</source>
         <translation>Aucune modification non indexée.</translation>
     </message>
     <message>
-        <location line="-544"/>
+        <location line="-560"/>
         <source>Commit changes</source>
         <translation>Créer un commit des modifications</translation>
     </message>
@@ -7849,20 +8858,20 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
     </message>
     <message>
         <location line="+12"/>
-        <location line="+145"/>
-        <location line="+260"/>
+        <location line="+149"/>
+        <location line="+268"/>
         <location line="+4"/>
         <source>Select a file to review</source>
         <translation>Sélectionnez un fichier à examiner</translation>
     </message>
     <message>
-        <location line="-398"/>
-        <location line="+465"/>
+        <location line="-410"/>
+        <location line="+481"/>
         <source>Unstaged changes</source>
         <translation>Modifications non indexées</translation>
     </message>
     <message>
-        <location line="-462"/>
+        <location line="-478"/>
         <source>Stage</source>
         <translation>Indexer</translation>
     </message>
@@ -7888,20 +8897,20 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
     </message>
     <message>
         <location line="+21"/>
-        <location line="+96"/>
-        <location line="+163"/>
+        <location line="+100"/>
+        <location line="+171"/>
         <source>Your changes, in focus</source>
         <translation>Vos modifications, au premier plan</translation>
     </message>
     <message>
-        <location line="-254"/>
-        <location line="+92"/>
-        <location line="+163"/>
+        <location line="-266"/>
+        <location line="+96"/>
+        <location line="+171"/>
         <source>Refresh the repository, then select a file to review its changes.</source>
         <translation>Actualisez le dépôt, puis sélectionnez un fichier pour examiner ses modifications.</translation>
     </message>
     <message>
-        <location line="-243"/>
+        <location line="-255"/>
         <source>Changes</source>
         <translation>Modifications</translation>
     </message>
@@ -7921,7 +8930,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Annuler l’opération</translation>
     </message>
     <message>
-        <location line="+57"/>
+        <location line="+61"/>
         <source>Refresh to review this project&apos;s changes.</source>
         <translation>Actualisez pour examiner les modifications de ce projet.</translation>
     </message>
@@ -7931,7 +8940,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Ouvrez d’abord un dossier de projet.</translation>
     </message>
     <message>
-        <location line="+80"/>
+        <location line="+88"/>
         <source>Refresh the repository before changing it.</source>
         <translation>Actualisez le dépôt avant de le modifier.</translation>
     </message>
@@ -7998,7 +9007,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Indexez des modifications pour préparer votre prochain commit.</translation>
     </message>
     <message>
-        <location line="+40"/>
+        <location line="+44"/>
         <source>No staged files</source>
         <translation>Aucun fichier indexé</translation>
     </message>
@@ -8031,6 +9040,11 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <location line="+1"/>
         <source>Unstage shown</source>
         <translation>Désindexer les éléments affichés</translation>
+    </message>
+    <message>
+        <location line="-263"/>
+        <source>The selected Git root does not grant this operation.</source>
+        <translation>La racine Git sélectionnée n’autorise pas cette opération.</translation>
     </message>
 </context>
 <context>
@@ -8270,7 +9284,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>La configuration automatique du terminal a reçu un environnement hôte non valide.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="-710"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="-774"/>
         <source>Running</source>
         <translation>En cours</translation>
     </message>
@@ -8300,7 +9314,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Enregistrez ou abandonnez le brouillon du conflit avant de changer de machine ou de racine.</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+49"/>
         <source>Select an absolute local project folder.</source>
         <translation>Sélectionnez un dossier de projet local avec un chemin absolu.</translation>
     </message>
@@ -8392,7 +9406,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
     </message>
     <message>
         <location line="+125"/>
-        <location line="+73"/>
+        <location line="+77"/>
         <source>Output exceeded the display limit.
 </source>
         <translation>La sortie a dépassé la limite d’affichage.
@@ -8564,7 +9578,22 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>La qualité et la fréquence d’images s’appliquent à la prochaine connexion. La résolution est un maximum et le débit une valeur cible.</translation>
     </message>
     <message>
-        <location line="-73"/>
+        <location line="+33"/>
+        <source>Clipboard sharing is unavailable on the selected computer.</source>
+        <translation>Le partage Clipboard n’est pas disponible sur l’ordinateur sélectionné.</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>The selected computer shares its current desktop.</source>
+        <translation>L'ordinateur sélectionné partage son bureau actuel.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>The selected computer&apos;s video does not include a cursor.</source>
+        <translation>La vidéo de l'ordinateur sélectionné n'inclut pas un cursor.</translation>
+    </message>
+    <message>
+        <location line="-119"/>
         <source>Current desktop</source>
         <translation>Bureau actuel</translation>
     </message>
@@ -8622,14 +9651,14 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
 <context>
     <name>RemoteDesktopWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+89"/>
-        <location line="+209"/>
-        <location line="+313"/>
+        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+124"/>
+        <location line="+222"/>
+        <location line="+320"/>
         <source>Remote Desktop</source>
         <translation>Bureau à distance</translation>
     </message>
     <message>
-        <location line="-509"/>
+        <location line="-529"/>
         <source>View or control an existing desktop through its authorized native provider.</source>
         <translation>Afficher ou contrôler un bureau existant via son fournisseur natif autorisé.</translation>
     </message>
@@ -8711,7 +9740,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Rester connecté</translation>
     </message>
     <message>
-        <location line="+39"/>
+        <location line="+52"/>
         <source>Some settings will apply on the next connection.</source>
         <translation>Certains paramètres s’appliqueront à la prochaine connexion.</translation>
     </message>
@@ -8751,14 +9780,14 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>%1 (mise à jour de l’appairage requise)</translation>
     </message>
     <message>
-        <location line="+63"/>
-        <source>No paired computers are available. Add a computer in Machines.</source>
-        <translation>Aucun ordinateur appairé n’est disponible. Ajoutez-en un dans Machines.</translation>
+        <location line="+68"/>
+        <source>Choose a paired computer.</source>
+        <translation>Choisissez un ordinateur appairé.</translation>
     </message>
     <message>
         <location line="+0"/>
-        <source>Choose a paired computer.</source>
-        <translation>Choisissez un ordinateur appairé.</translation>
+        <source>No paired computers are available. Add a computer in Environments.</source>
+        <translation>Aucun ordinateur n'est disponible. ajoutez un ordinateur dans Environnements.</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -8802,22 +9831,27 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Catalogue de disponibilité des bureaux invalide.</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+29"/>
         <source>The selected desktop identity or permission changed. Refresh and connect again.</source>
         <translation>L’identité ou l’autorisation du bureau sélectionné a changé. Actualisez et reconnectez-vous.</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+26"/>
+        <source>Opening the selected desktop with administrator control…</source>
+        <translation>Ouvrir le bureau sélectionné avec le contrôle de l’administrateur...</translation>
+    </message>
+    <message>
+        <location line="+1"/>
         <source>Opening the selected desktop…</source>
         <translation>Ouverture du bureau sélectionné…</translation>
     </message>
     <message>
-        <location line="-401"/>
+        <location line="-427"/>
         <source>Disconnected locally. The native provider reports any unconfirmed remote cleanup.</source>
         <translation>Déconnecté localement. Le fournisseur natif signale tout nettoyage distant non confirmé.</translation>
     </message>
     <message>
-        <location line="+412"/>
+        <location line="+438"/>
         <source>Closing the selected desktop…</source>
         <translation>Fermeture du bureau sélectionné…</translation>
     </message>
@@ -8850,7 +9884,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Le catalogue des machines distantes est indisponible.</translation>
     </message>
     <message>
-        <location line="+66"/>
+        <location line="+70"/>
         <source>Remote result does not match the captured operation.</source>
         <translation>Le résultat distant ne correspond pas à l’opération capturée.</translation>
     </message>
@@ -8860,7 +9894,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Annulation de l’opération distante d’origine demandée. Actualisez l’état avant de réessayer une écriture.</translation>
     </message>
     <message>
-        <location line="-157"/>
+        <location line="-161"/>
         <source>Cannot retain remote mutation recovery metadata. Resolve saved operations or repair settings before another write.</source>
         <translation>Impossible de conserver les métadonnées de récupération de la modification distante. Résolvez les opérations enregistrées ou réparez les paramètres avant une autre écriture.</translation>
     </message>
@@ -8913,7 +9947,7 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
 <context>
     <name>RemoteFeatureRecoveryDialog</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteFeatureRecoveryDialog.cpp" line="+62"/>
+        <location filename="../src/remote/presentation/RemoteFeatureRecoveryDialog.cpp" line="+63"/>
         <source>Choose a retained operation.</source>
         <translation>Choisissez une opération conservée.</translation>
     </message>
@@ -8923,17 +9957,17 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
         <translation>Fermer</translation>
     </message>
     <message>
-        <location line="+148"/>
+        <location line="+165"/>
         <source>Contacting the original captured machine…</source>
         <translation>Connexion à la machine capturée d’origine…</translation>
     </message>
     <message>
-        <location line="-180"/>
+        <location line="-197"/>
         <source>Inspect the original operation before another write. Cancellation does not prove that a mutation had no effect.</source>
         <translation>Inspectez l’opération d’origine avant une autre écriture. Une annulation ne prouve pas qu’une modification n’a eu aucun effet.</translation>
     </message>
     <message>
-        <location line="+146"/>
+        <location line="+155"/>
         <source>Machine: %1
 Fingerprint: %2
 Generation: %3
@@ -8949,17 +9983,17 @@ Opération : %6</translation>
     </message>
     <message>
         <location line="-1"/>
-        <location line="+18"/>
+        <location line="+20"/>
         <source>No uncertain mutations are retained.</source>
         <translation>Aucune modification incertaine n’est conservée.</translation>
     </message>
     <message>
-        <location line="+77"/>
+        <location line="+85"/>
         <source>Original operation status: %1. No operation was replayed.</source>
         <translation>État de l’opération d’origine : %1. Aucune opération n’a été rejouée.</translation>
     </message>
     <message>
-        <location line="-222"/>
+        <location line="-241"/>
         <source>Refresh status</source>
         <translation>Actualiser l’état</translation>
     </message>
@@ -8969,30 +10003,30 @@ Opération : %6</translation>
         <translation>Demander l’annulation</translation>
     </message>
     <message>
-        <location line="+144"/>
-        <location line="+47"/>
+        <location line="+155"/>
+        <location line="+53"/>
         <location line="+22"/>
         <source>The mutation outcome remains uncertain. Refresh its original status before another write.</source>
         <translation>Le résultat de la modification reste incertain. Actualisez son état d’origine avant une autre écriture.</translation>
     </message>
     <message>
-        <location line="+36"/>
+        <location line="+39"/>
         <source>Uncertain operations…</source>
         <translation>Opérations incertaines…</translation>
     </message>
     <message>
-        <location line="-272"/>
+        <location line="-292"/>
         <source>Uncertain remote operations</source>
         <translation>Opérations distantes incertaines</translation>
     </message>
     <message>
-        <location line="+243"/>
+        <location line="+262"/>
         <source>unknown</source>
         <translation>inconnu</translation>
     </message>
     <message>
-        <location line="-79"/>
-        <location line="+43"/>
+        <location line="-87"/>
+        <location line="+49"/>
         <location line="+24"/>
         <location line="+7"/>
         <source>Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write.</source>
@@ -9009,27 +10043,27 @@ Opération : %6</translation>
         <translation>Le nettoyage du terminal du conteneur a été vérifié pour la session capturée d’origine.</translation>
     </message>
     <message>
-        <location line="-179"/>
+        <location line="-196"/>
         <source>Explicitly remove the original exact container after native client cleanup. Requires the worker&apos;s independent Docker recovery grant. Volumes and images are retained.</source>
         <translation>Supprimez explicitement le conteneur d’origine exact après le nettoyage du client natif. Nécessite l’autorisation indépendante de récupération Docker du worker. Les volumes et les images sont conservés.</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+23"/>
         <source>Remove container %1 on %2 to fence delayed daemon work for operation %3? This removes the container and its writable layer. Volumes and images are retained. The original mutation outcome remains unknown.</source>
         <translation>Supprimer le conteneur %1 sur %2 pour empêcher le travail différé du daemon pour l’opération %3 ? Le conteneur et sa couche inscriptible seront supprimés. Les volumes et les images sont conservés. Le résultat de la modification d’origine reste inconnu.</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-25"/>
         <source>Retire container…</source>
         <translation>Retirer le conteneur…</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+24"/>
         <source>Retire the captured container?</source>
         <translation>Retirer le conteneur capturé ?</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-25"/>
         <source>Revoke the original invocation and verify its native cleanup evidence. Boot-fenced workers require a host reboot for uncertain process-backed operations. The mutation outcome remains unknown.</source>
         <translation>Révoquez l’invocation d’origine et vérifiez les preuves de son nettoyage natif. Les workers isolés par démarrage nécessitent un redémarrage de l’hôte pour les opérations basées sur des processus dont l’état est incertain. Le résultat de la modification reste inconnu.</translation>
     </message>
@@ -9039,9 +10073,14 @@ Opération : %6</translation>
         <translation>Vérifier le nettoyage</translation>
     </message>
     <message>
-        <location line="+154"/>
+        <location line="+171"/>
         <source>Refreshing the worker&apos;s retained terminal metadata. No cleanup was requested.</source>
         <translation>Actualisation des métadonnées de terminal conservées par le worker. Aucun nettoyage n’a été demandé.</translation>
+    </message>
+    <message>
+        <location line="+62"/>
+        <source>The original operation was cancelled. Refresh the affected state before another write.</source>
+        <translation>L’opération initiale a été annulée. Actualisez l’état concerné avant toute nouvelle écriture.</translation>
     </message>
 </context>
 <context>
@@ -9371,7 +10410,7 @@ Opération : %6</translation>
 <context>
     <name>RemoteWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteWidget.cpp" line="+133"/>
+        <location filename="../src/remote/presentation/RemoteWidget.cpp" line="+172"/>
         <location line="+21"/>
         <source>Show details</source>
         <translation>Afficher les détails</translation>
@@ -9387,14 +10426,14 @@ Opération : %6</translation>
         <translation>Masquer les détails</translation>
     </message>
     <message>
-        <location line="+60"/>
-        <location line="+32"/>
-        <location line="+706"/>
+        <location line="+65"/>
+        <location line="+33"/>
+        <location line="+872"/>
         <source>Machines</source>
         <translation>Machines</translation>
     </message>
     <message>
-        <location line="-737"/>
+        <location line="-904"/>
         <source>Pairing and access relationships · Connection health is not checked here</source>
         <translation>Relations d’association et d’accès · L’état de la connexion n’est pas vérifié ici</translation>
     </message>
@@ -9405,25 +10444,25 @@ Opération : %6</translation>
     </message>
     <message>
         <location line="+16"/>
-        <location line="+720"/>
+        <location line="+887"/>
         <source>Machine setup</source>
         <translation>Configuration de la machine</translation>
     </message>
     <message>
-        <location line="-706"/>
+        <location line="-872"/>
         <source>Manage trusted computers and workflow access.</source>
         <translation>Gérer les ordinateurs de confiance et l’accès aux workflows.</translation>
     </message>
     <message>
         <location line="+2"/>
-        <location line="+61"/>
-        <location line="+212"/>
-        <location line="+430"/>
+        <location line="+62"/>
+        <location line="+216"/>
+        <location line="+591"/>
         <source>Add machine</source>
         <translation>Ajouter une machine</translation>
     </message>
     <message>
-        <location line="-692"/>
+        <location line="-858"/>
         <source>Canvas</source>
         <translation>Canevas</translation>
     </message>
@@ -9443,18 +10482,18 @@ Opération : %6</translation>
         <translation>Vue en liste des machines</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+48"/>
         <source>Refresh</source>
         <translation>Actualiser</translation>
     </message>
     <message>
         <location line="+3"/>
-        <location line="+432"/>
+        <location line="+475"/>
         <source>Connection settings</source>
         <translation>Paramètres de connexion</translation>
     </message>
     <message>
-        <location line="-421"/>
+        <location line="-463"/>
         <source>Remote connection</source>
         <translation>Connexion distante</translation>
     </message>
@@ -9475,13 +10514,13 @@ Opération : %6</translation>
     </message>
     <message>
         <location line="+16"/>
-        <location line="+334"/>
-        <location line="+266"/>
+        <location line="+343"/>
+        <location line="+421"/>
         <source>Connect this computer</source>
         <translation>Connecter cet ordinateur</translation>
     </message>
     <message>
-        <location line="-596"/>
+        <location line="-760"/>
         <source>Checking remote access lock status…</source>
         <translation>Vérification du verrouillage de l’accès distant…</translation>
     </message>
@@ -9497,12 +10536,12 @@ Opération : %6</translation>
     </message>
     <message>
         <location line="+10"/>
-        <location line="+239"/>
+        <location line="+247"/>
         <source>Machine</source>
         <translation>Machine</translation>
     </message>
     <message>
-        <location line="-239"/>
+        <location line="-247"/>
         <source>Access</source>
         <translation>Accès</translation>
     </message>
@@ -9538,34 +10577,34 @@ Opération : %6</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+657"/>
+        <location line="+830"/>
         <source>Paired</source>
         <translation>Associée</translation>
     </message>
     <message>
-        <location line="-656"/>
+        <location line="-829"/>
         <source>Invitations</source>
         <translation>Invitations</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+662"/>
+        <location line="+836"/>
         <source>Access removed</source>
         <translation>Accès retiré</translation>
     </message>
     <message>
-        <location line="-659"/>
+        <location line="-833"/>
         <source>Refresh to load managed machines.</source>
         <translation>Actualisez pour charger les machines gérées.</translation>
     </message>
     <message>
         <location line="+9"/>
-        <location line="+1079"/>
+        <location line="+1270"/>
         <source>Select a machine to view its settings.</source>
         <translation>Sélectionnez une machine pour afficher ses paramètres.</translation>
     </message>
     <message>
-        <location line="-1075"/>
+        <location line="-1266"/>
         <source>Configure this computer…</source>
         <translation>Configurer cet ordinateur…</translation>
     </message>
@@ -9627,20 +10666,21 @@ Le service de courtier doit d’abord être mis à jour. Continuer remplace sa c
     </message>
     <message>
         <location line="+8"/>
-        <location line="+343"/>
-        <location line="+433"/>
+        <location line="+435"/>
+        <location line="+519"/>
         <source>Set up remote access…</source>
         <translation>Configurer l’accès distant…</translation>
     </message>
     <message>
-        <location line="-759"/>
-        <location line="+165"/>
-        <location line="+133"/>
+        <location line="-934"/>
+        <location line="+170"/>
+        <location line="+212"/>
+        <location line="+208"/>
         <source>← Machines</source>
         <translation>← Machines</translation>
     </message>
     <message>
-        <location line="-276"/>
+        <location line="-568"/>
         <source>Add another computer</source>
         <translation>Ajouter un autre ordinateur</translation>
     </message>
@@ -9656,12 +10696,12 @@ Le service de courtier doit d’abord être mis à jour. Continuer remplace sa c
     </message>
     <message>
         <location line="+3"/>
-        <location line="+442"/>
+        <location line="+608"/>
         <source>Start pairing</source>
         <translation>Démarrer l’association</translation>
     </message>
     <message>
-        <location line="-437"/>
+        <location line="-603"/>
         <source>Connect this computer instead</source>
         <translation>Connecter plutôt cet ordinateur</translation>
     </message>
@@ -9676,12 +10716,7 @@ Le service de courtier doit d’abord être mis à jour. Continuer remplace sa c
         <translation>Sur l’autre ordinateur</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>Open Dockpipe → Machines → Add machine → Connect this computer instead. Enter this address and request pairing.</source>
-        <translation>Ouvrez Dockpipe → Machines → Ajouter une machine → Connecter plutôt cet ordinateur. Saisissez cette adresse et demandez l’association.</translation>
-    </message>
-    <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Copy address</source>
         <translation>Copier l’adresse</translation>
     </message>
@@ -9692,12 +10727,12 @@ Le service de courtier doit d’abord être mis à jour. Continuer remplace sa c
     </message>
     <message>
         <location line="+3"/>
-        <location line="+601"/>
+        <location line="+775"/>
         <source>Review request</source>
         <translation>Examiner la demande</translation>
     </message>
     <message>
-        <location line="-597"/>
+        <location line="-771"/>
         <source>Check again</source>
         <translation>Vérifier à nouveau</translation>
     </message>
@@ -9722,7 +10757,7 @@ Le service de courtier doit d’abord être mis à jour. Continuer remplace sa c
         <translation>Sélectionnez la demande et comparez son code avec celui de l’autre ordinateur. N’approuvez que s’ils correspondent.</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+7"/>
         <source>Verification code</source>
         <translation>Code de vérification</translation>
     </message>
@@ -9758,11 +10793,12 @@ Le service de courtier doit d’abord être mis à jour. Continuer remplace sa c
     </message>
     <message>
         <location line="+1"/>
+        <location line="+119"/>
         <source>Done</source>
         <translation>Terminé</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="-106"/>
         <source>1 of 3 · Prepare</source>
         <translation>1 sur 3 · Préparer</translation>
     </message>
@@ -9782,22 +10818,22 @@ Le service de courtier doit d’abord être mis à jour. Continuer remplace sa c
         <translation>Association terminée</translation>
     </message>
     <message>
-        <location line="+24"/>
+        <location line="+25"/>
         <source>Enter the address shown on the computer you are connecting to.</source>
         <translation>Saisissez l’adresse affichée sur l’ordinateur auquel vous vous connectez.</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+5"/>
         <source>https://your-broker.example.com</source>
         <translation>https://your-broker.example.com</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+5"/>
         <source>Remote address</source>
         <translation>Adresse distante</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+2"/>
         <source>Name for this computer</source>
         <translation>Nom de cet ordinateur</translation>
     </message>
@@ -9807,12 +10843,22 @@ Le service de courtier doit d’abord être mis à jour. Continuer remplace sa c
         <translation>Autoriser les workflows de l’ordinateur de gestion à s’exécuter sous mon compte utilisateur</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+3"/>
         <source>Connect only to a computer you trust. Its workflows run as your user and can access your files and tools.</source>
         <translation>Ne vous connectez qu’à un ordinateur de confiance. Ses workflows s’exécutent sous votre compte utilisateur et peuvent accéder à vos fichiers et outils.</translation>
     </message>
     <message>
         <location line="+1"/>
+        <source>Allow Terminal access as my user</source>
+        <translation>Autoriser l'accès à la terminal en tant qu'utilisateur</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Terminal opens in your home folder and runs with your account&apos;s permissions.</source>
+        <translation>Le terminal s'ouvre dans votre dossier d'accueil et fonctionne avec les permissions de votre compte.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>After approval, Dockpipe starts a background worker service for your user so this computer can receive workflows.</source>
         <translation>Après approbation, Dockpipe démarre un service d’exécution en arrière-plan sous votre compte utilisateur pour que cet ordinateur puisse recevoir des workflows.</translation>
     </message>
@@ -9822,17 +10868,12 @@ Le service de courtier doit d’abord être mis à jour. Continuer remplace sa c
         <translation>Demander l’association</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+22"/>
         <source>Waiting for approval. Compare the code below on the managing computer.</source>
         <translation>En attente d’approbation. Comparez le code ci-dessous sur l’ordinateur de gestion.</translation>
     </message>
     <message>
-        <location line="+7"/>
-        <source>Already paired? Recovery options</source>
-        <translation>Déjà associé ? Options de récupération</translation>
-    </message>
-    <message>
-        <location line="+6"/>
+        <location line="+13"/>
         <source>Restart receiving workflows without pairing again. Keep this computer awake while work runs.</source>
         <translation>Recommencez à recevoir des workflows sans refaire l’association. Gardez cet ordinateur éveillé pendant les travaux.</translation>
     </message>
@@ -9842,7 +10883,18 @@ Le service de courtier doit d’abord être mis à jour. Continuer remplace sa c
         <translation>Démarrer le service d’exécution</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+2"/>
+        <location line="+6"/>
+        <source>Enable Terminal</source>
+        <translation>Activer le terminal</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Allow the managing computer to open a shell with your account&apos;s permissions, starting in your home folder? Dockpipe will briefly restart the background worker.</source>
+        <translation>Permettez-vous à l'ordinateur de gestion d'ouvrir un shell avec les permissions de votre compte, à partir de votre dossier d'accueil? Dockpipe redémarrera brièvement le travailleur en arrière-plan.</translation>
+    </message>
+    <message>
+        <location line="+23"/>
         <source>Connection settings · Update available</source>
         <translation>Paramètres de connexion · Mise à jour disponible</translation>
     </message>
@@ -9887,22 +10939,52 @@ Le service de courtier doit d’abord être mis à jour. Continuer remplace sa c
         <translation>La mise à jour du service ne s’est pas terminée. L’association est conservée. Consultez les détails, puis réessayez Mettre à jour le service.</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <source>Worker service started. Choose this computer under Run on from your managing computer.</source>
-        <translation>Service d’exécution démarré. Choisissez cet ordinateur sous Exécuter sur depuis votre ordinateur de gestion.</translation>
-    </message>
-    <message>
-        <location line="+1"/>
+        <location line="+10"/>
         <source>Could not start the worker service. Your pairing is preserved. See details, then choose Start worker service to retry.</source>
         <translation>Impossible de démarrer le service d’exécution. Votre association est conservée. Consultez les détails, puis choisissez Démarrer le service d’exécution pour réessayer.</translation>
     </message>
     <message>
         <location line="+2"/>
+        <source>Background worker startup requested. Terminal setup failed. Use Manage access to retry.</source>
+        <translation>La mise en place du terminal a échoué. Utilisez Gérer l'accès à la retraite.</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Pairing is complete. Windows could not start administrator input approval.</source>
+        <translation>Windows ne pouvait pas démarrer l'approbation d'entrée de l'administrateur.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
         <source>Starting the background worker service…</source>
         <translation>Démarrage du service d’exécution en arrière-plan…</translation>
     </message>
     <message>
         <location line="+11"/>
+        <source>Dockpipe could not enable Terminal. See details in Connection setup.</source>
+        <translation>Dockpipe ne pouvait pas activer Terminal. Voir les détails dans la configuration de connexion.</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Terminal access enabled. Refresh Terminal on the managing computer.</source>
+        <translation>L’accès au terminal est activé.Refresh Terminal sur l’ordinateur de gestion.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Terminal access is saved. Start the worker service to bring it online.</source>
+        <translation>L'accès au terminal est sauvé. démarrer le service des travailleurs pour le rendre en ligne.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Restarting the background worker…</source>
+        <translation>Récupérer le travailleur de fond...</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Enabling Terminal access…</source>
+        <translation>L’accès au terminal...</translation>
+    </message>
+    <message>
+        <location line="+16"/>
         <location line="+47"/>
         <source>Set up remote access</source>
         <translation>Configurer l’accès distant</translation>
@@ -9929,12 +11011,12 @@ Le service de courtier doit d’abord être mis à jour. Continuer remplace sa c
     </message>
     <message>
         <location line="+3"/>
-        <location line="+435"/>
+        <location line="+521"/>
         <source>Install provider…</source>
         <translation>Installer un fournisseur…</translation>
     </message>
     <message>
-        <location line="-425"/>
+        <location line="-511"/>
         <source>Check connection</source>
         <translation>Vérifier la connexion</translation>
     </message>
@@ -9949,12 +11031,7 @@ Le service de courtier doit d’abord être mis à jour. Continuer remplace sa c
         <translation>Configurer %1 avec %2 ? Cela peut installer des dépendances, créer un tunnel public et un enregistrement DNS, puis démarrer un service de courtier utilisateur.</translation>
     </message>
     <message>
-        <location line="+13"/>
-        <source>Continue setup in the terminal. When it finishes, return to Machines and refresh to check access.</source>
-        <translation>Poursuivez la configuration dans le terminal. Lorsqu’elle est terminée, revenez dans Machines et actualisez pour vérifier l’accès.</translation>
-    </message>
-    <message>
-        <location line="+4"/>
+        <location line="+18"/>
         <source>Pairing security keys</source>
         <translation>Clés de sécurité d’association</translation>
     </message>
@@ -9999,12 +11076,17 @@ Le service de courtier doit d’abord être mis à jour. Continuer remplace sa c
         <translation>L’enregistrement de la clé de sécurité ne s’est pas terminé. Vérifiez les détails avant de réessayer.</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+114"/>
+        <source>← Environments</source>
+        <translation>← Environnement</translation>
+    </message>
+    <message>
+        <location line="+6"/>
         <source>Connection setup</source>
         <translation>Configuration de la connexion</translation>
     </message>
     <message>
-        <location line="+34"/>
+        <location line="+39"/>
         <source>Set up connection</source>
         <translation>Configurer la connexion</translation>
     </message>
@@ -10014,7 +11096,7 @@ Le service de courtier doit d’abord être mis à jour. Continuer remplace sa c
         <translation>Opération en cours…</translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location line="+21"/>
         <source>Could not complete this step. See details for the error; saved setup is preserved.</source>
         <translation>Impossible de terminer cette étape. Consultez les détails de l’erreur ; la configuration enregistrée est conservée.</translation>
     </message>
@@ -10024,12 +11106,7 @@ Le service de courtier doit d’abord être mis à jour. Continuer remplace sa c
         <translation>Impossible de charger les machines gérées. Réessayez ou utilisez Connecter cet ordinateur pour rejoindre une machine déjà configurée.</translation>
     </message>
     <message>
-        <location line="+17"/>
-        <source>Allowed to receive workflows</source>
-        <translation>Autorisé à recevoir des workflows</translation>
-    </message>
-    <message>
-        <location line="+3"/>
+        <location line="+23"/>
         <source>Invitation created</source>
         <translation>Invitation créée</translation>
     </message>
@@ -10044,7 +11121,7 @@ Le service de courtier doit d’abord être mis à jour. Continuer remplace sa c
         <translation>Associer à nouveau pour rétablir l’accès</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+13"/>
         <source>Settings</source>
         <translation>Paramètres</translation>
     </message>
@@ -10064,7 +11141,7 @@ Le service de courtier doit d’abord être mis à jour. Continuer remplace sa c
         <translation>Ajoutez un ordinateur ici, puis choisissez-le au lancement d’un workflow.</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+17"/>
         <source>Remote access lock status unavailable: %1</source>
         <translation>État du verrouillage de l’accès distant indisponible : %1</translation>
     </message>
@@ -10177,12 +11254,7 @@ Approve only if you can verify it on that machine.</source>
 N’approuvez que si vous pouvez le vérifier sur cette machine.</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <source>%1 is paired. On that computer, choose Start worker service to receive workflows.</source>
-        <translation>%1 est associé. Sur cet ordinateur, choisissez Démarrer le service d’exécution pour recevoir des workflows.</translation>
-    </message>
-    <message>
-        <location line="+1"/>
+        <location line="+10"/>
         <source>Request from %1 denied.</source>
         <translation>Demande de %1 refusée.</translation>
     </message>
@@ -10313,12 +11385,27 @@ Le fournisseur est configuré sur l’ordinateur de gestion.</translation>
         <translation>Service d’exécution configuré pour ce courtier ; connectivité non vérifiée</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+8"/>
+        <source>Pairing · %1</source>
+        <translation>Couverture · %1</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Unknown</source>
+        <translation>Inconnu</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Machine fingerprint · %1…</source>
+        <translation>Imprimante de machine · %1 ...</translation>
+    </message>
+    <message>
+        <location line="+3"/>
         <source>Access relationship: %1</source>
         <translation>Relation d’accès : %1</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+52"/>
         <source>Managed machine inventory is unavailable. Refresh to check access.</source>
         <translation>L’inventaire des machines gérées n’est pas disponible. Actualisez pour vérifier l’accès.</translation>
     </message>
@@ -10348,22 +11435,23 @@ Le fournisseur est configuré sur l’ordinateur de gestion.</translation>
         <translation>%1 machines sur %2</translation>
     </message>
     <message>
-        <location line="+23"/>
+        <location line="+21"/>
         <source>%1 settings</source>
         <translation>Paramètres de %1</translation>
     </message>
     <message>
-        <location line="+29"/>
+        <location line="+32"/>
+        <source>Machine fingerprint · %1</source>
+        <translation>Imprimante de machine · %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>%1 · %2
 
-%3
-
-Connection health is not checked here.</source>
+%3</source>
         <translation>%1 · %2
 
-%3
-
-L’état de la connexion n’est pas vérifié ici.</translation>
+%3</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -10399,6 +11487,56 @@ This machine is no longer in the available inventory.</source>
         <translation>%1
 
 Cette machine ne figure plus dans l’inventaire disponible.</translation>
+    </message>
+    <message>
+        <location line="-987"/>
+        <source>Enter a valid remote address starting with https://.</source>
+        <translation>Saisissez une adresse distante valide commençant par https://.</translation>
+    </message>
+    <message>
+        <location line="-123"/>
+        <source>In Dockpipe, open connection setup for that computer, select Connect this computer, then enter this address and request pairing.</source>
+        <translation>Dans Dockpipe , ouvrir la configuration de la connexion pour ce ordinateur, sélectionnez Connectez ce ordinateur, puis entrez cette adresse et demandez un couple.</translation>
+    </message>
+    <message>
+        <location line="+44"/>
+        <source>Connect a physical FIDO2 security key to this computer before approving. If you have not registered a key, use Register pairing key in connection setup.</source>
+        <translation>Connectez une clé de sécurité physique FIDO2 à cet ordinateur avant d’approuver la demande. Si aucune clé n’est encore enregistrée, utilisez « Enregistrer une clé d’association » dans la configuration de la connexion.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>No accessible security key was detected. Plug in your registered key and try again. If it is already connected, check your device permissions.</source>
+        <translation>Aucune clé de sécurité accessible n’a été détectée. Branchez votre clé enregistrée et réessayez. Si elle est déjà branchée, vérifiez les autorisations du périphérique.</translation>
+    </message>
+    <message>
+        <location line="+94"/>
+        <source>The managing computer needs a registered physical FIDO2 security key to approve pairing.</source>
+        <translation>L’ordinateur gestionnaire doit disposer d’une clé de sécurité physique FIDO2 enregistrée pour approuver l’association.</translation>
+    </message>
+    <message>
+        <location line="+32"/>
+        <source>Already paired? Manage access</source>
+        <translation>Mise en place ? gérer l’accès</translation>
+    </message>
+    <message>
+        <location line="+219"/>
+        <source>Continue setup in the terminal. When it finishes, choose Check connection.</source>
+        <translation>Continuez à configurer dans le terminal. Lorsqu'il est terminé, sélectionnez Vérifier la connexion.</translation>
+    </message>
+    <message>
+        <location line="+266"/>
+        <source>Broker enrollment is active.</source>
+        <translation>L’enregistrement du courtier est actif.</translation>
+    </message>
+    <message>
+        <location line="+165"/>
+        <source>%1 is paired. Start the worker on that computer to receive workflows.</source>
+        <translation>%1 est associé. Démarrez l’agent sur cet ordinateur pour recevoir les flux de travail.</translation>
+    </message>
+    <message>
+        <location line="-552"/>
+        <source>Background worker startup requested. Check this computer under Run on from your managing computer.</source>
+        <translation>Le démarrage de l’agent en arrière-plan a été demandé. Recherchez cet ordinateur dans Exécuter sur depuis l’ordinateur qui le gère.</translation>
     </message>
 </context>
 <context>
@@ -10529,7 +11667,7 @@ Cette machine ne figure plus dans l’inventaire disponible.</translation>
 <context>
     <name>SessionManager</name>
     <message>
-        <location filename="../src/execution/infrastructure/SessionManager.cpp" line="+147"/>
+        <location filename="../src/execution/infrastructure/SessionManager.cpp" line="+170"/>
         <location line="+34"/>
         <source>Workflow output exceeded the consumer&apos;s line capacity.</source>
         <translation>La sortie du workflow a dépassé la capacité de ligne du consommateur.</translation>
@@ -11261,13 +12399,14 @@ Cette machine ne figure plus dans l’inventaire disponible.</translation>
 <context>
     <name>TerminalHub</name>
     <message>
-        <location filename="../src/terminal/application/TerminalHub.cpp" line="+46"/>
-        <location line="+75"/>
+        <location filename="../src/terminal/application/TerminalHub.cpp" line="+48"/>
+        <location line="+48"/>
+        <location line="+57"/>
         <source>Eight terminals are already open. Close one before opening another.</source>
         <translation>Huit terminaux sont déjà ouverts. Fermez-en un avant d’en ouvrir un autre.</translation>
     </message>
     <message>
-        <location line="-60"/>
+        <location line="-90"/>
         <source>This shell is no longer available. Refresh the shell list and try again.</source>
         <translation>Cet interpréteur de commandes n’est plus disponible. Actualisez la liste et réessayez.</translation>
     </message>
@@ -11282,13 +12421,19 @@ Cette machine ne figure plus dans l’inventaire disponible.</translation>
         <translation>Aucun interpréteur de commandes hôte n’est disponible. Vérifiez l’accès à l’hôte Flatpak et actualisez la liste.</translation>
     </message>
     <message>
-        <location line="+14"/>
-        <location line="+55"/>
+        <location line="+10"/>
+        <location line="+32"/>
+        <location line="+57"/>
         <source>Terminal %1 · %2</source>
         <translation>Terminal %1 · %2</translation>
     </message>
     <message>
-        <location line="+65"/>
+        <location line="-67"/>
+        <source>The container terminal target is unavailable.</source>
+        <translation>Le terminal de conteneur cible n'est pas disponible.</translation>
+    </message>
+    <message>
+        <location line="+132"/>
         <location line="+32"/>
         <source>This terminal session is closed.</source>
         <translation>Cette session de terminal est fermée.</translation>
@@ -11833,12 +12978,17 @@ $ Prêt pour votre prochaine commande</translation>
 <context>
     <name>TerminalWidget</name>
     <message>
-        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+84"/>
+        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+92"/>
         <source>Terminal</source>
         <translation>Terminal</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+6"/>
+        <source>Terminal target</source>
+        <translation>Terminal cible</translation>
+    </message>
+    <message>
+        <location line="+23"/>
         <source>Shells and sessions</source>
         <translation>Interpréteurs et sessions</translation>
     </message>
@@ -11875,12 +13025,12 @@ $ Prêt pour votre prochaine commande</translation>
     </message>
     <message>
         <location line="+6"/>
-        <location line="+541"/>
+        <location line="+742"/>
         <source>Restart DockPipe to enable desktop transparency. Your desktop must support compositing.</source>
         <translation>Redémarrez DockPipe pour activer la transparence du bureau. Votre environnement de bureau doit prendre en charge la composition.</translation>
     </message>
     <message>
-        <location line="-532"/>
+        <location line="-733"/>
         <source>No terminals open</source>
         <translation>Aucun terminal ouvert</translation>
     </message>
@@ -11911,12 +13061,17 @@ $ Prêt pour votre prochaine commande</translation>
         <translation>Recherche des interpréteurs de commandes installés sur l’hôte…</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+10"/>
+        <source>The selected terminal target is unavailable.</source>
+        <translation>L'objectif terminal sélectionné n'est pas disponible.</translation>
+    </message>
+    <message>
+        <location line="+27"/>
         <source>Default shell</source>
         <translation>Interpréteur de commandes par défaut</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+9"/>
         <source>New default shell</source>
         <translation>Nouvel interpréteur de commandes par défaut</translation>
     </message>
@@ -11931,7 +13086,40 @@ $ Prêt pour votre prochaine commande</translation>
         <translation>Nouveau %1</translation>
     </message>
     <message>
-        <location line="+116"/>
+        <location line="+135"/>
+        <location line="+3"/>
+        <source>This computer</source>
+        <translation>Cet ordinateur</translation>
+    </message>
+    <message>
+        <location line="+30"/>
+        <source>Terminal unavailable</source>
+        <translation>Terminal inaccessible</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Remote access locked</source>
+        <translation>Accès à distance bloqué</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+11"/>
+        <location line="+8"/>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <location line="-2"/>
+        <source>%1 · Container</source>
+        <translation>%1 · Containers</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · Indisponible</translation>
+    </message>
+    <message>
+        <location line="+120"/>
         <source>Choose a terminal…</source>
         <translation>Choisir un terminal…</translation>
     </message>
@@ -12573,12 +13761,12 @@ Le fichier a peut-être changé sur le disque. Votre brouillon a été conservé
         <translation>Lancer</translation>
     </message>
     <message>
-        <location line="+134"/>
+        <location line="+135"/>
         <source>Start</source>
         <translation>Démarrer</translation>
     </message>
     <message>
-        <location line="+111"/>
+        <location line="+113"/>
         <source>Inputs</source>
         <translation>Saisies</translation>
     </message>
@@ -13395,7 +14583,7 @@ La hauteur des cartes utilise une échelle de taille logarithmique, plafonnée p
 <context>
     <name>WorkspaceMachineMenu</name>
     <message>
-        <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="+55"/>
+        <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="+62"/>
         <location line="+42"/>
         <source>Follow main machine</source>
         <translation>Suivre la machine principale</translation>
@@ -13424,12 +14612,13 @@ La hauteur des cartes utilise une échelle de taille logarithmique, plafonnée p
     </message>
     <message>
         <location line="+2"/>
-        <location line="+36"/>
+        <location line="+40"/>
+        <location line="+22"/>
         <source> · Unavailable</source>
         <translation> · Indisponible</translation>
     </message>
     <message>
-        <location line="-16"/>
+        <location line="-41"/>
         <source>Unlock remote access…</source>
         <translation>Déverrouiller l’accès distant…</translation>
     </message>
@@ -13439,12 +14628,22 @@ La hauteur des cartes utilise une échelle de taille logarithmique, plafonnée p
         <translation>Aucun espace de travail distant disponible</translation>
     </message>
     <message>
-        <location line="+30"/>
+        <location line="+34"/>
         <source>Containers</source>
         <translation>Conteneurs</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+12"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · Indisponible</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>%1 · Locked</source>
+        <translation>%1 · Fermé</translation>
+    </message>
+    <message>
+        <location line="+4"/>
         <source>Refresh machines</source>
         <translation>Actualiser les machines</translation>
     </message>

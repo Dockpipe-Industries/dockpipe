@@ -4,7 +4,7 @@
 <context>
     <name>ActivityWidget</name>
     <message>
-        <location filename="../src/execution/presentation/ActivityWidget.cpp" line="+48"/>
+        <location filename="../src/execution/presentation/ActivityWidget.cpp" line="+49"/>
         <source>Runs &amp; logs</source>
         <translation>रन और लॉग</translation>
     </message>
@@ -15,12 +15,12 @@
     </message>
     <message>
         <location line="+10"/>
-        <location line="+211"/>
+        <location line="+224"/>
         <source>This computer</source>
         <translation>यह कंप्यूटर</translation>
     </message>
     <message>
-        <location line="-211"/>
+        <location line="-224"/>
         <source>Remote jobs</source>
         <translation>दूरस्थ जॉब</translation>
     </message>
@@ -104,7 +104,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>अवस्था</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+15"/>
         <source>Refresh jobs</source>
         <translation>जॉब रीफ़्रेश करें</translation>
     </message>
@@ -124,7 +124,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>परिणाम आर्टिफ़ैक्ट और वर्कफ़्लो लॉग सहेजें।</translation>
     </message>
     <message>
-        <location line="+57"/>
+        <location line="+62"/>
         <source>Save result inside folder</source>
         <translation>परिणाम फ़ोल्डर में सहेजें</translation>
     </message>
@@ -134,7 +134,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>परिणाम और workflow.log %1 में सहेजे गए</translation>
     </message>
     <message>
-        <location line="+62"/>
+        <location line="+63"/>
         <source>Finished / stopped</source>
         <translation>पूर्ण / रोका गया</translation>
     </message>
@@ -169,7 +169,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>%1 दूरस्थ जॉब</translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+100"/>
         <source>Up to date with the broker.</source>
         <translation>ब्रोकर के साथ अद्यतित।</translation>
     </message>
@@ -197,6 +197,18 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <location line="+34"/>
         <source>This job is no longer available in the broker’s job list.</source>
         <translation>यह जॉब अब ब्रोकर की जॉब सूची में उपलब्ध नहीं है।</translation>
+    </message>
+    <message>
+        <location line="-329"/>
+        <source>Live workflow log</source>
+        <translation>लाइव वर्कफ़्लो लॉग</translation>
+    </message>
+    <message>
+        <location line="+233"/>
+        <source>
+Live preview limit reached. Download the results for the full retained log.</source>
+        <translation>
+लाइव पूर्वावलोकन की सीमा पूरी हो गई है। पूरा सहेजा गया लॉग देखने के लिए परिणाम डाउनलोड करें।</translation>
     </message>
 </context>
 <context>
@@ -1029,7 +1041,7 @@ Independent repository · add multiple views for cross-repo work</source>
 <context>
     <name>DashboardRepositoryPanel</name>
     <message>
-        <location filename="../src/dashboards/presentation/DashboardRepositoryPanel.cpp" line="+38"/>
+        <location filename="../src/dashboards/presentation/DashboardRepositoryPanel.cpp" line="+39"/>
         <source>Repository…</source>
         <translation>रिपॉज़िटरी…</translation>
     </message>
@@ -1054,7 +1066,7 @@ Independent repository · add multiple views for cross-repo work</source>
         <translation>इस दृश्य के लिए रिपॉज़िटरी चुनें</translation>
     </message>
     <message>
-        <location line="+81"/>
+        <location line="+90"/>
         <source>Unsaved commit message</source>
         <translation>बिना सहेजा कमिट संदेश</translation>
     </message>
@@ -3243,7 +3255,7 @@ Refresh to load inventory from the selected machine.</source>
     <message>
         <location line="+2"/>
         <location line="+232"/>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+119"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+118"/>
         <source>Loading container logs…</source>
         <translation>कंटेनर लॉग लोड हो रहे हैं…</translation>
     </message>
@@ -3517,7 +3529,7 @@ Refresh to load inventory from the selected machine.</source>
         <translation>कंटेनर नियंत्रण प्रतिक्रिया अमान्य है।</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-298"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-297"/>
         <source>Wait for the current container control operation before changing machines.</source>
         <translation>मशीन बदलने से पहले मौजूदा कंटेनर नियंत्रण कार्रवाई पूरी होने दें।</translation>
     </message>
@@ -3527,7 +3539,7 @@ Refresh to load inventory from the selected machine.</source>
         <translation>सत्यापित फ़िंगरप्रिंट और वर्कर जनरेशन वाली मशीन चुनें।</translation>
     </message>
     <message>
-        <location line="+128"/>
+        <location line="+127"/>
         <source>%1 · Remote Docker inventory unavailable: %2</source>
         <translation>%1 · दूरस्थ Docker इन्वेंटरी उपलब्ध नहीं है: %2</translation>
     </message>
@@ -3818,6 +3830,780 @@ Select a row to get started.</source>
         <location line="+8"/>
         <source>Env (*.env *.sh);;All files (*)</source>
         <translation>परिवेश (*.env *.sh);;सभी फ़ाइलें (*)</translation>
+    </message>
+</context>
+<context>
+    <name>EnvironmentDefinitionsClient</name>
+    <message>
+        <location filename="../src/environments/infrastructure/EnvironmentDefinitionsClient.cpp" line="+150"/>
+        <source>Could not start Dockpipe to read environment definitions.</source>
+        <translation>पर्यावरण परिभाषाओं को पढ़ने के लिए Dockpipe शुरू नहीं कर सकता है।</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Dockpipe could not list environment definitions.</source>
+        <translation>Dockpipe पर्यावरण परिभाषाओं को सूचीबद्ध नहीं कर सकता था।</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Dockpipe returned an invalid environment definition list.</source>
+        <translation>Dockpipe ने एक अक्षम पर्यावरण परिभाषा सूची वापस दी।</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Reading environment definitions timed out.</source>
+        <translation>पर्यावरण परिभाषाओं को पढ़ने के लिए समय-समय पर।</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>The environment definition list exceeds its size limit.</source>
+        <translation>पर्यावरण परिभाषा सूची इसकी आकार सीमा से अधिक है।</translation>
+    </message>
+</context>
+<context>
+    <name>EnvironmentsPage</name>
+    <message>
+        <location filename="../src/environments/presentation/EnvironmentsPage.cpp" line="+86"/>
+        <source>← Environments</source>
+        <translation>← पर्यावरण</translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>Canvas</source>
+        <translation>कैनवास</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>List</source>
+        <translation>सूची</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Refresh</source>
+        <translation>रीफ़्रेश करें</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <location line="+247"/>
+        <source>Add Environment</source>
+        <translation>पर्यावरण जोड़ें</translation>
+    </message>
+    <message>
+        <location line="-233"/>
+        <location line="+9"/>
+        <source>Environments</source>
+        <translation>पर्यावरण</translation>
+    </message>
+    <message>
+        <location line="-8"/>
+        <source>Hosts, virtual machines, and containers</source>
+        <translation>होस्ट, वर्चुअल मशीनें, और कंटेनर</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Details</source>
+        <translation>विवरण</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <location line="+331"/>
+        <location line="+121"/>
+        <source>Name</source>
+        <translation>नाम</translation>
+    </message>
+    <message>
+        <location line="-452"/>
+        <source>Type</source>
+        <translation>प्रकार</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Location</source>
+        <translation>स्थान</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Status</source>
+        <translation>स्थिति</translation>
+    </message>
+    <message>
+        <location line="+201"/>
+        <source>Reading environment definitions…</source>
+        <translation>पर्यावरण परिभाषाओं को पढ़ने के लिए ...</translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <location line="+727"/>
+        <source>Remote machine</source>
+        <translation>दूरस्थ मशीन</translation>
+    </message>
+    <message>
+        <location line="-727"/>
+        <source>Pair another computer with Dockpipe.</source>
+        <translation>Dockpipe के साथ एक और कंप्यूटर जोड़ें ।</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+722"/>
+        <location line="+71"/>
+        <source>Virtual machine</source>
+        <translation>आभासी मशीन</translation>
+    </message>
+    <message>
+        <location line="-793"/>
+        <source>Choose an operating system and configure a VM.</source>
+        <translation>एक ऑपरेटिंग सिस्टम का चयन करें और एक VM सेट करें।</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+794"/>
+        <source>Container</source>
+        <translation>कंटेनर</translation>
+    </message>
+    <message>
+        <location line="-794"/>
+        <source>Choose an image and configure a Docker container.</source>
+        <translation>एक छवि चुनें और एक Docker कंटेनर सेट करें।</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Import YAML</source>
+        <translation>आयात YAML</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Open existing environment definitions.</source>
+        <translation>मौजूदा पर्यावरण परिभाषाओं को खोलने के लिए।</translation>
+    </message>
+    <message>
+        <location line="+61"/>
+        <source>Add Virtual Machine</source>
+        <translation>आभासी मशीन जोड़ें</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Runs on this computer’s VM provider.</source>
+        <translation>इस कंप्यूटर के वीएम प्रदाता पर चलता है।</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Development VM</source>
+        <translation>विकास VM</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <location line="+611"/>
+        <source>Ubuntu</source>
+        <translation>Ubuntu के बारे में</translation>
+    </message>
+    <message>
+        <location line="-610"/>
+        <location line="+610"/>
+        <source>Debian</source>
+        <translation>Debian के बारे में</translation>
+    </message>
+    <message>
+        <location line="-609"/>
+        <location line="+609"/>
+        <source>Fedora</source>
+        <translation>Fedora के लिए</translation>
+    </message>
+    <message>
+        <location line="-608"/>
+        <location line="+609"/>
+        <source>Other Linux</source>
+        <translation>अन्य Linux</translation>
+    </message>
+    <message>
+        <location line="-608"/>
+        <location line="+608"/>
+        <source>Windows 11</source>
+        <translation>विंडोज 11</translation>
+    </message>
+    <message>
+        <location line="-603"/>
+        <location line="+3"/>
+        <source> GiB</source>
+        <translation>जीबी</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Installer ISO file</source>
+        <translation>ISO फ़ाइल स्थापित करें</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Browse…</source>
+        <translation>ब्राउज़ करें…</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Select Installer ISO</source>
+        <translation>ISO स्थापित करने का चयन करें</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>ISO images (*.iso *.ISO)</source>
+        <translation>ISO छवियों (*.iso *. ISO )</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <location line="+120"/>
+        <location line="+580"/>
+        <source>Personal</source>
+        <translation>व्यक्तिगत</translation>
+    </message>
+    <message>
+        <location line="-699"/>
+        <location line="+120"/>
+        <source>YAML file</source>
+        <translation>YAML फ़ाइल</translation>
+    </message>
+    <message>
+        <location line="-118"/>
+        <source>Operating system</source>
+        <translation>ऑपरेटिंग प्रणाली</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>CPUs</source>
+        <translation>सीपीयू</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>RAM</source>
+        <translation>रैम</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Disk size</source>
+        <translation>डिस्क आकार</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Installer ISO</source>
+        <translation>संपादक ISO</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+121"/>
+        <source>Save to</source>
+        <translation>बचाने के लिए</translation>
+    </message>
+    <message>
+        <location line="-118"/>
+        <source>The ISO is optional when saving a definition. Disk size applies when the virtual disk is first created.</source>
+        <translation>ISO एक परिभाषा को बचाने के लिए वैकल्पिक है. डिस्क का आकार तब लागू होता है जब वर्चुअल डिस्क को पहली बार बनाया जाता है.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <location line="+151"/>
+        <source>Save Definition</source>
+        <translation>बचाव परिभाषा</translation>
+    </message>
+    <message>
+        <location line="-150"/>
+        <source>Create VM</source>
+        <translation>VM बनाने के लिए</translation>
+    </message>
+    <message>
+        <location line="+66"/>
+        <source>Add Container</source>
+        <translation>कंटेनर जोड़ें</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Runs on this computer’s Docker engine.</source>
+        <translation>इस कंप्यूटर के Docker इंजन पर चलता है।</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>General</source>
+        <translation>सामान्य</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Test Docker</source>
+        <translation>परीक्षण Docker</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Use letters, numbers, dots, underscores, or hyphens. Spaces become hyphens.</source>
+        <translation>अक्षरों, संख्याओं, बिंदुओं, उपशब्दों, या हाइफेंस का उपयोग करें. अंतरिक्ष हाइफेंस बन जाते हैं.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Ubuntu 24.04</source>
+        <translation>Ubuntu 24.04</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Debian 13 Slim</source>
+        <translation>Debian 13 स्लिम</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Alpine 3.22</source>
+        <translation>Alpine 3.22</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>NGINX on Alpine</source>
+        <translation>NGINX पर Alpine</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Custom image</source>
+        <translation>कस्टम छवि</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Keep running for Terminal</source>
+        <translation>टर्मिनल के लिए चलना जारी रखें</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Run the image’s command</source>
+        <translation>छवि का कमांड चलाएं</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Bridge</source>
+        <translation>पुल</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+457"/>
+        <source>No network</source>
+        <translation>कोई नेटवर्क</translation>
+    </message>
+    <message>
+        <location line="-455"/>
+        <source>Standard</source>
+        <translation>मानक</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+456"/>
+        <source>Restricted capabilities</source>
+        <translation>सीमित क्षमताएं</translation>
+    </message>
+    <message>
+        <location line="-455"/>
+        <source>Both profiles block privilege escalation. Restricted also drops all Linux capabilities.</source>
+        <translation>दोनों प्रोफ़ाइल प्राथमिकताओं के स्केल को अवरुद्ध करते हैं. सीमित भी सभी लिनक्स क्षमताओं को कम करता है.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Base OS or image</source>
+        <translation>आधार OS या छवि</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Docker image</source>
+        <translation>Docker छवि</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Startup</source>
+        <translation>स्टार्टअप</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Network</source>
+        <translation>नेटवर्क</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Security</source>
+        <translation>सुरक्षा</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Advanced</source>
+        <translation>उन्नत</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Use the image’s user</source>
+        <translation>इमेज के उपयोगकर्ता का उपयोग करें</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Non-root user</source>
+        <translation>गैर-रूट उपयोगकर्ता</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Writable</source>
+        <translation>लिखित</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Read-only</source>
+        <translation>केवल पढ़ने के लिए</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Do not restart</source>
+        <translation>पुनरारंभ न करें</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Restart unless stopped</source>
+        <translation>फिर से शुरू करें, जब तक कि बंद न हो जाए</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>No separate volume</source>
+        <translation>कोई अलग वॉल्यूम</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Persistent Docker volume</source>
+        <translation>टिकाऊ Docker वॉल्यूम</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Publish a port on this computer</source>
+        <translation>इस कंप्यूटर पर एक पोर्ट प्रकाशित करें</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Run as</source>
+        <translation>दौड़ने के लिए</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Root filesystem</source>
+        <translation>रूट फ़ाइल सिस्टम</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Restart policy</source>
+        <translation>नीति पुनरारंभ</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Storage</source>
+        <translation>भंडारण</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Folder inside container</source>
+        <translation>कंटेनर के अंदर फ़ोल्डर</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Local port</source>
+        <translation>स्थानीय बंदरगाह</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Container port</source>
+        <translation>कंटेनर पोर्ट</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Create Container</source>
+        <translation>कंटेनर बनाएं</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Default (run the image’s command)</source>
+        <translation>डिफ़ॉल्ट (चित्र के कमांड को चलाएं)</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Default (keep running for Terminal)</source>
+        <translation>डिफ़ॉल्ट (केप टर्मिनल के लिए चल रहा है)</translation>
+    </message>
+    <message>
+        <location line="+56"/>
+        <source>Save environment definition</source>
+        <translation>पर्यावरण संरक्षण परिभाषा</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+141"/>
+        <source>Environment definitions (*.yaml *.yml)</source>
+        <translation>पर्यावरण परिभाषाओं (*.yaml *.yml)</translation>
+    </message>
+    <message>
+        <location line="-135"/>
+        <source>Choose a YAML file and include at most 2,048 definitions.</source>
+        <translation>एक YAML फ़ाइल का चयन करें और अधिकतम 2,048 परिभाषाओं को शामिल करें।</translation>
+    </message>
+    <message>
+        <location line="+36"/>
+        <source>Dockpipe could not save the environment definition.</source>
+        <translation>Dockpipe पर्यावरण परिभाषा को बचाने में सक्षम नहीं था।</translation>
+    </message>
+    <message>
+        <location line="+66"/>
+        <source>Edit YAML</source>
+        <translation>संपादित करें YAML</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Apply</source>
+        <translation>लागू करें</translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Include environment definition files</source>
+        <translation>पर्यावरण परिभाषा फ़ाइलों को शामिल करें</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Choose at most 2,048 definition files.</source>
+        <translation>अधिकतम 2,048 परिभाषा फ़ाइलों का चयन करें।</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>This definition file is unavailable. Refresh the definitions and try again.</source>
+        <translation>यह परिभाषा फ़ाइल उपलब्ध नहीं है. परिभाषाओं को नवीनीकृत करें और फिर से कोशिश करें.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Could not open the selected environment definition.</source>
+        <translation>चयनित पर्यावरण परिभाषा को खोलने में सक्षम नहीं था।</translation>
+    </message>
+    <message>
+        <location line="+49"/>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <location line="+41"/>
+        <source>This machine</source>
+        <translation>इस मशीन</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Remote</source>
+        <translation>दूरस्थ</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Local</source>
+        <translation>स्थानीय</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>No environments yet. Choose Add Environment to get started.</source>
+        <translation>अभी तक कोई पर्यावरण नहीं है. शुरू करने के लिए पर्यावरण जोड़ें चुनें.</translation>
+    </message>
+    <message>
+        <location line="+32"/>
+        <source>Open terminal</source>
+        <translation>ओपन टर्मिनल</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Open VM console</source>
+        <translation>Open VM कंसोल</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Manage VM</source>
+        <translation>VM प्रबंधन</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Connection settings</source>
+        <translation>कनेक्शन सेटिंग्स</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Machine settings</source>
+        <translation>मशीन सेटिंग्स</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Choose Add Environment to get started.</source>
+        <translation>शुरू करने के लिए पर्यावरण जोड़ें चुनें।</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Select an environment to see its status and actions.</source>
+        <translation>अपनी स्थिति और कार्यों को देखने के लिए एक वातावरण चुनें।</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Environment details</source>
+        <translation>पर्यावरण विवरण</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Type  %1</source>
+        <translation>टाइप %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Image  %1</source>
+        <translation>फोटो %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Bridge network</source>
+        <translation>पुल नेटवर्क</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Read-only root filesystem</source>
+        <translation>Read-only root फ़ाइल सिस्टम</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Local port  %1 → %2</source>
+        <translation>स्थानीय बंदरगाह %1 → %2</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Persistent volume  %1</source>
+        <translation>टिकाऊ वॉल्यूम %1</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Operating system  %1</source>
+        <translation>ऑपरेटिंग सिस्टम %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>%1 CPU(s) · %2 GiB RAM · %3 GiB disk</source>
+        <translation>%1 CPU(s) · %2 जीबी रैम · %3 जीबी डिस्क</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Installer ISO  %1</source>
+        <translation>ISO %1 स्थापित करें</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Choose an installer ISO before the first boot.</source>
+        <translation>पहला बूट करने से पहले ISO इंस्टॉलर चुनें।</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Provisioning workflow  %1</source>
+        <translation>%1 कार्यप्रवाह प्रदान करता है</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Package  %1</source>
+        <translation>पैकेज %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Storage profile  %1</source>
+        <translation>स्टोरेज प्रोफ़ाइल %1</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>Managing broker</source>
+        <translation>प्रबंधन ब्रोकर</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Local computer</source>
+        <translation>स्थानीय कंप्यूटर</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Host  This computer</source>
+        <translation>इस कंप्यूटर को होस्ट करें</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Workflows</source>
+        <translation>वर्कफ़्लो</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Containers</source>
+        <translation>कंटेनर</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Files</source>
+        <translation>फ़ाइलें</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Git</source>
+        <translation>Git</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Terminal</source>
+        <translation>टर्मिनल</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Reported access  %1</source>
+        <translation>रिपोर्टर एक्सेस %1</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <location line="+2"/>
+        <source>, </source>
+        <translation>,</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Workspace roots  %1</source>
+        <translation>कार्यक्षेत्र जड़ें %1</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Last report  %1</source>
+        <translation>अंतिम रिपोर्ट %1</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>No workspace feature report is available.</source>
+        <translation>कोई कार्यक्षेत्र विशेषता रिपोर्ट उपलब्ध नहीं है।</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Definition file missing</source>
+        <translation>फ़ाइल की परिभाषा गायब</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Name differs from filename</source>
+        <translation>फ़ाइल नाम से अलग है</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Invalid definition</source>
+        <translation>अयोग्य परिभाषा</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Saved definition</source>
+        <translation>बचाव परिभाषा</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Selected file</source>
+        <translation>चयनित फ़ाइल</translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>Observed running</source>
+        <translation>चलने का निरीक्षण</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Observed stopped</source>
+        <translation>निगरानी रुक गई</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Runtime unavailable</source>
+        <translation>समय उपलब्ध नहीं</translation>
     </message>
 </context>
 <context>
@@ -4352,12 +5138,12 @@ Start a workflow from the editor to follow it here.</source>
 <context>
     <name>FileEditorWorkspace</name>
     <message>
-        <location filename="../src/files/presentation/FileEditorWorkspace.cpp" line="+63"/>
+        <location filename="../src/files/presentation/FileEditorWorkspace.cpp" line="+64"/>
         <source>Open a file in this pane</source>
         <translation>इस फलक में फ़ाइल खोलें</translation>
     </message>
     <message>
-        <location line="+67"/>
+        <location line="+73"/>
         <source>Open in other pane</source>
         <translation>दूसरे फलक में खोलें</translation>
     </message>
@@ -4377,7 +5163,7 @@ Start a workflow from the editor to follow it here.</source>
         <translation>अन्य बंद करें</translation>
     </message>
     <message>
-        <location line="+162"/>
+        <location line="+178"/>
         <location line="+165"/>
         <source>Close %1</source>
         <translation>%1 बंद करें</translation>
@@ -4991,7 +5777,7 @@ This change may contain only a rename, file metadata, or merge information.</sou
 <context>
     <name>GitHistoryWidget</name>
     <message>
-        <location filename="../src/git/presentation/GitHistoryWidget.cpp" line="+45"/>
+        <location filename="../src/git/presentation/GitHistoryWidget.cpp" line="+46"/>
         <source>Search commits…</source>
         <translation>कमिट खोजें…</translation>
     </message>
@@ -5261,7 +6047,7 @@ This change may contain only a rename, file metadata, or merge information.</sou
 <context>
     <name>GitRepositoryWidget</name>
     <message>
-        <location filename="../src/git/presentation/GitRepositoryWidget.cpp" line="+32"/>
+        <location filename="../src/git/presentation/GitRepositoryWidget.cpp" line="+33"/>
         <source>Refresh</source>
         <translation>रीफ़्रेश करें</translation>
     </message>
@@ -5372,7 +6158,7 @@ Upstream: %3
         <translation>%1  %2</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+37"/>
         <source>Merge branch</source>
         <translation>शाखा मर्ज करें</translation>
     </message>
@@ -5521,21 +6307,21 @@ Upstream: %3
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="+334"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="+340"/>
         <source>Dockpipe — %1</source>
         <translation>Dockpipe — %1</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+108"/>
-        <location line="+259"/>
-        <location line="+745"/>
+        <location line="+170"/>
+        <location line="+258"/>
+        <location line="+755"/>
         <location line="+51"/>
-        <location line="+120"/>
+        <location line="+140"/>
         <location line="+6"/>
         <location line="+5"/>
         <location line="+24"/>
-        <location line="+309"/>
+        <location line="+299"/>
         <location line="+47"/>
         <location line="+162"/>
         <location line="+118"/>
@@ -5543,13 +6329,13 @@ Upstream: %3
         <translation>Dockpipe</translation>
     </message>
     <message>
-        <location line="-1898"/>
-        <location line="+424"/>
+        <location line="-1943"/>
+        <location line="+449"/>
         <source>System</source>
         <translation>सिस्टम</translation>
     </message>
     <message>
-        <location line="-369"/>
+        <location line="-368"/>
         <source>Your work. Anywhere.</source>
         <translation>आपका काम। कहीं भी।</translation>
     </message>
@@ -5560,18 +6346,18 @@ Upstream: %3
     </message>
     <message>
         <location line="+4"/>
-        <location line="+404"/>
+        <location line="+403"/>
         <source>Packages</source>
         <translation>पैकेज</translation>
     </message>
     <message>
-        <location line="-403"/>
-        <location line="+400"/>
+        <location line="-402"/>
+        <location line="+399"/>
         <source>Settings</source>
         <translation>सेटिंग्स</translation>
     </message>
     <message>
-        <location line="-385"/>
+        <location line="-384"/>
         <source>WORKSPACE</source>
         <translation>कार्यस्थान</translation>
     </message>
@@ -5581,29 +6367,24 @@ Upstream: %3
         <translation>फ़ोल्डर खोलें…</translation>
     </message>
     <message>
-        <location line="+107"/>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+189"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+151"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+190"/>
         <source>This computer</source>
         <translation>यह कंप्यूटर</translation>
     </message>
     <message>
-        <location line="+5"/>
-        <source> — unavailable</source>
-        <translation> — उपलब्ध नहीं</translation>
-    </message>
-    <message>
-        <location line="+46"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="+155"/>
         <source>Workflow</source>
         <translation>वर्कफ़्लो</translation>
     </message>
     <message>
-        <location line="+21"/>
-        <location line="+1631"/>
+        <location line="+23"/>
+        <location line="+1651"/>
         <source>%1 logs</source>
         <translation>%1 लॉग</translation>
     </message>
     <message>
-        <location line="-1621"/>
+        <location line="-1641"/>
         <source>Remote workflow</source>
         <translation>दूरस्थ वर्कफ़्लो</translation>
     </message>
@@ -5639,12 +6420,12 @@ Upstream: %3
     </message>
     <message>
         <location line="+2"/>
-        <location line="+848"/>
+        <location line="+878"/>
         <source>Quit</source>
         <translation>बाहर निकलें</translation>
     </message>
     <message>
-        <location line="-846"/>
+        <location line="-876"/>
         <source>View</source>
         <translation>दृश्य</translation>
     </message>
@@ -5659,11 +6440,6 @@ Upstream: %3
         <location line="+200"/>
         <source>Workflows</source>
         <translation>वर्कफ़्लो</translation>
-    </message>
-    <message>
-        <location line="+0"/>
-        <source>Machines</source>
-        <translation>मशीनें</translation>
     </message>
     <message>
         <location line="+0"/>
@@ -5694,6 +6470,11 @@ Upstream: %3
         <location line="+0"/>
         <source>Terminal</source>
         <translation>टर्मिनल</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Environments</source>
+        <translation>पर्यावरण</translation>
     </message>
     <message>
         <location line="+12"/>
@@ -5801,7 +6582,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>बाद में</translation>
     </message>
     <message>
-        <location line="+188"/>
+        <location line="+195"/>
         <source>Workflow studio</source>
         <translation>वर्कफ़्लो स्टूडियो</translation>
     </message>
@@ -5821,7 +6602,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>प्रोजेक्ट फ़ोल्डर खोलें</translation>
     </message>
     <message>
-        <location line="+101"/>
+        <location line="+104"/>
         <source>Open a project</source>
         <translation>प्रोजेक्ट खोलें</translation>
     </message>
@@ -5832,19 +6613,19 @@ If a workflow needs external tools, you install them yourself from official sour
     </message>
     <message>
         <location line="+22"/>
-        <location line="+652"/>
-        <location filename="../src/shell/presentation/MainWindowSurfaces.cpp" line="+109"/>
+        <location line="+662"/>
+        <location filename="../src/shell/presentation/MainWindowSurfaces.cpp" line="+151"/>
         <source>Workflow unavailable</source>
         <translation>वर्कफ़्लो उपलब्ध नहीं</translation>
     </message>
     <message>
-        <location line="-624"/>
-        <location line="+673"/>
+        <location line="-634"/>
+        <location line="+683"/>
         <source>Could not start dockpipe (see stderr).</source>
         <translation>dockpipe शुरू नहीं हुआ (stderr देखें)।</translation>
     </message>
     <message>
-        <location line="-600"/>
+        <location line="-593"/>
         <source>VS Code workflow</source>
         <translation>VS Code वर्कफ़्लो</translation>
     </message>
@@ -5854,7 +6635,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>कोई घोषित इनपुट नहीं है। कॉन्फ़िगरेशन बदलने के लिए वर्कफ़्लो में क्लोन करें उपयोग करें।</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+50"/>
         <source>This workflow does not expose app-managed settings.</source>
         <translation>यह वर्कफ़्लो ऐप-प्रबंधित सेटिंग्स नहीं देता।</translation>
     </message>
@@ -5924,7 +6705,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>तैयार</translation>
     </message>
     <message>
-        <location line="+168"/>
+        <location line="+158"/>
         <source>Received an invalid Dockpipe prompt payload.</source>
         <translation>अमान्य Dockpipe प्रॉम्प्ट पेलोड मिला।</translation>
     </message>
@@ -5945,7 +6726,7 @@ If a workflow needs external tools, you install them yourself from official sour
     </message>
     <message>
         <location line="+1"/>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+213"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+121"/>
         <source>Choose another computer or reconnect this machine before running.</source>
         <translation>चलाने से पहले दूसरा कंप्यूटर चुनें या यह मशीन फिर कनेक्ट करें।</translation>
     </message>
@@ -6068,7 +6849,7 @@ If a workflow needs external tools, you install them yourself from official sour
 </translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowDashboards.cpp" line="+76"/>
+        <location filename="../src/shell/presentation/MainWindowDashboards.cpp" line="+78"/>
         <source>This workflow is no longer in the project catalog. Refresh Workflows and try again.</source>
         <translation>यह वर्कफ़्लो अब प्रोजेक्ट सूची में नहीं है। वर्कफ़्लो रीफ़्रेश करके फिर प्रयास करें।</translation>
     </message>
@@ -6267,7 +7048,7 @@ Ctrl / ⌘ + `     आउटपुट बदलें
         <translation>अभी कोई वर्कफ़्लो नहीं</translation>
     </message>
     <message>
-        <location line="+56"/>
+        <location line="+53"/>
         <source>Open YAML file…</source>
         <translation>YAML फ़ाइल खोलें…</translation>
     </message>
@@ -6307,7 +7088,7 @@ Ctrl / ⌘ + `     आउटपुट बदलें
         <translation>वर्कफ़्लो YAML (*.yml *.yaml)</translation>
     </message>
     <message>
-        <location line="+41"/>
+        <location line="+45"/>
         <source>Workflow source unavailable</source>
         <translation>वर्कफ़्लो स्रोत उपलब्ध नहीं</translation>
     </message>
@@ -6322,12 +7103,17 @@ Ctrl / ⌘ + `     आउटपुट बदलें
         <translation>प्रोजेक्ट बदलने से पहले Git कार्रवाई पूरी होने दें या Git में रद्द करें।</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="-1376"/>
+        <location line="+122"/>
+        <source>This run target is unavailable. Choose another computer or reconnect it in Environments.</source>
+        <translation>यह चलने वाला लक्ष्य उपलब्ध नहीं है. एक और कंप्यूटर चुनें या इसे पर्यावरण में फिर से कनेक्ट करें.</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="-1396"/>
         <source>Wait for the Git action to finish, or cancel it in Git before quitting.</source>
         <translation>बाहर निकलने से पहले Git कार्रवाई पूरी होने दें या Git में रद्द करें।</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+94"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-23"/>
         <source>&lt;h3&gt;Select a workflow&lt;/h3&gt;&lt;p&gt;Review its purpose and inputs here, then choose Run or Edit on canvas.&lt;/p&gt;</source>
         <translation>&lt;h3&gt;वर्कफ़्लो चुनें&lt;/h3&gt;&lt;p&gt;यहाँ उसका उद्देश्य और इनपुट देखें, फिर चलाएँ या कैनवास पर संपादित करें चुनें।&lt;/p&gt;</translation>
     </message>
@@ -6362,12 +7148,7 @@ Ctrl / ⌘ + `     आउटपुट बदलें
         <translation>चुने कंप्यूटर पर इस वर्कफ़्लो के आवश्यक उपकरण और प्लेटफ़ॉर्म चाहिए।</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>This run target is unavailable. Choose another computer or reconnect it in Machines.</source>
-        <translation>यह रन लक्ष्य उपलब्ध नहीं है। दूसरा कंप्यूटर चुनें या मशीनें में फिर कनेक्ट करें।</translation>
-    </message>
-    <message>
-        <location line="+41"/>
+        <location line="+45"/>
         <source>Clone failed</source>
         <translation>क्लोन विफल</translation>
     </message>
@@ -6382,7 +7163,12 @@ Ctrl / ⌘ + `     आउटपुट बदलें
         <translation>वर्कफ़्लो %1 में क्लोन हुआ</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-43"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-96"/>
+        <source>%1 · Workflow access unavailable</source>
+        <translation>%1 · कार्यप्रवाह पहुंच उपलब्ध नहीं है</translation>
+    </message>
+    <message>
+        <location line="+53"/>
         <source>This machine or root changed. Refresh machines and select it again.</source>
         <translation>यह मशीन या रूट बदल गया है। मशीनें रीफ़्रेश करें और इसे फिर से चुनें।</translation>
     </message>
@@ -6392,13 +7178,12 @@ Ctrl / ⌘ + `     आउटपुट बदलें
         <translation>मशीन बदलने से पहले खुले ड्राफ़्ट सहेजें या छोड़ें और सक्रिय कार्रवाइयाँ पूरी करें।</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-435"/>
-        <location line="+145"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-443"/>
         <source>Choose the computer with the shared machine selector.</source>
         <translation>साझा मशीन चयनकर्ता से कंप्यूटर चुनें।</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+93"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+130"/>
         <source>Container terminal · %1 · %2</source>
         <translation>कंटेनर टर्मिनल · %1 · %2</translation>
     </message>
@@ -6406,6 +7191,17 @@ Ctrl / ⌘ + `     आउटपुट बदलें
         <location filename="../src/shell/presentation/MainWindow.cpp" line="-209"/>
         <source>Remote Desktop</source>
         <translation>दूरस्थ डेस्कटॉप</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-216"/>
+        <location line="+28"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · अनुपलब्ध</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+145"/>
+        <source>Use the shared machine or choose a worker for this workflow.</source>
+        <translation>इस वर्कफ़्लो के लिए साझा मशीन का उपयोग करें या कोई वर्कर चुनें।</translation>
     </message>
 </context>
 <context>
@@ -6525,12 +7321,12 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>टर्मिनल प्रोफ़ाइल अधिकतम 64 एनवायरनमेंट वेरिएबल को ओवरराइड कर सकती है।</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+56"/>
         <source>The terminal launch exceeds its bounded profile or environment contract.</source>
         <translation>टर्मिनल शुरू करना प्रोफ़ाइल या एनवायरनमेंट की निर्धारित सीमा से अधिक है।</translation>
     </message>
     <message>
-        <location line="-45"/>
+        <location line="-50"/>
         <source>The terminal profile contains an invalid environment variable.</source>
         <translation>टर्मिनल प्रोफ़ाइल में अमान्य एनवायरनमेंट वेरिएबल है।</translation>
     </message>
@@ -7018,7 +7814,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
 <context>
     <name>PackageSurfacePage</name>
     <message>
-        <location filename="../src/packages/presentation/PackageSurfacePage.cpp" line="+50"/>
+        <location filename="../src/packages/presentation/PackageSurfacePage.cpp" line="+52"/>
         <source>View</source>
         <translation>दृश्य</translation>
     </message>
@@ -7083,13 +7879,13 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>कार्रवाई का समय समाप्त हुआ। वर्तमान अवस्था जाँचने के लिए रीफ़्रेश करें।</translation>
     </message>
     <message>
-        <location line="+91"/>
+        <location line="+95"/>
         <location line="+18"/>
         <source>Refresh paused. Displayed state is stale.</source>
         <translation>रीफ़्रेश रुका है। दिखाई अवस्था पुरानी है।</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+28"/>
         <source>State has not been refreshed.</source>
         <translation>अवस्था रीफ़्रेश नहीं हुई है।</translation>
     </message>
@@ -7099,7 +7895,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>इंस्टॉल पैकेज की लॉन्च कार्रवाई अस्पष्ट या अनुपलब्ध है।</translation>
     </message>
     <message>
-        <location line="+114"/>
+        <location line="+133"/>
         <source>Refreshing… Previous state is retained.</source>
         <translation>रीफ़्रेश हो रहा है… पिछली अवस्था रखी गई है।</translation>
     </message>
@@ -7124,7 +7920,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>पैकेज ने अमान्य सतह इवेंट लौटाया।</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+54"/>
         <source>Package operation failed or returned no snapshot. Displayed state is stale.</source>
         <translation>पैकेज कार्रवाई विफल हुई या स्नैपशॉट नहीं लौटा। दिखाई अवस्था पुरानी है।</translation>
     </message>
@@ -7139,7 +7935,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>कार्रवाई पूरी हुई। अवस्था रीफ़्रेश हो रही है…</translation>
     </message>
     <message>
-        <location line="+25"/>
+        <location line="+69"/>
         <source>Unsupported package surface event schema.</source>
         <translation>पैकेज सतह इवेंट स्कीमा समर्थित नहीं है।</translation>
     </message>
@@ -7164,7 +7960,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>पैकेज संसाधन फ़ील्ड सतह अनुबंध से अधिक हैं।</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+16"/>
         <source>Invalid package widget display options or missing installed factory.</source>
         <translation>पैकेज विजेट डिस्प्ले विकल्प अमान्य हैं या इंस्टॉल फ़ैक्टरी गायब है।</translation>
     </message>
@@ -7187,6 +7983,213 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <location line="+7"/>
         <source>Invalid package resource action.</source>
         <translation>पैकेज संसाधन कार्रवाई अमान्य है।</translation>
+    </message>
+</context>
+<context>
+    <name>PipeLangEditorSession</name>
+    <message>
+        <location filename="../src/files/presentation/PipeLangEditorSession.cpp" line="+139"/>
+        <source>Browse…</source>
+        <translation>ब्राउज़ करें…</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Connect</source>
+        <translation>कनेक्ट करें</translation>
+    </message>
+    <message>
+        <location line="-33"/>
+        <source>Connect PipeLang language server</source>
+        <translation>PipeLang भाषा सर्वर से कनेक्ट करें</translation>
+    </message>
+    <message>
+        <location line="-19"/>
+        <source>Connect an explicitly selected installed language server for .pipe diagnostics and hover</source>
+        <translation>.pipe फ़ाइलों की जाँच और होवर जानकारी के लिए स्पष्ट रूप से चुने गए इंस्टॉल किए हुए भाषा सर्वर से कनेक्ट करें</translation>
+    </message>
+    <message>
+        <location line="+47"/>
+        <source>Node executable</source>
+        <translation>Node की निष्पादन योग्य फ़ाइल</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>PipeLang compiler executable</source>
+        <translation>PipeLang कंपाइलर की निष्पादन योग्य फ़ाइल</translation>
+    </message>
+    <message>
+        <location line="-43"/>
+        <source>PipeLang language server disconnected.</source>
+        <translation>PipeLang भाषा सर्वर से कनेक्शन टूट गया।</translation>
+    </message>
+    <message>
+        <location line="-7"/>
+        <source>PipeLang server…</source>
+        <translation>PipeLang सर्वर…</translation>
+    </message>
+    <message>
+        <location line="+41"/>
+        <source>Select installed tool</source>
+        <translation>इंस्टॉल किया हुआ टूल चुनें</translation>
+    </message>
+    <message>
+        <location line="-1"/>
+        <source>Select source root</source>
+        <translation>स्रोत का मूल फ़ोल्डर चुनें</translation>
+    </message>
+    <message>
+        <location line="-18"/>
+        <source>Select trusted installed tools. Connecting runs the selected Node and server on this host. Paths are used only for this session; project files cannot configure executable paths. An optional source root authorizes compiler analysis of imports beneath that directory.</source>
+        <translation>भरोसेमंद इंस्टॉल किए हुए टूल चुनें। कनेक्ट करने पर चुने गए Node और सर्वर इसी कंप्यूटर पर चलते हैं। पाथ सिर्फ़ इस सत्र में इस्तेमाल होते हैं। प्रोजेक्ट फ़ाइलें निष्पादन योग्य फ़ाइलों के पाथ तय नहीं कर सकतीं। स्रोत का वैकल्पिक मूल फ़ोल्डर कंपाइलर को उस फ़ोल्डर के अंदर के इंपोर्ट का विश्लेषण करने की अनुमति देता है।</translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Server JavaScript entrypoint</source>
+        <translation>सर्वर का JavaScript प्रवेश बिंदु</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Source root (optional)</source>
+        <translation>स्रोत का मूल फ़ोल्डर (वैकल्पिक)</translation>
+    </message>
+    <message>
+        <location line="-47"/>
+        <source>Stop</source>
+        <translation>रोकें</translation>
+    </message>
+</context>
+<context>
+    <name>PipeLangLanguageClient</name>
+    <message>
+        <location filename="../src/files/infrastructure/PipeLangLanguageClient.cpp" line="+374"/>
+        <source>Invalid PipeLang JSON-RPC message.</source>
+        <translation>PipeLang का JSON-RPC संदेश अमान्य है।</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Invalid PipeLang JSON-RPC version.</source>
+        <translation>PipeLang का JSON-RPC संस्करण अमान्य है।</translation>
+    </message>
+    <message>
+        <location line="-35"/>
+        <source>Invalid PipeLang protocol Content-Length.</source>
+        <translation>PipeLang प्रोटोकॉल का Content-Length मान अमान्य है।</translation>
+    </message>
+    <message>
+        <location line="-224"/>
+        <source>Invalid absolute installed PipeLang selection (%1).</source>
+        <translation>इंस्टॉल किए हुए PipeLang टूल के लिए चुना गया निरपेक्ष पाथ अमान्य है (%1)।</translation>
+    </message>
+    <message>
+        <location line="-10"/>
+        <source>Node executable: %1</source>
+        <translation>Node की निष्पादन योग्य फ़ाइल: %1</translation>
+    </message>
+    <message>
+        <location line="+305"/>
+        <source>PipeLang compiler diagnostics and hover connected.</source>
+        <translation>PipeLang कंपाइलर की जाँच और होवर जानकारी उपलब्ध हैं।</translation>
+    </message>
+    <message>
+        <location line="-178"/>
+        <source>PipeLang document limit exceeded (1 MiB per file, 16 MiB total, 32 files).</source>
+        <translation>PipeLang दस्तावेज़ सीमा पार हो गई (हर फ़ाइल के लिए 1 MiB, कुल 16 MiB, 32 फ़ाइलें)।</translation>
+    </message>
+    <message>
+        <location line="-208"/>
+        <source>PipeLang hover timed out.</source>
+        <translation>PipeLang होवर जानकारी का इंतज़ार करने की समय सीमा समाप्त हो गई।</translation>
+    </message>
+    <message>
+        <location line="+301"/>
+        <location line="+4"/>
+        <source>PipeLang protocol header limit exceeded.</source>
+        <translation>PipeLang प्रोटोकॉल की हेडर सीमा पार हो गई।</translation>
+    </message>
+    <message>
+        <location line="-14"/>
+        <source>PipeLang protocol input limit exceeded.</source>
+        <translation>PipeLang प्रोटोकॉल की इनपुट सीमा पार हो गई।</translation>
+    </message>
+    <message>
+        <location line="-126"/>
+        <source>PipeLang protocol output limit exceeded.</source>
+        <translation>PipeLang प्रोटोकॉल की आउटपुट सीमा पार हो गई।</translation>
+    </message>
+    <message>
+        <location line="+157"/>
+        <source>PipeLang protocol requires one Content-Length header.</source>
+        <translation>PipeLang प्रोटोकॉल के लिए ठीक एक Content-Length हेडर चाहिए।</translation>
+    </message>
+    <message>
+        <location line="-151"/>
+        <source>PipeLang protocol write failed.</source>
+        <translation>PipeLang प्रोटोकॉल में लिखना विफल रहा।</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>PipeLang request identity space exhausted; restart the editor session.</source>
+        <translation>PipeLang के अनुरोध आईडी खत्म हो गए। संपादक सत्र दोबारा शुरू करें।</translation>
+    </message>
+    <message>
+        <location line="-144"/>
+        <source>PipeLang server could not start: %1</source>
+        <translation>PipeLang सर्वर शुरू नहीं हो सका: %1</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>PipeLang server exited (%1). Reconnect explicitly.</source>
+        <translation>PipeLang सर्वर बंद हो गया (%1)। मैन्युअल रूप से दोबारा कनेक्ट करें।</translation>
+    </message>
+    <message>
+        <location line="-40"/>
+        <source>PipeLang server lifecycle deadline exceeded.</source>
+        <translation>PipeLang सर्वर के जीवनचक्र की समय सीमा समाप्त हो गई।</translation>
+    </message>
+    <message>
+        <location line="+383"/>
+        <source>PipeLang server rejected shutdown.</source>
+        <translation>PipeLang सर्वर ने बंद करने का अनुरोध अस्वीकार किया।</translation>
+    </message>
+    <message>
+        <location line="-385"/>
+        <source>PipeLang server required forced termination after stdin closure.</source>
+        <translation>stdin बंद करने के बाद PipeLang सर्वर को ज़बरदस्ती बंद करना पड़ा।</translation>
+    </message>
+    <message>
+        <location line="+42"/>
+        <source>PipeLang server stopped.</source>
+        <translation>PipeLang सर्वर रुक गया।</translation>
+    </message>
+    <message>
+        <location line="+332"/>
+        <source>Selected PipeLang server does not provide the required UTF-16 hover contract.</source>
+        <translation>चुना गया PipeLang सर्वर होवर जानकारी के लिए ज़रूरी UTF-16 अनुबंध का समर्थन नहीं करता।</translation>
+    </message>
+    <message>
+        <location line="-269"/>
+        <source>Starting selected PipeLang server…</source>
+        <translation>चुना गया PipeLang सर्वर शुरू हो रहा है…</translation>
+    </message>
+    <message>
+        <location line="-34"/>
+        <source>Stop the current PipeLang server before reconnecting.</source>
+        <translation>दोबारा कनेक्ट करने से पहले मौजूदा PipeLang सर्वर रोकें।</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>compiler executable: %1</source>
+        <translation>कंपाइलर की निष्पादन योग्य फ़ाइल: %1</translation>
+    </message>
+    <message>
+        <location line="-2"/>
+        <source>server entrypoint: %1</source>
+        <translation>सर्वर का प्रवेश बिंदु: %1</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>source directory: %1</source>
+        <translation>स्रोत फ़ोल्डर: %1</translation>
     </message>
 </context>
 <context>
@@ -7301,12 +8304,12 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
     <name>ProjectFilesWidget</name>
     <message>
         <location filename="../src/files/presentation/ProjectFilesWidget.cpp" line="+62"/>
-        <location line="+172"/>
+        <location line="+175"/>
         <source>Files</source>
         <translation>फ़ाइलें</translation>
     </message>
     <message>
-        <location line="-169"/>
+        <location line="-172"/>
         <source>Browse and edit your workspace.</source>
         <translation>कार्यस्थान ब्राउज़ और संपादित करें।</translation>
     </message>
@@ -7317,13 +8320,13 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
     </message>
     <message>
         <location line="+5"/>
-        <location line="+26"/>
+        <location line="+29"/>
         <source>New file</source>
         <translation>नई फ़ाइल</translation>
     </message>
     <message>
-        <location line="-26"/>
-        <location line="+225"/>
+        <location line="-29"/>
+        <location line="+228"/>
         <source>Path relative to this folder</source>
         <translation>इस फ़ोल्डर से सापेक्ष पथ</translation>
     </message>
@@ -7403,12 +8406,12 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
     <message>
         <location line="+13"/>
         <location line="+3"/>
-        <location line="+888"/>
+        <location line="+945"/>
         <source>Preview Markdown</source>
         <translation>Markdown पूर्वावलोकन</translation>
     </message>
     <message>
-        <location line="-882"/>
+        <location line="-939"/>
         <source>Find in file (Ctrl+F)</source>
         <translation>फ़ाइल में खोजें (Ctrl+F)</translation>
     </message>
@@ -7489,11 +8492,12 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
     </message>
     <message>
         <location line="+3"/>
+        <location line="+222"/>
         <source>Select a file to edit, or create something new.</source>
         <translation>संपादन के लिए फ़ाइल चुनें या कुछ नया बनाएँ।</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="-218"/>
         <source>Create a file</source>
         <translation>फ़ाइल बनाएँ</translation>
     </message>
@@ -7503,7 +8507,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>“%1” का कोई मिलान नहीं मिला।</translation>
     </message>
     <message>
-        <location line="+189"/>
+        <location line="+243"/>
         <source>Unsaved file</source>
         <translation>बिना सहेजी फ़ाइल</translation>
     </message>
@@ -7576,7 +8580,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>%1 सहेजा गया</translation>
     </message>
     <message>
-        <location line="+175"/>
+        <location line="+177"/>
         <source>No file open</source>
         <translation>कोई फ़ाइल खुली नहीं है</translation>
     </message>
@@ -7596,7 +8600,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>वर्कस्पेस रूट</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="+23"/>
         <source>Hide Markdown preview</source>
         <translation>Markdown पूर्वावलोकन छिपाएँ</translation>
     </message>
@@ -7616,12 +8620,12 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>%1   ·   UTF-8   ·   %2                         पंक्ति %3, स्तंभ %4</translation>
     </message>
     <message>
-        <location line="-1070"/>
+        <location line="-1127"/>
         <source>Refresh files</source>
         <translation>फ़ाइलें रीफ़्रेश करें</translation>
     </message>
     <message>
-        <location line="+463"/>
+        <location line="+517"/>
         <location line="+34"/>
         <source>A file operation is still running. Your open files are preserved.</source>
         <translation>फ़ाइल कार्रवाई अभी चल रही है। आपकी खुली फ़ाइलें सुरक्षित रखी गई हैं।</translation>
@@ -7630,6 +8634,11 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <location line="+341"/>
         <source>Invalid workspace file response.</source>
         <translation>वर्कस्पेस फ़ाइल प्रतिक्रिया अमान्य है।</translation>
+    </message>
+    <message>
+        <location line="-440"/>
+        <source>Select a file to read.</source>
+        <translation>पढ़ने के लिए कोई फ़ाइल चुनें।</translation>
     </message>
 </context>
 <context>
@@ -7731,7 +8740,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>पुश करें</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+3"/>
         <source>Pull fast-forward changes into a clean checkout</source>
         <translation>साफ़ चेकआउट में फ़ास्ट-फ़ॉरवर्ड बदलाव पुल करें</translation>
     </message>
@@ -7748,12 +8757,12 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
     <message>
         <location line="+12"/>
         <location line="+27"/>
-        <location line="+288"/>
+        <location line="+292"/>
         <source>Changed files</source>
         <translation>बदली गई फ़ाइलें</translation>
     </message>
     <message>
-        <location line="-315"/>
+        <location line="-319"/>
         <source>Staged files</source>
         <translation>स्टेज की गई फ़ाइलें</translation>
     </message>
@@ -7800,30 +8809,30 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
     </message>
     <message>
         <location line="+4"/>
-        <location line="+639"/>
+        <location line="+655"/>
         <source>Unstage all</source>
         <translation>सभी अनस्टेज करें</translation>
     </message>
     <message>
-        <location line="-639"/>
-        <location line="+638"/>
+        <location line="-655"/>
+        <location line="+654"/>
         <source>Stage all</source>
         <translation>सभी स्टेज करें</translation>
     </message>
     <message>
-        <location line="-589"/>
-        <location line="+566"/>
+        <location line="-605"/>
+        <location line="+582"/>
         <source>Stage changes to include them in your commit.</source>
         <translation>कमिट में शामिल करने के लिए बदलाव स्टेज करें।</translation>
     </message>
     <message>
-        <location line="-566"/>
-        <location line="+568"/>
+        <location line="-582"/>
+        <location line="+584"/>
         <source>No unstaged changes.</source>
         <translation>कोई बिना स्टेज किया बदलाव नहीं है।</translation>
     </message>
     <message>
-        <location line="-544"/>
+        <location line="-560"/>
         <source>Commit changes</source>
         <translation>बदलाव कमिट करें</translation>
     </message>
@@ -7849,20 +8858,20 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
     </message>
     <message>
         <location line="+12"/>
-        <location line="+145"/>
-        <location line="+260"/>
+        <location line="+149"/>
+        <location line="+268"/>
         <location line="+4"/>
         <source>Select a file to review</source>
         <translation>जाँचने के लिए फ़ाइल चुनें</translation>
     </message>
     <message>
-        <location line="-398"/>
-        <location line="+465"/>
+        <location line="-410"/>
+        <location line="+481"/>
         <source>Unstaged changes</source>
         <translation>बिना स्टेज किए बदलाव</translation>
     </message>
     <message>
-        <location line="-462"/>
+        <location line="-478"/>
         <source>Stage</source>
         <translation>स्टेज करें</translation>
     </message>
@@ -7888,20 +8897,20 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
     </message>
     <message>
         <location line="+21"/>
-        <location line="+96"/>
-        <location line="+163"/>
+        <location line="+100"/>
+        <location line="+171"/>
         <source>Your changes, in focus</source>
         <translation>आपके बदलाव, केंद्र में</translation>
     </message>
     <message>
-        <location line="-254"/>
-        <location line="+92"/>
-        <location line="+163"/>
+        <location line="-266"/>
+        <location line="+96"/>
+        <location line="+171"/>
         <source>Refresh the repository, then select a file to review its changes.</source>
         <translation>रिपॉज़िटरी रीफ़्रेश करें, फिर बदलाव जाँचने के लिए फ़ाइल चुनें।</translation>
     </message>
     <message>
-        <location line="-243"/>
+        <location line="-255"/>
         <source>Changes</source>
         <translation>बदलाव</translation>
     </message>
@@ -7921,7 +8930,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>कार्रवाई रद्द करें</translation>
     </message>
     <message>
-        <location line="+57"/>
+        <location line="+61"/>
         <source>Refresh to review this project&apos;s changes.</source>
         <translation>इस प्रोजेक्ट के बदलाव जाँचने के लिए रीफ़्रेश करें।</translation>
     </message>
@@ -7931,7 +8940,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>पहले प्रोजेक्ट फ़ोल्डर खोलें।</translation>
     </message>
     <message>
-        <location line="+80"/>
+        <location line="+88"/>
         <source>Refresh the repository before changing it.</source>
         <translation>रिपॉज़िटरी बदलने से पहले रीफ़्रेश करें।</translation>
     </message>
@@ -7998,7 +9007,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>अगला कमिट तैयार करने के लिए बदलाव स्टेज करें।</translation>
     </message>
     <message>
-        <location line="+40"/>
+        <location line="+44"/>
         <source>No staged files</source>
         <translation>कोई स्टेज की गई फ़ाइल नहीं</translation>
     </message>
@@ -8031,6 +9040,11 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <location line="+1"/>
         <source>Unstage shown</source>
         <translation>दिखाई गई फ़ाइलें अनस्टेज करें</translation>
+    </message>
+    <message>
+        <location line="-263"/>
+        <source>The selected Git root does not grant this operation.</source>
+        <translation>चुना गया Git रूट इस कार्रवाई की अनुमति नहीं देता।</translation>
     </message>
 </context>
 <context>
@@ -8270,7 +9284,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>स्वचालित टर्मिनल सेटअप को अमान्य होस्ट वातावरण मिला।</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="-710"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="-774"/>
         <source>Running</source>
         <translation>चल रहा है</translation>
     </message>
@@ -8300,7 +9314,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>मशीन या रूट बदलने से पहले मर्ज-संघर्ष ड्राफ़्ट सहेजें या छोड़ दें।</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+49"/>
         <source>Select an absolute local project folder.</source>
         <translation>पूर्ण पथ वाला स्थानीय प्रोजेक्ट फ़ोल्डर चुनें।</translation>
     </message>
@@ -8392,7 +9406,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
     </message>
     <message>
         <location line="+125"/>
-        <location line="+73"/>
+        <location line="+77"/>
         <source>Output exceeded the display limit.
 </source>
         <translation>आउटपुट प्रदर्शन सीमा से अधिक हो गया।
@@ -8564,7 +9578,22 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>गुणवत्ता और फ़्रेम दर अगले कनेक्शन पर लागू होंगी। रिज़ॉल्यूशन अधिकतम है; बिट दर एक लक्ष्य है।</translation>
     </message>
     <message>
-        <location line="-73"/>
+        <location line="+33"/>
+        <source>Clipboard sharing is unavailable on the selected computer.</source>
+        <translation>क्लिपबोर्ड साझा करना चुने हुए कंप्यूटर पर उपलब्ध नहीं है।</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>The selected computer shares its current desktop.</source>
+        <translation>चयनित कंप्यूटर अपने वर्तमान डेस्कटॉप को साझा करता है।</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>The selected computer&apos;s video does not include a cursor.</source>
+        <translation>चुने हुए कंप्यूटर के वीडियो में एक क्यूसर शामिल नहीं है।</translation>
+    </message>
+    <message>
+        <location line="-119"/>
         <source>Current desktop</source>
         <translation>वर्तमान डेस्कटॉप</translation>
     </message>
@@ -8622,14 +9651,14 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
 <context>
     <name>RemoteDesktopWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+89"/>
-        <location line="+209"/>
-        <location line="+313"/>
+        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+124"/>
+        <location line="+222"/>
+        <location line="+320"/>
         <source>Remote Desktop</source>
         <translation>दूरस्थ डेस्कटॉप</translation>
     </message>
     <message>
-        <location line="-509"/>
+        <location line="-529"/>
         <source>View or control an existing desktop through its authorized native provider.</source>
         <translation>अधिकृत नेटिव प्रदाता से मौजूदा डेस्कटॉप देखें या नियंत्रित करें।</translation>
     </message>
@@ -8711,7 +9740,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>कनेक्ट रहें</translation>
     </message>
     <message>
-        <location line="+39"/>
+        <location line="+52"/>
         <source>Some settings will apply on the next connection.</source>
         <translation>कुछ सेटिंग अगले कनेक्शन पर लागू होंगी।</translation>
     </message>
@@ -8751,14 +9780,14 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>%1 (युग्मन अपडेट आवश्यक है)</translation>
     </message>
     <message>
-        <location line="+63"/>
-        <source>No paired computers are available. Add a computer in Machines.</source>
-        <translation>कोई युग्मित कंप्यूटर उपलब्ध नहीं है। मशीनें में कंप्यूटर जोड़ें।</translation>
+        <location line="+68"/>
+        <source>Choose a paired computer.</source>
+        <translation>युग्मित कंप्यूटर चुनें।</translation>
     </message>
     <message>
         <location line="+0"/>
-        <source>Choose a paired computer.</source>
-        <translation>युग्मित कंप्यूटर चुनें।</translation>
+        <source>No paired computers are available. Add a computer in Environments.</source>
+        <translation>कोई पेयर किए गए कंप्यूटर उपलब्ध नहीं हैं. पर्यावरण में एक कंप्यूटर जोड़ें.</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -8802,22 +9831,27 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>डेस्कटॉप तैयारी की कैटलॉग अमान्य है।</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+29"/>
         <source>The selected desktop identity or permission changed. Refresh and connect again.</source>
         <translation>चुने हुए डेस्कटॉप की पहचान या अनुमति बदल गई है। रीफ़्रेश करके फिर कनेक्ट करें।</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+26"/>
+        <source>Opening the selected desktop with administrator control…</source>
+        <translation>प्रबंधक नियंत्रण के साथ चुने हुए डेस्कटॉप को खोलना ...</translation>
+    </message>
+    <message>
+        <location line="+1"/>
         <source>Opening the selected desktop…</source>
         <translation>चुना हुआ डेस्कटॉप खोला जा रहा है…</translation>
     </message>
     <message>
-        <location line="-401"/>
+        <location line="-427"/>
         <source>Disconnected locally. The native provider reports any unconfirmed remote cleanup.</source>
         <translation>स्थानीय रूप से डिस्कनेक्ट किया गया। नेटिव प्रदाता दूरस्थ सफ़ाई के किसी अपुष्ट परिणाम की जानकारी देता है।</translation>
     </message>
     <message>
-        <location line="+412"/>
+        <location line="+438"/>
         <source>Closing the selected desktop…</source>
         <translation>चयनित डेस्कटॉप बंद किया जा रहा है…</translation>
     </message>
@@ -8850,7 +9884,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>दूरस्थ मशीन कैटलॉग उपलब्ध नहीं है।</translation>
     </message>
     <message>
-        <location line="+66"/>
+        <location line="+70"/>
         <source>Remote result does not match the captured operation.</source>
         <translation>दूरस्थ परिणाम दर्ज कार्रवाई से मेल नहीं खाता।</translation>
     </message>
@@ -8860,7 +9894,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>मूल दूरस्थ कार्रवाई को रद्द करने का अनुरोध किया गया। लिखने की कार्रवाई दोहराने से पहले स्थिति रीफ़्रेश करें।</translation>
     </message>
     <message>
-        <location line="-157"/>
+        <location line="-161"/>
         <source>Cannot retain remote mutation recovery metadata. Resolve saved operations or repair settings before another write.</source>
         <translation>दूरस्थ बदलाव की पुनर्प्राप्ति मेटाडेटा सुरक्षित नहीं रखी जा सकती। दोबारा लिखने से पहले सहेजे गए ऑपरेशन सुलझाएँ या सेटिंग सुधारें।</translation>
     </message>
@@ -8913,7 +9947,7 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
 <context>
     <name>RemoteFeatureRecoveryDialog</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteFeatureRecoveryDialog.cpp" line="+62"/>
+        <location filename="../src/remote/presentation/RemoteFeatureRecoveryDialog.cpp" line="+63"/>
         <source>Choose a retained operation.</source>
         <translation>सुरक्षित रखा गया ऑपरेशन चुनें।</translation>
     </message>
@@ -8923,17 +9957,17 @@ Mermaid पूर्वावलोकन सीमा: पहले 16 के �
         <translation>बंद करें</translation>
     </message>
     <message>
-        <location line="+148"/>
+        <location line="+165"/>
         <source>Contacting the original captured machine…</source>
         <translation>दर्ज की गई मूल मशीन से संपर्क हो रहा है…</translation>
     </message>
     <message>
-        <location line="-180"/>
+        <location line="-197"/>
         <source>Inspect the original operation before another write. Cancellation does not prove that a mutation had no effect.</source>
         <translation>दोबारा लिखने से पहले मूल ऑपरेशन जाँचें। रद्द करना यह साबित नहीं करता कि बदलाव का कोई प्रभाव नहीं पड़ा।</translation>
     </message>
     <message>
-        <location line="+146"/>
+        <location line="+155"/>
         <source>Machine: %1
 Fingerprint: %2
 Generation: %3
@@ -8949,17 +9983,17 @@ Operation: %6</source>
     </message>
     <message>
         <location line="-1"/>
-        <location line="+18"/>
+        <location line="+20"/>
         <source>No uncertain mutations are retained.</source>
         <translation>कोई अनिश्चित बदलाव सुरक्षित नहीं रखा गया है।</translation>
     </message>
     <message>
-        <location line="+77"/>
+        <location line="+85"/>
         <source>Original operation status: %1. No operation was replayed.</source>
         <translation>मूल ऑपरेशन की स्थिति: %1। कोई ऑपरेशन दोबारा नहीं चलाया गया।</translation>
     </message>
     <message>
-        <location line="-222"/>
+        <location line="-241"/>
         <source>Refresh status</source>
         <translation>स्थिति रीफ़्रेश करें</translation>
     </message>
@@ -8969,30 +10003,30 @@ Operation: %6</source>
         <translation>रद्द करने का अनुरोध करें</translation>
     </message>
     <message>
-        <location line="+144"/>
-        <location line="+47"/>
+        <location line="+155"/>
+        <location line="+53"/>
         <location line="+22"/>
         <source>The mutation outcome remains uncertain. Refresh its original status before another write.</source>
         <translation>बदलाव का परिणाम अब भी अनिश्चित है। दोबारा लिखने से पहले उसकी मूल स्थिति रीफ़्रेश करें।</translation>
     </message>
     <message>
-        <location line="+36"/>
+        <location line="+39"/>
         <source>Uncertain operations…</source>
         <translation>अनिश्चित ऑपरेशन…</translation>
     </message>
     <message>
-        <location line="-272"/>
+        <location line="-292"/>
         <source>Uncertain remote operations</source>
         <translation>अनिश्चित दूरस्थ ऑपरेशन</translation>
     </message>
     <message>
-        <location line="+243"/>
+        <location line="+262"/>
         <source>unknown</source>
         <translation>अज्ञात</translation>
     </message>
     <message>
-        <location line="-79"/>
-        <location line="+43"/>
+        <location line="-87"/>
+        <location line="+49"/>
         <location line="+24"/>
         <location line="+7"/>
         <source>Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write.</source>
@@ -9009,27 +10043,27 @@ Operation: %6</source>
         <translation>दर्ज किए गए मूल सत्र के लिए कंटेनर टर्मिनल की सफ़ाई सत्यापित की गई।</translation>
     </message>
     <message>
-        <location line="-179"/>
+        <location line="-196"/>
         <source>Explicitly remove the original exact container after native client cleanup. Requires the worker&apos;s independent Docker recovery grant. Volumes and images are retained.</source>
         <translation>मूल क्लाइंट की सफ़ाई के बाद ठीक उसी मूल कंटेनर को स्पष्ट रूप से हटाएँ। इसके लिए वर्कर की स्वतंत्र Docker पुनर्प्राप्ति अनुमति आवश्यक है। वॉल्यूम और इमेज सुरक्षित रखे जाते हैं।</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+23"/>
         <source>Remove container %1 on %2 to fence delayed daemon work for operation %3? This removes the container and its writable layer. Volumes and images are retained. The original mutation outcome remains unknown.</source>
         <translation>क्या ऑपरेशन %3 के लिए डेमन का विलंबित काम रोकने हेतु %2 पर कंटेनर %1 हटाएँ? इससे कंटेनर और उसकी लिखने योग्य परत हट जाएगी। वॉल्यूम और इमेज सुरक्षित रहेंगे। मूल बदलाव का परिणाम अब भी अज्ञात रहेगा।</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-25"/>
         <source>Retire container…</source>
         <translation>कंटेनर सेवा से हटाएँ…</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+24"/>
         <source>Retire the captured container?</source>
         <translation>दर्ज किया गया कंटेनर सेवा से हटाएँ?</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-25"/>
         <source>Revoke the original invocation and verify its native cleanup evidence. Boot-fenced workers require a host reboot for uncertain process-backed operations. The mutation outcome remains unknown.</source>
         <translation>मूल आह्वान निरस्त करें और उसकी मूल सफ़ाई के प्रमाण जाँचें। बूट सीमाओं से सुरक्षित वर्कर पर अनिश्चित प्रक्रिया-आधारित ऑपरेशन के लिए होस्ट को दोबारा चालू करना आवश्यक है। बदलाव का परिणाम अब भी अज्ञात है।</translation>
     </message>
@@ -9039,9 +10073,14 @@ Operation: %6</source>
         <translation>सफ़ाई सत्यापित करें</translation>
     </message>
     <message>
-        <location line="+154"/>
+        <location line="+171"/>
         <source>Refreshing the worker&apos;s retained terminal metadata. No cleanup was requested.</source>
         <translation>वर्कर द्वारा सुरक्षित रखी गई टर्मिनल मेटाडेटा रीफ़्रेश हो रही है। सफ़ाई का कोई अनुरोध नहीं किया गया।</translation>
+    </message>
+    <message>
+        <location line="+62"/>
+        <source>The original operation was cancelled. Refresh the affected state before another write.</source>
+        <translation>मूल कार्रवाई रद्द कर दी गई। फिर से लिखने से पहले प्रभावित स्थिति रीफ़्रेश करें।</translation>
     </message>
 </context>
 <context>
@@ -9371,7 +10410,7 @@ Operation: %6</source>
 <context>
     <name>RemoteWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteWidget.cpp" line="+133"/>
+        <location filename="../src/remote/presentation/RemoteWidget.cpp" line="+172"/>
         <location line="+21"/>
         <source>Show details</source>
         <translation>विवरण दिखाएँ</translation>
@@ -9387,14 +10426,14 @@ Operation: %6</source>
         <translation>विवरण छिपाएँ</translation>
     </message>
     <message>
-        <location line="+60"/>
-        <location line="+32"/>
-        <location line="+706"/>
+        <location line="+65"/>
+        <location line="+33"/>
+        <location line="+872"/>
         <source>Machines</source>
         <translation>मशीनें</translation>
     </message>
     <message>
-        <location line="-737"/>
+        <location line="-904"/>
         <source>Pairing and access relationships · Connection health is not checked here</source>
         <translation>युग्मन और पहुँच संबंध · कनेक्शन की स्थिति यहाँ नहीं जाँची जाती</translation>
     </message>
@@ -9405,25 +10444,25 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+16"/>
-        <location line="+720"/>
+        <location line="+887"/>
         <source>Machine setup</source>
         <translation>मशीन सेटअप</translation>
     </message>
     <message>
-        <location line="-706"/>
+        <location line="-872"/>
         <source>Manage trusted computers and workflow access.</source>
         <translation>विश्वसनीय कंप्यूटर और वर्कफ़्लो पहुँच प्रबंधित करें।</translation>
     </message>
     <message>
         <location line="+2"/>
-        <location line="+61"/>
-        <location line="+212"/>
-        <location line="+430"/>
+        <location line="+62"/>
+        <location line="+216"/>
+        <location line="+591"/>
         <source>Add machine</source>
         <translation>मशीन जोड़ें</translation>
     </message>
     <message>
-        <location line="-692"/>
+        <location line="-858"/>
         <source>Canvas</source>
         <translation>कैनवास</translation>
     </message>
@@ -9443,18 +10482,18 @@ Operation: %6</source>
         <translation>मशीनों का सूची दृश्य</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+48"/>
         <source>Refresh</source>
         <translation>रीफ़्रेश करें</translation>
     </message>
     <message>
         <location line="+3"/>
-        <location line="+432"/>
+        <location line="+475"/>
         <source>Connection settings</source>
         <translation>कनेक्शन सेटिंग्स</translation>
     </message>
     <message>
-        <location line="-421"/>
+        <location line="-463"/>
         <source>Remote connection</source>
         <translation>दूरस्थ कनेक्शन</translation>
     </message>
@@ -9475,13 +10514,13 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+16"/>
-        <location line="+334"/>
-        <location line="+266"/>
+        <location line="+343"/>
+        <location line="+421"/>
         <source>Connect this computer</source>
         <translation>यह कंप्यूटर कनेक्ट करें</translation>
     </message>
     <message>
-        <location line="-596"/>
+        <location line="-760"/>
         <source>Checking remote access lock status…</source>
         <translation>दूरस्थ पहुँच की लॉक स्थिति जाँची जा रही है…</translation>
     </message>
@@ -9497,12 +10536,12 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+10"/>
-        <location line="+239"/>
+        <location line="+247"/>
         <source>Machine</source>
         <translation>मशीन</translation>
     </message>
     <message>
-        <location line="-239"/>
+        <location line="-247"/>
         <source>Access</source>
         <translation>पहुँच</translation>
     </message>
@@ -9538,34 +10577,34 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+657"/>
+        <location line="+830"/>
         <source>Paired</source>
         <translation>युग्मित</translation>
     </message>
     <message>
-        <location line="-656"/>
+        <location line="-829"/>
         <source>Invitations</source>
         <translation>निमंत्रण</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+662"/>
+        <location line="+836"/>
         <source>Access removed</source>
         <translation>पहुँच हटाई गई</translation>
     </message>
     <message>
-        <location line="-659"/>
+        <location line="-833"/>
         <source>Refresh to load managed machines.</source>
         <translation>प्रबंधित मशीनें लोड करने के लिए रीफ़्रेश करें।</translation>
     </message>
     <message>
         <location line="+9"/>
-        <location line="+1079"/>
+        <location line="+1270"/>
         <source>Select a machine to view its settings.</source>
         <translation>सेटिंग्स देखने के लिए मशीन चुनें।</translation>
     </message>
     <message>
-        <location line="-1075"/>
+        <location line="-1266"/>
         <source>Configure this computer…</source>
         <translation>यह कंप्यूटर कॉन्फ़िगर करें…</translation>
     </message>
@@ -9627,20 +10666,21 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+8"/>
-        <location line="+343"/>
-        <location line="+433"/>
+        <location line="+435"/>
+        <location line="+519"/>
         <source>Set up remote access…</source>
         <translation>दूरस्थ पहुँच सेट करें…</translation>
     </message>
     <message>
-        <location line="-759"/>
-        <location line="+165"/>
-        <location line="+133"/>
+        <location line="-934"/>
+        <location line="+170"/>
+        <location line="+212"/>
+        <location line="+208"/>
         <source>← Machines</source>
         <translation>← मशीनें</translation>
     </message>
     <message>
-        <location line="-276"/>
+        <location line="-568"/>
         <source>Add another computer</source>
         <translation>दूसरा कंप्यूटर जोड़ें</translation>
     </message>
@@ -9656,12 +10696,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+3"/>
-        <location line="+442"/>
+        <location line="+608"/>
         <source>Start pairing</source>
         <translation>युग्मन शुरू करें</translation>
     </message>
     <message>
-        <location line="-437"/>
+        <location line="-603"/>
         <source>Connect this computer instead</source>
         <translation>इसके बजाय यह कंप्यूटर कनेक्ट करें</translation>
     </message>
@@ -9676,12 +10716,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>दूसरे कंप्यूटर पर</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>Open Dockpipe → Machines → Add machine → Connect this computer instead. Enter this address and request pairing.</source>
-        <translation>Dockpipe → मशीनें → मशीन जोड़ें → इसके बजाय यह कंप्यूटर कनेक्ट करें खोलें। यह पता डालकर युग्मन का अनुरोध करें।</translation>
-    </message>
-    <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Copy address</source>
         <translation>पता कॉपी करें</translation>
     </message>
@@ -9692,12 +10727,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+3"/>
-        <location line="+601"/>
+        <location line="+775"/>
         <source>Review request</source>
         <translation>अनुरोध जाँचें</translation>
     </message>
     <message>
-        <location line="-597"/>
+        <location line="-771"/>
         <source>Check again</source>
         <translation>फिर जाँचें</translation>
     </message>
@@ -9722,7 +10757,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>अनुरोध चुनकर उसका कोड दूसरे कंप्यूटर से मिलाएँ। केवल मेल खाने पर स्वीकृत करें।</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+7"/>
         <source>Verification code</source>
         <translation>सत्यापन कोड</translation>
     </message>
@@ -9758,11 +10793,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+1"/>
+        <location line="+119"/>
         <source>Done</source>
         <translation>पूर्ण</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="-106"/>
         <source>1 of 3 · Prepare</source>
         <translation>3 में से 1 · तैयारी</translation>
     </message>
@@ -9782,22 +10818,22 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>युग्मन पूर्ण</translation>
     </message>
     <message>
-        <location line="+24"/>
+        <location line="+25"/>
         <source>Enter the address shown on the computer you are connecting to.</source>
         <translation>जिस कंप्यूटर से जुड़ रहे हैं उस पर दिखाया गया पता डालें।</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+5"/>
         <source>https://your-broker.example.com</source>
         <translation>https://your-broker.example.com</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+5"/>
         <source>Remote address</source>
         <translation>दूरस्थ पता</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+2"/>
         <source>Name for this computer</source>
         <translation>इस कंप्यूटर का नाम</translation>
     </message>
@@ -9807,12 +10843,22 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>प्रबंधन कंप्यूटर के वर्कफ़्लो मेरे उपयोगकर्ता के रूप में चलने दें</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+3"/>
         <source>Connect only to a computer you trust. Its workflows run as your user and can access your files and tools.</source>
         <translation>केवल विश्वसनीय कंप्यूटर से जुड़ें। उसके वर्कफ़्लो आपके उपयोगकर्ता के रूप में चलते हैं और आपकी फ़ाइलों तथा टूल तक पहुँच सकते हैं।</translation>
     </message>
     <message>
         <location line="+1"/>
+        <source>Allow Terminal access as my user</source>
+        <translation>मेरे उपयोगकर्ता के रूप में टर्मिनल एक्सेस की अनुमति</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Terminal opens in your home folder and runs with your account&apos;s permissions.</source>
+        <translation>टर्मिनल आपके होम फ़ोल्डर में खुलता है और आपके खाते की अनुमतिओं के साथ चलता है।</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>After approval, Dockpipe starts a background worker service for your user so this computer can receive workflows.</source>
         <translation>स्वीकृति के बाद Dockpipe आपके उपयोगकर्ता के लिए पृष्ठभूमि वर्कर सेवा शुरू करता है ताकि यह कंप्यूटर वर्कफ़्लो प्राप्त कर सके।</translation>
     </message>
@@ -9822,17 +10868,12 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>युग्मन का अनुरोध करें</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+22"/>
         <source>Waiting for approval. Compare the code below on the managing computer.</source>
         <translation>स्वीकृति की प्रतीक्षा है। प्रबंधन कंप्यूटर पर नीचे का कोड मिलाएँ।</translation>
     </message>
     <message>
-        <location line="+7"/>
-        <source>Already paired? Recovery options</source>
-        <translation>पहले से युग्मित है? पुनर्प्राप्ति विकल्प</translation>
-    </message>
-    <message>
-        <location line="+6"/>
+        <location line="+13"/>
         <source>Restart receiving workflows without pairing again. Keep this computer awake while work runs.</source>
         <translation>दोबारा युग्मन किए बिना वर्कफ़्लो प्राप्त करना फिर शुरू करें। काम चलते समय यह कंप्यूटर जागा रखें।</translation>
     </message>
@@ -9842,7 +10883,18 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>वर्कर सेवा शुरू करें</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+2"/>
+        <location line="+6"/>
+        <source>Enable Terminal</source>
+        <translation>टर्मिनल का उपयोग करें</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Allow the managing computer to open a shell with your account&apos;s permissions, starting in your home folder? Dockpipe will briefly restart the background worker.</source>
+        <translation>अपने खाते की अनुमतिओं के साथ एक ढाल खोलने के लिए प्रबंधन कंप्यूटर की अनुमति दें, अपने होम फ़ोल्डर में शुरू? Dockpipe संक्षिप्त रूप से पृष्ठभूमि कार्यकर्ता को पुनरारंभ करेगा।</translation>
+    </message>
+    <message>
+        <location line="+23"/>
         <source>Connection settings · Update available</source>
         <translation>कनेक्शन सेटिंग्स · अपडेट उपलब्ध</translation>
     </message>
@@ -9887,22 +10939,52 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>सेवा अपडेट पूरा नहीं हुआ। युग्मन सुरक्षित है। विवरण देखें, फिर सेवा अपडेट करें दोबारा चुनें।</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <source>Worker service started. Choose this computer under Run on from your managing computer.</source>
-        <translation>वर्कर सेवा शुरू हो गई। प्रबंधन कंप्यूटर से इस पर चलाएँ के अंतर्गत यह कंप्यूटर चुनें।</translation>
-    </message>
-    <message>
-        <location line="+1"/>
+        <location line="+10"/>
         <source>Could not start the worker service. Your pairing is preserved. See details, then choose Start worker service to retry.</source>
         <translation>वर्कर सेवा शुरू नहीं हो सकी। आपका युग्मन सुरक्षित है। विवरण देखें, फिर दोबारा प्रयास के लिए वर्कर सेवा शुरू करें चुनें।</translation>
     </message>
     <message>
         <location line="+2"/>
+        <source>Background worker startup requested. Terminal setup failed. Use Manage access to retry.</source>
+        <translation>पृष्ठभूमि कार्यकर्ता स्टार्टअप के लिए अनुरोध किया गया. टर्मिनल सेटअप विफल रहा. उपयोग करें सेवानिवृत्ति के लिए पहुंच प्रबंधन.</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Pairing is complete. Windows could not start administrator input approval.</source>
+        <translation>Windows प्रबंधक इनपुट अनुमोदन शुरू नहीं कर सकता था।</translation>
+    </message>
+    <message>
+        <location line="+6"/>
         <source>Starting the background worker service…</source>
         <translation>पृष्ठभूमि वर्कर सेवा शुरू हो रही है…</translation>
     </message>
     <message>
         <location line="+11"/>
+        <source>Dockpipe could not enable Terminal. See details in Connection setup.</source>
+        <translation>Dockpipe टर्मिनल को सक्षम नहीं कर सकता. कनेक्शन सेटअप में विवरण देखें.</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Terminal access enabled. Refresh Terminal on the managing computer.</source>
+        <translation>टर्मिनल एक्सेस सक्षम. प्रबंधन कंप्यूटर पर टर्मिनल को ताज़ा करें.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Terminal access is saved. Start the worker service to bring it online.</source>
+        <translation>टर्मिनल एक्सेस बचाया जाता है. इसे ऑनलाइन लाने के लिए श्रमिकों की सेवा शुरू करें.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Restarting the background worker…</source>
+        <translation>पृष्ठभूमि कार्यकर्ता को पुनरारंभ करने के लिए ...</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Enabling Terminal access…</source>
+        <translation>टर्मिनल तक पहुंच प्रदान करने के लिए...</translation>
+    </message>
+    <message>
+        <location line="+16"/>
         <location line="+47"/>
         <source>Set up remote access</source>
         <translation>दूरस्थ पहुँच सेट करें</translation>
@@ -9929,12 +11011,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+3"/>
-        <location line="+435"/>
+        <location line="+521"/>
         <source>Install provider…</source>
         <translation>प्रदाता इंस्टॉल करें…</translation>
     </message>
     <message>
-        <location line="-425"/>
+        <location line="-511"/>
         <source>Check connection</source>
         <translation>कनेक्शन जाँचें</translation>
     </message>
@@ -9949,12 +11031,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>%2 का उपयोग करके %1 सेट करें? इससे निर्भरताएँ इंस्टॉल हो सकती हैं, सार्वजनिक टनल और DNS रिकॉर्ड बन सकता है तथा ब्रोकर उपयोगकर्ता सेवा शुरू हो सकती है।</translation>
     </message>
     <message>
-        <location line="+13"/>
-        <source>Continue setup in the terminal. When it finishes, return to Machines and refresh to check access.</source>
-        <translation>टर्मिनल में सेटअप जारी रखें। पूरा होने पर मशीनें में वापस आकर पहुँच जाँचने के लिए रीफ़्रेश करें।</translation>
-    </message>
-    <message>
-        <location line="+4"/>
+        <location line="+18"/>
         <source>Pairing security keys</source>
         <translation>युग्मन सुरक्षा कुंजियाँ</translation>
     </message>
@@ -9999,12 +11076,17 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>सुरक्षा-कुंजी पंजीकरण पूरा नहीं हुआ। फिर प्रयास करने से पहले विवरण जाँचें।</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+114"/>
+        <source>← Environments</source>
+        <translation>← पर्यावरण</translation>
+    </message>
+    <message>
+        <location line="+6"/>
         <source>Connection setup</source>
         <translation>कनेक्शन सेटअप</translation>
     </message>
     <message>
-        <location line="+34"/>
+        <location line="+39"/>
         <source>Set up connection</source>
         <translation>कनेक्शन सेट करें</translation>
     </message>
@@ -10014,7 +11096,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>काम हो रहा है…</translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location line="+21"/>
         <source>Could not complete this step. See details for the error; saved setup is preserved.</source>
         <translation>यह चरण पूरा नहीं हो सका। त्रुटि के लिए विवरण देखें; सहेजा सेटअप सुरक्षित है।</translation>
     </message>
@@ -10024,12 +11106,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>प्रबंधित मशीनें लोड नहीं हो सकीं। फिर प्रयास करें या पहले से सेट की गई मशीन से जुड़ने के लिए यह कंप्यूटर कनेक्ट करें चुनें।</translation>
     </message>
     <message>
-        <location line="+17"/>
-        <source>Allowed to receive workflows</source>
-        <translation>वर्कफ़्लो प्राप्त करने की अनुमति है</translation>
-    </message>
-    <message>
-        <location line="+3"/>
+        <location line="+23"/>
         <source>Invitation created</source>
         <translation>निमंत्रण बनाया गया</translation>
     </message>
@@ -10044,7 +11121,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>पहुँच बहाल करने के लिए फिर युग्मित करें</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+13"/>
         <source>Settings</source>
         <translation>सेटिंग्स</translation>
     </message>
@@ -10064,7 +11141,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>यहाँ कंप्यूटर जोड़ें, फिर वर्कफ़्लो शुरू करते समय उसे चुनें।</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+17"/>
         <source>Remote access lock status unavailable: %1</source>
         <translation>दूरस्थ पहुँच की लॉक स्थिति उपलब्ध नहीं है: %1</translation>
     </message>
@@ -10177,12 +11254,7 @@ Approve only if you can verify it on that machine.</source>
 केवल उस मशीन पर सत्यापित कर सकने पर ही स्वीकृत करें।</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <source>%1 is paired. On that computer, choose Start worker service to receive workflows.</source>
-        <translation>%1 युग्मित है। उस कंप्यूटर पर वर्कफ़्लो प्राप्त करने के लिए वर्कर सेवा शुरू करें चुनें।</translation>
-    </message>
-    <message>
-        <location line="+1"/>
+        <location line="+10"/>
         <source>Request from %1 denied.</source>
         <translation>%1 का अनुरोध अस्वीकार किया गया।</translation>
     </message>
@@ -10313,12 +11385,27 @@ The provider is configured on the managing computer.</source>
         <translation>इस ब्रोकर के लिए वर्कर कॉन्फ़िगर है; कनेक्टिविटी सत्यापित नहीं है</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+8"/>
+        <source>Pairing · %1</source>
+        <translation>ज़ाइलिंग · %1</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Unknown</source>
+        <translation>अज्ञात</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Machine fingerprint · %1…</source>
+        <translation>मशीन उंगलियों के निशान · %1 ...</translation>
+    </message>
+    <message>
+        <location line="+3"/>
         <source>Access relationship: %1</source>
         <translation>पहुँच संबंध: %1</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+52"/>
         <source>Managed machine inventory is unavailable. Refresh to check access.</source>
         <translation>प्रबंधित मशीनों की सूची उपलब्ध नहीं है। पहुँच जाँचने के लिए रीफ़्रेश करें।</translation>
     </message>
@@ -10348,22 +11435,23 @@ The provider is configured on the managing computer.</source>
         <translation>%2 में से %1 मशीनें</translation>
     </message>
     <message>
-        <location line="+23"/>
+        <location line="+21"/>
         <source>%1 settings</source>
         <translation>%1 सेटिंग्स</translation>
     </message>
     <message>
-        <location line="+29"/>
+        <location line="+32"/>
+        <source>Machine fingerprint · %1</source>
+        <translation>मशीन उंगलियों के निशान · %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>%1 · %2
 
-%3
-
-Connection health is not checked here.</source>
+%3</source>
         <translation>%1 · %2
 
-%3
-
-कनेक्शन की स्थिति यहाँ नहीं जाँची जाती।</translation>
+%3 के बारे में</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -10399,6 +11487,56 @@ This machine is no longer in the available inventory.</source>
         <translation>%1
 
 यह मशीन अब उपलब्ध सूची में नहीं है।</translation>
+    </message>
+    <message>
+        <location line="-987"/>
+        <source>Enter a valid remote address starting with https://.</source>
+        <translation>https:// से शुरू होने वाला मान्य दूरस्थ पता दर्ज करें।</translation>
+    </message>
+    <message>
+        <location line="-123"/>
+        <source>In Dockpipe, open connection setup for that computer, select Connect this computer, then enter this address and request pairing.</source>
+        <translation>Dockpipe में, उस कंप्यूटर के लिए कनेक्शन सेटअप खोलें, उस कंप्यूटर से कनेक्ट करें चुनें, फिर इस पते को दर्ज करें और जोड़ने का अनुरोध करें।</translation>
+    </message>
+    <message>
+        <location line="+44"/>
+        <source>Connect a physical FIDO2 security key to this computer before approving. If you have not registered a key, use Register pairing key in connection setup.</source>
+        <translation>स्वीकृति देने से पहले इस कंप्यूटर में एक भौतिक FIDO2 सुरक्षा कुंजी लगाएँ। अगर आपने अभी तक कुंजी पंजीकृत नहीं की है, तो कनेक्शन सेटअप में «युग्मन कुंजी पंजीकृत करें» चुनें।</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>No accessible security key was detected. Plug in your registered key and try again. If it is already connected, check your device permissions.</source>
+        <translation>कोई सुलभ सुरक्षा कुंजी नहीं मिली। अपनी पंजीकृत कुंजी लगाकर फिर से कोशिश करें। अगर कुंजी पहले से लगी है, तो डिवाइस की अनुमतियाँ जाँचें।</translation>
+    </message>
+    <message>
+        <location line="+94"/>
+        <source>The managing computer needs a registered physical FIDO2 security key to approve pairing.</source>
+        <translation>युग्मन की स्वीकृति देने के लिए प्रबंधक कंप्यूटर को एक पंजीकृत भौतिक FIDO2 सुरक्षा कुंजी की ज़रूरत है।</translation>
+    </message>
+    <message>
+        <location line="+32"/>
+        <source>Already paired? Manage access</source>
+        <translation>पहले से ही भुगतान किया गया है? एक्सेस प्रबंधन</translation>
+    </message>
+    <message>
+        <location line="+219"/>
+        <source>Continue setup in the terminal. When it finishes, choose Check connection.</source>
+        <translation>टर्मिनल में स्थापित करना जारी रखें. जब यह समाप्त हो जाता है, तो चेक कनेक्शन का चयन करें.</translation>
+    </message>
+    <message>
+        <location line="+266"/>
+        <source>Broker enrollment is active.</source>
+        <translation>रजिस्ट्रेशन का कार्य सक्रिय है।</translation>
+    </message>
+    <message>
+        <location line="+165"/>
+        <source>%1 is paired. Start the worker on that computer to receive workflows.</source>
+        <translation>%1 का युग्मन हो गया है। वर्कफ़्लो पाने के लिए उस कंप्यूटर पर वर्कर शुरू करें।</translation>
+    </message>
+    <message>
+        <location line="-552"/>
+        <source>Background worker startup requested. Check this computer under Run on from your managing computer.</source>
+        <translation>बैकग्राउंड वर्कर शुरू करने का अनुरोध किया गया। प्रबंधक कंप्यूटर पर “इस पर चलाएँ” में इस कंप्यूटर को देखें।</translation>
     </message>
 </context>
 <context>
@@ -10529,7 +11667,7 @@ This machine is no longer in the available inventory.</source>
 <context>
     <name>SessionManager</name>
     <message>
-        <location filename="../src/execution/infrastructure/SessionManager.cpp" line="+147"/>
+        <location filename="../src/execution/infrastructure/SessionManager.cpp" line="+170"/>
         <location line="+34"/>
         <source>Workflow output exceeded the consumer&apos;s line capacity.</source>
         <translation>वर्कफ़्लो का आउटपुट उपभोक्ता की पंक्ति क्षमता से अधिक हो गया।</translation>
@@ -11261,13 +12399,14 @@ This machine is no longer in the available inventory.</source>
 <context>
     <name>TerminalHub</name>
     <message>
-        <location filename="../src/terminal/application/TerminalHub.cpp" line="+46"/>
-        <location line="+75"/>
+        <location filename="../src/terminal/application/TerminalHub.cpp" line="+48"/>
+        <location line="+48"/>
+        <location line="+57"/>
         <source>Eight terminals are already open. Close one before opening another.</source>
         <translation>आठ टर्मिनल पहले से खुले हैं। दूसरा खोलने से पहले एक बंद करें।</translation>
     </message>
     <message>
-        <location line="-60"/>
+        <location line="-90"/>
         <source>This shell is no longer available. Refresh the shell list and try again.</source>
         <translation>यह शेल अब उपलब्ध नहीं है। शेल सूची रीफ़्रेश करें और पुनः प्रयास करें।</translation>
     </message>
@@ -11282,13 +12421,19 @@ This machine is no longer in the available inventory.</source>
         <translation>कोई होस्ट शेल उपलब्ध नहीं है। Flatpak होस्ट पहुँच जाँचें और शेल सूची रीफ़्रेश करें।</translation>
     </message>
     <message>
-        <location line="+14"/>
-        <location line="+55"/>
+        <location line="+10"/>
+        <location line="+32"/>
+        <location line="+57"/>
         <source>Terminal %1 · %2</source>
         <translation>टर्मिनल %1 · %2</translation>
     </message>
     <message>
-        <location line="+65"/>
+        <location line="-67"/>
+        <source>The container terminal target is unavailable.</source>
+        <translation>कंटेनर टर्मिनल लक्ष्य उपलब्ध नहीं है।</translation>
+    </message>
+    <message>
+        <location line="+132"/>
         <location line="+32"/>
         <source>This terminal session is closed.</source>
         <translation>यह टर्मिनल सत्र बंद है।</translation>
@@ -11833,12 +12978,17 @@ $ आपके अगले कमांड के लिए तैयार</tr
 <context>
     <name>TerminalWidget</name>
     <message>
-        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+84"/>
+        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+92"/>
         <source>Terminal</source>
         <translation>टर्मिनल</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+6"/>
+        <source>Terminal target</source>
+        <translation>टर्मिनल लक्ष्य</translation>
+    </message>
+    <message>
+        <location line="+23"/>
         <source>Shells and sessions</source>
         <translation>शेल और सत्र</translation>
     </message>
@@ -11875,12 +13025,12 @@ $ आपके अगले कमांड के लिए तैयार</tr
     </message>
     <message>
         <location line="+6"/>
-        <location line="+541"/>
+        <location line="+742"/>
         <source>Restart DockPipe to enable desktop transparency. Your desktop must support compositing.</source>
         <translation>डेस्कटॉप पारदर्शिता सक्षम करने के लिए DockPipe फिर शुरू करें। आपके डेस्कटॉप में कंपोज़िटिंग का समर्थन होना चाहिए।</translation>
     </message>
     <message>
-        <location line="-532"/>
+        <location line="-733"/>
         <source>No terminals open</source>
         <translation>कोई टर्मिनल खुला नहीं है</translation>
     </message>
@@ -11911,12 +13061,17 @@ $ आपके अगले कमांड के लिए तैयार</tr
         <translation>स्थापित होस्ट शेल खोजे जा रहे हैं…</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+10"/>
+        <source>The selected terminal target is unavailable.</source>
+        <translation>चयनित टर्मिनल लक्ष्य उपलब्ध नहीं है।</translation>
+    </message>
+    <message>
+        <location line="+27"/>
         <source>Default shell</source>
         <translation>डिफ़ॉल्ट शेल</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+9"/>
         <source>New default shell</source>
         <translation>नया डिफ़ॉल्ट शेल</translation>
     </message>
@@ -11931,7 +13086,40 @@ $ आपके अगले कमांड के लिए तैयार</tr
         <translation>नया %1</translation>
     </message>
     <message>
-        <location line="+116"/>
+        <location line="+135"/>
+        <location line="+3"/>
+        <source>This computer</source>
+        <translation>यह कंप्यूटर</translation>
+    </message>
+    <message>
+        <location line="+30"/>
+        <source>Terminal unavailable</source>
+        <translation>टर्मिनल उपलब्ध नहीं</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Remote access locked</source>
+        <translation>रिमोट एक्सेस लॉक</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+11"/>
+        <location line="+8"/>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <location line="-2"/>
+        <source>%1 · Container</source>
+        <translation>%1 · कंटेनर</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · अनुपलब्ध</translation>
+    </message>
+    <message>
+        <location line="+120"/>
         <source>Choose a terminal…</source>
         <translation>टर्मिनल चुनें…</translation>
     </message>
@@ -12573,12 +13761,12 @@ The file may have changed on disk. Your draft has been kept; refresh before retr
         <translation>शुरू करें</translation>
     </message>
     <message>
-        <location line="+134"/>
+        <location line="+135"/>
         <source>Start</source>
         <translation>शुरू करें</translation>
     </message>
     <message>
-        <location line="+111"/>
+        <location line="+113"/>
         <source>Inputs</source>
         <translation>इनपुट</translation>
     </message>
@@ -13395,7 +14583,7 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
 <context>
     <name>WorkspaceMachineMenu</name>
     <message>
-        <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="+55"/>
+        <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="+62"/>
         <location line="+42"/>
         <source>Follow main machine</source>
         <translation>मुख्य मशीन का अनुसरण करें</translation>
@@ -13424,12 +14612,13 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     </message>
     <message>
         <location line="+2"/>
-        <location line="+36"/>
+        <location line="+40"/>
+        <location line="+22"/>
         <source> · Unavailable</source>
         <translation> · उपलब्ध नहीं है</translation>
     </message>
     <message>
-        <location line="-16"/>
+        <location line="-41"/>
         <source>Unlock remote access…</source>
         <translation>दूरस्थ पहुँच अनलॉक करें…</translation>
     </message>
@@ -13439,12 +14628,22 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
         <translation>कोई दूरस्थ वर्कस्पेस उपलब्ध नहीं है</translation>
     </message>
     <message>
-        <location line="+30"/>
+        <location line="+34"/>
         <source>Containers</source>
         <translation>कंटेनर</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+12"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · अनुपलब्ध</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>%1 · Locked</source>
+        <translation>%1 · बंद</translation>
+    </message>
+    <message>
+        <location line="+4"/>
         <source>Refresh machines</source>
         <translation>मशीनें रीफ़्रेश करें</translation>
     </message>

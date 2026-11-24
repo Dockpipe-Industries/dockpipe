@@ -40,6 +40,7 @@ public:
     bool activate(const QString &path);
     bool addDocument(const QString &path, const QByteArray &originalBytes,
         const QString &text, bool crlf, bool bom);
+    void setReadOnly(bool readOnly);
     bool setWorkflowDocument(const QString &path, QTextDocument *document);
     bool openWorkflow(const QString &path);
     bool renameDocument(const QString &oldPath, const QString &newPath);
@@ -90,4 +91,5 @@ private:
     QString m_workflowPath;
     QPointer<QTextDocument> m_workflowDocument;
     QString m_error;
+    bool m_readOnly = false;
 };

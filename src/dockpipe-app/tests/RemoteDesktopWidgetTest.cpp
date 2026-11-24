@@ -624,13 +624,48 @@ private slots:
         QTest::newRow("current-desktop") << false;
         QTest::newRow("virtual-desktop") << true;
     }
+    void textOnlyProviderAllowsTextInSettings()
+    {
+        RemoteDesktopSettingsDialog dialog({{"clipboard_text", true}, {"clipboard_images", true},
+            {"clipboard_files", true}}, {}, "auto");
+
+        dialog.setProviderRestrictions(false, false, false, true);
+
+        auto *text = dialog.findChild<QCheckBox *>("desktopShareClipboard");
+        QVERIFY(text->isEnabled());
+        QVERIFY(text->isChecked());
+        for (const auto *name : {"desktopShareImages", "desktopShareFiles"}) {
+            auto *option = dialog.findChild<QCheckBox *>(name);
+            QVERIFY(!option->isEnabled());
+            QVERIFY(!option->isChecked());
+        }
+        QVERIFY(dialog.captureOptions().value("clipboard_text").toBool());
+        QVERIFY(!dialog.captureOptions().contains("clipboard_images"));
+        QVERIFY(!dialog.captureOptions().contains("clipboard_files"));
+    }
+
+    void fileClipboardCanBeEnabledIndependentlyOfImages()
+    {
+        RemoteDesktopSettingsDialog dialog({{"clipboard_images", true}, {"clipboard_files", true}}, {}, "auto");
+
+        dialog.setProviderRestrictions(false, false, false, true, false);
+
+        QVERIFY(!dialog.findChild<QCheckBox *>("desktopShareImages")->isEnabled());
+        auto *files = dialog.findChild<QCheckBox *>("desktopShareFiles");
+        QVERIFY(files->isEnabled());
+        QVERIFY(files->isChecked());
+        QVERIFY(!dialog.captureOptions().contains("clipboard_images"));
+        QVERIFY(dialog.captureOptions().value("clipboard_files").toBool());
+    }
     void clipboardIsControlOnly_data()
     {
         QTest::addColumn<QString>("mode");
         QTest::addColumn<bool>("enabled");
-        QTest::newRow("control-enabled") << QString("control") << true;
-        QTest::newRow("control-disabled") << QString("control") << false;
-        QTest::newRow("view-never-shares") << QString("view") << true;
+        QTest::addColumn<bool>("richUnavailable");
+        QTest::newRow("control-enabled") << QString("control") << true << false;
+        QTest::newRow("control-disabled") << QString("control") << false << false;
+        QTest::newRow("view-never-shares") << QString("view") << true << false;
+        QTest::newRow("control-text-only-provider") << QString("control") << true << true;
     }
     void clipboardIsControlOnly()
     {
@@ -638,10 +673,13 @@ private slots:
             QSKIP("Requires the explicit contained display fixture.");
         QFETCH(QString, mode);
         QFETCH(bool, enabled);
+        QFETCH(bool, richUnavailable);
         qputenv("DOCKPIPE_DISPLAY_CLOSE_FIXTURE", "closed");
         QSettings().setValue("remote/desktopShareClipboard", enabled);
         QSettings().setValue("remote/desktopShareImages", enabled);
         QSettings().setValue("remote/desktopShareFiles", enabled);
+        const auto artifact = catalog().value("provider").toObject().value("artifact").toString();
+        QSettings().setValue("remote/desktopProviderRestrictions/" + artifact + "/richClipboardUnavailable", richUnavailable);
         QTemporaryDir root;
         qputenv("DOCKPIPE_DESKTOP_WIDGET_ROOT", root.path().toUtf8());
         RemoteAccessMonitor access;
@@ -664,8 +702,8 @@ private slots:
         const auto capture = surface->property("captureOptions").toJsonObject();
         QCOMPARE(capture.value("clipboard_text").toBool(), enabled && mode == "control");
         QCOMPARE(capture.contains("clipboard_text"), enabled && mode == "control");
-        QCOMPARE(capture.contains("clipboard_images"), enabled && mode == "control");
-        QCOMPARE(capture.contains("clipboard_files"), enabled && mode == "control");
+        QCOMPARE(capture.contains("clipboard_images"), enabled && mode == "control" && !richUnavailable);
+        QCOMPARE(capture.contains("clipboard_files"), enabled && mode == "control" && !richUnavailable);
         page.disconnectDesktop();
         QTRY_VERIFY(!display->hasPackageSurface());
     }

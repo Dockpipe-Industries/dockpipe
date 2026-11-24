@@ -9,8 +9,11 @@
 #include <QApplication>
 #include <QCheckBox>
 #include <QElapsedTimer>
+#include <QEvent>
+#include <QEventLoop>
 #include <QScrollBar>
 #include <QTabWidget>
+#include <QTextCursor>
 #include <QTextDocument>
 #include <QThread>
 #include <QFile>
@@ -182,10 +185,24 @@ void GitRepositoryConflictTest::changesAvoidHiddenReadsAndPreserveUnchangedRevie
             requests().join(','), review->toPlainText().left(160))));
     const qint64 initialMilliseconds = elapsed.elapsed();
     QCOMPARE(requests(), QStringList({"status", "compare"}));
-    QVERIFY(review->verticalScrollBar()->maximum() > 0);
-    review->verticalScrollBar()->setValue(review->verticalScrollBar()->maximum());
-    const int scroll = review->verticalScrollBar()->value();
-    const int revision = review->document()->revision();
+    const QString reviewedText = review->toPlainText();
+    const QTextCursor selection = review->document()->find(QStringLiteral("initial-content"));
+    QVERIFY(selection.hasSelection());
+    review->setTextCursor(selection);
+
+    // The first diff has just become visible. Apply the posted layout changes
+    // before capturing the settled viewport position used for the refresh check.
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::LayoutRequest);
+    QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+
+    auto *scrollBar = review->verticalScrollBar();
+    const int scrollLimit = scrollBar->maximum();
+    QVERIFY(scrollLimit > 0);
+    scrollBar->setValue(scrollLimit);
+    const int scroll = scrollBar->value();
+    const int viewportHeight = review->viewport()->height();
+    const int selectionStart = selection.selectionStart();
+    const int selectionEnd = selection.selectionEnd();
     auto *branches = widget.findChild<QListWidget *>("gitRepositoryBranches");
     QVERIFY(branches && branches->count() == 2);
     const auto *firstBranch = branches->item(0);
@@ -194,8 +211,14 @@ void GitRepositoryConflictTest::changesAvoidHiddenReadsAndPreserveUnchangedRevie
     QTRY_VERIFY(!widget.busy());
     const qint64 unchangedMilliseconds = elapsed.elapsed();
     QCOMPARE(requests(), QStringList({"status", "compare", "status"}));
-    QCOMPARE(review->document()->revision(), revision);
-    QCOMPARE(review->verticalScrollBar()->value(), scroll);
+    // Syntax highlighting can change the document revision without editing the review.
+    QCOMPARE(review->toPlainText(), reviewedText);
+    QCOMPARE(review->textCursor().selectionStart(), selectionStart);
+    QCOMPARE(review->textCursor().selectionEnd(), selectionEnd);
+    QVERIFY2(scrollBar->value() == scroll, qPrintable(
+        QString("review scroll %1 to %2, limit %3 to %4, viewport height %5 to %6")
+            .arg(scroll).arg(scrollBar->value()).arg(scrollLimit).arg(scrollBar->maximum())
+            .arg(viewportHeight).arg(review->viewport()->height())));
     QCOMPARE(branches->item(0), firstBranch);
     qInfo() << "Git 80-ms CLI fixture: initial status+comparison" << initialMilliseconds
             << "ms; unchanged status preserving review" << unchangedMilliseconds << "ms";
@@ -213,7 +236,7 @@ void GitRepositoryConflictTest::changesAvoidHiddenReadsAndPreserveUnchangedRevie
     widget.refresh();
     QTRY_VERIFY(!widget.busy() && review->toPlainText().contains("updated-content"));
     QCOMPARE(requests(), QStringList({"status", "compare", "status", "stash-list", "status", "compare"}));
-    QVERIFY(review->document()->revision() != revision);
+    QVERIFY(review->toPlainText() != reviewedText);
 
     auto *poll = widget.findChild<QTimer *>("projectGitStatusPoll");
     auto *message = widget.findChild<QLineEdit *>("gitCommitMessage");

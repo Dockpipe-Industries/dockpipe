@@ -4,6 +4,7 @@
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QFormLayout>
+#include <QJsonArray>
 #include <QLabel>
 #include <QVBoxLayout>
 
@@ -88,9 +89,10 @@ RemoteDesktopSettingsDialog::RemoteDesktopSettingsDialog(const QJsonObject &capt
     auto *hint = new QLabel;
     hint->setWordWrap(true);
     const auto updateHint = [this, hint] {
-        hint->setText(m_displaySource->currentData().toString() == "virtual"
+        const auto source = m_displaySource->currentData().toString();
+        hint->setText(source == "virtual"
             ? tr("Virtual desktop uses the selected resolution. Changes apply on the next connection.")
-            : tr("Quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target."));
+            : tr("Desktop, quality and frame rate apply on the next connection. Resolution is a maximum; bitrate is a target."));
     };
     connect(m_displaySource, &QComboBox::currentIndexChanged, this, updateHint);
     updateHint();
@@ -105,8 +107,9 @@ QJsonObject RemoteDesktopSettingsDialog::captureOptions() const
 {
     QJsonObject options{{"quality", m_quality->currentData().toString()},
         {"frame_rate", m_frameRate->currentData().toInt()}};
-    if (m_displaySource->currentData().toString() == "virtual")
-        options.insert("display_source", "virtual");
+    const auto source = m_displaySource->currentData().toString();
+    if (source != "existing")
+        options.insert("display_source", source);
     if (m_shareClipboard->isChecked())
         options.insert("clipboard_text", true);
     if (m_shareImages->isChecked())
@@ -114,6 +117,71 @@ QJsonObject RemoteDesktopSettingsDialog::captureOptions() const
     if (m_shareFiles->isChecked())
         options.insert("clipboard_files", true);
     return options;
+}
+
+void RemoteDesktopSettingsDialog::setPhysicalDisplays(const QJsonArray &displays, const QString &selectedSource)
+{
+    if (displays.isEmpty())
+        return;
+
+    m_displaySource->removeItem(m_displaySource->findData(QStringLiteral("virtual")));
+    int number = 0;
+    for (const auto &value : displays) {
+        const auto display = value.toObject();
+        ++number;
+        const int width = display.value("width").toInt();
+        const int height = display.value("height").toInt();
+        const QString name = display.value("primary").toBool()
+            ? tr("Display %1 · %2×%3 (primary)").arg(number).arg(width).arg(height)
+            : tr("Display %1 · %2×%3").arg(number).arg(width).arg(height);
+        m_displaySource->addItem(name, display.value("source").toString());
+    }
+
+    const int index = m_displaySource->findData(selectedSource);
+    m_displaySource->setCurrentIndex(index < 0 ? 0 : index);
+    m_displaySource->setEnabled(true);
+    m_displaySource->setToolTip({});
+}
+
+void RemoteDesktopSettingsDialog::setProviderRestrictions(
+    bool clipboardUnavailable, bool virtualDesktopUnavailable, bool showLocalCursor)
+{
+    setProviderRestrictions(clipboardUnavailable, virtualDesktopUnavailable, showLocalCursor, false);
+}
+
+void RemoteDesktopSettingsDialog::setProviderRestrictions(
+    bool clipboardUnavailable, bool virtualDesktopUnavailable, bool showLocalCursor, bool richClipboardUnavailable)
+{
+    setProviderRestrictions(clipboardUnavailable, virtualDesktopUnavailable, showLocalCursor,
+        richClipboardUnavailable, richClipboardUnavailable);
+}
+
+void RemoteDesktopSettingsDialog::setProviderRestrictions(bool clipboardUnavailable, bool virtualDesktopUnavailable,
+    bool showLocalCursor, bool clipboardImagesUnavailable, bool clipboardFilesUnavailable)
+{
+    const auto disableClipboardOption = [this](QCheckBox *option) {
+        option->setChecked(false);
+        option->setEnabled(false);
+        option->setToolTip(tr("Clipboard sharing is unavailable on the selected computer."));
+    };
+    if (clipboardUnavailable)
+        disableClipboardOption(m_shareClipboard);
+    if (clipboardUnavailable || clipboardImagesUnavailable)
+        disableClipboardOption(m_shareImages);
+    if (clipboardUnavailable || clipboardFilesUnavailable)
+        disableClipboardOption(m_shareFiles);
+
+    if (virtualDesktopUnavailable) {
+        m_displaySource->setCurrentIndex(0);
+        m_displaySource->setEnabled(false);
+        m_displaySource->setToolTip(tr("The selected computer shares its current desktop."));
+    }
+
+    if (showLocalCursor) {
+        m_hideCursor->setChecked(false);
+        m_hideCursor->setEnabled(false);
+        m_hideCursor->setToolTip(tr("The selected computer's video does not include a cursor."));
+    }
 }
 
 QJsonObject RemoteDesktopSettingsDialog::presentationOptions() const

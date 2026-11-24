@@ -6,12 +6,19 @@
 
 class QCheckBox;
 class QComboBox;
+class QJsonArray;
 
 class DOCKPIPE_LAUNCHER_UI_EXPORT RemoteDesktopSettingsDialog final : public QDialog {
     Q_OBJECT
 public:
     explicit RemoteDesktopSettingsDialog(const QJsonObject &capture,
         const QJsonObject &display, const QString &decoder, QWidget *parent = nullptr);
+    void setProviderRestrictions(bool clipboardUnavailable, bool virtualDesktopUnavailable, bool showLocalCursor);
+    void setProviderRestrictions(bool clipboardUnavailable, bool virtualDesktopUnavailable, bool showLocalCursor,
+        bool richClipboardUnavailable);
+    void setProviderRestrictions(bool clipboardUnavailable, bool virtualDesktopUnavailable, bool showLocalCursor,
+        bool clipboardImagesUnavailable, bool clipboardFilesUnavailable);
+    void setPhysicalDisplays(const QJsonArray &displays, const QString &selectedSource);
     QJsonObject captureOptions() const;
     QJsonObject presentationOptions() const;
     QString decoderMode() const;

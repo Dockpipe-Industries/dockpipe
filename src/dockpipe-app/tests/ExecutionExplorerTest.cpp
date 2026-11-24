@@ -17,6 +17,7 @@
 #include <QLineEdit>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QSettings>
 #include <QTableWidget>
 #include <QTemporaryDir>
 #include <QThread>
@@ -56,8 +57,18 @@ int main(int argc, char **argv)
         return remoteFixture(argc, argv);
 
     QTemporaryDir temporary;
+    if (!temporary.isValid()) {
+        std::fprintf(stderr, "Could not create the execution explorer fixture directory.\n");
+        return 91;
+    }
+
     qputenv("XDG_CONFIG_HOME", temporary.path().toUtf8());
     QApplication app(argc, argv);
+    QCoreApplication::setOrganizationName("DockpipeExecutionExplorerTest");
+    QCoreApplication::setApplicationName("ExecutionExplorerFixture");
+    QSettings::setDefaultFormat(QSettings::IniFormat);
+    QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, temporary.path());
+
     applyDockpipeLauncherTheme(app);
     if (qEnvironmentVariableIsSet("DOCKPIPE_EXPLORER_LIGHT")) {
         QFile base(":/theme/pipeon.qss");

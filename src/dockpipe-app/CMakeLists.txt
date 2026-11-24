@@ -97,6 +97,8 @@ set(DOCKPIPE_APP_SOURCES
     src/observability/presentation/DockerResourceInspector.cpp
     src/observability/presentation/ResourceCanvas.cpp
     src/observability/presentation/ResourceLinkItem.cpp
+    src/environments/infrastructure/EnvironmentDefinitionsClient.cpp
+    src/environments/presentation/EnvironmentsPage.cpp
     src/execution/presentation/ContextRowWidget.cpp
     src/execution/presentation/EditContextDialog.cpp
     src/shell/infrastructure/SetupTerminal.cpp
@@ -120,6 +122,7 @@ set(DOCKPIPE_APP_SOURCES
     src/dashboards/presentation/DashboardRepositoryPanel.cpp
     src/dashboards/presentation/DashboardWorkflowView.cpp
     src/shell/presentation/NotificationBell.cpp
+    src/shell/presentation/WorkspaceNavigationList.cpp
     src/shell/presentation/MainWindow.cpp
     src/shell/presentation/MainWindowRemote.cpp
     src/shell/presentation/MainWindowWorkflows.cpp
@@ -259,6 +262,13 @@ if(BUILD_TESTING AND UNIX)
     set_tests_properties(workflow-workspace PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
     add_test(NAME remote-launcher COMMAND remote-launcher-test)
     set_tests_properties(remote-launcher PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+
+    add_executable(session-notification-test tests/SessionNotificationTest.cpp ${REMOTE_LAUNCHER_UI_TEST_SOURCES})
+    target_include_directories(session-notification-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+    target_link_libraries(session-notification-test PRIVATE Qt6::Widgets Qt6::Network Qt6::Concurrent Qt6::Test)
+    dockpipe_target_desktop_permissions(session-notification-test)
+    add_test(NAME session-notification COMMAND session-notification-test)
+    set_tests_properties(session-notification PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
 endif()
 
 if(BUILD_TESTING)
@@ -364,6 +374,8 @@ set(DOCKPIPE_UI_SOURCES
     src/shared-ui/presentation/WindowCompositor.cpp
     src/files/presentation/FileToolsController.cpp src/files/presentation/FileToolDialog.cpp
     src/files/presentation/FileEditorWorkspace.cpp
+    src/files/infrastructure/PipeLangLanguageClient.cpp
+    src/files/presentation/PipeLangEditorSession.cpp
     src/execution/infrastructure/SessionManager.cpp
     src/workspace-graph/infrastructure/WorkspaceGraphPage.cpp src/workspace-graph/infrastructure/WorkspaceGraphReader.cpp src/workspace-graph/presentation/WorkspaceGraphNode.cpp
     src/workspace-graph/presentation/WorkspaceGraphView.cpp src/workspace-graph/presentation/WorkspaceGraphWidget.cpp src/workspace-graph/presentation/WorkspaceGraphLayout.cpp
@@ -507,7 +519,7 @@ include(cmake/LauncherSDK.cmake)
 if(APPLE)
     target_link_libraries(dockpipe-browser PRIVATE proc)
 endif()
-foreach(browser_host dockpipe-launcher remote-launcher-test workflow-workspace-test)
+foreach(browser_host dockpipe-launcher remote-launcher-test workflow-workspace-test session-notification-test)
     if(TARGET ${browser_host})
         target_link_libraries(${browser_host} PRIVATE dockpipe-browser)
     endif()
@@ -515,6 +527,14 @@ endforeach()
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    add_executable(environments-page-test tests/EnvironmentsPageTest.cpp
+        src/environments/infrastructure/EnvironmentDefinitionsClient.cpp
+        src/environments/presentation/EnvironmentsPage.cpp
+        src/observability/presentation/ResourceCanvas.cpp src/observability/presentation/ResourceLinkItem.cpp)
+    target_link_libraries(environments-page-test PRIVATE dockpipe-launcher-ui Qt6::Widgets Qt6::Test)
+    add_test(NAME environments-page COMMAND environments-page-test)
+    set_tests_properties(environments-page PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+
     qt_add_executable(desktop-permissions-widget-test
         tests/DesktopPermissionsWidgetTest.cpp src/native-desktop/presentation/DesktopPermissionsWidget.h)
     target_include_directories(desktop-permissions-widget-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
@@ -657,6 +677,11 @@ if(BUILD_TESTING)
     set_tests_properties(package-display-identity PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
     add_test(NAME dashboard-page COMMAND dashboard-page-test)
     set_tests_properties(dashboard-page PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 45)
+    if(WIN32)
+        # The offscreen Browser tear-out fixture does not own a D3D surface.
+        set_property(TEST dashboard-page APPEND PROPERTY ENVIRONMENT
+            "QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu")
+    endif()
     add_executable(dashboard-browser-performance-test tests/DashboardBrowserPerformanceTest.cpp
         src/dashboards/presentation/DashboardWidgetFactory.cpp src/dashboards/presentation/DashboardMachineContext.cpp src/dashboards/presentation/DashboardWidgetViews.cpp src/dashboards/presentation/DashboardLogWidget.cpp
         src/observability/presentation/SystemResourceOverview.cpp src/observability/presentation/ExecutionMetricChart.cpp dockpipe-launcher.qrc)
@@ -771,6 +796,20 @@ if(BUILD_TESTING)
     target_link_libraries(file-tools-test PRIVATE dockpipe-launcher-ui Qt6::Test)
     add_test(NAME file-tools COMMAND file-tools-test)
     set_tests_properties(file-tools PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    add_executable(pipelang-editor-test tests/PipeLangEditorTest.cpp
+        src/files/infrastructure/PipeLangLanguageClient.cpp
+        src/files/presentation/PipeLangEditorSession.cpp
+        src/files/presentation/FileEditorWorkspace.cpp
+        src/files/presentation/FileExplorerIcons.cpp
+        src/files/presentation/SourceEditor.cpp
+        src/files/presentation/SourceHighlighter.cpp
+        src/shared-ui/presentation/CanvasIcons.cpp)
+    target_include_directories(pipelang-editor-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+    target_compile_definitions(pipelang-editor-test PRIVATE DOCKPIPE_LAUNCHER_UI_LIBRARY
+        DOCKPIPE_LSP_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/pipelang-protocol-server.js")
+    target_link_libraries(pipelang-editor-test PRIVATE Qt6::Widgets Qt6::Test dockpipe-syntax)
+    add_test(NAME pipelang-editor COMMAND pipelang-editor-test)
+    set_tests_properties(pipelang-editor PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 90)
     add_executable(file-editor-workspace-test tests/FileEditorWorkspaceTest.cpp dockpipe-launcher.qrc)
     target_link_libraries(file-editor-workspace-test PRIVATE dockpipe-launcher-ui Qt6::Test)
     add_test(NAME file-editor-workspace COMMAND file-editor-workspace-test)
@@ -1030,4 +1069,12 @@ if(BUILD_TESTING)
     target_link_libraries(browser-network-host-test PRIVATE dockpipe-browser Qt6::Test)
     add_test(NAME browser-network-host COMMAND browser-network-host-test)
     set_tests_properties(browser-network-host PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(workspace-navigation-test tests/WorkspaceNavigationListTest.cpp src/shell/presentation/WorkspaceNavigationList.cpp)
+    target_link_libraries(workspace-navigation-test PRIVATE Qt6::Widgets Qt6::Test)
+    target_include_directories(workspace-navigation-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+    add_test(NAME workspace-navigation COMMAND workspace-navigation-test)
+    set_tests_properties(workspace-navigation PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
 endif()

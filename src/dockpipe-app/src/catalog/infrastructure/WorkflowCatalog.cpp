@@ -208,6 +208,7 @@ WorkflowCatalogData WorkflowCatalog::discoverCatalog(const QString &hintWorkdir)
         resolver.description = object.value("description").toString();
         resolver.capability = object.value("capability").toString();
         resolver.remoteSetup = object.value("remote_setup").toString();
+        resolver.processSnapshot = object.value("process_snapshot").toBool();
         const auto surface = object.value("surface").toObject();
         if (surface.value("schema").toInt() == 1) {
             resolver.surface.packageRoot = surface.value("package_root").toString();

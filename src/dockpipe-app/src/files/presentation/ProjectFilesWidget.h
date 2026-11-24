@@ -8,6 +8,7 @@
 
 class WorkspaceFileModel;
 class WorkspaceFilesController;
+class QAction;
 class QModelIndex;
 class QTreeView;
 class QPlainTextEdit;
@@ -77,8 +78,13 @@ private:
     void loadFileAsync(const QString &path, bool reload, Completion completion);
     void confirmPathAsync(const QString &path, Completion completion);
     QString explorerPath(const QModelIndex &index) const;
+    bool isRemoteWorkspace() const;
+    QString relativeWorkspacePath(const QString &path) const;
+    QString resolveWorkspacePath(const QString &directory, const QString &path) const;
+    QString parentWorkspacePath(const QString &path) const;
     bool contained(const QString &path) const;
     void showMessage(const QString &message);
+    void setWriteAvailable(bool available);
     void updateTitle();
     void clearFile();
     void updateEditorStatus();
@@ -108,6 +114,13 @@ private:
     QLabel *m_status;
     QWidget *m_controls;
     QWidget *m_fileActions;
+    QToolButton *m_newFile;
+    QToolButton *m_newFolder;
+    QPushButton *m_createFile;
+    QLabel *m_emptyHint;
+    QAction *m_renameFile;
+    QAction *m_saveAllFiles;
+    QAction *m_deleteFile;
     QPushButton *m_openWorkflow;
     QPushButton *m_graphButton;
     QToolButton *m_previewButton;

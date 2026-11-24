@@ -34,6 +34,7 @@ private:
 
     WorkflowMeta m_workflow;
     QMap<QString, QString> m_routedValues;
+    QMap<QString, QString> m_visitedValues;
     QMap<QString, QWidget *> m_editors;
     QVBoxLayout *m_routedPagesHost = nullptr;
     QWidget *m_routedPagesContainer = nullptr;

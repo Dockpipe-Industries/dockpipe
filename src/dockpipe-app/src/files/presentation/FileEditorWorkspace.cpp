@@ -1,6 +1,7 @@
 #include "FileEditorWorkspace.h"
 #include "SourceEditor.h"
 #include "FileExplorerIcons.h"
+#include "PipeLangEditorSession.h"
 #include <QEvent>
 #include <QFileInfo>
 #include <QHash>
@@ -71,10 +72,16 @@ FileEditorWorkspace::FileEditorWorkspace(QStackedWidget *primaryStack,
         secondaryEmpty, "fileTabsSecondary"));
     m_secondary->widget->hide();
     m_active = m_primary.get();
+
+    auto *languageSession = new PipeLangEditorSession(this);
+    languageSession->attachEditor(primaryNormal);
+    languageSession->attachEditor(secondaryNormal);
+    layout->insertWidget(0, languageSession->createControls(this));
 }
 
 FileEditorWorkspace::~FileEditorWorkspace()
 {
+    delete findChild<PipeLangEditorSession *>(QStringLiteral("pipeLangEditorSession"));
     // QObject deletes child documents after C++ members have been destroyed.
     // Retire their callbacks while the record map is still available.
     for (const auto &entry : m_documents) {
@@ -233,6 +240,10 @@ void FileEditorWorkspace::detachDocument(Pane *pane, QTextDocument *textDocument
             emptyDocument = new QTextDocument(this);
             emptyDocument->setDocumentLayout(new QPlainTextDocumentLayout(emptyDocument));
         }
+
+        // Qt can emit cursor changes while replacing the text control's document.
+        // Publish the pane change after both views have detached.
+        const QSignalBlocker blocker(editor);
         editor->setFileDocument(emptyDocument, {});
     }
 }
@@ -248,7 +259,7 @@ void FileEditorWorkspace::showCurrent(Pane *pane)
         return;
     }
     SourceEditor *editor = record->workflow ? pane->workflow : pane->normal;
-    editor->setReadOnly(false);
+    editor->setReadOnly(m_readOnly);
     editor->setFileDocument(record->document, path);
     pane->stack->setCurrentWidget(editor);
     const auto state = pane->views.constFind(path);
@@ -256,6 +267,18 @@ void FileEditorWorkspace::showCurrent(Pane *pane)
         editor->setTextCursor(state->cursor);
         editor->verticalScrollBar()->setValue(state->verticalScroll);
         editor->horizontalScrollBar()->setValue(state->horizontalScroll);
+    }
+}
+
+void FileEditorWorkspace::setReadOnly(bool readOnly)
+{
+    if (m_readOnly == readOnly)
+        return;
+
+    m_readOnly = readOnly;
+    for (auto *pane : {m_primary.get(), m_secondary.get()}) {
+        pane->normal->setReadOnly(readOnly);
+        pane->workflow->setReadOnly(readOnly);
     }
 }
 

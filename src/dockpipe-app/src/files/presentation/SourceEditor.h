@@ -13,6 +13,7 @@ public:
     void setFileDocument(QTextDocument *document, const QString &path);
     void setFileName(const QString &path);
     QString languageName() const;
+    void refreshLanguageDiagnostics();
     void setLineMapping(const QVector<int> &lines);
 protected:
     void resizeEvent(QResizeEvent *event) override;

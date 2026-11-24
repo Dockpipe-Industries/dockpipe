@@ -4,6 +4,7 @@
 #include "DashboardPage.h"
 #include "DashboardWidgetFactory.h"
 #include "DockerObservabilityWidget.h"
+#include "EnvironmentsPage.h"
 #include "ProjectFilesWidget.h"
 #include "ProjectGitClient.h"
 #include "ProjectGitWidget.h"
@@ -26,7 +27,11 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QRegularExpression>
+#include <QSet>
 #include <QStatusBar>
+#include <QStackedWidget>
+#include <QStandardItemModel>
 #include <QTimer>
 
 void MainWindow::setupWorkspaceMachineMenu(QHBoxLayout *layout)
@@ -48,7 +53,15 @@ void MainWindow::setupWorkspaceMachineMenu(QHBoxLayout *layout)
     });
     connect(m_remoteAccess, &RemoteAccessMonitor::changed, this, [this] {
         const bool unlocked = m_remoteAccess->state() == RemoteAccessMonitor::State::Unlocked;
+        if (!unlocked)
+            m_environmentsPage->setMachineCapabilities({});
+        if (!unlocked && m_terminalWidget)
+            m_terminalWidget->setWorkspaceTarget(
+                m_workspaceMachineMenu->currentTarget().isEmpty() ? QJsonObject{}
+                    : QJsonObject{{"target", m_workspaceMachineMenu->currentTarget()}},
+                m_workspaceMachineMenu->currentRoot());
         updateWorkspaceMachineAccess();
+        updateWorkspaceMachineLabels();
         if (unlocked && m_workspaceMachineMenu->catalog().isEmpty())
             refreshWorkspaceMachines();
     });
@@ -64,12 +77,15 @@ void MainWindow::updateWorkspaceMachineAccess()
 {
     const bool unlocked = m_remoteAccess->state() == RemoteAccessMonitor::State::Unlocked;
     for (auto *menu : findChildren<WorkspaceMachineMenu *>()) {
+        menu->setPairedNodes(m_pairedMachines);
         menu->setAccessUnlocked(unlocked);
         if (!menu->property("remoteAccessConnected").toBool()) {
             connect(menu, &WorkspaceMachineMenu::unlockRequested, m_remoteAccess, &RemoteAccessMonitor::unlock);
             menu->setProperty("remoteAccessConnected", true);
         }
     }
+    if (m_terminalWidget && m_workspaceMachineMenu)
+        m_terminalWidget->setMachineTargets(m_pairedMachines, m_workspaceMachineMenu->catalog(), unlocked);
 }
 
 QJsonObject MainWindow::currentSharedMachineCatalog() const
@@ -101,14 +117,18 @@ void MainWindow::refreshWorkspaceMachines()
         }
         const auto catalog = result.value.toArray();
         m_workspaceMachineMenu->setCatalog(catalog);
+        if (m_remoteAccess->state() == RemoteAccessMonitor::State::Unlocked)
+            m_environmentsPage->setMachineCapabilities(catalog);
         if (m_browserWidget)
             m_browserWidget->setMachineCatalog(catalog, m_remoteAccess->state() == RemoteAccessMonitor::State::Unlocked);
         const auto selectedCatalog = currentSharedMachineCatalog();
         m_dockerWidget->setFeatureCatalog(selectedCatalog);
         m_dockerWidget->setEnabled(m_workspaceMachineMenu->currentTarget().isEmpty()
             || selectedCatalog.value("docker_read").toBool());
-        if (m_terminalWidget)
-            m_terminalWidget->updateMachineCatalog(currentSharedMachineCatalog());
+        if (m_terminalWidget && m_remoteAccess->state() == RemoteAccessMonitor::State::Unlocked) {
+            m_terminalWidget->setWorkspaceTarget(currentSharedMachineCatalog(), m_workspaceMachineMenu->currentRoot());
+            refreshTerminalRemoteContainers();
+        }
         if (m_dashboardFactory)
             m_dashboardFactory->setMachineCatalog(catalog);
         for (const auto &page : m_dashboardPages) {
@@ -128,8 +148,47 @@ void MainWindow::updateWorkspaceMachineLabels()
     const QSignalBlocker runBlocker(m_runTarget);
     const QSignalBlocker pickerBlocker(m_pickerTarget);
     m_runTarget->clear();
-    m_runTarget->addItem(m_workspaceMachineMenu->text());
-    m_pickerTarget->setCurrentIndex(0);
+    m_runTarget->addItem(tr("This computer"), QString());
+    for (const auto &node : m_pairedMachines)
+        m_runTarget->addItem(node, node);
+    const auto selectedNode = m_workspaceMachineMenu->currentTarget().value("node").toString();
+    if (m_runTarget->findData(selectedNode) < 0)
+        m_runTarget->addItem(tr("%1 · Unavailable").arg(selectedNode), selectedNode);
+    m_runTarget->setCurrentIndex(m_runTarget->findData(selectedNode));
+
+    const auto selectedDelivery = m_pickerTarget->currentData().toJsonObject();
+    m_pickerTarget->clear();
+    m_pickerTarget->addItem(m_workspaceMachineMenu->text());
+    QSet<QString> deliveryNodes;
+    for (const auto &entry : m_workspaceMachineMenu->catalog()) {
+        const auto catalog = entry.toObject();
+        const auto target = catalog.value("target").toObject();
+        if (!catalog.value("workflow_only").toBool() || target.value("node").toString().isEmpty()
+            || m_remoteAccess->state() != RemoteAccessMonitor::State::Unlocked)
+            continue;
+        deliveryNodes.insert(target.value("node").toString());
+        m_pickerTarget->addItem(target.value("node").toString(), QVariant::fromValue(target));
+    }
+    auto *deliveryModel = qobject_cast<QStandardItemModel *>(m_pickerTarget->model());
+    for (const auto &node : m_pairedMachines) {
+        if (deliveryNodes.contains(node))
+            continue;
+        m_pickerTarget->addItem(tr("%1 · Workflow access unavailable").arg(node));
+        if (deliveryModel)
+            deliveryModel->item(m_pickerTarget->count() - 1)->setEnabled(false);
+    }
+    if (!selectedDelivery.isEmpty()) {
+        const auto data = QVariant::fromValue(selectedDelivery);
+        int index = m_pickerTarget->findData(data);
+        if (index < 0) {
+            m_pickerTarget->addItem(tr("%1 · Unavailable").arg(selectedDelivery.value("node").toString()), data);
+            index = m_pickerTarget->count() - 1;
+            if (deliveryModel)
+                deliveryModel->item(index)->setEnabled(false);
+        }
+        m_pickerTarget->setCurrentIndex(index);
+    }
+    m_pickerTarget->setEnabled(m_pickerTarget->count() > 1);
     updateWorkflowPreview();
     m_workspaceButton->setEnabled(local);
     if (local)
@@ -222,12 +281,13 @@ void MainWindow::chooseWorkspaceMachine(const QJsonObject &target, const QString
         files.fingerprint = target.value("fingerprint").toString();
         files.workerGeneration = target.value("generation").toString();
         files.rootId = root;
+        files.writeGranted = rootGrant.value("files_write").toBool();
     }
     const bool filesAccepted = WorkspaceFilesController::configure(m_projectFiles, files,
         target.isEmpty() ? WorkspaceFilesClient::RemoteDispatch{} : RemoteWorkspaceFilesDispatch::create(m_projectFiles));
     const bool gitAccepted = target.isEmpty()
         ? RemoteGitContext::configureLocal(m_projectGit, m_settings.projectFolder, &error)
-        : RemoteGitContext::configure(m_projectGit, target, root, &error);
+        : RemoteGitContext::configure(m_projectGit, target, root, rootGrant, &error);
     const bool containersAccepted = m_dockerWidget->setFeatureCatalog(catalog, &error);
     if (!filesAccepted || !gitAccepted || !containersAccepted) {
         denyCommit(error);
@@ -252,9 +312,10 @@ void MainWindow::chooseWorkspaceMachine(const QJsonObject &target, const QString
     }
     if (m_terminalWidget) {
         m_terminalWidget->setEnabled(true);
-        m_terminalWidget->setMachineContext(catalog, root);
+        m_terminalWidget->setWorkspaceTarget(catalog, root);
     }
     m_workspaceMachineMenu->setCurrent(target, root);
+    refreshTerminalRemoteContainers();
     m_workspaceButton->setEnabled(target.isEmpty());
     if (target.isEmpty())
         updateBasicPage();
@@ -264,6 +325,41 @@ void MainWindow::chooseWorkspaceMachine(const QJsonObject &target, const QString
     setProperty("workspaceMachineSwitching", false);
     if (m_projectGit->isEnabled())
         m_projectGit->refresh();
+}
+
+void MainWindow::refreshTerminalRemoteContainers()
+{
+    if (!m_terminalWidget || m_stack->currentWidget() != m_terminalWidget
+        || m_remoteAccess->state() != RemoteAccessMonitor::State::Unlocked)
+        return;
+
+    const auto catalog = currentSharedMachineCatalog();
+    const auto target = catalog.value("target").toObject();
+    if (target.isEmpty() || !catalog.value("docker_read").toBool() || !catalog.value("docker_exec").toBool()
+        || catalog.value("terminal_epoch").toString().isEmpty())
+        return;
+
+    const auto request = RemoteFeatureClient::prepareIntent(target, {}, "containers.snapshot", {});
+    RemoteFeatureClient::invoke(m_terminalWidget, request, [this, catalog, target](const auto &result) {
+        if (m_remoteAccess->state() != RemoteAccessMonitor::State::Unlocked || currentSharedMachineCatalog() != catalog)
+            return;
+
+        QMap<QString, QString> containers;
+        const auto snapshot = result.value.toObject();
+        const auto rows = snapshot.value("containers").toArray();
+        if (result.outcome == RemoteFeatureClient::Outcome::Success && snapshot.value("available").toBool()
+            && rows.size() <= 256) {
+            static const QRegularExpression fullId(QStringLiteral("\\A[0-9a-f]{64}\\z"));
+            for (const auto &entry : rows) {
+                const auto row = entry.toObject();
+                const auto id = row.value("ID").toString();
+                const auto name = row.value("Names").toString();
+                if (row.value("State") == "running" && fullId.match(id).hasMatch() && !name.isEmpty())
+                    containers.insert(id, name);
+            }
+        }
+        m_terminalWidget->setRemoteContainers(catalog, containers);
+    });
 }
 
 void MainWindow::openRemoteContainerExec(const QJsonObject &catalog, const QString &container, const QString &shell)

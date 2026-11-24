@@ -622,6 +622,10 @@ That folder is passed to Dockpipe as `--workdir`.
   **Configure**; double-click and keyboard activation also launch the selected app.
   **View → Icon grid / Compact list** changes presentation. Empty workspaces link directly to
   the package manager. **Refresh** or **F5** reloads the catalog.
+  Declared nonsecret typed input selections use CLI `--var` overrides so workflow defaults cannot
+  replace a saved selection or an explicitly cleared value. Imported VS Code inputs retain
+  their exact-value `--env` transport, as do extra environment entries. Sensitive inputs remain
+  transient process environment values.
 - **Workflows** shows the complete project catalog, a **Run on** machine selector, and run output.
   Right-click a workflow for additional actions.
 - **Containers** shows containers, networks, and volumes on a resource canvas and

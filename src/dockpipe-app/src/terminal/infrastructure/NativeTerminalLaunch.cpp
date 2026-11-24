@@ -192,6 +192,11 @@ NativeTerminalLaunch::Snapshot NativeTerminalLaunch::resolve(const QString &dire
         return snapshot;
     }
     QProcessEnvironment environment = snapshot.host ? QProcessEnvironment() : QProcessEnvironment::systemEnvironment();
+#ifdef Q_OS_WIN
+    // The Windows environment can contain a =:: pseudo-variable alongside
+    // per-drive directories. Only the drive entries belong in a terminal snapshot.
+    environment.remove(QStringLiteral("=::"));
+#endif
     environment.insert(QStringLiteral("TERM"), QStringLiteral("xterm-256color"));
     environment.insert(QStringLiteral("COLORTERM"), QStringLiteral("truecolor"));
     for (auto entry = overrides.begin(); entry != overrides.end(); ++entry)

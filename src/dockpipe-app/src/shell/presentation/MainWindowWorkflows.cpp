@@ -9,6 +9,7 @@
 #include "CanvasPanel.h"
 #include "ActivityWidget.h"
 #include "ExecutionExplorer.h"
+#include "RemoteAccessMonitor.h"
 #include "RemoteCommand.h"
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -334,12 +335,9 @@ void MainWindow::setupWorkflowPicker()
     m_pickerTarget->setObjectName("workflowPickerTarget");
     m_pickerTarget->setAccessibleName(tr("Run on"));
     m_pickerTarget->setEnabled(false);
-    m_pickerTarget->setToolTip(tr("Choose the computer with the shared machine selector."));
-    m_pickerTarget->setModel(m_runTarget->model());
-    m_pickerTarget->setCurrentIndex(m_runTarget->currentIndex());
-    connect(m_pickerTarget, &QComboBox::activated, this, [this](int index) {
-        m_runTarget->setCurrentIndex(index);
-    });
+    m_pickerTarget->setToolTip(tr("Use the shared machine or choose a worker for this workflow."));
+    m_pickerTarget->addItem(m_runTarget->currentText());
+    connect(m_pickerTarget, &QComboBox::currentIndexChanged, this, &MainWindow::updateWorkflowPreview);
     previewLayout->addWidget(m_pickerTarget);
     browser->addWidget(previewPanel);
     browser->setStretchFactor(0, 1);
@@ -397,6 +395,10 @@ void MainWindow::setupWorkflowPicker()
 
 void MainWindow::openWorkflowPicker()
 {
+    m_pickerTarget->setCurrentIndex(0);
+    updateWorkspaceMachineLabels();
+    if (m_remoteAccess->state() == RemoteAccessMonitor::State::Unlocked)
+        refreshWorkspaceMachines();
     startWorkflowCatalogDiscovery();
     updateWorkflowPreview();
     m_search->setFocus();
@@ -536,17 +538,22 @@ void MainWindow::updateWorkflowPreview()
         return;
     const Context *selected = currentAdvancedDisplayContext();
     bool unavailable = property("workspaceMachineCommitFailed").toBool();
-    if (m_workspaceMachineMenu && !m_workspaceMachineMenu->currentTarget().isEmpty()) {
+    if (m_workspaceMachineMenu) {
+        const auto delivery = m_pickerTarget->currentData().toJsonObject();
+        const auto target = delivery.isEmpty() ? m_workspaceMachineMenu->currentTarget() : delivery;
+        const auto root = delivery.isEmpty() ? m_workspaceMachineMenu->currentRoot() : QString();
         bool present = false;
+        if (!delivery.isEmpty())
+            unavailable = m_remoteAccess->state() != RemoteAccessMonitor::State::Unlocked;
         for (const auto &entry : m_workspaceMachineMenu->catalog()) {
             const auto catalog = entry.toObject();
-            if (catalog.value("target").toObject() != m_workspaceMachineMenu->currentTarget())
+            if (catalog.value("target").toObject() != target)
                 continue;
-            present = m_workspaceMachineMenu->currentRoot().isEmpty();
+            present = root.isEmpty();
             for (const auto &grant : catalog.value("roots").toArray())
-                present = present || grant.toObject().value("id").toString() == m_workspaceMachineMenu->currentRoot();
+                present = present || grant.toObject().value("id").toString() == root;
         }
-        unavailable = unavailable || !present;
+        unavailable = unavailable || (!target.isEmpty() && !present);
     }
     m_pickerRun->setEnabled(selected && !unavailable && !m_advancedDiscoveryLoading);
     const WorkflowMeta selectedMeta = selected
@@ -580,7 +587,7 @@ void MainWindow::updateWorkflowPreview()
     text += "<p><b>" + tr("Workspace") + "</b><br>" + selected->workdir.toHtmlEscaped() + "</p>";
     text += "<p>" + tr("The selected computer needs the tools and platform required by this workflow.") + "</p>";
     if (unavailable)
-        text += "<p><b>" + tr("This run target is unavailable. Choose another computer or reconnect it in Machines.") + "</b></p>";
+        text += "<p><b>" + tr("This run target is unavailable. Choose another computer or reconnect it in Environments.") + "</b></p>";
     m_workflowPreview->setText(text);
 }
 
@@ -591,7 +598,9 @@ void MainWindow::runPickedWorkflow()
         return;
     const Context context = *selected;
     m_pickerRun->setEnabled(false);
-    if (launchWorkflow(context))
+    const auto delivery = m_pickerTarget->currentData().toJsonObject();
+    const bool started = delivery.isEmpty() ? launchWorkflow(context) : launchWorkflow(context, delivery, {});
+    if (started)
         m_workflowPicker->accept();
     updateWorkflowPreview();
 }

@@ -1,5 +1,6 @@
 #include "TerminalHub.h"
 #include "ManagedTerminalSession.h"
+#include "DockpipeChoices.h"
 #include "NativeTerminalLaunch.h"
 #include "RemoteTerminalSession.h"
 #include "TerminalShellCatalog.h"
@@ -9,6 +10,7 @@
 #include <QDir>
 #include <QUuid>
 #include <QPointer>
+#include <QRegularExpression>
 
 namespace {
 constexpr qsizetype outputLimit = 256 * 1024;
@@ -73,14 +75,51 @@ QString TerminalHub::createSession(const QString &workdir, const QString &shellP
     if (shellProfileId.isEmpty() && !profiles.isEmpty())
         selected = profiles.first();
 #endif
+    const QString directory = workdir.isEmpty() ? QDir::homePath() : workdir;
+    auto title = tr("Terminal %1 · %2").arg(m_nextTitle++).arg(QDir::toNativeSeparators(directory));
+    if (!selected.label.isEmpty())
+        title = selected.label + QStringLiteral(" · ") + title;
+    QStringList arguments = selected.arguments;
+    if (!selected.workingDirectoryArgument.isEmpty()) {
+        arguments.prepend(QDir::toNativeSeparators(directory));
+        arguments.prepend(selected.workingDirectoryArgument);
+    }
+    const auto profile = NativeTerminalLaunch::resolve(workdir, selected.program, arguments, selected.environment,
+        m_launchContext, selected.id.isEmpty() ? QStringLiteral("native-default") : selected.id);
+    return createLocalSession(profile, title, {});
+}
+
+QString TerminalHub::createLocalContainerSession(const QString &container, const QString &name, const QString &shell)
+{
+    m_creationError.clear();
+    if (m_sessions.size() + m_closingSessions.size() >= sessionLimit) {
+        m_creationError = tr("Eight terminals are already open. Close one before opening another.");
+        return {};
+    }
+    static const QRegularExpression fullId(QStringLiteral("\\A[0-9a-f]{64}\\z"));
+    if (!fullId.match(container).hasMatch() || (shell != "/bin/sh" && shell != "/bin/bash")) {
+        m_creationError = tr("The container terminal target is unavailable.");
+        return {};
+    }
+    const auto binary = DockpipeChoices::operatorDockpipeBinary(&m_creationError);
+    if (binary.isEmpty())
+        return {};
+
+    const auto profile = NativeTerminalLaunch::resolve({}, binary,
+        {"containers", "exec", "--container", container, "--shell", shell}, {},
+        TerminalLaunchContext::Local, QStringLiteral("container-terminal"));
+    const auto title = tr("Terminal %1 · %2").arg(m_nextTitle++).arg(name);
+    return createLocalSession(profile, title, "container:" + container + ":" + shell);
+}
+
+QString TerminalHub::createLocalSession(const NativeTerminalLaunch::Snapshot &profile, const QString &title, const QString &root)
+{
     const QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
     auto *session = new ManagedTerminalSession(this);
     Entry entry;
     entry.session = session;
-    const QString directory = workdir.isEmpty() ? QDir::homePath() : workdir;
-    entry.title = tr("Terminal %1 · %2").arg(m_nextTitle++).arg(QDir::toNativeSeparators(directory));
-    if (!selected.label.isEmpty())
-        entry.title = selected.label + QStringLiteral(" · ") + entry.title;
+    entry.title = title;
+    entry.root = root;
     m_sessions.insert(id, entry);
     m_order.append(id);
     connect(session, &ManagedTerminalSession::output, this, [this, id](const QByteArray &bytes, quint64 cursor, bool truncated) {
@@ -96,13 +135,6 @@ QString TerminalHub::createSession(const QString &workdir, const QString &shellP
         emit outputAvailable(id);
     });
     connect(session, &ManagedTerminalSession::stateChanged, this, &TerminalHub::sessionsChanged);
-    QStringList arguments = selected.arguments;
-    if (!selected.workingDirectoryArgument.isEmpty()) {
-        arguments.prepend(QDir::toNativeSeparators(directory));
-        arguments.prepend(selected.workingDirectoryArgument);
-    }
-    const auto profile = NativeTerminalLaunch::resolve(workdir, selected.program, arguments, selected.environment,
-        m_launchContext, selected.id.isEmpty() ? QStringLiteral("native-default") : selected.id);
     if (!session->start(profile)) {
         m_creationError = session->error();
         m_sessions.remove(id);
@@ -171,7 +203,7 @@ QStringList TerminalHub::sessionIds(const QJsonObject &catalog, const QString &r
     for (const auto &id : m_order) {
         const auto &entry = m_sessions[id];
         if (catalog.isEmpty()) {
-            if (entry.catalog.isEmpty())
+            if (entry.catalog.isEmpty() && entry.root == root)
                 result.append(id);
         } else if (entry.catalog.value("target") == catalog.value("target")
                    && entry.root == root) {

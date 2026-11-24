@@ -2,6 +2,8 @@
 
 #include <QWidget>
 #include <QJsonObject>
+#include <QJsonArray>
+#include <QMap>
 #include <QPointer>
 #include <QStringList>
 
@@ -25,6 +27,11 @@ public:
     bool setMachineContext(const QJsonObject &catalog, const QString &root, QString *error = nullptr);
     bool setContainerContext(const QJsonObject &catalog, const QString &container, const QString &shell, QString *error = nullptr);
     void updateMachineCatalog(const QJsonObject &catalog);
+    void setWorkspaceTarget(const QJsonObject &catalog, const QString &root);
+    void setMachineTargets(const QStringList &paired, const QJsonArray &catalog, bool unlocked);
+    void setEnvironmentContainers(const QMap<QString, QString> &containers);
+    void setRemoteContainers(const QJsonObject &catalog, const QMap<QString, QString> &containers);
+    bool openEnvironmentContainer(const QString &container);
     QString sessionId() const { return m_sessionId; }
 
 public slots:
@@ -48,6 +55,10 @@ private:
     bool setTerminalContext(const QJsonObject &catalog, const QString &root, const QString &container, const QString &shell, QString *error);
     void refreshSessions();
     void refreshShells();
+    void refreshTargets();
+    void selectTarget(const QString &target);
+    bool explicitTargetAvailable() const;
+    void updateNewTargetTerminal();
     void createTerminal(const QString &shellProfileId = {});
     void selectSession(const QString &id);
     void ensureRenderer();
@@ -72,6 +83,19 @@ private:
     QString m_machineRoot;
     QString m_containerId;
     QString m_containerShell;
+    QString m_containerName;
+    QString m_targetLabel;
+    QComboBox *m_targets = nullptr;
+    QString m_target;
+    QJsonObject m_workspaceCatalog;
+    QString m_workspaceRoot;
+    QStringList m_pairedMachines;
+    QJsonArray m_machineTargetsCatalog;
+    bool m_machineTargetsUnlocked = false;
+    QMap<QString, QPair<QJsonObject, QString>> m_hostTargets;
+    QMap<QString, QString> m_environmentContainers;
+    QJsonObject m_remoteContainerCatalog;
+    QMap<QString, QString> m_remoteContainers;
     QString m_sessionId;
     QComboBox *m_sessions;
     QComboBox *m_shells;

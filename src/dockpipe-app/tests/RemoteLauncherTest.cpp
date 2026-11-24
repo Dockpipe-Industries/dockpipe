@@ -209,11 +209,19 @@ int main(int argc, char **argv)
         return 1;
     script.write(R"SH(#!/bin/sh
 case "$1:$2" in
+--workflow:editor)
+  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/declared-input-arguments" ;;
 --workflow:notification-success)
   echo 'Notification fixture completed.' ;;
 --workflow:notification-failure)
   echo 'Notification fixture failed.'
   exit 7 ;;
+terminal:--stdio)
+  if [ -z "$DOCKPIPE_STUDIO_TEST_CLI" ]; then
+    echo 'The managed terminal fixture requires an explicit trusted core CLI.' >&2
+    exit 2
+  fi
+  exec "$DOCKPIPE_STUDIO_TEST_CLI" "$@" ;;
 containers:exec)
   if [ -n "$DOCKPIPE_STUDIO_TEST_CLI" ]; then
     exec "$DOCKPIPE_STUDIO_TEST_CLI" "$@"
@@ -326,7 +334,7 @@ DOCKER_SNAPSHOT
     *) echo 'Fixture start rejected' >&2; exit 1 ;;
   esac ;;
 catalog:list)
-  printf '{"workflows":[{"workflow_id":"build","display_name":"Build project","description":"Compile and verify the project","config_path":"%s/work/config.yml"},{"workflow_id":"editor","display_name":"Project editor","category":"app","inputs":[{"field_name":"text","env_name":"DOCKPIPE_VSCODE_INPUT_TEXT","type":"string"},{"field_name":"empty","env_name":"DOCKPIPE_VSCODE_INPUT_EMPTY","type":"string"},{"field_name":"password","env_name":"DOCKPIPE_VSCODE_INPUT_SECRET","type":"string","attributes":{"password":"true","secret":"true"}}]},{"workflow_id":"vscode-noinputs","display_name":"No input launch","category":"app","source":"vscode","source_kind":"launch","source_path":".vscode/launch.json","cloneable":true}],"runtimes":["host"],"resolver_details":[{"name":"example.tunnel","title":"Example Tunnel","version":"1.2.0","capability":"remote.edge","remote_setup":"local"},{"name":"example.hosted","title":"Example Hosted","version":"2.0.0","capability":"remote.broker","remote_setup":"hosted"},{"name":"unrelated.tool","capability":"editor"}]}\n' "$DOCKPIPE_TEST_ROOT" ;;
+  printf '{"workflows":[{"workflow_id":"build","display_name":"Build project","description":"Compile and verify the project","config_path":"%s/work/config.yml"},{"workflow_id":"editor","display_name":"Project editor","category":"app","inputs":[{"field_name":"text","env_name":"DOCKPIPE_VSCODE_INPUT_TEXT","type":"string"},{"field_name":"empty","env_name":"DOCKPIPE_VSCODE_INPUT_EMPTY","type":"string"},{"field_name":"Storage","children":[{"field_name":"Mode","env_name":"FIXTURE_MODE","type":"string","default_value":"ephemeral"},{"field_name":"Clear","env_name":"FIXTURE_CLEAR","type":"string","default_value":"declared-default"}]},{"field_name":"password","env_name":"DOCKPIPE_VSCODE_INPUT_SECRET","type":"string","attributes":{"password":"true","secret":"true"}}]},{"workflow_id":"vscode-noinputs","display_name":"No input launch","category":"app","source":"vscode","source_kind":"launch","source_path":".vscode/launch.json","cloneable":true}],"runtimes":["host"],"resolver_details":[{"name":"example.tunnel","title":"Example Tunnel","version":"1.2.0","capability":"remote.edge","remote_setup":"local"},{"name":"example.hosted","title":"Example Hosted","version":"2.0.0","capability":"remote.broker","remote_setup":"hosted"},{"name":"unrelated.tool","capability":"editor"}]}\n' "$DOCKPIPE_TEST_ROOT" ;;
 remote:info)
   if [ -f "$DOCKPIPE_TEST_ROOT/stale-service" ]; then
     echo '{"broker":{"mode":"local","endpoint":"https://remote.example.com","service":{"state":"update-required"}}}'
@@ -388,6 +396,10 @@ remote:pairing-open)
   echo '{}' ;;
 remote:approve)
   printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/approve-args"
+  if [ -f "$DOCKPIPE_TEST_ROOT/pairing-key-missing" ]; then
+    echo '{"event":"hardware-key-unavailable"}'
+    exit 1
+  fi
   echo '{}' ;;
 remote:pair)
   echo called >> "$DOCKPIPE_TEST_ROOT/pair-calls"
@@ -396,6 +408,8 @@ remote:pair)
   fi
   echo '{"node":"studio","code":"ABCD-1234-5678","status":"pending"}'
   exec sleep 60 ;;
+remote:features-config)
+  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/feature-config-args" ;;
 remote:service)
   printf '%s\n' "$@" >> "$DOCKPIPE_TEST_ROOT/service-calls"
   if [ -f "$DOCKPIPE_TEST_ROOT/service-fails" ]; then
@@ -503,7 +517,9 @@ exec "$@"
     auto *apps = window.findChild<BasicModeWidget *>();
     if (!apps || !apps->findChildren<QTabWidget *>().isEmpty()
         || window.findChildren<DockerObservabilityWidget *>().size() != 1
-        || navigation->count() != 12 || navigation->item(4)->text() != "Containers"
+        || navigation->count() != 12 || navigation->item(3)->text() != "Environments"
+        || navigation->item(3)->data(Qt::UserRole).toInt() != 2
+        || navigation->item(4)->text() != "Containers"
         || navigation->item(5)->text() != "System"
         || navigation->item(8)->text() != "Browser"
         || navigation->item(9)->text() != "Terminal"
@@ -551,25 +567,68 @@ exec "$@"
     navigation->setCurrentRow(9);
     auto *terminalPage = window.findChild<TerminalWidget *>();
     auto *dashboardFactory = window.findChild<DashboardWidgetFactory *>();
-    if (!terminalPage || !dashboardFactory || workspacePages->currentWidget() != terminalPage
-        || !waitUntil([&]() { return dashboardFactory->terminals().sessionIds().size() == 1; }))
-        return 230;
-    const QString firstTerminalSession = dashboardFactory->terminals().sessionIds().first();
-    navigation->setCurrentRow(8);
-    navigation->setCurrentRow(9);
-    if (window.findChild<TerminalWidget *>() != terminalPage || workspacePages->currentWidget() != terminalPage
-        || dashboardFactory->terminals().sessionIds() != QStringList{firstTerminalSession}
-        || terminalPage->sessionId() != firstTerminalSession)
-        return 231;
-    dashboardFactory->terminals().closeSession(firstTerminalSession);
-    if (!waitUntil([&]() {
-        for (auto *session : dashboardFactory->terminals().findChildren<TerminalSession *>()) {
-            if (session->running())
-                return false;
+    const bool containedHostUnavailable = QFileInfo::exists(QStringLiteral("/.flatpak-info"))
+        && qgetenv("DOCKPIPE_TEST_FLATPAK_HOST_NATIVE") == "0";
+    if (containedHostUnavailable) {
+        if (!terminalPage || !dashboardFactory || workspacePages->currentWidget() != terminalPage)
+            return 230;
+        const auto &terminals = dashboardFactory->terminals();
+        const QString error = terminals.creationError();
+        const auto *status = terminalPage->findChild<QLabel *>("terminalStatus");
+        if (!terminals.sessionIds().isEmpty() || !status || status->text() != error
+            || !error.contains(QStringLiteral("host"), Qt::CaseInsensitive)
+            || !error.contains(QStringLiteral("shell"), Qt::CaseInsensitive))
+            return 230;
+        navigation->setCurrentRow(8);
+        navigation->setCurrentRow(9);
+        if (window.findChild<TerminalWidget *>() != terminalPage || workspacePages->currentWidget() != terminalPage)
+            return 231;
+        QElapsedTimer noSessionDeadline;
+        noSessionDeadline.start();
+        while (noSessionDeadline.elapsed() < 500) {
+            QApplication::processEvents();
+            if (!terminals.sessionIds().isEmpty())
+                return 431;
+            QThread::msleep(10);
         }
-        return dashboardFactory->terminals().sessionIds().isEmpty();
-    }))
-        return 431;
+        qInfo() << "Contained SDK fixture verified actionable host-shell refusal without a phantom session";
+    } else {
+        if (!terminalPage || !dashboardFactory || workspacePages->currentWidget() != terminalPage
+            || !waitUntil([&]() { return dashboardFactory->terminals().sessionIds().size() == 1; })) {
+            qCritical() << "Terminal navigation fixture failed"
+                        << "page" << bool(terminalPage)
+                        << "factory" << bool(dashboardFactory)
+                        << "current-page-matches" << (workspacePages->currentWidget() == terminalPage);
+            if (dashboardFactory) {
+                const auto &terminals = dashboardFactory->terminals();
+                qCritical() << "Terminal session count" << terminals.sessionIds().size()
+                            << "creation error" << terminals.creationError();
+                for (const QString &id : terminals.sessionIds())
+                    qCritical() << "Terminal fixture session error" << terminals.error(id);
+            }
+            if (terminalPage) {
+                if (const auto *status = terminalPage->findChild<QLabel *>("terminalStatus"))
+                    qCritical() << "Terminal fixture status" << status->text();
+            }
+            return 230;
+        }
+        const QString firstTerminalSession = dashboardFactory->terminals().sessionIds().first();
+        navigation->setCurrentRow(8);
+        navigation->setCurrentRow(9);
+        if (window.findChild<TerminalWidget *>() != terminalPage || workspacePages->currentWidget() != terminalPage
+            || dashboardFactory->terminals().sessionIds() != QStringList{firstTerminalSession}
+            || terminalPage->sessionId() != firstTerminalSession)
+            return 231;
+        dashboardFactory->terminals().closeSession(firstTerminalSession);
+        if (!waitUntil([&]() {
+            for (auto *session : dashboardFactory->terminals().findChildren<TerminalSession *>()) {
+                if (session->running())
+                    return false;
+            }
+            return dashboardFactory->terminals().sessionIds().isEmpty();
+        }))
+            return 431;
+    }
     navigation->setCurrentRow(1);
     navigation->setCurrentRow(8);
     if (workspacePages->currentWidget() != browserPage
@@ -601,7 +660,11 @@ exec "$@"
         auto *text = dialog->findChild<QLineEdit *>("workflowInput_DOCKPIPE_VSCODE_INPUT_TEXT");
         auto *empty = dialog->findChild<QLineEdit *>("workflowInput_DOCKPIPE_VSCODE_INPUT_EMPTY");
         auto *secret = dialog->findChild<QLineEdit *>("workflowInput_DOCKPIPE_VSCODE_INPUT_SECRET");
-        if (text && empty && secret) {
+        auto *mode = dialog->findChild<QLineEdit *>("workflowInput_FIXTURE_MODE");
+        auto *clear = dialog->findChild<QLineEdit *>("workflowInput_FIXTURE_CLEAR");
+        if (text && empty && secret && mode && clear) {
+            mode->setText("persistent");
+            clear->clear();
             text->setText("  exact value  ");
             empty->setText(QString());
             secret->setText("transient fixture secret");
@@ -620,6 +683,8 @@ exec "$@"
     if (configuredClone == clonedStore.contexts.cend()
         || !configuredClone->extraDockpipeEnv.contains("DOCKPIPE_VSCODE_INPUT_TEXT=  exact value  ")
         || !configuredClone->extraDockpipeEnv.contains("DOCKPIPE_VSCODE_INPUT_EMPTY=")
+        || !configuredClone->extraDockpipeEnv.contains("FIXTURE_MODE=persistent")
+        || !configuredClone->extraDockpipeEnv.contains("FIXTURE_CLEAR=")
         || configuredClone->extraDockpipeEnv.join(' ').contains("transient fixture secret")
         || !SessionManager::dockpipeArguments(*configuredClone).contains("DOCKPIPE_VSCODE_INPUT_TEXT=  exact value  ")
         || !SessionManager::dockpipeArguments(*configuredClone).contains("DOCKPIPE_VSCODE_INPUT_EMPTY="))
@@ -951,6 +1016,42 @@ exec "$@"
         std::fprintf(stderr, "Machine discovery failed\n");
         return 3;
     }
+    auto *environments = window.findChild<QWidget *>("environmentsPage");
+    auto *addEnvironment = environments ? button(environments, "Add Environment") : nullptr;
+    if (!addEnvironment || !addEnvironment->isVisible() || remote->isVisible()
+        || window.findChild<QPushButton *>("environmentRemoteAccess"))
+        return 22;
+    QTimer::singleShot(0, &window, [] {
+        auto *picker = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+        if (!picker)
+            return;
+
+        const auto tiles = picker->findChildren<QPushButton *>("environmentTypeTile");
+        const auto remoteTile = std::find_if(tiles.cbegin(), tiles.cend(), [](const auto *tile) {
+            return tile->property("environmentKind").toString() == "machine";
+        });
+        if (tiles.size() == 4 && remoteTile != tiles.cend()) {
+            (*remoteTile)->click();
+            return;
+        }
+
+        picker->reject();
+    });
+    addEnvironment->click();
+    auto *pairingDialog = remote->findChild<QDialog *>("machineSetupDialog");
+    if (!pairingDialog || !pairingDialog->isVisible() || remote->isVisible()
+        || !remote->findChild<QPushButton *>("machinePairingStart")->isVisible())
+        return 22;
+    pairingDialog->reject();
+    if (!environments->isVisible() || remote->isVisible())
+        return 22;
+
+    // Host the standalone management widget for its legacy controls tests.
+    auto *inventory = environments->findChild<QStackedWidget *>(QString(), Qt::FindDirectChildrenOnly);
+    if (!inventory)
+        return 22;
+    inventory->addWidget(remote);
+    inventory->setCurrentWidget(remote);
     auto *remoteLockStatus = remote->findChild<QLabel *>("remoteLockStatus");
     if (!remoteLockStatus || !waitUntil([&]() { return remoteLockStatus->text().contains("Remote access is locked."); }))
         return 246;
@@ -1304,11 +1405,28 @@ exec "$@"
     capture("-add-machine");
     if (!pairingActionVisible(button(remote, "Approve with security key")))
         return 365;
-    QTimer::singleShot(0, []() {
-        if (auto *confirmation = qobject_cast<QMessageBox *>(QApplication::activeModalWidget()))
-            confirmation->button(QMessageBox::Yes)->click();
-    });
-    button(remote, "Approve with security key")->click();
+    const auto approvePairing = [&]() {
+        QTimer::singleShot(0, []() {
+            if (auto *confirmation = qobject_cast<QMessageBox *>(QApplication::activeModalWidget()))
+                confirmation->button(QMessageBox::Yes)->click();
+        });
+        button(remote, "Approve with security key")->click();
+    };
+    QFile pairingKeyMissing(directory.filePath("pairing-key-missing"));
+    if (!pairingKeyMissing.open(QIODevice::WriteOnly))
+        return 612;
+    pairingKeyMissing.close();
+    auto *pairingKeyError = remote->findChild<QLabel *>("machinePairingKeyError");
+    if (!pairingKeyError || !pairingKeyError->isHidden())
+        return 613;
+    approvePairing();
+    if (!waitUntil([&]() { return pairingKeyError->isVisible()
+            && button(remote, "Approve with security key")->isEnabled(); })
+        || pairingSteps->currentIndex() != 2
+        || !pairingKeyError->text().contains("Plug in your registered key"))
+        return 614;
+    pairingKeyMissing.remove();
+    approvePairing();
     if (!waitUntil([&]() { return pairingSteps->currentIndex() == 3 && button(remote, "Check for requests")->isEnabled(); }))
         return 361;
     QFile approveArguments(directory.filePath("approve-args"));
@@ -1321,21 +1439,37 @@ exec "$@"
     button(remote, "Add machine")->click();
     button(remote, "Connect this computer instead")->click();
     auto *connectionRecovery = remote->findChild<QPushButton *>("machineConnectionRecovery");
-    if (!connectionRecovery || connectionRecovery->isChecked() || button(remote, "Start worker service")->isVisible())
+    auto *enableTerminal = remote->findChild<QPushButton *>("machineConnectionEnableTerminal");
+    if (!connectionRecovery || !enableTerminal || connectionRecovery->isChecked()
+        || enableTerminal->isVisible() || button(remote, "Start worker service")->isVisible())
         return 356;
     connectionRecovery->click();
-    if (!button(remote, "Start worker service")->isVisible())
+    if (!enableTerminal->isVisible() || !button(remote, "Start worker service")->isVisible())
         return 357;
     if (button(remote, "Request pairing")->isEnabled())
         return 27;
-    for (auto *edit : remote->findChildren<QLineEdit *>()) {
-        if (edit->placeholderText().startsWith("https://"))
-            edit->setText("https://broker.example.com");
-    }
-    remote->findChild<QCheckBox *>()->setChecked(true);
+    auto *pairingEndpoint = remote->findChild<QLineEdit *>("machinePairingEndpoint");
+    auto *pairingEndpointError = remote->findChild<QLabel *>("machinePairingEndpointError");
+    if (!pairingEndpoint || !pairingEndpointError || !pairingEndpointError->isHidden())
+        return 610;
+
+    auto *allowWorkflows = remote->findChild<QCheckBox *>("machinePairingAllowWorkflows");
+    auto *allowTerminal = remote->findChild<QCheckBox *>("machinePairingAllowTerminal");
+    if (!allowWorkflows || !allowTerminal || allowTerminal->isChecked())
+        return 612;
+    allowWorkflows->setChecked(true);
+    allowTerminal->setChecked(true);
     auto *pair = button(remote, "Request pairing");
+    pairingEndpoint->setText("htttps://broker.example.com");
+    if (pair->isEnabled() || pairingEndpointError->isHidden()
+        || !pairingEndpointError->text().contains("https://")
+        || pairingEndpoint->accessibleDescription() != pairingEndpointError->text())
+        return 611;
+
+    pairingEndpoint->setText("https://broker.example.com");
     auto *cancel = button(remote, "Cancel current operation");
-    if (!waitUntil([&]() { return pair->isEnabled(); }))
+    if (!waitUntil([&]() { return pair->isEnabled(); }) || !pairingEndpointError->isHidden()
+        || !pairingEndpoint->accessibleDescription().isEmpty())
         return 12;
     pair->click();
     auto *code = remote->findChild<QLabel *>("pairingCode");
@@ -1348,7 +1482,7 @@ exec "$@"
         std::fprintf(stderr, "Cancellation left pairing controls busy\n");
         return 5;
     }
-    if (QFile::exists(directory.filePath("service-calls")))
+    if (QFile::exists(directory.filePath("service-calls")) || QFile::exists(directory.filePath("feature-config-args")))
         return 49;
     const auto hasRemoteStatus = [&](const QString &text) {
         for (auto *label : remote->findChildren<QLabel *>()) {
@@ -1362,8 +1496,12 @@ exec "$@"
         return 50;
     approved.close();
     pair->click();
-    if (!waitUntil([&]() { return hasRemoteStatus("Worker service started."); }))
+    if (!waitUntil([&]() { return hasRemoteStatus("Background worker startup requested."); }))
         return 51;
+    QFile terminalGrant(directory.filePath("feature-config-args"));
+    if (!terminalGrant.open(QIODevice::ReadOnly)
+        || terminalGrant.readAll() != "remote\nfeatures-config\n--terminal-home\n--auth\nauto\n")
+        return 613;
     QFile serviceCalls(directory.filePath("service-calls"));
     if (!serviceCalls.open(QIODevice::ReadOnly)
         || serviceCalls.readAll() != "remote\nservice\n--role\nworker\n--auth\nauto\n")
@@ -1383,7 +1521,7 @@ exec "$@"
     pairCalls.close();
     serviceFails.remove();
     button(remote, "Start worker service")->click();
-    if (!waitUntil([&]() { return hasRemoteStatus("Worker service started."); })
+    if (!waitUntil([&]() { return hasRemoteStatus("Background worker startup requested."); })
         || !pairCalls.open(QIODevice::ReadOnly) || pairCalls.readAll() != completedPairCalls)
         return 56;
     navigation->setCurrentRow(2);
@@ -1636,6 +1774,9 @@ exec "$@"
                                                               "remote\nservice\n--role\nbroker\n--replace\n--auth\nauto\n")
         return 64;
     serviceCalls.close();
+    remote->hide();
+    inventory->removeWidget(remote);
+    remote->setParent(&window);
 
     auto *viewMenu = window.findChild<QMenu *>("workspaceViewMenu");
     auto *sidebarToggle = window.findChild<QToolButton *>("toggleSidebarButton");
@@ -2134,5 +2275,31 @@ exec "$@"
     resetDockpipeLauncherThemePreview(app);
     if (const int notificationResult = verifyWorkflowNotifications(window, directory.path(), cli))
         return notificationResult;
+    // Launch through the shell again: catalog metadata must rebuild transient override names.
+    QTimer acceptLaunchInputs;
+    QObject::connect(&acceptLaunchInputs, &QTimer::timeout, &window, [&]() {
+        if (auto *dialog = qobject_cast<WorkflowLaunchDialog *>(QApplication::activeModalWidget())) {
+            acceptLaunchInputs.stop();
+            dialog->accept();
+        }
+    });
+    acceptLaunchInputs.start(10);
+    QMetaObject::invokeMethod(&window, "onBasicLaunch", Qt::DirectConnection, Q_ARG(QString, "editor"));
+    const QString inputArgumentsPath = directory.filePath("declared-input-arguments");
+    if (!waitUntil([&]() { return QFile::exists(inputArgumentsPath); }))
+        return 432;
+    acceptLaunchInputs.stop();
+    QFile inputArguments(inputArgumentsPath);
+    if (!inputArguments.open(QIODevice::ReadOnly))
+        return 433;
+    const QByteArray launchedArguments = inputArguments.readAll();
+    if (!launchedArguments.contains("--var\nFIXTURE_MODE=persistent\n")
+        || !launchedArguments.contains("--var\nFIXTURE_CLEAR=\n")
+        || !launchedArguments.contains("--env\nDOCKPIPE_VSCODE_INPUT_TEXT=  exact value  \n")
+        || launchedArguments.contains("DOCKPIPE_VSCODE_INPUT_SECRET="))
+        return 434;
+    auto *inputSessions = window.findChild<SessionManager *>();
+    if (!inputSessions || !waitUntil([&]() { return !inputSessions->isRunning(configuredClone->id); }))
+        return 435;
     return 0;
 }

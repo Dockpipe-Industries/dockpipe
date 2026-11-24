@@ -58,7 +58,62 @@ private slots:
     void compactPanelOwnsOnlyItsSession();
     void canvasTransparencyAndStacking();
     void shellChoicesPreserveExistingSessions();
+    void unavailableContainerTargetDoesNotFallBackToHost();
+    void pairedTargetsRemainVisibleWithoutTerminalGrants();
 };
+
+void TerminalWidgetTest::unavailableContainerTargetDoesNotFallBackToHost()
+{
+    TerminalHub hub(TerminalLaunchContext::Local);
+    TerminalWidget terminal(hub, {});
+    const QString container(64, QLatin1Char('a'));
+    terminal.setEnvironmentContainers({{container, "codex-cli-test"}});
+
+    auto *targets = terminal.findChild<QComboBox *>("terminalTargets");
+    auto *create = terminal.findChild<QPushButton *>("terminalNew");
+    QVERIFY(targets && create);
+    QCOMPARE(targets->count(), 2);
+    QVERIFY(terminal.openEnvironmentContainer(container));
+    QCOMPARE(targets->currentData().toString(), QString("local:") + container);
+
+    terminal.setEnvironmentContainers({});
+    QCOMPARE(targets->currentData().toString(), QString("local:") + container);
+    QVERIFY(!create->isEnabled());
+    QVERIFY(!terminal.openEnvironmentContainer(container));
+    QVERIFY(hub.sessionIds().isEmpty());
+}
+
+void TerminalWidgetTest::pairedTargetsRemainVisibleWithoutTerminalGrants()
+{
+    TerminalHub hub(TerminalLaunchContext::Local);
+    TerminalWidget terminal(hub, {});
+    const QJsonObject target{{"node", "m6"}, {"fingerprint", QString(64, QLatin1Char('a'))},
+        {"generation", QString(64, QLatin1Char('b'))}};
+    const QJsonObject granted{{"target", target}, {"terminal_epoch", QString(64, QLatin1Char('c'))},
+        {"roots", QJsonArray{
+            QJsonObject{{"id", "project"}, {"name", "Project"}, {"terminal", true}},
+            QJsonObject{{"id", "home"}, {"name", "Home"}, {"terminal", true}}}}};
+    terminal.setMachineTargets({"m6", "win11", "Synology"}, QJsonArray{granted}, true);
+
+    auto *picker = terminal.findChild<QComboBox *>("terminalTargets");
+    QVERIFY(picker);
+    QCOMPARE(picker->count(), 5);
+    const auto enabled = [picker](const QString &text) {
+        const int index = picker->findText(text);
+        return index >= 0 && picker->model()->flags(picker->model()->index(index, 0)).testFlag(Qt::ItemIsEnabled);
+    };
+    QVERIFY(enabled("m6"));
+    QVERIFY(picker->itemData(picker->findText("m6")).toString().endsWith(":home"));
+    QVERIFY(enabled("m6 · Project"));
+    QVERIFY(picker->itemData(picker->findText("m6 · Project")).toString().endsWith(":project"));
+    QVERIFY(picker->findText("win11 · Terminal unavailable") >= 0);
+    QVERIFY(!enabled("win11 · Terminal unavailable"));
+    QVERIFY(picker->findText("Synology · Terminal unavailable") >= 0);
+    QVERIFY(!enabled("Synology · Terminal unavailable"));
+    terminal.setMachineTargets({"m6", "win11", "Synology"}, QJsonArray{granted}, false);
+    QVERIFY(picker->findText("m6 · Remote access locked") >= 0);
+    QVERIFY(!enabled("m6 · Remote access locked"));
+}
 
 void TerminalWidgetTest::firstRendererKeepsHostWindow()
 {

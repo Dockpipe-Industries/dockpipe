@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Context.h"
+#include "SessionLaunchOptions.h"
 #include "LauncherUiExport.h"
 
 #include <QHash>
@@ -22,6 +23,7 @@ struct SessionInfo {
     QString errorString;
     bool ready = false;
     bool stopRequested = false;
+    bool notifyWorkflowOutcome = true;
 };
 
 class DOCKPIPE_LAUNCHER_UI_EXPORT SessionManager : public QObject {
@@ -35,11 +37,13 @@ public:
 
     /// Build dockpipe argv (program + args) for a context.
     static QStringList dockpipeArguments(const Context &ctx);
+    static QStringList dockpipeArguments(const Context &ctx, const SessionLaunchOptions &options);
     static QString readinessMarker();
 
     // True admits an asynchronous start. Observe sessionStarted/sessionFailed
     // for the result; false rejects the request before a process is admitted.
     bool launch(const Context &ctx, const QString &logsDir);
+    bool launch(const Context &ctx, const QString &logsDir, const SessionLaunchOptions &options);
     void stop(const QString &contextId);
     void sendInput(const QString &contextId, const QString &text);
 

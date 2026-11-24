@@ -70,7 +70,6 @@ private:
     void applyRemoteSnapshot(const QJsonObject &snapshot);
     MonitoringMachineSelector *m_machine = nullptr;
     QLabel *m_machineLabel = nullptr;
-    bool m_featureMode = false;
     bool m_featureCanControl = false;
     QJsonObject m_featureTarget;
     QJsonObject m_featureCatalog;

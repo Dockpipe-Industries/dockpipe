@@ -41,8 +41,7 @@ bool SessionManager::isReady(const QString &contextId) const
 
 bool SessionManager::isRunning(const QString &contextId) const
 {
-    const QPointer<QProcess> p = m_processes.value(contextId);
-    return p && p->state() != QProcess::NotRunning;
+    return !m_processes.value(contextId).isNull();
 }
 
 QString SessionManager::readinessMarker()
@@ -52,6 +51,18 @@ QString SessionManager::readinessMarker()
 
 QStringList SessionManager::dockpipeArguments(const Context &ctx)
 {
+    return dockpipeArguments(ctx, SessionLaunchOptions{});
+}
+
+QStringList SessionManager::dockpipeArguments(const Context &ctx, const SessionLaunchOptions &options)
+{
+    if (!options.environmentDefinitionFile.isEmpty())
+        return {QStringLiteral("environment"), QStringLiteral("apply"), QStringLiteral("--file"),
+            QDir::toNativeSeparators(options.environmentDefinitionFile)};
+    if (!options.environmentDefinitionName.isEmpty())
+        return {QStringLiteral("environment"), QStringLiteral("apply"), QStringLiteral("--name"),
+            options.environmentDefinitionName};
+
     QStringList args;
     if (!ctx.workflowFile.isEmpty()) {
         args << QStringLiteral("--workflow-file") << ctx.workflowFile;
@@ -73,17 +84,25 @@ QStringList SessionManager::dockpipeArguments(const Context &ctx)
         const QString t = line.trimmed();
         if (t.isEmpty())
             continue;
-        const QString key = t.section(QLatin1Char('='), 0, 0);
-        args << QStringLiteral("--env") << (key.startsWith("DOCKPIPE_VSCODE_INPUT_") ? line : t);
+        const QString key = t.section(QLatin1Char('='), 0, 0).trimmed();
+        const bool importedInput = key.startsWith("DOCKPIPE_VSCODE_INPUT_");
+        const QString flag = options.workflowInputOverrideNames.contains(key) && !importedInput
+            ? QStringLiteral("--var") : QStringLiteral("--env");
+        args << flag << (importedInput ? line : t);
     }
     return args;
 }
 
 bool SessionManager::launch(const Context &ctx, const QString &logsDir)
 {
+    return launch(ctx, logsDir, SessionLaunchOptions{});
+}
+
+bool SessionManager::launch(const Context &ctx, const QString &logsDir, const SessionLaunchOptions &options)
+{
     if (ctx.workdir.isEmpty())
         return false;
-    if (m_processes.contains(ctx.id) && m_processes[ctx.id] && m_processes[ctx.id]->state() != QProcess::NotRunning)
+    if (isRunning(ctx.id))
         return false;
 
     QString program = ctx.dockpipeBinary.trimmed();
@@ -95,7 +114,7 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
 
     auto *proc = new QProcess(this);
     proc->setProgram(program);
-    proc->setArguments(dockpipeArguments(ctx));
+    proc->setArguments(dockpipeArguments(ctx, options));
     proc->setProcessChannelMode(QProcess::MergedChannels);
 #ifndef Q_OS_WIN
     // stop() sends SIGTERM to -pid, so give each dockpipe launch its own process group.
@@ -117,13 +136,6 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
     proc->setProcessEnvironment(env);
     proc->setWorkingDirectory(wd);
 
-    auto *logFile = new QFile(logPath, proc);
-    if (!logFile->open(QIODevice::WriteOnly | QIODevice::Append)) {
-        delete proc;
-        emit sessionFailed(ctx.id, QStringLiteral("Cannot open log file: ") + logPath);
-        return false;
-    }
-
     SessionInfo si;
     si.contextId = ctx.id;
     si.status = SessionStatus::Starting;
@@ -131,7 +143,18 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
     si.program = program;
     si.arguments = proc->arguments();
     si.ready = false;
+    si.notifyWorkflowOutcome = options.notifyWorkflowOutcome;
     m_info[ctx.id] = si;
+
+    auto *logFile = new QFile(logPath, proc);
+    if (!logFile->open(QIODevice::WriteOnly | QIODevice::Append)) {
+        const QString error = QStringLiteral("Cannot open log file: ") + logPath;
+        m_info[ctx.id].status = SessionStatus::Failed;
+        m_info[ctx.id].errorString = error;
+        delete proc;
+        emit sessionFailed(ctx.id, error);
+        return false;
+    }
 
     std::function<void(bool)> flushOutput = [this, ctx, proc, logFile](bool drainRemainder) {
         // Output signals can synchronously cancel and finish this process.
@@ -291,16 +314,33 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
     });
 
     m_processes[ctx.id] = proc;
-    startupDeadline->start();
-    proc->start();
+    // QProcess can emit startup signals inside start() on Windows.
+    QMetaObject::invokeMethod(proc, [this, id = ctx.id, proc, startupDeadline, complete]() {
+        if (m_info.value(id).stopRequested) {
+            complete(0, QProcess::NormalExit, {});
+            return;
+        }
+
+        startupDeadline->start();
+        proc->start();
+    }, Qt::QueuedConnection);
+
     return true;
 }
 
 void SessionManager::stop(const QString &contextId)
 {
     QPointer<QProcess> proc = m_processes.value(contextId);
-    if (!proc || proc->state() == QProcess::NotRunning || proc->property("sessionStopSent").toBool())
+    if (!proc || proc->property("sessionStopSent").toBool())
         return;
+
+    if (proc->state() == QProcess::NotRunning) {
+        // The queued start owns completion when cancelled before spawning.
+        if (m_info.value(contextId).status == SessionStatus::Starting)
+            m_info[contextId].stopRequested = true;
+        return;
+    }
+
     m_info[contextId].stopRequested = true;
     proc->setProperty("sessionStopSent", true);
     const qint64 pid = proc->processId();

@@ -13,6 +13,7 @@
 #include <QElapsedTimer>
 #include <QFileDialog>
 #include <QFile>
+#include <QFileInfo>
 #include <QLabel>
 #include <QMessageBox>
 #include <QPrintDialog>
@@ -21,6 +22,7 @@
 #include <QMenu>
 #include <QTabBar>
 #include <QSignalSpy>
+#include <QStandardPaths>
 #include <QTreeWidget>
 #include <QListWidget>
 #include <QLineEdit>
@@ -669,19 +671,55 @@ private slots:
     }
 };
 
+static int runBrowserTests(int argc, char **argv, const QString &fixtureName, QString &ownedConfigPath)
+{
+    QApplication app(argc, argv);
+    app.setOrganizationName(QStringLiteral("DockpipeBrowserTest"));
+    app.setApplicationName(fixtureName);
+
+    const QString configPath = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    const QFileInfo config(configPath);
+    if (!QDir::isAbsolutePath(configPath) || config.fileName() != fixtureName
+        || config.exists() || config.isSymLink()) {
+        qCritical("Expected a fresh configuration directory for this browser test invocation.");
+        return 1;
+    }
+    ownedConfigPath = configPath;
+
+    app.setStyle("Fusion");
+    applyDockpipeLauncherTheme(app);
+    BrowserTest tests;
+    return QTest::qExec(&tests, argc, argv);
+}
+
 int main(int argc, char **argv)
 {
     QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
     QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
     QTemporaryDir testStorage;
+    if (!testStorage.isValid())
+        return 1;
+
     qputenv("XDG_DATA_HOME", testStorage.path().toUtf8());
     qputenv("XDG_CACHE_HOME", testStorage.path().toUtf8());
     qputenv("XDG_CONFIG_HOME", testStorage.path().toUtf8());
-    QApplication app(argc, argv);
-    app.setStyle("Fusion");
-    applyDockpipeLauncherTheme(app);
-    BrowserTest tests;
-    return QTest::qExec(&tests, argc, argv);
+#ifdef Q_OS_WIN
+    QStandardPaths::setTestModeEnabled(true);
+#endif
+
+    // Remembered origin permissions must not leak across runs that reuse a port.
+    const QString fixtureName = QStringLiteral("BrowserFixture-") + QFileInfo(testStorage.path()).fileName();
+    QString ownedConfigPath;
+    const int result = runBrowserTests(argc, argv, fixtureName, ownedConfigPath);
+
+    if (!ownedConfigPath.isEmpty()) {
+        const QFileInfo config(ownedConfigPath);
+        if (config.isSymLink() || (config.exists() && (!config.isDir() || !QDir(ownedConfigPath).removeRecursively()))) {
+            qCritical("Could not remove the browser test's configuration directory.");
+            return 1;
+        }
+    }
+    return result;
 }
 
 #include "BrowserTest.moc"

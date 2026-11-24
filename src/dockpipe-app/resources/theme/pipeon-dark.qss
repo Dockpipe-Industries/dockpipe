@@ -655,6 +655,16 @@ QWidget#dockerDashboard QHeaderView::section { background: #141c25; color: #9bac
 QWidget#dockerDashboard QTableWidget#dockerTable::item { border-bottom-color: #26313e; }
 QWidget#dockerDashboard QTableWidget#dockerTable::item:selected { background: #253e51; color: #edf5ff; }
 QWidget#dockerDashboard QTableWidget#dockerTable::item:hover { background: #22303f; }
+QTreeWidget#environmentDefinitionsList, QFrame#environmentInspector { background: #19212b; border: 1px solid #2c3745; }
+QTreeWidget#environmentDefinitionsList { alternate-background-color: #1c2631; }
+QTreeWidget#environmentDefinitionsList QHeaderView::section { background: #141c25; color: #9bacbf; border-bottom: 1px solid #303c4b; }
+QTreeWidget#environmentDefinitionsList::item { padding: 8px 10px; border-bottom: 1px solid #26313e; }
+QTreeWidget#environmentDefinitionsList::item:hover { background: #22303f; }
+QTreeWidget#environmentDefinitionsList::item:selected { background: #253e51; color: #edf5ff; }
+QPushButton#environmentTypeTile { background: #222832; border: 1px solid #333d4b; border-radius: 8px; }
+QPushButton#environmentTypeTile:hover, QPushButton#environmentTypeTile:focus { background: #252e3a; border-color: #528bc5; }
+QPushButton#environmentTypeTile:pressed { background: #263b52; }
+QLabel#environmentTileTitle { color: #edf2fa; font-size: 14px; font-weight: 600; }
 
 QWidget#executionExplorerPage, QWidget#workflowWorkspacePage, QWidget#workflowRunListContents { background: #11171f; }
 QFrame#workflowRunTableCard, QWidget#workflowRunInspector { background: #19212b; border: 1px solid #2c3745; }
@@ -887,16 +897,18 @@ QTabWidget#settingsTabs QTabBar::tab:selected { color: #83d4c0; border-bottom-co
 QTabWidget#settingsTabs QTabBar::tab:hover { color: #e7edf5; }
 QDialog#settingsDialog QLineEdit, QDialog#settingsDialog QComboBox,
 QDialog#settingsDialog QSpinBox, QDialog#terminalSettingsDialog QLineEdit,
-QDialog#terminalSettingsDialog QComboBox, QDialog#terminalSettingsDialog QSpinBox {
+QDialog#terminalSettingsDialog QComboBox, QDialog#terminalSettingsDialog QSpinBox,
+QDialog#environmentVmForm QSpinBox {
     background: #141b24; color: #e7edf5; border: 1px solid #334151; border-radius: 6px; min-height: 24px; padding: 5px 10px;
 }
 QDialog#settingsDialog QComboBox:editable QLineEdit,
 QDialog#terminalSettingsDialog QComboBox:editable QLineEdit { border: none; padding: 0; min-height: 0; }
 QDialog#settingsDialog QSpinBox::up-button, QDialog#settingsDialog QSpinBox::down-button,
-QDialog#terminalSettingsDialog QSpinBox::up-button, QDialog#terminalSettingsDialog QSpinBox::down-button { width: 20px; border: none; }
+QDialog#terminalSettingsDialog QSpinBox::up-button, QDialog#terminalSettingsDialog QSpinBox::down-button,
+QDialog#environmentVmForm QSpinBox::up-button, QDialog#environmentVmForm QSpinBox::down-button { width: 20px; border: none; }
 QDialog#settingsDialog QLineEdit:focus, QDialog#settingsDialog QComboBox:focus,
 QDialog#settingsDialog QSpinBox:focus, QDialog#terminalSettingsDialog QComboBox:focus,
-QDialog#terminalSettingsDialog QSpinBox:focus { border-color: #83d4c0; }
+QDialog#terminalSettingsDialog QSpinBox:focus, QDialog#environmentVmForm QSpinBox:focus { border-color: #83d4c0; }
 QDialog#settingsDialog QCheckBox, QDialog#terminalSettingsDialog QCheckBox { spacing: 8px; min-height: 24px; }
 QDialog#settingsDialog QWidget:disabled, QDialog#terminalSettingsDialog QWidget:disabled { color: #9faec0; }
 QPlainTextEdit#terminalSettingsPreview { border: 1px solid #334151; border-radius: 8px; padding: 10px; }

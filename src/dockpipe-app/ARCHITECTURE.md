@@ -18,6 +18,7 @@ its owning context; add a layer only when there is real code for that role.
 | `execution` | Saved context values, discovery, process lifecycle, activity and launch UI. |
 | `catalog` | Workflow/input metadata values, CLI discovery client and selection UI. |
 | `workflows` | Script-path policy and workflow editor/canvas presentation. |
+| `environments` | Saved definitions, the asynchronous CLI reader, and passive runtime observations for the shared canvas and list. |
 | `dashboards`, `workspace-graph` | Layout state, persistence, graph reading and views. |
 | `files`, `git`, `remote` | CLI/filesystem adapters and their respective views. |
 | `packages`, `host-sdk` | Package integration, native loading and published host contracts. |

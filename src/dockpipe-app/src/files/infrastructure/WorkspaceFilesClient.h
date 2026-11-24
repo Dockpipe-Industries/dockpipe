@@ -1,5 +1,7 @@
 #pragma once
 
+#include "LauncherUiExport.h"
+
 #include <QJsonObject>
 #include <QObject>
 #include <QPointer>
@@ -9,7 +11,7 @@ class QProcess;
 class QTimer;
 
 // Private Files transport. The core owns path, revision and filesystem policy.
-class WorkspaceFilesClient final : public QObject {
+class DOCKPIPE_LAUNCHER_UI_EXPORT WorkspaceFilesClient final : public QObject {
     Q_OBJECT
 public:
     struct Context {
@@ -21,6 +23,8 @@ public:
         QString workerGeneration;
         QString rootId;
         quint64 generation = 0;
+        bool writeGranted = false;
+        bool canWrite() const { return kind == Kind::Local || writeGranted; }
         bool operator==(const Context &other) const;
     };
     enum class Outcome { Success, Cancelled, Failure, Busy };

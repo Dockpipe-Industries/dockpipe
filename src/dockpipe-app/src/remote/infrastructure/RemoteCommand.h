@@ -31,6 +31,7 @@ signals:
     void busyChanged(bool busy);
     void hardwareKeyPrompt(const QJsonObject &prompt);
     void hardwareKeyStatus(const QString &message);
+    void hardwareKeyUnavailable();
 
 private:
     QProcess &process() const;

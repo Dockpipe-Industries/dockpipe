@@ -178,7 +178,27 @@ void SourceEditor::highlightCurrentLine()
     line.format.setProperty(QTextFormat::FullWidthSelection, true);
     line.cursor = textCursor();
     line.cursor.clearSelection();
-    setExtraSelections({line});
+    QList<QTextEdit::ExtraSelection> selections{line};
+    for (const auto &value : document()->property("pipeLangDiagnostics").toList()) {
+        const auto diagnostic = value.toMap();
+        const int start = diagnostic.value("start").toInt();
+        const int end = diagnostic.value("end").toInt();
+        if (start < 0 || end < start || end >= document()->characterCount())
+            continue;
+
+        QTextEdit::ExtraSelection selection;
+        selection.cursor = QTextCursor(document());
+        selection.cursor.setPosition(start);
+        selection.cursor.setPosition(end, QTextCursor::KeepAnchor);
+        if (start == end && end < document()->characterCount() - 1)
+            selection.cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor);
+        selection.format.setUnderlineStyle(QTextCharFormat::WaveUnderline);
+        selection.format.setUnderlineColor(diagnostic.value("severity").toInt() == 1
+            ? QColor(Qt::red) : QColor(180, 120, 0));
+        selection.format.setToolTip(diagnostic.value("message").toString());
+        selections.append(selection);
+    }
+    setExtraSelections(selections);
 }
 
 void SourceEditor::changeEvent(QEvent *event)
@@ -260,4 +280,9 @@ void SourceEditor::keyPressEvent(QKeyEvent *event)
         return;
     }
     QPlainTextEdit::keyPressEvent(event);
+}
+
+void SourceEditor::refreshLanguageDiagnostics()
+{
+    highlightCurrentLine();
 }

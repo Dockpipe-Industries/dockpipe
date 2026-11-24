@@ -129,6 +129,7 @@ struct ResolverMeta {
     QString capability;
     QString remoteSetup;
     PackageSurfaceMeta surface;
+    bool processSnapshot = false;
 };
 
 struct WorkflowCatalogData {

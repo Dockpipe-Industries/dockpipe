@@ -33,20 +33,21 @@ bool canChange(ProjectGitWidget *widget, QString *error)
     return true;
 }
 
-void bindClients(ProjectGitWidget *widget, bool remote, const QJsonObject &target, const QString &root)
+void bindClients(ProjectGitWidget *widget, bool remote, const QJsonObject &target, const QString &root,
+                 const QJsonObject &grant = {})
 {
-    RemoteGitContext::bind(widget, remote, target, root);
+    RemoteGitContext::bind(widget, remote, target, root, grant);
     for (auto *client : widget->findChildren<ProjectGitClient *>())
-        RemoteGitContext::bind(client, remote, target, root);
+        RemoteGitContext::bind(client, remote, target, root, grant);
 }
 }
 
 bool RemoteGitContext::configure(ProjectGitWidget *widget, const QJsonObject &target,
-                                 const QString &root, QString *error)
+                                 const QString &root, const QJsonObject &grant, QString *error)
 {
     if (!canChange(widget, error))
         return false;
-    bindClients(widget, true, target, root);
+    bindClients(widget, true, target, root, grant);
     for (auto *editor : widget->findChildren<ProjectFilesWidget *>()) {
         WorkspaceFilesClient::Context context;
         context.kind = WorkspaceFilesClient::Context::Kind::Remote;
@@ -55,6 +56,7 @@ bool RemoteGitContext::configure(ProjectGitWidget *widget, const QJsonObject &ta
         context.workerGeneration = target.value("generation").toString();
         context.rootId = root;
         context.generation = WorkspaceFilesController::get(editor)->reader->context().generation + 1;
+        context.writeGranted = grant.value("files_write").toBool();
         if (!WorkspaceFilesController::configure(editor, context, RemoteWorkspaceFilesDispatch::create(editor)))
             return false;
     }

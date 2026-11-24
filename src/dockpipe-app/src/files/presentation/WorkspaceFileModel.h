@@ -1,5 +1,6 @@
 #pragma once
 
+#include "LauncherUiExport.h"
 #include "WorkspaceFilesClient.h"
 #include <QAbstractItemModel>
 #include <QHash>
@@ -8,7 +9,7 @@
 #include <vector>
 
 // Lazy metadata supplied exclusively by the shared core Files service.
-class WorkspaceFileModel final : public QAbstractItemModel {
+class DOCKPIPE_LAUNCHER_UI_EXPORT WorkspaceFileModel final : public QAbstractItemModel {
     Q_OBJECT
 public:
     enum Role { RelativePathRole = Qt::UserRole + 1, DirectoryRole, SizeBytesRole };

@@ -15,10 +15,12 @@
 #include <QComboBox>
 #include <QSignalBlocker>
 #include <QDateTime>
+#include <QDir>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QMenu>
 #include <QHeaderView>
 #include <QJsonArray>
@@ -28,6 +30,7 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPlainTextEdit>
+#include <QProcess>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QStackedWidget>
@@ -38,8 +41,44 @@
 #include <QVBoxLayout>
 #include <QShowEvent>
 
+#ifdef Q_OS_WIN
+#include <shlobj.h>
+#endif
+
 namespace {
 enum Page { Overview, Pairing, Connection, Setup };
+constexpr int MachineFingerprintRole = Qt::UserRole + 1;
+
+#ifdef Q_OS_WIN
+QString installedWindowsInputHelper()
+{
+    const SC_HANDLE manager = OpenSCManagerW(nullptr, nullptr, SC_MANAGER_CONNECT);
+    if (!manager)
+        return {};
+
+    const SC_HANDLE service = OpenServiceW(manager, L"DockpipeDesktopInput", SERVICE_QUERY_STATUS);
+    CloseServiceHandle(manager);
+    if (!service)
+        return {};
+
+    SERVICE_STATUS status{};
+    const bool running = QueryServiceStatus(service, &status) && status.dwCurrentState == SERVICE_RUNNING;
+    CloseServiceHandle(service);
+    if (!running)
+        return {};
+
+    PWSTR programs = nullptr;
+    if (FAILED(SHGetKnownFolderPath(FOLDERID_ProgramFilesX64, KF_FLAG_DONT_VERIFY, nullptr, &programs)))
+        return {};
+
+    const QDir root(QDir::fromNativeSeparators(QString::fromWCharArray(programs)));
+    CoTaskMemFree(programs);
+    const QString path = root.filePath(QStringLiteral("Dockpipe Desktop Input/dockpipe-desktop-input-helper.exe"));
+    const QFileInfo helper(path);
+    return helper.isFile() && !helper.isSymLink() && helper.canonicalFilePath().compare(QDir::cleanPath(path), Qt::CaseInsensitive) == 0
+        ? path : QString();
+}
+#endif
 
 QLabel *textLabel(const QString &text, const char *style = "appSubtitle")
 {
@@ -187,6 +226,10 @@ RemoteWidget::RemoteWidget(QWidget *parent)
         if (m_hardwareKeyDialog)
             m_hardwareKeyDialog->showStatus(message);
     });
+    connect(&m_command, &RemoteCommand::hardwareKeyUnavailable, this, [this]() {
+        if (m_pages->currentIndex() == Pairing && m_pairingSteps->currentIndex() == 2)
+            m_pairingKeyError->show();
+    });
     connect(&m_command, &RemoteCommand::busyChanged, this, [this](bool busy) {
         if (!busy && m_hardwareKeyDialog) {
             m_hardwareKeyDialog->accept();
@@ -197,13 +240,14 @@ RemoteWidget::RemoteWidget(QWidget *parent)
     m_pairingTimer = new QTimer(this);
     m_pairingTimer->setInterval(5000);
     connect(m_pairingTimer, &QTimer::timeout, this, [this]() {
-        if (isVisible() && m_pages->currentIndex() == Pairing && !m_command.busy())
+        if ((isVisible() || m_environmentFlow) && m_pages->currentIndex() == Pairing && !m_command.busy())
             refreshPairings();
     });
     m_securityStatusTimer = new QTimer(this);
     m_securityStatusTimer->setInterval(10000);
     connect(m_securityStatusTimer, &QTimer::timeout, this, [this]() {
-        if (isVisible() && m_pages->currentIndex() == Overview)
+        const int page = m_pages->currentIndex();
+        if ((isVisible() && page == Overview) || (m_environmentFlow && page == Setup))
             refreshSecurityStatus();
     });
     updateActions();
@@ -235,6 +279,7 @@ RemoteWidget::RemoteWidget(QWidget *parent)
     m_managementDialog->resize(760, 680);
     auto *setupLayout = new QVBoxLayout(m_managementDialog);
     setupLayout->setContentsMargins(0, 0, 0, 0);
+    connect(m_managementDialog, &QDialog::finished, this, &RemoteWidget::finishEnvironmentFlow);
 
     auto *workspaceLayout = new QVBoxLayout(this);
     workspaceLayout->setContentsMargins(0, 0, 0, 0);
@@ -305,6 +350,7 @@ QWidget *RemoteWidget::buildOverview()
 {
     auto *page = new QWidget;
     auto *layout = pageLayout(page);
+    m_overviewLayout = layout;
     page->setObjectName(QStringLiteral("machinesOverview"));
     auto *actions = new QHBoxLayout;
     auto *add = actionButton(tr("Add machine"), actions, "primaryButton");
@@ -319,6 +365,7 @@ QWidget *RemoteWidget::buildOverview()
     layout->addLayout(actions);
 
     auto *connectionCard = new QFrame;
+    m_connectionCard = connectionCard;
     connectionCard->setObjectName(QStringLiteral("machinesConnectionCard"));
     auto *connectionLayout = new QVBoxLayout(connectionCard);
     connectionLayout->setContentsMargins(16, 14, 16, 14);
@@ -504,7 +551,10 @@ QWidget *RemoteWidget::buildOverview()
     connectionLayout->addLayout(setupActions);
     layout->addWidget(connectionCard);
     connectionCard->hide();
-    connect(m_connectionSettings, &QPushButton::toggled, connectionCard, &QWidget::setVisible);
+    connect(m_connectionSettings, &QPushButton::toggled, connectionCard, [this](bool expanded) {
+        m_connectionCard->setVisible(m_environmentFlow || expanded);
+    });
+    m_openProviderSetup = setup;
     return page;
 }
 
@@ -517,7 +567,7 @@ QWidget *RemoteWidget::buildPairing()
     auto *back = new QPushButton(tr("← Machines"));
     m_pairingBack = back;
     back->setObjectName("quietButton");
-    connect(back, &QPushButton::clicked, this, [this]() { showPage(Overview); });
+    connect(back, &QPushButton::clicked, this, &RemoteWidget::leaveManagementPage);
     layout->addWidget(back, 0, Qt::AlignLeft);
     m_pairingTitle = textLabel(tr("Add machine"), "machinesTitle");
     layout->addWidget(m_pairingTitle);
@@ -573,7 +623,7 @@ QWidget *RemoteWidget::buildPairing()
     instructions->setObjectName("machinePairingStep");
     auto *instructionsLayout = pageLayout(instructions);
     instructionsLayout->addWidget(textLabel(tr("On the other computer"), "sectionTitle"));
-    instructionsLayout->addWidget(textLabel(tr("Open Dockpipe → Machines → Add machine → Connect this computer instead. Enter this address and request pairing.")));
+    instructionsLayout->addWidget(textLabel(tr("In Dockpipe, open connection setup for that computer, select Connect this computer, then enter this address and request pairing.")));
     m_pairingAddress = textLabel(QString(), "machinesSelectedAccess");
     m_pairingAddress->setObjectName("machinePairingAddress");
     m_pairingAddress->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -617,6 +667,11 @@ QWidget *RemoteWidget::buildPairing()
     reviewLayout->addWidget(textLabel(tr("Compare the verification code"), "sectionTitle"));
     m_pairingHint = textLabel(tr("Select the request and compare its code with the other computer. Approve only if they match."));
     reviewLayout->addWidget(m_pairingHint);
+    reviewLayout->addWidget(textLabel(tr("Connect a physical FIDO2 security key to this computer before approving. If you have not registered a key, use Register pairing key in connection setup."), "hintText"));
+    m_pairingKeyError = textLabel(tr("No accessible security key was detected. Plug in your registered key and try again. If it is already connected, check your device permissions."), "hintText");
+    m_pairingKeyError->setObjectName(QStringLiteral("machinePairingKeyError"));
+    m_pairingKeyError->hide();
+    reviewLayout->addWidget(m_pairingKeyError);
     m_pairings = table({tr("Machine"), tr("Verification code"), tr("Expires")});
     m_pairings->setFixedHeight(150);
     m_pairings->setObjectName("pairingRequests");
@@ -649,7 +704,7 @@ QWidget *RemoteWidget::buildPairing()
     completeLayout->addWidget(textLabel(tr("Finish on the other computer. Dockpipe starts its worker after approval so it can receive workflows.")));
     auto *done = new QPushButton(tr("Done"));
     done->setObjectName("primaryButton");
-    connect(done, &QPushButton::clicked, this, [this]() { showPage(Overview); });
+    connect(done, &QPushButton::clicked, this, &RemoteWidget::leaveManagementPage);
     completeLayout->addWidget(done, 0, Qt::AlignLeft);
     completeLayout->addStretch();
     m_pairingSteps->addWidget(complete);
@@ -669,7 +724,7 @@ void RemoteWidget::setPairingStep(int step)
     if (contentHeight < 0)
         contentHeight = content->sizeHint().height();
     m_pairingSteps->setFixedHeight(qMax(160, contentHeight));
-    if (m_managementDialog && m_canvasView && m_canvasView->isChecked()) {
+    if (m_managementDialog && (m_environmentFlow || (m_canvasView && m_canvasView->isChecked()))) {
         QWidget *page = m_pairingSteps->parentWidget()->parentWidget();
         m_managementDialog->resize(700, qBound(440, page->sizeHint().height() + 160, 740));
     }
@@ -680,22 +735,34 @@ QWidget *RemoteWidget::buildConnection()
     auto *page = new QWidget;
     auto *layout = pageLayout(page);
     auto *back = new QPushButton(tr("← Machines"));
+    m_connectionBack = back;
     back->setObjectName(QStringLiteral("quietButton"));
-    connect(back, &QPushButton::clicked, this, [this]() { showPage(Overview); });
+    connect(back, &QPushButton::clicked, this, &RemoteWidget::leaveManagementPage);
     layout->addWidget(back, 0, Qt::AlignLeft);
     layout->addWidget(textLabel(tr("Connect this computer"), "sectionTitle"));
     layout->addWidget(textLabel(tr("Enter the address shown on the computer you are connecting to.")));
     auto *form = new QFormLayout;
     form->setSpacing(12);
     m_endpoint = new QLineEdit;
+    m_endpoint->setObjectName(QStringLiteral("machinePairingEndpoint"));
     m_endpoint->setPlaceholderText(tr("https://your-broker.example.com"));
+    m_endpointError = textLabel(tr("Enter a valid remote address starting with https://."), "hintText");
+    m_endpointError->setObjectName(QStringLiteral("machinePairingEndpointError"));
+    m_endpointError->hide();
     m_name = new QLineEdit(QSysInfo::machineHostName().section('.', 0, 0));
     form->addRow(tr("Remote address"), m_endpoint);
+    form->addRow(m_endpointError);
     form->addRow(tr("Name for this computer"), m_name);
     layout->addLayout(form);
     m_allow = new QCheckBox(tr("Allow workflows from the managing computer to run as my user"));
+    m_allow->setObjectName("machinePairingAllowWorkflows");
     layout->addWidget(m_allow);
     layout->addWidget(textLabel(tr("Connect only to a computer you trust. Its workflows run as your user and can access your files and tools."), "hintText"));
+    m_allowTerminal = new QCheckBox(tr("Allow Terminal access as my user"));
+    m_allowTerminal->setObjectName("machinePairingAllowTerminal");
+    layout->addWidget(m_allowTerminal);
+    layout->addWidget(textLabel(tr("Terminal opens in your home folder and runs with your account's permissions."), "hintText"));
+    layout->addWidget(textLabel(tr("The managing computer needs a registered physical FIDO2 security key to approve pairing."), "hintText"));
     layout->addWidget(textLabel(tr("After approval, Dockpipe starts a background worker service for your user so this computer can receive workflows."), "hintText"));
     auto *actions = new QHBoxLayout;
     m_request = actionButton(tr("Request pairing"), actions, "primaryButton");
@@ -706,13 +773,19 @@ QWidget *RemoteWidget::buildConnection()
     connect(m_name, &QLineEdit::textChanged, this, &RemoteWidget::updateActions);
     connect(m_allow, &QCheckBox::toggled, this, &RemoteWidget::updateActions);
     connect(m_request, &QPushButton::clicked, this, [this]() {
+        const bool allowTerminal = m_allowTerminal->isChecked();
+        m_connectionDone->hide();
         m_pairingCode->clear();
         m_pairingCode->hide();
         run({"pair", "--endpoint", m_endpoint->text().trimmed(), "--node", m_name->text().trimmed(), "--allow-delivery"},
-            [this](bool ok, const QByteArray &) {
+            [this, allowTerminal](bool ok, const QByteArray &) {
                 m_pairingCode->hide();
-                if (ok)
-                    startWorkerService();
+                if (!ok)
+                    return;
+                if (allowTerminal)
+                    enableHomeTerminal(true);
+                else
+                    startWorkerService(true);
             }, 16 * 60 * 1000);
         m_status->setText(tr("Waiting for approval. Compare the code below on the managing computer."));
     });
@@ -721,7 +794,7 @@ QWidget *RemoteWidget::buildConnection()
     m_pairingCode->setStyleSheet(QStringLiteral("font-size: 26px; font-weight: 600; padding: 12px 0;"));
     m_pairingCode->hide();
     layout->addWidget(m_pairingCode);
-    auto *recoveryToggle = new QPushButton(tr("Already paired? Recovery options"));
+    auto *recoveryToggle = new QPushButton(tr("Already paired? Manage access"));
     recoveryToggle->setObjectName("machineConnectionRecovery");
     recoveryToggle->setCheckable(true);
     layout->addWidget(recoveryToggle, 0, Qt::AlignLeft);
@@ -731,12 +804,28 @@ QWidget *RemoteWidget::buildConnection()
     auto *serviceActions = new QHBoxLayout;
     auto *start = actionButton(tr("Start worker service"), serviceActions);
     m_actions.append(start);
+    auto *terminal = actionButton(tr("Enable Terminal"), serviceActions);
+    terminal->setObjectName("machineConnectionEnableTerminal");
+    m_actions.append(terminal);
     serviceActions->addStretch();
-    connect(start, &QPushButton::clicked, this, &RemoteWidget::startWorkerService);
+    connect(start, &QPushButton::clicked, this, [this] { startWorkerService(); });
+    connect(terminal, &QPushButton::clicked, this, [this] {
+        const auto answer = QMessageBox::question(this, tr("Enable Terminal"),
+            tr("Allow the managing computer to open a shell with your account's permissions, starting in your home folder? "
+               "Dockpipe will briefly restart the background worker."),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (answer == QMessageBox::Yes)
+            enableHomeTerminal(false);
+    });
     recoveryLayout->addLayout(serviceActions);
     layout->addWidget(recovery);
     recovery->hide();
     connect(recoveryToggle, &QPushButton::toggled, recovery, &QWidget::setVisible);
+    m_connectionDone = new QPushButton(tr("Done"));
+    m_connectionDone->setObjectName(QStringLiteral("connectionSetupDone"));
+    connect(m_connectionDone, &QPushButton::clicked, this, &RemoteWidget::leaveManagementPage);
+    layout->addWidget(m_connectionDone, 0, Qt::AlignLeft);
+    m_connectionDone->hide();
     return page;
 }
 
@@ -798,14 +887,59 @@ void RemoteWidget::replaceService(const QString &role)
     }, 35000);
 }
 
-void RemoteWidget::startWorkerService()
+void RemoteWidget::startWorkerService(bool pairingCompleted, bool terminalSetupFailed)
 {
-    run({"service", "--role", "worker"}, [this](bool ok, const QByteArray &) {
+    m_connectionDone->hide();
+    run({"service", "--role", "worker"}, [this, pairingCompleted, terminalSetupFailed](bool ok, const QByteArray &) {
         m_status->setText(ok
-            ? tr("Worker service started. Choose this computer under Run on from your managing computer.")
+            ? tr("Background worker startup requested. Check this computer under Run on from your managing computer.")
             : tr("Could not start the worker service. Your pairing is preserved. See details, then choose Start worker service to retry."));
+        if (ok && terminalSetupFailed)
+            m_status->setText(tr("Background worker startup requested. Terminal setup failed. Use Manage access to retry."));
+        if (ok && m_environmentFlow)
+            m_connectionDone->show();
+
+#ifdef Q_OS_WIN
+        if (!ok || !pairingCompleted)
+            return;
+
+        const QString helper = installedWindowsInputHelper();
+        if (!helper.isEmpty() && !QProcess::startDetached(helper, {QStringLiteral("--authorize-console")})) {
+            m_status->setText(tr("Pairing is complete. Windows could not start administrator input approval."));
+        }
+#else
+        Q_UNUSED(pairingCompleted);
+#endif
     });
     m_status->setText(tr("Starting the background worker service…"));
+}
+
+void RemoteWidget::enableHomeTerminal(bool pairingCompleted)
+{
+    run({"features-config", "--terminal-home"}, [this, pairingCompleted](bool ok, const QByteArray &) {
+        if (!ok) {
+            if (pairingCompleted) {
+                startWorkerService(true, true);
+                return;
+            }
+            m_status->setText(tr("Dockpipe could not enable Terminal. See details in Connection setup."));
+            m_detailsToggle->setChecked(true);
+            return;
+        }
+        if (pairingCompleted) {
+            startWorkerService(true);
+            return;
+        }
+
+        run({"service", "--role", "worker", "--replace"}, [this](bool started, const QByteArray &) {
+            m_status->setText(started ? tr("Terminal access enabled. Refresh Terminal on the managing computer.")
+                                      : tr("Terminal access is saved. Start the worker service to bring it online."));
+            if (started && m_environmentFlow)
+                m_connectionDone->show();
+        }, 35000);
+        m_status->setText(tr("Restarting the background worker…"));
+    });
+    m_status->setText(tr("Enabling Terminal access…"));
 }
 
 QWidget *RemoteWidget::buildSetup()
@@ -813,9 +947,14 @@ QWidget *RemoteWidget::buildSetup()
     auto *page = new QWidget;
     auto *layout = pageLayout(page);
     auto *back = new QPushButton(tr("← Machines"));
+    m_setupBack = back;
     back->setObjectName(QStringLiteral("quietButton"));
-    connect(back, &QPushButton::clicked, this, [this]() { showPage(Overview); });
+    connect(back, &QPushButton::clicked, this, &RemoteWidget::leaveManagementPage);
     layout->addWidget(back, 0, Qt::AlignLeft);
+    auto *connectionHost = new QWidget;
+    m_setupConnectionLayout = pageLayout(connectionHost);
+    layout->addWidget(connectionHost);
+    connectionHost->hide();
     layout->addWidget(textLabel(tr("Set up remote access"), "sectionTitle"));
     layout->addWidget(textLabel(tr("Choose a provider to connect your machines. Install a provider package here if you don't have one yet.")));
     m_existingConnection = textLabel(QString());
@@ -873,10 +1012,11 @@ QWidget *RemoteWidget::buildSetup()
             arguments << "--workdir" << m_workdir;
         QString error;
         m_status->show();
-        if (openSetupTerminal(DockpipeChoices::preferredDockpipeBinary(m_workdir), arguments, &error))
-            m_status->setText(tr("Continue setup in the terminal. When it finishes, return to Machines and refresh to check access."));
-        else
+        if (openSetupTerminal(DockpipeChoices::preferredDockpipeBinary(m_workdir), arguments, &error)) {
+            m_status->setText(tr("Continue setup in the terminal. When it finishes, choose Check connection."));
+        } else {
             m_status->setText(error);
+        }
     });
     layout->addWidget(textLabel(tr("Pairing security keys"), "sectionTitle"));
     layout->addWidget(textLabel(tr("Register a physical security key before approving machines. Stop the broker before registering. For the first key, choose a trusted manufacturer attestation-root PEM file; Dockpipe does not download or select trust roots for you."), "hintText"));
@@ -910,22 +1050,90 @@ QWidget *RemoteWidget::buildSetup()
     return page;
 }
 
+void RemoteWidget::beginEnvironmentPairing()
+{
+    beginEnvironmentFlow(Pairing);
+}
+
+void RemoteWidget::beginEnvironmentConnectionSetup()
+{
+    beginEnvironmentFlow(Setup);
+}
+
+void RemoteWidget::beginEnvironmentFlow(int page)
+{
+    if (m_environmentFlow)
+        return;
+
+    m_environmentFlow = true;
+    m_setupConnectionLayout->addWidget(m_connectionCard);
+    m_setupConnectionLayout->parentWidget()->show();
+    m_connectionCard->show();
+    m_openProviderSetup->hide();
+    m_connectionDone->hide();
+    m_pairingKeyError->hide();
+    m_securityStatusTimer->start();
+
+    showPage(page);
+    if (page != Pairing || !m_brokerAvailable)
+        refresh();
+}
+
+void RemoteWidget::leaveManagementPage()
+{
+    if (m_environmentFlow) {
+        m_managementDialog->accept();
+        return;
+    }
+
+    showPage(Overview);
+}
+
+void RemoteWidget::finishEnvironmentFlow()
+{
+    if (!m_environmentFlow)
+        return;
+
+    m_environmentFlow = false;
+    if (m_interactiveCommand)
+        m_command.cancel();
+    if (!isVisible())
+        m_securityStatusTimer->stop();
+
+    m_overviewLayout->addWidget(m_connectionCard);
+    m_connectionCard->setVisible(m_connectionSettings->isChecked());
+    m_setupConnectionLayout->parentWidget()->hide();
+    m_openProviderSetup->show();
+    m_connectionDone->hide();
+    if (m_listView->isChecked()) {
+        m_listManagementHost->layout()->addWidget(m_management);
+        m_management->show();
+    }
+
+    showPage(Overview);
+    emit environmentFlowFinished();
+}
+
 void RemoteWidget::showPage(int index)
 {
     m_pages->setCurrentIndex(index);
     updateManagementPresentation();
-    if (index == Pairing) {
+    if (index == Pairing)
         setPairingStep(0);
-    }
-    if (m_canvasView && m_canvasView->isChecked()) {
+    if (index == Setup && m_environmentFlow)
+        m_managementDialog->resize(760, 680);
+
+    if (m_environmentFlow || m_canvasView->isChecked()) {
         if (index == Overview) {
-            m_managementDialog->reject();
-        } else {
+            if (m_managementDialog->isVisible())
+                m_managementDialog->reject();
+        } else if (!m_managementDialog->isVisible()) {
             m_managementDialog->layout()->addWidget(m_management);
             m_management->show();
             m_managementDialog->open();
         }
     }
+
     if (!m_command.busy()) {
         m_status->clear();
         m_status->hide();
@@ -937,16 +1145,19 @@ void RemoteWidget::showPage(int index)
     } else {
         m_pairingTimer->stop();
     }
-    if (index == Overview && isVisible())
+    if ((index == Overview && isVisible()) || (index == Setup && m_environmentFlow))
         refreshSecurityStatus();
 }
 
 void RemoteWidget::updateManagementPresentation()
 {
-    const bool inDialog = m_canvasView && m_canvasView->isChecked();
+    const bool inDialog = m_environmentFlow || (m_canvasView && m_canvasView->isChecked());
     m_management->layout()->setContentsMargins(inDialog ? 0 : 20, inDialog ? 0 : 16,
                                                inDialog ? 0 : 20, inDialog ? 0 : 16);
-    m_pairingBack->setVisible(!inDialog);
+    const QString backLabel = m_environmentFlow ? tr("← Environments") : tr("← Machines");
+    for (auto *back : {m_pairingBack, m_connectionBack, m_setupBack})
+        back->setText(backLabel);
+    m_pairingBack->setVisible(m_environmentFlow || !inDialog);
     m_pairingTitle->setVisible(!inDialog);
     if (m_managementDialog) {
         const QStringList titles{tr("Machines"), tr("Add machine"), tr("Connect this computer"), tr("Connection setup")};
@@ -976,9 +1187,14 @@ void RemoteWidget::updateActions()
     m_endpoint->setEnabled(idle);
     m_name->setEnabled(idle);
     m_allow->setEnabled(idle);
-    const QUrl endpoint(m_endpoint->text().trimmed());
-    m_request->setEnabled(idle && endpoint.isValid() && endpoint.scheme() == "https"
-                          && !endpoint.host().isEmpty() && !m_name->text().trimmed().isEmpty() && m_allow->isChecked());
+    m_allowTerminal->setEnabled(idle);
+    const QString address = m_endpoint->text().trimmed();
+    const QUrl endpoint(address);
+    const bool validEndpoint = endpoint.isValid() && endpoint.scheme() == "https" && !endpoint.host().isEmpty();
+    const bool showEndpointError = !address.isEmpty() && !validEndpoint;
+    m_endpointError->setVisible(showEndpointError);
+    m_endpoint->setAccessibleDescription(showEndpointError ? m_endpointError->text() : QString());
+    m_request->setEnabled(idle && validEndpoint && !m_name->text().trimmed().isEmpty() && m_allow->isChecked());
     m_approve->setEnabled(idle && m_pairings->currentRow() >= 0);
     m_deny->setEnabled(idle && m_pairings->currentRow() >= 0);
     m_reviewPairing->setVisible(m_pairings->rowCount() > 0);
@@ -1019,8 +1235,10 @@ void RemoteWidget::run(const QStringList &arguments, RemoteCommand::Completion c
         m_output->appendPlainText(error);
         return;
     }
+    m_interactiveCommand = !listing;
     m_command.run(program, args,
                   [this, completion](bool ok, const QByteArray &output) {
+        m_interactiveCommand = false;
         if (!ok)
             m_detailsToggle->show();
         m_status->setText(ok ? QString() : tr("Could not complete this step. See details for the error; saved setup is preserved."));
@@ -1051,16 +1269,19 @@ void RemoteWidget::refreshNodes(bool allowAuthentication)
         }
         const auto nodes = QJsonDocument::fromJson(data).array();
         QStringList paired;
+        QJsonArray pairedMachines;
         for (const auto &value : nodes) {
             const auto node = value.toObject();
             const QString name = node.value("node").toString();
             const QString status = node.value("status").toString();
+            const QString fingerprint = node.value("fingerprint").toString();
             QString access = status;
             QString explanation;
             if (status == "paired") {
                 access = tr("Paired");
-                explanation = tr("Allowed to receive workflows");
+                explanation = tr("Broker enrollment is active.");
                 paired.append(name);
+                pairedMachines.append(QJsonObject{{"node", name}, {"fingerprint", fingerprint}, {"status", "paired"}});
             } else if (status == "invited") {
                 access = tr("Invitation created");
                 explanation = tr("Not connected yet — use Add another machine");
@@ -1068,10 +1289,12 @@ void RemoteWidget::refreshNodes(bool allowAuthentication)
                 access = tr("Access removed");
                 explanation = tr("Pair again to restore access");
             }
+
             const int row = m_nodes->rowCount();
             m_nodes->insertRow(row);
             auto *nameItem = new QTableWidgetItem(name);
             nameItem->setData(Qt::UserRole, status);
+            nameItem->setData(MachineFingerprintRole, fingerprint);
             m_nodes->setItem(row, 0, nameItem);
             m_nodes->setItem(row, 1, new QTableWidgetItem(access));
             auto *meaning = new QTableWidgetItem(explanation);
@@ -1096,6 +1319,7 @@ void RemoteWidget::refreshNodes(bool allowAuthentication)
         m_overviewHint->setText(nodes.isEmpty() ? tr("No machines added yet. Choose Add another machine to get started.")
                                                : tr("Add a computer here, then choose it when launching a workflow."));
         updateMachineGraph();
+        emit pairedMachinesChanged(pairedMachines);
         emit nodesChanged(paired);
         updateActions();
         refreshPairings(allowAuthentication);
@@ -1215,11 +1439,12 @@ void RemoteWidget::decidePairing(bool approve)
             QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes)
         return;
     QStringList arguments{approve ? "approve" : "deny", "--code", code};
+    m_pairingKeyError->hide();
     if (approve)
         arguments << "--interaction" << "gui";
     run(arguments, [this, approve, name](bool ok, const QByteArray &) {
         if (ok) {
-            m_requestOutcome = approve ? tr("%1 is paired. On that computer, choose Start worker service to receive workflows.").arg(name)
+            m_requestOutcome = approve ? tr("%1 is paired. Start the worker on that computer to receive workflows.").arg(name)
                                        : tr("Request from %1 denied.").arg(name);
             if (approve) {
                 m_pairingSuccess->setText(tr("%1 is paired").arg(name));
@@ -1371,12 +1596,22 @@ void RemoteWidget::updateMachineGraph()
         edges.append({"@local", "@broker", tr("Worker configured for this broker; connectivity not verified"), false});
     }
     for (int row = 0; row < m_nodes->rowCount(); ++row) {
-        const QString name = m_nodes->item(row, 0)->text();
+        const auto *machine = m_nodes->item(row, 0);
+        const QString name = machine->text();
         const QString access = m_nodes->item(row, 1)->text();
-        nodes.append({name, "machine", name, m_nodes->item(row, 2)->text(), access, 1});
+        const QString explanation = m_nodes->item(row, 2)->text();
+        const QString fingerprint = machine->data(MachineFingerprintRole).toString();
+        QStringList details{tr("Pairing · %1").arg(access.isEmpty() ? tr("Unknown") : access)};
+        if (!explanation.isEmpty())
+            details.append(explanation);
+        if (!fingerprint.isEmpty())
+            details.append(tr("Machine fingerprint · %1…").arg(fingerprint.left(16)));
+
+        nodes.append({name, "machine", name, details.join(QLatin1Char('\n')), access, 1});
         edges.append({"@local", name, tr("Access relationship: %1").arg(access), false});
     }
     m_canvas->setGraph(nodes, edges);
+    emit machineInventoryChanged(nodes, edges);
 }
 
 void RemoteWidget::setListView(bool list)
@@ -1446,9 +1681,6 @@ void RemoteWidget::updateMachineList()
 
 void RemoteWidget::openMachineSettings(const QString &node)
 {
-    if (m_command.busy())
-        return;
-    m_settingsNode = node;
     m_machineSettingsError->hide();
     for (int row = 0; row < m_nodes->rowCount(); ++row) {
         if (m_nodes->item(row, 0)->text() == node) {
@@ -1456,6 +1688,7 @@ void RemoteWidget::openMachineSettings(const QString &node)
             break;
         }
     }
+    m_settingsNode = node;
     m_machineSettingsDialog->setWindowTitle(tr("%1 settings").arg(node));
     auto *layout = qobject_cast<QVBoxLayout *>(m_machineSettingsDialog->layout());
     layout->insertWidget(0, m_machineSettingsPanel, 1);
@@ -1485,8 +1718,13 @@ void RemoteWidget::updateMachineSettings()
     m_selectedMachine->show();
     m_localSettings->setVisible(m_settingsNode == "@local");
     if (available) {
-        m_selectedMachine->setText(tr("%1 · %2\n\n%3\n\nConnection health is not checked here.")
-            .arg(m_settingsNode, m_nodes->item(row, 1)->text(), m_nodes->item(row, 2)->text()));
+        const QString fingerprint = m_nodes->item(row, 0)->data(MachineFingerprintRole).toString();
+        QString details = m_nodes->item(row, 2)->text();
+        if (!fingerprint.isEmpty())
+            details += QStringLiteral("\n") + tr("Machine fingerprint · %1").arg(fingerprint);
+
+        m_selectedMachine->setText(tr("%1 · %2\n\n%3")
+            .arg(m_settingsNode, m_nodes->item(row, 1)->text(), details));
     } else if (m_settingsNode == "@local") {
         m_selectedMachine->setText(tr("This computer\n\n%1\n\n%2")
             .arg(m_connectionSummary->text(), m_securityStatus->text()));

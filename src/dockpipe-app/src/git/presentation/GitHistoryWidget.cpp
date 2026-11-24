@@ -5,6 +5,7 @@
 #include "GitCommitGraphDelegate.h"
 #include "GitDiffWidget.h"
 #include "GitCommitPreviewDialog.h"
+#include "RemoteGitContext.h"
 
 #include <QComboBox>
 #include <QApplication>
@@ -441,7 +442,7 @@ void GitHistoryWidget::requestRevertCommit(const QString &id)
 void GitHistoryWidget::updateControls()
 {
     const bool ready = !m_parentBusy && !m_reader.busy() && !m_workdir.isEmpty();
-    const bool writable = ready && !m_snapshotToken.isEmpty() && !m_operationActive;
+    const bool writable = ready && !m_snapshotToken.isEmpty() && !m_operationActive && RemoteGitContext::canWrite(this);
     m_search->setEnabled(ready);
     m_query->setEnabled(ready);
     m_match->setEnabled(ready);
@@ -489,7 +490,7 @@ void GitHistoryWidget::showCommitMenu(const QPoint &point)
     menu.addSeparator();
     auto *cherryPick = menu.addAction(tr("Cherry-pick this commit…"));
     cherryPick->setObjectName("gitCommitCherryPickAction");
-    cherryPick->setEnabled(!m_snapshotToken.isEmpty() && !m_operationActive);
+    cherryPick->setEnabled(!m_snapshotToken.isEmpty() && !m_operationActive && RemoteGitContext::canWrite(this));
     auto *queue = menu.addAction(tr("Add commit to cherry-pick queue"));
     queue->setObjectName("gitCommitQueueAction");
     queue->setEnabled(m_queue->rowCount() < GitCommitQueueModel::maximumCommits);

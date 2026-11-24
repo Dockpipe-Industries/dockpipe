@@ -4,7 +4,7 @@
 <context>
     <name>ActivityWidget</name>
     <message>
-        <location filename="../src/execution/presentation/ActivityWidget.cpp" line="+48"/>
+        <location filename="../src/execution/presentation/ActivityWidget.cpp" line="+49"/>
         <source>Runs &amp; logs</source>
         <translation>실행 및 로그</translation>
     </message>
@@ -15,12 +15,12 @@
     </message>
     <message>
         <location line="+10"/>
-        <location line="+211"/>
+        <location line="+224"/>
         <source>This computer</source>
         <translation>이 컴퓨터</translation>
     </message>
     <message>
-        <location line="-211"/>
+        <location line="-224"/>
         <source>Remote jobs</source>
         <translation>원격 작업</translation>
     </message>
@@ -104,7 +104,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>상태</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+15"/>
         <source>Refresh jobs</source>
         <translation>작업 새로 고침</translation>
     </message>
@@ -124,7 +124,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>결과 아티팩트와 워크플로 로그를 저장합니다.</translation>
     </message>
     <message>
-        <location line="+57"/>
+        <location line="+62"/>
         <source>Save result inside folder</source>
         <translation>폴더 안에 결과 저장</translation>
     </message>
@@ -134,7 +134,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>결과와 workflow.log를 %1에 저장했습니다</translation>
     </message>
     <message>
-        <location line="+62"/>
+        <location line="+63"/>
         <source>Finished / stopped</source>
         <translation>완료 / 중지됨</translation>
     </message>
@@ -169,7 +169,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>원격 작업 %1개</translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+100"/>
         <source>Up to date with the broker.</source>
         <translation>브로커와 동기화되었습니다.</translation>
     </message>
@@ -197,6 +197,18 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <location line="+34"/>
         <source>This job is no longer available in the broker’s job list.</source>
         <translation>이 작업은 더 이상 브로커 작업 목록에 없습니다.</translation>
+    </message>
+    <message>
+        <location line="-329"/>
+        <source>Live workflow log</source>
+        <translation>워크플로 실시간 로그</translation>
+    </message>
+    <message>
+        <location line="+233"/>
+        <source>
+Live preview limit reached. Download the results for the full retained log.</source>
+        <translation>
+실시간 미리보기 한도에 도달했습니다. 보존된 전체 로그를 보려면 결과를 다운로드하세요.</translation>
     </message>
 </context>
 <context>
@@ -1029,7 +1041,7 @@ Independent repository · add multiple views for cross-repo work</source>
 <context>
     <name>DashboardRepositoryPanel</name>
     <message>
-        <location filename="../src/dashboards/presentation/DashboardRepositoryPanel.cpp" line="+38"/>
+        <location filename="../src/dashboards/presentation/DashboardRepositoryPanel.cpp" line="+39"/>
         <source>Repository…</source>
         <translation>저장소…</translation>
     </message>
@@ -1054,7 +1066,7 @@ Independent repository · add multiple views for cross-repo work</source>
         <translation>이 보기에서 사용할 저장소 선택</translation>
     </message>
     <message>
-        <location line="+81"/>
+        <location line="+90"/>
         <source>Unsaved commit message</source>
         <translation>저장하지 않은 커밋 메시지</translation>
     </message>
@@ -3243,7 +3255,7 @@ Refresh to load inventory from the selected machine.</source>
     <message>
         <location line="+2"/>
         <location line="+232"/>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+119"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+118"/>
         <source>Loading container logs…</source>
         <translation>컨테이너 로그를 불러오는 중…</translation>
     </message>
@@ -3517,7 +3529,7 @@ Refresh to load inventory from the selected machine.</source>
         <translation>잘못된 컨테이너 제어 응답입니다.</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-298"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-297"/>
         <source>Wait for the current container control operation before changing machines.</source>
         <translation>머신을 변경하기 전에 현재 컨테이너 제어 작업이 완료될 때까지 기다리세요.</translation>
     </message>
@@ -3527,7 +3539,7 @@ Refresh to load inventory from the selected machine.</source>
         <translation>지문과 작업자 세대가 확인된 머신을 선택하세요.</translation>
     </message>
     <message>
-        <location line="+128"/>
+        <location line="+127"/>
         <source>%1 · Remote Docker inventory unavailable: %2</source>
         <translation>%1 · 원격 Docker 인벤토리를 사용할 수 없습니다: %2</translation>
     </message>
@@ -3818,6 +3830,780 @@ Select a row to get started.</source>
         <location line="+8"/>
         <source>Env (*.env *.sh);;All files (*)</source>
         <translation>환경 (*.env *.sh);;모든 파일 (*)</translation>
+    </message>
+</context>
+<context>
+    <name>EnvironmentDefinitionsClient</name>
+    <message>
+        <location filename="../src/environments/infrastructure/EnvironmentDefinitionsClient.cpp" line="+150"/>
+        <source>Could not start Dockpipe to read environment definitions.</source>
+        <translation>Dockpipe는 환경 정의를 읽기 시작할 수 없습니다.</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Dockpipe could not list environment definitions.</source>
+        <translation>Dockpipe는 환경 정의를 나열할 수 없었습니다.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Dockpipe returned an invalid environment definition list.</source>
+        <translation>Dockpipe는 불법 환경 정의 목록을 반환했습니다.</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Reading environment definitions timed out.</source>
+        <translation>환경의 정의를 읽고 시간을 꺼낸다.</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>The environment definition list exceeds its size limit.</source>
+        <translation>환경 정의 목록은 크기 제한을 초과합니다.</translation>
+    </message>
+</context>
+<context>
+    <name>EnvironmentsPage</name>
+    <message>
+        <location filename="../src/environments/presentation/EnvironmentsPage.cpp" line="+86"/>
+        <source>← Environments</source>
+        <translation>← 환경</translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>Canvas</source>
+        <translation>캔버스</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>List</source>
+        <translation>목록</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Refresh</source>
+        <translation>새로 고침</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <location line="+247"/>
+        <source>Add Environment</source>
+        <translation>환경 추가</translation>
+    </message>
+    <message>
+        <location line="-233"/>
+        <location line="+9"/>
+        <source>Environments</source>
+        <translation>주변 환경</translation>
+    </message>
+    <message>
+        <location line="-8"/>
+        <source>Hosts, virtual machines, and containers</source>
+        <translation>호스트, 가상 기계 및 컨테이너</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Details</source>
+        <translation>세부 정보</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <location line="+331"/>
+        <location line="+121"/>
+        <source>Name</source>
+        <translation>이름</translation>
+    </message>
+    <message>
+        <location line="-452"/>
+        <source>Type</source>
+        <translation>유형</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Location</source>
+        <translation>위치</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Status</source>
+        <translation>상태</translation>
+    </message>
+    <message>
+        <location line="+201"/>
+        <source>Reading environment definitions…</source>
+        <translation>환경의 정의를 읽는 것...</translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <location line="+727"/>
+        <source>Remote machine</source>
+        <translation>원격 기계</translation>
+    </message>
+    <message>
+        <location line="-727"/>
+        <source>Pair another computer with Dockpipe.</source>
+        <translation>Dockpipe와 함께 다른 컴퓨터를 연결합니다.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+722"/>
+        <location line="+71"/>
+        <source>Virtual machine</source>
+        <translation>가상 기계</translation>
+    </message>
+    <message>
+        <location line="-793"/>
+        <source>Choose an operating system and configure a VM.</source>
+        <translation>운영 체제를 선택하고 VM을 설정합니다.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+794"/>
+        <source>Container</source>
+        <translation>컨테이너</translation>
+    </message>
+    <message>
+        <location line="-794"/>
+        <source>Choose an image and configure a Docker container.</source>
+        <translation>이미지를 선택하고 Docker 컨테이너를 설정합니다.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Import YAML</source>
+        <translation>수입 YAML</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Open existing environment definitions.</source>
+        <translation>기존의 환경 정의에 대한 개방.</translation>
+    </message>
+    <message>
+        <location line="+61"/>
+        <source>Add Virtual Machine</source>
+        <translation>가상 기계 추가</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Runs on this computer’s VM provider.</source>
+        <translation>이 컴퓨터의 VM 공급자를 실행합니다.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Development VM</source>
+        <translation>개발 VM</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <location line="+611"/>
+        <source>Ubuntu</source>
+        <translation>Ubuntu</translation>
+    </message>
+    <message>
+        <location line="-610"/>
+        <location line="+610"/>
+        <source>Debian</source>
+        <translation>Debian</translation>
+    </message>
+    <message>
+        <location line="-609"/>
+        <location line="+609"/>
+        <source>Fedora</source>
+        <translation>페도라</translation>
+    </message>
+    <message>
+        <location line="-608"/>
+        <location line="+609"/>
+        <source>Other Linux</source>
+        <translation>다른 리눅스</translation>
+    </message>
+    <message>
+        <location line="-608"/>
+        <location line="+608"/>
+        <source>Windows 11</source>
+        <translation>윈도우 11</translation>
+    </message>
+    <message>
+        <location line="-603"/>
+        <location line="+3"/>
+        <source> GiB</source>
+        <translation>지브</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Installer ISO file</source>
+        <translation>ISO 파일 설치</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Browse…</source>
+        <translation>찾아보기…</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Select Installer ISO</source>
+        <translation>설치자 선택 ISO</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>ISO images (*.iso *.ISO)</source>
+        <translation>ISO 이미지 (*.iso *. ISO )</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <location line="+120"/>
+        <location line="+580"/>
+        <source>Personal</source>
+        <translation>개인적인</translation>
+    </message>
+    <message>
+        <location line="-699"/>
+        <location line="+120"/>
+        <source>YAML file</source>
+        <translation>YAML 파일</translation>
+    </message>
+    <message>
+        <location line="-118"/>
+        <source>Operating system</source>
+        <translation>운영 체제</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>CPUs</source>
+        <translation>CPU가</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>RAM</source>
+        <translation>램</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Disk size</source>
+        <translation>디스크 크기</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Installer ISO</source>
+        <translation>설치기 ISO</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+121"/>
+        <source>Save to</source>
+        <translation>저장할 수 있는</translation>
+    </message>
+    <message>
+        <location line="-118"/>
+        <source>The ISO is optional when saving a definition. Disk size applies when the virtual disk is first created.</source>
+        <translation>ISO는 정의를 저장할 때 선택적입니다. 디스크 크기는 가상 디스크가 처음 생성되었을 때 적용됩니다.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <location line="+151"/>
+        <source>Save Definition</source>
+        <translation>정의를 저장하기</translation>
+    </message>
+    <message>
+        <location line="-150"/>
+        <source>Create VM</source>
+        <translation>VM 만들기</translation>
+    </message>
+    <message>
+        <location line="+66"/>
+        <source>Add Container</source>
+        <translation>컨테이너 추가</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Runs on this computer’s Docker engine.</source>
+        <translation>이 컴퓨터의 Docker 엔진을 실행합니다.</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>General</source>
+        <translation>일반</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Test Docker</source>
+        <translation>테스트 Docker</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Use letters, numbers, dots, underscores, or hyphens. Spaces become hyphens.</source>
+        <translation>글자, 숫자, 포인트, 하위 코어 또는 하이펜을 사용하십시오.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Ubuntu 24.04</source>
+        <translation>Ubuntu 24.04</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Debian 13 Slim</source>
+        <translation>Debian 13 슬림</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Alpine 3.22</source>
+        <translation>Alpine 3.22</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>NGINX on Alpine</source>
+        <translation>NGINX 에 Alpine</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Custom image</source>
+        <translation>사용자 지정 이미지</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Keep running for Terminal</source>
+        <translation>터미널을 향해 계속 달리기</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Run the image’s command</source>
+        <translation>이미지의 명령을 실행</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Bridge</source>
+        <translation>브릿지</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+457"/>
+        <source>No network</source>
+        <translation>네트워크 없음</translation>
+    </message>
+    <message>
+        <location line="-455"/>
+        <source>Standard</source>
+        <translation>표준</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+456"/>
+        <source>Restricted capabilities</source>
+        <translation>제한된 능력</translation>
+    </message>
+    <message>
+        <location line="-455"/>
+        <source>Both profiles block privilege escalation. Restricted also drops all Linux capabilities.</source>
+        <translation>두 프로파일 모두 우선 순위 확장을 차단합니다.제한은 또한 모든 Linux 기능을 떨어 뜨립니다.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Base OS or image</source>
+        <translation>기본 OS 또는 이미지</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Docker image</source>
+        <translation>Docker 이미지</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Startup</source>
+        <translation>스타트업</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Network</source>
+        <translation>네트워크</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Security</source>
+        <translation>보안</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Advanced</source>
+        <translation>고급</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Use the image’s user</source>
+        <translation>이미지를 사용하는 사용자</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Non-root user</source>
+        <translation>뿌리 없는 사용자</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Writable</source>
+        <translation>글쓰기</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Read-only</source>
+        <translation>읽기만</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Do not restart</source>
+        <translation>다시 시작하지 마세요</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Restart unless stopped</source>
+        <translation>멈추지 않으면 다시 시작합니다.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>No separate volume</source>
+        <translation>별도의 볼륨이 없습니다.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Persistent Docker volume</source>
+        <translation>지속적인 Docker 볼륨</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Publish a port on this computer</source>
+        <translation>이 컴퓨터에 포트를 게시</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Run as</source>
+        <translation>달리기 같은</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Root filesystem</source>
+        <translation>뿌리 파일 시스템</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Restart policy</source>
+        <translation>정책 다시 시작</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Storage</source>
+        <translation>스토리지</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Folder inside container</source>
+        <translation>컨테이너 내부 컨테이너</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Local port</source>
+        <translation>지역 항구</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Container port</source>
+        <translation>컨테이너 포트</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Create Container</source>
+        <translation>컨테이너 만들기</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Default (run the image’s command)</source>
+        <translation>기본 (사진의 명령을 실행)</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Default (keep running for Terminal)</source>
+        <translation>지정된 (테마일을 위해 계속 실행)</translation>
+    </message>
+    <message>
+        <location line="+56"/>
+        <source>Save environment definition</source>
+        <translation>환경의 정의를 구하라</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+141"/>
+        <source>Environment definitions (*.yaml *.yml)</source>
+        <translation>환경 정의 (*.yaml *.yml)</translation>
+    </message>
+    <message>
+        <location line="-135"/>
+        <source>Choose a YAML file and include at most 2,048 definitions.</source>
+        <translation>YAML 파일을 선택하고 최대 2,048 개의 정의를 포함합니다.</translation>
+    </message>
+    <message>
+        <location line="+36"/>
+        <source>Dockpipe could not save the environment definition.</source>
+        <translation>Dockpipe는 환경 정의를 저장할 수 없었습니다.</translation>
+    </message>
+    <message>
+        <location line="+66"/>
+        <source>Edit YAML</source>
+        <translation>에디트 YAML</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Apply</source>
+        <translation>적용</translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Include environment definition files</source>
+        <translation>환경 정의 파일 포함</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Choose at most 2,048 definition files.</source>
+        <translation>최대 2,048 개의 정의 파일을 선택합니다.</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>This definition file is unavailable. Refresh the definitions and try again.</source>
+        <translation>이 정의 파일은 사용할 수 없습니다. 정의를 새롭게하고 다시 시도하십시오.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Could not open the selected environment definition.</source>
+        <translation>선택한 환경 정의를 열 수 없습니다.</translation>
+    </message>
+    <message>
+        <location line="+49"/>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <location line="+41"/>
+        <source>This machine</source>
+        <translation>이 기계</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Remote</source>
+        <translation>원격</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Local</source>
+        <translation>현지</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>No environments yet. Choose Add Environment to get started.</source>
+        <translation>아직 환경이 없습니다. 시작하기 위해 추가 환경을 선택합니다.</translation>
+    </message>
+    <message>
+        <location line="+32"/>
+        <source>Open terminal</source>
+        <translation>오픈 터미널</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Open VM console</source>
+        <translation>오픈 VM 콘솔</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Manage VM</source>
+        <translation>VM 관리자</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Connection settings</source>
+        <translation>연결 설정</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Machine settings</source>
+        <translation>머신 설정</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Choose Add Environment to get started.</source>
+        <translation>시작하기 위해 추가 환경을 선택합니다.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Select an environment to see its status and actions.</source>
+        <translation>상태와 행동을 볼 수 있는 환경을 선택합니다.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Environment details</source>
+        <translation>환경 세부 사항</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Type  %1</source>
+        <translation>모델 번호:%1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Image  %1</source>
+        <translation>사진 %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Bridge network</source>
+        <translation>브릿지 네트워크</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Read-only root filesystem</source>
+        <translation>Read-only root 파일 시스템</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Local port  %1 → %2</source>
+        <translation>현지 포트 %1 → %2</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Persistent volume  %1</source>
+        <translation>지속적인 볼륨 %1</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Operating system  %1</source>
+        <translation>운영 체제 %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>%1 CPU(s) · %2 GiB RAM · %3 GiB disk</source>
+        <translation>%1 CPU(s) · %2 GiB RAM · %3 GiB 디스크</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Installer ISO  %1</source>
+        <translation>설치기 ISO %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Choose an installer ISO before the first boot.</source>
+        <translation>첫 번째 부팅 전에 ISO 설치기를 선택합니다.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Provisioning workflow  %1</source>
+        <translation>공급 작업 흐름 %1</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Package  %1</source>
+        <translation>패키지 %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Storage profile  %1</source>
+        <translation>스토리지 프로필 %1</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>Managing broker</source>
+        <translation>관리 브로커</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Local computer</source>
+        <translation>현지 컴퓨터</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Host  This computer</source>
+        <translation>이 컴퓨터를 호스팅</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Workflows</source>
+        <translation>워크플로</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Containers</source>
+        <translation>컨테이너</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Files</source>
+        <translation>파일</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Git</source>
+        <translation>Git</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Terminal</source>
+        <translation>터미널</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Reported access  %1</source>
+        <translation>보고된 액세스 %1</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <location line="+2"/>
+        <source>, </source>
+        <translation>그리고,</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Workspace roots  %1</source>
+        <translation>작업 공간 뿌리 %1</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Last report  %1</source>
+        <translation>최신 보고서 %1</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>No workspace feature report is available.</source>
+        <translation>워크 공간 기능 보고서는 사용할 수 없습니다.</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Definition file missing</source>
+        <translation>실종된 파일의 정의</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Name differs from filename</source>
+        <translation>이름은 필레나임과 다릅니다.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Invalid definition</source>
+        <translation>장애의 정의</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Saved definition</source>
+        <translation>구원된 정의</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Selected file</source>
+        <translation>선택된 파일</translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>Observed running</source>
+        <translation>걷는 관찰</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Observed stopped</source>
+        <translation>눈에 띄는 중지</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Runtime unavailable</source>
+        <translation>실행시간 불가능</translation>
     </message>
 </context>
 <context>
@@ -4352,12 +5138,12 @@ Start a workflow from the editor to follow it here.</source>
 <context>
     <name>FileEditorWorkspace</name>
     <message>
-        <location filename="../src/files/presentation/FileEditorWorkspace.cpp" line="+63"/>
+        <location filename="../src/files/presentation/FileEditorWorkspace.cpp" line="+64"/>
         <source>Open a file in this pane</source>
         <translation>이 창에서 파일 열기</translation>
     </message>
     <message>
-        <location line="+67"/>
+        <location line="+73"/>
         <source>Open in other pane</source>
         <translation>다른 창에서 열기</translation>
     </message>
@@ -4377,7 +5163,7 @@ Start a workflow from the editor to follow it here.</source>
         <translation>다른 항목 닫기</translation>
     </message>
     <message>
-        <location line="+162"/>
+        <location line="+178"/>
         <location line="+165"/>
         <source>Close %1</source>
         <translation>%1 닫기</translation>
@@ -4991,7 +5777,7 @@ This change may contain only a rename, file metadata, or merge information.</sou
 <context>
     <name>GitHistoryWidget</name>
     <message>
-        <location filename="../src/git/presentation/GitHistoryWidget.cpp" line="+45"/>
+        <location filename="../src/git/presentation/GitHistoryWidget.cpp" line="+46"/>
         <source>Search commits…</source>
         <translation>커밋 검색…</translation>
     </message>
@@ -5261,7 +6047,7 @@ This change may contain only a rename, file metadata, or merge information.</sou
 <context>
     <name>GitRepositoryWidget</name>
     <message>
-        <location filename="../src/git/presentation/GitRepositoryWidget.cpp" line="+32"/>
+        <location filename="../src/git/presentation/GitRepositoryWidget.cpp" line="+33"/>
         <source>Refresh</source>
         <translation>새로 고침</translation>
     </message>
@@ -5372,7 +6158,7 @@ Upstream: %3
         <translation>%1  %2</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+37"/>
         <source>Merge branch</source>
         <translation>브랜치 병합</translation>
     </message>
@@ -5521,21 +6307,21 @@ Upstream: %3
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="+334"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="+340"/>
         <source>Dockpipe — %1</source>
         <translation>Dockpipe — %1</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+108"/>
-        <location line="+259"/>
-        <location line="+745"/>
+        <location line="+170"/>
+        <location line="+258"/>
+        <location line="+755"/>
         <location line="+51"/>
-        <location line="+120"/>
+        <location line="+140"/>
         <location line="+6"/>
         <location line="+5"/>
         <location line="+24"/>
-        <location line="+309"/>
+        <location line="+299"/>
         <location line="+47"/>
         <location line="+162"/>
         <location line="+118"/>
@@ -5543,13 +6329,13 @@ Upstream: %3
         <translation>Dockpipe</translation>
     </message>
     <message>
-        <location line="-1898"/>
-        <location line="+424"/>
+        <location line="-1943"/>
+        <location line="+449"/>
         <source>System</source>
         <translation>시스템</translation>
     </message>
     <message>
-        <location line="-369"/>
+        <location line="-368"/>
         <source>Your work. Anywhere.</source>
         <translation>어디서나 나의 작업을.</translation>
     </message>
@@ -5560,18 +6346,18 @@ Upstream: %3
     </message>
     <message>
         <location line="+4"/>
-        <location line="+404"/>
+        <location line="+403"/>
         <source>Packages</source>
         <translation>패키지</translation>
     </message>
     <message>
-        <location line="-403"/>
-        <location line="+400"/>
+        <location line="-402"/>
+        <location line="+399"/>
         <source>Settings</source>
         <translation>설정</translation>
     </message>
     <message>
-        <location line="-385"/>
+        <location line="-384"/>
         <source>WORKSPACE</source>
         <translation>작업 공간</translation>
     </message>
@@ -5581,29 +6367,24 @@ Upstream: %3
         <translation>폴더 열기…</translation>
     </message>
     <message>
-        <location line="+107"/>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+189"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+151"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+190"/>
         <source>This computer</source>
         <translation>이 컴퓨터</translation>
     </message>
     <message>
-        <location line="+5"/>
-        <source> — unavailable</source>
-        <translation> — 사용 불가</translation>
-    </message>
-    <message>
-        <location line="+46"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="+155"/>
         <source>Workflow</source>
         <translation>워크플로</translation>
     </message>
     <message>
-        <location line="+21"/>
-        <location line="+1631"/>
+        <location line="+23"/>
+        <location line="+1651"/>
         <source>%1 logs</source>
         <translation>%1 로그</translation>
     </message>
     <message>
-        <location line="-1621"/>
+        <location line="-1641"/>
         <source>Remote workflow</source>
         <translation>원격 워크플로</translation>
     </message>
@@ -5639,12 +6420,12 @@ Upstream: %3
     </message>
     <message>
         <location line="+2"/>
-        <location line="+848"/>
+        <location line="+878"/>
         <source>Quit</source>
         <translation>종료</translation>
     </message>
     <message>
-        <location line="-846"/>
+        <location line="-876"/>
         <source>View</source>
         <translation>보기</translation>
     </message>
@@ -5659,11 +6440,6 @@ Upstream: %3
         <location line="+200"/>
         <source>Workflows</source>
         <translation>워크플로</translation>
-    </message>
-    <message>
-        <location line="+0"/>
-        <source>Machines</source>
-        <translation>머신</translation>
     </message>
     <message>
         <location line="+0"/>
@@ -5694,6 +6470,11 @@ Upstream: %3
         <location line="+0"/>
         <source>Terminal</source>
         <translation>터미널</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Environments</source>
+        <translation>주변 환경</translation>
     </message>
     <message>
         <location line="+12"/>
@@ -5801,7 +6582,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>나중에</translation>
     </message>
     <message>
-        <location line="+188"/>
+        <location line="+195"/>
         <source>Workflow studio</source>
         <translation>워크플로 스튜디오</translation>
     </message>
@@ -5821,7 +6602,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>프로젝트 폴더 열기</translation>
     </message>
     <message>
-        <location line="+101"/>
+        <location line="+104"/>
         <source>Open a project</source>
         <translation>프로젝트 열기</translation>
     </message>
@@ -5832,19 +6613,19 @@ If a workflow needs external tools, you install them yourself from official sour
     </message>
     <message>
         <location line="+22"/>
-        <location line="+652"/>
-        <location filename="../src/shell/presentation/MainWindowSurfaces.cpp" line="+109"/>
+        <location line="+662"/>
+        <location filename="../src/shell/presentation/MainWindowSurfaces.cpp" line="+151"/>
         <source>Workflow unavailable</source>
         <translation>워크플로 사용 불가</translation>
     </message>
     <message>
-        <location line="-624"/>
-        <location line="+673"/>
+        <location line="-634"/>
+        <location line="+683"/>
         <source>Could not start dockpipe (see stderr).</source>
         <translation>dockpipe를 시작하지 못했습니다(stderr 참조).</translation>
     </message>
     <message>
-        <location line="-600"/>
+        <location line="-593"/>
         <source>VS Code workflow</source>
         <translation>VS Code 워크플로</translation>
     </message>
@@ -5854,7 +6635,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>선언된 입력이 없습니다. 이 구성을 편집하려면 워크플로로 복제를 사용하세요.</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+50"/>
         <source>This workflow does not expose app-managed settings.</source>
         <translation>이 워크플로는 앱에서 관리하는 설정을 제공하지 않습니다.</translation>
     </message>
@@ -5924,7 +6705,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>준비됨</translation>
     </message>
     <message>
-        <location line="+168"/>
+        <location line="+158"/>
         <source>Received an invalid Dockpipe prompt payload.</source>
         <translation>올바르지 않은 Dockpipe 프롬프트 데이터를 수신했습니다.</translation>
     </message>
@@ -5945,7 +6726,7 @@ If a workflow needs external tools, you install them yourself from official sour
     </message>
     <message>
         <location line="+1"/>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+213"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+121"/>
         <source>Choose another computer or reconnect this machine before running.</source>
         <translation>실행 전에 다른 컴퓨터를 선택하거나 이 머신을 다시 연결하세요.</translation>
     </message>
@@ -6068,7 +6849,7 @@ If a workflow needs external tools, you install them yourself from official sour
 </translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowDashboards.cpp" line="+76"/>
+        <location filename="../src/shell/presentation/MainWindowDashboards.cpp" line="+78"/>
         <source>This workflow is no longer in the project catalog. Refresh Workflows and try again.</source>
         <translation>이 워크플로는 프로젝트 카탈로그에 없습니다. 워크플로를 새로 고침한 후 다시 시도하세요.</translation>
     </message>
@@ -6267,7 +7048,7 @@ Ctrl / ⌘ + `     출력 전환
         <translation>아직 워크플로 없음</translation>
     </message>
     <message>
-        <location line="+56"/>
+        <location line="+53"/>
         <source>Open YAML file…</source>
         <translation>YAML 파일 열기…</translation>
     </message>
@@ -6307,7 +7088,7 @@ Ctrl / ⌘ + `     출력 전환
         <translation>워크플로 YAML (*.yml *.yaml)</translation>
     </message>
     <message>
-        <location line="+41"/>
+        <location line="+45"/>
         <source>Workflow source unavailable</source>
         <translation>워크플로 소스 사용 불가</translation>
     </message>
@@ -6322,12 +7103,17 @@ Ctrl / ⌘ + `     출력 전환
         <translation>Git 작업이 끝날 때까지 기다리거나 Git에서 취소한 후 프로젝트를 변경하세요.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="-1376"/>
+        <location line="+122"/>
+        <source>This run target is unavailable. Choose another computer or reconnect it in Environments.</source>
+        <translation>이 실행 목표는 사용할 수 없습니다.다른 컴퓨터를 선택하거나 환경에서 다시 연결합니다.</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="-1396"/>
         <source>Wait for the Git action to finish, or cancel it in Git before quitting.</source>
         <translation>Git 작업이 끝날 때까지 기다리거나 Git에서 취소한 후 종료하세요.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+94"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-23"/>
         <source>&lt;h3&gt;Select a workflow&lt;/h3&gt;&lt;p&gt;Review its purpose and inputs here, then choose Run or Edit on canvas.&lt;/p&gt;</source>
         <translation>&lt;h3&gt;워크플로 선택&lt;/h3&gt;&lt;p&gt;여기서 목적과 입력을 검토한 후 실행 또는 캔버스에서 편집을 선택하세요.&lt;/p&gt;</translation>
     </message>
@@ -6362,12 +7148,7 @@ Ctrl / ⌘ + `     출력 전환
         <translation>선택한 컴퓨터에는 이 워크플로에 필요한 도구와 플랫폼이 있어야 합니다.</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>This run target is unavailable. Choose another computer or reconnect it in Machines.</source>
-        <translation>이 실행 대상을 사용할 수 없습니다. 다른 컴퓨터를 선택하거나 머신에서 다시 연결하세요.</translation>
-    </message>
-    <message>
-        <location line="+41"/>
+        <location line="+45"/>
         <source>Clone failed</source>
         <translation>복제 실패</translation>
     </message>
@@ -6382,7 +7163,12 @@ Ctrl / ⌘ + `     출력 전환
         <translation>워크플로를 %1에 복제했습니다</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-43"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-96"/>
+        <source>%1 · Workflow access unavailable</source>
+        <translation>%1 · 워크프로 액세스 불가능</translation>
+    </message>
+    <message>
+        <location line="+53"/>
         <source>This machine or root changed. Refresh machines and select it again.</source>
         <translation>이 머신 또는 루트가 변경되었습니다. 머신을 새로 고친 후 다시 선택하세요.</translation>
     </message>
@@ -6392,13 +7178,12 @@ Ctrl / ⌘ + `     출력 전환
         <translation>머신을 변경하기 전에 열린 초안을 저장하거나 버리고 활성 작업을 완료하세요.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-435"/>
-        <location line="+145"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-443"/>
         <source>Choose the computer with the shared machine selector.</source>
         <translation>공유 머신 선택기에서 컴퓨터를 선택하세요.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+93"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+130"/>
         <source>Container terminal · %1 · %2</source>
         <translation>컨테이너 터미널 · %1 · %2</translation>
     </message>
@@ -6406,6 +7191,17 @@ Ctrl / ⌘ + `     출력 전환
         <location filename="../src/shell/presentation/MainWindow.cpp" line="-209"/>
         <source>Remote Desktop</source>
         <translation>원격 데스크톱</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-216"/>
+        <location line="+28"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · 사용 불가</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+145"/>
+        <source>Use the shared machine or choose a worker for this workflow.</source>
+        <translation>공유 컴퓨터를 사용하거나 이 워크플로를 실행할 작업자를 선택하세요.</translation>
     </message>
 </context>
 <context>
@@ -6525,12 +7321,12 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>터미널 프로필은 최대 64개의 환경 변수를 재정의할 수 있습니다.</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+56"/>
         <source>The terminal launch exceeds its bounded profile or environment contract.</source>
         <translation>터미널 시작 요청이 프로필 또는 환경 제한을 초과합니다.</translation>
     </message>
     <message>
-        <location line="-45"/>
+        <location line="-50"/>
         <source>The terminal profile contains an invalid environment variable.</source>
         <translation>터미널 프로필에 잘못된 환경 변수가 포함되어 있습니다.</translation>
     </message>
@@ -7018,7 +7814,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
 <context>
     <name>PackageSurfacePage</name>
     <message>
-        <location filename="../src/packages/presentation/PackageSurfacePage.cpp" line="+50"/>
+        <location filename="../src/packages/presentation/PackageSurfacePage.cpp" line="+52"/>
         <source>View</source>
         <translation>보기</translation>
     </message>
@@ -7083,13 +7879,13 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>작업이 시간 초과되었습니다. 현재 상태를 확인하려면 새로 고침하세요.</translation>
     </message>
     <message>
-        <location line="+91"/>
+        <location line="+95"/>
         <location line="+18"/>
         <source>Refresh paused. Displayed state is stale.</source>
         <translation>새로 고침이 일시 중지되었습니다. 표시된 상태가 오래되었습니다.</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+28"/>
         <source>State has not been refreshed.</source>
         <translation>상태가 새로 고침되지 않았습니다.</translation>
     </message>
@@ -7099,7 +7895,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>설치된 패키지 시작 작업이 모호하거나 사용할 수 없습니다.</translation>
     </message>
     <message>
-        <location line="+114"/>
+        <location line="+133"/>
         <source>Refreshing… Previous state is retained.</source>
         <translation>새로 고침 중… 이전 상태가 유지됩니다.</translation>
     </message>
@@ -7124,7 +7920,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>패키지가 올바르지 않은 화면 이벤트를 반환했습니다.</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+54"/>
         <source>Package operation failed or returned no snapshot. Displayed state is stale.</source>
         <translation>패키지 작업이 실패했거나 스냅샷을 반환하지 않았습니다. 표시된 상태가 오래되었습니다.</translation>
     </message>
@@ -7139,7 +7935,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>작업이 완료되었습니다. 상태 새로 고침 중…</translation>
     </message>
     <message>
-        <location line="+25"/>
+        <location line="+69"/>
         <source>Unsupported package surface event schema.</source>
         <translation>지원하지 않는 패키지 화면 이벤트 스키마입니다.</translation>
     </message>
@@ -7164,7 +7960,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>패키지 리소스 필드가 화면 계약을 초과합니다.</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+16"/>
         <source>Invalid package widget display options or missing installed factory.</source>
         <translation>패키지 위젯 디스플레이 옵션이 올바르지 않거나 설치된 팩터리가 없습니다.</translation>
     </message>
@@ -7187,6 +7983,213 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <location line="+7"/>
         <source>Invalid package resource action.</source>
         <translation>올바르지 않은 패키지 리소스 작업입니다.</translation>
+    </message>
+</context>
+<context>
+    <name>PipeLangEditorSession</name>
+    <message>
+        <location filename="../src/files/presentation/PipeLangEditorSession.cpp" line="+139"/>
+        <source>Browse…</source>
+        <translation>찾아보기…</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Connect</source>
+        <translation>연결</translation>
+    </message>
+    <message>
+        <location line="-33"/>
+        <source>Connect PipeLang language server</source>
+        <translation>PipeLang 언어 서버에 연결</translation>
+    </message>
+    <message>
+        <location line="-19"/>
+        <source>Connect an explicitly selected installed language server for .pipe diagnostics and hover</source>
+        <translation>명시적으로 선택한 설치된 언어 서버에 연결해 .pipe 파일의 진단 및 마우스 오버 정보 표시</translation>
+    </message>
+    <message>
+        <location line="+47"/>
+        <source>Node executable</source>
+        <translation>Node 실행 파일</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>PipeLang compiler executable</source>
+        <translation>PipeLang 컴파일러 실행 파일</translation>
+    </message>
+    <message>
+        <location line="-43"/>
+        <source>PipeLang language server disconnected.</source>
+        <translation>PipeLang 언어 서버 연결이 끊겼습니다.</translation>
+    </message>
+    <message>
+        <location line="-7"/>
+        <source>PipeLang server…</source>
+        <translation>PipeLang 서버…</translation>
+    </message>
+    <message>
+        <location line="+41"/>
+        <source>Select installed tool</source>
+        <translation>설치된 도구 선택</translation>
+    </message>
+    <message>
+        <location line="-1"/>
+        <source>Select source root</source>
+        <translation>소스 루트 디렉터리 선택</translation>
+    </message>
+    <message>
+        <location line="-18"/>
+        <source>Select trusted installed tools. Connecting runs the selected Node and server on this host. Paths are used only for this session; project files cannot configure executable paths. An optional source root authorizes compiler analysis of imports beneath that directory.</source>
+        <translation>신뢰할 수 있는 설치된 도구를 선택하세요. 연결하면 선택한 Node와 서버를 이 컴퓨터에서 실행합니다. 경로는 이 세션에서만 사용됩니다. 프로젝트 파일에서는 실행 파일 경로를 설정할 수 없습니다. 소스 루트 디렉터리를 선택적으로 지정하면 컴파일러가 해당 디렉터리 아래의 가져오기 항목을 분석할 수 있습니다.</translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Server JavaScript entrypoint</source>
+        <translation>서버 JavaScript 진입점</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Source root (optional)</source>
+        <translation>소스 루트 디렉터리 (선택 사항)</translation>
+    </message>
+    <message>
+        <location line="-47"/>
+        <source>Stop</source>
+        <translation>중지</translation>
+    </message>
+</context>
+<context>
+    <name>PipeLangLanguageClient</name>
+    <message>
+        <location filename="../src/files/infrastructure/PipeLangLanguageClient.cpp" line="+374"/>
+        <source>Invalid PipeLang JSON-RPC message.</source>
+        <translation>PipeLang JSON-RPC 메시지가 유효하지 않습니다.</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Invalid PipeLang JSON-RPC version.</source>
+        <translation>PipeLang JSON-RPC 버전이 유효하지 않습니다.</translation>
+    </message>
+    <message>
+        <location line="-35"/>
+        <source>Invalid PipeLang protocol Content-Length.</source>
+        <translation>PipeLang 프로토콜의 Content-Length 값이 유효하지 않습니다.</translation>
+    </message>
+    <message>
+        <location line="-224"/>
+        <source>Invalid absolute installed PipeLang selection (%1).</source>
+        <translation>설치된 PipeLang 도구를 선택한 절대 경로가 유효하지 않습니다 (%1).</translation>
+    </message>
+    <message>
+        <location line="-10"/>
+        <source>Node executable: %1</source>
+        <translation>Node 실행 파일: %1</translation>
+    </message>
+    <message>
+        <location line="+305"/>
+        <source>PipeLang compiler diagnostics and hover connected.</source>
+        <translation>PipeLang 컴파일러 진단 및 마우스 오버 정보를 사용할 수 있습니다.</translation>
+    </message>
+    <message>
+        <location line="-178"/>
+        <source>PipeLang document limit exceeded (1 MiB per file, 16 MiB total, 32 files).</source>
+        <translation>PipeLang 문서 한도를 초과했습니다 (파일당 1 MiB, 총 16 MiB, 최대 32개 파일).</translation>
+    </message>
+    <message>
+        <location line="-208"/>
+        <source>PipeLang hover timed out.</source>
+        <translation>PipeLang 마우스 오버 정보 요청 시간이 초과되었습니다.</translation>
+    </message>
+    <message>
+        <location line="+301"/>
+        <location line="+4"/>
+        <source>PipeLang protocol header limit exceeded.</source>
+        <translation>PipeLang 프로토콜 헤더 한도를 초과했습니다.</translation>
+    </message>
+    <message>
+        <location line="-14"/>
+        <source>PipeLang protocol input limit exceeded.</source>
+        <translation>PipeLang 프로토콜 입력 한도를 초과했습니다.</translation>
+    </message>
+    <message>
+        <location line="-126"/>
+        <source>PipeLang protocol output limit exceeded.</source>
+        <translation>PipeLang 프로토콜 출력 한도를 초과했습니다.</translation>
+    </message>
+    <message>
+        <location line="+157"/>
+        <source>PipeLang protocol requires one Content-Length header.</source>
+        <translation>PipeLang 프로토콜에는 Content-Length 헤더가 정확히 하나 필요합니다.</translation>
+    </message>
+    <message>
+        <location line="-151"/>
+        <source>PipeLang protocol write failed.</source>
+        <translation>PipeLang 프로토콜에 쓰지 못했습니다.</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>PipeLang request identity space exhausted; restart the editor session.</source>
+        <translation>PipeLang 요청 ID를 모두 사용했습니다. 편집기 세션을 다시 시작하세요.</translation>
+    </message>
+    <message>
+        <location line="-144"/>
+        <source>PipeLang server could not start: %1</source>
+        <translation>PipeLang 서버를 시작할 수 없습니다: %1</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>PipeLang server exited (%1). Reconnect explicitly.</source>
+        <translation>PipeLang 서버가 종료되었습니다 (%1). 수동으로 다시 연결하세요.</translation>
+    </message>
+    <message>
+        <location line="-40"/>
+        <source>PipeLang server lifecycle deadline exceeded.</source>
+        <translation>PipeLang 서버 수명 주기 작업의 제한 시간이 초과되었습니다.</translation>
+    </message>
+    <message>
+        <location line="+383"/>
+        <source>PipeLang server rejected shutdown.</source>
+        <translation>PipeLang 서버가 종료 요청을 거부했습니다.</translation>
+    </message>
+    <message>
+        <location line="-385"/>
+        <source>PipeLang server required forced termination after stdin closure.</source>
+        <translation>stdin을 닫은 후 PipeLang 서버를 강제로 종료해야 했습니다.</translation>
+    </message>
+    <message>
+        <location line="+42"/>
+        <source>PipeLang server stopped.</source>
+        <translation>PipeLang 서버가 중지되었습니다.</translation>
+    </message>
+    <message>
+        <location line="+332"/>
+        <source>Selected PipeLang server does not provide the required UTF-16 hover contract.</source>
+        <translation>선택한 PipeLang 서버가 마우스 오버 정보에 필요한 UTF-16 규약을 지원하지 않습니다.</translation>
+    </message>
+    <message>
+        <location line="-269"/>
+        <source>Starting selected PipeLang server…</source>
+        <translation>선택한 PipeLang 서버를 시작하는 중…</translation>
+    </message>
+    <message>
+        <location line="-34"/>
+        <source>Stop the current PipeLang server before reconnecting.</source>
+        <translation>다시 연결하기 전에 현재 PipeLang 서버를 중지하세요.</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>compiler executable: %1</source>
+        <translation>컴파일러 실행 파일: %1</translation>
+    </message>
+    <message>
+        <location line="-2"/>
+        <source>server entrypoint: %1</source>
+        <translation>서버 진입점: %1</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>source directory: %1</source>
+        <translation>소스 디렉터리: %1</translation>
     </message>
 </context>
 <context>
@@ -7301,12 +8304,12 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
     <name>ProjectFilesWidget</name>
     <message>
         <location filename="../src/files/presentation/ProjectFilesWidget.cpp" line="+62"/>
-        <location line="+172"/>
+        <location line="+175"/>
         <source>Files</source>
         <translation>파일</translation>
     </message>
     <message>
-        <location line="-169"/>
+        <location line="-172"/>
         <source>Browse and edit your workspace.</source>
         <translation>작업 공간을 탐색하고 편집합니다.</translation>
     </message>
@@ -7317,13 +8320,13 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
     </message>
     <message>
         <location line="+5"/>
-        <location line="+26"/>
+        <location line="+29"/>
         <source>New file</source>
         <translation>새 파일</translation>
     </message>
     <message>
-        <location line="-26"/>
-        <location line="+225"/>
+        <location line="-29"/>
+        <location line="+228"/>
         <source>Path relative to this folder</source>
         <translation>이 폴더에 대한 상대 경로</translation>
     </message>
@@ -7403,12 +8406,12 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
     <message>
         <location line="+13"/>
         <location line="+3"/>
-        <location line="+888"/>
+        <location line="+945"/>
         <source>Preview Markdown</source>
         <translation>Markdown 미리 보기</translation>
     </message>
     <message>
-        <location line="-882"/>
+        <location line="-939"/>
         <source>Find in file (Ctrl+F)</source>
         <translation>파일에서 찾기(Ctrl+F)</translation>
     </message>
@@ -7489,11 +8492,12 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
     </message>
     <message>
         <location line="+3"/>
+        <location line="+222"/>
         <source>Select a file to edit, or create something new.</source>
         <translation>편집할 파일을 선택하거나 새로 만드세요.</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="-218"/>
         <source>Create a file</source>
         <translation>파일 만들기</translation>
     </message>
@@ -7503,7 +8507,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>“%1”과 일치하는 항목이 없습니다.</translation>
     </message>
     <message>
-        <location line="+189"/>
+        <location line="+243"/>
         <source>Unsaved file</source>
         <translation>저장하지 않은 파일</translation>
     </message>
@@ -7575,7 +8579,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>%1 저장됨</translation>
     </message>
     <message>
-        <location line="+175"/>
+        <location line="+177"/>
         <source>No file open</source>
         <translation>열린 파일 없음</translation>
     </message>
@@ -7595,7 +8599,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>작업 공간 루트</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="+23"/>
         <source>Hide Markdown preview</source>
         <translation>Markdown 미리 보기 숨기기</translation>
     </message>
@@ -7615,12 +8619,12 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>%1   ·   UTF-8   ·   %2                         %3행, %4열</translation>
     </message>
     <message>
-        <location line="-1070"/>
+        <location line="-1127"/>
         <source>Refresh files</source>
         <translation>파일 새로 고침</translation>
     </message>
     <message>
-        <location line="+463"/>
+        <location line="+517"/>
         <location line="+34"/>
         <source>A file operation is still running. Your open files are preserved.</source>
         <translation>파일 작업이 아직 실행 중입니다. 열려 있는 파일은 보존됩니다.</translation>
@@ -7629,6 +8633,11 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <location line="+341"/>
         <source>Invalid workspace file response.</source>
         <translation>잘못된 작업공간 파일 응답입니다.</translation>
+    </message>
+    <message>
+        <location line="-440"/>
+        <source>Select a file to read.</source>
+        <translation>읽을 파일을 선택하세요.</translation>
     </message>
 </context>
 <context>
@@ -7730,7 +8739,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>푸시</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+3"/>
         <source>Pull fast-forward changes into a clean checkout</source>
         <translation>깨끗한 체크아웃으로 빨리 감기 변경 사항 풀</translation>
     </message>
@@ -7747,12 +8756,12 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
     <message>
         <location line="+12"/>
         <location line="+27"/>
-        <location line="+288"/>
+        <location line="+292"/>
         <source>Changed files</source>
         <translation>변경된 파일</translation>
     </message>
     <message>
-        <location line="-315"/>
+        <location line="-319"/>
         <source>Staged files</source>
         <translation>스테이징된 파일</translation>
     </message>
@@ -7799,30 +8808,30 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
     </message>
     <message>
         <location line="+4"/>
-        <location line="+639"/>
+        <location line="+655"/>
         <source>Unstage all</source>
         <translation>모두 스테이징 해제</translation>
     </message>
     <message>
-        <location line="-639"/>
-        <location line="+638"/>
+        <location line="-655"/>
+        <location line="+654"/>
         <source>Stage all</source>
         <translation>모두 스테이징</translation>
     </message>
     <message>
-        <location line="-589"/>
-        <location line="+566"/>
+        <location line="-605"/>
+        <location line="+582"/>
         <source>Stage changes to include them in your commit.</source>
         <translation>커밋에 포함할 변경 사항을 스테이징하세요.</translation>
     </message>
     <message>
-        <location line="-566"/>
-        <location line="+568"/>
+        <location line="-582"/>
+        <location line="+584"/>
         <source>No unstaged changes.</source>
         <translation>스테이징되지 않은 변경 사항이 없습니다.</translation>
     </message>
     <message>
-        <location line="-544"/>
+        <location line="-560"/>
         <source>Commit changes</source>
         <translation>변경 사항 커밋</translation>
     </message>
@@ -7848,20 +8857,20 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
     </message>
     <message>
         <location line="+12"/>
-        <location line="+145"/>
-        <location line="+260"/>
+        <location line="+149"/>
+        <location line="+268"/>
         <location line="+4"/>
         <source>Select a file to review</source>
         <translation>검토할 파일 선택</translation>
     </message>
     <message>
-        <location line="-398"/>
-        <location line="+465"/>
+        <location line="-410"/>
+        <location line="+481"/>
         <source>Unstaged changes</source>
         <translation>스테이징되지 않은 변경 사항</translation>
     </message>
     <message>
-        <location line="-462"/>
+        <location line="-478"/>
         <source>Stage</source>
         <translation>스테이징</translation>
     </message>
@@ -7887,20 +8896,20 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
     </message>
     <message>
         <location line="+21"/>
-        <location line="+96"/>
-        <location line="+163"/>
+        <location line="+100"/>
+        <location line="+171"/>
         <source>Your changes, in focus</source>
         <translation>변경 사항에 집중</translation>
     </message>
     <message>
-        <location line="-254"/>
-        <location line="+92"/>
-        <location line="+163"/>
+        <location line="-266"/>
+        <location line="+96"/>
+        <location line="+171"/>
         <source>Refresh the repository, then select a file to review its changes.</source>
         <translation>저장소를 새로 고침한 후 파일을 선택하여 변경 사항을 검토하세요.</translation>
     </message>
     <message>
-        <location line="-243"/>
+        <location line="-255"/>
         <source>Changes</source>
         <translation>변경 사항</translation>
     </message>
@@ -7920,7 +8929,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>작업 취소</translation>
     </message>
     <message>
-        <location line="+57"/>
+        <location line="+61"/>
         <source>Refresh to review this project&apos;s changes.</source>
         <translation>이 프로젝트의 변경 사항을 검토하려면 새로 고침하세요.</translation>
     </message>
@@ -7930,7 +8939,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>먼저 프로젝트 폴더를 여세요.</translation>
     </message>
     <message>
-        <location line="+80"/>
+        <location line="+88"/>
         <source>Refresh the repository before changing it.</source>
         <translation>변경하기 전에 저장소를 새로 고침하세요.</translation>
     </message>
@@ -7997,7 +9006,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>다음 커밋을 준비하려면 변경 사항을 스테이징하세요.</translation>
     </message>
     <message>
-        <location line="+40"/>
+        <location line="+44"/>
         <source>No staged files</source>
         <translation>스테이징된 파일 없음</translation>
     </message>
@@ -8030,6 +9039,11 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <location line="+1"/>
         <source>Unstage shown</source>
         <translation>표시된 항목 스테이징 해제</translation>
+    </message>
+    <message>
+        <location line="-263"/>
+        <source>The selected Git root does not grant this operation.</source>
+        <translation>선택한 Git 루트에는 이 작업을 수행할 권한이 없습니다.</translation>
     </message>
 </context>
 <context>
@@ -8269,7 +9283,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>자동 터미널 설정이 올바르지 않은 호스트 환경을 수신했습니다.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="-710"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="-774"/>
         <source>Running</source>
         <translation>실행 중</translation>
     </message>
@@ -8299,7 +9313,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>머신이나 루트를 변경하기 전에 충돌 초안을 저장하거나 버리세요.</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+49"/>
         <source>Select an absolute local project folder.</source>
         <translation>절대 경로가 있는 로컬 프로젝트 폴더를 선택하세요.</translation>
     </message>
@@ -8391,7 +9405,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
     </message>
     <message>
         <location line="+125"/>
-        <location line="+73"/>
+        <location line="+77"/>
         <source>Output exceeded the display limit.
 </source>
         <translation>출력이 표시 한도를 초과했습니다.
@@ -8563,7 +9577,22 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>화질과 프레임 속도는 다음 연결부터 적용됩니다. 해상도는 최대값이고 비트 전송률은 목표값입니다.</translation>
     </message>
     <message>
-        <location line="-73"/>
+        <location line="+33"/>
+        <source>Clipboard sharing is unavailable on the selected computer.</source>
+        <translation>Clipboard 공유는 선택한 컴퓨터에서 사용할 수 없습니다.</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>The selected computer shares its current desktop.</source>
+        <translation>선택한 컴퓨터는 현재의 데스크톱을 공유합니다.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>The selected computer&apos;s video does not include a cursor.</source>
+        <translation>선택한 컴퓨터의 비디오에는 코서가 포함되지 않습니다.</translation>
+    </message>
+    <message>
+        <location line="-119"/>
         <source>Current desktop</source>
         <translation>현재 데스크톱</translation>
     </message>
@@ -8621,14 +9650,14 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
 <context>
     <name>RemoteDesktopWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+89"/>
-        <location line="+209"/>
-        <location line="+313"/>
+        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+124"/>
+        <location line="+222"/>
+        <location line="+320"/>
         <source>Remote Desktop</source>
         <translation>원격 데스크톱</translation>
     </message>
     <message>
-        <location line="-509"/>
+        <location line="-529"/>
         <source>View or control an existing desktop through its authorized native provider.</source>
         <translation>인증된 네이티브 공급자를 통해 기존 데스크톱을 보거나 제어합니다.</translation>
     </message>
@@ -8710,7 +9739,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>연결 유지</translation>
     </message>
     <message>
-        <location line="+39"/>
+        <location line="+52"/>
         <source>Some settings will apply on the next connection.</source>
         <translation>일부 설정은 다음 연결부터 적용됩니다.</translation>
     </message>
@@ -8750,14 +9779,14 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>%1 (페어링 업데이트 필요)</translation>
     </message>
     <message>
-        <location line="+63"/>
-        <source>No paired computers are available. Add a computer in Machines.</source>
-        <translation>사용 가능한 페어링된 컴퓨터가 없습니다. 컴퓨터 메뉴에서 추가하세요.</translation>
+        <location line="+68"/>
+        <source>Choose a paired computer.</source>
+        <translation>페어링된 컴퓨터를 선택하세요.</translation>
     </message>
     <message>
         <location line="+0"/>
-        <source>Choose a paired computer.</source>
-        <translation>페어링된 컴퓨터를 선택하세요.</translation>
+        <source>No paired computers are available. Add a computer in Environments.</source>
+        <translation>파이어드 컴퓨터가 없습니다.Environment에 컴퓨터를 추가합니다.</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -8801,22 +9830,27 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>데스크톱 준비 상태 카탈로그가 유효하지 않습니다.</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+29"/>
         <source>The selected desktop identity or permission changed. Refresh and connect again.</source>
         <translation>선택한 데스크톱의 ID 또는 권한이 변경되었습니다. 새로 고친 후 다시 연결하세요.</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+26"/>
+        <source>Opening the selected desktop with administrator control…</source>
+        <translation>관리자 컨트롤을 사용하여 선택한 데스크톱을 열기...</translation>
+    </message>
+    <message>
+        <location line="+1"/>
         <source>Opening the selected desktop…</source>
         <translation>선택한 데스크톱을 여는 중…</translation>
     </message>
     <message>
-        <location line="-401"/>
+        <location line="-427"/>
         <source>Disconnected locally. The native provider reports any unconfirmed remote cleanup.</source>
         <translation>로컬 연결을 해제했습니다. 확인되지 않은 원격 정리가 있으면 네이티브 공급자가 알립니다.</translation>
     </message>
     <message>
-        <location line="+412"/>
+        <location line="+438"/>
         <source>Closing the selected desktop…</source>
         <translation>선택한 데스크톱을 닫는 중…</translation>
     </message>
@@ -8849,7 +9883,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>원격 머신 카탈로그를 사용할 수 없습니다.</translation>
     </message>
     <message>
-        <location line="+66"/>
+        <location line="+70"/>
         <source>Remote result does not match the captured operation.</source>
         <translation>원격 결과가 캡처된 작업과 일치하지 않습니다.</translation>
     </message>
@@ -8859,7 +9893,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>원래 원격 작업의 취소가 요청되었습니다. 쓰기를 재시도하기 전에 상태를 새로 고치세요.</translation>
     </message>
     <message>
-        <location line="-157"/>
+        <location line="-161"/>
         <source>Cannot retain remote mutation recovery metadata. Resolve saved operations or repair settings before another write.</source>
         <translation>원격 변경의 복구 메타데이터를 보관할 수 없습니다. 다시 쓰기 전에 저장된 작업을 해결하거나 설정을 복구하세요.</translation>
     </message>
@@ -8912,7 +9946,7 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
 <context>
     <name>RemoteFeatureRecoveryDialog</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteFeatureRecoveryDialog.cpp" line="+62"/>
+        <location filename="../src/remote/presentation/RemoteFeatureRecoveryDialog.cpp" line="+63"/>
         <source>Choose a retained operation.</source>
         <translation>보관된 작업을 선택하세요.</translation>
     </message>
@@ -8922,17 +9956,17 @@ Mermaid 미리 보기 한도: 처음 16개 이후의 다이어그램은 소스�
         <translation>닫기</translation>
     </message>
     <message>
-        <location line="+148"/>
+        <location line="+165"/>
         <source>Contacting the original captured machine…</source>
         <translation>기록된 원래 머신에 연결하는 중…</translation>
     </message>
     <message>
-        <location line="-180"/>
+        <location line="-197"/>
         <source>Inspect the original operation before another write. Cancellation does not prove that a mutation had no effect.</source>
         <translation>다시 쓰기 전에 원래 작업을 검사하세요. 취소는 변경에 아무런 영향이 없었음을 증명하지 않습니다.</translation>
     </message>
     <message>
-        <location line="+146"/>
+        <location line="+155"/>
         <source>Machine: %1
 Fingerprint: %2
 Generation: %3
@@ -8948,17 +9982,17 @@ Operation: %6</source>
     </message>
     <message>
         <location line="-1"/>
-        <location line="+18"/>
+        <location line="+20"/>
         <source>No uncertain mutations are retained.</source>
         <translation>보관된 불확실한 변경이 없습니다.</translation>
     </message>
     <message>
-        <location line="+77"/>
+        <location line="+85"/>
         <source>Original operation status: %1. No operation was replayed.</source>
         <translation>원래 작업 상태: %1. 어떤 작업도 다시 실행하지 않았습니다.</translation>
     </message>
     <message>
-        <location line="-222"/>
+        <location line="-241"/>
         <source>Refresh status</source>
         <translation>상태 새로 고침</translation>
     </message>
@@ -8968,30 +10002,30 @@ Operation: %6</source>
         <translation>취소 요청</translation>
     </message>
     <message>
-        <location line="+144"/>
-        <location line="+47"/>
+        <location line="+155"/>
+        <location line="+53"/>
         <location line="+22"/>
         <source>The mutation outcome remains uncertain. Refresh its original status before another write.</source>
         <translation>변경 결과는 여전히 불확실합니다. 다시 쓰기 전에 원래 상태를 새로 고치세요.</translation>
     </message>
     <message>
-        <location line="+36"/>
+        <location line="+39"/>
         <source>Uncertain operations…</source>
         <translation>불확실한 작업…</translation>
     </message>
     <message>
-        <location line="-272"/>
+        <location line="-292"/>
         <source>Uncertain remote operations</source>
         <translation>불확실한 원격 작업</translation>
     </message>
     <message>
-        <location line="+243"/>
+        <location line="+262"/>
         <source>unknown</source>
         <translation>알 수 없음</translation>
     </message>
     <message>
-        <location line="-79"/>
-        <location line="+43"/>
+        <location line="-87"/>
+        <location line="+49"/>
         <location line="+24"/>
         <location line="+7"/>
         <source>Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write.</source>
@@ -9008,27 +10042,27 @@ Operation: %6</source>
         <translation>기록된 원래 세션에 대해 컨테이너 터미널 정리가 확인되었습니다.</translation>
     </message>
     <message>
-        <location line="-179"/>
+        <location line="-196"/>
         <source>Explicitly remove the original exact container after native client cleanup. Requires the worker&apos;s independent Docker recovery grant. Volumes and images are retained.</source>
         <translation>네이티브 클라이언트 정리 후 정확히 원래 컨테이너를 명시적으로 제거합니다. 작업자의 별도 Docker 복구 권한이 필요합니다. 볼륨과 이미지는 유지됩니다.</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+23"/>
         <source>Remove container %1 on %2 to fence delayed daemon work for operation %3? This removes the container and its writable layer. Volumes and images are retained. The original mutation outcome remains unknown.</source>
         <translation>작업 %3에 대한 데몬의 지연된 작업을 차단하기 위해 %2의 컨테이너 %1을 제거하시겠습니까? 컨테이너와 쓰기 가능한 계층이 제거됩니다. 볼륨과 이미지는 유지됩니다. 원래 변경 결과는 여전히 알 수 없습니다.</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-25"/>
         <source>Retire container…</source>
         <translation>컨테이너 폐기…</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+24"/>
         <source>Retire the captured container?</source>
         <translation>기록된 컨테이너를 폐기하시겠습니까?</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-25"/>
         <source>Revoke the original invocation and verify its native cleanup evidence. Boot-fenced workers require a host reboot for uncertain process-backed operations. The mutation outcome remains unknown.</source>
         <translation>원래 호출을 취소하고 네이티브 정리 증거를 확인합니다. 부팅 경계로 보호되는 작업자는 불확실한 프로세스 기반 작업에 대해 호스트를 재부팅해야 합니다. 변경 결과는 여전히 알 수 없습니다.</translation>
     </message>
@@ -9038,9 +10072,14 @@ Operation: %6</source>
         <translation>정리 확인</translation>
     </message>
     <message>
-        <location line="+154"/>
+        <location line="+171"/>
         <source>Refreshing the worker&apos;s retained terminal metadata. No cleanup was requested.</source>
         <translation>작업자가 보관한 터미널 메타데이터를 새로 고치는 중입니다. 정리는 요청하지 않았습니다.</translation>
+    </message>
+    <message>
+        <location line="+62"/>
+        <source>The original operation was cancelled. Refresh the affected state before another write.</source>
+        <translation>원래 작업이 취소되었습니다. 다시 쓰기 전에 영향을 받은 상태를 새로 고치세요.</translation>
     </message>
 </context>
 <context>
@@ -9370,7 +10409,7 @@ Operation: %6</source>
 <context>
     <name>RemoteWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteWidget.cpp" line="+133"/>
+        <location filename="../src/remote/presentation/RemoteWidget.cpp" line="+172"/>
         <location line="+21"/>
         <source>Show details</source>
         <translation>세부 정보 표시</translation>
@@ -9386,14 +10425,14 @@ Operation: %6</source>
         <translation>세부 정보 숨기기</translation>
     </message>
     <message>
-        <location line="+60"/>
-        <location line="+32"/>
-        <location line="+706"/>
+        <location line="+65"/>
+        <location line="+33"/>
+        <location line="+872"/>
         <source>Machines</source>
         <translation>머신</translation>
     </message>
     <message>
-        <location line="-737"/>
+        <location line="-904"/>
         <source>Pairing and access relationships · Connection health is not checked here</source>
         <translation>페어링 및 액세스 관계 · 여기서는 연결 상태를 확인하지 않음</translation>
     </message>
@@ -9404,25 +10443,25 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+16"/>
-        <location line="+720"/>
+        <location line="+887"/>
         <source>Machine setup</source>
         <translation>머신 설정</translation>
     </message>
     <message>
-        <location line="-706"/>
+        <location line="-872"/>
         <source>Manage trusted computers and workflow access.</source>
         <translation>신뢰하는 컴퓨터와 워크플로 액세스를 관리합니다.</translation>
     </message>
     <message>
         <location line="+2"/>
-        <location line="+61"/>
-        <location line="+212"/>
-        <location line="+430"/>
+        <location line="+62"/>
+        <location line="+216"/>
+        <location line="+591"/>
         <source>Add machine</source>
         <translation>머신 추가</translation>
     </message>
     <message>
-        <location line="-692"/>
+        <location line="-858"/>
         <source>Canvas</source>
         <translation>캔버스</translation>
     </message>
@@ -9442,18 +10481,18 @@ Operation: %6</source>
         <translation>머신 목록 보기</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+48"/>
         <source>Refresh</source>
         <translation>새로 고침</translation>
     </message>
     <message>
         <location line="+3"/>
-        <location line="+432"/>
+        <location line="+475"/>
         <source>Connection settings</source>
         <translation>연결 설정</translation>
     </message>
     <message>
-        <location line="-421"/>
+        <location line="-463"/>
         <source>Remote connection</source>
         <translation>원격 연결</translation>
     </message>
@@ -9474,13 +10513,13 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+16"/>
-        <location line="+334"/>
-        <location line="+266"/>
+        <location line="+343"/>
+        <location line="+421"/>
         <source>Connect this computer</source>
         <translation>이 컴퓨터 연결</translation>
     </message>
     <message>
-        <location line="-596"/>
+        <location line="-760"/>
         <source>Checking remote access lock status…</source>
         <translation>원격 액세스 잠금 상태 확인 중…</translation>
     </message>
@@ -9496,12 +10535,12 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+10"/>
-        <location line="+239"/>
+        <location line="+247"/>
         <source>Machine</source>
         <translation>머신</translation>
     </message>
     <message>
-        <location line="-239"/>
+        <location line="-247"/>
         <source>Access</source>
         <translation>액세스</translation>
     </message>
@@ -9537,34 +10576,34 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+657"/>
+        <location line="+830"/>
         <source>Paired</source>
         <translation>페어링됨</translation>
     </message>
     <message>
-        <location line="-656"/>
+        <location line="-829"/>
         <source>Invitations</source>
         <translation>초대</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+662"/>
+        <location line="+836"/>
         <source>Access removed</source>
         <translation>액세스 제거됨</translation>
     </message>
     <message>
-        <location line="-659"/>
+        <location line="-833"/>
         <source>Refresh to load managed machines.</source>
         <translation>관리 머신을 불러오려면 새로 고침하세요.</translation>
     </message>
     <message>
         <location line="+9"/>
-        <location line="+1079"/>
+        <location line="+1270"/>
         <source>Select a machine to view its settings.</source>
         <translation>설정을 보려면 머신을 선택하세요.</translation>
     </message>
     <message>
-        <location line="-1075"/>
+        <location line="-1266"/>
         <source>Configure this computer…</source>
         <translation>이 컴퓨터 구성…</translation>
     </message>
@@ -9626,20 +10665,21 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+8"/>
-        <location line="+343"/>
-        <location line="+433"/>
+        <location line="+435"/>
+        <location line="+519"/>
         <source>Set up remote access…</source>
         <translation>원격 액세스 설정…</translation>
     </message>
     <message>
-        <location line="-759"/>
-        <location line="+165"/>
-        <location line="+133"/>
+        <location line="-934"/>
+        <location line="+170"/>
+        <location line="+212"/>
+        <location line="+208"/>
         <source>← Machines</source>
         <translation>← 머신</translation>
     </message>
     <message>
-        <location line="-276"/>
+        <location line="-568"/>
         <source>Add another computer</source>
         <translation>다른 컴퓨터 추가</translation>
     </message>
@@ -9655,12 +10695,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+3"/>
-        <location line="+442"/>
+        <location line="+608"/>
         <source>Start pairing</source>
         <translation>페어링 시작</translation>
     </message>
     <message>
-        <location line="-437"/>
+        <location line="-603"/>
         <source>Connect this computer instead</source>
         <translation>대신 이 컴퓨터 연결</translation>
     </message>
@@ -9675,12 +10715,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>다른 컴퓨터에서</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>Open Dockpipe → Machines → Add machine → Connect this computer instead. Enter this address and request pairing.</source>
-        <translation>Dockpipe → 머신 → 머신 추가 → 대신 이 컴퓨터 연결을 여세요. 이 주소를 입력하고 페어링을 요청하세요.</translation>
-    </message>
-    <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Copy address</source>
         <translation>주소 복사</translation>
     </message>
@@ -9691,12 +10726,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+3"/>
-        <location line="+601"/>
+        <location line="+775"/>
         <source>Review request</source>
         <translation>요청 검토</translation>
     </message>
     <message>
-        <location line="-597"/>
+        <location line="-771"/>
         <source>Check again</source>
         <translation>다시 확인</translation>
     </message>
@@ -9721,7 +10756,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>요청을 선택하고 다른 컴퓨터의 코드와 비교하세요. 일치하는 경우에만 승인하세요.</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+7"/>
         <source>Verification code</source>
         <translation>확인 코드</translation>
     </message>
@@ -9757,11 +10792,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+1"/>
+        <location line="+119"/>
         <source>Done</source>
         <translation>완료</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="-106"/>
         <source>1 of 3 · Prepare</source>
         <translation>1/3 · 준비</translation>
     </message>
@@ -9781,22 +10817,22 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>페어링 완료</translation>
     </message>
     <message>
-        <location line="+24"/>
+        <location line="+25"/>
         <source>Enter the address shown on the computer you are connecting to.</source>
         <translation>연결하려는 컴퓨터에 표시된 주소를 입력하세요.</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+5"/>
         <source>https://your-broker.example.com</source>
         <translation>https://your-broker.example.com</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+5"/>
         <source>Remote address</source>
         <translation>원격 주소</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+2"/>
         <source>Name for this computer</source>
         <translation>이 컴퓨터 이름</translation>
     </message>
@@ -9806,12 +10842,22 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>관리 컴퓨터의 워크플로를 내 사용자로 실행하도록 허용</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+3"/>
         <source>Connect only to a computer you trust. Its workflows run as your user and can access your files and tools.</source>
         <translation>신뢰하는 컴퓨터에만 연결하세요. 해당 워크플로는 내 사용자로 실행되며 내 파일과 도구에 액세스할 수 있습니다.</translation>
     </message>
     <message>
         <location line="+1"/>
+        <source>Allow Terminal access as my user</source>
+        <translation>내 사용자로서 터미널 액세스를 허용</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Terminal opens in your home folder and runs with your account&apos;s permissions.</source>
+        <translation>터미널은 홈 폴더에서 열리고 계정의 허가와 함께 실행됩니다.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>After approval, Dockpipe starts a background worker service for your user so this computer can receive workflows.</source>
         <translation>승인 후 Dockpipe가 사용자용 백그라운드 워커 서비스를 시작하여 이 컴퓨터가 워크플로를 수신할 수 있게 합니다.</translation>
     </message>
@@ -9821,17 +10867,12 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>페어링 요청</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+22"/>
         <source>Waiting for approval. Compare the code below on the managing computer.</source>
         <translation>승인을 기다리는 중입니다. 관리 컴퓨터에서 아래 코드를 비교하세요.</translation>
     </message>
     <message>
-        <location line="+7"/>
-        <source>Already paired? Recovery options</source>
-        <translation>이미 페어링했나요? 복구 옵션</translation>
-    </message>
-    <message>
-        <location line="+6"/>
+        <location line="+13"/>
         <source>Restart receiving workflows without pairing again. Keep this computer awake while work runs.</source>
         <translation>다시 페어링하지 않고 워크플로 수신을 다시 시작합니다. 작업이 실행되는 동안 이 컴퓨터가 절전 모드로 전환되지 않게 하세요.</translation>
     </message>
@@ -9841,7 +10882,18 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>워커 서비스 시작</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+2"/>
+        <location line="+6"/>
+        <source>Enable Terminal</source>
+        <translation>터미널 이용 가능</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Allow the managing computer to open a shell with your account&apos;s permissions, starting in your home folder? Dockpipe will briefly restart the background worker.</source>
+        <translation>관리 컴퓨터가 귀하의 홈 폴더에서 시작하여 계정의 허가를 사용하여 쉘을 열 수 있도록 허용하십시오.Dockpipe는 짧은 시간에 배경 작업자를 다시 시작합니다.</translation>
+    </message>
+    <message>
+        <location line="+23"/>
         <source>Connection settings · Update available</source>
         <translation>연결 설정 · 업데이트 있음</translation>
     </message>
@@ -9886,22 +10938,52 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>서비스 업데이트가 완료되지 않았습니다. 페어링은 유지됩니다. 세부 정보를 확인한 후 서비스 업데이트를 다시 시도하세요.</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <source>Worker service started. Choose this computer under Run on from your managing computer.</source>
-        <translation>워커 서비스를 시작했습니다. 관리 컴퓨터의 실행 대상에서 이 컴퓨터를 선택하세요.</translation>
-    </message>
-    <message>
-        <location line="+1"/>
+        <location line="+10"/>
         <source>Could not start the worker service. Your pairing is preserved. See details, then choose Start worker service to retry.</source>
         <translation>워커 서비스를 시작하지 못했습니다. 페어링은 유지됩니다. 세부 정보를 확인한 후 워커 서비스 시작을 선택하여 다시 시도하세요.</translation>
     </message>
     <message>
         <location line="+2"/>
+        <source>Background worker startup requested. Terminal setup failed. Use Manage access to retry.</source>
+        <translation>배경 노동자 스타트업 요청. 터미널 설정 실패. 사용 관리 퇴직에 대한 액세스.</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Pairing is complete. Windows could not start administrator input approval.</source>
+        <translation>Windows는 관리자 입력 승인을 시작할 수 없었습니다.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
         <source>Starting the background worker service…</source>
         <translation>백그라운드 워커 서비스 시작 중…</translation>
     </message>
     <message>
         <location line="+11"/>
+        <source>Dockpipe could not enable Terminal. See details in Connection setup.</source>
+        <translation>Dockpipe는 터미널을 활성화할 수 없었습니다. 연결 설정의 세부 사항을 참조하십시오.</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Terminal access enabled. Refresh Terminal on the managing computer.</source>
+        <translation>터미널 액세스가 활성화되었습니다. 관리 컴퓨터에서 터미널을 새롭게합니다.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Terminal access is saved. Start the worker service to bring it online.</source>
+        <translation>터미널 액세스가 저장됩니다.인터넷으로 가져오기 위해 노동자 서비스를 시작합니다.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Restarting the background worker…</source>
+        <translation>배경 작업자를 다시 시작하려면 ...</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Enabling Terminal access…</source>
+        <translation>터미널 접근을 허용하는 ...</translation>
+    </message>
+    <message>
+        <location line="+16"/>
         <location line="+47"/>
         <source>Set up remote access</source>
         <translation>원격 액세스 설정</translation>
@@ -9928,12 +11010,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+3"/>
-        <location line="+435"/>
+        <location line="+521"/>
         <source>Install provider…</source>
         <translation>공급자 설치…</translation>
     </message>
     <message>
-        <location line="-425"/>
+        <location line="-511"/>
         <source>Check connection</source>
         <translation>연결 확인</translation>
     </message>
@@ -9948,12 +11030,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>%2를 사용하여 %1을 설정할까요? 종속성을 설치하고 공개 터널 및 DNS 레코드를 만들며 브로커 사용자 서비스를 시작할 수 있습니다.</translation>
     </message>
     <message>
-        <location line="+13"/>
-        <source>Continue setup in the terminal. When it finishes, return to Machines and refresh to check access.</source>
-        <translation>터미널에서 설정을 계속하세요. 완료되면 머신으로 돌아와 새로 고침하여 액세스를 확인하세요.</translation>
-    </message>
-    <message>
-        <location line="+4"/>
+        <location line="+18"/>
         <source>Pairing security keys</source>
         <translation>페어링 보안 키</translation>
     </message>
@@ -9998,12 +11075,17 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>보안 키 등록이 완료되지 않았습니다. 다시 시도하기 전에 세부 정보를 확인하세요.</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+114"/>
+        <source>← Environments</source>
+        <translation>← 환경</translation>
+    </message>
+    <message>
+        <location line="+6"/>
         <source>Connection setup</source>
         <translation>연결 설정</translation>
     </message>
     <message>
-        <location line="+34"/>
+        <location line="+39"/>
         <source>Set up connection</source>
         <translation>연결 설정</translation>
     </message>
@@ -10013,7 +11095,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>작업 중…</translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location line="+21"/>
         <source>Could not complete this step. See details for the error; saved setup is preserved.</source>
         <translation>이 단계를 완료하지 못했습니다. 오류 세부 정보를 확인하세요. 저장된 설정은 유지됩니다.</translation>
     </message>
@@ -10023,12 +11105,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>관리 머신을 불러오지 못했습니다. 다시 시도하거나 이 컴퓨터 연결을 사용하여 이미 설정한 머신에 참여하세요.</translation>
     </message>
     <message>
-        <location line="+17"/>
-        <source>Allowed to receive workflows</source>
-        <translation>워크플로 수신 허용됨</translation>
-    </message>
-    <message>
-        <location line="+3"/>
+        <location line="+23"/>
         <source>Invitation created</source>
         <translation>초대 생성됨</translation>
     </message>
@@ -10043,7 +11120,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>액세스를 복원하려면 다시 페어링</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+13"/>
         <source>Settings</source>
         <translation>설정</translation>
     </message>
@@ -10063,7 +11140,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>여기서 컴퓨터를 추가한 후 워크플로를 시작할 때 선택하세요.</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+17"/>
         <source>Remote access lock status unavailable: %1</source>
         <translation>원격 액세스 잠금 상태 사용 불가: %1</translation>
     </message>
@@ -10176,12 +11253,7 @@ Approve only if you can verify it on that machine.</source>
 해당 머신에서 확인할 수 있는 경우에만 승인하세요.</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <source>%1 is paired. On that computer, choose Start worker service to receive workflows.</source>
-        <translation>%1이 페어링되었습니다. 해당 컴퓨터에서 워커 서비스 시작을 선택하여 워크플로를 수신하세요.</translation>
-    </message>
-    <message>
-        <location line="+1"/>
+        <location line="+10"/>
         <source>Request from %1 denied.</source>
         <translation>%1의 요청을 거부했습니다.</translation>
     </message>
@@ -10312,12 +11384,27 @@ The provider is configured on the managing computer.</source>
         <translation>이 브로커에 워커가 설정됨. 연결은 확인되지 않음</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+8"/>
+        <source>Pairing · %1</source>
+        <translation>조합 · %1</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Unknown</source>
+        <translation>알 수 없음</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Machine fingerprint · %1…</source>
+        <translation>기계 지문 · %1 ...</translation>
+    </message>
+    <message>
+        <location line="+3"/>
         <source>Access relationship: %1</source>
         <translation>액세스 관계: %1</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+52"/>
         <source>Managed machine inventory is unavailable. Refresh to check access.</source>
         <translation>관리 머신 목록을 사용할 수 없습니다. 액세스를 확인하려면 새로 고침하세요.</translation>
     </message>
@@ -10347,22 +11434,23 @@ The provider is configured on the managing computer.</source>
         <translation>머신 %2개 중 %1개</translation>
     </message>
     <message>
-        <location line="+23"/>
+        <location line="+21"/>
         <source>%1 settings</source>
         <translation>%1 설정</translation>
     </message>
     <message>
-        <location line="+29"/>
+        <location line="+32"/>
+        <source>Machine fingerprint · %1</source>
+        <translation>기계 지문 · %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>%1 · %2
 
-%3
-
-Connection health is not checked here.</source>
+%3</source>
         <translation>%1 · %2
 
-%3
-
-여기서는 연결 상태를 확인하지 않습니다.</translation>
+%3</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -10398,6 +11486,56 @@ This machine is no longer in the available inventory.</source>
         <translation>%1
 
 이 머신은 더 이상 사용 가능한 목록에 없습니다.</translation>
+    </message>
+    <message>
+        <location line="-987"/>
+        <source>Enter a valid remote address starting with https://.</source>
+        <translation>https://로 시작하는 유효한 원격 주소를 입력하세요.</translation>
+    </message>
+    <message>
+        <location line="-123"/>
+        <source>In Dockpipe, open connection setup for that computer, select Connect this computer, then enter this address and request pairing.</source>
+        <translation>Dockpipe에서 해당 컴퓨터에 대한 연결 설정을 열고, 이 컴퓨터에 연결을 선택한 다음 이 주소를 입력하고 커플링을 요청합니다.</translation>
+    </message>
+    <message>
+        <location line="+44"/>
+        <source>Connect a physical FIDO2 security key to this computer before approving. If you have not registered a key, use Register pairing key in connection setup.</source>
+        <translation>승인하기 전에 이 컴퓨터에 물리적 FIDO2 보안 키를 연결하세요. 아직 키를 등록하지 않았다면 연결 설정에서 ‘페어링 키 등록’을 선택하세요.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>No accessible security key was detected. Plug in your registered key and try again. If it is already connected, check your device permissions.</source>
+        <translation>접근할 수 있는 보안 키를 찾지 못했습니다. 등록한 키를 연결한 후 다시 시도하세요. 이미 연결되어 있다면 장치 접근 권한을 확인하세요.</translation>
+    </message>
+    <message>
+        <location line="+94"/>
+        <source>The managing computer needs a registered physical FIDO2 security key to approve pairing.</source>
+        <translation>페어링을 승인하려면 관리 컴퓨터에 등록된 물리적 FIDO2 보안 키가 필요합니다.</translation>
+    </message>
+    <message>
+        <location line="+32"/>
+        <source>Already paired? Manage access</source>
+        <translation>이미 파이어? 액세스 관리</translation>
+    </message>
+    <message>
+        <location line="+219"/>
+        <source>Continue setup in the terminal. When it finishes, choose Check connection.</source>
+        <translation>터미널에서 계속 설정합니다.이 작업이 완료되면 연결 확인을 선택합니다.</translation>
+    </message>
+    <message>
+        <location line="+266"/>
+        <source>Broker enrollment is active.</source>
+        <translation>브로커 등록은 활성화됩니다.</translation>
+    </message>
+    <message>
+        <location line="+165"/>
+        <source>%1 is paired. Start the worker on that computer to receive workflows.</source>
+        <translation>%1이(가) 페어링되었습니다. 해당 컴퓨터에서 워커를 시작해 워크플로를 받으세요.</translation>
+    </message>
+    <message>
+        <location line="-552"/>
+        <source>Background worker startup requested. Check this computer under Run on from your managing computer.</source>
+        <translation>백그라운드 작업자 시작을 요청했습니다. 관리 컴퓨터의 실행 위치에서 이 컴퓨터를 확인하세요.</translation>
     </message>
 </context>
 <context>
@@ -10528,7 +11666,7 @@ This machine is no longer in the available inventory.</source>
 <context>
     <name>SessionManager</name>
     <message>
-        <location filename="../src/execution/infrastructure/SessionManager.cpp" line="+147"/>
+        <location filename="../src/execution/infrastructure/SessionManager.cpp" line="+170"/>
         <location line="+34"/>
         <source>Workflow output exceeded the consumer&apos;s line capacity.</source>
         <translation>워크플로 출력이 소비자의 줄 용량을 초과했습니다.</translation>
@@ -11260,13 +12398,14 @@ This machine is no longer in the available inventory.</source>
 <context>
     <name>TerminalHub</name>
     <message>
-        <location filename="../src/terminal/application/TerminalHub.cpp" line="+46"/>
-        <location line="+75"/>
+        <location filename="../src/terminal/application/TerminalHub.cpp" line="+48"/>
+        <location line="+48"/>
+        <location line="+57"/>
         <source>Eight terminals are already open. Close one before opening another.</source>
         <translation>터미널 8개가 이미 열려 있습니다. 다른 터미널을 열기 전에 하나를 닫으세요.</translation>
     </message>
     <message>
-        <location line="-60"/>
+        <location line="-90"/>
         <source>This shell is no longer available. Refresh the shell list and try again.</source>
         <translation>이 셸은 더 이상 사용할 수 없습니다. 셸 목록을 새로 고침하고 다시 시도하세요.</translation>
     </message>
@@ -11281,13 +12420,19 @@ This machine is no longer in the available inventory.</source>
         <translation>사용 가능한 호스트 셸이 없습니다. Flatpak 호스트 액세스를 확인하고 셸 목록을 새로 고침하세요.</translation>
     </message>
     <message>
-        <location line="+14"/>
-        <location line="+55"/>
+        <location line="+10"/>
+        <location line="+32"/>
+        <location line="+57"/>
         <source>Terminal %1 · %2</source>
         <translation>터미널 %1 · %2</translation>
     </message>
     <message>
-        <location line="+65"/>
+        <location line="-67"/>
+        <source>The container terminal target is unavailable.</source>
+        <translation>컨테이너 터미널 목표는 사용할 수 없습니다.</translation>
+    </message>
+    <message>
+        <location line="+132"/>
         <location line="+32"/>
         <source>This terminal session is closed.</source>
         <translation>이 터미널 세션은 닫혔습니다.</translation>
@@ -11832,12 +12977,17 @@ $ 다음 명령을 입력할 준비가 되었습니다</translation>
 <context>
     <name>TerminalWidget</name>
     <message>
-        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+84"/>
+        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+92"/>
         <source>Terminal</source>
         <translation>터미널</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+6"/>
+        <source>Terminal target</source>
+        <translation>터미널 목표</translation>
+    </message>
+    <message>
+        <location line="+23"/>
         <source>Shells and sessions</source>
         <translation>셸 및 세션</translation>
     </message>
@@ -11874,12 +13024,12 @@ $ 다음 명령을 입력할 준비가 되었습니다</translation>
     </message>
     <message>
         <location line="+6"/>
-        <location line="+541"/>
+        <location line="+742"/>
         <source>Restart DockPipe to enable desktop transparency. Your desktop must support compositing.</source>
         <translation>데스크톱 투명 효과를 사용하려면 DockPipe를 다시 시작하세요. 데스크톱이 합성을 지원해야 합니다.</translation>
     </message>
     <message>
-        <location line="-532"/>
+        <location line="-733"/>
         <source>No terminals open</source>
         <translation>열린 터미널 없음</translation>
     </message>
@@ -11910,12 +13060,17 @@ $ 다음 명령을 입력할 준비가 되었습니다</translation>
         <translation>설치된 호스트 셸을 찾는 중…</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+10"/>
+        <source>The selected terminal target is unavailable.</source>
+        <translation>선택한 터미널 목표는 사용할 수 없습니다.</translation>
+    </message>
+    <message>
+        <location line="+27"/>
         <source>Default shell</source>
         <translation>기본 셸</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+9"/>
         <source>New default shell</source>
         <translation>새 기본 셸</translation>
     </message>
@@ -11930,7 +13085,40 @@ $ 다음 명령을 입력할 준비가 되었습니다</translation>
         <translation>새 %1</translation>
     </message>
     <message>
-        <location line="+116"/>
+        <location line="+135"/>
+        <location line="+3"/>
+        <source>This computer</source>
+        <translation>이 컴퓨터</translation>
+    </message>
+    <message>
+        <location line="+30"/>
+        <source>Terminal unavailable</source>
+        <translation>터미널 이용 가능 없음</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Remote access locked</source>
+        <translation>원격 액세스 잠금</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+11"/>
+        <location line="+8"/>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <location line="-2"/>
+        <source>%1 · Container</source>
+        <translation>%1 · 컨테이너</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · 사용 불가</translation>
+    </message>
+    <message>
+        <location line="+120"/>
         <source>Choose a terminal…</source>
         <translation>터미널 선택…</translation>
     </message>
@@ -12572,12 +13760,12 @@ The file may have changed on disk. Your draft has been kept; refresh before retr
         <translation>시작</translation>
     </message>
     <message>
-        <location line="+134"/>
+        <location line="+135"/>
         <source>Start</source>
         <translation>시작</translation>
     </message>
     <message>
-        <location line="+111"/>
+        <location line="+113"/>
         <source>Inputs</source>
         <translation>입력</translation>
     </message>
@@ -13394,7 +14582,7 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
 <context>
     <name>WorkspaceMachineMenu</name>
     <message>
-        <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="+55"/>
+        <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="+62"/>
         <location line="+42"/>
         <source>Follow main machine</source>
         <translation>기본 머신 따르기</translation>
@@ -13423,12 +14611,13 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     </message>
     <message>
         <location line="+2"/>
-        <location line="+36"/>
+        <location line="+40"/>
+        <location line="+22"/>
         <source> · Unavailable</source>
         <translation> · 사용할 수 없음</translation>
     </message>
     <message>
-        <location line="-16"/>
+        <location line="-41"/>
         <source>Unlock remote access…</source>
         <translation>원격 액세스 잠금 해제…</translation>
     </message>
@@ -13438,12 +14627,22 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
         <translation>사용 가능한 원격 작업공간이 없습니다</translation>
     </message>
     <message>
-        <location line="+30"/>
+        <location line="+34"/>
         <source>Containers</source>
         <translation>컨테이너</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+12"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · 사용 불가</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>%1 · Locked</source>
+        <translation>%1 · 닫힌</translation>
+    </message>
+    <message>
+        <location line="+4"/>
         <source>Refresh machines</source>
         <translation>머신 새로 고침</translation>
     </message>

@@ -4,7 +4,7 @@
 <context>
     <name>ActivityWidget</name>
     <message>
-        <location filename="../src/execution/presentation/ActivityWidget.cpp" line="+48"/>
+        <location filename="../src/execution/presentation/ActivityWidget.cpp" line="+49"/>
         <source>Runs &amp; logs</source>
         <translation>執行與記錄</translation>
     </message>
@@ -15,12 +15,12 @@
     </message>
     <message>
         <location line="+10"/>
-        <location line="+211"/>
+        <location line="+224"/>
         <source>This computer</source>
         <translation>這部電腦</translation>
     </message>
     <message>
-        <location line="-211"/>
+        <location line="-224"/>
         <source>Remote jobs</source>
         <translation>遠端工作</translation>
     </message>
@@ -104,7 +104,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>狀態</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+15"/>
         <source>Refresh jobs</source>
         <translation>重新整理工作</translation>
     </message>
@@ -124,7 +124,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>儲存結果產物和工作流程記錄。</translation>
     </message>
     <message>
-        <location line="+57"/>
+        <location line="+62"/>
         <source>Save result inside folder</source>
         <translation>將結果儲存至資料夾</translation>
     </message>
@@ -134,7 +134,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>結果和 workflow.log 已儲存至 %1</translation>
     </message>
     <message>
-        <location line="+62"/>
+        <location line="+63"/>
         <source>Finished / stopped</source>
         <translation>已完成 / 已停止</translation>
     </message>
@@ -169,7 +169,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>%1 個遠端工作</translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+100"/>
         <source>Up to date with the broker.</source>
         <translation>已與代理同步。</translation>
     </message>
@@ -197,6 +197,18 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <location line="+34"/>
         <source>This job is no longer available in the broker’s job list.</source>
         <translation>代理的工作清單中已無此工作。</translation>
+    </message>
+    <message>
+        <location line="-329"/>
+        <source>Live workflow log</source>
+        <translation>即時工作流程記錄</translation>
+    </message>
+    <message>
+        <location line="+233"/>
+        <source>
+Live preview limit reached. Download the results for the full retained log.</source>
+        <translation>
+已達即時預覽上限。請下載結果以查看保留的完整記錄。</translation>
     </message>
 </context>
 <context>
@@ -1029,7 +1041,7 @@ Independent repository · add multiple views for cross-repo work</source>
 <context>
     <name>DashboardRepositoryPanel</name>
     <message>
-        <location filename="../src/dashboards/presentation/DashboardRepositoryPanel.cpp" line="+38"/>
+        <location filename="../src/dashboards/presentation/DashboardRepositoryPanel.cpp" line="+39"/>
         <source>Repository…</source>
         <translation>儲存庫…</translation>
     </message>
@@ -1054,7 +1066,7 @@ Independent repository · add multiple views for cross-repo work</source>
         <translation>為此檢視選擇儲存庫</translation>
     </message>
     <message>
-        <location line="+81"/>
+        <location line="+90"/>
         <source>Unsaved commit message</source>
         <translation>未儲存的提交訊息</translation>
     </message>
@@ -3243,7 +3255,7 @@ Refresh to load inventory from the selected machine.</source>
     <message>
         <location line="+2"/>
         <location line="+232"/>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+119"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+118"/>
         <source>Loading container logs…</source>
         <translation>正在載入容器記錄…</translation>
     </message>
@@ -3517,7 +3529,7 @@ Refresh to load inventory from the selected machine.</source>
         <translation>容器控制回應無效。</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-298"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-297"/>
         <source>Wait for the current container control operation before changing machines.</source>
         <translation>變更電腦前，請等待目前的容器控制作業完成。</translation>
     </message>
@@ -3527,7 +3539,7 @@ Refresh to load inventory from the selected machine.</source>
         <translation>請選擇指紋和工作世代都已驗證的電腦。</translation>
     </message>
     <message>
-        <location line="+128"/>
+        <location line="+127"/>
         <source>%1 · Remote Docker inventory unavailable: %2</source>
         <translation>%1 · 遠端 Docker 清單無法使用：%2</translation>
     </message>
@@ -3818,6 +3830,780 @@ Select a row to get started.</source>
         <location line="+8"/>
         <source>Env (*.env *.sh);;All files (*)</source>
         <translation>環境 (*.env *.sh);;所有檔案 (*)</translation>
+    </message>
+</context>
+<context>
+    <name>EnvironmentDefinitionsClient</name>
+    <message>
+        <location filename="../src/environments/infrastructure/EnvironmentDefinitionsClient.cpp" line="+150"/>
+        <source>Could not start Dockpipe to read environment definitions.</source>
+        <translation>不能開始 Dockpipe 閱讀環境定義。</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Dockpipe could not list environment definitions.</source>
+        <translation>Dockpipe 無法列出環境定義。</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Dockpipe returned an invalid environment definition list.</source>
+        <translation>Dockpipe 返回了不合格的環境定義列表。</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Reading environment definitions timed out.</source>
+        <translation>讀取環境定義的時間。</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>The environment definition list exceeds its size limit.</source>
+        <translation>環境定義列表超越其尺寸限制。</translation>
+    </message>
+</context>
+<context>
+    <name>EnvironmentsPage</name>
+    <message>
+        <location filename="../src/environments/presentation/EnvironmentsPage.cpp" line="+86"/>
+        <source>← Environments</source>
+        <translation>← 環境</translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>Canvas</source>
+        <translation>畫布</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>List</source>
+        <translation>清單</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Refresh</source>
+        <translation>重新整理</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <location line="+247"/>
+        <source>Add Environment</source>
+        <translation>新增環境</translation>
+    </message>
+    <message>
+        <location line="-233"/>
+        <location line="+9"/>
+        <source>Environments</source>
+        <translation>環境</translation>
+    </message>
+    <message>
+        <location line="-8"/>
+        <source>Hosts, virtual machines, and containers</source>
+        <translation>主機、虛擬機器和容器</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Details</source>
+        <translation>詳細資訊</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <location line="+331"/>
+        <location line="+121"/>
+        <source>Name</source>
+        <translation>名稱</translation>
+    </message>
+    <message>
+        <location line="-452"/>
+        <source>Type</source>
+        <translation>類型</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Location</source>
+        <translation>位置</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Status</source>
+        <translation>狀態</translation>
+    </message>
+    <message>
+        <location line="+201"/>
+        <source>Reading environment definitions…</source>
+        <translation>閱讀環境定義</translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <location line="+727"/>
+        <source>Remote machine</source>
+        <translation>遠端機器</translation>
+    </message>
+    <message>
+        <location line="-727"/>
+        <source>Pair another computer with Dockpipe.</source>
+        <translation>與 Dockpipe 相結合的另一個計算機。</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+722"/>
+        <location line="+71"/>
+        <source>Virtual machine</source>
+        <translation>虛擬機器</translation>
+    </message>
+    <message>
+        <location line="-793"/>
+        <source>Choose an operating system and configure a VM.</source>
+        <translation>選擇作業系統並設定VM。</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+794"/>
+        <source>Container</source>
+        <translation>容器</translation>
+    </message>
+    <message>
+        <location line="-794"/>
+        <source>Choose an image and configure a Docker container.</source>
+        <translation>選擇影象並設定 Docker 容器。</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Import YAML</source>
+        <translation>輸入 YAML</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Open existing environment definitions.</source>
+        <translation>開放現有環境定義。</translation>
+    </message>
+    <message>
+        <location line="+61"/>
+        <source>Add Virtual Machine</source>
+        <translation>新增虛擬機器</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Runs on this computer’s VM provider.</source>
+        <translation>執行此計算機的VM提供商。</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Development VM</source>
+        <translation>開發VM</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <location line="+611"/>
+        <source>Ubuntu</source>
+        <translation>Ubuntu</translation>
+    </message>
+    <message>
+        <location line="-610"/>
+        <location line="+610"/>
+        <source>Debian</source>
+        <translation>Debian</translation>
+    </message>
+    <message>
+        <location line="-609"/>
+        <location line="+609"/>
+        <source>Fedora</source>
+        <translation>福特</translation>
+    </message>
+    <message>
+        <location line="-608"/>
+        <location line="+609"/>
+        <source>Other Linux</source>
+        <translation>其他Linux</translation>
+    </message>
+    <message>
+        <location line="-608"/>
+        <location line="+608"/>
+        <source>Windows 11</source>
+        <translation>Windows 11</translation>
+    </message>
+    <message>
+        <location line="-603"/>
+        <location line="+3"/>
+        <source> GiB</source>
+        <translation>吉布</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Installer ISO file</source>
+        <translation>安裝 ISO 檔案</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Browse…</source>
+        <translation>瀏覽…</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Select Installer ISO</source>
+        <translation>選擇安裝器 ISO</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>ISO images (*.iso *.ISO)</source>
+        <translation>ISO 影象 (*.iso *. ISO )</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <location line="+120"/>
+        <location line="+580"/>
+        <source>Personal</source>
+        <translation>個人</translation>
+    </message>
+    <message>
+        <location line="-699"/>
+        <location line="+120"/>
+        <source>YAML file</source>
+        <translation>YAML 檔案</translation>
+    </message>
+    <message>
+        <location line="-118"/>
+        <source>Operating system</source>
+        <translation>作業系統</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>CPUs</source>
+        <translation>CPU</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>RAM</source>
+        <translation>拉姆</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Disk size</source>
+        <translation>磁碟大小</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Installer ISO</source>
+        <translation>安裝 ISO</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+121"/>
+        <source>Save to</source>
+        <translation>儲存到</translation>
+    </message>
+    <message>
+        <location line="-118"/>
+        <source>The ISO is optional when saving a definition. Disk size applies when the virtual disk is first created.</source>
+        <translation>ISO 在儲存定義時是可選的. 磁碟大小適用於虛擬磁碟首次建立時。</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <location line="+151"/>
+        <source>Save Definition</source>
+        <translation>儲存定義</translation>
+    </message>
+    <message>
+        <location line="-150"/>
+        <source>Create VM</source>
+        <translation>建立 VM</translation>
+    </message>
+    <message>
+        <location line="+66"/>
+        <source>Add Container</source>
+        <translation>新增容器</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Runs on this computer’s Docker engine.</source>
+        <translation>執行此計算機的 Docker 發動機。</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>General</source>
+        <translation>一般</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Test Docker</source>
+        <translation>測試 Docker</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Use letters, numbers, dots, underscores, or hyphens. Spaces become hyphens.</source>
+        <translation>使用字母、數字、點、字幕或字幕,空間變成字幕。</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Ubuntu 24.04</source>
+        <translation>Ubuntu 24.04</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Debian 13 Slim</source>
+        <translation>Debian 13 Slim</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Alpine 3.22</source>
+        <translation>Alpine 3.22</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>NGINX on Alpine</source>
+        <translation>NGINX 在 Alpine 上</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Custom image</source>
+        <translation>定製影象</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Keep running for Terminal</source>
+        <translation>繼續跑到終端</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Run the image’s command</source>
+        <translation>執行影象的命令</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Bridge</source>
+        <translation>橋樑</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+457"/>
+        <source>No network</source>
+        <translation>沒有網路</translation>
+    </message>
+    <message>
+        <location line="-455"/>
+        <source>Standard</source>
+        <translation>標準</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+456"/>
+        <source>Restricted capabilities</source>
+        <translation>有限能力</translation>
+    </message>
+    <message>
+        <location line="-455"/>
+        <source>Both profiles block privilege escalation. Restricted also drops all Linux capabilities.</source>
+        <translation>兩個檔案都阻止特權升級. 限制也下降了所有Linux功能。</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Base OS or image</source>
+        <translation>基於 OS 或影象</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Docker image</source>
+        <translation>Docker 影象</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Startup</source>
+        <translation>初創</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Network</source>
+        <translation>網路</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Security</source>
+        <translation>安全性</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Advanced</source>
+        <translation>進階</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Use the image’s user</source>
+        <translation>使用影象的使用者</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Non-root user</source>
+        <translation>無根使用者</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Writable</source>
+        <translation>可寫的</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Read-only</source>
+        <translation>只閱讀</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Do not restart</source>
+        <translation>不要重新啟動</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Restart unless stopped</source>
+        <translation>重新啟動,除非停止</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>No separate volume</source>
+        <translation>沒有分開的量</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Persistent Docker volume</source>
+        <translation>持久 Docker 容量</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Publish a port on this computer</source>
+        <translation>在此計算機上釋出一個埠</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Run as</source>
+        <translation>跑步如</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Root filesystem</source>
+        <translation>根檔案系統</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Restart policy</source>
+        <translation>重新啟動政策</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Storage</source>
+        <translation>儲存</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Folder inside container</source>
+        <translation>容器內部的包裝</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Local port</source>
+        <translation>地方港口</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Container port</source>
+        <translation>容器港口</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Create Container</source>
+        <translation>建立集裝箱</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Default (run the image’s command)</source>
+        <translation>預設(執行影象命令)</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Default (keep running for Terminal)</source>
+        <translation>預設(Keep Run for Terminal)</translation>
+    </message>
+    <message>
+        <location line="+56"/>
+        <source>Save environment definition</source>
+        <translation>儲存環境定義</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+141"/>
+        <source>Environment definitions (*.yaml *.yml)</source>
+        <translation>環境定義 (*.yaml *.yml)</translation>
+    </message>
+    <message>
+        <location line="-135"/>
+        <source>Choose a YAML file and include at most 2,048 definitions.</source>
+        <translation>選擇 YAML 檔案,幷包含最多 2,048 個定義。</translation>
+    </message>
+    <message>
+        <location line="+36"/>
+        <source>Dockpipe could not save the environment definition.</source>
+        <translation>Dockpipe 無法儲存環境定義。</translation>
+    </message>
+    <message>
+        <location line="+66"/>
+        <source>Edit YAML</source>
+        <translation>編輯 YAML</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Apply</source>
+        <translation>套用</translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Include environment definition files</source>
+        <translation>包含環境定義檔案</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Choose at most 2,048 definition files.</source>
+        <translation>選擇最多 2,048 定義檔案。</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>This definition file is unavailable. Refresh the definitions and try again.</source>
+        <translation>此定義檔案不適用. 更新定義,然後再嘗試。</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Could not open the selected environment definition.</source>
+        <translation>無法開啟所選擇的環境定義。</translation>
+    </message>
+    <message>
+        <location line="+49"/>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <location line="+41"/>
+        <source>This machine</source>
+        <translation>這個機器</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Remote</source>
+        <translation>遠端</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Local</source>
+        <translation>地方</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>No environments yet. Choose Add Environment to get started.</source>
+        <translation>沒有環境 選擇 新增環境 開始。</translation>
+    </message>
+    <message>
+        <location line="+32"/>
+        <source>Open terminal</source>
+        <translation>開放終端</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Open VM console</source>
+        <translation>開放 VM 控制檯</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Manage VM</source>
+        <translation>管理 VM</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Connection settings</source>
+        <translation>連線設定</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Machine settings</source>
+        <translation>電腦設定</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Choose Add Environment to get started.</source>
+        <translation>選擇新增環境以開始。</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Select an environment to see its status and actions.</source>
+        <translation>選擇一個環境,以檢視其狀態和行動。</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Environment details</source>
+        <translation>環境細節</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Type  %1</source>
+        <translation>型別 %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Image  %1</source>
+        <translation>圖片 %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Bridge network</source>
+        <translation>橋網</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Read-only root filesystem</source>
+        <translation>Read-only root 檔案系統</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Local port  %1 → %2</source>
+        <translation>地點埠 %1 → %2</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Persistent volume  %1</source>
+        <translation>持久容量 %1</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Operating system  %1</source>
+        <translation>作業系統 %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>%1 CPU(s) · %2 GiB RAM · %3 GiB disk</source>
+        <translation>%1 CPU(s) · %2 GiB RAM · %3 GiB 磁碟</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Installer ISO  %1</source>
+        <translation>安裝 ISO %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Choose an installer ISO before the first boot.</source>
+        <translation>選擇安裝器 ISO 在第一次啟動之前。</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Provisioning workflow  %1</source>
+        <translation>提供工作流 %1</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Package  %1</source>
+        <translation>包 %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Storage profile  %1</source>
+        <translation>儲存資料 %1</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>Managing broker</source>
+        <translation>管理代理</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Local computer</source>
+        <translation>地方計算機</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Host  This computer</source>
+        <translation>主持此計算機</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Workflows</source>
+        <translation>工作流程</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Containers</source>
+        <translation>容器</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Files</source>
+        <translation>檔案</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Git</source>
+        <translation>Git</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Terminal</source>
+        <translation>終端機</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Reported access  %1</source>
+        <translation>報告訪問 %1</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <location line="+2"/>
+        <source>, </source>
+        <translation>,</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Workspace roots  %1</source>
+        <translation>工作空間根 %1</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Last report  %1</source>
+        <translation>最新訊息 %1</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>No workspace feature report is available.</source>
+        <translation>沒有工作空間功能報告可用。</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Definition file missing</source>
+        <translation>缺失的檔案定義</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Name differs from filename</source>
+        <translation>名稱與Filename不同</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Invalid definition</source>
+        <translation>缺陷定義</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Saved definition</source>
+        <translation>儲存定義</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Selected file</source>
+        <translation>選擇的檔案</translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>Observed running</source>
+        <translation>觀察跑步</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Observed stopped</source>
+        <translation>觀察停止</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Runtime unavailable</source>
+        <translation>執行時間不適用</translation>
     </message>
 </context>
 <context>
@@ -4352,12 +5138,12 @@ Start a workflow from the editor to follow it here.</source>
 <context>
     <name>FileEditorWorkspace</name>
     <message>
-        <location filename="../src/files/presentation/FileEditorWorkspace.cpp" line="+63"/>
+        <location filename="../src/files/presentation/FileEditorWorkspace.cpp" line="+64"/>
         <source>Open a file in this pane</source>
         <translation>在此窗格中開啟檔案</translation>
     </message>
     <message>
-        <location line="+67"/>
+        <location line="+73"/>
         <source>Open in other pane</source>
         <translation>在另一窗格中開啟</translation>
     </message>
@@ -4377,7 +5163,7 @@ Start a workflow from the editor to follow it here.</source>
         <translation>關閉其他</translation>
     </message>
     <message>
-        <location line="+162"/>
+        <location line="+178"/>
         <location line="+165"/>
         <source>Close %1</source>
         <translation>關閉 %1</translation>
@@ -4991,7 +5777,7 @@ This change may contain only a rename, file metadata, or merge information.</sou
 <context>
     <name>GitHistoryWidget</name>
     <message>
-        <location filename="../src/git/presentation/GitHistoryWidget.cpp" line="+45"/>
+        <location filename="../src/git/presentation/GitHistoryWidget.cpp" line="+46"/>
         <source>Search commits…</source>
         <translation>搜尋提交…</translation>
     </message>
@@ -5261,7 +6047,7 @@ This change may contain only a rename, file metadata, or merge information.</sou
 <context>
     <name>GitRepositoryWidget</name>
     <message>
-        <location filename="../src/git/presentation/GitRepositoryWidget.cpp" line="+32"/>
+        <location filename="../src/git/presentation/GitRepositoryWidget.cpp" line="+33"/>
         <source>Refresh</source>
         <translation>重新整理</translation>
     </message>
@@ -5372,7 +6158,7 @@ Upstream: %3
         <translation>%1  %2</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+37"/>
         <source>Merge branch</source>
         <translation>合併分支</translation>
     </message>
@@ -5521,21 +6307,21 @@ Upstream: %3
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="+334"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="+340"/>
         <source>Dockpipe — %1</source>
         <translation>Dockpipe — %1</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+108"/>
-        <location line="+259"/>
-        <location line="+745"/>
+        <location line="+170"/>
+        <location line="+258"/>
+        <location line="+755"/>
         <location line="+51"/>
-        <location line="+120"/>
+        <location line="+140"/>
         <location line="+6"/>
         <location line="+5"/>
         <location line="+24"/>
-        <location line="+309"/>
+        <location line="+299"/>
         <location line="+47"/>
         <location line="+162"/>
         <location line="+118"/>
@@ -5543,13 +6329,13 @@ Upstream: %3
         <translation>Dockpipe</translation>
     </message>
     <message>
-        <location line="-1898"/>
-        <location line="+424"/>
+        <location line="-1943"/>
+        <location line="+449"/>
         <source>System</source>
         <translation>系統</translation>
     </message>
     <message>
-        <location line="-369"/>
+        <location line="-368"/>
         <source>Your work. Anywhere.</source>
         <translation>您的工作，隨處可達。</translation>
     </message>
@@ -5560,18 +6346,18 @@ Upstream: %3
     </message>
     <message>
         <location line="+4"/>
-        <location line="+404"/>
+        <location line="+403"/>
         <source>Packages</source>
         <translation>套件</translation>
     </message>
     <message>
-        <location line="-403"/>
-        <location line="+400"/>
+        <location line="-402"/>
+        <location line="+399"/>
         <source>Settings</source>
         <translation>設定</translation>
     </message>
     <message>
-        <location line="-385"/>
+        <location line="-384"/>
         <source>WORKSPACE</source>
         <translation>工作區</translation>
     </message>
@@ -5581,29 +6367,24 @@ Upstream: %3
         <translation>開啟資料夾…</translation>
     </message>
     <message>
-        <location line="+107"/>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+189"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+151"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+190"/>
         <source>This computer</source>
         <translation>這部電腦</translation>
     </message>
     <message>
-        <location line="+5"/>
-        <source> — unavailable</source>
-        <translation> — 無法使用</translation>
-    </message>
-    <message>
-        <location line="+46"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="+155"/>
         <source>Workflow</source>
         <translation>工作流程</translation>
     </message>
     <message>
-        <location line="+21"/>
-        <location line="+1631"/>
+        <location line="+23"/>
+        <location line="+1651"/>
         <source>%1 logs</source>
         <translation>%1 記錄</translation>
     </message>
     <message>
-        <location line="-1621"/>
+        <location line="-1641"/>
         <source>Remote workflow</source>
         <translation>遠端工作流程</translation>
     </message>
@@ -5639,12 +6420,12 @@ Upstream: %3
     </message>
     <message>
         <location line="+2"/>
-        <location line="+848"/>
+        <location line="+878"/>
         <source>Quit</source>
         <translation>結束</translation>
     </message>
     <message>
-        <location line="-846"/>
+        <location line="-876"/>
         <source>View</source>
         <translation>檢視</translation>
     </message>
@@ -5659,11 +6440,6 @@ Upstream: %3
         <location line="+200"/>
         <source>Workflows</source>
         <translation>工作流程</translation>
-    </message>
-    <message>
-        <location line="+0"/>
-        <source>Machines</source>
-        <translation>電腦</translation>
     </message>
     <message>
         <location line="+0"/>
@@ -5694,6 +6470,11 @@ Upstream: %3
         <location line="+0"/>
         <source>Terminal</source>
         <translation>終端機</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Environments</source>
+        <translation>環境</translation>
     </message>
     <message>
         <location line="+12"/>
@@ -5801,7 +6582,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>稍後</translation>
     </message>
     <message>
-        <location line="+188"/>
+        <location line="+195"/>
         <source>Workflow studio</source>
         <translation>工作流程工作室</translation>
     </message>
@@ -5821,7 +6602,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>開啟專案資料夾</translation>
     </message>
     <message>
-        <location line="+101"/>
+        <location line="+104"/>
         <source>Open a project</source>
         <translation>開啟專案</translation>
     </message>
@@ -5832,19 +6613,19 @@ If a workflow needs external tools, you install them yourself from official sour
     </message>
     <message>
         <location line="+22"/>
-        <location line="+652"/>
-        <location filename="../src/shell/presentation/MainWindowSurfaces.cpp" line="+109"/>
+        <location line="+662"/>
+        <location filename="../src/shell/presentation/MainWindowSurfaces.cpp" line="+151"/>
         <source>Workflow unavailable</source>
         <translation>工作流程無法使用</translation>
     </message>
     <message>
-        <location line="-624"/>
-        <location line="+673"/>
+        <location line="-634"/>
+        <location line="+683"/>
         <source>Could not start dockpipe (see stderr).</source>
         <translation>無法啟動 dockpipe（請查看 stderr）。</translation>
     </message>
     <message>
-        <location line="-600"/>
+        <location line="-593"/>
         <source>VS Code workflow</source>
         <translation>VS Code 工作流程</translation>
     </message>
@@ -5854,7 +6635,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>沒有宣告的輸入。使用「複製到工作流程」編輯此設定。</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+50"/>
         <source>This workflow does not expose app-managed settings.</source>
         <translation>此工作流程不提供由應用程式管理的設定。</translation>
     </message>
@@ -5924,7 +6705,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>就緒</translation>
     </message>
     <message>
-        <location line="+168"/>
+        <location line="+158"/>
         <source>Received an invalid Dockpipe prompt payload.</source>
         <translation>收到無效的 Dockpipe 提示承載資料。</translation>
     </message>
@@ -5945,7 +6726,7 @@ If a workflow needs external tools, you install them yourself from official sour
     </message>
     <message>
         <location line="+1"/>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+213"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+121"/>
         <source>Choose another computer or reconnect this machine before running.</source>
         <translation>執行前請選擇其他電腦或重新連線此電腦。</translation>
     </message>
@@ -6068,7 +6849,7 @@ If a workflow needs external tools, you install them yourself from official sour
 </translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowDashboards.cpp" line="+76"/>
+        <location filename="../src/shell/presentation/MainWindowDashboards.cpp" line="+78"/>
         <source>This workflow is no longer in the project catalog. Refresh Workflows and try again.</source>
         <translation>此工作流程已不在專案目錄中。請重新整理「工作流程」後再試。</translation>
     </message>
@@ -6267,7 +7048,7 @@ Ctrl / ⌘ + `     切換輸出
         <translation>尚無工作流程</translation>
     </message>
     <message>
-        <location line="+56"/>
+        <location line="+53"/>
         <source>Open YAML file…</source>
         <translation>開啟 YAML 檔案…</translation>
     </message>
@@ -6307,7 +7088,7 @@ Ctrl / ⌘ + `     切換輸出
         <translation>工作流程 YAML (*.yml *.yaml)</translation>
     </message>
     <message>
-        <location line="+41"/>
+        <location line="+45"/>
         <source>Workflow source unavailable</source>
         <translation>工作流程來源檔案無法使用</translation>
     </message>
@@ -6322,12 +7103,17 @@ Ctrl / ⌘ + `     切換輸出
         <translation>請等待 Git 操作完成，或在 Git 中取消後再更換專案。</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="-1376"/>
+        <location line="+122"/>
+        <source>This run target is unavailable. Choose another computer or reconnect it in Environments.</source>
+        <translation>此執行目標不可用 選擇另一個計算機或重新連線它在環境中。</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="-1396"/>
         <source>Wait for the Git action to finish, or cancel it in Git before quitting.</source>
         <translation>請等待 Git 操作完成，或在 Git 中取消後再結束。</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+94"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-23"/>
         <source>&lt;h3&gt;Select a workflow&lt;/h3&gt;&lt;p&gt;Review its purpose and inputs here, then choose Run or Edit on canvas.&lt;/p&gt;</source>
         <translation>&lt;h3&gt;選擇工作流程&lt;/h3&gt;&lt;p&gt;在此查看其用途和輸入，然後選擇「執行」或「在畫布上編輯」。&lt;/p&gt;</translation>
     </message>
@@ -6362,12 +7148,7 @@ Ctrl / ⌘ + `     切換輸出
         <translation>選取的電腦需要具備此工作流程要求的工具和平台。</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>This run target is unavailable. Choose another computer or reconnect it in Machines.</source>
-        <translation>此執行目標無法使用。請選擇其他電腦或在「電腦」中重新連線。</translation>
-    </message>
-    <message>
-        <location line="+41"/>
+        <location line="+45"/>
         <source>Clone failed</source>
         <translation>複製失敗</translation>
     </message>
@@ -6382,7 +7163,12 @@ Ctrl / ⌘ + `     切換輸出
         <translation>工作流程已複製至 %1</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-43"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-96"/>
+        <source>%1 · Workflow access unavailable</source>
+        <translation>%1 · 工作流無法訪問</translation>
+    </message>
+    <message>
+        <location line="+53"/>
         <source>This machine or root changed. Refresh machines and select it again.</source>
         <translation>此電腦或根目錄已變更。請重新整理電腦清單並重新選取。</translation>
     </message>
@@ -6392,13 +7178,12 @@ Ctrl / ⌘ + `     切換輸出
         <translation>變更電腦前，請儲存或捨棄開啟的草稿並完成作用中的作業。</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-435"/>
-        <location line="+145"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-443"/>
         <source>Choose the computer with the shared machine selector.</source>
         <translation>請透過共用電腦選擇器選擇電腦。</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+93"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+130"/>
         <source>Container terminal · %1 · %2</source>
         <translation>容器終端機 · %1 · %2</translation>
     </message>
@@ -6406,6 +7191,17 @@ Ctrl / ⌘ + `     切換輸出
         <location filename="../src/shell/presentation/MainWindow.cpp" line="-209"/>
         <source>Remote Desktop</source>
         <translation>遠端桌面</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-216"/>
+        <location line="+28"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · 無法使用</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+145"/>
+        <source>Use the shared machine or choose a worker for this workflow.</source>
+        <translation>請使用共用電腦，或為此工作流程選擇工作節點。</translation>
     </message>
 </context>
 <context>
@@ -6525,12 +7321,12 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>終端設定檔最多可覆寫 64 個環境變數。</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+56"/>
         <source>The terminal launch exceeds its bounded profile or environment contract.</source>
         <translation>終端啟動內容超出設定檔或環境的限制。</translation>
     </message>
     <message>
-        <location line="-45"/>
+        <location line="-50"/>
         <source>The terminal profile contains an invalid environment variable.</source>
         <translation>終端設定檔包含無效的環境變數。</translation>
     </message>
@@ -7018,7 +7814,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
 <context>
     <name>PackageSurfacePage</name>
     <message>
-        <location filename="../src/packages/presentation/PackageSurfacePage.cpp" line="+50"/>
+        <location filename="../src/packages/presentation/PackageSurfacePage.cpp" line="+52"/>
         <source>View</source>
         <translation>檢視</translation>
     </message>
@@ -7083,13 +7879,13 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>操作逾時。請重新整理以檢查目前狀態。</translation>
     </message>
     <message>
-        <location line="+91"/>
+        <location line="+95"/>
         <location line="+18"/>
         <source>Refresh paused. Displayed state is stale.</source>
         <translation>重新整理已暫停。顯示的狀態已過期。</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+28"/>
         <source>State has not been refreshed.</source>
         <translation>狀態尚未重新整理。</translation>
     </message>
@@ -7099,7 +7895,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>已安裝套件的啟動操作存在歧義或無法使用。</translation>
     </message>
     <message>
-        <location line="+114"/>
+        <location line="+133"/>
         <source>Refreshing… Previous state is retained.</source>
         <translation>正在重新整理… 保留先前的狀態。</translation>
     </message>
@@ -7124,7 +7920,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>套件傳回了無效的介面事件。</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+54"/>
         <source>Package operation failed or returned no snapshot. Displayed state is stale.</source>
         <translation>套件操作失敗或未傳回快照。顯示的狀態已過期。</translation>
     </message>
@@ -7139,7 +7935,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>操作已完成。正在重新整理狀態…</translation>
     </message>
     <message>
-        <location line="+25"/>
+        <location line="+69"/>
         <source>Unsupported package surface event schema.</source>
         <translation>不支援的套件介面事件結構描述。</translation>
     </message>
@@ -7164,7 +7960,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>套件資源欄位超過介面約定。</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+16"/>
         <source>Invalid package widget display options or missing installed factory.</source>
         <translation>套件小工具顯示選項無效或缺少已安裝處理站。</translation>
     </message>
@@ -7187,6 +7983,213 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <location line="+7"/>
         <source>Invalid package resource action.</source>
         <translation>無效的套件資源操作。</translation>
+    </message>
+</context>
+<context>
+    <name>PipeLangEditorSession</name>
+    <message>
+        <location filename="../src/files/presentation/PipeLangEditorSession.cpp" line="+139"/>
+        <source>Browse…</source>
+        <translation>瀏覽…</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Connect</source>
+        <translation>連線</translation>
+    </message>
+    <message>
+        <location line="-33"/>
+        <source>Connect PipeLang language server</source>
+        <translation>連線至 PipeLang 語言伺服器</translation>
+    </message>
+    <message>
+        <location line="-19"/>
+        <source>Connect an explicitly selected installed language server for .pipe diagnostics and hover</source>
+        <translation>連線至明確選取的已安裝語言伺服器，以取得 .pipe 檔案的診斷與滑鼠懸停資訊</translation>
+    </message>
+    <message>
+        <location line="+47"/>
+        <source>Node executable</source>
+        <translation>Node 執行檔</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>PipeLang compiler executable</source>
+        <translation>PipeLang 編譯器執行檔</translation>
+    </message>
+    <message>
+        <location line="-43"/>
+        <source>PipeLang language server disconnected.</source>
+        <translation>已中斷與 PipeLang 語言伺服器的連線。</translation>
+    </message>
+    <message>
+        <location line="-7"/>
+        <source>PipeLang server…</source>
+        <translation>PipeLang 伺服器…</translation>
+    </message>
+    <message>
+        <location line="+41"/>
+        <source>Select installed tool</source>
+        <translation>選取已安裝的工具</translation>
+    </message>
+    <message>
+        <location line="-1"/>
+        <source>Select source root</source>
+        <translation>選取原始碼根目錄</translation>
+    </message>
+    <message>
+        <location line="-18"/>
+        <source>Select trusted installed tools. Connecting runs the selected Node and server on this host. Paths are used only for this session; project files cannot configure executable paths. An optional source root authorizes compiler analysis of imports beneath that directory.</source>
+        <translation>請選取信任的已安裝工具。連線時會在這部電腦執行所選的 Node 和伺服器。路徑僅用於本次工作階段。專案檔案無法設定執行檔路徑。指定選用的原始碼根目錄後，編譯器就能分析該目錄下的匯入。</translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Server JavaScript entrypoint</source>
+        <translation>伺服器 JavaScript 進入點</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Source root (optional)</source>
+        <translation>原始碼根目錄（選用）</translation>
+    </message>
+    <message>
+        <location line="-47"/>
+        <source>Stop</source>
+        <translation>停止</translation>
+    </message>
+</context>
+<context>
+    <name>PipeLangLanguageClient</name>
+    <message>
+        <location filename="../src/files/infrastructure/PipeLangLanguageClient.cpp" line="+374"/>
+        <source>Invalid PipeLang JSON-RPC message.</source>
+        <translation>PipeLang JSON-RPC 訊息無效。</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Invalid PipeLang JSON-RPC version.</source>
+        <translation>PipeLang JSON-RPC 版本無效。</translation>
+    </message>
+    <message>
+        <location line="-35"/>
+        <source>Invalid PipeLang protocol Content-Length.</source>
+        <translation>PipeLang 通訊協定的 Content-Length 值無效。</translation>
+    </message>
+    <message>
+        <location line="-224"/>
+        <source>Invalid absolute installed PipeLang selection (%1).</source>
+        <translation>為已安裝的 PipeLang 工具選取的絕對路徑無效（%1）。</translation>
+    </message>
+    <message>
+        <location line="-10"/>
+        <source>Node executable: %1</source>
+        <translation>Node 執行檔：%1</translation>
+    </message>
+    <message>
+        <location line="+305"/>
+        <source>PipeLang compiler diagnostics and hover connected.</source>
+        <translation>已可使用 PipeLang 編譯器診斷與滑鼠懸停資訊。</translation>
+    </message>
+    <message>
+        <location line="-178"/>
+        <source>PipeLang document limit exceeded (1 MiB per file, 16 MiB total, 32 files).</source>
+        <translation>超出 PipeLang 文件限制（每個檔案 1 MiB，合計 16 MiB，最多 32 個檔案）。</translation>
+    </message>
+    <message>
+        <location line="-208"/>
+        <source>PipeLang hover timed out.</source>
+        <translation>PipeLang 滑鼠懸停資訊請求逾時。</translation>
+    </message>
+    <message>
+        <location line="+301"/>
+        <location line="+4"/>
+        <source>PipeLang protocol header limit exceeded.</source>
+        <translation>超出 PipeLang 通訊協定標頭限制。</translation>
+    </message>
+    <message>
+        <location line="-14"/>
+        <source>PipeLang protocol input limit exceeded.</source>
+        <translation>超出 PipeLang 通訊協定輸入限制。</translation>
+    </message>
+    <message>
+        <location line="-126"/>
+        <source>PipeLang protocol output limit exceeded.</source>
+        <translation>超出 PipeLang 通訊協定輸出限制。</translation>
+    </message>
+    <message>
+        <location line="+157"/>
+        <source>PipeLang protocol requires one Content-Length header.</source>
+        <translation>PipeLang 通訊協定只允許一個 Content-Length 標頭，且不得省略。</translation>
+    </message>
+    <message>
+        <location line="-151"/>
+        <source>PipeLang protocol write failed.</source>
+        <translation>寫入 PipeLang 通訊協定失敗。</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>PipeLang request identity space exhausted; restart the editor session.</source>
+        <translation>PipeLang 請求識別碼已用盡。請重新啟動編輯器工作階段。</translation>
+    </message>
+    <message>
+        <location line="-144"/>
+        <source>PipeLang server could not start: %1</source>
+        <translation>無法啟動 PipeLang 伺服器：%1</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>PipeLang server exited (%1). Reconnect explicitly.</source>
+        <translation>PipeLang 伺服器已結束（%1）。請手動重新連線。</translation>
+    </message>
+    <message>
+        <location line="-40"/>
+        <source>PipeLang server lifecycle deadline exceeded.</source>
+        <translation>PipeLang 伺服器生命週期作業已逾時。</translation>
+    </message>
+    <message>
+        <location line="+383"/>
+        <source>PipeLang server rejected shutdown.</source>
+        <translation>PipeLang 伺服器拒絕關閉請求。</translation>
+    </message>
+    <message>
+        <location line="-385"/>
+        <source>PipeLang server required forced termination after stdin closure.</source>
+        <translation>關閉 stdin 後，必須強制結束 PipeLang 伺服器。</translation>
+    </message>
+    <message>
+        <location line="+42"/>
+        <source>PipeLang server stopped.</source>
+        <translation>PipeLang 伺服器已停止。</translation>
+    </message>
+    <message>
+        <location line="+332"/>
+        <source>Selected PipeLang server does not provide the required UTF-16 hover contract.</source>
+        <translation>所選的 PipeLang 伺服器不支援滑鼠懸停資訊所需的 UTF-16 規約。</translation>
+    </message>
+    <message>
+        <location line="-269"/>
+        <source>Starting selected PipeLang server…</source>
+        <translation>正在啟動所選的 PipeLang 伺服器…</translation>
+    </message>
+    <message>
+        <location line="-34"/>
+        <source>Stop the current PipeLang server before reconnecting.</source>
+        <translation>重新連線前，請先停止目前的 PipeLang 伺服器。</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>compiler executable: %1</source>
+        <translation>編譯器執行檔：%1</translation>
+    </message>
+    <message>
+        <location line="-2"/>
+        <source>server entrypoint: %1</source>
+        <translation>伺服器進入點：%1</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>source directory: %1</source>
+        <translation>原始碼目錄：%1</translation>
     </message>
 </context>
 <context>
@@ -7301,12 +8304,12 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
     <name>ProjectFilesWidget</name>
     <message>
         <location filename="../src/files/presentation/ProjectFilesWidget.cpp" line="+62"/>
-        <location line="+172"/>
+        <location line="+175"/>
         <source>Files</source>
         <translation>檔案</translation>
     </message>
     <message>
-        <location line="-169"/>
+        <location line="-172"/>
         <source>Browse and edit your workspace.</source>
         <translation>瀏覽並編輯工作區。</translation>
     </message>
@@ -7317,13 +8320,13 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
     </message>
     <message>
         <location line="+5"/>
-        <location line="+26"/>
+        <location line="+29"/>
         <source>New file</source>
         <translation>新增檔案</translation>
     </message>
     <message>
-        <location line="-26"/>
-        <location line="+225"/>
+        <location line="-29"/>
+        <location line="+228"/>
         <source>Path relative to this folder</source>
         <translation>相對於此資料夾的路徑</translation>
     </message>
@@ -7403,12 +8406,12 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
     <message>
         <location line="+13"/>
         <location line="+3"/>
-        <location line="+888"/>
+        <location line="+945"/>
         <source>Preview Markdown</source>
         <translation>預覽 Markdown</translation>
     </message>
     <message>
-        <location line="-882"/>
+        <location line="-939"/>
         <source>Find in file (Ctrl+F)</source>
         <translation>檔案內尋找（Ctrl+F）</translation>
     </message>
@@ -7489,11 +8492,12 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
     </message>
     <message>
         <location line="+3"/>
+        <location line="+222"/>
         <source>Select a file to edit, or create something new.</source>
         <translation>選擇要編輯的檔案，或建立新內容。</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="-218"/>
         <source>Create a file</source>
         <translation>建立檔案</translation>
     </message>
@@ -7503,7 +8507,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>沒有與「%1」符合的結果。</translation>
     </message>
     <message>
-        <location line="+189"/>
+        <location line="+243"/>
         <source>Unsaved file</source>
         <translation>未儲存的檔案</translation>
     </message>
@@ -7575,7 +8579,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>已儲存 %1</translation>
     </message>
     <message>
-        <location line="+175"/>
+        <location line="+177"/>
         <source>No file open</source>
         <translation>沒有開啟的檔案</translation>
     </message>
@@ -7595,7 +8599,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>工作區根目錄</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="+23"/>
         <source>Hide Markdown preview</source>
         <translation>隱藏 Markdown 預覽</translation>
     </message>
@@ -7615,12 +8619,12 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>%1   ·   UTF-8   ·   %2                         第 %3 行，第 %4 欄</translation>
     </message>
     <message>
-        <location line="-1070"/>
+        <location line="-1127"/>
         <source>Refresh files</source>
         <translation>重新整理檔案</translation>
     </message>
     <message>
-        <location line="+463"/>
+        <location line="+517"/>
         <location line="+34"/>
         <source>A file operation is still running. Your open files are preserved.</source>
         <translation>檔案作業仍在執行中。已保留開啟的檔案。</translation>
@@ -7629,6 +8633,11 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <location line="+341"/>
         <source>Invalid workspace file response.</source>
         <translation>工作區檔案回應無效。</translation>
+    </message>
+    <message>
+        <location line="-440"/>
+        <source>Select a file to read.</source>
+        <translation>請選擇要讀取的檔案。</translation>
     </message>
 </context>
 <context>
@@ -7730,7 +8739,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>推送</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+3"/>
         <source>Pull fast-forward changes into a clean checkout</source>
         <translation>將快轉變更提取至乾淨的簽出副本</translation>
     </message>
@@ -7747,12 +8756,12 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
     <message>
         <location line="+12"/>
         <location line="+27"/>
-        <location line="+288"/>
+        <location line="+292"/>
         <source>Changed files</source>
         <translation>已變更檔案</translation>
     </message>
     <message>
-        <location line="-315"/>
+        <location line="-319"/>
         <source>Staged files</source>
         <translation>已暫存檔案</translation>
     </message>
@@ -7799,30 +8808,30 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
     </message>
     <message>
         <location line="+4"/>
-        <location line="+639"/>
+        <location line="+655"/>
         <source>Unstage all</source>
         <translation>全部取消暫存</translation>
     </message>
     <message>
-        <location line="-639"/>
-        <location line="+638"/>
+        <location line="-655"/>
+        <location line="+654"/>
         <source>Stage all</source>
         <translation>全部暫存</translation>
     </message>
     <message>
-        <location line="-589"/>
-        <location line="+566"/>
+        <location line="-605"/>
+        <location line="+582"/>
         <source>Stage changes to include them in your commit.</source>
         <translation>暫存變更以將其包含在提交中。</translation>
     </message>
     <message>
-        <location line="-566"/>
-        <location line="+568"/>
+        <location line="-582"/>
+        <location line="+584"/>
         <source>No unstaged changes.</source>
         <translation>沒有未暫存變更。</translation>
     </message>
     <message>
-        <location line="-544"/>
+        <location line="-560"/>
         <source>Commit changes</source>
         <translation>提交變更</translation>
     </message>
@@ -7848,20 +8857,20 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
     </message>
     <message>
         <location line="+12"/>
-        <location line="+145"/>
-        <location line="+260"/>
+        <location line="+149"/>
+        <location line="+268"/>
         <location line="+4"/>
         <source>Select a file to review</source>
         <translation>選擇要審查的檔案</translation>
     </message>
     <message>
-        <location line="-398"/>
-        <location line="+465"/>
+        <location line="-410"/>
+        <location line="+481"/>
         <source>Unstaged changes</source>
         <translation>未暫存變更</translation>
     </message>
     <message>
-        <location line="-462"/>
+        <location line="-478"/>
         <source>Stage</source>
         <translation>暫存</translation>
     </message>
@@ -7887,20 +8896,20 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
     </message>
     <message>
         <location line="+21"/>
-        <location line="+96"/>
-        <location line="+163"/>
+        <location line="+100"/>
+        <location line="+171"/>
         <source>Your changes, in focus</source>
         <translation>聚焦您的變更</translation>
     </message>
     <message>
-        <location line="-254"/>
-        <location line="+92"/>
-        <location line="+163"/>
+        <location line="-266"/>
+        <location line="+96"/>
+        <location line="+171"/>
         <source>Refresh the repository, then select a file to review its changes.</source>
         <translation>重新整理儲存庫，然後選擇檔案審查變更。</translation>
     </message>
     <message>
-        <location line="-243"/>
+        <location line="-255"/>
         <source>Changes</source>
         <translation>變更</translation>
     </message>
@@ -7920,7 +8929,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>取消操作</translation>
     </message>
     <message>
-        <location line="+57"/>
+        <location line="+61"/>
         <source>Refresh to review this project&apos;s changes.</source>
         <translation>重新整理以審查此專案的變更。</translation>
     </message>
@@ -7930,7 +8939,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>請先開啟專案資料夾。</translation>
     </message>
     <message>
-        <location line="+80"/>
+        <location line="+88"/>
         <source>Refresh the repository before changing it.</source>
         <translation>變更前請重新整理儲存庫。</translation>
     </message>
@@ -7997,7 +9006,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>暫存變更以準備下一次提交。</translation>
     </message>
     <message>
-        <location line="+40"/>
+        <location line="+44"/>
         <source>No staged files</source>
         <translation>沒有已暫存檔案</translation>
     </message>
@@ -8030,6 +9039,11 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <location line="+1"/>
         <source>Unstage shown</source>
         <translation>取消暫存顯示項目</translation>
+    </message>
+    <message>
+        <location line="-263"/>
+        <source>The selected Git root does not grant this operation.</source>
+        <translation>選取的 Git 根目錄未授予此操作的權限。</translation>
     </message>
 </context>
 <context>
@@ -8269,7 +9283,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>自動終端機設定收到無效的主機環境。</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="-710"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="-774"/>
         <source>Running</source>
         <translation>執行中</translation>
     </message>
@@ -8299,7 +9313,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>變更電腦或根目錄前，請儲存或捨棄衝突草稿。</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+49"/>
         <source>Select an absolute local project folder.</source>
         <translation>請選取具有絕對路徑的本機專案資料夾。</translation>
     </message>
@@ -8391,7 +9405,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
     </message>
     <message>
         <location line="+125"/>
-        <location line="+73"/>
+        <location line="+77"/>
         <source>Output exceeded the display limit.
 </source>
         <translation>輸出超過顯示上限。
@@ -8563,7 +9577,22 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>畫質與畫格率將於下次連線時生效。解析度為最大值，位元率為目標值。</translation>
     </message>
     <message>
-        <location line="-73"/>
+        <location line="+33"/>
+        <source>Clipboard sharing is unavailable on the selected computer.</source>
+        <translation>Clipboard 共享在所選擇的計算機上不可用。</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>The selected computer shares its current desktop.</source>
+        <translation>選擇的計算機共享其當前的桌面。</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>The selected computer&apos;s video does not include a cursor.</source>
+        <translation>所選擇的計算機的影片不包含一個切換器。</translation>
+    </message>
+    <message>
+        <location line="-119"/>
         <source>Current desktop</source>
         <translation>目前桌面</translation>
     </message>
@@ -8621,14 +9650,14 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
 <context>
     <name>RemoteDesktopWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+89"/>
-        <location line="+209"/>
-        <location line="+313"/>
+        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+124"/>
+        <location line="+222"/>
+        <location line="+320"/>
         <source>Remote Desktop</source>
         <translation>遠端桌面</translation>
     </message>
     <message>
-        <location line="-509"/>
+        <location line="-529"/>
         <source>View or control an existing desktop through its authorized native provider.</source>
         <translation>透過獲授權的原生提供者檢視或控制現有桌面。</translation>
     </message>
@@ -8710,7 +9739,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>保持連線</translation>
     </message>
     <message>
-        <location line="+39"/>
+        <location line="+52"/>
         <source>Some settings will apply on the next connection.</source>
         <translation>部分設定將於下次連線時生效。</translation>
     </message>
@@ -8750,14 +9779,14 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>%1（需要更新配對）</translation>
     </message>
     <message>
-        <location line="+63"/>
-        <source>No paired computers are available. Add a computer in Machines.</source>
-        <translation>沒有可用的已配對電腦。請在「電腦」中新增。</translation>
+        <location line="+68"/>
+        <source>Choose a paired computer.</source>
+        <translation>請選擇已配對的電腦。</translation>
     </message>
     <message>
         <location line="+0"/>
-        <source>Choose a paired computer.</source>
-        <translation>請選擇已配對的電腦。</translation>
+        <source>No paired computers are available. Add a computer in Environments.</source>
+        <translation>沒有包裝的計算機可用 新增一個計算機到環境。</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -8801,22 +9830,27 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>桌面就緒狀態目錄無效。</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+29"/>
         <source>The selected desktop identity or permission changed. Refresh and connect again.</source>
         <translation>所選桌面的身分或權限已變更。請重新整理並再次連線。</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+26"/>
+        <source>Opening the selected desktop with administrator control…</source>
+        <translation>開啟所選擇的桌面與管理員控制...</translation>
+    </message>
+    <message>
+        <location line="+1"/>
         <source>Opening the selected desktop…</source>
         <translation>正在開啟所選桌面…</translation>
     </message>
     <message>
-        <location line="-401"/>
+        <location line="-427"/>
         <source>Disconnected locally. The native provider reports any unconfirmed remote cleanup.</source>
         <translation>已在本機中斷連線。原生提供者會回報任何尚未確認完成的遠端清理。</translation>
     </message>
     <message>
-        <location line="+412"/>
+        <location line="+438"/>
         <source>Closing the selected desktop…</source>
         <translation>正在關閉所選桌面…</translation>
     </message>
@@ -8849,7 +9883,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>遠端電腦目錄無法使用。</translation>
     </message>
     <message>
-        <location line="+66"/>
+        <location line="+70"/>
         <source>Remote result does not match the captured operation.</source>
         <translation>遠端結果與擷取的作業不符。</translation>
     </message>
@@ -8859,7 +9893,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>已要求取消原始遠端作業。重試寫入前請重新整理狀態。</translation>
     </message>
     <message>
-        <location line="-157"/>
+        <location line="-161"/>
         <source>Cannot retain remote mutation recovery metadata. Resolve saved operations or repair settings before another write.</source>
         <translation>無法保留遠端變更的復原中繼資料。再次寫入前，請解決已儲存的操作或修復設定。</translation>
     </message>
@@ -8912,7 +9946,7 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
 <context>
     <name>RemoteFeatureRecoveryDialog</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteFeatureRecoveryDialog.cpp" line="+62"/>
+        <location filename="../src/remote/presentation/RemoteFeatureRecoveryDialog.cpp" line="+63"/>
         <source>Choose a retained operation.</source>
         <translation>請選擇保留的操作。</translation>
     </message>
@@ -8922,17 +9956,17 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
         <translation>關閉</translation>
     </message>
     <message>
-        <location line="+148"/>
+        <location line="+165"/>
         <source>Contacting the original captured machine…</source>
         <translation>正在聯絡已記錄的原始電腦…</translation>
     </message>
     <message>
-        <location line="-180"/>
+        <location line="-197"/>
         <source>Inspect the original operation before another write. Cancellation does not prove that a mutation had no effect.</source>
         <translation>再次寫入前，請檢查原始操作。取消並不能證明變更未產生影響。</translation>
     </message>
     <message>
-        <location line="+146"/>
+        <location line="+155"/>
         <source>Machine: %1
 Fingerprint: %2
 Generation: %3
@@ -8948,17 +9982,17 @@ Operation: %6</source>
     </message>
     <message>
         <location line="-1"/>
-        <location line="+18"/>
+        <location line="+20"/>
         <source>No uncertain mutations are retained.</source>
         <translation>未保留任何不確定的變更。</translation>
     </message>
     <message>
-        <location line="+77"/>
+        <location line="+85"/>
         <source>Original operation status: %1. No operation was replayed.</source>
         <translation>原始操作狀態：%1。未重新執行任何操作。</translation>
     </message>
     <message>
-        <location line="-222"/>
+        <location line="-241"/>
         <source>Refresh status</source>
         <translation>重新整理狀態</translation>
     </message>
@@ -8968,30 +10002,30 @@ Operation: %6</source>
         <translation>要求取消</translation>
     </message>
     <message>
-        <location line="+144"/>
-        <location line="+47"/>
+        <location line="+155"/>
+        <location line="+53"/>
         <location line="+22"/>
         <source>The mutation outcome remains uncertain. Refresh its original status before another write.</source>
         <translation>變更結果仍不確定。再次寫入前，請重新整理其原始狀態。</translation>
     </message>
     <message>
-        <location line="+36"/>
+        <location line="+39"/>
         <source>Uncertain operations…</source>
         <translation>不確定的操作…</translation>
     </message>
     <message>
-        <location line="-272"/>
+        <location line="-292"/>
         <source>Uncertain remote operations</source>
         <translation>不確定的遠端操作</translation>
     </message>
     <message>
-        <location line="+243"/>
+        <location line="+262"/>
         <source>unknown</source>
         <translation>未知</translation>
     </message>
     <message>
-        <location line="-79"/>
-        <location line="+43"/>
+        <location line="-87"/>
+        <location line="+49"/>
         <location line="+24"/>
         <location line="+7"/>
         <source>Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write.</source>
@@ -9008,27 +10042,27 @@ Operation: %6</source>
         <translation>已驗證已記錄的原始工作階段的容器終端機清理。</translation>
     </message>
     <message>
-        <location line="-179"/>
+        <location line="-196"/>
         <source>Explicitly remove the original exact container after native client cleanup. Requires the worker&apos;s independent Docker recovery grant. Volumes and images are retained.</source>
         <translation>在原生用戶端清理後，明確刪除原始的確切容器。需要工作節點獨立授予的 Docker 復原權限。磁碟區和映像會保留。</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+23"/>
         <source>Remove container %1 on %2 to fence delayed daemon work for operation %3? This removes the container and its writable layer. Volumes and images are retained. The original mutation outcome remains unknown.</source>
         <translation>是否刪除 %2 上的容器 %1，以阻止操作 %3 的延遲常駐程式工作？這將刪除容器及其可寫入層。磁碟區和映像會保留。原始變更結果仍未知。</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-25"/>
         <source>Retire container…</source>
         <translation>停用容器…</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+24"/>
         <source>Retire the captured container?</source>
         <translation>停用已記錄的容器？</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-25"/>
         <source>Revoke the original invocation and verify its native cleanup evidence. Boot-fenced workers require a host reboot for uncertain process-backed operations. The mutation outcome remains unknown.</source>
         <translation>撤銷原始呼叫並驗證其原生清理證據。對於不確定的程序操作，採用啟動隔離的工作節點需要重新啟動主機。變更結果仍未知。</translation>
     </message>
@@ -9038,9 +10072,14 @@ Operation: %6</source>
         <translation>驗證清理</translation>
     </message>
     <message>
-        <location line="+154"/>
+        <location line="+171"/>
         <source>Refreshing the worker&apos;s retained terminal metadata. No cleanup was requested.</source>
         <translation>正在重新整理工作節點保留的終端機中繼資料。未要求清理。</translation>
+    </message>
+    <message>
+        <location line="+62"/>
+        <source>The original operation was cancelled. Refresh the affected state before another write.</source>
+        <translation>原始操作已取消。再次寫入之前，請重新整理受影響的狀態。</translation>
     </message>
 </context>
 <context>
@@ -9370,7 +10409,7 @@ Operation: %6</source>
 <context>
     <name>RemoteWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteWidget.cpp" line="+133"/>
+        <location filename="../src/remote/presentation/RemoteWidget.cpp" line="+172"/>
         <location line="+21"/>
         <source>Show details</source>
         <translation>顯示詳細資訊</translation>
@@ -9386,14 +10425,14 @@ Operation: %6</source>
         <translation>隱藏詳細資訊</translation>
     </message>
     <message>
-        <location line="+60"/>
-        <location line="+32"/>
-        <location line="+706"/>
+        <location line="+65"/>
+        <location line="+33"/>
+        <location line="+872"/>
         <source>Machines</source>
         <translation>電腦</translation>
     </message>
     <message>
-        <location line="-737"/>
+        <location line="-904"/>
         <source>Pairing and access relationships · Connection health is not checked here</source>
         <translation>配對與存取關聯 · 此處不檢查連線健康狀態</translation>
     </message>
@@ -9404,25 +10443,25 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+16"/>
-        <location line="+720"/>
+        <location line="+887"/>
         <source>Machine setup</source>
         <translation>電腦設定</translation>
     </message>
     <message>
-        <location line="-706"/>
+        <location line="-872"/>
         <source>Manage trusted computers and workflow access.</source>
         <translation>管理受信任的電腦和工作流程存取。</translation>
     </message>
     <message>
         <location line="+2"/>
-        <location line="+61"/>
-        <location line="+212"/>
-        <location line="+430"/>
+        <location line="+62"/>
+        <location line="+216"/>
+        <location line="+591"/>
         <source>Add machine</source>
         <translation>新增電腦</translation>
     </message>
     <message>
-        <location line="-692"/>
+        <location line="-858"/>
         <source>Canvas</source>
         <translation>畫布</translation>
     </message>
@@ -9442,18 +10481,18 @@ Operation: %6</source>
         <translation>電腦清單檢視</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+48"/>
         <source>Refresh</source>
         <translation>重新整理</translation>
     </message>
     <message>
         <location line="+3"/>
-        <location line="+432"/>
+        <location line="+475"/>
         <source>Connection settings</source>
         <translation>連線設定</translation>
     </message>
     <message>
-        <location line="-421"/>
+        <location line="-463"/>
         <source>Remote connection</source>
         <translation>遠端連線</translation>
     </message>
@@ -9474,13 +10513,13 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+16"/>
-        <location line="+334"/>
-        <location line="+266"/>
+        <location line="+343"/>
+        <location line="+421"/>
         <source>Connect this computer</source>
         <translation>連線此電腦</translation>
     </message>
     <message>
-        <location line="-596"/>
+        <location line="-760"/>
         <source>Checking remote access lock status…</source>
         <translation>正在檢查遠端存取鎖定狀態…</translation>
     </message>
@@ -9496,12 +10535,12 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+10"/>
-        <location line="+239"/>
+        <location line="+247"/>
         <source>Machine</source>
         <translation>電腦</translation>
     </message>
     <message>
-        <location line="-239"/>
+        <location line="-247"/>
         <source>Access</source>
         <translation>存取</translation>
     </message>
@@ -9537,34 +10576,34 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+657"/>
+        <location line="+830"/>
         <source>Paired</source>
         <translation>已配對</translation>
     </message>
     <message>
-        <location line="-656"/>
+        <location line="-829"/>
         <source>Invitations</source>
         <translation>邀請</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+662"/>
+        <location line="+836"/>
         <source>Access removed</source>
         <translation>存取已移除</translation>
     </message>
     <message>
-        <location line="-659"/>
+        <location line="-833"/>
         <source>Refresh to load managed machines.</source>
         <translation>重新整理以載入受管理電腦。</translation>
     </message>
     <message>
         <location line="+9"/>
-        <location line="+1079"/>
+        <location line="+1270"/>
         <source>Select a machine to view its settings.</source>
         <translation>選擇電腦以查看其設定。</translation>
     </message>
     <message>
-        <location line="-1075"/>
+        <location line="-1266"/>
         <source>Configure this computer…</source>
         <translation>設定此電腦…</translation>
     </message>
@@ -9626,20 +10665,21 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+8"/>
-        <location line="+343"/>
-        <location line="+433"/>
+        <location line="+435"/>
+        <location line="+519"/>
         <source>Set up remote access…</source>
         <translation>設定遠端存取…</translation>
     </message>
     <message>
-        <location line="-759"/>
-        <location line="+165"/>
-        <location line="+133"/>
+        <location line="-934"/>
+        <location line="+170"/>
+        <location line="+212"/>
+        <location line="+208"/>
         <source>← Machines</source>
         <translation>← 電腦</translation>
     </message>
     <message>
-        <location line="-276"/>
+        <location line="-568"/>
         <source>Add another computer</source>
         <translation>新增另一部電腦</translation>
     </message>
@@ -9655,12 +10695,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+3"/>
-        <location line="+442"/>
+        <location line="+608"/>
         <source>Start pairing</source>
         <translation>開始配對</translation>
     </message>
     <message>
-        <location line="-437"/>
+        <location line="-603"/>
         <source>Connect this computer instead</source>
         <translation>改為連線此電腦</translation>
     </message>
@@ -9675,12 +10715,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>在另一部電腦上</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>Open Dockpipe → Machines → Add machine → Connect this computer instead. Enter this address and request pairing.</source>
-        <translation>開啟 Dockpipe → 電腦 → 新增電腦 → 改為連線此電腦。輸入此位址並要求配對。</translation>
-    </message>
-    <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Copy address</source>
         <translation>複製位址</translation>
     </message>
@@ -9691,12 +10726,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+3"/>
-        <location line="+601"/>
+        <location line="+775"/>
         <source>Review request</source>
         <translation>審查要求</translation>
     </message>
     <message>
-        <location line="-597"/>
+        <location line="-771"/>
         <source>Check again</source>
         <translation>重新檢查</translation>
     </message>
@@ -9721,7 +10756,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>選擇要求並與另一部電腦的代碼比較。僅在相符時核准。</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+7"/>
         <source>Verification code</source>
         <translation>驗證碼</translation>
     </message>
@@ -9757,11 +10792,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+1"/>
+        <location line="+119"/>
         <source>Done</source>
         <translation>完成</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="-106"/>
         <source>1 of 3 · Prepare</source>
         <translation>1 / 3 · 準備</translation>
     </message>
@@ -9781,22 +10817,22 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>配對完成</translation>
     </message>
     <message>
-        <location line="+24"/>
+        <location line="+25"/>
         <source>Enter the address shown on the computer you are connecting to.</source>
         <translation>輸入要連線的電腦上顯示的位址。</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+5"/>
         <source>https://your-broker.example.com</source>
         <translation>https://your-broker.example.com</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+5"/>
         <source>Remote address</source>
         <translation>遠端位址</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+2"/>
         <source>Name for this computer</source>
         <translation>此電腦的名稱</translation>
     </message>
@@ -9806,12 +10842,22 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>允許管理電腦的工作流程以我的使用者身分執行</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+3"/>
         <source>Connect only to a computer you trust. Its workflows run as your user and can access your files and tools.</source>
         <translation>僅連線您信任的電腦。其工作流程以您的使用者身分執行，並可存取您的檔案和工具。</translation>
     </message>
     <message>
         <location line="+1"/>
+        <source>Allow Terminal access as my user</source>
+        <translation>允許終端訪問作為我的使用者</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Terminal opens in your home folder and runs with your account&apos;s permissions.</source>
+        <translation>終端在您的主資料夾中開啟並執行您的帳戶的許可。</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>After approval, Dockpipe starts a background worker service for your user so this computer can receive workflows.</source>
         <translation>核准後，Dockpipe 會為您的使用者啟動背景工作節點服務，使此電腦能夠接收工作流程。</translation>
     </message>
@@ -9821,17 +10867,12 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>要求配對</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+22"/>
         <source>Waiting for approval. Compare the code below on the managing computer.</source>
         <translation>正在等待核准。請在管理電腦上比較下方代碼。</translation>
     </message>
     <message>
-        <location line="+7"/>
-        <source>Already paired? Recovery options</source>
-        <translation>已配對？復原選項</translation>
-    </message>
-    <message>
-        <location line="+6"/>
+        <location line="+13"/>
         <source>Restart receiving workflows without pairing again. Keep this computer awake while work runs.</source>
         <translation>無需重新配對即可恢復接收工作流程。工作執行時請保持此電腦喚醒。</translation>
     </message>
@@ -9841,7 +10882,18 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>啟動工作節點服務</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+2"/>
+        <location line="+6"/>
+        <source>Enable Terminal</source>
+        <translation>啟用終端</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Allow the managing computer to open a shell with your account&apos;s permissions, starting in your home folder? Dockpipe will briefly restart the background worker.</source>
+        <translation>允許管理計算機與您的帳戶的許可開啟一個盾牌,從您的主資料夾開始? Dockpipe 會很快重新啟動背景工作者。</translation>
+    </message>
+    <message>
+        <location line="+23"/>
         <source>Connection settings · Update available</source>
         <translation>連線設定 · 有可用更新</translation>
     </message>
@@ -9886,22 +10938,52 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>服務更新未完成。配對已保留。請查看詳細資訊，然後重試「更新服務」。</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <source>Worker service started. Choose this computer under Run on from your managing computer.</source>
-        <translation>工作節點服務已啟動。請在管理電腦的「執行於」中選擇此電腦。</translation>
-    </message>
-    <message>
-        <location line="+1"/>
+        <location line="+10"/>
         <source>Could not start the worker service. Your pairing is preserved. See details, then choose Start worker service to retry.</source>
         <translation>無法啟動工作節點服務。配對已保留。請查看詳細資訊，然後選擇「啟動工作節點服務」再試。</translation>
     </message>
     <message>
         <location line="+2"/>
+        <source>Background worker startup requested. Terminal setup failed. Use Manage access to retry.</source>
+        <translation>背景工作者開始請求. 終端設定失敗. 使用管理退休訪問。</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Pairing is complete. Windows could not start administrator input approval.</source>
+        <translation>Windows 無法啟動管理員輸入批准。</translation>
+    </message>
+    <message>
+        <location line="+6"/>
         <source>Starting the background worker service…</source>
         <translation>正在啟動背景工作節點服務…</translation>
     </message>
     <message>
         <location line="+11"/>
+        <source>Dockpipe could not enable Terminal. See details in Connection setup.</source>
+        <translation>Dockpipe 無法啟用終端. 檢視連線設定中的詳細資訊。</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Terminal access enabled. Refresh Terminal on the managing computer.</source>
+        <translation>終端接入啟用. 在管理計算機上重新啟用終端。</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Terminal access is saved. Start the worker service to bring it online.</source>
+        <translation>終端接入已儲存. 啟動工人服務,以便線上提供。</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Restarting the background worker…</source>
+        <translation>重新啟動背景工人</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Enabling Terminal access…</source>
+        <translation>提供終端接入...</translation>
+    </message>
+    <message>
+        <location line="+16"/>
         <location line="+47"/>
         <source>Set up remote access</source>
         <translation>設定遠端存取</translation>
@@ -9928,12 +11010,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+3"/>
-        <location line="+435"/>
+        <location line="+521"/>
         <source>Install provider…</source>
         <translation>安裝提供者…</translation>
     </message>
     <message>
-        <location line="-425"/>
+        <location line="-511"/>
         <source>Check connection</source>
         <translation>檢查連線</translation>
     </message>
@@ -9948,12 +11030,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>使用 %2 設定 %1？此操作可能安裝相依項目、建立公用通道和 DNS 記錄，並啟動代理使用者服務。</translation>
     </message>
     <message>
-        <location line="+13"/>
-        <source>Continue setup in the terminal. When it finishes, return to Machines and refresh to check access.</source>
-        <translation>在終端機中繼續設定。完成後返回「電腦」並重新整理，以檢查存取權限。</translation>
-    </message>
-    <message>
-        <location line="+4"/>
+        <location line="+18"/>
         <source>Pairing security keys</source>
         <translation>配對安全金鑰</translation>
     </message>
@@ -9998,12 +11075,17 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>安全金鑰註冊未完成。重試前請查看詳細資訊。</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+114"/>
+        <source>← Environments</source>
+        <translation>← 環境</translation>
+    </message>
+    <message>
+        <location line="+6"/>
         <source>Connection setup</source>
         <translation>連線設定</translation>
     </message>
     <message>
-        <location line="+34"/>
+        <location line="+39"/>
         <source>Set up connection</source>
         <translation>設定連線</translation>
     </message>
@@ -10013,7 +11095,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>正在處理…</translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location line="+21"/>
         <source>Could not complete this step. See details for the error; saved setup is preserved.</source>
         <translation>無法完成此步驟。請查看錯誤詳細資訊；已儲存的設定將保留。</translation>
     </message>
@@ -10023,12 +11105,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>無法載入受管理電腦。請再試，或使用「連線此電腦」加入已設定的電腦。</translation>
     </message>
     <message>
-        <location line="+17"/>
-        <source>Allowed to receive workflows</source>
-        <translation>允許接收工作流程</translation>
-    </message>
-    <message>
-        <location line="+3"/>
+        <location line="+23"/>
         <source>Invitation created</source>
         <translation>邀請已建立</translation>
     </message>
@@ -10043,7 +11120,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>重新配對以恢復存取</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+13"/>
         <source>Settings</source>
         <translation>設定</translation>
     </message>
@@ -10063,7 +11140,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>在此新增電腦，然後在啟動工作流程時選擇它。</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+17"/>
         <source>Remote access lock status unavailable: %1</source>
         <translation>遠端存取鎖定狀態無法使用：%1</translation>
     </message>
@@ -10176,12 +11253,7 @@ Approve only if you can verify it on that machine.</source>
 僅在能於該電腦上核實時核准。</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <source>%1 is paired. On that computer, choose Start worker service to receive workflows.</source>
-        <translation>%1 已配對。請在該電腦上選擇「啟動工作節點服務」以接收工作流程。</translation>
-    </message>
-    <message>
-        <location line="+1"/>
+        <location line="+10"/>
         <source>Request from %1 denied.</source>
         <translation>已拒絕來自 %1 的要求。</translation>
     </message>
@@ -10312,12 +11384,27 @@ The provider is configured on the managing computer.</source>
         <translation>工作節點已設定給此代理；未驗證連線</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+8"/>
+        <source>Pairing · %1</source>
+        <translation>雙 · %1</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Unknown</source>
+        <translation>未知</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Machine fingerprint · %1…</source>
+        <translation>機指紋 · %1 ...</translation>
+    </message>
+    <message>
+        <location line="+3"/>
         <source>Access relationship: %1</source>
         <translation>存取關聯：%1</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+52"/>
         <source>Managed machine inventory is unavailable. Refresh to check access.</source>
         <translation>受管理電腦清單無法使用。請重新整理以檢查存取權限。</translation>
     </message>
@@ -10347,22 +11434,23 @@ The provider is configured on the managing computer.</source>
         <translation>%1 部，共 %2 部電腦</translation>
     </message>
     <message>
-        <location line="+23"/>
+        <location line="+21"/>
         <source>%1 settings</source>
         <translation>%1 設定</translation>
     </message>
     <message>
-        <location line="+29"/>
+        <location line="+32"/>
+        <source>Machine fingerprint · %1</source>
+        <translation>機指紋 · %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>%1 · %2
 
-%3
-
-Connection health is not checked here.</source>
+%3</source>
         <translation>%1 · %2
 
-%3
-
-此處不檢查連線健康狀態。</translation>
+%3</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -10398,6 +11486,56 @@ This machine is no longer in the available inventory.</source>
         <translation>%1
 
 此電腦已不在可用清單中。</translation>
+    </message>
+    <message>
+        <location line="-987"/>
+        <source>Enter a valid remote address starting with https://.</source>
+        <translation>請輸入以 https:// 開頭的有效遠端位址。</translation>
+    </message>
+    <message>
+        <location line="-123"/>
+        <source>In Dockpipe, open connection setup for that computer, select Connect this computer, then enter this address and request pairing.</source>
+        <translation>在 Dockpipe 中,開啟該計算機的連線設定,選擇連線該計算機,然後輸入該地址並要求連線。</translation>
+    </message>
+    <message>
+        <location line="+44"/>
+        <source>Connect a physical FIDO2 security key to this computer before approving. If you have not registered a key, use Register pairing key in connection setup.</source>
+        <translation>核准前，請將實體 FIDO2 安全金鑰連接到這部電腦。若尚未註冊金鑰，請在連線設定中選擇「註冊配對金鑰」。</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>No accessible security key was detected. Plug in your registered key and try again. If it is already connected, check your device permissions.</source>
+        <translation>未偵測到可存取的安全金鑰。請插入已註冊的金鑰後再試一次。如果金鑰已連接，請檢查裝置權限。</translation>
+    </message>
+    <message>
+        <location line="+94"/>
+        <source>The managing computer needs a registered physical FIDO2 security key to approve pairing.</source>
+        <translation>管理電腦需要已註冊的實體 FIDO2 安全金鑰才能核准配對。</translation>
+    </message>
+    <message>
+        <location line="+32"/>
+        <source>Already paired? Manage access</source>
+        <translation>已關閉? 管理訪問</translation>
+    </message>
+    <message>
+        <location line="+219"/>
+        <source>Continue setup in the terminal. When it finishes, choose Check connection.</source>
+        <translation>在終端中繼續設定. 完成後,選擇檢視連線。</translation>
+    </message>
+    <message>
+        <location line="+266"/>
+        <source>Broker enrollment is active.</source>
+        <translation>經紀人登記是活躍的。</translation>
+    </message>
+    <message>
+        <location line="+165"/>
+        <source>%1 is paired. Start the worker on that computer to receive workflows.</source>
+        <translation>%1 已配對。在該電腦上啟動工作程式，以接收工作流程。</translation>
+    </message>
+    <message>
+        <location line="-552"/>
+        <source>Background worker startup requested. Check this computer under Run on from your managing computer.</source>
+        <translation>已要求啟動背景工作節點。請在管理電腦的「執行於」選項中查看這部電腦。</translation>
     </message>
 </context>
 <context>
@@ -10528,7 +11666,7 @@ This machine is no longer in the available inventory.</source>
 <context>
     <name>SessionManager</name>
     <message>
-        <location filename="../src/execution/infrastructure/SessionManager.cpp" line="+147"/>
+        <location filename="../src/execution/infrastructure/SessionManager.cpp" line="+170"/>
         <location line="+34"/>
         <source>Workflow output exceeded the consumer&apos;s line capacity.</source>
         <translation>工作流程輸出超過使用端的行容量。</translation>
@@ -11260,13 +12398,14 @@ This machine is no longer in the available inventory.</source>
 <context>
     <name>TerminalHub</name>
     <message>
-        <location filename="../src/terminal/application/TerminalHub.cpp" line="+46"/>
-        <location line="+75"/>
+        <location filename="../src/terminal/application/TerminalHub.cpp" line="+48"/>
+        <location line="+48"/>
+        <location line="+57"/>
         <source>Eight terminals are already open. Close one before opening another.</source>
         <translation>已開啟八個終端機。開啟另一個前請先關閉一個。</translation>
     </message>
     <message>
-        <location line="-60"/>
+        <location line="-90"/>
         <source>This shell is no longer available. Refresh the shell list and try again.</source>
         <translation>此 shell 已無法使用。請重新整理 shell 清單後再試。</translation>
     </message>
@@ -11281,13 +12420,19 @@ This machine is no longer in the available inventory.</source>
         <translation>沒有可用的主機 shell。請檢查 Flatpak 主機存取權限並重新整理 shell 清單。</translation>
     </message>
     <message>
-        <location line="+14"/>
-        <location line="+55"/>
+        <location line="+10"/>
+        <location line="+32"/>
+        <location line="+57"/>
         <source>Terminal %1 · %2</source>
         <translation>終端機 %1 · %2</translation>
     </message>
     <message>
-        <location line="+65"/>
+        <location line="-67"/>
+        <source>The container terminal target is unavailable.</source>
+        <translation>容器終端目標不可用。</translation>
+    </message>
+    <message>
+        <location line="+132"/>
         <location line="+32"/>
         <source>This terminal session is closed.</source>
         <translation>此終端機工作階段已關閉。</translation>
@@ -11832,12 +12977,17 @@ $ 準備接收您的下一個命令</translation>
 <context>
     <name>TerminalWidget</name>
     <message>
-        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+84"/>
+        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+92"/>
         <source>Terminal</source>
         <translation>終端機</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+6"/>
+        <source>Terminal target</source>
+        <translation>終端目標</translation>
+    </message>
+    <message>
+        <location line="+23"/>
         <source>Shells and sessions</source>
         <translation>shell 與工作階段</translation>
     </message>
@@ -11874,12 +13024,12 @@ $ 準備接收您的下一個命令</translation>
     </message>
     <message>
         <location line="+6"/>
-        <location line="+541"/>
+        <location line="+742"/>
         <source>Restart DockPipe to enable desktop transparency. Your desktop must support compositing.</source>
         <translation>重新啟動 DockPipe 以啟用桌面透明效果。桌面必須支援合成。</translation>
     </message>
     <message>
-        <location line="-532"/>
+        <location line="-733"/>
         <source>No terminals open</source>
         <translation>沒有開啟的終端機</translation>
     </message>
@@ -11910,12 +13060,17 @@ $ 準備接收您的下一個命令</translation>
         <translation>正在尋找已安裝的主機 shell…</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+10"/>
+        <source>The selected terminal target is unavailable.</source>
+        <translation>選擇的終端目標不可用。</translation>
+    </message>
+    <message>
+        <location line="+27"/>
         <source>Default shell</source>
         <translation>預設 shell</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+9"/>
         <source>New default shell</source>
         <translation>新增預設 shell</translation>
     </message>
@@ -11930,7 +13085,40 @@ $ 準備接收您的下一個命令</translation>
         <translation>新增 %1</translation>
     </message>
     <message>
-        <location line="+116"/>
+        <location line="+135"/>
+        <location line="+3"/>
+        <source>This computer</source>
+        <translation>這部電腦</translation>
+    </message>
+    <message>
+        <location line="+30"/>
+        <source>Terminal unavailable</source>
+        <translation>終端不可用</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Remote access locked</source>
+        <translation>遠端接入鎖定</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+11"/>
+        <location line="+8"/>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <location line="-2"/>
+        <source>%1 · Container</source>
+        <translation>%1 · 容器</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · 無法使用</translation>
+    </message>
+    <message>
+        <location line="+120"/>
         <source>Choose a terminal…</source>
         <translation>選擇終端機…</translation>
     </message>
@@ -12572,12 +13760,12 @@ The file may have changed on disk. Your draft has been kept; refresh before retr
         <translation>啟動</translation>
     </message>
     <message>
-        <location line="+134"/>
+        <location line="+135"/>
         <source>Start</source>
         <translation>啟動</translation>
     </message>
     <message>
-        <location line="+111"/>
+        <location line="+113"/>
         <source>Inputs</source>
         <translation>輸入</translation>
     </message>
@@ -13394,7 +14582,7 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
 <context>
     <name>WorkspaceMachineMenu</name>
     <message>
-        <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="+55"/>
+        <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="+62"/>
         <location line="+42"/>
         <source>Follow main machine</source>
         <translation>跟隨主要電腦</translation>
@@ -13423,12 +14611,13 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     </message>
     <message>
         <location line="+2"/>
-        <location line="+36"/>
+        <location line="+40"/>
+        <location line="+22"/>
         <source> · Unavailable</source>
         <translation> · 無法使用</translation>
     </message>
     <message>
-        <location line="-16"/>
+        <location line="-41"/>
         <source>Unlock remote access…</source>
         <translation>解除鎖定遠端存取…</translation>
     </message>
@@ -13438,12 +14627,22 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
         <translation>沒有可用的遠端工作區</translation>
     </message>
     <message>
-        <location line="+30"/>
+        <location line="+34"/>
         <source>Containers</source>
         <translation>容器</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+12"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · 無法使用</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>%1 · Locked</source>
+        <translation>%1 · 鎖定</translation>
+    </message>
+    <message>
+        <location line="+4"/>
         <source>Refresh machines</source>
         <translation>重新整理電腦</translation>
     </message>

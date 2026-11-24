@@ -13,6 +13,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHBoxLayout>
+#include <QJsonArray>
 #include <QLabel>
 #include <QMessageBox>
 #include <QLineEdit>
@@ -115,6 +116,14 @@ bool DashboardRepositoryPanel::setMachineContext(const QJsonObject &catalog, con
     if (!catalog.isEmpty() && target.isEmpty())
         target.insert("node", "unavailable");
     const QString localRoot = property("dashboardLocalRepository").toString();
+    QJsonObject grant;
+    for (const auto &value : catalog.value("roots").toArray()) {
+        const auto candidate = value.toObject();
+        if (candidate.value("id").toString() == rootId) {
+            grant = candidate;
+            break;
+        }
+    }
     bool accepted = true;
     if (m_files) {
         WorkspaceFilesClient::Context context;
@@ -127,11 +136,12 @@ bool DashboardRepositoryPanel::setMachineContext(const QJsonObject &catalog, con
             context.fingerprint = target.value("fingerprint").toString();
             context.workerGeneration = target.value("generation").toString();
             context.rootId = rootId;
+            context.writeGranted = grant.value("files_write").toBool();
         }
         accepted = WorkspaceFilesController::configure(m_files, context, RemoteWorkspaceFilesDispatch::create(m_files));
     } else if (m_git) {
         accepted = catalog.isEmpty() ? RemoteGitContext::configureLocal(m_git, localRoot, error)
-            : RemoteGitContext::configure(m_git, target, rootId, error);
+            : RemoteGitContext::configure(m_git, target, rootId, grant, error);
     }
     if (!accepted)
         return false;

@@ -8,6 +8,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRegularExpression>
+#include <QSignalBlocker>
 #include <QVBoxLayout>
 
 namespace {
@@ -83,7 +84,10 @@ public:
         auto *close = new QPushButton(text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "Close")), this);
         layout->addWidget(close, 0, Qt::AlignRight);
         connect(close, &QPushButton::clicked, this, &QDialog::close);
-        connect(m_operations, &QComboBox::currentIndexChanged, this, [this] { updateSelection(); });
+        connect(m_operations, &QComboBox::currentIndexChanged, this, [this] {
+            m_actionFeedback.clear();
+            updateSelection();
+        });
         connect(m_inspect, &QPushButton::clicked, this, [this] { run(QStringLiteral("status")); });
         connect(m_cancel, &QPushButton::clicked, this, [this] { run(QStringLiteral("cancel")); });
         connect(m_reconcile, &QPushButton::clicked, this, [this] { run(QStringLiteral("reconcile")); });
@@ -116,7 +120,9 @@ private:
     void reload()
     {
         const auto original = m_operations->currentData().toJsonObject().value("id").toString();
+        const QSignalBlocker blockSelection(m_operations);
         m_operations->clear();
+        int retainedIndex = -1;
         for (const auto &entry : RemoteFeatureClient::pendingRecoveries()) {
             const auto reference = entry.toObject();
             const auto target = reference.value("target").toObject();
@@ -125,7 +131,7 @@ private:
                 + reference.value("id").toString().left(12);
             m_operations->addItem(label, reference);
             if (reference.value("id").toString() == original)
-                m_operations->setCurrentIndex(m_operations->count() - 1);
+                retainedIndex = m_operations->count() - 1;
         }
         for (const auto &entry : m_terminalRecoveries) {
             const auto reference = entry.toObject();
@@ -136,8 +142,12 @@ private:
                 + reference.value("id").toString().left(12);
             m_operations->addItem(label, reference);
             if (reference.value("id").toString() == original)
-                m_operations->setCurrentIndex(m_operations->count() - 1);
+                retainedIndex = m_operations->count() - 1;
         }
+        // A completed operation can disappear while another one remains.
+        // Leave the new operation unselected until the operator chooses it.
+        if (!original.isEmpty() || !m_actionFeedback.isEmpty())
+            m_operations->setCurrentIndex(retainedIndex);
         updateSelection();
     }
 
@@ -208,12 +218,20 @@ private:
             && (terminal ? reference.value("retire_allowed").toBool() && reference.value("container").toString().size() == 64
                          : reference.value("recovery_resource").toString().size() == 64)
             && !reference.value("reconciled").toBool());
-        if (reference.value("reconciled").toBool()) {
+        if (!m_actionFeedback.isEmpty()) {
+            m_status->setText(m_actionFeedback);
+        } else if (reference.value("reconciled").toBool()) {
             m_status->setText(text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write.")));
         } else if (!m_busy) {
             m_status->setText(reference.isEmpty() ? text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "No uncertain mutations are retained."))
                 : text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "The mutation outcome remains uncertain. Refresh its original status before another write.")));
         }
+    }
+
+    void showActionFeedback(const QString &feedback)
+    {
+        m_actionFeedback = feedback;
+        m_status->setText(feedback);
     }
 
     void run(const QString &action)
@@ -223,12 +241,12 @@ private:
             return;
         if (reference.contains("terminal_reference") && action == "status") {
             refreshCatalogs();
-            m_status->setText(text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "Refreshing the worker's retained terminal metadata. No cleanup was requested.")));
+            showActionFeedback(text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "Refreshing the worker's retained terminal metadata. No cleanup was requested.")));
             return;
         }
         m_busy = true;
         updateSelection();
-        m_status->setText(text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "Contacting the original captured machine…")));
+        showActionFeedback(text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "Contacting the original captured machine…")));
         if (reference.contains("terminal_reference")) {
             const auto original = reference.value("terminal_reference").toObject();
             const bool host = reference.value("action").toString() == QStringLiteral("terminal.host-recover");
@@ -251,13 +269,13 @@ private:
                 if (verified) {
                     if (m_verifiedRecovery)
                         m_verifiedRecovery(original, receipt);
-                    m_status->setText(host
+                    showActionFeedback(host
                         ? text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write."))
                         : text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "Container terminal cleanup was verified for the original captured session.")));
                 } else {
                     if (result.outcome == RemoteFeatureClient::Outcome::Success)
                         RemoteFeatureClient::retainUncertain(result.reference);
-                    m_status->setText(result.error.isEmpty()
+                    showActionFeedback(result.error.isEmpty()
                         ? (host
                             ? text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "The mutation outcome remains uncertain. Refresh its original status before another write."))
                             : text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "Container terminal cleanup remains uncertain. The original session reference is retained.")))
@@ -276,19 +294,21 @@ private:
             if (result.outcome == RemoteFeatureClient::Outcome::Success && !hostRecovery.isEmpty()) {
                 if (m_verifiedRecovery)
                     m_verifiedRecovery(hostRecovery.value("reference").toObject(), hostRecovery);
-                m_status->setText(text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write.")));
+                showActionFeedback(text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write.")));
             } else if (operation.value("request").toObject().value("action") == QStringLiteral("terminal.host-recover")
                        && operation.value("status") == QStringLiteral("success")) {
                 RemoteFeatureClient::retainUncertain(result.reference);
                 reload();
-                m_status->setText(text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "The mutation outcome remains uncertain. Refresh its original status before another write.")));
+                showActionFeedback(text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "The mutation outcome remains uncertain. Refresh its original status before another write.")));
             } else if (operation.value("reconciled").toBool()) {
-                m_status->setText(text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write.")));
+                showActionFeedback(text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write.")));
+            } else if (result.outcome == RemoteFeatureClient::Outcome::Cancelled) {
+                showActionFeedback(text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "The original operation was cancelled. Refresh the affected state before another write.")));
             } else if (!result.error.isEmpty()) {
-                m_status->setText(result.error);
+                showActionFeedback(result.error);
             } else {
                 const QString status = operation.value("status").toString();
-                m_status->setText(text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "Original operation status: %1. No operation was replayed.")).arg(status.isEmpty() ? text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "unknown")) : status));
+                showActionFeedback(text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "Original operation status: %1. No operation was replayed.")).arg(status.isEmpty() ? text(QT_TRANSLATE_NOOP("RemoteFeatureRecoveryDialog", "unknown")) : status));
             }
         };
         if (action == "cancel")
@@ -309,6 +329,7 @@ private:
     QPushButton *m_reconcile;
     QPushButton *m_retire;
     QJsonArray m_terminalRecoveries;
+    QString m_actionFeedback;
     RemoteFeatureRecoveryDialog::VerifiedRecovery m_verifiedRecovery;
     bool m_catalogBusy = false;
     bool m_busy = false;

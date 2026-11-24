@@ -90,8 +90,11 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     auto newFile = [this]() {
         bool ok = false;
         const QString name = QInputDialog::getText(this, tr("New file"), tr("Path relative to this folder"), QLineEdit::Normal, {}, &ok);
-        if (ok && !name.isEmpty())
-            createFile(QDir(m_root).relativeFilePath(QDir(m_explorerDirectory).absoluteFilePath(name)));
+        if (!ok || name.isEmpty())
+            return;
+        const QString relative = relativeWorkspacePath(resolveWorkspacePath(m_explorerDirectory, name));
+        if (!relative.isEmpty())
+            createFile(relative);
     };
     auto addTool = [this](QHBoxLayout *row, const QString &label, CanvasIcons::Symbol symbol, const auto &action) {
         auto *button = new QToolButton;
@@ -115,19 +118,19 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     m_graphButton->setEnabled(false);
     pageHeader->addWidget(m_graphButton);
     connect(m_graphButton, &QPushButton::clicked, this, &ProjectFilesWidget::openGraph);
-    addTool(toolbar, tr("New file"), CanvasIcons::Symbol::Add, newFile);
-    addTool(toolbar, tr("New folder"), CanvasIcons::Symbol::Folder, [this]() {
+    m_newFile = addTool(toolbar, tr("New file"), CanvasIcons::Symbol::Add, newFile);
+    m_newFolder = addTool(toolbar, tr("New folder"), CanvasIcons::Symbol::Folder, [this]() {
         bool ok = false;
         const QString name = QInputDialog::getText(this, tr("New folder"), tr("Folder name"), QLineEdit::Normal, {}, &ok);
-        const QString path = QDir(m_explorerDirectory).filePath(name);
+        const QString path = resolveWorkspacePath(m_explorerDirectory, name);
         if (!ok || name.isEmpty() || !contained(path))
             return;
         auto *files = WorkspaceFilesController::get(this);
-        if (filesOperationPending())
+        if (!files->writer->context().canWrite() || filesOperationPending())
             return;
         files->beginWrite();
         files->writer->run(QJsonObject{{"schema", "dockpipe.files/v1"}, {"action", "mkdir"},
-            {"path", QDir(m_root).relativeFilePath(path)}}, this, [this, files](const auto &result) {
+            {"path", relativeWorkspacePath(path)}}, this, [this, files](const auto &result) {
             files->endWrite();
             if (!result.success())
                 showMessage(result.error);
@@ -179,7 +182,7 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     navigation->insertWidget(1, rootButton);
     navigation->insertWidget(2, m_explorerLocation, 1);
     connect(m_explorerUp, &QToolButton::clicked, this, [this]() {
-        navigateExplorer(QFileInfo(m_explorerDirectory).absolutePath());
+        navigateExplorer(parentWorkspacePath(m_explorerDirectory));
     });
     connect(rootButton, &QToolButton::clicked, this, [this]() { navigateExplorer(m_root); });
     connect(m_model, &WorkspaceFileModel::directoryLoaded, this, [this](const QString &directory) {
@@ -189,7 +192,7 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
             setProperty("filesListingError", QString());
             showMessage({});
         }
-        if (!m_root.isEmpty() && directory == QDir(m_root).relativeFilePath(m_explorerDirectory)) {
+        if (!m_root.isEmpty() && directory == relativeWorkspacePath(m_explorerDirectory)) {
             auto *files = WorkspaceFilesController::get(this);
             m_explorer->setRootIndex(files->filter->mapFromSource(m_model->indexForPath(directory)));
             m_explorer->setAvailable(true);
@@ -312,19 +315,19 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     addTool(findLayout, tr("Close search"), CanvasIcons::Symbol::Close, [this]() { m_findBar->hide(); });
     auto *more = addTool(actions, tr("File actions"), CanvasIcons::Symbol::More, []() {});
     auto *menu = new QMenu(more);
-    menu->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Rename), tr("Rename…"), this, [this]() {
+    m_renameFile = menu->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Rename), tr("Rename…"), this, [this]() {
         bool ok = false;
         const QString name = QInputDialog::getText(this, tr("Rename file"), tr("Path relative to this folder"),
-            QLineEdit::Normal, QDir(m_root).relativeFilePath(m_path), &ok);
+            QLineEdit::Normal, relativeWorkspacePath(m_path), &ok);
         if (ok && !name.isEmpty())
             renameFile(QDir(m_root).filePath(name));
     });
     menu->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Refresh), tr("Reload from disk"), this, [this]() { reloadFileAsync(); });
-    menu->addAction(tr("Save all files"), this, [this]() { saveAllFilesAsync(); });
+    m_saveAllFiles = menu->addAction(tr("Save all files"), this, [this]() { saveAllFilesAsync(); });
     menu->addSeparator();
-    menu->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Trash), tr("Delete file…"), this, [this]() {
+    m_deleteFile = menu->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Trash), tr("Delete file…"), this, [this]() {
         if (!m_path.isEmpty() && QMessageBox::question(this, tr("Delete file"),
-            tr("Permanently delete %1?").arg(QDir(m_root).relativeFilePath(m_path)),
+            tr("Permanently delete %1?").arg(relativeWorkspacePath(m_path)),
             QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel) == QMessageBox::Yes)
             deleteFile();
     });
@@ -364,13 +367,13 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     auto *emptyTitle = new QLabel(tr("Everything in its place"));
     emptyTitle->setObjectName("editorEmptyTitle");
     emptyLayout->addWidget(emptyTitle, 0, Qt::AlignHCenter);
-    auto *emptyHint = new QLabel(tr("Select a file to edit, or create something new."));
-    emptyHint->setObjectName("editorMuted");
-    emptyHint->setWordWrap(true);
-    emptyLayout->addWidget(emptyHint, 0, Qt::AlignHCenter);
-    auto *create = new QPushButton(CanvasIcons::icon(CanvasIcons::Symbol::Add), tr("Create a file"));
-    connect(create, &QPushButton::clicked, this, newFile);
-    emptyLayout->addWidget(create, 0, Qt::AlignHCenter);
+    m_emptyHint = new QLabel(tr("Select a file to edit, or create something new."));
+    m_emptyHint->setObjectName("editorMuted");
+    m_emptyHint->setWordWrap(true);
+    emptyLayout->addWidget(m_emptyHint, 0, Qt::AlignHCenter);
+    m_createFile = new QPushButton(CanvasIcons::icon(CanvasIcons::Symbol::Add), tr("Create a file"));
+    connect(m_createFile, &QPushButton::clicked, this, newFile);
+    emptyLayout->addWidget(m_createFile, 0, Qt::AlignHCenter);
     emptyLayout->addStretch();
     m_documents->addWidget(m_empty);
     m_documents->setCurrentWidget(m_empty);
@@ -395,7 +398,7 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
         } else if (url.scheme() == "https" || url.scheme() == "http") {
             QDesktopServices::openUrl(url);
         } else if (url.isRelative() && url.authority().isEmpty()) {
-            openFile(QDir(QFileInfo(m_path).absolutePath()).absoluteFilePath(url.path()));
+            openFile(resolveWorkspacePath(parentWorkspacePath(m_path), url.path()));
         }
     });
     m_editorStatus = new QLabel;
@@ -515,17 +518,57 @@ bool ProjectFilesWidget::eventFilter(QObject *object, QEvent *event)
     return QWidget::eventFilter(object, event);
 }
 
+bool ProjectFilesWidget::isRemoteWorkspace() const
+{
+    return WorkspaceFilesController::get(this)->reader->context().kind == WorkspaceFilesClient::Context::Kind::Remote;
+}
+
+QString ProjectFilesWidget::relativeWorkspacePath(const QString &path) const
+{
+    if (m_root.isEmpty())
+        return {};
+
+    if (isRemoteWorkspace()) {
+        // Remote keys are rooted at a virtual slash, without a host drive or UNC share.
+        if (!path.startsWith('/') || path.startsWith("//") || path.contains('\\') || path.contains(QChar::Null))
+            return {};
+        const QString normalized = QDir::cleanPath(path);
+        return normalized == "/" ? QStringLiteral(".") : normalized.mid(1);
+    }
+
+    if (!QDir::isAbsolutePath(path))
+        return {};
+    const QString relative = QDir(m_root).relativeFilePath(QDir::cleanPath(path));
+    if (relative == ".." || relative.startsWith("../") || QDir::isAbsolutePath(relative))
+        return {};
+    return relative;
+}
+
+QString ProjectFilesWidget::resolveWorkspacePath(const QString &directory, const QString &path) const
+{
+    if (!isRemoteWorkspace())
+        return QDir(directory).absoluteFilePath(path);
+    if (path.startsWith('/'))
+        return path;
+    return directory.endsWith('/') ? directory + path : directory + '/' + path;
+}
+
+QString ProjectFilesWidget::parentWorkspacePath(const QString &path) const
+{
+    if (!isRemoteWorkspace())
+        return QFileInfo(path).absolutePath();
+    const qsizetype separator = path.lastIndexOf('/');
+    return separator > 0 ? path.left(separator) : QStringLiteral("/");
+}
+
 bool ProjectFilesWidget::contained(const QString &path) const
 {
-    if (m_root.isEmpty() || !QDir::isAbsolutePath(path))
-        return false;
-    const QString relative = QDir(m_root).relativeFilePath(QDir::cleanPath(path));
-    return relative != ".." && !relative.startsWith("../") && !QDir::isAbsolutePath(relative);
+    return !relativeWorkspacePath(path).isEmpty();
 }
 
 QString ProjectFilesWidget::explorerPath(const QModelIndex &index) const
 {
-    return QDir(m_root).filePath(index.data(WorkspaceFileModel::RelativePathRole).toString());
+    return resolveWorkspacePath(m_root, index.data(WorkspaceFileModel::RelativePathRole).toString());
 }
 
 bool ProjectFilesWidget::filesOperationPending() const
@@ -538,6 +581,20 @@ void ProjectFilesWidget::showMessage(const QString &message)
 {
     m_status->setText(message);
     m_status->setVisible(!message.isEmpty());
+}
+
+void ProjectFilesWidget::setWriteAvailable(bool available)
+{
+    editorWorkspace()->setReadOnly(!available);
+    m_newFile->setEnabled(available);
+    m_newFolder->setEnabled(available);
+    m_createFile->setVisible(available);
+    m_emptyHint->setText(available ? tr("Select a file to edit, or create something new.")
+                                  : tr("Select a file to read."));
+    m_renameFile->setEnabled(available);
+    m_saveAllFiles->setEnabled(available);
+    m_deleteFile->setEnabled(available);
+    updateTitle();
 }
 
 FileEditorWorkspace *ProjectFilesWidget::editorWorkspace() const
@@ -726,7 +783,7 @@ bool ProjectFilesWidget::navigateExplorer(const QString &directory)
 {
     if (!contained(directory))
         return false;
-    const QString relative = QDir(m_root).relativeFilePath(QDir::cleanPath(directory));
+    const QString relative = relativeWorkspacePath(QDir::cleanPath(directory));
     m_explorerDirectory = QDir::cleanPath(directory);
     m_model->setDirectory(relative);
     m_explorer->setRootIndex({});
@@ -754,13 +811,13 @@ void ProjectFilesWidget::setWorkflowDocument(const QString &path, QTextDocument 
 bool ProjectFilesWidget::openFile(const QString &path)
 {
     const QString key = QDir::cleanPath(path);
-    if (contained(key) && editorWorkspace()->contains(key)) {
+    if (contained(path) && editorWorkspace()->contains(key)) {
         auto *files = WorkspaceFilesController::get(this);
         ++files->openGeneration;
         files->reader->cancel();
         return editorWorkspace()->activate(key);
     }
-    if (contained(key) && !m_workflowPath.isEmpty() && key == m_workflowPath) {
+    if (contained(path) && !m_workflowPath.isEmpty() && key == m_workflowPath) {
         ++WorkspaceFilesController::get(this)->openGeneration;
         return editorWorkspace()->openWorkflow(key);
     }
@@ -811,7 +868,7 @@ void ProjectFilesWidget::loadFileAsync(const QString &path, bool reload, Complet
     auto *files = WorkspaceFilesController::get(this);
     const quint64 generation = ++files->openGeneration;
     const auto context = files->reader->context();
-    const QString relative = QDir(m_root).relativeFilePath(path);
+    const QString relative = relativeWorkspacePath(path);
     const QPointer<QTextDocument> reloading = reload && editorWorkspace()->document(path)
         ? editorWorkspace()->document(path)->document : nullptr;
     const int documentRevision = reloading ? reloading->revision() : -1;
@@ -931,7 +988,7 @@ void ProjectFilesWidget::savePathAsync(const QString &path, Completion completio
 {
     auto *files = WorkspaceFilesController::get(this);
     auto *record = editorWorkspace()->document(path);
-    if (!record || !record->document || record->workflow || files->writer->busy()) {
+    if (!files->writer->context().canWrite() || !record || !record->document || record->workflow || files->writer->busy()) {
         if (record && record->workflow)
             emit workflowSaveRequested();
         if (completion)
@@ -952,7 +1009,7 @@ void ProjectFilesWidget::savePathAsync(const QString &path, Completion completio
         return;
     }
     const auto context = files->writer->context();
-    const QString relative = QDir(m_root).relativeFilePath(path);
+    const QString relative = relativeWorkspacePath(path);
     files->beginWrite();
     files->writer->run(QJsonObject{{"schema", "dockpipe.files/v1"}, {"action", "write"},
         {"path", relative}, {"revision", files->revisions.value(path)},
@@ -970,7 +1027,7 @@ void ProjectFilesWidget::savePathAsync(const QString &path, Completion completio
             document->setModified(document->toPlainText() != text);
             editorWorkspace()->refreshTabs();
             syncActiveDocument();
-            showMessage(tr("Saved %1").arg(QDir(m_root).relativeFilePath(path)));
+            showMessage(tr("Saved %1").arg(relativeWorkspacePath(path)));
             emit fileSaved(path);
         } else if (!saved) {
             showMessage(result.error.isEmpty() ? tr("Cannot save: %1").arg(tr("Invalid workspace file response.")) : result.error);
@@ -991,7 +1048,7 @@ bool ProjectFilesWidget::saveAllFiles()
 void ProjectFilesWidget::saveAllFilesAsync(Completion completion)
 {
     auto *files = WorkspaceFilesController::get(this);
-    if (filesOperationPending()) {
+    if (!files->writer->context().canWrite() || filesOperationPending()) {
         if (completion)
             completion(false);
         return;
@@ -1037,12 +1094,12 @@ bool ProjectFilesWidget::createFile(const QString &relativePath)
 void ProjectFilesWidget::createFileAsync(const QString &relativePath, Completion completion)
 {
     auto *files = WorkspaceFilesController::get(this);
-    if (filesOperationPending()) {
+    if (!files->writer->context().canWrite() || filesOperationPending()) {
         if (completion)
             completion(false);
         return;
     }
-    const QString path = QDir(m_root).filePath(relativePath);
+    const QString path = resolveWorkspacePath(m_root, relativePath);
     files->beginWrite();
     files->writer->run(QJsonObject{{"schema", "dockpipe.files/v1"}, {"action", "create"}, {"path", relativePath}},
         this, [this, files, path, completion](const auto &result) {
@@ -1069,7 +1126,8 @@ void ProjectFilesWidget::renameFileAsync(const QString &destination, Completion 
     auto *files = WorkspaceFilesController::get(this);
     const QString previous = m_path;
     const QString target = QDir::cleanPath(destination);
-    if (filesOperationPending() || previous.isEmpty() || previous == m_workflowPath || !contained(target)
+    if (!files->writer->context().canWrite() || filesOperationPending() || previous.isEmpty()
+        || previous == m_workflowPath || !contained(destination)
         || editorWorkspace()->contains(target) || !files->revisions.contains(previous)) {
         if (completion)
             completion(false);
@@ -1077,7 +1135,7 @@ void ProjectFilesWidget::renameFileAsync(const QString &destination, Completion 
     }
     files->beginWrite();
     files->writer->run(QJsonObject{{"schema", "dockpipe.files/v1"}, {"action", "rename"},
-        {"path", QDir(m_root).relativeFilePath(previous)}, {"destination", QDir(m_root).relativeFilePath(target)},
+        {"path", relativeWorkspacePath(previous)}, {"destination", relativeWorkspacePath(target)},
         {"revision", files->revisions.value(previous)}}, this, [this, files, previous, target, completion](const auto &result) {
         files->endWrite();
         bool renamed = result.success();
@@ -1105,7 +1163,8 @@ void ProjectFilesWidget::deleteFileAsync(Completion completion)
 {
     const QString path = m_path;
     auto *files = WorkspaceFilesController::get(this);
-    if (path.isEmpty() || path == m_workflowPath || filesOperationPending() || !files->revisions.contains(path)) {
+    if (!files->writer->context().canWrite() || path.isEmpty() || path == m_workflowPath
+        || filesOperationPending() || !files->revisions.contains(path)) {
         if (completion)
             completion(false);
         return;
@@ -1121,7 +1180,7 @@ void ProjectFilesWidget::deleteFileAsync(Completion completion)
         const int revision = document ? document->revision() : -1;
         files->beginWrite();
         files->writer->run(QJsonObject{{"schema", "dockpipe.files/v1"}, {"action", "delete"},
-            {"path", QDir(m_root).relativeFilePath(path)}, {"revision", files->revisions.value(path)}}, this,
+            {"path", relativeWorkspacePath(path)}, {"revision", files->revisions.value(path)}}, this,
             [this, files, path, document, revision, completion](const auto &result) {
             files->endWrite();
             if (result.success()) {
@@ -1150,15 +1209,16 @@ void ProjectFilesWidget::updateTitle()
         title += tr("  • Unsaved");
     m_title->setText(title);
     m_title->setToolTip(m_path);
-    const QString relativeDirectory = QDir(m_root).relativeFilePath(QFileInfo(m_path).absolutePath());
+    const QString relativeDirectory = relativeWorkspacePath(parentWorkspacePath(m_path));
     auto *fileLocation = findChild<QLabel *>("filesDocumentLocation");
     fileLocation->setText(m_path.isEmpty() ? tr("Workspace editor")
         : (relativeDirectory == "." ? tr("Workspace root") : relativeDirectory));
     fileLocation->setToolTip(m_path.isEmpty() ? QString{} : QDir::toNativeSeparators(m_path));
     m_fileActions->setEnabled(!m_path.isEmpty());
-    findChild<QPushButton *>("editorSave")->setEnabled(!m_path.isEmpty() && modified);
+    const auto context = WorkspaceFilesController::get(this)->reader->context();
+    findChild<QPushButton *>("editorSave")->setEnabled(context.canWrite() && !m_path.isEmpty() && modified);
     const QString suffix = QFileInfo(m_path).suffix().toLower();
-    const bool local = WorkspaceFilesController::get(this)->reader->context().kind == WorkspaceFilesClient::Context::Kind::Local;
+    const bool local = context.kind == WorkspaceFilesClient::Context::Kind::Local;
     m_openWorkflow->setVisible(local && (suffix == "yml" || suffix == "yaml"));
     updateMarkdownPreview();
     updateEditorStatus();
@@ -1242,7 +1302,7 @@ void ProjectFilesWidget::openGraph()
         });
     });
     connect(m_graph, &WorkspaceGraphWidget::revealRequested, this, [this](const QString &path) {
-        const auto source = m_model->indexForPath(QDir(m_root).relativeFilePath(path));
+        const auto source = m_model->indexForPath(relativeWorkspacePath(path));
         const QModelIndex index = WorkspaceFilesController::get(this)->filter->mapFromSource(source);
         if (index.isValid()) {
             m_tree->setCurrentIndex(index);

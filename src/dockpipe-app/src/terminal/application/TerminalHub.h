@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TerminalLaunchContext.h"
+#include "NativeTerminalLaunch.h"
 
 #include <QByteArray>
 #include <QHash>
@@ -24,6 +25,7 @@ public:
     QString createSession(const QString &workdir, const QString &shellProfileId,
                           const QJsonObject &catalog, const QString &root);
     QString createContainerSession(const QJsonObject &catalog, const QString &container, const QString &shell);
+    QString createLocalContainerSession(const QString &container, const QString &name, const QString &shell);
     TerminalShellCatalog &shellCatalog() const;
     QString creationError() const;
     QStringList sessionIds() const;
@@ -46,6 +48,7 @@ signals:
     void outputAvailable(const QString &id);
 
 private:
+    QString createLocalSession(const NativeTerminalLaunch::Snapshot &profile, const QString &title, const QString &root);
     QString createRemoteSession(const QJsonObject &catalog, const QString &root, const QString &container, const QString &shell);
     struct Entry {
         ManagedTerminalSession *session = nullptr;

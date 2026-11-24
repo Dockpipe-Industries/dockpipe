@@ -382,7 +382,7 @@ void DockerObservabilityWidget::buildUi()
     machineBar->addWidget(viewSwitcher);
     canvasLayout->addLayout(machineBar);
     connect(m_machine, qOverload<int>(&QComboBox::currentIndexChanged), this, [this]() {
-        if (!m_featureMode)
+        if (m_featureTarget.isEmpty())
             changeMachine();
     });
     m_views = new QStackedWidget;
@@ -1475,7 +1475,7 @@ void DockerObservabilityWidget::renderVolumeDetails(const QString &volumeName)
 void DockerObservabilityWidget::refreshContainerDetailsAsync(const QString &containerId)
 {
     if (isRemoteTarget()) {
-        if (m_featureMode)
+        if (!m_featureTarget.isEmpty())
             refreshFeatureDetails("container", containerId);
         else
             m_containerLogs->setPlainText(tr("Detailed inspection requires the paired worker's Docker read feature."));
@@ -1525,7 +1525,7 @@ void DockerObservabilityWidget::refreshContainerDetailsAsync(const QString &cont
 void DockerObservabilityWidget::refreshNetworkDetailsAsync(const QString &networkId)
 {
     if (isRemoteTarget()) {
-        if (m_featureMode)
+        if (!m_featureTarget.isEmpty())
             refreshFeatureDetails("network", networkId);
         else
             m_containerLogs->setPlainText(tr("Detailed inspection requires the paired worker's Docker read feature."));
@@ -1566,7 +1566,7 @@ void DockerObservabilityWidget::refreshNetworkDetailsAsync(const QString &networ
 void DockerObservabilityWidget::refreshVolumeDetailsAsync(const QString &volumeName)
 {
     if (isRemoteTarget()) {
-        if (m_featureMode)
+        if (!m_featureTarget.isEmpty())
             refreshFeatureDetails("volume", volumeName);
         else
             m_containerLogs->setPlainText(tr("Detailed inspection requires the paired worker's Docker read feature."));

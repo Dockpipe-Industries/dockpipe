@@ -4,6 +4,7 @@
 #include <QCoreApplication>
 #include <QElapsedTimer>
 #include <QEventLoop>
+#include <QFile>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <cstdio>
@@ -48,6 +49,12 @@ bool waitFor(const std::function<bool()> &done)
 int main(int argc, char **argv)
 {
     QCoreApplication application(argc, argv);
+    const QString startupMarker = QStringLiteral("session-startup-marker");
+    if (application.arguments().contains(startupMarker)) {
+        QFile marker(startupMarker);
+        return marker.open(QIODevice::WriteOnly) ? 0 : 1;
+    }
+
     if (application.arguments().contains(QStringLiteral("session-lifecycle-child"))) {
 #ifndef Q_OS_WIN
         // Simulate a workflow which needs time to finish its graceful teardown.
@@ -107,7 +114,8 @@ int main(int argc, char **argv)
     heartbeat.start();
     if (!check(manager.launch(context, directory.path()), "launch request was not admitted"))
         return 1;
-    if (!check(manager.info(context.id).status == SessionStatus::Starting && starts == 0,
+    if (!check(manager.info(context.id).status == SessionStatus::Starting
+               && manager.isRunning(context.id) && starts == 0,
                "launch synchronously waited for process startup"))
         return 1;
     if (!check(!manager.launch(context, directory.path()), "duplicate launch was admitted"))
@@ -119,13 +127,19 @@ int main(int argc, char **argv)
                "interactive cancellation/input blocked, reentered teardown, or lost terminal state"))
         return 1;
 
-    // Cancellation while QProcess is still Starting must reach the eventual child.
+    // Cancellation before the queued start must complete without spawning a child.
+    context.workflow = startupMarker;
     if (!check(manager.launch(context, directory.path()), "retry after cancellation was rejected"))
         return 1;
     manager.stop(context.id);
-    if (!check(waitFor([&]() { return stops == 2; }) && starts == 1 && failures == 0,
-               "cancellation during startup emitted a start or lost completion"))
+    manager.stop(context.id);
+    if (!check(stops == 1 && waitFor([&]() { return stops == 2; })
+               && starts == 1 && failures == 0 && !manager.isRunning(context.id)
+               && manager.info(context.id).status == SessionStatus::Stopped
+               && !QFile::exists(directory.filePath(startupMarker)),
+               "cancellation before startup spawned a child or lost completion"))
         return 1;
+
     context.workflow = QStringLiteral("session-crash-child");
     if (!check(manager.launch(context, directory.path()), "crash fixture was not admitted"))
         return 1;

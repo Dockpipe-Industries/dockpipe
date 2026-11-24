@@ -27,6 +27,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QLockFile>
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPixmap>
@@ -42,6 +43,18 @@
 #include <cstdio>
 
 namespace {
+bool appendMachineFixtureCall(const QJsonObject &call)
+{
+    const QString path = qEnvironmentVariable("DOCKPIPE_DASHBOARD_MACHINE_LOG");
+    QLockFile lock(path + ".lock");
+    if (!lock.tryLock(3000))
+        return false;
+
+    QFile log(path);
+    const QByteArray line = QJsonDocument(call).toJson(QJsonDocument::Compact) + '\n';
+    return log.open(QIODevice::WriteOnly | QIODevice::Append) && log.write(line) == line.size() && log.flush();
+}
+
 int runMachineFixture(int argc, char **argv)
 {
     QStringList arguments;
@@ -50,13 +63,8 @@ int runMachineFixture(int argc, char **argv)
     const bool preparation = arguments.value(1) == "feature-prepare";
     const bool remote = arguments.value(0) == "remote"
         && (preparation || arguments.value(1) == "feature-call");
-    QFile log(qEnvironmentVariable("DOCKPIPE_DASHBOARD_MACHINE_LOG"));
-    if (!log.open(QIODevice::WriteOnly | QIODevice::Append))
-        return 2;
-    if (!remote && arguments.value(0) != "files") {
-        log.write(QJsonDocument(QJsonObject{{"unexpected_local", arguments.value(0)}}).toJson(QJsonDocument::Compact) + '\n');
-        return 3;
-    }
+    if (!remote && arguments.value(0) != "files")
+        return appendMachineFixtureCall({{"unexpected_local", arguments.value(0)}}) ? 3 : 2;
     const int requestIndex = arguments.indexOf("--request");
     if (requestIndex < 0)
         return 4;
@@ -71,8 +79,8 @@ int runMachineFixture(int argc, char **argv)
             return 5;
     }
     auto request = QJsonDocument::fromJson(input.readAll()).object();
-    log.write(QJsonDocument(QJsonObject{{"remote", remote}, {"request", request}}).toJson(QJsonDocument::Compact) + '\n');
-    log.close();
+    if (!appendMachineFixtureCall({{"remote", remote}, {"request", request}}))
+        return 2;
     if (remote && preparation) {
         QJsonObject reference;
         for (const auto &key : {"schema", "target", "root", "action", "deadline"})
@@ -640,12 +648,22 @@ void DashboardCanvasToolsTest::machineOverridesPersistWithoutWorkerAdoption()
     QCOMPARE(git->findChild<QLabel *>("dashboardGitBranch")->text(), QString("worker-b"));
     QTRY_COMPARE(containers->findChild<QTableWidget *>("dashboardContainers")->rowCount(), 1);
     QCOMPARE(containers->findChild<QTableWidget *>("dashboardContainers")->item(0, 0)->text(), QString("worker-c"));
-    QFile log(fixture.filePath("requests.jsonl"));
-    QVERIFY(log.open(QIODevice::ReadOnly));
-    for (const auto &line : log.readAll().split('\n')) {
+    const QString logPath = fixture.filePath("requests.jsonl");
+    QByteArray calls;
+    {
+        QLockFile lock(logPath + ".lock");
+        QVERIFY(lock.tryLock(3000));
+        QFile log(logPath);
+        QVERIFY(log.open(QIODevice::ReadOnly));
+        calls = log.readAll();
+    }
+    QVERIFY(!calls.isEmpty());
+    for (const auto &line : calls.split('\n')) {
         if (line.isEmpty())
             continue;
-        const auto call = QJsonDocument::fromJson(line).object();
+        const auto document = QJsonDocument::fromJson(line);
+        QVERIFY(document.isObject());
+        const auto call = document.object();
         QVERIFY(!call.contains("unexpected_local"));
         QVERIFY(call.value("remote").toBool());
         const auto request = call.value("request").toObject();
@@ -657,7 +675,6 @@ void DashboardCanvasToolsTest::machineOverridesPersistWithoutWorkerAdoption()
             QCOMPARE(request.value("root").toString(), node + "-root");
         QVERIFY(!request.value("payload").toObject().contains("workdir"));
     }
-    log.close();
 
     // Catalog refresh cannot silently replace a pinned worker generation.
     auto replacement = second;

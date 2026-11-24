@@ -4,7 +4,7 @@
 <context>
     <name>ActivityWidget</name>
     <message>
-        <location filename="../src/execution/presentation/ActivityWidget.cpp" line="+48"/>
+        <location filename="../src/execution/presentation/ActivityWidget.cpp" line="+49"/>
         <source>Runs &amp; logs</source>
         <translation>Çalıştırmalar ve günlükler</translation>
     </message>
@@ -15,12 +15,12 @@
     </message>
     <message>
         <location line="+10"/>
-        <location line="+211"/>
+        <location line="+224"/>
         <source>This computer</source>
         <translation>Bu bilgisayar</translation>
     </message>
     <message>
-        <location line="-211"/>
+        <location line="-224"/>
         <source>Remote jobs</source>
         <translation>Uzak işler</translation>
     </message>
@@ -104,7 +104,7 @@ Güncellemeleri denetlemek için yenileyin veya Makineler bölümünden bağlant
         <translation>Durum</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+15"/>
         <source>Refresh jobs</source>
         <translation>İşleri yenile</translation>
     </message>
@@ -124,7 +124,7 @@ Güncellemeleri denetlemek için yenileyin veya Makineler bölümünden bağlant
         <translation>Sonuç dosyalarını ve workflow.log dosyasını kaydedin.</translation>
     </message>
     <message>
-        <location line="+57"/>
+        <location line="+62"/>
         <source>Save result inside folder</source>
         <translation>Sonucu klasöre kaydet</translation>
     </message>
@@ -134,7 +134,7 @@ Güncellemeleri denetlemek için yenileyin veya Makineler bölümünden bağlant
         <translation>Sonuç ve workflow.log şuraya kaydedildi: %1</translation>
     </message>
     <message>
-        <location line="+62"/>
+        <location line="+63"/>
         <source>Finished / stopped</source>
         <translation>Tamamlandı / durduruldu</translation>
     </message>
@@ -169,7 +169,7 @@ Güncellemeleri denetlemek için yenileyin veya Makineler bölümünden bağlant
         <translation>%1 uzak iş</translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+100"/>
         <source>Up to date with the broker.</source>
         <translation>Aracıyla eşit durumda.</translation>
     </message>
@@ -197,6 +197,18 @@ Güncellemeleri denetlemek için yenileyin veya Makineler bölümünden bağlant
         <location line="+34"/>
         <source>This job is no longer available in the broker’s job list.</source>
         <translation>Bu iş artık aracının iş listesinde yok.</translation>
+    </message>
+    <message>
+        <location line="-329"/>
+        <source>Live workflow log</source>
+        <translation>Canlı iş akışı günlüğü</translation>
+    </message>
+    <message>
+        <location line="+233"/>
+        <source>
+Live preview limit reached. Download the results for the full retained log.</source>
+        <translation>
+Canlı önizleme sınırına ulaşıldı. Saklanan günlüğün tamamı için sonuçları indirin.</translation>
     </message>
 </context>
 <context>
@@ -1029,7 +1041,7 @@ Bağımsız depo · depolar arası çalışma için birden çok görünüm ekley
 <context>
     <name>DashboardRepositoryPanel</name>
     <message>
-        <location filename="../src/dashboards/presentation/DashboardRepositoryPanel.cpp" line="+38"/>
+        <location filename="../src/dashboards/presentation/DashboardRepositoryPanel.cpp" line="+39"/>
         <source>Repository…</source>
         <translation>Depo…</translation>
     </message>
@@ -1054,7 +1066,7 @@ Bağımsız depo · depolar arası çalışma için birden çok görünüm ekley
         <translation>Bu görünüm için bir depo seçin</translation>
     </message>
     <message>
-        <location line="+81"/>
+        <location line="+90"/>
         <source>Unsaved commit message</source>
         <translation>Kaydedilmemiş commit mesajı</translation>
     </message>
@@ -3243,7 +3255,7 @@ Seçili makinedeki envanteri yüklemek için yenileyin.</translation>
     <message>
         <location line="+2"/>
         <location line="+232"/>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+119"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+118"/>
         <source>Loading container logs…</source>
         <translation>Kapsayıcı günlükleri yükleniyor…</translation>
     </message>
@@ -3517,7 +3529,7 @@ Seçili makinedeki envanteri yüklemek için yenileyin.</translation>
         <translation>Geçersiz kapsayıcı denetim yanıtı.</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-298"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-297"/>
         <source>Wait for the current container control operation before changing machines.</source>
         <translation>Makineyi değiştirmeden önce geçerli kapsayıcı denetim işleminin tamamlanmasını bekleyin.</translation>
     </message>
@@ -3527,7 +3539,7 @@ Seçili makinedeki envanteri yüklemek için yenileyin.</translation>
         <translation>Doğrulanmış parmak izine ve çalışan nesline sahip bir makine seçin.</translation>
     </message>
     <message>
-        <location line="+128"/>
+        <location line="+127"/>
         <source>%1 · Remote Docker inventory unavailable: %2</source>
         <translation>%1 · Uzak Docker envanteri kullanılamıyor: %2</translation>
     </message>
@@ -3818,6 +3830,780 @@ Başlamak için bir satır seçin.</translation>
         <location line="+8"/>
         <source>Env (*.env *.sh);;All files (*)</source>
         <translation>Env (*.env *.sh);;Tüm dosyalar (*)</translation>
+    </message>
+</context>
+<context>
+    <name>EnvironmentDefinitionsClient</name>
+    <message>
+        <location filename="../src/environments/infrastructure/EnvironmentDefinitionsClient.cpp" line="+150"/>
+        <source>Could not start Dockpipe to read environment definitions.</source>
+        <translation>Dockpipe çevre tanımlarını okumaya başlamazdı.</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Dockpipe could not list environment definitions.</source>
+        <translation>Dockpipe çevresel tanımları listelemedi.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Dockpipe returned an invalid environment definition list.</source>
+        <translation>Dockpipe, geçersiz bir çevre tanımlama listesini iade etti.</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Reading environment definitions timed out.</source>
+        <translation>Çevre tanımlarını okuma zamanında.</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>The environment definition list exceeds its size limit.</source>
+        <translation>Çevre tanımlama listesi boyut sınırını aşmaktadır.</translation>
+    </message>
+</context>
+<context>
+    <name>EnvironmentsPage</name>
+    <message>
+        <location filename="../src/environments/presentation/EnvironmentsPage.cpp" line="+86"/>
+        <source>← Environments</source>
+        <translation>← Çevre</translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>Canvas</source>
+        <translation>Tuval</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>List</source>
+        <translation>Liste</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Refresh</source>
+        <translation>Yenile</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <location line="+247"/>
+        <source>Add Environment</source>
+        <translation>ek çevre</translation>
+    </message>
+    <message>
+        <location line="-233"/>
+        <location line="+9"/>
+        <source>Environments</source>
+        <translation>Çevre</translation>
+    </message>
+    <message>
+        <location line="-8"/>
+        <source>Hosts, virtual machines, and containers</source>
+        <translation>Ev sahipleri, sanal makineler ve konteynerler</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Details</source>
+        <translation>Ayrıntılar</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <location line="+331"/>
+        <location line="+121"/>
+        <source>Name</source>
+        <translation>Ad</translation>
+    </message>
+    <message>
+        <location line="-452"/>
+        <source>Type</source>
+        <translation>Tür</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Location</source>
+        <translation>Yerleşim</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Status</source>
+        <translation>Durum</translation>
+    </message>
+    <message>
+        <location line="+201"/>
+        <source>Reading environment definitions…</source>
+        <translation>Çevre Tanımlarını Okuyun...</translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <location line="+727"/>
+        <source>Remote machine</source>
+        <translation>uzaktan makine</translation>
+    </message>
+    <message>
+        <location line="-727"/>
+        <source>Pair another computer with Dockpipe.</source>
+        <translation>Dockpipe ile başka bir bilgisayara eşleştirin.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+722"/>
+        <location line="+71"/>
+        <source>Virtual machine</source>
+        <translation>Virtual makine</translation>
+    </message>
+    <message>
+        <location line="-793"/>
+        <source>Choose an operating system and configure a VM.</source>
+        <translation>Bir işletim sistemi seçin ve bir VM ayarlayın.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+794"/>
+        <source>Container</source>
+        <translation>Kapsayıcı</translation>
+    </message>
+    <message>
+        <location line="-794"/>
+        <source>Choose an image and configure a Docker container.</source>
+        <translation>Bir görüntü seçin ve bir Docker konteyner ayarlayın.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Import YAML</source>
+        <translation>İhracat YAML</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Open existing environment definitions.</source>
+        <translation>Mevcut çevresel tanımlar açıktır.</translation>
+    </message>
+    <message>
+        <location line="+61"/>
+        <source>Add Virtual Machine</source>
+        <translation>Viral makine ekleme</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Runs on this computer’s VM provider.</source>
+        <translation>Bu bilgisayarın VM sağlayıcısı üzerinde çalışır.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Development VM</source>
+        <translation>Geliştirme VM</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <location line="+611"/>
+        <source>Ubuntu</source>
+        <translation>Ubuntu</translation>
+    </message>
+    <message>
+        <location line="-610"/>
+        <location line="+610"/>
+        <source>Debian</source>
+        <translation>Debian</translation>
+    </message>
+    <message>
+        <location line="-609"/>
+        <location line="+609"/>
+        <source>Fedora</source>
+        <translation>Fedora için</translation>
+    </message>
+    <message>
+        <location line="-608"/>
+        <location line="+609"/>
+        <source>Other Linux</source>
+        <translation>Diğer Linux</translation>
+    </message>
+    <message>
+        <location line="-608"/>
+        <location line="+608"/>
+        <source>Windows 11</source>
+        <translation>Windows 11 için</translation>
+    </message>
+    <message>
+        <location line="-603"/>
+        <location line="+3"/>
+        <source> GiB</source>
+        <translation>GİB</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Installer ISO file</source>
+        <translation>ISO dosyası yükleme</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Browse…</source>
+        <translation>Göz at…</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Select Installer ISO</source>
+        <translation>Yükleme seçeneği ISO</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>ISO images (*.iso *.ISO)</source>
+        <translation>ISO resimleri (*.iso *. ISO )</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <location line="+120"/>
+        <location line="+580"/>
+        <source>Personal</source>
+        <translation>Kişisel</translation>
+    </message>
+    <message>
+        <location line="-699"/>
+        <location line="+120"/>
+        <source>YAML file</source>
+        <translation>YAML dosyası</translation>
+    </message>
+    <message>
+        <location line="-118"/>
+        <source>Operating system</source>
+        <translation>İşletim Sistemi</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>CPUs</source>
+        <translation>CPU’lar</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>RAM</source>
+        <translation>RAM için</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Disk size</source>
+        <translation>Disk boyutu</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Installer ISO</source>
+        <translation>Yükleme ISO</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+121"/>
+        <source>Save to</source>
+        <translation>kurtarmak için</translation>
+    </message>
+    <message>
+        <location line="-118"/>
+        <source>The ISO is optional when saving a definition. Disk size applies when the virtual disk is first created.</source>
+        <translation>ISO bir tanım kaydetmek için seçmeli. disk boyutu ilk sanal disk oluşturulduğunda geçerlidir.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <location line="+151"/>
+        <source>Save Definition</source>
+        <translation>Definifi kaydetmek</translation>
+    </message>
+    <message>
+        <location line="-150"/>
+        <source>Create VM</source>
+        <translation>VM oluşturma</translation>
+    </message>
+    <message>
+        <location line="+66"/>
+        <source>Add Container</source>
+        <translation>Konteyner ekleyin</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Runs on this computer’s Docker engine.</source>
+        <translation>Bu bilgisayarın Docker motorunda çalışır.</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>General</source>
+        <translation>Genel</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Test Docker</source>
+        <translation>Sınav Docker</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Use letters, numbers, dots, underscores, or hyphens. Spaces become hyphens.</source>
+        <translation>Yazılar, sayılar, noktalar, alt noktalar veya hyphens kullanın.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Ubuntu 24.04</source>
+        <translation>Ubuntu 24.04</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Debian 13 Slim</source>
+        <translation>Debian 13 Slim</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Alpine 3.22</source>
+        <translation>Alpine 3.22</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>NGINX on Alpine</source>
+        <translation>NGINX üzerinde Alpine</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Custom image</source>
+        <translation>Özel Görüntü</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Keep running for Terminal</source>
+        <translation>Terminal için devam et</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Run the image’s command</source>
+        <translation>Görüntü komutunu çalıştırın</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Bridge</source>
+        <translation>Köprü</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+457"/>
+        <source>No network</source>
+        <translation>İnternet yok</translation>
+    </message>
+    <message>
+        <location line="-455"/>
+        <source>Standard</source>
+        <translation>Standart</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+456"/>
+        <source>Restricted capabilities</source>
+        <translation>Sınırlı kapasite</translation>
+    </message>
+    <message>
+        <location line="-455"/>
+        <source>Both profiles block privilege escalation. Restricted also drops all Linux capabilities.</source>
+        <translation>Her iki profili de privileges eskalasyonu engeller. restrikte ayrıca tüm Linux kapasitelerini düşürür.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Base OS or image</source>
+        <translation>Base OS veya görüntü</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Docker image</source>
+        <translation>Docker resim</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Startup</source>
+        <translation>başlangıç</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Network</source>
+        <translation>Ağ</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Security</source>
+        <translation>Güvenlik</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Advanced</source>
+        <translation>Gelişmiş</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Use the image’s user</source>
+        <translation>Görüntünün kullanıcısı kullanın</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Non-root user</source>
+        <translation>Root Kullanıcı</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Writable</source>
+        <translation>Yazılı</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Read-only</source>
+        <translation>Sadece okuma</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Do not restart</source>
+        <translation>Yeniden başlatma</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Restart unless stopped</source>
+        <translation>durmadıkça yeniden başlatın</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>No separate volume</source>
+        <translation>Ayrı Volume yok</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Persistent Docker volume</source>
+        <translation>Sürdürülebilir Docker hacmi</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Publish a port on this computer</source>
+        <translation>Bu bilgisayarda bir port yayınlayın</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Run as</source>
+        <translation>koşu gibi</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Root filesystem</source>
+        <translation>Root Dosya Sistemi</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Restart policy</source>
+        <translation>Politika yeniden başlatma</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Storage</source>
+        <translation>depolama</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Folder inside container</source>
+        <translation>Konteyner içindeki çerçeve</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Local port</source>
+        <translation>Yerel liman</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Container port</source>
+        <translation>konteyner limanı</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Create Container</source>
+        <translation>konteyner oluşturma</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Default (run the image’s command)</source>
+        <translation>Default (görüntü komutunu çalıştırın)</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Default (keep running for Terminal)</source>
+        <translation>Default (terminal için durdurma çalışması)</translation>
+    </message>
+    <message>
+        <location line="+56"/>
+        <source>Save environment definition</source>
+        <translation>Çevre Tanımlaması</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+141"/>
+        <source>Environment definitions (*.yaml *.yml)</source>
+        <translation>Çevre Tanımları (*.yaml *.yml)</translation>
+    </message>
+    <message>
+        <location line="-135"/>
+        <source>Choose a YAML file and include at most 2,048 definitions.</source>
+        <translation>YAML dosyasını seçin ve en fazla 2,048 tanımını içerir.</translation>
+    </message>
+    <message>
+        <location line="+36"/>
+        <source>Dockpipe could not save the environment definition.</source>
+        <translation>Dockpipe çevre tanımını kurtaramazdı.</translation>
+    </message>
+    <message>
+        <location line="+66"/>
+        <source>Edit YAML</source>
+        <translation>YAML Yorumları</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Apply</source>
+        <translation>Uygula</translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Include environment definition files</source>
+        <translation>Çevre tanımlama dosyaları içerir</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Choose at most 2,048 definition files.</source>
+        <translation>En fazla 2,048 tanım dosyası seçin.</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>This definition file is unavailable. Refresh the definitions and try again.</source>
+        <translation>Bu tanım dosyası mevcut değildir. tanımları yenilemek ve tekrar deneyin.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Could not open the selected environment definition.</source>
+        <translation>Seçilen çevre tanımını açamazsınız.</translation>
+    </message>
+    <message>
+        <location line="+49"/>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <location line="+41"/>
+        <source>This machine</source>
+        <translation>Bu makine</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Remote</source>
+        <translation>Uzak</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Local</source>
+        <translation>Yerel</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>No environments yet. Choose Add Environment to get started.</source>
+        <translation>Başlangıç için ek çevre seçin.</translation>
+    </message>
+    <message>
+        <location line="+32"/>
+        <source>Open terminal</source>
+        <translation>Terminal açılımı</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Open VM console</source>
+        <translation>Açık VM konsolu</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Manage VM</source>
+        <translation>VM yönetimi</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Connection settings</source>
+        <translation>Bağlantı ayarları</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Machine settings</source>
+        <translation>Makine ayarları</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Choose Add Environment to get started.</source>
+        <translation>Başlamak için ek çevre seçin.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Select an environment to see its status and actions.</source>
+        <translation>Durumu ve eylemlerini görmek için bir ortam seçin.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Environment details</source>
+        <translation>Çevre Detayları</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Type  %1</source>
+        <translation>Tipi %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Image  %1</source>
+        <translation>Görüntü %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Bridge network</source>
+        <translation>Köprü Ağı</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Read-only root filesystem</source>
+        <translation>Read-only root dosya sistemi</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Local port  %1 → %2</source>
+        <translation>Yerel liman %1 → %2</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Persistent volume  %1</source>
+        <translation>Sürdürülebilir hacim %1</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Operating system  %1</source>
+        <translation>İşletim Sistemi %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>%1 CPU(s) · %2 GiB RAM · %3 GiB disk</source>
+        <translation>%1 CPU(s) · %2 GiB RAM · %3 GiB disk</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Installer ISO  %1</source>
+        <translation>Yükleme ISO %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Choose an installer ISO before the first boot.</source>
+        <translation>İlk başlatmadan önce ISO yüklemeyi seçin.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Provisioning workflow  %1</source>
+        <translation>Çalışma akışı %1</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Package  %1</source>
+        <translation>Paket %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Storage profile  %1</source>
+        <translation>%1 depolama profili</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>Managing broker</source>
+        <translation>Yönetici aracı</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Local computer</source>
+        <translation>Yerel Bilgisayar</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Host  This computer</source>
+        <translation>Bu bilgisayarı barındırmak</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Workflows</source>
+        <translation>İş akışları</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Containers</source>
+        <translation>Kapsayıcılar</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Files</source>
+        <translation>Dosyalar</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Git</source>
+        <translation>Git</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Terminal</source>
+        <translation>Terminal</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Reported access  %1</source>
+        <translation>%1 İletişim Bilgileri</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <location line="+2"/>
+        <source>, </source>
+        <translation>ve</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Workspace roots  %1</source>
+        <translation>Çalışma alanı kökleri %1</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Last report  %1</source>
+        <translation>Son rapor %1</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>No workspace feature report is available.</source>
+        <translation>Çalışma alanı özellik raporu mevcut değildir.</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Definition file missing</source>
+        <translation>Definifi dosya eksikliği</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Name differs from filename</source>
+        <translation>Adı filenaminden farklı</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Invalid definition</source>
+        <translation>Engelli Tanımlama</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Saved definition</source>
+        <translation>Kurtarılmış Tanım</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Selected file</source>
+        <translation>seçilmiş dosya</translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>Observed running</source>
+        <translation>Görüntülenen koşu</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Observed stopped</source>
+        <translation>gözlemlenmiş durdurulmuş</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Runtime unavailable</source>
+        <translation>Yürüyüş saatleri mevcut değil</translation>
     </message>
 </context>
 <context>
@@ -4352,12 +5138,12 @@ Buradan izlemek için düzenleyiciden bir iş akışı başlatın.</translation>
 <context>
     <name>FileEditorWorkspace</name>
     <message>
-        <location filename="../src/files/presentation/FileEditorWorkspace.cpp" line="+63"/>
+        <location filename="../src/files/presentation/FileEditorWorkspace.cpp" line="+64"/>
         <source>Open a file in this pane</source>
         <translation>Bu bölmede bir dosya açın</translation>
     </message>
     <message>
-        <location line="+67"/>
+        <location line="+73"/>
         <source>Open in other pane</source>
         <translation>Diğer bölmede aç</translation>
     </message>
@@ -4377,7 +5163,7 @@ Buradan izlemek için düzenleyiciden bir iş akışı başlatın.</translation>
         <translation>Diğerlerini kapat</translation>
     </message>
     <message>
-        <location line="+162"/>
+        <location line="+178"/>
         <location line="+165"/>
         <source>Close %1</source>
         <translation>%1 öğesini kapat</translation>
@@ -4991,7 +5777,7 @@ Bu değişiklik yalnızca yeniden adlandırma, dosya meta verisi veya birleştir
 <context>
     <name>GitHistoryWidget</name>
     <message>
-        <location filename="../src/git/presentation/GitHistoryWidget.cpp" line="+45"/>
+        <location filename="../src/git/presentation/GitHistoryWidget.cpp" line="+46"/>
         <source>Search commits…</source>
         <translation>Commit&apos;lerde ara…</translation>
     </message>
@@ -5261,7 +6047,7 @@ Bu değişiklik yalnızca yeniden adlandırma, dosya meta verisi veya birleştir
 <context>
     <name>GitRepositoryWidget</name>
     <message>
-        <location filename="../src/git/presentation/GitRepositoryWidget.cpp" line="+32"/>
+        <location filename="../src/git/presentation/GitRepositoryWidget.cpp" line="+33"/>
         <source>Refresh</source>
         <translation>Yenile</translation>
     </message>
@@ -5372,7 +6158,7 @@ Upstream: %3
         <translation>%1  %2</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+37"/>
         <source>Merge branch</source>
         <translation>Dal birleştir</translation>
     </message>
@@ -5521,21 +6307,21 @@ Upstream: %3
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="+334"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="+340"/>
         <source>Dockpipe — %1</source>
         <translation>Dockpipe — %1</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+108"/>
-        <location line="+259"/>
-        <location line="+745"/>
+        <location line="+170"/>
+        <location line="+258"/>
+        <location line="+755"/>
         <location line="+51"/>
-        <location line="+120"/>
+        <location line="+140"/>
         <location line="+6"/>
         <location line="+5"/>
         <location line="+24"/>
-        <location line="+309"/>
+        <location line="+299"/>
         <location line="+47"/>
         <location line="+162"/>
         <location line="+118"/>
@@ -5543,13 +6329,13 @@ Upstream: %3
         <translation>Dockpipe</translation>
     </message>
     <message>
-        <location line="-1898"/>
-        <location line="+424"/>
+        <location line="-1943"/>
+        <location line="+449"/>
         <source>System</source>
         <translation>Sistem</translation>
     </message>
     <message>
-        <location line="-369"/>
+        <location line="-368"/>
         <source>Your work. Anywhere.</source>
         <translation>İşiniz. Her yerde.</translation>
     </message>
@@ -5560,18 +6346,18 @@ Upstream: %3
     </message>
     <message>
         <location line="+4"/>
-        <location line="+404"/>
+        <location line="+403"/>
         <source>Packages</source>
         <translation>Paketler</translation>
     </message>
     <message>
-        <location line="-403"/>
-        <location line="+400"/>
+        <location line="-402"/>
+        <location line="+399"/>
         <source>Settings</source>
         <translation>Ayarlar</translation>
     </message>
     <message>
-        <location line="-385"/>
+        <location line="-384"/>
         <source>WORKSPACE</source>
         <translation>ÇALIŞMA ALANI</translation>
     </message>
@@ -5581,29 +6367,24 @@ Upstream: %3
         <translation>Klasör aç…</translation>
     </message>
     <message>
-        <location line="+107"/>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+189"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+151"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+190"/>
         <source>This computer</source>
         <translation>Bu bilgisayar</translation>
     </message>
     <message>
-        <location line="+5"/>
-        <source> — unavailable</source>
-        <translation> — kullanılamıyor</translation>
-    </message>
-    <message>
-        <location line="+46"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="+155"/>
         <source>Workflow</source>
         <translation>İş akışı</translation>
     </message>
     <message>
-        <location line="+21"/>
-        <location line="+1631"/>
+        <location line="+23"/>
+        <location line="+1651"/>
         <source>%1 logs</source>
         <translation>%1 günlükleri</translation>
     </message>
     <message>
-        <location line="-1621"/>
+        <location line="-1641"/>
         <source>Remote workflow</source>
         <translation>Uzak iş akışı</translation>
     </message>
@@ -5639,12 +6420,12 @@ Upstream: %3
     </message>
     <message>
         <location line="+2"/>
-        <location line="+848"/>
+        <location line="+878"/>
         <source>Quit</source>
         <translation>Çıkış</translation>
     </message>
     <message>
-        <location line="-846"/>
+        <location line="-876"/>
         <source>View</source>
         <translation>Görünüm</translation>
     </message>
@@ -5659,11 +6440,6 @@ Upstream: %3
         <location line="+200"/>
         <source>Workflows</source>
         <translation>İş akışları</translation>
-    </message>
-    <message>
-        <location line="+0"/>
-        <source>Machines</source>
-        <translation>Makineler</translation>
     </message>
     <message>
         <location line="+0"/>
@@ -5694,6 +6470,11 @@ Upstream: %3
         <location line="+0"/>
         <source>Terminal</source>
         <translation>Terminal</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Environments</source>
+        <translation>Çevre</translation>
     </message>
     <message>
         <location line="+12"/>
@@ -5801,7 +6582,7 @@ Bir iş akışı harici araçlara ihtiyaç duyarsa bunları resmî kaynaklardan 
         <translation>Daha sonra</translation>
     </message>
     <message>
-        <location line="+188"/>
+        <location line="+195"/>
         <source>Workflow studio</source>
         <translation>İş akışı stüdyosu</translation>
     </message>
@@ -5821,7 +6602,7 @@ Bir iş akışı harici araçlara ihtiyaç duyarsa bunları resmî kaynaklardan 
         <translation>Proje klasörünü aç</translation>
     </message>
     <message>
-        <location line="+101"/>
+        <location line="+104"/>
         <source>Open a project</source>
         <translation>Bir proje açın</translation>
     </message>
@@ -5832,19 +6613,19 @@ Bir iş akışı harici araçlara ihtiyaç duyarsa bunları resmî kaynaklardan 
     </message>
     <message>
         <location line="+22"/>
-        <location line="+652"/>
-        <location filename="../src/shell/presentation/MainWindowSurfaces.cpp" line="+109"/>
+        <location line="+662"/>
+        <location filename="../src/shell/presentation/MainWindowSurfaces.cpp" line="+151"/>
         <source>Workflow unavailable</source>
         <translation>İş akışı kullanılamıyor</translation>
     </message>
     <message>
-        <location line="-624"/>
-        <location line="+673"/>
+        <location line="-634"/>
+        <location line="+683"/>
         <source>Could not start dockpipe (see stderr).</source>
         <translation>dockpipe başlatılamadı (stderr çıktısına bakın).</translation>
     </message>
     <message>
-        <location line="-600"/>
+        <location line="-593"/>
         <source>VS Code workflow</source>
         <translation>VS Code iş akışı</translation>
     </message>
@@ -5854,7 +6635,7 @@ Bir iş akışı harici araçlara ihtiyaç duyarsa bunları resmî kaynaklardan 
         <translation>Tanımlı girdi yok. Bu yapılandırmayı düzenlemek için İş akışlarına klonla&apos;yı kullanın.</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+50"/>
         <source>This workflow does not expose app-managed settings.</source>
         <translation>Bu iş akışı uygulama tarafından yönetilen ayarları sunmuyor.</translation>
     </message>
@@ -5924,7 +6705,7 @@ Bir iş akışı harici araçlara ihtiyaç duyarsa bunları resmî kaynaklardan 
         <translation>Hazır</translation>
     </message>
     <message>
-        <location line="+168"/>
+        <location line="+158"/>
         <source>Received an invalid Dockpipe prompt payload.</source>
         <translation>Geçersiz bir Dockpipe istem yükü alındı.</translation>
     </message>
@@ -5945,7 +6726,7 @@ Bir iş akışı harici araçlara ihtiyaç duyarsa bunları resmî kaynaklardan 
     </message>
     <message>
         <location line="+1"/>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+213"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+121"/>
         <source>Choose another computer or reconnect this machine before running.</source>
         <translation>Başka bir bilgisayar seçin veya çalıştırmadan önce bu makineyi yeniden bağlayın.</translation>
     </message>
@@ -6068,7 +6849,7 @@ Bir iş akışı harici araçlara ihtiyaç duyarsa bunları resmî kaynaklardan 
 </translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowDashboards.cpp" line="+76"/>
+        <location filename="../src/shell/presentation/MainWindowDashboards.cpp" line="+78"/>
         <source>This workflow is no longer in the project catalog. Refresh Workflows and try again.</source>
         <translation>Bu iş akışı artık proje kataloğunda yok. İş Akışları&apos;nı yenileyip yeniden deneyin.</translation>
     </message>
@@ -6267,7 +7048,7 @@ Yakınlaştırmak için kaydırın · Kaydırmak için arka planı sürükleyin
         <translation>Henüz iş akışı yok</translation>
     </message>
     <message>
-        <location line="+56"/>
+        <location line="+53"/>
         <source>Open YAML file…</source>
         <translation>YAML dosyasını aç…</translation>
     </message>
@@ -6307,7 +7088,7 @@ Yakınlaştırmak için kaydırın · Kaydırmak için arka planı sürükleyin
         <translation>İş akışı YAML (*.yml *.yaml)</translation>
     </message>
     <message>
-        <location line="+41"/>
+        <location line="+45"/>
         <source>Workflow source unavailable</source>
         <translation>İş akışı kaynağı kullanılamıyor</translation>
     </message>
@@ -6322,12 +7103,17 @@ Yakınlaştırmak için kaydırın · Kaydırmak için arka planı sürükleyin
         <translation>Proje değiştirmeden önce Git işleminin bitmesini bekleyin veya Git bölümünden iptal edin.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="-1376"/>
+        <location line="+122"/>
+        <source>This run target is unavailable. Choose another computer or reconnect it in Environments.</source>
+        <translation>Bu çalıştırma hedefi mevcut değildir. başka bir bilgisayar seçin veya çevrelerde yeniden bağlayın.</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="-1396"/>
         <source>Wait for the Git action to finish, or cancel it in Git before quitting.</source>
         <translation>Çıkmadan önce Git işleminin bitmesini bekleyin veya Git bölümünden iptal edin.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+94"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-23"/>
         <source>&lt;h3&gt;Select a workflow&lt;/h3&gt;&lt;p&gt;Review its purpose and inputs here, then choose Run or Edit on canvas.&lt;/p&gt;</source>
         <translation>&lt;h3&gt;Bir iş akışı seçin&lt;/h3&gt;&lt;p&gt;Amacını ve girdilerini burada inceleyin, ardından Çalıştır&apos;ı veya Tuval&apos;de düzenle&apos;yi seçin.&lt;/p&gt;</translation>
     </message>
@@ -6362,12 +7148,7 @@ Yakınlaştırmak için kaydırın · Kaydırmak için arka planı sürükleyin
         <translation>Seçili bilgisayarda bu iş akışının gerektirdiği araçlar ve platform bulunmalıdır.</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>This run target is unavailable. Choose another computer or reconnect it in Machines.</source>
-        <translation>Bu çalıştırma hedefi kullanılamıyor. Başka bir bilgisayar seçin veya Makineler&apos;den yeniden bağlayın.</translation>
-    </message>
-    <message>
-        <location line="+41"/>
+        <location line="+45"/>
         <source>Clone failed</source>
         <translation>Klonlama başarısız</translation>
     </message>
@@ -6382,7 +7163,12 @@ Yakınlaştırmak için kaydırın · Kaydırmak için arka planı sürükleyin
         <translation>İş akışı %1 konumuna klonlandı</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-43"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-96"/>
+        <source>%1 · Workflow access unavailable</source>
+        <translation>%1 · Çalışma akışı erişimi mevcut değil</translation>
+    </message>
+    <message>
+        <location line="+53"/>
         <source>This machine or root changed. Refresh machines and select it again.</source>
         <translation>Bu makine veya kök dizin değişti. Makine listesini yenileyip yeniden seçin.</translation>
     </message>
@@ -6392,13 +7178,12 @@ Yakınlaştırmak için kaydırın · Kaydırmak için arka planı sürükleyin
         <translation>Makineyi değiştirmeden önce açık taslakları kaydedin veya atın ve etkin işlemleri tamamlayın.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-435"/>
-        <location line="+145"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-443"/>
         <source>Choose the computer with the shared machine selector.</source>
         <translation>Bilgisayarı ortak makine seçicisiyle seçin.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+93"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+130"/>
         <source>Container terminal · %1 · %2</source>
         <translation>Kapsayıcı terminali · %1 · %2</translation>
     </message>
@@ -6406,6 +7191,17 @@ Yakınlaştırmak için kaydırın · Kaydırmak için arka planı sürükleyin
         <location filename="../src/shell/presentation/MainWindow.cpp" line="-209"/>
         <source>Remote Desktop</source>
         <translation>Uzak Masaüstü</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-216"/>
+        <location line="+28"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · Kullanılamıyor</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+145"/>
+        <source>Use the shared machine or choose a worker for this workflow.</source>
+        <translation>Bu iş akışı için paylaşılan makineyi kullanın veya bir çalışan seçin.</translation>
     </message>
 </context>
 <context>
@@ -6525,12 +7321,12 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>Bir terminal profili en fazla 64 ortam değişkenini geçersiz kılabilir.</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+56"/>
         <source>The terminal launch exceeds its bounded profile or environment contract.</source>
         <translation>Terminal başlatma işlemi profil veya ortam sınırlarını aşıyor.</translation>
     </message>
     <message>
-        <location line="-45"/>
+        <location line="-50"/>
         <source>The terminal profile contains an invalid environment variable.</source>
         <translation>Terminal profili geçersiz bir ortam değişkeni içeriyor.</translation>
     </message>
@@ -7018,7 +7814,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
 <context>
     <name>PackageSurfacePage</name>
     <message>
-        <location filename="../src/packages/presentation/PackageSurfacePage.cpp" line="+50"/>
+        <location filename="../src/packages/presentation/PackageSurfacePage.cpp" line="+52"/>
         <source>View</source>
         <translation>Görünüm</translation>
     </message>
@@ -7083,13 +7879,13 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>İşlemin zaman aşımına uğradı. Geçerli durumu incelemek için yenileyin.</translation>
     </message>
     <message>
-        <location line="+91"/>
+        <location line="+95"/>
         <location line="+18"/>
         <source>Refresh paused. Displayed state is stale.</source>
         <translation>Yenileme duraklatıldı. Görüntülenen durum güncel değil.</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+28"/>
         <source>State has not been refreshed.</source>
         <translation>Durum yenilenmedi.</translation>
     </message>
@@ -7099,7 +7895,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>Yüklü paket başlatma işlemi belirsiz veya kullanılamıyor.</translation>
     </message>
     <message>
-        <location line="+114"/>
+        <location line="+133"/>
         <source>Refreshing… Previous state is retained.</source>
         <translation>Yenileniyor… Önceki durum korunuyor.</translation>
     </message>
@@ -7124,7 +7920,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>Paket geçersiz bir yüzey olayı döndürdü.</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+54"/>
         <source>Package operation failed or returned no snapshot. Displayed state is stale.</source>
         <translation>Paket işlemi başarısız oldu veya anlık görüntü döndürmedi. Görüntülenen durum güncel değil.</translation>
     </message>
@@ -7139,7 +7935,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>İşlem tamamlandı. Durum yenileniyor…</translation>
     </message>
     <message>
-        <location line="+25"/>
+        <location line="+69"/>
         <source>Unsupported package surface event schema.</source>
         <translation>Desteklenmeyen paket yüzeyi olayı şeması.</translation>
     </message>
@@ -7164,7 +7960,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>Paket kaynak alanları yüzey sözleşmesinin sınırlarını aşıyor.</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+16"/>
         <source>Invalid package widget display options or missing installed factory.</source>
         <translation>Paket widget&apos;ı görünüm seçenekleri geçersiz veya yüklü fabrika eksik.</translation>
     </message>
@@ -7187,6 +7983,213 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <location line="+7"/>
         <source>Invalid package resource action.</source>
         <translation>Paket kaynak işlemi geçersiz.</translation>
+    </message>
+</context>
+<context>
+    <name>PipeLangEditorSession</name>
+    <message>
+        <location filename="../src/files/presentation/PipeLangEditorSession.cpp" line="+139"/>
+        <source>Browse…</source>
+        <translation>Göz at…</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Connect</source>
+        <translation>Bağlan</translation>
+    </message>
+    <message>
+        <location line="-33"/>
+        <source>Connect PipeLang language server</source>
+        <translation>PipeLang dil sunucusuna bağlan</translation>
+    </message>
+    <message>
+        <location line="-19"/>
+        <source>Connect an explicitly selected installed language server for .pipe diagnostics and hover</source>
+        <translation>.pipe dosyalarında tanılama ve üzerine gelme bilgisi için açıkça seçilmiş kurulu bir dil sunucusuna bağlan</translation>
+    </message>
+    <message>
+        <location line="+47"/>
+        <source>Node executable</source>
+        <translation>Node yürütülebilir dosyası</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>PipeLang compiler executable</source>
+        <translation>PipeLang derleyicisinin yürütülebilir dosyası</translation>
+    </message>
+    <message>
+        <location line="-43"/>
+        <source>PipeLang language server disconnected.</source>
+        <translation>PipeLang dil sunucusuyla bağlantı kesildi.</translation>
+    </message>
+    <message>
+        <location line="-7"/>
+        <source>PipeLang server…</source>
+        <translation>PipeLang sunucusu…</translation>
+    </message>
+    <message>
+        <location line="+41"/>
+        <source>Select installed tool</source>
+        <translation>Kurulu araç seç</translation>
+    </message>
+    <message>
+        <location line="-1"/>
+        <source>Select source root</source>
+        <translation>Kaynak kök dizinini seç</translation>
+    </message>
+    <message>
+        <location line="-18"/>
+        <source>Select trusted installed tools. Connecting runs the selected Node and server on this host. Paths are used only for this session; project files cannot configure executable paths. An optional source root authorizes compiler analysis of imports beneath that directory.</source>
+        <translation>Güvenilen kurulu araçları seçin. Bağlantı kurulduğunda seçilen Node ve sunucu bu bilgisayarda çalıştırılır. Yollar yalnızca bu oturumda kullanılır. Proje dosyaları yürütülebilir dosya yollarını yapılandıramaz. İsteğe bağlı kaynak kök dizini, derleyicinin bu dizin altındaki içe aktarmaları çözümlemesine izin verir.</translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Server JavaScript entrypoint</source>
+        <translation>Sunucunun JavaScript giriş noktası</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Source root (optional)</source>
+        <translation>Kaynak kök dizini (isteğe bağlı)</translation>
+    </message>
+    <message>
+        <location line="-47"/>
+        <source>Stop</source>
+        <translation>Durdur</translation>
+    </message>
+</context>
+<context>
+    <name>PipeLangLanguageClient</name>
+    <message>
+        <location filename="../src/files/infrastructure/PipeLangLanguageClient.cpp" line="+374"/>
+        <source>Invalid PipeLang JSON-RPC message.</source>
+        <translation>Geçersiz PipeLang JSON-RPC iletisi.</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Invalid PipeLang JSON-RPC version.</source>
+        <translation>Geçersiz PipeLang JSON-RPC sürümü.</translation>
+    </message>
+    <message>
+        <location line="-35"/>
+        <source>Invalid PipeLang protocol Content-Length.</source>
+        <translation>PipeLang protokolünde geçersiz Content-Length değeri.</translation>
+    </message>
+    <message>
+        <location line="-224"/>
+        <source>Invalid absolute installed PipeLang selection (%1).</source>
+        <translation>Kurulu PipeLang aracı için geçersiz mutlak yol seçimi (%1).</translation>
+    </message>
+    <message>
+        <location line="-10"/>
+        <source>Node executable: %1</source>
+        <translation>Node yürütülebilir dosyası: %1</translation>
+    </message>
+    <message>
+        <location line="+305"/>
+        <source>PipeLang compiler diagnostics and hover connected.</source>
+        <translation>PipeLang derleyici tanılaması ve üzerine gelme bilgisi kullanılabilir.</translation>
+    </message>
+    <message>
+        <location line="-178"/>
+        <source>PipeLang document limit exceeded (1 MiB per file, 16 MiB total, 32 files).</source>
+        <translation>PipeLang belge sınırı aşıldı (dosya başına 1 MiB, toplam 16 MiB, 32 dosya).</translation>
+    </message>
+    <message>
+        <location line="-208"/>
+        <source>PipeLang hover timed out.</source>
+        <translation>PipeLang üzerine gelme bilgisi isteği zaman aşımına uğradı.</translation>
+    </message>
+    <message>
+        <location line="+301"/>
+        <location line="+4"/>
+        <source>PipeLang protocol header limit exceeded.</source>
+        <translation>PipeLang protokolü üstbilgi sınırı aşıldı.</translation>
+    </message>
+    <message>
+        <location line="-14"/>
+        <source>PipeLang protocol input limit exceeded.</source>
+        <translation>PipeLang protokolü girdi sınırı aşıldı.</translation>
+    </message>
+    <message>
+        <location line="-126"/>
+        <source>PipeLang protocol output limit exceeded.</source>
+        <translation>PipeLang protokolü çıktı sınırı aşıldı.</translation>
+    </message>
+    <message>
+        <location line="+157"/>
+        <source>PipeLang protocol requires one Content-Length header.</source>
+        <translation>PipeLang protokolü tam olarak bir Content-Length üstbilgisi gerektirir.</translation>
+    </message>
+    <message>
+        <location line="-151"/>
+        <source>PipeLang protocol write failed.</source>
+        <translation>PipeLang protokolüne yazılamadı.</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>PipeLang request identity space exhausted; restart the editor session.</source>
+        <translation>PipeLang istek kimlikleri tükendi. Düzenleyici oturumunu yeniden başlatın.</translation>
+    </message>
+    <message>
+        <location line="-144"/>
+        <source>PipeLang server could not start: %1</source>
+        <translation>PipeLang sunucusu başlatılamadı: %1</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>PipeLang server exited (%1). Reconnect explicitly.</source>
+        <translation>PipeLang sunucusu kapandı (%1). Bağlantıyı elle yeniden kurun.</translation>
+    </message>
+    <message>
+        <location line="-40"/>
+        <source>PipeLang server lifecycle deadline exceeded.</source>
+        <translation>PipeLang sunucusunun yaşam döngüsü için süre sınırı aşıldı.</translation>
+    </message>
+    <message>
+        <location line="+383"/>
+        <source>PipeLang server rejected shutdown.</source>
+        <translation>PipeLang sunucusu kapatma isteğini reddetti.</translation>
+    </message>
+    <message>
+        <location line="-385"/>
+        <source>PipeLang server required forced termination after stdin closure.</source>
+        <translation>stdin kapatıldıktan sonra PipeLang sunucusu zorla sonlandırıldı.</translation>
+    </message>
+    <message>
+        <location line="+42"/>
+        <source>PipeLang server stopped.</source>
+        <translation>PipeLang sunucusu durduruldu.</translation>
+    </message>
+    <message>
+        <location line="+332"/>
+        <source>Selected PipeLang server does not provide the required UTF-16 hover contract.</source>
+        <translation>Seçilen PipeLang sunucusu, üzerine gelme bilgisi için gereken UTF-16 sözleşmesini desteklemiyor.</translation>
+    </message>
+    <message>
+        <location line="-269"/>
+        <source>Starting selected PipeLang server…</source>
+        <translation>Seçilen PipeLang sunucusu başlatılıyor…</translation>
+    </message>
+    <message>
+        <location line="-34"/>
+        <source>Stop the current PipeLang server before reconnecting.</source>
+        <translation>Yeniden bağlanmadan önce geçerli PipeLang sunucusunu durdurun.</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>compiler executable: %1</source>
+        <translation>Derleyicinin yürütülebilir dosyası: %1</translation>
+    </message>
+    <message>
+        <location line="-2"/>
+        <source>server entrypoint: %1</source>
+        <translation>Sunucu giriş noktası: %1</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>source directory: %1</source>
+        <translation>Kaynak dizini: %1</translation>
     </message>
 </context>
 <context>
@@ -7301,12 +8304,12 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
     <name>ProjectFilesWidget</name>
     <message>
         <location filename="../src/files/presentation/ProjectFilesWidget.cpp" line="+62"/>
-        <location line="+172"/>
+        <location line="+175"/>
         <source>Files</source>
         <translation>Dosyalar</translation>
     </message>
     <message>
-        <location line="-169"/>
+        <location line="-172"/>
         <source>Browse and edit your workspace.</source>
         <translation>Çalışma alanınıza göz atın ve düzenleyin.</translation>
     </message>
@@ -7317,13 +8320,13 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
     </message>
     <message>
         <location line="+5"/>
-        <location line="+26"/>
+        <location line="+29"/>
         <source>New file</source>
         <translation>Yeni dosya</translation>
     </message>
     <message>
-        <location line="-26"/>
-        <location line="+225"/>
+        <location line="-29"/>
+        <location line="+228"/>
         <source>Path relative to this folder</source>
         <translation>Bu klasöre göreli yol</translation>
     </message>
@@ -7403,12 +8406,12 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
     <message>
         <location line="+13"/>
         <location line="+3"/>
-        <location line="+888"/>
+        <location line="+945"/>
         <source>Preview Markdown</source>
         <translation>Markdown önizle</translation>
     </message>
     <message>
-        <location line="-882"/>
+        <location line="-939"/>
         <source>Find in file (Ctrl+F)</source>
         <translation>Dosyada bul (Ctrl+F)</translation>
     </message>
@@ -7489,11 +8492,12 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
     </message>
     <message>
         <location line="+3"/>
+        <location line="+222"/>
         <source>Select a file to edit, or create something new.</source>
         <translation>Düzenlemek için bir dosya seçin veya yeni bir dosya oluşturun.</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="-218"/>
         <source>Create a file</source>
         <translation>Dosya oluştur</translation>
     </message>
@@ -7503,7 +8507,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>“%1” için eşleşme yok.</translation>
     </message>
     <message>
-        <location line="+189"/>
+        <location line="+243"/>
         <source>Unsaved file</source>
         <translation>Kaydedilmemiş dosya</translation>
     </message>
@@ -7575,7 +8579,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>%1 kaydedildi</translation>
     </message>
     <message>
-        <location line="+175"/>
+        <location line="+177"/>
         <source>No file open</source>
         <translation>Açık dosya yok</translation>
     </message>
@@ -7595,7 +8599,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>Çalışma alanı kökü</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="+23"/>
         <source>Hide Markdown preview</source>
         <translation>Markdown önizlemesini gizle</translation>
     </message>
@@ -7615,12 +8619,12 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>%1   ·   UTF-8   ·   %2                         Sat %3, Süt %4</translation>
     </message>
     <message>
-        <location line="-1070"/>
+        <location line="-1127"/>
         <source>Refresh files</source>
         <translation>Dosyaları yenile</translation>
     </message>
     <message>
-        <location line="+463"/>
+        <location line="+517"/>
         <location line="+34"/>
         <source>A file operation is still running. Your open files are preserved.</source>
         <translation>Bir dosya işlemi hâlâ çalışıyor. Açık dosyalarınız korundu.</translation>
@@ -7629,6 +8633,11 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <location line="+341"/>
         <source>Invalid workspace file response.</source>
         <translation>Geçersiz çalışma alanı dosya yanıtı.</translation>
+    </message>
+    <message>
+        <location line="-440"/>
+        <source>Select a file to read.</source>
+        <translation>Okunacak dosyayı seçin.</translation>
     </message>
 </context>
 <context>
@@ -7730,7 +8739,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>Gönder</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+3"/>
         <source>Pull fast-forward changes into a clean checkout</source>
         <translation>Hızlı ileri değişiklikleri temiz bir çalışma kopyasına çek</translation>
     </message>
@@ -7747,12 +8756,12 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
     <message>
         <location line="+12"/>
         <location line="+27"/>
-        <location line="+288"/>
+        <location line="+292"/>
         <source>Changed files</source>
         <translation>Değişen dosyalar</translation>
     </message>
     <message>
-        <location line="-315"/>
+        <location line="-319"/>
         <source>Staged files</source>
         <translation>Hazırlanan dosyalar</translation>
     </message>
@@ -7799,30 +8808,30 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
     </message>
     <message>
         <location line="+4"/>
-        <location line="+639"/>
+        <location line="+655"/>
         <source>Unstage all</source>
         <translation>Tüm hazırlıkları geri al</translation>
     </message>
     <message>
-        <location line="-639"/>
-        <location line="+638"/>
+        <location line="-655"/>
+        <location line="+654"/>
         <source>Stage all</source>
         <translation>Tümünü hazırla</translation>
     </message>
     <message>
-        <location line="-589"/>
-        <location line="+566"/>
+        <location line="-605"/>
+        <location line="+582"/>
         <source>Stage changes to include them in your commit.</source>
         <translation>Commit&apos;inize eklemek istediğiniz değişiklikleri hazırlayın.</translation>
     </message>
     <message>
-        <location line="-566"/>
-        <location line="+568"/>
+        <location line="-582"/>
+        <location line="+584"/>
         <source>No unstaged changes.</source>
         <translation>Hazırlanmamış değişiklik yok.</translation>
     </message>
     <message>
-        <location line="-544"/>
+        <location line="-560"/>
         <source>Commit changes</source>
         <translation>Değişiklikleri commit et</translation>
     </message>
@@ -7848,20 +8857,20 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
     </message>
     <message>
         <location line="+12"/>
-        <location line="+145"/>
-        <location line="+260"/>
+        <location line="+149"/>
+        <location line="+268"/>
         <location line="+4"/>
         <source>Select a file to review</source>
         <translation>İncelemek için bir dosya seçin</translation>
     </message>
     <message>
-        <location line="-398"/>
-        <location line="+465"/>
+        <location line="-410"/>
+        <location line="+481"/>
         <source>Unstaged changes</source>
         <translation>Hazırlanmamış değişiklikler</translation>
     </message>
     <message>
-        <location line="-462"/>
+        <location line="-478"/>
         <source>Stage</source>
         <translation>Hazırla</translation>
     </message>
@@ -7887,20 +8896,20 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
     </message>
     <message>
         <location line="+21"/>
-        <location line="+96"/>
-        <location line="+163"/>
+        <location line="+100"/>
+        <location line="+171"/>
         <source>Your changes, in focus</source>
         <translation>Değişikliklerinize odaklanın</translation>
     </message>
     <message>
-        <location line="-254"/>
-        <location line="+92"/>
-        <location line="+163"/>
+        <location line="-266"/>
+        <location line="+96"/>
+        <location line="+171"/>
         <source>Refresh the repository, then select a file to review its changes.</source>
         <translation>Depoyu yenileyin, ardından değişikliklerini incelemek için bir dosya seçin.</translation>
     </message>
     <message>
-        <location line="-243"/>
+        <location line="-255"/>
         <source>Changes</source>
         <translation>Değişiklikler</translation>
     </message>
@@ -7920,7 +8929,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>İşlemi iptal et</translation>
     </message>
     <message>
-        <location line="+57"/>
+        <location line="+61"/>
         <source>Refresh to review this project&apos;s changes.</source>
         <translation>Bu projenin değişikliklerini incelemek için yenileyin.</translation>
     </message>
@@ -7930,7 +8939,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>Önce bir proje klasörü açın.</translation>
     </message>
     <message>
-        <location line="+80"/>
+        <location line="+88"/>
         <source>Refresh the repository before changing it.</source>
         <translation>Değişiklik yapmadan önce depoyu yenileyin.</translation>
     </message>
@@ -7997,7 +9006,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>Sonraki commit&apos;inizi hazırlamak için değişiklikleri hazırlayın.</translation>
     </message>
     <message>
-        <location line="+40"/>
+        <location line="+44"/>
         <source>No staged files</source>
         <translation>Hazırlanmış dosya yok</translation>
     </message>
@@ -8030,6 +9039,11 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <location line="+1"/>
         <source>Unstage shown</source>
         <translation>Gösterilenlerin hazırlığını geri al</translation>
+    </message>
+    <message>
+        <location line="-263"/>
+        <source>The selected Git root does not grant this operation.</source>
+        <translation>Seçilen Git kökü bu işleme izin vermiyor.</translation>
     </message>
 </context>
 <context>
@@ -8269,7 +9283,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>Otomatik terminal kurulumu geçersiz ana bilgisayar ortamı aldı.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="-710"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="-774"/>
         <source>Running</source>
         <translation>Çalışıyor</translation>
     </message>
@@ -8299,7 +9313,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>Makineyi veya kök dizini değiştirmeden önce çakışma taslağını kaydedin ya da atın.</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+49"/>
         <source>Select an absolute local project folder.</source>
         <translation>Mutlak yola sahip bir yerel proje klasörü seçin.</translation>
     </message>
@@ -8391,7 +9405,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
     </message>
     <message>
         <location line="+125"/>
-        <location line="+73"/>
+        <location line="+77"/>
         <source>Output exceeded the display limit.
 </source>
         <translation>Çıktı görüntüleme sınırını aştı.
@@ -8563,7 +9577,22 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>Kalite ve kare hızı sonraki bağlantıda uygulanır. Çözünürlük maksimum, bit hızı ise hedef değerdir.</translation>
     </message>
     <message>
-        <location line="-73"/>
+        <location line="+33"/>
+        <source>Clipboard sharing is unavailable on the selected computer.</source>
+        <translation>Clipboard paylaşımı seçilen bilgisayarda mevcut değildir.</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>The selected computer shares its current desktop.</source>
+        <translation>Seçilen bilgisayar mevcut masaüstünü paylaşır.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>The selected computer&apos;s video does not include a cursor.</source>
+        <translation>Seçilen bilgisayarın videosu bir kursör içermez.</translation>
+    </message>
+    <message>
+        <location line="-119"/>
         <source>Current desktop</source>
         <translation>Geçerli masaüstü</translation>
     </message>
@@ -8621,14 +9650,14 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
 <context>
     <name>RemoteDesktopWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+89"/>
-        <location line="+209"/>
-        <location line="+313"/>
+        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+124"/>
+        <location line="+222"/>
+        <location line="+320"/>
         <source>Remote Desktop</source>
         <translation>Uzak Masaüstü</translation>
     </message>
     <message>
-        <location line="-509"/>
+        <location line="-529"/>
         <source>View or control an existing desktop through its authorized native provider.</source>
         <translation>Yetkili yerel sağlayıcısı üzerinden mevcut bir masaüstünü görüntüleyin veya denetleyin.</translation>
     </message>
@@ -8710,7 +9739,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>Bağlı kal</translation>
     </message>
     <message>
-        <location line="+39"/>
+        <location line="+52"/>
         <source>Some settings will apply on the next connection.</source>
         <translation>Bazı ayarlar sonraki bağlantıda uygulanacak.</translation>
     </message>
@@ -8750,14 +9779,14 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>%1 (eşleştirme güncellemesi gerekiyor)</translation>
     </message>
     <message>
-        <location line="+63"/>
-        <source>No paired computers are available. Add a computer in Machines.</source>
-        <translation>Kullanılabilir eşleştirilmiş bilgisayar yok. Makineler bölümünden bir bilgisayar ekleyin.</translation>
+        <location line="+68"/>
+        <source>Choose a paired computer.</source>
+        <translation>Eşleştirilmiş bir bilgisayar seçin.</translation>
     </message>
     <message>
         <location line="+0"/>
-        <source>Choose a paired computer.</source>
-        <translation>Eşleştirilmiş bir bilgisayar seçin.</translation>
+        <source>No paired computers are available. Add a computer in Environments.</source>
+        <translation>Hiçbir bilgisayar mevcut değildir.Bir bilgisayar ekleyin Çevre.</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -8801,22 +9830,27 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>Geçersiz masaüstü hazır olma durumu kataloğu.</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+29"/>
         <source>The selected desktop identity or permission changed. Refresh and connect again.</source>
         <translation>Seçilen masaüstünün kimliği veya izni değişti. Yenileyip yeniden bağlanın.</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+26"/>
+        <source>Opening the selected desktop with administrator control…</source>
+        <translation>Seçilen masaüstüyi yönetici kontrolü ile açmak...</translation>
+    </message>
+    <message>
+        <location line="+1"/>
         <source>Opening the selected desktop…</source>
         <translation>Seçilen masaüstü açılıyor…</translation>
     </message>
     <message>
-        <location line="-401"/>
+        <location line="-427"/>
         <source>Disconnected locally. The native provider reports any unconfirmed remote cleanup.</source>
         <translation>Yerel bağlantı kesildi. Yerel sağlayıcı, doğrulanmamış uzak temizleme işlemlerini bildirir.</translation>
     </message>
     <message>
-        <location line="+412"/>
+        <location line="+438"/>
         <source>Closing the selected desktop…</source>
         <translation>Seçili masaüstü kapatılıyor…</translation>
     </message>
@@ -8849,7 +9883,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>Uzak makine kataloğu kullanılamıyor.</translation>
     </message>
     <message>
-        <location line="+66"/>
+        <location line="+70"/>
         <source>Remote result does not match the captured operation.</source>
         <translation>Uzak sonuç, yakalanan işlemle eşleşmiyor.</translation>
     </message>
@@ -8859,7 +9893,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>Özgün uzak işlemin iptali istendi. Yazma işlemini yeniden denemeden önce durumu yenileyin.</translation>
     </message>
     <message>
-        <location line="-157"/>
+        <location line="-161"/>
         <source>Cannot retain remote mutation recovery metadata. Resolve saved operations or repair settings before another write.</source>
         <translation>Uzak değişikliğin kurtarma üst verileri saklanamıyor. Başka bir yazma işleminden önce kayıtlı işlemleri çözümleyin veya ayarları onarın.</translation>
     </message>
@@ -8912,7 +9946,7 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
 <context>
     <name>RemoteFeatureRecoveryDialog</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteFeatureRecoveryDialog.cpp" line="+62"/>
+        <location filename="../src/remote/presentation/RemoteFeatureRecoveryDialog.cpp" line="+63"/>
         <source>Choose a retained operation.</source>
         <translation>Saklanan bir işlem seçin.</translation>
     </message>
@@ -8922,17 +9956,17 @@ Mermaid önizleme sınırı: İlk 16 diyagramdan sonrakiler kaynak olarak göste
         <translation>Kapat</translation>
     </message>
     <message>
-        <location line="+148"/>
+        <location line="+165"/>
         <source>Contacting the original captured machine…</source>
         <translation>Kaydedilen asıl makineye bağlanılıyor…</translation>
     </message>
     <message>
-        <location line="-180"/>
+        <location line="-197"/>
         <source>Inspect the original operation before another write. Cancellation does not prove that a mutation had no effect.</source>
         <translation>Başka bir yazma işleminden önce asıl işlemi inceleyin. İptal, bir değişikliğin etkisiz kaldığını kanıtlamaz.</translation>
     </message>
     <message>
-        <location line="+146"/>
+        <location line="+155"/>
         <source>Machine: %1
 Fingerprint: %2
 Generation: %3
@@ -8948,17 +9982,17 @@ Eylem: %5
     </message>
     <message>
         <location line="-1"/>
-        <location line="+18"/>
+        <location line="+20"/>
         <source>No uncertain mutations are retained.</source>
         <translation>Saklanan belirsiz değişiklik yok.</translation>
     </message>
     <message>
-        <location line="+77"/>
+        <location line="+85"/>
         <source>Original operation status: %1. No operation was replayed.</source>
         <translation>Asıl işlem durumu: %1. Hiçbir işlem yeniden yürütülmedi.</translation>
     </message>
     <message>
-        <location line="-222"/>
+        <location line="-241"/>
         <source>Refresh status</source>
         <translation>Durumu yenile</translation>
     </message>
@@ -8968,30 +10002,30 @@ Eylem: %5
         <translation>İptal iste</translation>
     </message>
     <message>
-        <location line="+144"/>
-        <location line="+47"/>
+        <location line="+155"/>
+        <location line="+53"/>
         <location line="+22"/>
         <source>The mutation outcome remains uncertain. Refresh its original status before another write.</source>
         <translation>Değişikliğin sonucu belirsizliğini koruyor. Başka bir yazma işleminden önce asıl durumunu yenileyin.</translation>
     </message>
     <message>
-        <location line="+36"/>
+        <location line="+39"/>
         <source>Uncertain operations…</source>
         <translation>Belirsiz işlemler…</translation>
     </message>
     <message>
-        <location line="-272"/>
+        <location line="-292"/>
         <source>Uncertain remote operations</source>
         <translation>Belirsiz uzak işlemler</translation>
     </message>
     <message>
-        <location line="+243"/>
+        <location line="+262"/>
         <source>unknown</source>
         <translation>bilinmiyor</translation>
     </message>
     <message>
-        <location line="-79"/>
-        <location line="+43"/>
+        <location line="-87"/>
+        <location line="+49"/>
         <location line="+24"/>
         <location line="+7"/>
         <source>Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write.</source>
@@ -9008,27 +10042,27 @@ Eylem: %5
         <translation>Kapsayıcı terminalinin temizliği, kaydedilen asıl oturum için doğrulandı.</translation>
     </message>
     <message>
-        <location line="-179"/>
+        <location line="-196"/>
         <source>Explicitly remove the original exact container after native client cleanup. Requires the worker&apos;s independent Docker recovery grant. Volumes and images are retained.</source>
         <translation>Yerel istemci temizliğinden sonra tam olarak asıl kapsayıcıyı açıkça kaldırın. Çalışanın bağımsız Docker kurtarma iznini gerektirir. Birimler ve imajlar korunur.</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+23"/>
         <source>Remove container %1 on %2 to fence delayed daemon work for operation %3? This removes the container and its writable layer. Volumes and images are retained. The original mutation outcome remains unknown.</source>
         <translation>%3 işlemi için gecikmiş arka plan hizmeti çalışmalarını engellemek üzere %2 üzerindeki %1 kapsayıcısı kaldırılsın mı? Bu işlem kapsayıcıyı ve yazılabilir katmanını kaldırır. Birimler ve imajlar korunur. Asıl değişikliğin sonucu hâlâ bilinmiyor.</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-25"/>
         <source>Retire container…</source>
         <translation>Kapsayıcıyı kullanımdan kaldır…</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+24"/>
         <source>Retire the captured container?</source>
         <translation>Kaydedilen kapsayıcı kullanımdan kaldırılsın mı?</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-25"/>
         <source>Revoke the original invocation and verify its native cleanup evidence. Boot-fenced workers require a host reboot for uncertain process-backed operations. The mutation outcome remains unknown.</source>
         <translation>Asıl çağrıyı iptal edin ve yerel temizlik kanıtını doğrulayın. Önyüklemeyle sınırlandırılmış çalışanlarda, belirsiz süreç tabanlı işlemler için ana makinenin yeniden başlatılması gerekir. Değişikliğin sonucu hâlâ bilinmiyor.</translation>
     </message>
@@ -9038,9 +10072,14 @@ Eylem: %5
         <translation>Temizliği doğrula</translation>
     </message>
     <message>
-        <location line="+154"/>
+        <location line="+171"/>
         <source>Refreshing the worker&apos;s retained terminal metadata. No cleanup was requested.</source>
         <translation>Çalışanın sakladığı terminal üst verileri yenileniyor. Temizlik istenmedi.</translation>
+    </message>
+    <message>
+        <location line="+62"/>
+        <source>The original operation was cancelled. Refresh the affected state before another write.</source>
+        <translation>İlk işlem iptal edildi. Yeniden yazmadan önce etkilenen durumu yenileyin.</translation>
     </message>
 </context>
 <context>
@@ -9370,7 +10409,7 @@ Eylem: %5
 <context>
     <name>RemoteWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteWidget.cpp" line="+133"/>
+        <location filename="../src/remote/presentation/RemoteWidget.cpp" line="+172"/>
         <location line="+21"/>
         <source>Show details</source>
         <translation>Ayrıntıları göster</translation>
@@ -9386,14 +10425,14 @@ Eylem: %5
         <translation>Ayrıntıları gizle</translation>
     </message>
     <message>
-        <location line="+60"/>
-        <location line="+32"/>
-        <location line="+706"/>
+        <location line="+65"/>
+        <location line="+33"/>
+        <location line="+872"/>
         <source>Machines</source>
         <translation>Makineler</translation>
     </message>
     <message>
-        <location line="-737"/>
+        <location line="-904"/>
         <source>Pairing and access relationships · Connection health is not checked here</source>
         <translation>Eşleştirme ve erişim ilişkileri · Bağlantı durumu burada denetlenmez</translation>
     </message>
@@ -9404,25 +10443,25 @@ Eylem: %5
     </message>
     <message>
         <location line="+16"/>
-        <location line="+720"/>
+        <location line="+887"/>
         <source>Machine setup</source>
         <translation>Makine kurulumu</translation>
     </message>
     <message>
-        <location line="-706"/>
+        <location line="-872"/>
         <source>Manage trusted computers and workflow access.</source>
         <translation>Güvenilen bilgisayarları ve iş akışı erişimini yönetin.</translation>
     </message>
     <message>
         <location line="+2"/>
-        <location line="+61"/>
-        <location line="+212"/>
-        <location line="+430"/>
+        <location line="+62"/>
+        <location line="+216"/>
+        <location line="+591"/>
         <source>Add machine</source>
         <translation>Makine ekle</translation>
     </message>
     <message>
-        <location line="-692"/>
+        <location line="-858"/>
         <source>Canvas</source>
         <translation>Tuval</translation>
     </message>
@@ -9442,18 +10481,18 @@ Eylem: %5
         <translation>Makineler liste görünümü</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+48"/>
         <source>Refresh</source>
         <translation>Yenile</translation>
     </message>
     <message>
         <location line="+3"/>
-        <location line="+432"/>
+        <location line="+475"/>
         <source>Connection settings</source>
         <translation>Bağlantı ayarları</translation>
     </message>
     <message>
-        <location line="-421"/>
+        <location line="-463"/>
         <source>Remote connection</source>
         <translation>Uzak bağlantı</translation>
     </message>
@@ -9474,13 +10513,13 @@ Eylem: %5
     </message>
     <message>
         <location line="+16"/>
-        <location line="+334"/>
-        <location line="+266"/>
+        <location line="+343"/>
+        <location line="+421"/>
         <source>Connect this computer</source>
         <translation>Bu bilgisayarı bağla</translation>
     </message>
     <message>
-        <location line="-596"/>
+        <location line="-760"/>
         <source>Checking remote access lock status…</source>
         <translation>Uzaktan erişim kilit durumu denetleniyor…</translation>
     </message>
@@ -9496,12 +10535,12 @@ Eylem: %5
     </message>
     <message>
         <location line="+10"/>
-        <location line="+239"/>
+        <location line="+247"/>
         <source>Machine</source>
         <translation>Makine</translation>
     </message>
     <message>
-        <location line="-239"/>
+        <location line="-247"/>
         <source>Access</source>
         <translation>Erişim</translation>
     </message>
@@ -9537,34 +10576,34 @@ Eylem: %5
     </message>
     <message>
         <location line="+1"/>
-        <location line="+657"/>
+        <location line="+830"/>
         <source>Paired</source>
         <translation>Eşleştirildi</translation>
     </message>
     <message>
-        <location line="-656"/>
+        <location line="-829"/>
         <source>Invitations</source>
         <translation>Davetler</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+662"/>
+        <location line="+836"/>
         <source>Access removed</source>
         <translation>Erişim kaldırıldı</translation>
     </message>
     <message>
-        <location line="-659"/>
+        <location line="-833"/>
         <source>Refresh to load managed machines.</source>
         <translation>Yönetilen makineleri yüklemek için yenileyin.</translation>
     </message>
     <message>
         <location line="+9"/>
-        <location line="+1079"/>
+        <location line="+1270"/>
         <source>Select a machine to view its settings.</source>
         <translation>Ayarlarını görmek için bir makine seçin.</translation>
     </message>
     <message>
-        <location line="-1075"/>
+        <location line="-1266"/>
         <source>Configure this computer…</source>
         <translation>Bu bilgisayarı yapılandır…</translation>
     </message>
@@ -9626,20 +10665,21 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+8"/>
-        <location line="+343"/>
-        <location line="+433"/>
+        <location line="+435"/>
+        <location line="+519"/>
         <source>Set up remote access…</source>
         <translation>Uzaktan erişimi ayarla…</translation>
     </message>
     <message>
-        <location line="-759"/>
-        <location line="+165"/>
-        <location line="+133"/>
+        <location line="-934"/>
+        <location line="+170"/>
+        <location line="+212"/>
+        <location line="+208"/>
         <source>← Machines</source>
         <translation>← Makineler</translation>
     </message>
     <message>
-        <location line="-276"/>
+        <location line="-568"/>
         <source>Add another computer</source>
         <translation>Başka bir bilgisayar ekle</translation>
     </message>
@@ -9655,12 +10695,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+3"/>
-        <location line="+442"/>
+        <location line="+608"/>
         <source>Start pairing</source>
         <translation>Eşleştirmeyi başlat</translation>
     </message>
     <message>
-        <location line="-437"/>
+        <location line="-603"/>
         <source>Connect this computer instead</source>
         <translation>Bunun yerine bu bilgisayarı bağla</translation>
     </message>
@@ -9675,12 +10715,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>Diğer bilgisayarda</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>Open Dockpipe → Machines → Add machine → Connect this computer instead. Enter this address and request pairing.</source>
-        <translation>Dockpipe → Makineler → Makine ekle → Bunun yerine bu bilgisayarı bağla&apos;yı açın. Bu adresi girip eşleştirme isteyin.</translation>
-    </message>
-    <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Copy address</source>
         <translation>Adresi kopyala</translation>
     </message>
@@ -9691,12 +10726,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+3"/>
-        <location line="+601"/>
+        <location line="+775"/>
         <source>Review request</source>
         <translation>İsteği incele</translation>
     </message>
     <message>
-        <location line="-597"/>
+        <location line="-771"/>
         <source>Check again</source>
         <translation>Yeniden denetle</translation>
     </message>
@@ -9721,7 +10756,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>İsteği seçip kodunu diğer bilgisayardakiyle karşılaştırın. Yalnızca kodlar eşleşirse onaylayın.</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+7"/>
         <source>Verification code</source>
         <translation>Doğrulama kodu</translation>
     </message>
@@ -9757,11 +10792,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+1"/>
+        <location line="+119"/>
         <source>Done</source>
         <translation>Tamam</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="-106"/>
         <source>1 of 3 · Prepare</source>
         <translation>1 / 3 · Hazırlık</translation>
     </message>
@@ -9781,22 +10817,22 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>Eşleştirme tamamlandı</translation>
     </message>
     <message>
-        <location line="+24"/>
+        <location line="+25"/>
         <source>Enter the address shown on the computer you are connecting to.</source>
         <translation>Bağlayacağınız bilgisayarda gösterilen adresi girin.</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+5"/>
         <source>https://your-broker.example.com</source>
         <translation>https://your-broker.example.com</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+5"/>
         <source>Remote address</source>
         <translation>Uzak adres</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+2"/>
         <source>Name for this computer</source>
         <translation>Bu bilgisayarın adı</translation>
     </message>
@@ -9806,12 +10842,22 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>Yönetici bilgisayardan gelen iş akışlarının kullanıcım olarak çalışmasına izin ver</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+3"/>
         <source>Connect only to a computer you trust. Its workflows run as your user and can access your files and tools.</source>
         <translation>Yalnızca güvendiğiniz bilgisayarlara bağlanın. Bu bilgisayarın iş akışları kullanıcınız olarak çalışır ve dosyalarınıza ve araçlarınıza erişebilir.</translation>
     </message>
     <message>
         <location line="+1"/>
+        <source>Allow Terminal access as my user</source>
+        <translation>Terminal Kullanıcı olarak erişimi izin verin</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Terminal opens in your home folder and runs with your account&apos;s permissions.</source>
+        <translation>Terminal ev klasörünüzde açılır ve hesabınızın izinleri ile çalışır.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>After approval, Dockpipe starts a background worker service for your user so this computer can receive workflows.</source>
         <translation>Onaydan sonra Dockpipe, bu bilgisayarın iş akışı alabilmesi için kullanıcınız adına bir arka plan çalışan hizmeti başlatır.</translation>
     </message>
@@ -9821,17 +10867,12 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>Eşleştirme iste</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+22"/>
         <source>Waiting for approval. Compare the code below on the managing computer.</source>
         <translation>Onay bekleniyor. Aşağıdaki kodu yönetici bilgisayardakiyle karşılaştırın.</translation>
     </message>
     <message>
-        <location line="+7"/>
-        <source>Already paired? Recovery options</source>
-        <translation>Zaten eşleştirildi mi? Kurtarma seçenekleri</translation>
-    </message>
-    <message>
-        <location line="+6"/>
+        <location line="+13"/>
         <source>Restart receiving workflows without pairing again. Keep this computer awake while work runs.</source>
         <translation>Yeniden eşleştirmeden iş akışı almayı yeniden başlatın. Çalışma sırasında bu bilgisayarı açık tutun.</translation>
     </message>
@@ -9841,7 +10882,18 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>Çalışan hizmetini başlat</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+2"/>
+        <location line="+6"/>
+        <source>Enable Terminal</source>
+        <translation>Terminal Kullanımı</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Allow the managing computer to open a shell with your account&apos;s permissions, starting in your home folder? Dockpipe will briefly restart the background worker.</source>
+        <translation>Yönetici bilgisayarınızın hesabınızın izinleri ile bir şelale açmasına izin verin, ev klasörünüzde başlayın mı? Dockpipe kısa sürede arka plan çalışanı yeniden başlatır.</translation>
+    </message>
+    <message>
+        <location line="+23"/>
         <source>Connection settings · Update available</source>
         <translation>Bağlantı ayarları · Güncelleme var</translation>
     </message>
@@ -9886,22 +10938,52 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>Hizmet güncellemesi tamamlanmadı. Eşleştirme korundu. Ayrıntıları inceleyin ve ardından Hizmeti güncelle&apos;yi yeniden deneyin.</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <source>Worker service started. Choose this computer under Run on from your managing computer.</source>
-        <translation>Çalışan hizmeti başlatıldı. Yönetici bilgisayarınızdan Çalıştırılacağı yer menüsünde bu bilgisayarı seçin.</translation>
-    </message>
-    <message>
-        <location line="+1"/>
+        <location line="+10"/>
         <source>Could not start the worker service. Your pairing is preserved. See details, then choose Start worker service to retry.</source>
         <translation>Çalışan hizmeti başlatılamadı. Eşleştirmeniz korundu. Ayrıntıları inceleyin ve yeniden denemek için Çalışan hizmetini başlat&apos;ı seçin.</translation>
     </message>
     <message>
         <location line="+2"/>
+        <source>Background worker startup requested. Terminal setup failed. Use Manage access to retry.</source>
+        <translation>Arka plan çalışanı başlangıç istendi. terminal ayarları başarısız oldu. kullanın Emeklilik için erişim yönetimi.</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Pairing is complete. Windows could not start administrator input approval.</source>
+        <translation>Windows, yönetici giriş onayını başlatamaz.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
         <source>Starting the background worker service…</source>
         <translation>Arka plan çalışan hizmeti başlatılıyor…</translation>
     </message>
     <message>
         <location line="+11"/>
+        <source>Dockpipe could not enable Terminal. See details in Connection setup.</source>
+        <translation>Dockpipe Terminal'ı etkinleştiremezdi. bağlantı ayarlarında ayrıntıları görün.</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Terminal access enabled. Refresh Terminal on the managing computer.</source>
+        <translation>Terminal erişimi etkinleştirildi. Terminal yönetici bilgisayarda yenileme.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Terminal access is saved. Start the worker service to bring it online.</source>
+        <translation>Terminal erişimi kaydedilir. online getirmek için işçi hizmeti başlatın.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Restarting the background worker…</source>
+        <translation>Arka plan işçisini yeniden başlatmak...</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Enabling Terminal access…</source>
+        <translation>Terminal erişiminin sağlanması...</translation>
+    </message>
+    <message>
+        <location line="+16"/>
         <location line="+47"/>
         <source>Set up remote access</source>
         <translation>Uzaktan erişimi ayarla</translation>
@@ -9928,12 +11010,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+3"/>
-        <location line="+435"/>
+        <location line="+521"/>
         <source>Install provider…</source>
         <translation>Sağlayıcı yükle…</translation>
     </message>
     <message>
-        <location line="-425"/>
+        <location line="-511"/>
         <source>Check connection</source>
         <translation>Bağlantıyı denetle</translation>
     </message>
@@ -9948,12 +11030,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>%1, %2 kullanılarak ayarlansın mı? Bu işlem bağımlılıklar yükleyebilir, genel tünel ve DNS kaydı oluşturabilir ve aracı kullanıcı hizmeti başlatabilir.</translation>
     </message>
     <message>
-        <location line="+13"/>
-        <source>Continue setup in the terminal. When it finishes, return to Machines and refresh to check access.</source>
-        <translation>Kuruluma terminalde devam edin. Tamamlandığında Makineler&apos;e dönüp erişimi denetlemek için yenileyin.</translation>
-    </message>
-    <message>
-        <location line="+4"/>
+        <location line="+18"/>
         <source>Pairing security keys</source>
         <translation>Eşleştirme güvenlik anahtarları</translation>
     </message>
@@ -9998,12 +11075,17 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>Güvenlik anahtarı kaydı tamamlanmadı. Yeniden denemeden önce ayrıntıları denetleyin.</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+114"/>
+        <source>← Environments</source>
+        <translation>← Çevre</translation>
+    </message>
+    <message>
+        <location line="+6"/>
         <source>Connection setup</source>
         <translation>Bağlantı kurulumu</translation>
     </message>
     <message>
-        <location line="+34"/>
+        <location line="+39"/>
         <source>Set up connection</source>
         <translation>Bağlantıyı ayarla</translation>
     </message>
@@ -10013,7 +11095,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>Çalışıyor…</translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location line="+21"/>
         <source>Could not complete this step. See details for the error; saved setup is preserved.</source>
         <translation>Bu adım tamamlanamadı. Hata ayrıntılarını inceleyin; kaydedilmiş kurulum korundu.</translation>
     </message>
@@ -10023,12 +11105,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>Yönetilen makineler yüklenemedi. Yeniden deneyin veya önceden kurduğunuz bir makineye katılmak için Bunun yerine bu bilgisayarı bağla&apos;yı kullanın.</translation>
     </message>
     <message>
-        <location line="+17"/>
-        <source>Allowed to receive workflows</source>
-        <translation>İş akışı almasına izin verildi</translation>
-    </message>
-    <message>
-        <location line="+3"/>
+        <location line="+23"/>
         <source>Invitation created</source>
         <translation>Davet oluşturuldu</translation>
     </message>
@@ -10043,7 +11120,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>Erişimi geri yüklemek için yeniden eşleştirin</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+13"/>
         <source>Settings</source>
         <translation>Ayarlar</translation>
     </message>
@@ -10063,7 +11140,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>Buraya bir bilgisayar ekleyin, ardından iş akışı başlatırken seçin.</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+17"/>
         <source>Remote access lock status unavailable: %1</source>
         <translation>Uzaktan erişim kilit durumu kullanılamıyor: %1</translation>
     </message>
@@ -10176,12 +11253,7 @@ Approve only if you can verify it on that machine.</source>
 Yalnızca o makinede doğrulayabiliyorsanız onaylayın.</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <source>%1 is paired. On that computer, choose Start worker service to receive workflows.</source>
-        <translation>%1 eşleştirildi. İş akışı almak için o bilgisayarda Çalışan hizmetini başlat&apos;ı seçin.</translation>
-    </message>
-    <message>
-        <location line="+1"/>
+        <location line="+10"/>
         <source>Request from %1 denied.</source>
         <translation>%1 kaynağından gelen istek reddedildi.</translation>
     </message>
@@ -10312,12 +11384,27 @@ Sağlayıcı yönetici bilgisayarda yapılandırılmış.</translation>
         <translation>Bu aracı için çalışan yapılandırıldı; bağlantı doğrulanmadı</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+8"/>
+        <source>Pairing · %1</source>
+        <translation>Çift · %1</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Unknown</source>
+        <translation>Bilinmiyor</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Machine fingerprint · %1…</source>
+        <translation>Makine parmak izi · %1 ...</translation>
+    </message>
+    <message>
+        <location line="+3"/>
         <source>Access relationship: %1</source>
         <translation>Erişim ilişkisi: %1</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+52"/>
         <source>Managed machine inventory is unavailable. Refresh to check access.</source>
         <translation>Yönetilen makine envanteri kullanılamıyor. Erişimi denetlemek için yenileyin.</translation>
     </message>
@@ -10347,22 +11434,23 @@ Sağlayıcı yönetici bilgisayarda yapılandırılmış.</translation>
         <translation>%2 makineden %1 tanesi</translation>
     </message>
     <message>
-        <location line="+23"/>
+        <location line="+21"/>
         <source>%1 settings</source>
         <translation>%1 ayarları</translation>
     </message>
     <message>
-        <location line="+29"/>
+        <location line="+32"/>
+        <source>Machine fingerprint · %1</source>
+        <translation>Makine parmak izi · %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>%1 · %2
 
-%3
-
-Connection health is not checked here.</source>
+%3</source>
         <translation>%1 · %2
 
-%3
-
-Bağlantı durumu burada denetlenmez.</translation>
+%3</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -10398,6 +11486,56 @@ This machine is no longer in the available inventory.</source>
         <translation>%1
 
 Bu makine artık kullanılabilir envanterde değil.</translation>
+    </message>
+    <message>
+        <location line="-987"/>
+        <source>Enter a valid remote address starting with https://.</source>
+        <translation>https:// ile başlayan geçerli bir uzak adres girin.</translation>
+    </message>
+    <message>
+        <location line="-123"/>
+        <source>In Dockpipe, open connection setup for that computer, select Connect this computer, then enter this address and request pairing.</source>
+        <translation>Dockpipe , bu bilgisayar için bağlantı ayarlarını açın, Bu bilgisayara Bağlan seçeneğini seçin, ardından bu adresi girin ve çiftleşmeyi isteyin.</translation>
+    </message>
+    <message>
+        <location line="+44"/>
+        <source>Connect a physical FIDO2 security key to this computer before approving. If you have not registered a key, use Register pairing key in connection setup.</source>
+        <translation>Onaylamadan önce bu bilgisayara fiziksel bir FIDO2 güvenlik anahtarı takın. Henüz bir anahtar kaydetmediyseniz bağlantı ayarlarında “Eşleştirme anahtarını kaydet” seçeneğini kullanın.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>No accessible security key was detected. Plug in your registered key and try again. If it is already connected, check your device permissions.</source>
+        <translation>Erişilebilir bir güvenlik anahtarı bulunamadı. Kayıtlı anahtarınızı takıp tekrar deneyin. Anahtar zaten takılıysa cihaz izinlerini kontrol edin.</translation>
+    </message>
+    <message>
+        <location line="+94"/>
+        <source>The managing computer needs a registered physical FIDO2 security key to approve pairing.</source>
+        <translation>Yöneten bilgisayarın eşleştirmeyi onaylaması için kayıtlı bir fiziksel FIDO2 güvenlik anahtarı gerekir.</translation>
+    </message>
+    <message>
+        <location line="+32"/>
+        <source>Already paired? Manage access</source>
+        <translation>Şimdiden yapıştırılmış mı? erişim yönetimi</translation>
+    </message>
+    <message>
+        <location line="+219"/>
+        <source>Continue setup in the terminal. When it finishes, choose Check connection.</source>
+        <translation>Terminal'de ayarlanmaya devam edin. bittiğinde, Bağlantı Kontrolü'nü seçin.</translation>
+    </message>
+    <message>
+        <location line="+266"/>
+        <source>Broker enrollment is active.</source>
+        <translation>Broker kayıtları aktif.</translation>
+    </message>
+    <message>
+        <location line="+165"/>
+        <source>%1 is paired. Start the worker on that computer to receive workflows.</source>
+        <translation>%1 eşleştirildi. İş akışlarını almak için o bilgisayarda çalışanı başlatın.</translation>
+    </message>
+    <message>
+        <location line="-552"/>
+        <source>Background worker startup requested. Check this computer under Run on from your managing computer.</source>
+        <translation>Arka plan çalışanının başlatılması istendi. Bu bilgisayarı yönetici bilgisayarınızdaki Çalıştırılacak yer bölümünde kontrol edin.</translation>
     </message>
 </context>
 <context>
@@ -10528,7 +11666,7 @@ Bu makine artık kullanılabilir envanterde değil.</translation>
 <context>
     <name>SessionManager</name>
     <message>
-        <location filename="../src/execution/infrastructure/SessionManager.cpp" line="+147"/>
+        <location filename="../src/execution/infrastructure/SessionManager.cpp" line="+170"/>
         <location line="+34"/>
         <source>Workflow output exceeded the consumer&apos;s line capacity.</source>
         <translation>İş akışı çıktısı, tüketicinin satır kapasitesini aştı.</translation>
@@ -11260,13 +12398,14 @@ Bu makine artık kullanılabilir envanterde değil.</translation>
 <context>
     <name>TerminalHub</name>
     <message>
-        <location filename="../src/terminal/application/TerminalHub.cpp" line="+46"/>
-        <location line="+75"/>
+        <location filename="../src/terminal/application/TerminalHub.cpp" line="+48"/>
+        <location line="+48"/>
+        <location line="+57"/>
         <source>Eight terminals are already open. Close one before opening another.</source>
         <translation>Sekiz terminal zaten açık. Başka bir tane açmadan önce birini kapatın.</translation>
     </message>
     <message>
-        <location line="-60"/>
+        <location line="-90"/>
         <source>This shell is no longer available. Refresh the shell list and try again.</source>
         <translation>Bu kabuk artık kullanılamıyor. Kabuk listesini yenileyip yeniden deneyin.</translation>
     </message>
@@ -11281,13 +12420,19 @@ Bu makine artık kullanılabilir envanterde değil.</translation>
         <translation>Ana bilgisayar kabuğu yok. Flatpak ana bilgisayar erişimini denetleyip kabuk listesini yenileyin.</translation>
     </message>
     <message>
-        <location line="+14"/>
-        <location line="+55"/>
+        <location line="+10"/>
+        <location line="+32"/>
+        <location line="+57"/>
         <source>Terminal %1 · %2</source>
         <translation>Terminal %1 · %2</translation>
     </message>
     <message>
-        <location line="+65"/>
+        <location line="-67"/>
+        <source>The container terminal target is unavailable.</source>
+        <translation>Konteyner terminal hedefi mevcut değildir.</translation>
+    </message>
+    <message>
+        <location line="+132"/>
         <location line="+32"/>
         <source>This terminal session is closed.</source>
         <translation>Bu terminal oturumu kapalı.</translation>
@@ -11832,12 +12977,17 @@ $ Sonraki komutunuz için hazır</translation>
 <context>
     <name>TerminalWidget</name>
     <message>
-        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+84"/>
+        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+92"/>
         <source>Terminal</source>
         <translation>Terminal</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+6"/>
+        <source>Terminal target</source>
+        <translation>Terminal Hedef</translation>
+    </message>
+    <message>
+        <location line="+23"/>
         <source>Shells and sessions</source>
         <translation>Kabuklar ve oturumlar</translation>
     </message>
@@ -11874,12 +13024,12 @@ $ Sonraki komutunuz için hazır</translation>
     </message>
     <message>
         <location line="+6"/>
-        <location line="+541"/>
+        <location line="+742"/>
         <source>Restart DockPipe to enable desktop transparency. Your desktop must support compositing.</source>
         <translation>Masaüstü saydamlığını etkinleştirmek için DockPipe&apos;ı yeniden başlatın. Masaüstünüz birleştirmeyi desteklemelidir.</translation>
     </message>
     <message>
-        <location line="-532"/>
+        <location line="-733"/>
         <source>No terminals open</source>
         <translation>Açık terminal yok</translation>
     </message>
@@ -11910,12 +13060,17 @@ $ Sonraki komutunuz için hazır</translation>
         <translation>Yüklü ana bilgisayar kabukları bulunuyor…</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+10"/>
+        <source>The selected terminal target is unavailable.</source>
+        <translation>Seçilen terminal hedefi mevcut değildir.</translation>
+    </message>
+    <message>
+        <location line="+27"/>
         <source>Default shell</source>
         <translation>Varsayılan kabuk</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+9"/>
         <source>New default shell</source>
         <translation>Yeni varsayılan kabuk</translation>
     </message>
@@ -11930,7 +13085,40 @@ $ Sonraki komutunuz için hazır</translation>
         <translation>Yeni %1</translation>
     </message>
     <message>
-        <location line="+116"/>
+        <location line="+135"/>
+        <location line="+3"/>
+        <source>This computer</source>
+        <translation>Bu bilgisayar</translation>
+    </message>
+    <message>
+        <location line="+30"/>
+        <source>Terminal unavailable</source>
+        <translation>Terminal mevcut değil</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Remote access locked</source>
+        <translation>uzaktan erişim kilitlenmiş</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+11"/>
+        <location line="+8"/>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <location line="-2"/>
+        <source>%1 · Container</source>
+        <translation>%1 · Konteyner</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · Kullanılamıyor</translation>
+    </message>
+    <message>
+        <location line="+120"/>
         <source>Choose a terminal…</source>
         <translation>Bir terminal seçin…</translation>
     </message>
@@ -12572,12 +13760,12 @@ Dosya diskte değişmiş olabilir. Taslağınız korundu; yeniden denemeden önc
         <translation>Başlat</translation>
     </message>
     <message>
-        <location line="+134"/>
+        <location line="+135"/>
         <source>Start</source>
         <translation>Başlat</translation>
     </message>
     <message>
-        <location line="+111"/>
+        <location line="+113"/>
         <source>Inputs</source>
         <translation>Girdiler</translation>
     </message>
@@ -13394,7 +14582,7 @@ Yonga yüksekliği, okunabilirlik için sınırlandırılmış logaritmik dosya 
 <context>
     <name>WorkspaceMachineMenu</name>
     <message>
-        <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="+55"/>
+        <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="+62"/>
         <location line="+42"/>
         <source>Follow main machine</source>
         <translation>Ana makineyi izle</translation>
@@ -13423,12 +14611,13 @@ Yonga yüksekliği, okunabilirlik için sınırlandırılmış logaritmik dosya 
     </message>
     <message>
         <location line="+2"/>
-        <location line="+36"/>
+        <location line="+40"/>
+        <location line="+22"/>
         <source> · Unavailable</source>
         <translation> · Kullanılamıyor</translation>
     </message>
     <message>
-        <location line="-16"/>
+        <location line="-41"/>
         <source>Unlock remote access…</source>
         <translation>Uzak erişimin kilidini aç…</translation>
     </message>
@@ -13438,12 +14627,22 @@ Yonga yüksekliği, okunabilirlik için sınırlandırılmış logaritmik dosya 
         <translation>Kullanılabilir uzak çalışma alanı yok</translation>
     </message>
     <message>
-        <location line="+30"/>
+        <location line="+34"/>
         <source>Containers</source>
         <translation>Kapsayıcılar</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+12"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · Kullanılamıyor</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>%1 · Locked</source>
+        <translation>%1 · Kapalı</translation>
+    </message>
+    <message>
+        <location line="+4"/>
         <source>Refresh machines</source>
         <translation>Makineleri yenile</translation>
     </message>

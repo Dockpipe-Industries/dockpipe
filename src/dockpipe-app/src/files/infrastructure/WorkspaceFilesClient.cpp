@@ -33,7 +33,7 @@ bool WorkspaceFilesClient::Context::operator==(const Context &other) const
 {
     return kind == other.kind && localRoot == other.localRoot && nodeId == other.nodeId
         && fingerprint == other.fingerprint && workerGeneration == other.workerGeneration
-        && rootId == other.rootId && generation == other.generation;
+        && rootId == other.rootId && generation == other.generation && writeGranted == other.writeGranted;
 }
 
 WorkspaceFilesClient::WorkspaceFilesClient(QObject *parent)

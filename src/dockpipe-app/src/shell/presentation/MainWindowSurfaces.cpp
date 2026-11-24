@@ -1,11 +1,14 @@
 #include "MainWindow.h"
+#include "WorkspaceNavigationList.h"
 #include "PackageSurfacePage.h"
 #include "DockpipeChoices.h"
 #include "DashboardPage.h"
 #include "DashboardWidgetFactory.h"
+#include "EnvironmentsPage.h"
 
 #include <QAction>
 #include <QActionGroup>
+#include <QDir>
 #include <QListWidget>
 #include <QUuid>
 #include <memory>
@@ -43,24 +46,42 @@ void MainWindow::syncPackageSurfaces(const QVector<ResolverMeta> &providers)
             page = new PackageSurfacePage(m_sessions);
             page->setProperty("surfaceId", group.key());
             m_surfacePages.insert(group.key(), page);
-            const int index = m_stack->addWidget(page);
-            auto *item = new QListWidgetItem(group.value().first().surface.title);
-            item->setData(Qt::UserRole, index);
-            item->setData(Qt::UserRole + 2, group.key());
-            item->setSizeHint(QSize(140, 42));
-            const QSignalBlocker block(m_navigation);
-            m_navigation->addItem(item);
-            auto *action = new QAction(item->text(), this);
-            action->setCheckable(true);
-            m_pageGroup->addAction(action);
-            m_pageActions.append(action);
-            if (auto *view = findChild<QMenu *>("workspaceViewMenu"))
-                view->addAction(action);
-            const QPointer<PackageSurfacePage> guarded(page);
-            connect(action, &QAction::triggered, this, [this, guarded]() {
-                if (guarded)
-                    selectPage(m_stack->indexOf(guarded));
-            });
+            if (group.key() == QStringLiteral("dockpipe.vm")) {
+                m_environmentsPage->setVirtualMachineControls(page);
+                connect(m_environmentsPage, &EnvironmentsPage::virtualMachineControlsActivityChanged,
+                        page, [this, page](bool active) {
+                            page->setActive(active);
+                            if (active || page->property("environmentConsoleWorkdir").toString().isEmpty())
+                                return;
+                            page->setProperty("environmentConsoleWorkdir", QString());
+                            const QString workdir = m_settings.projectFolder.isEmpty()
+                                ? QDir::homePath() : m_settings.projectFolder;
+                            page->setWorkspace(workdir, DockpipeChoices::preferredDockpipeBinary(workdir));
+                        });
+                connect(page, &PackageSurfacePage::resourceInventoryChanged,
+                        m_environmentsPage, &EnvironmentsPage::setVirtualMachineInventory);
+                connect(m_environmentsPage, &EnvironmentsPage::runtimeInventoryRequested,
+                        page, &PackageSurfacePage::refreshProcessInventory);
+            } else {
+                const int index = m_stack->addWidget(page);
+                auto *item = new QListWidgetItem(group.value().first().surface.title);
+                item->setData(Qt::UserRole, index);
+                item->setData(Qt::UserRole + 2, group.key());
+                item->setSizeHint(QSize(140, 42));
+                const QSignalBlocker block(m_navigation);
+                m_navigation->addItem(item);
+                auto *action = new QAction(item->text(), this);
+                action->setCheckable(true);
+                m_pageGroup->addAction(action);
+                m_pageActions.append(action);
+                if (auto *view = findChild<QMenu *>("workspaceViewMenu"))
+                    view->addAction(action);
+                const QPointer<PackageSurfacePage> guarded(page);
+                connect(action, &QAction::triggered, this, [this, guarded]() {
+                    if (guarded)
+                        selectPage(m_stack->indexOf(guarded));
+                });
+            }
             connect(page, &PackageSurfacePage::displaysChanged, this,
                 [this, id = group.key()](const QVector<PackageDisplayMeta> &displays) {
                     if (m_dashboardFactory)
@@ -69,10 +90,24 @@ void MainWindow::syncPackageSurfaces(const QVector<ResolverMeta> &providers)
             connect(m_dashboardFactory, &DashboardWidgetFactory::packageDisplayInventoryRequested,
                 page, &PackageSurfacePage::refreshInventory);
             connect(page, &PackageSurfacePage::publicWorkflowRequested, this, &MainWindow::launchSurfaceWorkflow);
+            if (m_environmentsPage && group.key() == QStringLiteral("dockpipe.vm"))
+                connect(page, &PackageSurfacePage::instanceStatesObserved,
+                        m_environmentsPage, &EnvironmentsPage::setVmObservations);
         }
-        page->setWorkspace(m_settings.projectFolder, DockpipeChoices::preferredDockpipeBinary(m_settings.projectFolder));
+        QString workdir = m_settings.projectFolder;
+        if (group.key() == QStringLiteral("dockpipe.vm")) {
+            const auto consoleWorkdir = page->property("environmentConsoleWorkdir").toString();
+            if (!consoleWorkdir.isEmpty())
+                workdir = consoleWorkdir;
+            else if (workdir.isEmpty())
+                workdir = QDir::homePath();
+        }
+        page->setWorkspace(workdir, DockpipeChoices::preferredDockpipeBinary(workdir));
         page->setProviders(group.value());
-        page->setActive(m_stack->currentWidget() == page);
+        page->setActive(group.key() == QStringLiteral("dockpipe.vm")
+            ? m_environmentsPage->virtualMachineControlsActive() : m_stack->currentWidget() == page);
+        if (group.key() == QStringLiteral("dockpipe.vm") && m_stack->currentWidget() == m_environmentsPage)
+            page->refreshProcessInventory();
     }
 }
 
@@ -83,6 +118,13 @@ void MainWindow::removePackageSurface(const QString &id)
     auto *page = m_surfacePages.take(id).data();
     if (!page)
         return;
+    if (id == QStringLiteral("dockpipe.vm")) {
+        m_environmentsPage->setVmObservations({}, 0);
+        m_environmentsPage->setVirtualMachineInventory({});
+        m_environmentsPage->setVirtualMachineControls(nullptr);
+        delete page;
+        return;
+    }
     if (m_stack->currentWidget() == page)
         selectPage(0);
     const int index = m_stack->indexOf(page);
@@ -123,10 +165,10 @@ void MainWindow::launchSurfaceWorkflow(const QString &workflowId, const QString 
     invocation.extraDockpipeEnv << "DOCKPIPE_SURFACE_ID=" + surfaceId
                                << "DOCKPIPE_SURFACE_ACTION_ID=" + actionId
                                << "DOCKPIPE_SURFACE_RESOURCE_ID=" + resourceId;
-    launchPackageAwareContext(invocation);
+    launchPackageAwareContext(invocation, workflowLaunchOptions(meta));
 }
 
-bool MainWindow::launchPackageAwareContext(const Context &context)
+bool MainWindow::launchPackageAwareContext(const Context &context, const SessionLaunchOptions &options)
 {
     QPointer<PackageSurfacePage> destination;
     for (const auto &page : m_surfacePages) {
@@ -134,7 +176,7 @@ bool MainWindow::launchPackageAwareContext(const Context &context)
             continue;
         // An ambiguous contribution cannot silently choose an unrelated provider.
         if (destination)
-            return m_sessions.launch(context, ContextStore::logsDir());
+            return m_sessions.launch(context, ContextStore::logsDir(), options);
         destination = page;
     }
     Context invocation = context;
@@ -150,12 +192,17 @@ bool MainWindow::launchPackageAwareContext(const Context &context)
         });
         invocation.extraDockpipeEnv.append("DOCKPIPE_SURFACE_LAUNCH_ID=" + launchId);
     }
-    if (!m_sessions.launch(invocation, ContextStore::logsDir()))
+    if (!m_sessions.launch(invocation, ContextStore::logsDir(), options))
         return false;
     if (!destination)
         return true;
     destination->expectLaunch(context.workflow, launchId);
-    selectPage(m_stack->indexOf(destination));
+    if (destination->property("surfaceId").toString() == "dockpipe.vm") {
+        selectPage(m_stack->indexOf(m_environmentsPage));
+        m_environmentsPage->showVirtualMachineControls();
+    } else {
+        selectPage(m_stack->indexOf(destination));
+    }
     const auto failed = std::make_shared<QMetaObject::Connection>();
     const auto stopped = std::make_shared<QMetaObject::Connection>();
     const auto resolved = std::make_shared<QMetaObject::Connection>();

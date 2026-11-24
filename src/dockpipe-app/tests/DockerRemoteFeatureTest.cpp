@@ -126,6 +126,27 @@ private slots:
         widget.setActive(false);
     }
 
+    void monitoringRemainsReadOnlyWithLocalWorkspace()
+    {
+        DockerObservabilityWidget widget;
+        QVERIFY(widget.setFeatureCatalog({}));
+        widget.setNodes({"monitor-only"});
+        QVERIFY(!widget.m_machine->isHidden());
+        widget.m_machine->setCurrentIndex(widget.m_machine->findData("monitor-only"));
+        QCOMPARE(widget.targetNode(), QStringLiteral("monitor-only"));
+        QVERIFY(!widget.canControlTarget());
+
+        QVERIFY(widget.setFeatureTarget(target(), true));
+        QVERIFY(widget.m_machine->isHidden());
+        QCOMPARE(widget.targetNode(), target().value("node").toString());
+        QVERIFY(widget.canControlTarget());
+
+        QVERIFY(widget.setFeatureCatalog({}));
+        QVERIFY(!widget.m_machine->isHidden());
+        QCOMPARE(widget.targetNode(), QStringLiteral("monitor-only"));
+        QVERIFY(!widget.canControlTarget());
+    }
+
     void writeKeepsOriginalTargetUntilReceipt()
     {
         DockerObservabilityWidget widget;

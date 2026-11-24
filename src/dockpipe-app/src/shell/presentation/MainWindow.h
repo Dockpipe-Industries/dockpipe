@@ -8,6 +8,7 @@
 #include "DashboardStore.h"
 
 #include <QFutureWatcher>
+#include <QHash>
 #include <QMainWindow>
 #include <QPointer>
 #include <QSystemTrayIcon>
@@ -15,6 +16,7 @@
 
 class QCloseEvent;
 class QListWidget;
+class WorkspaceNavigationList;
 class QListWidgetItem;
 class QLabel;
 class QLineEdit;
@@ -52,6 +54,7 @@ class QDialog;
 class QSplitter;
 class LauncherWorkspaceSurface;
 class PackageSurfacePage;
+class EnvironmentsPage;
 
 struct AsyncWorkflowCatalogResult {
     QString workdir;
@@ -116,7 +119,8 @@ private:
     void setupDashboards();
     void syncPackageSurfaces(const QVector<ResolverMeta> &providers);
     void removePackageSurface(const QString &id);
-    bool launchPackageAwareContext(const Context &context);
+    static SessionLaunchOptions workflowLaunchOptions(const WorkflowMeta &meta);
+    bool launchPackageAwareContext(const Context &context, const SessionLaunchOptions &options);
     void launchSurfaceWorkflow(const QString &workflowId, const QString &surfaceId,
                                const QString &actionId, const QString &resourceId);
     QMap<QString, QPointer<PackageSurfacePage>> m_surfacePages;
@@ -136,6 +140,7 @@ private:
     void updateStatusBarVisibility();
     void ensureBrowser();
     void ensureTerminal();
+    void refreshTerminalRemoteContainers();
     void openRemoteContainerExec(const QJsonObject &catalog, const QString &container, const QString &shell);
     void setupWorkspaceMachineMenu(QHBoxLayout *layout);
     void refreshWorkspaceMachines();
@@ -194,7 +199,7 @@ private:
     SessionManager m_sessions;
     LauncherSettings m_settings;
 
-    QListWidget *m_navigation = nullptr;
+    WorkspaceNavigationList *m_navigation = nullptr;
     QFrame *m_navigationRail = nullptr;
     QComboBox *m_runTarget = nullptr;
     RemoteDesktopWidget *m_remoteDesktopWidget = nullptr;
@@ -210,6 +215,7 @@ private:
     RemoteBrowserWidget *m_browserWidget = nullptr;
     TerminalWidget *m_terminalWidget = nullptr;
     WorkspaceMachineMenu *m_workspaceMachineMenu = nullptr;
+    QStringList m_pairedMachines;
     BrowserLinkRouter *m_browserLinks = nullptr;
     DashboardWidgetFactory *m_dashboardFactory = nullptr;
     DashboardStore m_dashboardStore;
@@ -226,6 +232,8 @@ private:
     QPushButton *m_workspaceButton = nullptr;
     QLabel *m_workspacePath = nullptr;
     DockerObservabilityWidget *m_dockerWidget = nullptr;
+    EnvironmentsPage *m_environmentsPage = nullptr;
+    QHash<QString, QString> m_environmentRuns;
 
     WorkflowEditorWidget *m_workflowEditor = nullptr;
     ProjectFilesWidget *m_projectFiles = nullptr;

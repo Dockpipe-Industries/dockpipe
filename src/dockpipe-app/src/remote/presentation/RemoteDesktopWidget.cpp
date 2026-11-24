@@ -54,6 +54,59 @@ QJsonObject identityOf(const QJsonObject &catalog)
     const auto target = catalog.value("target").toObject();
     return {{"node", target.value("node")}, {"fingerprint", target.value("fingerprint")}};
 }
+
+QString displayPreferenceKey(const QJsonObject &catalog)
+{
+    return QStringLiteral("remote/physicalDesktop/%1").arg(identityOf(catalog).value("fingerprint").toString());
+}
+
+struct ProviderRestrictions {
+    bool clipboardUnavailable = false;
+    bool clipboardImagesUnavailable = false;
+    bool clipboardFilesUnavailable = false;
+    bool virtualDesktopUnavailable = false;
+    bool showLocalCursor = false;
+    QString dropPasteModifier;
+
+    void apply(QJsonObject &capture, QJsonObject &presentation) const
+    {
+        if (clipboardUnavailable)
+            capture.remove("clipboard_text");
+        if (clipboardImagesUnavailable)
+            capture.remove("clipboard_images");
+        if (clipboardFilesUnavailable)
+            capture.remove("clipboard_files");
+        if (virtualDesktopUnavailable && capture.value("display_source") == QJsonValue("virtual"))
+            capture.remove("display_source");
+        if (showLocalCursor)
+            presentation.insert("hide_cursor", false);
+        if (!dropPasteModifier.isEmpty() && capture.value("clipboard_files").toBool())
+            presentation.insert("drop_paste_modifier", dropPasteModifier);
+    }
+};
+
+ProviderRestrictions restrictionsFor(const QJsonObject &catalog)
+{
+    const auto artifact = catalog.value("provider").toObject().value("artifact");
+    if (!digest(artifact))
+        return {};
+
+    // Preview capabilities are local and bound to the exact sender image.
+    QSettings preferences;
+    preferences.beginGroup(QStringLiteral("remote/desktopProviderRestrictions/") + artifact.toString());
+    const bool clipboardUnavailable = preferences.value(QStringLiteral("clipboardUnavailable")).toBool();
+    const bool richUnavailable = clipboardUnavailable
+        || preferences.value(QStringLiteral("richClipboardUnavailable")).toBool();
+    const auto pasteModifier = preferences.value(QStringLiteral("dropPasteModifier")).toString();
+    return {
+        clipboardUnavailable,
+        richUnavailable || preferences.value(QStringLiteral("clipboardImagesUnavailable")).toBool(),
+        richUnavailable || preferences.value(QStringLiteral("clipboardFilesUnavailable")).toBool(),
+        preferences.value(QStringLiteral("virtualDesktopUnavailable")).toBool(),
+        preferences.value(QStringLiteral("showLocalCursor")).toBool(),
+        pasteModifier == "control" || pasteModifier == "command" ? pasteModifier : QString{}
+    };
+}
 }
 
 RemoteDesktopWidget::RemoteDesktopWidget(QWidget *parent)
@@ -257,18 +310,45 @@ void RemoteDesktopWidget::setCompactPresentation(bool enabled)
 
 void RemoteDesktopWidget::showDesktopSettings()
 {
+    const auto catalog = m_connected ? m_displayCatalog : selectedCatalog();
+    const auto displays = catalog.value("displays").toArray();
+    const auto restrictions = restrictionsFor(catalog);
+    QSettings preferences;
+    const auto physicalDisplayKey = displayPreferenceKey(catalog);
+    const auto previousDisplay = preferences.value(physicalDisplayKey).toString();
     RemoteDesktopSettingsDialog dialog(m_captureOptions, m_presentationOptions, m_decoderMode, this);
+    dialog.setProviderRestrictions(restrictions.clipboardUnavailable, restrictions.virtualDesktopUnavailable,
+        restrictions.showLocalCursor, restrictions.clipboardImagesUnavailable, restrictions.clipboardFilesUnavailable);
+    dialog.setPhysicalDisplays(displays, previousDisplay);
     if (dialog.exec() != QDialog::Accepted)
         return;
-    const auto capture = dialog.captureOptions();
-    const auto presentation = dialog.presentationOptions();
+    auto capture = dialog.captureOptions();
+    auto presentation = dialog.presentationOptions();
+    if (restrictions.clipboardUnavailable && m_captureOptions.contains("clipboard_text"))
+        capture.insert("clipboard_text", m_captureOptions.value("clipboard_text"));
+    if (restrictions.clipboardImagesUnavailable && m_captureOptions.contains("clipboard_images"))
+        capture.insert("clipboard_images", m_captureOptions.value("clipboard_images"));
+    if (restrictions.clipboardFilesUnavailable && m_captureOptions.contains("clipboard_files"))
+        capture.insert("clipboard_files", m_captureOptions.value("clipboard_files"));
+    bool physicalDisplayChanged = false;
+    if (!displays.isEmpty()) {
+        const auto physicalDisplay = capture.take("display_source").toString();
+        physicalDisplayChanged = physicalDisplay != previousDisplay;
+        if (physicalDisplay.isEmpty())
+            preferences.remove(physicalDisplayKey);
+        else
+            preferences.setValue(physicalDisplayKey, physicalDisplay);
+    }
+    if ((!displays.isEmpty() || restrictions.virtualDesktopUnavailable) && m_captureOptions.contains("display_source"))
+        capture.insert("display_source", m_captureOptions.value("display_source"));
+    if (restrictions.showLocalCursor)
+        presentation.insert("hide_cursor", m_presentationOptions.value("hide_cursor").toBool(true));
     const bool captureChanged = capture != m_captureOptions;
     const bool presentationChanged = presentation != m_presentationOptions;
     const bool decoderChanged = dialog.decoderMode() != m_decoderMode;
     m_captureOptions = capture;
     m_presentationOptions = presentation;
     m_decoderMode = dialog.decoderMode();
-    QSettings preferences;
     preferences.setValue(QStringLiteral("remote/desktopQuality"), capture.value("quality").toString());
     preferences.setValue(QStringLiteral("remote/desktopFrameRate"), capture.value("frame_rate").toInt());
     preferences.setValue(QStringLiteral("remote/desktopShareClipboard"), capture.value("clipboard_text").toBool());
@@ -281,9 +361,10 @@ void RemoteDesktopWidget::showDesktopSettings()
     preferences.setValue(QStringLiteral("remote/desktopSwapControlCommand"), presentation.value("swap_control_command").toBool());
     preferences.setValue(QStringLiteral("remote/desktopDecoder"), m_decoderMode);
 
+    restrictions.apply(capture, presentation);
     const bool presentationDeferred = m_connected && presentationChanged
         && !m_display->updatePresentationOptions(presentation);
-    if (m_connected && (captureChanged || decoderChanged || presentationDeferred)) {
+    if (m_connected && (captureChanged || decoderChanged || presentationDeferred || physicalDisplayChanged)) {
         m_preferencesNotice->setText(tr("Some settings will apply on the next connection."));
         m_preferencesNotice->show();
     }
@@ -450,6 +531,11 @@ const ResolverMeta *RemoteDesktopWidget::providerFor(const QJsonObject &catalog)
 
 void RemoteDesktopWidget::applySelection()
 {
+    if (m_connected || m_closing) {
+        updateActions();
+        return;
+    }
+
     const auto catalog = selectedCatalog();
     const bool control = catalog.value("input").toBool();
     if (auto *model = qobject_cast<QStandardItemModel *>(m_mode->model()))
@@ -458,9 +544,9 @@ void RemoteDesktopWidget::applySelection()
         m_mode->setCurrentIndex(catalog.isEmpty() || control ? 1 : 0);
     else if (!control && m_mode->currentData() == QVariant(QStringLiteral("control")))
         m_mode->setCurrentIndex(0);
-    if (!m_connected && !m_closing && !m_busy && accessUnlocked()) {
+    if (!m_busy && accessUnlocked()) {
         if (selectedIdentity().isEmpty())
-            m_status->setText(m_machine->count() == 0 ? tr("No paired computers are available. Add a computer in Machines.") : tr("Choose a paired computer."));
+            m_status->setText(m_machine->count() == 0 ? tr("No paired computers are available. Add a computer in Environments.") : tr("Choose a paired computer."));
         else if (!digest(selectedIdentity().value("fingerprint")))
             m_status->setText(tr("Pair this computer again to enable verified desktop access."));
         else if (catalog.isEmpty() || !catalog.value("view").toBool())
@@ -600,8 +686,10 @@ void RemoteDesktopWidget::openDisplay(const QJsonObject &identity, const QString
 {
     const auto catalog = selectedCatalog();
     const auto *provider = providerFor(catalog);
+    const bool administrator = mode == QStringLiteral("control") && catalog.value("administrator_input").toBool();
     if (!isVisible() || !accessUnlocked() || identity != selectedIdentity() || catalog.isEmpty() || !provider
-        || !catalog.value("view").toBool() || (mode != "view" && mode != "control") || (mode == "control" && !catalog.value("input").toBool())) {
+        || !catalog.value("view").toBool() || (mode != "view" && mode != "control")
+        || (mode == "control" && !catalog.value("input").toBool())) {
         m_status->setText(tr("The selected desktop identity or permission changed. Refresh and connect again."));
         updateActions();
         return;
@@ -612,18 +700,43 @@ void RemoteDesktopWidget::openDisplay(const QJsonObject &identity, const QString
     display.nativePackage = provider->surface.nativeDisplay;
     display.leaseId = QUuid::createUuid().toString(QUuid::WithoutBraces);
     auto capture = m_captureOptions;
-    if (mode != "control") {
+    auto presentation = m_presentationOptions;
+    restrictionsFor(catalog).apply(capture, presentation);
+    const auto displays = catalog.value("displays").toArray();
+    if (!displays.isEmpty()) {
+        capture.remove("display_source");
+        const auto source = QSettings().value(displayPreferenceKey(catalog)).toString();
+        bool found = source.isEmpty();
+        for (const auto &value : displays) {
+            if (!source.isEmpty() && value.toObject().value("source") == QJsonValue(source)) {
+                capture.insert("display_source", source);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            m_status->setText(tr("The saved display is no longer available. Choose a display in Settings."));
+            updateActions();
+            return;
+        }
+    }
+    if (mode != "control" || administrator) {
         capture.remove("clipboard_text");
         capture.remove("clipboard_images");
         capture.remove("clipboard_files");
+        presentation.remove("drop_paste_modifier");
     }
     display.options = {{"schema", "dockpipe.remote.desktop-display/v1"}, {"cli", m_cli}, {"state_directory", m_stateDirectory},
-        {"catalog", catalog}, {"mode", mode}, {"capture", capture}, {"display", m_presentationOptions},
+        {"catalog", catalog}, {"mode", mode}, {"capture", capture}, {"display", presentation},
         {"decoder", m_decoderMode}};
+    if (administrator)
+        display.options.insert("schema", QStringLiteral("dockpipe.remote.desktop-administrator-display/v1"));
     m_preferencesNotice->hide();
     m_displayCatalog = catalog;
     m_connected = true;
-    m_status->setText(tr("Opening the selected desktop…"));
+    m_status->setText(administrator
+        ? tr("Opening the selected desktop with administrator control…")
+        : tr("Opening the selected desktop…"));
     updateActions();
     m_display->setDisplay(display);
 }

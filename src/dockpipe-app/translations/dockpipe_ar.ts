@@ -4,7 +4,7 @@
 <context>
     <name>ActivityWidget</name>
     <message>
-        <location filename="../src/execution/presentation/ActivityWidget.cpp" line="+48"/>
+        <location filename="../src/execution/presentation/ActivityWidget.cpp" line="+49"/>
         <source>Runs &amp; logs</source>
         <translation>عمليات التشغيل والسجلات</translation>
     </message>
@@ -15,12 +15,12 @@
     </message>
     <message>
         <location line="+10"/>
-        <location line="+211"/>
+        <location line="+224"/>
         <source>This computer</source>
         <translation>هذا الكمبيوتر</translation>
     </message>
     <message>
-        <location line="-211"/>
+        <location line="-224"/>
         <source>Remote jobs</source>
         <translation>المهام البعيدة</translation>
     </message>
@@ -104,7 +104,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>الحالة</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+15"/>
         <source>Refresh jobs</source>
         <translation>تحديث المهام</translation>
     </message>
@@ -124,7 +124,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>حفظ ملفات النتائج وسجلات سير العمل.</translation>
     </message>
     <message>
-        <location line="+57"/>
+        <location line="+62"/>
         <source>Save result inside folder</source>
         <translation>حفظ النتيجة داخل مجلد</translation>
     </message>
@@ -134,7 +134,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>حُفظت النتيجة وworkflow.log في %1</translation>
     </message>
     <message>
-        <location line="+62"/>
+        <location line="+63"/>
         <source>Finished / stopped</source>
         <translation>مكتمل / متوقف</translation>
     </message>
@@ -169,7 +169,7 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <translation>%1 مهمة بعيدة</translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+100"/>
         <source>Up to date with the broker.</source>
         <translation>متزامن مع الوسيط.</translation>
     </message>
@@ -197,6 +197,18 @@ Refresh to check for updates, or manage connections in Machines.</source>
         <location line="+34"/>
         <source>This job is no longer available in the broker’s job list.</source>
         <translation>لم تعد هذه المهمة متاحة في قائمة مهام الوسيط.</translation>
+    </message>
+    <message>
+        <location line="-329"/>
+        <source>Live workflow log</source>
+        <translation>سجل سير العمل المباشر</translation>
+    </message>
+    <message>
+        <location line="+233"/>
+        <source>
+Live preview limit reached. Download the results for the full retained log.</source>
+        <translation>
+بلغت المعاينة المباشرة حدها. نزّل النتائج للاطلاع على السجل المحفوظ بالكامل.</translation>
     </message>
 </context>
 <context>
@@ -1029,7 +1041,7 @@ Independent repository · add multiple views for cross-repo work</source>
 <context>
     <name>DashboardRepositoryPanel</name>
     <message>
-        <location filename="../src/dashboards/presentation/DashboardRepositoryPanel.cpp" line="+38"/>
+        <location filename="../src/dashboards/presentation/DashboardRepositoryPanel.cpp" line="+39"/>
         <source>Repository…</source>
         <translation>المستودع…</translation>
     </message>
@@ -1054,7 +1066,7 @@ Independent repository · add multiple views for cross-repo work</source>
         <translation>اختيار مستودع لهذا العرض</translation>
     </message>
     <message>
-        <location line="+81"/>
+        <location line="+90"/>
         <source>Unsaved commit message</source>
         <translation>رسالة تثبيت غير محفوظة</translation>
     </message>
@@ -3243,7 +3255,7 @@ Refresh to load inventory from the selected machine.</source>
     <message>
         <location line="+2"/>
         <location line="+232"/>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+119"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+118"/>
         <source>Loading container logs…</source>
         <translation>جارٍ تحميل سجلات الحاوية…</translation>
     </message>
@@ -3517,7 +3529,7 @@ Refresh to load inventory from the selected machine.</source>
         <translation>استجابة التحكم في الحاوية غير صالحة.</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-298"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-297"/>
         <source>Wait for the current container control operation before changing machines.</source>
         <translation>انتظر حتى تنتهي عملية التحكم الحالية في الحاوية قبل تغيير الجهاز.</translation>
     </message>
@@ -3527,7 +3539,7 @@ Refresh to load inventory from the selected machine.</source>
         <translation>حدّد جهازًا ببصمة وجيل عامل تم التحقق منهما.</translation>
     </message>
     <message>
-        <location line="+128"/>
+        <location line="+127"/>
         <source>%1 · Remote Docker inventory unavailable: %2</source>
         <translation>%1 · جرد Docker البعيد غير متاح: %2</translation>
     </message>
@@ -3818,6 +3830,780 @@ Select a row to get started.</source>
         <location line="+8"/>
         <source>Env (*.env *.sh);;All files (*)</source>
         <translation>البيئة (*.env *.sh);;جميع الملفات (*)</translation>
+    </message>
+</context>
+<context>
+    <name>EnvironmentDefinitionsClient</name>
+    <message>
+        <location filename="../src/environments/infrastructure/EnvironmentDefinitionsClient.cpp" line="+150"/>
+        <source>Could not start Dockpipe to read environment definitions.</source>
+        <translation>لا يمكن أن تبدأ Dockpipe لقراءة تعريفات البيئة.</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Dockpipe could not list environment definitions.</source>
+        <translation>Dockpipe لم يكن قادرا على إدراج تعريفات البيئة.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Dockpipe returned an invalid environment definition list.</source>
+        <translation>Dockpipe أعاد قائمة تعريف البيئة غير صحيحة.</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Reading environment definitions timed out.</source>
+        <translation>قراءة تعريفات البيئة في الوقت المناسب.</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>The environment definition list exceeds its size limit.</source>
+        <translation>قائمة تعريف البيئة تتجاوز حدود حجمها.</translation>
+    </message>
+</context>
+<context>
+    <name>EnvironmentsPage</name>
+    <message>
+        <location filename="../src/environments/presentation/EnvironmentsPage.cpp" line="+86"/>
+        <source>← Environments</source>
+        <translation>← البيئات</translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>Canvas</source>
+        <translation>اللوحة</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>List</source>
+        <translation>القائمة</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Refresh</source>
+        <translation>تحديث</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <location line="+247"/>
+        <source>Add Environment</source>
+        <translation>إضافة البيئة</translation>
+    </message>
+    <message>
+        <location line="-233"/>
+        <location line="+9"/>
+        <source>Environments</source>
+        <translation>البيئة</translation>
+    </message>
+    <message>
+        <location line="-8"/>
+        <source>Hosts, virtual machines, and containers</source>
+        <translation>المضيفات والآلات الافتراضية والحاويات</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Details</source>
+        <translation>التفاصيل</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <location line="+331"/>
+        <location line="+121"/>
+        <source>Name</source>
+        <translation>الاسم</translation>
+    </message>
+    <message>
+        <location line="-452"/>
+        <source>Type</source>
+        <translation>النوع</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Location</source>
+        <translation>الموقع</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Status</source>
+        <translation>الحالة</translation>
+    </message>
+    <message>
+        <location line="+201"/>
+        <source>Reading environment definitions…</source>
+        <translation>اقرأ تعريفات البيئة ..</translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <location line="+727"/>
+        <source>Remote machine</source>
+        <translation>آلة بعيدة</translation>
+    </message>
+    <message>
+        <location line="-727"/>
+        <source>Pair another computer with Dockpipe.</source>
+        <translation>قم بزيارة جهاز كمبيوتر آخر مع Dockpipe .</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+722"/>
+        <location line="+71"/>
+        <source>Virtual machine</source>
+        <translation>آلة افتراضية</translation>
+    </message>
+    <message>
+        <location line="-793"/>
+        <source>Choose an operating system and configure a VM.</source>
+        <translation>اختر نظام التشغيل وتكوين VM.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+794"/>
+        <source>Container</source>
+        <translation>الحاوية</translation>
+    </message>
+    <message>
+        <location line="-794"/>
+        <source>Choose an image and configure a Docker container.</source>
+        <translation>اختر صورة وتكوين حاوية Docker.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Import YAML</source>
+        <translation>استيراد YAML</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Open existing environment definitions.</source>
+        <translation>التعريفات البيئية المتاحة.</translation>
+    </message>
+    <message>
+        <location line="+61"/>
+        <source>Add Virtual Machine</source>
+        <translation>إضافة آلة افتراضية</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Runs on this computer’s VM provider.</source>
+        <translation>يعمل على مزود VM لهذا الكمبيوتر.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Development VM</source>
+        <translation>تطوير VM</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <location line="+611"/>
+        <source>Ubuntu</source>
+        <translation>Ubuntu</translation>
+    </message>
+    <message>
+        <location line="-610"/>
+        <location line="+610"/>
+        <source>Debian</source>
+        <translation>Debian</translation>
+    </message>
+    <message>
+        <location line="-609"/>
+        <location line="+609"/>
+        <source>Fedora</source>
+        <translation>الفيدرالية</translation>
+    </message>
+    <message>
+        <location line="-608"/>
+        <location line="+609"/>
+        <source>Other Linux</source>
+        <translation>لينكس الأخرى</translation>
+    </message>
+    <message>
+        <location line="-608"/>
+        <location line="+608"/>
+        <source>Windows 11</source>
+        <translation>ويندوز 11</translation>
+    </message>
+    <message>
+        <location line="-603"/>
+        <location line="+3"/>
+        <source> GiB</source>
+        <translation>جيب</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Installer ISO file</source>
+        <translation>تثبيت ملف ISO</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Browse…</source>
+        <translation>تصفح…</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Select Installer ISO</source>
+        <translation>تحديد جهاز التثبيت ISO</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>ISO images (*.iso *.ISO)</source>
+        <translation>ISO صور (*.iso *. ISO )</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <location line="+120"/>
+        <location line="+580"/>
+        <source>Personal</source>
+        <translation>الشخصية</translation>
+    </message>
+    <message>
+        <location line="-699"/>
+        <location line="+120"/>
+        <source>YAML file</source>
+        <translation>YAML ملف</translation>
+    </message>
+    <message>
+        <location line="-118"/>
+        <source>Operating system</source>
+        <translation>نظام التشغيل</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>CPUs</source>
+        <translation>CPUs</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>RAM</source>
+        <translation>رام</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Disk size</source>
+        <translation>حجم القرص</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Installer ISO</source>
+        <translation>تحميل ISO</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+121"/>
+        <source>Save to</source>
+        <translation>إنقاذ إلى</translation>
+    </message>
+    <message>
+        <location line="-118"/>
+        <source>The ISO is optional when saving a definition. Disk size applies when the virtual disk is first created.</source>
+        <translation>ISO هو اختياري عند حفظ تعريف. حجم القرص ينطبق عند إنشاء القرص الافتراضي لأول مرة.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <location line="+151"/>
+        <source>Save Definition</source>
+        <translation>حفظ التعريف</translation>
+    </message>
+    <message>
+        <location line="-150"/>
+        <source>Create VM</source>
+        <translation>إنشاء VM</translation>
+    </message>
+    <message>
+        <location line="+66"/>
+        <source>Add Container</source>
+        <translation>إضافة حاوية</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Runs on this computer’s Docker engine.</source>
+        <translation>يعمل على محرك Docker لهذا الكمبيوتر.</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>General</source>
+        <translation>عام</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Test Docker</source>
+        <translation>اختبار Docker</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Use letters, numbers, dots, underscores, or hyphens. Spaces become hyphens.</source>
+        <translation>استخدم الحروف والأرقام والنقاط أو الخصائص أو الخصائص.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Ubuntu 24.04</source>
+        <translation>Ubuntu 24.04</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Debian 13 Slim</source>
+        <translation>Debian 13 سليم</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Alpine 3.22</source>
+        <translation>Alpine 3.22</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>NGINX on Alpine</source>
+        <translation>NGINX على Alpine</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Custom image</source>
+        <translation>صورة مخصصة</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Keep running for Terminal</source>
+        <translation>استمر في تشغيل المحطة</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Run the image’s command</source>
+        <translation>قم بتشغيل أمر الصورة</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Bridge</source>
+        <translation>الجسر</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+457"/>
+        <source>No network</source>
+        <translation>لا شبكة</translation>
+    </message>
+    <message>
+        <location line="-455"/>
+        <source>Standard</source>
+        <translation>المعيار</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+456"/>
+        <source>Restricted capabilities</source>
+        <translation>القدرات المحدودة</translation>
+    </message>
+    <message>
+        <location line="-455"/>
+        <source>Both profiles block privilege escalation. Restricted also drops all Linux capabilities.</source>
+        <translation>كلا الملفين يمنع ترقية الامتيازات.المحدود أيضا يقلل من جميع قدرات لينكس.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Base OS or image</source>
+        <translation>نظام التشغيل أو الصورة</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Docker image</source>
+        <translation>Docker صورة</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Startup</source>
+        <translation>بدء التشغيل</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Network</source>
+        <translation>الشبكة</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Security</source>
+        <translation>الأمان</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Advanced</source>
+        <translation>متقدم</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Use the image’s user</source>
+        <translation>استخدم المستخدم الصورة</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Non-root user</source>
+        <translation>المستخدم غير الجذر</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Writable</source>
+        <translation>الكتابة</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Read-only</source>
+        <translation>قراءة فقط</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Do not restart</source>
+        <translation>لا تقم بإعادة التشغيل</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Restart unless stopped</source>
+        <translation>إعادة التشغيل ما لم يتوقف</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>No separate volume</source>
+        <translation>لا حجم منفصل</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Persistent Docker volume</source>
+        <translation>حجم Docker</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Publish a port on this computer</source>
+        <translation>نشر بوابة على هذا الكمبيوتر</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Run as</source>
+        <translation>الركض كما</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Root filesystem</source>
+        <translation>نظام الملفات الجذر</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Restart policy</source>
+        <translation>إعادة تشغيل السياسة</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Storage</source>
+        <translation>تخزين</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Folder inside container</source>
+        <translation>المجلد داخل حاوية</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Local port</source>
+        <translation>الميناء المحلي</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Container port</source>
+        <translation>ميناء الحاويات</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Create Container</source>
+        <translation>إنشاء حاوية</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Default (run the image’s command)</source>
+        <translation>الافتراضية (تحريك أمر الصورة)</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Default (keep running for Terminal)</source>
+        <translation>إعداد (تدور دائمًا في المحطة)</translation>
+    </message>
+    <message>
+        <location line="+56"/>
+        <source>Save environment definition</source>
+        <translation>حفظ تعريف البيئة</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+141"/>
+        <source>Environment definitions (*.yaml *.yml)</source>
+        <translation>تعريفات البيئة (*.yaml *.yml)</translation>
+    </message>
+    <message>
+        <location line="-135"/>
+        <source>Choose a YAML file and include at most 2,048 definitions.</source>
+        <translation>اختر ملف YAML وتضم ما يصل إلى 2.048 تعريفًا.</translation>
+    </message>
+    <message>
+        <location line="+36"/>
+        <source>Dockpipe could not save the environment definition.</source>
+        <translation>Dockpipe لم يكن قادرا على حفظ تعريف البيئة.</translation>
+    </message>
+    <message>
+        <location line="+66"/>
+        <source>Edit YAML</source>
+        <translation>تحرير YAML</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Apply</source>
+        <translation>تطبيق</translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Include environment definition files</source>
+        <translation>إدراج ملفات تعريف البيئة</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Choose at most 2,048 definition files.</source>
+        <translation>اختار ما يصل إلى 2.048 ملف تعريف.</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>This definition file is unavailable. Refresh the definitions and try again.</source>
+        <translation>هذا الملف التعريف غير متوفر.تجديد التعريفات ومحاولة مرة أخرى.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Could not open the selected environment definition.</source>
+        <translation>لا يمكن فتح التعريف البيئي المختار.</translation>
+    </message>
+    <message>
+        <location line="+49"/>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <location line="+41"/>
+        <source>This machine</source>
+        <translation>هذه الآلة</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Remote</source>
+        <translation>بعيد</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Local</source>
+        <translation>المحلية</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>No environments yet. Choose Add Environment to get started.</source>
+        <translation>لا بيئات حتى الآن.اختر إضافة بيئة للبدء.</translation>
+    </message>
+    <message>
+        <location line="+32"/>
+        <source>Open terminal</source>
+        <translation>محطة مفتوحة</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Open VM console</source>
+        <translation>مفتوحة VM Console</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Manage VM</source>
+        <translation>إدارة VM</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Connection settings</source>
+        <translation>إعدادات الاتصال</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Machine settings</source>
+        <translation>إعدادات الجهاز</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Choose Add Environment to get started.</source>
+        <translation>اختر إضافة البيئة للبدء.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Select an environment to see its status and actions.</source>
+        <translation>اختر بيئة لرؤية وضعها وأفعالها.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Environment details</source>
+        <translation>تفاصيل البيئة</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Type  %1</source>
+        <translation>نوع %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Image  %1</source>
+        <translation>صورة %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Bridge network</source>
+        <translation>شبكة الجسر</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Read-only root filesystem</source>
+        <translation>نظام الملفات القراءة فقط root</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Local port  %1 → %2</source>
+        <translation>الميناء المحلي %1 → %2</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Persistent volume  %1</source>
+        <translation>حجم دائم %1</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Operating system  %1</source>
+        <translation>نظام التشغيل %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>%1 CPU(s) · %2 GiB RAM · %3 GiB disk</source>
+        <translation>%1 CPU(s) · %2 جيب RAM · %3 جيب القرص</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Installer ISO  %1</source>
+        <translation>تحميل ISO %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Choose an installer ISO before the first boot.</source>
+        <translation>اختر جهاز تثبيت ISO قبل البدء الأول.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Provisioning workflow  %1</source>
+        <translation>توفير تدفق العمل %1</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Package  %1</source>
+        <translation>حزمة %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Storage profile  %1</source>
+        <translation>ملف تعريف التخزين %1</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>Managing broker</source>
+        <translation>الوسيط المُدير</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Local computer</source>
+        <translation>الكمبيوتر المحلي</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Host  This computer</source>
+        <translation>استضافة هذا الكمبيوتر</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Workflows</source>
+        <translation>سير العمل</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Containers</source>
+        <translation>الحاويات</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Files</source>
+        <translation>الملفات</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Git</source>
+        <translation>Git</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Terminal</source>
+        <translation>الطرفية</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Reported access  %1</source>
+        <translation>الوصول المذكور %1</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <location line="+2"/>
+        <source>, </source>
+        <translation>,</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Workspace roots  %1</source>
+        <translation>مساحة العمل الجذور %1</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Last report  %1</source>
+        <translation>آخر تقرير %1</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>No workspace feature report is available.</source>
+        <translation>لا توجد تقارير وظائف الفضاء المتاحة.</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Definition file missing</source>
+        <translation>تعريف الملف المفقود</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Name differs from filename</source>
+        <translation>الاسم يختلف عن الاسم</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Invalid definition</source>
+        <translation>التعريف المعاق</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Saved definition</source>
+        <translation>التعريف المحفوظ</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Selected file</source>
+        <translation>الملفات المختارة</translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>Observed running</source>
+        <translation>ملاحظة الركض</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Observed stopped</source>
+        <translation>ملاحظة متوقفة</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Runtime unavailable</source>
+        <translation>أوقات غير متوفرة</translation>
     </message>
 </context>
 <context>
@@ -4352,12 +5138,12 @@ Start a workflow from the editor to follow it here.</source>
 <context>
     <name>FileEditorWorkspace</name>
     <message>
-        <location filename="../src/files/presentation/FileEditorWorkspace.cpp" line="+63"/>
+        <location filename="../src/files/presentation/FileEditorWorkspace.cpp" line="+64"/>
         <source>Open a file in this pane</source>
         <translation>فتح ملف في هذا الجزء</translation>
     </message>
     <message>
-        <location line="+67"/>
+        <location line="+73"/>
         <source>Open in other pane</source>
         <translation>فتح في الجزء الآخر</translation>
     </message>
@@ -4377,7 +5163,7 @@ Start a workflow from the editor to follow it here.</source>
         <translation>إغلاق البقية</translation>
     </message>
     <message>
-        <location line="+162"/>
+        <location line="+178"/>
         <location line="+165"/>
         <source>Close %1</source>
         <translation>إغلاق %1</translation>
@@ -4991,7 +5777,7 @@ This change may contain only a rename, file metadata, or merge information.</sou
 <context>
     <name>GitHistoryWidget</name>
     <message>
-        <location filename="../src/git/presentation/GitHistoryWidget.cpp" line="+45"/>
+        <location filename="../src/git/presentation/GitHistoryWidget.cpp" line="+46"/>
         <source>Search commits…</source>
         <translation>البحث في التثبيتات…</translation>
     </message>
@@ -5261,7 +6047,7 @@ This change may contain only a rename, file metadata, or merge information.</sou
 <context>
     <name>GitRepositoryWidget</name>
     <message>
-        <location filename="../src/git/presentation/GitRepositoryWidget.cpp" line="+32"/>
+        <location filename="../src/git/presentation/GitRepositoryWidget.cpp" line="+33"/>
         <source>Refresh</source>
         <translation>تحديث</translation>
     </message>
@@ -5372,7 +6158,7 @@ Upstream: %3
         <translation>%1  %2</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+37"/>
         <source>Merge branch</source>
         <translation>دمج الفرع</translation>
     </message>
@@ -5521,21 +6307,21 @@ Upstream: %3
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="+334"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="+340"/>
         <source>Dockpipe — %1</source>
         <translation>Dockpipe — %1</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+108"/>
-        <location line="+259"/>
-        <location line="+745"/>
+        <location line="+170"/>
+        <location line="+258"/>
+        <location line="+755"/>
         <location line="+51"/>
-        <location line="+120"/>
+        <location line="+140"/>
         <location line="+6"/>
         <location line="+5"/>
         <location line="+24"/>
-        <location line="+309"/>
+        <location line="+299"/>
         <location line="+47"/>
         <location line="+162"/>
         <location line="+118"/>
@@ -5543,13 +6329,13 @@ Upstream: %3
         <translation>Dockpipe</translation>
     </message>
     <message>
-        <location line="-1898"/>
-        <location line="+424"/>
+        <location line="-1943"/>
+        <location line="+449"/>
         <source>System</source>
         <translation>النظام</translation>
     </message>
     <message>
-        <location line="-369"/>
+        <location line="-368"/>
         <source>Your work. Anywhere.</source>
         <translation>عملك. في أي مكان.</translation>
     </message>
@@ -5560,18 +6346,18 @@ Upstream: %3
     </message>
     <message>
         <location line="+4"/>
-        <location line="+404"/>
+        <location line="+403"/>
         <source>Packages</source>
         <translation>الحزم</translation>
     </message>
     <message>
-        <location line="-403"/>
-        <location line="+400"/>
+        <location line="-402"/>
+        <location line="+399"/>
         <source>Settings</source>
         <translation>الإعدادات</translation>
     </message>
     <message>
-        <location line="-385"/>
+        <location line="-384"/>
         <source>WORKSPACE</source>
         <translation>مساحة العمل</translation>
     </message>
@@ -5581,29 +6367,24 @@ Upstream: %3
         <translation>فتح مجلد…</translation>
     </message>
     <message>
-        <location line="+107"/>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+189"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+151"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+190"/>
         <source>This computer</source>
         <translation>هذا الكمبيوتر</translation>
     </message>
     <message>
-        <location line="+5"/>
-        <source> — unavailable</source>
-        <translation> — غير متاح</translation>
-    </message>
-    <message>
-        <location line="+46"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="+155"/>
         <source>Workflow</source>
         <translation>سير العمل</translation>
     </message>
     <message>
-        <location line="+21"/>
-        <location line="+1631"/>
+        <location line="+23"/>
+        <location line="+1651"/>
         <source>%1 logs</source>
         <translation>سجلات %1</translation>
     </message>
     <message>
-        <location line="-1621"/>
+        <location line="-1641"/>
         <source>Remote workflow</source>
         <translation>سير عمل بعيد</translation>
     </message>
@@ -5639,12 +6420,12 @@ Upstream: %3
     </message>
     <message>
         <location line="+2"/>
-        <location line="+848"/>
+        <location line="+878"/>
         <source>Quit</source>
         <translation>إنهاء</translation>
     </message>
     <message>
-        <location line="-846"/>
+        <location line="-876"/>
         <source>View</source>
         <translation>عرض</translation>
     </message>
@@ -5659,11 +6440,6 @@ Upstream: %3
         <location line="+200"/>
         <source>Workflows</source>
         <translation>سير العمل</translation>
-    </message>
-    <message>
-        <location line="+0"/>
-        <source>Machines</source>
-        <translation>الأجهزة</translation>
     </message>
     <message>
         <location line="+0"/>
@@ -5694,6 +6470,11 @@ Upstream: %3
         <location line="+0"/>
         <source>Terminal</source>
         <translation>الطرفية</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Environments</source>
+        <translation>البيئة</translation>
     </message>
     <message>
         <location line="+12"/>
@@ -5801,7 +6582,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>لاحقًا</translation>
     </message>
     <message>
-        <location line="+188"/>
+        <location line="+195"/>
         <source>Workflow studio</source>
         <translation>استوديو سير العمل</translation>
     </message>
@@ -5821,7 +6602,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>فتح مجلد مشروع</translation>
     </message>
     <message>
-        <location line="+101"/>
+        <location line="+104"/>
         <source>Open a project</source>
         <translation>فتح مشروع</translation>
     </message>
@@ -5832,19 +6613,19 @@ If a workflow needs external tools, you install them yourself from official sour
     </message>
     <message>
         <location line="+22"/>
-        <location line="+652"/>
-        <location filename="../src/shell/presentation/MainWindowSurfaces.cpp" line="+109"/>
+        <location line="+662"/>
+        <location filename="../src/shell/presentation/MainWindowSurfaces.cpp" line="+151"/>
         <source>Workflow unavailable</source>
         <translation>سير العمل غير متاح</translation>
     </message>
     <message>
-        <location line="-624"/>
-        <location line="+673"/>
+        <location line="-634"/>
+        <location line="+683"/>
         <source>Could not start dockpipe (see stderr).</source>
         <translation>تعذر بدء dockpipe (راجع stderr).</translation>
     </message>
     <message>
-        <location line="-600"/>
+        <location line="-593"/>
         <source>VS Code workflow</source>
         <translation>سير عمل VS Code</translation>
     </message>
@@ -5854,7 +6635,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>لا توجد مدخلات معلنة. استخدم «استنساخ إلى سير العمل» لتحرير هذه التهيئة.</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+50"/>
         <source>This workflow does not expose app-managed settings.</source>
         <translation>لا يوفر سير العمل هذا إعدادات يديرها التطبيق.</translation>
     </message>
@@ -5924,7 +6705,7 @@ If a workflow needs external tools, you install them yourself from official sour
         <translation>جاهز</translation>
     </message>
     <message>
-        <location line="+168"/>
+        <location line="+158"/>
         <source>Received an invalid Dockpipe prompt payload.</source>
         <translation>استُلمت حمولة مطالبة Dockpipe غير صالحة.</translation>
     </message>
@@ -5945,7 +6726,7 @@ If a workflow needs external tools, you install them yourself from official sour
     </message>
     <message>
         <location line="+1"/>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+213"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+121"/>
         <source>Choose another computer or reconnect this machine before running.</source>
         <translation>اختر كمبيوتر آخر أو أعد توصيل هذا الجهاز قبل التشغيل.</translation>
     </message>
@@ -6068,7 +6849,7 @@ If a workflow needs external tools, you install them yourself from official sour
 </translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowDashboards.cpp" line="+76"/>
+        <location filename="../src/shell/presentation/MainWindowDashboards.cpp" line="+78"/>
         <source>This workflow is no longer in the project catalog. Refresh Workflows and try again.</source>
         <translation>لم يعد سير العمل هذا في فهرس المشروع. حدّث «سير العمل» وحاول مجددًا.</translation>
     </message>
@@ -6267,7 +7048,7 @@ Ctrl / ⌘ + `     تبديل المخرجات
         <translation>لا توجد سير عمل بعد</translation>
     </message>
     <message>
-        <location line="+56"/>
+        <location line="+53"/>
         <source>Open YAML file…</source>
         <translation>فتح ملف YAML…</translation>
     </message>
@@ -6307,7 +7088,7 @@ Ctrl / ⌘ + `     تبديل المخرجات
         <translation>YAML لسير العمل (*.yml *.yaml)</translation>
     </message>
     <message>
-        <location line="+41"/>
+        <location line="+45"/>
         <source>Workflow source unavailable</source>
         <translation>مصدر سير العمل غير متاح</translation>
     </message>
@@ -6322,12 +7103,17 @@ Ctrl / ⌘ + `     تبديل المخرجات
         <translation>انتظر انتهاء إجراء Git أو ألغِه في Git قبل تغيير المشاريع.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="-1376"/>
+        <location line="+122"/>
+        <source>This run target is unavailable. Choose another computer or reconnect it in Environments.</source>
+        <translation>هذا الهدف التشغيل غير متوفر.اختر جهاز كمبيوتر آخر أو إعادة توصيلها في البيئات.</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="-1396"/>
         <source>Wait for the Git action to finish, or cancel it in Git before quitting.</source>
         <translation>انتظر انتهاء إجراء Git أو ألغِه في Git قبل الإنهاء.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+94"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-23"/>
         <source>&lt;h3&gt;Select a workflow&lt;/h3&gt;&lt;p&gt;Review its purpose and inputs here, then choose Run or Edit on canvas.&lt;/p&gt;</source>
         <translation>&lt;h3&gt;حدد سير عمل&lt;/h3&gt;&lt;p&gt;راجع غرضه ومدخلاته هنا، ثم اختر «تشغيل» أو «تحرير على اللوحة».&lt;/p&gt;</translation>
     </message>
@@ -6362,12 +7148,7 @@ Ctrl / ⌘ + `     تبديل المخرجات
         <translation>يحتاج الكمبيوتر المحدد إلى الأدوات والمنصة التي يتطلبها سير العمل هذا.</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>This run target is unavailable. Choose another computer or reconnect it in Machines.</source>
-        <translation>هدف التشغيل هذا غير متاح. اختر كمبيوتر آخر أو أعد توصيله في «الأجهزة».</translation>
-    </message>
-    <message>
-        <location line="+41"/>
+        <location line="+45"/>
         <source>Clone failed</source>
         <translation>فشل الاستنساخ</translation>
     </message>
@@ -6382,7 +7163,12 @@ Ctrl / ⌘ + `     تبديل المخرجات
         <translation>استُنسخ سير العمل إلى %1</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-43"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-96"/>
+        <source>%1 · Workflow access unavailable</source>
+        <translation>%1 · لا يوجد إمكانية الوصول إلى سير العمل</translation>
+    </message>
+    <message>
+        <location line="+53"/>
         <source>This machine or root changed. Refresh machines and select it again.</source>
         <translation>تغيّر هذا الجهاز أو الجذر. حدّث قائمة الأجهزة وحدّده مرة أخرى.</translation>
     </message>
@@ -6392,13 +7178,12 @@ Ctrl / ⌘ + `     تبديل المخرجات
         <translation>احفظ المسودات المفتوحة أو تجاهلها وأكمل العمليات النشطة قبل تغيير الجهاز.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-435"/>
-        <location line="+145"/>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="-443"/>
         <source>Choose the computer with the shared machine selector.</source>
         <translation>اختر الحاسوب باستخدام محدد الأجهزة المشترك.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+93"/>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="+130"/>
         <source>Container terminal · %1 · %2</source>
         <translation>طرفية الحاوية · %1 · %2</translation>
     </message>
@@ -6406,6 +7191,17 @@ Ctrl / ⌘ + `     تبديل المخرجات
         <location filename="../src/shell/presentation/MainWindow.cpp" line="-209"/>
         <source>Remote Desktop</source>
         <translation>سطح المكتب البعيد</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindowRemote.cpp" line="-216"/>
+        <location line="+28"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · غير متاح</translation>
+    </message>
+    <message>
+        <location filename="../src/shell/presentation/MainWindowWorkflows.cpp" line="+145"/>
+        <source>Use the shared machine or choose a worker for this workflow.</source>
+        <translation>استخدم الجهاز المشترك أو اختر عاملًا لسير العمل هذا.</translation>
     </message>
 </context>
 <context>
@@ -6525,12 +7321,12 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>يمكن لملف تعريف الطرفية تجاوز 64 متغير بيئة كحد أقصى.</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+56"/>
         <source>The terminal launch exceeds its bounded profile or environment contract.</source>
         <translation>يتجاوز تشغيل الطرفية الحدود المقررة لملف التعريف أو البيئة.</translation>
     </message>
     <message>
-        <location line="-45"/>
+        <location line="-50"/>
         <source>The terminal profile contains an invalid environment variable.</source>
         <translation>يحتوي ملف تعريف الطرفية على متغير بيئة غير صالح.</translation>
     </message>
@@ -7018,7 +7814,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
 <context>
     <name>PackageSurfacePage</name>
     <message>
-        <location filename="../src/packages/presentation/PackageSurfacePage.cpp" line="+50"/>
+        <location filename="../src/packages/presentation/PackageSurfacePage.cpp" line="+52"/>
         <source>View</source>
         <translation>عرض</translation>
     </message>
@@ -7083,13 +7879,13 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>انتهت مهلة العملية. حدّث لفحص الحالة الحالية.</translation>
     </message>
     <message>
-        <location line="+91"/>
+        <location line="+95"/>
         <location line="+18"/>
         <source>Refresh paused. Displayed state is stale.</source>
         <translation>التحديث متوقف مؤقتًا. الحالة المعروضة قديمة.</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+28"/>
         <source>State has not been refreshed.</source>
         <translation>لم تُحدّث الحالة.</translation>
     </message>
@@ -7099,7 +7895,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>إجراء تشغيل الحزمة المثبتة ملتبس أو غير متاح.</translation>
     </message>
     <message>
-        <location line="+114"/>
+        <location line="+133"/>
         <source>Refreshing… Previous state is retained.</source>
         <translation>جارٍ التحديث… أُبقيت الحالة السابقة.</translation>
     </message>
@@ -7124,7 +7920,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>أعادت الحزمة حدث واجهة غير صالح.</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+54"/>
         <source>Package operation failed or returned no snapshot. Displayed state is stale.</source>
         <translation>فشلت عملية الحزمة أو لم تُعد لقطة. الحالة المعروضة قديمة.</translation>
     </message>
@@ -7139,7 +7935,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>اكتملت العملية. جارٍ تحديث الحالة…</translation>
     </message>
     <message>
-        <location line="+25"/>
+        <location line="+69"/>
         <source>Unsupported package surface event schema.</source>
         <translation>مخطط حدث واجهة الحزمة غير مدعوم.</translation>
     </message>
@@ -7164,7 +7960,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>تتجاوز حقول مورد الحزمة عقد الواجهة.</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+16"/>
         <source>Invalid package widget display options or missing installed factory.</source>
         <translation>خيارات عرض عنصر الحزمة غير صالحة أو المصنع المثبت مفقود.</translation>
     </message>
@@ -7187,6 +7983,213 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <location line="+7"/>
         <source>Invalid package resource action.</source>
         <translation>إجراء مورد الحزمة غير صالح.</translation>
+    </message>
+</context>
+<context>
+    <name>PipeLangEditorSession</name>
+    <message>
+        <location filename="../src/files/presentation/PipeLangEditorSession.cpp" line="+139"/>
+        <source>Browse…</source>
+        <translation>تصفح…</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Connect</source>
+        <translation>اتصال</translation>
+    </message>
+    <message>
+        <location line="-33"/>
+        <source>Connect PipeLang language server</source>
+        <translation>الاتصال بخادم لغة PipeLang</translation>
+    </message>
+    <message>
+        <location line="-19"/>
+        <source>Connect an explicitly selected installed language server for .pipe diagnostics and hover</source>
+        <translation>الاتصال بخادم لغة مثبّت ومحدّد صراحةً لتشخيص ملفات .pipe وعرض المعلومات عند تمرير المؤشر</translation>
+    </message>
+    <message>
+        <location line="+47"/>
+        <source>Node executable</source>
+        <translation>ملف Node التنفيذي</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>PipeLang compiler executable</source>
+        <translation>ملف مترجم PipeLang التنفيذي</translation>
+    </message>
+    <message>
+        <location line="-43"/>
+        <source>PipeLang language server disconnected.</source>
+        <translation>انقطع الاتصال بخادم لغة PipeLang.</translation>
+    </message>
+    <message>
+        <location line="-7"/>
+        <source>PipeLang server…</source>
+        <translation>خادم PipeLang…</translation>
+    </message>
+    <message>
+        <location line="+41"/>
+        <source>Select installed tool</source>
+        <translation>اختيار أداة مثبّتة</translation>
+    </message>
+    <message>
+        <location line="-1"/>
+        <source>Select source root</source>
+        <translation>اختيار المجلد الجذر للمصادر</translation>
+    </message>
+    <message>
+        <location line="-18"/>
+        <source>Select trusted installed tools. Connecting runs the selected Node and server on this host. Paths are used only for this session; project files cannot configure executable paths. An optional source root authorizes compiler analysis of imports beneath that directory.</source>
+        <translation>اختر أدوات مثبّتة موثوقة. يؤدي الاتصال إلى تشغيل Node والخادم المحدّدين على هذا الجهاز. تُستخدم المسارات في هذه الجلسة فقط. لا يمكن لملفات المشروع تعيين مسارات الملفات التنفيذية. يتيح المجلد الجذر الاختياري للمصادر للمترجم تحليل عمليات الاستيراد ضمن ذلك المجلد.</translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Server JavaScript entrypoint</source>
+        <translation>نقطة دخول JavaScript للخادم</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Source root (optional)</source>
+        <translation>المجلد الجذر للمصادر (اختياري)</translation>
+    </message>
+    <message>
+        <location line="-47"/>
+        <source>Stop</source>
+        <translation>إيقاف</translation>
+    </message>
+</context>
+<context>
+    <name>PipeLangLanguageClient</name>
+    <message>
+        <location filename="../src/files/infrastructure/PipeLangLanguageClient.cpp" line="+374"/>
+        <source>Invalid PipeLang JSON-RPC message.</source>
+        <translation>رسالة JSON-RPC غير صالحة في PipeLang.</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Invalid PipeLang JSON-RPC version.</source>
+        <translation>إصدار JSON-RPC غير صالح في PipeLang.</translation>
+    </message>
+    <message>
+        <location line="-35"/>
+        <source>Invalid PipeLang protocol Content-Length.</source>
+        <translation>قيمة Content-Length غير صالحة في بروتوكول PipeLang.</translation>
+    </message>
+    <message>
+        <location line="-224"/>
+        <source>Invalid absolute installed PipeLang selection (%1).</source>
+        <translation>اختيار أداة PipeLang مثبّتة بمسار مطلق غير صالح (%1).</translation>
+    </message>
+    <message>
+        <location line="-10"/>
+        <source>Node executable: %1</source>
+        <translation>ملف Node التنفيذي: %1</translation>
+    </message>
+    <message>
+        <location line="+305"/>
+        <source>PipeLang compiler diagnostics and hover connected.</source>
+        <translation>أصبحت تشخيصات مترجم PipeLang ومعلومات تمرير المؤشر متاحة.</translation>
+    </message>
+    <message>
+        <location line="-178"/>
+        <source>PipeLang document limit exceeded (1 MiB per file, 16 MiB total, 32 files).</source>
+        <translation>تجاوز حد مستندات PipeLang (1 MiB لكل ملف، و16 MiB إجمالًا، و32 ملفًا).</translation>
+    </message>
+    <message>
+        <location line="-208"/>
+        <source>PipeLang hover timed out.</source>
+        <translation>انتهت مهلة طلب معلومات تمرير المؤشر في PipeLang.</translation>
+    </message>
+    <message>
+        <location line="+301"/>
+        <location line="+4"/>
+        <source>PipeLang protocol header limit exceeded.</source>
+        <translation>تجاوز حد ترويسات بروتوكول PipeLang.</translation>
+    </message>
+    <message>
+        <location line="-14"/>
+        <source>PipeLang protocol input limit exceeded.</source>
+        <translation>تجاوز حد الإدخال لبروتوكول PipeLang.</translation>
+    </message>
+    <message>
+        <location line="-126"/>
+        <source>PipeLang protocol output limit exceeded.</source>
+        <translation>تجاوز حد الإخراج لبروتوكول PipeLang.</translation>
+    </message>
+    <message>
+        <location line="+157"/>
+        <source>PipeLang protocol requires one Content-Length header.</source>
+        <translation>يتطلب بروتوكول PipeLang ترويسة Content-Length واحدة بالضبط.</translation>
+    </message>
+    <message>
+        <location line="-151"/>
+        <source>PipeLang protocol write failed.</source>
+        <translation>تعذّرت الكتابة إلى بروتوكول PipeLang.</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>PipeLang request identity space exhausted; restart the editor session.</source>
+        <translation>نفدت معرّفات طلبات PipeLang. أعِد تشغيل جلسة المحرّر.</translation>
+    </message>
+    <message>
+        <location line="-144"/>
+        <source>PipeLang server could not start: %1</source>
+        <translation>تعذّر بدء تشغيل خادم PipeLang: %1</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>PipeLang server exited (%1). Reconnect explicitly.</source>
+        <translation>انتهى تشغيل خادم PipeLang ‏(%1). أعِد الاتصال يدويًا.</translation>
+    </message>
+    <message>
+        <location line="-40"/>
+        <source>PipeLang server lifecycle deadline exceeded.</source>
+        <translation>انتهت مهلة دورة حياة خادم PipeLang.</translation>
+    </message>
+    <message>
+        <location line="+383"/>
+        <source>PipeLang server rejected shutdown.</source>
+        <translation>رفض خادم PipeLang طلب إيقاف التشغيل.</translation>
+    </message>
+    <message>
+        <location line="-385"/>
+        <source>PipeLang server required forced termination after stdin closure.</source>
+        <translation>لزم إنهاء خادم PipeLang إجباريًا بعد إغلاق stdin.</translation>
+    </message>
+    <message>
+        <location line="+42"/>
+        <source>PipeLang server stopped.</source>
+        <translation>توقّف خادم PipeLang.</translation>
+    </message>
+    <message>
+        <location line="+332"/>
+        <source>Selected PipeLang server does not provide the required UTF-16 hover contract.</source>
+        <translation>لا يدعم خادم PipeLang المحدّد عقد UTF-16 المطلوب لمعلومات تمرير المؤشر.</translation>
+    </message>
+    <message>
+        <location line="-269"/>
+        <source>Starting selected PipeLang server…</source>
+        <translation>جارٍ بدء تشغيل خادم PipeLang المحدّد…</translation>
+    </message>
+    <message>
+        <location line="-34"/>
+        <source>Stop the current PipeLang server before reconnecting.</source>
+        <translation>أوقف خادم PipeLang الحالي قبل إعادة الاتصال.</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>compiler executable: %1</source>
+        <translation>ملف المترجم التنفيذي: %1</translation>
+    </message>
+    <message>
+        <location line="-2"/>
+        <source>server entrypoint: %1</source>
+        <translation>نقطة دخول الخادم: %1</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>source directory: %1</source>
+        <translation>مجلد المصادر: %1</translation>
     </message>
 </context>
 <context>
@@ -7301,12 +8304,12 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
     <name>ProjectFilesWidget</name>
     <message>
         <location filename="../src/files/presentation/ProjectFilesWidget.cpp" line="+62"/>
-        <location line="+172"/>
+        <location line="+175"/>
         <source>Files</source>
         <translation>الملفات</translation>
     </message>
     <message>
-        <location line="-169"/>
+        <location line="-172"/>
         <source>Browse and edit your workspace.</source>
         <translation>تصفح مساحة العمل وحررها.</translation>
     </message>
@@ -7317,13 +8320,13 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
     </message>
     <message>
         <location line="+5"/>
-        <location line="+26"/>
+        <location line="+29"/>
         <source>New file</source>
         <translation>ملف جديد</translation>
     </message>
     <message>
-        <location line="-26"/>
-        <location line="+225"/>
+        <location line="-29"/>
+        <location line="+228"/>
         <source>Path relative to this folder</source>
         <translation>مسار نسبي إلى هذا المجلد</translation>
     </message>
@@ -7403,12 +8406,12 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
     <message>
         <location line="+13"/>
         <location line="+3"/>
-        <location line="+888"/>
+        <location line="+945"/>
         <source>Preview Markdown</source>
         <translation>معاينة Markdown</translation>
     </message>
     <message>
-        <location line="-882"/>
+        <location line="-939"/>
         <source>Find in file (Ctrl+F)</source>
         <translation>البحث في الملف (Ctrl+F)</translation>
     </message>
@@ -7489,11 +8492,12 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
     </message>
     <message>
         <location line="+3"/>
+        <location line="+222"/>
         <source>Select a file to edit, or create something new.</source>
         <translation>حدد ملفًا لتحريره أو أنشئ شيئًا جديدًا.</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="-218"/>
         <source>Create a file</source>
         <translation>إنشاء ملف</translation>
     </message>
@@ -7503,7 +8507,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>لا توجد نتائج مطابقة لـ«%1».</translation>
     </message>
     <message>
-        <location line="+189"/>
+        <location line="+243"/>
         <source>Unsaved file</source>
         <translation>ملف غير محفوظ</translation>
     </message>
@@ -7580,7 +8584,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>حُفظ %1</translation>
     </message>
     <message>
-        <location line="+175"/>
+        <location line="+177"/>
         <source>No file open</source>
         <translation>لا يوجد ملف مفتوح</translation>
     </message>
@@ -7600,7 +8604,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>جذر مساحة العمل</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="+23"/>
         <source>Hide Markdown preview</source>
         <translation>إخفاء معاينة Markdown</translation>
     </message>
@@ -7620,12 +8624,12 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>%1   ·   UTF-8   ·   %2                         سطر %3، عمود %4</translation>
     </message>
     <message>
-        <location line="-1070"/>
+        <location line="-1127"/>
         <source>Refresh files</source>
         <translation>تحديث الملفات</translation>
     </message>
     <message>
-        <location line="+463"/>
+        <location line="+517"/>
         <location line="+34"/>
         <source>A file operation is still running. Your open files are preserved.</source>
         <translation>ما زالت عملية ملفات قيد التنفيذ. تم الاحتفاظ بالملفات المفتوحة.</translation>
@@ -7634,6 +8638,11 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <location line="+341"/>
         <source>Invalid workspace file response.</source>
         <translation>استجابة ملفات مساحة العمل غير صالحة.</translation>
+    </message>
+    <message>
+        <location line="-440"/>
+        <source>Select a file to read.</source>
+        <translation>اختر ملفًا لقراءته.</translation>
     </message>
 </context>
 <context>
@@ -7735,7 +8744,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>دفع</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+3"/>
         <source>Pull fast-forward changes into a clean checkout</source>
         <translation>سحب تغييرات التقديم السريع إلى نسخة عمل نظيفة</translation>
     </message>
@@ -7752,12 +8761,12 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
     <message>
         <location line="+12"/>
         <location line="+27"/>
-        <location line="+288"/>
+        <location line="+292"/>
         <source>Changed files</source>
         <translation>الملفات المعدلة</translation>
     </message>
     <message>
-        <location line="-315"/>
+        <location line="-319"/>
         <source>Staged files</source>
         <translation>ملفات مجهزة</translation>
     </message>
@@ -7804,30 +8813,30 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
     </message>
     <message>
         <location line="+4"/>
-        <location line="+639"/>
+        <location line="+655"/>
         <source>Unstage all</source>
         <translation>إلغاء تجهيز الكل</translation>
     </message>
     <message>
-        <location line="-639"/>
-        <location line="+638"/>
+        <location line="-655"/>
+        <location line="+654"/>
         <source>Stage all</source>
         <translation>تجهيز الكل</translation>
     </message>
     <message>
-        <location line="-589"/>
-        <location line="+566"/>
+        <location line="-605"/>
+        <location line="+582"/>
         <source>Stage changes to include them in your commit.</source>
         <translation>جهّز التغييرات لتضمينها في التثبيت.</translation>
     </message>
     <message>
-        <location line="-566"/>
-        <location line="+568"/>
+        <location line="-582"/>
+        <location line="+584"/>
         <source>No unstaged changes.</source>
         <translation>لا توجد تغييرات غير مجهزة.</translation>
     </message>
     <message>
-        <location line="-544"/>
+        <location line="-560"/>
         <source>Commit changes</source>
         <translation>تثبيت التغييرات</translation>
     </message>
@@ -7853,20 +8862,20 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
     </message>
     <message>
         <location line="+12"/>
-        <location line="+145"/>
-        <location line="+260"/>
+        <location line="+149"/>
+        <location line="+268"/>
         <location line="+4"/>
         <source>Select a file to review</source>
         <translation>حدد ملفًا للمراجعة</translation>
     </message>
     <message>
-        <location line="-398"/>
-        <location line="+465"/>
+        <location line="-410"/>
+        <location line="+481"/>
         <source>Unstaged changes</source>
         <translation>تغييرات غير مجهزة</translation>
     </message>
     <message>
-        <location line="-462"/>
+        <location line="-478"/>
         <source>Stage</source>
         <translation>تجهيز</translation>
     </message>
@@ -7892,20 +8901,20 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
     </message>
     <message>
         <location line="+21"/>
-        <location line="+96"/>
-        <location line="+163"/>
+        <location line="+100"/>
+        <location line="+171"/>
         <source>Your changes, in focus</source>
         <translation>تغييراتك، بوضوح</translation>
     </message>
     <message>
-        <location line="-254"/>
-        <location line="+92"/>
-        <location line="+163"/>
+        <location line="-266"/>
+        <location line="+96"/>
+        <location line="+171"/>
         <source>Refresh the repository, then select a file to review its changes.</source>
         <translation>حدّث المستودع، ثم حدد ملفًا لمراجعة تغييراته.</translation>
     </message>
     <message>
-        <location line="-243"/>
+        <location line="-255"/>
         <source>Changes</source>
         <translation>التغييرات</translation>
     </message>
@@ -7925,7 +8934,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>إلغاء العملية</translation>
     </message>
     <message>
-        <location line="+57"/>
+        <location line="+61"/>
         <source>Refresh to review this project&apos;s changes.</source>
         <translation>حدّث لمراجعة تغييرات هذا المشروع.</translation>
     </message>
@@ -7935,7 +8944,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>افتح مجلد مشروع أولًا.</translation>
     </message>
     <message>
-        <location line="+80"/>
+        <location line="+88"/>
         <source>Refresh the repository before changing it.</source>
         <translation>حدّث المستودع قبل تغييره.</translation>
     </message>
@@ -8002,7 +9011,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>جهّز التغييرات لإعداد التثبيت التالي.</translation>
     </message>
     <message>
-        <location line="+40"/>
+        <location line="+44"/>
         <source>No staged files</source>
         <translation>لا توجد ملفات مجهزة</translation>
     </message>
@@ -8035,6 +9044,11 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <location line="+1"/>
         <source>Unstage shown</source>
         <translation>إلغاء تجهيز المعروض</translation>
+    </message>
+    <message>
+        <location line="-263"/>
+        <source>The selected Git root does not grant this operation.</source>
+        <translation>لا يسمح جذر Git المحدد بهذه العملية.</translation>
     </message>
 </context>
 <context>
@@ -8274,7 +9288,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>تلقى إعداد الطرفية التلقائي بيئة مضيف غير صالحة.</translation>
     </message>
     <message>
-        <location filename="../src/shell/presentation/MainWindow.cpp" line="-710"/>
+        <location filename="../src/shell/presentation/MainWindow.cpp" line="-774"/>
         <source>Running</source>
         <translation>قيد التشغيل</translation>
     </message>
@@ -8304,7 +9318,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>احفظ مسودة التعارض أو تجاهلها قبل تغيير الجهاز أو الجذر.</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+49"/>
         <source>Select an absolute local project folder.</source>
         <translation>حدّد مجلد مشروع محليًا بمسار مطلق.</translation>
     </message>
@@ -8396,7 +9410,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
     </message>
     <message>
         <location line="+125"/>
-        <location line="+73"/>
+        <location line="+77"/>
         <source>Output exceeded the display limit.
 </source>
         <translation>تجاوزت المخرجات حد العرض.
@@ -8568,7 +9582,22 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>تُطبق الجودة ومعدل الإطارات عند الاتصال التالي. الدقة حد أقصى، ومعدل البت قيمة مستهدفة.</translation>
     </message>
     <message>
-        <location line="-73"/>
+        <location line="+33"/>
+        <source>Clipboard sharing is unavailable on the selected computer.</source>
+        <translation>لم يتم توفير مشاركة Clipboard على جهاز الكمبيوتر المحدد.</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>The selected computer shares its current desktop.</source>
+        <translation>يشارك الكمبيوتر المختار سطح المكتب الحالي.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>The selected computer&apos;s video does not include a cursor.</source>
+        <translation>فيديو الكمبيوتر المختار لا يحتوي على محرك.</translation>
+    </message>
+    <message>
+        <location line="-119"/>
         <source>Current desktop</source>
         <translation>سطح المكتب الحالي</translation>
     </message>
@@ -8626,14 +9655,14 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
 <context>
     <name>RemoteDesktopWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+89"/>
-        <location line="+209"/>
-        <location line="+313"/>
+        <location filename="../src/remote/presentation/RemoteDesktopWidget.cpp" line="+124"/>
+        <location line="+222"/>
+        <location line="+320"/>
         <source>Remote Desktop</source>
         <translation>سطح المكتب البعيد</translation>
     </message>
     <message>
-        <location line="-509"/>
+        <location line="-529"/>
         <source>View or control an existing desktop through its authorized native provider.</source>
         <translation>اعرض سطح مكتب موجودًا أو تحكّم به عبر المزوّد الأصلي المخوّل.</translation>
     </message>
@@ -8715,7 +9744,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>إبقاء الاتصال</translation>
     </message>
     <message>
-        <location line="+39"/>
+        <location line="+52"/>
         <source>Some settings will apply on the next connection.</source>
         <translation>ستُطبق بعض الإعدادات عند الاتصال التالي.</translation>
     </message>
@@ -8755,14 +9784,14 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>%1 (يلزم تحديث الاقتران)</translation>
     </message>
     <message>
-        <location line="+63"/>
-        <source>No paired computers are available. Add a computer in Machines.</source>
-        <translation>لا تتوفر حواسيب مقترنة. أضف حاسوبًا في قسم الأجهزة.</translation>
+        <location line="+68"/>
+        <source>Choose a paired computer.</source>
+        <translation>اختر حاسوبًا مقترنًا.</translation>
     </message>
     <message>
         <location line="+0"/>
-        <source>Choose a paired computer.</source>
-        <translation>اختر حاسوبًا مقترنًا.</translation>
+        <source>No paired computers are available. Add a computer in Environments.</source>
+        <translation>لا توجد أجهزة الكمبيوتر المدفوعة متوفرة.إضافة جهاز كمبيوتر في البيئات.</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -8806,22 +9835,27 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>دليل جاهزية أسطح المكتب غير صالح.</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+29"/>
         <source>The selected desktop identity or permission changed. Refresh and connect again.</source>
         <translation>تغيّرت هوية سطح المكتب المحدّد أو أذوناته. حدّث وأعِد الاتصال.</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+26"/>
+        <source>Opening the selected desktop with administrator control…</source>
+        <translation>فتح سطح المكتب المحدد مع التحكم في المدير ...</translation>
+    </message>
+    <message>
+        <location line="+1"/>
         <source>Opening the selected desktop…</source>
         <translation>جارٍ فتح سطح المكتب المحدّد…</translation>
     </message>
     <message>
-        <location line="-401"/>
+        <location line="-427"/>
         <source>Disconnected locally. The native provider reports any unconfirmed remote cleanup.</source>
         <translation>تم قطع الاتصال محليًا. يُبلغ المزوّد الأصلي عن أي تنظيف بعيد لم يتأكد اكتماله.</translation>
     </message>
     <message>
-        <location line="+412"/>
+        <location line="+438"/>
         <source>Closing the selected desktop…</source>
         <translation>جارٍ إغلاق سطح المكتب المحدد…</translation>
     </message>
@@ -8854,7 +9888,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>كتالوج الأجهزة البعيدة غير متاح.</translation>
     </message>
     <message>
-        <location line="+66"/>
+        <location line="+70"/>
         <source>Remote result does not match the captured operation.</source>
         <translation>لا تتطابق النتيجة البعيدة مع العملية الملتقطة.</translation>
     </message>
@@ -8864,7 +9898,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>طُلب إلغاء العملية البعيدة الأصلية. حدّث الحالة قبل إعادة محاولة الكتابة.</translation>
     </message>
     <message>
-        <location line="-157"/>
+        <location line="-161"/>
         <source>Cannot retain remote mutation recovery metadata. Resolve saved operations or repair settings before another write.</source>
         <translation>تعذر الاحتفاظ ببيانات استرداد التعديل البعيد الوصفية. احسم العمليات المحفوظة أو أصلح الإعدادات قبل كتابة أخرى.</translation>
     </message>
@@ -8917,7 +9951,7 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
 <context>
     <name>RemoteFeatureRecoveryDialog</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteFeatureRecoveryDialog.cpp" line="+62"/>
+        <location filename="../src/remote/presentation/RemoteFeatureRecoveryDialog.cpp" line="+63"/>
         <source>Choose a retained operation.</source>
         <translation>اختر عملية محفوظة.</translation>
     </message>
@@ -8927,17 +9961,17 @@ Mermaid preview limit: diagrams after the first 16 are shown as source.
         <translation>إغلاق</translation>
     </message>
     <message>
-        <location line="+148"/>
+        <location line="+165"/>
         <source>Contacting the original captured machine…</source>
         <translation>جارٍ الاتصال بالجهاز الأصلي المحفوظ…</translation>
     </message>
     <message>
-        <location line="-180"/>
+        <location line="-197"/>
         <source>Inspect the original operation before another write. Cancellation does not prove that a mutation had no effect.</source>
         <translation>افحص العملية الأصلية قبل كتابة أخرى. الإلغاء لا يثبت أن التعديل لم يُحدث أي أثر.</translation>
     </message>
     <message>
-        <location line="+146"/>
+        <location line="+155"/>
         <source>Machine: %1
 Fingerprint: %2
 Generation: %3
@@ -8953,17 +9987,17 @@ Operation: %6</source>
     </message>
     <message>
         <location line="-1"/>
-        <location line="+18"/>
+        <location line="+20"/>
         <source>No uncertain mutations are retained.</source>
         <translation>لا توجد تعديلات غير مؤكدة محفوظة.</translation>
     </message>
     <message>
-        <location line="+77"/>
+        <location line="+85"/>
         <source>Original operation status: %1. No operation was replayed.</source>
         <translation>حالة العملية الأصلية: %1. لم تُنفذ أي عملية مجددًا.</translation>
     </message>
     <message>
-        <location line="-222"/>
+        <location line="-241"/>
         <source>Refresh status</source>
         <translation>تحديث الحالة</translation>
     </message>
@@ -8973,30 +10007,30 @@ Operation: %6</source>
         <translation>طلب الإلغاء</translation>
     </message>
     <message>
-        <location line="+144"/>
-        <location line="+47"/>
+        <location line="+155"/>
+        <location line="+53"/>
         <location line="+22"/>
         <source>The mutation outcome remains uncertain. Refresh its original status before another write.</source>
         <translation>تظل نتيجة التعديل غير مؤكدة. حدّث حالته الأصلية قبل كتابة أخرى.</translation>
     </message>
     <message>
-        <location line="+36"/>
+        <location line="+39"/>
         <source>Uncertain operations…</source>
         <translation>عمليات غير مؤكدة…</translation>
     </message>
     <message>
-        <location line="-272"/>
+        <location line="-292"/>
         <source>Uncertain remote operations</source>
         <translation>عمليات بعيدة غير مؤكدة</translation>
     </message>
     <message>
-        <location line="+243"/>
+        <location line="+262"/>
         <source>unknown</source>
         <translation>مجهول</translation>
     </message>
     <message>
-        <location line="-79"/>
-        <location line="+43"/>
+        <location line="-87"/>
+        <location line="+49"/>
         <location line="+24"/>
         <location line="+7"/>
         <source>Cleanup verified; the mutation outcome remains unknown. Refresh Files, Git or the container provider and review the affected state before another write.</source>
@@ -9013,27 +10047,27 @@ Operation: %6</source>
         <translation>تم التحقق من تنظيف طرفية الحاوية للجلسة الأصلية المحفوظة.</translation>
     </message>
     <message>
-        <location line="-179"/>
+        <location line="-196"/>
         <source>Explicitly remove the original exact container after native client cleanup. Requires the worker&apos;s independent Docker recovery grant. Volumes and images are retained.</source>
         <translation>أزل الحاوية الأصلية المحددة صراحةً بعد تنظيف العميل الأصلي. يتطلب ذلك إذن استرداد Docker المستقل لدى العامل. يُحتفظ بوحدات التخزين والصور.</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+23"/>
         <source>Remove container %1 on %2 to fence delayed daemon work for operation %3? This removes the container and its writable layer. Volumes and images are retained. The original mutation outcome remains unknown.</source>
         <translation>هل تريد إزالة الحاوية %1 على %2 لمنع أعمال الخدمة المؤجلة للعملية %3؟ سيؤدي ذلك إلى إزالة الحاوية وطبقتها القابلة للكتابة. يُحتفظ بوحدات التخزين والصور. تظل نتيجة التعديل الأصلي مجهولة.</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-25"/>
         <source>Retire container…</source>
         <translation>إخراج الحاوية من الخدمة…</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+24"/>
         <source>Retire the captured container?</source>
         <translation>هل تريد إخراج الحاوية المحفوظة من الخدمة؟</translation>
     </message>
     <message>
-        <location line="-22"/>
+        <location line="-25"/>
         <source>Revoke the original invocation and verify its native cleanup evidence. Boot-fenced workers require a host reboot for uncertain process-backed operations. The mutation outcome remains unknown.</source>
         <translation>ألغِ الاستدعاء الأصلي وتحقق من أدلة تنظيفه الأصلي. تتطلب العوامل المحمية بحدود الإقلاع إعادة تشغيل المضيف للعمليات غير المؤكدة المعتمدة على العمليات النظامية. تظل نتيجة التعديل مجهولة.</translation>
     </message>
@@ -9043,9 +10077,14 @@ Operation: %6</source>
         <translation>التحقق من التنظيف</translation>
     </message>
     <message>
-        <location line="+154"/>
+        <location line="+171"/>
         <source>Refreshing the worker&apos;s retained terminal metadata. No cleanup was requested.</source>
         <translation>جارٍ تحديث بيانات الطرفية الوصفية المحفوظة لدى العامل. لم يُطلب أي تنظيف.</translation>
+    </message>
+    <message>
+        <location line="+62"/>
+        <source>The original operation was cancelled. Refresh the affected state before another write.</source>
+        <translation>أُلغيت العملية الأصلية. حدّث الحالة المتأثرة قبل الكتابة مرة أخرى.</translation>
     </message>
 </context>
 <context>
@@ -9375,7 +10414,7 @@ Operation: %6</source>
 <context>
     <name>RemoteWidget</name>
     <message>
-        <location filename="../src/remote/presentation/RemoteWidget.cpp" line="+133"/>
+        <location filename="../src/remote/presentation/RemoteWidget.cpp" line="+172"/>
         <location line="+21"/>
         <source>Show details</source>
         <translation>إظهار التفاصيل</translation>
@@ -9391,14 +10430,14 @@ Operation: %6</source>
         <translation>إخفاء التفاصيل</translation>
     </message>
     <message>
-        <location line="+60"/>
-        <location line="+32"/>
-        <location line="+706"/>
+        <location line="+65"/>
+        <location line="+33"/>
+        <location line="+872"/>
         <source>Machines</source>
         <translation>الأجهزة</translation>
     </message>
     <message>
-        <location line="-737"/>
+        <location line="-904"/>
         <source>Pairing and access relationships · Connection health is not checked here</source>
         <translation>علاقات الاقتران والوصول · لا تُفحص صحة الاتصال هنا</translation>
     </message>
@@ -9409,25 +10448,25 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+16"/>
-        <location line="+720"/>
+        <location line="+887"/>
         <source>Machine setup</source>
         <translation>إعداد الجهاز</translation>
     </message>
     <message>
-        <location line="-706"/>
+        <location line="-872"/>
         <source>Manage trusted computers and workflow access.</source>
         <translation>إدارة أجهزة الكمبيوتر الموثوقة والوصول إلى سير العمل.</translation>
     </message>
     <message>
         <location line="+2"/>
-        <location line="+61"/>
-        <location line="+212"/>
-        <location line="+430"/>
+        <location line="+62"/>
+        <location line="+216"/>
+        <location line="+591"/>
         <source>Add machine</source>
         <translation>إضافة جهاز</translation>
     </message>
     <message>
-        <location line="-692"/>
+        <location line="-858"/>
         <source>Canvas</source>
         <translation>اللوحة</translation>
     </message>
@@ -9447,18 +10486,18 @@ Operation: %6</source>
         <translation>عرض قائمة الأجهزة</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+48"/>
         <source>Refresh</source>
         <translation>تحديث</translation>
     </message>
     <message>
         <location line="+3"/>
-        <location line="+432"/>
+        <location line="+475"/>
         <source>Connection settings</source>
         <translation>إعدادات الاتصال</translation>
     </message>
     <message>
-        <location line="-421"/>
+        <location line="-463"/>
         <source>Remote connection</source>
         <translation>اتصال بعيد</translation>
     </message>
@@ -9479,13 +10518,13 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+16"/>
-        <location line="+334"/>
-        <location line="+266"/>
+        <location line="+343"/>
+        <location line="+421"/>
         <source>Connect this computer</source>
         <translation>توصيل هذا الكمبيوتر</translation>
     </message>
     <message>
-        <location line="-596"/>
+        <location line="-760"/>
         <source>Checking remote access lock status…</source>
         <translation>جارٍ التحقق من حالة قفل الوصول البعيد…</translation>
     </message>
@@ -9501,12 +10540,12 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+10"/>
-        <location line="+239"/>
+        <location line="+247"/>
         <source>Machine</source>
         <translation>الجهاز</translation>
     </message>
     <message>
-        <location line="-239"/>
+        <location line="-247"/>
         <source>Access</source>
         <translation>الوصول</translation>
     </message>
@@ -9542,34 +10581,34 @@ Operation: %6</source>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+657"/>
+        <location line="+830"/>
         <source>Paired</source>
         <translation>مقترن</translation>
     </message>
     <message>
-        <location line="-656"/>
+        <location line="-829"/>
         <source>Invitations</source>
         <translation>الدعوات</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+662"/>
+        <location line="+836"/>
         <source>Access removed</source>
         <translation>أُزيل الوصول</translation>
     </message>
     <message>
-        <location line="-659"/>
+        <location line="-833"/>
         <source>Refresh to load managed machines.</source>
         <translation>حدّث لتحميل الأجهزة المُدارة.</translation>
     </message>
     <message>
         <location line="+9"/>
-        <location line="+1079"/>
+        <location line="+1270"/>
         <source>Select a machine to view its settings.</source>
         <translation>حدد جهازًا لعرض إعداداته.</translation>
     </message>
     <message>
-        <location line="-1075"/>
+        <location line="-1266"/>
         <source>Configure this computer…</source>
         <translation>تهيئة هذا الكمبيوتر…</translation>
     </message>
@@ -9631,20 +10670,21 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+8"/>
-        <location line="+343"/>
-        <location line="+433"/>
+        <location line="+435"/>
+        <location line="+519"/>
         <source>Set up remote access…</source>
         <translation>إعداد الوصول البعيد…</translation>
     </message>
     <message>
-        <location line="-759"/>
-        <location line="+165"/>
-        <location line="+133"/>
+        <location line="-934"/>
+        <location line="+170"/>
+        <location line="+212"/>
+        <location line="+208"/>
         <source>← Machines</source>
         <translation>← الأجهزة</translation>
     </message>
     <message>
-        <location line="-276"/>
+        <location line="-568"/>
         <source>Add another computer</source>
         <translation>إضافة كمبيوتر آخر</translation>
     </message>
@@ -9660,12 +10700,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+3"/>
-        <location line="+442"/>
+        <location line="+608"/>
         <source>Start pairing</source>
         <translation>بدء الاقتران</translation>
     </message>
     <message>
-        <location line="-437"/>
+        <location line="-603"/>
         <source>Connect this computer instead</source>
         <translation>توصيل هذا الكمبيوتر بدلًا من ذلك</translation>
     </message>
@@ -9680,12 +10720,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>على الكمبيوتر الآخر</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>Open Dockpipe → Machines → Add machine → Connect this computer instead. Enter this address and request pairing.</source>
-        <translation>افتح Dockpipe → الأجهزة → إضافة جهاز → توصيل هذا الكمبيوتر بدلًا من ذلك. أدخل هذا العنوان واطلب الاقتران.</translation>
-    </message>
-    <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>Copy address</source>
         <translation>نسخ العنوان</translation>
     </message>
@@ -9696,12 +10731,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+3"/>
-        <location line="+601"/>
+        <location line="+775"/>
         <source>Review request</source>
         <translation>مراجعة الطلب</translation>
     </message>
     <message>
-        <location line="-597"/>
+        <location line="-771"/>
         <source>Check again</source>
         <translation>التحقق مجددًا</translation>
     </message>
@@ -9726,7 +10761,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>حدد الطلب وقارن رمزه بالكمبيوتر الآخر. وافق فقط إذا تطابقا.</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+7"/>
         <source>Verification code</source>
         <translation>رمز التحقق</translation>
     </message>
@@ -9762,11 +10797,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+1"/>
+        <location line="+119"/>
         <source>Done</source>
         <translation>تم</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="-106"/>
         <source>1 of 3 · Prepare</source>
         <translation>1 من 3 · التحضير</translation>
     </message>
@@ -9786,22 +10822,22 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>اكتمل الاقتران</translation>
     </message>
     <message>
-        <location line="+24"/>
+        <location line="+25"/>
         <source>Enter the address shown on the computer you are connecting to.</source>
         <translation>أدخل العنوان المعروض على الكمبيوتر الذي تتصل به.</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+5"/>
         <source>https://your-broker.example.com</source>
         <translation>https://your-broker.example.com</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+5"/>
         <source>Remote address</source>
         <translation>العنوان البعيد</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+2"/>
         <source>Name for this computer</source>
         <translation>اسم لهذا الكمبيوتر</translation>
     </message>
@@ -9811,12 +10847,22 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>السماح لسير العمل من الكمبيوتر المُدير بالتشغيل باسم مستخدمي</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+3"/>
         <source>Connect only to a computer you trust. Its workflows run as your user and can access your files and tools.</source>
         <translation>اتصل فقط بكمبيوتر تثق به. تعمل سير عمله باسم مستخدمك ويمكنها الوصول إلى ملفاتك وأدواتك.</translation>
     </message>
     <message>
         <location line="+1"/>
+        <source>Allow Terminal access as my user</source>
+        <translation>إمكانية الوصول إلى المحطة كالمستخدم الخاص بي</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Terminal opens in your home folder and runs with your account&apos;s permissions.</source>
+        <translation>يفتح المحطة في مجلد المنزل الخاص بك ويعمل مع تصاريح حسابك.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>After approval, Dockpipe starts a background worker service for your user so this computer can receive workflows.</source>
         <translation>بعد الموافقة، يبدأ Dockpipe خدمة عامل خلفية لمستخدمك ليستقبل هذا الكمبيوتر سير العمل.</translation>
     </message>
@@ -9826,17 +10872,12 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>طلب الاقتران</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+22"/>
         <source>Waiting for approval. Compare the code below on the managing computer.</source>
         <translation>بانتظار الموافقة. قارن الرمز أدناه على الكمبيوتر المُدير.</translation>
     </message>
     <message>
-        <location line="+7"/>
-        <source>Already paired? Recovery options</source>
-        <translation>مقترن بالفعل؟ خيارات الاستعادة</translation>
-    </message>
-    <message>
-        <location line="+6"/>
+        <location line="+13"/>
         <source>Restart receiving workflows without pairing again. Keep this computer awake while work runs.</source>
         <translation>أعد استقبال سير العمل دون الاقتران مجددًا. أبقِ هذا الكمبيوتر مستيقظًا أثناء العمل.</translation>
     </message>
@@ -9846,7 +10887,18 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>بدء خدمة العامل</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+2"/>
+        <location line="+6"/>
+        <source>Enable Terminal</source>
+        <translation>إتاحة محطة</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Allow the managing computer to open a shell with your account&apos;s permissions, starting in your home folder? Dockpipe will briefly restart the background worker.</source>
+        <translation>السماح لجهاز الكمبيوتر الإداري بفتح حفرة مع تصاريح حسابك ، بدءًا من مجلدك المنزلي؟ سيقوم Dockpipe بإعادة تشغيل عامل الخلفية في وقت قصير.</translation>
+    </message>
+    <message>
+        <location line="+23"/>
         <source>Connection settings · Update available</source>
         <translation>إعدادات الاتصال · تحديث متاح</translation>
     </message>
@@ -9891,22 +10943,52 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>لم ينتهِ تحديث الخدمة. حُفظ الاقتران. راجع التفاصيل، ثم أعد محاولة «تحديث الخدمة».</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <source>Worker service started. Choose this computer under Run on from your managing computer.</source>
-        <translation>بدأت خدمة العامل. اختر هذا الكمبيوتر ضمن «التشغيل على» من الكمبيوتر المُدير.</translation>
-    </message>
-    <message>
-        <location line="+1"/>
+        <location line="+10"/>
         <source>Could not start the worker service. Your pairing is preserved. See details, then choose Start worker service to retry.</source>
         <translation>تعذر بدء خدمة العامل. حُفظ الاقتران. راجع التفاصيل، ثم اختر «بدء خدمة العامل» للمحاولة مجددًا.</translation>
     </message>
     <message>
         <location line="+2"/>
+        <source>Background worker startup requested. Terminal setup failed. Use Manage access to retry.</source>
+        <translation>طلب بدء العمل الخلفي.فشل إعداد المحطة.استخدم إدارة الوصول إلى التقاعد.</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Pairing is complete. Windows could not start administrator input approval.</source>
+        <translation>Windows لم تكن قادرة على بدء الموافقة على إدخال المدير.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
         <source>Starting the background worker service…</source>
         <translation>جارٍ بدء خدمة العامل في الخلفية…</translation>
     </message>
     <message>
         <location line="+11"/>
+        <source>Dockpipe could not enable Terminal. See details in Connection setup.</source>
+        <translation>لم يتمكن Dockpipe من تشغيل المحطة.انظر التفاصيل في إعدادات الاتصال.</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Terminal access enabled. Refresh Terminal on the managing computer.</source>
+        <translation>إمكانية الوصول إلى المحطة.تجديد المحطة على جهاز الكمبيوتر الإداري.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Terminal access is saved. Start the worker service to bring it online.</source>
+        <translation>يتم حفظ الوصول إلى المحطة.بدء خدمة العمال لجلبها عبر الإنترنت.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Restarting the background worker…</source>
+        <translation>إعادة تشغيل العامل الخلفي ...</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Enabling Terminal access…</source>
+        <translation>تتيح الوصول إلى المحطة ...</translation>
+    </message>
+    <message>
+        <location line="+16"/>
         <location line="+47"/>
         <source>Set up remote access</source>
         <translation>إعداد الوصول البعيد</translation>
@@ -9933,12 +11015,12 @@ The broker service must be updated first. Continuing replaces its configuration 
     </message>
     <message>
         <location line="+3"/>
-        <location line="+435"/>
+        <location line="+521"/>
         <source>Install provider…</source>
         <translation>تثبيت مزود…</translation>
     </message>
     <message>
-        <location line="-425"/>
+        <location line="-511"/>
         <source>Check connection</source>
         <translation>التحقق من الاتصال</translation>
     </message>
@@ -9953,12 +11035,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>هل تريد إعداد %1 باستخدام %2؟ قد يثبّت هذا تبعيات وينشئ نفقًا عامًا وسجل DNS ويبدأ خدمة وسيط للمستخدم.</translation>
     </message>
     <message>
-        <location line="+13"/>
-        <source>Continue setup in the terminal. When it finishes, return to Machines and refresh to check access.</source>
-        <translation>تابع الإعداد في الطرفية. عند الانتهاء، عد إلى «الأجهزة» وحدّث للتحقق من الوصول.</translation>
-    </message>
-    <message>
-        <location line="+4"/>
+        <location line="+18"/>
         <source>Pairing security keys</source>
         <translation>مفاتيح أمان الاقتران</translation>
     </message>
@@ -10003,12 +11080,17 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>لم يكتمل تسجيل مفتاح الأمان. راجع التفاصيل قبل المحاولة مجددًا.</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+114"/>
+        <source>← Environments</source>
+        <translation>← البيئات</translation>
+    </message>
+    <message>
+        <location line="+6"/>
         <source>Connection setup</source>
         <translation>إعداد الاتصال</translation>
     </message>
     <message>
-        <location line="+34"/>
+        <location line="+39"/>
         <source>Set up connection</source>
         <translation>إعداد اتصال</translation>
     </message>
@@ -10018,7 +11100,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>جارٍ العمل…</translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location line="+21"/>
         <source>Could not complete this step. See details for the error; saved setup is preserved.</source>
         <translation>تعذر إكمال هذه الخطوة. راجع تفاصيل الخطأ؛ حُفظ الإعداد الحالي.</translation>
     </message>
@@ -10028,12 +11110,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>تعذر تحميل الأجهزة المُدارة. أعد المحاولة أو استخدم «توصيل هذا الكمبيوتر» للانضمام إلى جهاز أعددته بالفعل.</translation>
     </message>
     <message>
-        <location line="+17"/>
-        <source>Allowed to receive workflows</source>
-        <translation>مسموح له باستقبال سير العمل</translation>
-    </message>
-    <message>
-        <location line="+3"/>
+        <location line="+23"/>
         <source>Invitation created</source>
         <translation>أُنشئت الدعوة</translation>
     </message>
@@ -10048,7 +11125,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>أعد الاقتران لاستعادة الوصول</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+13"/>
         <source>Settings</source>
         <translation>الإعدادات</translation>
     </message>
@@ -10068,7 +11145,7 @@ The broker service must be updated first. Continuing replaces its configuration 
         <translation>أضف كمبيوتر هنا، ثم اختره عند تشغيل سير عمل.</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+17"/>
         <source>Remote access lock status unavailable: %1</source>
         <translation>حالة قفل الوصول البعيد غير متاحة: %1</translation>
     </message>
@@ -10181,12 +11258,7 @@ Approve only if you can verify it on that machine.</source>
 وافق فقط إذا استطعت التحقق منه على ذلك الجهاز.</translation>
     </message>
     <message>
-        <location line="+8"/>
-        <source>%1 is paired. On that computer, choose Start worker service to receive workflows.</source>
-        <translation>اقترن %1. على ذلك الكمبيوتر، اختر «بدء خدمة العامل» لاستقبال سير العمل.</translation>
-    </message>
-    <message>
-        <location line="+1"/>
+        <location line="+10"/>
         <source>Request from %1 denied.</source>
         <translation>رُفض الطلب من %1.</translation>
     </message>
@@ -10317,12 +11389,27 @@ The provider is configured on the managing computer.</source>
         <translation>العامل مهيأ لهذا الوسيط؛ لم يُتحقق من الاتصال</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+8"/>
+        <source>Pairing · %1</source>
+        <translation>زكريا · %1</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Unknown</source>
+        <translation>غير معروف</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Machine fingerprint · %1…</source>
+        <translation>بصمات الأصابع · %1 ...</translation>
+    </message>
+    <message>
+        <location line="+3"/>
         <source>Access relationship: %1</source>
         <translation>علاقة الوصول: %1</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+52"/>
         <source>Managed machine inventory is unavailable. Refresh to check access.</source>
         <translation>مخزون الأجهزة المُدارة غير متاح. حدّث للتحقق من الوصول.</translation>
     </message>
@@ -10352,22 +11439,23 @@ The provider is configured on the managing computer.</source>
         <translation>%1 من %2 جهاز</translation>
     </message>
     <message>
-        <location line="+23"/>
+        <location line="+21"/>
         <source>%1 settings</source>
         <translation>إعدادات %1</translation>
     </message>
     <message>
-        <location line="+29"/>
+        <location line="+32"/>
+        <source>Machine fingerprint · %1</source>
+        <translation>بصمات الأصابع · %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>%1 · %2
 
-%3
-
-Connection health is not checked here.</source>
+%3</source>
         <translation>%1 · %2
 
-%3
-
-لا تُفحص صحة الاتصال هنا.</translation>
+%3</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -10403,6 +11491,56 @@ This machine is no longer in the available inventory.</source>
         <translation>%1
 
 لم يعد هذا الجهاز في المخزون المتاح.</translation>
+    </message>
+    <message>
+        <location line="-987"/>
+        <source>Enter a valid remote address starting with https://.</source>
+        <translation>أدخل عنوانًا صالحًا للاتصال البعيد يبدأ بـ https://.</translation>
+    </message>
+    <message>
+        <location line="-123"/>
+        <source>In Dockpipe, open connection setup for that computer, select Connect this computer, then enter this address and request pairing.</source>
+        <translation>في Dockpipe ، افتح إعداد الاتصال لهذا الكمبيوتر ، حدد اتصال هذا الكمبيوتر ، ثم أدخل هذا العنوان وطلب الارتباط.</translation>
+    </message>
+    <message>
+        <location line="+44"/>
+        <source>Connect a physical FIDO2 security key to this computer before approving. If you have not registered a key, use Register pairing key in connection setup.</source>
+        <translation>صِل مفتاح أمان FIDO2 ماديًا بهذا الكمبيوتر قبل الموافقة. إذا لم تسجّل مفتاحًا بعد، فاختر «تسجيل مفتاح اقتران» في إعداد الاتصال.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>No accessible security key was detected. Plug in your registered key and try again. If it is already connected, check your device permissions.</source>
+        <translation>لم يُكتشف مفتاح أمان يمكن الوصول إليه. صِل مفتاحك المسجّل وحاول مجددًا. إذا كان متصلًا بالفعل، فتحقق من أذونات الجهاز.</translation>
+    </message>
+    <message>
+        <location line="+94"/>
+        <source>The managing computer needs a registered physical FIDO2 security key to approve pairing.</source>
+        <translation>يحتاج الكمبيوتر المُدير إلى مفتاح أمان FIDO2 مادي مسجّل للموافقة على الاقتران.</translation>
+    </message>
+    <message>
+        <location line="+32"/>
+        <source>Already paired? Manage access</source>
+        <translation>ماذا تفعل؟ إدارة الوصول</translation>
+    </message>
+    <message>
+        <location line="+219"/>
+        <source>Continue setup in the terminal. When it finishes, choose Check connection.</source>
+        <translation>استمر في الإعداد في المحطة.عند الانتهاء، حدد التحقق من الاتصال.</translation>
+    </message>
+    <message>
+        <location line="+266"/>
+        <source>Broker enrollment is active.</source>
+        <translation>تسجيل الوسطاء نشط.</translation>
+    </message>
+    <message>
+        <location line="+165"/>
+        <source>%1 is paired. Start the worker on that computer to receive workflows.</source>
+        <translation>تم اقتران %1. شغّل العامل على ذلك الكمبيوتر لتلقي مسارات العمل.</translation>
+    </message>
+    <message>
+        <location line="-552"/>
+        <source>Background worker startup requested. Check this computer under Run on from your managing computer.</source>
+        <translation>طُلب بدء العامل في الخلفية. ابحث عن هذا الكمبيوتر ضمن تشغيل على من الكمبيوتر الذي يديره.</translation>
     </message>
 </context>
 <context>
@@ -10533,7 +11671,7 @@ This machine is no longer in the available inventory.</source>
 <context>
     <name>SessionManager</name>
     <message>
-        <location filename="../src/execution/infrastructure/SessionManager.cpp" line="+147"/>
+        <location filename="../src/execution/infrastructure/SessionManager.cpp" line="+170"/>
         <location line="+34"/>
         <source>Workflow output exceeded the consumer&apos;s line capacity.</source>
         <translation>تجاوزت مخرجات سير العمل سعة السطر لدى المستهلك.</translation>
@@ -11265,13 +12403,14 @@ This machine is no longer in the available inventory.</source>
 <context>
     <name>TerminalHub</name>
     <message>
-        <location filename="../src/terminal/application/TerminalHub.cpp" line="+46"/>
-        <location line="+75"/>
+        <location filename="../src/terminal/application/TerminalHub.cpp" line="+48"/>
+        <location line="+48"/>
+        <location line="+57"/>
         <source>Eight terminals are already open. Close one before opening another.</source>
         <translation>هناك ثماني طرفيات مفتوحة بالفعل. أغلق واحدة قبل فتح أخرى.</translation>
     </message>
     <message>
-        <location line="-60"/>
+        <location line="-90"/>
         <source>This shell is no longer available. Refresh the shell list and try again.</source>
         <translation>لم تعد هذه الصدفة متاحة. حدّث قائمة الصدف وحاول مجددًا.</translation>
     </message>
@@ -11286,13 +12425,19 @@ This machine is no longer in the available inventory.</source>
         <translation>لا توجد صدف مضيف متاحة. تحقق من وصول Flatpak إلى المضيف وحدّث قائمة الصدف.</translation>
     </message>
     <message>
-        <location line="+14"/>
-        <location line="+55"/>
+        <location line="+10"/>
+        <location line="+32"/>
+        <location line="+57"/>
         <source>Terminal %1 · %2</source>
         <translation>الطرفية %1 · %2</translation>
     </message>
     <message>
-        <location line="+65"/>
+        <location line="-67"/>
+        <source>The container terminal target is unavailable.</source>
+        <translation>الهدف النهائي الحاويات غير متوفر.</translation>
+    </message>
+    <message>
+        <location line="+132"/>
         <location line="+32"/>
         <source>This terminal session is closed.</source>
         <translation>جلسة الطرفية هذه مغلقة.</translation>
@@ -11837,12 +12982,17 @@ $ جاهز لأمرك التالي</translation>
 <context>
     <name>TerminalWidget</name>
     <message>
-        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+84"/>
+        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+92"/>
         <source>Terminal</source>
         <translation>الطرفية</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+6"/>
+        <source>Terminal target</source>
+        <translation>محطة الهدف</translation>
+    </message>
+    <message>
+        <location line="+23"/>
         <source>Shells and sessions</source>
         <translation>الصدف والجلسات</translation>
     </message>
@@ -11879,12 +13029,12 @@ $ جاهز لأمرك التالي</translation>
     </message>
     <message>
         <location line="+6"/>
-        <location line="+541"/>
+        <location line="+742"/>
         <source>Restart DockPipe to enable desktop transparency. Your desktop must support compositing.</source>
         <translation>أعد تشغيل DockPipe لتفعيل شفافية سطح المكتب. يجب أن يدعم سطح المكتب التركيب.</translation>
     </message>
     <message>
-        <location line="-532"/>
+        <location line="-733"/>
         <source>No terminals open</source>
         <translation>لا توجد طرفيات مفتوحة</translation>
     </message>
@@ -11915,12 +13065,17 @@ $ جاهز لأمرك التالي</translation>
         <translation>جارٍ اكتشاف صدف المضيف المثبتة…</translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+10"/>
+        <source>The selected terminal target is unavailable.</source>
+        <translation>الهدف النهائي المحدد غير متوفر.</translation>
+    </message>
+    <message>
+        <location line="+27"/>
         <source>Default shell</source>
         <translation>الصدفة الافتراضية</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+9"/>
         <source>New default shell</source>
         <translation>صدفة افتراضية جديدة</translation>
     </message>
@@ -11935,7 +13090,40 @@ $ جاهز لأمرك التالي</translation>
         <translation>%1 جديد</translation>
     </message>
     <message>
-        <location line="+116"/>
+        <location line="+135"/>
+        <location line="+3"/>
+        <source>This computer</source>
+        <translation>هذا الكمبيوتر</translation>
+    </message>
+    <message>
+        <location line="+30"/>
+        <source>Terminal unavailable</source>
+        <translation>محطة غير متوفرة</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Remote access locked</source>
+        <translation>الوصول عن بعد مغلق</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+11"/>
+        <location line="+8"/>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <location line="-2"/>
+        <source>%1 · Container</source>
+        <translation>%1 · حاوية</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · غير متاح</translation>
+    </message>
+    <message>
+        <location line="+120"/>
         <source>Choose a terminal…</source>
         <translation>اختيار طرفية…</translation>
     </message>
@@ -12577,12 +13765,12 @@ The file may have changed on disk. Your draft has been kept; refresh before retr
         <translation>تشغيل</translation>
     </message>
     <message>
-        <location line="+134"/>
+        <location line="+135"/>
         <source>Start</source>
         <translation>بدء</translation>
     </message>
     <message>
-        <location line="+111"/>
+        <location line="+113"/>
         <source>Inputs</source>
         <translation>المدخلات</translation>
     </message>
@@ -13399,7 +14587,7 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
 <context>
     <name>WorkspaceMachineMenu</name>
     <message>
-        <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="+55"/>
+        <location filename="../src/remote/presentation/WorkspaceMachineMenu.cpp" line="+62"/>
         <location line="+42"/>
         <source>Follow main machine</source>
         <translation>اتباع الجهاز الرئيسي</translation>
@@ -13428,12 +14616,13 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
     </message>
     <message>
         <location line="+2"/>
-        <location line="+36"/>
+        <location line="+40"/>
+        <location line="+22"/>
         <source> · Unavailable</source>
         <translation> · غير متاح</translation>
     </message>
     <message>
-        <location line="-16"/>
+        <location line="-41"/>
         <source>Unlock remote access…</source>
         <translation>فتح الوصول البعيد…</translation>
     </message>
@@ -13443,12 +14632,22 @@ Chip height uses a logarithmic size scale, capped for readability.</source>
         <translation>لا تتوفر مساحات عمل بعيدة</translation>
     </message>
     <message>
-        <location line="+30"/>
+        <location line="+34"/>
         <source>Containers</source>
         <translation>الحاويات</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+12"/>
+        <source>%1 · Unavailable</source>
+        <translation>%1 · غير متاح</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>%1 · Locked</source>
+        <translation>%1 · مغلقة</translation>
+    </message>
+    <message>
+        <location line="+4"/>
         <source>Refresh machines</source>
         <translation>تحديث الأجهزة</translation>
     </message>

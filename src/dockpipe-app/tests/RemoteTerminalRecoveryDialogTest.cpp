@@ -8,6 +8,7 @@
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QLabel>
 #include <QPushButton>
 #include <QSettings>
 #include <QTemporaryDir>
@@ -115,12 +116,18 @@ private slots:
         auto *operations = dialog->findChild<QComboBox *>(QStringLiteral("remoteRecoveryOperations"));
         auto *verify = dialog->findChild<QPushButton *>(QStringLiteral("remoteRecoveryVerifyCleanup"));
         auto *retire = dialog->findChild<QPushButton *>(QStringLiteral("remoteRecoveryRetireContainer"));
-        QVERIFY(operations && verify && retire);
+        auto *status = dialog->findChild<QLabel *>(QStringLiteral("remoteRecoveryStatus"));
+        QVERIFY(operations && verify && retire && status);
         QTRY_COMPARE(operations->count(), 1);
         QVERIFY(verify->isEnabled());
         QVERIFY(!retire->isEnabled());
         verify->click();
         QTRY_COMPARE(verified, 1);
+        QTRY_VERIFY(verify->isEnabled());
+        QVERIFY(status->text().startsWith(QStringLiteral("Cleanup verified")));
+        button->click();
+        QTest::qWait(250);
+        QVERIFY(status->text().startsWith(QStringLiteral("Cleanup verified")));
         QVERIFY(RemoteFeatureClient::pendingRecoveries().isEmpty());
     }
 

@@ -61,7 +61,11 @@ int fixture(const QStringList &arguments)
                 request["id"] = QString(64, QLatin1Char('b'));
             if (mode == "wrong-intent")
                 request["nonce"] = QString(64, QLatin1Char('b'));
-            const QString status = mode == "unknown" || (recovery && mode != "completed") ? QStringLiteral("unknown") : QStringLiteral("success");
+            QString status = QStringLiteral("success");
+            if (recovery && mode.startsWith("cancelled-status"))
+                status = QStringLiteral("cancelled");
+            else if (mode == "unknown" || (recovery && mode != "completed"))
+                status = QStringLiteral("unknown");
             QJsonObject operation{{"request", request}, {"status", status},
                 {"result", QJsonObject{{"status", status}, {"payload", request.value("payload")}}}};
             if (recovery) {
@@ -78,7 +82,9 @@ int fixture(const QStringList &arguments)
     }
     const auto output = response.toJson(QJsonDocument::Compact);
     std::fwrite(output.constData(), 1, size_t(output.size()), stdout);
-    return mode == "unknown" && command == "feature-call" ? 1 : 0;
+    if ((mode == "unknown" && command == "feature-call") || mode == "cancelled-status-error")
+        return 1;
+    return 0;
 }
 
 QJsonObject intent()
@@ -202,6 +208,37 @@ private slots:
         QTRY_COMPARE(calls, 7);
         QCOMPARE(result.outcome, RemoteFeatureClient::Outcome::Success);
         QVERIFY(RemoteFeatureClient::pendingRecoveries().isEmpty());
+    }
+    void terminalCancellationStatus_data()
+    {
+        QTest::addColumn<QByteArray>("mode");
+        QTest::addColumn<bool>("confirmed");
+        QTest::newRow("confirmed") << QByteArray("cancelled-status") << true;
+        QTest::newRow("unsuccessful-cli") << QByteArray("cancelled-status-error") << false;
+    }
+    void terminalCancellationStatus()
+    {
+        QFETCH(QByteArray, mode);
+        QFETCH(bool, confirmed);
+        auto reference = metadata(intent());
+        reference.insert("action", "files.write");
+        reference.insert("id", QString(64, 'a'));
+        RemoteFeatureClient::retainUncertain(reference);
+        QCOMPARE(RemoteFeatureClient::pendingRecoveries().size(), 1);
+
+        qputenv("DOCKPIPE_FEATURE_FIXTURE", mode);
+        QObject owner;
+        RemoteFeatureClient::Result result;
+        bool completed = false;
+        RemoteFeatureClient::inspect(&owner, reference, [&](const auto &value) {
+            result = value;
+            completed = true;
+        });
+
+        QTRY_VERIFY(completed);
+        QCOMPARE(result.reference, reference);
+        QCOMPARE(result.outcome, confirmed ? RemoteFeatureClient::Outcome::Cancelled : RemoteFeatureClient::Outcome::Unknown);
+        QCOMPARE(RemoteFeatureClient::pendingRecoveries().isEmpty(), confirmed);
     }
     void recoveryCapacityRejectsAnotherMutation()
     {

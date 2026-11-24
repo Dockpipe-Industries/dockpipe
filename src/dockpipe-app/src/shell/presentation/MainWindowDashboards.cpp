@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "WorkspaceNavigationList.h"
 #include "DockpipeChoices.h"
 #include <QFileInfo>
 #include "LauncherStatusBar.h"
@@ -39,6 +40,7 @@ void MainWindow::selectPage(int page)
     for (int row = 0; row < m_navigation->count(); ++row) {
         if (m_navigation->item(row)->data(Qt::UserRole).toInt() == page) {
             m_navigation->setCurrentRow(row);
+            m_navigation->ensureCurrentItemVisible();
             return;
         }
     }
@@ -168,10 +170,10 @@ void MainWindow::applyDefaultDashboardVisibility()
 
 void MainWindow::ensureDashboard(int page)
 {
-    if (!m_dashboardFactory || page < 11 || page >= m_stack->count())
+    if (!m_dashboardFactory || page < 0 || page >= m_stack->count())
         return;
     const QString id = m_stack->widget(page)->property("dashboardId").toString();
-    if (m_dashboardPages.value(id))
+    if (id.isEmpty() || m_dashboardPages.value(id))
         return;
     for (const auto &definition : m_dashboards) {
         if (definition.id != id)

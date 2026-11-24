@@ -1,5 +1,6 @@
 #include "GitRepositoryWidget.h"
 #include "CanvasIcons.h"
+#include "RemoteGitContext.h"
 
 #include <QCheckBox>
 #include <QHBoxLayout>
@@ -282,6 +283,12 @@ void GitRepositoryWidget::renderStashes(const QJsonObject &reply)
 void GitRepositoryWidget::updateControls()
 {
     m_controls->setEnabled(!m_busy && !m_reader.busy() && !m_workdir.isEmpty() && !m_operationActive);
+    const bool writable = RemoteGitContext::canWrite(this);
+    for (const auto *name : {"gitRepositoryFetch", "gitRepositoryBranchCreate", "gitRepository-branch-switch",
+                            "gitRepository-merge", "gitRepository-branch-delete", "gitRepository-stash-save",
+                            "gitRepository-stash-apply", "gitRepository-stash-pop", "gitRepository-stash-drop"}) {
+        findChild<QPushButton *>(name)->setEnabled(writable);
+    }
 }
 
 bool GitRepositoryWidget::confirm(const QString &title, const QString &text)

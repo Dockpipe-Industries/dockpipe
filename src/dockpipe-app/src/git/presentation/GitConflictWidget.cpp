@@ -317,11 +317,12 @@ void GitConflictWidget::updateControls()
     findChild<QWidget *>("gitConflictOperationBar")->setVisible(showWorkspace);
     findChild<QWidget *>("gitConflictEmpty")->setVisible(!showWorkspace);
     const bool selected = m_conflicts->currentItem() != nullptr;
+    const bool writable = !m_busy && active && RemoteGitContext::canWrite(this);
     m_conflicts->setEnabled(!m_busy);
     m_open->setEnabled(!m_busy && selected);
     m_editor->setEnabled(!m_busy);
-    m_resolutionActions->setEnabled(!m_busy && selected && active);
-    m_continue->setEnabled(!m_busy && active && m_operation.value("can_continue").toBool());
-    m_skip->setEnabled(!m_busy && active && m_operation.value("can_skip").toBool());
-    m_abort->setEnabled(!m_busy && active && m_operation.value("can_abort").toBool());
+    m_resolutionActions->setEnabled(writable && selected);
+    m_continue->setEnabled(writable && m_operation.value("can_continue").toBool());
+    m_skip->setEnabled(writable && m_operation.value("can_skip").toBool());
+    m_abort->setEnabled(writable && m_operation.value("can_abort").toBool());
 }

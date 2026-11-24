@@ -2,6 +2,7 @@
 
 #include <QAction>
 #include <QMenu>
+#include <QSet>
 
 WorkspaceMachineMenu::WorkspaceMachineMenu(QWidget *parent) : QToolButton(parent)
 {
@@ -27,6 +28,12 @@ void WorkspaceMachineMenu::setCatalog(const QJsonArray &catalog)
     for (qsizetype index = 0; index < catalog.size() && index < 64; ++index)
         m_catalog.append(catalog.at(index));
     updateLabel();
+}
+
+void WorkspaceMachineMenu::setPairedNodes(const QStringList &nodes)
+{
+    m_pairedNodes = nodes.mid(0, 64);
+    m_pairedNodes.removeDuplicates();
 }
 
 void WorkspaceMachineMenu::setCurrent(const QJsonObject &target, const QString &root)
@@ -104,19 +111,23 @@ void WorkspaceMachineMenu::rebuildMenu()
     local->setChecked(m_target.isEmpty() && !m_followsMain);
     connect(local, &QAction::triggered, this, [this] { emit contextRequested({}, {}); });
     menu()->addSeparator();
+    QSet<QString> shown;
     if (!m_unlocked) {
         auto *unlock = menu()->addAction(tr("Unlock remote access…"));
         connect(unlock, &QAction::triggered, this, &WorkspaceMachineMenu::unlockRequested);
-    } else if (m_catalog.isEmpty()) {
+    } else if (m_catalog.isEmpty() && m_pairedNodes.isEmpty()) {
         menu()->addAction(tr("No remote workspaces available"))->setEnabled(false);
     } else {
         for (const auto &value : m_catalog) {
             const auto catalog = value.toObject();
+            if (catalog.value("workflow_only").toBool())
+                continue;
             const auto target = catalog.value(QStringLiteral("target")).toObject();
             QString node = target.value(QStringLiteral("node")).toString();
             if (node.isEmpty())
                 continue;
             if (m_nodeOnly) {
+                shown.insert(node);
                 auto *action = menu()->addAction(node.replace('&', "&&"));
                 action->setCheckable(true);
                 action->setChecked(target == m_target);
@@ -125,6 +136,7 @@ void WorkspaceMachineMenu::rebuildMenu()
                 connect(action, &QAction::triggered, this, [this, target] { emit contextRequested(target, {}); });
                 continue;
             }
+            shown.insert(node);
             auto *machine = menu()->addMenu(node);
             const auto roots = catalog.value(QStringLiteral("roots")).toArray();
             for (qsizetype index = 0; index < roots.size() && index < 32; ++index) {
@@ -141,7 +153,17 @@ void WorkspaceMachineMenu::rebuildMenu()
                 auto *action = machine->addAction(tr("Containers"));
                 connect(action, &QAction::triggered, this, [this, target] { emit contextRequested(target, {}); });
             }
+            if (machine->actions().isEmpty()) {
+                machine->setTitle(machine->title() + tr(" · Unavailable"));
+                machine->setEnabled(false);
+            }
         }
+    }
+    for (const auto &node : m_pairedNodes) {
+        if (node.isEmpty() || shown.contains(node))
+            continue;
+        const auto label = m_unlocked ? tr("%1 · Unavailable") : tr("%1 · Locked");
+        menu()->addAction(label.arg(QString(node).replace('&', "&&")))->setEnabled(false);
     }
     menu()->addSeparator();
     auto *refresh = menu()->addAction(tr("Refresh machines"));

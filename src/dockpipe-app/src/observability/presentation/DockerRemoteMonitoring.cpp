@@ -18,24 +18,24 @@ DockerObservabilityWidget::~DockerObservabilityWidget()
 
 bool DockerObservabilityWidget::isRemoteTarget() const
 {
-    return m_featureMode ? !m_featureTarget.isEmpty() : !m_machine->currentData().toString().isEmpty();
+    return !m_featureTarget.isEmpty() || !m_machine->currentData().toString().isEmpty();
 }
 
 QString DockerObservabilityWidget::targetNode() const
 {
-    return m_featureMode ? m_featureTarget.value("node").toString() : m_machine->currentData().toString();
+    return m_featureTarget.isEmpty() ? m_machine->currentData().toString() : m_featureTarget.value("node").toString();
 }
 
 bool DockerObservabilityWidget::canControlTarget() const
 {
-    return !isRemoteTarget() || (m_featureMode && m_featureCanControl);
+    return !isRemoteTarget() || (!m_featureTarget.isEmpty() && m_featureCanControl);
 }
 
 bool DockerObservabilityWidget::setFeatureTarget(const QJsonObject &target, bool canControl, QString *error)
 {
     if (error)
         error->clear();
-    const bool changed = !m_featureMode || target != m_featureTarget;
+    const bool changed = target != m_featureTarget;
     if (changed && m_containerActionBusy) {
         if (error)
             *error = tr("Wait for the current container control operation before changing machines.");
@@ -51,13 +51,12 @@ bool DockerObservabilityWidget::setFeatureTarget(const QJsonObject &target, bool
             return false;
         }
     }
-    m_featureMode = true;
     m_featureTarget = target;
     if (m_featureCatalog.value("target").toObject() != target)
         m_featureCatalog = {};
     m_featureCanControl = canControl;
-    m_machine->hide();
-    m_machineLabel->hide();
+    m_machine->setVisible(target.isEmpty());
+    m_machineLabel->setVisible(target.isEmpty());
     if (changed)
         changeMachine();
     else
@@ -245,7 +244,7 @@ void DockerObservabilityWidget::changeMachine()
 
 void DockerObservabilityWidget::refreshRemote(bool allowAuthentication)
 {
-    if (m_featureMode) {
+    if (!m_featureTarget.isEmpty()) {
         refreshFeatureSnapshot();
         return;
     }

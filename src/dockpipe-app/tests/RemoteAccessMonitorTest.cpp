@@ -16,6 +16,8 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QPointer>
+#include <QProcess>
 #include <QTemporaryDir>
 #include <QThread>
 #include <cstdio>
@@ -201,10 +203,16 @@ int main(int argc, char **argv)
     auto *transientMonitor = new RemoteAccessMonitor;
     transientMonitor->unlock();
     CHECK(waitUntil([&]() { return QFile::exists(directory.filePath(QStringLiteral("unlock-started"))); }));
+    QPointer<QProcess> unlockProcess = transientMonitor->findChild<QProcess *>(QStringLiteral("remoteCommandProcess"));
+    CHECK(unlockProcess && unlockProcess->state() == QProcess::Running);
+
     QElapsedTimer shutdownTimer;
     shutdownTimer.start();
     delete transientMonitor;
     CHECK(shutdownTimer.elapsed() < 3000);
+    // Destruction returns before the detached process finishes. Keep the test's
+    // event loop servicing its cleanup and prove it released the fixture binary.
+    CHECK(waitUntil([&]() { return unlockProcess.isNull(); }));
 
     qputenv("DOCKPIPE_BIN", directory.filePath(QStringLiteral("missing-cli")).toUtf8());
     monitor.refresh();

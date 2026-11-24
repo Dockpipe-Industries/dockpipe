@@ -222,6 +222,10 @@ void RemoteCommand::consumeLine(const QByteArray &line)
                 emit hardwareKeyPrompt(event);
                 return;
             }
+        } else if (valid && eventName == "hardware-key-unavailable" && event.size() == 1
+                   && m_promptId.isEmpty()) {
+            emit hardwareKeyUnavailable();
+            return;
         } else if (valid && eventName == "hardware-key-status") {
             const QString message = event.value("message").toString();
             if (!message.isEmpty() && message.size() <= 256) {

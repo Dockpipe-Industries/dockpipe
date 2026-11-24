@@ -422,9 +422,10 @@ void ResourceCanvas::setDetailsLabel(const QString &label)
     m_detailsButton->setText(label);
 }
 
-void ResourceCanvas::setCompactDetails(bool compact)
+void ResourceCanvas::setCompactDetails(bool compact, int minimumHeight)
 {
     m_compactDetails = compact;
+    m_compactDetailsMinimumHeight = minimumHeight;
     if (!compact) {
         m_details->setMinimumSize(0, 0);
         m_details->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
@@ -551,7 +552,7 @@ void ResourceCanvas::arrange()
         int contentHeight = m_details->layout()->totalHeightForWidth(panelWidth);
         if (contentHeight < 0)
             contentHeight = m_details->sizeHint().height();
-        const int panelHeight = qMin(qMax(180, contentHeight), qMax(180, height() - 120));
+        const int panelHeight = qMin(qMax(m_compactDetailsMinimumHeight, contentHeight), qMax(180, height() - 120));
         const QSize panelSize(panelWidth, panelHeight);
         if (m_details->size() != panelSize || m_details->maximumSize() != panelSize)
             m_details->setFixedSize(panelSize);
