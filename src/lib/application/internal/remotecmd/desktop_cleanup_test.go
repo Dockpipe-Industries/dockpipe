@@ -265,7 +265,7 @@ func TestDesktopCleanupCancelledProofWaitCannotPublishClosed(t *testing.T) {
 func TestDesktopCleanupPublicRunAdmitsPrivateRequestBeforeBridge(t *testing.T) {
 	root := privateConnectionDirectory(t)
 	path := filepath.Join(root, "cleanup.json")
-	if err := os.WriteFile(path, []byte(`{}`), 0600); err != nil {
+	if err := remoteio.WritePrivate(path, struct{}{}); err != nil {
 		t.Fatal(err)
 	}
 	// Exercise all global CLI admission and routing, not just the stream helper.

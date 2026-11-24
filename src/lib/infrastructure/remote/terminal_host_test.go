@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -17,14 +18,30 @@ import (
 	"dockpipe/src/lib/infrastructure/terminalsession"
 )
 
+// The receipt tests use an injected backend or reconcile without launching a
+// session. Windows still checks for a configured provider before granting the
+// terminal capability. Use an inert file for that discovery step.
+func configureHostTerminalTestProvider(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS != "windows" {
+		return
+	}
+
+	path := filepath.Join(t.TempDir(), "fixture-provider.exe")
+	if err := os.WriteFile(path, []byte("terminal receipt test"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("DOCKPIPE_TERMINAL_PROVIDER", path)
+}
+
 func hostTerminalTestReceipt(t *testing.T) hostTerminalReceipt {
 	t.Helper()
-	boot, err := process.HostBootIdentity()
+	scope, err := process.CaptureHostBootScope()
 	if err != nil {
 		t.Skip("native host boot identity unavailable")
 	}
 	return hostTerminalReceipt{Schema: contract.HostTerminalReceiptVersion, Reference: containerTerminalTestReference(), Root: "project", Phase: "running",
-		Scope: process.ScopeReference{Mode: "host-reboot", Boot: boot}, Uncertain: true}
+		Scope: scope, Uncertain: true}
 }
 
 func hostTerminalTestService(t *testing.T, root string, provider terminalsession.ProviderFactory) (*terminalWorkerService, contract.TerminalDirective) {
@@ -55,6 +72,7 @@ func hostTerminalTestService(t *testing.T, root string, provider terminalsession
 }
 
 func TestHostTerminalBootReceiptPrecedesNativeLaunchAndPersistenceFailurePreventsIt(t *testing.T) {
+	configureHostTerminalTestProvider(t)
 	if !terminalSupported() {
 		t.Skip("native remote host terminal unavailable")
 	}
@@ -63,10 +81,15 @@ func TestHostTerminalBootReceiptPrecedesNativeLaunchAndPersistenceFailurePrevent
 			root := privateTestDirectory(t)
 			started := false
 			var reference contract.TerminalReference
+			expectedScope, err := process.CaptureHostBootScope()
+			if err != nil {
+				t.Fatal(err)
+			}
+
 			service, directive := hostTerminalTestService(t, root, func(context.Context, terminalsession.Profile, terminalsession.Size) (terminalsession.Backend, error) {
 				started = true
 				receipt, err := loadHostTerminalReceipt(root, reference)
-				if err != nil || receipt.Phase != "start-requested" || receipt.Scope.Mode != "host-reboot" || receipt.Scope.Validate() != nil {
+				if err != nil || receipt.Phase != "start-requested" || receipt.Scope != expectedScope {
 					t.Fatal("native PTY started without its exact durable boot receipt", err)
 				}
 				return &completedContainerTerminalBackend{}, nil
@@ -99,6 +122,7 @@ func TestHostTerminalBootReceiptPrecedesNativeLaunchAndPersistenceFailurePrevent
 }
 
 func TestHostTerminalRecoveryRequiresCapturedBootExactReferenceAndIndependentRootGrant(t *testing.T) {
+	configureHostTerminalTestProvider(t)
 	root := privateTestDirectory(t)
 	original := hostTerminalTestReceipt(t)
 	if err := saveHostTerminalReceipt(root, original); err != nil {
@@ -133,11 +157,6 @@ func TestHostTerminalRecoveryRequiresCapturedBootExactReferenceAndIndependentRoo
 		t.Fatal("locally verified same-boot cleanup lost the original host terminal proof", err)
 	}
 
-	prior := original
-	prior.Scope.Boot = "00000000-0000-0000-0000-000000000000"
-	if err := saveHostTerminalReceipt(root, prior); err != nil {
-		t.Fatal(err)
-	}
 	for _, scenario := range []string{"root", "identity", "reference", "grant", "legacy"} {
 		t.Run(scenario, func(t *testing.T) {
 			selected := request
@@ -149,7 +168,7 @@ func TestHostTerminalRecoveryRequiresCapturedBootExactReferenceAndIndependentRoo
 			case "identity":
 				selected.Target.Fingerprint = strings.Repeat("8", 64)
 			case "reference":
-				wrong := prior.Reference
+				wrong := original.Reference
 				wrong.Epoch = strings.Repeat("8", 64)
 				selected.Payload, _ = json.Marshal(hostTerminalRecoveryPayload{Reference: wrong})
 			case "grant":
@@ -164,6 +183,12 @@ func TestHostTerminalRecoveryRequiresCapturedBootExactReferenceAndIndependentRoo
 		})
 	}
 	ctx = WithTerminalStateRoot(context.Background(), root)
+	prior := original
+	prior.Scope = priorHostBootTestScope(t, original.Scope)
+	if err := saveHostTerminalReceipt(root, prior); err != nil {
+		t.Fatal(err)
+	}
+
 	value, err = executeHostTerminalRecovery(ctx, permissions, request, identity, authorize)
 	proof, ok := value.(contract.HostTerminalRecovery)
 	if err != nil || !ok || proof.Validate() != nil || proof.Reference != original.Reference || proof.Root != original.Root {
@@ -201,6 +226,7 @@ func TestHostTerminalRecoveryReleasesOnlyExactBrokerQuotaWithoutInputAcknowledgm
 }
 
 func TestHostAndContainerOrphansShareOneRetainedSessionBudget(t *testing.T) {
+	configureHostTerminalTestProvider(t)
 	root := privateTestDirectory(t)
 	base := hostTerminalTestReceipt(t)
 	for index := 0; index < contract.MaxTerminalSessions/2; index++ {
@@ -284,8 +310,9 @@ func TestHostTerminalReceiptPublicationIsSerializedAndUnexpectedFilesFailClosed(
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer staged.Close()
-	defer os.Remove(staged.Name())
+	if err := staged.Close(); err != nil {
+		t.Fatal(err)
+	}
 	finished := make(chan error, 1)
 	go func() {
 		_, err := hostTerminalReceipts(root)
@@ -351,16 +378,17 @@ func TestTerminalHeartbeatPreservesHostOrphansOnlyForExactWorkerTarget(t *testin
 }
 
 func TestHostTerminalRecoveryAcrossBrokerEpochRetainsProofUntilAcknowledged(t *testing.T) {
+	configureHostTerminalTestProvider(t)
 	broker, admin, worker, config, root, permissions, originalCatalog := featureFixture(t)
 	permissions.Roots[0].Terminal = true
-	permissions.TerminalProfile = &TerminalProfile{Executable: "/bin/sh"}
+	permissions.TerminalProfile = &TerminalProfile{Executable: filepath.Join(root, "owner-shell")}
 	if err := SaveFeaturePermissions(root, permissions); err != nil {
 		t.Fatal(err)
 	}
 	original := hostTerminalTestReceipt(t)
 	original.Reference.Target = originalCatalog.Target
 	original.Reference.Epoch = strings.Repeat("8", 64)
-	original.Scope.Boot = "00000000-0000-0000-0000-000000000000"
+	original.Scope = priorHostBootTestScope(t, original.Scope)
 	if err := saveHostTerminalReceipt(root, original); err != nil {
 		t.Fatal(err)
 	}

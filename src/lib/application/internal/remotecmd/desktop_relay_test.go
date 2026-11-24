@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/binary"
 	"io"
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -118,10 +117,7 @@ func TestDesktopRelayRejectsOversizeOrTruncatedPrivateFrames(t *testing.T) {
 }
 
 func TestDesktopRelayOwnerPolicyChangeStopsPrivateTransport(t *testing.T) {
-	root := t.TempDir()
-	if err := os.Chmod(root, 0700); err != nil {
-		t.Fatal(err)
-	}
+	root := privateConnectionDirectory(t)
 	frozen := remoteio.DesktopPermissions{Schema: contract.DesktopVersion, Provider: desktopTestIntent().Provider, View: true, Input: true}
 	if err := remoteio.SaveDesktopPermissions(root, frozen); err != nil {
 		t.Fatal(err)

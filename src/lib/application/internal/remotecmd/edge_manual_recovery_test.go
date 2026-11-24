@@ -2,7 +2,6 @@ package remotecmd
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -13,10 +12,7 @@ import (
 )
 
 func TestEdgeManualRecoveryCLIRequiresExactFreshApprovalBeforeOperatorAccess(t *testing.T) {
-	root := t.TempDir()
-	if err := os.Chmod(root, 0700); err != nil {
-		t.Fatal(err)
-	}
+	root := privateConnectionDirectory(t)
 	config := contract.EdgeConfig{Schema: contract.Version, Endpoint: "https://edge.example.test", Executable: filepath.Join(root, "approved-image"), Arguments: []string{"serve"}}
 	request := contract.EdgeActivationRequest{Schema: contract.EdgeActivationSchema, ExpectedConfigDigest: contract.EdgeConfigDigest(config),
 		Candidate: config, Recovery: config, CandidateSHA256: strings.Repeat("a", 64), RecoverySHA256: strings.Repeat("a", 64),

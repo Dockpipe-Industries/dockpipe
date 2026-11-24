@@ -119,7 +119,7 @@ func TestFeatureWorkerReconcilesCrashedFileWithoutReplaying(t *testing.T) {
 	if _, err := admin.ReconcileFeature(context.Background(), request.Reference()); err != nil {
 		t.Fatal(err)
 	}
-	unlock, err := Lock(filepath.Join(root, "features.lock"))
+	unlock, err := lockFeatureWorker(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,6 +289,19 @@ func TestFileReconciliationAssignmentCannotCarryExecutionAuthority(t *testing.T)
 	}
 }
 
+func priorHostBootTestScope(t *testing.T, scope process.ScopeReference) process.ScopeReference {
+	t.Helper()
+	switch scope.BootSequence {
+	case 0:
+		scope.Boot = "00000000-0000-0000-0000-000000000000"
+	case 1:
+		t.Skip("native kernel has no prior nonzero boot sequence")
+	default:
+		scope.BootSequence--
+	}
+	return scope
+}
+
 func TestGitRecoveryUsesCapturedBootProofAndPreservesUnknownRepositoryState(t *testing.T) {
 	for _, scenario := range []string{"same-boot", "prior-boot", "legacy"} {
 		t.Run(scenario, func(t *testing.T) {
@@ -317,13 +330,7 @@ func TestGitRecoveryUsesCapturedBootProofAndPreservesUnknownRepositoryState(t *t
 				t.Skip("native kernel boot identity unavailable")
 			}
 			if scenario == "prior-boot" {
-				if scope.BootSequence > 1 {
-					scope.BootSequence--
-				} else if scope.BootSequence == 1 {
-					t.Skip("native kernel has no prior nonzero boot sequence")
-				} else {
-					scope.Boot = "00000000-0000-0000-0000-000000000000"
-				}
+				scope = priorHostBootTestScope(t, scope)
 			}
 			result := recoveredFeatureResult("unknown")
 			record := featureWorkerRecord{Request: request, Result: &result, ReceiptOnly: true, Supervised: scenario != "legacy"}

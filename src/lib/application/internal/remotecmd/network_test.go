@@ -4,16 +4,16 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	remoteio "dockpipe/src/lib/infrastructure/remote"
 )
 
 func TestNetworkInputRequiresBoundedNamedPrivateFile(t *testing.T) {
-	root := t.TempDir()
-	if err := os.Chmod(root, 0700); err != nil {
-		t.Fatal(err)
-	}
+	root := privateConnectionDirectory(t)
 	path := filepath.Join(root, "intent.json")
-	if err := os.WriteFile(path, []byte(`{"schema":"dockpipe.remote.network/v1"}`), 0600); err != nil {
+	if err := remoteio.WritePrivate(path, map[string]string{"schema": "dockpipe.remote.network/v1"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := readNetworkInput(context.Background(), path); err != nil {
@@ -22,13 +22,19 @@ func TestNetworkInputRequiresBoundedNamedPrivateFile(t *testing.T) {
 	if _, err := readNetworkInput(context.Background(), "-"); err == nil {
 		t.Fatal("stdin accepted despite lifetime ownership")
 	}
-	if err := os.Chmod(path, 0644); err != nil {
+
+	shared := filepath.Join(t.TempDir(), "shared.json")
+	if err := os.WriteFile(shared, []byte("{}"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := readNetworkInput(context.Background(), path); err == nil {
+	if err := os.Chmod(shared, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readNetworkInput(context.Background(), shared); err == nil {
 		t.Fatal("shared request accepted")
 	}
-	if err := os.WriteFile(path, make([]byte, 4097), 0600); err != nil {
+
+	if err := remoteio.WritePrivate(path, strings.Repeat("a", 4097)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := readNetworkInput(context.Background(), path); err == nil {

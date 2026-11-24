@@ -66,28 +66,29 @@ type SecurityProof struct {
 // authentication. OS account compromise is outside this boundary; it is not a
 // substitute for a privileged keystore or a sandbox for same-user malware.
 type SecurityAuthority struct {
-	mutex               sync.Mutex
-	platform            osauth.Platform
-	policy              contract.RemoteSecurityPolicy
-	policyPath          string
-	audience            string
-	uid                 string
-	generation          uint64
-	authCancel          context.CancelFunc
-	identity            *remoteidentity.Identity
-	session             string
-	unlockedAt          time.Time
-	expiresAt           time.Time
-	snapshot            osauth.Snapshot
-	sampledAt           time.Time
-	sampleStarted       time.Time
-	detail              string
-	available           bool
-	policyUncertain     bool
-	nonces              map[string]time.Time
-	verificationSlots   chan struct{}
-	verificationWaiters chan struct{}
-	now                 func() time.Time
+	mutex                   sync.Mutex
+	platform                osauth.Platform
+	policy                  contract.RemoteSecurityPolicy
+	policyPath              string
+	audience                string
+	uid                     string
+	generation              uint64
+	authCancel              context.CancelFunc
+	identity                *remoteidentity.Identity
+	session                 string
+	unlockedAt              time.Time
+	expiresAt               time.Time
+	snapshot                osauth.Snapshot
+	sampledAt               time.Time
+	nextSampleSequence      uint64
+	publishedSampleSequence uint64
+	detail                  string
+	available               bool
+	policyUncertain         bool
+	nonces                  map[string]time.Time
+	verificationSlots       chan struct{}
+	verificationWaiters     chan struct{}
+	now                     func() time.Time
 }
 
 func NewSecurityAuthority(platform osauth.Platform, directory, audience string, uid int) (*SecurityAuthority, error) {
@@ -160,7 +161,13 @@ func (authority *SecurityAuthority) audit(unit, message, failure string) {
 // Sample never treats API traffic as input. A missing idle adapter falls back
 // to a fixed timeout from unlock; missing required lock/sleep detection fails closed.
 func (authority *SecurityAuthority) Sample(parent context.Context) {
+	// Native clocks can return identical start times for concurrent samples.
+	authority.mutex.Lock()
+	authority.nextSampleSequence++
+	sequence := authority.nextSampleSequence
 	started := authority.now()
+	authority.mutex.Unlock()
+
 	ctx, cancel := context.WithTimeoutCause(parent, 2*time.Second, errSecuritySampleDeadline)
 	defer cancel()
 	snapshot, err := authority.platform.Snapshot(ctx)
@@ -181,7 +188,7 @@ func (authority *SecurityAuthority) Sample(parent context.Context) {
 		// authority, even when a later query in the same snapshot was interrupted.
 		authority.mutex.Lock()
 		defer authority.mutex.Unlock()
-		if started.Before(authority.sampleStarted) {
+		if sequence < authority.publishedSampleSequence {
 			return
 		}
 		if authority.identity != nil || authority.authCancel != nil {
@@ -195,10 +202,10 @@ func (authority *SecurityAuthority) Sample(parent context.Context) {
 	}
 	authority.mutex.Lock()
 	defer authority.mutex.Unlock()
-	if started.Before(authority.sampleStarted) {
+	if sequence < authority.publishedSampleSequence {
 		return
 	}
-	authority.sampleStarted = started
+	authority.publishedSampleSequence = sequence
 	previous := authority.snapshot
 	authority.snapshot = snapshot
 	// Using query start avoids extending trusted activity by command latency.

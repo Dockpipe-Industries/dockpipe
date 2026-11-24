@@ -21,7 +21,7 @@ func (platform *scriptedSecuritySamplePlatform) Snapshot(ctx context.Context) (o
 }
 
 type publishedSecuritySample struct {
-	started   time.Time
+	sequence  uint64
 	sampled   time.Time
 	snapshot  osauth.Snapshot
 	available bool
@@ -30,7 +30,7 @@ type publishedSecuritySample struct {
 func readPublishedSecuritySample(authority *SecurityAuthority) publishedSecuritySample {
 	authority.mutex.Lock()
 	defer authority.mutex.Unlock()
-	return publishedSecuritySample{authority.sampleStarted, authority.sampledAt, authority.snapshot, authority.available}
+	return publishedSecuritySample{authority.publishedSampleSequence, authority.sampledAt, authority.snapshot, authority.available}
 }
 
 func securitySampleCancellationFixture(t *testing.T) (*SecurityAuthority, *scriptedSecuritySamplePlatform) {
@@ -291,6 +291,10 @@ func TestSecuritySampleStaleAbortedPartialEvidenceCannotRevokeFreshUnlock(t *tes
 	for _, kind := range []string{"known-lock", "known-sleep"} {
 		t.Run(kind, func(t *testing.T) {
 			authority, platform := securitySampleCancellationFixture(t)
+			// Equal clock readings must still preserve the order the samples began.
+			now := authority.now()
+			authority.now = func() time.Time { return now }
+
 			entered := make(chan struct{})
 			release := make(chan struct{})
 			done := make(chan struct{})

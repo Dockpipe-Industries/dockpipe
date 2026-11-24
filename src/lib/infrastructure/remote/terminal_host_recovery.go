@@ -46,13 +46,13 @@ func hostTerminalReceiptPath(root, id string) string {
 }
 
 func prepareHostTerminalJournal(root string, reference contract.TerminalReference, grant string) (*hostTerminalJournal, error) {
-	boot, err := process.HostBootIdentity()
+	scope, err := process.CaptureHostBootScope()
 	if err != nil {
 		return nil, errors.New("host terminal boot identity is unavailable; no PTY was launched")
 	}
 	journal := &hostTerminalJournal{root: root, value: hostTerminalReceipt{
 		Schema: contract.HostTerminalReceiptVersion, Reference: reference, Root: grant, Phase: "planned",
-		Scope: process.ScopeReference{Mode: "host-reboot", Boot: boot},
+		Scope: scope,
 	}}
 	if err := saveHostTerminalReceipt(root, journal.value); err != nil {
 		return nil, err

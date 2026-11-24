@@ -136,10 +136,7 @@ func TestDesktopWorkerReadyMustMatchOwnerBeforeNetwork(t *testing.T) {
 				http.Error(w, "fixture stops before broker admission", http.StatusServiceUnavailable)
 			}))
 			defer server.Close()
-			root := t.TempDir()
-			if err := os.Chmod(root, 0700); err != nil {
-				t.Fatal(err)
-			}
+			root := privateConnectionDirectory(t)
 			workerIdentity, err := remoteidentity.New()
 			if err != nil {
 				t.Fatal(err)
