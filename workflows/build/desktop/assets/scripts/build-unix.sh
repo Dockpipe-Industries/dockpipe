@@ -114,10 +114,14 @@ if [[ "${DOCKPIPE_QUALIFY_COCKPIT:-0}" == 1 ]]; then
     --lock "$root/workflows/qualify/cockpit/assets/cockpit.lock.json" --store "$DOCKPIPE_COCKPIT_STORE" --build "$build"
 fi
 cmake --build "$build" --parallel 2
-# The CLI locates the terminal provider beside its executable in native builds.
-install -m 755 "$root/src/bin/dockpipe" "$build/dockpipe"
+# Keep the CLI and its provider together without shadowing the CLI fixtures
+# used by test executables in the build directory.
+test_bin="$build/release-test-bin"
+mkdir -p "$test_bin"
+install -m 755 "$root/src/bin/dockpipe" "$test_bin/dockpipe"
+install -m 755 "$build/dockpipe-terminal-host" "$test_bin/dockpipe-terminal-host"
 (
-  export PATH="$build:$PATH"
+  export PATH="$test_bin:$PATH"
   if [[ -n "$diagnostic_product_source" ]]; then
     python3 "$root/workflows/build/desktop/assets/scripts/layout-diagnostics.py" ctest \
       --build "$build" --evidence "$diagnostic_output"
