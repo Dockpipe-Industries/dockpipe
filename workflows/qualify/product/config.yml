@@ -1,0 +1,12 @@
+name: qualify-product
+description: Opt-in local product integration qualification across explicitly selected environments.
+vault: none
+docker_preflight: false
+steps:
+  - id: qualify
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/qualify/product/assets/scripts/qualify.py

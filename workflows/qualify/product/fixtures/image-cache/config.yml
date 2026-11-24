@@ -1,0 +1,12 @@
+name: qualification-image-cache-boot
+description: Verify a pinned clean Linux image boots offline through a disposable writable overlay.
+vault: none
+docker_preflight: false
+steps:
+  - id: boot-image
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/qualify/product/fixtures/image-cache/boot.py
