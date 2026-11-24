@@ -13,6 +13,7 @@
 class ContextStore;
 class SessionManager;
 class TerminalHub;
+class RemoteAccessMonitor;
 class QTimer;
 class QWidget;
 
@@ -29,44 +30,72 @@ public:
     DashboardWidgetFactory(SessionManager &sessions, ContextStore &store, QObject *parent = nullptr);
     static QVector<DashboardWidgetDescriptor> catalog();
     QWidget *create(const QString &kind, QWidget *parent = nullptr, const QString &fileScope = "project");
+    QWidget *create(const QString &kind, QWidget *parent, const QString &fileScope, const QJsonObject &machineContext, const QString &browserContextId = {});
+    bool canChangeSharedMachineContext(QString *error = nullptr) const;
+    bool setSharedMachineContext(const QJsonObject &catalog, const QString &rootId, QString *error = nullptr);
+    void setMachineCatalog(const QJsonArray &catalog);
+    QJsonObject sharedMachineCatalog() const { return m_sharedMachine; }
+    QString sharedMachineRootId() const { return m_sharedRoot; }
+    QJsonArray machineCatalog() const { return m_machineCatalog; }
+    QJsonObject machineTarget() const;
+    QJsonObject widgetMachineContext(QWidget *widget) const;
+    bool setWidgetMachineContext(QWidget *widget, const QJsonObject &context, QString *error = nullptr);
+    static bool canChangeWidgetMachineContext(QWidget *widget, QString *error = nullptr);
     void setWorkdir(const QString &workdir);
     QString workdir() const { return m_workdir; }
     void setWorkflows(const QVector<WorkflowMeta> &workflows);
     QVector<WorkflowMeta> workflows() const { return m_workflows; }
     void refresh();
+    void setBrowserAccessMonitor(RemoteAccessMonitor *monitor);
+    void updateBrowserMachines();
+    void setRemoteDesktopResolvers(const QVector<ResolverMeta> &resolvers);
+    void setRemoteDesktopAccessMonitor(RemoteAccessMonitor *monitor);
+    void setRemoteDesktopMachines(const QJsonArray &machines);
+    void refreshRemoteDesktopMetadata();
     void setPackageDisplays(const QString &source, const QVector<PackageDisplayMeta> &displays);
     QVector<PackageDisplayMeta> packageDisplays() const;
     void requestPackageDisplayInventory() { emit packageDisplayInventoryRequested(); }
     TerminalHub &terminals() const { return *m_terminals; }
 
 signals:
+    void remoteDesktopInstallProviderRequested();
+    void remoteDesktopProviderSetupRequested(const QString &workflowId, const QString &surfaceId, const QString &actionId);
     void packageDisplaysChanged();
     void packageDisplayInventoryRequested();
     void openFullView(const QString &pageKey);
     void launchWorkflow(const QString &workflowId);
+    void launchWorkflowOnMachine(const QString &workflowId, const QJsonObject &target, const QString &root);
     void cloneWorkflow(const QString &workflowId);
     void openFile(const QString &path);
+    void filePreviewRequested(QWidget *source, const QString &root, const QString &path);
+    void gitPreviewRequested(QWidget *source, const QString &root, const QString &path, bool staged);
+    void canvasViewRequested(QWidget *source, const QString &kind, const QString &root);
     void workdirChanged(const QString &workdir);
     void workflowsChanged();
     void snapshotChanged(const QJsonObject &snapshot, const QString &error);
     void containersChanged(const QJsonArray &containers, const QString &error);
     void gitChanged(const QJsonObject &snapshot, const QString &error);
     void machinesChanged(const QJsonArray &nodes, const QString &error);
+    void widgetMachineContextChanged(QWidget *widget);
+    void machineCatalogRefreshRequested();
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
+    DashboardWidgetFactory(SessionManager &sessions, ContextStore &store, TerminalHub *terminals, QObject *parent);
     bool hasVisibleKind(const QStringList &kinds) const;
     void refreshSnapshot();
     void refreshContainers();
     void refreshGit();
     void refreshMachines();
+    void applyMachineContext(QWidget *widget);
+    void updateMachineMenus();
     QWidget *createSystem(QWidget *parent);
     QWidget *createExecutions(QWidget *parent);
     QWidget *createWorkflows(QWidget *parent);
     QWidget *createContainers(QWidget *parent);
-    QWidget *createBrowser(QWidget *parent);
+    QWidget *createBrowser(QWidget *parent, const QString &contextId);
     QWidget *createFiles(QWidget *parent, const QString &scope);
     QWidget *createGit(QWidget *parent);
     QWidget *createMachines(QWidget *parent);
@@ -85,4 +114,11 @@ private:
     QMap<QString, QVector<PackageDisplayMeta>> m_packageDisplays;
     QString m_workdir;
     quint64 m_generation = 0;
+    QJsonObject m_sharedMachine;
+    QString m_sharedRoot;
+    QJsonArray m_machineCatalog;
+    QPointer<RemoteAccessMonitor> m_browserAccess;
+    QPointer<DashboardWidgetFactory> m_upstream;
+    QVector<QPointer<DashboardWidgetFactory>> m_scopedFactories;
+    bool m_followMain = true;
 };

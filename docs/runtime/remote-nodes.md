@@ -9,9 +9,13 @@ The Dockpipe app exposes remote setup and pairing in **Machines**, delivery in *
 and results in **Executions → Runs & logs → Remote jobs**. The current single-operator implementation has Linux loopback
 and local UI test evidence. Darwin builds and launchd manifests alone do not establish
 complete native Mac pairing, sleep/wake or end-to-end provider acceptance.
-Remote broker initialization, workers, and provider setup currently require Linux or macOS;
-Windows remote workers remain a follow-up. Cross-platform protocol, storage, and process tests
-do not establish Windows remote-node support.
+Remote broker initialization and provider setup require Linux or macOS.
+Workers can receive workflows from an existing broker on Linux, macOS and Windows.
+With current broker, worker and operator builds, a paired delivery-only worker
+appears under **Workflows → Run on** while it is connected. Selecting it applies
+to that workflow. The preview and submission bind the worker fingerprint and
+its current generation. Its delivery grant leaves Files, Git, Terminal and
+other feature permissions independent.
 
 ## Ownership
 
@@ -101,6 +105,13 @@ itself, without depending on an Access browser challenge for background worker r
 Services use systemd user units on Linux and LaunchAgents on macOS. They retain the installation
 user's PATH. They are user-session services, not a promise of operation before login or while the
 machine sleeps. Configure power/session policy separately for an always-on benchmark worker.
+
+Docker availability has its own provider lifecycle. A worker returning after login
+does not imply that its Docker VM has started. For an existing Colima installation,
+`brew services start colima` starts its Homebrew service and registers it for future
+logins; coordinate any existing foreground owner and active containers first.
+See [Homebrew service semantics](https://docs.brew.sh/Manpage#services-subcommand).
+This is user-login startup, not operation before the operating system unlocks.
 
 After installing a new Dockpipe version, open **Machines**. The Dockpipe app reports when a
 registered service differs from the current CLI installation, including when the binary
@@ -222,7 +233,10 @@ dockpipe remote approve --code ABCD-1234-5678
 
 The code identifies the request. Approval opens the native key prompt and
 requires a registered physical key. **Machines → Verify key and approve** uses the
-same CLI and broker check. Code-only HTTP requests are rejected, including local
+same CLI and broker check. Connect the key to the broker computer. If no key is
+accessible, the approval screen shows how to reconnect it and retry. The
+connection setup screen has **Register pairing key** for first-time setup.
+Code-only HTTP requests are rejected, including local
 requests with the administrator token. Approval currently requires the broker
 computer's local owner state; hosted/remote approval is deferred. Before showing
 consent, the CLI verifies the signed machine details, code and WebAuthn options
@@ -266,11 +280,28 @@ preserves its private identity for retry; it does not revoke a request already
 approved by the broker. `remote nodes` reports enrollment, not live presence.
 
 The Dockpipe app's **Connect this computer** flow starts the worker user service
-automatically after approval and reports service startup separately from pairing.
-If startup fails, pairing is preserved; use **Start worker service** to retry.
-Existing paired computers can use that button without pairing again.
-For CLI pairing, start `dockpipe remote service --role worker` on the worker, or
-`dockpipe remote worker` for foreground execution. View remote job progress in **Executions → Runs & logs → Remote jobs** on the computer
+after approval. If startup fails, **Start worker service** retries using the saved
+pairing. CLI users can install and start the background worker with
+`dockpipe remote service --role worker`. With a custom state directory, pass the
+same `--state` used for pairing. The worker uses that pairing after restarts.
+
+On Windows the worker runs in the paired user's signed-in session as a Task
+Scheduler background task. The installed worker host starts Dockpipe without a
+console window. Dockpipe verifies the task definition and the installed
+executables before arming periodic startup.
+Task Scheduler keeps one instance and can relaunch the worker at the next
+scheduled check after an unexpected exit. Update an older registration using
+**Update worker service** or `dockpipe remote service --role worker --replace`.
+On macOS it uses a LaunchAgent.
+Linux uses the systemd user manager,
+an initialized OpenRC user manager (0.62 or newer), or the desktop session's
+XDG autostart. Flatpak requires a host systemd user manager for this command.
+Those backends start the worker in the signed-in user's environment. Headless
+systems without a supported user manager and containers can have their own
+supervisor run `dockpipe remote worker`. WSL needs a running distribution.
+`dockpipe remote worker` is also available for foreground diagnostics.
+
+View remote job progress in **Executions → Runs & logs → Remote jobs** on the computer
 that manages the broker. Pairing authorizes a worker to receive workflows; it does
 not give that worker permission to list, submit, cancel or download broker jobs.
 A receive-only worker normally has no `operator.json`. Its remote jobs view explains
@@ -301,7 +332,7 @@ available in **Settings > Security > Remote access** and the CLI:
 dockpipe remote security-status
 dockpipe remote unlock
 dockpipe remote lock
-dockpipe remote security-policy --idle-seconds 300 --lock-on-screen-lock=true --lock-on-sleep=true
+dockpipe remote security-policy --idle-seconds 300 --absolute-seconds 3600 --lock-on-screen-lock=true --lock-on-sleep=true
 ```
 
 `unlock` uses an OS-owned authentication dialog; terminal Linux clients use the
@@ -317,9 +348,18 @@ errors, lost replies and expired proofs after transmission never trigger automat
 replay of remote work. Passive GUI monitoring uses `--auth never`.
 
 The shared OS-user policy defaults to five minutes of inactivity, with validated
-custom durations from 60 to 3600 seconds. Authorization also expires after one
-hour regardless of activity. OS lock and sleep locking default on. All policy
-changes leave access locked; weakening a setting requires OS authentication,
+custom durations from 60 to 43200 seconds (12 hours). Authorization also expires
+after one hour regardless of activity by default; `--absolute-seconds` configures
+that fixed session lifetime from 60 to 43200 seconds. The earlier limit wins.
+For a 12-hour session and inactivity timeout, use:
+
+```sh
+dockpipe remote security-policy --idle-seconds 43200 --absolute-seconds 43200
+```
+
+Omitted settings retain their current values. Existing policies without
+`absolute_seconds` retain the one-hour lifetime. OS lock and sleep locking default
+on. All policy changes leave access locked; weakening a setting requires OS authentication,
 while tightening takes effect immediately. The next requested remote action can
 re-authenticate, or use `remote unlock` explicitly.
 Background polling, API requests and running workflows cannot renew inactivity.
@@ -334,15 +374,30 @@ same policy through the CLI; it has no separate preference copy. One local broke
 owns the canonical authority; concurrent secondary brokers fail closed.
 
 Linux packages install a dedicated `org.dockpipe.remote.unlock` polkit action.
-Flatpak host authentication integration remains unqualified; native-host results
-do not establish sandboxed app support.
+The private qualification Flatpak on Kali 2026.3 Xfce opened the host polkit
+prompt and unlocked the native broker. Other Flatpak desktop profiles require
+their own installed checks.
 A source-build CLI needs that reviewed OS action installed before native
 unlock can work. An active local login and a native authentication agent are
 required. GNOME exposes trusted idle duration; other desktops currently use the
-explicitly reported fixed timeout from unlock. If required screen-lock or suspend
-signals are unavailable, access remains locked. macOS packages include a signed
+explicitly reported fixed timeout from unlock. A positive screen-lock signal
+from a supported desktop locker takes precedence over a false logind hint.
+If required screen-lock or suspend signals are unavailable, access remains
+locked. macOS packages include a signed
 `dockpipe-system-auth` helper; a bare CLI without its helper cannot unlock.
 `security-status` reports capabilities and unavailable integrations.
+
+Canceled requests remain denied. An OS sample interrupted solely by caller
+cancellation cannot overwrite global security evidence, refresh its timestamps
+or renew authorization. Affirmative lock/resume evidence still invalidates the
+session unless superseded by a newer independent sample. The sampler's own
+two-second timeout, genuine OS errors and invalid input-age data remain failures;
+required OS evidence older than three seconds remains unavailable. Background
+sampling, idle/absolute expiry and one-use proof checks are unchanged.
+
+On Linux, the authority checks the kernel's completed suspend counter when
+available, as well as the suspend-aware clocks. The counter detects
+suspend-to-idle cycles that leave the clock difference unchanged.
 
 Signing credentials and unlock sessions exist only in the authority's memory and
 are discarded on lock/restart. Static administrator credentials alone cannot
@@ -365,7 +420,47 @@ Creating invitations and consuming unused invitation files are disabled because
 they would bypass hardware-key pairing. An already consumed legacy invitation can
 only recover its exact previously enrolled token; it cannot mint a new identity.
 Existing workers can continue running their service without pairing again. New
-workers must use the hardware-key flow above.
+physical workers use the hardware-key flow above.
+
+### Enroll disposable workflow workers through their host
+
+On a broker running a build with guest enrollment support, an OS-authenticated
+operator can grant one paired host permission to enroll disposable guests.
+Use a separate run name and grant only the guests and time that run needs.
+The current grant supports delivered workflows. Terminal, Browser, Remote
+Desktop and other feature grants remain independent.
+
+1. On the broker, use `dockpipe remote guest-grant --request grant.json`.
+   The owner-private request contains `host` (the paired node name), `run`
+   (the run name, at most 48 characters), `guests` (1 to 8), and
+   `lifetime_seconds` (60 to 3600). The receipt records the authorized guest
+   limit in `guests`. An exact retry returns the original grant while it is active.
+2. Install the pinned Dockpipe CLI in the guest. Through the owned guest
+   transport, give it an owner-private JSON request containing `endpoint`,
+   `node` (beginning with the run name and a hyphen), and `grant` (the
+   complete broker receipt). Run `dockpipe remote guest-prepare --request
+   prepare.json --state <private-guest-state>`. The response contains the
+   signed public claim. The guest retains its private key and token.
+3. Return that claim over the owned transport. On the paired host, use
+   `dockpipe remote guest-enroll --request claim.json --state
+   <paired-host-state>`. Then start `dockpipe remote worker --state
+   <private-guest-state>` in the guest. After the worker checks in, the guest
+   appears in the workflow target picker.
+4. On teardown use `dockpipe remote guest-release --id <grant> --state
+   <paired-host-state>`. The broker removes guests with no unresolved jobs
+   and retains the inactive records of guests with unresolved jobs. The
+   operator can also end the grant with `remote guest-grant-revoke`.
+   Verify the worker and VM stopped using the owning runtime. If a grant
+   ends during an assignment, preserve the guest journal and review the
+   assignment with `remote job-interruption-inspect` before acknowledging it.
+
+The broker rejects guest claims from other hosts, over-limit claims, and
+claims outside the grant's run. Expiry or loss of the host enrollment
+invalidates the guest's broker access and removes it from the workflow target
+picker. When the broker issues a new grant,
+it also reclaims inactive grants and their guest registrations if all of their
+jobs are resolved. Keep worker state, credentials, and
+writable overlays out of shared base images and saved bootstrap media.
 
 The default local delivery timeout is 3600 seconds, up to 86400 with `--timeout`.
 Changing saved profiles or the delivery timeout requires inspecting the private
@@ -422,11 +517,36 @@ must be configured separately on the worker through its normal local resolver me
 
 ```bash
 dockpipe remote jobs
+dockpipe remote job-log --id benchmark-001 --auth never
 dockpipe remote result --id benchmark-001
 dockpipe remote result --id benchmark-001 --out /private/new-results-directory
 dockpipe remote cancel --id benchmark-001
 dockpipe remote revoke --id mac-mini
+dockpipe remote remove --id mac-mini
 ```
+
+Selecting a running remote job in **Runs & logs** shows a live preview from a
+machine-signed worker on a compatible broker. The preview retains the first
+64 KiB of output in broker memory and is read under the operator's existing OS
+authorization. It disappears when the job ends or the worker's access is
+revoked. During a short connection interruption, the last preview can remain
+visible until the same worker assignment resumes publishing. The worker retries
+transient connection failures within its existing heartbeat deadline. Download
+the result to read the retained final log and artifacts.
+
+`revoke` disables a machine's credential but keeps its enrollment visible.
+`remove` deletes its enrollment and pairing records, invalidates its credential,
+and removes it from the managed-machine inventory. Recorded jobs and results are
+kept. Cancel or resolve queued, running, or unknown jobs before removing their
+machine. Reconnecting a removed machine requires a fresh approved pairing.
+In the GUI, select a machine and choose **Remove machine…**; this also works for
+entries whose access was already removed. The broker service must run a version
+that supports removal. If Machines detects a missing or outdated local broker
+service, the removal confirmation also explains and requests its update and
+restart before deletion. Declining changes neither the service nor the machine;
+an update failure stops removal. Removal failures expand the command details.
+Broker service updates wait for the OS authority and local HTTP listener to
+respond before reporting completion; this readiness check does not unlock access.
 
 For an installed workflow instead, retain the narrower profile mode. Prepare its source on the Mac
 and supply a local profiles JSON:
@@ -466,19 +586,22 @@ other source permissions/ownership are not transferred.
 Result payloads are stored separately under the private `results/` state directory, with
 content digests in the broker metadata; maximum-size valid results fit for every admitted job.
 Source bundles are separately retained under private `bundles/` files, with digests in metadata.
-When a new job needs capacity, the oldest terminal job (success, failure, or cancelled)
-is durably moved to an immutable, digest-checked record under private `terminal-jobs/`.
+When a new job needs capacity, the broker moves the oldest resolved job to an
+immutable, digest-checked record under private `terminal-jobs/`. Resolved jobs
+include success, failure, cancellation and operator-acknowledged interruptions.
 Each archived metadata record is bounded to 16 KiB; result payloads remain separate.
-Queued, running, and unknown jobs are never retired. If all 128 jobs are unresolved,
-new submissions refuse until work reaches a terminal state.
+Queued, running and unacknowledged unknown jobs stay in the recent window. If
+all 128 jobs are unresolved, the broker refuses new submissions.
 
 `remote jobs` lists the recent window. Archived jobs and evidence remain available with
 `remote result --id`; exact submission retries return the original outcome, different
 contents under that ID refuse, and cancel cannot requeue an archived job. Per-ID archives
 and payloads accumulate intentionally to preserve execution identities; automatic deletion
-is not implemented. Keep `terminal-jobs/`, `results/`, and `bundles/` together with
-`broker.json` for backup/recovery. Worker `deliveries/`
+is not implemented. Keep `terminal-jobs/`, `results/`, `bundles/`, and
+`job-interruption-acknowledgement-*.json` together with `broker.json` for backup/recovery. Worker `deliveries/`
 staging and `jobs/` journals are retained for inspection, including failed validation.
+Windows workers use a compact staging directory name for long delivery IDs to
+leave space for nested scripts. The journal and broker result keep the submitted ID.
 Large-corpus transfer is not implemented. Once the first job is retired, broker metadata
 contains a downgrade guard that older strict decoders reject. Do not roll back by restoring
 a stale pre-migration `broker.json`: it can forget later acknowledged job identities.
@@ -488,12 +611,39 @@ The same submission ID and contents returns its existing job; different contents
 bind a worker session, preventing another process from executing the same job. The worker persists
 intent before execution and results before delivery. An interrupted execution becomes `unknown`,
 never an automatic retry. Recover its journal and inspect surviving processes before proceeding.
-Unknown completion blocks the node. Do not bypass it with a new node identity before confirming
-the previous workflow has stopped.
+An unknown assignment holds new work on the node. After confirming the interrupted workflow has
+stopped and inspecting any effects, use the OS-authenticated broker operator session to review
+the exact job and node. `remote result --id <job> --out <new-private-directory>` preserves the
+available result evidence for inspection.
+
+```sh
+dockpipe remote job-interruption-inspect --id <job> --node <node>
+dockpipe remote job-interruption-acknowledge --id <job> --node <node> --review-token <review-token>
+```
+
+Inspect returns the retained result digest and the review token for that assignment.
+If a disposable guest's grant ended before it delivered a result, inspect returns
+`inactive_guest_without_worker_result` and an empty `result_hash`. Verify through
+the guest's host that execution stopped, preserve any available worker journal,
+and inspect external effects before acknowledging that outcome. Other assignments
+without a result require worker journal recovery.
+
+Acknowledgement releases the reviewed assignment hold and keeps the job
+`unknown`. The broker retains the original assignment, review receipt and any
+worker evidence after guest removal and job archival. A guest whose grant ended
+continues to be denied access. Other unresolved assignments still hold new
+work. If the acknowledgement response is lost, inspect the same job or retry the exact token.
+Restart an exited worker through its existing service lifecycle after the hold is acknowledged.
+The broker stores acknowledgement receipts separately from shared job metadata, so existing
+operator clients can still read jobs and discover workers. Brokers without this recovery command
+continue to hold the node if rolled back. Keep the current metadata and receipts together.
 
 Cancellation is polled during execution. Explicit cancellation reports `cancelled`; a profile
-timeout or lost heartbeat stops the process and reports `failure`. Offline polling and result delivery
-retry transient connection errors, HTTP 408/429, and server errors at most five times with backoff.
+timeout or lost heartbeat stops the process and reports `failure`. A heartbeat can retry transient
+failures within its 20-second deadline. Authentication and protocol failures stop execution
+immediately. The failure receipt includes a diagnostic category or HTTP status.
+Offline polling and result delivery retry transient connection errors, HTTP 408/429, and
+server errors at most five times with backoff.
 Authentication, authorization, conflicting state, and malformed responses stop the worker immediately.
 The result journal remains available for recovery; restarting delivery never reruns completed work. Offline workers cannot immediately acknowledge cancellation/revocation.
 Native process groups are terminated. Workflows that detach services or create external resources
@@ -602,6 +752,9 @@ credentials remain unable to authenticate after replacement.
 Updated workers can opt into sharing system/process or Docker inventory snapshots
 with their existing broker using `dockpipe remote monitoring --system --docker`.
 Use the worker's existing `--state` directory; `--disable` revokes both categories.
+The running worker reloads this opt-in without restarting. Feature grants alone
+do not enable monitoring. macOS workers provide native whole-system counters and
+process metadata; per-process CPU and resident memory remain unavailable.
 This does not change pairing or workflow-delivery permission. Updated operators
 can select that machine in **Executions → System** or **Containers**, or run
 `dockpipe remote observe --node <name>`. Remote Docker is read-only inventory and

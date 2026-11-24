@@ -1,0 +1,4 @@
+module Dockpipe.Product.DriverClaims.Entry;
+import Dockpipe.Product.DriverClaims.Tests;
+import PipeLang.Json;
+import PipeLang.Testing;

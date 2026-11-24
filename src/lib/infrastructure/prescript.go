@@ -2,6 +2,8 @@ package infrastructure
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,10 +16,21 @@ import (
 	"golang.org/x/term"
 
 	"dockpipe/src/lib/domain"
+	ownedprocess "dockpipe/src/lib/infrastructure/process"
 )
 
 // SourceHostScript runs a bash script with set -a (export all) and returns the resulting environment as a map.
 func SourceHostScript(scriptPath string, env []string) (map[string]string, error) {
+	return AdmitSourceHostScript(NativeExecutionAdmission{}, scriptPath, env, sourceHostScript)
+}
+
+func sourceHostScript(scriptPath string, env []string) (map[string]string, error) {
+	return sourceHostScriptUsing(scriptPath, env, func(command *exec.Cmd) ([]byte, error) {
+		return command.CombinedOutput()
+	})
+}
+
+func sourceHostScriptUsing(scriptPath string, env []string, execute func(*exec.Cmd) ([]byte, error)) (map[string]string, error) {
 	bashExe, err := resolveBashExeForEnv(env)
 	if err != nil {
 		hint := ""
@@ -58,7 +71,7 @@ func SourceHostScript(scriptPath string, env []string) (map[string]string, error
 	if cwd := strings.TrimSpace(envGet(cmd.Env, "DOCKPIPE_STEP_CWD")); cwd != "" {
 		cmd.Dir = cwd
 	}
-	out, err := cmd.CombinedOutput()
+	out, err := execute(cmd)
 	if err != nil {
 		return nil, fmt.Errorf("pre-script %s: %w\n%s", scriptPath, err, out)
 	}
@@ -75,6 +88,14 @@ func RunHostScript(scriptPath string, env []string) error {
 // RunHostScriptWithShell applies an explicit host interpreter without changing
 // the host-run registry, cleanup, observation, or signal-forwarding lifecycle.
 func RunHostScriptWithShell(scriptPath string, env []string, shell string) error {
+	return AdmitHostScript(NativeExecutionAdmission{}, scriptPath, env, shell, runHostScriptWithShell)
+}
+
+func runHostScriptWithShell(scriptPath string, env []string, shell string) error {
+	if runtime.GOOS == "windows" {
+		return runHostScriptWithContext(context.Background(), scriptPath, env, shell)
+	}
+
 	command, commandEnv, err := hostScriptCommand(scriptPath, env, shell)
 	if err != nil {
 		return err
@@ -82,68 +103,193 @@ func RunHostScriptWithShell(scriptPath string, env []string, shell string) error
 	return runHostScriptProcess(scriptPath, command, commandEnv)
 }
 
+type hostScriptProcessRunner func(*exec.Cmd, ownedprocess.HostStartedObserver) error
+
 func runHostScriptProcess(scriptPath string, cmd *exec.Cmd, env []string) error {
+	return runHostScriptProcessObserved(scriptPath, cmd, env, runLegacyHostScriptProcess, terminateRunHostProcess, false, nil)
+}
+
+// The runner owns Start, Wait and process supervision. This shared lifecycle owns
+// the registry, output, observation and cleanup around that actual process.
+func runHostScriptProcessObserved(scriptPath string, cmd *exec.Cmd, env []string, run hostScriptProcessRunner, cancelStarted func(*exec.Cmd) error, ownOutput bool, contextError func() error) error {
+	return runHostScriptProcessObservedOutput(scriptPath, cmd, env,
+		func(actual *exec.Cmd, observer ownedprocess.HostStartedObserver, _, _ func()) error {
+			return run(actual, observer)
+		}, cancelStarted, ownOutput, contextError, hostScriptProcessIO{stdout: os.Stdout, stderr: os.Stderr, stdin: os.Stdin})
+}
+
+type hostScriptOutputProcessRunner func(*exec.Cmd, ownedprocess.HostStartedObserver, func(), func()) error
+
+type hostScriptProcessIO struct {
+	stdout                     io.Writer
+	stderr                     io.Writer
+	stdin                      io.Reader
+	preserveCommandEnvironment bool
+}
+
+// Private destinations let sourced scripts collect their env0 output without
+// exposing it on the console. Process ownership and registry cleanup are shared.
+func runHostScriptProcessObservedOutput(scriptPath string, cmd *exec.Cmd, env []string, run hostScriptOutputProcessRunner, cancelStarted func(*exec.Cmd) error, ownOutput bool, contextError func() error, streams hostScriptProcessIO) error {
+	if contextError != nil {
+		if err := contextError(); err != nil {
+			return err
+		}
+	}
+
 	parentExecutionID := envGet(env, "DOCKPIPE_RUN_ID")
 	runID, runFile, env, err := BeginHostRun(envGet(env, "DOCKPIPE_WORKDIR"), env)
 	if err != nil {
 		return fmt.Errorf("host run registry: %w", err)
 	}
-	env = upsertEnv(env, "DOCKPIPE_PARENT_EXECUTION_ID", parentExecutionID)
-	env = applyInteractivePromptMode(env)
-	cmd.Env = env
-	if cwd := strings.TrimSpace(envGet(cmd.Env, "DOCKPIPE_STEP_CWD")); cwd != "" {
-		cmd.Dir = cwd
-	}
-	cmd.Stdin = os.Stdin
-	stdoutPipe, err := cmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("host script stdout pipe %s: %w", scriptPath, err)
-	}
-	stderrPipe, err := cmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("host script stderr pipe %s: %w", scriptPath, err)
-	}
-	setRunHostProcAttrs(cmd)
 	defer func() {
 		ApplyHostCleanup(env)
 		RemoveHostRunArtifacts(runFile)
 	}()
-	if err := cmd.Start(); err != nil {
-		observation := ObserveExecution(runID, cmd, env, envGet(env, "DOCKPIPE_WORKDIR"), "host", "")
-		observation.Finish(cmd, err)
-		return fmt.Errorf("host script start %s: %w", scriptPath, err)
+
+	env = upsertEnv(env, "DOCKPIPE_PARENT_EXECUTION_ID", parentExecutionID)
+	env = applyInteractivePromptMode(env)
+	if !streams.preserveCommandEnvironment {
+		cmd.Env = env
 	}
-	observation := ObserveExecution(runID, cmd, env, envGet(env, "DOCKPIPE_WORKDIR"), "host", "")
-	stopSpinnerOnce := func() {}
-	if hostScriptSpinnerEnabled(env) {
-		stopSpin := StartLineSpinner(os.Stderr, hostScriptSpinnerLabel(scriptPath))
-		stopSpinnerOnce = sync.OnceFunc(stopSpin)
+	if cwd := strings.TrimSpace(envGet(cmd.Env, "DOCKPIPE_STEP_CWD")); cwd != "" {
+		cmd.Dir = cwd
 	}
-	var copyWG sync.WaitGroup
-	copyWG.Add(2)
-	go streamHostScriptPipe(stdoutPipe, os.Stdout, stopSpinnerOnce, &copyWG)
-	go streamHostScriptPipe(stderrPipe, os.Stderr, stopSpinnerOnce, &copyWG)
-	if err := WriteHostRunRecord(runFile, runID, cmd.Process.Pid, envGet(env, "DOCKPIPE_WORKDIR"), scriptPath); err != nil {
-		_ = cmd.Process.Kill()
-		_ = cmd.Wait()
-		observation.Finish(cmd, err)
-		stopSpinnerOnce()
-		copyWG.Wait()
-		return fmt.Errorf("host run registry write: %w", err)
-	}
-	err = waitHostScriptWithSignalForward(cmd)
-	observation.record.Container = ReadHostRunContainerSidecar(runFile)
-	observation.record.Resource = readExecutionResource(envGet(env, "DOCKPIPE_WORKDIR"), runID)
-	if observation.record.Resource != nil {
-		observation.record.Resource.State = "historical"
-	}
-	observation.Finish(cmd, err)
-	stopSpinnerOnce()
-	copyWG.Wait()
+	cmd.Stdin = streams.stdin
+	setRunHostProcAttrs(cmd)
+
+	stdoutPipe, stderrPipe, closeWriters, closeOutput, err := hostScriptOutputPipes(cmd, ownOutput)
 	if err != nil {
-		return fmt.Errorf("host script %s: %w", scriptPath, err)
+		return fmt.Errorf("host script output pipes %s: %w", scriptPath, err)
+	}
+	defer closeOutput()
+
+	var registryErr error
+	var outcome error
+	joinOutput := func() {}
+	err = run(cmd, func(actual *exec.Cmd) func(error) error {
+		// A Windows child inherits its own writer handles. Retire both parent
+		// copies after Start (or failed Start) so readers observe genuine EOF.
+		closeWriters()
+		observation := ObserveExecution(runID, actual, env, envGet(env, "DOCKPIPE_WORKDIR"), "host", "")
+		stopSpinnerOnce := func() {}
+		var copyWG sync.WaitGroup
+		copyErrors := make(chan error, 2)
+		if actual.Process != nil {
+			if hostScriptSpinnerEnabled(env) {
+				stopSpin := StartLineSpinner(os.Stderr, hostScriptSpinnerLabel(scriptPath))
+				stopSpinnerOnce = sync.OnceFunc(stopSpin)
+			}
+
+			copyWG.Add(2)
+			if ownOutput {
+				go streamHostScriptPipeResult(stdoutPipe, streams.stdout, stopSpinnerOnce, &copyWG, copyErrors, func() error { return cancelStarted(actual) })
+				go streamHostScriptPipeResult(stderrPipe, streams.stderr, stopSpinnerOnce, &copyWG, copyErrors, func() error { return cancelStarted(actual) })
+			} else {
+				go streamHostScriptPipe(stdoutPipe, streams.stdout, stopSpinnerOnce, &copyWG)
+				go streamHostScriptPipe(stderrPipe, streams.stderr, stopSpinnerOnce, &copyWG)
+			}
+			if writeErr := WriteHostRunRecord(runFile, runID, actual.Process.Pid, envGet(env, "DOCKPIPE_WORKDIR"), scriptPath); writeErr != nil {
+				registryErr = errors.Join(writeErr, cancelStarted(actual))
+			}
+		}
+
+		var outputErr error
+		joinOutput = sync.OnceFunc(func() {
+			copyWG.Wait()
+			if ownOutput && actual.Process != nil {
+				outputErr = errors.Join(<-copyErrors, <-copyErrors)
+			}
+		})
+
+		return func(runErr error) error {
+			completionErr := registryErr
+			if ownOutput {
+				stopSpinnerOnce()
+				joinOutput()
+				completionErr = errors.Join(completionErr, outputErr)
+			}
+			if contextError != nil {
+				completionErr = errors.Join(completionErr, contextError())
+			}
+			outcome = errors.Join(runErr, completionErr)
+			if registryErr == nil && actual.Process != nil {
+				observation.record.Container = ReadHostRunContainerSidecar(runFile)
+				observation.record.Resource = readExecutionResource(envGet(env, "DOCKPIPE_WORKDIR"), runID)
+				if observation.record.Resource != nil {
+					observation.record.Resource.State = "historical"
+				}
+			}
+
+			observation.Finish(actual, outcome)
+			if !ownOutput {
+				stopSpinnerOnce()
+				joinOutput()
+			}
+			return completionErr
+		}
+	}, func() { joinOutput() }, closeOutput)
+	// The owner can still fail its release/cleanup after observation completes.
+	// Its final result includes the root and completion outcomes above.
+	outcome = err
+	if registryErr != nil {
+		return fmt.Errorf("host run registry write: %w", outcome)
+	}
+	if outcome != nil {
+		return fmt.Errorf("host script %s: %w", scriptPath, outcome)
 	}
 	return nil
+}
+
+func runLegacyHostScriptProcess(cmd *exec.Cmd, observer ownedprocess.HostStartedObserver) error {
+	if err := cmd.Start(); err != nil {
+		return errors.Join(err, observer(cmd)(err))
+	}
+
+	finish := observer(cmd)
+	err := waitHostScriptWithSignalForward(cmd)
+	return errors.Join(err, finish(err))
+}
+
+// Explicit files avoid exec.Cmd closing a reader on root Wait. The Windows
+// host owner remains cancellable until these readers observe genuine EOF.
+func hostScriptOutputPipes(cmd *exec.Cmd, owned bool) (io.ReadCloser, io.ReadCloser, func(), func(), error) {
+	if !owned {
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
+		stderr, err := cmd.StderrPipe()
+		if err != nil {
+			_ = stdout.Close()
+			return nil, nil, nil, nil, err
+		}
+		return stdout, stderr, func() {}, func() {
+			_ = stdout.Close()
+			_ = stderr.Close()
+		}, nil
+	}
+
+	stdout, stdoutWriter, err := os.Pipe()
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	stderr, stderrWriter, err := os.Pipe()
+	if err != nil {
+		_ = stdout.Close()
+		_ = stdoutWriter.Close()
+		return nil, nil, nil, nil, err
+	}
+	cmd.Stdout = stdoutWriter
+	cmd.Stderr = stderrWriter
+	closeWriters := sync.OnceFunc(func() {
+		_ = stdoutWriter.Close()
+		_ = stderrWriter.Close()
+	})
+	return stdout, stderr, closeWriters, func() {
+		closeWriters()
+		_ = stdout.Close()
+		_ = stderr.Close()
+	}, nil
 }
 
 func hostScriptSpinnerEnabled(env []string) bool {
@@ -178,6 +324,14 @@ func RunHostCommand(command string, env []string) error {
 // RunHostCommandWithShell runs inline shell text through the same host process
 // lifecycle as script files. The temporary extension matches its interpreter.
 func RunHostCommandWithShell(command string, env []string, selection string) error {
+	return AdmitHostCommand(NativeExecutionAdmission{}, command, env, selection, runHostCommandWithShell)
+}
+
+func runHostCommandWithShell(command string, env []string, selection string) error {
+	return runHostCommandUsing(command, env, selection, RunHostScriptWithShell)
+}
+
+func runHostCommandUsing(command string, env []string, selection string, execute func(string, []string, string) error) error {
 	command = strings.TrimSpace(command)
 	if command == "" {
 		return nil
@@ -209,7 +363,7 @@ func RunHostCommandWithShell(command string, env []string, selection string) err
 	if closeErr != nil {
 		return fmt.Errorf("host command temp close: %w", closeErr)
 	}
-	return RunHostScriptWithShell(scriptPath, env, string(shell))
+	return execute(scriptPath, env, string(shell))
 }
 
 // bashSingleQuoted returns s as a single-quoted bash literal ('...' with ' escaped as '\”).
@@ -388,6 +542,15 @@ func (w *hostScriptOutputWriter) Write(p []byte) (int, error) {
 		w.onFirst = nil
 	}
 	return w.dest.Write(p)
+}
+
+func streamHostScriptPipeResult(src io.Reader, dest io.Writer, stopSpinner func(), wg *sync.WaitGroup, failures chan<- error, cancel func() error) {
+	defer wg.Done()
+	_, err := io.Copy(&hostScriptOutputWriter{dest: dest, onFirst: stopSpinner}, src)
+	if err != nil {
+		err = errors.Join(err, cancel())
+	}
+	failures <- err
 }
 
 func streamHostScriptPipe(src io.Reader, dest io.Writer, stopSpinner func(), wg *sync.WaitGroup) {

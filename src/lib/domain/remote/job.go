@@ -7,12 +7,29 @@ import (
 
 type Job struct {
 	Submission
-	Status          string    `json:"status"`
-	Session         string    `json:"session,omitempty"`
-	CancelRequested bool      `json:"cancel_requested"`
-	CreatedAt       time.Time `json:"created_at"`
-	Result          *Result   `json:"result,omitempty"`
-	ResultHash      string    `json:"result_hash,omitempty"`
+	Status                      string    `json:"status"`
+	Session                     string    `json:"session,omitempty"`
+	CancelRequested             bool      `json:"cancel_requested"`
+	CreatedAt                   time.Time `json:"created_at"`
+	Result                      *Result   `json:"result,omitempty"`
+	ResultHash                  string    `json:"result_hash,omitempty"`
+	InterruptionAcknowledgement string    `json:"-"`
+}
+
+func (j Job) IsInterruptedAssignment() bool {
+	return j.Status == "unknown" && len(j.Session) == 64 && ValidID(j.Session)
+}
+
+func (j Job) HasInterruptedResult() bool {
+	return j.IsInterruptedAssignment() && featureDigest(j.ResultHash)
+}
+
+func (j Job) HasAcknowledgedInterruption() bool {
+	return j.IsInterruptedAssignment() && (j.ResultHash == "" || featureDigest(j.ResultHash)) && featureDigest(j.InterruptionAcknowledgement)
+}
+
+func (j Job) Resolved() bool {
+	return j.Status == "success" || j.Status == "failure" || j.Status == "cancelled" || j.HasAcknowledgedInterruption()
 }
 
 // Recover preserves assignment identity across a broker restart. Claimed work
@@ -25,7 +42,7 @@ func (j Job) Recover() Job {
 }
 
 func (j Job) Cancel() (job Job, changed bool) {
-	if j.ResultHash != "" {
+	if j.ResultHash != "" || j.HasAcknowledgedInterruption() {
 		return j, false
 	}
 	j.CancelRequested = true
@@ -47,6 +64,9 @@ func (j Job) Complete(result *Result, digest string) (job Job, changed bool, err
 			return Job{}, false, errors.New("conflicting result")
 		}
 		return j, false, nil
+	}
+	if j.HasAcknowledgedInterruption() {
+		return Job{}, false, errors.New("the operator closed this assignment without a worker result")
 	}
 	if j.Status != "running" && j.Status != "unknown" {
 		return Job{}, false, errors.New("job is not assigned")

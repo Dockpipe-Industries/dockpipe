@@ -8,6 +8,9 @@
 /src/dockpipe-app/build/
 /release/artifacts/
 /aqtinstall.log
+# QEMU configure probes written when configure runs from the checkout.
+/config-temp/
+/config.log
 *.deb
 *.wixobj
 *.wixpdb

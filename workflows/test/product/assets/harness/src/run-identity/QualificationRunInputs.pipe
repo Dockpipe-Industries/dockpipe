@@ -1,0 +1,41 @@
+module Dockpipe.Product.RunIdentity;
+import Dockpipe.Product.QualificationFiles;
+import Dockpipe.Product.QualificationOutput;
+import PipeLang.IO;
+import PipeLang.Json;
+
+// Commit and verify the three identities before starting a fresh run.
+public Class QualificationRunInputs {
+    private QualificationJsonOutput copies;
+    private ResumeInputPins retained;
+    private RunnerIdentityProjection identity;
+
+    public QualificationRunInputs(JsonReader reader, ExclusiveFileOutput output, FileStreams files,
+                                   RunnerIdentityProjection identity) {
+        copies = new QualificationJsonOutput(reader, output);
+        retained = new ResumeInputPins(files);
+        this.identity = identity;
+    }
+
+    private Result<void,string> Store(CapturedQualificationJson source, string name, CancellationToken token) {
+        Result<FileDigest,IoFailure> stored = copies.Store(source, name, token);
+        if (stored.IsCancelled)
+            return Result<void,string>.Cancelled(stored.Error.code);
+        if (!stored.IsSuccess)
+            return Result<void,string>.Failure(stored.Error.code);
+
+        return Result<void,string>.Success();
+    }
+
+    public Result<void,string> BindNew(CapturedQualificationJson plan, CapturedQualificationJson registry,
+                                       QualificationRunnerIdentity runner, CancellationToken token) {
+        try Store(plan, "plan.json", token);
+        try Store(registry, "registry.json", token);
+        FileDigest sealed = try identity.Seal(runner, token);
+        return retained.VerifyRun(plan.sourceFile, registry.sourceFile, sealed, token);
+    }
+
+    public Result<void,string> Close() {
+        return identity.Close();
+    }
+}

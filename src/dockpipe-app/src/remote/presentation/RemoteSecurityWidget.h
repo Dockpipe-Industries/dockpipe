@@ -37,6 +37,7 @@ private:
     QLabel *m_capabilities = nullptr;
     QLabel *m_detail = nullptr;
     QSpinBox *m_idleSeconds = nullptr;
+    QSpinBox *m_absoluteSeconds = nullptr;
     QCheckBox *m_lockOnScreenLock = nullptr;
     QCheckBox *m_lockOnSleep = nullptr;
     QPushButton *m_refresh = nullptr;

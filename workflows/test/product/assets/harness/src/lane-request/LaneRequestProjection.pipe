@@ -1,0 +1,83 @@
+module Dockpipe.Product.LaneRequest;
+import Dockpipe.Product.Qualification;
+import Dockpipe.Product.RunAdmission;
+import PipeLang.Json;
+
+public Class LaneRequestProjection {
+    private JsonReader reader;
+    private RegistryJson json;
+    private JsonDocumentOutput output;
+
+    public LaneRequestProjection(JsonReader reader, JsonDocumentOutput output) {
+        this.reader = reader;
+        this.output = output;
+        json = new RegistryJson(reader);
+    }
+
+    private Result<void,string> Text(string field, string value) {
+        try output.Name(field);
+        return output.WriteText(value);
+    }
+
+    private Result<void,string> Case(RegistryCase selected, CancellationToken token) {
+        try output.BeginObject();
+        try Text("id", selected.id);
+        try Text("layer", selected.layer);
+        try output.Name("required_assertions");
+        try output.WriteValue(selected.requiredAssertions, token);
+        try Text("scenario", selected.scenario);
+        return output.EndObject();
+    }
+
+    private Result<void,string> Configuration(JsonNode driver, CancellationToken token) {
+        try output.Name("configuration");
+        JsonNode? configured = try reader.FindMember(driver, "configuration");
+        if (configured.HasValue)
+            return output.WriteValue(configured.Value, token);
+
+        try output.BeginObject();
+        return output.EndObject();
+    }
+
+    private Result<void,string> Target(JsonNode target) {
+        try output.Name("target");
+        try output.BeginObject();
+        try Text("artifact_sha256", try json.TextMember(target, "artifact_sha256", 64));
+        try Text("id", try json.TextMember(target, "id", 128));
+        try Text("kind", try json.TextMember(target, "kind", 128));
+        try Text("platform", try json.TextMember(target, "platform", 512));
+        return output.EndObject();
+    }
+
+    // Call only for a fully admitted run and a selected driver. Every case
+    // declaration and the raw configuration stay bound to the caller's input
+    // documents while this projects the execution request into a private sink.
+    public Result<LaneRequestWrite,string> Write(QualificationRunIdentity identity, JsonNode target,
+                                                 JsonNode driver, LaneCaseSelection cases,
+                                                 CancellationToken token) {
+        RegistryCase? selected = try cases.Next(token);
+        if (!selected.HasValue)
+            return Result<LaneRequestWrite,string>.Success(LaneRequestWrite(0, 0));
+
+        try output.BeginObject();
+        try output.Name("cases");
+        try output.BeginArray();
+        int count = 0;
+        while (selected.HasValue) {
+            try Case(selected.Value, token);
+            count = count + 1;
+            selected = try cases.Next(token);
+        }
+
+        try output.EndArray();
+        try Configuration(driver, token);
+        try Text("plan_sha256", identity.planSha256);
+        try Text("registry_sha256", identity.registrySha256);
+        try Text("run_id", identity.runId);
+        try Text("schema", "dockpipe.product-integration.request/v1");
+        try Target(target);
+        try output.EndObject();
+        int bytes = try output.Finish();
+        return Result<LaneRequestWrite,string>.Success(LaneRequestWrite(count, bytes));
+    }
+}

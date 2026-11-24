@@ -1,0 +1,46 @@
+module Dockpipe.Product;
+import PipeLang.Testing;
+import PipeLang.Testing.Async;
+import Dockpipe.SDK;
+
+public model Class Harness {
+    private TestClock clock;
+    private ProcessPort processes;
+    private FilePort files;
+    private HarnessInputs inputs;
+
+    public Harness(TestClock clock, Transport transport, FilePort files, HarnessInputs inputs) {
+        this.clock = clock;
+
+        Client client = new Client(transport);
+        this.processes = new ProcessPort(client, files, inputs.workflowFile);
+
+        this.files = files;
+        this.inputs = inputs;
+    }
+
+    public async Task<Result<HarnessReport,string>> Run(
+        CancellationToken bodyToken, CancellationToken cleanupToken) {
+        List<IAsyncTestCase> cases = List<IAsyncTestCase>.Empty();
+        cases.Add(new HostWorkflowCase(JourneyKind.FailureRecovery, clock, processes, files, inputs));
+        cases.Add(new HostWorkflowCase(JourneyKind.GracefulCancellation, clock, processes, files, inputs));
+
+        AsyncTestRunner runner = new AsyncTestRunner(clock);
+        Result<List<AsyncTestResult>,string> results = await runner.RunAll(
+            cases, 15000, 5000, bodyToken, cleanupToken);
+        if (!results.IsSuccess) {
+            if (results.IsCancelled)
+                return Result<HarnessReport,string>.Cancelled(results.Error);
+
+            return Result<HarnessReport,string>.Failure(results.Error);
+        }
+
+        bool success = true;
+        foreach (AsyncTestResult result in results.Value) {
+            if (result.test.outcome != TestOutcome.Passed)
+                success = false;
+        }
+
+        return Result<HarnessReport,string>.Success(HarnessReport(results.Value, success));
+    }
+}

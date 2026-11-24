@@ -21,6 +21,10 @@ func (values *stringList) Set(value string) error {
 }
 
 func submitDelivery(ctx context.Context, root, node, id, workdir, workflow string, includes, dependencies, artifacts []string, dryRun bool, expectedDigest string) error {
+	return submitCapturedDelivery(ctx, root, node, id, workdir, workflow, includes, dependencies, artifacts, dryRun, expectedDigest, contract.FeatureTarget{}, "")
+}
+
+func submitCapturedDelivery(ctx context.Context, root, node, id, workdir, workflow string, includes, dependencies, artifacts []string, dryRun bool, expectedDigest string, target contract.FeatureTarget, grant string) error {
 	bundle, err := remoteio.BuildBundle(workdir, workflow, includes, dependencies, artifacts)
 	if err != nil {
 		return err
@@ -32,7 +36,7 @@ func submitDelivery(ctx context.Context, root, node, id, workdir, workflow strin
 	if expectedDigest != "" && expectedDigest != digest {
 		return errors.New("workflow snapshot changed since preview; preview again before submitting")
 	}
-	request := contract.SubmitRequest{Submission: contract.Submission{ID: id, Node: node, BundleHash: digest}, Bundle: bundle}
+	request := contract.SubmitRequest{Submission: contract.Submission{ID: id, Node: node, BundleHash: digest, Target: target, Root: grant}, Bundle: bundle}
 	if err := request.Validate(); err != nil {
 		return err
 	}

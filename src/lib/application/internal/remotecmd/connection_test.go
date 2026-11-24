@@ -33,7 +33,7 @@ func writeConnectionFixture(t *testing.T, root, name string, value any) {
 func TestRemoteInfoLegacyAndBoundResolver(t *testing.T) {
 	root := privateConnectionDirectory(t)
 	info, err := describeRemote(root)
-	if err != nil || info.Broker != nil || info.Worker != nil {
+	if err != nil || info.Broker != nil || info.Worker != nil || info.StateDirectory != root || !filepath.IsAbs(info.StateDirectory) {
 		t.Fatalf("empty state: %+v, %v", info, err)
 	}
 	operator := OperatorConfig{Schema: contract.Version, Endpoint: "https://edge.example.com", Listen: "127.0.0.1:47831", Token: "operator-secret-never-public"}
@@ -52,6 +52,9 @@ func TestRemoteInfoLegacyAndBoundResolver(t *testing.T) {
 		t.Fatalf("projection: %+v, %v", info, err)
 	}
 	data, err := json.Marshal(info)
+	if info.StateDirectory != root || !strings.Contains(string(data), `"state_directory"`) {
+		t.Fatal("remote info lost its resolved nonsecret state-directory reference")
+	}
 	if err != nil {
 		t.Fatal(err)
 	}

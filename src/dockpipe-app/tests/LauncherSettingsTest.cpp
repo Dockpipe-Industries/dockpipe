@@ -1,14 +1,23 @@
 #include "LauncherSettings.h"
 #include "SettingsDialog.h"
+#include "Theme.h"
+#include "LauncherTranslations.h"
 #include <QApplication>
 #include <QCheckBox>
+#include <QComboBox>
+#include <QDir>
+#include <QEvent>
+#include <QEventLoop>
+#include <QFileInfo>
 #include <QFile>
-#include <QGroupBox>
+#include <QFrame>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QScrollArea>
+#include <QSettings>
 #include <QTemporaryDir>
 #include <QTabWidget>
+#include <QTimer>
 #include <cstdio>
 
 #define CHECK(value) do { if (!(value)) { std::fprintf(stderr, "Settings assertion at %d: %s\n", __LINE__, #value); return 1; } } while (false)
@@ -17,6 +26,8 @@ int main(int argc, char **argv)
 {
     QApplication app(argc, argv);
     QTemporaryDir config;
+    QSettings::setDefaultFormat(QSettings::IniFormat);
+    QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, config.path());
     qputenv("XDG_CONFIG_HOME", config.path().toUtf8());
     QCoreApplication::setOrganizationName("DockpipeSettingsTest");
     QCoreApplication::setApplicationName("SettingsFixture");
@@ -39,28 +50,45 @@ int main(int argc, char **argv)
     file.close();
     CHECK(defaults.load() && !defaults.tilingEnabled);
 
+    const QString capture = qEnvironmentVariable("DOCKPIPE_SETTINGS_SCREENSHOT");
+    if (!capture.isEmpty()) {
+        applyDockpipeLauncherTheme(app);
+        previewDockpipeLauncherTheme(app, qEnvironmentVariable("DOCKPIPE_TEST_THEME") == "light"
+            ? LauncherThemeMode::Light : LauncherThemeMode::Dark);
+    }
     SettingsDialog dialog(defaults);
+    auto *language = dialog.findChild<QComboBox *>("settingsLanguage");
+    CHECK(language && language->count() == LauncherTranslations::languages().size() + 1);
+    CHECK(language->currentData().toString() == LauncherTranslations::savedLanguage());
+    language->setCurrentIndex(language->findData("fr"));
+    CHECK(LauncherTranslations::savedLanguage() != "fr");
     auto *settingsTabs = dialog.findChild<QTabWidget *>("settingsTabs");
-    CHECK(settingsTabs && settingsTabs->count() == 2);
+    CHECK(settingsTabs && settingsTabs->count() == 4);
     CHECK(settingsTabs->tabText(0) == QStringLiteral("General"));
-    CHECK(settingsTabs->tabText(1) == QStringLiteral("Security"));
-    CHECK(settingsTabs->widget(1)->objectName() == QStringLiteral("remoteSecurityWidget"));
+    CHECK(settingsTabs->tabText(1) == QStringLiteral("Packages && paths"));
+    CHECK(settingsTabs->tabText(2) == QStringLiteral("Security"));
+    CHECK(settingsTabs->widget(2)->objectName() == QStringLiteral("remoteSecurityWidget"));
+    CHECK(settingsTabs->tabText(3) == QStringLiteral("Advanced"));
+    CHECK(settingsTabs->currentIndex() == 0);
     auto *showDashboard = dialog.findChild<QCheckBox *>("settingsDefaultDashboardVisible");
     CHECK(showDashboard && showDashboard->isChecked());
+    CHECK(settingsTabs->widget(0)->isAncestorOf(showDashboard));
     showDashboard->setChecked(false);
     CHECK(!dialog.updatedSettings().defaultDashboardVisible);
     CHECK(LauncherSettings::current().defaultDashboardVisible);
     auto *tiling = dialog.findChild<QCheckBox *>("settingsTilingEnabled");
-    CHECK(tiling && !tiling->isChecked() && tiling->text().contains("Experimental"));
+    CHECK(tiling && !tiling->isChecked());
+    CHECK(settingsTabs->widget(3)->isAncestorOf(tiling));
     tiling->setChecked(true);
     CHECK(dialog.updatedSettings().tilingEnabled);
     CHECK(!LauncherSettings::current().tilingEnabled);
-    auto *group = dialog.findChild<QGroupBox *>("cockpitSettingsGroup");
+    auto *group = dialog.findChild<QFrame *>("cockpitSettingsGroup");
     auto *options = dialog.findChild<QWidget *>("cockpitSettingsOptions");
     auto *enabled = dialog.findChild<QCheckBox *>("settingsCockpitEnabled");
     CHECK(group && options && enabled && group->isAncestorOf(options));
-    CHECK(group->title().contains("Experimental") && enabled->text().contains("Experimental"));
-    auto *experimental = dialog.findChild<QGroupBox *>("cockpitExperimentalSettingsGroup");
+    CHECK(settingsTabs->widget(3)->isAncestorOf(group));
+    CHECK(group->property("settingsCard").toBool());
+    auto *experimental = dialog.findChild<QWidget *>("cockpitExperimentalSettingsGroup");
     auto *voice = dialog.findChild<QCheckBox *>("settingsCockpitVoice");
     CHECK(experimental && voice && options->isAncestorOf(experimental));
     CHECK(experimental->isAncestorOf(voice) && !voice->isChecked());
@@ -68,12 +96,20 @@ int main(int argc, char **argv)
     CHECK(options->findChildren<QCheckBox *>().size() == 6);
     dialog.show();
     QApplication::processEvents();
-    auto *scroll = dialog.findChild<QScrollArea *>();
+    settingsTabs->setCurrentIndex(3);
+    auto *scroll = qobject_cast<QScrollArea *>(settingsTabs->currentWidget());
+    CHECK(scroll);
     scroll->ensureWidgetVisible(group);
     QApplication::processEvents();
-    const QString capture = qEnvironmentVariable("DOCKPIPE_SETTINGS_SCREENSHOT");
-    if (!capture.isEmpty())
+    if (!capture.isEmpty()) {
+        for (int index = 0; index < settingsTabs->count(); ++index) {
+            settingsTabs->setCurrentIndex(index);
+            QApplication::processEvents();
+            CHECK(dialog.grab().save(capture + "-tab-" + QString::number(index) + ".png"));
+        }
+        settingsTabs->setCurrentIndex(3);
         CHECK(dialog.grab().save(capture + "-disabled.png"));
+    }
     enabled->setChecked(true);
     CHECK(options->isEnabled());
     for (auto *option : options->findChildren<QCheckBox *>())
@@ -99,6 +135,14 @@ int main(int argc, char **argv)
     tiling->setChecked(false);
     updated = dialog.updatedSettings();
     dialog.reject();
+    CHECK(LauncherTranslations::savedLanguage() == "system");
+    SettingsDialog accepted(updated);
+    auto *acceptedLanguage = accepted.findChild<QComboBox *>("settingsLanguage");
+    CHECK(acceptedLanguage);
+    acceptedLanguage->setCurrentIndex(acceptedLanguage->findData("fr"));
+    accepted.accept();
+    CHECK(accepted.result() == QDialog::Accepted);
+    CHECK(LauncherTranslations::savedLanguage() == "fr");
     CHECK(LauncherSettings::current().tilingEnabled);
     CHECK(LauncherSettings::current().cockpit.enabled);
     CHECK(updated.save());
@@ -142,5 +186,24 @@ int main(int argc, char **argv)
     CHECK(preserved.value("dashboardTour").toObject().value("future").toInt() == 42);
     std::puts("Dashboard tour persistence, merge and malformed-setting protection passed.");
     std::puts("Cockpit defaults, nested settings, persistence, cancel and disabled preferences passed.");
+    const QString localizedCapture = qEnvironmentVariable("DOCKPIPE_LOCALIZED_SETTINGS_SCREENSHOT");
+    if (!localizedCapture.isEmpty()) {
+        const QString previewLanguage = qEnvironmentVariable("DOCKPIPE_TEST_LANGUAGE", "fr");
+        CHECK(LauncherTranslations::saveAppearance(LauncherThemeMode::Dark, previewLanguage));
+        LauncherTranslations::initialize(app);
+        CHECK(LauncherTranslations::activeLanguage() == previewLanguage);
+        applyDockpipeLauncherTheme(app);
+        SettingsDialog localized(defaults);
+        localized.show();
+        QApplication::processEvents();
+        // Font fallback and stylesheet polish can queue another layout after show.
+        QApplication::sendPostedEvents(nullptr, QEvent::LayoutRequest);
+        QApplication::processEvents();
+        QEventLoop settle;
+        QTimer::singleShot(50, &settle, &QEventLoop::quit);
+        settle.exec();
+        CHECK(QDir().mkpath(QFileInfo(localizedCapture).absolutePath()));
+        CHECK(localized.grab().save(localizedCapture));
+    }
     return 0;
 }

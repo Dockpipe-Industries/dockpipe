@@ -207,6 +207,7 @@ void WorkflowLaunchDialog::rebuildRoutedPages()
         return;
 
     const QMap<QString, QString> liveValues = values();
+    m_visitedValues = liveValues;
     for (auto it = liveValues.begin(); it != liveValues.end(); ++it)
         m_routedValues.insert(it.key(), it.value());
     const QMap<QString, QString> effectiveValues = m_routedValues;
@@ -361,7 +362,9 @@ void WorkflowLaunchDialog::addViewSectionToLayout(QVBoxLayout *layout, const Wor
 
 QMap<QString, QString> WorkflowLaunchDialog::values() const
 {
-    QMap<QString, QString> out;
+    // Include edits from pages the user visited, including explicit clears.
+    // Initial values for unrelated or unvisited inputs remain outside this result.
+    QMap<QString, QString> out = m_visitedValues;
     for (auto it = m_editors.begin(); it != m_editors.end(); ++it) {
         if (auto *check = qobject_cast<QCheckBox *>(it.value())) {
             out.insert(it.key(), check->isChecked() ? QStringLiteral("1") : QStringLiteral("0"));

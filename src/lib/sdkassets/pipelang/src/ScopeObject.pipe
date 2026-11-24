@@ -1,0 +1,18 @@
+module Dockpipe.SDK;
+
+// Fields mirror the workflow/package object returned by dockpipe scope.
+// A field absent from that service's JSON is represented by an empty string.
+public Record ScopeObject {
+    public string kind;
+    public string name;
+    public string scope;
+    public string root;
+    public string dockpipeBin;
+    public string sourceRoot;
+    public string artifactRoot;
+    public string eventLog;
+    public string eventIndex;
+    public string outputRoot;
+    public string stateRoot;
+    public string workdir;
+}

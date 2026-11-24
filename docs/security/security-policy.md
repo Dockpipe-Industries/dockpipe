@@ -4,6 +4,21 @@ Dockpipe security policy is part of the runtime/isolation layer. Workflow YAML
 declares high-level intent; compile resolves that intent into an effective
 runtime/security manifest; run consumes the compiled truth.
 
+Named workflow execution with dependency compilation enabled runs the exact
+compiled archive selected from that source, including its step policies and
+relative assets. Authored-source cache reuse also binds the canonical source
+identity and authored configuration to the exact archive digest through private
+local metadata; another folder with the same workflow name/version cannot
+silently supply its archive. This metadata is not exported in packages. Installed
+archive materialization retains its existing exact-archive provenance checks.
+
+An explicit uncompiled YAML file or `--no-compile-deps` source
+that declares container security is refused when its compiled runtime manifest
+is missing. Compile it and select the resulting catalog entry before execution;
+declared policy never permits an unrestricted fallback container.
+Legacy uncompiled execution without a declared policy retains its compatibility
+behavior and does not establish the compiled secure-default posture below.
+
 Set this policy in your project's workflow YAML. It applies to container steps;
 it does not sandbox host steps or grant permission to run an untrusted package.
 The public YAML does not expose raw Docker flags.

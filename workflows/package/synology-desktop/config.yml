@@ -1,0 +1,11 @@
+name: package-synology-desktop
+description: Stage the authenticated container desktop bundle from matching release DEBs.
+docker_preflight: false
+steps:
+  - id: stage
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/package/synology-desktop/assets/scripts/stage.py

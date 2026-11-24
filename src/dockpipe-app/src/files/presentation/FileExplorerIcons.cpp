@@ -209,6 +209,13 @@ FileExplorerIcons &FileExplorerIcons::instance()
     return provider;
 }
 
+QIcon FileExplorerIcons::iconForEntry(const QString &name, bool directory) const
+{
+    if (directory)
+        return CanvasIcons::icon(CanvasIcons::Symbol::Folder);
+    return QIcon(new FileIconEngine(familyForFile(QFileInfo(name))));
+}
+
 QIcon FileExplorerIcons::icon(const QFileInfo &file) const
 {
     if (file.isRoot())

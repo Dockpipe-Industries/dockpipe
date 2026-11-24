@@ -12,7 +12,7 @@ WorkspaceGraphView::WorkspaceGraphView(QWidget *parent) : CanvasView(parent)
 {
     updateCameraBasis();
     m_hardwareRequested = !qEnvironmentVariableIsSet("DOCKPIPE_GRAPH_SOFTWARE");
-    m_rendererDescription = tr("Software · 2D view");
+    m_rendererDescription = tr("Software · Graph view");
 }
 
 void WorkspaceGraphView::setHardwareAcceleration(bool enabled, bool deferUntilShown)
@@ -56,7 +56,7 @@ void WorkspaceGraphView::updateRenderer()
         return;
     const QScopedValueRollback<bool> updating(m_updatingRenderer, true);
     if (!m_spatial || !m_hardwareRequested) {
-        useSoftware(m_spatial ? tr("Software · acceleration disabled") : tr("Software · 2D view"));
+        useSoftware(m_spatial ? tr("Software · acceleration disabled") : tr("Software · Graph view"));
         return;
     }
     // A stacked page may stay hidden while Git/discovery loads. QOpenGLWidget

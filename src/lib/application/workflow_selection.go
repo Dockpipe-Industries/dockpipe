@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"dockpipe/src/lib/application/internal/packagecompile"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 )
@@ -31,11 +32,14 @@ type workflowSelection struct {
 }
 
 func selectWorkflow(request workflowSelectionRequest, loadWorkflow func(string) (*domain.Workflow, error)) (workflowSelection, error) {
+	selectedConfig := request.workflowFile
 	if request.compileDepsWanted && request.workflowName != "" && !isVSCodeWorkflow(request.workflowName) && request.workflowFile == "" && strings.TrimSpace(request.packageName) == "" {
 		effWd := request.effectiveWorkdir
-		if err := compileClosureForWorkflow(effWd, request.workflowName, request.force); err != nil {
+		entry, err := packagecompile.CompileClosureEntryForWorkflow(effWd, request.workflowName, request.force)
+		if err != nil {
 			return workflowSelection{}, err
 		}
+		selectedConfig = entry
 	}
 
 	var err error
@@ -53,20 +57,29 @@ func selectWorkflow(request workflowSelectionRequest, loadWorkflow func(string) 
 	if strings.TrimSpace(request.packageName) != "" && request.workflowFile != "" {
 		return workflowSelection{}, fmt.Errorf("--package cannot be used with --workflow-file")
 	}
-	if request.workflowFile != "" {
-		wfPath, err := filepath.Abs(request.workflowFile)
-		if err != nil {
-			return workflowSelection{}, fmt.Errorf("workflow file: %w", err)
+	if selectedConfig != "" {
+		var wfPath string
+		wfConfig = selectedConfig
+		if strings.HasPrefix(wfConfig, "tar://") {
+			wfPath, err = infrastructure.WorkflowConfigOnDiskPath(request.effectiveWorkdir, wfConfig)
+			if err != nil {
+				return workflowSelection{}, fmt.Errorf("workflow file: %w", err)
+			}
+		} else {
+			wfPath, err = filepath.Abs(wfConfig)
+			if err != nil {
+				return workflowSelection{}, fmt.Errorf("workflow file: %w", err)
+			}
+			if _, err := os.Stat(wfPath); err != nil {
+				return workflowSelection{}, fmt.Errorf("workflow file: %w", err)
+			}
+			wfConfig = wfPath
 		}
-		if _, err := os.Stat(wfPath); err != nil {
-			return workflowSelection{}, fmt.Errorf("workflow file: %w", err)
-		}
-		wf, err = loadWorkflow(wfPath)
+		wf, err = loadWorkflow(wfConfig)
 		if err != nil {
 			return workflowSelection{}, fmt.Errorf("parse config: %w", err)
 		}
 		wfRoot = filepath.Dir(wfPath)
-		wfConfig = wfPath
 		if len(wf.Steps) > 0 {
 			stepsMode = true
 		}

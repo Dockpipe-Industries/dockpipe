@@ -30,6 +30,8 @@
     <true/>
     <key>NSHumanReadableCopyright</key>
     <string>${MACOSX_BUNDLE_COPYRIGHT}</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>Dockpipe shares your screen with the remote session you explicitly connect.</string>
     <key>NSLocalNetworkUsageDescription</key>
     <string>Dockpipe connects to the remote machines and services you select on your local network.</string>
 </dict>

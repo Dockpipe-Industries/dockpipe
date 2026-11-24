@@ -10,8 +10,12 @@ class MacDesktopPermissionAccess final : public DesktopPermissionAccess {
 public:
     DesktopPermissionState state(DesktopPermission permission) const override
     {
-        if (permission == DesktopPermission::Accessibility)
-            return AXIsProcessTrusted() ? DesktopPermissionState::Allowed : DesktopPermissionState::NotAllowed;
+        if (permission == DesktopPermission::Accessibility) {
+            bool allowed = AXIsProcessTrusted();
+            if (@available(macOS 10.15, *))
+                allowed = allowed && CGPreflightPostEventAccess();
+            return allowed ? DesktopPermissionState::Allowed : DesktopPermissionState::NotAllowed;
+        }
         if (@available(macOS 10.15, *))
             return CGPreflightScreenCaptureAccess() ? DesktopPermissionState::Allowed : DesktopPermissionState::NotAllowed;
         return DesktopPermissionState::Unavailable;
@@ -30,6 +34,8 @@ public:
                 AXIsProcessTrustedWithOptions(options);
                 CFRelease(options);
             }
+            if (@available(macOS 10.15, *))
+                CGRequestPostEventAccess();
         } else {
             if (@available(macOS 10.15, *))
                 CGRequestScreenCaptureAccess();

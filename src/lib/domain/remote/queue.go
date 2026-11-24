@@ -32,14 +32,14 @@ func (q Queue) Next(node, session string) (job *Job, changed bool, err error) {
 	if len(session) != 64 || !ValidID(session) {
 		return nil, false, errors.New("worker session identity required")
 	}
-	// Unknown work requires journal reconciliation. A disconnect or a different
-	// worker session is never permission to assign another job on the same node.
+	// Unknown work holds the node until its exact interrupted result is reviewed.
+	// A disconnect or a different session alone never permits another assignment.
 	var selected *Job
 	for _, candidate := range q {
 		if candidate.Node != node {
 			continue
 		}
-		if candidate.Status == "running" || candidate.Status == "unknown" {
+		if candidate.Status == "running" || (candidate.Status == "unknown" && !candidate.HasAcknowledgedInterruption()) {
 			return &candidate, false, nil
 		}
 		if candidate.Status == "queued" && (selected == nil || candidate.CreatedAt.Before(selected.CreatedAt)) {

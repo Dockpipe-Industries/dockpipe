@@ -12,9 +12,94 @@ business logic. Include the shared CLI/UI parity and process-lifecycle acceptanc
 
 ## Status And Objective
 
-Backlog; architecture direction recorded on 2026-10-17. Foundation for **P1 TASK-038**. No runtime
-implementation or deployment is claimed. The [full revised design request](design-request.md) is
+Shared invocation foundation implementation is underway; the full gateway remains
+backlog. Architecture direction was recorded on 2026-10-17. Foundation for **P1 TASK-038**.
+No gateway deployment is claimed. The [full revised design request](design-request.md) is
 preserved verbatim and defines the requested architecture; this overview routes implementation.
+
+## Always-on invocation validation (2026-11-08)
+
+The user authorized shared validation for managed workflow, command/script, file,
+Git, container and terminal actions, locally and remotely, before widening remote
+desktop surfaces. This advances this owner rather than creating another policy
+engine. [Native invocation validation](../../../runtime/invocation-validation.md)
+is the current source/coverage reference.
+
+- `domain/invocation` implements typed contract/target/version matching,
+  memory-only owned preparation, applicable authorization and cancellation, with
+  no registry, service, JSON or persistent-I/O detour for ordinary local calls.
+- Project Git admission is wired before repository access; existing reviewed
+  snapshot, confirmation and publication safeguards remain authoritative.
+- `infrastructure/workspacefiles` and the local `files --request` adapter provide
+  one bounded core file service. Main and dashboard file editors, active graph discovery, workflow-source
+  open/save and remote root-grant adapters now consume it asynchronously. Workflow
+  source stays local; exact revisions, BOM/CRLF, cancellation and discard continuations
+  are covered by the real-CLI workflow-studio and admitted graph fixtures. Directory rename/delete are not offered by this service.
+- Workflow selection and concrete host/script/container admission are wired, with
+  full application/infrastructure suites and focused race tests passing. Active
+  Docker cancellation and exact immutable workflow-content authorization are not
+  supplied by the new invocation wrapper. Local/remote managed terminal sessions,
+  strict container detail reads, standalone image/Compose/preflight operations and
+  host cleanup now have owning admission boundaries. Internal housekeeping stays
+  within its lifecycle; it is not independently sandboxed. Do not claim
+  an arbitrary shell stream or every internal housekeeping subprocess is governed
+  merely because a managed invocation entered the gate.
+- Routed invocation, Git and file tests/race checks pass on Linux. The core gate's
+  fixed memory fixture measured 7.928 ns/op, zero allocations directly versus
+  50.36 ns/op, 16 B/one allocation through admission. This is a microbenchmark,
+  not whole-product performance or native Windows/macOS acceptance.
+- Before integration, one fixed developer CLI fixture measured first-process /
+  warmed median latency of 6.591 / 6.163 ms for version and 20.076 / 20.194 ms for
+  workflow validation (one initial call, ten repeats). OS page caches were not
+  flushed. Full before/after process, allocation and persistent-I/O acceptance
+  remains open; no universal timing threshold was invented.
+
+- Metadata-only remote preparation and recovery retain the exact original operation
+  before dispatch. Native file reconciliation permanently revokes old admission and
+  awaits worker cleanup proof while preserving the unknown outcome. Git/native
+  process recovery now captures a delegated Linux cgroup or an owner-selected boot
+  fence before effects. Docker daemon uncertainty requires explicit retirement of
+  the captured container under a separate grant; normal terminal closure verifies
+  its captured ExecID. These remain subject to the canonical trust/platform limits,
+  without replay or a reset shortcut. The bounded
+  receipt store is not an unlimited archive. See the canonical coverage page.
+
+The current local implementation checkpoint is qualified by 17 affected native
+suites, full affected Go packages and focused races, including a Linux real-PTY
+container-exec fixture with a fake Docker provider. Desktop/helper and Linux CLI
+builds pass, with Windows/macOS CLI compile/link checks and all 17 translation
+catalogs current. Shared/context changes guard pending save continuations; relaunch
+retains its captured target. Approved broker and Darwin arm64 worker updates now
+pass live file/Git mutations, host PTY and actual Docker shell, resize, verified
+close and container controls. Original uncertain container-terminal reconciliation
+and exact-resource retirement passed after a separately approved reboot, including
+absence and catalog-release readback. A live interrupted Git commit passed
+post-reboot exact-reference reconciliation while preserving its unknown outcome
+and repository head; test-only state was cleaned without replay. Prospective
+host-terminal boot receipts and exact-reference recovery now also pass native and
+paired-worker proof, including actual interruption/reboot and desktop root/quota
+checks. Colima login startup passed under its normal provider service. The old
+receipt-less reference remains historical unknown; no retrospective certificate
+was invented. The canonical coverage guide records the bounded proof. Installed Flatpak, native Windows and remaining macOS
+acceptance stay open. This advances the native
+capability boundary; it does not complete the broader gateway backlog.
+RDP/Cloudflare remains deferred.
+
+Visible-app acceptance exposed local terminal packaging, remote typing latency
+and Darwin monitoring gaps. The follow-up adds installed native-provider smoke
+coverage, bounded acknowledgment/output wakeups and native whole-system counters;
+actual paired-worker timing and two-sample widget checks passed. See the canonical
+coverage guide for the measured scope and remaining platform limits.
+
+The Files/Git responsiveness follow-up adds visible-page refresh, bounded Files
+metadata caching/prefetch and reuse of unchanged Git reviews. These remain native
+UI clients of the same admitted core operations; cached metadata does not authorize
+writes or widen remote roots.
+
+TASK-036 retains authenticated outbound-worker lifecycle and per-machine grants;
+TASK-046 retains remote desktop, and TASK-043 networking. The current UI direction
+is one shared machine choice for the main screens with per-dashboard-widget
+overrides. RDP/Cloudflare private connectivity comes after typed remote features.
 
 Provide one built-in logical DockPipe MCP endpoint with independently installable native capabilities
 and imported third-party servers. MCP is an interface to execution, not a second execution engine.

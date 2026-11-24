@@ -1,0 +1,83 @@
+module Dockpipe.Product.LaneReceipt;
+import PipeLang.Json;
+
+public Class ReceiptJson {
+    private JsonReader reader;
+
+    public ReceiptJson(JsonReader reader) {
+        this.reader = reader;
+    }
+
+    public Result<void,string> Require(bool condition, string code) {
+        if (!condition)
+            return Result<void,string>.Failure("qualification.receipt." + code);
+
+        return Result<void,string>.Success();
+    }
+
+    public Result<void,string> CheckCancellation(CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<void,string>.Cancelled("qualification.receipt.cancelled");
+
+        return Result<void,string>.Success();
+    }
+
+    public Result<void,string> Kind(JsonNode node, JsonKind expected, string code) {
+        JsonKind kind = try reader.Kind(node);
+        return Require(kind == expected, code);
+    }
+
+    public Result<JsonNode,string> Member(JsonNode objectNode, string name) {
+        JsonNode? member = try reader.FindMember(objectNode, name);
+        try Require(member.HasValue, "member." + name);
+        return Result<JsonNode,string>.Success(member.Value);
+    }
+
+    public Result<string,string> Text(JsonNode node, int maximumBytes, string code) {
+        try Kind(node, JsonKind.String, code);
+        int length = try reader.ScalarLength(node);
+        try Require(length <= maximumBytes, code);
+        ByteBuffer bytes = try reader.ScalarSlice(node, 0, length);
+        return Result<string,string>.Success(bytes.DecodeUtf8());
+    }
+
+    public Result<string,string> Field(JsonNode objectNode, string field, int maximumBytes) {
+        JsonNode member = try Member(objectNode, field);
+        return Text(member, maximumBytes, "text." + field);
+    }
+
+    public Result<int,string> Count(JsonNode node, int maximum, string code) {
+        try Kind(node, JsonKind.Array, code);
+        int count = try reader.Count(node);
+        try Require(count <= maximum, code);
+        return Result<int,string>.Success(count);
+    }
+
+    public Result<void,string> OptionalDetail(JsonNode objectNode, string field, CancellationToken token) {
+        JsonNode? member = try reader.FindMember(objectNode, field);
+        if (!member.HasValue)
+            return Result<void,string>.Success();
+
+        // Python counts Unicode code points. Decoded UTF-8 has at most four
+        // bytes per code point, and continuation bytes do not start one.
+        string text = try Text(member.Value, 16384, "detail." + field);
+        int length = string.Utf8Length(text);
+        if (length <= 4096)
+            return Result<void,string>.Success();
+
+        int count = 0;
+        for (int index = 0; index < length; index = index + 1) {
+            if (index % 256 == 0)
+                try CheckCancellation(token);
+
+            int character = string.ByteAtOr(text, index, -1);
+            if (character < 128 || character >= 192)
+                count = count + 1;
+
+            if (count > 4096)
+                return Result<void,string>.Failure("qualification.receipt.detail." + field);
+        }
+
+        return Result<void,string>.Success();
+    }
+}

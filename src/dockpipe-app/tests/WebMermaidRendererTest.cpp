@@ -150,7 +150,14 @@ private slots:
         files.resize(1280, 780);
         files.show();
         QVERIFY(files.setRoot(directory.path()));
-        QVERIFY(files.createFile(QStringLiteral("README.md")));
+        bool creationFinished = false;
+        bool creationSucceeded = false;
+        files.createFileAsync(QStringLiteral("README.md"), [&](bool success) {
+            creationSucceeded = success;
+            creationFinished = true;
+        });
+        QTRY_VERIFY(creationFinished);
+        QVERIFY(creationSucceeded);
         auto *editor = files.findChild<QPlainTextEdit *>(QStringLiteral("fileTextEditor"));
         auto *toggle = files.findChild<QToolButton *>(QStringLiteral("fileMarkdownPreviewButton"));
         auto *preview = files.findChild<QTextBrowser *>(QStringLiteral("fileMarkdownPreview"));

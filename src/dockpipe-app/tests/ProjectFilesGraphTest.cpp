@@ -1,4 +1,5 @@
 #include "ProjectFilesWidget.h"
+#include "WorkspaceFilesTestSupport.h"
 #include "WorkspaceGraphWidget.h"
 #include "WorkspaceGraphPage.h"
 #include "WorkspaceGraphTimestamp.h"
@@ -18,6 +19,10 @@
 #include <QScreen>
 #include <QPushButton>
 #include <QSignalSpy>
+#include <QEventLoop>
+#include <QTimer>
+#include <QScopeGuard>
+#include <QStackedWidget>
 #include <QStyle>
 #include <QTemporaryDir>
 #include <QTest>
@@ -28,11 +33,17 @@ class ProjectFilesGraphTest final : public QObject {
     Q_OBJECT
 private slots:
     void builtInGraphDoesNotLoadPackage();
+    void embeddedGraphSurvivesRendererSwitches();
+    void constellationGraph_data();
+    void constellationGraph();
+    void pendingLayoutDoesNotSurviveNavigationOrDestruction();
     void readerSecurityAndCursor();
     void timestampCountPreservesFullRange();
     void submillisecondTimestampChangeInvalidatesCursor();
     void boundedPagesProjectionAndDrone();
     void cancelledReaderDiscardsStaleReply();
+    void admittedPreviewAndRemoteRejection();
+    void admittedReaderUsesTrustedCli();
     void graphButtonFitsTextAndLargerFonts_data();
     void graphButtonFitsTextAndLargerFonts();
 };
@@ -50,7 +61,7 @@ void ProjectFilesGraphTest::builtInGraphDoesNotLoadPackage()
     QVERIFY(root.isValid() && other.isValid());
     ProjectFilesWidget files;
     files.resize(1200, 760);
-    QVERIFY(files.setRoot(root.path()));
+    QVERIFY(FilesTest::setRoot(files, root.path()));
     files.applyCockpitSettings(CockpitSettings{false});
     files.show();
     auto *button = files.findChild<QPushButton *>("openWorkspaceGraph");
@@ -69,12 +80,209 @@ void ProjectFilesGraphTest::builtInGraphDoesNotLoadPackage()
     QTRY_VERIFY(graph.isNull());
     QVERIFY(tree->isVisible() && button->isEnabled());
     files.openGraph();
-    QVERIFY(files.setRoot(other.path()));
+    QVERIFY(FilesTest::setRoot(files, other.path()));
     QTRY_VERIFY(!files.findChild<WorkspaceGraphWidget *>());
     files.openGraph();
     files.hide();
     QTRY_VERIFY(!WorkspaceGraphReader::helperActive());
     QTRY_VERIFY(!files.findChild<WorkspaceGraphWidget *>());
+}
+
+void ProjectFilesGraphTest::embeddedGraphSurvivesRendererSwitches()
+{
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    QFile file(root.filePath("example.json"));
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("{\"example\":true}\n");
+    file.close();
+    QStackedWidget host;
+    ProjectFilesWidget files;
+    host.addWidget(&files);
+    host.addWidget(new QWidget);
+    host.resize(1200, 800);
+    QVERIFY(FilesTest::setRoot(files, root.path()));
+    host.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&host));
+    files.openGraph();
+    QPointer<WorkspaceGraphWidget> graph = files.findChild<WorkspaceGraphWidget *>();
+    QVERIFY(graph);
+    QTRY_VERIFY(!graph->busy());
+    graph->findChild<QPushButton *>("graph3D")->click();
+    QTest::qWait(400);
+    QVERIFY(graph);
+    QVERIFY(graph->isVisible());
+    QVERIFY(graph->spatial());
+    auto *view = static_cast<WorkspaceGraphView *>(graph->canvas());
+    view->setHardwareAcceleration(false);
+    QTest::qWait(50);
+    QVERIFY(graph && graph->spatial());
+    QVERIFY(!view->hardwareAccelerated());
+    view->setHardwareAcceleration(true);
+    QTest::qWait(300);
+    QVERIFY(graph && graph->isVisible());
+    qInfo() << "Embedded graph renderer:" << view->rendererDescription();
+    graph->findChild<QPushButton *>("graph2D")->click();
+    QTest::qWait(100);
+    QVERIFY(graph);
+    QVERIFY(graph->isVisible());
+    QVERIFY(!graph->spatial());
+    for (int cycle = 0; cycle < 3; ++cycle) {
+        graph->setSpatial(true);
+        QTest::qWait(300);
+        QVERIFY(graph && graph->isVisible());
+        graph->setSpatial(false);
+        QTest::qWait(50);
+        QVERIFY(graph && graph->isVisible());
+    }
+    host.setCurrentIndex(1);
+    QTRY_VERIFY(graph.isNull());
+    QTRY_VERIFY(!WorkspaceGraphReader::helperActive());
+}
+
+void ProjectFilesGraphTest::constellationGraph_data()
+{
+    QTest::addColumn<QString>("theme");
+    QTest::newRow("dark") << QString("dark");
+    QTest::newRow("light") << QString("light");
+}
+
+void ProjectFilesGraphTest::constellationGraph()
+{
+    QFETCH(QString, theme);
+    previewDockpipeLauncherTheme(*qApp, theme == "light" ? LauncherThemeMode::Light : LauncherThemeMode::Dark);
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    QDir directory(root.path());
+    const QStringList folders{"assets", "docs", "src", "tests"};
+    const QStringList names{"overview.md", "settings.json", "index.ts", "app.cpp", "theme.css", "page.html", "build.yml", "layout.tsx"};
+    for (const auto &folder : folders) {
+        QVERIFY(directory.mkdir(folder));
+        for (const auto &name : names)
+            QVERIFY(writeFile(directory.filePath(folder + '/' + name)));
+    }
+    QVERIFY(writeFile(directory.filePath("README.md")));
+    QVERIFY(writeFile(directory.filePath("package.json")));
+    WorkspaceGraphWidget graph(root.path(), root.path());
+    graph.resize(1180, 780);
+    graph.show();
+    QTRY_VERIFY(!graph.busy());
+    for (const auto &folder : folders) {
+        graph.expand(directory.filePath(folder));
+        QTRY_VERIFY(!graph.busy());
+    }
+    auto *view = static_cast<WorkspaceGraphView *>(graph.canvas());
+    QVERIFY(view->constellation());
+    QVERIFY(!graph.spatial());
+    QMap<QString, WorkspaceGraphNode *> nodes;
+    bool hasDepth = false;
+    for (auto *item : view->scene()->items()) {
+        if (auto *node = dynamic_cast<WorkspaceGraphNode *>(item)) {
+            nodes.insert(node->data(0).toString(), node);
+            QVERIFY(node->property("workspaceGraphNode").toBool());
+            hasDepth = hasDepth || std::abs(node->property("graphPosition").value<QVector3D>().y()) > 20;
+        }
+    }
+    QCOMPARE(nodes.size(), 39);
+    QVERIFY(hasDepth);
+    auto *sample = nodes.value(directory.filePath("src/app.cpp"));
+    QVERIFY(sample);
+    const QVector3D world = sample->property("graphPosition").value<QVector3D>();
+    const QPointF beforeOrbit = sample->pos();
+    view->orbit(30, 10);
+    QVERIFY(QLineF(beforeOrbit, sample->pos()).length() > 1);
+    QCOMPARE(sample->property("graphPosition").value<QVector3D>(), world);
+    view->scene()->clearSelection();
+    view->fitInView(view->scene()->itemsBoundingRect().adjusted(-40, -40, 40, 40), Qt::KeepAspectRatio);
+    const QString images = qEnvironmentVariable("DOCKPIPE_GRAPH_TEST_IMAGES");
+    if (!images.isEmpty()) {
+        QVERIFY(QDir().mkpath(images));
+        QVERIFY(graph.grab().save(QDir(images).filePath("workspace-graph-constellation-" + theme + ".png")));
+    }
+    graph.selectPath(directory.filePath("src/app.cpp"));
+    QVERIFY(sample->opacity() > nodes.value(directory.filePath("docs/overview.md"))->opacity());
+    const QPointF arranged = sample->pos();
+    graph.setSpatial(true);
+    QVERIFY(!view->constellation());
+    graph.setSpatial(false);
+    QVERIFY(view->constellation());
+    QVERIFY(QLineF(sample->pos(), arranged).length() < 0.01);
+    graph.close();
+    resetDockpipeLauncherThemePreview(*qApp);
+}
+
+void ProjectFilesGraphTest::pendingLayoutDoesNotSurviveNavigationOrDestruction()
+{
+    QTemporaryDir root;
+    QTemporaryDir other;
+    QVERIFY(root.isValid() && other.isValid());
+    for (int index = 0; index < 100; ++index)
+        QVERIFY(writeFile(QDir(root.path()).filePath(QString("file-%1.txt").arg(index))));
+    QVERIFY(writeFile(other.filePath("replacement.txt")));
+    QVERIFY(QDir(root.path()).mkdir("branch"));
+    const QString branch = root.filePath("branch");
+    QVERIFY(writeFile(QDir(branch).filePath("child.txt")));
+    auto *graph = new WorkspaceGraphWidget(root.path(), root.path());
+    graph->show();
+    QTRY_VERIFY(!graph->busy());
+    QAction *reset = nullptr;
+    for (auto *action : graph->findChildren<QAction *>()) {
+        if (action->text() == "Reset layout")
+            reset = action;
+    }
+    QVERIFY(reset);
+    // No event processing between requests: one active solve and the latest
+    // replacement must remain pending even if the worker finishes immediately.
+    reset->trigger();
+    QVERIFY(graph->busy());
+    reset->trigger();
+    reset->trigger();
+    graph->navigate(branch);
+    QTRY_VERIFY(!graph->busy());
+    QCOMPARE(graph->nodeCount(), 2);
+    QVERIFY(graph->hasPath(QDir(branch).filePath("child.txt")));
+    for (auto *item : graph->canvas()->scene()->items()) {
+        if (auto *node = dynamic_cast<WorkspaceGraphNode *>(item))
+            QVERIFY(node->property("graphPosition").isValid());
+    }
+    reset->trigger();
+    QVERIFY(graph->busy());
+    graph->setSpatial(true);
+    graph->collapse(branch);
+    QTRY_VERIFY(!graph->busy());
+    QCOMPARE(graph->nodeCount(), 1);
+    graph->setSpatial(false);
+    reset->trigger();
+    QVERIFY(graph->busy());
+    // Destruction must disconnect completion without waiting for the solver.
+    delete graph;
+    QTRY_VERIFY(!WorkspaceGraphReader::helperActive());
+    WorkspaceGraphWidget replacement(other.path(), other.path());
+    replacement.show();
+    QTRY_VERIFY(!replacement.busy());
+    QVERIFY(replacement.hasPath(other.filePath("replacement.txt")));
+    QCOMPARE(replacement.nodeCount(), 2);
+}
+
+// Exercise the active UI adapter, including its core admission transport.
+static QJsonObject readGraphPage(const QJsonObject &request)
+{
+    WorkspaceGraphReader reader;
+    QEventLoop loop;
+    QTimer deadline;
+    deadline.setSingleShot(true);
+    QJsonObject response{{"error", "Graph fixture timed out."}};
+    QObject::connect(&reader, &WorkspaceGraphReader::completed, &loop,
+        [&](quint64, const QJsonObject &page) {
+            response = page;
+            loop.quit();
+        });
+    QObject::connect(&deadline, &QTimer::timeout, &loop, &QEventLoop::quit);
+    deadline.start(5000);
+    reader.request(1, request);
+    if (reader.busy())
+        loop.exec();
+    return response;
 }
 
 void ProjectFilesGraphTest::readerSecurityAndCursor()
@@ -88,7 +296,7 @@ void ProjectFilesGraphTest::readerSecurityAndCursor()
     QVERIFY(writeFile(directory.filePath(".settings")));
     QVERIFY(writeFile(directory.filePath("nested/deep/hidden.txt")));
     const auto read = [&](const QString &path, int limit, const QString &after = {}, const QString &stamp = {}) {
-        return WorkspaceGraphPage::read({{"root", root.path()}, {"directory", path},
+        return readGraphPage({{"root", root.path()}, {"directory", path},
             {"limit", limit}, {"after", after}, {"stamp", stamp}, {"hidden", true}});
     };
     const auto first = read(root.path(), 2);
@@ -119,7 +327,7 @@ void ProjectFilesGraphTest::readerSecurityAndCursor()
     }
     QCOMPARE(links, 2);
 #endif
-    const auto preview = WorkspaceGraphPage::read({{"operation", "preview"},
+    const auto preview = readGraphPage({{"operation", "preview"},
         {"root", root.path()}, {"path", directory.filePath("../outside")}});
     QVERIFY(preview.contains("error"));
 }
@@ -159,20 +367,20 @@ void ProjectFilesGraphTest::submillisecondTimestampChangeInvalidatesCursor()
     std::filesystem::last_write_time(directory, aligned);
     const auto before = std::filesystem::last_write_time(directory);
     const QJsonObject request{{"root", root.path()}, {"directory", root.path()}, {"limit", 1}};
-    const auto first = WorkspaceGraphPage::read(request);
+    const auto first = readGraphPage(request);
     QVERIFY(!first.contains("error"));
     QVERIFY(first.value("more").toBool());
     QJsonObject next = request;
     next.insert("after", first.value("after"));
     next.insert("stamp", first.value("stamp"));
-    QVERIFY(!WorkspaceGraphPage::read(next).contains("error"));
+    QVERIFY(!readGraphPage(next).contains("error"));
     std::filesystem::last_write_time(directory,
         before + std::chrono::duration_cast<Duration>(std::chrono::microseconds(1)));
     const auto after = std::filesystem::last_write_time(directory);
     QVERIFY2(after != before, "The temporary filesystem must retain a one-microsecond timestamp change.");
     QCOMPARE(std::chrono::duration_cast<std::chrono::milliseconds>(before.time_since_epoch()).count(),
         std::chrono::duration_cast<std::chrono::milliseconds>(after.time_since_epoch()).count());
-    QVERIFY(WorkspaceGraphPage::read(next).contains("error"));
+    QVERIFY(readGraphPage(next).contains("error"));
 }
 
 void ProjectFilesGraphTest::cancelledReaderDiscardsStaleReply()
@@ -193,6 +401,92 @@ void ProjectFilesGraphTest::cancelledReaderDiscardsStaleReply()
     QCOMPARE(replies.first().first().toULongLong(), quint64(3));
     QVERIFY(!replies.first().at(1).toJsonObject().contains("error"));
     QTRY_VERIFY(!WorkspaceGraphReader::helperActive());
+}
+
+void ProjectFilesGraphTest::admittedPreviewAndRemoteRejection()
+{
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    QFile file(root.filePath("preview.txt"));
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    QCOMPARE(file.write(QByteArray(9000, 'a')), qint64(9000));
+    file.close();
+    const QJsonObject request{{"operation", "preview"}, {"root", root.path()},
+        {"path", file.fileName()}};
+    const auto preview = readGraphPage(request);
+    QVERIFY2(!preview.contains("error"), qPrintable(preview.value("error").toString()));
+    QCOMPARE(preview.value("text").toString().size(), 8192);
+    QVERIFY(preview.value("truncated").toBool());
+    auto remote = request;
+    remote.insert("target", QJsonObject{{"node", "missing-worker"}});
+    QVERIFY(readGraphPage(remote).contains("error"));
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    QVERIFY(file.resize(1024 * 1024 + 1));
+    file.close();
+    QVERIFY(readGraphPage(request).contains("error"));
+}
+
+void ProjectFilesGraphTest::admittedReaderUsesTrustedCli()
+{
+#ifndef Q_OS_UNIX
+    QSKIP("The fake CLI executable fixture requires a POSIX shell.");
+#else
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    const QString program = root.filePath("fake-dockpipe");
+    const QString log = root.filePath("request.json");
+    QFile executable(program);
+    QVERIFY(executable.open(QIODevice::WriteOnly));
+    executable.write("#!/bin/sh\n"
+        "test \"$1\" = files && test \"$2\" = --request && test \"$3\" = - || exit 9\n"
+        "cat > \"$DOCKPIPE_GRAPH_REQUEST_LOG\"\n"
+        "printf '%s' '{\"schema\":\"dockpipe.files/v1\",\"path\":\".\",\"revision\":\"captured-revision\",\"entries\":[{\"name\":\"admitted.txt\",\"kind\":\"file\",\"size_bytes\":\"42\"}],\"more\":true,\"after\":\"admitted.txt\"}'\n");
+    executable.close();
+    QVERIFY(executable.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner));
+    const QByteArray previousBinary = qgetenv("DOCKPIPE_BIN");
+    const QByteArray previousLog = qgetenv("DOCKPIPE_GRAPH_REQUEST_LOG");
+    const auto restore = qScopeGuard([&] {
+        if (previousBinary.isNull())
+            qunsetenv("DOCKPIPE_BIN");
+        else
+            qputenv("DOCKPIPE_BIN", previousBinary);
+        if (previousLog.isNull())
+            qunsetenv("DOCKPIPE_GRAPH_REQUEST_LOG");
+        else
+            qputenv("DOCKPIPE_GRAPH_REQUEST_LOG", previousLog);
+    });
+    qputenv("DOCKPIPE_BIN", program.toUtf8());
+    qputenv("DOCKPIPE_GRAPH_REQUEST_LOG", log.toUtf8());
+    const auto page = readGraphPage({{"root", root.path()}, {"directory", root.path()},
+        {"limit", 3}, {"after", "before.txt"}, {"stamp", "reviewed-revision"}, {"hidden", false}});
+    QVERIFY2(!page.contains("error"), qPrintable(page.value("error").toString()));
+    QCOMPARE(page.value("stamp").toString(), QString("captured-revision"));
+    QCOMPARE(page.value("entries").toArray().first().toObject().value("size_bytes").toString(), QString("42"));
+    QVERIFY(page.value("more").toBool());
+    QFile recorded(log);
+    QVERIFY(recorded.open(QIODevice::ReadOnly));
+    const auto envelope = QJsonDocument::fromJson(recorded.readAll()).object();
+    QCOMPARE(envelope.value("root").toString(), root.path());
+    const auto operation = envelope.value("request").toObject();
+    QCOMPARE(operation.value("action").toString(), QString("list"));
+    QCOMPARE(operation.value("path").toString(), QString("."));
+    QCOMPARE(operation.value("revision").toString(), QString("reviewed-revision"));
+    QCOMPARE(operation.value("limit").toInt(), 3);
+    QCOMPARE(operation.value("after").toString(), QString("before.txt"));
+    QVERIFY(!operation.value("hidden").toBool());
+
+    QVERIFY(executable.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    executable.write("#!/bin/sh\ncat >/dev/null\nexec sleep 30\n");
+    executable.close();
+    WorkspaceGraphReader timedReader(nullptr, 30);
+    QSignalSpy timedReplies(&timedReader, &WorkspaceGraphReader::completed);
+    timedReader.request(7, {{"root", root.path()}, {"directory", root.path()}, {"limit", 3}});
+    QTRY_COMPARE(timedReplies.size(), 1);
+    QVERIFY(timedReplies.first().at(1).toJsonObject().value("error").toString().contains("timed out"));
+    QTRY_VERIFY(!timedReader.busy());
+    QTRY_VERIFY(!WorkspaceGraphReader::helperActive());
+    QCOMPARE(timedReplies.size(), 1);
+#endif
 }
 
 void ProjectFilesGraphTest::boundedPagesProjectionAndDrone()
@@ -249,7 +543,7 @@ void ProjectFilesGraphTest::boundedPagesProjectionAndDrone()
     qInfo() << "Graph renderer:" << static_cast<WorkspaceGraphView *>(graph.canvas())->rendererDescription();
     QVERIFY(!graph.busy());
     graph.setSpatial(false);
-    QCOMPARE(rootItem->pos(), QPointF(35, 57));
+    QVERIFY(QLineF(rootItem->pos(), QPointF(35, 57)).length() < 0.01);
     QVERIFY(rootItem->flags() & QGraphicsItem::ItemIsMovable);
     graph.navigate(directory.filePath("branch"));
     QTRY_VERIFY(!graph.busy());
@@ -278,7 +572,7 @@ void ProjectFilesGraphTest::graphButtonFitsTextAndLargerFonts()
     QTemporaryDir root;
     ProjectFilesWidget files;
     files.resize(1500, 760);
-    QVERIFY(files.setRoot(root.path()));
+    QVERIFY(FilesTest::setRoot(files, root.path()));
     files.applyCockpitSettings(CockpitSettings{true});
     files.show();
     QCoreApplication::processEvents();

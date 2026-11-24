@@ -25,7 +25,14 @@ func readWorkspaceGitExtended(ctx context.Context, current *WorkspaceGitSnapshot
 		if len(fields) != 5 {
 			return nil, errors.New("unsupported commit metadata")
 		}
-		patch, err := workspaceGitCommand(ctx, current.Root, "show", "--format=", "--no-ext-diff", "--no-textconv", "--no-color", "--stat", "--patch", request.Commit, "--")
+		parents := strings.Fields(fields[1])
+		patchArgs := []string{"show", "--format=", "--no-ext-diff", "--no-textconv", "--no-color", "--stat", "--patch", request.Commit, "--"}
+		if len(parents) > 1 {
+			// A normal merge often has no combined text hunks. Review the actual
+			// result against its first parent, as an ordinary two-sided diff.
+			patchArgs = []string{"diff", "--no-ext-diff", "--no-textconv", "--no-color", "--stat", "--patch", parents[0], request.Commit, "--"}
+		}
+		patch, err := workspaceGitCommand(ctx, current.Root, patchArgs...)
 		if err != nil {
 			return nil, err
 		}
@@ -66,7 +73,7 @@ func readWorkspaceGitHistory(ctx context.Context, current *WorkspaceGitSnapshot,
 	if err != nil {
 		return nil, err
 	}
-	args := []string{"log", "--format=%H%x00%P%x00%an%x00%s"}
+	args := []string{"log", "--topo-order", "--format=%H%x00%P%x00%an%x00%cI%x00%s"}
 	if request.Ref == "all" {
 		args = append(args, "--all")
 	} else if request.Ref != "" {
@@ -104,13 +111,13 @@ func readWorkspaceGitHistory(ctx context.Context, current *WorkspaceGitSnapshot,
 	history := &WorkspaceGitHistory{Commits: []WorkspaceGitCommit{}, Offset: request.Offset, Limit: limit}
 	skipped := 0
 	for _, row := range strings.Split(strings.TrimSuffix(string(output), "\n"), "\n") {
-		fields := strings.SplitN(row, "\x00", 4)
-		if len(fields) != 4 {
+		fields := strings.SplitN(row, "\x00", 5)
+		if len(fields) != 5 {
 			continue
 		}
 		if request.Match == "prefix" && request.Query != "" {
 			query := strings.ToLower(request.Query)
-			if !strings.HasPrefix(strings.ToLower(fields[0]), query) && !strings.HasPrefix(strings.ToLower(fields[3]), query) {
+			if !strings.HasPrefix(strings.ToLower(fields[0]), query) && !strings.HasPrefix(strings.ToLower(fields[4]), query) {
 				continue
 			}
 			if skipped < request.Offset {
@@ -122,8 +129,34 @@ func readWorkspaceGitHistory(ctx context.Context, current *WorkspaceGitSnapshot,
 			history.HasMore = true
 			break
 		}
-		history.Commits = append(history.Commits, WorkspaceGitCommit{ID: fields[0], Parents: strings.Fields(fields[1]), Author: fields[2], Subject: fields[3]})
+		history.Commits = append(history.Commits, WorkspaceGitCommit{ID: fields[0], Parents: strings.Fields(fields[1]), Author: fields[2], Date: fields[3], Subject: fields[4]})
+	}
+	if len(history.Commits) > 0 {
+		if err := decorateWorkspaceGitHistory(ctx, current.Root, history); err != nil {
+			return nil, err
+		}
 	}
 	current.History = history
 	return current, nil
+}
+
+func decorateWorkspaceGitHistory(ctx context.Context, root string, history *WorkspaceGitHistory) error {
+	output, err := workspaceGitCommand(ctx, root, "for-each-ref", "--format=%(objectname)%00%(refname:short)", "refs/heads", "refs/remotes")
+	if err != nil {
+		return err
+	}
+	positions := make(map[string]int, len(history.Commits))
+	for index, commit := range history.Commits {
+		positions[commit.ID] = index
+	}
+	for _, row := range strings.Split(strings.TrimSuffix(string(output), "\n"), "\n") {
+		fields := strings.SplitN(row, "\x00", 2)
+		if len(fields) != 2 {
+			continue
+		}
+		if index, present := positions[fields[0]]; present {
+			history.Commits[index].Refs = append(history.Commits[index].Refs, fields[1])
+		}
+	}
+	return nil
 }

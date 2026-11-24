@@ -1,5 +1,37 @@
 # Qt Guest Tools and package-contributed VM management
 
+## Current VM page requalification
+
+The 2026-11-12 remote-platform check reproduced a missing VM tab from a selected
+QEMU 1.3.5 artifact with no surface declaration. A coherent VM 1.3.8 package
+candidate contributes `dockpipe.vm` through the existing generic GUI contract.
+The owning package now offers both Windows and supported-host Linux install/start
+workflows and supplies their native launch environment. A package-owned license
+filename repair also lets its native archive pass ordinary installed intake;
+the engine's archive validation was preserved.
+
+Manager tests, ten native display component tests, package tests and installed
+catalog/snapshot checks passed against the actual project and an isolated
+consumer. Separate live Linux X11 proof used an owned QEMU 11.0.3 TCG guest with
+no disk or NIC. Both the installed display harness and actual MainWindow VM page
+rendered its firmware over shared memory. Display handoff and closure preserved
+the running guest; exact guest, bus and display cleanup then passed. The actual
+Windows/Linux image and installer forms opened and were cancelled. These checks
+do not qualify installing or running either guest OS.
+
+A separate MainWindow run also passed with restricted user networking and the
+private libslirp dependency loaded from the selected QEMU prefix. Default firmware
+resolved without a build-tree override. No guest OS, external network request,
+KVM or TPM execution is implied by that firmware-only check.
+
+The current private GUI's package catalog was refreshed and its VM navigation
+became visible without restarting it. The earlier selected remote-desktop
+artifact and existing guest identities remain preserved. GUI automatic launches
+now require the embedded display rather than silently falling back to an external
+window when the selected QEMU lacks DBus support. Explicit external-display and
+terminal choices retain their contracts. No publication or new broad platform
+claim follows from this candidate.
+
 Objective contract:
 
 ```yaml

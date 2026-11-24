@@ -1,4 +1,5 @@
 #include "DesktopApplicationCatalog.h"
+#include <QCoreApplication>
 
 #include <QDirIterator>
 #include <QElapsedTimer>
@@ -52,7 +53,7 @@ QVector<DesktopApplicationEntry> DesktopApplicationCatalog::enumerate(QString *e
             while (entries.hasNext()) {
                 if (++examined > maximumEntries || elapsed.elapsed() > 3000) {
                     if (error)
-                        *error = QStringLiteral("Installed application catalog exceeds its directory or time limit.");
+                        *error = QCoreApplication::translate("DesktopApplicationCatalog", "Installed application catalog exceeds its directory or time limit.");
                     return {};
                 }
                 const QString path = entries.next();
@@ -81,7 +82,7 @@ QVector<DesktopApplicationEntry> DesktopApplicationCatalog::enumerate(QString *e
                 metadataBytes += info.size();
                 if (metadataBytes > maximumMetadata) {
                     if (error)
-                        *error = QStringLiteral("Installed application metadata exceeds the 8 MiB catalog limit.");
+                        *error = QCoreApplication::translate("DesktopApplicationCatalog", "Installed application metadata exceeds the 8 MiB catalog limit.");
                     return {};
                 }
                 QSettings desktop(path, QSettings::IniFormat);
@@ -112,7 +113,7 @@ QVector<DesktopApplicationEntry> DesktopApplicationCatalog::enumerate(QString *e
 #endif
                 if (result.size() == maximumApplications) {
                     if (error)
-                        *error = QStringLiteral("Installed application catalog exceeds the 500 application limit.");
+                        *error = QCoreApplication::translate("DesktopApplicationCatalog", "Installed application catalog exceeds the 500 application limit.");
                     return {};
                 }
                 result.append(app);
@@ -124,7 +125,7 @@ QVector<DesktopApplicationEntry> DesktopApplicationCatalog::enumerate(QString *e
     });
 #else
     if (error)
-        *error = QStringLiteral("Installed application discovery is unavailable on this platform.");
+        *error = QCoreApplication::translate("DesktopApplicationCatalog", "Installed application discovery is unavailable on this platform.");
 #endif
     return result;
 }
@@ -139,13 +140,13 @@ bool DesktopApplicationCatalog::launch(const DesktopApplicationEntry &entry, QSt
         return app.id == entry.id && app.launchTarget == entry.launchTarget;
     });
     if (known == current.cend()) {
-        error = QStringLiteral("This application is no longer in the installed catalog. Refresh the app list.");
+        error = QCoreApplication::translate("DesktopApplicationCatalog", "This application is no longer in the installed catalog. Refresh the app list.");
         return false;
     }
 #ifdef Q_OS_WIN
     const HRESULT initialized = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
     if (FAILED(initialized)) {
-        error = QStringLiteral("Windows could not initialize the application launch service (error %1).").arg(quint32(initialized));
+        error = QCoreApplication::translate("DesktopApplicationCatalog", "Windows could not initialize the application launch service (error %1).").arg(quint32(initialized));
         return false;
     }
     struct ComScope {
@@ -162,7 +163,7 @@ bool DesktopApplicationCatalog::launch(const DesktopApplicationEntry &entry, QSt
     launchInfo.lpFile = target.c_str();
     launchInfo.nShow = SW_SHOWNORMAL;
     if (!ShellExecuteExW(&launchInfo)) {
-        error = QStringLiteral("Windows could not launch this application (error %1).").arg(GetLastError());
+        error = QCoreApplication::translate("DesktopApplicationCatalog", "Windows could not launch this application (error %1).").arg(GetLastError());
         return false;
     }
     return true;
@@ -175,7 +176,7 @@ bool DesktopApplicationCatalog::launch(const DesktopApplicationEntry &entry, QSt
     const QStringList arguments{known->launchTarget};
 #endif
     if (program.isEmpty()) {
-        error = QStringLiteral("Application launch requires the desktop GIO launcher (gio).");
+        error = QCoreApplication::translate("DesktopApplicationCatalog", "Application launch requires the desktop GIO launcher (gio).");
         return false;
     }
     QProcess launcher;
@@ -183,22 +184,22 @@ bool DesktopApplicationCatalog::launch(const DesktopApplicationEntry &entry, QSt
     launcher.setStandardErrorFile(QProcess::nullDevice());
     launcher.start(program, arguments);
     if (!launcher.waitForStarted(1000)) {
-        error = QStringLiteral("Could not start the desktop application launcher: %1").arg(launcher.errorString());
+        error = QCoreApplication::translate("DesktopApplicationCatalog", "Could not start the desktop application launcher: %1").arg(launcher.errorString());
         return false;
     }
     if (!launcher.waitForFinished(2000)) {
         launcher.kill();
         launcher.waitForFinished(500);
-        error = QStringLiteral("The desktop launcher timed out. The application may have opened; check before retrying.");
+        error = QCoreApplication::translate("DesktopApplicationCatalog", "The desktop launcher timed out. The application may have opened; check before retrying.");
         return false;
     }
     if (launcher.exitStatus() != QProcess::NormalExit || launcher.exitCode() != 0) {
-        error = QStringLiteral("The desktop rejected this application launch (exit %1).").arg(launcher.exitCode());
+        error = QCoreApplication::translate("DesktopApplicationCatalog", "The desktop rejected this application launch (exit %1).").arg(launcher.exitCode());
         return false;
     }
     return true;
 #else
-    error = QStringLiteral("Application launch is unavailable on this platform.");
+    error = QCoreApplication::translate("DesktopApplicationCatalog", "Application launch is unavailable on this platform.");
     return false;
 #endif
 }

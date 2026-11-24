@@ -7,6 +7,8 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QElapsedTimer>
+#include <QFile>
+#include <functional>
 #include <QVector>
 #include <QFileInfo>
 #include <QPointer>
@@ -106,6 +108,20 @@ void signalTerminalGroups(const QVector<TerminalGroupMember> &members, pid_t ses
     }
 }
 
+bool terminalMemberRunning(pid_t process)
+{
+#ifdef Q_OS_LINUX
+    QFile status(QStringLiteral("/proc/%1/status").arg(process));
+    if (status.open(QIODevice::ReadOnly)) {
+        const QByteArray bytes = status.read(4096);
+        const qsizetype state = bytes.indexOf("State:\t");
+        if (state >= 0 && state + 7 < bytes.size() && bytes.at(state + 7) == 'Z')
+            return false;
+    }
+#endif
+    return ::kill(process, 0) == 0 || errno != ESRCH;
+}
+
 void failTerminalChild(QProcess *process, const char *message, int error)
 {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
@@ -120,8 +136,19 @@ void failTerminalChild(QProcess *process, const char *message, int error)
 #endif
 }
 
+struct TerminalCleanupReceipt {
+    bool completed = false;
+    bool verified = false;
+};
+
 struct TerminalSession::State {
     TerminalLaunchContext context = TerminalLaunchContext::Automatic;
+    std::shared_ptr<TerminalCleanupReceipt> cleanup;
+    bool waitingCleanup = false;
+    bool host = false;
+    bool hostNaturalExit = false;
+    quint64 written = 0;
+    bool announcedStarted = false;
 #ifdef Q_OS_WIN
     std::unique_ptr<TerminalSessionWin> windows;
     QTimer *windowsPoll = nullptr;
@@ -181,59 +208,45 @@ void TerminalSession::setError(const QString &message)
 bool TerminalSession::start(QString workdir, const QString &program, const QStringList &arguments,
     const QMap<QString, QString> &environmentOverrides)
 {
+    const auto launch = NativeTerminalLaunch::resolve(workdir, program, arguments,
+        environmentOverrides, m_state->context);
+    if (!launch.error.isEmpty()) {
+        setError(launch.error);
+        return false;
+    }
+    return startPrepared(launch);
+}
+
+bool TerminalSession::startPrepared(const NativeTerminalLaunch::Snapshot &prepared)
+{
     if (running()) {
         setError(tr("This terminal is already running."));
         return false;
     }
+    if (!NativeTerminalLaunch::valid(prepared)) {
+        setError(tr("The prepared terminal launch is invalid."));
+        return false;
+    }
     stop();
+    m_state->cleanup.reset();
+    m_state->waitingCleanup = false;
+    m_state->host = prepared.host;
+    m_state->hostNaturalExit = false;
+    m_state->written = 0;
+    m_state->announcedStarted = false;
     m_state->error.clear();
-    if (workdir.isEmpty())
-        workdir = QDir::homePath();
-#ifdef Q_OS_UNIX
-    const bool hostLaunch = TerminalHostLaunch::required(m_state->context);
-#else
-    const bool hostLaunch = false;
-#endif
-    if (workdir.contains(QChar::Null)) {
-        setError(tr("The terminal working directory contains an invalid NUL character."));
-        return false;
-    }
-    for (const QString &argument : arguments) {
-        if (argument.contains(QChar::Null)) {
-            setError(tr("Terminal shell arguments cannot contain NUL characters."));
-            return false;
-        }
-    }
-    if (environmentOverrides.size() > 64) {
-        setError(tr("A terminal profile may override at most 64 environment variables."));
-        return false;
-    }
-    for (auto entry = environmentOverrides.cbegin(); entry != environmentOverrides.cend(); ++entry) {
-        if (entry.key().isEmpty() || entry.key().contains(QLatin1Char('=')) || entry.key().contains(QChar::Null)
-            || entry.value().contains(QChar::Null) || entry.key().size() + entry.value().size() + 1 > 32767) {
-            setError(tr("The terminal profile contains an invalid environment variable."));
-            return false;
-        }
-    }
-    if (!hostLaunch && !QFileInfo(workdir).isDir()) {
-        setError(tr("The terminal working directory does not exist."));
-        return false;
-    }
+    const QString &workdir = prepared.directory;
+    const QString &shell = prepared.executable;
+    const QStringList &shellArguments = prepared.arguments;
 #ifdef Q_OS_WIN
-    QString shell = program;
-    QStringList shellArguments = arguments;
-    if (shell.isEmpty()) {
-        shell = QDir::toNativeSeparators(qEnvironmentVariable("SystemRoot") + QStringLiteral("/System32/cmd.exe"));
-        shellArguments = {QStringLiteral("/D")};
-    }
-    if (shell.contains(QChar::Null) || !QFileInfo(shell).isAbsolute() || !QFileInfo(shell).isFile()) {
-        setError(tr("The terminal shell must be an existing executable with an absolute path."));
+    if (prepared.host) {
+        setError(tr("Host terminal bridges are unavailable on Windows."));
         return false;
     }
     m_state->windows = std::make_unique<TerminalSessionWin>();
     QString failure;
-    if (!m_state->windows->start(QDir::toNativeSeparators(workdir), QDir::toNativeSeparators(shell), shellArguments,
-            m_state->columns, m_state->rows, environmentOverrides, failure)) {
+    if (!m_state->windows->startPrepared(QDir::toNativeSeparators(workdir), QDir::toNativeSeparators(shell), shellArguments,
+            m_state->columns, m_state->rows, prepared.environment, failure)) {
         m_state->windows.reset();
         setError(failure);
         return false;
@@ -248,6 +261,18 @@ bool TerminalSession::start(QString workdir, const QString &program, const QStri
             return;
         const auto update = m_state->windows->takeUpdate();
         QPointer<TerminalSession> guarded = this;
+        if (update.started && !m_state->announcedStarted) {
+            m_state->announcedStarted = true;
+            emit started();
+        }
+        if (!guarded || generation != m_state->generation)
+            return;
+        if (update.written > m_state->written) {
+            m_state->written = update.written;
+            emit inputWritten(m_state->written);
+        }
+        if (!guarded || generation != m_state->generation)
+            return;
         if (!update.output.isEmpty())
             emit output(update.output);
         if (!guarded || generation != m_state->generation)
@@ -266,30 +291,21 @@ bool TerminalSession::start(QString workdir, const QString &program, const QStri
     emit stateChanged();
     return true;
 #elif defined(Q_OS_UNIX)
-    QString shell = program;
-    QStringList shellArguments = arguments;
-    if (shell.isEmpty()) {
-        shell = qEnvironmentVariable("SHELL");
-        if (!QFileInfo(shell).isAbsolute() || (!hostLaunch && (!QFileInfo(shell).isFile() || !QFileInfo(shell).isExecutable()))) {
-#ifdef Q_OS_MACOS
-            // The launch environment may not contain the user's login shell.
-            // Bound the account lookup buffer and fall back if it cannot fit.
-            QByteArray accountBuffer(64 * 1024, '\0');
-            passwd account{};
-            passwd *found = nullptr;
-            if (::getpwuid_r(::getuid(), &account, accountBuffer.data(), size_t(accountBuffer.size()), &found) == 0
-                && found && account.pw_shell)
-                shell = QString::fromLocal8Bit(account.pw_shell);
-#endif
-            if (!QFileInfo(shell).isAbsolute() || !QFileInfo(shell).isFile() || !QFileInfo(shell).isExecutable())
-                shell = QStringLiteral("/bin/sh");
+    TerminalHostLaunch::Plan launch;
+    if (prepared.host) {
+        QMap<QString, QString> overrides;
+        for (const QString &entry : prepared.environment) {
+            const qsizetype separator = entry.indexOf(QLatin1Char('='));
+            overrides.insert(entry.left(separator), entry.mid(separator + 1));
         }
-        shellArguments = {QStringLiteral("-i")};
-    } else if (shell.contains(QChar::Null) || !QFileInfo(shell).isAbsolute() || (!hostLaunch && (!QFileInfo(shell).isFile() || !QFileInfo(shell).isExecutable()))) {
-        setError(tr("The terminal shell must be an existing executable with an absolute path."));
-        return false;
+        launch = TerminalHostLaunch::forHost(shell, shellArguments, workdir,
+            QStringLiteral("/usr/bin/flatpak-spawn"), overrides);
+        // The bridge itself stays in a fixed sandbox directory. Its bound host
+        // directory is carried separately in --directory, without sandbox stat.
+        launch.workingDirectory = QStringLiteral("/");
+    } else {
+        launch = {shell, shellArguments, workdir, {}, false};
     }
-    const auto launch = TerminalHostLaunch::prepare(shell, shellArguments, workdir, environmentOverrides, m_state->context);
     if (!launch.error.isEmpty()) {
         setError(launch.error);
         return false;
@@ -338,11 +354,16 @@ bool TerminalSession::start(QString workdir, const QString &program, const QStri
     process->setObjectName("terminalShell");
     m_state->process = process;
     process->setWorkingDirectory(launch.workingDirectory);
-    auto environment = QProcessEnvironment::systemEnvironment();
-    environment.insert("TERM", "xterm-256color");
-    environment.insert("COLORTERM", "truecolor");
-    for (auto entry = environmentOverrides.cbegin(); entry != environmentOverrides.cend(); ++entry)
-        environment.insert(entry.key(), entry.value());
+    // The bridge needs its sandbox D-Bus environment to reach the host service.
+    // Host shell inheritance is explicitly declared by route=host; its exact
+    // overrides travel only in the fixed bridge's --env arguments.
+    QProcessEnvironment environment = prepared.host ? QProcessEnvironment::systemEnvironment() : QProcessEnvironment();
+    if (!prepared.host) {
+        for (const QString &entry : prepared.environment) {
+            const qsizetype separator = entry.indexOf(QLatin1Char('='));
+            environment.insert(entry.left(separator), entry.mid(separator + 1));
+        }
+    }
     process->setProcessEnvironment(environment);
     const int master = m_state->master;
     const int slave = m_state->slave;
@@ -382,7 +403,11 @@ bool TerminalSession::start(QString workdir, const QString &program, const QStri
         m_state->slave = -1;
         m_state->shellSession = m_state->process->processId();
         m_state->reader->setEnabled(true);
-        emit stateChanged();
+        m_state->announcedStarted = true;
+        QPointer<TerminalSession> guarded = this;
+        emit started();
+        if (guarded && generation == m_state->generation)
+            emit stateChanged();
     });
     connect(process, &QProcess::errorOccurred, this, [this, process, generation](QProcess::ProcessError failure) {
         if (generation != m_state->generation || failure != QProcess::FailedToStart)
@@ -394,7 +419,7 @@ bool TerminalSession::start(QString workdir, const QString &program, const QStri
             emit finished(-1);
     });
     connect(process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
-        [this, generation](int exitCode, QProcess::ExitStatus) {
+        [this, generation](int exitCode, QProcess::ExitStatus exitStatus) {
             if (generation != m_state->generation)
                 return;
             // Drain the final bounded PTY tail before relinquishing its master.
@@ -402,6 +427,7 @@ bool TerminalSession::start(QString workdir, const QString &program, const QStri
             readOutput();
             if (!guarded || generation != m_state->generation)
                 return;
+            m_state->hostNaturalExit = m_state->host && exitStatus == QProcess::NormalExit && exitCode != 125;
             stop();
             if (guarded && m_state->generation == generation + 1)
                 emit finished(exitCode);
@@ -410,9 +436,7 @@ bool TerminalSession::start(QString workdir, const QString &program, const QStri
     emit stateChanged();
     return true;
 #else
-    Q_UNUSED(program);
-    Q_UNUSED(arguments);
-    Q_UNUSED(environmentOverrides);
+    Q_UNUSED(prepared);
     setError(tr("Interactive terminals are unavailable on this platform."));
     return false;
 #endif
@@ -447,6 +471,21 @@ bool TerminalSession::send(QByteArray data)
 #endif
 }
 
+quint64 TerminalSession::inputWrittenCursor() const
+{
+    return m_state->written;
+}
+
+void TerminalSession::stopAndWait()
+{
+    m_state->waitingCleanup = true;
+    if (running() || !m_state->cleanup)
+        stop();
+    const auto receipt = m_state->cleanup;
+    if (!receipt || receipt->completed)
+        emit cleanupFinished(!receipt || receipt->verified);
+}
+
 void TerminalSession::writeInput()
 {
 #ifdef Q_OS_UNIX
@@ -459,6 +498,7 @@ void TerminalSession::writeInput()
             size_t(qMin(budget, m_state->pendingInput.size())));
         if (count > 0) {
             m_state->pendingInput.remove(0, count);
+            m_state->written += quint64(count);
             budget -= count;
         } else if (count < 0 && errno == EINTR && ++interrupted < 3) {
             continue;
@@ -473,6 +513,7 @@ void TerminalSession::writeInput()
         }
     }
     m_state->writer->setEnabled(!m_state->pendingInput.isEmpty());
+    emit inputWritten(m_state->written);
 #endif
 }
 
@@ -579,13 +620,35 @@ void TerminalSession::stopSession(bool immediate)
         m_state->windowsPoll = nullptr;
     }
     const bool hadSession = bool(m_state->windows);
-    m_state->windows.reset(); // Signals worker-owned job/ConPTY teardown; never joins.
-    if (hadSession)
-        emit stateChanged();
-    return;
-#endif
+    if (!hadSession)
+        return;
+    const auto probe = m_state->windows->cleanupProbe();
+    const auto receipt = std::make_shared<TerminalCleanupReceipt>();
+    m_state->cleanup = receipt;
+    m_state->windows.reset(); // Signals worker-owned job/ConPTY teardown.
+    auto *monitor = new QTimer(QCoreApplication::instance());
+    monitor->setInterval(25);
+    auto elapsed = std::make_shared<QElapsedTimer>();
+    elapsed->start();
+    QPointer<TerminalSession> owner = this;
+    connect(monitor, &QTimer::timeout, monitor, [monitor, probe, receipt, elapsed, owner] {
+        const int status = probe();
+        if (status == 0 && elapsed->elapsed() < 2500)
+            return;
+        receipt->completed = true;
+        receipt->verified = status == 1;
+        monitor->stop();
+        monitor->deleteLater();
+        if (owner && owner->m_state->cleanup == receipt && owner->m_state->waitingCleanup)
+            emit owner->cleanupFinished(receipt->verified);
+    });
+    monitor->start();
+    emit stateChanged();
+#else
     if (!m_state->process && m_state->master < 0 && m_state->slave < 0)
         return;
+    const auto receipt = std::make_shared<TerminalCleanupReceipt>();
+    m_state->cleanup = receipt;
     auto *process = m_state->process;
     m_state->process = nullptr;
 #ifdef Q_OS_UNIX
@@ -644,5 +707,35 @@ void TerminalSession::stopSession(bool immediate)
             drain->deleteLater();
         });
     }
+#ifdef Q_OS_UNIX
+    auto *monitor = new QTimer(QCoreApplication::instance());
+    monitor->setInterval(25);
+    auto elapsed = std::make_shared<QElapsedTimer>();
+    elapsed->start();
+    QPointer<TerminalSession> owner = this;
+    const bool hostProof = !m_state->host || m_state->hostNaturalExit;
+    connect(monitor, &QTimer::timeout, monitor, [monitor, elapsed, receipt, owner, guarded, session, complete, hostProof] {
+        if (elapsed->elapsed() < 550)
+            return; // The existing group-kill drain executes at500ms.
+        bool inspected = true;
+        const auto remaining = terminalGroups(session, inspected);
+        bool alive = guarded && guarded->state() != QProcess::NotRunning;
+        for (const auto &member : remaining)
+            alive = alive || terminalMemberRunning(member.process);
+        if (alive && elapsed->elapsed() < 2500)
+            return;
+        receipt->completed = true;
+        receipt->verified = complete && inspected && !alive && hostProof;
+        monitor->stop();
+        monitor->deleteLater();
+        if (owner && owner->m_state->cleanup == receipt && owner->m_state->waitingCleanup)
+            emit owner->cleanupFinished(receipt->verified);
+    });
+    monitor->start();
+#else
+    receipt->completed = true;
+    receipt->verified = false;
+#endif
     emit stateChanged();
+#endif
 }

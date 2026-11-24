@@ -22,6 +22,7 @@ const MaxPackageSurfaceActions = 32
 var surfaceEnvironmentName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,63}$`)
 
 var surfaceIdentifier = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
+var fileExtensionIdentifier = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,31}$`)
 
 type PackageSurface struct {
 	PackageRoot   string                 `json:"package_root,omitempty"`
@@ -47,6 +48,7 @@ type PackageSurfaceEnvironmentBinding struct {
 }
 
 type PackageSurfaceAction struct {
+	FileExtensions    []string                                               `json:"file_extensions,omitempty"`
 	LaunchEnvironment map[string]map[string]PackageSurfaceEnvironmentBinding `json:"launch_environment,omitempty"`
 	ID                string                                                 `json:"id"`
 	Title             string                                                 `json:"title"`
@@ -141,9 +143,16 @@ func LoadPackageSurface(root, descriptor string) (*PackageSurface, error) {
 	if len(surface.Actions) > MaxPackageSurfaceActions {
 		return nil, fmt.Errorf("surface exceeds 32 actions")
 	}
-	surface.Snapshot, err = containedSurfaceFile(root, surface.Snapshot)
-	if err != nil {
-		return nil, fmt.Errorf("surface snapshot: %w", err)
+	if _, present := authoredFields["snapshot"]; present && surface.Snapshot == "" {
+		return nil, fmt.Errorf("surface snapshot must be a nonempty file reference")
+	}
+	if surface.Snapshot != "" {
+		surface.Snapshot, err = containedSurfaceFile(root, surface.Snapshot)
+		if err != nil {
+			return nil, fmt.Errorf("surface snapshot: %w", err)
+		}
+	} else if len(surface.Actions) == 0 || surface.NativeDisplay != nil {
+		return nil, fmt.Errorf("surface requires a snapshot or file actions")
 	}
 	if surface.NativeDisplay != nil {
 		var authored struct {
@@ -185,8 +194,25 @@ func LoadPackageSurface(root, descriptor string) (*PackageSurface, error) {
 	for index := range surface.Actions {
 		action := &surface.Actions[index]
 		if !surfaceIdentifier.MatchString(action.ID) || seen[action.ID] || !validSurfaceTitle(action.Title) ||
-			(action.Scope != "surface" && action.Scope != "resource") || (action.Workflow == "") == (action.WorkflowID == "") {
+			(action.Scope != "surface" && action.Scope != "resource" && action.Scope != "file") || (action.Workflow == "") == (action.WorkflowID == "") {
 			return nil, fmt.Errorf("surface actions require unique ids, titles, a scope and exactly one workflow reference")
+		}
+		if action.Scope == "file" {
+			if action.Workflow == "" || len(action.FileExtensions) == 0 || len(action.FileExtensions) > 16 {
+				return nil, fmt.Errorf("file actions require a contained workflow and 1 to 16 file extensions")
+			}
+			extensions := make(map[string]bool)
+			for _, extension := range action.FileExtensions {
+				if !fileExtensionIdentifier.MatchString(extension) || extensions[extension] {
+					return nil, fmt.Errorf("file actions require unique lowercase file extensions without dots")
+				}
+				extensions[extension] = true
+			}
+		} else if surface.Snapshot == "" || len(action.FileExtensions) != 0 {
+			return nil, fmt.Errorf("page actions require a snapshot and cannot declare file extensions")
+		}
+		if _, present := authoredActions[index]["file_extensions"]; present && action.Scope != "file" {
+			return nil, fmt.Errorf("only file actions can declare file extensions")
 		}
 		if _, present := authoredActions[index]["launch_environment"]; present && len(action.LaunchEnvironment) == 0 {
 			return nil, fmt.Errorf("launch environment must contain platform bindings")

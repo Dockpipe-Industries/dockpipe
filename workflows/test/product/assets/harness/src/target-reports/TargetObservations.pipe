@@ -1,0 +1,172 @@
+module Dockpipe.Product.TargetReports;
+import Dockpipe.Product.Coverage;
+import Dockpipe.Product.LaneReceipt;
+import Dockpipe.Product.Qualification;
+import Dockpipe.Product.ReportProjection;
+import Dockpipe.Product.RunAdmission;
+import PipeLang.Json;
+
+// One target owns the ledger after whole-run admission. Receipt rows are
+// projected before their JSON document closes. A failed batch retires this
+// ledger so a partially staged receipt can never count toward the report.
+public Class TargetObservations {
+    private JsonReader reader;
+    private RegistryJson json;
+    private QualificationTarget target;
+    private RegistrySelection registry;
+    private JsonDocumentOutput output;
+    private ReportRows staged;
+    private CaseProjection missing;
+    private TargetCoverageAccumulator coverage;
+    private string platform;
+    private Array<TargetReportCase> expected;
+    private Array<bool> terminal = Array<bool>.Create(65, false);
+    private Array<string> rejected = Array<string>.Create(65, "");
+    private Dictionary<string,int> positions = Dictionary<string,int>.Empty();
+    private bool started = false;
+    private bool ready = false;
+
+    public TargetObservations(JsonReader reader, QualificationTarget target, string platform,
+                              JsonDocumentOutput output, ReportRows staged) {
+        this.reader = reader;
+        this.target = target;
+        this.platform = platform;
+        this.output = output;
+        this.staged = staged;
+        registry = target.Cases();
+        json = new RegistryJson(reader);
+        missing = new CaseProjection(reader, output);
+        coverage = new TargetCoverageAccumulator(platform);
+        expected = Array<TargetReportCase>.Create(target.Required(), new TargetReportCase {});
+    }
+
+    private pure string Key(string feature, string scenario, string layer) {
+        return feature + "/" + scenario + "/" + layer;
+    }
+
+    public Result<void,string> Bind(CancellationToken token) {
+        if (started)
+            return Result<void,string>.Failure("qualification.target.already_bound");
+
+        started = true;
+        int position = 0;
+        int features = try registry.FeatureCount();
+        for (int feature = 0; feature < features; feature = feature + 1) {
+            int cases = try registry.CaseCount(feature);
+            string missingCapabilities = "";
+            for (int index = 0; index < cases; index = index + 1) {
+                if (token.IsCancellationRequested)
+                    return Result<void,string>.Cancelled("qualification.target.cancelled");
+
+                RegistryCase row = try registry.CaseAt(feature, index);
+                if (!row.applicable)
+                    continue;
+                if (position >= expected.Length)
+                    return Result<void,string>.Failure("qualification.target.denominator");
+
+                TargetReportCase selected = new TargetReportCase {};
+                selected.expected = row;
+                selected.driver = try target.AssignedDriver(row);
+                if (!row.capabilitiesAvailable && missingCapabilities == "")
+                    missingCapabilities = try registry.MissingCapabilities(feature, token);
+
+                selected.missingCapabilities = missingCapabilities;
+
+                positions.Add(Key(row.id, row.scenario, row.layer), position);
+                expected.Set(position, selected);
+                position = position + 1;
+            }
+        }
+
+        if (position != expected.Length)
+            return Result<void,string>.Failure("qualification.target.denominator");
+
+        ready = true;
+        return Result<void,string>.Success();
+    }
+
+    private Result<void,string> AcceptRow(JsonNode node, int driver, string evidenceRoot,
+                                         CancellationToken token) {
+        string id = try json.TextMember(node, "id", 128);
+        string scenario = try json.TextMember(node, "scenario", 128);
+        string layer = try json.TextMember(node, "layer", 128);
+        int? position = positions.TryGet(Key(id, scenario, layer));
+        if (!position.HasValue)
+            return Result<void,string>.Failure("qualification.target.unexpected_row");
+
+        TargetReportCase entry = expected.At(position.Value);
+        if (entry.driver != driver || !entry.expected.capabilitiesAvailable || entry.admittedStatus != "")
+            return Result<void,string>.Failure("qualification.target.unexpected_row");
+
+        string status = try json.TextMember(node, "status", 32);
+        try staged.Stage(position.Value, node, entry.expected.critical, evidenceRoot, token);
+        entry.admittedStatus = status;
+        expected.Set(position.Value, entry);
+        return Result<void,string>.Success();
+    }
+
+    public Result<void,string> Admit(int driver, AdmittedReceipt receipt, string evidenceRoot,
+                                      CancellationToken token) {
+        if (!ready || driver < 1 || driver > 64 || terminal.At(driver))
+            return Result<void,string>.Failure("qualification.target.lane_state");
+
+        ready = false;
+        for (int row = 0; row < receipt.count; row = row + 1) {
+            if (token.IsCancellationRequested)
+                return Result<void,string>.Cancelled("qualification.target.cancelled");
+
+            JsonNode observed = try reader.At(receipt.rows, row);
+            try AcceptRow(observed, driver, evidenceRoot, token);
+        }
+
+        terminal.Set(driver, true);
+        ready = true;
+        return Result<void,string>.Success();
+    }
+
+    public Result<void,string> Reject(int driver, string reason, CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<void,string>.Cancelled("qualification.target.cancelled");
+        if (!ready || driver < 1 || driver > 64 || reason == "" || terminal.At(driver))
+            return Result<void,string>.Failure("qualification.target.lane_state");
+
+        rejected.Set(driver, reason);
+        terminal.Set(driver, true);
+        return Result<void,string>.Success();
+    }
+
+    private Result<void,string> ReportCase(int position, TargetReportCase row, CancellationToken token) {
+        if (row.admittedStatus != "") {
+            try staged.Write(position, token);
+            return coverage.Observe(row.expected.layer, row.admittedStatus, row.expected.critical, token);
+        }
+
+        string status = "not_run";
+        string reason = "No driver produced this required observation";
+        if (!row.expected.capabilitiesAvailable) {
+            reason = "Unavailable required capabilities on " + platform + ": " + row.missingCapabilities;
+        } else if (rejected.At(row.driver) != "") {
+            status = "failed";
+            reason = rejected.At(row.driver);
+        }
+
+        try missing.Missing(row.expected, reason, status, token);
+        return coverage.Observe(row.expected.layer, status, row.expected.critical, token);
+    }
+
+    // The caller has opened the target object and writes the remaining
+    // statistics and trusted target identity after this call succeeds.
+    public Result<TargetCoverage,string> Project(CancellationToken token) {
+        if (!ready)
+            return Result<TargetCoverage,string>.Failure("qualification.target.not_ready");
+
+        ready = false;
+        try output.Name("cases");
+        try output.BeginArray();
+        for (int position = 0; position < expected.Length; position = position + 1)
+            try ReportCase(position, expected.At(position), token);
+
+        try output.EndArray();
+        return Result<TargetCoverage,string>.Success(coverage.Finish());
+    }
+}

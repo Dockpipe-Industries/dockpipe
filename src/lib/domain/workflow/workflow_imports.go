@@ -28,6 +28,7 @@ func ParseWorkflowFromDisk(data []byte, baseDir string, readFile func(string) ([
 		return nil, err
 	}
 	return &Workflow{
+		Control:         f.Control,
 		Name:            f.Name,
 		Title:           f.Title,
 		CatalogType:     f.CatalogType,
@@ -83,9 +84,15 @@ func parseWorkflowFileRecursive(data []byte, baseDir string, readFile func(strin
 	if err := rejectBannedWorkflowKeys(doc); err != nil {
 		return nil, err
 	}
+	if err := validateControlDocument(doc); err != nil {
+		return nil, err
+	}
 	var f workflowFile
 	if err := yaml.Unmarshal(data, &f); err != nil {
 		return nil, err
+	}
+	if f.Control != nil && (len(f.Imports) > 0 || depth > 0) {
+		return nil, fmt.Errorf("control: YAML imports are not supported")
 	}
 	if len(f.Imports) == 0 {
 		return &f, nil

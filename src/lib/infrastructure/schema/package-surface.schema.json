@@ -7,7 +7,6 @@
     "schema",
     "id",
     "title",
-    "snapshot",
     "actions"
   ],
   "properties": {
@@ -63,7 +62,8 @@
           "scope": {
             "enum": [
               "surface",
-              "resource"
+              "resource",
+              "file"
             ]
           },
           "workflow": {
@@ -229,6 +229,16 @@
                 }
               }
             }
+          },
+          "file_extensions": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,31}$"
+            }
           }
         },
         "oneOf": [
@@ -268,6 +278,31 @@
                 "scope": {
                   "const": "surface"
                 }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "scope": {
+                  "const": "file"
+                }
+              },
+              "required": [
+                "scope"
+              ]
+            },
+            "then": {
+              "required": [
+                "workflow",
+                "file_extensions"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "file_extensions"
+                ]
               }
             }
           }
@@ -319,5 +354,35 @@
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "not": {
+          "required": [
+            "snapshot"
+          ]
+        }
+      },
+      "then": {
+        "not": {
+          "required": [
+            "native_display"
+          ]
+        },
+        "properties": {
+          "actions": {
+            "minItems": 1,
+            "items": {
+              "properties": {
+                "scope": {
+                  "const": "file"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

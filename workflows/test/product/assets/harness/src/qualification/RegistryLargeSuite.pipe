@@ -1,0 +1,27 @@
+module Dockpipe.Product.Qualification.Tests;
+import Dockpipe.Product.Qualification;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+// Native code supplies complete input roots and an explicit resource profile;
+// registration, expected outcomes and cleanup remain authored source decisions.
+public model Class RegistryLargeSuite {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private int indexRetainedBytes;
+
+    public RegistryLargeSuite(JsonReader reader, JsonStringIndexer indexer, int indexRetainedBytes) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.indexRetainedBytes = indexRetainedBytes;
+    }
+
+    public List<TestResult> Run(JsonNode validRoot, JsonNode escapedDuplicateRoot, CancellationToken token) {
+        List<ITestCase> cases = List<ITestCase>.Empty();
+        cases.Add(new RegistryLargeContractCase(reader, indexer, indexRetainedBytes, validRoot, false));
+        cases.Add(new RegistryLargeContractCase(reader, indexer, indexRetainedBytes, escapedDuplicateRoot, true));
+
+        TestRunner runner = new TestRunner();
+        return runner.RunAll(cases, token);
+    }
+}

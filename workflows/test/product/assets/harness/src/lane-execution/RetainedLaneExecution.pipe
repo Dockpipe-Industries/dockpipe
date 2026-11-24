@@ -1,0 +1,45 @@
+module Dockpipe.Product.LaneExecution;
+import Dockpipe.Product.DriverSources;
+import Dockpipe.Product.LaneReceipt;
+import Dockpipe.Product.QualificationFiles;
+import Dockpipe.Product.RetainedLane;
+import Dockpipe.Product.RunAdmission;
+import PipeLang.IO;
+import PipeLang.Json;
+
+public model Class RetainedLaneExecution {
+    private RetainedQualificationLane lane;
+    private LaneMetadataBudget budget;
+
+    public RetainedLaneExecution(JsonReader reader, JsonStringIndexer indexer, int indexRetainedBytes,
+                                 FileStreams product, FileStreams repository, FileStreams invocation,
+                                 FileStreams output, int receiptMetadataBytes,
+                                 JsonDocumentOutput requestOutput, PrivateJsonStage requestDigest) {
+        budget = new LaneMetadataBudget(receiptMetadataBytes);
+        DriverSourcePins pins = new DriverSourcePins(reader, product, repository);
+        lane = new RetainedQualificationLane(reader, indexer, indexRetainedBytes, budget,
+            invocation, output, pins, requestOutput, requestDigest);
+    }
+
+    public Result<QualificationLaneOutcome,string> Run(QualificationLaneInput selected, CancellationToken token) {
+        LaneCaseSelection cases = new LaneCaseSelection(selected.cases, selected.ordinal);
+        Result<AdmittedReceipt?,string> observed = lane.Revalidate(selected.identity, selected.target, selected.driver,
+            cases, token);
+        if (observed.IsCancelled)
+            return Result<QualificationLaneOutcome,string>.Cancelled(observed.Error);
+
+        QualificationLaneOutcome complete = new QualificationLaneOutcome {};
+        complete.remainingMetadataBytes = budget.RemainingBytes();
+        complete.exitCode = lane.ExitCode();
+        if (observed.IsSuccess)
+            complete.admitted = observed.Value;
+        else
+            complete.rejection = observed.Error + "; retained invocation was not replayed; owning driver must reconcile its exact resource identities";
+
+        return Result<QualificationLaneOutcome,string>.Success(complete);
+    }
+
+    public Result<void,string> Close() {
+        return lane.Close();
+    }
+}

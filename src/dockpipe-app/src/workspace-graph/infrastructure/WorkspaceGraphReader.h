@@ -7,8 +7,8 @@
 
 class QProcess;
 
-// One cancellable helper process, one replaceable pending request. No worker threads
-// are left blocked in a network filesystem inside the GUI process.
+// Core-admitted local Files reads, one cancellable helper and one replaceable
+// pending request. No filesystem worker threads remain blocked inside the GUI.
 class DOCKPIPE_LAUNCHER_UI_EXPORT WorkspaceGraphReader final : public QObject {
     Q_OBJECT
 public:

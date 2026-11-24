@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"dockpipe/src/lib/infrastructure/packageplatform"
+	"dockpipe/src/lib/infrastructure/process"
 )
 
 // The definition binds a service to both its executable path and installed bytes.
@@ -22,6 +23,8 @@ type serviceDefinition struct {
 	path    string
 	content string
 	flatpak bool
+	manager string
+	args    []string
 }
 
 type serviceInfo struct {
@@ -35,7 +38,7 @@ func prepareService(ctx context.Context, root, role string) (serviceDefinition, 
 	} else if role != "broker" {
 		return serviceDefinition{}, errors.New("service role must be broker or worker")
 	}
-	executable, err := os.Executable()
+	executable, err := process.Executable()
 	if err != nil {
 		return serviceDefinition{}, err
 	}
@@ -43,8 +46,7 @@ func prepareService(ctx context.Context, root, role string) (serviceDefinition, 
 	if err != nil {
 		return serviceDefinition{}, err
 	}
-	digest := sha256.Sum256([]byte(root))
-	name := fmt.Sprintf("com.dockpipe.remote.%s.%x", role, digest[:6])
+	name := remoteServiceName(root, role)
 	arguments := []string{executable, "remote", command, "--state", root}
 	flatpak := packageplatform.IsFlatpak()
 	if flatpak {
@@ -54,7 +56,12 @@ func prepareService(ctx context.Context, root, role string) (serviceDefinition, 
 		}
 		arguments = flatpakServiceArguments(applicationID, command, root)
 	}
-	var path, content string
+	fingerprint, err := executableFingerprint(executable)
+	if err != nil {
+		return serviceDefinition{}, err
+	}
+
+	var path, content, manager string
 	switch runtime.GOOS {
 	case "darwin":
 		path = filepath.Join(home, "Library", "LaunchAgents", name+".plist")
@@ -63,10 +70,24 @@ func prepareService(ctx context.Context, root, role string) (serviceDefinition, 
 			return serviceDefinition{}, err
 		}
 		content = launchAgent(name, arguments, filepath.Join(root, role+".log"), bundleIdentifier)
+		content = strings.Replace(content, "<plist version=", "<!-- Dockpipe executable sha256: "+fingerprint+" -->\n<plist version=", 1)
 	case "linux":
 		base := os.Getenv("XDG_CONFIG_HOME")
-		if base == "" {
+		if !filepath.IsAbs(base) {
 			base = filepath.Join(home, ".config")
+		}
+		if role == "worker" && !systemdWorkerAvailable(ctx, flatpak) {
+			if openRCWorkerAvailable(ctx, flatpak, base) {
+				path, content = openRCWorkerDefinition(base, name, arguments, fingerprint)
+				manager = "openrc"
+			} else {
+				path, content, arguments, err = desktopWorkerDefinition(base, home, root, name, arguments, fingerprint, flatpak)
+				if err != nil {
+					return serviceDefinition{}, err
+				}
+				manager = "xdg-autostart"
+			}
+			break
 		}
 		path = filepath.Join(base, "systemd", "user", name+".service")
 		content = systemdUnit(arguments)
@@ -74,20 +95,34 @@ func prepareService(ctx context.Context, root, role string) (serviceDefinition, 
 			// /app and the sandbox PATH do not exist in the host user manager.
 			content = systemdUnitWithPath(arguments, "")
 		}
+		content = "# Dockpipe executable sha256: " + fingerprint + "\n" + content
+	case "windows":
+		if role != "worker" {
+			return serviceDefinition{}, errors.New("remote broker services currently support Linux and macOS")
+		}
+		workerHost := filepath.Join(filepath.Dir(executable), "dockpipe-worker.exe")
+		hostFingerprint, err := executableFingerprint(workerHost)
+		if err != nil {
+			return serviceDefinition{}, fmt.Errorf("the Windows background worker executable is unavailable; install the complete Dockpipe package: %w", err)
+		}
+
+		fingerprint = fmt.Sprintf("%x", sha256.Sum256([]byte(fingerprint+hostFingerprint)))
+		arguments = []string{workerHost, "--cli", executable, "--state", root}
+		content, err = prepareWindowsWorkerTask(ctx, name, arguments, fingerprint)
+		if err != nil {
+			return serviceDefinition{}, err
+		}
+		manager = "task-scheduler"
 	default:
-		return serviceDefinition{}, errors.New("remote user services currently support Linux and macOS")
+		return serviceDefinition{}, errors.New("remote worker services currently support Windows, Linux and macOS")
 	}
 
-	fingerprint, err := executableFingerprint(executable)
-	if err != nil {
-		return serviceDefinition{}, err
-	}
-	if runtime.GOOS == "darwin" {
-		content = strings.Replace(content, "<plist version=", "<!-- Dockpipe executable sha256: "+fingerprint+" -->\n<plist version=", 1)
-	} else {
-		content = "# Dockpipe executable sha256: " + fingerprint + "\n" + content
-	}
-	return serviceDefinition{role: role, name: name, path: path, content: content, flatpak: flatpak}, nil
+	return serviceDefinition{role: role, name: name, path: path, content: content, flatpak: flatpak, manager: manager, args: arguments}, nil
+}
+
+func remoteServiceName(root, role string) string {
+	digest := sha256.Sum256([]byte(root))
+	return fmt.Sprintf("com.dockpipe.remote.%s.%x", role, digest[:6])
 }
 
 func executableFingerprint(path string) (string, error) {
@@ -135,6 +170,20 @@ func describeService(root, role string) *serviceInfo {
 }
 
 func inspectServiceDefinition(definition serviceDefinition) *serviceInfo {
+	if definition.manager == "task-scheduler" {
+		exists, matches, err := readWindowsWorkerTask(context.Background(), definition.name, definition.content)
+		switch {
+		case err != nil:
+			return &serviceInfo{State: "unavailable"}
+		case !exists:
+			return &serviceInfo{State: "missing"}
+		case !matches:
+			return &serviceInfo{State: "update-required"}
+		default:
+			return &serviceInfo{State: "current"}
+		}
+	}
+
 	content, err := readServiceDefinition(definition.path)
 	if os.IsNotExist(err) {
 		return &serviceInfo{State: "missing"}

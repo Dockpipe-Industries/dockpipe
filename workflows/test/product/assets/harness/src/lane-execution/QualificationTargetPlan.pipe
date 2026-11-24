@@ -1,0 +1,76 @@
+module Dockpipe.Product.LaneExecution;
+import Dockpipe.Product.DriverSources;
+import Dockpipe.Product.LaneReceipt;
+import Dockpipe.Product.LaneRequest;
+import Dockpipe.Product.Qualification;
+import Dockpipe.Product.QualificationPreflight;
+import Dockpipe.Product.RunAdmission;
+import PipeLang.IO;
+import PipeLang.Json;
+
+public model Class QualificationTargetPlan {
+    private JsonReader reader;
+    private RegistryJson json;
+    private QualificationAdmission admission;
+
+    public QualificationTargetPlan(JsonReader reader, JsonStringIndexer indexer, FileStreams product,
+                                   FileStreams repository, int indexRetainedBytes) {
+        this.reader = reader;
+        json = new RegistryJson(reader);
+        DriverSourcePins pins = new DriverSourcePins(reader, product, repository);
+        admission = new QualificationAdmission(reader, indexer, pins, indexRetainedBytes);
+    }
+
+    private Result<ReceiptTarget,string> Identity(JsonNode target) {
+        string id = try json.TextMember(target, "id", 128);
+        string platform = try json.TextMember(target, "platform", 512);
+        string kind = try json.TextMember(target, "kind", 128);
+        string artifact = try json.TextMember(target, "artifact_sha256", 64);
+        return Result<ReceiptTarget,string>.Success(ReceiptTarget(id, platform, kind, artifact));
+    }
+
+    private Result<List<QualificationLaneInput>,string> Lanes(QualificationRunIdentity identity, ReceiptTarget witness,
+                                                               QualificationTarget selected, JsonNode target,
+                                                               CancellationToken token) {
+        List<QualificationLaneInput> lanes = List<QualificationLaneInput>.Empty();
+        JsonNode? drivers = try reader.FindMember(target, "drivers");
+        if (!drivers.HasValue)
+            return Result<List<QualificationLaneInput>,string>.Success(lanes);
+
+        int count = try reader.Count(drivers.Value);
+        for (int index = 0; index < count; index = index + 1) {
+            if (token.IsCancellationRequested)
+                return Result<List<QualificationLaneInput>,string>.Cancelled("qualification.target_plan.cancelled");
+
+            List<RegistryCase> cases = selected.DriverCases(index + 1);
+            if (cases.Count == 0)
+                continue;
+
+            JsonNode driver = try reader.At(drivers.Value, index);
+            QualificationLaneInput lane = new QualificationLaneInput {};
+            lane.identity = identity;
+            lane.target = target;
+            lane.driver = driver;
+            lane.cases = cases;
+            lane.ordinal = index + 1;
+            lane.targetId = witness.id;
+            lane.driverId = try json.TextMember(driver, "id", 128);
+            lanes.Add(lane);
+        }
+
+        return Result<List<QualificationLaneInput>,string>.Success(lanes);
+    }
+
+    public Result<PreparedTargetRun,string> Select(PreparedQualificationRun run, int position,
+                                                    CancellationToken token) {
+        JsonNode declaration = try reader.At(run.targets, position);
+        ReceiptTarget witnessed = try Identity(declaration);
+        QualificationTarget selected = try admission.AdmitTarget(declaration, run.registry.root, run.expectedCases, token);
+        QualificationRunIdentity identity = QualificationRunIdentity(run.runId, run.plan.sourceFile.sha256,
+            run.registry.sourceFile.sha256);
+        List<QualificationLaneInput> lanes = try Lanes(identity, witnessed, selected, declaration, token);
+
+        return Result<PreparedTargetRun,string>.Success(
+            PreparedTargetRun(witnessed, declaration, selected.Required(), lanes));
+    }
+}

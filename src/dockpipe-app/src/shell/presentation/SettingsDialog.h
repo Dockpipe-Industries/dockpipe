@@ -9,6 +9,7 @@ class QPlainTextEdit;
 class QCheckBox;
 class QTabWidget;
 class RemoteSecurityWidget;
+class QComboBox;
 
 class SettingsDialog : public QDialog {
     Q_OBJECT
@@ -17,6 +18,9 @@ public:
 
     ~SettingsDialog() override;
     LauncherSettings updatedSettings() const;
+    void showSecurityPage();
+    void accept() override;
+    void reject() override;
 
 private slots:
     void browseRepoRoot();
@@ -43,4 +47,7 @@ private:
     QCheckBox *m_hardwareAcceleration = nullptr;
     QTabWidget *m_tabs = nullptr;
     RemoteSecurityWidget *m_remoteSecurity = nullptr;
+    QComboBox *m_themeMode = nullptr;
+    QComboBox *m_language = nullptr;
+    bool m_themePreviewed = false;
 };

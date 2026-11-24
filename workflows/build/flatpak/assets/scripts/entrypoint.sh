@@ -7,6 +7,7 @@ mkdir -p "$TMPDIR"
 chmod 700 "$TMPDIR"
 # shellcheck source=workflows/build/flatpak/assets/scripts/container-environment.sh
 source /app/libexec/dockpipe/container-environment.sh
+export DOCKPIPE_TERMINAL_PROVIDER=/app/libexec/dockpipe/dockpipe-terminal-host
 case "$(basename "$0")" in
   dockpipe) exec /app/libexec/dockpipe/dockpipe "$@" ;;
   dockpipe-launcher)

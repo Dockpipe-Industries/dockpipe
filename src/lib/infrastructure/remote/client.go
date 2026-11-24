@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	contract "dockpipe/src/lib/domain/remote"
@@ -24,6 +25,7 @@ type Client struct {
 	Endpoint               string
 	Token                  string
 	HTTP                   *http.Client
+	desktopDiscoveryEpoch  atomic.Pointer[string]
 }
 
 func NewClient(endpoint, token string) (*Client, error) {
@@ -104,7 +106,7 @@ func (c *Client) Call(ctx context.Context, path string, input, output any) error
 	}
 	if response.StatusCode != http.StatusOK {
 		// Provider error pages and reflected content are not safe diagnostics.
-		return &HTTPError{StatusCode: response.StatusCode}
+		return &HTTPError{StatusCode: response.StatusCode, authenticated: c.Identity != nil || operatorProof.Header != ""}
 	}
 	if output == nil {
 		return nil

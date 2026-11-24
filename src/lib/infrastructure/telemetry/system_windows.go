@@ -5,18 +5,19 @@ package telemetry
 import (
 	"context"
 	"errors"
+	"fmt"
 	"runtime"
 	"time"
 	"unsafe"
 
+	"dockpipe/src/lib/infrastructure/hostboot"
 	"golang.org/x/sys/windows"
 )
 
 var (
-	systemKernel32        = windows.NewLazySystemDLL("kernel32.dll")
-	systemTimes           = systemKernel32.NewProc("GetSystemTimes")
-	systemMemoryStatus    = systemKernel32.NewProc("GlobalMemoryStatusEx")
-	systemBootInformation = windows.NewLazySystemDLL("ntdll.dll").NewProc("NtQuerySystemInformation")
+	systemKernel32     = windows.NewLazySystemDLL("kernel32.dll")
+	systemTimes        = systemKernel32.NewProc("GetSystemTimes")
+	systemMemoryStatus = systemKernel32.NewProc("GlobalMemoryStatusEx")
 )
 
 var systemProcessorGroupCount = systemKernel32.NewProc("GetActiveProcessorGroupCount")
@@ -30,25 +31,17 @@ func (NativeCollector) System(ctx context.Context) (SystemResources, error) {
 }
 
 func (nativeWindowsSystem) bootID() (string, error) {
-	// SYSTEM_BOOT_ENVIRONMENT_INFORMATION, SystemBootEnvironmentInformation=90.
-	// This kernel boot GUID is shared by independent collector processes. The
-	// private ABI is isolated and fails closed if unavailable or changed:
-	// https://github.com/winsiderss/systeminformer/blob/master/phnt/include/ntexapi.h
-	var boot struct {
-		Identifier   windows.GUID
-		FirmwareType uint32
-		Padding      uint32
-		Flags        uint64
-	}
-	if err := systemBootInformation.Find(); err != nil {
+	identifier, err := hostboot.WindowsIdentifier()
+	if err != nil {
 		return "", err
 	}
-	var returned uint32
-	status, _, _ := systemBootInformation.Call(90, uintptr(unsafe.Pointer(&boot)), unsafe.Sizeof(boot), uintptr(unsafe.Pointer(&returned)))
-	if int32(status) < 0 || returned != uint32(unsafe.Sizeof(boot)) || boot.Identifier == (windows.GUID{}) {
-		return "", errors.New("Windows boot information unavailable or changed")
+
+	sequence, err := hostboot.WindowsSequence()
+	if err != nil {
+		return "", err
 	}
-	return boot.Identifier.String(), nil
+
+	return fmt.Sprintf("%s/%d", identifier.String(), sequence), nil
 }
 
 func (nativeWindowsSystem) cpu() (uint32, uint64, uint64, uint64, error) {

@@ -12,7 +12,7 @@ import (
 )
 
 // EnvUseWSLBridge, when set to "1", makes dockpipe.exe forward all commands
-// (except "windows …") into WSL. The default is native Windows execution so Git,
+// (except native "windows …" and private "terminal …") into WSL. The default is native Windows execution so Git,
 // Docker Desktop, and paths stay on one side.
 const EnvUseWSLBridge = "DOCKPIPE_USE_WSL_BRIDGE"
 
@@ -33,7 +33,9 @@ func TryWindowsWSLBridge(argv []string, stdin io.Reader, stdout, stderr io.Write
 	if !UseWSLBridge() {
 		return false, 0
 	}
-	if len(argv) > 0 && argv[0] == "windows" {
+	if len(argv) > 0 && (argv[0] == "windows" || argv[0] == "terminal") {
+		// A managed terminal already binds its native/host route, executable,
+		// environment and cwd. Ambient bridge configuration cannot retarget it.
 		return false, 0
 	}
 	distro, err := resolveBridgeDistro()

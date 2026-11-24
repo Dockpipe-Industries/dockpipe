@@ -2,6 +2,7 @@ package application
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 
 	"dockpipe/src/lib/domain"
@@ -15,6 +16,11 @@ func checkCLIProjectVersion(argv []string) error {
 		return nil
 	}
 	switch argv[0] {
+	case "terminal":
+		// A private native terminal owns an explicit launch snapshot and does
+		// not load project workflows. Its stream must emit its own admission and
+		// cleanup receipts even when cwd contains a mismatched project pin.
+		return nil
 	case "init", "install", "get", "core", "doctor", "__state", "--version", "version":
 		return nil
 	}
@@ -44,7 +50,10 @@ func checkCLIProjectVersion(argv []string) error {
 		var err error
 		workdir, err = os.Getwd()
 		if err != nil {
-			return err
+			workdir = workflowInspectionDirectory(argv)
+			if workdir == "" {
+				return err
+			}
 		}
 	}
 	root, err := domain.FindProjectRootWithDockpipeConfig(workdir)
@@ -56,4 +65,33 @@ func checkCLIProjectVersion(argv []string) error {
 		return err
 	}
 	return domain.CheckProjectDockpipeVersion(config, engineversion.Current())
+}
+
+// A document portal can invalidate the cwd's directory entry while the
+// caller's workspace path still identifies the same open directory. Use that
+// spelling for version admission without letting it select a different project.
+func workflowInspectionDirectory(argv []string) string {
+	if len(argv) < 2 || argv[0] != "workflow" || (argv[1] != "document" && argv[1] != "validate") {
+		return ""
+	}
+
+	workdir := os.Getenv("DOCKPIPE_WORKDIR")
+	if !filepath.IsAbs(workdir) {
+		return ""
+	}
+	workdir, err := filepath.EvalSymlinks(workdir)
+	if err != nil {
+		return ""
+	}
+
+	current, err := os.Stat(".")
+	if err != nil {
+		return ""
+	}
+	workspace, err := os.Stat(workdir)
+	if err != nil || !os.SameFile(current, workspace) {
+		return ""
+	}
+
+	return workdir
 }

@@ -1,0 +1,7 @@
+module Dockpipe.Product.DriverExecution;
+
+// The host owns the selected executable and raw logs. A terminal receipt is
+// eligible for lane validation only after the owned tree and log writes close.
+public Interface DriverProcess {
+    Result<DriverProcessResult,string> Run(DriverProcessRequest request, CancellationToken token);
+}

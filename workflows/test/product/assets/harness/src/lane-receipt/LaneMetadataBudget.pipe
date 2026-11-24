@@ -1,0 +1,38 @@
+module Dockpipe.Product.LaneReceipt;
+
+// Share one ledger across all fresh and retained lanes of the selected run.
+public Class LaneMetadataBudget {
+    private int remaining;
+
+    public LaneMetadataBudget(int maximumBytes) {
+        remaining = maximumBytes;
+        if (remaining < 0 || remaining > 33554432)
+            remaining = -1;
+    }
+
+    public pure int RemainingBytes() {
+        return remaining;
+    }
+
+    public Result<int,string> Remaining(CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<int,string>.Cancelled("qualification.run.receipt_metadata_cancelled");
+        if (remaining < 0)
+            return Result<int,string>.Failure("qualification.run.receipt_metadata_limit");
+
+        return Result<int,string>.Success(remaining);
+    }
+
+    public Result<void,string> Charge(int byteCount) {
+        if (byteCount < 0 || byteCount > remaining)
+            return Exhausted();
+
+        remaining = remaining - byteCount;
+        return Result<void,string>.Success();
+    }
+
+    public Result<void,string> Exhausted() {
+        remaining = -1;
+        return Result<void,string>.Failure("qualification.run.receipt_metadata_limit");
+    }
+}

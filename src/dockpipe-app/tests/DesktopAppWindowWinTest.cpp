@@ -31,7 +31,7 @@ void reportPhase(const char *phase)
     std::fflush(stderr);
 }
 
-bool waitFor(const std::function<bool()> &condition)
+bool waitFor(const std::function<bool()> &condition, qint64 timeoutMilliseconds = 5000)
 {
     QElapsedTimer deadline;
     deadline.start();
@@ -40,7 +40,7 @@ bool waitFor(const std::function<bool()> &condition)
         if (condition())
             return true;
         QThread::msleep(10);
-    } while (deadline.elapsed() < 5000);
+    } while (deadline.elapsed() < timeoutMilliseconds);
     return false;
 }
 
@@ -224,12 +224,14 @@ int main(int argc, char **argv)
     CHECK(fixture.waitForStarted(3000));
     reportPhase("before fixture readiness");
     QByteArray output;
+    // First-window initialization on hosted Windows can outlast the
+    // ordinary polling budget used by the embedding assertions.
     const bool fixtureReady = waitFor([&] {
         output += fixture.readAllStandardOutput();
         // Windows CRT text output uses CRLF; QProcess preserves the raw bytes.
         return output.startsWith("WINDOW:")
             && (output.contains("\nREADY\r\n") || output.contains("\nREADY\n"));
-    });
+    }, 15000);
     if (!fixtureReady) {
         std::fprintf(stderr, "Fixture readiness failed: state=%d exitStatus=%d exitCode=%d exitHex=0x%08lx processError=%d error=%s stdoutBytes=%lld stdoutHex=%s\n",
             static_cast<int>(fixture.state()), static_cast<int>(fixture.exitStatus()),

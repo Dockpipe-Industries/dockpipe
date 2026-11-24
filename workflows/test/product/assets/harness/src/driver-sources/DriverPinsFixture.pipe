@@ -1,0 +1,5 @@
+module Dockpipe.Product.DriverSources.Tests;
+
+public Interface DriverPinsFixture {
+    Result<void,string> ChangeDriver();
+}

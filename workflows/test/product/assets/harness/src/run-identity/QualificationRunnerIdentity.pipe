@@ -1,0 +1,10 @@
+module Dockpipe.Product.RunIdentity;
+
+// Native composition establishes these identities from the running binary and
+// the explicitly selected interpreter for the remaining legacy drivers.
+public Record QualificationRunnerIdentity {
+    public string executable;
+    public string executableSha256;
+    public string driverExecutable;
+    public string driverExecutableSha256;
+}

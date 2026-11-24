@@ -1,0 +1,37 @@
+module Dockpipe.Product.Qualification.Tests;
+import Dockpipe.Product.Qualification;
+
+// Test data only. JSON fragments are authored literals; expandable arrays and
+// large path values are appended in bounded pieces by PlanFixtureDocuments.
+public Record PlanFixtureOptions {
+    public string schema = "\"dockpipe.product-integration.plan/v1\"";
+    public string runId = "\"run.a\"";
+    public int targetCount = 1;
+    public bool duplicateTargets = false;
+    public string targetId = "";
+    public string platform = "\"p\"";
+    public string kind = "\"local\"";
+    public string artifactDigest = "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"";
+    public int capabilityCount = 0;
+    public bool duplicateCapabilities = false;
+    public bool invalidCapability = false;
+    public int driverCount = 1;
+    public bool duplicateDrivers = false;
+    public string driverId = "";
+    public int featureCount = 1;
+    public bool duplicateFeatures = false;
+    public bool unknownFeature = false;
+    public string sourceDigest = "\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"";
+    public string configuration = "{}";
+    public string scenarios = "";
+    public string layers = "";
+    public int dependencyCount = 0;
+    public int dependencyShape = 0;
+    public bool duplicateDependencies = false;
+    public int largePathChunks = 0;
+    public string dependencyDigest = "\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"";
+    public string timeout = "";
+    public bool omitOptional = false;
+    public bool omitDrivers = false;
+    public bool unknownFields = false;
+}

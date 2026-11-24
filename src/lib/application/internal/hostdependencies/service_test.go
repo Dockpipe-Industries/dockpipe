@@ -9,6 +9,60 @@ import (
 	"dockpipe/src/lib/domain"
 )
 
+func TestWindowsFeatureDependencyUsesNativeState(t *testing.T) {
+	adapters := missingToolAdapters()
+	adapters.LookupCommand = func(string) (string, error) {
+		t.Fatal("Windows feature dependency looked for a command on PATH")
+		return "", os.ErrNotExist
+	}
+	adapters.BundledCommandPath = func(string, string) (string, error) {
+		t.Fatal("Windows feature dependency looked for a bundled executable")
+		return "", os.ErrNotExist
+	}
+	enabled := false
+	adapters.LookupWindowsFeature = func(name string) (bool, error) {
+		if name != "VirtualMachinePlatform" {
+			t.Fatalf("probe targeted %q", name)
+		}
+		return enabled, nil
+	}
+
+	service := New(adapters)
+	candidate := hostDependencyCandidate{
+		Dep: domain.HostDependency{WindowsFeature: "VirtualMachinePlatform"},
+	}
+	command := hostDependencyCommand(candidate.Dep)
+	if _, err := service.lookupDependency(candidate, command); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("disabled Windows feature returned %v", err)
+	}
+	enabled = true
+	if _, err := service.lookupDependency(candidate, command); err != nil {
+		t.Fatalf("enabled Windows feature returned %v", err)
+	}
+}
+
+func TestWindowsServiceDependencyUsesRegistration(t *testing.T) {
+	adapters := missingToolAdapters()
+	adapters.LookupCommand = func(string) (string, error) {
+		t.Fatal("Windows service dependency looked for a command on PATH")
+		return "", os.ErrNotExist
+	}
+	adapters.LookupWindowsService = func(name string) (bool, error) {
+		if name != "WslService" {
+			t.Fatalf("probe targeted %q", name)
+		}
+		return true, nil
+	}
+
+	service := New(adapters)
+	candidate := hostDependencyCandidate{
+		Dep: domain.HostDependency{WindowsService: "WslService"},
+	}
+	if _, err := service.lookupDependency(candidate, hostDependencyCommand(candidate.Dep)); err != nil {
+		t.Fatalf("registered Windows service returned %v", err)
+	}
+}
+
 func TestServicesKeepLookupAndInstallerDependenciesSeparate(t *testing.T) {
 	t.Setenv("DOCKPIPE_APPROVE_PROMPTS", "0")
 	installed := false

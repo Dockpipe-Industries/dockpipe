@@ -1,4 +1,6 @@
 #include "DashboardStore.h"
+#include <QCoreApplication>
+#include <QDir>
 
 #include <algorithm>
 #include "ContextStore.h"
@@ -26,12 +28,12 @@ bool readBytes(QByteArray &bytes, QString &error)
         return true;
     }
     if (!file.open(QIODevice::ReadOnly) || file.size() > maximumStoreBytes) {
-        error = QObject::tr("Could not read dashboards, or the file exceeds 1 MiB. Existing data was kept.");
+        error = QCoreApplication::translate("DashboardStore", "Could not read dashboards, or the file exceeds 1 MiB. Existing data was kept.");
         return false;
     }
     bytes = file.read(maximumStoreBytes + 1);
     if (file.error() != QFile::NoError || bytes.size() > maximumStoreBytes) {
-        error = QObject::tr("Could not read dashboard settings. Existing data was kept.");
+        error = QCoreApplication::translate("DashboardStore", "Could not read dashboard settings. Existing data was kept.");
         return false;
     }
     return true;
@@ -40,6 +42,39 @@ bool readBytes(QByteArray &bytes, QString &error)
 QByteArray revision(const QByteArray &bytes)
 {
     return QCryptographicHash::hash(bytes, QCryptographicHash::Sha256);
+}
+
+bool validMachineContext(const QJsonValue &value)
+{
+    if (!value.isObject())
+        return false;
+    const auto context = value.toObject();
+    const QString mode = context.value("mode").toString();
+    if (mode != "follow" && mode != "local" && mode != "remote")
+        return false;
+    for (auto item = context.begin(); item != context.end(); ++item) {
+        if (item.key() != "mode" && item.key() != "target" && item.key() != "rootId")
+            return false;
+    }
+    static const QRegularExpression identifier(QStringLiteral("\\A[A-Za-z0-9][A-Za-z0-9_-]{0,63}\\z"));
+    static const QRegularExpression digest(QStringLiteral("\\A[0-9a-f]{64}\\z"));
+    if (context.contains("rootId")) {
+        if (!context.value("rootId").isString())
+            return false;
+        const QString root = context.value("rootId").toString();
+        if (!root.isEmpty() && !identifier.match(root).hasMatch())
+            return false;
+    }
+    if (!context.contains("target"))
+        return mode != "remote";
+    if (mode == "local" || !context.value("target").isObject())
+        return false;
+    const auto target = context.value("target").toObject();
+    if (target.size() != 3 || !target.contains("node") || !target.contains("fingerprint") || !target.contains("generation"))
+        return false;
+    return identifier.match(target.value("node").toString()).hasMatch()
+        && digest.match(target.value("fingerprint").toString()).hasMatch()
+        && digest.match(target.value("generation").toString()).hasMatch();
 }
 
 bool validId(const QString &id)
@@ -187,7 +222,7 @@ bool DashboardStore::validate(const QVector<DashboardDefinition> &dashboards, QS
         return dashboard.id == defaultDashboardId();
     });
     if (dashboards.size() > maximumDashboards || (!hasDefault && dashboards.size() == maximumDashboards)) {
-        error = QObject::tr("Up to %1 dashboards are supported.").arg(maximumDashboards);
+        error = QCoreApplication::translate("DashboardStore", "Up to %1 dashboards are supported.").arg(maximumDashboards);
         return false;
     }
     QSet<QString> dashboardIds;
@@ -199,7 +234,7 @@ bool DashboardStore::validate(const QVector<DashboardDefinition> &dashboards, QS
             || dashboard.name.trimmed().isEmpty() || dashboard.name.size() > 80
             || dashboard.name.contains(QChar::Null)
             || dashboard.panels.size() > maximumPanelsPerDashboard) {
-            error = QObject::tr("Invalid dashboard identity, name or widget count.");
+            error = QCoreApplication::translate("DashboardStore", "Invalid dashboard identity, name or widget count.");
             return false;
         }
         dashboardIds.insert(dashboard.id);
@@ -207,27 +242,70 @@ bool DashboardStore::validate(const QVector<DashboardDefinition> &dashboards, QS
         if (!QStringList{"grid", "plain", "dusk", "ocean", "image", "desktop"}.contains(options.canvasBackground)
             || options.canvasImagePath.size() > 4096 || options.canvasImagePath.contains(QChar::Null)
             || (options.canvasBackground == "image" && options.canvasImagePath.isEmpty())) {
-            error = QObject::tr("Invalid dashboard background settings.");
+            error = QCoreApplication::translate("DashboardStore", "Invalid dashboard background settings.");
             return false;
         }
         if (!QStringList{"project", "system"}.contains(options.canvasFileScope)
             || !QStringList{"project", "system"}.contains(options.tilingFileScope)) {
-            error = QObject::tr("Invalid dashboard file-manager scope.");
+            error = QCoreApplication::translate("DashboardStore", "Invalid dashboard file-manager scope.");
             return false;
+        }
+        if (dashboard.layout.contains("panelContexts") && !dashboard.layout.value("panelContexts").isObject()) {
+            error = QCoreApplication::translate("DashboardStore", "Invalid dashboard repository contexts.");
+            return false;
+        }
+        const auto contexts = dashboard.layout.value("panelContexts").toObject();
+        if (contexts.size() > dashboard.panels.size()) {
+            error = QCoreApplication::translate("DashboardStore", "Too many dashboard repository contexts.");
+            return false;
+        }
+        for (auto entry = contexts.begin(); entry != contexts.end(); ++entry) {
+            const auto panel = std::find_if(dashboard.panels.cbegin(), dashboard.panels.cend(), [&](const auto &value) {
+                return value.id == entry.key();
+            });
+            if (panel == dashboard.panels.cend() || !entry.value().isObject()
+                || !QStringList{"files-full", "git-full", "workflows-full", "file-preview", "git-preview",
+                    "files", "git", "containers", "terminal", "send-input", "browser"}.contains(panel->kind)) {
+                error = QCoreApplication::translate("DashboardStore", "Invalid dashboard repository context identity.");
+                return false;
+            }
+            const auto context = entry.value().toObject();
+            for (auto value = context.begin(); value != context.end(); ++value) {
+                if (value.key() == "machine") {
+                    if (panel->kind == "browser" && value.value().toObject().value("mode") == "follow") {
+                        error = QCoreApplication::translate("DashboardStore", "Browser widgets require an independent machine selection.");
+                        return false;
+                    }
+                    if (validMachineContext(value.value()))
+                        continue;
+                } else if (value.key() == "browserContextId" && panel->kind == "browser") {
+                    if (value.value().isString() && validId(value.value().toString()))
+                        continue;
+                } else if (value.key() == "staged") {
+                    if (value.value().isBool())
+                        continue;
+                } else if ((value.key() == "root" || value.key() == "localRoot" || value.key() == "path") && value.value().isString()) {
+                    const QString path = value.value().toString();
+                    if (path.size() <= 4096 && !path.contains(QChar::Null)
+                        && (value.key() == "path" || path.isEmpty() || QDir::isAbsolutePath(path)))
+                        continue;
+                }
+                error = QCoreApplication::translate("DashboardStore", "Invalid dashboard repository path or preview setting.");
+                return false;
+            }
         }
         totalPanels += dashboard.panels.size();
         for (const auto &panel : dashboard.panels) {
             if (!validId(panel.id) || panelIds.contains(panel.id) || !kindPattern.match(panel.kind).hasMatch()
-                || (panel.environment != "canvas" && panel.environment != "tiling")
-                || (panel.kind == "desktop-window" && panel.environment != "tiling")) {
-                error = QObject::tr("Invalid or duplicate dashboard widget identity.");
+                || (panel.environment != "canvas" && panel.environment != "tiling")) {
+                error = QCoreApplication::translate("DashboardStore", "Invalid or duplicate dashboard widget identity.");
                 return false;
             }
             panelIds.insert(panel.id);
         }
     }
     if (totalPanels > maximumTotalPanels) {
-        error = QObject::tr("Up to %1 widgets across all dashboards are supported.").arg(maximumTotalPanels);
+        error = QCoreApplication::translate("DashboardStore", "Up to %1 widgets across all dashboards are supported.").arg(maximumTotalPanels);
         return false;
     }
     return true;
@@ -247,29 +325,29 @@ bool DashboardStore::load(QVector<DashboardDefinition> &dashboards, QString &err
         const auto object = document.object();
         if (parseError.error != QJsonParseError::NoError || !document.isObject()
             || (object.value("version") != 1 && object.value("version") != 2) || !object.value("dashboards").isArray()) {
-            error = QObject::tr("Dashboard settings are invalid or use an unsupported version. Existing data was kept.");
+            error = QCoreApplication::translate("DashboardStore", "Dashboard settings are invalid or use an unsupported version. Existing data was kept.");
             return false;
         }
         const auto items = object.value("dashboards").toArray();
         if (items.size() > maximumDashboards) {
-            error = QObject::tr("Too many saved dashboards.");
+            error = QCoreApplication::translate("DashboardStore", "Too many saved dashboards.");
             return false;
         }
         for (const auto &value : items) {
             const auto item = value.toObject();
             if (!value.isObject() || !item.value("panels").isArray() || !item.value("layout").isObject()) {
-                error = QObject::tr("Invalid dashboard metadata. Existing data was kept.");
+                error = QCoreApplication::translate("DashboardStore", "Invalid dashboard metadata. Existing data was kept.");
                 return false;
             }
             DashboardDefinition definition{item.value("id").toString(), item.value("name").toString(), {}, item.value("layout").toObject()};
             if ((item.contains("options") && !item.value("options").isObject())
                 || !readOptions(item.value("options").toObject(), definition.options)) {
-                error = QObject::tr("Invalid dashboard options. Existing data was kept.");
+                error = QCoreApplication::translate("DashboardStore", "Invalid dashboard options. Existing data was kept.");
                 return false;
             }
             const auto panels = item.value("panels").toArray();
             if (panels.size() > maximumPanelsPerDashboard) {
-                error = QObject::tr("Too many saved dashboard widgets.");
+                error = QCoreApplication::translate("DashboardStore", "Too many saved dashboard widgets.");
                 return false;
             }
             for (const auto &panelValue : panels) {
@@ -298,7 +376,7 @@ bool DashboardStore::save(const QVector<DashboardDefinition> &dashboards, QStrin
     error.clear();
     if (!m_loaded || !validate(dashboards, error)) {
         if (error.isEmpty())
-            error = QObject::tr("Load dashboard settings successfully before changing them.");
+            error = QCoreApplication::translate("DashboardStore", "Load dashboard settings successfully before changing them.");
         return false;
     }
     QJsonArray items;
@@ -311,24 +389,24 @@ bool DashboardStore::save(const QVector<DashboardDefinition> &dashboards, QStrin
     }
     const auto bytes = QJsonDocument(QJsonObject{{"version", 2}, {"dashboards", items}}).toJson();
     if (bytes.size() > maximumStoreBytes) {
-        error = QObject::tr("Dashboard settings exceed the 1 MiB metadata limit.");
+        error = QCoreApplication::translate("DashboardStore", "Dashboard settings exceed the 1 MiB metadata limit.");
         return false;
     }
     QLockFile lock(filePath() + ".lock");
     if (!lock.tryLock()) {
-        error = QObject::tr("Dashboard settings are being saved elsewhere. Try again.");
+        error = QCoreApplication::translate("DashboardStore", "Dashboard settings are being saved elsewhere. Try again.");
         return false;
     }
     QByteArray current;
     if (!readBytes(current, error))
         return false;
     if (revision(current) != m_revision) {
-        error = QObject::tr("Dashboard settings changed outside this window. Restart DockPipe to reload them; no data was overwritten.");
+        error = QCoreApplication::translate("DashboardStore", "Dashboard settings changed outside this window. Restart DockPipe to reload them; no data was overwritten.");
         return false;
     }
     QSaveFile file(filePath());
     if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit()) {
-        error = QObject::tr("Could not save dashboards. Your changes remain open; try saving again.");
+        error = QCoreApplication::translate("DashboardStore", "Could not save dashboards. Your changes remain open; try saving again.");
         return false;
     }
     m_revision = revision(bytes);

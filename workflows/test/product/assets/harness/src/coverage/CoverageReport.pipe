@@ -1,0 +1,7 @@
+module Dockpipe.Product.Coverage.Tests;
+import PipeLang.Testing;
+
+public Record CoverageReport {
+    public bool allPassed = false;
+    public List<TestResult> results;
+}

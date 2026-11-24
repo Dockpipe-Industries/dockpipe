@@ -1,0 +1,7 @@
+module Dockpipe.WorkflowControl.Proof;
+
+public Record ControlInputs {
+    public ProjectInputs primary;
+    public ProjectInputs relocated;
+    public int maximumTraceBytes;
+}

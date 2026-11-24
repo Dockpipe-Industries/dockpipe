@@ -1,0 +1,106 @@
+module Dockpipe.SDK.FaultProof;
+import PipeLang.Testing;
+import PipeLang.Testing.Async;
+
+// Preserve registration and every inner assertion. This decorator adds only
+// source-owned caller-isolation assertions around the existing phase effects.
+public Class CallerIsolationCase : IAsyncTestCase {
+    private IAsyncTestCase inner;
+    private FixtureControl control;
+    private CallerObservation initial;
+
+    public CallerIsolationCase(IAsyncTestCase inner, FixtureControl control, CallerObservation initial) {
+        this.inner = inner;
+        this.control = control;
+        this.initial = initial;
+    }
+
+    public pure string Id() {
+        return inner.Id();
+    }
+
+    public pure string Name() {
+        return inner.Name();
+    }
+
+    private Result<TestStepResult,string> Observe() {
+        try {
+            Result<CallerObservation,string> observed = control.ObserveCaller();
+            if (observed.IsCancelled)
+                return Result<TestStepResult,string>.Cancelled(observed.Error);
+            if (observed.IsFailure)
+                return Result<TestStepResult,string>.Failure(observed.Error);
+
+            CallerIsolationChecks checks = new CallerIsolationChecks();
+            Result<void,TestFailure> assertion = checks.Compare(initial, observed.Value);
+            TestSteps steps = new TestSteps();
+
+            return Result<TestStepResult,string>.Success(steps.From(assertion));
+        } catch (Error error) {
+            return Result<TestStepResult,string>.Failure(error.Message);
+        }
+    }
+
+    private Result<TestStepResult,string> Preserve(
+        Result<TestStepResult,string> original, Result<TestStepResult,string> isolation) {
+        // An isolation assertion cannot erase an authored failure/cancellation.
+        if (!original.IsSuccess)
+            return original;
+        if (original.Value.outcome != TestOutcome.Passed)
+            return original;
+
+        return isolation;
+    }
+
+    public async Task<Result<TestStepResult,string>> Setup(TestDeadline deadline, CancellationToken token) {
+        Result<TestStepResult,string> before = Observe();
+        Result<TestStepResult,string> result = before;
+        if (before.IsSuccess && before.Value.outcome == TestOutcome.Passed) {
+            try {
+                Result<TestStepResult,string> called = await inner.Setup(deadline, token);
+                result = called;
+            } catch (Error error) {
+                result = Result<TestStepResult,string>.Failure(error.Message);
+            }
+        }
+
+        Result<TestStepResult,string> after = Observe();
+
+        return Preserve(result, after);
+    }
+
+    public async Task<Result<TestStepResult,string>> Body(TestDeadline deadline, CancellationToken token) {
+        Result<TestStepResult,string> before = Observe();
+        Result<TestStepResult,string> result = before;
+        if (before.IsSuccess && before.Value.outcome == TestOutcome.Passed) {
+            try {
+                Result<TestStepResult,string> called = await inner.Body(deadline, token);
+                result = called;
+            } catch (Error error) {
+                result = Result<TestStepResult,string>.Failure(error.Message);
+            }
+        }
+
+        Result<TestStepResult,string> after = Observe();
+
+        return Preserve(result, after);
+    }
+
+    public async Task<Result<TestStepResult,string>> Cleanup(TestDeadline deadline, CancellationToken token) {
+        Result<TestStepResult,string> before = Observe();
+        Result<TestStepResult,string> result = before;
+        // Always call the inner cleanup with its independent original deadline,
+        // even when caller observation failed or the cleanup token is cancelled.
+        try {
+            Result<TestStepResult,string> called = await inner.Cleanup(deadline, token);
+            result = called;
+        } catch (Error error) {
+            result = Result<TestStepResult,string>.Failure(error.Message);
+        }
+
+        Result<TestStepResult,string> after = Observe();
+        Result<TestStepResult,string> preserved = Preserve(result, before);
+
+        return Preserve(preserved, after);
+    }
+}

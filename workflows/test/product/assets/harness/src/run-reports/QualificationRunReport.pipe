@@ -1,0 +1,156 @@
+module Dockpipe.Product.RunReports;
+import Dockpipe.Product.Coverage;
+import Dockpipe.Product.LaneRequest;
+import Dockpipe.Product.Qualification;
+import Dockpipe.Product.QualificationFiles;
+import Dockpipe.Product.ReportProjection;
+import Dockpipe.Product.RunIdentity;
+import PipeLang.IO;
+import PipeLang.Json;
+
+public model Class QualificationRunReport {
+    private JsonReader reader;
+    private JsonDocumentOutput output;
+    private ReportTargetOutput targetOutput;
+    private RunnerCapture runner;
+    private QualificationReportCommit commit;
+    private CoverageProjection coverage;
+    private List<string> profiles = List<string>.Empty();
+    private List<TargetCoverage> targets = List<TargetCoverage>.Empty();
+    private QualificationRunnerIdentity identity;
+    private bool started = false;
+    private bool ready = false;
+
+    public QualificationRunReport(JsonReader reader, JsonDocumentOutput output, ReportTargetOutput targetOutput,
+                                   RunnerCapture runner, PrivateJsonStage stage, AtomicFileReplacement replacement) {
+        this.reader = reader;
+        this.output = output;
+        this.targetOutput = targetOutput;
+        this.runner = runner;
+        commit = new QualificationReportCommit(stage, replacement);
+        coverage = new CoverageProjection(output);
+    }
+
+    private Result<void,string> Text(string name, string content) {
+        try output.Name(name);
+        return output.WriteText(content);
+    }
+
+    public Result<void,string> Begin(QualificationRunIdentity run, QualificationRunnerIdentity selected,
+                                      JsonNode registry, CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<void,string>.Cancelled("qualification.report.cancelled");
+        if (started)
+            return Result<void,string>.Failure("qualification.report.already_started");
+
+        started = true;
+        identity = selected;
+        RegistryJson json = new RegistryJson(reader);
+        JsonNode platforms = try json.Member(registry, "platforms");
+        int count = try reader.Count(platforms);
+        if (count > 64)
+            return Result<void,string>.Failure("qualification.report.platform_count");
+
+        for (int index = 0; index < count; index = index + 1) {
+            if (token.IsCancellationRequested)
+                return Result<void,string>.Cancelled("qualification.report.cancelled");
+            JsonNode item = try reader.At(platforms, index);
+            profiles.Add(try json.TextMember(item, "id", 512));
+        }
+
+        try output.BeginObject();
+        try Text("schema", "dockpipe.product-integration.report/v1");
+        try Text("run_id", run.runId);
+        try Text("plan_sha256", run.planSha256);
+        try Text("registry_sha256", run.registrySha256);
+        try output.Name("runner");
+        RunnerIdentityFields fields = new RunnerIdentityFields(output);
+        try fields.Write(selected);
+        try output.Name("targets");
+        try output.BeginArray();
+
+        ready = true;
+        return Result<void,string>.Success();
+    }
+
+    public Result<void,string> Append(TargetCoverage summary, CancellationToken token) {
+        if (!ready || targets.Count == 64)
+            return Result<void,string>.Failure("qualification.report.target_state");
+        if (token.IsCancellationRequested)
+            return Result<void,string>.Cancelled("qualification.report.cancelled");
+
+        ready = false;
+        try targetOutput.WriteTarget(targets.Count, token);
+        targets.Add(summary);
+        ready = true;
+        return Result<void,string>.Success();
+    }
+
+    private pure bool SameRunner(QualificationRunnerIdentity current) {
+        return current.executable == identity.executable && current.executableSha256 == identity.executableSha256 &&
+            current.driverExecutable == identity.driverExecutable &&
+            current.driverExecutableSha256 == identity.driverExecutableSha256;
+    }
+
+    private pure int ExitCode(OverallCoverage overall, bool interrupted) {
+        if (interrupted)
+            return 130;
+
+        foreach (TargetCoverage target in targets) {
+            if (target.status == "failed")
+                return 1;
+        }
+
+        if (overall.fullProductQualified)
+            return 0;
+
+        return 2;
+    }
+
+    private Result<QualificationReportResult,string> Seal(bool interrupted, string timestamp,
+                                                           CancellationToken token) {
+        if (!ready)
+            return Result<QualificationReportResult,string>.Failure("qualification.report.not_ready");
+
+        ready = false;
+        QualificationRunnerIdentity current = try runner.Capture(token);
+        if (!SameRunner(current))
+            return Result<QualificationReportResult,string>.Failure("qualification.report.runner_changed");
+
+        OverallCoveragePolicy policy = new OverallCoveragePolicy();
+        OverallCoverage overall = try policy.Summarize(profiles, targets, token);
+        try output.EndArray();
+        try output.Name("overall");
+        try coverage.Overall(overall, token);
+        try Text("finished_at", timestamp);
+        try output.Name("interrupted");
+        try output.WriteBoolean(interrupted);
+        try output.EndObject();
+
+        QualificationReportResult sealed = new QualificationReportResult {};
+        sealed.overall = overall;
+        sealed.exitCode = ExitCode(overall, interrupted);
+        sealed.bytes = try output.Finish();
+        return Result<QualificationReportResult,string>.Success(sealed);
+    }
+
+    public Result<QualificationReportResult,IoFailure> Finish(bool interrupted, string timestamp,
+                                                              CancellationToken token) {
+        Result<QualificationReportResult,string> report = Seal(interrupted, timestamp, token);
+        if (report.IsCancelled)
+            return Result<QualificationReportResult,IoFailure>.Cancelled(IoFailure(report.Error, OutputEffect.Unknown));
+        if (!report.IsSuccess)
+            return Result<QualificationReportResult,IoFailure>.Failure(IoFailure(report.Error, OutputEffect.Unknown));
+
+        OutputEffect effect = try commit.Publish(report.Value.bytes, token);
+        if (effect != OutputEffect.Committed)
+            return Result<QualificationReportResult,IoFailure>.Failure(
+                IoFailure("qualification.report.replace_incomplete", effect));
+
+        return Result<QualificationReportResult,IoFailure>.Success(report.Value);
+    }
+
+    public Result<void,string> Close() {
+        return commit.Close();
+    }
+}

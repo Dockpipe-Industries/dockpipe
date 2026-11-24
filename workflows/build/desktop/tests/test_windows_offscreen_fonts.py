@@ -97,7 +97,7 @@ set_tests_properties(offscreen PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen
         self.assertEqual('77', observed['offscreen_skip'])
         self.assertRegex(
             observed['generated_tests'],
-            r'add_test\(\[=\[offscreen\]=\].*"-E" "echo" "quoted argument"\)',
+            r'add_test\((?:\[=\[offscreen\]=\]|"offscreen").*"-E" "echo" "quoted argument"\)',
         )
 
     def test_other_hosts_do_not_acquire_the_windows_fixture(self):

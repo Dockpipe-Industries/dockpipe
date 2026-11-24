@@ -109,6 +109,7 @@ struct PackageSurfaceActionMeta {
     QString workflow;
     QString workflowId;
     QMap<QString, QMap<QString, PackageSurfaceEnvironmentBinding>> launchEnvironment;
+    QStringList fileExtensions;
 };
 
 struct PackageSurfaceMeta {
@@ -128,6 +129,7 @@ struct ResolverMeta {
     QString capability;
     QString remoteSetup;
     PackageSurfaceMeta surface;
+    bool processSnapshot = false;
 };
 
 struct WorkflowCatalogData {

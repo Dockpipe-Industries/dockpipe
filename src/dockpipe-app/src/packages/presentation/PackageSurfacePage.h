@@ -1,6 +1,8 @@
 #pragma once
 
 #include "WorkflowCatalogData.h"
+#include <QHash>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QMap>
 #include <QProcess>
@@ -30,6 +32,7 @@ public:
     void setActive(bool active);
     void refresh();
     void refreshInventory();
+    void refreshProcessInventory();
     QJsonObject inventoryDiagnostic() const;
     bool supportsWorkflow(const QString &workflowId) const;
     bool prepareLaunchContext(Context &invocation, QString &error) const;
@@ -37,6 +40,7 @@ public:
     void cancelLaunch(const QString &launchId);
     bool ownsSession(const QString &id) const { return id == m_snapshotId || id == m_actionId; }
     bool applyEvent(const QJsonObject &event, QString &error);
+    void selectResourceById(const QString &id);
     static constexpr int maximumResources = 256;
     static constexpr int maximumEventBytes = 1024 * 1024;
 
@@ -47,6 +51,8 @@ protected:
 signals:
     void launchResolved(const QString &launchId);
     void displaysChanged(const QVector<PackageDisplayMeta> &displays);
+    void instanceStatesObserved(const QHash<QString, QString> &states, qint64 observedAt);
+    void resourceInventoryChanged(const QJsonArray &resources);
     void publicWorkflowRequested(const QString &workflowId, const QString &surfaceId,
                                  const QString &actionId, const QString &resourceId);
 
@@ -60,6 +66,7 @@ private:
         QString state;
         QMap<QString, QString> details;
         QStringList actions;
+        QString instanceId;
         qint64 displayProcessId = 0;
         QString displayStartToken;
         QString launchId;
@@ -72,11 +79,13 @@ private:
     void updateActions();
     void showResource();
     void runAction(const PackageSurfaceActionMeta &action);
-    void runWorkflow(const QString &file, const QString &action, const QString &resource, bool snapshot);
+    void runWorkflow(const QString &file, const QString &action, const QString &resource, bool snapshot,
+                     bool processOnly = false);
     void receiveOutput(const QString &contextId, const QString &text);
     void finishOperation(const QString &contextId, bool success);
     void failOperation(const QString &contextId, const QString &message);
     void cancelOperations();
+    void captureInstanceStates();
     QString selectedResource() const;
     const ResolverMeta *provider() const;
     SessionManager &m_sessions;
@@ -100,6 +109,7 @@ private:
     QTimer *m_actionDeadline;
     QTimer *m_launchDeadline;
     QString m_expectedLaunchId;
+    QString m_preferredResourceId;
     bool m_selectInitialResource = false;
     QMap<QString, QByteArray> m_pending;
     QMap<QString, int> m_received;
@@ -111,5 +121,8 @@ private:
     bool m_snapshotBusy = false;
     bool m_actionBusy = false;
     bool m_snapshotReceived = false;
+    bool m_processOnlySnapshot = false;
     bool m_stateFresh = false;
+    qint64 m_snapshotStartedAt = 0;
+    QHash<QString, QString> m_snapshotInstanceStates;
 };

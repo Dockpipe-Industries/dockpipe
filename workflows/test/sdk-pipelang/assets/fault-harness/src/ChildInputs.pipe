@@ -1,0 +1,6 @@
+module Dockpipe.SDK.FaultProof;
+
+public Record ChildInputs {
+    public string cwd;
+    public List<ChildInputValue> variables;
+}

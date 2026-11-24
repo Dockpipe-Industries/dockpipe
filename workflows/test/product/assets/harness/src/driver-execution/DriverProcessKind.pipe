@@ -1,0 +1,10 @@
+module Dockpipe.Product.DriverExecution;
+
+public Enum DriverProcessKind {
+    Complete,
+    DeadlineExceeded,
+    CaptureOverflow,
+    Cancelled,
+    Failed,
+    CustodyUnknown
+}

@@ -2,10 +2,12 @@ package remote
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -228,5 +230,135 @@ func TestFailedPolicyPublicationRequiresInspectionBeforeUnlock(t *testing.T) {
 	previousCalls := platform.authCalls
 	if err := authority.Unlock(context.Background(), os.Getpid()); err == nil || platform.authCalls != previousCalls || !authority.Status().Locked {
 		t.Fatal("uncertain policy allowed fresh authorization")
+	}
+}
+
+func TestOperatorConfiguredTimeoutBoundaries(t *testing.T) {
+	_, broker, _, _ := testBroker(t)
+	for _, scenario := range []struct {
+		name            string
+		idleSeconds     int
+		absoluteSeconds int
+		idleKnown       bool
+		idleAge         time.Duration
+		elapsed         time.Duration
+	}{
+		{name: "absolute twelve hours", idleSeconds: 43200, absoluteSeconds: 43200, idleKnown: true, elapsed: 12 * time.Hour},
+		{name: "idle twelve hours", idleSeconds: 43200, absoluteSeconds: 43200, idleKnown: true, idleAge: 12 * time.Hour, elapsed: 2 * time.Hour},
+		{name: "absolute earlier than idle", idleSeconds: 43200, absoluteSeconds: 7200, idleKnown: true, elapsed: 2 * time.Hour},
+		{name: "idle earlier than absolute", idleSeconds: 7200, absoluteSeconds: 43200, idleKnown: true, idleAge: 2 * time.Hour, elapsed: 2 * time.Hour},
+		{name: "unknown idle fixed from unlock", idleSeconds: 43200, absoluteSeconds: 43200, elapsed: 12 * time.Hour},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			authority, platform := testSecurityAuthority(t, broker)
+			policy := contract.DefaultRemoteSecurityPolicy()
+			policy.IdleSeconds = scenario.idleSeconds
+			policy.AbsoluteSeconds = scenario.absoluteSeconds
+			if err := authority.UpdatePolicy(context.Background(), os.Getpid(), policy); err != nil {
+				t.Fatal(err)
+			}
+			now := time.Now()
+			authority.now = func() time.Time { return now }
+			platform.snapshot.IdleKnown = scenario.idleKnown
+			if err := authority.Unlock(context.Background(), os.Getpid()); err != nil {
+				t.Fatal(err)
+			}
+			expiresAt := now.Add(time.Duration(policy.AbsoluteSeconds) * time.Second)
+			now = now.Add(scenario.elapsed - time.Second)
+			if scenario.idleAge > 0 {
+				platform.snapshot.Idle = scenario.idleAge - time.Second
+			}
+			authority.Sample(context.Background())
+			if authority.Status().Locked {
+				t.Fatal("remote access expired before configured boundary")
+			}
+			// Operator traffic must not refresh either deadline.
+			if _, err := authority.Sign(context.Background(), broker.state.Identity.PublicKey, "/v1/nodes", bodyDigest([]byte("null"))); err != nil {
+				t.Fatal(err)
+			}
+			if !authority.Status().ExpiresAt.Equal(expiresAt) {
+				t.Fatal("operator traffic renewed the absolute deadline")
+			}
+			now = now.Add(time.Second)
+			platform.snapshot.Idle = scenario.idleAge
+			authority.Sample(context.Background())
+			if !authority.Status().Locked {
+				t.Fatal("remote access survived configured timeout boundary")
+			}
+		})
+	}
+}
+
+func TestOperatorAbsolutePolicyWeakeningRequiresAuthentication(t *testing.T) {
+	_, broker, _, _ := testBroker(t)
+	authority, platform := testSecurityAuthority(t, broker)
+	policy := contract.DefaultRemoteSecurityPolicy()
+	policy.AbsoluteSeconds = 43200
+	platform.authError = errors.New("authentication denied")
+	if err := authority.UpdatePolicy(context.Background(), os.Getpid(), policy); err == nil {
+		t.Fatal("absolute lifetime extended without successful authentication")
+	}
+	if authority.Status().AbsoluteSeconds != 3600 {
+		t.Fatal("denied policy changed the absolute lifetime")
+	}
+	platform.authError = nil
+	if err := authority.UpdatePolicy(context.Background(), os.Getpid(), policy); err != nil {
+		t.Fatal(err)
+	}
+	if !authority.Status().Locked || authority.Status().AbsoluteSeconds != 43200 {
+		t.Fatal("absolute lifetime update did not lock access")
+	}
+	calls := platform.authCalls
+	policy.AbsoluteSeconds = 60
+	if err := authority.UpdatePolicy(context.Background(), os.Getpid(), policy); err != nil {
+		t.Fatal(err)
+	}
+	if platform.authCalls != calls || !authority.Status().Locked {
+		t.Fatal("absolute lifetime tightening prompted or unlocked access")
+	}
+}
+
+func TestOperatorLegacyPolicyAndStatusRoundTrip(t *testing.T) {
+	_, broker, _, _ := testBroker(t)
+	authority, platform := testSecurityAuthority(t, broker)
+	legacy := map[string]any{
+		"schema":              contract.RemoteSecurityPolicyVersion,
+		"idle_seconds":        420,
+		"lock_on_screen_lock": true,
+		"lock_on_sleep":       true,
+	}
+	if err := WritePrivate(authority.policyPath, legacy); err != nil {
+		t.Fatal(err)
+	}
+	reloaded, err := NewSecurityAuthority(platform, platform.directory, broker.state.Identity.PublicKey, os.Getuid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reloaded.policy.AbsoluteSeconds != 3600 || reloaded.policy.IdleSeconds != 420 {
+		t.Fatal("legacy saved policy did not retain the one-hour absolute lifetime")
+	}
+	policy := contract.DefaultRemoteSecurityPolicy()
+	policy.AbsoluteSeconds = 43200
+	policy.IdleSeconds = 43200
+	if err := reloaded.UpdatePolicy(context.Background(), os.Getpid(), policy); err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(reloaded.Status())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var status SecurityStatus
+	if err := json.Unmarshal(encoded, &status); err != nil {
+		t.Fatal(err)
+	}
+	if status.RemoteSecurityPolicy != policy {
+		t.Fatal("status JSON lost an embedded policy field")
+	}
+	var saved contract.RemoteSecurityPolicy
+	if err := ReadPrivate(filepath.Join(platform.directory, "policy.json"), &saved); err != nil {
+		t.Fatal(err)
+	}
+	if saved != policy {
+		t.Fatal("saved policy lost a configured lifetime")
 	}
 }

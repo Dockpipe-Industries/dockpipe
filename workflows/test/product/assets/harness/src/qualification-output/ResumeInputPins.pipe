@@ -1,0 +1,35 @@
+module Dockpipe.Product.QualificationOutput;
+import PipeLang.IO;
+
+// Composition supplies the existing run's admitted output root and the
+// digests derived from the currently selected inputs and runner.
+public Class ResumeInputPins {
+    private FileStreams retained;
+
+    public ResumeInputPins(FileStreams retained) {
+        this.retained = retained;
+    }
+
+    private Result<void,string> Match(string path, FileDigest expected, CancellationToken token) {
+        Result<FileDigest,IoFailure> actual = retained.DigestFile(path, expected.byteCount, token);
+        if (actual.IsCancelled)
+            return Result<void,string>.Cancelled("qualification.resume.cancelled");
+        if (actual.IsFailure)
+            return Result<void,string>.Failure("qualification.resume.input." + path + "." + actual.Error.code);
+        if (actual.Value.byteCount != expected.byteCount || actual.Value.sha256 != expected.sha256)
+            return Result<void,string>.Failure("qualification.resume.input_mismatch." + path);
+
+        return Result<void,string>.Success();
+    }
+
+    public Result<void,string> Verify(FileDigest plan, FileDigest registry, CancellationToken token) {
+        try Match("plan.json", plan, token);
+        return Match("registry.json", registry, token);
+    }
+
+    public Result<void,string> VerifyRun(FileDigest plan, FileDigest registry, FileDigest runner,
+                                         CancellationToken token) {
+        try Verify(plan, registry, token);
+        return Match("runner.json", runner, token);
+    }
+}

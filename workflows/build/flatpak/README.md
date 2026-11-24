@@ -238,6 +238,147 @@ Podman/SELinux behavior, ARM64 Flatpak builds and a signed/updating Flatpak remo
 remain separate qualification/publication work.
 Do not describe local or hosted checks as universal workflow parity.
 
+## Local installed product integration
+
+`product-integration.yml` is an explicitly invoked local lane, with no CI
+registration. It accepts the request and receipt contracts in
+[`workflows/qualify/product/DRIVER.md`](../../qualify/product/DRIVER.md):
+
+```bash
+"$DOCKPIPE_BIN" --workflow-file workflows/build/flatpak/product-integration.yml -- \
+  --request /absolute/private/request.json --output /absolute/private/new-output
+```
+
+Its configuration selects `bundle`, `installation`, numeric `version`,
+`install_method`, `source_inventory` and `source_inventory_sha256`. The request
+binds the bundle digest and final registry/plan digests. The installation must be
+an existing private user installation with the pinned KDE Platform. Fresh install
+methods require no existing Dockpipe app. The lane refuses default system/user installations and
+uses fresh HOME/XDG directories. `bundle` exercises direct bundle installation;
+`imported-local-repository` explicitly imports that exact bundle into an
+invocation-owned repository before installing it. A failure is retained rather
+than silently retried through another method.
+Repository import also requires `repository_tool` with the absolute `ostree`
+executable and `ostree_sha256`; the lane initializes that fresh repository before
+importing the selected bundle.
+`verified-existing` explicitly continues a previously installed private candidate
+without reinstalling. It requires `installation_proof: {path, sha256}` for the
+prior readback and rechecks the exact bundle, source inventory, runtime, commit,
+installed location and GUI/CLI/Browser digests before new observations. Earlier
+failed receipts stay intact; current project, GUI and settings fixtures are fresh.
+`upgrade-private` updates an independent copy of that previously verified
+installation. It also requires `upgrade_source_installation`, a digest-bound
+baseline readback including the UI library, and the pinned repository tool. The
+copy must have independent mutable repository metadata. Only the selected app's
+private local origin is changed, followed by an update to the exact imported
+target commit. Before/after commit and ELF readbacks must match, and the original
+baseline's commit and repository configuration must remain unchanged. The lane
+does not copy installations itself or fall back from an update to a reinstall.
+Driver exit zero means a validated receipt was written; inspect its case statuses
+or use the shared product runner for the qualification/coverage exit status.
+
+The installed app supplies the CLI, GUI identity and dependency closure checks.
+Fresh blank and empty-workflows projects exercise physical working-directory
+selection, repeat initialization, authored and packaged workflow discovery,
+typed input metadata and execution through the real archive catalog locator.
+The owning portable driver's source-cache fixture is reused through an installed
+CLI adapter: identical workflow configurations with different source assets must
+execute A, then B, then B again without rebuilding the unchanged B archive.
+The lane grants only its fixture directory, denies network and the host execution
+bridge, and preserves host command shortcuts. An optional `gui_tools` object
+selects an absolute `xvfb` executable and `xvfb_sha256`, plus optional `method`
+(`atspi`, the default, or `guided`). The normal installed GUI
+then runs on its own authenticated display/session/accessibility buses. Its child
+must match the selected OSTree commit, executable digest and owned launch group.
+In `atspi` mode, external accessibility actions observe the selected project
+catalog, change a setting, quit and relaunch, and verify both again. The driver
+keeps the real Flatpak accessibility proxy and uses its selected private bus;
+an unavailable proxy is a recorded failure, never an implicit guided fallback.
+Native accessibility imports/actions run in a supervised child; the controller
+journals kernel identities first and owns cleanup even if the observer aborts.
+`guided` is an explicit agent/operator-driven visual method. The controller emits
+`guided-ready.json`; each fresh `guided-action-NNN.json` must bind the latest
+screenshot digest and sequence. Actions and individual label/state observations
+are bounded and restricted to the owned window and generated fixtures. The
+controller records screenshots and inputs, independently verifies the saved
+workflow edit, fresh execution marker and settings file, then requires normal
+quit/relaunch and observed persistence. This method does not qualify AT-SPI or
+claim unattended GUI automation.
+
+An additional local `assets/scripts/retained-profile.py` adapter accepts
+`dockpipe.flatpak.retained-profile/v1` requests. It binds the prior private app
+readback and GUI receipt (`baseline` and `baseline_gui`, each `{path, sha256}`),
+the target bundle/source inventory and digests, numeric `version`, pinned
+`repository_tool`/`gui_tools`, a fresh `run_id` and explicit
+`workspace_access: read-only-original`. It copies only that previously qualified
+generated profile and an independent app installation. It also records an unused
+workspace snapshot. The normal GUI keeps the original generated project path
+with an explicit read-only filesystem grant and a protected before/after tree
+inventory. Inputs observe the catalog and settings without editing, saving or
+running workflows. The adapter does not rewrite or reseed launcher settings. A then quits,
+the app updates to B, and B must show the same saved Dashboard setting, workflow
+catalog and unchanged authored content before and after normal relaunch. Both
+stages retain screenshot-bound actions and exact process/cleanup journals. The
+adapter emits a separate migration receipt with no automatic registry coverage
+credit. Existing real user profiles, remote sessions and document portals are
+outside this fixture.
+
+Set `gui_tools.feature: browser` with `method: guided` to select the normal
+installed browser regression. A source-pinned fixture starts the Platform's
+Python HTTP server inside the app's isolated network namespace, then executes
+the unchanged installed launcher. Only generated loopback HTML, DOM/storage
+acknowledgements and a fixed download are served. The lane keeps
+`--unshare=network`, the browser sandbox and the denied host bridge. It records
+the server's exact process, executable and app/network namespace identities.
+Real GUI actions exercise two tabs, retained DOM state across app navigation,
+automatic download bytes and normal restart. The ordinary local browser uses
+temporary browsing storage: restart must retain browser preferences while
+opening an empty session, with the generated storage value independently absent
+afterward. This is not persistent-tab restoration. No clipboard or real user
+profile is used. The ordinary Flatpak terminal currently selects host shells
+through its Automatic route; this fixture does not qualify that route without
+an explicit safe shell profile and host-bridge prerequisite.
+
+The `files.workspace` happy case reuses the shared product framework's public
+`dockpipe files --request` fixture through the actual installed CLI. It checks
+exact BOM/CRLF bytes, revision conflicts, rename/list/delete, outside-root and
+link diagnostics, and an unchanged adjacent canary. One actual public
+`files --request -` process waits with empty stdin while the driver verifies its
+app commit, CLI executable and separate PID/network namespaces. It then receives
+a generated read-only list request and EOF. The remaining operations use the
+same immutable deployment and private context; per-command namespace observations
+are retained when available, and recorded process trees must close. This
+CLI-only case denies session/system bus sockets and needs no GUI, host bus,
+shell profile or network access. The evidence archive preserves the shared
+requests, responses, process results and namespace/cleanup journals.
+
+For `sdk.pipelang`, select `configuration.sdk` with the pinned `go`, `go_sha256`,
+`module`, `module_version` and `module_sum`. The lane reuses the shared SDK
+driver's qualification body and case selection. Typed checks, deterministic
+compilation, materialization, public invocation and private/syntax rejection run
+through the actual installed Flatpak CLI. The host's pinned Go inspector reads
+only the exact deployed CLI file whose digest matches the admitted contained
+image. A held public stdin call binds that app namespace before the language
+operations; recorded command trees must close. Native portable and Flatpak lanes
+therefore exercise the same SDK assertions without copying compiler policy.
+
+This fixture lane disables document-portal startup and GVFS FUSE because its
+paths are explicitly granted; it does not qualify portal behavior. The driver
+does not disable the installed browser sandbox. Unobserved language,
+VM/provider and remote actions remain pending; CLI identity alone cannot qualify
+them. A physical symlink path check
+does not qualify a document-portal grant. Setting `require_host_id: bazzite`
+records a warning and `not_run` on another distribution; host Flatpak success
+cannot qualify Bazzite's kernel, portals or SELinux behavior.
+
+Private Browser SDK consumers require both
+`DOCKPIPE_FLATPAK_ALLOW_PRIVATE_BROWSER=1` and an absolute
+`DOCKPIPE_FLATPAK_PRIVATE_BROWSER_SELECTION` proof selection. The selection binds
+the owning producer's local-proof release, qualification, installed DOM/sandbox/
+software-GL proof and source context. GNU/Qt/runtime and complete file-inventory
+checks remain mandatory. Private receipts explicitly identify this development
+tuple; the default public SDK lock and attestation path remain unchanged.
+
 Local Linux amd64 qualification exercised all 61 optional artifacts in the Platform,
 the core-only GUI shell/CLI, a bundled shared library, real Docker/Compose bind mounts,
 and a read-only systemctl call through the host bridge. Pipeon started its stack,

@@ -2,6 +2,7 @@
 
 #include "DashboardStore.h"
 #include <QWidget>
+#include <QJsonArray>
 #include <QSet>
 #include <functional>
 
@@ -29,6 +30,11 @@ public:
     void setCanAddPanel(std::function<bool()> check);
     bool addWidgetKind(const QString &kind);
     bool hasPendingChanges() const;
+    bool confirmLeave();
+    void confirmLeaveAsync(std::function<void(bool)> completion);
+    bool canChangeSharedMachineContext(QString *error = nullptr) const;
+    bool setSharedMachineContext(const QJsonObject &catalog, const QString &rootId, QString *error = nullptr);
+    void setMachineCatalog(const QJsonArray &catalog);
     void setFullscreen(bool fullscreen);
     bool launchDesktopApplication(const DesktopApplicationEntry &application);
     void addWindowForApplication(const QString &name);
@@ -51,6 +57,9 @@ signals:
     void appWorkflowRequested(const QString &id);
     void cloneWorkflowRequested(const QString &id);
     void projectChangeRequested();
+    void workflowRunRequested(const QString &repository, const QString &path);
+    void workflowRunOnMachineRequested(const QString &repository, const QString &path,
+                                       const QJsonObject &target, const QString &rootId);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -58,7 +67,7 @@ protected:
     void hideEvent(QHideEvent *event) override;
 
 private:
-    QWidget *createContent(const QString &kind, const QString &environment);
+    QWidget *createContent(const QString &kind, const QString &environment, const QJsonObject &context = {});
     void tearOutBrowserTab(BrowserWidget *source, QWebEngineView *view, const QPoint &globalPosition);
     QString panelTitle(const QString &kind) const;
     void chooseWidget();
@@ -69,7 +78,15 @@ private:
     void showSettings();
     void refreshDesktopBackground();
     void updateFileContexts();
-    bool addPanel(const QString &kind, bool chooseWindow);
+    QJsonObject resolveMachineCatalog(const QJsonObject &machine) const;
+    QString resolveMachineRoot(const QJsonObject &machine) const;
+    bool applyPanelMachineContext(QWidget *content, const QJsonObject &machine, QString *error = nullptr);
+    void installMachineMenu(QWidget *content, const QString &kind, const QJsonObject &machine);
+    bool addPanel(const QString &kind, bool chooseWindow, const QJsonObject &context = {});
+    void bindRepositoryPanel(const QString &id, QWidget *content);
+    void openCanvasTool(const QString &kind, const QJsonObject &context);
+    bool confirmPanelLeave(const QString &id, DashboardWorkspace *workspace);
+    void confirmPanelLeaveAsync(const QString &id, DashboardWorkspace *workspace, std::function<void(bool)> completion);
     void closePanel(const QString &id, DashboardWorkspace *workspace);
     void removePanel(const QString &id, DashboardWorkspace *workspace);
     void bindWindow(const QString &id, QWidget *content);

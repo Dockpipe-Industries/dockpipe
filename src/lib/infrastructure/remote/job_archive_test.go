@@ -397,3 +397,72 @@ func TestUnresolvedCapacityRefusesBeforePersistingNewDelivery(t *testing.T) {
 		t.Fatal("capacity refusal changed hot state")
 	}
 }
+
+func TestAcknowledgedInterruptionSurvivesArchiveAndRemoval(t *testing.T) {
+	broker, interrupted, token := legacyInterruptionFixture(t)
+	root := filepath.Dir(broker.path)
+	broker, err := NewBroker(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	broker.state.Nodes["node"] = Enrollment{TokenHash: Hash("other worker")}
+	for index := 1; index < contract.MaxJobs; index++ {
+		id := fmt.Sprintf("queued-%03d", index)
+		broker.state.Jobs[id] = contract.Job{
+			Submission: contract.Submission{ID: id, Node: "node", Profile: "bench"},
+			Status:     "queued",
+		}
+	}
+	if _, err := archiveOperator(broker, "/v1/remove", map[string]string{"id": interrupted.Node}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Publication before broker.json replacement leaves an identical hot and
+	// archived copy. Startup must verify the receipt before comparing the two.
+	if err := broker.storeArchivedJob(broker.state.Jobs[interrupted.ID]); err != nil {
+		t.Fatal(err)
+	}
+	broker, err = NewBroker(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := archiveSubmit(broker, "new-work"); err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := broker.state.Jobs[interrupted.ID]; exists || len(broker.state.Jobs) != contract.MaxJobs {
+		t.Fatal("acknowledged interruption still occupied the bounded job window")
+	}
+
+	broker, err = NewBroker(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := contract.JobInterruptionRequest{ID: interrupted.ID, Node: interrupted.Node, ReviewToken: token}
+	review, err := broker.jobInterruption(marshal(t, request), true)
+	if err != nil || review.Validate(request, true) != nil || review.ResultHash != interrupted.ResultHash {
+		t.Fatalf("archived acknowledgement changed: %+v, %v", review, err)
+	}
+	response, err := archiveOperator(broker, "/v1/submit", interrupted.Submission)
+	if err != nil {
+		t.Fatal(err)
+	}
+	job := response.(contract.Job)
+	if job.Status != "unknown" || job.Session != interrupted.Session || job.Result == nil || job.Result.Log != "retained interruption evidence" {
+		t.Fatal("submission replay changed the archived assignment or evidence")
+	}
+	if _, exists := broker.state.Jobs[interrupted.ID]; exists {
+		t.Fatal("replay reinserted archived work")
+	}
+
+	path, err := broker.resultPath(interrupted.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := broker.lookupJob(interrupted.ID); err == nil || os.IsNotExist(err) {
+		t.Fatalf("missing evidence was mistaken for an available job ID: %v", err)
+	}
+}

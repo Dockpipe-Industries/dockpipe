@@ -107,25 +107,29 @@ func (broker *Broker) startOperatorSecurityAt(ctx context.Context, platform osau
 	go func() {
 		defer workers.Done()
 		for {
-			connection, err := listener.AcceptUnix()
-			if err != nil {
-				return
-			}
+			// Reserve before accepting: legitimate same-user bursts wait in
+			// the OS-bounded Unix listen backlog instead of having accepted
+			// connections reset before a fresh proof can be produced. Retain
+			// exactly eight accepted workers and their existing deadlines.
 			select {
 			case slots <- struct{}{}:
-				connections.Store(connection, true)
-				workers.Add(1)
-				go func() {
-					defer workers.Done()
-					defer func() { <-slots }()
-					defer connections.Delete(connection)
-					defer connection.Close()
-					authority.serveSecurityConnection(ctx, connection)
-				}()
-			default:
-				// Admission was refused, so this connection has no result to retain.
-				_ = connection.Close()
+			case <-ctx.Done():
+				return
 			}
+			connection, err := listener.AcceptUnix()
+			if err != nil {
+				<-slots
+				return
+			}
+			connections.Store(connection, true)
+			workers.Add(1)
+			go func() {
+				defer workers.Done()
+				defer func() { <-slots }()
+				defer connections.Delete(connection)
+				defer connection.Close()
+				authority.serveSecurityConnection(ctx, connection)
+			}()
 		}
 	}()
 	var closeOnce sync.Once

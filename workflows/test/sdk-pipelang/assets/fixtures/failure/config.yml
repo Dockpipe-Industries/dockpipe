@@ -1,0 +1,7 @@
+name: sdk-fixture
+vault: none
+docker_preflight: false
+steps:
+  - id: failure
+    kind: host
+    cmd: /bin/sh -c 'printf "SDK_READY\n"; exit 23'

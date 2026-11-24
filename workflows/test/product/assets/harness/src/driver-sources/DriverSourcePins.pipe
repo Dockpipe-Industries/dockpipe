@@ -1,0 +1,140 @@
+module Dockpipe.Product.DriverSources;
+import PipeLang.IO;
+import PipeLang.Json;
+
+// The plan schema has been admitted by the caller. Composition provides
+// descriptor roots for the product directory and the owning repository.
+public Class DriverSourcePins {
+    private JsonReader reader;
+    private FileStreams product;
+    private FileStreams repository;
+
+    public DriverSourcePins(JsonReader reader, FileStreams product, FileStreams repository) {
+        this.reader = reader;
+        this.product = product;
+        this.repository = repository;
+    }
+
+    private Result<string,string> Field(JsonNode value, string field, int limit) {
+        JsonNode? found = try reader.FindMember(value, field);
+        if (!found.HasValue)
+            return Result<string,string>.Failure("qualification.driver_source.member." + field);
+
+        JsonKind kind = try reader.Kind(found.Value);
+        if (kind != JsonKind.String)
+            return Result<string,string>.Failure("qualification.driver_source.text." + field);
+
+        int bytes = try reader.ScalarLength(found.Value);
+        if (bytes > limit)
+            return Result<string,string>.Failure("qualification.driver_source.text." + field);
+
+        ByteBuffer text = try reader.ScalarSlice(found.Value, 0, bytes);
+        return Result<string,string>.Success(text.DecodeUtf8());
+    }
+
+    private pure bool IsDigest(string digest) {
+        if (string.Utf8Length(digest) != 64)
+            return false;
+
+        for (int index = 0; index < 64; index = index + 1) {
+            int character = string.ByteAtOr(digest, index, -1);
+            bool decimal = character >= 48 && character <= 57;
+            bool lowerHex = character >= 97 && character <= 102;
+            if (!decimal && !lowerHex)
+                return false;
+        }
+
+        return true;
+    }
+
+    private Result<DriverSourcePin,string> Parse(string reference, string digest, bool entrypoint) {
+        int offset = 0;
+        DriverSourceRoot root = DriverSourceRoot.Product;
+        if (string.Utf8IndexOf(reference, "product://", 0) == 0) {
+            offset = 10;
+        } else if (string.Utf8IndexOf(reference, "repo://", 0) == 0) {
+            root = DriverSourceRoot.Repository;
+            offset = 7;
+        } else if (string.Utf8IndexOf(reference, "://", 0) >= 0) {
+            return Result<DriverSourcePin,string>.Failure("qualification.driver_source.root");
+        }
+
+        int length = string.Utf8Length(reference) - offset;
+        if (length <= 0 || length > 4096)
+            return Result<DriverSourcePin,string>.Failure("qualification.driver_source.path");
+
+        string relative = reference;
+        if (offset != 0)
+            relative = ByteBuffer.FromUtf8(reference).Slice(offset, length).DecodeUtf8();
+        if (string.Utf8IndexOf(relative, "\\", 0) >= 0)
+            return Result<DriverSourcePin,string>.Failure("qualification.driver_source.path");
+        if (entrypoint && (length <= 3 || string.ByteAtOr(relative, length - 4, -1) == 47 ||
+                           string.Utf8IndexOf(relative, ".py", length - 3) != length - 3))
+            return Result<DriverSourcePin,string>.Failure("qualification.driver_source.entrypoint_kind");
+        if (!IsDigest(digest))
+            return Result<DriverSourcePin,string>.Failure("qualification.driver_source.digest_syntax");
+
+        return Result<DriverSourcePin,string>.Success(DriverSourcePin(root, relative, digest));
+    }
+
+    private Result<void,string> Check(DriverSourcePin pin, CancellationToken token) {
+        Result<FileDigest,IoFailure> actual = Result<FileDigest,IoFailure>.Failure(new IoFailure {});
+        if (pin.root == DriverSourceRoot.Repository)
+            actual = repository.DigestFile(pin.relative, 536870912, token);
+        else
+            actual = product.DigestFile(pin.relative, 536870912, token);
+
+        if (actual.IsCancelled)
+            return Result<void,string>.Cancelled("qualification.driver_source.cancelled");
+        if (!actual.IsSuccess)
+            return Result<void,string>.Failure("qualification.driver_source.file." + actual.Error.code);
+        if (actual.Value.sha256 != pin.sha256)
+            return Result<void,string>.Failure("qualification.driver_source.digest_mismatch");
+
+        return Result<void,string>.Success();
+    }
+
+    public Result<List<DriverSourcePin>,string> Admit(JsonNode driver, CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<List<DriverSourcePin>,string>.Cancelled("qualification.driver_source.cancelled");
+
+        string entrypoint = try Field(driver, "entrypoint", 4106);
+        string digest = try Field(driver, "sha256", 64);
+        DriverSourcePin primary = try Parse(entrypoint, digest, true);
+        try Check(primary, token);
+        List<DriverSourcePin> admitted = List<DriverSourcePin>.Empty();
+        admitted.Add(primary);
+
+        JsonNode? dependencies = try reader.FindMember(driver, "dependencies");
+        if (!dependencies.HasValue)
+            return Result<List<DriverSourcePin>,string>.Success(admitted);
+
+        JsonKind kind = try reader.Kind(dependencies.Value);
+        if (kind != JsonKind.Array)
+            return Result<List<DriverSourcePin>,string>.Failure("qualification.driver_source.dependencies");
+
+        int count = try reader.Count(dependencies.Value);
+        if (count > 64)
+            return Result<List<DriverSourcePin>,string>.Failure("qualification.driver_source.dependencies");
+        for (int index = 0; index < count; index = index + 1) {
+            JsonNode declaration = try reader.At(dependencies.Value, index);
+            string path = try Field(declaration, "path", 4106);
+            string dependencyDigest = try Field(declaration, "sha256", 64);
+            DriverSourcePin pin = try Parse(path, dependencyDigest, false);
+            try Check(pin, token);
+            admitted.Add(pin);
+        }
+
+        return Result<List<DriverSourcePin>,string>.Success(admitted);
+    }
+
+    public Result<void,string> Revalidate(List<DriverSourcePin> admitted, CancellationToken token) {
+        if (admitted.Count < 1 || admitted.Count > 65)
+            return Result<void,string>.Failure("qualification.driver_source.pin_count");
+
+        foreach (DriverSourcePin pin in admitted)
+            try Check(pin, token);
+
+        return Result<void,string>.Success();
+    }
+}

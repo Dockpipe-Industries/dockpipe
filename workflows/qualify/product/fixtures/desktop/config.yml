@@ -1,0 +1,9 @@
+name: product-desktop-fixture
+description: Export pinned Linux desktop test helpers for package-owned local qualification; no CI registration.
+vault: none
+docker_preflight: false
+steps:
+  - id: export-fixture
+    kind: host
+    cwd: artifacts
+    cmd: python3 "$DOCKPIPE_WORKFLOW_DIR/../../../../shared/run.py" python3 "$DOCKPIPE_WORKFLOW_DIR/build.py"

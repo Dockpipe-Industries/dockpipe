@@ -13,6 +13,13 @@ license: Apache-2.0
 depends:
   - bash
   - git
+overrides:
+  apk:
+    # The native Linux bindings use the glibc loader.
+    depends:
+      - bash
+      - git
+      - gcompat
 contents:
   - src: "__BINARY__"
     dst: /usr/bin/dockpipe

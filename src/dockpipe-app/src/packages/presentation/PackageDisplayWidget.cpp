@@ -2,6 +2,7 @@
 #include "DesktopWindowWidget.h"
 #include "LauncherDisplayPackage.h"
 #include "LauncherNativeLibraryScope.h"
+#include "NativeDisplaySession.h"
 
 #include <QDir>
 #include <QFileInfo>
@@ -13,6 +14,7 @@
 #include <QPointer>
 #include <QShowEvent>
 #include <QSysInfo>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <cmath>
 
@@ -46,15 +48,18 @@ bool boundedValue(const QJsonValue &value, int depth, int &nodes)
 
 PackageDisplayWidget::PackageDisplayWidget(QWidget *parent) : QWidget(parent)
 {
+    m_closeSession = new NativeDisplaySession(this);
     m_layout = new QVBoxLayout(this);
     m_layout->setContentsMargins(0, 0, 0, 0);
     m_status = new QLabel;
     m_status->setTextFormat(Qt::PlainText);
     m_status->setWordWrap(true);
+    m_status->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
     m_layout->addWidget(m_status);
     m_native = new DesktopWindowWidget;
     m_native->setProperty("packageDisplay", true);
-    m_layout->addWidget(m_native);
+    m_native->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    m_layout->addWidget(m_native, 1);
     m_native->hide();
     m_status->hide();
 }
@@ -64,11 +69,38 @@ PackageDisplayWidget::~PackageDisplayWidget()
     release();
 }
 
+bool PackageDisplayWidget::updatePresentationOptions(const QJsonObject &options)
+{
+    QString error;
+    if (!m_surface || m_closing || !validateOptions(options, error)
+        || m_surface->metaObject()->indexOfMethod("setPresentationOptions(QJsonObject)") < 0)
+        return false;
+    if (!QMetaObject::invokeMethod(m_surface, "setPresentationOptions", Qt::DirectConnection,
+            Q_ARG(QJsonObject, options)))
+        return false;
+    if (m_surface->metaObject()->indexOfProperty("presentationOptions") >= 0)
+        return m_surface->property("presentationOptions").toJsonObject() == options;
+    return true;
+}
+
+QJsonObject PackageDisplayWidget::surfaceMetadata(const QByteArray &propertyName) const
+{
+    if (!m_surface || m_closing || propertyName.isEmpty() || propertyName.size() > 64
+        || propertyName.contains('\0'))
+        return {};
+    const auto value = m_surface->property(propertyName.constData());
+    if (!value.canConvert<QJsonObject>())
+        return {};
+    const auto metadata = value.toJsonObject();
+    QString error;
+    return validateOptions(metadata, error) ? metadata : QJsonObject{};
+}
+
 bool PackageDisplayWidget::validateOptions(const QJsonObject &options, QString &error)
 {
     int nodes = 0;
-    if (QJsonDocument(options).toJson(QJsonDocument::Compact).size() > 16 * 1024
-        || !boundedValue(options, 0, nodes)) {
+    if (!boundedValue(options, 0, nodes)
+        || QJsonDocument(options).toJson(QJsonDocument::Compact).size() > 16 * 1024) {
         error = tr("Display options exceed 16 KiB, depth 8, 128 values, key 64 or string 4096 limits.");
         return false;
     }
@@ -121,8 +153,36 @@ void PackageDisplayWidget::clearDisplay()
     m_handedOff = false;
 }
 
+void PackageDisplayWidget::requestClose()
+{
+    if (m_closing)
+        return;
+    m_closing = true;
+    const auto generation = ++m_closeGeneration;
+    const auto complete = [this, generation](const QJsonObject &result) {
+        // A synchronous package completion must not destroy its own signal sender.
+        QTimer::singleShot(0, this, [this, generation, result] {
+            if (!m_closing || generation != m_closeGeneration)
+                return;
+            clearDisplay();
+            emit displayCloseCompleted(result);
+        });
+    };
+    disconnect(m_closeSession, nullptr, this, nullptr);
+    connect(m_closeSession, &NativeDisplaySession::closeCompleted, this, complete);
+    if (m_surface) {
+        m_surface->setEnabled(false);
+        m_surface->clearFocus();
+    }
+    if (!m_closeSession->requestClose(m_surface))
+        complete({});
+}
+
 void PackageDisplayWidget::release()
 {
+    ++m_closeGeneration;
+    m_closing = false;
+    m_closeSession->cancel();
     if (leases.value(leaseKey()) == this)
         leases.remove(leaseKey());
     if (m_surface) {
@@ -143,7 +203,7 @@ void PackageDisplayWidget::release()
 
 void PackageDisplayWidget::acquire()
 {
-    if (m_handedOff || !isVisible())
+    if (m_handedOff || m_closing || !isVisible())
         return;
     if (m_display.processId > 0) {
         m_native->show();
@@ -217,7 +277,8 @@ void PackageDisplayWidget::acquire()
         return;
     }
     leases.insert(leaseKey(), this);
-    m_layout->addWidget(m_surface);
+    m_surface->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    m_layout->addWidget(m_surface, 1);
     m_surface->statusChanged = [this](const QString &message) {
         m_status->setText(message.left(4096));
         m_status->setVisible(!message.isEmpty());
@@ -236,6 +297,12 @@ void PackageDisplayWidget::showEvent(QShowEvent *event)
 
 void PackageDisplayWidget::hideEvent(QHideEvent *event)
 {
-    release();
+    if (m_keepSessionOnHide && m_surface && !m_closing) {
+        m_surface->clearFocus();
+    } else if (m_closeOnHide && (m_surface || m_closing)) {
+        requestClose();
+    } else {
+        release();
+    }
     QWidget::hideEvent(event);
 }

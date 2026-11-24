@@ -95,6 +95,12 @@ static int runSecurityFixture()
             status["expires_at"] = "2026-10-27T14:00:00Z";
             status["detail"] = "Fixture authorization active.";
         }
+        const QByteArray policyFixture = readFile(directory.filePath(QStringLiteral("security-policy-status")));
+        if (!policyFixture.isEmpty()) {
+            const QJsonObject policy = QJsonDocument::fromJson(policyFixture).object();
+            status["idle_seconds"] = policy.value(QStringLiteral("idle_seconds"));
+            status["absolute_seconds"] = policy.value(QStringLiteral("absolute_seconds"));
+        }
         status["capabilities"] = capabilities;
         const QByteArray json = QJsonDocument(status).toJson(QJsonDocument::Compact) + '\n';
         return output.write(json) == json.size() && output.flush() ? 0 : 10;
@@ -144,14 +150,18 @@ int main(int argc, char **argv)
     auto *status = widget.findChild<QLabel *>(QStringLiteral("remoteSecurityStatus"));
     auto *capabilities = widget.findChild<QLabel *>(QStringLiteral("remoteSecurityCapabilities"));
     auto *idle = widget.findChild<QSpinBox *>(QStringLiteral("remoteSecurityIdleSeconds"));
+    auto *absolute = widget.findChild<QSpinBox *>(QStringLiteral("remoteSecurityAbsoluteSeconds"));
     auto *screenLock = widget.findChild<QCheckBox *>(QStringLiteral("remoteSecurityLockOnScreenLock"));
     auto *sleepLock = widget.findChild<QCheckBox *>(QStringLiteral("remoteSecurityLockOnSleep"));
     auto *unlock = widget.findChild<QPushButton *>(QStringLiteral("remoteSecurityUnlock"));
     auto *lock = widget.findChild<QPushButton *>(QStringLiteral("remoteSecurityLock"));
     auto *savePolicy = widget.findChild<QPushButton *>(QStringLiteral("remoteSecuritySavePolicy"));
-    CHECK(status && capabilities && idle && screenLock && sleepLock && unlock && lock && savePolicy);
+    CHECK(status && capabilities && idle && absolute && screenLock && sleepLock && unlock && lock && savePolicy);
     CHECK(waitUntil([&]() { return status->text().contains(QStringLiteral("locked")); }));
     CHECK(idle->value() == 300 && idle->isEnabled());
+    CHECK(absolute->value() == 3600 && absolute->isEnabled());
+    CHECK(idle->minimum() == 60 && idle->maximum() == 43200);
+    CHECK(absolute->minimum() == 60 && absolute->maximum() == 43200);
     CHECK(!screenLock->isChecked() && screenLock->isEnabled());
     CHECK(sleepLock->isChecked() && sleepLock->isEnabled());
     CHECK(capabilities->text().contains(QStringLiteral("Idle lock: after 300 seconds")));
@@ -164,12 +174,14 @@ int main(int argc, char **argv)
     CHECK(readFile(directory.filePath(QStringLiteral("security-action-args"))) == "remote\nunlock\n--auth\nauto\n");
     CHECK(readFile(directory.filePath(QStringLiteral("security-status-args"))) == "remote\nsecurity-status\n--auth\nnever\n");
 
-    idle->setValue(420);
+    idle->setValue(43200);
+    absolute->setValue(43200);
     sleepLock->setChecked(false);
     CHECK(QMetaObject::invokeMethod(&widget, "savePolicy", Qt::DirectConnection));
     const QString policyPath = directory.filePath(QStringLiteral("security-policy-args"));
     CHECK(waitUntil([&]() { return QFileInfo::exists(policyPath); }));
-    CHECK(readFile(policyPath) == "remote\nsecurity-policy\n--idle-seconds\n420\n"
+    CHECK(readFile(policyPath) == "remote\nsecurity-policy\n--idle-seconds\n43200\n"
+                                  "--absolute-seconds\n43200\n"
                                   "--lock-on-screen-lock=false\n--lock-on-sleep=false\n--auth\nauto\n");
     CHECK(waitUntil([&]() { return lock->isEnabled(); }));
 
@@ -216,6 +228,40 @@ int main(int argc, char **argv)
     widget.refresh();
     CHECK(waitUntil([&]() { return status->text().contains(QStringLiteral("security controls are unavailable on this host")); }));
     CHECK(!savePolicy->isEnabled() && unlock->isEnabled() && lock->isEnabled());
+    CHECK(!idle->isEnabled() && !absolute->isEnabled());
+
+    CHECK(QFile::remove(directory.filePath(QStringLiteral("security-unavailable"))));
+    const QString policyFixturePath = directory.filePath(QStringLiteral("security-policy-status"));
+    const auto refreshPolicy = [&](const QJsonValue &idleSeconds, const QJsonValue &absoluteSeconds) {
+        const QJsonObject policy{{"idle_seconds", idleSeconds}, {"absolute_seconds", absoluteSeconds}};
+        if (!writeFile(policyFixturePath, QJsonDocument(policy).toJson(QJsonDocument::Compact)))
+            return false;
+        widget.refresh();
+        return waitUntil([&]() { return refreshButton->isEnabled(); });
+    };
+    CHECK(refreshPolicy(43200, 43200));
+    CHECK(status->property("securityState").toString() == QStringLiteral("locked"));
+    CHECK(idle->value() == 43200 && absolute->value() == 43200);
+    CHECK(capabilities->text().contains(QStringLiteral("Authentication required after 43200 seconds")));
+    CHECK(savePolicy->isEnabled());
+    CHECK(refreshPolicy(60, 60));
+    CHECK(idle->value() == 60 && absolute->value() == 60);
+    CHECK(savePolicy->isEnabled());
+
+    const QJsonValue invalidDurations[]{59, 43201, 3600.5, "43200", QJsonValue(QJsonValue::Null)};
+    for (const QJsonValue &invalidDuration : invalidDurations) {
+        CHECK(refreshPolicy(300, invalidDuration));
+        CHECK(status->property("securityState").toString() == QStringLiteral("unavailable"));
+        CHECK(!savePolicy->isEnabled() && !absolute->isEnabled());
+        CHECK(unlock->isEnabled() && lock->isEnabled());
+        CHECK(refreshPolicy(invalidDuration, 3600));
+        CHECK(status->property("securityState").toString() == QStringLiteral("unavailable"));
+        CHECK(!savePolicy->isEnabled() && !idle->isEnabled());
+    }
+    CHECK(QFile::remove(policyFixturePath));
+    widget.refresh();
+    CHECK(waitUntil([&]() { return savePolicy->isEnabled(); }));
+    CHECK(idle->value() == 300 && absolute->value() == 3600);
 
     std::puts("Remote security status, CLI policy updates, lock/unlock and unavailable capabilities passed.");
     return 0;

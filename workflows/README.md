@@ -18,7 +18,7 @@ python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml
 | `build/go-sdk`, `build/display-sdk`, `build/launcher-sdk` | Independent SDK producers and their source contracts |
 | `build/desktop`, `build/desktop-development`, `build/flatpak` | Native desktop, developer builds and Flatpak qualification |
 | `build/platform` | Explicit release identity, CLI build, archive assembly and native Linux packaging |
-| `package/linux-cli`, `package/macos`, `package/windows-msi` | Installers consuming produced binaries and explicit optional stores |
+| `package/linux-cli`, `package/synology`, `package/synology-desktop-spk`, `package/synology-desktop`, `package/macos`, `package/windows-msi` | Installers and container desktop bundles consuming produced binaries and explicit optional stores |
 | `dependencies/browser-sdk`, `qualify/cockpit` | Pinned external ABI inputs and separate optional package qualification |
 | `catalog/compose` | Explicit pinned catalog composition; never a default CLI dependency |
 | `ci` | Runtime, shell, native and workflow contract checks |

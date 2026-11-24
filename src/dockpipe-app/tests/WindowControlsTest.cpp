@@ -6,6 +6,9 @@
 #include <QLabel>
 #include <QMainWindow>
 #include <QMenuBar>
+#include <QMouseEvent>
+#include <QPushButton>
+#include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QToolButton>
@@ -16,7 +19,40 @@ class WindowControlsTest final : public QObject {
 private slots:
     void mainWindowActions();
     void dialogCloseRejects();
+    void interruptedFallbackDragKeepsControlsClickable();
 };
+
+void WindowControlsTest::interruptedFallbackDragKeepsControlsClickable()
+{
+    QDialog dialog;
+    dialog.resize(500, 300);
+    auto *layout = new QVBoxLayout(&dialog);
+    auto *button = new QPushButton("Continue");
+    layout->addWidget(button);
+    dialog.show();
+    QCoreApplication::processEvents();
+    auto *heading = dialog.findChild<QLabel *>("dialogHeading");
+    QVERIFY(heading);
+    QSignalSpy clicked(button, &QPushButton::clicked);
+    const QPoint point = heading->rect().center();
+    QMouseEvent press(QEvent::MouseButtonPress, point, heading->mapToGlobal(point),
+        Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+    QApplication::sendEvent(heading, &press);
+    if (QWidget::mouseGrabber() != &dialog)
+        QSKIP("The platform handles window moving natively; no fallback capture was acquired.");
+    const QPoint original = dialog.pos();
+    button->grabMouse();
+    QCOMPARE(QWidget::mouseGrabber(), button);
+    button->releaseMouse();
+    const QPoint destination = button->rect().center();
+    QMouseEvent move(QEvent::MouseMove, destination, button->mapToGlobal(destination),
+        Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+    QApplication::sendEvent(button, &move);
+    QCOMPARE(dialog.pos(), original);
+    QTest::mouseClick(button, Qt::LeftButton);
+    QCOMPARE(clicked.count(), 1);
+    QVERIFY(!QWidget::mouseGrabber());
+}
 
 void WindowControlsTest::mainWindowActions()
 {

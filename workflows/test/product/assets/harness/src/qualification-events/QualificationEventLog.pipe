@@ -1,0 +1,101 @@
+module Dockpipe.Product.QualificationEvents;
+import PipeLang.IO;
+
+// Composition supplies the same admitted output root to both file effects.
+// The caller supplies a serialized single-line JSON record and owns resume
+// authorization and reconciliation of uncertain earlier output.
+public Class QualificationEventLog {
+    private ExclusiveFileOutput output;
+    private ExistingFileAppend append;
+    private string relative;
+    private bool bound = false;
+    private int maximumBytes = 0;
+    private AppendFileState current = new AppendFileState {};
+
+    public QualificationEventLog(ExclusiveFileOutput output, ExistingFileAppend append, string relative) {
+        this.output = output;
+        this.append = append;
+        this.relative = relative;
+    }
+
+    private Result<void,IoFailure> Bind(int limit, CancellationToken token) {
+        AppendFileState initial = try append.InspectAppendTarget(relative, limit, token);
+        current = initial;
+        maximumBytes = limit;
+        bound = true;
+        return Result<void,IoFailure>.Success();
+    }
+
+    public Result<void,IoFailure> Create(int limit, CancellationToken token) {
+        if (bound)
+            return Result<void,IoFailure>.Failure(IoFailure("qualification.events.already_bound", OutputEffect.NoDurableOutput));
+        if (limit < 0 || limit > 8589934592)
+            return Result<void,IoFailure>.Failure(IoFailure("qualification.events.invalid_limit", OutputEffect.NoDurableOutput));
+
+        int handle = try output.BeginExclusiveOutput(relative, 0, token);
+        Result<FileDigest,IoFailure> committed = Result<FileDigest,IoFailure>.Failure(
+            IoFailure("qualification.events.create_incomplete", OutputEffect.Unknown));
+        Result<OutputEffect,IoFailure> closed = Result<OutputEffect,IoFailure>.Failure(
+            IoFailure("qualification.events.close_incomplete", OutputEffect.Unknown));
+        try {
+            committed = output.CommitOutput(handle, token);
+        } finally {
+            closed = output.CloseOutput(handle);
+        }
+
+        if (!committed.IsSuccess)
+            return PropagateCreateFailure(committed, closed);
+        if (!closed.IsSuccess)
+            return Result<void,IoFailure>.Failure(closed.Error);
+
+        Result<void,IoFailure> attached = Bind(limit, token);
+        if (attached.IsSuccess)
+            return attached;
+
+        IoFailure failure = IoFailure(attached.Error.code, OutputEffect.Committed);
+        if (attached.IsCancelled)
+            return Result<void,IoFailure>.Cancelled(failure);
+
+        return Result<void,IoFailure>.Failure(failure);
+    }
+
+    private Result<void,IoFailure> PropagateCreateFailure(Result<FileDigest,IoFailure> committed,
+                                                          Result<OutputEffect,IoFailure> closed) {
+        IoFailure failure = committed.Error;
+        if (!closed.IsSuccess)
+            failure = IoFailure(failure.code + "+" + closed.Error.code, closed.Error.effect);
+
+        if (committed.IsCancelled)
+            return Result<void,IoFailure>.Cancelled(failure);
+
+        return Result<void,IoFailure>.Failure(failure);
+    }
+
+    public Result<void,IoFailure> BindExisting(int limit, CancellationToken token) {
+        if (bound)
+            return Result<void,IoFailure>.Failure(IoFailure("qualification.events.already_bound", OutputEffect.NoDurableOutput));
+
+        return Bind(limit, token);
+    }
+
+    public Result<void,IoFailure> AppendEncodedLine(ByteBuffer bytes, CancellationToken token) {
+        if (!bound)
+            return Result<void,IoFailure>.Failure(IoFailure("qualification.events.unbound", OutputEffect.NoDurableOutput));
+        if (bytes.Length < 2 || bytes.IndexOf(ByteBuffer.FromUtf8("\n"), 0) != bytes.Length - 1)
+            return Result<void,IoFailure>.Failure(IoFailure("qualification.events.line_boundary", OutputEffect.NoDurableOutput));
+
+        Result<AppendFileState,IoFailure> appended = append.AppendExistingFile(relative, current, maximumBytes, bytes, token);
+        if (appended.IsSuccess) {
+            current = appended.Value;
+            return Result<void,IoFailure>.Success();
+        }
+
+        if (appended.Error.effect == OutputEffect.Unknown || appended.Error.code == "io.append_stale")
+            bound = false;
+
+        if (appended.IsCancelled)
+            return Result<void,IoFailure>.Cancelled(appended.Error);
+
+        return Result<void,IoFailure>.Failure(appended.Error);
+    }
+}

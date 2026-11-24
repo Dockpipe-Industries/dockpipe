@@ -219,6 +219,22 @@ startup is independent of failed new preflight results; failed recovery does not
 loop across service restarts. Linux direct-child parent-death containment and
 pinned startup images prevent orphaned/unreviewed connector startup after a crash.
 
+Explicit manual recovery is now locally qualified for an absent connector after
+a failed cutover. An optional request binds the exact failed activation, fresh
+nonce, five-minute expiry and one previously approved image/configuration. The
+failed journal is preserved byte-for-byte before new intent. A single bounded
+start verifies the active image, owned readiness and signed public HTTPS broker
+round trip. Failed or interrupted attempts never replay on boot; successful
+recovery grants normal pinned startup, not an automatic recovery loop. Focused
+domain, infrastructure and CLI race checks passed, including concurrent preview
+and activation. A separately approved private Linux application then verified
+the exact existing connector image, its owned readiness listener and signed
+public HTTPS broker round trip; paired-worker feature/network catalogs returned.
+The original failed journal was verified preserved byte-for-byte. This proves
+one local connector recovery, not broader provider/onboarding or platform support.
+Older strict readers cannot read the new optional recovery journal, so automatic
+downgrade is not part of this operation.
+
 Security review and isolated regressions cover these boundaries, actual process
 image/listener ownership, abrupt parent death, TLS/identity rejection, provider
 configuration drift and GUI approval separation. Real tunnel cutover and M6

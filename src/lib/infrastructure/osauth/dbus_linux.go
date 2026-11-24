@@ -29,6 +29,8 @@ type desktopSession struct {
 	locked bool
 }
 
+var errScreenSaverUnavailable = errors.New("desktop screen-lock integration is unavailable")
+
 func readDesktopSession(ctx context.Context, run commandRunner, name string) (desktopSession, error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
@@ -56,18 +58,22 @@ func readDesktopSession(ctx context.Context, run commandRunner, name string) (de
 	if !readBool("Active", &active) || !readBool("Remote", &remote) || !readBool("LockedHint", &locked) || !active || remote {
 		return desktopSession{}, errors.New("active local OS lock state is unavailable")
 	}
-	// Older logind versions expose LockedHint even when no desktop updates it.
-	// A supported lock capability or a real desktop lock query is required;
-	// the mere presence of a default-false hint is not evidence of integration.
-	var canLock bool
-	if !readBool("CanLock", &canLock) || !canLock {
-		desktopLocked, err := readScreenSaverLock(ctx, run, os.Getuid())
-		if err != nil {
-			return desktopSession{}, err
-		}
-		locked = locked || desktopLocked
+	if locked {
+		return desktopSession{locked: true}, nil
 	}
-	return desktopSession{locked: locked}, nil
+
+	// Some lockers can lock a session without updating logind's
+	// LockedHint even when logind advertises CanLock.
+	desktopLocked, err := readScreenSaverLock(ctx, run, os.Getuid())
+	if err == nil {
+		return desktopSession{locked: desktopLocked}, nil
+	}
+
+	var canLock bool
+	if errors.Is(err, errScreenSaverUnavailable) && readBool("CanLock", &canLock) && canLock {
+		return desktopSession{}, nil
+	}
+	return desktopSession{}, err
 }
 
 func readScreenSaverLock(ctx context.Context, run commandRunner, uid int) (bool, error) {
@@ -75,22 +81,32 @@ func readScreenSaverLock(ctx context.Context, run commandRunner, uid int) (bool,
 	services := []struct{ name, path, contract string }{
 		{"org.gnome.ScreenSaver", "/org/gnome/ScreenSaver", "org.gnome.ScreenSaver"},
 		{"org.gnome.Shell", "/org/gnome/ScreenSaver", "org.gnome.ScreenSaver"},
+		{"org.cinnamon.ScreenSaver", "/org/cinnamon/ScreenSaver", "org.cinnamon.ScreenSaver"},
 		{"org.freedesktop.ScreenSaver", "/ScreenSaver", "org.freedesktop.ScreenSaver"},
+		{"org.xfce.ScreenSaver", "/org/xfce/ScreenSaver", "org.xfce.ScreenSaver"},
 	}
+	available := false
 	for _, service := range services {
 		query, cancel := context.WithTimeout(ctx, time.Second)
 		raw, err := run(query, "/usr/bin/busctl", address, "--json=short", "--auto-start=no", "--timeout=1s", "call",
 			service.name, service.path, service.contract, "GetActive")
 		cancel()
+
 		var locked bool
 		if err == nil && decodeBusReply(raw, "b", &locked) == nil {
-			return locked, nil
+			if locked {
+				return true, nil
+			}
+			available = true
 		}
 		if ctx.Err() != nil {
 			return false, ctx.Err()
 		}
 	}
-	return false, errors.New("desktop screen-lock integration is unavailable")
+	if available {
+		return false, nil
+	}
+	return false, errScreenSaverUnavailable
 }
 
 func readGnomeIdle(ctx context.Context, run commandRunner, uid int) (time.Duration, error) {

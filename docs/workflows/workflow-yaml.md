@@ -117,6 +117,34 @@ still be created or updated by setup; a workflow delegate introduced this way is
 checked after setup and before its child commands run. Optional dependencies retain
 their normal nonblocking behavior.
 
+Use `windows_feature` instead of `command` when a Windows tool requires an
+optional Windows feature. Dockpipe checks the feature's enabled state and asks
+before running a declared `install.windows` command. A missing required feature
+blocks executable installers until it is enabled. Other platforms skip this
+check. If Windows asks for a restart, complete it and rerun the workflow.
+
+Use `windows_service` instead of either selector to require a registered
+service. Dockpipe accepts a stopped service that starts on demand and offers
+the declared installer if the service is absent. For example, a Docker setup
+workflow can require `WslService` and offer the Microsoft WSL installer when
+Windows only has a launcher. Use a separate run check to verify the Docker
+engine responds after setup.
+
+```yaml
+platforms: [windows]
+dependencies:
+  host:
+    - id: virtual-machine-platform
+      windows_feature: VirtualMachinePlatform
+      description: Required by the Docker Desktop WSL 2 backend
+      install:
+        windows: >-
+          $process = Start-Process dism.exe -Verb RunAs -Wait -PassThru
+          -ArgumentList '/Online','/Enable-Feature','/FeatureName:VirtualMachinePlatform','/All','/NoRestart';
+          if ($process.ExitCode -eq 3010) { Write-Error 'Restart Windows and rerun Docker setup.' };
+          exit $process.ExitCode
+```
+
 ```yaml
 platforms: [windows, deb]
 dependencies:
@@ -195,6 +223,32 @@ relative or unusable override fails without fallback. Python runs through the
 same host observation, signal and cleanup lifecycle, without Git Bash. An explicit
 `shell` retains its existing interpreter semantics. This inference applies to
 script files, not inline `cmd` text.
+
+On Linux, a host job launched without a controlling terminal or attached standard
+terminal descriptors receives its own process group. Dockpipe forwards `SIGINT`,
+`SIGHUP`, `SIGTERM`, and `SIGQUIT` received while waiting to that group, including
+foreground subprocesses such as a shell's active command. The leader remains
+unreaped until forwarding has stopped, so a later job cannot receive a signal
+intended for the completed one. Terminal-attached jobs, or launches where terminal
+absence cannot be verified, retain the existing process topology and direct-child
+forwarding. This preserves interactive input and shell stop/resume behavior.
+
+This is graceful signaling of the inherited job group, not a guarantee that
+uncooperative processes terminate or that descendants which create a new session
+or process group remain attached. It does not add a forced deadline, scan other
+processes, or replace resource-specific cleanup. Normal workflow `finally` steps
+still run through the existing workflow lifecycle after the host step returns.
+Docker attach retains direct-child forwarding; other Unix hosts retain their
+existing host signal behavior.
+
+Windows host scripts enter a private job while suspended. Interruption or an
+explicit execution-context cancellation retires that active job, joins the root
+and drains actual output EOF before core cleanup continues. Cancellation remains
+active when the root has exited but a descendant still holds an output writer.
+After ordinary completion and genuine EOF, redirected children are released so
+a script can launch a GUI/helper and return early. This also preserves ordinary
+nonzero launcher exits; registered container cleanup still follows its existing
+run-scoped policy.
 
 Inherited native Windows environment keys are case-insensitive. Dockpipe
 canonicalizes them before merging its host context so `Path` and `PATH` cannot
@@ -776,3 +830,132 @@ response and change no file. The app bounds responses to 8 MiB and cancels
 CLI operations after 30 seconds or on explicit cancellation.
 
 `dockpipe scope resolver <name> assets-dir` resolves package-owned assets from installed resolver directories/archives or configured authoring trees. A resolver may supply `config.yml` and assets without an execution `profile` when its `package.yml` explicitly declares `kind: resolver`; `config.yml` alone does not identify a resolver, even under `resolvers/`. Auth/config fields still require a profile. Package engine compatibility is checked before archive extraction or asset access. Unsafe resolver names, missing assets and legacy flat profiles fail. Callers should use this path instead of reconstructing extraction-cache locations.
+
+
+## Inline PipeLang host control
+
+A root `control` mapping opts a workflow into embedded PipeLang orchestration.
+The source is compiled by the explicitly selected installed PipeLang SDK; Dockpipe
+supplies typed `inputs` and named `steps`. This is trusted host workflow code,
+with native host execution authority. It is separate from the deferred sandboxed
+pure-expression/WASM proposal. Linux amd64 has native normal/sanitizer proof;
+Windows VM compilation, default/skip/failure/interruption with independent
+finally, and compiler-free package relocation also pass. The Windows proof uses
+the original PowerShell 5 fixture. Physical Windows 11 and macOS qualification
+remain separate. See the active [qualification status](../agents/tasks/inline-pipelang-workflows/host-control.md)
+for current limits and continuation work.
+
+```yaml
+name: controlled-build
+vars:
+  BUILD_ALL: "false"
+  BUILD_MODE: "OFF"
+control:
+  schema: 1
+  kind: host
+  source: |
+    if (inputs.allProfiles) {
+        foreach (string mode in inputs.profiles) {
+            try steps.build.Run(mode);
+        }
+    } else {
+        try steps.build.Run(inputs.selectedProfile);
+    }
+  inputs:
+    allProfiles: {type: bool, env: BUILD_ALL}
+    selectedProfile: {type: string, env: BUILD_MODE}
+    profiles: {type: List<string>, value: ["OFF", "ON"]}
+  limits:
+    max_calls: 128
+    compute_timeout_seconds: 5
+steps:
+  - id: build
+    kind: host
+    run: assets/scripts/build.sh
+    control:
+      parameters:
+        - name: mode
+          type: string
+          env: BUILD_MODE
+finally:
+  - kind: host
+    run: assets/scripts/cleanup.sh
+```
+
+`source` must be a literal YAML block (`|` or `|-`), at most 65536 UTF-8 bytes,
+without NUL. Folded/quoted scalars, aliases, merges, explicit tags and unknown
+fields in control mappings fail validation. `schema: 1` and `kind: host` are
+required. PipeLang's compiler owns language semantics, including `if`, `foreach`
+and `try`. Calls are synchronous: `try steps.build.Run(mode);` invokes the
+ordinary step dispatcher and propagates failure or cancellation. The framework
+supplies the enclosing `Result<void,string>` method and its final success return;
+no `await` is needed.
+
+Body steps retain ordinary runtime, resolver, package and host declarations.
+Each needs a unique ASCII identifier (`[A-Za-z_][A-Za-z0-9_]*`, at most 64
+characters); there must be 1–128 body steps. Async groups and nonblocking body
+steps are unavailable in this profile. YAML imports cannot contain or accompany
+root control. Core cleanup executes `finally` independently of the control body;
+cleanup steps have no control parameters or callable `steps` entries. The
+controller's cancellation context reaches each active host-script, inline-command
+and sourced pre-script callback through call-local execution adapters. Core finally
+retains the parent execution context. Sourced pre-scripts capture their environment
+privately. Linux terminal-free cancellation, inherited output and independent
+cleanup pass native tests; Windows Bash sourcing remains unqualified because the
+retained test VM has no Bash. On Unix topologies without owned descendant custody,
+cancellation aborts capture and reports unproven descendant closure. The inherited
+sourced-output capture contract still has no byte limit.
+
+### Inputs and step arguments
+
+`control.inputs` declares at most 64 identifier-named fields. Each declares
+`type: bool`, `int`, `string` or `List<string>` and exactly one explicit `value`
+literal or nonempty `env` reference. False, empty strings and empty lists are
+valid literals. The controller receives an immutable typed input snapshot; it
+does not inherit the workflow environment. Environment references parse strict
+`true`/`false` booleans, canonical signed 64-bit integers, UTF-8 strings, or JSON
+arrays of strings. No implicit environment binding or string interpolation takes
+place in source. Strings are at most 65536 UTF-8 bytes without NUL; string lists
+have at most 256 elements. The runtime also bounds the complete input frame.
+
+A step's ordered `control.parameters` list defines its generated `Run` arguments.
+Each parameter has a unique identifier `name`, scalar `type` (`bool`, `int` or
+`string`), and unique portable uppercase `env` key. There are at most 16
+parameters per step. `DOCKPIPE_*`, `LD_*`, `DYLD_*`, `PATH`, `HOME`, `USERPROFILE`,
+`SYSTEMROOT`, `COMSPEC`, `BASH_ENV` and `ENV` are reserved. Arguments cross this
+explicit data-to-environment boundary; they are not shell source. A differing
+value cannot override an explicitly locked caller binding.
+
+Workflow `vars` supply defaults while inherited environment and explicit `--var`
+values retain existing precedence. For the example, `--var BUILD_ALL=true`
+selects both modes. Do not also lock `BUILD_MODE` to one value when requesting
+both. Legacy `outputs: file.env` still merges string values for later steps;
+this first profile has no typed step-output API and does not mutate the control
+input snapshot.
+
+### Build, admission and budgets
+
+Build explicitly before running:
+
+```sh
+dockpipe workflow build-control ./config.yml \
+  --sdk /absolute/installed/pipelang-sdk \
+  --sdk-sha256 <verified-sdk-manifest-sha256> \
+  --workdir /absolute/project
+```
+
+See [CLI build options](../cli-reference.md#workflow-control-build). The installed
+SDK and CMake produce a native controller binary cached per workdir, definition
+and platform. Run verifies the artifact before effects. Missing, stale or tampered
+artifacts return `build_required`; run never invokes a compiler, downloads tools,
+JIT-compiles source or silently repairs the cache. Rebuild explicitly after
+changing source, declarations or build identities. Portable package artifact
+bundling is planned and is not yet a qualified distribution path.
+
+`limits.max_calls` defaults to 128 and allows at most 4096 callback attempts.
+`limits.compute_timeout_seconds` defaults to 5 and allows at most 60 seconds of
+controller computation; zero selects the default for either field. The compute
+clock pauses while an ordinary step runs, and that step retains its existing
+lifetime policy. The fixed SDK source execution budget is 65536 and is not a YAML
+setting. All callback attempts count against the call budget; protocol violations
+are fatal. These bounds govern orchestration and do not sandbox trusted host code.

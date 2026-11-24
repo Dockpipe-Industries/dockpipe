@@ -21,7 +21,7 @@ var (
 	dockerPullFn              = infrastructure.DockerPull
 	composeLifecycleFn        = infrastructure.RunComposeLifecycle
 	runContainerFn            = infrastructure.RunContainer
-	sourceHostScriptFn        = infrastructure.SourceHostScript
+	sourceHostScriptFn        = executeSourceHostScript
 	runHostScriptFn           = infrastructure.RunHostScript
 	runHostCommandFn          = infrastructure.RunHostCommand
 	runHostScriptWithShellFn  = infrastructure.RunHostScriptWithShell
@@ -31,23 +31,24 @@ var (
 )
 
 type runStepsOpts struct {
-	wf             *domain.Workflow
-	wfRoot         string
-	wfConfig       string
-	repoRoot       string
-	projectRoot    string // Dockpipe project dir (--workdir / cwd); script resolution for scripts/…
-	cliArgs        []string
-	envMap         map[string]string
-	services       *stepExecutionServices
-	locked         map[string]bool
-	userIsolate    string
-	userAct        string
-	firstStepExtra []string
-	opts           *CliOpts
-	dataVol        string
-	dataDir        string
-	resolver       string // display/branch label (ProfileLabelForEnv)
-	templateName   string
+	controlArtifactWorkdir string
+	wf                     *domain.Workflow
+	wfRoot                 string
+	wfConfig               string
+	repoRoot               string
+	projectRoot            string // Dockpipe project dir (--workdir / cwd); script resolution for scripts/…
+	cliArgs                []string
+	envMap                 map[string]string
+	services               *stepExecutionServices
+	locked                 map[string]bool
+	userIsolate            string
+	userAct                string
+	firstStepExtra         []string
+	opts                   *CliOpts
+	dataVol                string
+	dataDir                string
+	resolver               string // display/branch label (ProfileLabelForEnv)
+	templateName           string
 	// strategyHandlesCommit: parent workflow uses a named strategy whose after hook runs bundled commit.
 	// Suppress per-step bundled commit so CommitOnHost runs once after all steps (strategy after).
 	strategyHandlesCommit bool
@@ -61,10 +62,17 @@ type runStepsOpts struct {
 //   - Outputs: after all parallel steps finish, outputs files are merged in YAML order
 //     into the shared env for the next blocking step.
 func runSteps(o runStepsOpts) error {
+	if err := domain.ValidateLoadedWorkflow(o.wf); err != nil {
+		return err
+	}
 	o.services = o.executionServices()
 	dockerEnv := domain.EnvSliceToMap(o.opts.ExtraEnvLines)
 	if err := applyWorkflowContainerMountEnv(&o); err != nil {
 		return err
+	}
+
+	if o.wf.Control != nil {
+		return runWorkflowFinally(o, runWorkflowControl(&o, dockerEnv))
 	}
 
 	n := len(o.wf.Steps)
@@ -133,6 +141,7 @@ func runWorkflowFinally(o runStepsOpts, runErr error) error {
 	finallyWf := *o.wf
 	finallyWf.Steps = append([]domain.Step(nil), o.wf.Finally...)
 	finallyWf.Finally = nil
+	finallyWf.Control = nil
 	finallyOpts := o
 	finallyOpts.wf = &finallyWf
 	finallyOpts.phase = "Finally"
@@ -456,25 +465,26 @@ func runStepPackageWorkflow(o *runStepsOpts, i, n int, step domain.Step, dockerE
 	}
 	// Call runSteps directly (not runStepsAppFn) to avoid init cycle with run.go.
 	if err := runSteps(runStepsOpts{
-		wf:                    subWf,
-		wfRoot:                wfRoot,
-		wfConfig:              wfPath,
-		repoRoot:              o.repoRoot,
-		projectRoot:           o.projectRoot,
-		cliArgs:               o.cliArgs,
-		envMap:                o.envMap,
-		services:              o.services,
-		locked:                o.locked,
-		userIsolate:           "",
-		userAct:               "",
-		firstStepExtra:        nil,
-		opts:                  o.opts,
-		dataVol:               o.dataVol,
-		dataDir:               o.dataDir,
-		resolver:              wfName,
-		templateName:          "",
-		strategyHandlesCommit: o.strategyHandlesCommit,
-		phase:                 o.phase,
+		wf:                     subWf,
+		wfRoot:                 wfRoot,
+		wfConfig:               wfPath,
+		repoRoot:               o.repoRoot,
+		projectRoot:            o.projectRoot,
+		controlArtifactWorkdir: o.controlArtifactRoot(),
+		cliArgs:                o.cliArgs,
+		envMap:                 o.envMap,
+		services:               o.services,
+		locked:                 o.locked,
+		userIsolate:            "",
+		userAct:                "",
+		firstStepExtra:         nil,
+		opts:                   o.opts,
+		dataVol:                o.dataVol,
+		dataDir:                o.dataDir,
+		resolver:               wfName,
+		templateName:           "",
+		strategyHandlesCommit:  o.strategyHandlesCommit,
+		phase:                  o.phase,
 	}); err != nil {
 		return err
 	}
@@ -509,7 +519,7 @@ func runBlockingStep(o *runStepsOpts, i, n int, dockerEnv map[string]string) err
 			if err := validateStepResolverKind(step, ra, ProfileLabelForEnv(effRt, effRs), i); err != nil {
 				return err
 			}
-			prepared, err = prepareResolverWorkflow(o.services.loadWorkflow, ra.Workflow, o.repoRoot, o.opts)
+			prepared, err = prepareResolverWorkflow(o.services.loadWorkflow, ra.Workflow, o.repoRoot, o.opts, o.controlArtifactRoot())
 		}
 	}
 	if err != nil {
@@ -537,7 +547,7 @@ func runBlockingStep(o *runStepsOpts, i, n int, dockerEnv map[string]string) err
 		// Setup can create or change a resolver profile. Newly introduced child
 		// workflows are admitted now, before any of their execution begins.
 		if stepUsesResolverWorkflow(ra) {
-			prepared, err = prepareResolverWorkflow(o.services.loadWorkflow, ra.Workflow, o.repoRoot, o.opts)
+			prepared, err = prepareResolverWorkflow(o.services.loadWorkflow, ra.Workflow, o.repoRoot, o.opts, o.controlArtifactRoot())
 			if err != nil {
 				return err
 			}
@@ -750,6 +760,13 @@ func applyStepCWDEnv(o *runStepsOpts, step domain.Step, envMap, dockerEnv map[st
 	}
 	if err := applyWorkflowArtifactEnv(envMap, sourceRoot, firstNonEmpty(envMap["DOCKPIPE_WORKFLOW_NAME"], workflowStateScopeHint(o.opts, o.wfRoot, o.wf, "", ""))); err != nil {
 		return err
+	}
+	// Host-run observation belongs to the admitted project even when the caller
+	// omitted --workdir. Keep an explicit workdir unchanged, independently of
+	// this step's selected source/artifact cwd.
+	if strings.TrimSpace(envMap["DOCKPIPE_WORKDIR"]) == "" && !o.locked["DOCKPIPE_WORKDIR"] {
+		envMap["DOCKPIPE_WORKDIR"] = sourceRoot
+		dockerEnv["DOCKPIPE_WORKDIR"] = sourceRoot
 	}
 	defaultSourceRoot := envMap["DOCKPIPE_SOURCE_ROOT"]
 	defaultArtifactRoot := envMap["DOCKPIPE_ARTIFACT_ROOT"]

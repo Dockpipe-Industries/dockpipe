@@ -1,0 +1,8 @@
+module Dockpipe.Product.FreshLane.Tests;
+
+public Record FreshLaneSummary {
+    public int requested = 0;
+    public int admitted = 0;
+    public int passed = 0;
+    public string requestSha256 = "";
+}

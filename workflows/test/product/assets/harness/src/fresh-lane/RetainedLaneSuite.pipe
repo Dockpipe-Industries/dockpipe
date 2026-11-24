@@ -1,0 +1,91 @@
+module Dockpipe.Product.FreshLane.Tests;
+import Dockpipe.Product.DriverSources;
+import Dockpipe.Product.FreshLane;
+import Dockpipe.Product.LaneReceipt;
+import Dockpipe.Product.LaneRequest;
+import Dockpipe.Product.Qualification;
+import Dockpipe.Product.QualificationFiles;
+import Dockpipe.Product.RetainedLane;
+import Dockpipe.Product.RunAdmission;
+import PipeLang.IO;
+import PipeLang.Json;
+
+public model Class RetainedLaneSuite {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private FileStreams fixture;
+    private FileStreams invocation;
+    private FileStreams laneOutput;
+    private JsonDocumentOutput requestOutput;
+    private PrivateJsonStage requestDigest;
+
+    public RetainedLaneSuite(JsonReader reader, JsonStringIndexer indexer, FileStreams fixture,
+                            FileStreams invocation, FileStreams laneOutput,
+                            JsonDocumentOutput requestOutput, PrivateJsonStage requestDigest) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.fixture = fixture;
+        this.invocation = invocation;
+        this.laneOutput = laneOutput;
+        this.requestOutput = requestOutput;
+        this.requestDigest = requestDigest;
+    }
+
+    private Result<FreshLaneSummary,string> Execute(CapturedQualificationJson plan,
+                                                   CapturedQualificationJson registry,
+                                                   int maximumMetadata, CancellationToken token) {
+        DriverSourcePins pins = new DriverSourcePins(reader, fixture, fixture);
+        QualificationAdmission admission = new QualificationAdmission(reader, indexer, pins, 4096);
+        int required = try admission.Validate(plan.root, registry.root, token);
+        if (required != 1)
+            return Result<FreshLaneSummary,string>.Failure("unexpected retained fixture denominator");
+
+        RegistryJson json = new RegistryJson(reader);
+        JsonNode targets = try json.Member(plan.root, "targets");
+        JsonNode target = try reader.At(targets, 0);
+        JsonNode drivers = try json.Member(target, "drivers");
+        JsonNode driver = try reader.At(drivers, 0);
+        QualificationTarget targetView = try admission.AdmitTarget(target, registry.root, 8192, token);
+        LaneCaseSelection selected = targetView.CasesForDriver(1);
+        string runId = try json.TextMember(plan.root, "run_id", 128);
+        QualificationRunIdentity identity = QualificationRunIdentity(runId, plan.sourceFile.sha256,
+            registry.sourceFile.sha256);
+        LaneMetadataBudget budget = new LaneMetadataBudget(maximumMetadata);
+        RetainedQualificationLane lane = new RetainedQualificationLane(reader, indexer, 4096, budget,
+            invocation, laneOutput, pins, requestOutput, requestDigest);
+        try {
+            AdmittedReceipt? accepted = try lane.Revalidate(identity, target, driver, selected, token);
+            if (!accepted.HasValue)
+                return Result<FreshLaneSummary,string>.Failure("retained fixture lane did not return a receipt");
+
+            AdmittedReceipt rows = accepted.Value;
+            return Result<FreshLaneSummary,string>.Success(FreshLaneSummary(1, rows.count, rows.passing, ""));
+        } finally {
+            Result<void,string> closed = lane.Close();
+            if (!closed.IsSuccess)
+                throw Error(closed.Error);
+        }
+    }
+
+    public Result<FreshLaneSummary,string> Run(int maximumMetadata, CancellationToken token) {
+        QualificationJsonFile plan = new QualificationJsonFile(reader, fixture);
+        QualificationJsonFile registry = new QualificationJsonFile(reader, fixture);
+        JsonReadLimits limits = new JsonReadLimits {};
+        limits.inputBytes = 16384;
+        limits.retainedBytes = 262144;
+        limits.nodes = 256;
+        limits.detectUnicodeEncoding = true;
+        try {
+            CapturedQualificationJson capturedPlan = try plan.Open("plan.json", limits, token);
+            CapturedQualificationJson capturedRegistry = try registry.Open("registry.json", limits, token);
+            return Execute(capturedPlan, capturedRegistry, maximumMetadata, token);
+        } finally {
+            Result<void,string> closedPlan = plan.Close();
+            Result<void,string> closedRegistry = registry.Close();
+            if (!closedPlan.IsSuccess)
+                throw Error(closedPlan.Error);
+            if (!closedRegistry.IsSuccess)
+                throw Error(closedRegistry.Error);
+        }
+    }
+}

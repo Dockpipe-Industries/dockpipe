@@ -1,0 +1,3 @@
+module Dockpipe.Product.DriverSources;
+
+public Enum DriverSourceRoot { Product, Repository }

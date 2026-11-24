@@ -1,0 +1,9 @@
+module Dockpipe.SDK.FaultProof;
+
+public Enum FaultKind {
+    ExactArguments,
+    GracefulBreak,
+    RootExit,
+    OutputOverflow,
+    ConsoleGroup
+}

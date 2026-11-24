@@ -1,0 +1,472 @@
+module Dockpipe.SDK.FaultProof;
+import Dockpipe.SDK;
+import PipeLang.Testing;
+import PipeLang.Testing.Async;
+
+public Class TransportFaultCase : IAsyncTestCase {
+    private FaultKind kind;
+    private Client client;
+    private TestClock clock;
+    private FaultInputs inputs;
+    private FaultSignals signals;
+    private OperationId active = OperationId(0, 0);
+    private bool owned = false;
+    private bool complete = true;
+    private bool unexpectedAdmission = false;
+
+    public TransportFaultCase(FaultKind kind, Client client, TestClock clock,
+                              FaultInputs inputs, FaultSignals signals) {
+        this.kind = kind;
+        this.client = client;
+        this.clock = clock;
+        this.inputs = inputs;
+        this.signals = signals;
+    }
+
+    public pure string Id() {
+        if (kind == FaultKind.ExactArguments)
+            return "sdk.windows.exact-arguments";
+        if (kind == FaultKind.GracefulBreak)
+            return "sdk.windows.break-and-custody";
+        if (kind == FaultKind.RootExit)
+            return "sdk.windows.root-exit-live-writers";
+        if (kind == FaultKind.OutputOverflow)
+            return "sdk.windows.overflow-drain";
+
+        return "sdk.windows.console-group-exclusion";
+    }
+
+    public pure string Name() {
+        return Id();
+    }
+
+    private Result<TestStepResult,string> Failed(string code, string message) {
+        return Result<TestStepResult,string>.Success(
+            TestStepResult(TestOutcome.Failed, TestFailure(code, message)));
+    }
+
+    private Result<TestStepResult,string> Checked(Result<void,TestFailure> assertion) {
+        TestSteps steps = new TestSteps();
+
+        return Result<TestStepResult,string>.Success(steps.From(assertion));
+    }
+
+    private Result<TestStepResult,string> PhaseError(bool cancelled, string message) {
+        if (cancelled)
+            return Result<TestStepResult,string>.Cancelled(message);
+
+        return Result<TestStepResult,string>.Failure(message);
+    }
+
+    private Result<int,string> Remaining(TestDeadline deadline, CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<int,string>.Cancelled("Fault phase cancellation requested");
+
+        Result<int,string> now = clock.NowMilliseconds();
+        if (!now.IsSuccess)
+            return now;
+
+        TestDeadlines deadlines = new TestDeadlines();
+        int remaining = deadlines.RemainingMilliseconds(deadline, now.Value);
+        if (remaining == 0)
+            return Result<int,string>.Failure("Fault phase deadline exhausted");
+
+        return Result<int,string>.Success(remaining);
+    }
+
+    private WorkflowRequest Request(string mode, string operand, int outputLimit) {
+        List<string> arguments = List<string>.Empty();
+        arguments.Add(mode);
+        arguments.Add(operand);
+
+        return WorkflowRequest(inputs.ownedRoot, inputs.workflowFile, "", "",
+            List<WorkflowVariable>.Empty(), arguments, outputLimit);
+    }
+
+    private Result<OperationId,string> Start(WorkflowRequest request) {
+        Result<OperationId,string> started = client.Start(request);
+        if (started.IsSuccess) {
+            active = started.Value;
+            owned = true;
+            complete = false;
+        } else {
+            // Failed admission can retain custody after an OS-side start.
+            Result<OperationId,string> retained = client.RetainedOperation();
+            if (retained.IsSuccess) {
+                active = retained.Value;
+                owned = true;
+                complete = false;
+            }
+        }
+
+        return started;
+    }
+
+    private async Task<Result<OperationObservation,string>> Observe(
+        TestDeadline deadline, CancellationToken token) {
+        Result<int,string> remaining = Remaining(deadline, token);
+        if (!remaining.IsSuccess) {
+            if (remaining.IsCancelled)
+                return Result<OperationObservation,string>.Cancelled(remaining.Error);
+
+            return Result<OperationObservation,string>.Failure(remaining.Error);
+        }
+
+        int slice = 25;
+        if (remaining.Value < slice)
+            slice = remaining.Value;
+
+        Result<OperationObservation,string> observed = await client.Observe(active, slice, token);
+        if (observed.IsSuccess)
+            complete = observed.Value.treeComplete;
+
+        return observed;
+    }
+
+    private async Task<Result<OperationObservation,string>> WaitFor(
+        string receipt, bool requireRootExit, bool requireComplete,
+        TestDeadline deadline, CancellationToken token) {
+        // The deadline and an independent finite poll count bound even a faulty clock.
+        for (int attempt = 0; attempt < 400; attempt = attempt + 1) {
+            Result<OperationObservation,string> observed = await Observe(deadline, token);
+            if (!observed.IsSuccess)
+                return observed;
+
+            bool receiptPresent = receipt == "" ||
+                string.Utf8IndexOf(observed.Value.stdoutText, receipt, 0) >= 0;
+            if (receiptPresent && (!requireRootExit || observed.Value.exited) &&
+                (!requireComplete || observed.Value.treeComplete))
+                return observed;
+
+            if (observed.Value.treeComplete)
+                return Result<OperationObservation,string>.Failure("Tree closed before required witness");
+        }
+
+        return Result<OperationObservation,string>.Failure("Finite observation count exhausted");
+    }
+
+    private Result<void,TestFailure> Closed(OperationObservation observed, bool forced) {
+        try Assert.True(observed.exited, "Root exit is observed");
+        try Assert.True(observed.treeComplete, "Owned job and inherited writers actually close");
+        try Assert.Equal<bool>(forced, observed.forced, "Explicit force state is preserved");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    public async Task<Result<TestStepResult,string>> Setup(TestDeadline deadline, CancellationToken token) {
+        Result<int,string> remaining = Remaining(deadline, token);
+        if (!remaining.IsSuccess)
+            return PhaseError(remaining.IsCancelled, remaining.Error);
+
+        if (inputs.ownedRoot == "" || inputs.workflowFile == "")
+            return Failed("fault.inputs", "Composition must supply owned root and dummy workflow selection");
+
+        TestSteps steps = new TestSteps();
+
+        return Result<TestStepResult,string>.Success(steps.Passed());
+    }
+
+    private Result<void,TestFailure> ExactOutput(OperationObservation observed, WorkflowRequest request) {
+        try Closed(observed, false);
+        try Assert.Equal<int>(23, observed.exitCode, "Nonzero exit remains successful observed data");
+        try Assert.Equal<string>("0:\n6:é🙂\n3:a\"b\n5:tail\\\n",
+            observed.stdoutText, "Empty, UTF-8, quotes and trailing slash preserve exact argument bytes");
+        try Assert.Equal<string>("SDK_STDERR\n", observed.stderrText, "Stderr is independently captured");
+        try Assert.False(observed.stdoutTruncated, "Small exact echo is complete");
+        try Assert.False(observed.stderrTruncated, "Small stderr receipt is complete");
+        try Assert.Equal<string>("typed", request.variables.At(0).name, "Typed variable name is unchanged");
+        try Assert.Equal<string>("é=\"\\", request.variables.At(0).value, "Typed variable value is unchanged");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    private async Task<Result<TestStepResult,string>> ExactArguments(
+        TestDeadline deadline, CancellationToken token) {
+        WorkflowRequest request = Request("echo", "", 32768);
+        request.arguments.Add("é🙂");
+        request.arguments.Add("a\"b");
+        request.arguments.Add("tail\\");
+        request.variables.Add(WorkflowVariable("typed", "é=\"\\"));
+
+        Result<OperationId,string> started = Start(request);
+        if (!started.IsSuccess)
+            return PhaseError(started.IsCancelled, started.Error);
+
+        Result<OperationObservation,string> observed = await WaitFor("", true, true, deadline, token);
+        if (!observed.IsSuccess)
+            return PhaseError(observed.IsCancelled, observed.Error);
+
+        return Checked(ExactOutput(observed.Value, request));
+    }
+
+    private async Task<Result<TestStepResult,string>> Refusals(
+        WorkflowRequest request, CancellationToken token) {
+        OperationId foreign = OperationId(active.clientId + 1, active.value);
+        OperationId unknown = OperationId(active.clientId, 0);
+        Result<OperationObservation,string> rejected = await client.Observe(foreign, 0, token);
+        Result<void,TestFailure> assertion = Assert.True(rejected.IsFailure, "Foreign observation is refused");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        assertion = Assert.True(client.Interrupt(foreign).IsFailure, "Foreign interrupt is refused");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        assertion = Assert.True(client.Interrupt(unknown).IsFailure, "Unknown interrupt is refused");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        Result<OperationId,string> second = client.Start(request);
+        if (second.IsSuccess) {
+            // Preserve evidence; cleanup reconciles the retained native operation too.
+            unexpectedAdmission = true;
+            active = second.Value;
+            owned = true;
+            complete = false;
+        }
+
+        assertion = Assert.True(second.IsFailure, "A live operation excludes concurrent admission");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        Result<OperationObservation,string> cancelledWait = await signals.ObserveCancelled(active, 0);
+        assertion = Assert.True(cancelledWait.IsCancelled, "Cancellation ends observation with Cancelled");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        Result<OperationId,string> retained = client.RetainedOperation();
+        assertion = Assert.True(retained.IsSuccess, "Cancelled wait retains process custody");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        assertion = Assert.Equal<OperationId>(active, retained.Value, "Retained operation identity is unchanged");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        TestSteps steps = new TestSteps();
+
+        return Result<TestStepResult,string>.Success(steps.Passed());
+    }
+
+    private async Task<Result<TestStepResult,string>> BreakCase(
+        bool separateGroup, TestDeadline deadline, CancellationToken token) {
+        string mode = "hold";
+        if (separateGroup)
+            mode = "group-child";
+
+        WorkflowRequest request = Request(mode, "10000", 32768);
+        Result<OperationId,string> started = Start(request);
+        if (!started.IsSuccess)
+            return PhaseError(started.IsCancelled, started.Error);
+
+        Result<OperationObservation,string> ready = await WaitFor("SDK_READY\n", false, false, deadline, token);
+        if (!ready.IsSuccess)
+            return PhaseError(ready.IsCancelled, ready.Error);
+
+        if (separateGroup) {
+            ready = await WaitFor("SDK_CHILD_READY\n", false, false, deadline, token);
+            if (!ready.IsSuccess)
+                return PhaseError(ready.IsCancelled, ready.Error);
+        } else {
+            Result<TestStepResult,string> refusals = await Refusals(request, token);
+            if (!refusals.IsSuccess || refusals.Value.outcome != TestOutcome.Passed)
+                return refusals;
+        }
+
+        Result<bool,string> interrupted = client.Interrupt(active);
+        if (!interrupted.IsSuccess || !interrupted.Value)
+            return Failed("fault.break_refused", "Ready owned root must accept an actual console break");
+
+        Result<OperationObservation,string> observed = await WaitFor(
+            "SDK_BREAK_RECEIVED\n", true, !separateGroup, deadline, token);
+        if (!observed.IsSuccess)
+            return PhaseError(observed.IsCancelled, observed.Error);
+
+        if (!separateGroup)
+            return Checked(Closed(observed.Value, false));
+
+        Result<int,string> breakAt = clock.NowMilliseconds();
+        if (!breakAt.IsSuccess)
+            return Result<TestStepResult,string>.Failure(breakAt.Error);
+
+        // Observe an actual post-break interval; liveness alone cannot prove exclusion.
+        bool intervalObserved = false;
+        for (int attempt = 0; attempt < 400 && !intervalObserved; attempt = attempt + 1) {
+            observed = await Observe(deadline, token);
+            if (!observed.IsSuccess)
+                return PhaseError(observed.IsCancelled, observed.Error);
+
+            if (observed.Value.treeComplete || observed.Value.forced ||
+                string.Utf8IndexOf(observed.Value.stdoutText, "SDK_CHILD_BREAK_RECEIVED", 0) >= 0)
+                return Failed("fault.group_signal", "Different console-group child must remain live without a break receipt");
+
+            Result<int,string> now = clock.NowMilliseconds();
+            if (!now.IsSuccess)
+                return Result<TestStepResult,string>.Failure(now.Error);
+
+            intervalObserved = now.Value - breakAt.Value >= 150;
+        }
+
+        if (!intervalObserved)
+            return Failed("fault.group_interval", "Finite polling did not observe the required post-break interval");
+
+        Result<TestStepResult,string> forceResult = await ExplicitForce(deadline, token);
+
+        return forceResult;
+    }
+
+    private async Task<Result<TestStepResult,string>> ExplicitForce(
+        TestDeadline deadline, CancellationToken token) {
+        Result<int,string> remaining = Remaining(deadline, token);
+        if (!remaining.IsSuccess)
+            return PhaseError(remaining.IsCancelled, remaining.Error);
+
+        int waitMilliseconds = remaining.Value;
+        if (waitMilliseconds > 5000)
+            waitMilliseconds = 5000;
+
+        Result<OperationObservation,string> disposed = await client.ForceDispose(active, waitMilliseconds, token);
+        if (!disposed.IsSuccess)
+            return PhaseError(disposed.IsCancelled, disposed.Error);
+
+        complete = disposed.Value.treeComplete;
+
+        return Checked(Closed(disposed.Value, true));
+    }
+
+    public async Task<Result<TestStepResult,string>> Body(TestDeadline deadline, CancellationToken token) {
+        if (kind == FaultKind.ExactArguments) {
+            Result<TestStepResult,string> argumentsResult = await ExactArguments(deadline, token);
+
+            return argumentsResult;
+        }
+        if (kind == FaultKind.GracefulBreak) {
+            Result<TestStepResult,string> breakResult = await BreakCase(false, deadline, token);
+
+            return breakResult;
+        }
+        if (kind == FaultKind.ConsoleGroup) {
+            Result<TestStepResult,string> groupResult = await BreakCase(true, deadline, token);
+
+            return groupResult;
+        }
+
+        WorkflowRequest request = Request("root-exit", "10000", 32768);
+        if (kind == FaultKind.OutputOverflow)
+            request = Request("flood", "2097152", 128);
+
+        Result<OperationId,string> started = Start(request);
+        if (!started.IsSuccess)
+            return PhaseError(started.IsCancelled, started.Error);
+
+        if (kind == FaultKind.RootExit) {
+            Result<OperationObservation,string> exited = await WaitFor(
+                "SDK_CHILD_READY\n", true, false, deadline, token);
+            if (!exited.IsSuccess)
+                return PhaseError(exited.IsCancelled, exited.Error);
+
+            if (exited.Value.treeComplete || exited.Value.forced)
+                return Failed("fault.invented_eof", "Exited root cannot close live child custody and inherited writers");
+
+            Result<TestStepResult,string> forceResult = await ExplicitForce(deadline, token);
+
+            return forceResult;
+        }
+
+        Result<TestStepResult,string> overflowResult = await DrainOverflow(deadline, token);
+
+        return overflowResult;
+    }
+
+    private async Task<Result<TestStepResult,string>> DrainOverflow(
+        TestDeadline deadline, CancellationToken token) {
+        bool overflowReported = false;
+        for (int attempt = 0; attempt < 400; attempt = attempt + 1) {
+            Result<OperationObservation,string> observed = await Observe(deadline, token);
+            if (observed.IsCancelled)
+                return PhaseError(true, observed.Error);
+
+            if (observed.IsFailure) {
+                if (string.Utf8IndexOf(observed.Error, "CLI output exceeded its per-stream byte limit", 0) < 0)
+                    return PhaseError(false, observed.Error);
+
+                overflowReported = true;
+            }
+
+            Result<OperationId,string> retained = client.RetainedOperation();
+            if (retained.IsFailure) {
+                // Observe preserves overflow as Failure even after genuine EOF.
+                // Disposal of an already closed tree returns its observation
+                // without forcing it. The assertions below reject any force.
+                Result<OperationObservation,string> closed = await client.ForceDispose(active, 0, token);
+                if (!closed.IsSuccess)
+                    return PhaseError(closed.IsCancelled, closed.Error);
+
+                complete = closed.Value.treeComplete;
+                if (!overflowReported)
+                    return Failed("fault.overflow_outcome", "Overflow must retain its failure outcome");
+
+                return Checked(Overflow(closed.Value));
+            }
+        }
+
+        return Failed("fault.overflow_poll_count", "Finite drainage count exhausted before actual closure");
+    }
+
+    private Result<void,TestFailure> Overflow(OperationObservation observed) {
+        try Closed(observed, false);
+        try Assert.Equal<int>(0, observed.exitCode, "Writer completed all bytes despite capture overflow");
+        try Assert.True(observed.stdoutTruncated, "Capture overflow remains explicit");
+        try Assert.False(observed.stderrTruncated, "Independent empty stderr did not overflow");
+        try Assert.Equal<string>("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", observed.stdoutText,
+            "Capture stops at the configured bytes while native drainage continues");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    public async Task<Result<TestStepResult,string>> Cleanup(TestDeadline deadline, CancellationToken token) {
+        Result<OperationId,string> retained = client.RetainedOperation();
+        if (retained.IsSuccess) {
+            active = retained.Value;
+            owned = true;
+            complete = false;
+        }
+
+        if (owned && !complete) {
+            Result<bool,string> interrupted = client.Interrupt(active);
+            Result<int,string> remaining = Remaining(deadline, token);
+            if (interrupted.IsSuccess && remaining.IsSuccess) {
+                Result<int,string> now = clock.NowMilliseconds();
+                if (now.IsSuccess) {
+                    TestDeadline graceful = TestDeadline(now.Value + remaining.Value / 2);
+                    Result<OperationObservation,string> drained = await WaitFor("", true, true, graceful, token);
+                    if (drained.IsSuccess)
+                        complete = drained.Value.treeComplete;
+                }
+            }
+
+            if (!complete) {
+                remaining = Remaining(deadline, token);
+                if (!remaining.IsSuccess)
+                    return Failed("fault.cleanup_deadline", "Independent cleanup budget exhausted with retained custody");
+
+                Result<OperationObservation,string> disposed = await client.ForceDispose(active, remaining.Value, token);
+                if (!disposed.IsSuccess)
+                    return PhaseError(disposed.IsCancelled, disposed.Error);
+
+                complete = disposed.Value.treeComplete;
+                return Failed("fault.emergency_force", "Emergency cleanup required force; ordinary body completion is unproven");
+            }
+        }
+
+        if (unexpectedAdmission)
+            return Failed("fault.concurrent_custody", "Unexpected concurrent admission leaves original ownership unproven");
+
+        if (!complete)
+            return Failed("fault.cleanup_incomplete", "Owned tree closure remains unproven");
+
+        TestSteps steps = new TestSteps();
+
+        return Result<TestStepResult,string>.Success(steps.Passed());
+    }
+}

@@ -11,7 +11,7 @@ import (
 
 // ResolvePackagedWorkflowConfigPath finds config.yml for workflowName whose namespace: field matches
 // the requested namespace (e.g. package: dockpipe.cloudflare on the parent step). Searches on-disk
-// unpacked packages and workflows/ (staging, templates, etc.) — not tar:// blobs yet.
+// unpacked packages, declared workflow roots and compiled workflow archives.
 func ResolvePackagedWorkflowConfigPath(repoRoot, workdir, workflowName, namespace string) (string, error) {
 	workflowName = strings.TrimSpace(workflowName)
 	namespace = strings.TrimSpace(namespace)
@@ -34,7 +34,17 @@ func ResolvePackagedWorkflowConfigPath(repoRoot, workdir, workflowName, namespac
 		}
 		return p, nil
 	}
-	return "", fmt.Errorf("no workflow %q with namespace %q found (set namespace: in config.yml; unpacked packages under bin/.dockpipe/internal/packages/workflows/ or workflows/)", workflowName, namespace)
+	locator, err := resolveWorkflowTarballMatching(repoRoot, workdir, workflowName, func(_ string, config []byte) bool {
+		candidate, err := parseWorkflowNamespaceYAML(config)
+		return err == nil && candidate == namespace
+	})
+	if err != nil {
+		return "", err
+	}
+	if locator != "" {
+		return locator, nil
+	}
+	return "", fmt.Errorf("no workflow %q with namespace %q found (set namespace: in config.yml and install its package or declare its workflow root)", workflowName, namespace)
 }
 
 // ResolvePackageWorkflowConfigPath finds config.yml for workflowName inside a package whose
@@ -61,6 +71,16 @@ func ResolvePackageWorkflowConfigPath(repoRoot, workdir, workflowName, packageNa
 			continue
 		}
 		return p, nil
+	}
+	locator, err := resolveWorkflowTarballMatching(repoRoot, workdir, workflowName, func(archive string, _ []byte) bool {
+		manifest, err := workflowTarballIdentityManifest(archive, workflowName)
+		return err == nil && manifest.Name == packageName
+	})
+	if err != nil {
+		return "", err
+	}
+	if locator != "" {
+		return locator, nil
 	}
 	return "", fmt.Errorf("no workflow %q in package %q found (set name: in nearest package.yml and ensure the package is under configured workflow roots)", workflowName, packageName)
 }

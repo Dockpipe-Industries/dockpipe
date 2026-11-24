@@ -1,0 +1,45 @@
+module Dockpipe.Product.ReportProjection.StagedTests;
+import Dockpipe.Product.ReportProjection;
+import PipeLang.Json;
+
+public model Class StagedRowsSuite {
+    private JsonReader reader;
+    private JsonDocumentOutput output;
+    private ReportRows rows;
+
+    public StagedRowsSuite(JsonReader reader, JsonDocumentOutput output, ReportRows rows) {
+        this.reader = reader;
+        this.output = output;
+        this.rows = rows;
+    }
+
+    private Result<void,string> Capture(int position, string input, bool critical, string evidenceRoot,
+                                        CancellationToken token) {
+        JsonReadLimits limits = new JsonReadLimits {};
+        limits.inputBytes = 4096;
+        limits.retainedBytes = 65536;
+        int document = try reader.BeginDocument(limits);
+        try {
+            try reader.AppendDocument(document, ByteBuffer.FromUtf8(input));
+            JsonNode observed = try reader.CompleteDocument(document, token);
+            return rows.Stage(position, observed, critical, evidenceRoot, token);
+        } finally {
+            Result<void,string> closed = reader.CloseDocument(document);
+            if (!closed.IsSuccess)
+                throw Error(closed.Error);
+        }
+    }
+
+    public Result<int,string> Run(CancellationToken token) {
+        try Capture(1, "{\"id\":\"feature.b\",\"status\":\"passed\",\"extension\":true}", false,
+            "t1/d2/output", token);
+        try Capture(0, "{\"id\":\"feature.a\",\"critical\":false,\"status\":\"failed\"," +
+            "\"evidence_root\":\"wrong\",\"extension\":{\"detail\":\"\\u20ac\"}}", true, "t1/d1/output", token);
+
+        try output.BeginArray();
+        try rows.Write(0, token);
+        try rows.Write(1, token);
+        try output.EndArray();
+        return output.Finish();
+    }
+}

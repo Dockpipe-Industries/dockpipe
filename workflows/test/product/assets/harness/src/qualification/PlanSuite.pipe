@@ -1,0 +1,51 @@
+module Dockpipe.Product.Qualification.Tests;
+import Dockpipe.Product.Qualification;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+public model Class PlanSuite {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private int indexRetainedBytes;
+
+    public PlanSuite(JsonReader reader, JsonStringIndexer indexer, int indexRetainedBytes) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.indexRetainedBytes = indexRetainedBytes;
+    }
+
+    public PlanReport Run(CancellationToken token, CancellationToken cancelled) {
+        List<string> ids = List<string>.Empty();
+        ids.Add("valid");
+        ids.Add("defaults");
+        ids.Add("schema_identity");
+        ids.Add("target_bounds");
+        ids.Add("target_duplicates");
+        ids.Add("platform_and_kind");
+        ids.Add("artifact_digest");
+        ids.Add("capability_bounds_duplicates");
+        ids.Add("driver_bounds_duplicates");
+        ids.Add("feature_membership_duplicates");
+        ids.Add("scenario_layer_filters");
+        ids.Add("configuration_kind");
+        ids.Add("dependency_shape");
+        ids.Add("dependency_decoded_duplicate");
+        ids.Add("dependency_large_string");
+        ids.Add("dependency_bound");
+        ids.Add("timeout_integer_bounds");
+        ids.Add("cancelled_cleanup");
+        List<IProbeTestCase> cases = List<IProbeTestCase>.Empty();
+        for (int index = 0; index < ids.Count; index = index + 1)
+            cases.Add(new PlanContractCase(reader, indexer, indexRetainedBytes, index, ids.At(index)));
+
+        TestRunner runner = new TestRunner();
+        List<TestResult> results = runner.RunAllProbes(cases, token, cancelled);
+        bool allPassed = results.Count == ids.Count;
+        foreach (TestResult result in results) {
+            if (result.outcome != TestOutcome.Passed || !result.bodyRan || !result.cleanupRan)
+                allPassed = false;
+        }
+
+        return PlanReport(allPassed, results);
+    }
+}

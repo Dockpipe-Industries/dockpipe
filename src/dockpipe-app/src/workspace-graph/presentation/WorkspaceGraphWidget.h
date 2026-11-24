@@ -1,6 +1,7 @@
 #pragma once
 #include "LauncherUiExport.h"
 #include "WorkspaceGraphReader.h"
+#include <functional>
 #include "WorkspaceGraphView.h"
 #include <QMap>
 #include <QWidget>
@@ -34,7 +35,7 @@ public:
     int nodeCount() const { return m_nodes.size(); }
     bool hasPath(const QString &path) const { return m_nodes.contains(path); }
     bool hasMore(const QString &path) const;
-    bool busy() const { return m_reader.busy(); }
+    bool busy() const { return m_reader.busy() || property("workspaceGraphLayoutBusy").toBool(); }
     QString statusText() const;
     qint64 lastLayoutMicroseconds() const { return m_layoutMicroseconds; }
     CanvasView *canvas() const { return m_view; }
@@ -73,6 +74,12 @@ private:
     void showMenu(const QString &path, const QPoint &position);
     void configureLimits();
     void projectNodes();
+    void arrangeGraph(std::function<void()> completed = {});
+    void startPendingLayout();
+    void invalidateLayout();
+    void projectGraph();
+    void moveGraphNode(const QString &path);
+    void updateGraphEmphasis();
     void paintSelectionLabel(QPainter *painter);
     QString selection() const;
     void animateSelection();

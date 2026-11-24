@@ -2,6 +2,7 @@
 #include "DashboardAppsDialog.h"
 #include <QListWidget>
 #include "BrowserWidget.h"
+#include "RemoteBrowserWidget.h"
 #include "SendInputWidget.h"
 #include <QWebEngineView>
 #include <QTcpServer>
@@ -10,6 +11,7 @@
 #include <QCursor>
 #include <QScreen>
 #include "DashboardFilesWidget.h"
+#include "DashboardFilePreview.h"
 #include "FileExplorerView.h"
 #include <QSignalSpy>
 #include <QShortcut>
@@ -48,6 +50,7 @@
 #include <QLibrary>
 #include <QLineEdit>
 #include <QMenu>
+#include <QMouseEvent>
 #include <QPointer>
 #include <QProcess>
 #include <QPushButton>
@@ -615,6 +618,7 @@ private slots:
     void autoAcquireLifecycle_data();
     void autoAcquireLifecycle();
     void retainsAndReleasesInactiveForeignWindow();
+    void manualCanvasDesktopWindowLifecycle();
     void discoveryIncludesMinimizedAndMoreThanThreeWindows();
     void nativePointerArrangesForeignWindows();
     void dockPreferenceChangesReservedSpace();
@@ -627,6 +631,7 @@ private slots:
     void packageDisplayPickersOfferLiveResourcesInBothLayouts();
     void tourLifecycle();
     void canvasGadgetsAndBrowserTearOut();
+    void browserWidgetsPreserveIndependentRoutes();
     void fileScopesAndCanvasProjectPicker();
     void desktopBackgroundLifecycle();
 };
@@ -695,7 +700,12 @@ void DashboardPageTest::independentEnvironmentsAndRoundTrip()
     auto *tiling = page.findChild<DashboardWorkspace *>("dashboardTilingWorkspace");
     QVERIFY(canvas && tiling);
     QCOMPARE(page.environment(), QString("canvas"));
-    QVERIFY(!page.addWidgetKind("desktop-window"));
+    page.hide();
+    QVERIFY(page.addWidgetKind("desktop-window"));
+    drainEvents();
+    QCOMPARE(page.environment(), QString("canvas"));
+    page.releaseDesktopWindows();
+    page.show();
     QCOMPARE(page.panelCount(), 0);
     QVERIFY(page.addWidgetKind("files"));
     QVERIFY(page.addWidgetKind("send-input"));
@@ -1425,6 +1435,128 @@ void DashboardPageTest::discoveryIncludesMinimizedAndMoreThanThreeWindows()
 #endif
 }
 
+void DashboardPageTest::manualCanvasDesktopWindowLifecycle()
+{
+    if (qEnvironmentVariable("DOCKPIPE_ISOLATED_DESKTOP_TEST") != "1")
+        QSKIP("Desktop acquisition requires explicit opt-in on a disposable Xvfb display.");
+#ifndef DOCKPIPE_X11_BILLBOARDS
+    QSKIP("This build has no X11 native-window backend.");
+#else
+    QVERIFY2(QGuiApplication::platformName() == "xcb" && isolatedXvfbDisplay(),
+        "Refusing native acquisition: the selected display must be a verified local Xvfb server");
+    FixtureProcess fixture;
+    fixture.setProcessChannelMode(QProcess::ForwardedErrorChannel);
+    fixture.start(QCoreApplication::applicationDirPath() + "/desktop-window-fixture", {"--fixture"});
+    QVERIFY(fixture.waitForStarted(3000));
+    QByteArray output;
+    QTRY_VERIFY_WITH_TIMEOUT((output += fixture.readAllStandardOutput()).startsWith("WINDOW:")
+        && output.contains('\n'), 5000);
+    const quint64 nativeId = output.split('\n').first().mid(7).toULongLong();
+    QVERIFY(nativeId);
+    IsolatedClientList clients;
+    QVERIFY(clients.install(nativeId));
+    const quint64 originalParent = clients.parentWindow(nativeId);
+    QVERIFY(originalParent);
+
+    SessionManager sessions;
+    ContextStore contexts;
+    DashboardWidgetFactory factory(sessions, contexts);
+    auto page = std::make_unique<DashboardPage>(emptyDashboard(), &factory);
+    page->setTilingEnabled(false);
+    page->resize(1100, 780);
+    page->show();
+    auto options = page->snapshot().options;
+    options.autoAcquireApps = true;
+    QVERIFY(page->applyOptions(options));
+    QTest::qWait(300);
+    QCOMPARE(page->environment(), QString("canvas"));
+    QCOMPARE(page->panelCount(), 0);
+    QCOMPARE(clients.parentWindow(nativeId), originalParent);
+    auto *tilingButton = page->findChild<QPushButton *>("dashboardTilingMode");
+    QVERIFY(tilingButton && tilingButton->isHidden());
+
+    // Attach directly to the fixture while hidden, so the queued picker cannot
+    // become modal. The public add action still creates the Canvas panel.
+    page->hide();
+    QVERIFY(page->addWidgetKind("desktop-window"));
+    drainEvents();
+    auto *canvas = page->findChild<DashboardWorkspace *>("dashboardCanvasWorkspace");
+    QVERIFY(canvas);
+    QPointer<DesktopWindowWidget> native = canvas->findChild<DesktopWindowWidget *>();
+    QVERIFY(native);
+    QString error;
+    QVERIFY2(native->acquireWindow(nativeId, error), qPrintable(error));
+    page->show();
+    QTRY_VERIFY_WITH_TIMEOUT(native->hasInteractiveWindow()
+        && clients.descendantOf(nativeId, page->winId()) && clients.viewable(nativeId), 5000);
+    QCOMPARE(page->environment(), QString("canvas"));
+    QCOMPARE(canvas->mode(), QString("canvas"));
+    QCOMPARE(page->panelCount(), 1);
+    page->setTilingEnabled(false);
+    QCOMPARE(canvas->findChild<DesktopWindowWidget *>(), native.data());
+    QCOMPARE(native->acquiredWindowId(), nativeId);
+    QTRY_VERIFY_WITH_TIMEOUT(native->hasInteractiveWindow() && clients.viewable(nativeId), 5000);
+    auto *frame = canvas->findChild<CanvasPanel *>();
+    QVERIFY(frame && frame->isAncestorOf(native));
+    auto *header = frame->findChild<QWidget *>("dashboardPanelHeader");
+    QVERIFY(header && header->isVisible());
+    const QString panelId = header->property("dashboardPanelId").toString();
+    QVERIFY(!panelId.isEmpty());
+
+    const QRect beforeDrag = frame->geometry();
+    const QPoint pressPosition(header->width() / 2, header->height() / 2);
+    const QPoint globalPress = header->mapToGlobal(pressPosition);
+    const QPoint delta(70, 55);
+    QTest::mousePress(header, Qt::LeftButton, {}, pressPosition);
+    QMouseEvent move(QEvent::MouseMove, header->mapFromGlobal(globalPress + delta), globalPress + delta,
+        Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+    QApplication::sendEvent(header, &move);
+    QTest::mouseRelease(header, Qt::LeftButton, {}, header->mapFromGlobal(globalPress + delta));
+    QTRY_COMPARE(frame->pos(), beforeDrag.topLeft() + delta);
+    QTRY_VERIFY_WITH_TIMEOUT(native->hasInteractiveWindow() && clients.viewable(nativeId), 5000);
+    const QRect movedGeometry = frame->geometry();
+    QVERIFY(canvas->togglePanelExpanded(panelId));
+    QCOMPARE(canvas->expandedPanel(), panelId);
+    QTRY_VERIFY(frame->width() > movedGeometry.width());
+    QTRY_VERIFY_WITH_TIMEOUT(native->hasInteractiveWindow() && clients.viewable(nativeId), 5000);
+    QVERIFY(canvas->togglePanelExpanded(panelId));
+    QTRY_COMPARE(frame->geometry(), movedGeometry);
+    QCOMPARE(native->acquiredWindowId(), nativeId);
+    QCOMPARE(page->environment(), QString("canvas"));
+    QVERIFY(tilingButton->isHidden());
+
+    // Session panels and their geometry must never restore stale native IDs.
+    const auto saved = page->snapshot();
+    QVERIFY(saved.panels.isEmpty());
+    QVERIFY(!QJsonDocument(saved.layout).toJson().contains(panelId.toUtf8()));
+    DashboardPage restored(saved, &factory);
+    QCOMPARE(restored.panelCount(), 0);
+    QVERIFY(restored.findChildren<DesktopWindowWidget *>().isEmpty());
+    auto *close = frame->findChild<QToolButton *>("dashboardPanelClose");
+    QVERIFY(close && close->isVisible());
+    QTest::mouseClick(close, Qt::LeftButton);
+    QTRY_VERIFY_WITH_TIMEOUT(native.isNull(), 5000);
+    QCOMPARE(page->panelCount(), 0);
+    QTRY_VERIFY_WITH_TIMEOUT(clients.parentWindow(nativeId) == originalParent
+        && clients.viewable(nativeId), 5000);
+    QCOMPARE(fixture.state(), QProcess::Running);
+
+    // Destruction also detaches, even when the Canvas still owns the session.
+    page->hide();
+    QVERIFY(page->addWidgetKind("desktop-window"));
+    drainEvents();
+    native = canvas->findChild<DesktopWindowWidget *>();
+    QVERIFY(native);
+    QVERIFY2(native->acquireWindow(nativeId, error), qPrintable(error));
+    page->show();
+    QTRY_VERIFY_WITH_TIMEOUT(native->hasInteractiveWindow(), 5000);
+    page.reset();
+    QTRY_VERIFY_WITH_TIMEOUT(native.isNull() && clients.parentWindow(nativeId) == originalParent
+        && clients.viewable(nativeId), 5000);
+    QCOMPARE(fixture.state(), QProcess::Running);
+#endif
+}
+
 void DashboardPageTest::retainsAndReleasesInactiveForeignWindow()
 {
     if (qEnvironmentVariable("DOCKPIPE_ISOLATED_DESKTOP_TEST") != "1")
@@ -2056,7 +2188,12 @@ void DashboardPageTest::packageDisplayPickersOfferLiveResourcesInBothLayouts()
     QVERIFY(picker);
     auto *choices = picker->findChild<QListWidget *>("dashboardWidgetChoices");
     QVERIFY(choices);
-    choices->setCurrentRow(choices->count() - 1);
+    for (int row = 0; row < choices->count(); ++row) {
+        if (choices->item(row)->data(Qt::UserRole).toString().startsWith("package-display:")) {
+            choices->setCurrentRow(row);
+            break;
+        }
+    }
     const QString selectedDisplay = choices->currentItem()->data(Qt::UserRole).toString();
     QVERIFY(selectedDisplay.startsWith("package-display:"));
     factory.setPackageDisplays("example.resources", {{"resource-one", "Updated live display", 42, "boot:100"}});
@@ -2205,9 +2342,11 @@ void DashboardPageTest::staleDesktopPanelsAreNotRestored()
     const QString staleSplit = "stale-desktop-split";
     const QString staleFloating = "stale-desktop-floating";
     const QString staleCanvas = "stale-desktop-canvas";
+    const QString staleCanvasWindow = "stale-desktop-canvas-window";
     saved.panels.append({staleSplit, "desktop-window", "tiling"});
     saved.panels.append({staleFloating, "desktop-window", "tiling"});
     saved.panels.append({staleCanvas, "package-display", "canvas"});
+    saved.panels.append({staleCanvasWindow, "desktop-window", "canvas"});
     auto tiling = expectedTiling;
     const QJsonObject staleTabs{{"type", "tabs"}, {"ids", QJsonArray{staleSplit}}, {"active", staleSplit}};
     tiling["tree"] = QJsonObject{{"type", "split"}, {"orientation", "horizontal"},
@@ -2218,9 +2357,11 @@ void DashboardPageTest::staleDesktopPanelsAreNotRestored()
     auto canvas = expectedCanvas;
     auto order = canvas.value("canvasOrder").toArray();
     order.append(staleCanvas);
+    order.append(staleCanvasWindow);
     canvas["canvasOrder"] = order;
     auto geometry = canvas.value("canvas").toObject();
     geometry[staleCanvas] = QJsonArray{30, 30, 400, 300};
+    geometry[staleCanvasWindow] = QJsonArray{60, 60, 400, 300};
     canvas["canvas"] = geometry;
     saved.layout["canvas"] = canvas;
     DashboardPage restored(saved, &factory);
@@ -2375,6 +2516,37 @@ void DashboardPageTest::desktopBackgroundLifecycle()
 #endif
 }
 
+void DashboardPageTest::browserWidgetsPreserveIndependentRoutes()
+{
+    SessionManager sessions;
+    ContextStore contexts;
+    DashboardWidgetFactory factory(sessions, contexts);
+    auto definition = emptyDashboard();
+    QJsonObject savedContexts;
+    for (const QString &node : {QString("worker-a"), QString("worker-b")}) {
+        const QString id = DashboardStore::newId();
+        definition.panels.append({id, "browser"});
+        const QJsonObject target{{"node", node}, {"fingerprint", QString(64, 'a')}, {"generation", QString(64, 'b')}};
+        savedContexts[id] = QJsonObject{{"browserContextId", DashboardStore::newId()},
+            {"machine", QJsonObject{{"mode", "remote"}, {"target", target}}}};
+    }
+    definition.layout["panelContexts"] = savedContexts;
+    DashboardPage page(definition, &factory);
+    QCOMPARE(page.findChildren<RemoteBrowserWidget *>().size(), 2);
+    QCOMPARE(page.snapshot().layout.value("panelContexts").toObject(), savedContexts);
+
+    QString error;
+    QVERIFY2(page.setSharedMachineContext({}, {}, &error), qPrintable(error));
+    page.setMachineCatalog({});
+    QCOMPARE(page.snapshot().layout.value("panelContexts").toObject(), savedContexts);
+    for (auto *browser : page.findChildren<RemoteBrowserWidget *>()) {
+        QVERIFY(!browser->machineTarget().isEmpty());
+        QVERIFY(!browser->localBrowser());
+        QVERIFY(browser->findChild<QHBoxLayout *>("browserNetworkToolbar"));
+    }
+    QVERIFY2(DashboardStore::validate({page.snapshot()}, error), qPrintable(error));
+}
+
 void DashboardPageTest::canvasGadgetsAndBrowserTearOut()
 {
     SessionManager sessions;
@@ -2396,14 +2568,17 @@ void DashboardPageTest::canvasGadgetsAndBrowserTearOut()
     auto *composerFrame = canvas->findChild<CanvasPanel *>("dashboardPanel_" + composerId);
     QVERIFY(composerFrame && composerFrame->property("dashboardCapsule").toBool());
     QVERIFY(composerFrame->height() < 180);
-    QVERIFY(composerFrame->findChild<QWidget *>("dashboardPanelClose")->isHidden());
+    QVERIFY(composerFrame->findChild<QWidget *>("dashboardPanelClose")->isVisible());
     QVERIFY(composerFrame->findChild<QWidget *>("dashboardWidgetFooter")->isHidden());
     auto *source = canvas->findChild<BrowserWidget *>();
-    QVERIFY(source && source->canvasViewportMode());
+    QVERIFY(source && !source->canvasViewportMode());
+    QVERIFY(source->findChild<QLineEdit *>("browserAddress")->isVisible());
     auto *sourceFrame = canvas->findChild<CanvasPanel *>("dashboardPanel_" + definition.panels.at(2).id);
     QVERIFY(sourceFrame->findChild<QWidget *>("dashboardPanelHeader")->isHidden());
-    QVERIFY(sourceFrame->findChild<QWidget *>("dashboardCanvasBrowserGrip")->isVisible());
+    QVERIFY(!sourceFrame->findChild<QWidget *>("dashboardCanvasBrowserGrip"));
     QVERIFY(sourceFrame->findChild<QWidget *>("dashboardPanelMenuButton")->isVisible());
+    QVERIFY(sourceFrame->findChild<QWidget *>("dashboardPanelClose")->isVisible());
+    QVERIFY(sourceFrame->findChild<QWidget *>("dashboardPanelExpand")->isVisible());
     auto *view = source->activeView();
     QVERIFY(view);
     auto *profile = view->page()->profile();
@@ -2474,7 +2649,7 @@ void DashboardPageTest::fileScopesAndCanvasProjectPicker()
     auto *canvasExplorer = canvasFiles->findChild<FileExplorerView *>();
     QVERIFY(canvasExplorer);
     canvasExplorer->setMode(FileExplorerView::Mode::Folders);
-    QCOMPARE(canvasFiles->currentDirectory(), QFileInfo(firstProject.path()).canonicalFilePath());
+    QTRY_COMPARE(canvasFiles->currentDirectory(), QFileInfo(firstProject.path()).canonicalFilePath());
     auto *picker = page.findChild<QPushButton *>("dashboardCanvasProject");
     QVERIFY(picker && picker->isVisible());
     QSignalSpy projectRequested(&page, &DashboardPage::projectChangeRequested);
@@ -2489,23 +2664,25 @@ void DashboardPageTest::fileScopesAndCanvasProjectPicker()
     auto *tilingExplorer = systemFiles->findChild<FileExplorerView *>();
     QVERIFY(tilingExplorer);
     tilingExplorer->setMode(FileExplorerView::Mode::Folders);
-    QCOMPARE(systemFiles->currentDirectory(), QFileInfo(QDir::homePath()).canonicalFilePath());
+    QTRY_COMPARE(systemFiles->currentDirectory(), QFileInfo(QDir::homePath()).canonicalFilePath());
     QVERIFY(systemFiles->navigateTo(firstProject.path()));
+    QTRY_COMPARE(systemFiles->currentDirectory(), QFileInfo(firstProject.path()).canonicalFilePath());
     factory.setWorkdir(secondProject.path());
-    QCOMPARE(canvasFiles->currentDirectory(), QFileInfo(secondProject.path()).canonicalFilePath());
-    QCOMPARE(systemFiles->currentDirectory(), QFileInfo(firstProject.path()).canonicalFilePath());
+    QTRY_COMPARE(canvasFiles->currentDirectory(), QFileInfo(secondProject.path()).canonicalFilePath());
+    QTRY_COMPARE(systemFiles->currentDirectory(), QFileInfo(firstProject.path()).canonicalFilePath());
     QVERIFY(picker->toolTip().contains(QDir::toNativeSeparators(secondProject.path())));
     auto options = page.snapshot().options;
     options.canvasFileScope = "system";
     options.tilingFileScope = "project";
     QVERIFY(page.applyOptions(options));
     QCOMPARE(systemFiles->scope(), QString("project"));
-    QCOMPARE(systemFiles->currentDirectory(), QFileInfo(secondProject.path()).canonicalFilePath());
+    QTRY_COMPARE(systemFiles->currentDirectory(), QFileInfo(secondProject.path()).canonicalFilePath());
     QCOMPARE(canvasFiles->scope(), QString("system"));
-    QCOMPARE(canvasFiles->currentDirectory(), QFileInfo(QDir::homePath()).canonicalFilePath());
+    QTRY_COMPARE(canvasFiles->currentDirectory(), QFileInfo(QDir::homePath()).canonicalFilePath());
     QVERIFY(captureIfRequested(page, "file-scopes-tiling"));
     // Capture synthetic fixture names rather than the operator's home contents.
     QVERIFY(canvasFiles->navigateTo(secondProject.path()));
+    QTRY_COMPARE(canvasFiles->currentDirectory(), QFileInfo(secondProject.path()).canonicalFilePath());
     page.setEnvironment("canvas");
     QVERIFY(picker->isVisible());
     QCOMPARE(canvas->findChild<DashboardFilesWidget *>(), canvasFiles);
@@ -2513,6 +2690,34 @@ void DashboardPageTest::fileScopesAndCanvasProjectPicker()
     QCOMPARE(canvasExplorer->mode(), FileExplorerView::Mode::Folders);
     QCOMPARE(tilingExplorer->mode(), FileExplorerView::Mode::Folders);
     QVERIFY(captureIfRequested(page, "file-scopes"));
+
+    DashboardPage otherPage(emptyDashboard(), &factory);
+    QSignalSpy sidebar(&factory, &DashboardWidgetFactory::openFullView);
+    QSignalSpy globalFile(&factory, &DashboardWidgetFactory::openFile);
+    const QString previewPath = QFileInfo(readme.fileName()).canonicalFilePath();
+    emit canvasFiles->openFileRequested(previewPath);
+    auto previews = canvas->findChildren<DashboardFilePreview *>();
+    QCOMPARE(previews.size(), 1);
+    auto *preview = previews.first();
+    QCOMPARE(preview->rootPath(), QFileInfo(secondProject.path()).canonicalFilePath());
+    QTRY_COMPARE(preview->currentPath(), previewPath);
+    QCOMPARE(page.environment(), QString("canvas"));
+    QCOMPARE(otherPage.panelCount(), 0);
+    QVERIFY(sidebar.isEmpty());
+    QVERIFY(globalFile.isEmpty());
+
+    // A system Files panel keeps its chosen folder when the shell project
+    // changes; both the existing editor and a repeated request retain that root.
+    factory.setWorkdir(firstProject.path());
+    QTRY_COMPARE(canvasFiles->currentDirectory(), QFileInfo(secondProject.path()).canonicalFilePath());
+    QCOMPARE(preview->rootPath(), QFileInfo(secondProject.path()).canonicalFilePath());
+    QCOMPARE(preview->currentPath(), previewPath);
+    emit canvasFiles->openFileRequested(previewPath);
+    QCOMPARE(canvas->findChildren<DashboardFilePreview *>().size(), 1);
+    QCOMPARE(canvas->findChild<DashboardFilePreview *>(), preview);
+    QCOMPARE(otherPage.panelCount(), 0);
+    QVERIFY(sidebar.isEmpty());
+    QVERIFY(globalFile.isEmpty());
 }
 
 void DashboardPageTest::experimentalTilingGate()

@@ -1,0 +1,6 @@
+module Dockpipe.WorkflowControl.Proof;
+
+public Enum ControlPlatform {
+    Windows,
+    Linux
+}

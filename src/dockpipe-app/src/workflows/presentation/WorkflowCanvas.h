@@ -23,9 +23,11 @@ protected:
     void drawBackground(QPainter *painter, const QRectF &rect) override;
     void drawForeground(QPainter *painter, const QRectF &rect) override;
     void wheelEvent(QWheelEvent *event) override;
+    void changeEvent(QEvent *event) override;
 
 private:
     void updateConnections();
+    void refreshTheme();
     QVector<QGraphicsItem *> m_roots;
     QVector<QGraphicsPathItem *> m_connections;
 };

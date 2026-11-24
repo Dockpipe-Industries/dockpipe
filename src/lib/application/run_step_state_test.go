@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -104,7 +105,7 @@ func TestRunBlockingStepRefreshesOutputPathAfterSourcedSetup(t *testing.T) {
 	if err := os.WriteFile(setup, []byte("#!/bin/sh\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	sourceHostScriptFn = func(string, []string) (map[string]string, error) {
+	sourceHostScriptFn = func(context.Context, string, []string) (map[string]string, error) {
 		return map[string]string{"DOCKPIPE_OUTPUT_ROOT": outputRoot, "HOST_ONLY": "private"}, nil
 	}
 	runContainerFn = func(options infrastructure.RunOpts, args []string) (int, error) {
@@ -159,7 +160,7 @@ func TestRunBlockingStepLoadsOrdinaryProfileAfterSetup(t *testing.T) {
 			if existingProfile {
 				writeTestCoreResolver(t, root, "dynamic", profile("before.sh"))
 			}
-			sourceHostScriptFn = func(string, []string) (map[string]string, error) {
+			sourceHostScriptFn = func(context.Context, string, []string) (map[string]string, error) {
 				writeTestCoreResolver(t, root, "dynamic", profile("after.sh"))
 				return nil, nil
 			}

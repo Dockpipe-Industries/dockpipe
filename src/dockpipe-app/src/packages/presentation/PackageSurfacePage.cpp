@@ -1,4 +1,5 @@
 #include "PackageSurfacePage.h"
+
 #include "PackageDisplayWidget.h"
 #include "SurfaceLaunchEnvironment.h"
 #include "Context.h"
@@ -6,6 +7,7 @@
 #include "SessionManager.h"
 
 #include <QComboBox>
+#include <QDateTime>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QShowEvent>
@@ -157,6 +159,9 @@ void PackageSurfacePage::setWorkspace(const QString &workdir, const QString &bin
     m_binary = binary;
     cancelLaunch(m_expectedLaunchId);
     m_resources.clear();
+    m_preferredResourceId.clear();
+    emit resourceInventoryChanged({});
+    emit instanceStatesObserved({}, 0);
     m_display->clearDisplay();
     m_display->hide();
     emit displaysChanged({});
@@ -171,6 +176,7 @@ void PackageSurfacePage::setProviders(const QVector<ResolverMeta> &providers)
         const auto &before = m_providers[index];
         const auto &after = providers[index];
         unchanged = before.name == after.name && before.title == after.title && before.version == after.version
+            && before.processSnapshot == after.processSnapshot
             && before.surface.id == after.surface.id && before.surface.title == after.surface.title
             && before.surface.packageRoot == after.surface.packageRoot
             && before.surface.snapshot == after.surface.snapshot && before.surface.actions.size() == after.surface.actions.size()
@@ -210,7 +216,7 @@ const ResolverMeta *PackageSurfacePage::provider() const
 
 void PackageSurfacePage::setActive(bool active)
 {
-    if (active && !m_active)
+    if (active && !m_active && m_preferredResourceId.isEmpty() && selectedResource().isEmpty())
         m_selectInitialResource = true;
     m_active = active;
     updateActions();
@@ -219,7 +225,7 @@ void PackageSurfacePage::setActive(bool active)
         refresh();
     } else {
         m_poll->stop();
-        if (m_snapshotBusy)
+        if (m_snapshotBusy && !m_processOnlySnapshot)
             failOperation(m_snapshotId, tr("Refresh paused. Displayed state is stale."));
     }
 }
@@ -247,6 +253,7 @@ void PackageSurfacePage::selectProvider()
     cancelOperations();
     cancelLaunch(m_expectedLaunchId);
     m_resources.clear();
+    emit instanceStatesObserved({}, 0);
     m_display->clearDisplay();
     m_display->hide();
     emit displaysChanged({});
@@ -391,6 +398,17 @@ void PackageSurfacePage::refreshInventory()
     drainInventoryRequest();
 }
 
+void PackageSurfacePage::refreshProcessInventory()
+{
+    const auto selected = provider();
+    if (m_providers.size() != 1 || !selected || !selected->processSnapshot || m_active
+        || m_workdir.isEmpty() || m_snapshotBusy || m_sessions.isRunning(m_snapshotId)) {
+        return;
+    }
+
+    runWorkflow(selected->surface.snapshot, {}, {}, true, true);
+}
+
 void PackageSurfacePage::drainInventoryRequest()
 {
     if (!m_inventoryRefreshPending || m_snapshotBusy || m_sessions.isRunning(m_snapshotId))
@@ -431,7 +449,8 @@ void PackageSurfacePage::runAction(const PackageSurfaceActionMeta &action)
     runWorkflow(action.workflow, action.id, resource, false);
 }
 
-void PackageSurfacePage::runWorkflow(const QString &file, const QString &action, const QString &resource, bool snapshot)
+void PackageSurfacePage::runWorkflow(const QString &file, const QString &action, const QString &resource, bool snapshot,
+                                     bool processOnly)
 {
     if (!provider() || file.isEmpty() || m_sessions.isRunning(snapshot ? m_snapshotId : m_actionId))
         return;
@@ -441,6 +460,8 @@ void PackageSurfacePage::runWorkflow(const QString &file, const QString &action,
     context.workflowFile = file;
     context.dockpipeBinary = m_binary;
     context.maximumOutputLineBytes = maximumEventBytes;
+    SessionLaunchOptions options;
+    options.notifyWorkflowOutcome = !snapshot;
     context.extraDockpipeEnv = {"DOCKPIPE_SURFACE_ID=" + provider()->surface.id,
         "DOCKPIPE_SURFACE_ACTION_ID=" + action, "DOCKPIPE_SURFACE_RESOURCE_ID=" + resource};
     m_pending[context.id].clear();
@@ -449,7 +470,12 @@ void PackageSurfacePage::runWorkflow(const QString &file, const QString &action,
     if (snapshot) {
         recordInventoryTransition("snapshot-start");
         m_snapshotBusy = true;
+        m_processOnlySnapshot = processOnly;
+        if (processOnly)
+            context.extraDockpipeEnv.append(QStringLiteral("DOCKPIPE_SURFACE_SNAPSHOT_MODE=process"));
         m_snapshotReceived = false;
+        m_snapshotStartedAt = QDateTime::currentMSecsSinceEpoch();
+        m_snapshotInstanceStates.clear();
         m_snapshotDeadline->start(30000);
     } else {
         m_actionBusy = true;
@@ -458,7 +484,7 @@ void PackageSurfacePage::runWorkflow(const QString &file, const QString &action,
     }
     m_status->setText(snapshot ? tr("Refreshing… Previous state is retained.") : tr("Operation running…"));
     updateActions();
-    if (!m_sessions.launch(context, ContextStore::logsDir()))
+    if (!m_sessions.launch(context, ContextStore::logsDir(), options))
         finishOperation(context.id, false);
 }
 
@@ -494,8 +520,10 @@ void PackageSurfacePage::receiveOutput(const QString &id, const QString &text)
                 failOperation(id, error.isEmpty() ? tr("Package returned an invalid surface event.") : error);
                 return;
             }
-            if (id == m_snapshotId && document.object().value("kind").toString() == "snapshot")
+            if (id == m_snapshotId && document.object().value("kind").toString() == "snapshot") {
                 m_snapshotReceived = true;
+                captureInstanceStates();
+            }
         } else if (id == m_actionId) {
             m_output->appendPlainText(QString::fromUtf8(line).left(4096));
         }
@@ -512,6 +540,7 @@ void PackageSurfacePage::failOperation(const QString &id, const QString &message
     if (id == m_snapshotId) {
         recordInventoryTransition("snapshot-failed");
         m_stateFresh = false;
+        emit instanceStatesObserved({}, 0);
     }
     m_status->setText(message);
     updateActions();
@@ -533,6 +562,8 @@ void PackageSurfacePage::finishOperation(const QString &id, bool success)
         m_snapshotBusy = false;
         m_stateFresh = success && m_snapshotReceived && !m_failures.contains(id);
         m_snapshotDeadline->stop();
+        if (m_processOnlySnapshot && !m_stateFresh)
+            emit resourceInventoryChanged({});
     } else {
         m_actionBusy = false;
         m_actionDeadline->stop();
@@ -545,8 +576,17 @@ void PackageSurfacePage::finishOperation(const QString &id, bool success)
         m_status->setText(snapshot ? tr("State refreshed.") : tr("Operation completed. Refreshing state…"));
     m_pending.remove(id);
     updateActions();
-    if (action)
+    if (snapshot) {
+        if (m_stateFresh && m_providers.size() == 1)
+            emit instanceStatesObserved(m_snapshotInstanceStates, m_snapshotStartedAt);
+        else
+            emit instanceStatesObserved({}, 0);
+        if (m_processOnlySnapshot && m_active)
+            QTimer::singleShot(0, this, &PackageSurfacePage::refresh);
+        m_processOnlySnapshot = false;
+    } else {
         refresh();
+    }
 }
 
 void PackageSurfacePage::cancelOperations()
@@ -559,9 +599,44 @@ void PackageSurfacePage::cancelOperations()
     if (m_actionBusy)
         m_sessions.stop(m_actionId);
     m_snapshotBusy = false;
+    m_processOnlySnapshot = false;
     m_actionBusy = false;
     m_stateFresh = false;
+    m_snapshotStartedAt = 0;
+    m_snapshotInstanceStates.clear();
     m_pending.clear();
+}
+
+void PackageSurfacePage::captureInstanceStates()
+{
+    // An instance reported by multiple resources is ambiguous, regardless of
+    // whether the resources happen to agree about its state.
+    m_snapshotInstanceStates.clear();
+    for (const auto &resource : m_resources) {
+        if (resource.instanceId.isEmpty())
+            continue;
+
+        if (m_snapshotInstanceStates.contains(resource.instanceId))
+            m_snapshotInstanceStates[resource.instanceId].clear();
+        else
+            m_snapshotInstanceStates.insert(resource.instanceId, resource.state);
+    }
+}
+
+void PackageSurfacePage::selectResourceById(const QString &id)
+{
+    m_preferredResourceId = id;
+    m_selectInitialResource = false;
+    for (int row = 0; row < m_resources.size(); ++row) {
+        if (m_resources[row].id == id) {
+            m_table->selectRow(row);
+            m_preferredResourceId.clear();
+            return;
+        }
+    }
+    m_table->setCurrentCell(-1, -1);
+    m_table->clearSelection();
+    showResource();
 }
 
 bool PackageSurfacePage::applyEvent(const QJsonObject &event, QString &error)
@@ -607,6 +682,9 @@ bool PackageSurfacePage::applyEvent(const QJsonObject &event, QString &error)
         }
         seen.insert(id);
         Resource resource{id, object.value("title").toString(), object.value("state").toString(), {}, {}};
+        const auto instance = object.value("instance_id").toString();
+        if (instance.size() == 32)
+            resource.instanceId = instance;
         if (object.contains("display")) {
             const auto value = object.value("display");
             const auto display = value.toObject();
@@ -684,8 +762,11 @@ bool PackageSurfacePage::applyEvent(const QJsonObject &event, QString &error)
     for (int row = 0; row < resources.size(); ++row) {
         m_table->setItem(row, 0, new QTableWidgetItem(resources[row].title));
         m_table->setItem(row, 1, new QTableWidgetItem(resources[row].state));
-        if (m_expectedLaunchId.isEmpty() && resources[row].id == selected)
+        const auto requestedResource = m_preferredResourceId.isEmpty() ? selected : m_preferredResourceId;
+        if (m_expectedLaunchId.isEmpty() && resources[row].id == requestedResource) {
             m_table->selectRow(row);
+            m_preferredResourceId.clear();
+        }
         if (!m_expectedLaunchId.isEmpty() && (resources[row].displayProcessId > 0 || resources[row].packageDisplay)
             && resources[row].launchId == m_expectedLaunchId) {
             const QString resolved = m_expectedLaunchId;
@@ -708,7 +789,10 @@ bool PackageSurfacePage::applyEvent(const QJsonObject &event, QString &error)
     m_selectInitialResource = false;
     m_table->blockSignals(false);
     QVector<PackageDisplayMeta> displays;
+    QJsonArray inventory;
     for (const auto &resource : resources) {
+        inventory.append(QJsonObject{{"id", resource.id}, {"title", resource.title},
+            {"state", resource.state}, {"instance_id", resource.instanceId}});
         if (resource.displayProcessId > 0 || resource.packageDisplay) {
             PackageDisplayMeta display{resource.id, resource.title, resource.displayProcessId, resource.displayStartToken};
             if (resource.packageDisplay) {
@@ -720,7 +804,9 @@ bool PackageSurfacePage::applyEvent(const QJsonObject &event, QString &error)
         }
     }
     recordInventoryTransition(QString("snapshot-published-%1").arg(displays.size()));
-    emit displaysChanged(displays);
+    if (!m_processOnlySnapshot)
+        emit displaysChanged(displays);
+    emit resourceInventoryChanged(inventory);
     showResource();
     return true;
 }

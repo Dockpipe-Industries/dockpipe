@@ -1,0 +1,48 @@
+module Dockpipe.SDK;
+
+// The source facade forwards typed calls without duplicating engine policy.
+// Its injected host controls the selected executable and process ownership.
+public Class Client {
+    private Transport transport;
+
+    public Client(Transport transport) {
+        this.transport = transport;
+    }
+
+    public Result<OperationId,string> Start(WorkflowRequest request) {
+        return transport.Start(request);
+    }
+
+    public async Task<Result<OperationObservation,string>> Observe(
+        OperationId id, int waitMilliseconds, CancellationToken token) {
+        Result<OperationObservation,string> result = await transport.Observe(id, waitMilliseconds, token);
+
+        return result;
+    }
+
+    public Result<OperationId,string> StartScope(ScopeRequest request) {
+        return transport.StartScope(request);
+    }
+
+    public Result<OperationId,string> RetainedOperation() {
+        return transport.RetainedOperation();
+    }
+
+    public Result<bool,string> Interrupt(OperationId id) {
+        return transport.Interrupt(id);
+    }
+
+    public async Task<Result<OperationObservation,string>> ForceDispose(
+        OperationId id, int waitMilliseconds, CancellationToken token) {
+        Result<OperationObservation,string> result = await transport.ForceDispose(id, waitMilliseconds, token);
+
+        return result;
+    }
+
+    public async Task<Result<ScopeResult,string>> Scope(
+        ScopeRequest request, int budgetMilliseconds, CancellationToken token) {
+        Result<ScopeResult,string> result = await transport.Scope(request, budgetMilliseconds, token);
+
+        return result;
+    }
+}

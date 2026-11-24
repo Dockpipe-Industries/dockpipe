@@ -1,0 +1,162 @@
+module Dockpipe.Product.DriverClaims.Tests;
+import Dockpipe.Product.DriverClaims;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+public Class DriverClaimsCase : IProbeTestCase {
+    private JsonReader reader;
+    private int scenario;
+    private int document = 0;
+
+    public DriverClaimsCase(JsonReader reader, int scenario) {
+        this.reader = reader;
+        this.scenario = scenario;
+    }
+
+    public pure string Id() => "qualification.driver_claim." + string.FromInt(scenario);
+    public pure string Name() => "driver claim admission " + string.FromInt(scenario);
+
+    private Result<void,TestFailure> Append(string text) {
+        return Assert.True(reader.AppendDocument(document, ByteBuffer.FromUtf8(text)).IsSuccess,
+                           "actual plan filter bytes");
+    }
+
+    public Result<void,TestFailure> Setup(CancellationToken token) {
+        JsonReadLimits limits = new JsonReadLimits {};
+        limits.inputBytes = 32768;
+        limits.nodes = 1024;
+        limits.retainedBytes = 524288;
+        Result<int,string> opened = reader.BeginDocument(limits);
+        try Assert.True(opened.IsSuccess, "open bounded filter fixture");
+        document = opened.Value;
+
+        if (scenario == 8) {
+            try Append("[{\"features\":[");
+            for (int index = 0; index < 512; index = index + 1) {
+                if (index != 0)
+                    try Append(",");
+
+                try Append("\"f-" + string.FromInt(index) + "\"");
+            }
+            return Append("]}]");
+        }
+        if (scenario == 1)
+            return Append("[{\"features\":[\"feature.a\"],\"layers\":[\"human\"]}," +
+                          "{\"features\":[\"feature.a\"],\"layers\":[\"component\"]}]");
+        if (scenario == 2)
+            return Append("[{\"features\":[\"feature.a\"],\"scenarios\":[\"happy\"]}," +
+                          "{\"features\":[\"feature.a\"]}]");
+        if (scenario == 3)
+            return Append("[{\"features\":[\"feature.nonapplicable\"]}]");
+        if (scenario == 5)
+            return Append("[{\"features\":[\"feature.a\"],\"layers\":[\"human\",\"human\"]}]");
+
+        return Append("[{\"features\":[\"feature.a\"]}]");
+    }
+
+    public Result<void,TestFailure> Cleanup() {
+        if (document == 0)
+            return Result<void,TestFailure>.Success();
+
+        Result<void,string> closed = reader.CloseDocument(document);
+        return Assert.True(closed.IsSuccess && !reader.InputLength(document).IsSuccess,
+                           "independent plan fixture cleanup");
+    }
+
+    private Result<void,TestFailure> Include(TargetDriverClaims index, string id, string journey, string layer) {
+        return Assert.True(index.Include(id, journey, layer).IsSuccess, "register required row in its original scope");
+    }
+
+    private Result<void,TestFailure> FullMatrix(TargetDriverClaims index, JsonNode drivers, CancellationToken token) {
+        List<string> journeys = List<string>.Empty();
+        journeys.Add("happy");
+        journeys.Add("failure");
+        journeys.Add("cancellation");
+        journeys.Add("restart-recovery");
+        List<string> layers = List<string>.Empty();
+        layers.Add("component");
+        layers.Add("installed_e2e");
+        layers.Add("guided_ui");
+        layers.Add("human");
+        for (int feature = 0; feature < 512; feature = feature + 1) {
+            string id = "f-" + string.FromInt(feature);
+            foreach (string journey in journeys) {
+                foreach (string layer in layers)
+                    try Include(index, id, journey, layer);
+            }
+        }
+
+        Result<int,string> assigned = index.Claim(reader.At(drivers, 0).Value, token);
+        try Assert.True(assigned.IsSuccess && assigned.Value == 8192, "full original case count claimed once");
+        Result<int,string> sealed = index.Seal();
+        try Assert.True(sealed.IsSuccess && sealed.Value == 8192, "full denominator remains admitted");
+        return Assert.Equal<int>(1, index.Driver("f-511", "restart-recovery", "human").Value, "last exact slot owned");
+    }
+
+    public Result<void,TestFailure> Body(CancellationToken token) {
+        return Assert.True(false, "claim contracts require scoped probe dispatch");
+    }
+
+    public Result<void,TestFailure> BodyWithProbe(CancellationToken token, CancellationToken probeToken) {
+        Result<JsonNode,string> parsed = reader.CompleteDocument(document, token);
+        try Assert.True(parsed.IsSuccess, "actual driver configuration JSON parsed");
+        TargetDriverClaims index = new TargetDriverClaims(reader);
+        if (scenario == 8)
+            return FullMatrix(index, parsed.Value, token);
+
+        try Include(index, "feature.a", "happy", "component");
+        try Include(index, "feature.a", "happy", "human");
+        try Include(index, "feature.a", "failure", "component");
+        try Include(index, "feature.b", "happy", "component");
+        if (scenario == 4) {
+            try Assert.True(index.Seal().IsSuccess, "zero drivers remain a valid observation plan");
+            return Assert.Equal<int>(0, index.Driver("feature.a", "happy", "component").Value,
+                                     "unclaimed expected case is retained");
+        }
+        if (scenario == 7) {
+            Result<void,string> duplicate = index.Include("feature.a", "happy", "component");
+            try Assert.True(duplicate.IsFailure && duplicate.Error == "qualification.driver_claim.duplicate_expected_case",
+                            "duplicate expected row refuses");
+            return Assert.True(index.Seal().IsFailure, "invalid required rows cannot be observed");
+        }
+
+        JsonNode first = reader.At(parsed.Value, 0).Value;
+        if (scenario == 6) {
+            Result<int,string> cancelled = index.Claim(first, probeToken);
+            try Assert.True(cancelled.IsCancelled, "cancellation remains typed");
+            return Assert.True(index.Seal().IsFailure, "cancelled preflight cannot expose an execution plan");
+        }
+
+        Result<int,string> claimed = index.Claim(first, token);
+        if (scenario == 3 || scenario == 5) {
+            string expected = "qualification.driver_claim.no_cases";
+            if (scenario == 5)
+                expected = "qualification.driver_claim.filter";
+
+            try Assert.True(claimed.IsFailure && claimed.Error == expected, "typed selector refusal");
+            return Assert.True(index.Seal().IsFailure, "failed preflight cannot expose an execution plan");
+        }
+
+        try Assert.True(claimed.IsSuccess, "first driver claims applicable rows");
+        if (scenario == 2) {
+            Result<int,string> overlap = index.Claim(reader.At(parsed.Value, 1).Value, token);
+            try Assert.True(overlap.IsFailure && overlap.Error == "qualification.driver_claim.overlap",
+                            "two drivers cannot claim one target/scenario/layer row");
+            return Assert.True(index.Seal().IsFailure, "a partial invalid assignment remains unusable");
+        }
+        if (scenario == 1) {
+            Result<int,string> disjoint = index.Claim(reader.At(parsed.Value, 1).Value, token);
+            try Assert.True(disjoint.IsSuccess && disjoint.Value == 2, "disjoint layer claims use the original identities");
+        }
+
+        try Assert.Equal<int>(4, index.Seal().Value, "required row denominator remains intact");
+        try Assert.Equal<int>(1, index.Driver("feature.a", "happy", "human").Value, "first driver owns human row");
+        try Assert.Equal<int>(0, index.Driver("feature.b", "happy", "component").Value, "unclaimed row remains expected");
+        int componentDriver = 1;
+        if (scenario == 1)
+            componentDriver = 2;
+
+        return Assert.Equal<int>(componentDriver, index.Driver("feature.a", "happy", "component").Value,
+                                 "owner respects case layer");
+    }
+}

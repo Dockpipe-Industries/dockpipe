@@ -12,6 +12,10 @@ import (
 )
 
 func inspectDurableImportLegacy(workdir string, spec validatedDurableImportSpec) (durableImportManifest, error) {
+	if spec.NoLegacyImport {
+		return newDurableImportManifest("none", "", "", nil, spec), nil
+	}
+
 	stateRoot, err := StateRoot(workdir)
 	if err != nil {
 		return durableImportManifest{}, err

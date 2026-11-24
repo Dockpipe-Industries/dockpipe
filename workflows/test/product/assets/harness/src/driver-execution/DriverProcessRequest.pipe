@@ -1,0 +1,7 @@
+module Dockpipe.Product.DriverExecution;
+
+public Record DriverProcessRequest {
+    public string workdir = "";
+    public List<string> arguments = List<string>.Empty();
+    public int timeoutSeconds = 1200;
+}

@@ -15,10 +15,14 @@
 DockerResourceInspector::DockerResourceInspector(QPlainTextEdit *logs,
     const QList<QPlainTextEdit *> &inspect, QWidget *parent) : QWidget(parent)
 {
+    setObjectName("dockerInspector");
     setAttribute(Qt::WA_StyledBackground, true);
     auto *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(8, 8, 8, 8);
-    layout->setSpacing(8);
+    layout->setContentsMargins(20, 20, 20, 16);
+    layout->setSpacing(12);
+    auto *eyebrow = new QLabel(tr("RESOURCE INSPECTOR"));
+    eyebrow->setObjectName("dockerEyebrow");
+    layout->addWidget(eyebrow);
     m_title = new QLabel(tr("Select a resource"));
     m_title->setObjectName("dockerResourceTitle");
     m_title->setTextFormat(Qt::PlainText);
@@ -34,6 +38,10 @@ DockerResourceInspector::DockerResourceInspector(QPlainTextEdit *logs,
     layout->addWidget(m_state);
 
     auto *actions = new QHBoxLayout;
+    actions->setContentsMargins(0, 0, 0, 0);
+    m_resourceActions = new QWidget;
+    auto *resourceActions = new QHBoxLayout(m_resourceActions);
+    resourceActions->setContentsMargins(0, 0, 0, 0);
     m_start = new QPushButton(tr("Start"));
     m_stop = new QPushButton(tr("Stop"));
     m_start->setObjectName("dockerStart");
@@ -49,10 +57,20 @@ DockerResourceInspector::DockerResourceInspector(QPlainTextEdit *logs,
     m_exec->setToolTip(tr("Open an interactive shell in your terminal. The chosen shell must exist in the container."));
     connect(m_start, &QPushButton::clicked, this, &DockerResourceInspector::startRequested);
     connect(m_stop, &QPushButton::clicked, this, &DockerResourceInspector::stopRequested);
-    actions->addWidget(m_start);
-    actions->addWidget(m_stop);
-    actions->addWidget(m_exec);
+    resourceActions->addWidget(m_start);
+    resourceActions->addWidget(m_stop);
+    resourceActions->addWidget(m_exec);
+    actions->addWidget(m_resourceActions);
     actions->addStretch();
+    m_monitoringHost = new QWidget;
+    auto *monitoringHostLayout = new QHBoxLayout(m_monitoringHost);
+    monitoringHostLayout->setContentsMargins(0, 0, 0, 0);
+    m_monitoringControls = new QWidget;
+    auto *monitoringControls = new QHBoxLayout(m_monitoringControls);
+    monitoringControls->setContentsMargins(0, 0, 0, 0);
+    monitoringControls->setSpacing(8);
+    monitoringHostLayout->addWidget(m_monitoringControls);
+    actions->addWidget(m_monitoringHost);
     auto *pause = new QPushButton(tr("Pause updates"));
     pause->setObjectName("dockerPauseUpdates");
     pause->setCheckable(true);
@@ -60,11 +78,12 @@ DockerResourceInspector::DockerResourceInspector(QPlainTextEdit *logs,
         pause->setText(paused ? tr("Resume updates") : tr("Pause updates"));
         emit pauseChanged(paused);
     });
-    actions->addWidget(pause);
+    monitoringControls->addWidget(pause);
     auto *refresh = new QPushButton(tr("Refresh"));
     refresh->setObjectName(QStringLiteral("dockerRefresh"));
     connect(refresh, &QPushButton::clicked, this, &DockerResourceInspector::refreshRequested);
-    actions->addWidget(refresh);
+    refresh->setIcon(CanvasIcons::icon(CanvasIcons::Symbol::Refresh));
+    monitoringControls->addWidget(refresh);
     layout->addLayout(actions);
     m_related = new QLabel;
     m_related->setObjectName("dockerRelatedResources");
@@ -75,6 +94,11 @@ DockerResourceInspector::DockerResourceInspector(QPlainTextEdit *logs,
     connect(m_related, &QLabel::linkActivated, this, &DockerResourceInspector::resourceRequested);
     layout->addWidget(m_related);
 
+    m_emptySelection = new QLabel(tr("Details, logs, and available actions appear here.\nSelect a row to get started."));
+    m_emptySelection->setObjectName("dockerEmptySelection");
+    m_emptySelection->setAlignment(Qt::AlignCenter);
+    m_emptySelection->setWordWrap(true);
+    layout->addWidget(m_emptySelection, 1);
     m_tabs = new QTabWidget;
     m_tabs->setObjectName("dockerInspectorTabs");
     logs->setObjectName("dockerSelectedLogs");
@@ -108,10 +132,10 @@ DockerResourceInspector::DockerResourceInspector(QPlainTextEdit *logs,
     m_status->setTextFormat(Qt::PlainText);
     m_status->setWordWrap(true);
     footer->addWidget(m_status, 1);
-    auto *inventory = new QPushButton(tr("All resources…"));
-    inventory->setToolTip(tr("Browse the complete inventory, including resources outside the canvas limit."));
-    connect(inventory, &QPushButton::clicked, this, &DockerResourceInspector::inventoryRequested);
-    footer->addWidget(inventory);
+    m_inventory = new QPushButton(tr("All resources…"));
+    m_inventory->setToolTip(tr("Browse the complete inventory, including resources outside the canvas limit."));
+    connect(m_inventory, &QPushButton::clicked, this, &DockerResourceInspector::inventoryRequested);
+    footer->addWidget(m_inventory);
     layout->addLayout(footer);
     setSelection({});
 }
@@ -134,6 +158,10 @@ void DockerResourceInspector::setSelection(const DockerInspectorSelection &selec
     m_start->setEnabled(selection.canStart);
     m_stop->setEnabled(selection.canStop);
     m_exec->setEnabled(selection.canExec);
+    m_resourceActions->setVisible(container);
+    m_state->setVisible(!selection.status.isEmpty() && selection.kind >= 0);
+    m_related->setVisible(selection.kind >= 0);
+    m_emptySelection->setVisible(selection.kind < 0);
     m_tabs->setVisible(selection.kind >= 0);
     m_tabs->setTabEnabled(0, container);
     m_inspect->setCurrentIndex(qMax(0, selection.kind));
@@ -144,4 +172,15 @@ void DockerResourceInspector::setSelection(const DockerInspectorSelection &selec
 void DockerResourceInspector::setStatus(const QString &text)
 {
     m_status->setText(text);
+}
+
+void DockerResourceInspector::setListPresentation(bool list, QWidget *monitoringHost)
+{
+    QWidget *host = list ? monitoringHost : m_monitoringHost;
+    host->layout()->addWidget(m_monitoringControls);
+    m_monitoringControls->show();
+    m_monitoringHost->setVisible(!list);
+    m_inventory->setVisible(!list);
+    setMinimumWidth(list ? 360 : 0);
+    setMinimumHeight(list ? 440 : 0);
 }

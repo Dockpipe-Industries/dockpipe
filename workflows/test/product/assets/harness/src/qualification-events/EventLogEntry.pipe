@@ -1,0 +1,5 @@
+module Dockpipe.Product.QualificationEvents.Entry;
+import Dockpipe.Product.QualificationEvents.Tests;
+import PipeLang.IO;
+import PipeLang.Crypto;
+import PipeLang.Testing;

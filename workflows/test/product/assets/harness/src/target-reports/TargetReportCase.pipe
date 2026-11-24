@@ -1,0 +1,9 @@
+module Dockpipe.Product.TargetReports;
+import Dockpipe.Product.Qualification;
+
+public Record TargetReportCase {
+    public RegistryCase expected;
+    public int driver = 0;
+    public string missingCapabilities = "";
+    public string admittedStatus = "";
+}

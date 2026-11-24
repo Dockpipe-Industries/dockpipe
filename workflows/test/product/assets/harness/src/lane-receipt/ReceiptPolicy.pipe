@@ -1,0 +1,85 @@
+module Dockpipe.Product.LaneReceipt;
+import Dockpipe.Product.Receipt;
+import PipeLang.IO;
+import PipeLang.Json;
+
+public Class ReceiptPolicy {
+    private JsonReader reader;
+    private ReceiptJson json;
+    private ReceiptAssertionPolicy assertions;
+    private EvidencePolicy evidence;
+
+    public ReceiptPolicy(JsonReader reader, JsonStringIndexer indexer, FileStreams files, int indexRetainedBytes) {
+        this.reader = reader;
+        json = new ReceiptJson(reader);
+        assertions = new ReceiptAssertionPolicy(reader, indexer, json, indexRetainedBytes);
+        evidence = new EvidencePolicy(reader, files);
+    }
+
+    private Result<void,string> Header(JsonNode receipt, ReceiptRequest request) {
+        try json.Kind(receipt, JsonKind.Object, "object");
+        try json.Require(try json.Field(receipt, "schema", 128) == "dockpipe.product-integration.lane/v1", "schema");
+        try json.Require(try json.Field(receipt, "run_id", 128) == request.runId, "run_identity");
+        try json.Require(try json.Field(receipt, "plan_sha256", 64) == request.planSha256, "plan_identity");
+        try json.Require(try json.Field(receipt, "registry_sha256", 64) == request.registrySha256, "registry_identity");
+
+        JsonNode target = try json.Member(receipt, "target");
+        try json.Kind(target, JsonKind.Object, "target_object");
+        int fields = try reader.Count(target);
+        try json.Require(fields == 4, "target_identity");
+        try json.Require(try json.Field(target, "id", 128) == request.target.id, "target_identity");
+        try json.Require(try json.Field(target, "platform", 512) == request.target.platform, "target_identity");
+        try json.Require(try json.Field(target, "kind", 128) == request.target.kind, "target_identity");
+        return json.Require(try json.Field(target, "artifact_sha256", 64) == request.target.artifactSha256, "target_identity");
+    }
+
+    private Result<bool,string> AdmitRow(JsonNode row, ReceiptCaseIndex cases,
+                                         int exitCode, CancellationToken token) {
+        try json.Kind(row, JsonKind.Object, "case_object");
+        JsonNode expected = try cases.Observe(row);
+        string status = try json.Field(row, "status", 32);
+        bool passed = status == "passed";
+        try json.Require(passed || status == "failed" || status == "blocked" ||
+            status == "not_run" || status == "manual_pending", "case_status");
+        try json.OptionalDetail(row, "reason", token);
+        bool complete = try assertions.Admit(expected, row, token);
+
+        int admitted = 0;
+        JsonNode? items = try reader.FindMember(row, "evidence");
+        if (items.HasValue)
+            admitted = try evidence.Admit(items.Value, token);
+
+        if (passed) {
+            try json.Require(complete && admitted > 0, "incomplete_pass");
+            try json.Require(exitCode == 0, "failing_process_pass");
+        }
+
+        return Result<bool,string>.Success(passed);
+    }
+
+    // Return the raw borrowed rows only when the complete lane is admitted.
+    public Result<AdmittedReceipt,string> Admit(JsonNode receipt, ReceiptRequest request,
+                                                int processExitCode, CancellationToken token) {
+        try json.CheckCancellation(token);
+        try Header(receipt, request);
+        int requestCount = try json.Count(request.cases, 8192, "request_count");
+        JsonNode rows = try json.Member(receipt, "cases");
+        int count = try json.Count(rows, requestCount, "case_count");
+        ReceiptCaseIndex cases = new ReceiptCaseIndex(reader, json, request.cases);
+        for (int position = 0; position < requestCount; position = position + 1) {
+            try json.CheckCancellation(token);
+            JsonNode expected = try reader.At(request.cases, position);
+            try cases.Add(expected, position);
+        }
+
+        int passing = 0;
+        for (int index = 0; index < count; index = index + 1) {
+            try json.CheckCancellation(token);
+            JsonNode row = try reader.At(rows, index);
+            if (try AdmitRow(row, cases, processExitCode, token))
+                passing = passing + 1;
+        }
+
+        return Result<AdmittedReceipt,string>.Success(AdmittedReceipt(rows, count, passing));
+    }
+}

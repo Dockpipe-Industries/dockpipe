@@ -1,0 +1,17 @@
+module Dockpipe.SDK.FaultProof;
+
+// Composition supplies an owned absolute directory and a nonempty dummy selection.
+// The injected transport selects the actual native process fixture executable.
+public Record FaultInputs {
+    public string ownedRoot;
+    public string workflowFile;
+    public string expectedExecutable;
+    public string expectedStateDirectory;
+    public string expectedCacheDirectory;
+    public string ambientSentinel;
+    public int maximumArgumentBytes;
+    public int maximumOutputBytes;
+    public string lostOfferHelper;
+    public string partialOfferHelper;
+    public string lateOfferHelper;
+}

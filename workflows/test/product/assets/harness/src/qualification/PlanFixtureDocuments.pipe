@@ -1,0 +1,222 @@
+module Dockpipe.Product.Qualification.Tests;
+import Dockpipe.Product.Qualification;
+import PipeLang.Json;
+
+// Source constructs its own valid-JSON stimuli. No Source string exceeds 4096
+// bytes, including large path fixtures and repeated target/driver arrays.
+public Class PlanFixtureDocuments {
+    private JsonReader reader;
+    private int registryDocument = 0;
+    private int planDocument = 0;
+
+    public PlanFixtureDocuments(JsonReader reader) {
+        this.reader = reader;
+    }
+
+    private Result<void,string> Append(int document, string text) {
+        return reader.AppendDocument(document, ByteBuffer.FromUtf8(text));
+    }
+
+    public Result<JsonNode,string> Registry(int featureCount, bool unicodePlatform, CancellationToken token) {
+        registryDocument = try reader.BeginDocument(new JsonReadLimits {});
+        string platform = "p";
+        if (unicodePlatform)
+            platform = "プロファイル";
+
+        try Append(registryDocument, "{\"schema\":\"dockpipe.product-integration.registry/v1\"," +
+            "\"platforms\":[{\"id\":\"" + platform + "\",\"group\":\"contained\",\"selectors\":[\"all-cli\"]}],\"features\":[");
+        for (int index = 0; index < featureCount; index = index + 1) {
+            if (token.IsCancellationRequested)
+                return Result<JsonNode,string>.Cancelled("plan.fixture.cancelled");
+
+            if (index > 0)
+                try Append(registryDocument, ",");
+
+            try Append(registryDocument, "{\"id\":\"feature." + string.FromInt(index) +
+                "\",\"selector\":\"all\",\"critical\":true,\"cases\":[{\"scenario\":\"happy\"," +
+                "\"layer\":\"component\",\"required_assertions\":[\"assert.a\"]}]}");
+        }
+        try Append(registryDocument, "],\"policy\":{\"local_only\":true,\"minimum_coverage\":0.9," +
+            "\"critical_coverage\":1.0,\"unavailable_counts_as_unpassed\":true}}");
+        return reader.CompleteDocument(registryDocument, token);
+    }
+
+    private Result<void,string> Capabilities(PlanFixtureOptions options) {
+        try Append(planDocument, ",\"capabilities\":[");
+        for (int index = 0; index < options.capabilityCount; index = index + 1) {
+            if (index > 0)
+                try Append(planDocument, ",");
+
+            int selected = index;
+            if (options.duplicateCapabilities)
+                selected = 0;
+
+            string name = "cap." + string.FromInt(selected);
+            if (options.invalidCapability)
+                name = ".invalid";
+
+            try Append(planDocument, "\"" + name + "\"");
+        }
+        return Append(planDocument, "]");
+    }
+
+    private Result<void,string> Dependencies(PlanFixtureOptions options) {
+        try Append(planDocument, ",\"dependencies\":[");
+        string chunk = "x";
+        if (options.largePathChunks > 0) {
+            for (int size = 1; size < 4096; size = size * 2)
+                chunk = chunk + chunk;
+        }
+        for (int index = 0; index < options.dependencyCount; index = index + 1) {
+            if (index > 0)
+                try Append(planDocument, ",");
+
+            if (options.dependencyShape == 1) {
+                try Append(planDocument, "{\"path\":\"a\"}");
+            } else if (options.dependencyShape == 2) {
+                try Append(planDocument, "{\"path\":\"a\",\"sha256\":" + options.dependencyDigest + ",\"extra\":0}");
+            } else if (options.dependencyShape == 3) {
+                try Append(planDocument, "{\"path\":false,\"sha256\":" + options.dependencyDigest + "}");
+            } else if (options.dependencyShape == 4) {
+                try Append(planDocument, "{\"path\":\"\",\"sha256\":" + options.dependencyDigest + "}");
+            } else if (options.dependencyShape == 5) {
+                try Append(planDocument, "{\"path\":\"../outside\",\"sha256\":" + options.dependencyDigest + "}");
+            } else {
+                try Append(planDocument, "{\"path\":\"");
+                if (options.largePathChunks > 0) {
+                    for (int fragment = 0; fragment < options.largePathChunks; fragment = fragment + 1)
+                        try Append(planDocument, chunk);
+                } else if (options.duplicateDependencies && index > 0) {
+                    try Append(planDocument, "dep.\\u0030");
+                } else {
+                    try Append(planDocument, "dep." + string.FromInt(index));
+                }
+                try Append(planDocument, "\",\"sha256\":" + options.dependencyDigest + "}");
+            }
+        }
+        return Append(planDocument, "]");
+    }
+
+    private Result<void,string> Driver(PlanFixtureOptions options, int index) {
+        int selected = index;
+        if (options.duplicateDrivers)
+            selected = 0;
+
+        string id = "\"driver." + string.FromInt(selected) + "\"";
+        if (options.driverId != "")
+            id = options.driverId;
+
+        // Deliberately no entrypoint: validate_plan admits declarations, while
+        // actual source selection/pin verification remains a later boundary.
+        try Append(planDocument, "{\"id\":" + id + ",\"sha256\":" + options.sourceDigest + ",\"features\":[");
+        for (int feature = 0; feature < options.featureCount; feature = feature + 1) {
+            if (feature > 0)
+                try Append(planDocument, ",");
+
+            int selectedFeature = feature;
+            if (options.duplicateFeatures)
+                selectedFeature = 0;
+
+            string name = "feature." + string.FromInt(selectedFeature);
+            if (options.unknownFeature)
+                name = "feature.missing";
+
+            try Append(planDocument, "\"" + name + "\"");
+        }
+        try Append(planDocument, "]");
+        if (!options.omitOptional) {
+            try Append(planDocument, ",\"configuration\":" + options.configuration);
+            try Dependencies(options);
+        }
+        if (options.scenarios != "")
+            try Append(planDocument, ",\"scenarios\":" + options.scenarios);
+
+        if (options.layers != "")
+            try Append(planDocument, ",\"layers\":" + options.layers);
+
+        if (options.timeout != "")
+            try Append(planDocument, ",\"timeout_seconds\":" + options.timeout);
+
+        if (options.unknownFields)
+            try Append(planDocument, ",\"future_driver\":{\"value\":[null,1,\"x\"]}");
+
+        return Append(planDocument, "}");
+    }
+
+    public Result<JsonNode,string> Plan(PlanFixtureOptions options, CancellationToken token) {
+        planDocument = try reader.BeginDocument(new JsonReadLimits {});
+        try Append(planDocument, "{\"schema\":" + options.schema + ",\"run_id\":" + options.runId + ",\"targets\":[");
+        for (int index = 0; index < options.targetCount; index = index + 1) {
+            if (token.IsCancellationRequested)
+                return Result<JsonNode,string>.Cancelled("plan.fixture.cancelled");
+
+            if (index > 0)
+                try Append(planDocument, ",");
+
+            int selected = index;
+            if (options.duplicateTargets)
+                selected = 0;
+
+            string id = "\"target." + string.FromInt(selected) + "\"";
+            if (options.targetId != "")
+                id = options.targetId;
+
+            try Append(planDocument, "{\"id\":" + id + ",\"platform\":" + options.platform +
+                ",\"kind\":" + options.kind + ",\"artifact_sha256\":" + options.artifactDigest);
+            if (!options.omitOptional)
+                try Capabilities(options);
+
+            if (!options.omitDrivers) {
+                try Append(planDocument, ",\"drivers\":[");
+                for (int driver = 0; driver < options.driverCount; driver = driver + 1) {
+                    if (driver > 0)
+                        try Append(planDocument, ",");
+
+                    try Driver(options, driver);
+                }
+                try Append(planDocument, "]");
+            }
+            if (options.unknownFields)
+                try Append(planDocument, ",\"future_target\":true");
+
+            try Append(planDocument, "}");
+        }
+        try Append(planDocument, "]");
+        if (options.unknownFields)
+            try Append(planDocument, ",\"future_plan\":{}");
+
+        try Append(planDocument, "}");
+        return reader.CompleteDocument(planDocument, token);
+    }
+
+    public Result<void,string> ClosePlan() {
+        if (planDocument != 0) {
+            try reader.CloseDocument(planDocument);
+            Result<int,string> retained = reader.InputLength(planDocument);
+            if (retained.IsSuccess)
+                return Result<void,string>.Failure("plan.fixture.document_retained");
+
+            planDocument = 0;
+        }
+        return Result<void,string>.Success();
+    }
+
+    public Result<void,string> Close() {
+        Result<void,string> planClosed = ClosePlan();
+        Result<void,string> registryClosed = Result<void,string>.Success();
+        if (registryDocument != 0) {
+            registryClosed = reader.CloseDocument(registryDocument);
+            if (registryClosed.IsSuccess) {
+                Result<int,string> retained = reader.InputLength(registryDocument);
+                if (retained.IsSuccess)
+                    registryClosed = Result<void,string>.Failure("plan.fixture.document_retained");
+                else
+                    registryDocument = 0;
+            }
+        }
+        if (!planClosed.IsSuccess)
+            return planClosed;
+
+        return registryClosed;
+    }
+}

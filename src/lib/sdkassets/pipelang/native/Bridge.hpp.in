@@ -1,0 +1,206 @@
+// Copyright Dockpipe contributors. SPDX-License-Identifier: Apache-2.0
+#pragma once
+
+#include "Model.hpp"
+#include "Client.hpp"
+#include "ScopeCodec.hpp"
+
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <utility>
+
+namespace @DOCKPIPE_BRIDGE_NAMESPACE@ {
+namespace source = @DOCKPIPE_MODEL_NAMESPACE@::source::Dockpipe::SDK;
+
+class Transport final : public source::Transport {
+public:
+    using Token = pipelang::model::CancellationToken;
+    using StartResult = pipelang::model::Result<source::OperationId, std::string>;
+    using ObservationResult = pipelang::model::Result<source::OperationObservation, std::string>;
+    using BoolResult = pipelang::model::Result<bool, std::string>;
+    using ScopeResult = pipelang::model::Result<source::ScopeResult, std::string>;
+
+    explicit Transport(std::shared_ptr<dockpipe::sdk::Client> client)
+        : client_(std::move(client)) {
+        if (!client_)
+            throw std::invalid_argument("SDK bridge requires a client");
+        maximumArgumentBytes_ = client_->maximumArgumentBytes();
+    }
+
+    StartResult Start(source::WorkflowRequest request) override {
+        auto remaining = maximumArgumentBytes_;
+        if (!consume(remaining, request.workdir) || !consume(remaining, request.workflowFile) ||
+            !consume(remaining, request.packageName) || !consume(remaining, request.workflowName))
+            return StartResult::Failure("SDK request exceeds the bridge argument byte bound");
+        for (const auto& variable : request.variables.values()) {
+            if (!consume(remaining, variable.name, 4) || !consume(remaining, variable.value, 4))
+                return StartResult::Failure("SDK variables exceed the bridge argument byte bound");
+        }
+        for (const auto& argument : request.arguments.values()) {
+            if (!consume(remaining, argument))
+                return StartResult::Failure("SDK arguments exceed the bridge argument byte bound");
+        }
+        dockpipe::sdk::WorkflowRequest native;
+        native.workdir = std::move(request.workdir);
+        native.workflowFile = std::move(request.workflowFile);
+        native.packageName = std::move(request.packageName);
+        native.workflowName = std::move(request.workflowName);
+        native.outputLimitBytes = request.outputLimitBytes;
+        for (const auto& variable : request.variables.values())
+            native.variables.push_back({variable.name, variable.value});
+        for (const auto& argument : request.arguments.values())
+            native.arguments.push_back(argument);
+        const auto result = client_->Start(std::move(native));
+        if (!result.is_success())
+            return failure<StartResult>(result);
+        return StartResult::Success(operationId(result.value()));
+    }
+
+    StartResult StartScope(source::ScopeRequest request) override {
+        const auto converted = scopeRequest(request);
+        if (!converted.is_success())
+            return StartResult::Failure(converted.error());
+        const auto result = client_->StartScope(converted.value());
+        if (!result.is_success())
+            return failure<StartResult>(result);
+        return StartResult::Success(operationId(result.value()));
+    }
+
+    ObservationResult Observe(
+        source::OperationId id, std::int64_t waitMilliseconds, Token token) override {
+        const auto result = client_->Observe(nativeId(id), waitMilliseconds, token);
+        if (!result.is_success())
+            return failure<ObservationResult>(result);
+        return ObservationResult::Success(observation(result.value()));
+    }
+
+    StartResult RetainedOperation() override {
+        const auto result = client_->RetainedOperation();
+        if (!result.is_success())
+            return failure<StartResult>(result);
+        return StartResult::Success(operationId(result.value()));
+    }
+
+    BoolResult Interrupt(source::OperationId id) override {
+        return client_->Interrupt(nativeId(id));
+    }
+
+    ObservationResult ForceDispose(
+        source::OperationId id, std::int64_t waitMilliseconds, Token token) override {
+        const auto result = client_->ForceDispose(nativeId(id), waitMilliseconds, token);
+        if (!result.is_success())
+            return failure<ObservationResult>(result);
+        return ObservationResult::Success(observation(result.value()));
+    }
+
+    ScopeResult Scope(
+        source::ScopeRequest request, std::int64_t budgetMilliseconds, Token token) override {
+        const auto converted = scopeRequest(request);
+        if (!converted.is_success())
+            return ScopeResult::Failure(converted.error());
+        const auto result = client_->Scope(converted.value(), budgetMilliseconds, token);
+        if (!result.is_success())
+            return failure<ScopeResult>(result);
+        source::ScopeResult projected{};
+        projected.isPath = result.value().isPath;
+        if (projected.isPath) {
+            projected.path = result.value().path;
+        } else {
+            const auto decoded = dockpipe::sdk::decodeScopeObject(
+                result.value().json, static_cast<std::size_t>(request.outputLimitBytes));
+            if (!decoded.is_success())
+                return ScopeResult::Failure(decoded.error());
+            projected.value = scopeObject(decoded.value());
+        }
+        return ScopeResult::Success(std::move(projected));
+    }
+
+private:
+    using NativeScopeRequestResult = pipelang::model::Result<dockpipe::sdk::ScopeRequest, std::string>;
+
+    NativeScopeRequestResult scopeRequest(const source::ScopeRequest& request) const {
+        auto remaining = maximumArgumentBytes_;
+        if (!consume(remaining, request.workdir) || !consume(remaining, request.scope) ||
+            !consume(remaining, request.packageName))
+            return NativeScopeRequestResult::Failure("SDK scope request exceeds the bridge argument byte bound");
+        for (const auto& part : request.path.values()) {
+            if (!consume(remaining, part))
+                return NativeScopeRequestResult::Failure("SDK scope path exceeds the bridge argument byte bound");
+        }
+        dockpipe::sdk::ScopeRequest native;
+        native.workdir = request.workdir;
+        native.scope = request.scope;
+        native.packageName = request.packageName;
+        native.outputLimitBytes = request.outputLimitBytes;
+        for (const auto& part : request.path.values())
+            native.path.push_back(part);
+        return NativeScopeRequestResult::Success(std::move(native));
+    }
+
+    static bool consume(std::size_t& remaining, const std::string& value, std::size_t overhead = 1) {
+        if (overhead > remaining || value.size() > remaining - overhead)
+            return false;
+        remaining -= value.size() + overhead;
+        return true;
+    }
+
+    template<class Target, class Native>
+    static Target failure(const Native& value) {
+        if (value.is_cancelled())
+            return Target::Cancelled(value.error());
+        return Target::Failure(value.error());
+    }
+
+    static dockpipe::sdk::OperationId nativeId(const source::OperationId& id) {
+        return {id.clientId, id.value};
+    }
+
+    static source::OperationId operationId(const dockpipe::sdk::OperationId& id) {
+        source::OperationId result{};
+        result.clientId = id.clientId;
+        result.value = id.value;
+        return result;
+    }
+
+    static source::OperationObservation observation(const dockpipe::sdk::OperationObservation& value) {
+        source::OperationObservation result{};
+        result.id = operationId(value.id);
+        result.exited = value.exited;
+        result.treeComplete = value.treeComplete;
+        result.forced = value.forced;
+        result.exitCode = value.exitCode;
+        result.reapedChildren = value.reapedChildren;
+        result.stdoutText = value.stdoutText;
+        result.stderrText = value.stderrText;
+        result.scopePath = value.scopePath;
+        result.stdoutTruncated = value.stdoutTruncated;
+        result.stderrTruncated = value.stderrTruncated;
+        return result;
+    }
+
+    static source::ScopeObject scopeObject(const dockpipe::sdk::ScopeFields& fields) {
+        const auto field = [&](const char* name) {
+            const auto found = fields.find(name);
+            return found == fields.end() ? std::string{} : found->second;
+        };
+        source::ScopeObject result{};
+        result.kind = field("kind");
+        result.name = field("name");
+        result.scope = field("scope");
+        result.root = field("root");
+        result.dockpipeBin = field("dockpipe_bin");
+        result.sourceRoot = field("source_root");
+        result.artifactRoot = field("artifact_root");
+        result.eventLog = field("event_log");
+        result.eventIndex = field("event_index");
+        result.outputRoot = field("output_root");
+        result.stateRoot = field("state_root");
+        result.workdir = field("workdir");
+        return result;
+    }
+
+    std::shared_ptr<dockpipe::sdk::Client> client_;
+    std::size_t maximumArgumentBytes_;
+};
+}

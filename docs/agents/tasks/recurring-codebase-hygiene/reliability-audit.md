@@ -1,5 +1,10 @@
 # Library audit and repairs — 2026-10-25
 
+The newer [desktop async audit — 2026-11-08](../../../research/desktop-async-audit-2026-11-08.md)
+records the GUI responsiveness repairs and remaining desktop blocking-I/O,
+subprocess teardown and native-platform findings. Those findings remain open;
+the library evidence below does not qualify the desktop application.
+
 Scope: `src/lib` in the saved checkout after package extraction and folder
 organization. Source review focused on async execution, archive production and
 consumption, SDK discovery/prompts, domain boundaries, and obsolete helpers.

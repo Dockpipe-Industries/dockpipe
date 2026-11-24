@@ -3,6 +3,7 @@ package remotecmd
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	remoteio "dockpipe/src/lib/infrastructure/remote"
@@ -30,5 +31,14 @@ func TestCancelledRemoteActionDoesNotOpenOSAuthentication(t *testing.T) {
 func TestRemoteAuthenticationModeRejectsInvalidValue(t *testing.T) {
 	if err := Run([]string{"nodes", "--auth", "sometimes"}, nil); err == nil {
 		t.Fatal("invalid authentication mode accepted")
+	}
+}
+
+func TestRemoteTimeoutFlagsRequireSecurityPolicy(t *testing.T) {
+	for _, flag := range []string{"--idle-seconds", "--absolute-seconds"} {
+		err := Run([]string{"nodes", flag, "43200"}, nil)
+		if err == nil || !strings.Contains(err.Error(), "supported only by remote security-policy") {
+			t.Fatalf("policy-only flag %s did not fail before a remote operation: %v", flag, err)
+		}
 	}
 }

@@ -32,7 +32,7 @@ HWND windowHandle(quint64 id)
 
 QString nativeError(const QString &action)
 {
-    return QObject::tr("%1 (Windows error %2). This window may refuse embedding.")
+    return QCoreApplication::translate("DesktopAppWindowWin", "%1 (Windows error %2). This window may refuse embedding.")
         .arg(action).arg(GetLastError());
 }
 
@@ -55,7 +55,7 @@ public:
         : m_release(std::move(release))
     {
         setAttribute(Qt::WA_DeleteOnClose);
-        setWindowTitle(QObject::tr("Release external application"));
+        setWindowTitle(QCoreApplication::translate("DesktopAppWindowWin", "Release external application"));
     }
     void reject() override
     {
@@ -271,9 +271,9 @@ struct DesktopAppWindow::Native {
 QString DesktopAppWindow::unavailableReason()
 {
     if (QGuiApplication::platformName() != "windows")
-        return QObject::tr("Native Windows embedding requires the Windows desktop platform.");
+        return QCoreApplication::translate("DesktopAppWindowWin", "Native Windows embedding requires the Windows desktop platform.");
     if (!GetProcAddress(GetModuleHandleW(L"user32.dll"), "GetWindowDpiAwarenessContext"))
-        return QObject::tr("Native Windows embedding requires Windows 10 or newer with DPI-awareness support.");
+        return QCoreApplication::translate("DesktopAppWindowWin", "Native Windows embedding requires Windows 10 or newer with DPI-awareness support.");
     return {};
 }
 
@@ -285,17 +285,17 @@ QVector<DesktopAppChoice> DesktopAppWindow::availableWindows(QString &error, qui
     WindowList list;
     list.onlyWindowId = onlyWindowId;
     if (!list.own.valid) {
-        error = QObject::tr("Cannot verify the current Windows user and desktop session.");
+        error = QCoreApplication::translate("DesktopAppWindowWin", "Cannot verify the current Windows user and desktop session.");
         return {};
     }
     if (!EnumWindows(collectWindow, reinterpret_cast<LPARAM>(&list))) {
         error = list.exhausted
-            ? QObject::tr("The desktop window list exceeds the 256-window picker limit.")
-            : nativeError(QObject::tr("Cannot list desktop windows"));
+            ? QCoreApplication::translate("DesktopAppWindowWin", "The desktop window list exceeds the 256-window picker limit.")
+            : nativeError(QCoreApplication::translate("DesktopAppWindowWin", "Cannot list desktop windows"));
         return {};
     }
     if (list.choices.isEmpty())
-        error = QObject::tr("No supported windows. Select an ordinary, non-elevated desktop application owned by your user.");
+        error = QCoreApplication::translate("DesktopAppWindowWin", "No supported windows. Select an ordinary, non-elevated desktop application owned by your user.");
     return list.choices;
 }
 
@@ -333,7 +333,7 @@ std::optional<DesktopAppChoice> DesktopAppWindow::replacement(QString &error) co
 {
     error.clear();
     if (!alive())
-        error = QObject::tr("The selected window closed. Select its replacement manually.");
+        error = QCoreApplication::translate("DesktopAppWindowWin", "The selected window closed. Select its replacement manually.");
     return {};
 }
 
@@ -343,19 +343,19 @@ bool DesktopAppWindow::prepareControl(QString &error)
     if (m_native->saved)
         return true;
     if (!alive()) {
-        error = QObject::tr("The window closed or cannot be accessed. Elevated, sandboxed, protected, and other-user processes are not supported.");
+        error = QCoreApplication::translate("DesktopAppWindowWin", "The window closed or cannot be accessed. Elevated, sandboxed, protected, and other-user processes are not supported.");
         return false;
     }
     if (!ordinaryDesktopWindow(m_native->window)) {
-        error = QObject::tr("This is no longer an independent desktop window. Release it from its current host first.");
+        error = QCoreApplication::translate("DesktopAppWindowWin", "This is no longer an independent desktop window. Release it from its current host first.");
         return false;
     }
     if (!compatibleDpi(m_native->window)) {
-        error = QObject::tr("This application uses a different DPI-awareness mode. Embedding it could change its process settings, so it was left on the desktop.");
+        error = QCoreApplication::translate("DesktopAppWindowWin", "This application uses a different DPI-awareness mode. Embedding it could change its process settings, so it was left on the desktop.");
         return false;
     }
     if (!responsive(m_native->window)) {
-        error = QObject::tr("This application is not responding. Its window was left on the desktop.");
+        error = QCoreApplication::translate("DesktopAppWindowWin", "This application is not responding. Its window was left on the desktop.");
         return false;
     }
     // Every admitted HWND is top-level. GetParent would conflate its owner
@@ -366,7 +366,7 @@ bool DesktopAppWindow::prepareControl(QString &error)
     m_native->originalExtendedStyle = GetWindowLongPtrW(m_native->window, GWL_EXSTYLE);
     if (!GetWindowRect(m_native->window, &m_native->originalRectangle)
         || !GetWindowPlacement(m_native->window, &m_native->originalPlacement)) {
-        error = nativeError(QObject::tr("Cannot preserve the window placement"));
+        error = nativeError(QCoreApplication::translate("DesktopAppWindowWin", "Cannot preserve the window placement"));
         return false;
     }
     m_native->saved = true;
@@ -384,13 +384,13 @@ QWidget *DesktopAppWindow::takeControl(QWidget *parent, QString &error)
     if (m_native->container)
         return m_native->container;
     if (!controlReady()) {
-        error = QObject::tr("The selected Windows application is no longer available.");
+        error = QCoreApplication::translate("DesktopAppWindowWin", "The selected Windows application is no longer available.");
         return nullptr;
     }
     if (!ordinaryDesktopWindow(m_native->window)
         || GetWindow(m_native->window, GW_OWNER) != m_native->originalOwner) {
         m_native->saved = false;
-        error = QObject::tr("The window's ownership changed before attachment. Select it again.");
+        error = QCoreApplication::translate("DesktopAppWindowWin", "The window's ownership changed before attachment. Select it again.");
         return nullptr;
     }
     // From this point a failed operation may have changed native state. Merely
@@ -398,7 +398,7 @@ QWidget *DesktopAppWindow::takeControl(QWidget *parent, QString &error)
     m_native->changed = true;
     if (m_native->originalOwner
         && !setStyle(m_native->window, GWLP_HWNDPARENT, 0)) {
-        error = nativeError(QObject::tr("Cannot preserve the application window owner"));
+        error = nativeError(QCoreApplication::translate("DesktopAppWindowWin", "Cannot preserve the application window owner"));
         releaseControl();
         return nullptr;
     }
@@ -406,7 +406,7 @@ QWidget *DesktopAppWindow::takeControl(QWidget *parent, QString &error)
     // all original native state because the wrapper may rewrite window styles.
     m_native->foreign = QWindow::fromWinId(static_cast<WId>(m_choice.id));
     if (!m_native->foreign) {
-        error = QObject::tr("Qt cannot wrap this Windows application.");
+        error = QCoreApplication::translate("DesktopAppWindowWin", "Qt cannot wrap this Windows application.");
         releaseControl();
         return nullptr;
     }
@@ -420,7 +420,7 @@ QWidget *DesktopAppWindow::takeControl(QWidget *parent, QString &error)
     const HWND host = reinterpret_cast<HWND>(m_native->container->winId());
     if (!setStyle(m_native->window, GWL_STYLE, childStyle)
         || !setParent(m_native->window, host)) {
-        error = nativeError(QObject::tr("Windows refused to embed this window"));
+        error = nativeError(QCoreApplication::translate("DesktopAppWindowWin", "Windows refused to embed this window"));
         releaseControl();
         return nullptr;
     }
@@ -465,12 +465,12 @@ bool DesktopAppWindow::requestClose(QString &error)
 {
     error.clear();
     if (!alive()) {
-        error = QObject::tr("The desktop window is no longer available.");
+        error = QCoreApplication::translate("DesktopAppWindowWin", "The desktop window is no longer available.");
         return false;
     }
     // Let the app handle unsaved work and cancellation. Never kill its process.
     if (!PostMessageW(m_native->window, WM_CLOSE, 0, 0)) {
-        error = QObject::tr("Windows could not send a close request to this app.");
+        error = QCoreApplication::translate("DesktopAppWindowWin", "Windows could not send a close request to this app.");
         return false;
     }
     return true;
@@ -509,12 +509,12 @@ void DesktopAppWindow::releaseControl()
             return !recovery->m_native->saved;
         });
         auto *layout = new QVBoxLayout(dialog);
-        auto *notice = new QLabel(QObject::tr("Windows could not fully restore this application to the desktop. Release recovery remains open to protect it. Retry release, or close the application itself."), dialog);
+        auto *notice = new QLabel(QCoreApplication::translate("DesktopAppWindowWin", "Windows could not fully restore this application to the desktop. Release recovery remains open to protect it. Retry release, or close the application itself."), dialog);
         notice->setWordWrap(true);
         layout->addWidget(notice);
         if (recovery->m_native->container)
             layout->addWidget(recovery->m_native->container);
-        auto *retry = new QPushButton(QObject::tr("Retry release"), dialog);
+        auto *retry = new QPushButton(QCoreApplication::translate("DesktopAppWindowWin", "Retry release"), dialog);
         layout->addWidget(retry);
         QObject::connect(retry, &QPushButton::clicked, dialog, &QWidget::close);
         auto *monitor = new QTimer(dialog);
@@ -535,7 +535,7 @@ void DesktopAppWindow::releaseControl()
         // owns the external app window. No WM_CLOSE or DestroyWindow is sent.
         if (!setParent(m_native->window, m_native->originalParent)
             && GetParent(m_native->window) != m_native->originalParent) {
-            qWarning().noquote() << nativeError(QObject::tr("Cannot restore the external window parent"));
+            qWarning().noquote() << nativeError(QCoreApplication::translate("DesktopAppWindowWin", "Cannot restore the external window parent"));
             retainRecoveryHost();
             return;
         }
@@ -548,7 +548,7 @@ void DesktopAppWindow::releaseControl()
         const bool restoredStyle = setStyle(m_native->window, GWL_STYLE, m_native->originalStyle);
         const bool restoredExtendedStyle = setStyle(m_native->window, GWL_EXSTYLE, m_native->originalExtendedStyle);
         if (!restoredStyle || !restoredExtendedStyle)
-            qWarning().noquote() << nativeError(QObject::tr("Cannot restore the external window styles"));
+            qWarning().noquote() << nativeError(QCoreApplication::translate("DesktopAppWindowWin", "Cannot restore the external window styles"));
         if (m_native->originalOwner) {
             DWORD ownerPid = 0;
             FILETIME ownerCreated{};
@@ -560,7 +560,7 @@ void DesktopAppWindow::releaseControl()
                 && CompareFileTime(&ownerCreated, &m_native->created) == 0;
             if (ownerAlive && !setStyle(m_native->window, GWLP_HWNDPARENT,
                     reinterpret_cast<LONG_PTR>(m_native->originalOwner))) {
-                qWarning().noquote() << nativeError(QObject::tr("Cannot restore the external window owner"));
+                qWarning().noquote() << nativeError(QCoreApplication::translate("DesktopAppWindowWin", "Cannot restore the external window owner"));
                 retainRecoveryHost();
                 return;
             }
@@ -571,7 +571,7 @@ void DesktopAppWindow::releaseControl()
                 SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED | SWP_ASYNCWINDOWPOS);
         const bool restoredPlacement = SetWindowPlacement(m_native->window, &m_native->originalPlacement);
         if (!restoredRectangle || !restoredPlacement)
-            qWarning().noquote() << nativeError(QObject::tr("Cannot restore the external window placement"));
+            qWarning().noquote() << nativeError(QCoreApplication::translate("DesktopAppWindowWin", "Cannot restore the external window placement"));
         ShowWindowAsync(m_native->window, m_native->originalPlacement.showCmd);
     }
     m_native->saved = false;
@@ -582,17 +582,17 @@ QImage DesktopAppWindow::capture(QString &error)
 {
     error.clear();
     if (!alive() || IsIconic(m_native->window)) {
-        error = QObject::tr("The selected window is closed, minimized, or unavailable.");
+        error = QCoreApplication::translate("DesktopAppWindowWin", "The selected window is closed, minimized, or unavailable.");
         return {};
     }
     RECT rectangle{};
     if (!GetClientRect(m_native->window, &rectangle)) {
-        error = nativeError(QObject::tr("Cannot read the window size"));
+        error = nativeError(QCoreApplication::translate("DesktopAppWindowWin", "Cannot read the window size"));
         return {};
     }
     const QSize sourceSize(rectangle.right - rectangle.left, rectangle.bottom - rectangle.top);
     if (sourceSize.isEmpty() || sourceSize.width() > 7680 || sourceSize.height() > 4320) {
-        error = QObject::tr("Window exceeds the 7680 × 4320 capture limit.");
+        error = QCoreApplication::translate("DesktopAppWindowWin", "Window exceeds the 7680 × 4320 capture limit.");
         return {};
     }
     const QSize size = sourceSize.scaled(1280, 720, Qt::KeepAspectRatio);
@@ -627,7 +627,7 @@ QImage DesktopAppWindow::capture(QString &error)
     if (source)
         ReleaseDC(m_native->window, source);
     if (image.isNull()) {
-        error = QObject::tr("This application's surface cannot be captured. GPU-only or protected windows may not provide a preview.");
+        error = QCoreApplication::translate("DesktopAppWindowWin", "This application's surface cannot be captured. GPU-only or protected windows may not provide a preview.");
         return {};
     }
     QImage preview(1280, 720, QImage::Format_RGB32);

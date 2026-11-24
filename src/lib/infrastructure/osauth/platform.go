@@ -29,7 +29,7 @@ type Platform interface {
 
 // SuspendClock provides a final admission check without starting a process or
 // waiting for desktop services. The generation shares the platform Snapshot's
-// sleep tracker. Implementations use only bounded native clock reads.
+// sleep tracker. Implementations use only bounded native reads.
 type SuspendClock interface {
 	SuspendGeneration() (uint64, error)
 }

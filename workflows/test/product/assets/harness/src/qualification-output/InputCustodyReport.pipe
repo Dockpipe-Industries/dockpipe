@@ -1,0 +1,7 @@
+module Dockpipe.Product.QualificationOutput.Tests;
+import PipeLang.Testing;
+
+public Record InputCustodyReport {
+    public bool allPassed = false;
+    public List<TestResult> results;
+}

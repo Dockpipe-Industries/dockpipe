@@ -1,0 +1,74 @@
+module Dockpipe.Product.LaneReceipt;
+import PipeLang.Json;
+
+// Each feature owns only the sixteen possible layer/scenario positions.
+// Request rows and their assertions remain borrowed from the captured document.
+public Class ReceiptCaseIndex {
+    private JsonReader reader;
+    private ReceiptJson json;
+    private JsonNode cases;
+    private Dictionary<string,ReceiptFeatureCases> features = Dictionary<string,ReceiptFeatureCases>.Empty();
+
+    public ReceiptCaseIndex(JsonReader reader, ReceiptJson json, JsonNode cases) {
+        this.reader = reader;
+        this.json = json;
+        this.cases = cases;
+    }
+
+    private Result<int,string> Scenario(JsonNode row) {
+        string value = try json.Field(row, "scenario", 32);
+        if (value == "happy")
+            return Result<int,string>.Success(0);
+        if (value == "failure")
+            return Result<int,string>.Success(1);
+        if (value == "cancellation")
+            return Result<int,string>.Success(2);
+        if (value == "restart-recovery")
+            return Result<int,string>.Success(3);
+
+        return Result<int,string>.Failure("qualification.receipt.scenario");
+    }
+
+    private Result<int,string> Layer(JsonNode row) {
+        string value = try json.Field(row, "layer", 32);
+        if (value == "component")
+            return Result<int,string>.Success(0);
+        if (value == "installed_e2e")
+            return Result<int,string>.Success(1);
+        if (value == "guided_ui")
+            return Result<int,string>.Success(2);
+        if (value == "human")
+            return Result<int,string>.Success(3);
+
+        return Result<int,string>.Failure("qualification.receipt.layer");
+    }
+
+    private Result<int,string> Position(JsonNode row) {
+        int layer = try Layer(row);
+        int scenario = try Scenario(row);
+        return Result<int,string>.Success(layer * 4 + scenario);
+    }
+
+    public Result<void,string> Add(JsonNode row, int position) {
+        string id = try json.Field(row, "id", 128);
+        int slot = try Position(row);
+        JsonNode assertions = try json.Member(row, "required_assertions");
+        try json.Kind(assertions, JsonKind.Array, "expected_assertions");
+        if (!features.ContainsKey(id)) {
+            try json.Require(features.Count < 512, "request_feature_count");
+            features.Add(id, new ReceiptFeatureCases());
+        }
+
+        return features.At(id).Add(slot, position);
+    }
+
+    public Result<JsonNode,string> Observe(JsonNode row) {
+        string id = try json.Field(row, "id", 128);
+        int slot = try Position(row);
+        try json.Require(features.ContainsKey(id), "unrequested_or_duplicate_case");
+
+        int position = try features.At(id).Observe(slot);
+        JsonNode expected = try reader.At(cases, position);
+        return json.Member(expected, "required_assertions");
+    }
+}

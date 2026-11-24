@@ -79,6 +79,11 @@ func publishServiceDefinition(ctx context.Context, definition serviceDefinition,
 	temporary := file.Name()
 	defer os.Remove(temporary)
 	defer file.Close()
+	if definition.manager == "openrc" {
+		if err := file.Chmod(0o700); err != nil {
+			return err
+		}
+	}
 	if _, err := file.WriteString(definition.content); err != nil {
 		return err
 	}

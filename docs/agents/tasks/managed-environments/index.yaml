@@ -1,0 +1,13 @@
+schema: 1
+id: TASK-058
+topic: CLI and GUI Environments
+entrypoint: overview.md
+dispatch:
+  readiness: active
+  ownership: claimed
+routes:
+  implementation:
+    read: [overview.md, ../../../runtime/environments.md, ../vm-guest-tools/overview.md, ../remote-node-onboarding/overview.md]
+documents:
+- path: overview.md
+  role: user requirements, ownership and installed acceptance

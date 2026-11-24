@@ -12,7 +12,11 @@ type suspendTracker struct {
 }
 
 func (tracker *suspendTracker) observe(suspended time.Duration) uint64 {
-	if tracker.initialized && (suspended-tracker.previous > 100*time.Millisecond || suspended < tracker.previous-100*time.Millisecond) {
+	return tracker.observeWithResumeEvent(suspended, false)
+}
+
+func (tracker *suspendTracker) observeWithResumeEvent(suspended time.Duration, resumed bool) uint64 {
+	if tracker.initialized && (resumed || suspended-tracker.previous > 100*time.Millisecond || suspended < tracker.previous-100*time.Millisecond) {
 		tracker.generation++
 	}
 	tracker.previous = suspended

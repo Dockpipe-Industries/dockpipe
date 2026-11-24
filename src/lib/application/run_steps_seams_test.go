@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -90,7 +91,7 @@ func TestRunSteps_ParallelBatchAggregatesOutputsInOrder(t *testing.T) {
 func TestRunStepPreScripts_UsesInjectedSourceFunction(t *testing.T) {
 	withRunStepSeams(t, func() {
 		osStatFn = func(string) (os.FileInfo, error) { return nil, nil }
-		sourceHostScriptFn = func(scriptPath string, env []string) (map[string]string, error) {
+		sourceHostScriptFn = func(_ context.Context, scriptPath string, env []string) (map[string]string, error) {
 			return map[string]string{"FROM_PRE": scriptPath, "SEEN": "1"}, nil
 		}
 

@@ -16,22 +16,29 @@ import (
 )
 
 func pairOnline(ctx context.Context, root, endpoint, node string, allowDelivery bool, timeout int) error {
+	return pairOnlineWithFeatures(ctx, root, endpoint, node, allowDelivery, false, timeout)
+}
+
+func pairOnlineWithFeatures(ctx context.Context, root, endpoint, node string, allowDelivery, allowFeatures bool, timeout int) error {
 	if err := contract.Endpoint(endpoint); err != nil {
 		return err
 	}
-	if !contract.ValidID(node) || !allowDelivery {
-		return errors.New("online pairing requires --node and explicit --allow-delivery approval")
+	if !contract.ValidID(node) || !allowDelivery && !allowFeatures {
+		return errors.New("online pairing requires --node and explicit --allow-delivery or --allow-features approval")
 	}
-	permission := &contract.DeliveryPermission{TimeoutSeconds: timeout}
+	var permission *contract.DeliveryPermission
+	if allowDelivery {
+		permission = &contract.DeliveryPermission{TimeoutSeconds: timeout}
+	}
 	config := contract.WorkerConfig{Schema: contract.Version, Endpoint: endpoint, Node: node,
-		Profiles: map[string]contract.Profile{}, Delivery: permission}
+		Profiles: map[string]contract.Profile{}, Delivery: permission, Features: allowFeatures}
 	if err := remoteio.ValidateWorkerAuthority(config); err != nil {
 		return err
 	}
 	if err := remoteio.PrivateDirectory(root); err != nil {
 		return err
 	}
-	unlock, err := remoteio.Lock(filepath.Join(root, "worker.lock"))
+	unlock, err := remoteio.LockWorker(root)
 	if err != nil {
 		return err
 	}
@@ -40,7 +47,7 @@ func pairOnline(ctx context.Context, root, endpoint, node string, allowDelivery 
 	var saved contract.WorkerConfig
 	if err := remoteio.ReadPrivate(path, &saved); err == nil {
 		if saved.Schema != config.Schema || saved.Endpoint != endpoint || saved.Node != node ||
-			!reflect.DeepEqual(saved.Delivery, permission) || len(saved.Profiles) != 0 {
+			saved.Features != allowFeatures || !reflect.DeepEqual(saved.Delivery, permission) || len(saved.Profiles) != 0 {
 			return errors.New("saved worker identity or authority differs; inspect it before changing pairing")
 		}
 		config = saved
@@ -124,7 +131,8 @@ func pairOnline(ctx context.Context, root, endpoint, node string, allowDelivery 
 			fmt.Fprintln(os.Stderr, "Previous access was removed. Requesting fresh approval with a new credential.")
 			continue
 		case "approved":
-			fmt.Fprintln(os.Stderr, "Paired. Start this worker with: dockpipe remote service --role worker")
+			fmt.Fprintln(os.Stderr, "Paired. Start the background worker with: dockpipe remote service --role worker. If you specified --state, use the same directory.")
+
 			return nil
 		case "denied":
 			return errors.New("pairing denied by broker")

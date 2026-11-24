@@ -31,7 +31,7 @@ func reauthenticateRemote(ctx context.Context) error {
 	return err
 }
 
-func remoteSecurity(ctx context.Context, command string, changes map[string]bool, idle int, screenLock, sleep bool) error {
+func remoteSecurity(ctx context.Context, command string, changes map[string]bool, idle, absolute int, screenLock, sleep bool) error {
 	action := "status"
 	switch command {
 	case "unlock":
@@ -53,6 +53,9 @@ func remoteSecurity(ctx context.Context, command string, changes map[string]bool
 		policy := current.Status.RemoteSecurityPolicy
 		if changes["idle-seconds"] {
 			policy.IdleSeconds = idle
+		}
+		if changes["absolute-seconds"] {
+			policy.AbsoluteSeconds = absolute
 		}
 		if changes["lock-on-screen-lock"] {
 			policy.LockOnScreenLock = screenLock
@@ -79,7 +82,7 @@ func remoteSecurity(ctx context.Context, command string, changes map[string]bool
 		}
 		return json.NewEncoder(os.Stdout).Encode(remoteio.SecurityStatus{
 			RemoteSecurityPolicy: contract.DefaultRemoteSecurityPolicy(), Locked: true,
-			AbsoluteSeconds: 3600, Detail: err.Error(),
+			Detail: err.Error(),
 		})
 	}
 	if response.Status == nil {

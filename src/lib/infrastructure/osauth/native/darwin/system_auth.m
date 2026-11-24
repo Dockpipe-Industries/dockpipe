@@ -11,6 +11,7 @@
 #import <unistd.h>
 
 #include "console_lock.h"
+#include "tls_trust.h"
 
 static int authenticate(void)
 {
@@ -154,6 +155,8 @@ int main(int argc, const char *argv[])
             return snapshot();
         if (strcmp(argv[1], "--security-directory") == 0)
             return securityDirectory();
+        if (strcmp(argv[1], "--tls-trust") == 0)
+            return DockpipeTLSExportTrust();
         return 2;
     }
 }

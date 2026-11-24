@@ -1,0 +1,116 @@
+module Dockpipe.SDK.FaultProof;
+import Dockpipe.SDK;
+import PipeLang.Testing;
+import PipeLang.Testing.Async;
+
+public model Class FaultHarness {
+    private Client client;
+    private TestClock clock;
+    private FaultInputs inputs;
+    private FaultSignals signals;
+    private FixtureControl control;
+
+    public FaultHarness(Transport transport, TestClock clock, FaultInputs inputs, FaultSignals signals, FixtureControl control) {
+        this.client = new Client(transport);
+        this.clock = clock;
+        this.inputs = inputs;
+        this.signals = signals;
+        this.control = control;
+    }
+
+    private pure int BodyMilliseconds() {
+        return 8000;
+    }
+
+    private pure int CleanupMilliseconds() {
+        return 5000;
+    }
+
+    public pure int WatchdogMilliseconds() {
+        int caseCount = 5;
+        if (inputs.ambientSentinel != "")
+            caseCount = caseCount + 2;
+        if (inputs.lostOfferHelper != "")
+            caseCount = caseCount + 1;
+
+        if (inputs.partialOfferHelper != "")
+            caseCount = caseCount + 1;
+        if (inputs.lateOfferHelper != "")
+            caseCount = caseCount + 1;
+
+        return caseCount * (BodyMilliseconds() + CleanupMilliseconds()) + 5000;
+    }
+
+    public async Task<Result<List<AsyncTestResult>,string>> Run(
+        CancellationToken bodyToken, CancellationToken cleanupToken) {
+        Result<CallerObservation,string> initial = control.InitialCaller();
+        if (!initial.IsSuccess) {
+            if (initial.IsCancelled)
+                return Result<List<AsyncTestResult>,string>.Cancelled(initial.Error);
+
+            return Result<List<AsyncTestResult>,string>.Failure(initial.Error);
+        }
+
+        List<IAsyncTestCase> cases = List<IAsyncTestCase>.Empty();
+        cases.Add(new TransportFaultCase(FaultKind.ExactArguments, client, clock, inputs, signals));
+        cases.Add(new TransportFaultCase(FaultKind.GracefulBreak, client, clock, inputs, signals));
+        cases.Add(new TransportFaultCase(FaultKind.RootExit, client, clock, inputs, signals));
+        cases.Add(new TransportFaultCase(FaultKind.OutputOverflow, client, clock, inputs, signals));
+        cases.Add(new TransportFaultCase(FaultKind.ConsoleGroup, client, clock, inputs, signals));
+
+        // An explicit ambient qualification input enables these two cases while
+        // the production helper is still selected. Default profiles stay intact.
+        if (inputs.ambientSentinel != "") {
+            cases.Add(new InputContractCase(InputContractKind.CommandCapacity, client, clock, inputs, control));
+            cases.Add(new InputContractCase(InputContractKind.ExactChildInputs, client, clock, inputs, control));
+        }
+
+        if (inputs.lostOfferHelper != "")
+            cases.Add(new LostOfferCase(client, clock, inputs, control));
+
+        if (inputs.partialOfferHelper != "")
+            cases.Add(new BrokerOfferCase(OfferFaultKind.PartialAdoption, client, clock, inputs, control));
+        if (inputs.lateOfferHelper != "")
+            cases.Add(new BrokerOfferCase(OfferFaultKind.LateOffer, client, clock, inputs, control));
+
+        List<IAsyncTestCase> isolated = List<IAsyncTestCase>.Empty();
+        foreach (IAsyncTestCase test in cases)
+            isolated.Add(new CallerIsolationCase(test, control, initial.Value));
+
+        AsyncTestRunner runner = new AsyncTestRunner(clock);
+        Result<List<AsyncTestResult>,string> results = await runner.RunAll(
+            isolated, BodyMilliseconds(), CleanupMilliseconds(), bodyToken, cleanupToken);
+
+        // Always attempt factual finalization and observation. Live custody is
+        // refused rather than forced; existing source failure/cancellation wins.
+        Result<void,string> finalized = control.FinalizeTransport();
+        Result<CallerObservation,string> finalCaller = control.ObserveCaller();
+        if (!results.IsSuccess)
+            return results;
+
+        foreach (AsyncTestResult result in results.Value) {
+            if (result.test.outcome != TestOutcome.Passed)
+                return results;
+        }
+
+        if (!finalized.IsSuccess) {
+            if (finalized.IsCancelled)
+                return Result<List<AsyncTestResult>,string>.Cancelled(finalized.Error);
+
+            return Result<List<AsyncTestResult>,string>.Failure(finalized.Error);
+        }
+        if (!finalCaller.IsSuccess) {
+            if (finalCaller.IsCancelled)
+                return Result<List<AsyncTestResult>,string>.Cancelled(finalCaller.Error);
+
+            return Result<List<AsyncTestResult>,string>.Failure(finalCaller.Error);
+        }
+
+        CallerIsolationChecks checks = new CallerIsolationChecks();
+        Result<void,TestFailure> unchanged = checks.Compare(initial.Value, finalCaller.Value);
+        if (!unchanged.IsSuccess)
+            return Result<List<AsyncTestResult>,string>.Failure(unchanged.Error.message);
+
+        return results;
+    }
+}

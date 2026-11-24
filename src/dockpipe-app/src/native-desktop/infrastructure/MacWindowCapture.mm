@@ -164,7 +164,7 @@ static SCStreamConfiguration *windowConfiguration(bool visible)
     const size_t height = CVPixelBufferGetHeight(pixels);
     const size_t stride = CVPixelBufferGetBytesPerRow(pixels);
     if (width == 0 || height == 0 || width > 1280 || height > 720 || stride < width * 4 || stride > 8192) {
-        deliverError(token, QStringLiteral("macOS returned a frame outside the 1280×720 capture limit."));
+        deliverError(token, QCoreApplication::translate("MacWindowCapture", "macOS returned a frame outside the 1280×720 capture limit."));
         return;
     }
     if (CVPixelBufferLockBaseAddress(pixels, kCVPixelBufferLock_ReadOnly) != kCVReturnSuccess)

@@ -1,0 +1,13 @@
+module Dockpipe.Product.QualificationEventOutput;
+
+public Enum QualificationEventKind {
+    Started,
+    DriverStarted,
+    DriverReceiptRevalidated,
+    DriverResultRejected,
+    DriverFinished,
+    RequiredCheckNotRun,
+    Interrupted,
+    PlatformProfileNotRun,
+    Finished
+}

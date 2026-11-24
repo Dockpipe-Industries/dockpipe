@@ -1,24 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- WiX 3.x - build on Windows: see build.ps1. Ships dockpipe.exe and optionally a staged Dockpipe GUI shell payload. -->
+<!-- The desktop-service distribution is machine-wide. The standard MSI remains per user. -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Product Id="*"
            Name="dockpipe"
            Language="1033"
            Version="$(var.ProductVersion)"
            Manufacturer="Jamie Steele"
-           UpgradeCode="B7E3F2A1-4C5D-6E7F-8091-A2B3C4D5E6F7">
+           UpgradeCode="$(var.DockpipeUpgradeCode)">
 
-    <!-- perUser: quiet install without admin (typical for dev CLIs) -->
     <Package InstallerVersion="500"
              Compressed="yes"
-             InstallScope="perUser"
+             InstallScope="$(var.DockpipeInstallScope)"
              Description="Dockpipe CLI and GUI shell"
              Comments="Apache-2.0"
              Manufacturer="Jamie Steele" />
 
     <MajorUpgrade DowngradeErrorMessage="A newer version of dockpipe is already installed."
-                  AllowSameVersionUpgrades="no" />
+                  Schedule="$(var.DockpipeUpgradeSchedule)" AllowSameVersionUpgrades="no" />
+<?if $(sys.BUILDARCH) = arm64 ?>
+    <Upgrade Id="$(var.DockpipeUpgradeCode)">
+      <UpgradeVersion Minimum="$(var.ProductVersion)" Maximum="$(var.ProductVersion)"
+                      IncludeMinimum="yes" IncludeMaximum="yes"
+                      OnlyDetect="yes" Property="DOCKPIPE_EQUAL_VERSION" />
+    </Upgrade>
+    <Condition Message="This version of Dockpipe is already installed. Uninstall it or select a newer ARM64 release.">
+      Installed OR NOT DOCKPIPE_EQUAL_VERSION
+    </Condition>
+<?endif?>
     <MediaTemplate EmbedCab="yes" />
+<?if "$(var.DockpipeDesktopInputEnabled)" = "1" ?>
+    <Property Id="DOCKPIPE_WINDOWS_BUILD">
+      <RegistrySearch Id="DockpipeWindowsBuild" Root="HKLM" Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion"
+                      Name="CurrentBuildNumber" Type="raw" Win64="yes" />
+    </Property>
+    <Condition Message="Dockpipe desktop control requires Windows 11.">
+      Installed OR (VersionNT64 AND (MsiNTProductType = 1) AND (DOCKPIPE_WINDOWS_BUILD &gt;= 22000))
+    </Condition>
+<?endif?>
 
     <Feature Id="MainFeature"
              Title="Dockpipe CLI"
@@ -28,6 +46,9 @@
              Display="expand"
              ConfigurableDirectory="INSTALLFOLDER">
       <ComponentGroupRef Id="CLIComponents" />
+<?if "$(var.DockpipeDesktopInputEnabled)" = "1" ?>
+      <ComponentGroupRef Id="DesktopInputComponents" />
+<?endif?>
 <?if "$(var.DockpipePackagesEnabled)" = "1" ?>
       <ComponentGroupRef Id="PackagePayloadDirectoryComponents" />
       <ComponentGroupRef Id="PackagePayloadComponents" />
@@ -48,10 +69,13 @@
 
   <Fragment>
     <Directory Id="TARGETDIR" Name="SourceDir">
-      <Directory Id="LocalAppDataFolder">
+      <Directory Id="$(var.DockpipeInstallRoot)">
         <Directory Id="INSTALLFOLDER" Name="dockpipe">
           <Directory Id="PACKAGESDIR" Name="packages" />
         </Directory>
+<?if "$(var.DockpipeDesktopInputEnabled)" = "1" ?>
+        <Directory Id="DESKTOPINPUTDIR" Name="Dockpipe Desktop Input" />
+<?endif?>
       </Directory>
 <?if "$(var.DockpipeLauncherEnabled)" = "1" ?>
       <Directory Id="ProgramMenuFolder">
@@ -64,15 +88,16 @@
   <Fragment>
     <ComponentGroup Id="CLIComponents" Directory="INSTALLFOLDER">
       <!-- ICE38: per-user profile install cannot use a file as KeyPath; ICE64: profile dir needs RemoveFolder -->
-      <Component Id="cmp_dockpipe_exe" Guid="6E07E906-C5C2-4D49-8FB2-6DAFB36D3AB5">
+      <Component Id="cmp_dockpipe_exe" Guid="$(var.DockpipeCliComponentGuid)">
         <RegistryValue Id="reg_dockpipe_install"
-                       Root="HKCU"
+                       Root="$(var.DockpipeRegistryRoot)"
                        Key="Software\dockpipe"
                        Name="InstallDir"
                        Type="string"
                        Value="[INSTALLFOLDER]"
                        KeyPath="yes" />
         <File Id="fil_dockpipe_exe"
+              Name="dockpipe.exe"
               Source="$(var.DockpipeSource)"
               KeyPath="no" />
         <Environment Id="env_path_dockpipe"
@@ -81,15 +106,51 @@
                      Value="[INSTALLFOLDER]"
                      Part="first"
                      Permanent="no"
-                     System="no" />
+                     System="$(var.DockpipeSystemPath)" />
         <RemoveFolder Id="RemoveInstallFolder" On="uninstall" />
       </Component>
+      <Component Id="cmp_dockpipe_worker" Guid="$(var.DockpipeWorkerComponentGuid)">
+        <RegistryValue Id="reg_dockpipe_worker_install"
+                       Root="$(var.DockpipeRegistryRoot)"
+                       Key="Software\dockpipe"
+                       Name="WorkerExe"
+                       Type="string"
+                       Value="[INSTALLFOLDER]dockpipe-worker.exe"
+                       KeyPath="yes" />
+        <File Id="fil_dockpipe_worker" Name="dockpipe-worker.exe"
+              Source="$(var.DockpipeWorkerHost)" />
+      </Component>
     </ComponentGroup>
+<?if "$(var.DockpipeDesktopInputEnabled)" = "1" ?>
+    <ComponentGroup Id="DesktopInputComponents" Directory="DESKTOPINPUTDIR">
+      <Component Id="DesktopInputService" Guid="640BAAB8-F988-4B6C-A100-2AD509F35B59" Win64="yes">
+        <File Id="DesktopInputServiceBinary" Name="dockpipe-desktop-input-service.exe"
+              Source="$(var.DockpipeDesktopInputService)" KeyPath="yes" />
+        <ServiceInstall Id="InstallDesktopInputService" Name="DockpipeDesktopInput"
+                        DisplayName="Dockpipe Remote Access" Type="ownProcess" Start="auto"
+                        ErrorControl="normal" Account="LocalSystem"
+                        Arguments='administrator-service --config "[CommonAppDataFolder]DockpipeDesktopInput\bootstrap.json" --worker-config "[CommonAppDataFolder]DockpipeDesktopInput\worker-registration.json"' />
+        <ServiceControl Id="StopAndRemoveDesktopInputService" Name="DockpipeDesktopInput"
+                        Stop="both" Remove="uninstall" Wait="yes" />
+      </Component>
+      <Component Id="DesktopInputHelper" Guid="6A13C350-27BD-436F-A030-4762E92AD85A" Win64="yes">
+        <File Id="DesktopInputHelperBinary" Name="dockpipe-desktop-input-helper.exe"
+              Source="$(var.DockpipeDesktopInputHelper)" KeyPath="yes" />
+      </Component>
+      <Component Id="DesktopInputCLI" Guid="7DC4DABD-3ED6-4736-8430-D8144E0FBD67" Win64="yes">
+        <File Id="DesktopInputCLIBinary" Name="dockpipe.exe" Source="$(var.DockpipeSource)" KeyPath="yes" />
+      </Component>
+      <Component Id="DesktopInputNotices" Guid="1DAE38C1-B480-43BB-81DE-F9227DB3BBE8" Win64="yes">
+        <File Id="DesktopInputNoticesFile" Name="THIRD-PARTY-NOTICES.txt"
+              Source="$(var.DockpipeDesktopInputNotices)" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+<?endif?>
 <?if "$(var.DockpipePackagesEnabled)" = "1" ?>
     <ComponentGroup Id="PackagePayloadDirectoryComponents" Directory="PACKAGESDIR">
-      <Component Id="cmp_dockpipe_optional_package_dir" Guid="A13DC67E-188B-534F-9FEC-4C2864E3B23D">
+      <Component Id="cmp_dockpipe_optional_package_dir" Guid="$(var.DockpipePackageComponentGuid)">
         <RegistryValue Id="reg_dockpipe_optional_package_dir"
-                       Root="HKCU"
+                       Root="$(var.DockpipeRegistryRoot)"
                        Key="Software\dockpipe"
                        Name="OptionalPackageDir"
                        Type="string"
@@ -101,18 +162,19 @@
 <?endif?>
 <?if "$(var.DockpipeLauncherEnabled)" = "1" ?>
     <ComponentGroup Id="LauncherComponents">
-      <Component Id="cmp_dockpipe_launcher_feature" Guid="D25B9DAA-215E-4F19-B1AA-3E5A43A6766B" Directory="INSTALLFOLDER">
+      <Component Id="cmp_dockpipe_launcher_feature" Guid="$(var.DockpipeLauncherComponentGuid)" Directory="INSTALLFOLDER">
         <RegistryValue Id="reg_dockpipe_launcher_install"
-                       Root="HKCU"
+                       Root="$(var.DockpipeRegistryRoot)"
                        Key="Software\dockpipe"
                        Name="LauncherExe"
                        Type="string"
                        Value="[INSTALLFOLDER]dockpipe-launcher.exe"
                        KeyPath="yes" />
       </Component>
-      <Component Id="cmp_dockpipe_launcher_shortcut" Guid="8C8E1798-E040-41F3-A26F-4B9CA5C0A293" Directory="ProgramMenuDockpipeFolder">
+      <Component Id="cmp_dockpipe_launcher_shortcut" Guid="$(var.DockpipeShortcutComponentGuid)" Directory="ProgramMenuDockpipeFolder">
+        <!-- A non-advertised shortcut needs an HKCU key path in either install scope. -->
         <RegistryValue Id="reg_dockpipe_launcher_shortcut"
-                       Root="HKCU"
+                      Root="HKCU"
                        Key="Software\dockpipe"
                        Name="LauncherShortcut"
                        Type="integer"

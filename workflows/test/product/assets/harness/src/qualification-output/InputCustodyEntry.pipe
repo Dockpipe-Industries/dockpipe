@@ -1,0 +1,6 @@
+module Dockpipe.Product.QualificationOutput.Entry;
+import Dockpipe.Product.QualificationOutput.Tests;
+import PipeLang.Crypto;
+import PipeLang.IO;
+import PipeLang.Json;
+import PipeLang.Testing;

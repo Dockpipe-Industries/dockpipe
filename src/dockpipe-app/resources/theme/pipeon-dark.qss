@@ -30,7 +30,9 @@ QWidget:disabled {
     color: #858e9c;
 }
 
-QPushButton#primaryButton {
+QPushButton#primaryButton,
+QPushButton#machinePairingStart,
+QPushButton#machinePairingReview {
     color: #ffffff;
 }
 
@@ -107,12 +109,16 @@ QPushButton#secondaryButton:hover {
     color: #ffffff;
 }
 
-QPushButton#primaryButton {
+QPushButton#primaryButton,
+QPushButton#machinePairingStart,
+QPushButton#machinePairingReview {
     background-color: #1f7dd9;
     border-color: #1f7dd9;
 }
 
-QPushButton#primaryButton:hover {
+QPushButton#primaryButton:hover,
+QPushButton#machinePairingStart:hover,
+QPushButton#machinePairingReview:hover {
     background-color: #2b8cf0;
     border-color: #2b8cf0;
 }
@@ -463,7 +469,9 @@ QScrollArea#machineScroll QScrollBar {
     background: #191d24;
 }
 
-QPushButton#primaryButton:disabled {
+QPushButton#primaryButton:disabled,
+QPushButton#machinePairingStart:disabled,
+QPushButton#machinePairingReview:disabled {
     background: #2b323d;
     border-color: #2b323d;
     color: #8b96a6;
@@ -629,3 +637,305 @@ QFrame[dashboardSpatial="true"] QLabel#dashboardPanelTitle { color: #92a8bd; fon
 QFrame[dashboardSpatial="true"] QToolButton { border: none; border-radius: 10px; padding: 0px 6px; color: #92a8bd; background: transparent; }
 QFrame[dashboardSpatial="true"] QToolButton:hover { color: #dde9f5; background: #34495c; }
 QFrame[dashboardSpatial="true"] QWidget[dashboardKind] { background: transparent; border: none; }
+
+QWidget#dockerObservabilityPage, QWidget#dockerDashboard { background: #11171f; }
+QFrame#dockerSummaryCard, QFrame#dockerInventoryCard, QWidget#dockerInspector { background: #19212b; border: 1px solid #2c3745; }
+QLabel#dockerPageDescription, QLabel#dockerMetricTitle, QLabel#dockerMetricCaption,
+QLabel#dockerListResults, QLabel#dockerEyebrow, QLabel#dockerEmptySelection,
+QLabel#dockerListEmptyState, QLabel#dockerInspectorStatus { color: #97a7ba; }
+QLabel#dockerMetricValue, QLabel#dockerPageTitle, QLabel#dockerResourceTitle { color: #edf3fa; }
+QFrame#dockerViewSwitcher { background: #10161e; border: 1px solid #303c4b; }
+QFrame#dockerViewSwitcher QPushButton { background: transparent; color: #9cadbf; }
+QFrame#dockerViewSwitcher QPushButton:checked { background: #293a4a; color: #e6f2ff; }
+QFrame#dockerViewSwitcher QPushButton:hover { background: #202d3a; }
+QTabWidget#dockerInventoryTabs QTabBar::tab { color: #98a8bb; }
+QTabWidget#dockerInventoryTabs QTabBar::tab:selected { color: #83d4c0; border-bottom-color: #68bca8; }
+QWidget#dockerDashboard QTableWidget#dockerTable { background: #19212b; alternate-background-color: #1c2631; }
+QWidget#dockerDashboard QHeaderView::section { background: #141c25; color: #9bacbf; border-bottom: 1px solid #303c4b; }
+QWidget#dockerDashboard QTableWidget#dockerTable::item { border-bottom-color: #26313e; }
+QWidget#dockerDashboard QTableWidget#dockerTable::item:selected { background: #253e51; color: #edf5ff; }
+QWidget#dockerDashboard QTableWidget#dockerTable::item:hover { background: #22303f; }
+QTreeWidget#environmentDefinitionsList, QFrame#environmentInspector { background: #19212b; border: 1px solid #2c3745; }
+QTreeWidget#environmentDefinitionsList { alternate-background-color: #1c2631; }
+QTreeWidget#environmentDefinitionsList QHeaderView::section { background: #141c25; color: #9bacbf; border-bottom: 1px solid #303c4b; }
+QTreeWidget#environmentDefinitionsList::item { padding: 8px 10px; border-bottom: 1px solid #26313e; }
+QTreeWidget#environmentDefinitionsList::item:hover { background: #22303f; }
+QTreeWidget#environmentDefinitionsList::item:selected { background: #253e51; color: #edf5ff; }
+QPushButton#environmentTypeTile { background: #222832; border: 1px solid #333d4b; border-radius: 8px; }
+QPushButton#environmentTypeTile:hover, QPushButton#environmentTypeTile:focus { background: #252e3a; border-color: #528bc5; }
+QPushButton#environmentTypeTile:pressed { background: #263b52; }
+QLabel#environmentTileTitle { color: #edf2fa; font-size: 14px; font-weight: 600; }
+
+QWidget#executionExplorerPage, QWidget#workflowWorkspacePage, QWidget#workflowRunListContents { background: #11171f; }
+QFrame#workflowRunTableCard, QWidget#workflowRunInspector { background: #19212b; border: 1px solid #2c3745; }
+QLabel#observabilityPageDescription, QLabel#workflowRunsEmpty, QLabel#executionStatus { color: #97a7ba; }
+QTabBar#workflowSections::tab { color: #98a8bb; }
+QTabBar#workflowSections::tab:selected { color: #83d4c0; border-bottom-color: #68bca8; }
+QFrame#observabilityViewSwitcher { background: #10161e; border: 1px solid #303c4b; }
+QFrame#observabilityViewSwitcher QPushButton { background: transparent; color: #9cadbf; }
+QFrame#observabilityViewSwitcher QPushButton:checked { background: #293a4a; color: #e6f2ff; }
+QWidget#executionExplorerPage QTableWidget { background: #19212b; alternate-background-color: #1c2631; }
+QWidget#executionExplorerPage QHeaderView::section { background: #141c25; color: #9bacbf; border-bottom: 1px solid #303c4b; }
+QWidget#executionExplorerPage QTableWidget::item:selected { background: #253e51; color: #edf5ff; }
+
+QWidget#systemPageContents { background: #11171f; }
+QFrame#systemSummaryCard, QFrame#systemCpuHistoryCard, QFrame#systemProcessCard,
+QWidget#systemProcessInspector { background: #19212b; border: 1px solid #2c3745; }
+QLabel[systemSummaryValue="true"], QLabel#systemProcessTitle { color: #edf3fa; }
+QLabel[systemSummaryCaption="true"], QFrame#systemSummaryCard QLabel#systemMetricTitle,
+QLabel#systemMonitoringCadence, QLabel#systemProcessCount, QLabel#systemInspectorLabel,
+QLabel#systemInspectorNotice, QLabel#systemInspectorEyebrow, QLabel#systemProcessSubtitle,
+QLabel#systemProcessEmpty, QLabel#systemProcessesEmpty { color: #97a7ba; }
+QFrame#systemSummaryCard QProgressBar { background: #2b3745; }
+QFrame#systemSummaryCard QProgressBar::chunk { background: #70c8a6; }
+QFrame#systemProcessMetricCard { background: #141c25; border: 1px solid #2c3745; }
+QLabel#systemProcessState[tone="active"] { color: #83d4b0; background: #233d37; }
+QLabel#systemProcessState[tone="neutral"] { color: #b0bfd0; background: #2a3441; }
+QLabel#systemProcessState[tone="warning"] { color: #f19ba4; background: #402c36; }
+QFrame#systemProcessCard QTableWidget::item { border-bottom-color: #26313e; }
+QFrame#systemProcessCard QTableWidget::item:hover { background: #22303f; }
+
+/* Machines inventory and shared management controls. */
+QLabel#machinesTitle { color: #edf3fa; }
+QLabel#machinesSubtitle, QLabel#remoteLockStatus, QLabel#machinesListResults { color: #97a7ba; }
+QFrame#machinesConnectionCard, QFrame#machinesInventoryCard { background: #19212b; border-color: #2c3745; }
+QFrame#machinePairingCard { background: #19212b; border-color: #2c3745; }
+QFrame#machinesInventoryCard QLabel#machinesSelectedAccess { background: #141c25; border-color: #2c3745; }
+QWidget#machinesWorkspace { background: #11171f; color: #edf3fa; }
+QWidget#machineContent, QWidget#machineScrollViewport, QStackedWidget#machinePages { background: #11171f; }
+QFrame#machinesViewSwitcher, QFrame#machineMetricCard, QLabel#machinesSelectedAccess { background: #19212b; border-color: #2c3745; }
+QFrame#machinesViewSwitcher QPushButton { background: transparent; color: #97a7ba; }
+QFrame#machinesViewSwitcher QPushButton:hover { background: #24313f; color: #edf3fa; }
+QFrame#machinesViewSwitcher QPushButton:checked { background: #2b443f; color: #83d4c0; }
+QLabel#machineMetricTitle, QLabel#machineMetricCaption { color: #97a7ba; }
+QLabel#machinesManagedCount, QLabel#machinesAwaitingCount, QLabel#machinesSelectedAccess { color: #edf3fa; }
+QLabel#machinesPairedCount { color: #83d4c0; }
+QLineEdit#machinesSearch, QComboBox#machinesAccessFilter { background: #19212b; color: #edf3fa; border-color: #2c3745; }
+QLineEdit#machinesSearch:focus, QComboBox#machinesAccessFilter:focus { border-color: #83d4c0; }
+QTableWidget#managedMachines { background: #19212b; alternate-background-color: #1c2530; color: #edf3fa; border-color: #2c3745; selection-background-color: #2b443f; selection-color: #edf3fa; }
+QTableWidget#managedMachines::item { border-color: #2c3745; }
+QTableWidget#managedMachines QHeaderView::section { background: #19212b; color: #97a7ba; border-color: #2c3745; }
+
+
+QFrame#workflowSummaryCard { background: #19212b; border: 1px solid #2c3745; }
+QLabel[workflowSummaryValue="true"] { color: #edf3fa; }
+QLabel#workflowSummaryTitle, QLabel#workflowSummaryCaption, QLabel#workflowRunScope,
+QLabel#workflowRunResults, QLabel#workflowInspectorLabel, QLabel#workflowInspectorEyebrow,
+QLabel#workflowInspectorNotice, QLabel#workflowInspectorEmpty, QLabel#executionDetails { color: #97a7ba; }
+QFrame#workflowInspectorMetric { background: #141c25; border: 1px solid #2c3745; }
+QLabel#workflowRunState[tone="positive"] { color: #83d4b0; background: #233d37; }
+QLabel#workflowRunState[tone="error"] { color: #f19ba4; background: #402c36; }
+QLabel#workflowRunState[tone="warning"] { color: #e9c078; background: #41392a; }
+QLabel#workflowRunState[tone="neutral"] { color: #b0bfd0; background: #2a3441; }
+QFrame#workflowRunTableCard QTableWidget::item { border-bottom-color: #26313e; }
+QFrame#workflowRunTableCard QTableWidget::item:hover { background: #22303f; }
+QWidget#workflowRunInspector QPlainTextEdit { background: #141c25; border: 1px solid #2c3745; }
+
+/* Machine setup uses one dialog surface. */
+QDialog#machineSetupDialog QWidget#machineContent,
+QDialog#machineSetupDialog QWidget#machineScrollViewport,
+QDialog#machineSetupDialog QStackedWidget#machinePages { background: #191f29; border: none; }
+
+/* Files: workspace header, explorer and document surface. */
+QWidget#projectFiles { background: #10161e; }
+QLabel#filesPageTitle { color: #e8edf5; font-size: 24px; font-weight: 700; }
+QLabel#filesPageSubtitle, QLabel#filesDocumentLocation { color: #97a8bb; font-size: 12px; }
+QWidget#filesExplorerPanel { background: #19222d; border: 1px solid #303c4b; border-radius: 12px; }
+QLabel#filesPanelTitle, QLabel#filesDocumentTitle { color: #e8edf5; font-size: 13px; font-weight: 600; }
+QWidget#projectFiles QWidget#editorWorkspace { background: #19222d; border: 1px solid #303c4b; border-radius: 12px; }
+QWidget#filesExplorerPanel QTreeView, QWidget#filesExplorerPanel QListView { background: #19222d; border: none; }
+QWidget#projectFiles QLabel#editorStatus { background: #141c26; color: #97a8bb; border-top: 1px solid #303c4b; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; font-size: 11px; }
+QLineEdit#filesFilter { background: #141c26; border: 1px solid #303c4b; border-radius: 7px; padding: 7px 10px; }
+
+QToolButton#filePackageTools, QToolButton#fileToolDetailsToggle {
+    background: #222d39; color: #e1e9f2; border: 1px solid #334353;
+    border-radius: 6px; padding: 6px 10px; min-height: 18px;
+}
+QToolButton#filePackageTools:hover, QToolButton#fileToolDetailsToggle:hover { background: #2c3948; }
+QToolButton#filePackageTools::menu-indicator { width: 10px; subcontrol-position: right center; }
+
+QLabel#graphCameraHint { color: #94a3b8; font-size: 12px; }
+
+/* File tabs and independent editor groups. */
+QTabBar#fileTabsPrimary, QTabBar#fileTabsSecondary { background: #141c26; border: none; qproperty-drawBase: 0; }
+QTabBar#fileTabsPrimary::tab, QTabBar#fileTabsSecondary::tab {
+    background: #141c26; color: #95a6bc; border: none; border-bottom: 2px solid transparent;
+    padding: 8px 10px; min-width: 74px; max-width: 210px; margin-right: 1px;
+}
+QTabBar#fileTabsPrimary::tab:selected, QTabBar#fileTabsSecondary::tab:selected { background: #1b2633; color: #e4edf7; border-bottom-color: #41566f; }
+QTabBar#fileTabsPrimary[filePaneActive="true"]::tab:selected,
+QTabBar#fileTabsSecondary[filePaneActive="true"]::tab:selected { border-bottom-color: #6cc9b5; }
+QTabBar#fileTabsPrimary::tab:hover, QTabBar#fileTabsSecondary::tab:hover { background: #1b2633; color: #e4edf7; }
+QWidget#fileTabCloseSlot { background: transparent; border: none; }
+QTabBar#fileTabsPrimary QToolButton#fileTabClose, QTabBar#fileTabsSecondary QToolButton#fileTabClose {
+    image: url(:/theme/tab-close-dark.svg);
+    background: transparent; border: none; border-radius: 4px; padding: 0; margin: 0;
+}
+QTabBar#fileTabsPrimary QToolButton#fileTabClose:hover, QTabBar#fileTabsSecondary QToolButton#fileTabClose:hover { background: #344459; }
+QTabBar#fileTabsPrimary QToolButton, QTabBar#fileTabsSecondary QToolButton { background: #1b2633; color: #e4edf7; border: none; border-radius: 0; }
+QSplitter#filesPaneSplitter::handle { background: #263343; width: 5px; height: 5px; }
+
+/* Git workspace: navigation, review cards and restrained actions. */
+QWidget#projectGit { background: #10161e; }
+QLabel#gitHeading { color: #e5ecf5; font-size: 25px; font-weight: 700; }
+QLabel#gitSubtitle, QLabel#gitMetricCaption, QLabel#gitStatus,
+QLabel#gitHistoryStatus, QLabel#gitRepositoryStatus, QLabel#gitConflictStatus,
+QLabel#gitHistoryPage, QLabel#gitQueueTarget { color: #98a9bf; font-size: 12px; }
+QLabel#gitBranch { background: #19222d; color: #81d4bf; border: 1px solid #2c3949; border-radius: 7px; padding: 8px 12px; }
+QWidget#gitSummary { background: #19222d; border: 1px solid #2c3949; border-radius: 10px; }
+QLabel[gitMetric="true"] { color: #e5ecf5; font-size: 21px; font-weight: 700; }
+QTabWidget#gitTabs::pane { border: none; background: transparent; top: 0; }
+QTabWidget#gitTabs > QTabBar::tab {
+    background: transparent; color: #98a9bf; border: none; border-bottom: 2px solid transparent;
+    border-radius: 0; padding: 11px 4px; margin-right: 24px; margin-bottom: 14px;
+}
+QTabWidget#gitTabs > QTabBar::tab:selected { color: #81d4bf; border-bottom-color: #81d4bf; }
+QTabWidget#gitTabs > QTabBar::tab:hover { color: #e5ecf5; }
+QWidget#gitChangesPanel, QWidget#gitReviewPanel, QWidget[gitCard="true"] {
+    background: #19222d; border: 1px solid #2c3949; border-radius: 10px;
+}
+QWidget#gitCommitPanel { background: transparent; border: none; border-top: 1px solid #2c3949; border-radius: 0; }
+QLabel#gitPanelTitle, QLabel#gitDiffTitle { color: #e5ecf5; font-size: 13px; font-weight: 600; }
+QLabel#gitDiffTitle { background: transparent; border-bottom: 1px solid #2c3949; padding: 0; }
+QWidget#gitReviewToolbar { background: #141c26; border: none; border-bottom: 1px solid #2c3949; }
+QWidget#projectGit QPlainTextEdit#projectGitDiff, QPlainTextEdit#gitHistoryDetail { background: #141c26; border: none; border-radius: 0; }
+QWidget#projectGit QListWidget#gitChangedFiles, QWidget#projectGit QListWidget#gitStagedFiles, QWidget#projectGit QListWidget#gitHistoryCommits,
+QWidget#projectGit QListWidget#gitRepositoryBranches, QWidget#projectGit QListWidget#gitRepositoryStashes,
+QWidget#projectGit QListWidget#gitConflictFiles, QListView#gitCherryPickQueue { background: #19222d; color: #e5ecf5; border: none; outline: none; }
+QListWidget#gitChangedFiles::item, QListWidget#gitStagedFiles::item { border: none; border-radius: 6px; padding: 0; margin: 0; }
+QListWidget#gitChangedFiles::item:hover, QListWidget#gitStagedFiles::item:hover { background: #141c26; }
+QListWidget#gitChangedFiles::item:selected, QListWidget#gitStagedFiles::item:selected, QListWidget#gitHistoryCommits::item:selected,
+QListWidget#gitRepositoryBranches::item:selected, QListWidget#gitRepositoryStashes::item:selected,
+QListWidget#gitConflictFiles::item:selected, QListView#gitCherryPickQueue::item:selected { background: #273e50; color: #e5ecf5; }
+QLabel#gitEmptyTitle { color: #e5ecf5; font-size: 21px; font-weight: 600; }
+QLabel#gitEmptyHint { color: #98a9bf; font-size: 13px; }
+QPushButton#gitCommitStaged, QPushButton#gitQueueStart, QPushButton#gitConflictContinue {
+    background: #285b50; color: #81d4bf; border: 1px solid #3c796b;
+    border-radius: 6px; padding: 8px 14px; font-weight: 600;
+}
+QPushButton#gitCommitStaged:disabled, QPushButton#gitQueueStart:disabled, QPushButton#gitConflictContinue:disabled {
+    background: #141c26; color: #98a9bf; border-color: #2c3949;
+}
+QPushButton#gitFile-discard, QPushButton#gitRepository-branch-delete,
+QPushButton#gitRepository-stash-drop, QPushButton#gitConflictAbort { color: #e9a1ab; }
+QLabel#gitConflictSteps { color: #98a9bf; font-size: 12px; }
+QLabel[gitGroupTitle="true"] { color: #e5ecf5; font-size: 12px; font-weight: 600; }
+QLabel[gitGroupHint="true"], QLabel#gitComparisonLabel { color: #98a9bf; font-size: 12px; }
+QPushButton#gitStageAll, QPushButton#gitUnstageAll { padding: 3px 8px; min-height: 18px; font-size: 11px; }
+QWidget#projectGit QListWidget#gitHistoryCommits::item { padding: 0; margin: 0; border: none; }
+
+/* Working changes layout selector and directory hierarchy. */
+QWidget#gitChangesViewToggle { background: #141c26; border: 1px solid #2c3949; border-radius: 6px; }
+QWidget#gitChangesViewToggle QToolButton { background: transparent; border: none; border-radius: 4px; padding: 4px 6px; color: #e5ecf5; }
+QWidget#gitChangesViewToggle QToolButton:checked { background: #273e50; color: #81d4bf; }
+QWidget#projectGit QTreeWidget#gitUnstagedTree, QWidget#projectGit QTreeWidget#gitStagedTree { background: #19222d; color: #e5ecf5; border: none; outline: none; }
+QTreeWidget#gitUnstagedTree::item, QTreeWidget#gitStagedTree::item { padding: 0; margin: 0; border: none; border-radius: 4px; }
+QTreeWidget#gitUnstagedTree::item:selected, QTreeWidget#gitStagedTree::item:selected { background: #273e50; color: #e5ecf5; }
+QTreeWidget#gitUnstagedTree::item:hover, QTreeWidget#gitStagedTree::item:hover { background: #141c26; }
+
+/* Source-oriented before/after review, shared by working changes and history. */
+QWidget#projectGitDiff, QWidget#gitHistoryDetail, QWidget#gitDiffWidget { background: #141c26; border: none; }
+QPlainTextEdit#gitDiffBeforeEditor, QPlainTextEdit#gitDiffAfterEditor { background: #141c26; color: #e5ecf5; border: none; border-radius: 0; }
+QWidget#gitDiffPane { background: #141c26; border: 1px solid #2c3949; border-radius: 6px; }
+QLabel#gitDiffPaneLabel { background: #19222d; color: #e5ecf5; font-size: 12px; font-weight: 600; border: none; border-bottom: 1px solid #2c3949; }
+QLabel#gitDiffCounts, QLabel#gitDiffPosition, QLabel#gitDiffNotice { color: #98a9bf; font-size: 12px; padding: 4px 8px; }
+QLabel#gitDiffEmpty { color: #98a9bf; font-size: 14px; padding: 24px; }
+QPlainTextEdit#gitDiffCommitMessage { background: #19222d; color: #e5ecf5; border: 1px solid #2c3949; border-radius: 6px; padding: 10px; }
+QPushButton#gitDiffPreviousChange, QPushButton#gitDiffNextChange { padding: 5px 8px; min-height: 20px; }
+QSplitter#gitDiffSplitter::handle { background: #2c3949; width: 3px; }
+
+/* Make the commit file selector discoverable without another sidebar. */
+QLabel#gitDiffFileHeading, QLabel#gitDiffCommitMessageHeading { color: #e5ecf5; font-size: 12px; font-weight: 600; }
+QComboBox#gitDiffFilePicker { background: #19222d; color: #e5ecf5; border: 1px solid #41566b; border-radius: 6px; padding: 8px 42px 8px 12px; min-height: 20px; }
+QComboBox#gitDiffFilePicker:hover, QComboBox#gitDiffFilePicker:focus { border-color: #81d4bf; }
+QComboBox#gitDiffFilePicker::drop-down { subcontrol-origin: border; subcontrol-position: top right; width: 34px; border: none; border-left: 1px solid #41566b; }
+QComboBox#gitDiffFilePicker::down-arrow { image: url(:/theme/chevron-down-dark.svg); width: 16px; height: 16px; }
+
+/* Focused, read-only commit preview. */
+QDialog#gitCommitPreview { background: #10161e; }
+QWidget#gitCommitPreviewDiff { background: #141c26; border: none; }
+QListWidget#gitCommitPreviewFiles { background: #19222d; color: #e5ecf5; border: none; outline: none; }
+QListWidget#gitCommitPreviewFiles::item { min-height: 44px; padding: 6px 8px; border: none; border-radius: 6px; }
+QListWidget#gitCommitPreviewFiles::item:selected { background: #273e50; color: #e5ecf5; }
+QLabel#gitCommitPreviewStatus { color: #98a9bf; font-size: 12px; }
+
+/* Terminal session strip and restrained controls. */
+QLabel#terminalHeading { color: #e5ecf5; font-size: 16px; font-weight: 600; padding-right: 8px; }
+QWidget#terminalToolbar { background: transparent; border: none; }
+QTabBar#terminalTabs { background: transparent; border: none; qproperty-drawBase: 0; }
+QTabBar#terminalTabs::tab { background: transparent; color: #98a9bf; border: none; border-bottom: 2px solid transparent; border-radius: 5px; padding: 6px 8px; margin-right: 3px; min-width: 76px; max-width: 190px; }
+QTabBar#terminalTabs::tab:selected { background: #19222d; color: #e5ecf5; border-bottom-color: #81d4bf; }
+QTabBar#terminalTabs::tab:hover { background: #263d49; color: #e5ecf5; }
+QTabBar#terminalTabs QToolButton#terminalTabClose { image: url(:/theme/tab-close-dark.svg); background: transparent; border: none; padding: 0; margin: 0; border-radius: 4px; }
+QTabBar#terminalTabs QToolButton#terminalTabClose:hover { background: #263d49; }
+QPushButton#terminalNew, QToolButton#terminalShellChoices, QPushButton#terminalSettings { background: #19222d; color: #e5ecf5; border: 1px solid #2c3949; border-radius: 6px; padding: 6px 10px; min-height: 20px; }
+QToolButton#terminalShellChoices { padding: 6px; }
+QPushButton#terminalSettings { padding: 4px; min-height: 20px; }
+QToolButton#terminalShellChoices::menu-indicator { image: none; width: 0; }
+QPushButton#terminalNew:hover, QToolButton#terminalShellChoices:hover, QPushButton#terminalSettings:hover { background: #263d49; }
+QLabel#terminalStatus, QLabel#terminalTransparencyHint { color: #98a9bf; background: #19222d; border: 1px solid #2c3949; border-radius: 6px; padding: 8px 12px; }
+QWidget#terminalEmpty { background: #10161e; border: 1px solid #2c3949; border-radius: 10px; }
+QLabel#terminalEmptyTitle { color: #e5ecf5; font-size: 21px; font-weight: 600; }
+QLabel#terminalEmptyHint { color: #98a9bf; font-size: 13px; }
+
+/* Settings: shared cards, navigation and comfortable form controls. */
+QDialog#settingsDialog, QDialog#terminalSettingsDialog { background: #191d24; color: #e7edf5; }
+QScrollArea#settingsScroll, QScrollArea#settingsScroll > QWidget,
+QScrollArea#settingsScrollArea, QWidget#settingsViewport,
+QWidget#settingsBody, QWidget#settingsPage { background: #191d24; border: none; }
+QFrame#settingsCard, QFrame[settingsCard="true"] { background: #1d2631; border: 1px solid #334151; border-radius: 10px; }
+QFrame#settingsCard QLabel, QFrame[settingsCard="true"] QLabel,
+QFrame#settingsCard QCheckBox, QFrame[settingsCard="true"] QCheckBox { background: transparent; border: none; }
+QLabel#settingsDescription, QLabel[settingsRole="description"] { color: #9faec0; background: transparent; }
+QLabel#settingsSectionTitle, QLabel[settingsRole="sectionTitle"] { color: #e7edf5; font-weight: 600; font-size: 13px; }
+QLabel[settingsRole="title"] { color: #e7edf5; font-size: 19px; font-weight: 600; }
+QLabel#settingsEyebrow { color: #9faec0; font-size: 10px; font-weight: 600; }
+QLabel#settingsNotice { color: #9faec0; background: #233847; border: 1px solid #334151; border-radius: 8px; padding: 12px; }
+QTabWidget#settingsTabs::pane { border: none; background: transparent; top: 0; }
+QTabWidget#settingsTabs QTabBar::tab { background: transparent; color: #9faec0; border: none; border-bottom: 2px solid transparent; border-radius: 0; padding: 10px 14px; margin-right: 6px; }
+QTabWidget#settingsTabs QTabBar::tab:selected { color: #83d4c0; border-bottom-color: #83d4c0; }
+QTabWidget#settingsTabs QTabBar::tab:hover { color: #e7edf5; }
+QDialog#settingsDialog QLineEdit, QDialog#settingsDialog QComboBox,
+QDialog#settingsDialog QSpinBox, QDialog#terminalSettingsDialog QLineEdit,
+QDialog#terminalSettingsDialog QComboBox, QDialog#terminalSettingsDialog QSpinBox,
+QDialog#environmentVmForm QSpinBox {
+    background: #141b24; color: #e7edf5; border: 1px solid #334151; border-radius: 6px; min-height: 24px; padding: 5px 10px;
+}
+QDialog#settingsDialog QComboBox:editable QLineEdit,
+QDialog#terminalSettingsDialog QComboBox:editable QLineEdit { border: none; padding: 0; min-height: 0; }
+QDialog#settingsDialog QSpinBox::up-button, QDialog#settingsDialog QSpinBox::down-button,
+QDialog#terminalSettingsDialog QSpinBox::up-button, QDialog#terminalSettingsDialog QSpinBox::down-button,
+QDialog#environmentVmForm QSpinBox::up-button, QDialog#environmentVmForm QSpinBox::down-button { width: 20px; border: none; }
+QDialog#settingsDialog QLineEdit:focus, QDialog#settingsDialog QComboBox:focus,
+QDialog#settingsDialog QSpinBox:focus, QDialog#terminalSettingsDialog QComboBox:focus,
+QDialog#terminalSettingsDialog QSpinBox:focus, QDialog#environmentVmForm QSpinBox:focus { border-color: #83d4c0; }
+QDialog#settingsDialog QCheckBox, QDialog#terminalSettingsDialog QCheckBox { spacing: 8px; min-height: 24px; }
+QDialog#settingsDialog QWidget:disabled, QDialog#terminalSettingsDialog QWidget:disabled { color: #9faec0; }
+QPlainTextEdit#terminalSettingsPreview { border: 1px solid #334151; border-radius: 8px; padding: 10px; }
+
+QDialog#settingsDialog QCheckBox::indicator, QDialog#terminalSettingsDialog QCheckBox::indicator { width: 16px; height: 16px; border: 1px solid #526376; border-radius: 4px; background: #141b24; }
+QDialog#settingsDialog QCheckBox::indicator:checked, QDialog#terminalSettingsDialog QCheckBox::indicator:checked { background: #167e71; border-color: #167e71; image: url(:/theme/settings-check.svg); }
+QDialog#settingsDialog QCheckBox::indicator:disabled, QDialog#terminalSettingsDialog QCheckBox::indicator:disabled { border-color: #708096; background: #141b24; }
+QDialog#settingsDialog QCheckBox::indicator:checked:disabled, QDialog#terminalSettingsDialog QCheckBox::indicator:checked:disabled { background: #708096; }
+QDialog#settingsDialog QComboBox::drop-down, QDialog#terminalSettingsDialog QComboBox::drop-down { border: none; width: 28px; }
+QDialog#settingsDialog QComboBox::down-arrow, QDialog#terminalSettingsDialog QComboBox::down-arrow { image: url(:/theme/chevron-down-dark.svg); width: 12px; height: 12px; }
+
+QDialog#settingsDialog QPlainTextEdit { background: #141b24; color: #e7edf5; border: 1px solid #334151; border-radius: 6px; padding: 8px; }
+
+QDialog#settingsDialog QWidget#remoteSecurityWidget { background: #191d24; }
+QDialog#settingsDialog QLabel#remoteSecurityTitle { font-size: 19px; font-weight: 600; color: #e7edf5; }
+QDialog#settingsDialog QLabel#remoteSecurityCapabilities { color: #9faec0; }
+QDialog#settingsDialog QGroupBox#remoteSecurityPolicy { background: #1d2631; border: 1px solid #334151; border-radius: 10px; margin-top: 20px; padding: 20px 16px 16px; }
+QDialog#settingsDialog QGroupBox#remoteSecurityPolicy::title { subcontrol-origin: margin; subcontrol-position: top left; left: 16px; padding: 0 6px; color: #e7edf5; font-weight: 600; }
+
+/* Persistent, actionable remote-access state. */
+QToolButton#notificationBell { background: transparent; color: #9faec0; border: 1px solid transparent; border-radius: 6px; padding: 4px 10px; margin-right: 10px; min-height: 22px; }
+QToolButton#notificationBell[needsAttention="true"] { background: #403621; color: #f0c477; border-color: #334151; }
+QToolButton#notificationBell:hover { background: #19222d; color: #dce5f0; }
+QToolButton#notificationBell::menu-indicator { image: none; width: 0; }
+QLabel#remoteNotificationDetail { padding: 14px; background: transparent; color: #dce5f0; }
+QFrame#remoteAccessNotice { background: #403621; border: none; border-bottom: 1px solid #334151; }
+QFrame#remoteAccessNotice QLabel { background: transparent; color: #f0c477; }
+QLabel#remoteUnlockDetail { color: #9faec0; background: transparent; }
+
+QLabel#notificationSection { padding: 10px 14px 4px; color: #9faec0; font-weight: 600; font-size: 10px; background: transparent; }

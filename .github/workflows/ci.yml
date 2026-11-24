@@ -55,7 +55,7 @@ jobs:
 
       - uses: actions/setup-go@v7
         with:
-          go-version: "1.26.10"
+          go-version: "1.26.11"
 
       - name: Public repository configuration boundary
         run: python3 workflows/shared/launch.py workflows/release/metadata/content.yml
@@ -67,12 +67,17 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             cmake \
             build-essential \
+            python3-gi \
             python3-yaml \
+            python3-pil \
             apt-utils \
             gnupg \
+            openssl \
             ripgrep \
             shellcheck \
             qt6-base-dev \
+            qt6-tools-dev \
+            qt6-l10n-tools \
             qt6-webengine-dev \
             qt6-webengine-dev-tools \
             libqt6webenginecore6-bin \
@@ -81,7 +86,7 @@ jobs:
             libegl1-mesa-dev
 
       - name: Release tooling contracts before builds
-        run: python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml
+        run: PATH="/usr/bin:$PATH" /usr/bin/python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml
 
       # Flatpak qualification owns the native desktop build and tests.
       - name: Build CLI (Bash tests use src/bin/dockpipe)
@@ -116,6 +121,7 @@ jobs:
           DOCKPIPE_REPO_ROOT: ${{ github.workspace }}
         run: |
           set -euo pipefail
+          docker pull golang:1.26.11-bookworm
           ./src/bin/dockpipe --workflow test --runtime docker --workdir "${{ github.workspace }}" \
             --mount "$(go env GOPATH)/pkg:/go/pkg:rw" \
             --
@@ -185,7 +191,7 @@ jobs:
 
       - uses: actions/setup-go@v7
         with:
-          go-version: "1.26.10"
+          go-version: "1.26.11"
 
       - name: Pinned package-store composition on Windows
         run: python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/catalog/compose/tests --pattern test_package_store_composition.py

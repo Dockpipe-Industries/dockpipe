@@ -566,6 +566,13 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
+            "not": {
+              "anyOf": [
+                { "required": ["command", "windows_feature"] },
+                { "required": ["command", "windows_service"] },
+                { "required": ["windows_feature", "windows_service"] }
+              ]
+            },
             "properties": {
               "id": {
                 "type": "string",
@@ -574,6 +581,16 @@
               "command": {
                 "type": "string",
                 "description": "Executable name expected on the host PATH."
+              },
+              "windows_feature": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+                "description": "Windows optional feature name. Use instead of command. The check runs only on Windows."
+              },
+              "windows_service": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+                "description": "Windows service name. Checks registration on Windows and accepts a stopped demand-start service."
               },
               "description": { "type": "string" },
               "required": {
@@ -739,6 +756,9 @@
         "is_blocking": {
           "type": "boolean",
           "description": "Blocking control for explicit async groups. Plain-step is_blocking: false is not supported; use group.mode: async."
+        },
+        "control": {
+          "$ref": "#/$defs/step_control"
         }
       },
       "allOf": [
@@ -799,6 +819,260 @@
         }
       },
       "required": ["group"]
+    },
+    "workflow_control": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema": {
+          "const": 1
+        },
+        "kind": {
+          "const": "host"
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 65536,
+          "pattern": "^[^\\x00]*$",
+          "minLength": 1,
+          "description": "Literal YAML block (|) containing real PipeLang host orchestration; maximum 65536 UTF-8 bytes.",
+          "allOf": [
+            {
+              "pattern": "\\S"
+            }
+          ]
+        },
+        "inputs": {
+          "type": "object",
+          "maxProperties": 64,
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "enum": [
+                  "bool",
+                  "int",
+                  "string",
+                  "List<string>"
+                ]
+              },
+              "value": {},
+              "env": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S",
+                "maxLength": 65536,
+                "allOf": [
+                  {
+                    "pattern": "^[^\\x00]*$"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "oneOf": [
+              {
+                "required": [
+                  "value"
+                ],
+                "not": {
+                  "required": [
+                    "env"
+                  ]
+                }
+              },
+              {
+                "required": [
+                  "env"
+                ],
+                "not": {
+                  "required": [
+                    "value"
+                  ]
+                }
+              }
+            ],
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "type": {
+                      "const": "bool"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "value": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "type": {
+                      "const": "int"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "value": {
+                      "type": "integer",
+                      "minimum": -9223372036854775808,
+                      "maximum": 9223372036854775807
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "type": {
+                      "const": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "value": {
+                      "type": "string",
+                      "maxLength": 65536,
+                      "pattern": "^[^\\x00]*$"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "type": {
+                      "const": "List<string>"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "value": {
+                      "type": "array",
+                      "maxItems": 256,
+                      "items": {
+                        "type": "string",
+                        "maxLength": 65536,
+                        "pattern": "^[^\\x00]*$"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "max_calls": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4096,
+              "default": 128
+            },
+            "compute_timeout_seconds": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60,
+              "default": 5
+            }
+          },
+          "required": []
+        }
+      },
+      "required": [
+        "schema",
+        "kind",
+        "source"
+      ]
+    },
+    "step_control": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "parameters": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+              },
+              "type": {
+                "enum": [
+                  "bool",
+                  "int",
+                  "string"
+                ]
+              },
+              "env": {
+                "type": "string",
+                "pattern": "^[A-Z_][A-Z0-9_]*$",
+                "allOf": [
+                  {
+                    "not": {
+                      "pattern": "^(DOCKPIPE_|LD_|DYLD_)"
+                    }
+                  },
+                  {
+                    "not": {
+                      "enum": [
+                        "PATH",
+                        "HOME",
+                        "USERPROFILE",
+                        "SYSTEMROOT",
+                        "COMSPEC",
+                        "BASH_ENV",
+                        "ENV"
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "env"
+            ]
+          }
+        }
+      },
+      "required": [
+        "parameters"
+      ]
     }
   },
   "properties": {
@@ -970,55 +1244,188 @@
           { "$ref": "#/$defs/async_group" }
         ]
       }
+    },
+    "control": {
+      "$ref": "#/$defs/workflow_control"
     }
   },
   "allOf": [
-    {
-      "if": {
-        "properties": {
-          "steps": {
-            "type": "array",
-            "minItems": 1
-          }
-        },
-        "required": ["steps"]
+  {
+    "if": {
+      "required": [
+        "control"
+      ]
+    },
+    "then": {
+      "required": [
+        "steps"
+      ],
+      "not": {
+        "required": [
+          "imports"
+        ]
       },
-      "then": {
-        "not": {
-          "anyOf": [
-            { "required": ["run"] },
-            { "required": ["act"] },
-            { "required": ["action"] }
-          ]
+      "properties": {
+        "steps": {
+          "minItems": 1,
+          "maxItems": 128,
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/workflow_step"
+              },
+              {
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+                  },
+                  "is_blocking": {
+                    "const": true
+                  }
+                }
+              }
+            ]
+          }
         }
       }
     },
-    {
-      "if": {
-        "properties": {
-          "finally": {
-            "type": "array",
-            "minItems": 1
+    "else": {
+      "properties": {
+        "steps": {
+          "items": {
+            "not": {
+              "required": [
+                "control"
+              ]
+            },
+            "properties": {
+              "group": {
+                "properties": {
+                  "tasks": {
+                    "items": {
+                      "not": {
+                        "required": [
+                          "control"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
-        },
-        "required": ["finally"]
-      },
-      "then": {
-        "properties": {
-          "steps": {
-            "type": "array",
-            "minItems": 1
-          }
-        },
-        "required": ["steps"],
-        "not": {
-          "anyOf": [
-            { "required": ["run"] },
-            { "required": ["act"] },
-            { "required": ["action"] }
-          ]
         }
       }
     }
-  ]
+  },
+  {
+    "properties": {
+      "finally": {
+        "items": {
+          "not": {
+            "required": [
+              "control"
+            ]
+          },
+          "properties": {
+            "group": {
+              "properties": {
+                "tasks": {
+                  "items": {
+                    "not": {
+                      "required": [
+                        "control"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "if": {
+      "properties": {
+        "steps": {
+          "type": "array",
+          "minItems": 1
+        }
+      },
+      "required": [
+        "steps"
+      ]
+    },
+    "then": {
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "run"
+            ]
+          },
+          {
+            "required": [
+              "act"
+            ]
+          },
+          {
+            "required": [
+              "action"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "if": {
+      "properties": {
+        "finally": {
+          "type": "array",
+          "minItems": 1
+        }
+      },
+      "required": [
+        "finally"
+      ]
+    },
+    "then": {
+      "properties": {
+        "steps": {
+          "type": "array",
+          "minItems": 1
+        }
+      },
+      "required": [
+        "steps"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "run"
+            ]
+          },
+          {
+            "required": [
+              "act"
+            ]
+          },
+          {
+            "required": [
+              "action"
+            ]
+          }
+        ]
+      }
+    }
+  }
+]
 }

@@ -1,11 +1,13 @@
 #include "WorkflowCatalogData.h"
 
+#include <QCoreApplication>
+
 QString WorkflowMeta::sourceLabel() const
 {
     if (source != QStringLiteral("vscode"))
         return QString();
-    return sourceKind == QStringLiteral("launch") ? QStringLiteral("VS Code · launch.json")
-                                                  : QStringLiteral("VS Code · tasks.json");
+    return sourceKind == QStringLiteral("launch") ? QCoreApplication::translate("WorkflowMeta", "VS Code · launch.json")
+                                                  : QCoreApplication::translate("WorkflowMeta", "VS Code · tasks.json");
 }
 
 QString WorkflowMeta::catalogTitle() const

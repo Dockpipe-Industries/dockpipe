@@ -196,6 +196,37 @@ provider-selected loopback readiness URL, public endpoint, explicit maintenance
 policy and timing. The readiness contract is HTTP 200 from a listener owned by
 the supervised process; Core does not prescribe the provider's URL path.
 
+An absent connector after a failed cutover requires a new explicit approval; an
+expired activation request is never restart authority. The same `edge-activate`
+interface accepts an optional `manual_recovery` object containing
+`failed_activation_id`, a fresh 64-character lowercase hexadecimal `nonce`, and
+an RFC3339 `expires_at` no more than five minutes after admission. These fields
+participate in the exact `--approve` ID; omitting the object preserves legacy
+activation IDs and behavior.
+
+Manual recovery requires the current failed cutover ID and no supervised process.
+Both new candidate and recovery configurations/digests must select the same exact
+prior approved candidate or recovery snapshot, with unchanged arguments, provider
+input digests, readiness URL and broker configuration. For an original activation,
+the source executable is its private `edge-activations/<failed-id>/candidate` or
+`recovery` snapshot. A failed manual attempt retains its original approved source.
+The broker archives the failed journal byte-for-byte as
+`edge-activations/<failed-id>/failed-journal.json` before recording the new intent;
+existing evidence cannot be replaced.
+
+A successful dry-run verifies those bindings without launching anything. Execution
+records durable launch intent and permits one new child within the earlier of the
+request recovery budget and approval expiry. It verifies the active image, owned
+local readiness and signed public HTTPS broker identity. Cancellation or failure
+stops only the newly owned child. Failed/interrupted manual attempts cannot launch
+on broker startup or enter automatic fallback, even if the wall clock moves back.
+A committed healthy deployment retains normal pinned startup authority; that does
+not grant another automatic recovery attempt. Operator OS-session authorization,
+exact request approval and the existing active-job maintenance guard still apply.
+Once a manual request is durably recorded, its journal requires a broker that
+supports `manual_recovery`; older strict readers fail closed. The archived failed
+journal is inspection evidence, not automatic restore or downgrade authority.
+
 The broker pins a private snapshot of its actual native baseline image before
 updates. Legacy wrapper/script edges keep their execution behavior; the broker
 cannot arm activation where the native image cannot be pinned unambiguously.

@@ -1,0 +1,4 @@
+module Dockpipe.Product.Qualification.PlanEntry;
+import Dockpipe.Product.Qualification.Tests;
+import PipeLang.Json;
+import PipeLang.Testing;

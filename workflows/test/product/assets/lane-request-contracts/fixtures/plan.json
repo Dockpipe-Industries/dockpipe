@@ -1,0 +1,42 @@
+{
+  "schema": "dockpipe.product-integration.plan/v1",
+  "run_id": "qualification-example",
+  "targets": [
+    {
+      "id": "example",
+      "platform": "Linux Ü",
+      "kind": "vm",
+      "artifact_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "drivers": [
+        {
+          "id": "available",
+          "entrypoint": "driver.py",
+          "sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+          "features": [
+            "available"
+          ],
+          "configuration": {
+            "z": 0.9,
+            "large": [
+              1,
+              null,
+              true
+            ],
+            "a": {
+              "z": " ",
+              "a": "U0001f600"
+            }
+          }
+        },
+        {
+          "id": "unavailable",
+          "entrypoint": "driver.py",
+          "sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+          "features": [
+            "unavailable"
+          ]
+        }
+      ]
+    }
+  ]
+}

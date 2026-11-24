@@ -15,19 +15,28 @@ import (
 
 const EdgeActivationSchema = "dockpipe.remote.edge-activation/v1"
 
+// EdgeManualRecovery authorizes one fresh attempt after a failed cutover.
+// The nonce and expiry participate in the existing exact activation approval ID.
+type EdgeManualRecovery struct {
+	FailedActivationID string    `json:"failed_activation_id"`
+	Nonce              string    `json:"nonce"`
+	ExpiresAt          time.Time `json:"expires_at"`
+}
+
 type EdgeActivationRequest struct {
-	Inputs               map[string]string `json:"inputs"`
-	Schema               string            `json:"schema"`
-	ExpectedConfigDigest string            `json:"expected_config_digest"`
-	Candidate            EdgeConfig        `json:"candidate"`
-	CandidateSHA256      string            `json:"candidate_sha256"`
-	Recovery             EdgeConfig        `json:"recovery"`
-	RecoverySHA256       string            `json:"recovery_sha256"`
-	ReadinessURL         string            `json:"readiness_url"`
-	StartupSeconds       int               `json:"startup_seconds"`
-	StableSeconds        int               `json:"stable_seconds"`
-	RecoverySeconds      int               `json:"recovery_seconds"`
-	Maintenance          string            `json:"maintenance"`
+	ManualRecovery       *EdgeManualRecovery `json:"manual_recovery,omitempty"`
+	Inputs               map[string]string   `json:"inputs"`
+	Schema               string              `json:"schema"`
+	ExpectedConfigDigest string              `json:"expected_config_digest"`
+	Candidate            EdgeConfig          `json:"candidate"`
+	CandidateSHA256      string              `json:"candidate_sha256"`
+	Recovery             EdgeConfig          `json:"recovery"`
+	RecoverySHA256       string              `json:"recovery_sha256"`
+	ReadinessURL         string              `json:"readiness_url"`
+	StartupSeconds       int                 `json:"startup_seconds"`
+	StableSeconds        int                 `json:"stable_seconds"`
+	RecoverySeconds      int                 `json:"recovery_seconds"`
+	Maintenance          string              `json:"maintenance"`
 }
 
 func ValidEdgeDigest(value string) bool {
@@ -51,6 +60,14 @@ func (request EdgeActivationRequest) ID() string {
 }
 
 func (request EdgeActivationRequest) Validate() error {
+	if recovery := request.ManualRecovery; recovery != nil {
+		if !ValidEdgeDigest(recovery.FailedActivationID) || !ValidEdgeDigest(recovery.Nonce) || recovery.ExpiresAt.IsZero() {
+			return errors.New("manual recovery requires an exact failed activation, fresh nonce and expiry")
+		}
+		if EdgeConfigDigest(request.Candidate) != EdgeConfigDigest(request.Recovery) || request.CandidateSHA256 != request.RecoverySHA256 {
+			return errors.New("manual recovery authorizes one exact image, without a fallback loop")
+		}
+	}
 	if request.Schema != EdgeActivationSchema || !ValidEdgeDigest(request.ExpectedConfigDigest) ||
 		!ValidEdgeDigest(request.CandidateSHA256) || !ValidEdgeDigest(request.RecoverySHA256) ||
 		request.Maintenance != "allow-connector-replacement" {

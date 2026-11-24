@@ -1,0 +1,8 @@
+module Dockpipe.Product.LaneReceipt;
+import PipeLang.Json;
+
+public Record AdmittedReceipt {
+    public JsonNode rows;
+    public int count = 0;
+    public int passing = 0;
+}

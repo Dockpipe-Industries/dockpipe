@@ -1,0 +1,10 @@
+module Dockpipe.SDK;
+
+// Path mode sets isPath and path, leaving value's fields empty. Object mode
+// clears path and returns the complete typed service object in value.
+public Record ScopeResult {
+    public bool isPath;
+    public string path;
+
+    public ScopeObject value;
+}

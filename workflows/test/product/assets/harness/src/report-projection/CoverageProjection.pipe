@@ -1,0 +1,111 @@
+module Dockpipe.Product.ReportProjection;
+import Dockpipe.Product.Coverage;
+import PipeLang.Json;
+
+public Class CoverageProjection {
+    private JsonDocumentOutput output;
+
+    public CoverageProjection(JsonDocumentOutput output) {
+        this.output = output;
+    }
+
+    private Result<void,string> Text(string name, string value) {
+        try output.Name(name);
+        return output.WriteText(value);
+    }
+
+    private Result<void,string> Integer(string name, int value) {
+        try output.Name(name);
+        return output.WriteInteger(value);
+    }
+
+    private Result<void,string> Rate(string name, float value) {
+        try output.Name(name);
+        return output.WriteFinite(value);
+    }
+
+    private Result<void,string> Boolean(string name, bool value) {
+        try output.Name(name);
+        return output.WriteBoolean(value);
+    }
+
+    private Result<void,string> Count(TargetCoverage target, string status) {
+        if (!target.counts.ContainsKey(status))
+            return Result<void,string>.Success();
+
+        return Integer(status, target.counts.At(status));
+    }
+
+    private Result<void,string> Layer(TargetCoverage target, string name) {
+        if (!target.layers.ContainsKey(name))
+            return Result<void,string>.Success();
+
+        LayerCoverage layer = target.layers.At(name);
+        try output.Name(name);
+        try output.BeginObject();
+        try Integer("passed", layer.passed);
+        try Integer("required", layer.required);
+        return output.EndObject();
+    }
+
+    // The caller emits the target's case array before these statistics and
+    // appends the trusted target identity as the final object member.
+    public Result<void,string> TargetStatistics(TargetCoverage target) {
+        try output.Name("counts");
+        try output.BeginObject();
+        try Count(target, "blocked");
+        try Count(target, "failed");
+        try Count(target, "manual_pending");
+        try Count(target, "not_run");
+        try Count(target, "passed");
+        try output.EndObject();
+
+        try Rate("coverage", target.coverage);
+        try Integer("critical_passed", target.criticalPassed);
+        try Integer("critical_required", target.criticalRequired);
+
+        try output.Name("layers");
+        try output.BeginObject();
+        try Layer(target, "component");
+        try Layer(target, "guided_ui");
+        try Layer(target, "human");
+        try Layer(target, "installed_e2e");
+        try output.EndObject();
+
+        try Integer("passed", target.passed);
+        try Integer("required", target.required);
+        return Text("status", target.status);
+    }
+
+    public Result<void,string> Overall(OverallCoverage summary, CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<void,string>.Cancelled("qualification.report.cancelled");
+
+        try output.BeginObject();
+        try OverallFields(summary, token);
+        return output.EndObject();
+    }
+
+    public Result<void,string> OverallFields(OverallCoverage summary, CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<void,string>.Cancelled("qualification.report.cancelled");
+
+        try Boolean("full_product_qualified", summary.fullProductQualified);
+        try Text("note", "Selected-target coverage is not full-product or bug-detection coverage. " +
+            "Component, installed, guided and human layers are reported separately.");
+        try Integer("passed", summary.passed);
+        try Integer("required", summary.required);
+        try Rate("selected_case_coverage", summary.selectedCaseCoverage);
+        try Boolean("selected_targets_qualified", summary.selectedTargetsQualified);
+        try output.Name("unconfigured_platform_profiles");
+        try output.BeginArray();
+        foreach (string profile in summary.unconfiguredPlatformProfiles) {
+            if (token.IsCancellationRequested)
+                return Result<void,string>.Cancelled("qualification.report.cancelled");
+
+            try output.WriteText(profile);
+        }
+
+        return output.EndArray();
+    }
+}

@@ -1,0 +1,7 @@
+module Dockpipe.SDK.FaultProof;
+
+public Record ChildInputValue {
+    public string name;
+    public bool present;
+    public string value;
+}

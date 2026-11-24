@@ -1,14 +1,18 @@
 #pragma once
+
+#include <QCoreApplication>
 #include "LauncherUiExport.h"
 
 #include "CanvasView.h"
 #include <QMouseEvent>
 #include <QVector3D>
+#include <QVariant>
 #include <functional>
 
 // Orthographic 3D camera over the existing native scene. Only input or data
 // changes repaint it; no rendering loop, physics or extra model.
 class DOCKPIPE_LAUNCHER_UI_EXPORT WorkspaceGraphView : public CanvasView {
+    Q_DECLARE_TR_FUNCTIONS(WorkspaceGraphView)
 public:
     explicit WorkspaceGraphView(QWidget *parent = nullptr);
     void setHardwareAcceleration(bool enabled, bool deferUntilShown = false);
@@ -17,6 +21,14 @@ public:
     QString rendererDescription() const { return m_rendererDescription; }
 
     bool spatial() const { return m_spatial; }
+    bool constellation() const { return property("workspaceGraphConstellation").toBool(); }
+    QPointF cameraAngles() const { return {m_yaw, m_pitch}; }
+    QVector3D unprojectDelta(const QPointF &delta) const
+    {
+        return QVector3D(delta.x() * m_cosYaw + delta.y() * m_sinPitch * m_sinYaw,
+                         -delta.y() * m_cosPitch,
+                         -delta.x() * m_sinYaw + delta.y() * m_sinPitch * m_cosYaw);
+    }
     void setSpatial(bool enabled)
     {
         m_spatial = enabled;
@@ -37,7 +49,7 @@ public:
     void resetCamera()
     {
         m_yaw = -20;
-        m_pitch = 50;
+        m_pitch = constellation() ? 25 : 50;
         orbit(0, 0);
     }
     QPointF project(const QVector3D &point) const
@@ -64,6 +76,11 @@ protected:
     }
     void drawBackground(QPainter *painter, const QRectF &rect) override
     {
+        if (constellation()) {
+            const bool dark = palette().color(QPalette::Window).lightness() < 128;
+            painter->fillRect(rect, QColor(dark ? "#10161e" : "#f5f7fb"));
+            return;
+        }
         if (!m_spatial) {
             CanvasView::drawBackground(painter, rect);
             return;
@@ -90,7 +107,7 @@ protected:
     {
         const bool middleDrag = event->button() == Qt::MiddleButton;
         const bool shiftDrag = event->button() == Qt::LeftButton && (event->modifiers() & Qt::ShiftModifier);
-        if (m_spatial && (middleDrag || shiftDrag)) {
+        if ((m_spatial || constellation()) && (middleDrag || shiftDrag)) {
             m_orbitButton = event->button();
             m_lastMouse = event->pos();
             viewport()->setCursor(Qt::ClosedHandCursor);

@@ -20,7 +20,15 @@ import (
 )
 
 const operatorProofHeader = "X-Dockpipe-Operator-Proof"
-const operatorAbsoluteLifetime = time.Hour
+
+var errSecuritySampleDeadline = errors.New("native OS security sample deadline exceeded")
+
+// The waiting queue uses the same 128-request bound as outstanding proof
+// issuance; each phase has its own independent capacity.
+// Five seconds leaves most of the original 20-second proof lifetime for the
+// bounded native query and operation; it never renews or replays a proof.
+const maxOutstandingOperatorProofs = 128
+const operatorVerificationQueueWait = 5 * time.Second
 
 type SecurityCapabilities struct {
 	Idle       bool `json:"idle"`
@@ -33,7 +41,6 @@ type SecurityStatus struct {
 	AuthorityAvailable bool                 `json:"authority_available"`
 	Supported          bool                 `json:"supported"`
 	Locked             bool                 `json:"locked"`
-	AbsoluteSeconds    int                  `json:"absolute_seconds"`
 	ExpiresAt          time.Time            `json:"expires_at,omitempty"`
 	Capabilities       SecurityCapabilities `json:"capabilities"`
 	Detail             string               `json:"detail"`
@@ -59,27 +66,29 @@ type SecurityProof struct {
 // authentication. OS account compromise is outside this boundary; it is not a
 // substitute for a privileged keystore or a sandbox for same-user malware.
 type SecurityAuthority struct {
-	mutex             sync.Mutex
-	platform          osauth.Platform
-	policy            contract.RemoteSecurityPolicy
-	policyPath        string
-	audience          string
-	uid               string
-	generation        uint64
-	authCancel        context.CancelFunc
-	identity          *remoteidentity.Identity
-	session           string
-	unlockedAt        time.Time
-	expiresAt         time.Time
-	snapshot          osauth.Snapshot
-	sampledAt         time.Time
-	sampleStarted     time.Time
-	detail            string
-	available         bool
-	policyUncertain   bool
-	nonces            map[string]time.Time
-	verificationSlots chan struct{}
-	now               func() time.Time
+	mutex                   sync.Mutex
+	platform                osauth.Platform
+	policy                  contract.RemoteSecurityPolicy
+	policyPath              string
+	audience                string
+	uid                     string
+	generation              uint64
+	authCancel              context.CancelFunc
+	identity                *remoteidentity.Identity
+	session                 string
+	unlockedAt              time.Time
+	expiresAt               time.Time
+	snapshot                osauth.Snapshot
+	sampledAt               time.Time
+	nextSampleSequence      uint64
+	publishedSampleSequence uint64
+	detail                  string
+	available               bool
+	policyUncertain         bool
+	nonces                  map[string]time.Time
+	verificationSlots       chan struct{}
+	verificationWaiters     chan struct{}
+	now                     func() time.Time
 }
 
 func NewSecurityAuthority(platform osauth.Platform, directory, audience string, uid int) (*SecurityAuthority, error) {
@@ -97,9 +106,19 @@ func NewSecurityAuthority(platform osauth.Platform, directory, audience string, 
 	if err := policy.Validate(); err != nil {
 		return nil, err
 	}
-	return &SecurityAuthority{platform: platform, policy: policy, policyPath: path,
-		audience: audience, uid: strconv.Itoa(uid), nonces: map[string]time.Time{}, verificationSlots: make(chan struct{}, 4), now: time.Now,
-		detail: "Remote access starts locked; authenticate with the operating system to unlock."}, nil
+	return &SecurityAuthority{
+		platform:            platform,
+		policy:              policy,
+		policyPath:          path,
+		audience:            audience,
+		uid:                 strconv.Itoa(uid),
+		generation:          1,
+		nonces:              map[string]time.Time{},
+		verificationSlots:   make(chan struct{}, 4),
+		verificationWaiters: make(chan struct{}, maxOutstandingOperatorProofs),
+		now:                 time.Now,
+		detail:              "Remote access starts locked; authenticate with the operating system to unlock.",
+	}, nil
 }
 
 func (authority *SecurityAuthority) Lock() {
@@ -141,23 +160,52 @@ func (authority *SecurityAuthority) audit(unit, message, failure string) {
 
 // Sample never treats API traffic as input. A missing idle adapter falls back
 // to a fixed timeout from unlock; missing required lock/sleep detection fails closed.
-func (authority *SecurityAuthority) Sample(ctx context.Context) {
+func (authority *SecurityAuthority) Sample(parent context.Context) {
+	// Native clocks can return identical start times for concurrent samples.
+	authority.mutex.Lock()
+	authority.nextSampleSequence++
+	sequence := authority.nextSampleSequence
 	started := authority.now()
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	authority.mutex.Unlock()
+
+	ctx, cancel := context.WithTimeoutCause(parent, 2*time.Second, errSecuritySampleDeadline)
 	defer cancel()
 	snapshot, err := authority.platform.Snapshot(ctx)
+	if err == nil && context.Cause(ctx) == errSecuritySampleDeadline {
+		err = errSecuritySampleDeadline
+	}
 	if _, supported := authority.platform.(osauth.SuspendClock); !supported {
 		snapshot.SleepKnown = false
 	}
 	if err == nil && snapshot.IdleKnown && snapshot.Idle < 0 {
 		err = errors.New("operating system returned a negative input age")
 	}
-	authority.mutex.Lock()
-	defer authority.mutex.Unlock()
-	if started.Before(authority.sampleStarted) {
+	callerAborted := parent.Err() != nil && ctx.Err() != nil && context.Cause(ctx) != errSecuritySampleDeadline
+	contextFailure := errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
+	if callerAborted && contextFailure && !(snapshot.IdleKnown && snapshot.Idle < 0) {
+		// An interrupted request cannot replace global OS evidence or advance its
+		// freshness/ordering. Affirmative partial lock/resume evidence still revokes
+		// authority, even when a later query in the same snapshot was interrupted.
+		authority.mutex.Lock()
+		defer authority.mutex.Unlock()
+		if sequence < authority.publishedSampleSequence {
+			return
+		}
+		if authority.identity != nil || authority.authCancel != nil {
+			if authority.policy.LockOnScreenLock && snapshot.LockKnown && snapshot.Locked {
+				authority.locked("OS session locked during an interrupted security sample.")
+			} else if authority.policy.LockOnSleep && snapshot.SleepKnown && snapshot.SleepGeneration != authority.snapshot.SleepGeneration {
+				authority.locked("Computer sleep/resume invalidated remote access.")
+			}
+		}
 		return
 	}
-	authority.sampleStarted = started
+	authority.mutex.Lock()
+	defer authority.mutex.Unlock()
+	if sequence < authority.publishedSampleSequence {
+		return
+	}
+	authority.publishedSampleSequence = sequence
 	previous := authority.snapshot
 	authority.snapshot = snapshot
 	// Using query start avoids extending trusted activity by command latency.
@@ -216,7 +264,7 @@ func (authority *SecurityAuthority) checkLocked() error {
 		deadline = authority.expiresAt
 	}
 	if !securityBefore(now, deadline) {
-		authority.locked("Remote access auto-locked after inactivity or its one-hour maximum lifetime.")
+		authority.locked("Remote access auto-locked after inactivity or its configured maximum lifetime.")
 		return errors.New(authority.detail)
 	}
 	return nil
@@ -308,7 +356,7 @@ func (authority *SecurityAuthority) Unlock(ctx context.Context, pid int) error {
 	authority.identity = &remoteidentity.Identity{PublicKey: identity.PublicKey, PrivateKey: append([]byte(nil), identity.PrivateKey...)}
 	authority.session = session
 	authority.unlockedAt = authority.now()
-	authority.expiresAt = authority.unlockedAt.Add(operatorAbsoluteLifetime)
+	authority.expiresAt = authority.unlockedAt.Add(time.Duration(authority.policy.AbsoluteSeconds) * time.Second)
 	clear(authority.nonces)
 	if err := authority.checkLocked(); err != nil {
 		return err
@@ -374,7 +422,7 @@ func (authority *SecurityAuthority) Status() SecurityStatus {
 		detail += " Required OS lock/sleep integration is unavailable; remote access cannot unlock with the current policy."
 	}
 	return SecurityStatus{RemoteSecurityPolicy: authority.policy, AuthorityAvailable: true, Supported: supported,
-		Locked: authority.identity == nil, AbsoluteSeconds: int(operatorAbsoluteLifetime.Seconds()),
+		Locked:    authority.identity == nil,
 		ExpiresAt: authority.expiresAt, Detail: detail,
 		Capabilities: SecurityCapabilities{Idle: authority.snapshot.IdleKnown, ScreenLock: authority.snapshot.LockKnown, Sleep: authority.snapshot.SleepKnown}}
 }
@@ -412,7 +460,7 @@ func (authority *SecurityAuthority) Sign(ctx context.Context, audience, path, di
 			delete(authority.nonces, nonce)
 		}
 	}
-	if len(authority.nonces) >= 128 {
+	if len(authority.nonces) >= maxOutstandingOperatorProofs {
 		return SecurityProof{}, errors.New("too many outstanding remote requests; wait for their 20-second deadline")
 	}
 	nonce, err := Secret()
@@ -473,11 +521,16 @@ func (authority *SecurityAuthority) Verify(ctx context.Context, header, path str
 	authority.mutex.Unlock()
 	// Only a cryptographically valid, already consumed local proof can cause an
 	// OS query. Do this before the broker job mutex, with bounded concurrency.
-	select {
-	case authority.verificationSlots <- struct{}{}:
-		defer func() { <-authority.verificationSlots }()
-	default:
-		return operatorAdmission{}, errors.New("remote authorization verification is busy")
+	release, err := authority.acquireVerification(ctx, admission)
+	if err != nil {
+		return operatorAdmission{}, err
+	}
+	defer release()
+	if err := ctx.Err(); err != nil {
+		return operatorAdmission{}, err
+	}
+	if err := authority.CheckAdmission(admission); err != nil {
+		return operatorAdmission{}, err
 	}
 	authority.Sample(ctx)
 	if err := ctx.Err(); err != nil {
@@ -496,4 +549,47 @@ func (authority *SecurityAuthority) CheckAdmission(admission operatorAdmission) 
 		return errors.New("remote authority changed before operation admission")
 	}
 	return nil
+}
+
+// acquireVerification is entered only after cryptographic validation consumes
+// the one-use nonce. No authority mutex is held while waiting. Four native verification
+// queries remain the execution ceiling across every client and browser context.
+func (authority *SecurityAuthority) acquireVerification(ctx context.Context, admission operatorAdmission) (func(), error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	release := func() { <-authority.verificationSlots }
+	select {
+	case authority.verificationSlots <- struct{}{}:
+		return release, nil
+	default:
+	}
+	select {
+	case authority.verificationWaiters <- struct{}{}:
+		defer func() { <-authority.verificationWaiters }()
+	default:
+		return nil, errors.New("remote authorization verification waiting capacity reached")
+	}
+	deadline := time.Now().Add(operatorVerificationQueueWait)
+	if admission.deadline.Before(deadline) {
+		deadline = admission.deadline
+	}
+	waiting, cancel := context.WithDeadline(ctx, deadline)
+	defer cancel()
+	select {
+	case authority.verificationSlots <- struct{}{}:
+		if waiting.Err() != nil {
+			release()
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			return nil, errors.New("remote authorization verification queue deadline exceeded")
+		}
+		return release, nil
+	case <-waiting.Done():
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		return nil, errors.New("remote authorization verification queue deadline exceeded")
+	}
 }

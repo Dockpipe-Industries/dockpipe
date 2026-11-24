@@ -1,0 +1,8 @@
+name: sdk-fixture
+platforms: [windows]
+vault: none
+docker_preflight: false
+steps:
+  - id: failure
+    kind: host
+    run: assets/scripts/fail.ps1

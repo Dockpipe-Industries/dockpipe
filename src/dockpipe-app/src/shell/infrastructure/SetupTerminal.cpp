@@ -1,5 +1,6 @@
 #include "SetupTerminal.h"
 
+#include <QCoreApplication>
 #include <QFileInfo>
 #include <QProcess>
 #include <QSettings>
@@ -41,7 +42,7 @@ static bool openTerminal(const QString &program, const QStringList &arguments, Q
         QSettings info(QStringLiteral("/.flatpak-info"), QSettings::IniFormat);
         const QString application = info.value(QStringLiteral("Application/name")).toString();
         if (application.isEmpty()) {
-            *error = QStringLiteral("Flatpak application identity is unavailable.");
+            *error = QCoreApplication::translate("SetupTerminal", "Flatpak application identity is unavailable.");
             return false;
         }
         command = {QStringLiteral("flatpak"), QStringLiteral("run"), QStringLiteral("--command=dockpipe"), application};
@@ -71,7 +72,7 @@ static bool openTerminal(const QString &program, const QStringList &arguments, Q
     Q_UNUSED(program);
     Q_UNUSED(arguments);
 #endif
-    *error = QStringLiteral("Could not open a supported terminal. Install a desktop terminal on Linux, use Terminal on macOS, or Windows Terminal on Windows.");
+    *error = QCoreApplication::translate("SetupTerminal", "Could not open a supported terminal. Install a desktop terminal on Linux, use Terminal on macOS, or Windows Terminal on Windows.");
     return false;
 }
 
@@ -83,4 +84,13 @@ bool openSetupTerminal(const QString &program, const QStringList &arguments, QSt
 bool openCommandTerminal(const QString &program, const QStringList &arguments, QString *error)
 {
     return openTerminal(program, arguments, error, false);
+}
+
+bool openDockpipeTerminal(const QString &program, const QStringList &arguments, QString *error)
+{
+#ifdef Q_OS_LINUX
+    return openTerminal(program, arguments, error, true);
+#else
+    return openTerminal(program, arguments, error, false);
+#endif
 }

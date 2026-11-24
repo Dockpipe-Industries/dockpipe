@@ -1,0 +1,11 @@
+name: sdk-held-pwsh-fixture
+platforms: [windows]
+vault: none
+docker_preflight: false
+vars:
+  POWERSHELL_TELEMETRY_OPTOUT: "1"
+steps:
+  - id: hold
+    kind: host
+    shell: pwsh
+    run: assets/scripts/hold.ps1

@@ -1,4 +1,5 @@
 #include "SurfaceLaunchEnvironment.h"
+#include <QCoreApplication>
 #include "Context.h"
 #include "PackageDisplayWidget.h"
 #include <QDir>
@@ -16,14 +17,14 @@ bool SurfaceLaunchEnvironment::apply(Context &invocation, const PackageSurfaceAc
         return true;
     if (bindings.size() > 16 || action.scope != "surface" || action.workflowId != invocation.workflow
         || action.workflowId.isEmpty()) {
-        error = QObject::tr("Invalid installed public action environment.");
+        error = QCoreApplication::translate("SurfaceLaunchEnvironment", "Invalid installed public action environment.");
         return false;
     }
     QProcessEnvironment original = QProcessEnvironment::systemEnvironment();
     if (!invocation.envFile.isEmpty()) {
         QFile input(QDir(invocation.workdir).absoluteFilePath(invocation.envFile));
         if (!input.open(QIODevice::ReadOnly) || input.size() > 1024 * 1024) {
-            error = QObject::tr("The selected environment file is unavailable or exceeds 1 MiB.");
+            error = QCoreApplication::translate("SurfaceLaunchEnvironment", "The selected environment file is unavailable or exceeds 1 MiB.");
             return false;
         }
         // Match the CLI's dotenv fallback: inherited process values win, then
@@ -59,18 +60,18 @@ bool SurfaceLaunchEnvironment::apply(Context &invocation, const PackageSurfaceAc
     for (auto binding = bindings.begin(); binding != bindings.end(); ++binding) {
         const auto &reference = binding.value();
         if (!namePattern.match(binding.key()).hasMatch() || reference.asset.isEmpty() == reference.inherit.isEmpty()) {
-            error = QObject::tr("Invalid action environment binding.");
+            error = QCoreApplication::translate("SurfaceLaunchEnvironment", "Invalid action environment binding.");
             return false;
         }
         if (!reference.inherit.isEmpty()) {
             if (!namePattern.match(reference.inherit).hasMatch()) {
-                error = QObject::tr("Invalid inherited environment reference.");
+                error = QCoreApplication::translate("SurfaceLaunchEnvironment", "Invalid inherited environment reference.");
                 return false;
             }
             if (original.contains(reference.inherit)) {
                 const QString value = original.value(reference.inherit);
                 if (value.toUtf8().size() > 4096 || value.contains(QChar(0))) {
-                    error = QObject::tr("Inherited environment value exceeds its capacity.");
+                    error = QCoreApplication::translate("SurfaceLaunchEnvironment", "Inherited environment value exceeds its capacity.");
                     return false;
                 }
                 resolved.insert(binding.key(), value);
@@ -86,7 +87,7 @@ bool SurfaceLaunchEnvironment::apply(Context &invocation, const PackageSurfaceAc
         if (!root.isAbsolute() || canonicalRoot.isEmpty() || !asset.isAbsolute() || !asset.isFile()
             || canonicalAsset.isEmpty() || relative == "." || QDir::isAbsolutePath(relative)
             || relative.split('/').contains("..") || !asset.isExecutable()) {
-            error = QObject::tr("Action environment asset is not a contained executable.");
+            error = QCoreApplication::translate("SurfaceLaunchEnvironment", "Action environment asset is not a contained executable.");
             return false;
         }
         resolved.insert(binding.key(), canonicalAsset);
@@ -95,7 +96,7 @@ bool SurfaceLaunchEnvironment::apply(Context &invocation, const PackageSurfaceAc
     for (auto entry = resolved.begin(); entry != resolved.end(); ++entry)
         resolvedBytes += entry.key().toUtf8().size() + entry.value().toUtf8().size();
     if (resolvedBytes > 16 * 1024) {
-        error = QObject::tr("Action environment exceeds its 16 KiB capacity.");
+        error = QCoreApplication::translate("SurfaceLaunchEnvironment", "Action environment exceeds its 16 KiB capacity.");
         return false;
     }
     // Evaluate references against the original snapshot, then replace targets.

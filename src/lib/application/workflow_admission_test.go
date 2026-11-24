@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -30,7 +31,7 @@ func TestNestedWorkflowAdmissionPrecedesSetup(t *testing.T) {
 				root := writeAdmissionFixture(t, declaration.yaml)
 				repoRootAppFn = func() (string, error) { return root, nil }
 				setupCalled := false
-				sourceHostScriptFn = func(string, []string) (map[string]string, error) {
+				sourceHostScriptFn = func(context.Context, string, []string) (map[string]string, error) {
 					setupCalled = true
 					return map[string]string{}, nil
 				}
@@ -104,7 +105,7 @@ func TestPackagedWorkflowAdmissionAllowsOptionalToolAndLoadsOnce(t *testing.T) {
 		return load(path)
 	}
 	setupCalled, childCalled := false, false
-	sourceHostScriptFn = func(string, []string) (map[string]string, error) {
+	sourceHostScriptFn = func(context.Context, string, []string) (map[string]string, error) {
 		setupCalled = true
 		return map[string]string{"FROM_SETUP": "ready"}, nil
 	}

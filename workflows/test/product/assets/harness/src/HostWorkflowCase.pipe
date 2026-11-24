@@ -1,0 +1,517 @@
+module Dockpipe.Product;
+import PipeLang.Testing;
+import PipeLang.Testing.Async;
+
+public Class HostWorkflowCase : IAsyncTestCase {
+    private JourneyKind kind;
+    private TestClock clock;
+    private ProcessPort processes;
+    private FilePort files;
+    private HarnessInputs inputs;
+    private string project;
+    private string workflowScope = "host-workflow";
+    private string artifactRoot = "";
+    private string activeCorrelation = "";
+    private int activeInvocation = 0;
+    private bool activeTreeComplete = true;
+    private bool workflowStarted = false;
+    private bool ownershipUncertain = false;
+    private int unexpectedInvocation = 0;
+
+    public HostWorkflowCase(JourneyKind kind, TestClock clock, ProcessPort processes,
+                            FilePort files, HarnessInputs inputs) {
+        this.kind = kind;
+        this.clock = clock;
+        this.processes = processes;
+        this.files = files;
+        this.inputs = inputs;
+
+        project = inputs.recoveryProject;
+        if (kind == JourneyKind.GracefulCancellation)
+            project = inputs.cancellationProject;
+    }
+
+    public pure string Id() {
+        if (kind == JourneyKind.FailureRecovery)
+            return "dockpipe.workflow.host.failure-recovery";
+
+        return "dockpipe.workflow.host.graceful-cancellation";
+    }
+
+    public pure string Name() {
+        if (kind == JourneyKind.FailureRecovery)
+            return "Host failure cleans up before a fresh successful rerun";
+
+        return "Host cancellation after readiness runs finally and reaps the complete tree";
+    }
+
+    private pure TestStepResult Failed(string code, string message) {
+        return TestStepResult(TestOutcome.Failed, TestFailure(code, message));
+    }
+
+    private Result<int,string> Remaining(TestDeadline deadline, CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<int,string>.Cancelled("Journey phase cancellation requested");
+
+        Result<int,string> now = clock.NowMilliseconds();
+        if (!now.IsSuccess)
+            return now;
+
+        TestDeadlines deadlines = new TestDeadlines();
+        int remaining = deadlines.RemainingMilliseconds(deadline, now.Value);
+        if (remaining == 0)
+            return Result<int,string>.Failure("Journey cooperative deadline exceeded");
+
+        return Result<int,string>.Success(remaining);
+    }
+
+    private pure int ObservationSlice(int remaining) {
+        if (remaining < 25)
+            return remaining;
+
+        return 25;
+    }
+
+    private async Task<Result<ProcessObservation,string>> Observe(
+        TestDeadline deadline, CancellationToken token) {
+        Result<int,string> remaining = Remaining(deadline, token);
+        if (!remaining.IsSuccess) {
+            if (remaining.IsCancelled)
+                return Result<ProcessObservation,string>.Cancelled(remaining.Error);
+
+            return Result<ProcessObservation,string>.Failure(remaining.Error);
+        }
+
+        Result<ProcessObservation,string> observed = await processes.Observe(
+            activeInvocation, ObservationSlice(remaining.Value), token);
+        if (observed.IsSuccess)
+            activeTreeComplete = observed.Value.treeComplete;
+
+        return observed;
+    }
+
+    private async Task<Result<ProcessObservation,string>> AwaitTree(
+        TestDeadline deadline, CancellationToken token) {
+        while (true) {
+            Result<ProcessObservation,string> observed = await Observe(deadline, token);
+            if (!observed.IsSuccess)
+                return observed;
+
+            if (observed.Value.treeComplete)
+                return observed;
+        }
+    }
+
+    private Result<void,TestFailure> VerifyOwner() {
+        Result<FileObservation,string> owner = files.Observe(project + "/.journey-owner", 256);
+        try Assert.True(owner.IsSuccess, "Owned project marker can be observed");
+        try Assert.True(owner.Value.exists, "Workflow preparation created the owned project marker");
+        try Assert.Equal<string>(inputs.runId + "\n", owner.Value.content,
+                                     "Project ownership matches this fresh proof");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    private Result<void,TestFailure> VerifyFileBoundaries() {
+        Result<FileObservation,string> outside = files.Observe(inputs.outsideFile, 256);
+        try Assert.True(outside.IsFailure, "Harmless out-of-proof file observation is rejected");
+
+        Result<FileObservation,string> symlink = files.Observe(project + "/.journey-marker-link", 256);
+        try Assert.True(symlink.IsFailure, "Owned marker symlink observation is rejected without traversal");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    private Result<void,TestFailure> VerifySetupProcessBoundaries() {
+        Result<bool,string> unknown = processes.Interrupt(0);
+        try Assert.True(unknown.IsFailure, "Unknown invocation interrupt is rejected before signaling");
+
+        ProcessRequest outsideRequest = ProcessRequest(
+            ProcessOperation.ScopeQuery, inputs.outsideDirectory, "", workflowScope, "", "", 32768);
+        Result<int,string> outside = processes.Start(outsideRequest);
+        if (outside.IsSuccess) {
+            // Preserve an unexpectedly admitted handle before failing setup.
+            activeInvocation = outside.Value;
+            activeTreeComplete = false;
+        }
+
+        try Assert.True(outside.IsFailure, "Out-of-proof ScopeQuery start is rejected before execution");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    private Result<void,TestFailure> VerifySingleInvocation() {
+        ProcessRequest request = ProcessRequest(
+            ProcessOperation.ScopeQuery, project, "", workflowScope, "", "", 32768);
+        Result<int,string> second = processes.Start(request);
+        if (second.IsSuccess) {
+            unexpectedInvocation = second.Value;
+            ownershipUncertain = true;
+        }
+
+        try Assert.True(second.IsFailure, "A ready held CLI excludes a second owned CLI invocation");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    public async Task<Result<TestStepResult,string>> Setup(TestDeadline deadline, CancellationToken token) {
+        TestSteps steps = new TestSteps();
+
+        Result<int,string> remaining = Remaining(deadline, token);
+        if (!remaining.IsSuccess)
+            return Result<TestStepResult,string>.Success(Failed("journey.setup_deadline", remaining.Error));
+
+        Result<void,TestFailure> owned = VerifyOwner();
+        if (!owned.IsSuccess)
+            return Result<TestStepResult,string>.Success(steps.From(owned));
+
+        Result<void,TestFailure> boundaries = VerifyFileBoundaries();
+        if (!boundaries.IsSuccess)
+            return Result<TestStepResult,string>.Success(steps.From(boundaries));
+
+        Result<void,TestFailure> processBoundaries = VerifySetupProcessBoundaries();
+        if (!processBoundaries.IsSuccess)
+            return Result<TestStepResult,string>.Success(steps.From(processBoundaries));
+
+        ProcessRequest request = ProcessRequest(
+            ProcessOperation.ScopeQuery, project, "", workflowScope, "", "", 32768);
+        Result<int,string> started = processes.Start(request);
+        if (!started.IsSuccess)
+            return Result<TestStepResult,string>.Failure(started.Error);
+
+        activeInvocation = started.Value;
+        activeTreeComplete = false;
+
+        Result<ProcessObservation,string> scope = await AwaitTree(deadline, token);
+        if (!scope.IsSuccess) {
+            if (scope.IsCancelled)
+                return Result<TestStepResult,string>.Cancelled(scope.Error);
+
+            return Result<TestStepResult,string>.Failure(scope.Error);
+        }
+
+        if (scope.Value.forced || scope.Value.exitCode != 0 || scope.Value.scopePath == "")
+            return Result<TestStepResult,string>.Success(Failed("journey.scope_protocol",
+                "Selected Dockpipe scope query must complete normally with one confined absolute path"));
+
+        artifactRoot = scope.Value.scopePath;
+        activeInvocation = 0;
+
+        Result<FileObservation,string> stale = files.Observe(artifactRoot + "/resource.marker", 256);
+        if (!stale.IsSuccess)
+            return Result<TestStepResult,string>.Failure(stale.Error);
+
+        if (stale.Value.exists)
+            return Result<TestStepResult,string>.Success(Failed("journey.stale_resource",
+                "Fresh project unexpectedly contains a prior product resource"));
+
+        return Result<TestStepResult,string>.Success(steps.Passed());
+    }
+
+    private Result<int,string> StartWorkflow(string mode, string correlation) {
+        ProcessRequest request = ProcessRequest(ProcessOperation.Workflow, project,
+            inputs.workflowFile, "", mode, correlation, 32768);
+        Result<int,string> started = processes.Start(request);
+
+        if (started.IsSuccess) {
+            activeInvocation = started.Value;
+            activeCorrelation = correlation;
+            activeTreeComplete = false;
+            workflowStarted = true;
+        }
+
+        return started;
+    }
+
+    private Result<void,TestFailure> VerifyOutput(ProcessObservation observed, string correlation,
+                                                 bool successful, bool downstreamExpected) {
+        try Assert.True(observed.exited, "The selected Dockpipe CLI reached a terminal status");
+        try Assert.True(observed.treeComplete, "Every owned direct or adopted child was reaped");
+        try Assert.False(observed.forced, "Product completion used no forced native disposal");
+        try Assert.True(observed.reapedChildren > 0, "Adapter records actual reaped CLI children");
+
+        if (successful) {
+            try Assert.Equal<int>(0, observed.exitCode, "Successful recovery CLI status");
+        } else {
+            try Assert.NotEqual<int>(0, observed.exitCode, "Failed or interrupted CLI status");
+        }
+
+        try Assert.True(string.Utf8IndexOf(observed.stdoutText, "producer:" + correlation, 0) >= 0,
+                            "Producer stdout propagated through the real CLI");
+        try Assert.True(string.Utf8IndexOf(observed.stderrText, "producer-error:" + correlation, 0) >= 0,
+                            "Producer stderr propagated through the real CLI");
+
+        try Assert.True(string.Utf8IndexOf(observed.stdoutText, "consumer:" + correlation, 0) >= 0,
+                            "Declared dotenv output was merged into the downstream host environment");
+
+        try Assert.Equal<bool>(downstreamExpected,
+            string.Utf8IndexOf(observed.stdoutText, "after:" + correlation, 0) >= 0,
+            "Downstream stdout agrees with fail-fast behavior");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    private Result<void,TestFailure> VerifyProductCleanup(string correlation, bool downstreamExpected) {
+        Result<FileObservation,string> receipt = files.Observe(artifactRoot + "/cleanup.receipt", 256);
+        try Assert.True(receipt.IsSuccess, "Cleanup receipt observation succeeds");
+        try Assert.True(receipt.Value.exists, "Product finally produced a cleanup receipt");
+        try Assert.Equal<string>(correlation + "\n", receipt.Value.content,
+                                     "Cleanup receipt belongs to the current invocation");
+
+        Result<FileObservation,string> resource = files.Observe(artifactRoot + "/resource.marker", 256);
+        try Assert.True(resource.IsSuccess, "Resource absence can be observed");
+        try Assert.False(resource.Value.exists, "Product finally removed its owned resource");
+
+        Result<FileObservation,string> after = files.Observe(artifactRoot + "/after.receipt", 256);
+        try Assert.True(after.IsSuccess, "Downstream witness can be observed");
+        try Assert.Equal<bool>(downstreamExpected, after.Value.exists,
+                                   "Downstream witness agrees with fail-fast behavior");
+        if (downstreamExpected)
+            try Assert.Equal<string>(correlation + "\n", after.Value.content,
+                                         "Downstream witness belongs to this successful invocation");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    private Result<void,TestFailure> VerifyActiveResource(string correlation) {
+        Result<FileObservation,string> resource = files.Observe(artifactRoot + "/resource.marker", 256);
+        try Assert.True(resource.IsSuccess, "Ready consumer resource can be observed");
+        try Assert.True(resource.Value.exists, "Product resource exists before graceful interrupt");
+        try Assert.Equal<string>(correlation + "\n", resource.Value.content,
+                                     "Active resource belongs to this held invocation");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    private async Task<Result<TestStepResult,string>> RunAndVerify(
+        string mode, string correlation, bool successful, TestDeadline deadline, CancellationToken token) {
+        TestSteps steps = new TestSteps();
+
+        Result<int,string> remaining = Remaining(deadline, token);
+        if (!remaining.IsSuccess)
+            return Result<TestStepResult,string>.Success(Failed("journey.deadline", remaining.Error));
+
+        Result<int,string> started = StartWorkflow(mode, correlation);
+        if (!started.IsSuccess)
+            return Result<TestStepResult,string>.Failure(started.Error);
+
+        Result<ProcessObservation,string> observed = await AwaitTree(deadline, token);
+        if (!observed.IsSuccess) {
+            if (observed.IsCancelled)
+                return Result<TestStepResult,string>.Cancelled(observed.Error);
+
+            return Result<TestStepResult,string>.Failure(observed.Error);
+        }
+
+        Result<void,TestFailure> output = VerifyOutput(observed.Value, correlation, successful, successful);
+        if (!output.IsSuccess)
+            return Result<TestStepResult,string>.Success(steps.From(output));
+
+        return Result<TestStepResult,string>.Success(steps.From(VerifyProductCleanup(correlation, successful)));
+    }
+
+    private async Task<Result<TestStepResult,string>> FailureRecovery(
+        TestDeadline deadline, CancellationToken token) {
+        Result<TestStepResult,string> failed = await RunAndVerify(
+            "fail", inputs.runId + "-fail", false, deadline, token);
+        if (!failed.IsSuccess || failed.Value.outcome != TestOutcome.Passed)
+            return failed;
+
+        // A fresh correlation follows verified cleanup, using the same owned project.
+        Result<TestStepResult,string> recovered = await RunAndVerify(
+            "success", inputs.runId + "-recovery", true, deadline, token);
+
+        return recovered;
+    }
+
+    private async Task<Result<TestStepResult,string>> GracefulCancellation(
+        TestDeadline deadline, CancellationToken token) {
+        string correlation = inputs.runId + "-interrupt";
+        Result<int,string> started = StartWorkflow("hold", correlation);
+        if (!started.IsSuccess)
+            return Result<TestStepResult,string>.Failure(started.Error);
+
+        bool ready = false;
+        while (!ready) {
+            Result<ProcessObservation,string> observed = await Observe(deadline, token);
+            if (!observed.IsSuccess) {
+                if (observed.IsCancelled)
+                    return Result<TestStepResult,string>.Cancelled(observed.Error);
+
+                return Result<TestStepResult,string>.Failure(observed.Error);
+            }
+
+            ready = string.Utf8IndexOf(observed.Value.stdoutText, "consumer:" + correlation, 0) >= 0;
+            if (observed.Value.exited)
+                return Result<TestStepResult,string>.Success(Failed("journey.early_exit",
+                    "Hold invocation terminated before source requested its graceful interrupt"));
+        }
+
+        TestSteps steps = new TestSteps();
+
+        Result<void,TestFailure> exclusive = VerifySingleInvocation();
+        if (!exclusive.IsSuccess)
+            return Result<TestStepResult,string>.Success(steps.From(exclusive));
+
+        Result<void,TestFailure> activeResource = VerifyActiveResource(correlation);
+        if (!activeResource.IsSuccess)
+            return Result<TestStepResult,string>.Success(steps.From(activeResource));
+
+        Result<int,string> readyAt = clock.NowMilliseconds();
+        if (!readyAt.IsSuccess)
+            return Result<TestStepResult,string>.Failure(readyAt.Error);
+
+        // This source-owned monotonic deadline starts only after actual readiness.
+        if (deadline.expiresAtMilliseconds - readyAt.Value <= 120)
+            return Result<TestStepResult,string>.Success(Failed("journey.readiness_deadline",
+                "Case deadline leaves insufficient time for the cancellation witness"));
+
+        TestDeadline interruptDeadline = TestDeadline(readyAt.Value + 120);
+        bool interruptDue = false;
+        while (!interruptDue) {
+            Result<int,string> now = clock.NowMilliseconds();
+            if (!now.IsSuccess)
+                return Result<TestStepResult,string>.Failure(now.Error);
+
+            interruptDue = now.Value >= interruptDeadline.expiresAtMilliseconds;
+            if (!interruptDue) {
+                Result<ProcessObservation,string> held = await Observe(deadline, token);
+                if (!held.IsSuccess) {
+                    if (held.IsCancelled)
+                        return Result<TestStepResult,string>.Cancelled(held.Error);
+
+                    return Result<TestStepResult,string>.Failure(held.Error);
+                }
+
+                if (held.Value.exited)
+                    return Result<TestStepResult,string>.Success(Failed("journey.early_exit",
+                        "Hold invocation terminated before its source-owned deadline"));
+            }
+        }
+
+        Result<bool,string> interrupted = processes.Interrupt(activeInvocation);
+        if (!interrupted.IsSuccess)
+            return Result<TestStepResult,string>.Failure(interrupted.Error);
+
+        if (!interrupted.Value)
+            return Result<TestStepResult,string>.Success(Failed("journey.interrupt_not_accepted",
+                "Hold invocation requires an accepted owned CLI interrupt before terminal teardown is a witness"));
+
+        Result<ProcessObservation,string> terminal = await AwaitTree(deadline, token);
+        if (!terminal.IsSuccess) {
+            if (terminal.IsCancelled)
+                return Result<TestStepResult,string>.Cancelled(terminal.Error);
+
+            return Result<TestStepResult,string>.Failure(terminal.Error);
+        }
+
+        Result<void,TestFailure> output = VerifyOutput(terminal.Value, correlation, false, false);
+        if (!output.IsSuccess)
+            return Result<TestStepResult,string>.Success(steps.From(output));
+
+        return Result<TestStepResult,string>.Success(steps.From(VerifyProductCleanup(correlation, false)));
+    }
+
+    public async Task<Result<TestStepResult,string>> Body(TestDeadline deadline, CancellationToken token) {
+        if (kind == JourneyKind.FailureRecovery) {
+            Result<TestStepResult,string> result = await FailureRecovery(deadline, token);
+
+            return result;
+        }
+
+        Result<TestStepResult,string> result = await GracefulCancellation(deadline, token);
+
+        return result;
+    }
+
+    public async Task<Result<TestStepResult,string>> Cleanup(TestDeadline deadline, CancellationToken token) {
+        TestSteps steps = new TestSteps();
+
+        // Admission can fail after the SDK has taken custody of a process.
+        // Recover its handle even when Start could not return Success.
+        Result<int,string> retained = processes.RetainedInvocation();
+        if (retained.IsSuccess) {
+            activeInvocation = retained.Value;
+            activeTreeComplete = false;
+        }
+
+        if (ownershipUncertain) {
+            // A broken admission invariant may invalidate per-handle observations.
+            // Dispose all adapter-owned children under the independent cleanup budget.
+            Result<int,string> remaining = Remaining(deadline, token);
+            if (!remaining.IsSuccess)
+                return Result<TestStepResult,string>.Success(Failed("journey.ownership_unknown",
+                    "No cleanup budget remains for unexpectedly admitted invocation " +
+                    string.FromInt(unexpectedInvocation) + ": " + remaining.Error));
+
+            Result<ProcessObservation,string> disposed = await processes.ForceDispose(remaining.Value, token);
+            if (!disposed.IsSuccess) {
+                if (disposed.IsCancelled)
+                    return Result<TestStepResult,string>.Cancelled(disposed.Error);
+
+                return Result<TestStepResult,string>.Failure(disposed.Error);
+            }
+
+            activeTreeComplete = disposed.Value.treeComplete;
+            if (!activeTreeComplete)
+                return Result<TestStepResult,string>.Success(Failed("journey.unreaped_tree",
+                    "Unexpectedly admitted invocation " + string.FromInt(unexpectedInvocation) +
+                    " left uncertain child ownership after disposal"));
+
+            return Result<TestStepResult,string>.Success(Failed("journey.ownership_violation",
+                "Unexpected concurrent invocation " + string.FromInt(unexpectedInvocation) +
+                " required global owned-child disposal; ordinary product cleanup is unproven"));
+        }
+
+        bool forced = false;
+        if (activeInvocation != 0 && !activeTreeComplete) {
+            Result<bool,string> interrupted = processes.Interrupt(activeInvocation);
+
+            // An already-exited CLI is idempotent cleanup; it still requires tree reaping.
+            // An infrastructure failure does not transfer ownership or skip disposal.
+            Result<int,string> remaining = Remaining(deadline, token);
+            if (remaining.IsSuccess && interrupted.IsSuccess) {
+                Result<int,string> now = clock.NowMilliseconds();
+                if (now.IsSuccess) {
+                    int gracefulBudget = remaining.Value / 2;
+                    TestDeadline graceful = TestDeadline(now.Value + gracefulBudget);
+
+                    Result<ProcessObservation,string> drained = await AwaitTree(graceful, token);
+                    if (drained.IsSuccess)
+                        activeTreeComplete = drained.Value.treeComplete;
+                }
+            }
+
+            if (!activeTreeComplete) {
+                remaining = Remaining(deadline, token);
+                if (!remaining.IsSuccess)
+                    return Result<TestStepResult,string>.Success(Failed("journey.cleanup_deadline",
+                        "Independent cleanup budget exhausted before owned child disposal"));
+
+                Result<ProcessObservation,string> disposed = await processes.ForceDispose(remaining.Value, token);
+                forced = true;
+                if (!disposed.IsSuccess)
+                    return Result<TestStepResult,string>.Failure(disposed.Error);
+
+                activeTreeComplete = disposed.Value.treeComplete;
+            }
+        }
+
+        if (!activeTreeComplete)
+            return Result<TestStepResult,string>.Success(Failed("journey.unreaped_tree",
+                "Cleanup cannot confirm complete ownership reaping"));
+
+        if (forced)
+            return Result<TestStepResult,string>.Success(Failed("journey.forced_disposal",
+                "Emergency native disposal was required; product graceful cleanup is unproven"));
+
+        if (!workflowStarted)
+            return Result<TestStepResult,string>.Success(steps.Passed());
+
+        bool downstreamExpected = kind == JourneyKind.FailureRecovery &&
+                                  activeCorrelation == inputs.runId + "-recovery";
+
+        return Result<TestStepResult,string>.Success(steps.From(
+            VerifyProductCleanup(activeCorrelation, downstreamExpected)));
+    }
+}

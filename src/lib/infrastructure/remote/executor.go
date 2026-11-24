@@ -34,6 +34,19 @@ func (log *boundedLog) Write(data []byte) (int, error) {
 	return len(data), nil
 }
 
+func (log *boundedLog) preview(previousSize int, previousTruncated bool) (contract.LiveLog, bool) {
+	log.mutex.Lock()
+	defer log.mutex.Unlock()
+
+	size := min(len(log.data), contract.MaxLiveLog)
+	truncated := log.truncated || len(log.data) > size
+	if size == previousSize && truncated == previousTruncated {
+		return contract.LiveLog{}, false
+	}
+
+	return contract.LiveLog{Data: append([]byte(nil), log.data[:size]...), Truncated: truncated}, true
+}
+
 // Keep the terminal cause visible even when workflow output filled the log.
 func (log *boundedLog) appendDiagnostic(message string) {
 	log.mutex.Lock()
@@ -85,10 +98,13 @@ func ValidateProfiles(profiles map[string]contract.Profile) error {
 // Execute invokes the existing local Dockpipe boundary, with argv fixed by a
 // locally approved profile. The broker has no generic remote-shell capability.
 func Execute(ctx context.Context, executable string, profile contract.Profile) contract.Result {
+	return execute(ctx, executable, profile, &boundedLog{})
+}
+
+func execute(ctx context.Context, executable string, profile contract.Profile, log *boundedLog) contract.Result {
 	result := contract.Result{Status: "failure", ExitCode: -1, StartedAt: time.Now().UTC(), OS: runtime.GOOS, Architecture: runtime.GOARCH}
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(profile.TimeoutSeconds)*time.Second)
 	defer cancel()
-	log := &boundedLog{}
 	arguments := []string{"--workdir", profile.Workdir}
 	if profile.WorkflowFile != "" {
 		arguments = append(arguments, "--workflow-file", profile.WorkflowFile)
@@ -101,7 +117,13 @@ func Execute(ctx context.Context, executable string, profile contract.Profile) c
 	command.Stderr = log
 	command.Stdin = nil
 	// Do not inherit broker or provider credentials from the worker environment.
-	for _, name := range []string{"PATH", "HOME", "USER", "TMPDIR", "LANG", "LC_ALL", "DOCKPIPE_GLOBAL_ROOT"} {
+	names := []string{"PATH", "HOME", "USER", "TMPDIR", "LANG", "LC_ALL", "DOCKPIPE_GLOBAL_ROOT"}
+	if runtime.GOOS == "windows" {
+		names = append(names, "SystemRoot", "WINDIR", "COMSPEC", "PATHEXT",
+			"USERPROFILE", "HOMEDRIVE", "HOMEPATH", "APPDATA", "LOCALAPPDATA", "TEMP", "TMP")
+	}
+
+	for _, name := range names {
 		if value, exists := os.LookupEnv(name); exists {
 			command.Env = append(command.Env, name+"="+value)
 		}

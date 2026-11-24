@@ -1,10 +1,14 @@
 #include "WorkflowCanvas.h"
 #include "WorkflowEditorWidget.h"
 #include "ProjectFilesWidget.h"
+#include "WorkspaceFilesTestSupport.h"
+#include "FileEditorWorkspace.h"
+#include "SourceEditor.h"
 #include "Theme.h"
 
 #include <QApplication>
 #include <QAction>
+#include <QAbstractButton>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileDialog>
@@ -12,6 +16,7 @@
 #include <QGraphicsScene>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QTabWidget>
@@ -47,6 +52,10 @@ bool containsLabel(QWidget *widget, const QString &text)
 
 QPushButton *button(QWidget *widget, const QString &text)
 {
+    if (text == "Save") {
+        if (auto *save = widget->findChild<QPushButton *>("canvasSaveButton"))
+            return save;
+    }
     for (auto *candidate : widget->findChildren<QPushButton *>()) {
         if (candidate->text() == text)
             return candidate;
@@ -134,7 +143,7 @@ int main(int argc, char **argv)
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly))
         return 5;
-    file.write(R"YAML(# Keep this workflow note.
+    const QByteArray originalSource = QByteArray("\xef\xbb\xbf") + QByteArray(R"YAML(# Keep this workflow note.
 name: development
 description: Build, verify, and launch your project.
 docker_preflight: false
@@ -157,15 +166,19 @@ steps:
     cmd: echo Start your application here
     vars:
       APP_ENV: development
-)YAML");
+)YAML").replace("\n", "\r\n");
+    file.write(originalSource);
     file.close();
     WorkflowEditorWidget editor(temporary.path(), cli);
     editor.resize(1320, 840);
-    editor.openWorkflow(path);
+    bool opened = false;
+    editor.openWorkflowAsync(path, [&](bool success) { opened = success; });
+    if (opened || !editor.workflowPath().isEmpty())
+        return 47;
     editor.show();
     auto *yaml = editor.findChild<QPlainTextEdit *>("workflowYaml");
     auto *view = editor.findChild<WorkflowCanvas *>("workflowCanvas");
-    if (!waitUntil([&]() { return containsLabel(&editor, "3 steps"); }))
+    if (!waitUntil([&]() { return opened && containsLabel(&editor, "3 steps"); }))
         return 6;
     view->fitDocument();
     if (!selectCard(view, {"steps", "0"}))
@@ -232,11 +245,21 @@ steps:
         return 12;
     const QByteArray saved = file.readAll();
     file.close();
-    if (!saved.contains("echo changed") || runs != 0)
+    if (!saved.contains("echo changed") || !saved.startsWith("\xef\xbb\xbf")
+        || !saved.contains("\r\n") || runs != 0)
         return 13;
+    // Run saves supporting-file drafts once, then continues without another click.
+    if (!FilesTest::create(*workflowFiles, "support.txt"))
+        return 45;
+    workflowFiles->findChild<FileEditorWorkspace *>("fileEditorWorkspace")->activeEditor()->insertPlainText("supporting draft\n");
+    button(&editor, "Run")->click();
     button(&editor, "Run")->click();
     if (!waitUntil([&]() { return runs == 1; }))
         return 14;
+    QFile supporting(temporary.filePath("support.txt"));
+    if (!supporting.open(QIODevice::ReadOnly) || supporting.readAll() != "supporting draft\n"
+        || workflowFiles->hasUnsavedChanges() || saves != 2)
+        return 46;
 
     // Invalid YAML never replaces the existing file or emits a run request.
     editor.findChild<QTabWidget *>()->setCurrentIndex(1);
@@ -247,15 +270,45 @@ steps:
     if (!file.open(QIODevice::ReadOnly) || file.readAll() != saved || runs != 1)
         return 16;
     file.close();
-    yaml->setPlainText(QString::fromUtf8(saved));
+    yaml->setPlainText(QString::fromUtf8(saved.mid(3)));
     // External changes must not be overwritten.
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
         return 17;
     file.write("name: external\nsteps: []\n");
     file.close();
     button(&editor, "Save")->click();
-    if (!containsLabel(&editor, "changed on disk") || saves != 2)
+    if (!waitUntil([&]() { return containsLabel(&editor, "changed on disk"); }) || saves != 2)
         return 18;
+
+#ifdef Q_OS_UNIX
+    // A pending admitted read is cancellable and never replaces a draft.
+    const QByteArray previousBinary = qgetenv("DOCKPIPE_BIN");
+    WorkflowEditorWidget reading(temporary.path(), cli);
+    if (!waitUntil([&]() { return button(&reading, "Save")->isEnabled(); }))
+        return 51;
+    qputenv("DOCKPIPE_BIN", stalled.fileName().toUtf8());
+    auto *readingYaml = reading.findChild<QPlainTextEdit *>("workflowYaml");
+    const QString readingDraft = readingYaml->toPlainText();
+    bool readFinished = false;
+    bool readSucceeded = true;
+    reading.openWorkflowAsync(path, [&](bool success) {
+        readFinished = true;
+        readSucceeded = success;
+    });
+    if (readFinished || !reading.workflowPath().isEmpty())
+        return 52;
+    if (!reading.operationPending() || !reading.property("workspaceOperationPending").toBool()
+        || reading.confirmDiscardChanges())
+        return 50;
+    button(&reading, "Cancel operation")->click();
+    if (!waitUntil([&]() { return readFinished; }) || readSucceeded || reading.operationPending()
+        || reading.property("workspaceOperationPending").toBool() || readingYaml->toPlainText() != readingDraft || !reading.workflowPath().isEmpty())
+        return 49;
+    if (previousBinary.isNull())
+        qunsetenv("DOCKPIPE_BIN");
+    else
+        qputenv("DOCKPIPE_BIN", previousBinary);
+#endif
 
     // Flatpak authoring browses the workspace instead of creating a separate
     // document grant for the script. Exercise the actual picker and YAML edit.
@@ -293,6 +346,34 @@ steps:
         return 32;
     if (scriptYaml->toPlainText().contains(temporary.path()))
         return 33;
+    // Both workflow and supporting drafts can be discarded in one continuation.
+    // The Files approval must not expire inside the workflow confirmation dialog.
+    yaml->appendPlainText("# unsaved workflow draft");
+    if (!FilesTest::open(*workflowFiles, temporary.filePath("support.txt")))
+        return 47;
+    workflowFiles->findChild<FileEditorWorkspace *>("fileEditorWorkspace")->activeEditor()->insertPlainText("unsaved supporting draft\n");
+    QTemporaryDir nextWorkspace;
+    QTimer discard;
+    int discardPrompts = 0;
+    QObject::connect(&discard, &QTimer::timeout, &editor, [&]() {
+        auto *dialog = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+        if (dialog && dialog->button(QMessageBox::Discard)) {
+            ++discardPrompts;
+            dialog->button(QMessageBox::Discard)->click();
+        }
+    });
+    discard.start(10);
+    bool switched = false;
+    editor.setWorkspaceAsync(nextWorkspace.path(), cli, [&](bool success) { switched = success; });
+    if (!waitUntil([&]() { return switched; }) || discardPrompts != 2
+        || !workflowFiles->rootPath().isEmpty() || workflowFiles->hasUnsavedChanges()
+        || editor.workdir() != nextWorkspace.path() || !editor.workflowPath().isEmpty()) {
+        std::fprintf(stderr, "switch=%d prompts=%d root=%s dirty=%d workdir=%s path=%s\n", switched,
+            discardPrompts, qPrintable(workflowFiles->rootPath()), workflowFiles->hasUnsavedChanges(),
+            qPrintable(editor.workdir()), qPrintable(editor.workflowPath()));
+        return 48;
+    }
+    discard.stop();
     std::puts("Workflow studio real-CLI editing, comment preservation, save, validation, conflict and run routing passed.");
     return 0;
 }

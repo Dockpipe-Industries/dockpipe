@@ -203,6 +203,27 @@ int runObservationHelper(int argc, char **argv)
     std::fflush(stdout);
     return 0;
 }
+
+int runFilesHelper(int argc, char **argv)
+{
+    QCoreApplication application(argc, argv);
+    const auto arguments = application.arguments();
+    if (arguments.mid(1) != QStringList{"files", "--request", "-"})
+        return 2;
+    QFile input;
+    if (!input.open(stdin, QIODevice::ReadOnly))
+        return 3;
+    const auto bytes = input.read(1024 * 1024 + 1);
+    const auto request = QJsonDocument::fromJson(bytes).object().value("request").toObject();
+    if (bytes.size() > 1024 * 1024 || request.value("action") != "list")
+        return 4;
+    const QJsonObject listing{{"schema", "dockpipe.files/v1"}, {"path", request.value("path")},
+        {"revision", QString(64, 'a')}, {"entries", QJsonArray{}}};
+    const auto response = QJsonDocument(listing).toJson(QJsonDocument::Compact);
+    std::fwrite(response.constData(), 1, size_t(response.size()), stdout);
+    std::fflush(stdout);
+    return 0;
+}
 }
 
 #define CHECK_BROWSER_PERF(condition) \
@@ -215,9 +236,14 @@ int runObservationHelper(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
-    if (argc > 1 && QByteArray(argv[1]) == "runs"
-        && qEnvironmentVariableIsSet("DOCKPIPE_DASHBOARD_BROWSER_PERF_HELPER"))
-        return runObservationHelper(argc, argv);
+    if (argc > 1 && qEnvironmentVariableIsSet("DOCKPIPE_DASHBOARD_BROWSER_PERF_HELPER")) {
+        const QByteArray command(argv[1]);
+        if (command == "runs")
+            return runObservationHelper(argc, argv);
+        if (command == "files")
+            return runFilesHelper(argc, argv);
+        return 2;
+    }
 
     if (qEnvironmentVariable("QT_QPA_PLATFORM").section(':', 0, 0) == "offscreen") {
         // Hosted offscreen jobs may lack a usable graphics context. Measure UI

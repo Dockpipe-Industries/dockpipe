@@ -1,12 +1,10 @@
 # TASK-048 — SignPath Foundation signing for Windows releases
 
-Priority: **Medium–High**. Initial status: **Pending SignPath Foundation application
-and approval**. Added 2026-10-24; ownership unclaimed.
+Priority: **Medium–High**. Status: **Application submitted, awaiting SignPath
+Foundation review**. Added 2026-10-24.
 
-This is a backlog record, not an application submission, signing integration or
-website deployment. Do not interrupt the current VM, extraction or staging work.
-No signing implementation starts until Foundation approval is confirmed and a
-bounded implementation request is authorized.
+Signing integration and website changes are pending. Start signing integration
+after Foundation approval and authorization for that work.
 
 ## Ownership
 
@@ -30,7 +28,7 @@ Artifact Signing or any paid signing subscription.
    pending plan; do not imply an application was submitted unless recorded.
 2. Verify the actual public download-page URL, product description and working MSI
    link for the application. Record that URL and the application status/date.
-3. Complete the prerequisite review below and resolve blockers before applying.
+3. Complete the prerequisite review below and resolve blockers before signing.
    Draft a truthful public code-signing policy with team roles and privacy details;
    do not present the service as operational before approval and verification.
 
@@ -62,15 +60,52 @@ actual release graph, external artifact inputs and permissions before asserting
 compliance. Confirm the Foundation's accepted artifact configuration and access
 requirements during [application](https://signpath.org/apply).
 
-Open prerequisites: Foundation acceptance; full payload licensing/ownership review;
-public policy and role assignments; website/download URL verification; and build
-origin/runner/artifact eligibility. None is marked complete by this record.
+Open prerequisites for signing include Foundation acceptance, payload eligibility and
+notice remediation, public policy and role assignments, and build origin and artifact
+eligibility.
+
+### Application preflight, 2026-11-20
+
+- The [Dockpipe GitHub release](https://github.com/Dockpipe-Industries/dockpipe/releases/tag/v0.6.11)
+  publicly lists the existing Windows amd64 MSI. The
+  [MSI download](https://github.com/Dockpipe-Industries/dockpipe/releases/download/v0.6.11/dockpipe_0.6.11_windows_amd64.msi)
+  returned HTTP 200, and GitHub publishes a SHA-256 digest. The
+  [public Downloads section](https://dockpipe.com/#downloads) displays the
+  Windows x64 installer card for v0.6.11. SignPath attribution and a signing
+  policy link were absent from that card. A public privacy policy URL for the
+  desktop product is still to be verified.
+- [The release workflow](../../../../.github/workflows/release.yml) already builds
+  the MSI on GitHub-hosted Windows, smoke-tests install and uninstall, and
+  uploads it as a workflow artifact. The SignPath job should consume the exact
+  artifact from that build. Refresh checksums and catalog data only after
+  signature verification.
+- [The MSI source](../../../../workflows/package/windows-msi/assets/dockpipe.wxs)
+  is per-user. The proposed administrator-window feature needs a separate
+  per-machine installation boundary for the service and input helper. Confirm
+  with SignPath how to qualify that new payload alongside the existing MSI.
+- The [published MSI license audit](windows-msi-license-audit.md) records the
+  extracted payload, embedded code, license notices and redistribution gaps.
+  Confirm the Microsoft System Libraries exception and the WiX treatment with
+  SignPath before requesting the first signing approval. Review the exact Browser
+  SDK payload separately. The public GitHub license endpoint for the pinned
+  source returned 404.
+- Verify and publish the signing policy with the actual authors, reviewers and
+  approvers. Confirm their MFA before enabling signing.
+
+### Submission
+
+The [SignPath Foundation application](https://signpath.org/apply) displayed “Form
+submitted.” It includes the verified public Downloads URL and the existing Windows
+MSI release, discloses the Microsoft redistributables and pending website policy,
+and requests guidance on the optional Remote Desktop service and helper.
+The privacy policy URL field was left blank and the missing verified URL was
+disclosed in the description. Foundation review is pending.
 
 ## Phase 2 — After confirmed approval
 
 1. Record approval and the accepted signing policy/configuration. Integrate with
    the existing Windows release pipeline; inspect `.github/workflows/release.yml`,
-   `release/packaging/msi/` and their tests at implementation time.
+   `workflows/package/windows-msi/` and their tests at implementation time.
 2. Protect authorization using the existing secret-reference and release approval
    boundaries. Keep signing keys out of the repository, artifacts and logs; limit
    submitter/approver access and eligible release sources.

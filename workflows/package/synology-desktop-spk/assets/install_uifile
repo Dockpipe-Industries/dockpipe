@@ -1,0 +1,55 @@
+[
+  {
+    "step_title": "Set up Dockpipe",
+    "invalid_next_disabled_v2": true,
+    "items": [
+      {
+        "desc": "Choose a separate sign-in for Dockpipe. After installation, use Open in Package Center or the Dockpipe icon in DSM. Installation downloads application components and may take several minutes."
+      },
+      {
+        "type": "textfield",
+        "desc": "Dockpipe username",
+        "subitems": [
+          {
+            "key": "wizard_username",
+            "desc": "Username",
+            "defaultValue": "dockpipe",
+            "validator": {
+              "allowBlank": false,
+              "regex": {
+                "expr": "/^[A-Za-z][A-Za-z0-9_.-]{0,31}$/",
+                "errorText": "Use 1–32 letters, numbers, dots, underscores or hyphens, starting with a letter."
+              }
+            }
+          }
+        ]
+      },
+      {
+        "type": "password",
+        "desc": "Dockpipe password",
+        "subitems": [
+          {
+            "key": "wizard_password",
+            "desc": "Password",
+            "validator": {
+              "allowBlank": false,
+              "regex": {
+                "expr": "/^[ -~]{16,128}$/",
+                "errorText": "Use 16–128 printable ASCII characters. Choose a unique password."
+              }
+            }
+          }
+        ]
+      },
+      {
+        "type": "password",
+        "desc": "Confirm Dockpipe password",
+        "subitems": [{
+          "key": "wizard_password_confirm",
+          "desc": "Confirm password",
+          "validator": {"allowBlank": false}
+        }]
+      }
+    ]
+  }
+]

@@ -1,0 +1,11 @@
+name: package-synology
+description: Package an existing standalone Linux CLI for DSM 7 and later.
+docker_preflight: false
+steps:
+  - id: package
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/package/synology/assets/scripts/build.py

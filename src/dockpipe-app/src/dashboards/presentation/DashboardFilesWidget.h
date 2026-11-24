@@ -3,8 +3,10 @@
 #include "LauncherUiExport.h"
 
 #include <QWidget>
+#include <QJsonObject>
 
-class QFileSystemModel;
+class WorkspaceFileModel;
+class DashboardFilesController;
 class QLabel;
 class QLineEdit;
 class QModelIndex;
@@ -18,14 +20,20 @@ class DOCKPIPE_LAUNCHER_UI_EXPORT DashboardFilesWidget final : public QWidget {
 public:
     explicit DashboardFilesWidget(QWidget *parent = nullptr);
     void setContext(const QString &scope, const QString &projectPath);
+    bool setMachineContext(const QJsonObject &target, const QString &rootId,
+                           const QString &localRoot, QString *error = nullptr);
+    QJsonObject machineTarget() const;
+    QString remoteRootId() const;
     QString scope() const { return m_scope; }
     QString currentDirectory() const { return m_directory; }
+    // Admits a navigation request; the core directory result arrives asynchronously.
     bool navigateTo(const QString &path);
 
 signals:
     void openFileRequested(const QString &path);
 
 private:
+    friend class DashboardFilesController;
     void activate(const QModelIndex &index);
     void updateControls();
     void clearProject();
@@ -34,7 +42,7 @@ private:
     QString m_scope = QStringLiteral("project");
     QString m_projectRoot;
     QString m_directory;
-    QFileSystemModel *m_model;
+    WorkspaceFileModel *m_model;
     DashboardFilesFilter *m_filter;
     QTreeView *m_tree;
     FileExplorerView *m_explorer;

@@ -6,6 +6,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLayout>
+#include <QKeyEvent>
 #include <QMainWindow>
 #include <QMenuBar>
 #include <QMessageBox>
@@ -17,6 +18,7 @@
 
 namespace {
 class WindowButton final : public QToolButton {
+    Q_DECLARE_TR_FUNCTIONS(WindowButton)
 public:
     enum Action { Minimize, Maximize, Close };
 
@@ -89,6 +91,21 @@ public:
 protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
+        if (m_dragging) {
+            if ((object == m_window && (event->type() == QEvent::UngrabMouse
+                    || event->type() == QEvent::WindowBlocked))
+                || event->type() == QEvent::ApplicationDeactivate)
+                finishDrag();
+            if (event->type() == QEvent::KeyPress
+                && static_cast<QKeyEvent *>(event)->key() == Qt::Key_Escape) {
+                finishDrag();
+                return true;
+            }
+            if (event->type() == QEvent::MouseButtonPress
+                || (event->type() == QEvent::MouseMove
+                    && !(static_cast<QMouseEvent *>(event)->buttons() & Qt::LeftButton)))
+                finishDrag();
+        }
         if (object == m_window) {
             if (event->type() == QEvent::Show)
                 prepare();
@@ -144,6 +161,8 @@ protected:
             return true;
         }
         if (event->type() == QEvent::MouseButtonRelease && m_dragging) {
+            if (static_cast<QMouseEvent *>(event)->button() != Qt::LeftButton)
+                return false;
             finishDrag();
             return true;
         }
@@ -160,14 +179,19 @@ private:
             auto *menu = m_mainWindow->menuBar();
             menu->setNativeMenuBar(false);
             m_header = menu;
+            QWidget *accessory = menu->cornerWidget(Qt::TopRightCorner);
             auto *controls = new QWidget(menu);
             auto *row = new QHBoxLayout(controls);
             row->setContentsMargins(8, 2, 6, 2);
             row->setSpacing(2);
+            if (accessory)
+                row->addWidget(accessory);
             row->addWidget(new WindowButton(WindowButton::Minimize, m_window, controls));
             row->addWidget(new WindowButton(WindowButton::Maximize, m_window, controls));
             row->addWidget(new WindowButton(WindowButton::Close, m_window, controls));
             menu->setCornerWidget(controls, Qt::TopRightCorner);
+            if (accessory)
+                accessory->show();
             controls->show();
         } else {
             if (auto *message = qobject_cast<QMessageBox *>(m_window))
@@ -273,7 +297,8 @@ private:
         if (!m_dragging)
             return;
         m_dragging = false;
-        m_window->releaseMouse();
+        if (QWidget::mouseGrabber() == m_window)
+            m_window->releaseMouse();
     }
 
     QWidget *m_window;

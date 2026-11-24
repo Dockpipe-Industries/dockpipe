@@ -209,10 +209,10 @@ func TestClientRejectsUnsafeEndpointsAndBoundsLogs(t *testing.T) {
 }
 
 func TestHeartbeatFailureDiffersFromOperatorCancellation(t *testing.T) {
-	for _, lost := range []bool{false, true} {
+	for _, rejected := range []bool{false, true} {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if lost {
-				http.Error(w, "unavailable", http.StatusServiceUnavailable)
+			if rejected {
+				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
@@ -230,14 +230,14 @@ func TestHeartbeatFailureDiffersFromOperatorCancellation(t *testing.T) {
 		client.HTTP.CloseIdleConnections()
 		server.Close()
 		expected := "cancelled"
-		if lost {
+		if rejected {
 			expected = "failure"
 		}
 		if result.Status != expected {
-			t.Fatalf("lost=%v: status=%s log=%s", lost, result.Status, result.Log)
+			t.Fatalf("rejected=%v: status=%s log=%s", rejected, result.Status, result.Log)
 		}
-		if lost && !strings.Contains(result.Log, "heartbeat failed") {
-			t.Fatalf("lost heartbeat cause absent: %s", result.Log)
+		if rejected && !strings.Contains(result.Log, "broker heartbeat failed; execution stopped: HTTP 403") {
+			t.Fatalf("heartbeat rejection cause absent: %s", result.Log)
 		}
 	}
 }
@@ -280,7 +280,11 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		os.Exit(21)
 	}
-	if string(mode) == "sleep" {
+	if string(mode) == "sleep" || string(mode) == "live-log" {
+		if string(mode) == "live-log" {
+			_, _ = os.Stdout.WriteString("workflow-running\n")
+		}
+
 		child := exec.Command(os.Args[0])
 		child.Env = append(os.Environ(), "DOCKPIPE_REMOTE_TEST_CHILD=1")
 		child.Stdout, child.Stderr = os.Stdout, os.Stderr

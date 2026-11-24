@@ -86,6 +86,7 @@ try {
     Copy-Item -LiteralPath (Join-Path $build "syntax-licenses") -Destination $StageDir -Recurse
     Copy-Item -LiteralPath (Join-Path $build "dockpipe-launcher-ui.dll") -Destination $StageDir
     Copy-Item -LiteralPath (Join-Path $build "dockpipe-workspace-reader.exe") -Destination $StageDir
+    Copy-Item -LiteralPath (Join-Path $build "dockpipe-terminal-host.exe") -Destination $StageDir
     & python (Join-Path $PSScriptRoot "../../../../dependencies/browser-sdk/assets/scripts/browser-runtime.py") --sdk $browserSdk --platform windows-amd64 `
         --runtime $StageDir --licenses (Join-Path $StageDir "licenses/SpatialWebBrowser")
     if ($LASTEXITCODE -ne 0) { throw "Browser runtime deployment failed" }
@@ -103,7 +104,7 @@ try {
     Get-ChildItem -LiteralPath $crt.FullName -Filter "*.dll" | Copy-Item -Destination $StageDir
     Assert-PublicDesktopRuntime -RuntimeDirectory $StageDir
     foreach ($required in @(
-        "SpatialWebBrowser.dll", "dockpipe-workspace-reader.exe", "Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6OpenGL.dll",
+        "SpatialWebBrowser.dll", "dockpipe-workspace-reader.exe", "dockpipe-terminal-host.exe", "Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll", "Qt6OpenGL.dll",
         "Qt6WebEngineCore.dll", "Qt6WebEngineWidgets.dll", "QtWebEngineProcess.exe",
         "resources/icudtl.dat", "resources/qtwebengine_resources.pak", "translations/qtwebengine_locales/en-US.pak",
         "resources/qtwebengine_resources_100p.pak", "resources/qtwebengine_resources_200p.pak",

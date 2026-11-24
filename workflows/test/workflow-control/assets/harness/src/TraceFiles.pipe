@@ -1,0 +1,7 @@
+module Dockpipe.WorkflowControl.Proof;
+
+// Native effects admit only explicitly opened trace roots, regular files and
+// bounded bytes. Trace names, readiness and expected contents belong to source.
+public Interface TraceFiles {
+    Result<TraceRead,string> Read(int rootIndex, string absolutePath, int maximumBytes);
+}

@@ -41,6 +41,8 @@ CanvasIcons::Symbol iconForKind(const QString &kind)
         return CanvasIcons::Symbol::Play;
     if (kind == "containers")
         return CanvasIcons::Symbol::Extensions;
+    if (kind == "desktop-window" || kind == "package-display")
+        return CanvasIcons::Symbol::Windows;
     return CanvasIcons::Symbol::Monitor;
 }
 

@@ -1,0 +1,66 @@
+{
+  "overall": {
+    "full_product_qualified": false,
+    "note": "Selected-target coverage is not full-product or bug-detection coverage. Component, installed, guided and human layers are reported separately.",
+    "passed": 0,
+    "required": 2,
+    "selected_case_coverage": 0.0,
+    "selected_targets_qualified": false,
+    "unconfigured_platform_profiles": [
+      "missing.1",
+      "missing.2"
+    ]
+  },
+  "target": {
+    "cases": [
+      {
+        "critical": true,
+        "evidence_root": "t1/d1/output",
+        "id": "feature.a",
+        "scenario": "failure",
+        "layer": "component",
+        "status": "failed",
+        "assertions": [],
+        "evidence": [],
+        "extension": {
+          "a": true,
+          "z": [
+            1,
+            null,
+            "\u20ac"
+          ]
+        }
+      },
+      {
+        "assertions": [],
+        "critical": false,
+        "evidence": [],
+        "id": "feature.b",
+        "layer": "human",
+        "reason": "No driver produced this required observation",
+        "scenario": "happy",
+        "status": "not_run"
+      }
+    ],
+    "counts": {
+      "failed": 1,
+      "not_run": 1
+    },
+    "coverage": 0.0,
+    "critical_passed": 0,
+    "critical_required": 1,
+    "layers": {
+      "component": {
+        "passed": 0,
+        "required": 1
+      },
+      "human": {
+        "passed": 0,
+        "required": 1
+      }
+    },
+    "passed": 0,
+    "required": 2,
+    "status": "failed"
+  }
+}

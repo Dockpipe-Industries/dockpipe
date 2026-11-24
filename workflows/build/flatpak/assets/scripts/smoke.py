@@ -34,6 +34,11 @@ def smoke(app):
             check=True, text=True, stdout=subprocess.PIPE, timeout=30).stdout)
         if "error" in page or not isinstance(page.get("entries"), list):
             raise RuntimeError("Installed workspace reader could not read its owned fixture")
+        terminal_probe = subprocess.run(
+            [*options, str(app), "/app/libexec/dockpipe/dockpipe-terminal-host"],
+            capture_output=True, timeout=15)
+        if terminal_probe.returncode != 64:
+            raise RuntimeError("Installed terminal host failed its no-session startup probe")
         cli = "/app/bin/dockpipe"
         version = run(cli, "--version").strip()
         assert "git version" in run("/app/bin/git", "--version")

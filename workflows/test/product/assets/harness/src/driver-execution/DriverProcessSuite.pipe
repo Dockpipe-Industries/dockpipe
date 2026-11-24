@@ -1,0 +1,25 @@
+module Dockpipe.Product.DriverExecution.Tests;
+import Dockpipe.Product.DriverExecution;
+import PipeLang.Json;
+
+public model Class DriverProcessSuite {
+    private DriverProcess process;
+    private JsonDocumentOutput output;
+
+    public DriverProcessSuite(DriverProcess process, JsonDocumentOutput output) {
+        this.process = process;
+        this.output = output;
+    }
+
+    public Result<int,string> Run(DriverProcessRequest request, bool useProbe,
+                                  CancellationToken token, CancellationToken probe) {
+        DriverProcessResult completed = new DriverProcessResult {};
+        if (useProbe)
+            completed = try process.Run(request, probe);
+        else
+            completed = try process.Run(request, token);
+
+        DriverProcessProjection projection = new DriverProcessProjection(output);
+        return projection.Write(completed);
+    }
+}

@@ -53,6 +53,7 @@ private slots:
     void refreshesOnlyWhenActiveAndBindsResourceActions();
     void cancelsOneSnapshotAndRejectsOversizedLines();
     void coalescesInventoryRequestsUntilSnapshotFinishes();
+    void publishesManagedInstanceStatesOnlyFromCompletedSnapshots();
     void stopsOnceWhenOutputFailureCancelsSynchronously();
 };
 
@@ -276,7 +277,7 @@ void PackageSurfaceTest::coalescesInventoryRequestsUntilSnapshotFinishes()
     QSignalSpy starts(&sessions, &SessionManager::sessionStarted);
     QSignalSpy displays(&page, &PackageSurfacePage::displaysChanged);
     page.refreshInventory();
-    QCOMPARE(starts.count(), 1);
+    QTRY_COMPARE_WITH_TIMEOUT(starts.count(), 1, 10000);
     page.refreshInventory();
     page.refreshInventory();
     QVERIFY(page.inventoryDiagnostic().value("pending_request").toBool());
@@ -291,6 +292,7 @@ void PackageSurfaceTest::coalescesInventoryRequestsUntilSnapshotFinishes()
     page.refreshInventory();
     page.refreshInventory();
     QVERIFY(page.inventoryDiagnostic().value("pending_request").toBool());
+    QTRY_COMPARE_WITH_TIMEOUT(starts.count(), 3, 10000);
     page.setWorkspace(QString(), QString());
     QTest::qWait(300);
     QCOMPARE(starts.count(), 3);
@@ -309,13 +311,46 @@ void PackageSurfaceTest::cancelsOneSnapshotAndRejectsOversizedLines()
     page.setActive(true);
     page.refresh();
     page.refresh();
-    QCOMPARE(starts.count(), 1);
+    QTRY_COMPARE_WITH_TIMEOUT(starts.count(), 1, 10000);
     page.findChild<QPushButton *>("surfaceCancel")->click();
     QTRY_VERIFY_WITH_TIMEOUT(!page.findChild<QPushButton *>("surfaceCancel")->isEnabled(), 10000);
     QVERIFY(page.findChild<QLabel *>("surfaceStatus")->text().contains("cancelled"));
     page.setProviders({provider("first", "oversized")});
     QTRY_VERIFY_WITH_TIMEOUT(page.findChild<QLabel *>("surfaceStatus")->text().contains("capacity"), 10000);
     QTRY_VERIFY_WITH_TIMEOUT(!page.findChild<QPushButton *>("surfaceCancel")->isEnabled(), 10000);
+}
+
+void PackageSurfaceTest::publishesManagedInstanceStatesOnlyFromCompletedSnapshots()
+{
+    SessionManager sessions;
+    PackageSurfacePage page(sessions);
+    QTemporaryDir temporary;
+    page.setWorkspace(temporary.path(), QCoreApplication::applicationFilePath());
+    page.setProviders({provider("first", "instance-snapshot")});
+    const QString instance(32, 'a');
+    QHash<QString, QString> states;
+    qint64 observedAt = 0;
+    connect(&page, &PackageSurfacePage::instanceStatesObserved, this, [&](const auto &values, qint64 time) {
+        states = values;
+        observedAt = time;
+    });
+    page.refreshInventory();
+    QTRY_COMPARE(states.value(instance), QStringLiteral("running"));
+    QVERIFY(observedAt > 0);
+
+    page.setProviders({provider("first", "ambiguous-instances")});
+    QVERIFY(states.isEmpty());
+    QCOMPARE(observedAt, 0);
+    page.refreshInventory();
+    QTRY_VERIFY(observedAt > 0);
+    QVERIFY(states.contains(instance));
+    QVERIFY(states.value(instance).isEmpty());
+
+    page.setProviders({provider("first", "failed-instance-snapshot")});
+    page.refreshInventory();
+    QTRY_VERIFY(!page.inventoryDiagnostic().value("snapshot_busy").toBool());
+    QCOMPARE(observedAt, 0);
+    QVERIFY(states.isEmpty());
 }
 
 void PackageSurfaceTest::stopsOnceWhenOutputFailureCancelsSynchronously()
@@ -364,6 +399,21 @@ int main(int argc, char **argv)
             std::fwrite(bytes.constData(), 1, size_t(bytes.size()), stdout);
             std::fflush(stdout);
             return 0;
+        }
+        if (workflow == "instance-snapshot" || workflow == "ambiguous-instances" || workflow == "failed-instance-snapshot") {
+            auto event = snapshot();
+            auto resource = event.value("resources").toArray().first().toObject();
+            resource["instance_id"] = QString(32, 'a');
+            resource["state"] = "running";
+            QJsonArray resources{resource};
+            if (workflow == "ambiguous-instances") {
+                resource["id"] = "resource-two";
+                resource["state"] = "stopped";
+                resources.append(resource);
+            }
+            event["resources"] = resources;
+            emitEvent(event);
+            return workflow == "failed-instance-snapshot" ? 2 : 0;
         }
         if (workflow == "inspect") {
             QString resource;

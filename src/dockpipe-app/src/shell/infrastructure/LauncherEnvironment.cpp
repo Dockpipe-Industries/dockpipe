@@ -34,3 +34,14 @@ void applyGlobalRootDefault(const QString &savedRoot)
         qputenv("DOCKPIPE_GLOBAL_ROOT", savedRoot.toUtf8());
     }
 }
+
+QProcessEnvironment launcherRestartEnvironment(const QProcessEnvironment &startupEnvironment)
+{
+    QProcessEnvironment environment = startupEnvironment;
+#ifdef Q_OS_LINUX
+    // Activation credentials belong to the original launch, not its replacement.
+    environment.remove(QStringLiteral("DESKTOP_STARTUP_ID"));
+    environment.remove(QStringLiteral("XDG_ACTIVATION_TOKEN"));
+#endif
+    return environment;
+}

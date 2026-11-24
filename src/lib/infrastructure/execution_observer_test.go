@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -123,6 +124,60 @@ func TestExecutionObservabilityCanBeDisabled(t *testing.T) {
 	path, _ := ExecutionHistoryDir(directory)
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatal("disabled observer created history")
+	}
+}
+
+func TestPortalExecutionHistoryIsStoredOutsideTheGrant(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Flatpak document grants are Linux-only")
+	}
+
+	state := t.TempDir()
+	t.Setenv("XDG_STATE_HOME", state)
+	grants := t.TempDir()
+	workspaces := []string{
+		filepath.Join(grants, "first"),
+		filepath.Join(grants, "second"),
+	}
+	for _, workspace := range workspaces {
+		if err := os.Mkdir(workspace, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	first, err := portalExecutionHistoryDir(workspaces[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := portalExecutionHistoryDir(workspaces[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := DurableStateRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first == second || !strings.HasPrefix(first, root+string(filepath.Separator)) {
+		t.Fatalf("expected distinct app-state histories, got %q and %q", first, second)
+	}
+
+	store := telemetry.Store{Directory: first}
+	if err := store.Record(telemetry.Execution{ID: "first-grant"}); err != nil {
+		t.Fatal(err)
+	}
+	records, err := (telemetry.Store{Directory: second}).Read()
+	if err != nil || len(records) != 0 {
+		t.Fatalf("history crossed the grant boundary: %v, %v", records, err)
+	}
+
+	link := filepath.Join(grants, "linked")
+	if err := os.Symlink(workspaces[0], link); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{link, filepath.Join(grants, "missing")} {
+		if _, err := portalExecutionHistoryDir(path); err == nil {
+			t.Fatalf("history was exposed for inaccessible or linked path %q", path)
+		}
 	}
 }
 

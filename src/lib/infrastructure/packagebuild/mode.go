@@ -31,6 +31,13 @@ func shouldForceExecutable(name string) bool {
 	if strings.Contains(name, "/tooling/bin/") {
 		return true
 	}
+	// Compiled control payloads are library-owned executable artifacts, not
+	// authored scripts. Preserve their executable contract through archives.
+	parts := strings.Split(name, "/")
+	if len(parts) >= 5 && parts[len(parts)-5] == "assets" && parts[len(parts)-4] == "dockpipe-control" &&
+		len(parts[len(parts)-2]) == 64 && (parts[len(parts)-1] == "control" || parts[len(parts)-1] == "control.exe") {
+		return true
+	}
 	base := strings.ToLower(path.Base(name))
 	return strings.HasSuffix(base, ".sh") ||
 		strings.HasSuffix(base, ".bash") ||

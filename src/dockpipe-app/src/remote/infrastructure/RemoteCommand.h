@@ -20,6 +20,9 @@ public:
     void run(const QString &program, const QStringList &arguments, Completion completion,
              int timeoutMs = 30000);
     void cancel();
+    // Keep busy/cancel compatibility when a typed transport owns the process.
+    bool trackExternalOperation(QObject *owner, std::function<void()> cancel);
+    void completeExternalOperation();
     void submitHardwareKeyResponse(const QString &id, const QString &device, const QString &pin);
 
 signals:
@@ -28,8 +31,10 @@ signals:
     void busyChanged(bool busy);
     void hardwareKeyPrompt(const QJsonObject &prompt);
     void hardwareKeyStatus(const QString &message);
+    void hardwareKeyUnavailable();
 
 private:
+    QProcess &process() const;
     void finish(bool success);
     void drain();
     void consumeLine(const QByteArray &line);

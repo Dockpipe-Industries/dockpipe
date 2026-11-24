@@ -1,0 +1,31 @@
+module Dockpipe.Product.DriverClaims.Tests;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+public Record DriverClaimsReport {
+    public bool allPassed = false;
+    public List<TestResult> results;
+}
+
+public model Class DriverClaimsSuite {
+    private JsonReader reader;
+
+    public DriverClaimsSuite(JsonReader reader) {
+        this.reader = reader;
+    }
+
+    public DriverClaimsReport Run(CancellationToken token, CancellationToken cancelled) {
+        TestRunner runner = new TestRunner();
+        List<TestResult> results = List<TestResult>.Empty();
+        for (int scenario = 0; scenario < 9; scenario = scenario + 1)
+            results.Add(runner.RunProbe(new DriverClaimsCase(reader, scenario), token, cancelled));
+
+        bool allPassed = results.Count == 9;
+        foreach (TestResult result in results) {
+            if (result.outcome != TestOutcome.Passed || !result.bodyRan || !result.cleanupRan)
+                allPassed = false;
+        }
+
+        return DriverClaimsReport(allPassed, results);
+    }
+}

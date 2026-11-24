@@ -1,0 +1,8 @@
+module Dockpipe.SDK.FaultProof;
+import Dockpipe.SDK;
+
+// Native composition captures the same Transport and supplies genuine cancellation.
+// Source selects the operation and owns every outcome and custody assertion.
+public Interface FaultSignals {
+    Task<Result<OperationObservation,string>> ObserveCancelled(OperationId id, int milliseconds);
+}

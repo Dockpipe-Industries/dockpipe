@@ -1,0 +1,38 @@
+module Dockpipe.Product.DriverExecution;
+import PipeLang.Json;
+
+public Class DriverProcessProjection {
+    private JsonDocumentOutput output;
+
+    public DriverProcessProjection(JsonDocumentOutput output) {
+        this.output = output;
+    }
+
+    public pure string FailureText(DriverProcessKind kind) {
+        if (kind == DriverProcessKind.DeadlineExceeded)
+            return "Driver exceeded its declared deadline";
+        if (kind == DriverProcessKind.CaptureOverflow)
+            return "Driver log exceeded its 4 MiB per-stream bound";
+
+        return "";
+    }
+
+    public Result<int,string> Write(DriverProcessResult process) {
+        if (process.kind == DriverProcessKind.Cancelled)
+            return Result<int,string>.Cancelled("qualification.driver.cancelled");
+        if (process.kind == DriverProcessKind.Failed)
+            return Result<int,string>.Failure("qualification.driver.process." + process.detail);
+        if (!process.exited || !process.treeComplete || process.kind == DriverProcessKind.CustodyUnknown)
+            return Result<int,string>.Failure("qualification.driver.unreconciled_process");
+
+        string failure = FailureText(process.kind);
+
+        try output.BeginObject();
+        try output.Name("exit_code");
+        try output.WriteInteger(process.exitCode);
+        try output.Name("failure");
+        try output.WriteText(failure);
+        try output.EndObject();
+        return output.Finish();
+    }
+}

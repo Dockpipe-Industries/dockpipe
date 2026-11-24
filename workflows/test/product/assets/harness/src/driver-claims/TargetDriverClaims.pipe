@@ -1,0 +1,197 @@
+module Dockpipe.Product.DriverClaims;
+import PipeLang.Json;
+
+// One target's expected rows. No driver may launch until the whole target
+// seals successfully. A failed or cancelled claim leaves the index unusable.
+public Class TargetDriverClaims {
+    private JsonReader reader;
+    private Dictionary<string,FeatureCaseClaims> features = Dictionary<string,FeatureCaseClaims>.Empty();
+    private int required = 0;
+    private int nextDriver = 1;
+    private bool usable = true;
+    private bool sealed = false;
+
+    public TargetDriverClaims(JsonReader reader) {
+        this.reader = reader;
+    }
+
+    private pure int Scenario(string value) {
+        if (value == "happy")
+            return 0;
+        if (value == "failure")
+            return 1;
+        if (value == "cancellation")
+            return 2;
+        if (value == "restart-recovery")
+            return 3;
+
+        return -1;
+    }
+
+    private pure int Layer(string value) {
+        if (value == "component")
+            return 0;
+        if (value == "installed_e2e")
+            return 1;
+        if (value == "guided_ui")
+            return 2;
+        if (value == "human")
+            return 3;
+
+        return -1;
+    }
+
+    private Result<int,string> Position(string scenario, string layer) {
+        int journey = Scenario(scenario);
+        int group = Layer(layer);
+        if (journey < 0 || group < 0)
+            return Result<int,string>.Failure("qualification.driver_claim.case_axes");
+
+        return Result<int,string>.Success(group * 4 + journey);
+    }
+
+    public Result<void,string> Include(string feature, string scenario, string layer) {
+        if (!usable || sealed || nextDriver != 1)
+            return Result<void,string>.Failure("qualification.driver_claim.not_registering");
+
+        usable = false;
+        int position = try Position(scenario, layer);
+        if (required == 8192)
+            return Result<void,string>.Failure("qualification.driver_claim.case_count");
+        if (!features.ContainsKey(feature)) {
+            if (features.Count == 512)
+                return Result<void,string>.Failure("qualification.driver_claim.feature_count");
+
+            features.Add(feature, new FeatureCaseClaims());
+        }
+
+        try features.At(feature).Include(position);
+        required = required + 1;
+        usable = true;
+        return Result<void,string>.Success();
+    }
+
+    private Result<string,string> Text(JsonNode value) {
+        JsonKind kind = try reader.Kind(value);
+        if (kind != JsonKind.String)
+            return Result<string,string>.Failure("qualification.driver_claim.text");
+
+        int bytes = try reader.ScalarLength(value);
+        if (bytes > 128)
+            return Result<string,string>.Failure("qualification.driver_claim.text");
+
+        ByteBuffer text = try reader.ScalarSlice(value, 0, bytes);
+        return Result<string,string>.Success(text.DecodeUtf8());
+    }
+
+    private Result<Array<bool>,string> Filter(JsonNode driver, string field, bool scenarios) {
+        JsonNode? declaration = try reader.FindMember(driver, field);
+        Array<bool> included = Array<bool>.Create(4, !declaration.HasValue);
+        if (!declaration.HasValue)
+            return Result<Array<bool>,string>.Success(included);
+
+        JsonKind kind = try reader.Kind(declaration.Value);
+        if (kind != JsonKind.Array)
+            return Result<Array<bool>,string>.Failure("qualification.driver_claim.filter");
+
+        int count = try reader.Count(declaration.Value);
+        if (count < 1 || count > 4)
+            return Result<Array<bool>,string>.Failure("qualification.driver_claim.filter");
+
+        for (int index = 0; index < count; index = index + 1) {
+            JsonNode item = try reader.At(declaration.Value, index);
+            string value = try Text(item);
+            int position = Layer(value);
+            if (scenarios)
+                position = Scenario(value);
+
+            if (position < 0 || included.At(position))
+                return Result<Array<bool>,string>.Failure("qualification.driver_claim.filter");
+
+            included.Set(position, true);
+        }
+
+        return Result<Array<bool>,string>.Success(included);
+    }
+
+    private Result<int,string> ClaimFeature(FeatureCaseClaims feature, Array<bool> scenarios,
+                                            Array<bool> layers) {
+        int matched = 0;
+        for (int layer = 0; layer < 4; layer = layer + 1) {
+            if (!layers.At(layer))
+                continue;
+
+            for (int scenario = 0; scenario < 4; scenario = scenario + 1) {
+                if (!scenarios.At(scenario))
+                    continue;
+
+                bool claimed = try feature.Claim(layer * 4 + scenario, nextDriver);
+                if (claimed)
+                    matched = matched + 1;
+            }
+        }
+
+        return Result<int,string>.Success(matched);
+    }
+
+    public Result<int,string> Claim(JsonNode driver, CancellationToken token) {
+        if (!usable || sealed || nextDriver > 64)
+            return Result<int,string>.Failure("qualification.driver_claim.not_claiming");
+
+        usable = false;
+        if (token.IsCancellationRequested)
+            return Result<int,string>.Cancelled("qualification.driver_claim.cancelled");
+
+        Array<bool> scenarios = try Filter(driver, "scenarios", true);
+        Array<bool> layers = try Filter(driver, "layers", false);
+        JsonNode? included = try reader.FindMember(driver, "features");
+        if (!included.HasValue)
+            return Result<int,string>.Failure("qualification.driver_claim.features");
+
+        JsonKind kind = try reader.Kind(included.Value);
+        if (kind != JsonKind.Array)
+            return Result<int,string>.Failure("qualification.driver_claim.features");
+
+        int count = try reader.Count(included.Value);
+        if (count < 1 || count > 512)
+            return Result<int,string>.Failure("qualification.driver_claim.features");
+
+        int matched = 0;
+        for (int index = 0; index < count; index = index + 1) {
+            if (token.IsCancellationRequested)
+                return Result<int,string>.Cancelled("qualification.driver_claim.cancelled");
+
+            JsonNode item = try reader.At(included.Value, index);
+            string feature = try Text(item);
+            if (features.ContainsKey(feature))
+                matched = matched + (try ClaimFeature(features.At(feature), scenarios, layers));
+        }
+
+        if (matched == 0)
+            return Result<int,string>.Failure("qualification.driver_claim.no_cases");
+
+        nextDriver = nextDriver + 1;
+        usable = true;
+        return Result<int,string>.Success(matched);
+    }
+
+    public Result<int,string> Seal() {
+        if (!usable)
+            return Result<int,string>.Failure("qualification.driver_claim.unusable");
+
+        sealed = true;
+        return Result<int,string>.Success(required);
+    }
+
+    public Result<int,string> Driver(string feature, string scenario, string layer) {
+        if (!usable || !sealed || !features.ContainsKey(feature))
+            return Result<int,string>.Failure("qualification.driver_claim.unavailable");
+
+        int position = try Position(scenario, layer);
+        int owner = features.At(feature).Driver(position);
+        if (owner < 0)
+            return Result<int,string>.Failure("qualification.driver_claim.unavailable");
+
+        return Result<int,string>.Success(owner);
+    }
+}

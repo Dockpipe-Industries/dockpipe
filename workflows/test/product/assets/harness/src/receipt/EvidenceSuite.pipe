@@ -1,0 +1,31 @@
+module Dockpipe.Product.Receipt.Tests;
+import Dockpipe.Product.Receipt;
+import Dockpipe.Product.Receipt.Contracts;
+import PipeLang.IO;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+public model Class EvidenceSuite {
+    private JsonReader reader;
+    private FileStreams files;
+
+    public EvidenceSuite(JsonReader reader, FileStreams files) {
+        this.reader = reader;
+        this.files = files;
+    }
+
+    public EvidenceReport Run(CancellationToken token, CancellationToken cancelled) {
+        List<TestResult> results = List<TestResult>.Empty();
+        TestRunner runner = new TestRunner();
+        for (int scenario = 0; scenario < 21; scenario = scenario + 1)
+            results.Add(runner.RunProbe(new EvidenceCase(reader, files, scenario), token, cancelled));
+
+        bool allPassed = results.Count == 21;
+        foreach (TestResult result in results) {
+            if (result.outcome != TestOutcome.Passed || !result.bodyRan || !result.cleanupRan)
+                allPassed = false;
+        }
+
+        return EvidenceReport(allPassed, results);
+    }
+}
