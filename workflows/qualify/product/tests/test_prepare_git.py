@@ -76,7 +76,7 @@ class PrepareGitTests(unittest.TestCase):
             self.assertEqual(git['configuration'], {'artifact': str(artifact), 'fixture_manifest': str(manifest),
                                                   'fixture_manifest_sha256': PREPARE.digest_file(manifest)})
             self.assertEqual(git['scenarios'], ['happy', 'failure', 'cancellation'])
-            self.assertIn('fixtures/workspace-git/broker_test.go', [item['path'] for item in git['dependencies']])
+            self.assertIn('fixtures/workspace-git/broker_test.go.fixture', [item['path'] for item in git['dependencies']])
 
     def test_changed_broker_or_git_is_refused_before_plan_write(self):
         for selected in ['binary', 'git']:

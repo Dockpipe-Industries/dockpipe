@@ -28,7 +28,7 @@ def documents(text):
 
 def source_inventory(listing, overlay):
     paths = {ROOT / 'go.mod', ROOT / 'go.sum', Path(__file__).resolve(),
-             Path(__file__).with_name('config.yml'), Path(__file__).with_name('broker_test.go')}
+             Path(__file__).with_name('config.yml'), Path(__file__).with_name('broker_test.go.fixture')}
     for package in documents(listing):
         if not package.get('Dir'):
             continue
@@ -63,7 +63,7 @@ def produce(configuration):
                    'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': '/dev/null',
                    'GIT_TEMPLATE_DIR': str(directories['templates']), 'GIT_TERMINAL_PROMPT': '0'}
     overlay = {str(ROOT / 'src/lib/infrastructure/workspacegit/product_fixture_broker_test.go'):
-               str(Path(__file__).with_name('broker_test.go').resolve(strict=True))}
+               str(Path(__file__).with_name('broker_test.go.fixture').resolve(strict=True))}
     overlay_path = output / 'overlay.json'
     write_json(overlay_path, {'Replace': overlay})
 

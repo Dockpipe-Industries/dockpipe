@@ -76,7 +76,7 @@ def git_workspace_driver(artifact, manifest_path):
     require(digest_file(manifest_path) == manifest_sha256, "Git fixture manifest changed during plan preparation")
     entrypoint = "drivers/git_workspace.py"
     dependencies = ("assets/scripts/contracts.py", "assets/scripts/process.py",
-                    "fixtures/workspace-git/build.py", "fixtures/workspace-git/broker_test.go",
+                    "fixtures/workspace-git/build.py", "fixtures/workspace-git/broker_test.go.fixture",
                     "fixtures/workspace-git/config.yml")
     return {"id": "git-workspace", "entrypoint": entrypoint, "sha256": digest_file(OWNER / entrypoint),
             "dependencies": [{"path": path, "sha256": digest_file(OWNER / path)} for path in dependencies],
