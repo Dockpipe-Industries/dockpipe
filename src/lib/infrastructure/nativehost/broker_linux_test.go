@@ -137,11 +137,24 @@ func TestBrokerWorkerSnapshotAndRevocation(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("revocation did not clean up worker")
 	}
-	if data, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", jobPID)); err == nil {
+	// The kernel can deliver the cleanup signal after the worker has exited.
+	statPath := fmt.Sprintf("/proc/%d/stat", jobPID)
+	for deadline := time.Now().Add(time.Second); ; {
+		data, err := os.ReadFile(statPath)
+		if os.IsNotExist(err) {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
 		end := strings.LastIndex(string(data), ")")
-		if end < 0 || !strings.HasPrefix(strings.TrimSpace(string(data[end+1:])), "Z ") {
+		if end >= 0 && strings.HasPrefix(strings.TrimSpace(string(data[end+1:])), "Z ") {
+			break
+		}
+		if !time.Now().Before(deadline) {
 			t.Fatalf("owned shell job still running after revoke: PID %d", jobPID)
 		}
+		time.Sleep(5 * time.Millisecond)
 	}
 	if status, err := client.Status(ctx); err == nil || status.Available {
 		t.Fatal("revoked worker still available")
