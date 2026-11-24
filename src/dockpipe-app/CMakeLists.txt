@@ -1123,7 +1123,9 @@ if(BUILD_TESTING)
     add_executable(browser-network-host-test tests/BrowserNetworkHostTest.cpp)
     target_link_libraries(browser-network-host-test PRIVATE dockpipe-browser Qt6::Test)
     add_test(NAME browser-network-host COMMAND browser-network-host-test)
-    set_tests_properties(browser-network-host PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    set_tests_properties(browser-network-host PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests"
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
 endif()
 
 if(BUILD_TESTING)
@@ -1131,5 +1133,7 @@ if(BUILD_TESTING)
     target_link_libraries(workspace-navigation-test PRIVATE Qt6::Widgets Qt6::Test)
     target_include_directories(workspace-navigation-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
     add_test(NAME workspace-navigation COMMAND workspace-navigation-test)
-    set_tests_properties(workspace-navigation PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    set_tests_properties(workspace-navigation PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests"
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
 endif()

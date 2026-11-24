@@ -171,6 +171,9 @@ class BuildUnixDiagnosticTests(unittest.TestCase):
             browser = root / 'workflows/dependencies/browser-sdk/assets/scripts/browser-runtime.py'
             browser.parent.mkdir(parents=True)
             browser.write_text('')
+            cli = root / 'src/bin/dockpipe'
+            cli.parent.mkdir(parents=True)
+            cli.write_text('#!/bin/sh\nexit 0\n')
             helper = desktop / 'layout-diagnostics.py'
             helper.write_text(
                 'import pathlib,sys\n'

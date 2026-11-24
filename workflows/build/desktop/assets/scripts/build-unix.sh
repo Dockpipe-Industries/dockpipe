@@ -114,12 +114,30 @@ if [[ "${DOCKPIPE_QUALIFY_COCKPIT:-0}" == 1 ]]; then
     --lock "$root/workflows/qualify/cockpit/assets/cockpit.lock.json" --store "$DOCKPIPE_COCKPIT_STORE" --build "$build"
 fi
 cmake --build "$build" --parallel 2
-if [[ -n "$diagnostic_product_source" ]]; then
-  python3 "$root/workflows/build/desktop/assets/scripts/layout-diagnostics.py" ctest \
-    --build "$build" --evidence "$diagnostic_output"
-else
-  ctest --test-dir "$build" --output-on-failure
-fi
+# The CLI locates the terminal provider beside its executable in native builds.
+install -m 755 "$root/src/bin/dockpipe" "$build/dockpipe"
+(
+  export PATH="$build:$PATH"
+  if [[ -n "$diagnostic_product_source" ]]; then
+    python3 "$root/workflows/build/desktop/assets/scripts/layout-diagnostics.py" ctest \
+      --build "$build" --evidence "$diagnostic_output"
+  elif [[ "$(uname -s)" == Linux ]]; then
+    # The terminal test checks actual X11 compositing. Tests that require an
+    # offscreen platform keep their own CTest environment settings.
+    LC_ALL=C.UTF-8 QT_QPA_PLATFORM=xcb xvfb-run -a bash -ec '
+      xcompmgr &
+      compositor=$!
+      cleanup_compositor() {
+        kill "$compositor" 2>/dev/null || true
+        wait "$compositor" 2>/dev/null || true
+      }
+      trap cleanup_compositor EXIT
+      ctest --test-dir "$1" --output-on-failure
+    ' bash "$build"
+  else
+    ctest --test-dir "$build" --output-on-failure
+  fi
+)
 if [[ "${DOCKPIPE_QUALIFY_COCKPIT:-0}" == 1 ]]; then
   [[ ! -e "$out/cockpit-store" ]]
   cp -R "$DOCKPIPE_COCKPIT_STORE" "$out/cockpit-store"
