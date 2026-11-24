@@ -1,0 +1,8 @@
+module Dockpipe.Product.QualificationFiles;
+import PipeLang.IO;
+import PipeLang.Json;
+
+public Record CapturedQualificationJson {
+    public JsonNode root;
+    public FileDigest sourceFile;
+}

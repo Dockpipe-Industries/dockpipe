@@ -1,0 +1,7 @@
+module Dockpipe.Product.Receipt.Contracts;
+import PipeLang.Testing;
+
+public Record EvidenceReport {
+    public bool allPassed = false;
+    public List<TestResult> results;
+}

@@ -22,7 +22,7 @@ Dockpipe separates project build outputs, user installs, system installs and pub
 
 4. **Published / remote packages** are versioned tarballs on a static origin or registry-like store. Each installable unit is a tarball (for example **`dockpipe-workflow-<name>-<ver>.tar.gz`**, **`dockpipe-resolver-…`**). The engine can load package tarballs directly when appropriate; it does not need every remote package unpacked into an authoring tree.
 
-5. **Source-level resolution** uses project **`workflows/`**, explicitly declared **`compile.workflows`** roots, or **`--workflow-file`**. Source workflows do not require packaging.
+5. **Source-level resolution** uses project **`workflows/`**, explicitly declared **`compile.workflows`** roots, or **`--workflow-file`**. Authors do not need to publish packages. Named runs with dependency compilation enabled execute the exact compiled archive produced from the selected source. Explicit uncompiled container workflows declaring security require their compiled runtime manifest before execution.
 
 6. **Build (`dockpipe build` / `compile all`)** is considered successful only if:
    - compile order is **resolvers → workflows**; no core compilation is required,
@@ -98,11 +98,15 @@ A hidden artifact on a public origin remains downloadable.
 
 | Mode | What you run | Friction | Notes |
 |------|----------------|----------|--------|
-| **Source** | Workflow YAML under selected or explicitly declared project roots | No compile required | Project scripts and workflow/package-owned assets resolve through the shared path helpers. |
+| **Source** | Workflow YAML under selected or explicitly declared project roots | Automatic compilation for named runs | Project scripts and workflow/package-owned assets resolve through the shared path helpers. |
 | **Compiled / packaged** | Workflow/resolver archives under the project package store | Compile once | Metadata and assets travel with each package. |
 | **Global installed** | `<global-root>/packages/workflows/` and `packages/resolvers/` | Install once | Shared optional packages need no source checkout. |
 
 **Authors are not forced to pick one path:** keep editing and running from source for low friction; use **compile → package → release** when you want a **self-contained** published artifact.
+
+Explicit uncompiled source declaring container security must have its compiled
+runtime manifest; otherwise run refuses before container execution. See
+[Security policy](../security/security-policy.md).
 
 ### Authoring: workflow YAML vs resolver / runtime / strategy slices
 
@@ -403,7 +407,7 @@ Package dependencies should remain package-shaped:
 - **`depends`** names other package ids. A name matching multiple package kinds is rejected; use **`requires_resolvers`** to identify a required resolver explicitly.
 - **`requires_resolvers`** names resolver profile ids that must be available project-locally, globally, or from the install closure. Workflows that use logical resolver script ids such as **`scripts/dorkpipe/...`** should declare the owning resolver here. A declared **`depends`** or workflow **`inject`** edge to another workflow that declares the resolver also satisfies this check through the workflow dependency closure. Merely having an unrelated resolver installed does not. Direct declarations remain the clearest choice for new workflows and allow source compilation before workflow dependencies are available.
 - **`requires_capabilities`** names dotted capability ids for catalog/search and dependency checks.
-- **`platforms`** declares which host platforms the package supports, and **`dependencies.host`** names required external executables with OS-specific install commands. Core preflights these before workflow execution. Tools bundled under the selected package’s `assets/tooling/bin` take precedence over host executables during preflight and in host-script `PATH`. Flatpak packages declare `platforms: [flatpak]` and supply runtime-compatible dependencies; native distribution installers are disabled in Flatpak.
+- **`platforms`** declares which host platforms the package supports, and **`dependencies.host`** names required executables, optional Windows features, or registered Windows services with OS-specific install commands. Core preflights these before workflow execution. Use one selector per entry. Windows features and services use `windows_feature` and `windows_service`, respectively, and are checked before executable installers. Tools bundled under the selected package’s `assets/tooling/bin` take precedence over host executables during preflight and in host-script `PATH`. Flatpak packages declare `platforms: [flatpak]` and supply runtime-compatible dependencies; native distribution installers are disabled in Flatpak.
 - **`image`** may point at a normal OCI reference, ideally digest-pinned, but Docker layers remain in Docker/OCI registries rather than Dockpipe package tarballs.
 
 Security metadata in **`package.yml`** should stay compatibility-only, for example **`compatible_security_profiles`** or **`requires_network: true`** if added later. Effective network, filesystem, process, and Docker enforcement settings belong only in compiled runtime manifests.
@@ -468,6 +472,13 @@ Versions must be semver-shaped so tarball names and CDN paths stay stable.
 | **`image`** | Optional normal OCI image reference for a workflow package. Compile records it into the effective runtime/image manifests; `run` may reuse or pull it according to compiled pull policy. |
 
 Use `dockpipe package manifest` to inspect example package metadata.
+
+Compiled workflow archives also participate in explicit package selection and
+nested workflow calls. Top-level `--package` matches the validated adjacent
+package manifest name; a nested step's `package:` matches the child workflow's
+explicit `namespace:`. Both retain normal store/version precedence and project
+namespace filters. Nested calls retain the caller's admitted project root and
+materialize relative assets from the selected archive before admission/execution.
 
 **Compression:** store objects are typically **`.tar.gz`** (or **`.tar.zst`** later) to keep bandwidth and R2 storage small; the CLI unpacks into the layout above. **Binary-only** packs are possible for asset-only packages if you add a small unpack step later.
 
@@ -583,8 +594,9 @@ Already-installed older CLIs must be updated to gain these checks.
 An installed resolver may declare `surface: assets/ui/surface.json` in its
 `package.yml`. The optional descriptor contributes a generic resource page to
 launchers. Discovery is data-only; it does not execute the snapshot or actions.
-Resolvers with the same surface ID share one page with a provider selector.
-The page title comes from package metadata; the host has no provider-name switch.
+Resolvers with the same surface ID share a provider selector. The page title
+comes from package metadata. Dockpipe hosts the standard VM surface within
+Environments.
 
 ```json
 {
@@ -614,6 +626,13 @@ Titles contain 1–160 characters. A descriptor is at most 64 KiB and has at mos
 paths. Profile values and credentials are not projected. A surface declares no
 new execution semantics: its files remain ordinary Dockpipe workflows and use
 installed tools and SDK contracts.
+
+Resolvers with a process-only inventory mode can declare
+`DOCKPIPE_SURFACE_PROCESS_SNAPSHOT=1` in their profile. The catalog projects
+this as `process_snapshot`. A background inventory request passes
+`DOCKPIPE_SURFACE_SNAPSHOT_MODE=process` to the snapshot workflow. The provider
+reports observed process state without contacting guests or returning
+interactive display bindings.
 
 ### Surface workflow events
 
@@ -737,6 +756,20 @@ including the root, nonempty keys of at most 64 characters, and strings of at mo
 4096 characters without NUL. Schema describes the value shapes; the host also
 enforces aggregate byte, node and depth limits before calling package code.
 Options and native panels remain session-only and are not saved into layouts.
+
+The remote desktop shell selects a resolver with capability `remote.desktop` whose
+identity and version match the selected desktop catalog. Its display receives
+`schema: dockpipe.remote.desktop-display/v1`, the trusted operator `cli` absolute
+path, `state_directory`, the exact `catalog`, and `mode` (`view` or `control`).
+The `capture` object carries quality, frame-rate, display-source and opted-in
+clipboard preferences; `display` carries scaling, cursor and key-mapping
+preferences; `decoder` carries the requested local decoding mode. These are
+provider-independent preference hints, not a transport selection or authority
+grant. Providers validate supported settings and report unsupported requests
+instead of silently weakening explicit requirements. Clipboard preferences are
+omitted for view-only sessions. Providers own native capture, input, negotiation,
+transport and platform integration. This launch envelope does not change the
+published DisplayPackage/1.0 virtual interface.
 
 The installed host SDK exports `LauncherDisplayPackage.h`, interface
 `com.dockpipe.launcher.DisplayPackage/1.0`. A Qt plugin implements
@@ -916,3 +949,51 @@ The application no longer produces, installs or discovers a shared core tree.
 Schema-1 store manifests may omit `packages.core` and contain no optional packages.
 Historical core metadata is retained only for immutable artifact accounting.
 See [runtime resource ownership](../concepts/runtime-resource-ownership.md).
+
+### Package file tools
+
+A surface action may use `scope: file`, a contained `workflow`, and
+`file_extensions` (1–16 unique lowercase suffixes without dots). Files offers
+matching actions in its **Tools** menu, grouped by package. A descriptor containing
+only file actions may omit `snapshot`; it contributes no sidebar page and no
+background polling. Other actions still require a snapshot. Discovery never runs
+package workflows. This contract requires the Files-tools-capable desktop/CLI;
+older hosts reject the new action scope instead of silently executing it.
+
+```json
+{
+  "schema": 1,
+  "id": "example.file-tools",
+  "title": "Example file tools",
+  "actions": [
+    {"id": "inspect", "title": "Inspect document", "scope": "file",
+     "file_extensions": ["json"], "workflow": "assets/ui/inspect/config.yml"}
+  ]
+}
+```
+
+Selecting an action runs that ordinary package workflow locally, using the
+operator-selected CLI and current workspace directory. The invocation receives
+`DOCKPIPE_FILE_ROOT`, `DOCKPIPE_FILE_PATH`, `DOCKPIPE_FILE_SURFACE_ID`, and
+`DOCKPIPE_FILE_ACTION_ID`. Context is per invocation, not a saved workflow default.
+Unsaved documents must be saved first. File and workflow references are checked
+against their owning roots again at launch. Packages must validate their own
+inputs; this UI is not a filesystem sandbox. Installed package workflows retain
+normal host execution authority.
+
+File tools finish without interactive prompts and emit exactly one UTF-8 JSON
+result line, with a final newline:
+
+```text
+::dockpipe-file::{"schema":1,"kind":"markdown","text":"# Inspection report\n\nDocument details."}
+```
+
+`markdown` specifies the report presentation, not a Markdown-only tool. The host
+renders the report only after successful workflow completion, with HTML/resource
+loading disabled and links inert. It applies no edits to the open document.
+Malformed/duplicate/missing results and nonzero exits show failures with operation
+details. Each run has a 30-second deadline, a 1 MiB line capacity and 2 MiB total
+output capacity. Closing the result panel cancels the workflow through the normal
+session lifecycle. This first version is an explicit saved-file action/report
+hook; it does not claim formatter edits, diagnostics overlays, language servers,
+custom editor widgets or automatic on-change execution.

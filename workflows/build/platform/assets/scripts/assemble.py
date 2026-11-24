@@ -21,8 +21,12 @@ def main():
     subprocess.run([str(binary), '--version'], check=True)
     suffix = system + '_' + architecture
     if system == 'windows':
+        worker = binary.with_name('dockpipe-worker.exe')
+        if worker.is_symlink() or not worker.is_file():
+            raise ValueError('Windows release requires the background worker executable')
         with zipfile.ZipFile(output / f'dockpipe_{version}_{suffix}.zip', 'x', zipfile.ZIP_DEFLATED) as archive:
             archive.write(binary, 'dockpipe.exe')
+            archive.write(worker, worker.name)
     else:
         with tarfile.open(output / f'dockpipe_{version}_{suffix}.tar.gz', 'x:gz') as archive:
             archive.add(binary, arcname='dockpipe', recursive=False)

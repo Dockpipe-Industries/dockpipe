@@ -9,6 +9,34 @@ import (
 	"dockpipe/src/lib/infrastructure/engineversion"
 )
 
+func TestWorkflowInspectionDirectoryRequiresMatchingWorkingDirectory(t *testing.T) {
+	workdir := t.TempDir()
+	t.Chdir(workdir)
+	t.Setenv("DOCKPIPE_WORKDIR", workdir)
+	canonical, err := filepath.EvalSymlinks(workdir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, operation := range []string{"document", "validate"} {
+		args := []string{"workflow", operation}
+		if got := workflowInspectionDirectory(args); got != canonical {
+			t.Errorf("%s directory = %q, want %q", operation, got, canonical)
+		}
+	}
+	if got := workflowInspectionDirectory([]string{"workflow", "test"}); got != "" {
+		t.Errorf("workflow test selected inspection directory %q", got)
+	}
+
+	args := []string{"workflow", "document"}
+	for _, other := range []string{t.TempDir(), ".", filepath.Join(workdir, "missing")} {
+		t.Setenv("DOCKPIPE_WORKDIR", other)
+		if got := workflowInspectionDirectory(args); got != "" {
+			t.Errorf("inspection accepted nonmatching workspace %q as %q", other, got)
+		}
+	}
+}
+
 func TestRunRejectsProjectVersionBeforeWorkflowResolution(t *testing.T) {
 	withRunSeams(t)
 	previous := engineversion.Current()

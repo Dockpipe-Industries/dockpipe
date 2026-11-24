@@ -1,0 +1,9 @@
+name: product-git-fixture
+description: Manually compile a private generated Git fixture broker; no CI registration.
+vault: none
+docker_preflight: false
+steps:
+  - id: build-fixture
+    kind: host
+    cwd: artifacts
+    cmd: python3 "$DOCKPIPE_WORKFLOW_DIR/../../../../shared/run.py" python3 "$DOCKPIPE_WORKFLOW_DIR/build.py"

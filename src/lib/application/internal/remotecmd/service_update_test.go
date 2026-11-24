@@ -97,7 +97,7 @@ func TestExecutableFingerprintDetectsUpgradeAtSamePath(t *testing.T) {
 }
 
 func TestServiceUpdateRestartsAndRetainsFailureForRetry(t *testing.T) {
-	if runtime.GOOS != "linux" {
+	if runtime.GOOS != "linux" || !systemdWorkerAvailable(context.Background(), false) {
 		t.Skip("systemd fixture")
 	}
 	root := privateConnectionDirectory(t)

@@ -765,7 +765,7 @@ against deleted host mount paths is not supported; start a fresh runtime run.
 The focused native fixture is opt-in and uses an already installed image with Git:
 
 ```bash
-DOCKPIPE_TEST_DOCKER_GIT_IMAGE=golang:1.26.10-bookworm \
+DOCKPIPE_TEST_DOCKER_GIT_IMAGE=golang:1.26.11-bookworm \
   go test ./src/lib/infrastructure \
   -run '^TestDockerGitSnapshotNativeAttachedAndDetached$' -count=1
 ```

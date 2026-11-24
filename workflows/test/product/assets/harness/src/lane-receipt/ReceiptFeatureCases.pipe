@@ -1,0 +1,25 @@
+module Dockpipe.Product.LaneReceipt;
+
+// Each registry feature has four scenarios in each of four layers.
+// Zero is absent, a positive value is the request position plus one, and a
+// negative value records that the case has already been observed.
+public Class ReceiptFeatureCases {
+    private FixedArray<int,16> positions = FixedArray<int,16>.Create(0);
+
+    public Result<void,string> Add(int slot, int position) {
+        if (positions.At(slot) != 0)
+            return Result<void,string>.Failure("qualification.receipt.duplicate_request_case");
+
+        positions.Set(slot, position + 1);
+        return Result<void,string>.Success();
+    }
+
+    public Result<int,string> Observe(int slot) {
+        int position = positions.At(slot);
+        if (position <= 0)
+            return Result<int,string>.Failure("qualification.receipt.unrequested_or_duplicate_case");
+
+        positions.Set(slot, -position);
+        return Result<int,string>.Success(position - 1);
+    }
+}

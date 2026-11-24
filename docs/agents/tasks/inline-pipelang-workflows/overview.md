@@ -1,8 +1,19 @@
 # TASK-055 Inline PipeLang in workflow YAML
 
+## Active host orchestration work
+
+TASK-055 now tracks an authorized, active **host control** implementation and the
+separate deferred pure-expression proposal below. Start with
+[host-control.md](host-control.md) for current scope and remaining qualification.
+The canonical [host control reference](../../../workflows/workflow-yaml.md#inline-pipelang-host-control)
+describes the `control` surface. Host orchestration executes real PipeLang through
+the installed SDK; it does not activate the proposed `pipelang.workflow-pure.v1`
+sandbox or its expression/dataflow features. The first host-control slice has native Linux normal/sanitizer, relocated-package
+and compiler-free execution proof. Windows/macOS qualification remains pending.
+
 ## Status, scope and ownership
 
-**Deferred design proposal; no implementation authorization.** Requested on
+**The pure-expression proposal below remains deferred; no implementation authorization for that profile.** Requested on
 2026-10-31 and refined against the current checkout. All syntax, profile names,
 limits and new manifest fields below are proposed, not supported today. This task
 does not start compiler integration, add dependencies, change runtime behavior or

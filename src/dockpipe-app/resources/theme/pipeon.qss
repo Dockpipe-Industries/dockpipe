@@ -268,6 +268,8 @@ QPushButton#openWorkspaceGraph {
 }
 
 QPushButton#primaryButton,
+QPushButton#machinePairingStart,
+QPushButton#machinePairingReview,
 QPushButton#installRemoteProvider,
 QPushButton#secondaryButton,
 QPushButton#dangerButton {
@@ -276,14 +278,18 @@ QPushButton#dangerButton {
     font-weight: 600;
 }
 
-QPushButton#primaryButton {
+QPushButton#primaryButton,
+QPushButton#machinePairingStart,
+QPushButton#machinePairingReview {
     padding: 10px 18px;
     border: 1px solid palette(highlight);
     background-color: palette(highlight);
     color: palette(highlighted-text);
 }
 
-QPushButton#primaryButton:pressed {
+QPushButton#primaryButton:pressed,
+QPushButton#machinePairingStart:pressed,
+QPushButton#machinePairingReview:pressed {
     padding-top: 11px;
     padding-bottom: 9px;
 }
@@ -753,3 +759,123 @@ QWidget#canvasDashboardView[dashboardCanvasPresentation="true"] QLabel#dashboard
     font-size: 11px;
     padding: 3px;
 }
+
+/* Container inventory: quiet surfaces, strong hierarchy, and a dedicated inspector. */
+QLabel#dockerPageTitle { font-size: 26px; font-weight: 700; }
+QLabel#dockerPageDescription { font-size: 13px; }
+QFrame#dockerSummaryCard, QFrame#dockerInventoryCard, QWidget#dockerInspector { border-radius: 12px; }
+QLabel#dockerMetricTitle { font-size: 12px; font-weight: 600; }
+QLabel#dockerMetricValue { font-size: 28px; font-weight: 700; }
+QLabel#dockerMetricCaption, QLabel#dockerListResults, QLabel#dockerInspectorStatus { font-size: 11px; }
+QLabel#dockerEyebrow { font-size: 10px; font-weight: 700; letter-spacing: 1px; }
+QLabel#dockerResourceTitle { font-size: 18px; font-weight: 700; }
+QLabel#dockerEmptySelection, QLabel#dockerListEmptyState { padding: 24px; font-size: 13px; }
+QFrame#dockerSummaryCard QLabel, QWidget#dockerInspector QLabel { background: transparent; border: none; }
+QWidget#dockerDashboard QLineEdit, QWidget#dockerDashboard QComboBox { min-height: 20px; padding: 8px 10px; border-radius: 7px; }
+QWidget#dockerDashboard QPushButton { min-height: 18px; padding: 8px 12px; border-radius: 7px; }
+QFrame#dockerViewSwitcher { border-radius: 9px; }
+QFrame#dockerViewSwitcher QPushButton { border: none; border-radius: 6px; padding: 7px 14px; }
+QTabWidget#dockerInventoryTabs::pane { border: none; background: transparent; }
+QTabWidget#dockerInventoryTabs QTabBar::tab { border: none; border-bottom: 2px solid transparent; border-radius: 0; margin-right: 16px; padding: 10px 2px; background: transparent; }
+QTabWidget#dockerInspectorTabs::pane { border-radius: 7px; }
+QTabWidget#dockerInspectorTabs QTabBar::tab { padding: 8px 10px; margin-right: 3px; font-size: 11px; }
+QWidget#dockerDashboard QTableWidget#dockerTable { border: none; border-radius: 0; }
+QWidget#dockerDashboard QHeaderView::section { padding: 10px; font-size: 11px; font-weight: 600; }
+QWidget#dockerDashboard QTableWidget#dockerTable::item { padding: 8px 10px; border-bottom: 1px solid palette(midlight); }
+
+/* Workflow activity and machine monitoring share the desktop's inventory hierarchy. */
+QLabel#observabilityPageTitle { font-size: 26px; font-weight: 700; }
+QLabel#observabilityPageDescription { font-size: 13px; }
+QLabel#workflowSectionTitle { font-size: 16px; font-weight: 700; padding-right: 16px; }
+QTabBar#workflowSections::tab { border: none; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; padding: 10px 14px; margin-right: 6px; }
+QFrame#workflowRunTableCard, QWidget#workflowRunInspector { border-radius: 12px; }
+QWidget#workflowRunInspector QLabel { border: none; background: transparent; }
+QFrame#observabilityViewSwitcher { border-radius: 9px; }
+QFrame#observabilityViewSwitcher QPushButton { border: none; border-radius: 6px; padding: 7px 12px; }
+QWidget#executionExplorerPage QTableWidget { border: none; }
+QWidget#executionExplorerPage QHeaderView::section { padding: 10px; font-size: 11px; font-weight: 600; }
+QWidget#executionExplorerPage QTableWidget::item { padding: 8px 10px; }
+QLabel#workflowRunsEmpty { padding: 32px; font-size: 14px; }
+QLabel#executionTitle { font-size: 18px; font-weight: 700; }
+QLabel#executionStatus { font-size: 11px; }
+
+/* Machine observability follows the same card and inspector system as Containers. */
+QFrame#systemSummaryCard, QFrame#systemCpuHistoryCard, QFrame#systemProcessCard,
+QWidget#systemProcessInspector { border-radius: 12px; }
+QFrame#systemSummaryCard QLabel, QWidget#systemProcessInspector QLabel { background: transparent; border: none; }
+QLabel[systemSummaryValue="true"] { font-size: 26px; font-weight: 700; }
+QLabel[systemSummaryCaption="true"] { font-size: 11px; }
+QFrame#systemSummaryCard QLabel#systemMetricTitle { font-size: 12px; font-weight: 600; }
+QFrame#systemSummaryCard QProgressBar { min-height: 6px; max-height: 6px; border: none; border-radius: 3px; }
+QFrame#systemSummaryCard QProgressBar::chunk { border-radius: 3px; }
+QLabel#systemProcessSectionTitle { font-size: 15px; font-weight: 700; }
+QLabel#systemMonitoringCadence, QLabel#systemProcessCount, QLabel#systemInspectorLabel,
+QLabel#systemInspectorNotice, QLabel#systemProcessSubtitle { font-size: 11px; }
+QLabel#systemInspectorEyebrow { font-size: 10px; font-weight: 700; letter-spacing: 1px; }
+QLabel#systemProcessTitle { font-size: 18px; font-weight: 700; }
+QLabel#systemProcessState { padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 600; }
+QLabel#systemProcessCpu, QLabel#systemProcessMemory { font-size: 18px; font-weight: 600; }
+QFrame#systemProcessMetricCard { border-radius: 8px; }
+QLabel#systemProcessEmpty, QLabel#systemProcessesEmpty { padding: 24px; font-size: 13px; }
+QFrame#systemProcessCard QLineEdit, QFrame#systemProcessCard QComboBox { min-height: 20px; padding: 8px 10px; border-radius: 7px; }
+QFrame#systemProcessCard QTableWidget { border: none; border-radius: 0; }
+QFrame#systemProcessCard QTableWidget::item { padding: 8px 10px; border-bottom: 1px solid palette(midlight); }
+QFrame#systemProcessCard QHeaderView::section { padding: 10px; font-size: 11px; font-weight: 600; }
+
+/* Machines inventory and shared management controls. */
+QLabel#machinesTitle { font-size: 26px; font-weight: 700; }
+QLabel#machinesSubtitle { font-size: 12px; }
+QWidget#machinesOverview, QWidget#machineFormPage, QWidget#machineScrollViewport,
+QStackedWidget#machinePages { background: transparent; border: none; }
+QFrame#machinesConnectionCard, QFrame#machinesInventoryCard { border: 1px solid; border-radius: 12px; }
+QFrame#machinePairingCard { border: 1px solid; border-radius: 12px; }
+QFrame#machinePairingCard QLabel, QWidget#machinePairingStep,
+QStackedWidget#machinePairingSteps { background: transparent; border: none; }
+QFrame#machinesConnectionCard QLabel, QFrame#machinesInventoryCard QLabel,
+QFrame#machineMetricCard QLabel { background: transparent; border: none; }
+QFrame#machinesConnectionCard QPushButton, QFrame#machinesInventoryCard QPushButton {
+    min-height: 20px; padding: 7px 12px;
+}
+QLabel#remoteConnectionSummary { font-size: 12px; }
+QLabel#remoteLockStatus { font-size: 11px; }
+QFrame#machinesInventoryCard QLabel#machinesSelectedAccess {
+    border: 1px solid; border-radius: 8px; padding: 12px;
+}
+/* Machines shares one management surface between Canvas and List. */
+QWidget#machinesWorkspace { background: transparent; }
+QWidget#machinesManagement, QScrollArea#machineScroll, QWidget#machineContent { border: none; background: transparent; }
+QFrame#machinesViewSwitcher { border: 1px solid; border-radius: 10px; }
+QFrame#machinesViewSwitcher QPushButton { border: none; border-radius: 7px; padding: 7px 14px; min-height: 20px; font-weight: 600; }
+QFrame#machineMetricCard { border: 1px solid; border-radius: 12px; }
+QLabel#machineMetricTitle { font-size: 12px; font-weight: 600; }
+QLabel#machinesManagedCount, QLabel#machinesPairedCount, QLabel#machinesAwaitingCount { font-size: 27px; font-weight: 600; }
+QLabel#machineMetricCaption { font-size: 11px; }
+QLabel#machinesSelectedAccess { border: 1px solid; border-radius: 12px; padding: 16px; }
+QLineEdit#machinesSearch, QComboBox#machinesAccessFilter { border: 1px solid; border-radius: 8px; padding: 9px 12px; min-height: 20px; }
+QTableWidget#managedMachines { border: 1px solid; border-radius: 10px; }
+QTableWidget#managedMachines::item { padding: 8px 12px; border-bottom: 1px solid; }
+QTableWidget#managedMachines QHeaderView::section { border: none; border-bottom: 1px solid; padding: 10px 12px; font-weight: 600; }
+
+
+/* Workflow activity uses the same summary, inventory and inspector hierarchy. */
+QFrame#workflowSummaryCard { border-radius: 12px; }
+QFrame#workflowSummaryCard QLabel { border: none; background: transparent; }
+QLabel#workflowSummaryTitle { font-size: 12px; font-weight: 600; }
+QLabel[workflowSummaryValue="true"] { font-size: 28px; font-weight: 700; }
+QLabel#workflowSummaryCaption, QLabel#workflowRunScope, QLabel#workflowRunResults,
+QLabel#workflowInspectorNotice, QLabel#workflowInspectorLabel { font-size: 11px; }
+QLabel#workflowRunTableTitle { font-size: 15px; font-weight: 700; }
+QLabel#workflowInspectorEyebrow { font-size: 10px; font-weight: 700; letter-spacing: 1px; }
+QLabel#workflowRunState { padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 600; }
+QLabel[workflowInspectorValue="true"] { font-size: 18px; font-weight: 600; }
+QFrame#workflowInspectorMetric { border-radius: 8px; }
+QLabel#workflowInspectorEmpty { padding: 24px; font-size: 13px; }
+QFrame#workflowRunTableCard QLineEdit, QFrame#workflowRunTableCard QComboBox { min-height: 20px; padding: 8px 10px; border-radius: 7px; }
+QFrame#workflowRunTableCard QTableWidget::item { padding: 8px 10px; border-bottom: 1px solid palette(midlight); }
+QTabWidget#workflowInspectorTabs::pane { border-radius: 7px; }
+QTabWidget#workflowInspectorTabs QTabBar::tab { padding: 8px 12px; margin-right: 4px; font-size: 11px; }
+QWidget#workflowRunInspector QPlainTextEdit { font-size: 11px; border-radius: 7px; }
+
+QLabel#machinePairingAddress { font-size: 16px; font-weight: 600; padding: 12px 0; }
+
+QFrame#machinePairingBody { background: transparent; border: none; }

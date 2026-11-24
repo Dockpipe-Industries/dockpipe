@@ -17,11 +17,13 @@ var (
 
 func hostDependencyService() hostdependencies.Service {
 	return hostdependencies.New(hostdependencies.Adapters{
-		LookupCommand:      dependencyLookPathFn,
-		LookupPowerShell:   dependencyPowerShellLookupFn,
-		RunInstaller:       dependencyRunShellFn,
-		PackageToolsDir:    packageToolsDir,
-		BundledCommandPath: bundledDependencyCommandPath,
+		LookupCommand:        dependencyLookPathFn,
+		LookupPowerShell:     dependencyPowerShellLookupFn,
+		LookupWindowsFeature: hostdependencies.LookupWindowsFeature,
+		LookupWindowsService: hostdependencies.LookupWindowsService,
+		RunInstaller:         dependencyRunShellFn,
+		PackageToolsDir:      packageToolsDir,
+		BundledCommandPath:   bundledDependencyCommandPath,
 		TerminalAvailable: func() bool {
 			fd, ok := stdinFDInt()
 			return ok && term.IsTerminal(fd)

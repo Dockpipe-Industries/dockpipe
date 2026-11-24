@@ -92,7 +92,7 @@ func (b *Broker) serveMachine(w http.ResponseWriter, r *http.Request, node strin
 		http.Error(w, "machine identity proof required", http.StatusUnauthorized)
 		return
 	}
-	value, err := b.worker(node, r.URL.Path, body)
+	value, err := b.machineOperation(node, enrollment, r.URL.Path, body)
 	status := http.StatusOK
 	var response []byte
 	if err != nil {

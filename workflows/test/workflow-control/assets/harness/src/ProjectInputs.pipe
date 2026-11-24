@@ -1,0 +1,9 @@
+module Dockpipe.WorkflowControl.Proof;
+
+public Record ProjectInputs {
+    public ControlPlatform platform;
+    public int rootIndex;
+    public string workdir;
+    public string workflowFile;
+    public string traceRoot;
+}

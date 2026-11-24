@@ -4,6 +4,7 @@ import (
 	"context"
 	"dockpipe/src/lib/infrastructure/telemetry"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -55,7 +56,11 @@ func TestInventoryBounds(t *testing.T) {
 		t.Fatal("inventory object bound missing")
 	}
 	output := &inventoryOutput{}
-	if _, err := output.Write(make([]byte, 512*1024+1)); err == nil || output.Len() != 0 {
+	if _, err := io.Copy(output, io.LimitReader(strings.NewReader(strings.Repeat("x", 512*1024+1)), 512*1024+1)); err == nil {
+		t.Fatal("stream copy bypassed inventory output bound")
+	}
+	output = &inventoryOutput{}
+	if _, err := output.Write(make([]byte, 512*1024+1)); err == nil || output.buffer.Len() != 0 {
 		t.Fatal("oversized Docker output retained")
 	}
 }

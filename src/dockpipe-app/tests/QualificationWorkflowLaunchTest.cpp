@@ -262,13 +262,63 @@ private slots:
             name->setText(value);
             choice->setCurrentIndex(1);
             QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
-            QVERIFY(!dialog.values().contains("FIXTURE_NAME"));
+            QVERIFY(dialog.values().contains("FIXTURE_NAME"));
+            QCOMPARE(dialog.values().value("FIXTURE_NAME"), value);
             choice->setCurrentIndex(0);
             QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
             name = dialog.findChild<QLineEdit *>("workflowInput_FIXTURE_NAME");
             QVERIFY(name);
             QCOMPARE(name->text(), value);
         }
+    }
+
+    void hiddenRoutedEditsRemainInSubmissionAndDialogReopen()
+    {
+        auto metadata = workflow();
+        metadata.inputs[0].defaultValue = "default must stay cleared";
+        WorkflowInputMeta source;
+        source.fieldName = "Source";
+        source.envName = "FIXTURE_SOURCE";
+        source.defaultValue = "first";
+        metadata.inputs.append(source);
+        metadata.view.entry.field = "Source";
+        metadata.view.entry.options = {{"first", "First", "first-page", {}},
+                                       {"second", "Second", "second-page", {}}};
+        WorkflowViewSectionMeta first;
+        first.fields = {"Name"};
+        WorkflowViewSectionMeta second;
+        second.fields = {"Mode"};
+        metadata.view.pages = {{"first-page", "First", {}, {first}},
+                               {"second-page", "Second", {}, {second}}};
+        const QMap<QString, QString> saved{{"FIXTURE_NAME", "old value"},
+                                           {"FIXTURE_MODE", "second"},
+                                           {"UNRELATED_SAVED_KEY", "unrelated"}};
+        WorkflowLaunchDialog dialog(metadata, saved);
+        auto *choice = dialog.findChild<QComboBox *>("workflowInput_FIXTURE_SOURCE");
+        auto *name = dialog.findChild<QLineEdit *>("workflowInput_FIXTURE_NAME");
+        QVERIFY(choice);
+        QVERIFY(name);
+        QVERIFY(!dialog.values().contains("FIXTURE_MODE"));
+        QVERIFY(!dialog.values().contains("UNRELATED_SAVED_KEY"));
+        name->clear();
+        choice->setCurrentIndex(1);
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+
+        const auto submitted = dialog.values();
+        QVERIFY(submitted.contains("FIXTURE_NAME"));
+        QCOMPARE(submitted.value("FIXTURE_NAME"), QString());
+        QCOMPARE(submitted.value("FIXTURE_SOURCE"), "second");
+        QVERIFY(!submitted.contains("UNRELATED_SAVED_KEY"));
+
+        WorkflowLaunchDialog reopened(metadata, submitted);
+        auto *reopenedChoice = reopened.findChild<QComboBox *>("workflowInput_FIXTURE_SOURCE");
+        QVERIFY(reopenedChoice);
+        QCOMPARE(reopenedChoice->currentData().toString(), "second");
+        reopenedChoice->setCurrentIndex(0);
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        auto *reopenedName = reopened.findChild<QLineEdit *>("workflowInput_FIXTURE_NAME");
+        QVERIFY(reopenedName);
+        QCOMPARE(reopenedName->text(), QString());
     }
 
     void cancellationDoesNotLaunch()

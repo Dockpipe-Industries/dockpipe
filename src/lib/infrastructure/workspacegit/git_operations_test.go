@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func gitWorkspaceStatus(t *testing.T, root string) *WorkspaceGitSnapshot {
@@ -543,5 +544,44 @@ func TestWorkspaceGitStashConflictsRemainVisibleAndKeepStash(t *testing.T) {
 				t.Fatal("resolution removed retained stash")
 			}
 		})
+	}
+}
+
+func TestWorkspaceGitHistoryPreservesMergeTopology(t *testing.T) {
+	root := initGitSessionTestRepo(t)
+	original := gitWorkspaceStatus(t, root).Branch
+	mustGitOutput(t, root, "switch", "-c", "graph-topic")
+	topic := gitWorkspaceCommit(t, root, "topic.txt", "topic\n", "Topic change")
+	mustGitOutput(t, root, "switch", original)
+	main := gitWorkspaceCommit(t, root, "main.txt", "main\n", "Main change")
+	mustGitOutput(t, root, "merge", "--no-ff", "graph-topic", "-m", "Merge topic")
+	history := gitWorkspaceAction(t, root, WorkspaceGitRequest{Action: "history", Ref: "all", Limit: 50}).History
+	positions := map[string]int{}
+	for index, commit := range history.Commits {
+		positions[commit.ID] = index
+		if _, err := time.Parse(time.RFC3339, commit.Date); err != nil {
+			t.Fatalf("invalid history timestamp %q: %v", commit.Date, err)
+		}
+	}
+	merge := history.Commits[0]
+	comparison := gitWorkspaceAction(t, root, WorkspaceGitRequest{Action: "commit-review", Commit: merge.ID}).CommitReview
+	if comparison == nil || !strings.Contains(comparison.Patch, "+topic") {
+		t.Fatalf("merge review did not compare its first parent: %+v", comparison)
+	}
+	if len(merge.Refs) != 1 || merge.Refs[0] != original {
+		t.Fatalf("current branch label was lost: %+v", merge.Refs)
+	}
+	if refs := history.Commits[positions[topic]].Refs; len(refs) != 1 || refs[0] != "graph-topic" {
+		t.Fatalf("topic branch label was lost: %+v", refs)
+	}
+	if len(merge.Parents) != 2 || merge.Parents[0] != main || merge.Parents[1] != topic {
+		t.Fatalf("merge parent identities were lost: %+v", merge)
+	}
+	for index, commit := range history.Commits {
+		for _, parent := range commit.Parents {
+			if position, present := positions[parent]; present && position <= index {
+				t.Fatalf("parent %s appeared before its child %s", parent, commit.ID)
+			}
+		}
 	}
 }

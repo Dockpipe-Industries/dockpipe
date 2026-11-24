@@ -1,0 +1,11 @@
+module Dockpipe.Product.QualificationPreflight;
+import Dockpipe.Product.QualificationFiles;
+import PipeLang.Json;
+
+public Record PreparedQualificationRun {
+    public string runId = "";
+    public CapturedQualificationJson plan;
+    public CapturedQualificationJson registry;
+    public JsonNode targets;
+    public int expectedCases = 0;
+}

@@ -1,19 +1,18 @@
 #include "ProjectFilesWidget.h"
 #include "CanvasIcons.h"
 #include "SourceEditor.h"
-#include "WorkspaceFiles.h"
 #include "WorkspaceGraphWidget.h"
 #include "MarkdownPreview.h"
 #include "FileExplorerView.h"
-#include "FileExplorerIcons.h"
+#include "FileEditorWorkspace.h"
+#include "WorkspaceFileModel.h"
+#include "WorkspaceFilesController.h"
 #include <QHideEvent>
+#include <QShowEvent>
 
 #include <QDir>
 #include <QApplication>
-#include <QFile>
 #include <QFileInfo>
-#include <QFileSystemModel>
-#include <QFileIconProvider>
 #include <QMenu>
 #include <QToolButton>
 #include <QPainter>
@@ -24,8 +23,13 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPlainTextEdit>
+#include <QPointer>
 #include <QPushButton>
-#include <QSaveFile>
+#include <QSortFilterProxyModel>
+#include <QCryptographicHash>
+#include <QSignalBlocker>
+#include <QStyle>
+#include <QTabBar>
 #include <QShortcut>
 #include <QSplitter>
 #include <QStackedWidget>
@@ -34,6 +38,7 @@
 #include <QTimer>
 #include <QDesktopServices>
 #include <QVBoxLayout>
+#include <memory>
 
 namespace {
 constexpr qint64 maxFileBytes = 1024 * 1024; // Same editable-document bound as workflow YAML.
@@ -41,31 +46,55 @@ constexpr qint64 maxFileBytes = 1024 * 1024; // Same editable-document bound as 
 
 ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
 {
+    auto *files = new WorkspaceFilesController(this);
     setObjectName("projectFiles");
     setAttribute(Qt::WA_StyledBackground);
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(20, 16, 20, 12);
     layout->setSpacing(12);
+    auto *header = new QWidget;
+    header->setObjectName("filesPageHeader");
+    auto *pageHeader = new QHBoxLayout(header);
+    pageHeader->setContentsMargins(0, 0, 0, 0);
+    pageHeader->setSpacing(16);
+    auto *pageTitles = new QVBoxLayout;
+    pageTitles->setSpacing(4);
+    auto *pageTitle = new QLabel(tr("Files"));
+    pageTitle->setObjectName("filesPageTitle");
+    pageTitles->addWidget(pageTitle);
+    auto *rootLabel = new QLabel(tr("Browse and edit your workspace."));
+    rootLabel->setObjectName("filesPageSubtitle");
+    rootLabel->setTextFormat(Qt::PlainText);
+    rootLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    pageTitles->addWidget(rootLabel);
+    pageHeader->addLayout(pageTitles, 1);
+    layout->addWidget(header);
     auto *splitter = new QSplitter;
     m_splitter = splitter;
     splitter->setChildrenCollapsible(false);
     splitter->setHandleWidth(12);
     auto *explorer = new QWidget;
+    explorer->setObjectName("filesExplorerPanel");
+    explorer->setAttribute(Qt::WA_StyledBackground);
     auto *explorerLayout = new QVBoxLayout(explorer);
-    explorerLayout->setContentsMargins(0, 0, 0, 0);
+    explorerLayout->setContentsMargins(12, 12, 12, 12);
+    explorerLayout->setSpacing(10);
     m_controls = new QWidget;
     m_controls->setEnabled(false);
     auto *toolbar = new QHBoxLayout(m_controls);
-    toolbar->setContentsMargins(8, 0, 0, 8);
+    toolbar->setContentsMargins(0, 0, 0, 0);
     toolbar->setSizeConstraint(QLayout::SetMinimumSize);
-    auto *heading = new QLabel(tr("EXPLORER"));
-    heading->setObjectName("editorSectionLabel");
+    auto *heading = new QLabel(tr("Explorer"));
+    heading->setObjectName("filesPanelTitle");
     toolbar->addWidget(heading, 1);
     auto newFile = [this]() {
         bool ok = false;
         const QString name = QInputDialog::getText(this, tr("New file"), tr("Path relative to this folder"), QLineEdit::Normal, {}, &ok);
-        if (ok && !name.isEmpty())
-            createFile(QDir(m_root).relativeFilePath(QDir(m_explorerDirectory).absoluteFilePath(name)));
+        if (!ok || name.isEmpty())
+            return;
+        const QString relative = relativeWorkspacePath(resolveWorkspacePath(m_explorerDirectory, name));
+        if (!relative.isEmpty())
+            createFile(relative);
     };
     auto addTool = [this](QHBoxLayout *row, const QString &label, CanvasIcons::Symbol symbol, const auto &action) {
         auto *button = new QToolButton;
@@ -86,24 +115,45 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     m_graphButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     m_graphButton->setAccessibleName(tr("Workspace graph"));
     m_graphButton->setToolTip(tr("Open the workspace graph for the selected folder"));
-    m_graphButton->setEnabled(true);
-    toolbar->addWidget(m_graphButton);
+    m_graphButton->setEnabled(false);
+    pageHeader->addWidget(m_graphButton);
     connect(m_graphButton, &QPushButton::clicked, this, &ProjectFilesWidget::openGraph);
-    addTool(toolbar, tr("New file"), CanvasIcons::Symbol::Add, newFile);
-    addTool(toolbar, tr("New folder"), CanvasIcons::Symbol::Folder, [this]() {
+    files->newFileButton = addTool(toolbar, tr("New file"), CanvasIcons::Symbol::Add, newFile);
+    files->newFolderButton = addTool(toolbar, tr("New folder"), CanvasIcons::Symbol::Folder, [this]() {
         bool ok = false;
         const QString name = QInputDialog::getText(this, tr("New folder"), tr("Folder name"), QLineEdit::Normal, {}, &ok);
-        const QString path = QDir(m_explorerDirectory).filePath(name);
-        if (ok && !name.isEmpty() && (!contained(path) || !QDir().mkdir(path)))
-            showMessage(tr("Cannot create that folder. Choose a new name inside this folder."));
+        const QString path = resolveWorkspacePath(m_explorerDirectory, name);
+        if (!ok || name.isEmpty() || !contained(path))
+            return;
+        auto *files = WorkspaceFilesController::get(this);
+        if (!files->writer->context().canWrite() || filesOperationPending())
+            return;
+        files->beginWrite();
+        files->writer->run(QJsonObject{{"schema", "dockpipe.files/v1"}, {"action", "mkdir"},
+            {"path", relativeWorkspacePath(path)}}, this, [this, files](const auto &result) {
+            files->endWrite();
+            if (!result.success())
+                showMessage(result.error);
+            else
+                m_model->refresh();
+        });
+    });
+    addTool(toolbar, tr("Refresh files"), CanvasIcons::Symbol::Refresh, [this]() {
+        m_model->refresh();
     });
     explorerLayout->addWidget(m_controls);
-    m_model = new QFileSystemModel(this);
-    m_model->setIconProvider(&FileExplorerIcons::instance());
-    m_model->setFilter(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::NoSymLinks);
-    m_model->setReadOnly(true);
+    m_model = new WorkspaceFileModel(this);
+    auto *refreshTimer = new QTimer(this);
+    refreshTimer->setObjectName("filesAutomaticRefresh");
+    refreshTimer->setInterval(5000);
+    connect(refreshTimer, &QTimer::timeout, this, [this]() {
+        if (isVisible() && isEnabled() && !filesOperationPending())
+            m_model->revalidate();
+    });
+    files->filter->setSourceModel(m_model);
+    m_model->setShowHidden(true);
     m_explorer = new FileExplorerView;
-    m_explorer->setModel(m_model);
+    m_explorer->setModel(files->filter);
     m_tree = m_explorer->treeView();
     m_tree->setObjectName("fileTree");
     m_tree->setSortingEnabled(true);
@@ -132,16 +182,37 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     navigation->insertWidget(1, rootButton);
     navigation->insertWidget(2, m_explorerLocation, 1);
     connect(m_explorerUp, &QToolButton::clicked, this, [this]() {
-        navigateExplorer(QFileInfo(m_explorerDirectory).absolutePath());
+        navigateExplorer(parentWorkspacePath(m_explorerDirectory));
     });
     connect(rootButton, &QToolButton::clicked, this, [this]() { navigateExplorer(m_root); });
-    connect(m_model, &QFileSystemModel::directoryLoaded, this, [this](const QString &directory) {
-        if (!m_root.isEmpty() && directory == m_explorerDirectory) {
-            m_explorer->setRootIndex(m_model->index(directory));
+    connect(m_model, &WorkspaceFileModel::directoryLoaded, this, [this](const QString &directory) {
+        const QString listingError = property("filesListingError").toString();
+        if (!listingError.isEmpty() && property("filesListingErrorPath").toString() == directory
+            && m_status->text() == listingError) {
+            setProperty("filesListingError", QString());
+            showMessage({});
+        }
+        if (!m_root.isEmpty() && directory == relativeWorkspacePath(m_explorerDirectory)) {
+            auto *files = WorkspaceFilesController::get(this);
+            m_explorer->setRootIndex(files->filter->mapFromSource(m_model->indexForPath(directory)));
             m_explorer->setAvailable(true);
         }
     });
+    connect(m_model, &WorkspaceFileModel::listingFailed, this, [this](const QString &directory, const QString &error) {
+        setProperty("filesListingError", error);
+        setProperty("filesListingErrorPath", directory);
+        showMessage(error);
+    });
     explorerLayout->addWidget(m_explorer, 1);
+    auto *filter = new QLineEdit;
+    filter->setObjectName("filesFilter");
+    filter->setClearButtonEnabled(true);
+    filter->setPlaceholderText(tr("Filter filenames…"));
+    filter->setAccessibleName(tr("Filter filenames"));
+    explorerLayout->insertWidget(1, filter);
+    connect(filter, &QLineEdit::textChanged, this, [this](const QString &text) {
+        WorkspaceFilesController::get(this)->filter->setFilterFixedString(text);
+    });
     splitter->addWidget(explorer);
 
     auto *workspace = new QWidget;
@@ -151,34 +222,55 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     workspaceLayout->setContentsMargins(0, 0, 0, 0);
     workspaceLayout->setSpacing(0);
     auto *fileBar = new QHBoxLayout;
+    fileBar->setObjectName("filesDocumentHeader");
     fileBar->setContentsMargins(14, 8, 8, 8);
     fileBar->setSpacing(10);
     auto *fileIcon = new QLabel;
     fileIcon->setPixmap(CanvasIcons::icon(CanvasIcons::Symbol::Code).pixmap(20, 20));
-    fileBar->addWidget(fileIcon);
+    auto *documentIdentity = new QWidget;
+    auto *identityLayout = new QHBoxLayout(documentIdentity);
+    identityLayout->setContentsMargins(0, 0, 0, 0);
+    identityLayout->setSpacing(10);
+    identityLayout->addWidget(fileIcon);
+    auto *fileTitles = new QVBoxLayout;
+    fileTitles->setSpacing(3);
     m_title = new QLabel(tr("Files"));
+    m_title->setObjectName("filesDocumentTitle");
     m_title->setTextFormat(Qt::PlainText);
     m_title->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-    fileBar->addWidget(m_title, 1);
+    fileTitles->addWidget(m_title);
+    auto *fileLocation = new QLabel;
+    fileLocation->setObjectName("filesDocumentLocation");
+    fileLocation->setTextFormat(Qt::PlainText);
+    fileLocation->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    fileTitles->addWidget(fileLocation);
+    identityLayout->addLayout(fileTitles, 1);
+    fileBar->addWidget(documentIdentity, 1);
     m_fileActions = new QWidget;
+    m_fileActions->setObjectName("fileDocumentActions");
     auto *actions = new QHBoxLayout(m_fileActions);
     actions->setContentsMargins(0, 0, 0, 0);
     actions->setSpacing(6);
-    auto *save = new QPushButton(CanvasIcons::icon(CanvasIcons::Symbol::Save), tr("Save file"));
+    auto *save = new QPushButton(CanvasIcons::icon(CanvasIcons::Symbol::Save), tr("Save"));
     save->setObjectName("editorSave");
     save->setToolTip(tr("Save file (Ctrl+S)"));
     actions->addWidget(save);
-    connect(save, &QPushButton::clicked, this, [this]() { saveFile(); });
+    connect(save, &QPushButton::clicked, this, [this]() { saveFileAsync(); });
     m_openWorkflow = new QPushButton(CanvasIcons::icon(CanvasIcons::Symbol::Play), tr("Open as workflow"));
     m_openWorkflow->setObjectName("fileOpenWorkflow");
     m_openWorkflow->setToolTip(tr("Review this YAML in Workflow Studio, then use Run to validate and launch it with Dockpipe."));
     actions->addWidget(m_openWorkflow);
     connect(m_openWorkflow, &QPushButton::clicked, this, [this]() {
+        if (WorkspaceFilesController::get(this)->reader->context().kind == WorkspaceFilesClient::Context::Kind::Remote)
+            return;
         const QString suffix = QFileInfo(m_path).suffix().toLower();
-        if ((suffix != "yml" && suffix != "yaml") || !contained(m_path) || !confirmLeave())
+        if ((suffix != "yml" && suffix != "yaml") || !contained(m_path))
             return;
         const QString path = m_path;
-            emit workflowOpenRequested(path);
+        confirmPathAsync(path, [this, path](bool allowed) {
+            if (allowed)
+                emit workflowOpenRequested(path);
+        });
     });
     auto *find = new QLineEdit;
     find->setObjectName("fileFind");
@@ -199,34 +291,62 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     m_previewButton->setObjectName("fileMarkdownPreviewButton");
     m_previewButton->setCheckable(true);
     m_previewButton->setAccessibleName(tr("Preview Markdown"));
-    connect(m_previewButton, &QToolButton::toggled, this, [this]() { updateMarkdownPreview(); });
+    connect(m_previewButton, &QToolButton::toggled, this, [this](bool checked) {
+        if (auto *record = editorWorkspace()->activeDocument())
+            record->preview = checked;
+        updateMarkdownPreview();
+    });
     addTool(actions, tr("Find in file (Ctrl+F)"), CanvasIcons::Symbol::Search, showFind);
+    auto *split = addTool(actions, tr("Split editor"), CanvasIcons::Symbol::Sidebar, []() {});
+    split->setObjectName("fileSplitEditor");
+    auto *splitMenu = new QMenu(split);
+    const auto splitCurrent = [this](Qt::Orientation orientation) {
+        const QString path = m_path;
+        editorWorkspace()->split(orientation);
+        if (!path.isEmpty())
+            editorWorkspace()->openInOtherPane(path);
+    };
+    splitMenu->addAction(tr("Split right"), this, [splitCurrent]() { splitCurrent(Qt::Horizontal); });
+    splitMenu->addAction(tr("Split below"), this, [splitCurrent]() { splitCurrent(Qt::Vertical); });
+    splitMenu->addSeparator();
+    splitMenu->addAction(tr("Single pane"), this, [this]() { editorWorkspace()->singlePane(); });
+    split->setMenu(splitMenu);
+    split->setPopupMode(QToolButton::InstantPopup);
     addTool(findLayout, tr("Close search"), CanvasIcons::Symbol::Close, [this]() { m_findBar->hide(); });
     auto *more = addTool(actions, tr("File actions"), CanvasIcons::Symbol::More, []() {});
     auto *menu = new QMenu(more);
-    menu->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Rename), tr("Rename…"), this, [this]() {
+    files->renameFileAction = menu->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Rename), tr("Rename…"), this, [this]() {
         bool ok = false;
         const QString name = QInputDialog::getText(this, tr("Rename file"), tr("Path relative to this folder"),
-            QLineEdit::Normal, QDir(m_root).relativeFilePath(m_path), &ok);
+            QLineEdit::Normal, relativeWorkspacePath(m_path), &ok);
         if (ok && !name.isEmpty())
             renameFile(QDir(m_root).filePath(name));
     });
-    menu->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Refresh), tr("Reload from disk"), this, [this]() { reloadFile(); });
+    menu->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Refresh), tr("Reload from disk"), this, [this]() { reloadFileAsync(); });
+    files->saveAllFilesAction = menu->addAction(tr("Save all files"), this, [this]() { saveAllFilesAsync(); });
     menu->addSeparator();
-    menu->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Trash), tr("Delete file…"), this, [this]() {
+    files->deleteFileAction = menu->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Trash), tr("Delete file…"), this, [this]() {
         if (!m_path.isEmpty() && QMessageBox::question(this, tr("Delete file"),
-            tr("Permanently delete %1?").arg(QDir(m_root).relativeFilePath(m_path)),
+            tr("Permanently delete %1?").arg(relativeWorkspacePath(m_path)),
             QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel) == QMessageBox::Yes)
             deleteFile();
     });
     more->setMenu(menu);
     more->setPopupMode(QToolButton::InstantPopup);
     addTool(actions, tr("Close file"), CanvasIcons::Symbol::Close, [this]() {
-        if (confirmLeave())
-            clearFile();
+        editorWorkspace()->closeActiveTab();
     });
-    fileBar->addWidget(m_fileActions);
+    auto *headerActions = new QWidget;
+    headerActions->setObjectName("filesToolbarActions");
+    auto *headerActionsLayout = new QHBoxLayout(headerActions);
+    headerActionsLayout->setContentsMargins(0, 0, 0, 0);
+    headerActionsLayout->setSpacing(6);
+    actions->removeWidget(split);
+    headerActionsLayout->addWidget(m_fileActions);
+    headerActionsLayout->addWidget(split);
+    fileBar->addWidget(headerActions, 0, Qt::AlignRight);
     workspaceLayout->addLayout(fileBar);
+    workspace->installEventFilter(this);
     workspaceLayout->addWidget(m_findBar);
     m_documents = new QStackedWidget;
     m_editor = new SourceEditor;
@@ -244,22 +364,24 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     auto *emptyIcon = new QLabel;
     emptyIcon->setPixmap(CanvasIcons::icon(CanvasIcons::Symbol::Code).pixmap(48, 48));
     emptyLayout->addWidget(emptyIcon, 0, Qt::AlignHCenter);
-    auto *emptyTitle = new QLabel(tr("Your files. Your workspace."));
+    auto *emptyTitle = new QLabel(tr("Everything in its place"));
     emptyTitle->setObjectName("editorEmptyTitle");
     emptyLayout->addWidget(emptyTitle, 0, Qt::AlignHCenter);
-    auto *emptyHint = new QLabel(tr("Open a file from the explorer to start editing."));
-    emptyHint->setObjectName("editorMuted");
-    emptyHint->setWordWrap(true);
-    emptyLayout->addWidget(emptyHint, 0, Qt::AlignHCenter);
-    auto *create = new QPushButton(CanvasIcons::icon(CanvasIcons::Symbol::Add), tr("Create a file"));
-    connect(create, &QPushButton::clicked, this, newFile);
-    emptyLayout->addWidget(create, 0, Qt::AlignHCenter);
+    files->emptyHint = new QLabel(tr("Select a file to edit, or create something new."));
+    files->emptyHint->setObjectName("editorMuted");
+    files->emptyHint->setWordWrap(true);
+    emptyLayout->addWidget(files->emptyHint, 0, Qt::AlignHCenter);
+    files->createFileButton = new QPushButton(CanvasIcons::icon(CanvasIcons::Symbol::Add), tr("Create a file"));
+    connect(files->createFileButton, &QPushButton::clicked, this, newFile);
+    emptyLayout->addWidget(files->createFileButton, 0, Qt::AlignHCenter);
     emptyLayout->addStretch();
     m_documents->addWidget(m_empty);
     m_documents->setCurrentWidget(m_empty);
     auto *editorSplit = new QSplitter(Qt::Horizontal);
     editorSplit->setChildrenCollapsible(false);
-    editorSplit->addWidget(m_documents);
+    auto *tabWorkspace = new FileEditorWorkspace(m_documents, static_cast<SourceEditor *>(m_editor),
+        static_cast<SourceEditor *>(m_workflowEditor), m_empty);
+    editorSplit->addWidget(tabWorkspace);
     m_markdownPreview = new MarkdownPreview;
     m_markdownPreview->hide();
     editorSplit->addWidget(m_markdownPreview);
@@ -270,17 +392,13 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     m_previewTimer->setSingleShot(true);
     m_previewTimer->setInterval(150);
     connect(m_previewTimer, &QTimer::timeout, this, &ProjectFilesWidget::renderMarkdownPreview);
-    connect(m_editor, &QPlainTextEdit::textChanged, this, [this]() {
-        if (m_previewButton->isChecked())
-            m_previewTimer->start();
-    });
     connect(m_markdownPreview, &QTextBrowser::anchorClicked, this, [this](const QUrl &url) {
         if (url.isRelative() && url.path().isEmpty()) {
             m_markdownPreview->scrollToAnchor(url.fragment());
         } else if (url.scheme() == "https" || url.scheme() == "http") {
             QDesktopServices::openUrl(url);
         } else if (url.isRelative() && url.authority().isEmpty()) {
-            openFile(QDir(QFileInfo(m_path).absolutePath()).absoluteFilePath(url.path()));
+            openFile(resolveWorkspacePath(parentWorkspacePath(m_path), url.path()));
         }
     });
     m_editorStatus = new QLabel;
@@ -289,7 +407,7 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     workspaceLayout->addWidget(m_editorStatus);
     splitter->addWidget(workspace);
     splitter->setStretchFactor(1, 1);
-    splitter->setSizes({260, 800});
+    splitter->setSizes({300, 800});
     layout->addWidget(splitter, 1);
     m_status = new QLabel;
     m_status->setObjectName("editorMuted");
@@ -310,36 +428,85 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     });
     auto *saveShortcut = new QShortcut(QKeySequence::Save, this);
     saveShortcut->setContext(Qt::WidgetWithChildrenShortcut);
-    connect(saveShortcut, &QShortcut::activated, this, [this]() { saveFile(); });
+    connect(saveShortcut, &QShortcut::activated, this, [this]() { saveFileAsync(); });
     auto *search = new QShortcut(QKeySequence::Find, this);
     search->setContext(Qt::WidgetWithChildrenShortcut);
     connect(search, &QShortcut::activated, this, showFind);
+    auto *closeTab = new QShortcut(QKeySequence::Close, this);
+    closeTab->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(closeTab, &QShortcut::activated, this, [this]() { editorWorkspace()->closeActiveTab(); });
     connect(m_explorer, &FileExplorerView::clicked, this, [this](const QModelIndex &index) {
-        if (!m_model->isDir(index))
-            openFile(m_model->filePath(index));
+        if (!index.data(WorkspaceFileModel::DirectoryRole).toBool())
+            openFileAsync(explorerPath(index));
     });
     connect(m_explorer, &FileExplorerView::activated, this, [this](const QModelIndex &index) {
-        if (m_model->isDir(index)) {
+        if (index.data(WorkspaceFileModel::DirectoryRole).toBool()) {
             if (m_explorer->mode() == FileExplorerView::Mode::Folders)
-                navigateExplorer(m_model->filePath(index));
+                navigateExplorer(explorerPath(index));
         } else {
-            openFile(m_model->filePath(index));
+            openFileAsync(explorerPath(index));
         }
     });
     // Reparenting the editors can rehighlight them and emit textChanged.
     // Connect only once every pane used by these callbacks is constructed.
-    for (auto *editor : {m_editor, m_workflowEditor}) {
-        connect(editor, &QPlainTextEdit::cursorPositionChanged, this, &ProjectFilesWidget::updateEditorStatus);
-        connect(editor, &QPlainTextEdit::textChanged, this, &ProjectFilesWidget::updateTitle);
-    }
-    connect(m_editor->document(), &QTextDocument::modificationChanged, this, &ProjectFilesWidget::updateTitle);
-    updateTitle();
+    tabWorkspace->confirmClose = [this](const QString &path) {
+        if (filesOperationPending())
+            return false;
+        auto *record = editorWorkspace()->document(path);
+        if (!record || record->workflow || !record->document || !record->document->isModified())
+            return true;
+        struct CloseDecision {
+            bool synchronous = true;
+            bool complete = false;
+            bool allowed = false;
+        };
+        auto decision = std::make_shared<CloseDecision>();
+        confirmPathAsync(path, [this, path, decision](bool allowed) {
+            decision->complete = true;
+            decision->allowed = allowed;
+            if (decision->synchronous || !allowed || !editorWorkspace()->activate(path))
+                return;
+            const auto *record = editorWorkspace()->document(path);
+            if (!record || !record->document || record->document->isModified())
+                return;
+            editorWorkspace()->closeActiveTab();
+        });
+        decision->synchronous = false;
+        return decision->complete && decision->allowed;
+    };
+    connect(tabWorkspace, &FileEditorWorkspace::currentChanged, this, &ProjectFilesWidget::syncActiveDocument);
+    connect(tabWorkspace, &FileEditorWorkspace::documentsChanged, this, [this]() {
+        setProperty("fileLeaveConfirmed", false);
+        syncActiveDocument();
+        if (m_previewButton->isChecked())
+            m_previewTimer->start();
+    });
+    syncActiveDocument();
 }
 
 ProjectFilesWidget::~ProjectFilesWidget() = default;
 
+void ProjectFilesWidget::setFocusedPreview(bool focused)
+{
+    findChild<QWidget *>("filesPageHeader")->setVisible(!focused);
+    m_splitter->widget(0)->setVisible(!focused);
+    layout()->setContentsMargins(focused ? 0 : 20, focused ? 0 : 16,
+        focused ? 0 : 20, focused ? 0 : 12);
+}
+
 bool ProjectFilesWidget::eventFilter(QObject *object, QEvent *event)
 {
+    if ((event->type() == QEvent::Resize || event->type() == QEvent::LayoutRequest)
+        && object->objectName() == "editorWorkspace") {
+        auto *documentHeader = object->findChild<QHBoxLayout *>("filesDocumentHeader");
+        const auto *actions = m_workspace->findChild<QWidget *>("filesToolbarActions");
+        const bool compact = m_workspace->width() < actions->sizeHint().width() + 220;
+        const auto direction = compact ? QBoxLayout::TopToBottom : QBoxLayout::LeftToRight;
+        if (documentHeader->direction() != direction) {
+            documentHeader->setDirection(direction);
+            documentHeader->setStretch(0, compact ? 0 : 1);
+        }
+    }
     if (object == m_graphButton && (event->type() == QEvent::FontChange
         || event->type() == QEvent::StyleChange || event->type() == QEvent::Polish)) {
         // Stylesheet font changes can leave a nested toolbar's cached height
@@ -351,243 +518,709 @@ bool ProjectFilesWidget::eventFilter(QObject *object, QEvent *event)
     return QWidget::eventFilter(object, event);
 }
 
-bool ProjectFilesWidget::contained(const QString &path) const
+bool ProjectFilesWidget::isRemoteWorkspace() const
 {
-    return WorkspaceFiles::contains(m_root, path);
+    return WorkspaceFilesController::get(this)->reader->context().kind == WorkspaceFilesClient::Context::Kind::Remote;
 }
 
-void ProjectFilesWidget::showMessage(const QString &message) { m_status->setText(message); }
+QString ProjectFilesWidget::relativeWorkspacePath(const QString &path) const
+{
+    if (m_root.isEmpty())
+        return {};
+
+    if (isRemoteWorkspace()) {
+        // Remote keys are rooted at a virtual slash, without a host drive or UNC share.
+        if (!path.startsWith('/') || path.startsWith("//") || path.contains('\\') || path.contains(QChar::Null))
+            return {};
+        const QString normalized = QDir::cleanPath(path);
+        return normalized == "/" ? QStringLiteral(".") : normalized.mid(1);
+    }
+
+    if (!QDir::isAbsolutePath(path))
+        return {};
+    const QString relative = QDir(m_root).relativeFilePath(QDir::cleanPath(path));
+    if (relative == ".." || relative.startsWith("../") || QDir::isAbsolutePath(relative))
+        return {};
+    return relative;
+}
+
+QString ProjectFilesWidget::resolveWorkspacePath(const QString &directory, const QString &path) const
+{
+    if (!isRemoteWorkspace())
+        return QDir(directory).absoluteFilePath(path);
+    if (path.startsWith('/'))
+        return path;
+    return directory.endsWith('/') ? directory + path : directory + '/' + path;
+}
+
+QString ProjectFilesWidget::parentWorkspacePath(const QString &path) const
+{
+    if (!isRemoteWorkspace())
+        return QFileInfo(path).absolutePath();
+    const qsizetype separator = path.lastIndexOf('/');
+    return separator > 0 ? path.left(separator) : QStringLiteral("/");
+}
+
+bool ProjectFilesWidget::contained(const QString &path) const
+{
+    return !relativeWorkspacePath(path).isEmpty();
+}
+
+QString ProjectFilesWidget::explorerPath(const QModelIndex &index) const
+{
+    return resolveWorkspacePath(m_root, index.data(WorkspaceFileModel::RelativePathRole).toString());
+}
+
+bool ProjectFilesWidget::filesOperationPending() const
+{
+    const auto *files = WorkspaceFilesController::get(this);
+    return files->writer->busy() || files->pendingWrites > 0 || files->savingAll;
+}
+
+void ProjectFilesWidget::showMessage(const QString &message)
+{
+    m_status->setText(message);
+    m_status->setVisible(!message.isEmpty());
+}
+
+void ProjectFilesWidget::setWriteAvailable(bool available)
+{
+    auto *files = WorkspaceFilesController::get(this);
+    editorWorkspace()->setReadOnly(!available);
+    files->newFileButton->setEnabled(available);
+    files->newFolderButton->setEnabled(available);
+    files->createFileButton->setVisible(available);
+    files->emptyHint->setText(available ? tr("Select a file to edit, or create something new.")
+                                      : tr("Select a file to read."));
+    files->renameFileAction->setEnabled(available);
+    files->saveAllFilesAction->setEnabled(available);
+    files->deleteFileAction->setEnabled(available);
+    updateTitle();
+}
+
+FileEditorWorkspace *ProjectFilesWidget::editorWorkspace() const
+{
+    return findChild<FileEditorWorkspace *>("fileEditorWorkspace");
+}
+
+void ProjectFilesWidget::syncActiveDocument()
+{
+    auto *workspace = editorWorkspace();
+    const QString previousPath = m_path;
+    m_editor = workspace->activeNormalEditor();
+    m_workflowEditor = workspace->activeWorkflowEditor();
+    m_documents = workspace->activeStack();
+    for (auto *tabs : workspace->findChildren<QTabBar *>()) {
+        const bool active = tabs->parentWidget() == m_documents->parentWidget();
+        if (tabs->property("filePaneActive").toBool() != active) {
+            tabs->setProperty("filePaneActive", active);
+            tabs->style()->unpolish(tabs);
+            tabs->style()->polish(tabs);
+            tabs->update();
+        }
+    }
+    const auto *record = workspace->activeDocument();
+    m_path = record ? record->path : QString();
+    if (previousPath != m_path)
+        showMessage({});
+    m_original = record ? record->original : QByteArray();
+    m_crlf = record && record->crlf;
+    m_bom = record && record->bom;
+    {
+        const QSignalBlocker blocker(m_previewButton);
+        m_previewButton->setChecked(record && record->preview);
+    }
+    if (auto *editor = workspace->activeEditor())
+        connect(editor, &QPlainTextEdit::cursorPositionChanged, this, &ProjectFilesWidget::updateEditorStatus, Qt::UniqueConnection);
+    updateTitle();
+}
 
 bool ProjectFilesWidget::hasUnsavedChanges() const
 {
-    return m_editor->document()->isModified();
+    return editorWorkspace()->hasUnsavedChanges();
+}
+
+QTextDocument *ProjectFilesWidget::currentDocument() const
+{
+    const auto *record = editorWorkspace()->activeDocument();
+    return record ? record->document.data() : nullptr;
+}
+
+bool ProjectFilesWidget::confirmCurrentFile()
+{
+    const auto *record = editorWorkspace()->activeDocument();
+    return !filesOperationPending() && (!record || record->workflow || !record->document
+        || !record->document->isModified());
+}
+
+void ProjectFilesWidget::confirmPathAsync(const QString &path, Completion completion)
+{
+    if (filesOperationPending()) {
+        showMessage(tr("A file operation is still running. Your open files are preserved."));
+        if (completion)
+            completion(false);
+        return;
+    }
+    const auto *record = editorWorkspace()->document(path);
+    if (!record || record->workflow || !record->document || !record->document->isModified()) {
+        if (completion)
+            completion(true);
+        return;
+    }
+    const auto answer = QMessageBox::question(this, tr("Unsaved file"),
+        tr("Save changes to %1?").arg(QFileInfo(path).fileName()),
+        QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Save);
+    if (answer == QMessageBox::Save) {
+        savePathAsync(path, [this, path, completion](bool saved) {
+            const auto *record = editorWorkspace()->document(path);
+            const bool clean = record && record->document && !record->document->isModified();
+            if (completion)
+                completion(saved && clean);
+        });
+    } else if (completion) {
+        completion(answer == QMessageBox::Discard);
+    }
 }
 
 bool ProjectFilesWidget::confirmLeave()
 {
-    if (!hasUnsavedChanges())
-        return true;
-    const auto answer = QMessageBox::question(this, tr("Unsaved file"), tr("Save changes to %1?").arg(m_path),
-        QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Save);
-    if (answer == QMessageBox::Save)
-        return saveFile();
-    if (answer == QMessageBox::Discard) {
-        m_editor->document()->setModified(false);
-        return true;
+    return !filesOperationPending() && (!hasUnsavedChanges() || property("fileLeaveConfirmed").toBool());
+}
+
+void ProjectFilesWidget::confirmLeaveAsync(Completion completion)
+{
+    if (filesOperationPending()) {
+        showMessage(tr("A file operation is still running. Your open files are preserved."));
+        if (completion)
+            completion(false);
+        return;
     }
-    return false;
+    if (!hasUnsavedChanges() || property("fileLeaveConfirmed").toBool()) {
+        if (completion)
+            completion(true);
+        return;
+    }
+    int dirtyFiles = 0;
+    for (const auto &path : editorWorkspace()->paths()) {
+        const auto *record = editorWorkspace()->document(path);
+        if (!record->workflow && record->document && record->document->isModified())
+            ++dirtyFiles;
+    }
+    const auto answer = QMessageBox::question(this, tr("Unsaved files"),
+        tr("Save changes to %n open file(s) before leaving?", nullptr, dirtyFiles),
+        QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Save);
+    auto finish = [this, completion](bool allowed) {
+        if (allowed) {
+            setProperty("fileLeaveConfirmed", true);
+            QTimer::singleShot(0, this, [this]() { setProperty("fileLeaveConfirmed", false); });
+        }
+        if (completion)
+            completion(allowed);
+    };
+    if (answer == QMessageBox::Save) {
+        saveAllFilesAsync([this, finish](bool saved) { finish(saved && !hasUnsavedChanges()); });
+    } else {
+        finish(answer == QMessageBox::Discard);
+    }
 }
 
 void ProjectFilesWidget::clearFile()
 {
-    m_previewButton->setChecked(false);
-    m_path.clear();
-    m_original.clear();
-    m_editor->clear();
-    m_editor->document()->setModified(false);
-    m_editor->setReadOnly(true);
-    m_documents->setCurrentWidget(m_empty);
-    m_findBar->hide();
-    updateTitle();
+    const QString closingPath = m_path;
+    if (!closingPath.isEmpty())
+        editorWorkspace()->removeDocument(closingPath);
 }
 
 bool ProjectFilesWidget::setRoot(const QString &root)
 {
-    if (m_root == root)
+    if (!root.isEmpty() && !QDir::isAbsolutePath(root)) {
+        showMessage(tr("This folder is unavailable. Your open files are still here."));
+        return false;
+    }
+    const QString directory = root.isEmpty() ? QString() : QDir::cleanPath(root);
+    if (m_root == directory && WorkspaceFilesController::get(this)->reader->context().kind
+        == WorkspaceFilesClient::Context::Kind::Local)
         return true;
     if (!confirmLeave())
         return false;
     closeGraph();
-    m_root = root;
-    clearFile();
-    m_controls->setEnabled(!root.isEmpty());
-    m_explorer->setAvailable(false);
+    editorWorkspace()->clearDocuments();
+    editorWorkspace()->setWorkflowDocument({}, nullptr);
+    m_workflowPath.clear();
+    m_root = directory;
+    auto *files = WorkspaceFilesController::get(this);
+    WorkspaceFilesClient::Context context;
+    context.localRoot = directory;
+    context.generation = files->reader->context().generation + 1;
+    files->setContext(context);
+    m_controls->setEnabled(!directory.isEmpty());
+    m_explorer->setAvailable(!directory.isEmpty());
     m_explorer->setRootIndex({});
     m_explorerDirectory.clear();
     m_explorerLocation->clear();
     m_explorerUp->setEnabled(false);
-    if (!root.isEmpty())
-        navigateExplorer(root);
-    showMessage(root.isEmpty() ? tr("Open a project or save a workflow to browse its files.") : root);
+    m_model->setContext(context);
+    if (!directory.isEmpty())
+        navigateExplorer(directory);
+    auto *rootLabel = findChild<QLabel *>("filesPageSubtitle");
+    rootLabel->setText(directory.isEmpty() ? tr("Open a project to browse and edit its files.")
+                                         : QDir::toNativeSeparators(directory));
+    rootLabel->setToolTip(QDir::toNativeSeparators(directory));
+    m_graphButton->setEnabled(!directory.isEmpty());
+    showMessage({});
     return true;
+}
+
+void ProjectFilesWidget::setRootAsync(const QString &root, Completion completion)
+{
+    confirmLeaveAsync([this, root, completion](bool allowed) {
+        const bool changed = allowed && setRoot(root);
+        if (completion)
+            completion(changed);
+    });
 }
 
 bool ProjectFilesWidget::navigateExplorer(const QString &directory)
 {
-    if (!contained(directory) || !QFileInfo(directory).isDir() || !QFileInfo(directory).isReadable())
+    if (!contained(directory))
         return false;
-    m_explorerDirectory = QFileInfo(directory).canonicalFilePath();
-    const auto index = m_model->setRootPath(m_explorerDirectory);
-    m_explorer->setRootIndex(index);
-    m_explorer->setAvailable(index.isValid());
-    const QString relative = QDir(QFileInfo(m_root).canonicalFilePath()).relativeFilePath(m_explorerDirectory);
-    m_explorerLocation->setText(relative == "." ? tr("Root") : QFileInfo(m_explorerDirectory).fileName());
-    m_explorerLocation->setToolTip(QDir::toNativeSeparators(m_explorerDirectory));
+    const QString relative = relativeWorkspacePath(QDir::cleanPath(directory));
+    m_explorerDirectory = QDir::cleanPath(directory);
+    m_model->setDirectory(relative);
+    m_explorer->setRootIndex({});
+    m_explorer->setAvailable(true);
+    m_model->fetchMore({});
+    m_explorerLocation->setText(relative == "." ? tr("Root") : QFileInfo(directory).fileName());
+    m_explorerLocation->setToolTip(QDir::toNativeSeparators(directory));
     m_explorerUp->setEnabled(relative != ".");
-    return index.isValid();
+    return true;
 }
 
 void ProjectFilesWidget::setWorkflowDocument(const QString &path, QTextDocument *document)
 {
-    if (m_path == m_workflowPath && path != m_workflowPath)
-        clearFile();
-    m_workflowPath = path;
-    m_workflowEditor->setDocument(document);
-    static_cast<SourceEditor *>(m_workflowEditor)->setFileName(path);
-    connect(document, &QTextDocument::modificationChanged, this, &ProjectFilesWidget::updateTitle, Qt::UniqueConnection);
+    if (WorkspaceFilesController::get(this)->reader->context().kind == WorkspaceFilesClient::Context::Kind::Remote)
+        return;
+    const QString workflowPath = path.isEmpty() ? QString() : QDir::cleanPath(QFileInfo(path).absoluteFilePath());
+    if (!editorWorkspace()->setWorkflowDocument(workflowPath, document)) {
+        showMessage(editorWorkspace()->error());
+        return;
+    }
+    m_workflowPath = workflowPath;
+    syncActiveDocument();
 }
 
 bool ProjectFilesWidget::openFile(const QString &path)
 {
-    if (path == m_path)
-        return true;
+    const QString key = QDir::cleanPath(path);
+    if (contained(path) && editorWorkspace()->contains(key)) {
+        auto *files = WorkspaceFilesController::get(this);
+        ++files->openGeneration;
+        files->reader->cancel();
+        return editorWorkspace()->activate(key);
+    }
+    if (contained(path) && !m_workflowPath.isEmpty() && key == m_workflowPath) {
+        ++WorkspaceFilesController::get(this)->openGeneration;
+        return editorWorkspace()->openWorkflow(key);
+    }
+    openFileAsync(path);
+    return false;
+}
+
+void ProjectFilesWidget::openFileAsync(const QString &path, Completion completion)
+{
     if (!contained(path)) {
         showMessage(tr("Choose a regular file inside this folder. Linked files and Git metadata are not edited here."));
-        return false;
+        if (completion)
+            completion(false);
+        return;
     }
-    if (!confirmLeave())
-        return false;
-    if (!m_workflowPath.isEmpty() && QFileInfo(path).absoluteFilePath() == QFileInfo(m_workflowPath).absoluteFilePath()) {
-        m_path = path;
-        m_documents->setCurrentWidget(m_workflowEditor);
-        showMessage(tr("Workflow YAML · shared with the canvas and YAML view"));
-        updateTitle();
-        return true;
+    const QString key = QDir::cleanPath(path);
+    if (editorWorkspace()->contains(key)) {
+        auto *files = WorkspaceFilesController::get(this);
+        ++files->openGeneration;
+        files->reader->cancel();
+        const bool activated = editorWorkspace()->activate(key);
+        if (completion)
+            completion(activated);
+        return;
     }
-    QFile file(path);
-    if (!QFileInfo(path).isFile() || !file.open(QIODevice::ReadOnly) || file.size() > maxFileBytes) {
-        showMessage(tr("Cannot open this file. The built-in editor supports text files up to 1 MiB."));
-        return false;
+    if (!m_workflowPath.isEmpty() && key == m_workflowPath) {
+        ++WorkspaceFilesController::get(this)->openGeneration;
+        const bool opened = editorWorkspace()->openWorkflow(key);
+        if (!opened)
+            showMessage(editorWorkspace()->error());
+        else
+            showMessage(tr("Workflow YAML · shared with the canvas and YAML view"));
+        if (completion)
+            completion(opened);
+        return;
     }
-    QByteArray bytes = file.read(maxFileBytes + 1);
-    const bool bom = bytes.startsWith("\xEF\xBB\xBF");
-    const QByteArray textBytes = bom ? bytes.mid(3) : bytes;
-    const QString text = QString::fromUtf8(textBytes);
-    if (bytes.size() > maxFileBytes || bytes.contains('\0') || text.toUtf8() != textBytes) {
-        showMessage(tr("This file is binary, is not UTF-8, or exceeds the 1 MiB editor limit."));
-        return false;
+    loadFileAsync(key, false, std::move(completion));
+}
+
+bool ProjectFilesWidget::loadFile(const QString &path, bool reload)
+{
+    loadFileAsync(path, reload, {});
+    return false;
+}
+
+void ProjectFilesWidget::loadFileAsync(const QString &path, bool reload, Completion completion)
+{
+    auto *files = WorkspaceFilesController::get(this);
+    const quint64 generation = ++files->openGeneration;
+    const auto context = files->reader->context();
+    const QString relative = relativeWorkspacePath(path);
+    const QPointer<QTextDocument> reloading = reload && editorWorkspace()->document(path)
+        ? editorWorkspace()->document(path)->document : nullptr;
+    const int documentRevision = reloading ? reloading->revision() : -1;
+    auto execute = [this, files, generation, context, path, relative, reload, reloading, documentRevision, completion]() {
+        if (generation != files->openGeneration) {
+            if (completion)
+                completion(false);
+            return;
+        }
+        files->reader->run(QJsonObject{{"schema", "dockpipe.files/v1"}, {"action", "read"}, {"path", relative}},
+            this, [this, files, generation, context, path, relative, reload, reloading, documentRevision, completion](const auto &result) {
+            if (generation != files->openGeneration || !(context == files->reader->context())) {
+                if (completion)
+                    completion(false);
+                return;
+            }
+            if (!result.success()) {
+                showMessage(result.error);
+                if (completion)
+                    completion(false);
+                return;
+            }
+            const auto decoded = QByteArray::fromBase64Encoding(result.value.value("content").toString().toLatin1(),
+                QByteArray::AbortOnBase64DecodingErrors);
+            const QByteArray bytes = decoded.decoded;
+            const bool bom = bytes.startsWith("\xEF\xBB\xBF");
+            const QByteArray textBytes = bom ? bytes.mid(3) : bytes;
+            const QString text = QString::fromUtf8(textBytes);
+            const QString revision = result.value.value("revision").toString();
+            const QString digest = QString::fromLatin1(QCryptographicHash::hash(bytes, QCryptographicHash::Sha256).toHex());
+            if (!decoded || bytes.size() > maxFileBytes || bytes.contains('\0') || text.toUtf8() != textBytes
+                || revision != digest || result.value.value("path").toString() != relative) {
+                showMessage(tr("This file is binary, is not UTF-8, or exceeds the 1 MiB editor limit."));
+                if (completion)
+                    completion(false);
+                return;
+            }
+            const bool crlf = bytes.contains("\r\n");
+            bool opened = false;
+            if (reload) {
+                auto *record = editorWorkspace()->document(path);
+                if (record && record->document == reloading && reloading && !record->workflow
+                    && reloading->revision() == documentRevision) {
+                    // Update the captured document, even if another tab became active.
+                    reloading->setPlainText(text);
+                    reloading->setModified(false);
+                    record->original = bytes;
+                    record->crlf = crlf;
+                    record->bom = bom;
+                    editorWorkspace()->refreshTabs();
+                    opened = true;
+                }
+            } else {
+                opened = editorWorkspace()->addDocument(path, bytes, text, crlf, bom);
+            }
+            if (opened) {
+                files->revisions.insert(path, revision);
+                syncActiveDocument();
+                showMessage({});
+            }
+            if (completion)
+                completion(opened);
+        });
+    };
+    if (files->reader->busy())
+        files->reader->cancel();
+    if (files->reader->busy()) {
+        auto connection = std::make_shared<QMetaObject::Connection>();
+        *connection = connect(files->reader, &WorkspaceFilesClient::busyChanged, this,
+            [execute, connection](bool busy) {
+            if (!busy) {
+                QObject::disconnect(*connection);
+                execute();
+            }
+        });
+    } else {
+        execute();
     }
-    m_path = path;
-    m_original = bytes;
-    m_crlf = bytes.contains("\r\n");
-    m_bom = bytes.startsWith("\xEF\xBB\xBF");
-    if (m_bom)
-        bytes.remove(0, 3);
-    static_cast<SourceEditor *>(m_editor)->setFileName(path);
-    m_editor->setPlainText(QString::fromUtf8(bytes));
-    m_editor->document()->setModified(false);
-    m_editor->setReadOnly(false);
-    m_documents->setCurrentWidget(m_editor);
-    showMessage(tr("UTF-8 · %1").arg(m_crlf ? "CRLF" : "LF"));
-    updateTitle();
-    return true;
 }
 
 bool ProjectFilesWidget::reloadFile()
 {
-    if (m_path.isEmpty())
-        return false;
-    if (m_documents->currentWidget() == m_workflowEditor) {
-        showMessage(tr("Reopen the workflow from Workflows to reload its YAML and canvas together."));
-        return false;
-    }
-    if (!confirmLeave())
-        return false;
-    const QString path = m_path;
-    m_path.clear();
-    if (openFile(path))
-        return true;
-    m_path = path;
+    reloadFileAsync();
     return false;
+}
+
+void ProjectFilesWidget::reloadFileAsync(Completion completion)
+{
+    const QString path = m_path;
+    const auto *record = editorWorkspace()->document(path);
+    if (!record || record->workflow) {
+        showMessage(tr("Reopen the workflow from Workflows to reload its YAML and canvas together."));
+        if (completion)
+            completion(false);
+        return;
+    }
+    confirmPathAsync(path, [this, path, completion](bool allowed) {
+        if (allowed)
+            loadFileAsync(path, true, completion);
+        else if (completion)
+            completion(false);
+    });
 }
 
 bool ProjectFilesWidget::saveFile()
 {
-    if (m_documents->currentWidget() == m_workflowEditor) {
-        emit workflowSaveRequested();
-        return true;
+    saveFileAsync();
+    return false;
+}
+
+void ProjectFilesWidget::saveFileAsync(Completion completion)
+{
+    savePathAsync(m_path, std::move(completion));
+}
+
+void ProjectFilesWidget::savePathAsync(const QString &path, Completion completion)
+{
+    auto *files = WorkspaceFilesController::get(this);
+    auto *record = editorWorkspace()->document(path);
+    if (!files->writer->context().canWrite() || !record || !record->document || record->workflow || files->writer->busy()) {
+        if (record && record->workflow)
+            emit workflowSaveRequested();
+        if (completion)
+            completion(false);
+        return;
     }
-    if (m_path.isEmpty() || m_editor->isReadOnly())
-        return false;
-    QByteArray bytes = m_editor->toPlainText().toUtf8();
-    if (m_crlf)
+    const QPointer<QTextDocument> document = record->document;
+    const QString text = document->toPlainText();
+    QByteArray bytes = text.toUtf8();
+    if (record->crlf)
         bytes.replace("\n", "\r\n");
-    if (m_bom)
+    if (record->bom)
         bytes.prepend("\xEF\xBB\xBF");
-    if (bytes.size() > maxFileBytes || !contained(m_path)) {
+    if (bytes.size() > maxFileBytes || !contained(path) || !files->revisions.contains(path)) {
         showMessage(tr("The file exceeds 1 MiB or its location changed. Your edits are still here."));
-        return false;
+        if (completion)
+            completion(false);
+        return;
     }
-    QFile current(m_path);
-    if (!QFileInfo(m_path).isFile() || !current.open(QIODevice::ReadOnly) || current.read(maxFileBytes + 1) != m_original) {
-        showMessage(tr("This file changed on disk. Your edits are preserved; keep a copy, then Reload to read the disk version."));
-        return false;
+    const auto context = files->writer->context();
+    const QString relative = relativeWorkspacePath(path);
+    files->beginWrite();
+    files->writer->run(QJsonObject{{"schema", "dockpipe.files/v1"}, {"action", "write"},
+        {"path", relative}, {"revision", files->revisions.value(path)},
+        {"content", QString::fromLatin1(bytes.toBase64())}}, this,
+        [this, files, context, path, relative, document, bytes, text, completion](const auto &result) {
+        files->endWrite();
+        bool saved = result.success() && context == files->writer->context();
+        auto *record = editorWorkspace()->document(path);
+        const QString expected = QString::fromLatin1(QCryptographicHash::hash(bytes, QCryptographicHash::Sha256).toHex());
+        saved = saved && result.value.value("revision").toString() == expected
+            && result.value.value("path").toString() == relative;
+        if (saved && record && document && record->document == document) {
+            record->original = bytes;
+            files->revisions.insert(path, expected);
+            document->setModified(document->toPlainText() != text);
+            editorWorkspace()->refreshTabs();
+            syncActiveDocument();
+            showMessage(tr("Saved %1").arg(relativeWorkspacePath(path)));
+            emit fileSaved(path);
+        } else if (!saved) {
+            showMessage(result.error.isEmpty() ? tr("Cannot save: %1").arg(tr("Invalid workspace file response.")) : result.error);
+        }
+        if (completion)
+            completion(saved);
+    });
+}
+
+bool ProjectFilesWidget::saveAllFiles()
+{
+    if (!hasUnsavedChanges() && !filesOperationPending())
+        return true;
+    saveAllFilesAsync();
+    return false;
+}
+
+void ProjectFilesWidget::saveAllFilesAsync(Completion completion)
+{
+    auto *files = WorkspaceFilesController::get(this);
+    if (!files->writer->context().canWrite() || filesOperationPending()) {
+        if (completion)
+            completion(false);
+        return;
     }
-    // Windows readers do not share delete access. Release the conflict-check
-    // handle before atomically replacing the destination.
-    current.close();
-    QSaveFile file(m_path);
-    if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit()) {
-        showMessage(tr("Cannot save: %1").arg(file.errorString()));
-        return false;
-    }
-    m_original = bytes;
-    m_editor->document()->setModified(false);
-    updateTitle();
-    showMessage(tr("Saved %1").arg(QDir(m_root).relativeFilePath(m_path)));
-    emit fileSaved(m_path);
-    return true;
+    files->setSavingAll(true);
+    const QStringList paths = editorWorkspace()->paths();
+    auto next = std::make_shared<std::function<void(int)>>();
+    const std::weak_ptr<std::function<void(int)>> weakNext(next);
+    *next = [this, files, paths, completion, weakNext](int position) {
+        int current = position;
+        while (current < paths.size()) {
+            const auto *record = editorWorkspace()->document(paths[current]);
+            if (record && !record->workflow && record->document && record->document->isModified())
+                break;
+            ++current;
+        }
+        if (current == paths.size()) {
+            files->setSavingAll(false);
+            if (completion)
+                completion(true);
+            return;
+        }
+        auto next = weakNext.lock();
+        savePathAsync(paths[current], [this, files, current, next, completion](bool saved) {
+            if (!saved) {
+                files->setSavingAll(false);
+                if (completion)
+                    completion(false);
+                return;
+            }
+            (*next)(current + 1);
+        });
+    };
+    (*next)(0);
 }
 
 bool ProjectFilesWidget::createFile(const QString &relativePath)
 {
-    const QString path = QDir(m_root).filePath(relativePath);
-    if (!contained(path) || !confirmLeave())
-        return false;
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::NewOnly)) {
-        showMessage(tr("Cannot create file: %1").arg(file.errorString()));
-        return false;
+    createFileAsync(relativePath);
+    return false;
+}
+
+void ProjectFilesWidget::createFileAsync(const QString &relativePath, Completion completion)
+{
+    auto *files = WorkspaceFilesController::get(this);
+    if (!files->writer->context().canWrite() || filesOperationPending()) {
+        if (completion)
+            completion(false);
+        return;
     }
-    file.close();
-    return openFile(path);
+    const QString path = resolveWorkspacePath(m_root, relativePath);
+    files->beginWrite();
+    files->writer->run(QJsonObject{{"schema", "dockpipe.files/v1"}, {"action", "create"}, {"path", relativePath}},
+        this, [this, files, path, completion](const auto &result) {
+        files->endWrite();
+        if (!result.success()) {
+            showMessage(result.error);
+            if (completion)
+                completion(false);
+            return;
+        }
+        m_model->refresh();
+        openFileAsync(path, completion);
+    });
 }
 
 bool ProjectFilesWidget::renameFile(const QString &destination)
 {
-    if (m_path.isEmpty() || m_path == m_workflowPath || !contained(m_path) || !contained(destination) || !confirmLeave()) {
-        showMessage(tr("Choose a supporting file and a destination inside this folder. Rename the open workflow from the project Files view."));
-        return false;
+    renameFileAsync(destination);
+    return false;
+}
+
+void ProjectFilesWidget::renameFileAsync(const QString &destination, Completion completion)
+{
+    auto *files = WorkspaceFilesController::get(this);
+    const QString previous = m_path;
+    const QString target = QDir::cleanPath(destination);
+    if (!files->writer->context().canWrite() || filesOperationPending() || previous.isEmpty()
+        || previous == m_workflowPath || !contained(destination)
+        || editorWorkspace()->contains(target) || !files->revisions.contains(previous)) {
+        if (completion)
+            completion(false);
+        return;
     }
-    if (!QFile::rename(m_path, destination)) {
-        showMessage(tr("Cannot rename the file. The destination may already exist."));
-        return false;
-    }
-    clearFile();
-    return openFile(destination);
+    files->beginWrite();
+    files->writer->run(QJsonObject{{"schema", "dockpipe.files/v1"}, {"action", "rename"},
+        {"path", relativeWorkspacePath(previous)}, {"destination", relativeWorkspacePath(target)},
+        {"revision", files->revisions.value(previous)}}, this, [this, files, previous, target, completion](const auto &result) {
+        files->endWrite();
+        bool renamed = result.success();
+        if (renamed) {
+            renamed = editorWorkspace()->renameDocument(previous, target);
+            if (renamed)
+                files->revisions.insert(target, files->revisions.take(previous));
+            m_model->refresh();
+            syncActiveDocument();
+        } else {
+            showMessage(result.error);
+        }
+        if (completion)
+            completion(renamed);
+    });
 }
 
 bool ProjectFilesWidget::deleteFile()
 {
-    if (m_path.isEmpty() || m_path == m_workflowPath || !contained(m_path) || !confirmLeave())
-        return false;
-    if (!QFile::remove(m_path)) {
-        showMessage(tr("Cannot delete the file."));
-        return false;
+    deleteFileAsync();
+    return false;
+}
+
+void ProjectFilesWidget::deleteFileAsync(Completion completion)
+{
+    const QString path = m_path;
+    auto *files = WorkspaceFilesController::get(this);
+    if (!files->writer->context().canWrite() || path.isEmpty() || path == m_workflowPath
+        || filesOperationPending() || !files->revisions.contains(path)) {
+        if (completion)
+            completion(false);
+        return;
     }
-    clearFile();
-    return true;
+    confirmPathAsync(path, [this, files, path, completion](bool allowed) {
+        if (!allowed) {
+            if (completion)
+                completion(false);
+            return;
+        }
+        const auto *record = editorWorkspace()->document(path);
+        const QPointer<QTextDocument> document = record ? record->document : nullptr;
+        const int revision = document ? document->revision() : -1;
+        files->beginWrite();
+        files->writer->run(QJsonObject{{"schema", "dockpipe.files/v1"}, {"action", "delete"},
+            {"path", relativeWorkspacePath(path)}, {"revision", files->revisions.value(path)}}, this,
+            [this, files, path, document, revision, completion](const auto &result) {
+            files->endWrite();
+            if (result.success()) {
+                files->revisions.remove(path);
+                // A user can keep typing while deletion runs. Retain that draft.
+                if (document && document->revision() != revision)
+                    document->setModified(true);
+                else
+                    editorWorkspace()->removeDocument(path);
+                m_model->refresh();
+            } else {
+                showMessage(result.error);
+            }
+            if (completion)
+                completion(result.success());
+        });
+    });
 }
 
 void ProjectFilesWidget::updateTitle()
 {
-    m_title->setText(m_path.isEmpty() ? tr("Select a file") : QDir(m_root).relativeFilePath(m_path)
-        + ((m_documents->currentWidget() == m_workflowEditor ? m_workflowEditor->document()->isModified() : hasUnsavedChanges())
-            ? tr("  • Unsaved") : ""));
+    const auto *document = currentDocument();
+    const bool modified = document && document->isModified();
+    QString title = m_path.isEmpty() ? tr("No file open") : QFileInfo(m_path).fileName();
+    if (!m_path.isEmpty() && modified)
+        title += tr("  • Unsaved");
+    m_title->setText(title);
     m_title->setToolTip(m_path);
+    const QString relativeDirectory = relativeWorkspacePath(parentWorkspacePath(m_path));
+    auto *fileLocation = findChild<QLabel *>("filesDocumentLocation");
+    fileLocation->setText(m_path.isEmpty() ? tr("Workspace editor")
+        : (relativeDirectory == "." ? tr("Workspace root") : relativeDirectory));
+    fileLocation->setToolTip(m_path.isEmpty() ? QString{} : QDir::toNativeSeparators(m_path));
     m_fileActions->setEnabled(!m_path.isEmpty());
+    const auto context = WorkspaceFilesController::get(this)->reader->context();
+    findChild<QPushButton *>("editorSave")->setEnabled(context.canWrite() && !m_path.isEmpty() && modified);
     const QString suffix = QFileInfo(m_path).suffix().toLower();
-    m_openWorkflow->setVisible(suffix == "yml" || suffix == "yaml");
+    const bool local = context.kind == WorkspaceFilesClient::Context::Kind::Local;
+    m_openWorkflow->setVisible(local && (suffix == "yml" || suffix == "yaml"));
     updateMarkdownPreview();
     updateEditorStatus();
     emit dirtyChanged(hasUnsavedChanges());
@@ -646,31 +1279,36 @@ void ProjectFilesWidget::applyCockpitSettings(const CockpitSettings &settings)
 
 void ProjectFilesWidget::openGraph()
 {
-    if (m_graph || m_root.isEmpty())
+    if (m_graph || m_root.isEmpty() || WorkspaceFilesController::get(this)->reader->context().kind
+        == WorkspaceFilesClient::Context::Kind::Remote)
         return;
     QString directory = m_explorerDirectory.isEmpty() ? m_root : m_explorerDirectory;
     const auto selected = m_tree->currentIndex();
     if (selected.isValid()) {
-        const QString path = m_model->filePath(selected);
-        directory = m_model->isDir(selected) ? path : QFileInfo(path).absolutePath();
+        const QString path = explorerPath(selected);
+        directory = selected.data(WorkspaceFileModel::DirectoryRole).toBool() ? path : QFileInfo(path).absolutePath();
     }
     m_graph = new WorkspaceGraphWidget(m_root, directory, this);
     m_splitter->hide();
     m_status->hide();
-    static_cast<QVBoxLayout *>(layout())->insertWidget(0, m_graph, 1);
+    static_cast<QVBoxLayout *>(layout())->insertWidget(1, m_graph, 1);
+    m_graphButton->setEnabled(false);
     connect(m_graph, &WorkspaceGraphWidget::closeRequested, this, &ProjectFilesWidget::closeGraph);
     connect(m_graph, &WorkspaceGraphWidget::openFileRequested, this, [this](const QString &path) {
-        if (openFile(path))
-            closeGraph();
-        else
-            m_status->show();
+        openFileAsync(path, [this](bool opened) {
+            if (opened)
+                closeGraph();
+            else
+                m_status->show();
+        });
     });
     connect(m_graph, &WorkspaceGraphWidget::revealRequested, this, [this](const QString &path) {
-        const QModelIndex index = m_model->index(path);
+        const auto source = m_model->indexForPath(relativeWorkspacePath(path));
+        const QModelIndex index = WorkspaceFilesController::get(this)->filter->mapFromSource(source);
         if (index.isValid()) {
             m_tree->setCurrentIndex(index);
             m_tree->scrollTo(index);
-            if (m_model->isDir(index))
+            if (index.data(WorkspaceFileModel::DirectoryRole).toBool())
                 m_tree->expand(index);
         }
         closeGraph();
@@ -680,7 +1318,8 @@ void ProjectFilesWidget::openGraph()
 
 void ProjectFilesWidget::closeGraph()
 {
-    m_graphButton->setEnabled(true);
+    m_graphButton->setEnabled(!m_root.isEmpty() && WorkspaceFilesController::get(this)->reader->context().kind
+        == WorkspaceFilesClient::Context::Kind::Local);
     if (!m_graph)
         return;
     auto *graph = m_graph;
@@ -690,11 +1329,27 @@ void ProjectFilesWidget::closeGraph()
     // Deferred destruction is needed when the request originates in a graph item.
     graph->deleteLater();
     m_splitter->show();
-    m_status->show();
+    m_status->setVisible(!m_status->text().isEmpty());
 }
 
 void ProjectFilesWidget::hideEvent(QHideEvent *event)
 {
-    closeGraph();
     QWidget::hideEvent(event);
+    findChild<QTimer *>("filesAutomaticRefresh")->stop();
+    m_model->setActive(false);
+    // Adding an OpenGL viewport to an already visible Files page can recreate
+    // its native window with a synchronous hide/show. Let that transaction
+    // finish before deciding whether the user actually left this page.
+    const QPointer<WorkspaceGraphWidget> hiddenGraph(m_graph);
+    QTimer::singleShot(0, this, [this, hiddenGraph]() {
+        if (hiddenGraph && m_graph == hiddenGraph && !isVisible())
+            closeGraph();
+    });
+}
+
+void ProjectFilesWidget::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    m_model->setActive(isEnabled());
+    findChild<QTimer *>("filesAutomaticRefresh")->start();
 }

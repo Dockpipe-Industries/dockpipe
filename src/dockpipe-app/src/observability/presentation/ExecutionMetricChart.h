@@ -1,11 +1,14 @@
 #pragma once
 
+#include <QCoreApplication>
+
 #include <QVector>
 #include <QWidget>
 #include <optional>
 
 // One selected resource, at most four minutes of four-second samples.
 class ExecutionMetricChart : public QWidget {
+    Q_DECLARE_TR_FUNCTIONS(ExecutionMetricChart)
 public:
     void setCaption(const QString &caption);
     explicit ExecutionMetricChart(QWidget *parent = nullptr);

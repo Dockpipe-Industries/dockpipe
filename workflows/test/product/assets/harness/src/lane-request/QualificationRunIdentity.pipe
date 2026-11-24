@@ -1,0 +1,7 @@
+module Dockpipe.Product.LaneRequest;
+
+public Record QualificationRunIdentity {
+    public string runId = "";
+    public string planSha256 = "";
+    public string registrySha256 = "";
+}

@@ -17,11 +17,27 @@ for f in test_cli.sh test_repo_root.sh test_repo_layout.sh test_clone_worktree_i
   fi
 done
 
-echo "--- dockpipe build --no-images ---"
-"$CLI" build --workdir "$ROOT" --no-images || failed=1
+test_package_build() (
+  build_root="$(mktemp -d)" || exit 1
+  trap 'rm -rf -- "$build_root"' EXIT
 
-echo "--- dockpipe test ---"
-"$CLI" test --workdir "$ROOT" || failed=1
+  cp -a "$ROOT/dockpipe.config.json" "$ROOT/VERSION" "$ROOT/workflows" "$build_root/" || exit 1
+
+  # The two native controller qualifications require a separately selected
+  # PipeLang SDK and an explicit build-control step before they can be packaged.
+  for workflow in sdk-pipelang workflow-control; do
+    directory="$build_root/workflows/test/$workflow"
+    mv "$directory/config.yml" "$directory/qualification.yml" || exit 1
+  done
+
+  echo "--- dockpipe build --no-images ---"
+  "$CLI" build --workdir "$build_root" --no-images || exit 1
+
+  echo "--- dockpipe test ---"
+  "$CLI" test --workdir "$build_root"
+)
+
+test_package_build || failed=1
 
 echo "--- smoke.sh (needs Docker) ---"
 bash "$UNIT/smoke.sh" || failed=1

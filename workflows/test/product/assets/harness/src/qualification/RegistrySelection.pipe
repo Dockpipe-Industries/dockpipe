@@ -1,0 +1,192 @@
+module Dockpipe.Product.Qualification;
+import PipeLang.Json;
+
+// Indexed view: capability absence never removes an applicable denominator case.
+public Class RegistrySelection {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private int indexRetainedBytes;
+    private RegistryJson json;
+    private JsonNode features;
+    private JsonNode selectors;
+    private JsonNode? capabilities;
+    private string targetKind = "";
+    private bool bound = false;
+
+    public RegistrySelection(JsonReader reader, JsonStringIndexer indexer, int indexRetainedBytes) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.indexRetainedBytes = indexRetainedBytes;
+        json = new RegistryJson(reader);
+    }
+
+    public Result<void,string> Bind(JsonNode registry, string platformId, string kind,
+                                   JsonNode targetCapabilities, CancellationToken token) {
+        bound = false;
+        RegistryPolicy policy = new RegistryPolicy(reader, indexer, indexRetainedBytes);
+        try policy.Validate(registry, token);
+
+        try json.Require(kind == "local" || kind == "vm" || kind == "remote" ||
+            kind == "flatpak" || kind == "container", "qualification.selection.target_kind");
+        int capabilityCount = try json.ArrayCount(targetCapabilities, 0, 64);
+        HashSet<string> uniqueCapabilities = HashSet<string>.Empty();
+        for (int index = 0; index < capabilityCount; index = index + 1) {
+            JsonNode item = try reader.At(targetCapabilities, index);
+            string capability = try json.Text(item, 128);
+            try json.Require(json.Identifier(capability), "qualification.selection.capability");
+            try json.Require(uniqueCapabilities.Add(capability), "qualification.selection.duplicate_capability");
+        }
+
+        return Select(registry, platformId, kind, targetCapabilities, token);
+    }
+
+    // The caller owns both documents and must first admit them with PlanPolicy.
+    public Result<void,string> BindAdmitted(JsonNode registry, JsonNode target, CancellationToken token) {
+        bound = false;
+        string platformId = try json.TextMember(target, "platform", 512);
+        string kind = try json.TextMember(target, "kind", 128);
+        JsonNode? targetCapabilities = try reader.FindMember(target, "capabilities");
+        return Select(registry, platformId, kind, targetCapabilities, token);
+    }
+
+    private Result<void,string> Select(JsonNode registry, string platformId, string kind,
+                                       JsonNode? targetCapabilities, CancellationToken token) {
+        JsonNode platforms = try json.Member(registry, "platforms");
+        int count = try reader.Count(platforms);
+        for (int index = 0; index < count; index = index + 1) {
+            if (token.IsCancellationRequested)
+                return Result<void,string>.Cancelled("qualification.selection.cancelled");
+
+            JsonNode platform = try reader.At(platforms, index);
+            string id = try json.TextMember(platform, "id", 512);
+            if (id == platformId) {
+                selectors = try json.Member(platform, "selectors");
+                features = try json.Member(registry, "features");
+                capabilities = targetCapabilities;
+                targetKind = kind;
+                bound = true;
+                return Result<void,string>.Success();
+            }
+        }
+
+        return Result<void,string>.Failure("qualification.selection.platform");
+    }
+
+    public Result<int,string> FeatureCount() {
+        try json.Require(bound, "qualification.selection.unbound");
+        return reader.Count(features);
+    }
+
+    public Result<int,string> CaseCount(int featureIndex) {
+        try json.Require(bound, "qualification.selection.unbound");
+        JsonNode feature = try reader.At(features, featureIndex);
+        JsonNode cases = try json.Member(feature, "cases");
+        return reader.Count(cases);
+    }
+
+    private Result<bool,string> Available(string required) {
+        if (required == "bare_metal" && (targetKind == "vm" || targetKind == "flatpak" || targetKind == "container"))
+            return Result<bool,string>.Success(false);
+        if (!capabilities.HasValue)
+            return Result<bool,string>.Success(false);
+
+        return json.Contains(capabilities.Value, required);
+    }
+
+    private pure bool Before(string left, string right) {
+        int leftBytes = string.Utf8Length(left);
+        int rightBytes = string.Utf8Length(right);
+        int common = leftBytes;
+        if (rightBytes < common)
+            common = rightBytes;
+
+        for (int index = 0; index < common; index = index + 1) {
+            int first = string.ByteAtOr(left, index, -1);
+            int second = string.ByteAtOr(right, index, -1);
+            if (first != second)
+                return first < second;
+        }
+
+        return leftBytes < rightBytes;
+    }
+
+    public Result<string,string> MissingCapabilities(int featureIndex, CancellationToken token) {
+        try json.Require(bound, "qualification.selection.unbound");
+        JsonNode feature = try reader.At(features, featureIndex);
+        JsonNode? requirements = try reader.FindMember(feature, "requires");
+        if (!requirements.HasValue)
+            return Result<string,string>.Success("");
+
+        int count = try reader.Count(requirements.Value);
+        Array<string> ordered = Array<string>.Create(count, "");
+        HashSet<string> seen = HashSet<string>.Empty();
+        int missing = 0;
+        for (int index = 0; index < count; index = index + 1) {
+            if (token.IsCancellationRequested)
+                return Result<string,string>.Cancelled("qualification.selection.cancelled");
+
+            JsonNode item = try reader.At(requirements.Value, index);
+            string requirement = try json.Text(item, 128);
+            if (try Available(requirement))
+                continue;
+            if (!seen.Add(requirement))
+                continue;
+
+            int position = missing;
+            while (position > 0 && Before(requirement, ordered.At(position - 1))) {
+                ordered.Set(position, ordered.At(position - 1));
+                position = position - 1;
+            }
+
+            ordered.Set(position, requirement);
+            missing = missing + 1;
+        }
+
+        string joined = "";
+        for (int index = 0; index < missing; index = index + 1) {
+            if (index != 0)
+                joined = joined + ", ";
+            joined = joined + ordered.At(index);
+        }
+
+        return Result<string,string>.Success(joined);
+    }
+
+    private Result<bool,string> RequirementsAvailable(JsonNode feature) {
+        JsonNode? requirements = try reader.FindMember(feature, "requires");
+        if (!requirements.HasValue)
+            return Result<bool,string>.Success(true);
+
+        int count = try reader.Count(requirements.Value);
+        for (int index = 0; index < count; index = index + 1) {
+            JsonNode item = try reader.At(requirements.Value, index);
+            string required = try json.Text(item, 128);
+            bool available = try Available(required);
+            if (!available)
+                return Result<bool,string>.Success(false);
+        }
+
+        return Result<bool,string>.Success(true);
+    }
+
+    public Result<RegistryCase,string> CaseAt(int featureIndex, int caseIndex) {
+        try json.Require(bound, "qualification.selection.unbound");
+        JsonNode feature = try reader.At(features, featureIndex);
+        JsonNode cases = try json.Member(feature, "cases");
+        JsonNode selected = try reader.At(cases, caseIndex);
+        string id = try json.TextMember(feature, "id", 128);
+        string scenario = try json.TextMember(selected, "scenario", 128);
+        string layer = try json.TextMember(selected, "layer", 128);
+        string selector = try json.TextMember(feature, "selector", 128);
+        JsonNode criticalNode = try json.Member(feature, "critical");
+        bool critical = try reader.BoolValue(criticalNode);
+        bool applicable = selector == "all";
+        if (!applicable)
+            applicable = try json.Contains(selectors, selector);
+
+        bool available = try RequirementsAvailable(feature);
+        JsonNode assertions = try json.Member(selected, "required_assertions");
+        return Result<RegistryCase,string>.Success(
+            RegistryCase(id, scenario, layer, critical, applicable, available, assertions));
+    }
+}

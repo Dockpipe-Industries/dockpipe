@@ -9,6 +9,7 @@ class DOCKPIPE_LAUNCHER_UI_EXPORT CanvasPanel : public QFrame {
 public:
     explicit CanvasPanel(const QString &identity, QWidget *parent = nullptr, bool persistent = true);
     void setDragHandle(QWidget *handle);
+    void setDragHandle(QWidget *handle, bool fullWidth);
     void placeDefault(const QRect &geometry);
     void resetPlacement();
     void setInteractionEnabled(bool enabled);

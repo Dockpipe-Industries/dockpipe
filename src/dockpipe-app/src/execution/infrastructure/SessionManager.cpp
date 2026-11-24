@@ -7,6 +7,7 @@
 #include <QFile>
 #include <QProcess>
 #include <QProcessEnvironment>
+#include <QTimer>
 
 #include <functional>
 
@@ -40,8 +41,7 @@ bool SessionManager::isReady(const QString &contextId) const
 
 bool SessionManager::isRunning(const QString &contextId) const
 {
-    const QPointer<QProcess> p = m_processes.value(contextId);
-    return p && p->state() != QProcess::NotRunning;
+    return !m_processes.value(contextId).isNull();
 }
 
 QString SessionManager::readinessMarker()
@@ -51,6 +51,18 @@ QString SessionManager::readinessMarker()
 
 QStringList SessionManager::dockpipeArguments(const Context &ctx)
 {
+    return dockpipeArguments(ctx, SessionLaunchOptions{});
+}
+
+QStringList SessionManager::dockpipeArguments(const Context &ctx, const SessionLaunchOptions &options)
+{
+    if (!options.environmentDefinitionFile.isEmpty())
+        return {QStringLiteral("environment"), QStringLiteral("apply"), QStringLiteral("--file"),
+            QDir::toNativeSeparators(options.environmentDefinitionFile)};
+    if (!options.environmentDefinitionName.isEmpty())
+        return {QStringLiteral("environment"), QStringLiteral("apply"), QStringLiteral("--name"),
+            options.environmentDefinitionName};
+
     QStringList args;
     if (!ctx.workflowFile.isEmpty()) {
         args << QStringLiteral("--workflow-file") << ctx.workflowFile;
@@ -72,17 +84,25 @@ QStringList SessionManager::dockpipeArguments(const Context &ctx)
         const QString t = line.trimmed();
         if (t.isEmpty())
             continue;
-        const QString key = t.section(QLatin1Char('='), 0, 0);
-        args << QStringLiteral("--env") << (key.startsWith("DOCKPIPE_VSCODE_INPUT_") ? line : t);
+        const QString key = t.section(QLatin1Char('='), 0, 0).trimmed();
+        const bool importedInput = key.startsWith("DOCKPIPE_VSCODE_INPUT_");
+        const QString flag = options.workflowInputOverrideNames.contains(key) && !importedInput
+            ? QStringLiteral("--var") : QStringLiteral("--env");
+        args << flag << (importedInput ? line : t);
     }
     return args;
 }
 
 bool SessionManager::launch(const Context &ctx, const QString &logsDir)
 {
+    return launch(ctx, logsDir, SessionLaunchOptions{});
+}
+
+bool SessionManager::launch(const Context &ctx, const QString &logsDir, const SessionLaunchOptions &options)
+{
     if (ctx.workdir.isEmpty())
         return false;
-    if (m_processes.contains(ctx.id) && m_processes[ctx.id] && m_processes[ctx.id]->state() != QProcess::NotRunning)
+    if (isRunning(ctx.id))
         return false;
 
     QString program = ctx.dockpipeBinary.trimmed();
@@ -94,7 +114,7 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
 
     auto *proc = new QProcess(this);
     proc->setProgram(program);
-    proc->setArguments(dockpipeArguments(ctx));
+    proc->setArguments(dockpipeArguments(ctx, options));
     proc->setProcessChannelMode(QProcess::MergedChannels);
 #ifndef Q_OS_WIN
     // stop() sends SIGTERM to -pid, so give each dockpipe launch its own process group.
@@ -116,13 +136,6 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
     proc->setProcessEnvironment(env);
     proc->setWorkingDirectory(wd);
 
-    auto *logFile = new QFile(logPath, proc);
-    if (!logFile->open(QIODevice::WriteOnly | QIODevice::Append)) {
-        delete proc;
-        emit sessionFailed(ctx.id, QStringLiteral("Cannot open log file: ") + logPath);
-        return false;
-    }
-
     SessionInfo si;
     si.contextId = ctx.id;
     si.status = SessionStatus::Starting;
@@ -130,7 +143,18 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
     si.program = program;
     si.arguments = proc->arguments();
     si.ready = false;
+    si.notifyWorkflowOutcome = options.notifyWorkflowOutcome;
     m_info[ctx.id] = si;
+
+    auto *logFile = new QFile(logPath, proc);
+    if (!logFile->open(QIODevice::WriteOnly | QIODevice::Append)) {
+        const QString error = QStringLiteral("Cannot open log file: ") + logPath;
+        m_info[ctx.id].status = SessionStatus::Failed;
+        m_info[ctx.id].errorString = error;
+        delete proc;
+        emit sessionFailed(ctx.id, error);
+        return false;
+    }
 
     std::function<void(bool)> flushOutput = [this, ctx, proc, logFile](bool drainRemainder) {
         // Output signals can synchronously cancel and finish this process.
@@ -143,11 +167,17 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
         QByteArray visible;
         auto processLine = [this, ctx, &visible](const QByteArray &rawLine) {
             if (ctx.maximumOutputLineBytes > 0 && rawLine.size() > ctx.maximumOutputLineBytes) {
-                emit sessionFailed(ctx.id, QStringLiteral("Workflow output exceeded the consumer's line capacity."));
+                emit sessionFailed(ctx.id, tr("Workflow output exceeded the consumer's line capacity."));
                 stop(ctx.id);
                 return false;
             }
-            const QString line = QString::fromLocal8Bit(rawLine);
+            const QString line = ctx.maximumOutputLineBytes > 0
+                ? QString::fromUtf8(rawLine) : QString::fromLocal8Bit(rawLine);
+            if (ctx.maximumOutputLineBytes > 0 && line.toUtf8() != rawLine) {
+                emit sessionFailed(ctx.id, tr("Workflow returned invalid UTF-8 output."));
+                stop(ctx.id);
+                return false;
+            }
             if (line.startsWith(promptEventPrefix())) {
                 QString payload = line.mid(promptEventPrefix().size());
                 while (payload.endsWith(QLatin1Char('\n')) || payload.endsWith(QLatin1Char('\r')))
@@ -171,7 +201,7 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
 
         if (ctx.maximumOutputLineBytes > 0 && pending.size() > ctx.maximumOutputLineBytes) {
             pending.clear();
-            emit sessionFailed(ctx.id, QStringLiteral("Workflow output exceeded the consumer's line capacity."));
+            emit sessionFailed(ctx.id, tr("Workflow output exceeded the consumer's line capacity."));
             stop(ctx.id);
             return;
         }
@@ -188,7 +218,10 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
             return;
         logFile->write(visible);
         logFile->flush();
-        const QString text = QString::fromLocal8Bit(visible);
+        // Capacity-bound consumers use the UTF-8 package event protocol even
+        // when Windows' console locale uses a different legacy encoding.
+        const QString text = ctx.maximumOutputLineBytes > 0
+            ? QString::fromUtf8(visible) : QString::fromLocal8Bit(visible);
         SessionInfo &session = m_info[ctx.id];
         if (!session.ready && text.contains(readinessMarker())) {
             session.ready = true;
@@ -199,116 +232,156 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
 
     connect(proc, &QProcess::readyRead, this, [flushOutput]() { flushOutput(false); });
 
-    connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this,
-            [this, ctx, proc, logFile, flushOutput](int exitCode, QProcess::ExitStatus st) {
-                flushOutput(true);
-                logFile->close();
-                logFile->deleteLater();
-                m_processes.remove(ctx.id);
-                m_pendingOutput.remove(ctx.id);
-                SessionInfo &s = m_info[ctx.id];
-                if (s.stopRequested || (exitCode == 0 && st == QProcess::NormalExit))
-                    s.status = SessionStatus::Stopped;
-                else
-                    s.status = SessionStatus::Failed;
-                s.pid = 0;
-                s.ready = false;
-                emit sessionStopped(ctx.id, exitCode, st);
-                proc->deleteLater();
-            });
+    auto *startupDeadline = new QTimer(proc);
+    startupDeadline->setSingleShot(true);
+    startupDeadline->setInterval(15000);
 
-    connect(proc, &QProcess::errorOccurred, this, [this, ctx, proc, logFile, flushOutput](QProcess::ProcessError error) {
-        // launch() owns startup failure reporting after waitForStarted returns.
-        // Handling it here too would report and tear down the same attempt twice.
-        if (error == QProcess::FailedToStart)
+    // Each callback owns this attempt only. Signals may synchronously retry the
+    // same context after teardown, so never remove a replacement process.
+    auto complete = [this, ctx, proc, logFile, flushOutput, startupDeadline]
+            (int exitCode, QProcess::ExitStatus status, const QString &startupError) {
+        if (proc->property("sessionCompleted").toBool())
             return;
+        proc->setProperty("sessionCompleted", true);
+        startupDeadline->stop();
         flushOutput(true);
-        if (proc->state() == QProcess::NotRunning) {
-            logFile->close();
-            logFile->deleteLater();
-            m_processes.remove(ctx.id);
-            m_pendingOutput.remove(ctx.id);
-            SessionInfo &s = m_info[ctx.id];
-            s.status = SessionStatus::Failed;
-            s.errorString = proc->errorString();
-            s.ready = false;
-            if (!s.stopRequested)
-                emit sessionFailed(ctx.id, proc->errorString());
-        }
-    });
-
-    m_processes[ctx.id] = proc;
-    proc->start();
-    if (!proc->waitForStarted(15000)) {
-        const QString error = proc->errorString();
         logFile->close();
-        logFile->deleteLater();
-        proc->deleteLater();
+        if (m_processes.value(ctx.id) != proc) {
+            proc->deleteLater();
+            return;
+        }
         m_processes.remove(ctx.id);
         m_pendingOutput.remove(ctx.id);
         SessionInfo &session = m_info[ctx.id];
-        session.status = SessionStatus::Failed;
-        session.errorString = error;
+        const bool cancelled = session.stopRequested;
+        const bool startupFailed = !startupError.isEmpty() && !cancelled;
+        session.status = cancelled || (!startupFailed && exitCode == 0 && status == QProcess::NormalExit)
+            ? SessionStatus::Stopped : SessionStatus::Failed;
         session.pid = 0;
         session.ready = false;
-        // Publish only after teardown so a failure handler can retry this context.
-        emit sessionFailed(ctx.id, error);
-        return false;
-    }
+        const QString runtimeError = cancelled ? QString() : proc->property("sessionRuntimeError").toString();
+        const QString failure = startupFailed ? startupError : runtimeError;
+        if (!failure.isEmpty())
+            session.errorString = failure;
+        proc->deleteLater();
+        if (startupFailed)
+            emit sessionFailed(ctx.id, startupError);
+        else {
+            if (!runtimeError.isEmpty())
+                emit sessionFailed(ctx.id, runtimeError);
+            // A failure handler may already have admitted a replacement. The
+            // old attempt must not publish a stop against that new session.
+            if (!m_processes.contains(ctx.id))
+                emit sessionStopped(ctx.id, exitCode, status);
+        }
+    };
 
-    m_info[ctx.id].status = SessionStatus::Running;
-    m_info[ctx.id].pid = proc->processId();
-    m_info[ctx.id].ready = false;
+    connect(proc, &QProcess::started, this, [this, ctx, proc, startupDeadline]() {
+        startupDeadline->stop();
+        if (m_processes.value(ctx.id) != proc)
+            return;
+        m_info[ctx.id].pid = proc->processId();
+        if (!proc->property("sessionStartupError").toString().isEmpty()) {
+            proc->kill();
+            return;
+        }
+        if (m_info.value(ctx.id).stopRequested) {
+            // terminate() during QProcess::Starting may not signal the child.
+            // Reapply cancellation once it has a process ID.
+            proc->setProperty("sessionStopSent", false);
+            stop(ctx.id);
+            return;
+        }
+        m_info[ctx.id].status = SessionStatus::Running;
+        emit sessionStarted(ctx.id);
+    });
+    connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this,
+            [proc, complete](int exitCode, QProcess::ExitStatus status) {
+        complete(exitCode, status, proc->property("sessionStartupError").toString());
+    });
+    connect(proc, &QProcess::errorOccurred, this, [proc, complete](QProcess::ProcessError error) {
+        if (error == QProcess::FailedToStart) {
+            complete(-1, QProcess::CrashExit, proc->errorString());
+        } else if (proc->state() == QProcess::NotRunning) {
+            // finished() owns teardown and publication so failure observers can
+            // safely retry without the old attempt removing their process.
+            proc->setProperty("sessionRuntimeError", proc->errorString());
+        }
+    });
+    connect(startupDeadline, &QTimer::timeout, this, [proc]() {
+        proc->setProperty("sessionStartupError", tr("Workflow process did not start within 15 seconds."));
+        proc->kill();
+    });
+
     m_processes[ctx.id] = proc;
-    emit sessionStarted(ctx.id);
+    // QProcess can emit startup signals inside start() on Windows.
+    QMetaObject::invokeMethod(proc, [this, id = ctx.id, proc, startupDeadline, complete]() {
+        if (m_info.value(id).stopRequested) {
+            complete(0, QProcess::NormalExit, {});
+            return;
+        }
+
+        startupDeadline->start();
+        proc->start();
+    }, Qt::QueuedConnection);
+
     return true;
 }
 
 void SessionManager::stop(const QString &contextId)
 {
     QPointer<QProcess> proc = m_processes.value(contextId);
-    if (!proc || proc->state() == QProcess::NotRunning || m_info.value(contextId).stopRequested)
+    if (!proc || proc->property("sessionStopSent").toBool())
         return;
-    // waitForFinished dispatches output/error/finished signals. A consumer can
-    // call stop again from those signals; only the first call owns teardown.
+
+    if (proc->state() == QProcess::NotRunning) {
+        // The queued start owns completion when cancelled before spawning.
+        if (m_info.value(contextId).status == SessionStatus::Starting)
+            m_info[contextId].stopRequested = true;
+        return;
+    }
+
     m_info[contextId].stopRequested = true;
+    proc->setProperty("sessionStopSent", true);
     const qint64 pid = proc->processId();
 #ifdef Q_OS_WIN
     proc->terminate();
-    if (!proc->waitForFinished(8000)) {
+    QTimer::singleShot(8000, proc, [proc, pid]() {
+        if (!proc || proc->state() == QProcess::NotRunning)
+            return;
         wchar_t systemDirectory[MAX_PATH];
         const UINT length = GetSystemDirectoryW(systemDirectory, MAX_PATH);
-        if (length > 0 && length < MAX_PATH) {
-            QProcess treeKiller;
-            treeKiller.setProgram(QDir::toNativeSeparators(
+        if (length > 0 && length < MAX_PATH && pid > 0) {
+            auto *treeKiller = new QProcess(proc);
+            treeKiller->setProgram(QDir::toNativeSeparators(
                 QString::fromWCharArray(systemDirectory, int(length)) + QStringLiteral("/taskkill.exe")));
-            treeKiller.setArguments({QStringLiteral("/PID"), QString::number(pid),
-                                    QStringLiteral("/T"), QStringLiteral("/F")});
-            treeKiller.start();
-            if (!treeKiller.waitForStarted(1000) || !treeKiller.waitForFinished(3000)) {
-                treeKiller.kill();
-                treeKiller.waitForFinished(1000);
-            }
+            treeKiller->setArguments({QStringLiteral("/PID"), QString::number(pid),
+                                     QStringLiteral("/T"), QStringLiteral("/F")});
+            connect(treeKiller, &QProcess::finished, treeKiller, &QObject::deleteLater);
+            treeKiller->start();
+            QTimer::singleShot(4000, treeKiller, [treeKiller]() { treeKiller->kill(); });
         }
-        // Reap the QProcess we own even if tree termination fails or its exit
-        // notification is still queued. taskkill's exit is not the child's exit.
-        if (proc && proc->state() != QProcess::NotRunning) {
-            proc->kill();
-            proc->waitForFinished(3000);
-        }
-    }
+        QTimer::singleShot(5000, proc, [proc]() {
+            if (proc && proc->state() != QProcess::NotRunning)
+                proc->kill();
+        });
+    });
 #else
     if (pid > 0) {
-        // Prefer process-group signal so bash child scripts can tear down docker.
+        // Give workflow scripts their existing 12-second graceful teardown,
+        // without holding the GUI event loop while they clean up containers.
         if (::kill(static_cast<pid_t>(-pid), SIGTERM) != 0)
             proc->terminate();
     } else {
         proc->terminate();
     }
-    if (!proc->waitForFinished(12000)) {
+    QTimer::singleShot(12000, proc, [proc, pid]() {
+        if (!proc || proc->state() == QProcess::NotRunning)
+            return;
+        if (pid > 0)
+            ::kill(static_cast<pid_t>(-pid), SIGKILL);
         proc->kill();
-        proc->waitForFinished(3000);
-    }
+    });
 #endif
 }
 
@@ -320,5 +393,6 @@ void SessionManager::sendInput(const QString &contextId, const QString &text)
     QByteArray payload = text.toUtf8();
     payload.append('\n');
     proc->write(payload);
-    proc->waitForBytesWritten(3000);
+    // QProcess drains its write buffer asynchronously; prompt submission must
+    // not wait for a child that has stopped reading stdin.
 }

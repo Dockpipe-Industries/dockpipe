@@ -1,0 +1,74 @@
+module Dockpipe.Product.ReportProjection.Tests;
+import Dockpipe.Product.Coverage;
+import Dockpipe.Product.Qualification;
+import Dockpipe.Product.ReportProjection;
+import PipeLang.Json;
+
+public model Class ReportProjectionSuite {
+    private JsonReader reader;
+    private JsonDocumentOutput output;
+
+    public ReportProjectionSuite(JsonReader reader, JsonDocumentOutput output) {
+        this.reader = reader;
+        this.output = output;
+    }
+
+    private Result<TargetCoverage,string> Measure(CancellationToken token) {
+        TargetCoverageAccumulator target = new TargetCoverageAccumulator("selected");
+        try target.Observe("component", "failed", true, token);
+        try target.Observe("human", "not_run", false, token);
+        return Result<TargetCoverage,string>.Success(target.Finish());
+    }
+
+    private Result<void,string> Write(JsonNode row, TargetCoverage coverage, OverallCoverage overall,
+                                      CancellationToken token) {
+        CaseProjection rows = new CaseProjection(reader, output);
+        CoverageProjection statistics = new CoverageProjection(output);
+
+        try output.BeginObject();
+        try output.Name("overall");
+        try statistics.Overall(overall, token);
+        try output.Name("target");
+        try output.BeginObject();
+        try output.Name("cases");
+        try output.BeginArray();
+        try rows.Observed(row, true, "t1/d1/output", token);
+        JsonNode? assertions = try reader.FindMember(row, "assertions");
+        RegistryCase expected = RegistryCase("feature.b", "happy", "human", false, true, false, assertions.Value);
+        try rows.Missing(expected, "No driver produced this required observation", "not_run", token);
+        try output.EndArray();
+        try statistics.TargetStatistics(coverage);
+        try output.EndObject();
+        return output.EndObject();
+    }
+
+    public Result<int,string> Run(CancellationToken token) {
+        JsonReadLimits limits = new JsonReadLimits {};
+        limits.inputBytes = 16384;
+        limits.retainedBytes = 262144;
+        int document = try reader.BeginDocument(limits);
+        try {
+            try reader.AppendDocument(document, ByteBuffer.FromUtf8(
+                "{\"id\":\"feature.a\",\"scenario\":\"failure\",\"layer\":\"component\",\"status\":\"failed\"," +
+                "\"assertions\":[],\"evidence\":[],\"critical\":false,\"evidence_root\":\"foreign\"," +
+                "\"extension\":{\"z\":[1,null,\"\\u20ac\"],\"a\":true}}"));
+            JsonNode row = try reader.CompleteDocument(document, token);
+            TargetCoverage target = try Measure(token);
+            List<TargetCoverage> targets = List<TargetCoverage>.Empty();
+            targets.Add(target);
+            List<string> profiles = List<string>.Empty();
+            profiles.Add("selected");
+            profiles.Add("missing.2");
+            profiles.Add("missing.1");
+
+            OverallCoveragePolicy policy = new OverallCoveragePolicy();
+            OverallCoverage overall = try policy.Summarize(profiles, targets, token);
+            try Write(row, target, overall, token);
+            return output.Finish();
+        } finally {
+            Result<void,string> closed = reader.CloseDocument(document);
+            if (!closed.IsSuccess)
+                throw Error(closed.Error);
+        }
+    }
+}

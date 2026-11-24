@@ -1,0 +1,6 @@
+module Dockpipe.Product;
+
+public Record FileObservation {
+    public bool exists;
+    public string content;
+}

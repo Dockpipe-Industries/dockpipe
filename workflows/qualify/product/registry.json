@@ -1,0 +1,3166 @@
+{
+  "schema": "dockpipe.product-integration.registry/v1",
+  "version": 1,
+  "policy": {
+    "local_only": true,
+    "minimum_coverage": 0.9,
+    "critical_coverage": 1.0,
+    "unavailable_counts_as_unpassed": true,
+    "component_is_not_installed_e2e": true
+  },
+  "platforms": [
+    {
+      "id": "linux-amd64-deb-ubuntu22.04",
+      "group": "native-desktop",
+      "selectors": [
+        "all-cli",
+        "desktop",
+        "desktop-provider",
+        "docker-capable",
+        "editor-host",
+        "linux-to-darwin",
+        "linux-viewer",
+        "linux-x11",
+        "native-desktop",
+        "vm-host"
+      ]
+    },
+    {
+      "id": "linux-amd64-deb-ubuntu24.04",
+      "group": "native-desktop",
+      "selectors": [
+        "all-cli",
+        "desktop",
+        "desktop-provider",
+        "docker-capable",
+        "editor-host",
+        "linux-to-darwin",
+        "linux-viewer",
+        "linux-x11",
+        "native-desktop",
+        "vm-host"
+      ]
+    },
+    {
+      "id": "linux-amd64-deb-debian12",
+      "group": "native-desktop",
+      "selectors": [
+        "all-cli",
+        "desktop",
+        "desktop-provider",
+        "docker-capable",
+        "editor-host",
+        "linux-to-darwin",
+        "linux-viewer",
+        "linux-x11",
+        "native-desktop",
+        "vm-host"
+      ]
+    },
+    {
+      "id": "linux-amd64-deb-debian13",
+      "group": "native-desktop",
+      "selectors": [
+        "all-cli",
+        "desktop",
+        "desktop-provider",
+        "docker-capable",
+        "editor-host",
+        "linux-to-darwin",
+        "linux-viewer",
+        "linux-x11",
+        "native-desktop",
+        "vm-host"
+      ]
+    },
+    {
+      "id": "linux-amd64-deb-pop22.04",
+      "group": "native-desktop",
+      "selectors": [
+        "all-cli",
+        "desktop",
+        "desktop-provider",
+        "docker-capable",
+        "editor-host",
+        "linux-to-darwin",
+        "linux-viewer",
+        "linux-x11",
+        "native-desktop",
+        "vm-host"
+      ]
+    },
+    {
+      "id": "linux-arm64-deb-ubuntu24.04",
+      "group": "native-desktop",
+      "selectors": [
+        "all-cli",
+        "desktop",
+        "desktop-provider",
+        "docker-capable",
+        "editor-host",
+        "linux-to-darwin",
+        "linux-viewer",
+        "linux-x11",
+        "native-desktop",
+        "vm-host"
+      ]
+    },
+    {
+      "id": "windows-amd64-msi",
+      "group": "native-desktop",
+      "selectors": [
+        "all-cli",
+        "desktop",
+        "desktop-provider",
+        "docker-capable",
+        "editor-host",
+        "native-desktop",
+        "vm-host"
+      ]
+    },
+    {
+      "id": "darwin-arm64-macos13+",
+      "group": "native-desktop",
+      "selectors": [
+        "all-cli",
+        "darwin-sender",
+        "desktop",
+        "desktop-provider",
+        "docker-capable",
+        "editor-host",
+        "native-desktop",
+        "vm-host"
+      ]
+    },
+    {
+      "id": "darwin-amd64-macos13+",
+      "group": "native-desktop",
+      "selectors": [
+        "all-cli",
+        "darwin-sender",
+        "desktop",
+        "desktop-provider",
+        "docker-capable",
+        "editor-host",
+        "native-desktop",
+        "vm-host"
+      ]
+    },
+    {
+      "id": "linux-amd64-flatpak-kde6.10",
+      "group": "contained",
+      "selectors": [
+        "all-cli",
+        "contained",
+        "desktop",
+        "desktop-provider",
+        "docker-capable",
+        "editor-host",
+        "linux-to-darwin",
+        "linux-viewer",
+        "linux-x11",
+        "vm-host"
+      ]
+    },
+    {
+      "id": "linux-amd64-flatpak-bazzite-kde6.10",
+      "group": "contained",
+      "selectors": [
+        "all-cli",
+        "contained",
+        "desktop",
+        "desktop-provider",
+        "docker-capable",
+        "editor-host",
+        "linux-to-darwin",
+        "linux-viewer",
+        "linux-x11",
+        "vm-host"
+      ]
+    },
+    {
+      "id": "linux-rpm",
+      "group": "cli-only",
+      "selectors": [
+        "all-cli",
+        "desktop-provider",
+        "docker-capable"
+      ]
+    },
+    {
+      "id": "linux-apk",
+      "group": "cli-only",
+      "selectors": [
+        "all-cli",
+        "desktop-provider",
+        "docker-capable"
+      ]
+    },
+    {
+      "id": "linux-arch",
+      "group": "cli-only",
+      "selectors": [
+        "all-cli",
+        "desktop-provider",
+        "docker-capable"
+      ]
+    },
+    {
+      "id": "linux-portable",
+      "group": "cli-only",
+      "selectors": [
+        "all-cli",
+        "desktop-provider",
+        "docker-capable"
+      ]
+    },
+    {
+      "id": "synology-x64-experimental",
+      "group": "cli-only",
+      "selectors": [
+        "all-cli",
+        "desktop-provider",
+        "docker-capable"
+      ]
+    },
+    {
+      "id": "synology-arm64-experimental",
+      "group": "cli-only",
+      "selectors": [
+        "all-cli",
+        "desktop-provider",
+        "docker-capable"
+      ]
+    },
+    {
+      "id": "fedora-workstation-44-amd64",
+      "group": "native-desktop",
+      "baseline": {
+        "os": "Fedora Workstation",
+        "release": "44",
+        "architecture": "amd64",
+        "environment": "vm",
+        "desktop": "GNOME"
+      },
+      "selectors": [
+        "all-cli",
+        "package-upgrade",
+        "desktop",
+        "native-desktop"
+      ]
+    },
+    {
+      "id": "linux-mint-22.2-amd64",
+      "group": "native-desktop",
+      "baseline": {
+        "os": "Linux Mint",
+        "release": "22.2 Zara",
+        "architecture": "amd64",
+        "environment": "vm",
+        "desktop": "Cinnamon"
+      },
+      "selectors": [
+        "all-cli",
+        "package-upgrade",
+        "desktop",
+        "native-desktop"
+      ]
+    },
+    {
+      "id": "arch-linux-2026.11.01-amd64",
+      "group": "native-desktop",
+      "baseline": {
+        "os": "Arch Linux",
+        "release": "2026.11.01",
+        "architecture": "amd64",
+        "environment": "vm",
+        "desktop": "KDE Plasma",
+        "display_backend": "wayland"
+      },
+      "selectors": [
+        "all-cli",
+        "package-upgrade",
+        "desktop",
+        "native-desktop"
+      ]
+    },
+    {
+      "id": "opensuse-leap-16.0-amd64",
+      "group": "native-desktop",
+      "baseline": {
+        "os": "openSUSE Leap",
+        "release": "16.0",
+        "architecture": "amd64",
+        "environment": "vm",
+        "desktop": "KDE Plasma"
+      },
+      "selectors": [
+        "all-cli",
+        "package-upgrade",
+        "desktop",
+        "native-desktop"
+      ]
+    },
+    {
+      "id": "opensuse-tumbleweed-20261117-amd64",
+      "group": "native-desktop",
+      "baseline": {
+        "os": "openSUSE Tumbleweed",
+        "release": "20261117",
+        "architecture": "amd64",
+        "environment": "vm",
+        "desktop": "KDE Plasma",
+        "display_backend": "wayland"
+      },
+      "selectors": [
+        "all-cli",
+        "package-upgrade",
+        "desktop",
+        "native-desktop"
+      ]
+    },
+    {
+      "id": "rhel-9.6-amd64",
+      "group": "cli-only",
+      "baseline": {
+        "os": "Red Hat Enterprise Linux",
+        "release": "9.6",
+        "architecture": "amd64",
+        "environment": "vm"
+      },
+      "selectors": [
+        "all-cli",
+        "package-upgrade"
+      ]
+    },
+    {
+      "id": "rhel-ubi-9.6-amd64",
+      "group": "cli-only",
+      "baseline": {
+        "os": "Red Hat Universal Base Image",
+        "release": "9.6",
+        "architecture": "amd64",
+        "environment": "container",
+        "image_digest": "sha256:f3b9841ea7615b38fd271cf18ae235d8228d3369036eb175ded171c936808255"
+      },
+      "selectors": [
+        "all-cli",
+        "package-upgrade"
+      ]
+    },
+    {
+      "id": "rocky-linux-9.6-amd64",
+      "group": "cli-only",
+      "baseline": {
+        "os": "Rocky Linux",
+        "release": "9.6",
+        "architecture": "amd64",
+        "environment": "container",
+        "image_digest": "sha256:91bbb8eb52ca462611c1f9ce5c4cede4172a31bfe64f336e82f29648694a3cfe"
+      },
+      "selectors": [
+        "all-cli",
+        "package-upgrade"
+      ]
+    },
+    {
+      "id": "amazon-linux-2023.11.20260526-amd64",
+      "group": "cli-only",
+      "baseline": {
+        "os": "Amazon Linux",
+        "release": "2023.11.20260526",
+        "architecture": "amd64",
+        "environment": "container",
+        "image_digest": "sha256:0179112c7edfde771da73dd5cd50ddd5a2f0e993bdac04c12c23d82c82ebae7b"
+      },
+      "selectors": [
+        "all-cli",
+        "package-upgrade"
+      ]
+    },
+    {
+      "id": "alpine-linux-3.24.4-amd64",
+      "group": "cli-only",
+      "baseline": {
+        "os": "Alpine Linux",
+        "release": "3.24.4",
+        "architecture": "amd64",
+        "environment": "container",
+        "image_digest": "sha256:3f4d6b32e26703c6082839234f43769d5046b3ac7c910033911d1e71d8cd630a"
+      },
+      "selectors": [
+        "all-cli",
+        "package-upgrade"
+      ]
+    },
+    {
+      "id": "kali-linux-2026.3-amd64",
+      "group": "native-desktop",
+      "baseline": {
+        "os": "Kali Linux",
+        "release": "2026.3",
+        "architecture": "amd64",
+        "environment": "vm",
+        "desktop": "Xfce",
+        "display_backend": "x11"
+      },
+      "selectors": [
+        "all-cli",
+        "package-upgrade",
+        "desktop",
+        "native-desktop"
+      ]
+    },
+    {
+      "id": "nixos-26.05-amd64",
+      "group": "native-desktop",
+      "baseline": {
+        "os": "NixOS",
+        "release": "26.05",
+        "build": "26.05.14630.f68407657ad2",
+        "nixpkgs_revision": "f68407657ad294471eb4b2e65d193df26edf729f",
+        "architecture": "amd64",
+        "environment": "vm",
+        "desktop": "GNOME",
+        "display_backend": "wayland"
+      },
+      "selectors": [
+        "all-cli",
+        "package-upgrade",
+        "desktop",
+        "native-desktop"
+      ]
+    },
+    {
+      "id": "gentoo-20261108t170107z-amd64",
+      "group": "native-desktop",
+      "baseline": {
+        "os": "Gentoo Linux",
+        "release": "20261108T170107Z",
+        "portage_revision": "21d6eb4c64df9a2377d746e8195f9b8b56ca1cce",
+        "kernel_release": "6.18.62-gentoo-dist-bin",
+        "architecture": "amd64",
+        "environment": "vm",
+        "desktop": "Xfce"
+      },
+      "selectors": [
+        "all-cli",
+        "package-upgrade",
+        "desktop",
+        "native-desktop"
+      ]
+    },
+    {
+      "id": "slackware-15.0-amd64",
+      "group": "native-desktop",
+      "baseline": {
+        "os": "Slackware64",
+        "release": "15.0",
+        "architecture": "amd64",
+        "environment": "vm",
+        "desktop": "Xfce",
+        "display_backend": "x11"
+      },
+      "selectors": [
+        "all-cli",
+        "package-upgrade",
+        "desktop",
+        "native-desktop"
+      ]
+    },
+    {
+      "id": "windows-11-25h2-arm64",
+      "group": "native-desktop",
+      "baseline": {
+        "os": "Windows 11 Pro",
+        "release": "25H2",
+        "architecture": "arm64",
+        "environment": "vm",
+        "desktop": "Windows desktop"
+      },
+      "selectors": [
+        "all-cli",
+        "package-upgrade",
+        "desktop",
+        "native-desktop"
+      ]
+    },
+    {
+      "id": "wsl2-ubuntu-24.04-amd64",
+      "group": "contained",
+      "baseline": {
+        "os": "Ubuntu on WSL 2",
+        "release": "24.04 LTS",
+        "architecture": "amd64",
+        "environment": "wsl2",
+        "desktop": "WSLg",
+        "host": "Windows 11 Pro 25H2 amd64"
+      },
+      "selectors": [
+        "all-cli",
+        "package-upgrade",
+        "desktop"
+      ]
+    },
+    {
+      "id": "windows-server-2025-amd64",
+      "group": "native-desktop",
+      "baseline": {
+        "os": "Windows Server Standard",
+        "release": "2025",
+        "architecture": "amd64",
+        "environment": "manual-vm",
+        "desktop": "Desktop Experience"
+      },
+      "selectors": [
+        "all-cli",
+        "package-upgrade",
+        "desktop",
+        "native-desktop"
+      ]
+    }
+  ],
+  "features": [
+    {
+      "id": "install.desktop",
+      "description": "installer ownership; CLI+GUI identity; startup; retained settings",
+      "critical": true,
+      "selector": "desktop",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "installed-cli-version",
+            "installed-gui-identity",
+            "normal-gui-started",
+            "settings-retained"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/install/desktop/config.yml",
+        "ctest": [
+          "launcher-version",
+          "launcher-environment",
+          "launcher-settings"
+        ]
+      }
+    },
+    {
+      "id": "install.cli",
+      "description": "self-contained CLI; PATH; clean user launch",
+      "critical": true,
+      "selector": "all-cli",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "installed-cli-version",
+            "initialized-project",
+            "host-workflow-executed"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/install/distribution/config.yml",
+        "ctest": [
+          "launcher-version"
+        ]
+      }
+    },
+    {
+      "id": "install.upgrade",
+      "description": "Upgrade the installed product in place and rerun the original project workflow",
+      "critical": true,
+      "selector": "package-upgrade",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "prior-version-installed",
+            "prior-workflow-executed",
+            "new-version-installed",
+            "project-state-retained",
+            "upgraded-workflow-executed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "update.dependencies",
+      "description": "dependency plan/approval/activation/recovery",
+      "critical": true,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "plan-binds-selected-revision",
+            "approved-revision-activated",
+            "prior-version-recoverable"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": [
+          "dependency-change-dialog"
+        ]
+      }
+    },
+    {
+      "id": "init.scopes",
+      "description": "project initialization; source/artifact/durable scopes",
+      "critical": true,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "selected-cwd-initialized",
+            "home-unchanged",
+            "empty-workflows-directory-created",
+            "idempotent-init"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": []
+      }
+    },
+    {
+      "id": "workflow.discovery",
+      "description": "list/inputs/schema/catalog",
+      "critical": true,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "authored-workflow-discovered",
+            "installed-workflow-discovered",
+            "declared-inputs-preserved"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/workflow-contracts/config.yml",
+        "ctest": [
+          "workflow-workspace",
+          "workflow-surface-navigation"
+        ]
+      }
+    },
+    {
+      "id": "workflow.host",
+      "description": "host command/script/env/output/cwd",
+      "critical": true,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "exit-status-propagated",
+            "fixture-output-exact",
+            "cwd-env-output-binding"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/integration/config.yml",
+        "ctest": [
+          "workflow-studio",
+          "execution-explorer"
+        ]
+      }
+    },
+    {
+      "id": "workflow.containers",
+      "description": "runtime/resolver separation; mounts/env/network/resources",
+      "critical": true,
+      "selector": "docker-capable",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "declared-image-ran",
+            "mount-env-output-binding",
+            "owned-container-cleanup",
+            "declared-policy-enforced"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/integration/config.yml",
+        "ctest": []
+      }
+    },
+    {
+      "id": "workflow.lifecycle",
+      "description": "async groups/detach/logs/observe/cancel",
+      "critical": true,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "detached-run-observed",
+            "logs-and-result-bound",
+            "owned-process-tree-closed"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/integration/config.yml",
+        "ctest": [
+          "execution-explorer"
+        ]
+      }
+    },
+    {
+      "id": "git.workspace",
+      "description": "status/diff/history/graph/selected paths/commit/recovery",
+      "critical": true,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "selected-path-commit",
+            "snapshot-refreshed",
+            "unrelated-work-preserved"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": [
+          "project-git",
+          "git-history-widget",
+          "git-commit-graph",
+          "git-diff-widget",
+          "git-commit-queue"
+        ]
+      }
+    },
+    {
+      "id": "git.sessions",
+      "description": "runtime workspace acquire/checkpoint/switch/sync",
+      "critical": true,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "runtime-workspace-acquired",
+            "checkpoint-bound",
+            "local-sync-roundtrip"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": []
+      }
+    },
+    {
+      "id": "files.workspace",
+      "description": "list/read/edit/write/rename/tabs/markdown/graph/tools",
+      "critical": true,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "create-read-write-rename-delete",
+            "revision-checks",
+            "workspace-contained"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": [
+          "project-files",
+          "project-files-tabs",
+          "file-tools",
+          "file-editor-workspace",
+          "project-files-graph"
+        ]
+      }
+    },
+    {
+      "id": "files.document-portal",
+      "description": "Contained GUI project selection through the real document portal and durable state retention",
+      "critical": true,
+      "selector": "contained",
+      "requires": [
+        "document_portal"
+      ],
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "project-selected-through-portal",
+            "canonical-os-storage-base",
+            "project-scoped-execution",
+            "home-unchanged"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "owned-state-link-refused",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "guided_ui",
+          "required_assertions": [
+            "chooser-cancelled",
+            "project-unchanged",
+            "no-new-authority-grant"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "original-project-identity-retained",
+            "portal-access-restored",
+            "no-implicit-vault"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/build/flatpak/product-integration.yml",
+        "ctest": []
+      }
+    },
+    {
+      "id": "packages.lifecycle",
+      "description": "catalog/install/list/manifest/update/uninstall/rollback",
+      "critical": true,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "fixture-installed",
+            "catalog-owned-surface",
+            "remove-preserves-other-package"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": [
+          "package-manager",
+          "package-command",
+          "workspace-package-manager"
+        ]
+      }
+    },
+    {
+      "id": "packages.authoring",
+      "description": "compile/build/test/clone/allow_clone/image artifacts",
+      "critical": true,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "resolver-and-workflow-compiled",
+            "packaged-child-ran",
+            "inputs-deterministic"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": []
+      }
+    },
+    {
+      "id": "sdk.pipelang",
+      "description": "pinned compiler model/schema/materialization",
+      "critical": false,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "pinned-sdk-consumed",
+            "typed-fixture-materialized",
+            "invalid-input-rejected"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": []
+      }
+    },
+    {
+      "id": "sdk.native-display",
+      "description": "installed SDK ABI/plugin intake/optional preclose",
+      "critical": false,
+      "selector": "native-desktop",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "external-consumer-admitted",
+            "native-surface-attached",
+            "exact-closure"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/qualify/native-desktop/config.yml",
+        "ctest": [
+          "package-native-display",
+          "native-display-session",
+          "native-worker-package-contract",
+          "native-worker-host"
+        ]
+      }
+    },
+    {
+      "id": "editor.extension",
+      "description": "syntax/schema/diagnostics/completion/build/install",
+      "critical": false,
+      "selector": "editor-host",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "extension-installed",
+            "workflow-completion-and-diagnostics",
+            "task-action-executed"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/editor.build/config.yml",
+        "ctest": []
+      }
+    },
+    {
+      "id": "gui.shell",
+      "description": "navigation/window controls/language/settings/diagnostics",
+      "critical": false,
+      "selector": "desktop",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "guided_ui",
+          "required_assertions": [
+            "navigation-reachable",
+            "settings-persisted",
+            "language-restart"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/desktop-native/config.yml",
+        "ctest": [
+          "window-controls",
+          "launcher-settings",
+          "launcher-diagnostics",
+          "language-restart"
+        ]
+      }
+    },
+    {
+      "id": "gui.dashboard",
+      "description": "canvas/pages/dock/layout/widgets/tour/previews/performance",
+      "critical": false,
+      "selector": "desktop",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "guided_ui",
+          "required_assertions": [
+            "independent-widget-contexts",
+            "canvas-tiling-layout",
+            "layout-restart"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/desktop-native/config.yml",
+        "ctest": [
+          "dashboard-store",
+          "dashboard-page",
+          "dashboard-dock",
+          "dashboard-widgets",
+          "dashboard-canvas-tools",
+          "dashboard-previews"
+        ]
+      }
+    },
+    {
+      "id": "gui.workflow-studio",
+      "description": "workflow editing/launch/canvas/catalog/input editor",
+      "critical": false,
+      "selector": "desktop",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "guided_ui",
+          "required_assertions": [
+            "selected-project-workflows-visible",
+            "edit-save-run",
+            "project-reopen"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/desktop-native/config.yml",
+        "ctest": [
+          "workflow-studio",
+          "workflow-script-path",
+          "dashboard-workflow-view",
+          "source-editor"
+        ]
+      }
+    },
+    {
+      "id": "terminal.local",
+      "description": "shell discovery/PTY/render/input/resize/retained sessions",
+      "critical": false,
+      "selector": "desktop",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "selected-shell-started",
+            "input-output-roundtrip",
+            "owned-shell-tree-closed"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/desktop-native/config.yml",
+        "ctest": [
+          "terminal-shell-catalog",
+          "terminal-session",
+          "terminal-widget",
+          "terminal-host-launch"
+        ]
+      }
+    },
+    {
+      "id": "browser.local",
+      "description": "navigation/tabs/drafts/downloads/extensions/DevTools/permissions",
+      "critical": false,
+      "selector": "desktop",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "local-page-loaded",
+            "tabs-and-downloads",
+            "profile-restart"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/desktop-native/config.yml",
+        "ctest": [
+          "browser",
+          "browser-extensions",
+          "browser-annotations",
+          "browser-link-router",
+          "browser-settings-dialog"
+        ]
+      }
+    },
+    {
+      "id": "native.apps",
+      "description": "application catalog/window embedding/capture/permissions",
+      "critical": false,
+      "selector": "native-desktop",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "guided_ui",
+          "required_assertions": [
+            "declared-application-launched",
+            "native-attachment-and-input",
+            "owned-application-closed"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/qualify/native-desktop/config.yml",
+        "ctest": [
+          "desktop-window-widget",
+          "desktop-app-window-win",
+          "desktop-permissions-widget",
+          "portal-window-capture"
+        ]
+      }
+    },
+    {
+      "id": "remote.enrollment",
+      "description": "broker setup/pair/approve/revoke/identity/service",
+      "critical": false,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "exact-pairing-identity",
+            "explicit-owner-grants",
+            "paired-node-visible"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": [
+          "remote-launcher"
+        ]
+      }
+    },
+    {
+      "id": "remote.security",
+      "description": "OS auth/key ceremony/lock/sleep/idle/policy",
+      "critical": true,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "native-authentication-required",
+            "scope-and-expiry-enforced",
+            "explicit-lock-revokes"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": [
+          "remote-security-widget",
+          "remote-access-monitor",
+          "hardware-key-dialog",
+          "hardware-key-transport"
+        ]
+      }
+    },
+    {
+      "id": "remote.workflow",
+      "description": "approve/execute/log/monitor/cancel/reconcile",
+      "critical": false,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "fixture-delivered-and-executed",
+            "exact-result-downloaded",
+            "owned-run-closed"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": [
+          "remote-workflow-monitor"
+        ]
+      }
+    },
+    {
+      "id": "remote.files",
+      "description": "independent read/write roots/atomic mutation/recovery",
+      "critical": false,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "generated-file-roundtrip",
+            "exact-revision-write",
+            "owned-fixture-cleanup"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": [
+          "project-files"
+        ]
+      }
+    },
+    {
+      "id": "remote.git",
+      "description": "independent Git grants/status/mutation/recovery",
+      "critical": false,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "remote-root-and-status",
+            "fixture-selected-commit",
+            "unrelated-work-preserved"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": [
+          "project-git"
+        ]
+      }
+    },
+    {
+      "id": "remote.terminal",
+      "description": "host/container streams/input ack/recover",
+      "critical": false,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "declared-root-shell",
+            "generated-input-output",
+            "exact-terminal-closed"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": [
+          "terminal-widget"
+        ]
+      }
+    },
+    {
+      "id": "remote.containers",
+      "description": "inventory/start/stop/exec/terminal/recover",
+      "critical": false,
+      "selector": "docker-capable",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "declared-container-observed",
+            "fixture-execution",
+            "owned-container-closed"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": []
+      }
+    },
+    {
+      "id": "remote.monitoring",
+      "description": "read-only system/Docker snapshots",
+      "critical": false,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "exact-worker-observed",
+            "system-and-process-data",
+            "no-cross-target-results"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": [
+          "remote-access-monitor"
+        ]
+      }
+    },
+    {
+      "id": "remote.network",
+      "description": "opaque relay/proxy/DNS/destinations/concurrency",
+      "critical": false,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "paired-network-relay",
+            "independent-contexts",
+            "trust-bound-to-peer"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": [
+          "browser-network-host"
+        ]
+      }
+    },
+    {
+      "id": "remote.browser",
+      "description": "independent machine/profile/trust/renderer route/helper embedding",
+      "critical": false,
+      "selector": "linux-x11",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "installed-browser-relayed",
+            "independent-profile-and-trust",
+            "exact-host-closed"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/desktop-native/config.yml",
+        "ctest": [
+          "browser-network-host",
+          "dashboard-browser-performance"
+        ]
+      }
+    },
+    {
+      "id": "remote.desktop.session",
+      "description": "provider/session/lease/signals/opaque relay/cleanup journal",
+      "critical": false,
+      "selector": "desktop-provider",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "independent-view-input-grants",
+            "exact-provider-identity",
+            "core-and-native-closure"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": [
+          "remote-desktop-widget"
+        ]
+      }
+    },
+    {
+      "id": "remote.desktop.viewer",
+      "description": "settings/fullscreen/tab retain/decoder/key mapping",
+      "critical": false,
+      "selector": "linux-viewer",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "decoded-nonuniform-frames",
+            "generated-physical-input",
+            "core-and-native-closure"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        },
+        {
+          "scenario": "happy",
+          "layer": "component",
+          "required_assertions": [
+            "decoded-nonuniform-frames",
+            "generated-physical-input",
+            "core-and-native-closure"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/desktop-native/config.yml",
+        "ctest": [
+          "remote-desktop-widget"
+        ]
+      }
+    },
+    {
+      "id": "remote.desktop.viewer.lease-expiry",
+      "description": "Normal installed viewer loses its renewal carrier; unassisted Core/native expiry and exact cleanup without remote input",
+      "critical": true,
+      "selector": "linux-viewer",
+      "cases": [
+        {
+          "scenario": "failure",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "fresh-full-nonce-in-normal-installed-viewer",
+            "original-capture-and-stop-deadlines",
+            "unassisted-core-native-expiry",
+            "normal-gui-exit-journal-cleared",
+            "exact-independent-cleanup"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/qualify/product/config.yml",
+        "driver": "drivers/remote_expiry.py",
+        "owner": "workflows/build/flatpak/assets/scripts/installed-remote-product.py"
+      }
+    },
+    {
+      "id": "remote.desktop.clipboard",
+      "description": "text/images/files/gestures/progress/quotas",
+      "critical": false,
+      "selector": "linux-to-darwin",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "generated-text-roundtrip",
+            "generated-image-roundtrip",
+            "generated-files-roundtrip",
+            "exact-closure"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "external:remote-desktop/workflows/test/config.yml",
+        "ctest": []
+      }
+    },
+    {
+      "id": "remote.desktop.sender",
+      "description": "capture/input/virtual display/keep awake/native worker",
+      "critical": false,
+      "selector": "darwin-sender",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "permitted-capture-source",
+            "bounded-encoding",
+            "generated-input",
+            "native-cleanup"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "external:remote-desktop/workflows/test/config.yml",
+        "ctest": [
+          "native-worker-host"
+        ]
+      }
+    },
+    {
+      "id": "contained.boundaries",
+      "description": "outgoing remote allowed; incoming capture/control prohibited",
+      "critical": true,
+      "selector": "contained",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "incoming-hosting-refused",
+            "outbound-features-available",
+            "host-boundaries-explicit"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": [
+          "flatpak-terminal",
+          "browser-network-host"
+        ]
+      }
+    },
+    {
+      "id": "vm.install-linux",
+      "description": "new OS disk/manual Linux installer/boot/embedding",
+      "critical": true,
+      "selector": "linux-x11",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "installer-started-from-gui",
+            "guest-os-installed",
+            "embedded-frame-and-input",
+            "disk-only-restart",
+            "owned-guest-stopped"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "external:vm/workflows/linux-vm/config.yml",
+        "ctest": []
+      }
+    },
+    {
+      "id": "vm.install-windows",
+      "description": "new Windows disk/installer/boot/embedding/guest tools",
+      "critical": true,
+      "selector": "vm-host",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "installer-started-from-gui",
+            "guest-os-installed",
+            "embedded-frame-and-input",
+            "disk-only-restart",
+            "owned-guest-stopped"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "external:vm/workflows/windows-vm/config.yml",
+        "ctest": []
+      }
+    },
+    {
+      "id": "vm.management",
+      "description": "package contributed tab/catalog/resources/start/stop/delete/display lifecycle",
+      "critical": false,
+      "selector": "vm-host",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "package-surface-discovered",
+            "start-stop-and-reconcile",
+            "guest-identity-preserved"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "external:vm/workflows/test/config.yml",
+        "ctest": [
+          "package-surface",
+          "package-native-display"
+        ]
+      }
+    },
+    {
+      "id": "vault.references",
+      "description": "secret references/env binding/redaction/authorization",
+      "critical": false,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "references-only",
+            "explicit-provider-injection",
+            "no-resolved-secret-artifacts"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "cancellation",
+          "layer": "component",
+          "required_assertions": [
+            "cancellation-observed",
+            "owned-work-stopped",
+            "no-implicit-replay"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": []
+      }
+    },
+    {
+      "id": "observability",
+      "description": "runs/resources/metrics/activity/logs/diagnostics/artifacts",
+      "critical": false,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "selected-environment-identified",
+            "system-and-run-state",
+            "bounded-refresh"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/ci/core/config.yml",
+        "ctest": [
+          "launcher-status-bar",
+          "execution-explorer"
+        ]
+      }
+    },
+    {
+      "id": "release.metadata",
+      "description": "artifact checksums/catalog/package intake/edition ownership",
+      "critical": false,
+      "selector": "all",
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "selected-artifact-identity",
+            "digest-and-platform-admission",
+            "no-publication"
+          ]
+        },
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "expected-failure-observed",
+            "no-unowned-effects",
+            "actionable-result"
+          ]
+        },
+        {
+          "scenario": "restart-recovery",
+          "layer": "component",
+          "required_assertions": [
+            "original-identity-retained",
+            "state-reconciled",
+            "no-duplicate-effects"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "workflows/release/metadata/config.yml",
+        "ctest": []
+      }
+    },
+    {
+      "id": "hardware.security-key",
+      "description": "Physical FIDO2 enrollment and user-presence ceremony",
+      "critical": false,
+      "selector": "all",
+      "requires": [
+        "fido2_physical"
+      ],
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "human",
+          "required_assertions": [
+            "physical-device-selected",
+            "user-presence-observed",
+            "wrong-device-and-cancel-rejected"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "",
+        "ctest": []
+      },
+      "vm_policy": "A VM with the actual required device passed through may qualify; emulated substitutes do not prove physical behavior."
+    },
+    {
+      "id": "hardware.suspend",
+      "description": "Physical host suspend/resume and keep-awake behavior; guest-only suspension is not host power qualification",
+      "critical": false,
+      "selector": "native-desktop",
+      "requires": [
+        "bare_metal",
+        "physical_suspend"
+      ],
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "human",
+          "required_assertions": [
+            "physical-suspend-observed",
+            "authority-revoked",
+            "native-cleanup"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "",
+        "ctest": []
+      }
+    },
+    {
+      "id": "hardware.gpu",
+      "description": "Actual hardware decoder backend and fallback on the selected GPU",
+      "critical": false,
+      "selector": "linux-viewer",
+      "requires": [
+        "gpu_decoder_physical"
+      ],
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "human",
+          "required_assertions": [
+            "actual-hardware-backend",
+            "fallback-observed",
+            "bounded-cleanup"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "",
+        "ctest": []
+      },
+      "vm_policy": "A VM with the actual required device passed through may qualify; emulated substitutes do not prove physical behavior."
+    },
+    {
+      "id": "hardware.display-hotplug",
+      "description": "Physical Darwin display hotplug while a bounded desktop session is active",
+      "critical": false,
+      "selector": "darwin-sender",
+      "requires": [
+        "physical_display_hotplug"
+      ],
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "human",
+          "required_assertions": [
+            "physical-display-transition",
+            "bounded-capture-renegotiation",
+            "exact-cleanup"
+          ]
+        }
+      ],
+      "references": {
+        "workflow": "",
+        "ctest": []
+      },
+      "vm_policy": "A VM with the actual required device passed through may qualify; emulated substitutes do not prove physical behavior."
+    }
+  ],
+  "unsupported": [
+    {
+      "feature": "remote.rdp",
+      "reason": "No independently implemented RDP provider is currently shipped."
+    },
+    {
+      "feature": "remote.desktop.viewer",
+      "platform_prefixes": [
+        "windows-",
+        "darwin-"
+      ],
+      "reason": "Current native package ships no viewer artifact for these platforms."
+    },
+    {
+      "feature": "remote.desktop.sender",
+      "platform_prefixes": [
+        "windows-",
+        "linux-"
+      ],
+      "reason": "Current native package ships no sender backend for these platforms."
+    }
+  ],
+  "regressions": [
+    {
+      "issue": 127,
+      "feature": "init.scopes",
+      "scenario": "happy",
+      "state": "confirmed-ready-for-release"
+    },
+    {
+      "issue": 109,
+      "feature": "install.cli",
+      "scenario": "happy"
+    },
+    {
+      "issue": 137,
+      "feature": "vault.references",
+      "scenario": "failure",
+      "behavior": "Fresh init omits an implicit vault; OS-selected storage-base aliases resolve while links inside Dockpipe-owned state remain refused."
+    },
+    {
+      "issue": 136,
+      "feature": "observability",
+      "scenario": "happy"
+    },
+    {
+      "id": "catalog-exact-archive-launch",
+      "feature": "workflow.discovery",
+      "scenario": "happy",
+      "behavior": "Execute the exact catalog tar locator and resolve relative script assets without workflow-name fallback."
+    },
+    {
+      "id": "routed-form-cleared-hidden-value",
+      "feature": "vm.install-linux",
+      "scenario": "happy",
+      "behavior": "Clear installer media, switch to disk boot, persist the cleared value and independently prove no installer media is attached."
+    },
+    {
+      "id": "passive-vm-poll-notification-flood",
+      "feature": "vm.management",
+      "scenario": "failure",
+      "behavior": "Passive resource snapshot refresh should not fill user notifications with background operation events.",
+      "state": "implemented-component-verified",
+      "verification": "Generic transient notification policy; owning session-notification/package-surface/start-failure/async tests pass. Live VM notification behavior remains separate."
+    },
+    {
+      "id": "source-workflow-compiled-policy-handoff",
+      "feature": "workflow.containers",
+      "scenario": "happy",
+      "behavior": "Named source workflow must execute its exact compiled policy/image/resolver/assets; independently inspect offline/read-only/user/capabilities/resources and exact cleanup. Explicit uncompiled declared policy must fail before spawning."
+    },
+    {
+      "id": "document-portal-project-retention",
+      "issue": 137,
+      "feature": "files.document-portal",
+      "scenario": "happy",
+      "behavior": "Exercise actual GUI portal selection and restart with no direct host project mount; synthetic filesystem checks alone do not qualify the portal."
+    }
+  ],
+  "remote_qualification": {
+    "schema": "dockpipe.product-integration.remote-qualification/v1",
+    "features": {
+      "browser.local": {
+        "roles": [
+          "local-browser"
+        ],
+        "additional_assertions": [
+          "interactive-test-app",
+          "in-app-navigation",
+          "session-reopened",
+          "address-draft-preserved-during-tab-switch",
+          "extension-load-enable-popup-disable-remove",
+          "devtools-open-inspect-close",
+          "site-permission-denied-and-remembered"
+        ]
+      },
+      "remote.enrollment": {
+        "roles": [
+          "operator",
+          "worker"
+        ],
+        "additional_assertions": [
+          "broker-setup-and-health",
+          "hardware-key-enrollment-and-revocation",
+          "foreground-worker-reconnect",
+          "worker-and-broker-identity-pinned"
+        ],
+        "service_roles": [
+          "broker",
+          "background-worker"
+        ],
+        "service_assertions": {
+          "background-worker": [
+            "native-supervisor-activation",
+            "worker-runs-after-launching-terminal-closes",
+            "single-worker-after-repeat-activation",
+            "supervisor-recovers-worker-exit",
+            "worker-starts-after-new-login",
+            "supervised-worker-reconnects-with-same-pairing"
+          ]
+        }
+      },
+      "remote.security": {
+        "roles": [
+          "operator",
+          "worker"
+        ],
+        "additional_assertions": [
+          "auth-denial-and-cancellation",
+          "idle-expiry-and-explicit-lock",
+          "screen-lock-suspend-and-wake",
+          "per-capability-grants"
+        ],
+        "service_roles": [
+          "broker"
+        ]
+      },
+      "remote.workflow": {
+        "roles": [
+          "operator",
+          "worker"
+        ],
+        "additional_assertions": [
+          "installed-gui-delivery",
+          "live-logs-and-cancellation",
+          "reconnect-and-reconcile-without-replay"
+        ]
+      },
+      "remote.files": {
+        "roles": [
+          "operator",
+          "worker"
+        ],
+        "additional_assertions": [
+          "independent-read-and-write-grants",
+          "stale-revision-rejection",
+          "reconnect-and-recovery"
+        ]
+      },
+      "remote.git": {
+        "roles": [
+          "operator",
+          "worker"
+        ],
+        "additional_assertions": [
+          "independent-git-grants",
+          "mutation-roundtrip",
+          "reattach-and-recovery"
+        ]
+      },
+      "remote.terminal": {
+        "roles": [
+          "operator",
+          "worker"
+        ],
+        "additional_assertions": [
+          "terminal-reconnect-and-recovery",
+          "host-and-supported-container-input"
+        ]
+      },
+      "remote.containers": {
+        "roles": [
+          "operator",
+          "worker"
+        ],
+        "additional_assertions": [
+          "lifecycle-and-exec-roundtrip",
+          "container-terminal",
+          "recovery-after-disconnect"
+        ]
+      },
+      "remote.monitoring": {
+        "roles": [
+          "operator",
+          "worker"
+        ],
+        "additional_assertions": [
+          "read-only-grant-enforced",
+          "system-process-and-supported-docker-inventory"
+        ]
+      },
+      "remote.network": {
+        "roles": [
+          "operator",
+          "worker"
+        ],
+        "additional_assertions": [
+          "worker-dns-and-localhost",
+          "separate-concurrent-relays",
+          "scope-and-no-local-fallback"
+        ]
+      },
+      "remote.browser": {
+        "roles": [
+          "browser-viewer",
+          "worker"
+        ],
+        "additional_assertions": [
+          "real-app-served-by-paired-worker",
+          "interactive-test-app",
+          "in-app-navigation",
+          "remote-session-reconnected",
+          "worker-route-and-profile-retained",
+          "denied-route-has-no-local-fallback"
+        ]
+      },
+      "remote.desktop.session": {
+        "roles": [
+          "desktop-viewer",
+          "desktop-sender"
+        ],
+        "additional_assertions": [
+          "independent-view-and-control-grants",
+          "disconnect-reconnect-and-revocation"
+        ]
+      },
+      "remote.desktop.viewer": {
+        "roles": [
+          "desktop-viewer",
+          "desktop-sender"
+        ],
+        "additional_assertions": [
+          "all-attached-monitor-identities",
+          "frame-from-every-attached-monitor",
+          "display-switching",
+          "fullscreen-enter-and-exit",
+          "mixed-dpi-alignment",
+          "keyboard-and-mouse-delivery"
+        ]
+      },
+      "remote.desktop.viewer.lease-expiry": {
+        "roles": [
+          "desktop-viewer",
+          "desktop-sender"
+        ],
+        "additional_assertions": []
+      },
+      "remote.desktop.clipboard": {
+        "roles": [
+          "desktop-viewer",
+          "desktop-sender"
+        ],
+        "additional_assertions": [
+          "text-viewer-to-sender",
+          "text-sender-to-viewer",
+          "image-viewer-to-sender",
+          "image-sender-to-viewer",
+          "file-viewer-to-sender",
+          "file-sender-to-viewer",
+          "clipboard-size-and-grant-boundaries"
+        ]
+      },
+      "remote.desktop.sender": {
+        "roles": [
+          "desktop-viewer",
+          "desktop-sender"
+        ],
+        "additional_assertions": [
+          "all-attached-monitor-identities",
+          "frame-from-every-attached-monitor",
+          "supported-virtual-display-presets",
+          "keyboard-and-mouse-delivery"
+        ]
+      },
+      "remote.rdp": {
+        "roles": [
+          "rdp-viewer",
+          "rdp-sender"
+        ],
+        "additional_assertions": []
+      }
+    }
+  }
+}

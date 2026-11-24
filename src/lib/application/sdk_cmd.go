@@ -16,7 +16,7 @@ const sdkUsageText = `dockpipe sdk — bootstrap SDK helpers for supported langu
 Usage:
   dockpipe sdk [--workdir <path>]
   dockpipe sdk shell-env [--workdir <path>]
-  dockpipe sdk path --language shell|powershell|python [--workdir <path>]
+  dockpipe sdk path --language shell|powershell|python|pipelang [--workdir <path>]
 
 By default, sdk emits shell code suitable for:
 
@@ -26,6 +26,8 @@ When --workdir is omitted, sdk prefers DOCKPIPE_WORKDIR from the
 environment and otherwise falls back to the current working directory.
 
 This bootstraps the shell SDK object from the library-owned portable helper.
+The pipelang path selects the complete typed source SDK bundle and prints its
+library.json descriptor for an explicitly provisioned SOURCE_LIBRARIES reference.
 `
 
 const getUsageText = `dockpipe get — print generic Dockpipe context fields
@@ -82,12 +84,12 @@ func cmdSDKPath(args []string) error {
 	var workdirArgs []string
 	for index := 0; index < len(args); index++ {
 		if args[index] == "--help" || args[index] == "-h" {
-			fmt.Println("dockpipe sdk path --language shell|powershell|python [--workdir <path>]")
+			fmt.Println("dockpipe sdk path --language shell|powershell|python|pipelang [--workdir <path>]")
 			return nil
 		}
 		if args[index] == "--language" {
 			if index+1 >= len(args) || language != "" {
-				return fmt.Errorf("sdk path requires one --language shell|powershell|python")
+				return fmt.Errorf("sdk path requires one --language shell|powershell|python|pipelang")
 			}
 			language = args[index+1]
 			index++
@@ -96,7 +98,7 @@ func cmdSDKPath(args []string) error {
 		workdirArgs = append(workdirArgs, args[index])
 	}
 	if language == "" {
-		return fmt.Errorf("sdk path requires --language shell|powershell|python")
+		return fmt.Errorf("sdk path requires --language shell|powershell|python|pipelang")
 	}
 	workdir, err := parseSDKWorkdirFlag(workdirArgs)
 	if err != nil {

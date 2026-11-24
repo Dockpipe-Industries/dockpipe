@@ -1,8 +1,14 @@
 #include "GitHistoryWidget.h"
 #include "GitCommitQueueModel.h"
 #include "SourceEditor.h"
+#include "GitDiffWidget.h"
+#include "Theme.h"
 
 #include <QApplication>
+#include <QAction>
+#include <QClipboard>
+#include <QDialog>
+#include <QMenu>
 #include <QComboBox>
 #include <QFile>
 #include <QJsonArray>
@@ -73,7 +79,13 @@ int fakeCli(const QString &requestPath)
         reply["history"] = QJsonObject{{"commits", commits}, {"offset", offset}, {"limit", 50}, {"has_more", offset == 0}};
     } else if (request.value("action").toString() == "commit-review") {
         reply["commit_review"] = QJsonObject{{"commit", QJsonObject{{"id", request.value("commit")}}},
-            {"body", "Fixture commit message <literal>"}, {"patch", "diff --git a/a.txt b/a.txt\n+fixture content\n"}};
+            {"body", "Fixture commit message <literal>"}, {"patch", "diff --git a/a.txt b/a.txt\n--- /dev/null\n+++ b/a.txt\n@@ -0,0 +1 @@\n+fixture content\n"}};
+        if (request.value("commit").toString() == commitId(2)) {
+            auto review = reply.value("commit_review").toObject();
+            review["patch"] = review.value("patch").toString()
+                + "diff --git a/src/second.py b/src/second.py\n--- /dev/null\n+++ b/src/second.py\n@@ -0,0 +1 @@\n+second_file = 2\n";
+            reply["commit_review"] = review;
+        }
         if (request.value("commit").toString() == commitId(3))
             reply["commit_review"] = QJsonObject{{"body", "Large commit"}, {"limited", true}, {"notice", "Fixture patch exceeds the 2 MiB preview limit."}};
     } else {
@@ -81,6 +93,44 @@ int fakeCli(const QString &requestPath)
     }
     const QByteArray output = QJsonDocument(reply).toJson(QJsonDocument::Compact);
     return std::fwrite(output.constData(), 1, output.size(), stdout) == size_t(output.size()) ? 0 : 6;
+}
+
+bool chooseCommitAction(GitHistoryWidget &widget, int row, const QString &name,
+    const std::function<void()> &beforeAction = {})
+{
+    auto *commits = widget.findChild<QListWidget *>("gitHistoryCommits");
+    commits->scrollToItem(commits->item(row));
+    const QPoint position = commits->visualItemRect(commits->item(row)).center();
+    bool found = false;
+    QTimer watchdog;
+    watchdog.setSingleShot(true);
+    QObject::connect(&watchdog, &QTimer::timeout, &widget, [] {
+        for (auto *surface : QApplication::topLevelWidgets()) {
+            if (auto *menu = qobject_cast<QMenu *>(surface))
+                menu->close();
+            if (auto *dialog = qobject_cast<QDialog *>(surface))
+                dialog->reject();
+        }
+    });
+    watchdog.start(3000);
+    QObject timerScope;
+    QTimer::singleShot(0, &timerScope, [&] {
+        auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
+        if (!menu)
+            return;
+        auto *action = menu->findChild<QAction *>(name);
+        if (!action || !action->isEnabled()) {
+            menu->close();
+            return;
+        }
+        found = true;
+        if (beforeAction)
+            beforeAction();
+        QTest::mouseClick(menu, Qt::LeftButton, Qt::NoModifier, menu->actionGeometry(action).center());
+    });
+    QMetaObject::invokeMethod(commits, "customContextMenuRequested", Qt::DirectConnection, Q_ARG(QPoint, position));
+    watchdog.stop();
+    return found;
 }
 
 void answerConfirmation(const std::function<void()> &beforeAnswer = {})
@@ -106,6 +156,9 @@ private slots:
     void cleanup();
     void searchModesPagingAndDetail();
     void queueOrderingAndRefresh();
+    void commitContextActionsTargetClickedRow();
+    void contextPreviewShowsAllFiles();
+    void changedSnapshotInvalidatesContextAction();
     void confirmedMutationUsesExactSnapshot();
     void changedSnapshotInvalidatesConfirmation();
     void failedReadPreservesQueue();
@@ -174,13 +227,15 @@ void GitHistoryWidgetTest::searchModesPagingAndDetail()
     QTRY_VERIFY(search->isEnabled());
     commits->setCurrentRow(1);
     QTRY_VERIFY(search->isEnabled());
-    const auto *detail = widget.findChild<QPlainTextEdit *>("gitHistoryDetail");
-    QVERIFY(detail->toPlainText().contains("Fixture commit message <literal>"));
-    QVERIFY(detail->toPlainText().contains("+fixture content"));
+    const auto *diff = widget.findChild<GitDiffWidget *>("gitHistoryDetail");
+    const auto *detail = diff->findChild<QPlainTextEdit *>("gitDiffAfterEditor");
+    QVERIFY(diff->findChild<QPlainTextEdit *>("gitDiffCommitMessage")->toPlainText().contains("Fixture commit message <literal>"));
+    QVERIFY(detail->toPlainText().contains("fixture content"));
+    QVERIFY(!detail->toPlainText().contains("+fixture content"));
     QCOMPARE(requests(m_log).last().value("commit").toString(), commitId(2));
     commits->setCurrentRow(2);
     QTRY_VERIFY(search->isEnabled());
-    QVERIFY(detail->toPlainText().contains("exceeds the 2 MiB preview limit"));
+    QVERIFY(diff->findChild<QLabel *>("gitDiffNotice")->text().contains("exceeds the 2 MiB preview limit"));
     QVERIFY(widget.findChild<QLabel *>("gitHistoryStatus")->text().contains("exceeds the 2 MiB preview limit"));
     query->setText("new query");
     QVERIFY(!next->isEnabled());
@@ -190,6 +245,94 @@ void GitHistoryWidgetTest::searchModesPagingAndDetail()
     QTRY_VERIFY(search->isEnabled());
     QCOMPARE(requests(m_log).last().value("match").toString(), "keyword");
     QCOMPARE(requests(m_log).last().value("ref").toString(), QString());
+}
+
+void GitHistoryWidgetTest::commitContextActionsTargetClickedRow()
+{
+    GitHistoryWidget widget;
+    widget.resize(1180, 760);
+    widget.show();
+    widget.setSnapshot(m_root.path(), snapshot());
+    auto *search = widget.findChild<QPushButton *>("gitHistorySearch");
+    search->click();
+    QTRY_VERIFY(search->isEnabled());
+    QVERIFY(widget.queueModel()->addCommit(commitId(1), "Existing queue entry"));
+    QSignalSpy actions(&widget, &GitHistoryWidget::actionRequested);
+    QVERIFY(chooseCommitAction(widget, 1, "gitCommitCopyAction"));
+    QCOMPARE(QApplication::clipboard()->text(), commitId(2));
+    QTRY_VERIFY(search->isEnabled());
+    QVERIFY(chooseCommitAction(widget, 1, "gitCommitCherryPickAction", [] { answerConfirmation(); }));
+    QCOMPARE(actions.count(), 1);
+    const auto pick = actions.first().first().toJsonObject();
+    QCOMPARE(pick.value("commits").toArray(), QJsonArray({commitId(2)}));
+    QCOMPARE(pick.value("snapshot").toString(), "reviewed-snapshot");
+    QVERIFY(!widget.property("gitPickingQueuedCommits").toBool());
+    QCOMPARE(widget.queueModel()->commitIds(), QStringList({commitId(1)}));
+    QTRY_VERIFY(search->isEnabled());
+    QVERIFY(chooseCommitAction(widget, 1, "gitCommitQueueAction"));
+    QCOMPARE(widget.queueModel()->commitIds(), QStringList({commitId(1), commitId(2)}));
+    QTRY_VERIFY(search->isEnabled());
+    QVERIFY(chooseCommitAction(widget, 2, "gitCommitRevertAction", [] { answerConfirmation(); }));
+    QCOMPARE(actions.count(), 2);
+    QCOMPARE(actions.last().first().toJsonObject().value("commit").toString(), commitId(3));
+}
+
+void GitHistoryWidgetTest::contextPreviewShowsAllFiles()
+{
+    GitHistoryWidget widget;
+    widget.resize(1180, 760);
+    widget.show();
+    widget.setSnapshot(m_root.path(), snapshot());
+    auto *search = widget.findChild<QPushButton *>("gitHistorySearch");
+    search->click();
+    QTRY_VERIFY(search->isEnabled());
+    QSignalSpy actions(&widget, &GitHistoryWidget::actionRequested);
+    bool selectedSecondFile = false;
+    QTimer driver;
+    driver.setInterval(10);
+    connect(&driver, &QTimer::timeout, &widget, [&] {
+        auto *dialog = widget.findChild<QDialog *>("gitCommitPreview");
+        if (!dialog || !dialog->isVisible())
+            return;
+        auto *files = dialog->findChild<QListWidget *>("gitCommitPreviewFiles");
+        if (files->count() != 2)
+            return;
+        driver.stop();
+        files->setCurrentRow(1);
+        auto *after = dialog->findChild<QPlainTextEdit *>("gitDiffAfterEditor");
+        selectedSecondFile = after->toPlainText().contains("second_file = 2")
+            && files->item(1)->data(Qt::UserRole).toString() == "src/second.py";
+        const QString screenshot = qEnvironmentVariable("DOCKPIPE_COMMIT_PREVIEW_SCREENSHOT");
+        if (!screenshot.isEmpty()) {
+            dialog->resize(1180, 760);
+            QApplication::processEvents();
+            dialog->grab().save(screenshot);
+        }
+        dialog->accept();
+    });
+    driver.start();
+    QVERIFY(chooseCommitAction(widget, 1, "gitCommitPreviewAction"));
+    driver.stop();
+    QVERIFY(selectedSecondFile);
+    QCOMPARE(actions.count(), 0);
+    QTRY_VERIFY(search->isEnabled());
+}
+
+void GitHistoryWidgetTest::changedSnapshotInvalidatesContextAction()
+{
+    GitHistoryWidget widget;
+    widget.resize(1180, 760);
+    widget.show();
+    widget.setSnapshot(m_root.path(), snapshot());
+    auto *search = widget.findChild<QPushButton *>("gitHistorySearch");
+    search->click();
+    QTRY_VERIFY(search->isEnabled());
+    QSignalSpy actions(&widget, &GitHistoryWidget::actionRequested);
+    QVERIFY(chooseCommitAction(widget, 0, "gitCommitCherryPickAction", [&] {
+        widget.setSnapshot(m_root.path(), snapshot("new-snapshot"));
+    }));
+    QCOMPARE(actions.count(), 0);
+    QVERIFY(widget.findChild<QLabel *>("gitHistoryStatus")->text().contains("repository changed"));
 }
 
 void GitHistoryWidgetTest::queueOrderingAndRefresh()
@@ -320,7 +463,14 @@ int main(int argc, char **argv)
         QCoreApplication app(argc, argv);
         return fakeCli(QString::fromLocal8Bit(argv[3]));
     }
+    QTemporaryDir configuration;
+    qputenv("XDG_CONFIG_HOME", configuration.path().toUtf8());
     QApplication app(argc, argv);
+    app.setOrganizationName("DockpipeGitHistoryTests");
+    app.setApplicationName("GitHistoryWidgetTest");
+    applyDockpipeLauncherTheme(app);
+    previewDockpipeLauncherTheme(app, qEnvironmentVariable("DOCKPIPE_TEST_THEME") == "light"
+        ? LauncherThemeMode::Light : LauncherThemeMode::Dark);
     GitHistoryWidgetTest tests;
     return QTest::qExec(&tests, argc, argv);
 }

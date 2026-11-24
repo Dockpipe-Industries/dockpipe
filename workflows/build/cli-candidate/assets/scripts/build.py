@@ -17,7 +17,7 @@ import zipfile
 
 
 TARGETS = ("darwin/amd64", "darwin/arm64", "linux/amd64", "linux/arm64", "windows/amd64")
-GO_VERSION = "go1.26.10"
+GO_VERSION = "go1.26.11"
 PUBLICATION_SPEC = importlib.util.spec_from_file_location(
     'cli_publication_contract', Path(__file__).resolve().parents[5] / 'workflows/publish/shared/github_release.py')
 PUBLICATION = importlib.util.module_from_spec(PUBLICATION_SPEC)
@@ -258,7 +258,7 @@ def build(source, source_sha, work, output, go, version_allocation=None, reposit
     output.mkdir(parents=True)
     environment = public_environment(work)
     if command([go, "env", "GOVERSION"], source, environment).strip() != GO_VERSION:
-        raise ValueError("CLI candidates require the pinned Go 1.26.10 toolchain")
+        raise ValueError("CLI candidates require the pinned Go 1.26.11 toolchain")
     module = json.loads(command([go, "mod", "edit", "-json"], source, environment))
     if module.get("Replace"):
         raise ValueError("CLI candidates cannot use Go module replacements")

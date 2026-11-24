@@ -1,0 +1,10 @@
+module Dockpipe.SDK.FaultProof;
+
+// Canonical bounded OS facts. Native records them; source decides equality.
+public Record CallerObservation {
+    public string state;
+    public bool missingMarkerRemovalSucceeded;
+    public bool markerRemoved;
+    public bool markerRestored;
+    public int markerEvents;
+}

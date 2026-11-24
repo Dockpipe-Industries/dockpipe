@@ -1,0 +1,86 @@
+module Dockpipe.Product.QualificationOutput;
+import Dockpipe.Product.QualificationFiles;
+import PipeLang.IO;
+import PipeLang.Json;
+
+// Preserve the admitted bytes of one plan or registry document. The caller
+// retains the reader document and selects an exclusive destination.
+public Class QualificationJsonOutput {
+    private JsonReader reader;
+    private ExclusiveFileOutput output;
+
+    public QualificationJsonOutput(JsonReader reader, ExclusiveFileOutput output) {
+        this.reader = reader;
+        this.output = output;
+    }
+
+    private Result<FileDigest,IoFailure> Copy(int handle, CapturedQualificationJson captured,
+                                             CancellationToken token) {
+        int offset = 0;
+        int length = captured.sourceFile.byteCount;
+        while (offset < length) {
+            if (token.IsCancellationRequested)
+                return Result<FileDigest,IoFailure>.Cancelled(
+                    IoFailure("qualification.input_copy.cancelled", OutputEffect.Unknown));
+
+            int count = length - offset;
+            if (count > 65536)
+                count = 65536;
+
+            Result<ByteBuffer,string> bytes = reader.InputSlice(captured.root.document, offset, count);
+            if (!bytes.IsSuccess)
+                return Result<FileDigest,IoFailure>.Failure(
+                    IoFailure("qualification.input_copy.read." + bytes.Error, OutputEffect.Unknown));
+            if (bytes.Value.Length != count)
+                return Result<FileDigest,IoFailure>.Failure(
+                    IoFailure("qualification.input_copy.fragment_size", OutputEffect.Unknown));
+
+            try output.AppendOutput(handle, bytes.Value, token);
+            offset = offset + count;
+        }
+
+        FileDigest committed = try output.CommitOutput(handle, token);
+        if (committed.byteCount != length || committed.sha256 != captured.sourceFile.sha256)
+            return Result<FileDigest,IoFailure>.Failure(
+                IoFailure("qualification.input_copy.digest_mismatch", OutputEffect.Committed));
+
+        return Result<FileDigest,IoFailure>.Success(committed);
+    }
+
+    public Result<FileDigest,IoFailure> Store(CapturedQualificationJson captured, string relative,
+                                              CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<FileDigest,IoFailure>.Cancelled(
+                IoFailure("qualification.input_copy.cancelled", OutputEffect.NoDurableOutput));
+
+        Result<int,string> length = reader.InputLength(captured.root.document);
+        if (!length.IsSuccess)
+            return Result<FileDigest,IoFailure>.Failure(
+                IoFailure("qualification.input_copy.read." + length.Error, OutputEffect.NoDurableOutput));
+        if (length.Value != captured.sourceFile.byteCount)
+            return Result<FileDigest,IoFailure>.Failure(
+                IoFailure("qualification.input_copy.input_size", OutputEffect.NoDurableOutput));
+
+        int handle = try output.BeginExclusiveOutput(relative, length.Value, token);
+        Result<FileDigest,IoFailure> copied = Result<FileDigest,IoFailure>.Failure(
+            IoFailure("qualification.input_copy.incomplete", OutputEffect.Unknown));
+        try {
+            copied = Copy(handle, captured, token);
+        } finally {
+            Result<OutputEffect,IoFailure> closed = output.CloseOutput(handle);
+            if (!closed.IsSuccess) {
+                if (copied.IsSuccess) {
+                    copied = Result<FileDigest,IoFailure>.Failure(closed.Error);
+                } else {
+                    IoFailure failure = IoFailure(copied.Error.code + "+" + closed.Error.code, closed.Error.effect);
+                    if (copied.IsCancelled)
+                        copied = Result<FileDigest,IoFailure>.Cancelled(failure);
+                    else
+                        copied = Result<FileDigest,IoFailure>.Failure(failure);
+                }
+            }
+        }
+
+        return copied;
+    }
+}

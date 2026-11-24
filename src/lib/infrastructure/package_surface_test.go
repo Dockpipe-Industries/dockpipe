@@ -234,3 +234,49 @@ func TestPackageSurfaceLaunchEnvironmentReferences(t *testing.T) {
 		}
 	}
 }
+
+func TestPackageFileActionsAndSchema(t *testing.T) {
+	schema, err := jsonschema.Compile("schema/package-surface.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutations := map[string]struct {
+		change func(map[string]any, map[string]any)
+		valid  bool
+	}{
+		"file only": {func(_ map[string]any, _ map[string]any) {}, true},
+		"mixed page": {func(d map[string]any, a map[string]any) {
+			d["snapshot"] = "snapshot.yml"
+			d["actions"] = append(d["actions"].([]any), map[string]any{"id": "page", "title": "Page", "scope": "surface", "workflow": "action.yml"})
+		}, true},
+		"page without snapshot": {func(_ map[string]any, a map[string]any) { a["scope"] = "surface"; delete(a, "file_extensions") }, false},
+		"empty snapshot":        {func(d map[string]any, _ map[string]any) { d["snapshot"] = "" }, false},
+		"public reference":      {func(_ map[string]any, a map[string]any) { delete(a, "workflow"); a["workflow_id"] = "public" }, false},
+		"missing extensions":    {func(_ map[string]any, a map[string]any) { delete(a, "file_extensions") }, false},
+		"uppercase":             {func(_ map[string]any, a map[string]any) { a["file_extensions"] = []any{"JSON"} }, false},
+		"dot":                   {func(_ map[string]any, a map[string]any) { a["file_extensions"] = []any{".json"} }, false},
+		"duplicate":             {func(_ map[string]any, a map[string]any) { a["file_extensions"] = []any{"json", "json"} }, false},
+		"escaped workflow":      {func(_ map[string]any, a map[string]any) { a["workflow"] = "../outside.yml" }, false},
+		"no actions":            {func(d map[string]any, _ map[string]any) { d["actions"] = []any{} }, false},
+	}
+	for name, test := range mutations {
+		t.Run(name, func(t *testing.T) {
+			root, descriptor := surfaceFixture(t)
+			delete(descriptor, "snapshot")
+			action := map[string]any{"id": "inspect", "title": "Inspect file", "scope": "file", "file_extensions": []any{"json"}, "workflow": "action.yml"}
+			descriptor["actions"] = []any{action}
+			test.change(descriptor, action)
+			writeSurface(t, root, descriptor)
+			surface, loadErr := LoadPackageSurface(root, "surface.json")
+			if (loadErr == nil) != test.valid {
+				t.Fatalf("valid=%v loader error=%v", test.valid, loadErr)
+			}
+			if test.valid && (surface.Actions[0].Workflow != filepath.Join(root, "action.yml") || surface.Actions[0].FileExtensions[0] != "json") {
+				t.Fatalf("incorrect file contribution projection: %+v", surface)
+			}
+			if schemaErr := schema.Validate(descriptor); (schemaErr == nil) != test.valid {
+				t.Fatalf("valid=%v schema error=%v", test.valid, schemaErr)
+			}
+		})
+	}
+}

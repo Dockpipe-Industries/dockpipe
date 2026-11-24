@@ -1,0 +1,66 @@
+module Dockpipe.Product.QualificationEventOutput.Tests;
+import Dockpipe.Product.Coverage;
+import Dockpipe.Product.QualificationEventOutput;
+import PipeLang.IO;
+
+public model Class EventOutputSuite {
+    private QualificationEventPort events;
+
+    public EventOutputSuite(QualificationEventPort events) {
+        this.events = events;
+    }
+
+    public Result<void,IoFailure> Run(bool resume, CancellationToken token) {
+        QualificationEvent start = new QualificationEvent {};
+        start.kind = QualificationEventKind.Started;
+        start.runId = "proof";
+        try events.Publish(start, token);
+
+        QualificationEvent driver = new QualificationEvent {};
+        driver.target = "target";
+        driver.driver = "lane";
+        if (resume) {
+            driver.kind = QualificationEventKind.DriverReceiptRevalidated;
+            try events.Publish(driver, token);
+            driver.kind = QualificationEventKind.DriverFinished;
+            driver.exitCode = 0;
+            return events.Publish(driver, token);
+        }
+
+        QualificationEvent missing = new QualificationEvent {};
+        missing.kind = QualificationEventKind.RequiredCheckNotRun;
+        missing.target = "target";
+        missing.feature = "feature";
+        missing.scenario = "happy";
+        missing.reason = "missing\ncapability";
+        try events.Publish(missing, token);
+
+        driver.kind = QualificationEventKind.DriverStarted;
+        try events.Publish(driver, token);
+        driver.kind = QualificationEventKind.DriverResultRejected;
+        driver.reason = "retained result was incomplete";
+        try events.Publish(driver, token);
+        driver.kind = QualificationEventKind.DriverFinished;
+        try events.Publish(driver, token);
+
+        QualificationEvent interruption = new QualificationEvent {};
+        interruption.kind = QualificationEventKind.Interrupted;
+        interruption.reason = "owned process stopped";
+        try events.Publish(interruption, token);
+
+        QualificationEvent missingPlatform = new QualificationEvent {};
+        missingPlatform.kind = QualificationEventKind.PlatformProfileNotRun;
+        missingPlatform.reason = "other-profile";
+        try events.Publish(missingPlatform, token);
+
+        QualificationEvent finished = new QualificationEvent {};
+        finished.kind = QualificationEventKind.Finished;
+        OverallCoverage overall = new OverallCoverage {};
+        overall.passed = 1;
+        overall.required = 4;
+        overall.selectedCaseCoverage = 0.25;
+        overall.unconfiguredPlatformProfiles.Add("other-profile");
+        finished.overall = overall;
+        return events.Publish(finished, token);
+    }
+}

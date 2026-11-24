@@ -85,7 +85,7 @@ func workspaceGitCommand(ctx context.Context, root string, args ...string) ([]by
 	command.WaitDelay = time.Second
 	var stdout, stderr workspaceGitBuffer
 	command.Stdout, command.Stderr = &stdout, &stderr
-	if err := process.Run(command); err != nil {
+	if err := process.RunWithScope(ctx, command); err != nil {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
@@ -99,9 +99,9 @@ func workspaceGitMissingRef(err error) bool {
 	return errors.As(err, &exitError) && exitError.ExitCode() == 1
 }
 
-// RunWorkspaceGit owns the Git lifecycle for project-level human actions. No
-// force pushes, implicit commits, automatic stashes, rebases, or merges occur.
-func RunWorkspaceGit(ctx context.Context, request WorkspaceGitRequest) (*WorkspaceGitSnapshot, error) {
+// executeWorkspaceGit owns repository checks and effects after native admission.
+// No force pushes, implicit commits, automatic stashes, rebases, or merges occur.
+func executeWorkspaceGit(ctx context.Context, request WorkspaceGitRequest) (*WorkspaceGitSnapshot, error) {
 	if strings.TrimSpace(request.Workdir) == "" {
 		return nil, errors.New("select a project directory first")
 	}

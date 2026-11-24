@@ -40,13 +40,27 @@ func Endpoint(value string) error {
 }
 
 type Submission struct {
-	ID         string `json:"id"`
-	Node       string `json:"node"`
-	Profile    string `json:"profile,omitempty"`
-	BundleHash string `json:"bundle_hash,omitempty"`
+	// Target and Root pin desktop feature selections without granting delivery.
+	// Legacy node-only callers retain the separately authorized delivery contract.
+	Target     FeatureTarget `json:"target,omitzero"`
+	Root       string        `json:"root,omitempty"`
+	ID         string        `json:"id"`
+	Node       string        `json:"node"`
+	Profile    string        `json:"profile,omitempty"`
+	BundleHash string        `json:"bundle_hash,omitempty"`
 }
 
 func (s Submission) Validate() error {
+	if s.Target != (FeatureTarget{}) {
+		if err := s.Target.Validate(); err != nil || s.Target.Node != s.Node || s.BundleHash == "" {
+			return errors.New("captured workflow target requires the exact machine and a delivery bundle")
+		}
+		if s.Root != "" && !ValidID(s.Root) {
+			return errors.New("captured workflow root must be a bounded grant identifier")
+		}
+	} else if s.Root != "" {
+		return errors.New("captured workflow root requires a machine target")
+	}
 	if !ValidID(s.ID) || !ValidID(s.Node) {
 		return errors.New("job and node must be bounded identifiers")
 	}
@@ -80,6 +94,8 @@ type Invitation struct {
 }
 
 type WorkerConfig struct {
+	GuestGrant        string              `json:"guest_grant,omitempty"`
+	Features          bool                `json:"features,omitempty"`
 	MachineKey        string              `json:"machine_key,omitempty"`
 	MachinePrivateKey []byte              `json:"machine_private_key,omitempty"`
 	BrokerKey         string              `json:"broker_key,omitempty"`

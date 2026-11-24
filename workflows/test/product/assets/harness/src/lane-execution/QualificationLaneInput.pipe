@@ -1,0 +1,14 @@
+module Dockpipe.Product.LaneExecution;
+import Dockpipe.Product.LaneRequest;
+import Dockpipe.Product.Qualification;
+import PipeLang.Json;
+
+public Record QualificationLaneInput {
+    public QualificationRunIdentity identity;
+    public JsonNode target;
+    public JsonNode driver;
+    public List<RegistryCase> cases = List<RegistryCase>.Empty();
+    public int ordinal = 0;
+    public string targetId = "";
+    public string driverId = "";
+}

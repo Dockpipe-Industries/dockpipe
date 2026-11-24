@@ -1,0 +1,46 @@
+module Dockpipe.Product.RunIdentity.Tests;
+import Dockpipe.Product.QualificationFiles;
+import Dockpipe.Product.RunIdentity;
+import PipeLang.IO;
+import PipeLang.Json;
+
+public model Class RunInputWriterSuite {
+    private QualificationJsonFile plan;
+    private QualificationJsonFile registry;
+    private QualificationRunInputs runInputs;
+    private RunnerCapture runner;
+
+    public RunInputWriterSuite(JsonReader reader, FileStreams input, FileStreams retained,
+                                ExclusiveFileOutput writer, RunnerCapture runner,
+                                JsonDocumentOutput runnerOutput, PrivateJsonStage runnerStage) {
+        plan = new QualificationJsonFile(reader, input);
+        registry = new QualificationJsonFile(reader, input);
+        this.runner = runner;
+        RunnerIdentityProjection projection = new RunnerIdentityProjection(runnerOutput, runnerStage);
+        runInputs = new QualificationRunInputs(reader, writer, retained, projection);
+    }
+
+    public Result<QualificationRunnerIdentity,string> Run(CancellationToken token) {
+        JsonReadLimits limits = new JsonReadLimits {};
+        limits.detectUnicodeEncoding = true;
+
+        try {
+            CapturedQualificationJson selectedPlan = try plan.Open("plan.json", limits, token);
+            CapturedQualificationJson selectedRegistry = try registry.Open("registry.json", limits, token);
+            QualificationRunnerIdentity identity = try runner.Capture(token);
+            try runInputs.BindNew(selectedPlan, selectedRegistry, identity, token);
+
+            return Result<QualificationRunnerIdentity,string>.Success(identity);
+        } finally {
+            Result<void,string> closedPlan = plan.Close();
+            Result<void,string> closedRegistry = registry.Close();
+            Result<void,string> closedRunner = runInputs.Close();
+            if (!closedPlan.IsSuccess)
+                throw Error(closedPlan.Error);
+            if (!closedRegistry.IsSuccess)
+                throw Error(closedRegistry.Error);
+            if (!closedRunner.IsSuccess)
+                throw Error(closedRunner.Error);
+        }
+    }
+}

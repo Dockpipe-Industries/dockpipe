@@ -46,6 +46,36 @@ with `flatpak run --command=dockpipe com.dockpipe.Dockpipe`.
 The detailed sections include optional package-author and self-hosted publishing
 commands. They are not steps required to install or use Dockpipe.
 
+## Workflow control build
+
+`dockpipe workflow build-control <config.yml> --sdk <absolute-sdk-prefix>
+--sdk-sha256 <verified-sdk-manifest-sha256>` explicitly compiles a workflow's
+embedded `control.source` through the installed PipeLang SDK and CMake.
+
+| Option | Meaning |
+| --- | --- |
+| `--sdk` | Absolute installed SDK prefix; required. |
+| `--sdk-sha256` | Exact selected SDK manifest SHA256; required. |
+| `--workdir <path>` | Project workdir owning the controller artifact cache. |
+| `--cmake <absolute-path>` | Explicit CMake executable. |
+| `--cxx <absolute-path>` | Explicit C++ compiler executable. |
+| `--cxx-profile system\|<SDK-profile>` | System compiler mode or a selected installed SDK compiler profile. |
+| `--sanitizers` | Build the native controller with sanitizer instrumentation. |
+
+Run requires a matching verified artifact and returns `build_required` for a
+missing, stale or tampered artifact. It never compiles or downloads tools on run.
+The builder selects Release explicitly and uses a stable executable output path
+with single-config and multi-config CMake generators. The full `--sanitizers`
+profile requires a GNU-compatible compiler with ASan/UBSan support. MinGW links
+the controller's C++ runtime statically so the published executable can run
+without the compiler's runtime DLL directory.
+Host control is trusted native host code. Linux amd64 is locally qualified;
+Windows VM compilation and the default, skip, failure, readiness/interruption,
+independent-finally and compiler-free relocation journeys also pass. Physical
+Windows 11 and macOS execution remain unverified. See the
+[host control contract](workflows/workflow-yaml.md#inline-pipelang-host-control)
+for typed inputs, step calls and limits.
+
 ## Remote workers
 
 `dockpipe remote` provides provider-neutral setup, pairing, outbound workers, explicit workflow
@@ -54,6 +84,9 @@ Workers explicitly opt in with `remote pair --allow-delivery`; existing profiles
 Cloudflare resolver, local profiles, credentials, recovery, and current qualification limits.
 
 ## Project Git
+
+For bounded file reads and edits through the same core service, see
+[workspace file requests and invocation validation](runtime/invocation-validation.md#workspace-file-cli).
 
 The desktop **Git** page operates on the repository containing the selected project
 folder. Its CLI adapter is `dockpipe git --request <file.json>`. A read request is
@@ -209,6 +242,12 @@ advanced authoring and storage.
 
 **Environment:** **`DOCKPIPE_PACKAGES_ROOT`** — override the compiled package root (default **`<workdir>/bin/.dockpipe/internal/packages`**) for compile/build/rebuild. It does not relocate durable package state and ordinary clean does not use an external override.
 
+Package test discovery uses the selected project's configured source roots.
+When no test targets match, the operation succeeds with `count=0` and
+`result=noop`, including when an `--only` filter was supplied. Qualification
+workflows must verify that the expected package hook and test observations
+actually ran before accepting a successful exit as evidence.
+
 ## `dockpipe workflow test` and `dockpipe test`
 
 Workflow-local tests are discovered from on-disk workflow directories that
@@ -274,7 +313,7 @@ All options must appear **before** a standalone **`--`**. The command and its ar
 | Flag | Aliases | Purpose |
 |------|---------|---------|
 | `--workflow <name>` | | Select a named workflow from project/declared roots or installed/configured packages. With `steps:`, a final `--` is optional. Mutually exclusive with `--workflow-file`. |
-| `--workflow-file <path>` | | Load explicit workflow YAML; relative run/act assets resolve beside it. Resolver selection uses declared/installed package roots. Mutually exclusive with `--workflow`. |
+| `--workflow-file <path-or-locator>` | | Load explicit workflow YAML or an exact catalog `tar://<archive>##<member>` locator. Archive members must be canonical contained relative paths; relative run/act assets resolve beside the extracted config. The selected archive identity is retained without named-workflow fallback. Resolver selection uses declared/installed package roots. Mutually exclusive with `--workflow`. |
 | `--package <name>` | | With **`--workflow <name>`**, select an unpacked packaged workflow with a matching **`name:`** in its enclosing **`package.yml`** ancestry. This is a generic package selector, not an AI-provider concept. Mutually exclusive with **`--workflow-file`**. |
 | `--workflows-dir <path>` | | Repo-relative or absolute directory for **`--workflow <name>`** resolution (default **`workflows/`**). Same as **`DOCKPIPE_WORKFLOWS_DIR`**. Also **`dockpipe init <name> --workflows-dir …`**. |
 | `--run <path>` | `--pre-script` | **Run:** script(s) on the host before the container. Repeatable. |
@@ -360,6 +399,14 @@ an uncached image may require network access):
 dockpipe --runtime dockerimage --isolate alpine:3.22 -- echo hello
 ```
 
+## Managed environments
+
+Use `dockpipe environment generate`, `create`, `apply`, and `show` for VM and
+container definitions. Run `dockpipe environment presets --kind vm` for VM
+hardware presets or `dockpipe environment presets` for container presets.
+See [Environments](runtime/environments.md) for settings, personal and project YAML,
+and workflow-backed definitions.
+
 ## Secret environments
 
 Use `--secret-environment NAME` with a named entry in `dockpipe.config.json` → `secrets.environments`. `vault: environment` requires the selected/default environment; a missing selection or failed load stops execution. `--no-vault` disables both environment resolution and legacy template injection. See [Secret environments](runtime/vault.md) for 1Password, AWS Secrets Manager, Azure Key Vault, and Infisical configuration.
@@ -380,9 +427,18 @@ servers. See the MCP registry contract for exact limitations.
 ## Portable SDK paths
 
 Use `dockpipe sdk shell-env` to initialize the shell SDK.
-`dockpipe sdk path --language shell|powershell|python [--workdir <path>]` returns
+`dockpipe sdk path --language shell|powershell|python|pipelang [--workdir <path>]` returns
 the requested library-owned helper path; no source checkout is required.
 Go consumers use `dockpipe/src/lib/sdk/repotools` from the published SDK.
+
+For PipeLang, the returned path is the immutable `Dockpipe.SDK` source-library
+`library.json`. Reference its root and exact descriptor SHA256 through the
+selected PipeLang SDK's source-library mechanism. The bundle includes typed
+workflow requests, operation observation and cancellation, scope results, and
+an injectable transport. Its native CMake bridge currently supports a dedicated
+Linux headless process with exclusive child reaping. Windows and macOS native
+transports remain pending. See the materialized bundle's `README.md` for the
+resource, runtime and custody contracts.
 
 
 ### Remote OS authentication
@@ -451,3 +507,34 @@ The generic broker interfaces are `remote edge-activate --state <private-root>
 pause during the recovery window. A verified fallback still means activation
 failed. See [supervised activation](runtime/dependency-lifecycle.md#supervised-local-edge-activation)
 for exact process, platform, maintenance and health limits.
+
+To recover an absent connector after a failed cutover, prepare a fresh activation
+request with `manual_recovery: {failed_activation_id, nonce, expires_at}`. Both image
+selections must be the same exact prior approved candidate or recovery snapshot;
+provider inputs/readiness remain unchanged. The nonce must be 64 lowercase hex
+characters and expiry within five minutes of admission. Existing `--dry-run` and
+exact `--approve <id>` apply through OS-session authorization. This grants one
+bounded start, preserves the failed journal byte-for-byte, and authorizes no boot
+replay or automatic retry. See [explicit edge recovery](runtime/dependency-lifecycle.md)
+for the complete binding and lifecycle contract.
+
+## Native workspace capabilities
+
+The desktop and CLI share the typed boundaries documented in
+[Native invocation validation](runtime/invocation-validation.md).
+
+| Command | Purpose |
+| --- | --- |
+| `dockpipe files --request <file.json\|->` | Bounded file listing, exact-byte reads and revision-checked mutations. |
+| `dockpipe containers --request <file.json\|->` | Typed inventory, exact-object inspect/logs, and container start/stop/restart. |
+| `dockpipe containers exec --container <full-id> --shell /bin/sh` | Admitted local container shell with inherited terminal streams; `/bin/bash` is also supported. |
+| `dockpipe remote terminal --prepare --request <intent.json>` | Retain and acknowledge a canonical host-terminal reference before opening effects. Container sessions always require this exchange; older host streams remain supported without the flag. |
+| `dockpipe remote feature-call --request <file.json\|->` with `terminal.host-recover` | Recover an exact original host-terminal reference under its root Terminal grant after its captured kernel boot changes; legacy sessions without a receipt remain unverified. |
+| `dockpipe remote feature-prepare --request <file.json\|->` | Prepare canonical routing metadata locally before dispatch. |
+| `dockpipe remote feature-status --request <metadata.json\|->` | Inspect the original operation without reconstructing or replaying it. |
+| `dockpipe remote feature-cancel --request <metadata.json\|->` | Request cancellation; acknowledgment alone does not establish the mutation outcome. |
+| `dockpipe remote feature-reconcile --request <metadata.json\|->` | Revoke a file mutation's old admission and await worker cleanup proof; a reconciled unknown remains unknown. Git/container reconciliation is unavailable without process cleanup proof. |
+
+Captured workflow deliveries use `--expected-fingerprint`, `--expected-generation`
+and optional `--expected-root` to retain a desktop selection. They still require
+the existing reviewed bundle and independent workflow-delivery grant.

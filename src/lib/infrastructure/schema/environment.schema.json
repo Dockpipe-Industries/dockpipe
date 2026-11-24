@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Dockpipe environment definition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "name", "kind"],
+  "oneOf": [
+    {"required": ["provision"], "not": {"anyOf": [{"required": ["container"]}, {"required": ["vm"]}]}},
+    {"required": ["container"], "not": {"anyOf": [{"required": ["provision"]}, {"required": ["vm"]}]}, "properties": {"kind": {"const": "container"}}},
+    {"required": ["vm"], "not": {"anyOf": [{"required": ["provision"]}, {"required": ["container"]}, {"required": ["storage"]}]}, "properties": {"kind": {"const": "vm"}}}
+  ],
+  "properties": {
+    "schema": {"const": "dockpipe.environment/v1"},
+    "name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"},
+    "kind": {"enum": ["vm", "container"]},
+    "provision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workflow"],
+      "properties": {
+        "workflow": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"},
+        "package": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"}
+      }
+    },
+    "container": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["image"],
+      "properties": {
+        "image": {
+          "type": "string",
+          "maxLength": 512,
+          "pattern": "^[a-z0-9][a-z0-9._-]*(?::[0-9]+)?(?:/[a-z0-9][a-z0-9._-]*)*(?::[A-Za-z0-9_][A-Za-z0-9_.-]{0,127})?(?:@sha256:[a-f0-9]{64})?$"
+        },
+        "startup": {"enum": ["image", "keep-running"]},
+        "network": {"enum": ["bridge", "none"]},
+        "security": {"enum": ["standard", "restricted"]},
+        "restart": {"enum": ["no", "unless-stopped"]},
+        "user": {"enum": ["image", "non-root"]},
+        "read_only": {"type": "boolean"},
+        "publish": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["host", "container"],
+          "properties": {
+            "host": {"type": "integer", "minimum": 1, "maximum": 65535},
+            "container": {"type": "integer", "minimum": 1, "maximum": 65535}
+          }
+        },
+        "data_path": {"type": "string", "maxLength": 256, "pattern": "^/[A-Za-z0-9._/-]+$"}
+      },
+      "if": {"required": ["network"], "properties": {"network": {"const": "none"}}},
+      "then": {"not": {"required": ["publish"]}}
+    },
+    "vm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "cpus", "memory_gib", "disk_gib"],
+      "properties": {
+        "os": {"enum": ["ubuntu", "debian", "fedora", "other-linux", "windows11"]},
+        "cpus": {"type": "integer", "minimum": 1, "maximum": 256},
+        "memory_gib": {"type": "integer", "minimum": 1, "maximum": 1024},
+        "disk_gib": {"type": "integer", "minimum": 1, "maximum": 16384},
+        "installer_iso": {"type": "string", "maxLength": 4096, "pattern": "^[^\u0000\r\n\t]+[.][iI][sS][oO]$"},
+        "resolver": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"}
+      },
+      "if": {"properties": {"os": {"const": "windows11"}}},
+      "then": {"properties": {"cpus": {"minimum": 2}, "memory_gib": {"minimum": 4}, "disk_gib": {"minimum": 64}}}
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile"],
+      "properties": {
+        "profile": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"}
+      }
+    }
+  },
+  "if": {"required": ["storage"]},
+  "then": {"properties": {"kind": {"const": "vm"}}}
+}

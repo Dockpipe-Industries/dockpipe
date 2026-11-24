@@ -15,7 +15,9 @@ import (
 	"dockpipe/src/lib/infrastructure/telemetry"
 )
 
-type inventoryOutput struct{ bytes.Buffer }
+type inventoryOutput struct {
+	buffer bytes.Buffer
+}
 
 // Serializing Docker's formatter root also evaluates its Size method, which can
 // enable costly filesystem scans. Request only the fields in our inventory DTOs.
@@ -24,50 +26,60 @@ const networkInventoryFormat = `{"ID":{{json .ID}},"Name":{{json .Name}},"Driver
 const volumeInventoryFormat = `{"Name":{{json .Name}},"Driver":{{json .Driver}}}`
 
 func (output *inventoryOutput) Write(data []byte) (int, error) {
-	if len(data) > 512*1024-output.Len() {
+	if len(data) > 512*1024-output.buffer.Len() {
 		return 0, errors.New("docker inventory exceeds 512 KiB")
 	}
-	return output.Buffer.Write(data)
+	return output.buffer.Write(data)
 }
 
-func dockerInventoryCommand(ctx context.Context, args ...string) ([]byte, error) {
-	return runDockerInventoryCommand(ctx, false, args...)
+func dockerInventoryCommand(ctx context.Context, environment []string, args ...string) ([]byte, error) {
+	commandName, err := resolveDockerCommandFromEnvironment(environment)
+	if err != nil {
+		return nil, errors.New("no Docker inventory executable available")
+	}
+
+	command := newDockerInventoryProcess(ctx, commandName, environment, false, args...)
+	return runDockerInventoryCommand(command)
 }
 
 func localDockerInventoryCommand(ctx context.Context, args ...string) ([]byte, error) {
-	return runDockerInventoryCommand(ctx, true, args...)
+	return runDockerInventoryCommand(dockerInventoryProcess(ctx, true, args...))
 }
 
 func dockerInventoryProcess(ctx context.Context, local bool, args ...string) *exec.Cmd {
-	commandName := dockerCommandName()
+	return newDockerInventoryProcess(ctx, dockerCommandName(), os.Environ(), local, args...)
+}
+
+func newDockerInventoryProcess(ctx context.Context, commandName string, environment []string, local bool, args ...string) *exec.Cmd {
 	if local {
 		args = append([]string{"--host=unix:///var/run/docker.sock", "--tls=false"}, args...)
 	}
+
 	command := exec.CommandContext(ctx, commandName, args...)
-	command.Env = dockerCommandEnv(os.Environ(), commandName)
+	command.Env = dockerCommandEnv(environment, commandName)
 	if local {
-		environment := make([]string, 0, len(command.Env))
+		localEnvironment := make([]string, 0, len(command.Env))
 		for _, entry := range command.Env {
 			name, _, _ := strings.Cut(entry, "=")
 			if !strings.HasPrefix(strings.ToUpper(name), "DOCKER_") {
-				environment = append(environment, entry)
+				localEnvironment = append(localEnvironment, entry)
 			}
 		}
-		command.Env = environment
+		command.Env = localEnvironment
 	}
+
 	command.WaitDelay = 500 * time.Millisecond
 	return command
 }
 
-func runDockerInventoryCommand(ctx context.Context, local bool, args ...string) ([]byte, error) {
-	command := dockerInventoryProcess(ctx, local, args...)
+func runDockerInventoryCommand(command *exec.Cmd) ([]byte, error) {
 	output := &inventoryOutput{}
 	command.Stdout = output
 	command.Stderr = io.Discard
 	if err := process.Run(command); err != nil {
 		return nil, errors.New("docker inventory unavailable or query limit exceeded")
 	}
-	return output.Bytes(), nil
+	return output.buffer.Bytes(), nil
 }
 
 func inventoryRows[T any](data []byte) ([]T, bool, error) {
@@ -89,7 +101,13 @@ func inventoryRows[T any](data []byte) ([]T, bool, error) {
 }
 
 func CollectDockerInventory(ctx context.Context) telemetry.DockerSnapshot {
-	return collectDockerInventory(ctx, dockerInventoryCommand)
+	return collectDockerInventoryWithEnvironment(ctx, os.Environ())
+}
+
+func collectDockerInventoryWithEnvironment(ctx context.Context, environment []string) telemetry.DockerSnapshot {
+	return collectDockerInventory(ctx, func(ctx context.Context, args ...string) ([]byte, error) {
+		return dockerInventoryCommand(ctx, environment, args...)
+	})
 }
 
 // CollectLocalDockerInventory pins inventory to the local system Unix daemon,

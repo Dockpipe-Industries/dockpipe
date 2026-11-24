@@ -1,0 +1,6 @@
+module Dockpipe.Product.QualificationEventOutput;
+
+public Record QualificationEventWrite {
+    public int bytes = 0;
+    public string warning = "";
+}

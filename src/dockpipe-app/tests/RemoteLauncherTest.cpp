@@ -3,6 +3,7 @@
 #include "BrowserWidget.h"
 #include "TerminalWidget.h"
 #include "TerminalHub.h"
+#include "TerminalSession.h"
 #include "DashboardWidgetFactory.h"
 #include "DashboardPage.h"
 #include "DashboardWorkspace.h"
@@ -14,16 +15,24 @@
 #include "DockerObservabilityWidget.h"
 #include "RemoteWidget.h"
 #include "RemoteRunDialog.h"
+#include "WorkspaceMachineMenu.h"
+#include "DashboardWidgetFactory.h"
 #include "ActivityWidget.h"
 #include "PackageManagerDialog.h"
 #include "LauncherSettings.h"
 #include "Theme.h"
 #include "ResourceLinkItem.h"
+#include "ResourceCanvas.h"
+#include "WorkflowCanvas.h"
 #include "SettingsDialog.h"
+#include "NotificationBell.h"
+#include "LogViewerDialog.h"
+#include <QAction>
 #include <QPainter>
 #include <algorithm>
 
 #include <QApplication>
+#include <QClipboard>
 #include <QGraphicsView>
 #include <QGraphicsObject>
 #include <QPointer>
@@ -46,8 +55,11 @@
 #include <QStyle>
 #include <QTableWidget>
 #include <QTabWidget>
+#include <QTabBar>
 #include <QStackedWidget>
 #include <QStatusBar>
+#include <QSettings>
+#include <QScrollArea>
 #include <QTemporaryDir>
 #include <QThread>
 #include <QTimer>
@@ -118,6 +130,68 @@ bool connectionFramesChange()
     return paused == render();
 }
 
+static int verifyWorkflowNotifications(MainWindow &window, const QString &directory, const QString &cli)
+{
+    auto *notifications = window.findChild<NotificationBell *>();
+    auto *sessions = window.findChild<SessionManager *>();
+    if (!notifications || !sessions || notifications->unreadCount() != 0)
+        return 420;
+
+    const QString logs = QDir(directory).filePath("notification-logs");
+    if (!QDir().mkpath(logs))
+        return 421;
+
+    Context successful = Context::createNew();
+    successful.workdir = directory;
+    successful.workflow = "notification-success";
+    successful.dockpipeBinary = cli;
+    if (!sessions->launch(successful, logs)
+        || !waitUntil([&]() { return !sessions->isRunning(successful.id); })
+        || notifications->unreadCount() != 1
+        || sessions->info(successful.id).status != SessionStatus::Stopped)
+        return 422;
+
+    Context failed = Context::createNew();
+    failed.workdir = directory;
+    failed.workflow = "notification-failure";
+    failed.dockpipeBinary = cli;
+    if (!sessions->launch(failed, logs)
+        || !waitUntil([&]() { return !sessions->isRunning(failed.id); })
+        || notifications->unreadCount() != 2
+        || sessions->info(failed.id).status != SessionStatus::Failed)
+        return 423;
+
+    auto *menu = notifications->menu();
+    if (!menu || !QMetaObject::invokeMethod(menu, "aboutToShow", Qt::DirectConnection))
+        return 424;
+    QAction *failedNotice = nullptr;
+    int workflowNotices = 0;
+    bool hasCompleted = false;
+    for (auto *action : menu->actions()) {
+        if (action->objectName() != "workflowNotification")
+            continue;
+        ++workflowNotices;
+        hasCompleted = hasCompleted || action->toolTip().endsWith("Completed");
+        if (action->toolTip().endsWith("Failed"))
+            failedNotice = action;
+    }
+    if (workflowNotices != 2 || !hasCompleted || !failedNotice)
+        return 425;
+
+    bool openedFailureLog = false;
+    QTimer::singleShot(0, &window, [&]() {
+        if (auto *viewer = qobject_cast<LogViewerDialog *>(QApplication::activeModalWidget())) {
+            auto *output = viewer->findChild<QPlainTextEdit *>("detailConsole");
+            openedFailureLog = output && output->toPlainText().contains("Notification fixture failed.");
+            viewer->reject();
+        }
+    });
+    failedNotice->trigger();
+    if (!openedFailureLog || notifications->unreadCount() != 1)
+        return 426;
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
@@ -125,12 +199,140 @@ int main(int argc, char **argv)
     qputenv("XDG_CONFIG_HOME", directory.path().toUtf8());
     qputenv("DOCKPIPE_GLOBAL_ROOT", directory.filePath("global").toUtf8());
     qputenv("DOCKPIPE_TEST_ROOT", directory.path().toUtf8());
+    const QString runningContainerId(64, 'a');
+    const QString databaseContainerId(64, 'b');
+    const QString stoppedContainerId(64, 'c');
+    const QString networkId(64, 'd');
     const QString cli = directory.filePath("dockpipe");
     QFile script(cli);
     if (!script.open(QIODevice::WriteOnly))
         return 1;
     script.write(R"SH(#!/bin/sh
 case "$1:$2" in
+--workflow:editor)
+  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/declared-input-arguments" ;;
+--workflow:notification-success)
+  echo 'Notification fixture completed.' ;;
+--workflow:notification-failure)
+  echo 'Notification fixture failed.'
+  exit 7 ;;
+terminal:--stdio)
+  if [ -z "$DOCKPIPE_STUDIO_TEST_CLI" ]; then
+    echo 'The managed terminal fixture requires an explicit trusted core CLI.' >&2
+    exit 2
+  fi
+  exec "$DOCKPIPE_STUDIO_TEST_CLI" "$@" ;;
+containers:exec)
+  if [ -n "$DOCKPIPE_STUDIO_TEST_CLI" ]; then
+    exec "$DOCKPIPE_STUDIO_TEST_CLI" "$@"
+  fi
+  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/container-exec-args"
+  ;;
+containers:--request)
+  if [ -n "$DOCKPIPE_STUDIO_TEST_CLI" ]; then
+    exec "$DOCKPIPE_STUDIO_TEST_CLI" "$@"
+  fi
+  request=$(cat)
+  case "$request" in
+    *'"action":"snapshot"'*)
+      cat <<'DOCKER_SNAPSHOT'
+{
+  "available": true,
+  "containers": [
+    {
+      "ID": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "Names": "pipeon",
+      "State": "running",
+      "Status": "Up 2 hours",
+      "Image": "example/pipeon:test",
+      "Ports": "127.0.0.1:8080->8080/tcp"
+    },
+    {
+      "ID": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "Names": "database",
+      "State": "running",
+      "Status": "Up 2 hours (unhealthy)",
+      "Image": "postgres:test"
+    },
+    {
+      "ID": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "Names": "old-worker",
+      "State": "exited",
+      "Status": "Exited (0) 2 hours ago",
+      "Image": "example/worker:test"
+    }
+  ],
+  "networks": [
+    {
+      "ID": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "Name": "workspace",
+      "Driver": "bridge",
+      "Scope": "local"
+    }
+  ],
+  "volumes": [
+    {
+      "Name": "data",
+      "Driver": "local"
+    }
+  ],
+  "topology": [
+    {
+      "Id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "Name": "/pipeon",
+      "Labels": {
+        "com.docker.compose.project": "demo",
+        "com.docker.compose.service": "web",
+        "com.docker.compose.depends_on": "db:service_healthy:false"
+      },
+      "Networks": {
+        "workspace": {}
+      },
+      "Mounts": [
+        {
+          "Type": "volume",
+          "Name": "data",
+          "Destination": "/data"
+        }
+      ]
+    },
+    {
+      "Id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "Name": "/database",
+      "Labels": {
+        "com.docker.compose.project": "demo",
+        "com.docker.compose.service": "db"
+      },
+      "Networks": {
+        "workspace": {}
+      },
+      "Mounts": []
+    },
+    {
+      "Id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "Name": "/old-worker",
+      "Labels": {},
+      "Networks": {
+        "workspace": {}
+      },
+      "Mounts": []
+    }
+  ],
+  "notices": []
+}
+DOCKER_SNAPSHOT
+      ;;
+    *'"action":"inspect"'*|*'"action":"logs"'*)
+      kind=$(printf '%s' "$request" | sed -n 's/.*"kind":"\([a-z]*\)".*/\1/p')
+      object=$(printf '%s' "$request" | sed -n 's/.*"object":"\([a-z0-9]*\)".*/\1/p')
+      case "$request" in
+        *'"action":"logs"'*)
+          printf '{"schema":"dockpipe.containers/v1","action":"logs","kind":"container","object":"%s","logs":"Fixture logs ready\\nFixture error stream"}\n' "$object" ;;
+        *)
+          printf '{"schema":"dockpipe.containers/v1","action":"inspect","kind":"%s","object":"%s","inspect":[{"Id":"%s","Name":"fixture-resource"}]}\n' "$kind" "$object" "$object" ;;
+      esac ;;
+    *) echo 'Fixture start rejected' >&2; exit 1 ;;
+  esac ;;
 host:status) cat "$DOCKPIPE_TEST_ROOT/native-status.json" ;;
 host:snapshot) cat "$DOCKPIPE_TEST_ROOT/monitor.json" ;;
 host:docker-query)
@@ -141,7 +343,7 @@ host:docker)
   printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/native-docker-args"
   printf '{"schema":"dockpipe.native_host_docker_action.v1","outcome":"Success","action":"%s","id":"%s"}\n' "$3" "$7" ;;
 catalog:list)
-  printf '{"workflows":[{"workflow_id":"build","display_name":"Build project","description":"Compile and verify the project","config_path":"%s/work/config.yml"},{"workflow_id":"editor","display_name":"Project editor","category":"app","inputs":[{"field_name":"text","env_name":"DOCKPIPE_VSCODE_INPUT_TEXT","type":"string"},{"field_name":"empty","env_name":"DOCKPIPE_VSCODE_INPUT_EMPTY","type":"string"},{"field_name":"password","env_name":"DOCKPIPE_VSCODE_INPUT_SECRET","type":"string","attributes":{"password":"true","secret":"true"}}]},{"workflow_id":"vscode-noinputs","display_name":"No input launch","category":"app","source":"vscode","source_kind":"launch","source_path":".vscode/launch.json","cloneable":true}],"runtimes":["host"],"resolver_details":[{"name":"example.tunnel","title":"Example Tunnel","version":"1.2.0","capability":"remote.edge","remote_setup":"local"},{"name":"example.hosted","title":"Example Hosted","version":"2.0.0","capability":"remote.broker","remote_setup":"hosted"},{"name":"unrelated.tool","capability":"editor"}]}\n' "$DOCKPIPE_TEST_ROOT" ;;
+  printf '{"workflows":[{"workflow_id":"build","display_name":"Build project","description":"Compile and verify the project","config_path":"%s/work/config.yml"},{"workflow_id":"editor","display_name":"Project editor","category":"app","inputs":[{"field_name":"text","env_name":"DOCKPIPE_VSCODE_INPUT_TEXT","type":"string"},{"field_name":"empty","env_name":"DOCKPIPE_VSCODE_INPUT_EMPTY","type":"string"},{"field_name":"Storage","children":[{"field_name":"Mode","env_name":"FIXTURE_MODE","type":"string","default_value":"ephemeral"},{"field_name":"Clear","env_name":"FIXTURE_CLEAR","type":"string","default_value":"declared-default"}]},{"field_name":"password","env_name":"DOCKPIPE_VSCODE_INPUT_SECRET","type":"string","attributes":{"password":"true","secret":"true"}}]},{"workflow_id":"vscode-noinputs","display_name":"No input launch","category":"app","source":"vscode","source_kind":"launch","source_path":".vscode/launch.json","cloneable":true}],"runtimes":["host"],"resolver_details":[{"name":"example.tunnel","title":"Example Tunnel","version":"1.2.0","capability":"remote.edge","remote_setup":"local"},{"name":"example.hosted","title":"Example Hosted","version":"2.0.0","capability":"remote.broker","remote_setup":"hosted"},{"name":"unrelated.tool","capability":"editor"}]}\n' "$DOCKPIPE_TEST_ROOT" ;;
 remote:info)
   if [ -f "$DOCKPIPE_TEST_ROOT/stale-service" ]; then
     echo '{"broker":{"mode":"local","endpoint":"https://remote.example.com","service":{"state":"update-required"}}}'
@@ -164,9 +366,25 @@ remote:cancel)
   printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/cancel-job-args"
   echo '{}' ;;
 remote:nodes)
+  if [ -f "$DOCKPIPE_TEST_ROOT/machine-removed" ]; then
+    echo '[{"node":"studio-invite","status":"invited"}]'
+    exit 0
+  fi
+  if [ -f "$DOCKPIPE_TEST_ROOT/nodes-fail" ]; then
+    echo 'Fixture broker unavailable' >&2
+    exit 1
+  fi
   printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/nodes-args"
   if [ "$4" = "auto" ]; then printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/nodes-auto-args"; fi
   echo '[{"node":"mac-mini","status":"paired"},{"node":"studio-invite","status":"invited"}]' ;;
+remote:remove)
+  if [ -f "$DOCKPIPE_TEST_ROOT/remove-fails" ]; then
+    echo 'Fixture removal failed' >&2
+    exit 1
+  fi
+  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/remove-machine-args"
+  : > "$DOCKPIPE_TEST_ROOT/machine-removed"
+  echo '{"removed":"mac-mini"}' ;;
 remote:security-status)
   printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/security-status-args"
   echo '{"supported":true,"authority_available":true,"locked":true,"idle_seconds":300,"lock_on_screen_lock":false,"lock_on_sleep":true,"absolute_seconds":3600,"expires_at":"","capabilities":{"idle":true,"screen_lock":false,"sleep":true},"detail":"Fixture status."}' ;;
@@ -179,6 +397,19 @@ remote:observe)
   if [ -f "$DOCKPIPE_TEST_ROOT/monitor-delay" ]; then sleep 0.2; fi
   cat "$DOCKPIPE_TEST_ROOT/monitor.json" ;;
 remote:pairings) echo '[{"node":"studio","code":"ABCD-1234-5678","status":"pending","expires_at":"2026-10-09T07:00:00Z"}]' ;;
+remote:pairing-open)
+  if [ -f "$DOCKPIPE_TEST_ROOT/pairing-open-fails" ]; then
+    echo 'Fixture pairing failed' >&2
+    exit 1
+  fi
+  echo '{}' ;;
+remote:approve)
+  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/approve-args"
+  if [ -f "$DOCKPIPE_TEST_ROOT/pairing-key-missing" ]; then
+    echo '{"event":"hardware-key-unavailable"}'
+    exit 1
+  fi
+  echo '{}' ;;
 remote:pair)
   echo called >> "$DOCKPIPE_TEST_ROOT/pair-calls"
   if [ -f "$DOCKPIPE_TEST_ROOT/pair-approved" ]; then
@@ -186,6 +417,8 @@ remote:pair)
   fi
   echo '{"node":"studio","code":"ABCD-1234-5678","status":"pending"}'
   exec sleep 60 ;;
+remote:features-config)
+  printf '%s\n' "$@" > "$DOCKPIPE_TEST_ROOT/feature-config-args" ;;
 remote:service)
   printf '%s\n' "$@" >> "$DOCKPIPE_TEST_ROOT/service-calls"
   if [ -f "$DOCKPIPE_TEST_ROOT/service-fails" ]; then
@@ -215,18 +448,22 @@ esac
     docker.write(R"SH(#!/bin/sh
 case "$1:$2" in
 container:ls)
-    echo '{"ID":"fixture","Names":"pipeon","State":"running","Status":"Up 2 hours","Image":"example/pipeon:test","Ports":"127.0.0.1:8080->8080/tcp"}'
-    echo '{"ID":"database","Names":"database","State":"running","Status":"Up 2 hours (unhealthy)","Image":"postgres:test"}'
-    echo '{"ID":"stopped","Names":"old-worker","State":"exited","Status":"Exited (0) 2 hours ago","Image":"example/worker:test"}' ;;
+    echo '{"ID":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","Names":"pipeon","State":"running","Status":"Up 2 hours","Image":"example/pipeon:test","Ports":"127.0.0.1:8080->8080/tcp"}'
+    echo '{"ID":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","Names":"database","State":"running","Status":"Up 2 hours (unhealthy)","Image":"postgres:test"}'
+    echo '{"ID":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","Names":"old-worker","State":"exited","Status":"Exited (0) 2 hours ago","Image":"example/worker:test"}' ;;
 container:inspect)
-    echo '{"Id":"fixture","Name":"/pipeon","Labels":{"com.docker.compose.project":"demo","com.docker.compose.service":"web","com.docker.compose.depends_on":"db:service_healthy:false"},"Networks":{"workspace":{}},"Mounts":[{"Type":"volume","Name":"data","Destination":"/data"}]}'
-    echo '{"Id":"database","Name":"/database","Labels":{"com.docker.compose.project":"demo","com.docker.compose.service":"db"},"Networks":{"workspace":{}},"Mounts":[]}'
-    echo '{"Id":"stopped","Name":"/old-worker","Labels":{},"Networks":{"workspace":{}},"Mounts":[]}' ;;
-inspect:*) echo '[{"Id":"fixture","Name":"/pipeon"}]' ;;
-start:*) echo 'Fixture start rejected' >&2; exit 1 ;;
-logs:*) echo 'Fixture logs ready'; echo 'Fixture error stream' >&2 ;;
-network:inspect) echo '[{"Name":"workspace","Driver":"bridge"}]' ;;
-network:ls) echo '{"ID":"network","Name":"workspace","Driver":"bridge","Scope":"local"}' ;;
+    if [ "$3" != "--format" ]; then
+        printf '[{"Id":"%s","Name":"/fixture-resource"}]\n' "$3"
+        exit 0
+    fi
+    echo '{"Id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","Name":"/pipeon","Labels":{"com.docker.compose.project":"demo","com.docker.compose.service":"web","com.docker.compose.depends_on":"db:service_healthy:false"},"Networks":{"workspace":{}},"Mounts":[{"Type":"volume","Name":"data","Destination":"/data"}]}'
+    echo '{"Id":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","Name":"/database","Labels":{"com.docker.compose.project":"demo","com.docker.compose.service":"db"},"Networks":{"workspace":{}},"Mounts":[]}'
+    echo '{"Id":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","Name":"/old-worker","Labels":{},"Networks":{"workspace":{}},"Mounts":[]}' ;;
+inspect:*) echo '[{"Id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","Name":"/pipeon"}]' ;;
+container:start) echo 'Fixture start rejected' >&2; exit 1 ;;
+container:logs) echo 'Fixture logs ready'; echo 'Fixture error stream' >&2 ;;
+network:inspect) echo '[{"Id":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","Name":"workspace","Driver":"bridge"}]' ;;
+network:ls) echo '{"ID":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","Name":"workspace","Driver":"bridge","Scope":"local"}' ;;
 volume:ls) echo '{"Name":"data","Driver":"local"}' ;;
 volume:inspect) echo '[{"Name":"data","Mountpoint":"/fixture/data"}]' ;;
 *) echo 'Unexpected Docker fixture command' >&2; exit 1 ;;
@@ -258,16 +495,13 @@ exec "$@"
     if (!connectionFramesChange())
         return 55;
     QApplication::setApplicationName("dockpipe-launcher-test");
+    QApplication::setOrganizationName("dockpipe-test");
     applyDockpipeLauncherTheme(app);
-    if (qEnvironmentVariable("DOCKPIPE_TEST_THEME") == "light") {
-        QFile shared(":/theme/pipeon.qss");
-        QFile light(":/theme/pipeon-light.qss");
-        if (!shared.open(QIODevice::ReadOnly) || !light.open(QIODevice::ReadOnly))
-            return 28;
-        app.setStyleSheet(QString());
-        app.setPalette(app.style()->standardPalette());
-        app.setStyleSheet(QString::fromUtf8(shared.readAll() + light.readAll()));
-    }
+    const LauncherThemeMode fixtureTheme = qEnvironmentVariable("DOCKPIPE_TEST_THEME") == "light"
+        ? LauncherThemeMode::Light : LauncherThemeMode::Dark;
+    if (!saveDockpipeLauncherThemeMode(fixtureTheme))
+        return 366;
+    applyDockpipeLauncherTheme(app);
     LauncherSettings settings;
     settings.load();
     settings.projectFolder = directory.path();
@@ -278,8 +512,12 @@ exec "$@"
     // and lifecycle checks free of an unattended first-run modal.
     if (!LauncherSettings::saveDashboardTourState(true, false))
         return 236;
+    QSettings().setValue("workflowStudio/panels/machinesDetails", QRect(1000, 100, 730, 1800));
     MainWindow window;
     window.show();
+    auto *startupNotifications = window.findChild<NotificationBell *>();
+    if (!startupNotifications || startupNotifications->unreadCount() != 0)
+        return 427;
     auto *navigation = window.findChild<QListWidget *>("workspaceNavigation");
     auto *target = window.findChild<QComboBox *>("runTarget");
     auto *remote = window.findChild<RemoteWidget *>();
@@ -288,11 +526,15 @@ exec "$@"
     auto *apps = window.findChild<BasicModeWidget *>();
     if (!apps || !apps->findChildren<QTabWidget *>().isEmpty()
         || window.findChildren<DockerObservabilityWidget *>().size() != 1
-        || navigation->count() != 11 || navigation->item(4)->text() != "Containers"
-        || navigation->item(5)->text() != "Executions"
+        || navigation->count() != 12 || navigation->item(3)->text() != "Environments"
+        || navigation->item(3)->data(Qt::UserRole).toInt() != 2
+        || navigation->item(4)->text() != "Containers"
+        || navigation->item(5)->text() != "System"
         || navigation->item(8)->text() != "Browser"
         || navigation->item(9)->text() != "Terminal"
         || navigation->item(9)->data(Qt::UserRole).toInt() != 9
+        || navigation->item(10)->text() != "Remote Desktop"
+        || navigation->item(10)->data(Qt::UserRole).toInt() != 10
         || window.findChild<TerminalWidget *>()
         || window.findChild<BrowserWidget *>())
         return 13;
@@ -326,24 +568,79 @@ exec "$@"
     navigation->setCurrentRow(8);
     auto *browser = window.findChild<BrowserWidget *>();
     auto *workspacePages = window.findChild<QStackedWidget *>("workspacePages");
-    if (!browser || !workspacePages || workspacePages->currentWidget() != browser
-        || navigation->item(8)->isHidden() || !navigation->item(10)->isHidden()
+    auto *browserPage = workspacePages ? workspacePages->currentWidget() : nullptr;
+    if (!browser || !browserPage || (browserPage != browser && !browserPage->isAncestorOf(browser))
+        || navigation->item(8)->isHidden() || !navigation->item(11)->isHidden()
         || LauncherSettings::current().cockpit.enabled)
         return 160;
     navigation->setCurrentRow(9);
     auto *terminalPage = window.findChild<TerminalWidget *>();
     auto *dashboardFactory = window.findChild<DashboardWidgetFactory *>();
-    if (!terminalPage || !dashboardFactory || workspacePages->currentWidget() != terminalPage
-        || !dashboardFactory->terminals().sessionIds().isEmpty())
-        return 230;
-    navigation->setCurrentRow(8);
-    navigation->setCurrentRow(9);
-    if (window.findChild<TerminalWidget *>() != terminalPage || workspacePages->currentWidget() != terminalPage
-        || !dashboardFactory->terminals().sessionIds().isEmpty())
-        return 231;
+    const bool containedHostUnavailable = QFileInfo::exists(QStringLiteral("/.flatpak-info"))
+        && qgetenv("DOCKPIPE_TEST_FLATPAK_HOST_NATIVE") == "0";
+    if (containedHostUnavailable) {
+        if (!terminalPage || !dashboardFactory || workspacePages->currentWidget() != terminalPage)
+            return 230;
+        const auto &terminals = dashboardFactory->terminals();
+        const QString error = terminals.creationError();
+        const auto *status = terminalPage->findChild<QLabel *>("terminalStatus");
+        if (!terminals.sessionIds().isEmpty() || !status || status->text() != error
+            || !error.contains(QStringLiteral("host"), Qt::CaseInsensitive)
+            || !error.contains(QStringLiteral("shell"), Qt::CaseInsensitive))
+            return 230;
+        navigation->setCurrentRow(8);
+        navigation->setCurrentRow(9);
+        if (window.findChild<TerminalWidget *>() != terminalPage || workspacePages->currentWidget() != terminalPage)
+            return 231;
+        QElapsedTimer noSessionDeadline;
+        noSessionDeadline.start();
+        while (noSessionDeadline.elapsed() < 500) {
+            QApplication::processEvents();
+            if (!terminals.sessionIds().isEmpty())
+                return 431;
+            QThread::msleep(10);
+        }
+        qInfo() << "Contained SDK fixture verified actionable host-shell refusal without a phantom session";
+    } else {
+        if (!terminalPage || !dashboardFactory || workspacePages->currentWidget() != terminalPage
+            || !waitUntil([&]() { return dashboardFactory->terminals().sessionIds().size() == 1; })) {
+            qCritical() << "Terminal navigation fixture failed"
+                        << "page" << bool(terminalPage)
+                        << "factory" << bool(dashboardFactory)
+                        << "current-page-matches" << (workspacePages->currentWidget() == terminalPage);
+            if (dashboardFactory) {
+                const auto &terminals = dashboardFactory->terminals();
+                qCritical() << "Terminal session count" << terminals.sessionIds().size()
+                            << "creation error" << terminals.creationError();
+                for (const QString &id : terminals.sessionIds())
+                    qCritical() << "Terminal fixture session error" << terminals.error(id);
+            }
+            if (terminalPage) {
+                if (const auto *status = terminalPage->findChild<QLabel *>("terminalStatus"))
+                    qCritical() << "Terminal fixture status" << status->text();
+            }
+            return 230;
+        }
+        const QString firstTerminalSession = dashboardFactory->terminals().sessionIds().first();
+        navigation->setCurrentRow(8);
+        navigation->setCurrentRow(9);
+        if (window.findChild<TerminalWidget *>() != terminalPage || workspacePages->currentWidget() != terminalPage
+            || dashboardFactory->terminals().sessionIds() != QStringList{firstTerminalSession}
+            || terminalPage->sessionId() != firstTerminalSession)
+            return 231;
+        dashboardFactory->terminals().closeSession(firstTerminalSession);
+        if (!waitUntil([&]() {
+            for (auto *session : dashboardFactory->terminals().findChildren<TerminalSession *>()) {
+                if (session->running())
+                    return false;
+            }
+            return dashboardFactory->terminals().sessionIds().isEmpty();
+        }))
+            return 431;
+    }
     navigation->setCurrentRow(1);
     navigation->setCurrentRow(8);
-    if (workspacePages->currentWidget() != browser
+    if (workspacePages->currentWidget() != browserPage
         || window.findChildren<BrowserWidget *>().size() != 1)
         return 161;
     if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE")) {
@@ -355,8 +652,12 @@ exec "$@"
         return 14;
     const auto capture = [&](const QString &suffix) {
         QApplication::processEvents();
-        if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE"))
-            window.grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + suffix + ".png");
+        if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE")) {
+            QWidget *surface = QApplication::activeModalWidget();
+            if (!surface)
+                surface = &window;
+            surface->grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + suffix + ".png");
+        }
     };
     // Cloned workflows lose source provenance but retain imported input names.
     // Configure the native fixture through the real shell and verify its durable state.
@@ -368,7 +669,11 @@ exec "$@"
         auto *text = dialog->findChild<QLineEdit *>("workflowInput_DOCKPIPE_VSCODE_INPUT_TEXT");
         auto *empty = dialog->findChild<QLineEdit *>("workflowInput_DOCKPIPE_VSCODE_INPUT_EMPTY");
         auto *secret = dialog->findChild<QLineEdit *>("workflowInput_DOCKPIPE_VSCODE_INPUT_SECRET");
-        if (text && empty && secret) {
+        auto *mode = dialog->findChild<QLineEdit *>("workflowInput_FIXTURE_MODE");
+        auto *clear = dialog->findChild<QLineEdit *>("workflowInput_FIXTURE_CLEAR");
+        if (text && empty && secret && mode && clear) {
+            mode->setText("persistent");
+            clear->clear();
             text->setText("  exact value  ");
             empty->setText(QString());
             secret->setText("transient fixture secret");
@@ -387,6 +692,8 @@ exec "$@"
     if (configuredClone == clonedStore.contexts.cend()
         || !configuredClone->extraDockpipeEnv.contains("DOCKPIPE_VSCODE_INPUT_TEXT=  exact value  ")
         || !configuredClone->extraDockpipeEnv.contains("DOCKPIPE_VSCODE_INPUT_EMPTY=")
+        || !configuredClone->extraDockpipeEnv.contains("FIXTURE_MODE=persistent")
+        || !configuredClone->extraDockpipeEnv.contains("FIXTURE_CLEAR=")
         || configuredClone->extraDockpipeEnv.join(' ').contains("transient fixture secret")
         || !SessionManager::dockpipeArguments(*configuredClone).contains("DOCKPIPE_VSCODE_INPUT_TEXT=  exact value  ")
         || !SessionManager::dockpipeArguments(*configuredClone).contains("DOCKPIPE_VSCODE_INPUT_EMPTY="))
@@ -537,7 +844,7 @@ exec "$@"
             ++dependencies;
         if (item->toolTip().startsWith("Network attachment") || item->toolTip().startsWith("Mounted at"))
             ++attachments;
-        if (item->data(0).toString() == "container:fixture")
+        if (item->data(0).toString() == "container:" + runningContainerId)
             containerCard = item;
     }
     if (dependencies != 1 || attachments != 4 || !containerCard)
@@ -554,15 +861,31 @@ exec "$@"
             return 60;
     }
     capture("-docker-details");
+    dockerPage->findChild<QPushButton *>("dockerDashboardView")->click();
+    auto *stateFilter = dockerPage->findChild<QComboBox *>("dockerStateFilter");
+    auto *listResults = dockerPage->findChild<QLabel *>("dockerListResults");
+    stateFilter->setCurrentIndex(stateFilter->findData("attention"));
+    if (listResults->text() != "1 of 3 containers")
+        return 246;
+    stateFilter->setCurrentIndex(stateFilter->findData("stopped"));
+    if (listResults->text() != "1 of 3 containers")
+        return 247;
+    stateFilter->setCurrentIndex(stateFilter->findData("running"));
+    if (listResults->text() != "2 of 3 containers")
+        return 248;
+    stateFilter->setCurrentIndex(0);
+    if (qEnvironmentVariableIsSet("DOCKPIPE_DOCKER_LOCAL_CAPTURE"))
+        dockerPage->grab().save(qEnvironmentVariable("DOCKPIPE_DOCKER_LOCAL_CAPTURE"));
+    dockerPage->findChild<QPushButton *>("dockerCanvasView")->click();
     auto *related = dockerPage->findChild<QLabel *>("dockerRelatedResources");
-    if (!related->text().contains("network%3Anetwork") || !related->text().contains("volume%3Adata"))
+    if (!related->text().contains("network%3A" + networkId) || !related->text().contains("volume%3Adata"))
         return 61;
-    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "network%3Anetwork"));
+    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "network%3A" + networkId));
     auto *resourceTitle = dockerPage->findChild<QLabel *>("dockerResourceTitle");
     if (resourceTitle->text() != "workspace")
         return 62;
     capture("-docker-network-inspector");
-    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "container%3Afixture"));
+    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "container%3A" + runningContainerId));
     if (resourceTitle->text() != "pipeon")
         return 63;
     auto *exec = dockerPage->findChild<QPushButton *>("dockerExec");
@@ -574,9 +897,17 @@ exec "$@"
         std::fprintf(stderr, "Container shell did not reach the terminal fixture\n");
         return 65;
     }
+    QByteArray terminalCommand = cli.toUtf8() + "\ncontainers\nexec\n--container\n"
+        + runningContainerId.toUtf8() + "\n--shell\n/bin/sh\n";
+    if (QFile::exists("/.flatpak-info")) {
+        QSettings info("/.flatpak-info", QSettings::IniFormat);
+        terminalCommand = QByteArray("flatpak\nrun\n--command=dockpipe\n")
+            + info.value("Application/name").toString().toUtf8()
+            + "\ncontainers\nexec\n--container\n" + runningContainerId.toUtf8() + "\n--shell\n/bin/sh\n";
+    }
     QFile arguments(terminalArgs);
     if (!arguments.open(QIODevice::ReadOnly)
-        || !arguments.readAll().endsWith("docker\nexec\n-it\nfixture\n/bin/sh\n"))
+        || !arguments.readAll().endsWith(terminalCommand))
         return 66;
     arguments.close();
     if (QFile::exists("/.flatpak-info")) {
@@ -596,14 +927,14 @@ exec "$@"
         }
         return nullptr;
     };
-    auto *stoppedCard = resource("container:stopped");
+    auto *stoppedCard = resource("container:" + stoppedContainerId);
     if (!stoppedCard || !stoppedCard->data(4).toBool()
         || !(stoppedCard->flags() & QGraphicsItem::ItemIsSelectable)
         || !stoppedCard->toolTip().contains("Stopped")
-        || !resource("container:fixture")->toolTip().contains("Running")
-        || !resource("container:database")->toolTip().contains("Unhealthy"))
+        || !resource("container:" + runningContainerId)->toolTip().contains("Running")
+        || !resource("container:" + databaseContainerId)->toolTip().contains("Unhealthy"))
         return 43;
-    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "container%3Astopped"));
+    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "container%3A" + stoppedContainerId));
     if (exec->isEnabled() || resourceTitle->text() != "old-worker")
         return 67;
     auto *start = dockerPage->findChild<QPushButton *>("dockerStart");
@@ -611,9 +942,9 @@ exec "$@"
     if (start->isEnabled())
         return 68;
     if (!waitUntil([&]() { return dockerPage->findChild<QLabel *>("dockerInspectorStatus")->text()
-        .contains("Fixture start rejected") && start->isEnabled(); }))
+        .contains("start failed for old-worker") && start->isEnabled(); }))
         return 69;
-    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "container%3Afixture"));
+    QMetaObject::invokeMethod(related, "linkActivated", Q_ARG(QString, "container%3A" + runningContainerId));
     auto *motion = dockerPage->findChild<QPushButton *>("dockerFilter_motion");
     auto *animation = dockerPage->findChild<QTimer *>("dependencyAnimationTimer");
     if (!motion || !animation || !animation->isActive())
@@ -640,7 +971,7 @@ exec "$@"
     if (!animation->isActive())
         return 56;
     dependenciesToggle->setChecked(true);
-    const QPointF networkPosition = resource("network:network")->pos();
+    const QPointF networkPosition = resource("network:" + networkId)->pos();
     networksToggle->setChecked(false);
     volumesToggle->setChecked(false);
     stoppedToggle->setChecked(false);
@@ -651,7 +982,7 @@ exec "$@"
         if (dynamic_cast<QGraphicsPathItem *>(item) && item->isVisible())
             return 44;
     }
-    if (stoppedCard->isVisible() || resource("network:network")->isVisible()
+    if (stoppedCard->isVisible() || resource("network:" + networkId)->isVisible()
         || resource("volume:data")->isVisible() || !containerCard->isVisible())
         return 45;
     dockerPage->findChild<QWidget *>("dockerDetailsPanel")->hide();
@@ -665,21 +996,21 @@ exec "$@"
         if (previousCard)
             return false;
         for (auto *item : graph->scene()->items()) {
-            if (item->data(0).toString() == "container:fixture")
+            if (item->data(0).toString() == "container:" + runningContainerId)
                 return item->pos() == movedPosition && item->isSelected()
                     && graph->transform() == graphTransform;
         }
         return false;
     }))
         return 42;
-    if (resource("container:stopped")->isVisible() || resource("network:network")->isVisible())
+    if (resource("container:" + stoppedContainerId)->isVisible() || resource("network:" + networkId)->isVisible())
         return 46;
     networksToggle->setChecked(true);
     volumesToggle->setChecked(true);
     stoppedToggle->setChecked(true);
     dependenciesToggle->setChecked(true);
-    if (!resource("container:stopped")->isVisible()
-        || resource("network:network")->pos() != networkPosition)
+    if (!resource("container:" + stoppedContainerId)->isVisible()
+        || resource("network:" + networkId)->pos() != networkPosition)
         return 47;
     if (!animation->isActive())
         return 52;
@@ -694,6 +1025,42 @@ exec "$@"
         std::fprintf(stderr, "Machine discovery failed\n");
         return 3;
     }
+    auto *environments = window.findChild<QWidget *>("environmentsPage");
+    auto *addEnvironment = environments ? button(environments, "Add Environment") : nullptr;
+    if (!addEnvironment || !addEnvironment->isVisible() || remote->isVisible()
+        || window.findChild<QPushButton *>("environmentRemoteAccess"))
+        return 22;
+    QTimer::singleShot(0, &window, [] {
+        auto *picker = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+        if (!picker)
+            return;
+
+        const auto tiles = picker->findChildren<QPushButton *>("environmentTypeTile");
+        const auto remoteTile = std::find_if(tiles.cbegin(), tiles.cend(), [](const auto *tile) {
+            return tile->property("environmentKind").toString() == "machine";
+        });
+        if (tiles.size() == 4 && remoteTile != tiles.cend()) {
+            (*remoteTile)->click();
+            return;
+        }
+
+        picker->reject();
+    });
+    addEnvironment->click();
+    auto *pairingDialog = remote->findChild<QDialog *>("machineSetupDialog");
+    if (!pairingDialog || !pairingDialog->isVisible() || remote->isVisible()
+        || !remote->findChild<QPushButton *>("machinePairingStart")->isVisible())
+        return 22;
+    pairingDialog->reject();
+    if (!environments->isVisible() || remote->isVisible())
+        return 22;
+
+    // Host the standalone management widget for its legacy controls tests.
+    auto *inventory = environments->findChild<QStackedWidget *>(QString(), Qt::FindDirectChildrenOnly);
+    if (!inventory)
+        return 22;
+    inventory->addWidget(remote);
+    inventory->setCurrentWidget(remote);
     auto *remoteLockStatus = remote->findChild<QLabel *>("remoteLockStatus");
     if (!remoteLockStatus || !waitUntil([&]() { return remoteLockStatus->text().contains("Remote access is locked."); }))
         return 246;
@@ -720,6 +1087,188 @@ exec "$@"
         || machines->item(1, 1)->text() != "Invitation created"
         || !machines->item(1, 2)->text().startsWith("Not connected yet"))
         return 22;
+    auto *machinesCanvasView = remote->findChild<QPushButton *>("machinesCanvasView");
+    auto *machinesListView = remote->findChild<QPushButton *>("machinesListView");
+    auto *machinesViews = remote->findChild<QStackedWidget *>("machinesViews");
+    auto *machineSearch = remote->findChild<QLineEdit *>("machinesSearch");
+    auto *machineAccessFilter = remote->findChild<QComboBox *>("machinesAccessFilter");
+    auto *selectedMachineAccess = remote->findChild<QLabel *>("machinesSelectedAccess");
+    auto *machineListResults = remote->findChild<QLabel *>("machinesListResults");
+    if (!machinesCanvasView || !machinesListView || !machinesViews || !machineSearch
+        || !machineAccessFilter || !selectedMachineAccess || !machineListResults
+        || !machinesCanvasView->isChecked() || machinesViews->currentIndex() != 0)
+        return 320;
+    machinesListView->click();
+    auto *connectionSettings = remote->findChild<QPushButton *>("machinesConnectionSettings");
+    if (!connectionSettings || connectionSettings->isChecked()
+        || remote->findChild<QLabel *>("remoteConnectionSummary")->isVisible()
+        || selectedMachineAccess->isVisible() || button(remote, "Remove machine…")->isVisible())
+        return 343;
+    capture("-machines-list-default");
+    machines->selectRow(0);
+    if (machinesViews->currentIndex() != 1 || !machinesListView->isChecked()
+        || !selectedMachineAccess->text().contains("mac-mini · Paired")
+        || machineListResults->text() != "2 machines"
+        || QSettings().value("machines/viewMode").toString() != "list")
+        return 321;
+    auto *rowSettings = qobject_cast<QPushButton *>(machines->cellWidget(0, 3));
+    if (!rowSettings || rowSettings->accessibleName() != "Settings for mac-mini")
+        return 344;
+    rowSettings->click();
+    auto *machineSettingsDialog = remote->findChild<QDialog *>("machineSettingsDialog");
+    if (!machineSettingsDialog || !machineSettingsDialog->isVisible()
+        || !selectedMachineAccess->isVisible()
+        || !selectedMachineAccess->text().contains("mac-mini · Paired")
+        || machineSettingsDialog->findChild<QTableWidget *>()
+        || button(machineSettingsDialog, "Add machine"))
+        return 345;
+    if (machineSettingsDialog->height() > 400)
+        return 349;
+    machines->selectRow(1);
+    if (!selectedMachineAccess->text().contains("mac-mini · Paired"))
+        return 346;
+    if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE"))
+        machineSettingsDialog->grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + "-machine-settings.png");
+    machineSettingsDialog->reject();
+    machines->selectRow(0);
+    {
+        RemoteWidget restoredMachines;
+        if (!restoredMachines.findChild<QPushButton *>("machinesListView")->isChecked()
+            || restoredMachines.findChild<QStackedWidget *>("machinesViews")->currentIndex() != 1)
+            return 322;
+    }
+    machineSearch->setText("STUDIO");
+    if (!machines->isRowHidden(0) || machines->isRowHidden(1)
+        || button(remote, "Remove access…")->isEnabled())
+        return 323;
+    machineAccessFilter->setCurrentIndex(1);
+    if (!machines->isRowHidden(0) || !machines->isRowHidden(1)
+        || !machineListResults->text().contains("No machines match"))
+        return 324;
+    machineSearch->clear();
+    machineAccessFilter->setCurrentIndex(0);
+    machines->selectRow(1);
+    machinesCanvasView->click();
+    auto *machineCanvas = remote->findChild<ResourceCanvas *>();
+    if (!machineCanvas || !machineCanvas->focusResource("studio-invite"))
+        return 347;
+    auto *canvasDetails = remote->findChild<QWidget *>("machinesDetailsPanel");
+    app.processEvents();
+    if (!selectedMachineAccess->text().contains("studio-invite")
+        || !canvasDetails || canvasDetails->findChild<QTableWidget *>()
+        || button(canvasDetails, "Add machine"))
+        return 348;
+    if (canvasDetails->width() > 520 || canvasDetails->height() > 420)
+        return 350;
+    capture("-machine-canvas-settings");
+    window.resize(1800, 1800);
+    app.processEvents();
+    if (canvasDetails->height() > 420)
+        return 351;
+    capture("-machine-canvas-settings-tall");
+    window.resize(1180, 780);
+    machinesListView->click();
+    if (machines->currentRow() != 1 || !selectedMachineAccess->text().contains("Invitation created")
+        || machinePages->currentIndex() != 0)
+        return 325;
+    capture("-machines-list");
+    QFile removalStaleService(directory.filePath("stale-service"));
+    QFile removalServiceFailure(directory.filePath("service-fails"));
+    if (!removalStaleService.open(QIODevice::WriteOnly) || !removalServiceFailure.open(QIODevice::WriteOnly))
+        return 339;
+    removalStaleService.close();
+    removalServiceFailure.close();
+    connectionSettings->setChecked(true);
+    remote->refresh();
+    if (!waitUntil([&]() { return button(remote, "Refresh")->isEnabled()
+            && button(remote, "Update broker service…")->isVisible(); }))
+        return 340;
+    machines->clearSelection();
+    machines->item(0, 0)->setData(Qt::UserRole, "revoked");
+    machines->selectRow(0);
+    qobject_cast<QPushButton *>(machines->cellWidget(0, 3))->click();
+    auto *removeMachine = button(remote, "Remove machine…");
+    if (!removeMachine || !removeMachine->isEnabled() || button(remote, "Remove access…")->isEnabled())
+        return 332;
+    QTimer::singleShot(0, []() {
+        if (auto *dialog = qobject_cast<QMessageBox *>(QApplication::activeModalWidget()))
+            dialog->button(QMessageBox::No)->click();
+    });
+    removeMachine->click();
+    if (QFile::exists(directory.filePath("remove-machine-args")))
+        return 333;
+    QFile removalFailure(directory.filePath("remove-fails"));
+    if (!removalFailure.open(QIODevice::WriteOnly))
+        return 337;
+    removalFailure.close();
+    QTimer::singleShot(0, []() {
+        if (auto *dialog = qobject_cast<QMessageBox *>(QApplication::activeModalWidget()))
+            dialog->button(QMessageBox::Yes)->click();
+    });
+    removeMachine->click();
+    if (!waitUntil([&]() { return removeMachine->isEnabled(); }) || machines->rowCount() != 2)
+        return 338;
+    if (!remote->findChild<QLabel *>("machineSettingsError")->isVisible()
+        || !machineDetails->toPlainText().contains("Service fixture failed")
+        || QFile::exists(directory.filePath("remove-machine-args")))
+        return 341;
+    removalServiceFailure.remove();
+    QTimer::singleShot(0, []() {
+        if (auto *dialog = qobject_cast<QMessageBox *>(QApplication::activeModalWidget()))
+            dialog->button(QMessageBox::Yes)->click();
+    });
+    removeMachine->click();
+    if (!waitUntil([&]() { return removeMachine->isEnabled()
+            && machineDetails->toPlainText().contains("Fixture removal failed"); }) || machines->rowCount() != 2)
+        return 342;
+    removalFailure.remove();
+    QTimer::singleShot(0, []() {
+        if (auto *dialog = qobject_cast<QMessageBox *>(QApplication::activeModalWidget()))
+            dialog->button(QMessageBox::Yes)->click();
+    });
+    removeMachine->click();
+    if (!waitUntil([&]() { return button(remote, "Refresh")->isEnabled() && machines->rowCount() == 1; })) {
+        std::fprintf(stderr, "Removal failed: rows=%d, enabled=%d, output=%s\n", machines->rowCount(),
+            removeMachine->isEnabled(), qPrintable(machineDetails->toPlainText()));
+        std::fprintf(stderr, "Removal marker=%d, args=%d, selected=%d\n",
+            QFile::exists(directory.filePath("machine-removed")),
+            QFile::exists(directory.filePath("remove-machine-args")), machines->currentRow());
+        return 334;
+    }
+    QFile removalArgs(directory.filePath("remove-machine-args"));
+    if (!removalArgs.open(QIODevice::ReadOnly)
+        || !removalArgs.readAll().startsWith("remote\nremove\n--id\nmac-mini\n"))
+        return 335;
+    QFile::remove(directory.filePath("machine-removed"));
+    button(remote, "Refresh")->click();
+    if (!waitUntil([&]() { return button(remote, "Refresh")->isEnabled() && machines->rowCount() == 2; }))
+        return 336;
+    QFile::remove(directory.filePath("service-calls"));
+    if (machineDetails->isVisible())
+        button(remote, "Hide details")->click();
+    connectionSettings->setChecked(false);
+    window.resize(2100, 1800);
+    app.processEvents();
+    auto *machineOverview = remote->findChild<QWidget *>("machinesOverview");
+    if (machineOverview->width() < 1700)
+        return 328;
+    capture("-machines-list-wide");
+    QFile nodesFailure(directory.filePath("nodes-fail"));
+    if (!nodesFailure.open(QIODevice::WriteOnly))
+        return 329;
+    nodesFailure.close();
+    button(remote, "Refresh")->click();
+    if (!waitUntil([&]() { return button(remote, "Refresh")->isEnabled()
+            && machineListResults->text().contains("inventory is unavailable"); })
+        || machines->isVisible() || selectedMachineAccess->isVisible()
+        || button(remote, "Remove access…")->isVisible())
+        return 330;
+    capture("-machines-list-unavailable-wide");
+    nodesFailure.remove();
+    button(remote, "Refresh")->click();
+    if (!waitUntil([&]() { return button(remote, "Refresh")->isEnabled() && machines->rowCount() == 2; }))
+        return 331;
+    machinesCanvasView->click();
     window.resize(1800, 1800);
     capture("-machines-tall");
     if (!remote->findChild<QWidget *>("machinesDetailsPanel")->isVisible())
@@ -739,6 +1288,19 @@ exec "$@"
         return 34;
     }
     capture("-setup-local");
+    const QString savedMachineHostname = hostname->text();
+    hostname->setText("draft.example.com");
+    machinesListView->click();
+    if (machinePages->currentIndex() != 3 || hostname->text() != "draft.example.com"
+        || !hostname->isVisible())
+        return 326;
+    window.resize(760, 680);
+    capture("-machines-list-setup-narrow");
+    machinesCanvasView->click();
+    if (machinePages->currentIndex() != 3 || hostname->text() != "draft.example.com")
+        return 327;
+    hostname->setText(savedMachineHostname);
+    window.resize(1180, 780);
     resolver->setCurrentIndex(1);
     if (hostname->isVisible() || !button(remote, "Sign in and connect…")->isEnabled()
         || !setupHint->text().contains("Hosted broker") || !summary->text().contains("example.tunnel"))
@@ -794,34 +1356,129 @@ exec "$@"
             break;
         }
     }
-    button(remote, "Add another machine")->click();
+    button(remote, "Add machine")->click();
     auto *requests = remote->findChild<QTableWidget *>("pairingRequests");
+    auto *pairingSteps = remote->findChild<QStackedWidget *>("machinePairingSteps");
+    auto *pairingStart = remote->findChild<QPushButton *>("machinePairingStart");
+    auto *pairingReview = remote->findChild<QPushButton *>("machinePairingReview");
+    if (!pairingSteps || pairingSteps->currentIndex() != 0 || requests->isVisible()
+        || !pairingStart || pairingStart->text() != "Start pairing")
+        return 352;
+    if (!waitUntil([&]() { return pairingStart->isEnabled(); }))
+        return 358;
+    const auto pairingActionVisible = [&](QWidget *action) {
+        auto *scroll = qobject_cast<QScrollArea *>(machinePages->currentWidget());
+        if (!scroll)
+            return false;
+        const QRect actionBounds(action->mapTo(scroll->viewport(), QPoint()), action->size());
+        return scroll->viewport()->rect().contains(actionBounds);
+    };
+    app.processEvents();
+    if (!pairingActionVisible(pairingStart))
+        return 363;
+    capture("-add-machine-prepare");
+    QFile pairingFailure(directory.filePath("pairing-open-fails"));
+    if (!pairingFailure.open(QIODevice::WriteOnly))
+        return 359;
+    pairingFailure.close();
+    pairingStart->click();
+    if (!waitUntil([&]() { return pairingStart->isEnabled()
+            && machineDetails->toPlainText().contains("Fixture pairing failed"); })
+        || pairingSteps->currentIndex() != 0)
+        return 360;
+    pairingFailure.remove();
+    pairingStart->click();
+    if (!waitUntil([&]() { return pairingSteps->currentIndex() == 1 && pairingReview->isEnabled(); })
+        || requests->isVisible()) {
+        std::fprintf(stderr, "Pairing stage=%d, review enabled=%d, requests visible=%d, page=%d, output=%s\n",
+            pairingSteps->currentIndex(), pairingReview->isEnabled(), requests->isVisible(),
+            machinePages->currentIndex(), qPrintable(machineDetails->toPlainText()));
+        return 353;
+    }
+    remote->findChild<QPushButton *>("machinePairingCopyAddress")->click();
+    if (QApplication::clipboard()->text() != "https://remote.example.com")
+        return 354;
+    capture("-add-machine-connect");
+    if (!pairingActionVisible(pairingReview))
+        return 364;
+    pairingReview->click();
+    if (pairingSteps->currentIndex() != 2 || !requests->isVisible())
+        return 355;
     if (!waitUntil([&]() { return requests->rowCount() == 1 && button(remote, "Check for requests")->isEnabled(); }))
         return 24;
-    if (button(remote, "Verify key and approve")->isEnabled())
+    if (button(remote, "Approve with security key")->isEnabled())
         return 25;
     requests->selectRow(0);
-    if (!button(remote, "Verify key and approve")->isEnabled())
+    if (!button(remote, "Approve with security key")->isEnabled())
         return 26;
     capture("-add-machine");
-    // Return through the visible navigation, then exercise the worker-side path.
-    for (auto *back : remote->findChildren<QPushButton *>()) {
-        if (back->text() == "← Machines" && back->isVisible()) {
-            back->click();
-            break;
-        }
-    }
-    button(remote, "Connect this computer")->click();
+    if (!pairingActionVisible(button(remote, "Approve with security key")))
+        return 365;
+    const auto approvePairing = [&]() {
+        QTimer::singleShot(0, []() {
+            if (auto *confirmation = qobject_cast<QMessageBox *>(QApplication::activeModalWidget()))
+                confirmation->button(QMessageBox::Yes)->click();
+        });
+        button(remote, "Approve with security key")->click();
+    };
+    QFile pairingKeyMissing(directory.filePath("pairing-key-missing"));
+    if (!pairingKeyMissing.open(QIODevice::WriteOnly))
+        return 612;
+    pairingKeyMissing.close();
+    auto *pairingKeyError = remote->findChild<QLabel *>("machinePairingKeyError");
+    if (!pairingKeyError || !pairingKeyError->isHidden())
+        return 613;
+    approvePairing();
+    if (!waitUntil([&]() { return pairingKeyError->isVisible()
+            && button(remote, "Approve with security key")->isEnabled(); })
+        || pairingSteps->currentIndex() != 2
+        || !pairingKeyError->text().contains("Plug in your registered key"))
+        return 614;
+    pairingKeyMissing.remove();
+    approvePairing();
+    if (!waitUntil([&]() { return pairingSteps->currentIndex() == 3 && button(remote, "Check for requests")->isEnabled(); }))
+        return 361;
+    QFile approveArguments(directory.filePath("approve-args"));
+    if (!approveArguments.open(QIODevice::ReadOnly)
+        || !approveArguments.readAll().contains("--interaction\ngui\n"))
+        return 362;
+    capture("-add-machine-complete");
+    button(remote, "Done")->click();
+    // Exercise the same entry point on the computer being connected.
+    button(remote, "Add machine")->click();
+    button(remote, "Connect this computer instead")->click();
+    auto *connectionRecovery = remote->findChild<QPushButton *>("machineConnectionRecovery");
+    auto *enableTerminal = remote->findChild<QPushButton *>("machineConnectionEnableTerminal");
+    if (!connectionRecovery || !enableTerminal || connectionRecovery->isChecked()
+        || enableTerminal->isVisible() || button(remote, "Start worker service")->isVisible())
+        return 356;
+    connectionRecovery->click();
+    if (!enableTerminal->isVisible() || !button(remote, "Start worker service")->isVisible())
+        return 357;
     if (button(remote, "Request pairing")->isEnabled())
         return 27;
-    for (auto *edit : remote->findChildren<QLineEdit *>()) {
-        if (edit->placeholderText().startsWith("https://"))
-            edit->setText("https://broker.example.com");
-    }
-    remote->findChild<QCheckBox *>()->setChecked(true);
+    auto *pairingEndpoint = remote->findChild<QLineEdit *>("machinePairingEndpoint");
+    auto *pairingEndpointError = remote->findChild<QLabel *>("machinePairingEndpointError");
+    if (!pairingEndpoint || !pairingEndpointError || !pairingEndpointError->isHidden())
+        return 610;
+
+    auto *allowWorkflows = remote->findChild<QCheckBox *>("machinePairingAllowWorkflows");
+    auto *allowTerminal = remote->findChild<QCheckBox *>("machinePairingAllowTerminal");
+    if (!allowWorkflows || !allowTerminal || allowTerminal->isChecked())
+        return 612;
+    allowWorkflows->setChecked(true);
+    allowTerminal->setChecked(true);
     auto *pair = button(remote, "Request pairing");
+    pairingEndpoint->setText("htttps://broker.example.com");
+    if (pair->isEnabled() || pairingEndpointError->isHidden()
+        || !pairingEndpointError->text().contains("https://")
+        || pairingEndpoint->accessibleDescription() != pairingEndpointError->text())
+        return 611;
+
+    pairingEndpoint->setText("https://broker.example.com");
     auto *cancel = button(remote, "Cancel current operation");
-    if (!waitUntil([&]() { return pair->isEnabled(); }))
+    if (!waitUntil([&]() { return pair->isEnabled(); }) || !pairingEndpointError->isHidden()
+        || !pairingEndpoint->accessibleDescription().isEmpty())
         return 12;
     pair->click();
     auto *code = remote->findChild<QLabel *>("pairingCode");
@@ -834,7 +1491,7 @@ exec "$@"
         std::fprintf(stderr, "Cancellation left pairing controls busy\n");
         return 5;
     }
-    if (QFile::exists(directory.filePath("service-calls")))
+    if (QFile::exists(directory.filePath("service-calls")) || QFile::exists(directory.filePath("feature-config-args")))
         return 49;
     const auto hasRemoteStatus = [&](const QString &text) {
         for (auto *label : remote->findChildren<QLabel *>()) {
@@ -848,8 +1505,12 @@ exec "$@"
         return 50;
     approved.close();
     pair->click();
-    if (!waitUntil([&]() { return hasRemoteStatus("Worker service started."); }))
+    if (!waitUntil([&]() { return hasRemoteStatus("Background worker startup requested."); }))
         return 51;
+    QFile terminalGrant(directory.filePath("feature-config-args"));
+    if (!terminalGrant.open(QIODevice::ReadOnly)
+        || terminalGrant.readAll() != "remote\nfeatures-config\n--terminal-home\n--auth\nauto\n")
+        return 613;
     QFile serviceCalls(directory.filePath("service-calls"));
     if (!serviceCalls.open(QIODevice::ReadOnly)
         || serviceCalls.readAll() != "remote\nservice\n--role\nworker\n--auth\nauto\n")
@@ -869,7 +1530,7 @@ exec "$@"
     pairCalls.close();
     serviceFails.remove();
     button(remote, "Start worker service")->click();
-    if (!waitUntil([&]() { return hasRemoteStatus("Worker service started."); })
+    if (!waitUntil([&]() { return hasRemoteStatus("Background worker startup requested."); })
         || !pairCalls.open(QIODevice::ReadOnly) || pairCalls.readAll() != completedPairCalls)
         return 56;
     navigation->setCurrentRow(2);
@@ -911,7 +1572,21 @@ exec "$@"
     context.label = "Build project";
     context.workdir = directory.path();
     context.workflowFile = directory.filePath("work/config.yml");
+    const QJsonObject capturedTarget{{"node", "mac-mini"}, {"fingerprint", QString(64, 'a')},
+        {"generation", QString(64, 'b')}};
+    const QJsonObject capturedCatalog{{"target", capturedTarget},
+        {"roots", QJsonArray{QJsonObject{{"id", "project"}, {"files_read", true}}}}};
     RemoteRunDialog dialog(context, "mac-mini");
+    dialog.setCapturedTarget(capturedTarget, "project");
+    int confirmedSubmissions = 0;
+    QString confirmedJob;
+    QString confirmedTitle;
+    QObject::connect(&dialog, &RemoteRunDialog::remoteJobSubmitted, &window,
+                     [&](const QString &jobId, const QString &title) {
+        ++confirmedSubmissions;
+        confirmedJob = jobId;
+        confirmedTitle = title;
+    });
     dialog.show();
     auto *send = button(&dialog, "Run on mac-mini");
     if (!send || send->isEnabled())
@@ -919,6 +1594,8 @@ exec "$@"
     button(&dialog, "Preview files")->click();
     if (!waitUntil([&]() { return send->isEnabled(); }))
         return 7;
+    if (confirmedSubmissions != 0)
+        return 428;
     auto editors = dialog.findChildren<QPlainTextEdit *>();
     for (auto *editor : editors) {
         if (!editor->isReadOnly()) {
@@ -936,23 +1613,32 @@ exec "$@"
     send->click();
     if (!waitUntil([&]() { return dialog.result() == QDialog::Accepted; }))
         return 10;
+    if (confirmedSubmissions != 1 || confirmedJob.isEmpty() || confirmedTitle != context.label)
+        return 429;
     QFile submitted(directory.filePath("submit-args"));
     if (!submitted.open(QIODevice::ReadOnly))
         return 11;
     const QByteArray submittedArguments = submitted.readAll();
     if (!submittedArguments.contains("--expected-digest\nabc123\n")
+        || !submittedArguments.contains("--expected-fingerprint\n" + QByteArray(64, 'a') + "\n")
+        || !submittedArguments.contains("--expected-generation\n" + QByteArray(64, 'b') + "\n")
+        || !submittedArguments.contains("--expected-root\nproject\n")
         || !submittedArguments.endsWith("--auth\nauto\n"))
         return 11;
     if (QFile::exists(directory.filePath("project-cli-invoked")))
         return 241;
     navigation->setCurrentRow(5);
     auto *executionTabs = window.findChild<QTabWidget *>("executionTabs");
-    if (!executionTabs || !executionTabs->isVisible() || executionTabs->count() != 2)
+    if (!executionTabs || !executionTabs->isVisible() || executionTabs->count() != 1
+        || executionTabs->findChild<ActivityWidget *>()
+        || executionTabs->findChild<QComboBox *>("executionMode")->currentIndex() != 1)
         return 42;
-    auto *activity = executionTabs->findChild<ActivityWidget *>();
-    if (!activity || executionTabs->widget(1) != activity)
+    navigation->setCurrentRow(2);
+    window.findChild<QPushButton *>("workflowRunLogsButton")->click();
+    auto *runLogs = window.findChild<QDialog *>("workflowRunLogs");
+    auto *activity = runLogs ? runLogs->findChild<ActivityWidget *>() : nullptr;
+    if (!activity || !runLogs->isVisible())
         return 127;
-    executionTabs->setCurrentIndex(1);
     if (!activity->isVisible() || !button(activity, "Open logs")->isVisible()
         || !button(activity, "Stop selected run")->isVisible())
         return 128;
@@ -969,7 +1655,8 @@ exec "$@"
     button(activity, "Browse workflows")->click();
     if (navigation->currentRow() != 2)
         return 135;
-    navigation->setCurrentRow(5);
+    navigation->setCurrentRow(2);
+    window.findChild<QPushButton *>("workflowRunLogsButton")->click();
     activity->showRemoteJobs();
     auto *download = button(activity, "Download results");
     auto *jobTable = activity->findChild<QTableWidget *>("remoteJobs");
@@ -1014,7 +1701,7 @@ exec "$@"
         return 141;
     if (QFile::exists(directory.filePath("project-cli-invoked")))
         return 242;
-    executionTabs->setCurrentIndex(0);
+    navigation->setCurrentRow(5);
     if (activity->isVisible() || !executionTabs->widget(0)->isVisible())
         return 133;
     QFile jobsCalls(directory.filePath("jobs-calls"));
@@ -1053,8 +1740,10 @@ exec "$@"
         return 57;
     staleService.close();
     navigation->setCurrentRow(3);
+    machinesListView->click();
     button(remote, "← Machines")->click();
     remote->refresh();
+    connectionSettings->setChecked(true);
     auto *repair = button(remote, "Update broker service…");
     auto *serviceHint = remote->findChild<QLabel *>("brokerServiceHint");
     if (!waitUntil([&]() { return repair->isVisible() && repair->isEnabled() && serviceHint->isVisible(); }))
@@ -1094,6 +1783,9 @@ exec "$@"
                                                               "remote\nservice\n--role\nbroker\n--replace\n--auth\nauto\n")
         return 64;
     serviceCalls.close();
+    remote->hide();
+    inventory->removeWidget(remote);
+    remote->setParent(&window);
 
     auto *viewMenu = window.findChild<QMenu *>("workspaceViewMenu");
     auto *sidebarToggle = window.findChild<QToolButton *>("toggleSidebarButton");
@@ -1171,10 +1863,10 @@ exec "$@"
         return 180;
     nameDialog->setTextValue("Operations dashboard");
     nameDialog->accept();
-    if (!waitUntil([&]() { return navigation->count() == 13; })
+    if (!waitUntil([&]() { return navigation->count() == 14; })
         || navigation->item(8)->text() != "Browser"
-        || navigation->item(11)->text() != "Operations dashboard"
-        || navigation->item(12)->text() != "Cockpit · Experimental")
+        || navigation->item(12)->text() != "Operations dashboard"
+        || navigation->item(13)->text() != "Cockpit · Experimental")
         return 172;
     auto *dashboard = qobject_cast<DashboardPage *>(workspacePages->currentWidget());
     if (!dashboard || !dashboard->addWidgetKind("browser") || !dashboard->addWidgetKind("logs")
@@ -1217,13 +1909,24 @@ exec "$@"
         return nodeIndex >= 0 && !target->itemData(nodeIndex, Qt::UserRole + 1).toBool();
     }))
         return 202;
-    target->setCurrentIndex(target->findData("mac-mini"));
+    auto *sharedMachine = window.findChild<WorkspaceMachineMenu *>("workspaceMachineMenu");
+    auto *workflowFactory = dashboard->findChild<DashboardWidgetFactory *>();
+    if (!sharedMachine || !workflowFactory)
+        return 430;
+    sharedMachine->setCatalog({capturedCatalog});
+    sharedMachine->setCurrent({}, {});
+    workflowFactory->setMachineCatalog({capturedCatalog});
+    if (!workflowFactory->setWidgetMachineContext(dashboardLaunch,
+        {{"mode", "remote"}, {"target", capturedTarget}, {"rootId", "project"}}))
+        return 431;
     bool sawDashboardRunReview = false;
     QTimer dismissDashboardRun;
     dismissDashboardRun.setInterval(20);
     QObject::connect(&dismissDashboardRun, &QTimer::timeout, &window, [&]() {
         if (auto *review = qobject_cast<RemoteRunDialog *>(QApplication::activeModalWidget())) {
-            sawDashboardRunReview = button(review, "Run on mac-mini") != nullptr;
+            sawDashboardRunReview = button(review, "Run on mac-mini") != nullptr
+                && review->property("capturedWorkflowTarget").toJsonObject() == capturedTarget
+                && review->property("capturedWorkflowRoot").toString() == "project";
             review->reject();
             dismissDashboardRun.stop();
         } else if (auto *unexpected = qobject_cast<QDialog *>(QApplication::activeModalWidget())) {
@@ -1347,20 +2050,20 @@ exec "$@"
         return 185;
     renameDialog->setTextValue("Daily work");
     renameDialog->accept();
-    if (navigation->item(11)->text() != "Daily work")
+    if (navigation->item(12)->text() != "Daily work")
         return 186;
     temporaryDashboard->removeRequested();
     auto *removeDialog = window.findChild<QMessageBox *>("dashboardRemoveConfirmation");
     if (!removeDialog)
         return 187;
     removeDialog->done(QMessageBox::Yes);
-    if (navigation->count() != 12 || navigation->item(10)->text() != "Daily work"
-        || navigation->item(11)->text() != "Cockpit · Experimental")
+    if (navigation->count() != 13 || navigation->item(11)->text() != "Daily work"
+        || navigation->item(12)->text() != "Cockpit · Experimental")
         return 188;
     navigation->setCurrentRow(8);
-    if (workspacePages->currentWidget() != browser)
+    if (workspacePages->currentWidget() != browserPage)
         return 176;
-    navigation->setCurrentRow(10);
+    navigation->setCurrentRow(11);
     if (workspacePages->currentWidget() != dashboard || !dashboardBrowser)
         return 177;
     // Closing immediately after rearranging must flush the debounce save.
@@ -1368,9 +2071,18 @@ exec "$@"
     // rather than pretending an unavailable tray can reopen it.
     if (QSystemTrayIcon::isSystemTrayAvailable() || window.findChild<QSystemTrayIcon *>())
         return 31;
+    auto *studio = window.findChild<QWidget *>("workflowStudio");
+    auto *cancelOperation = button(studio, "Cancel operation");
+    if (!waitUntil([&]() {
+        return !window.findChild<ProjectGitWidget *>()->busy()
+            && cancelOperation && cancelOperation->isHidden();
+    }))
+        return 432;
     window.close();
-    if (window.isVisible())
+    if (!waitUntil([&]() { return !window.isVisible(); })) {
+        std::fprintf(stderr, "Close refused: %s\n", qPrintable(window.statusBar()->currentMessage()));
         return 32;
+    }
     DashboardStore dashboardStore;
     QVector<DashboardDefinition> restoredDashboards;
     QString dashboardError;
@@ -1380,10 +2092,13 @@ exec "$@"
         return 178;
     MainWindow reopened;
     reopened.show();
+    auto *reopenedNotifications = reopened.findChild<NotificationBell *>();
+    if (!reopenedNotifications || reopenedNotifications->unreadCount() != 0)
+        return 430;
     auto *reopenedNavigation = reopened.findChild<QListWidget *>("workspaceNavigation");
-    if (!reopenedNavigation || !waitUntil([&]() { return reopenedNavigation->count() == 12; }))
+    if (!reopenedNavigation || !waitUntil([&]() { return reopenedNavigation->count() == 13; }))
         return 189;
-    reopenedNavigation->setCurrentRow(10);
+    reopenedNavigation->setCurrentRow(11);
     auto *reopenedDashboard = reopened.findChild<DashboardPage *>();
     if (!reopenedDashboard || reopenedDashboard->snapshot().panels.size() != 3
         || reopenedDashboard->snapshot().name != "Daily work")
@@ -1423,7 +2138,7 @@ exec "$@"
         }
     });
     reopened.close();
-    if (reopened.isVisible() || !discardedConflictClose || !dashboardStore.load(restoredDashboards, dashboardError)
+    if (!waitUntil([&]() { return !reopened.isVisible(); }) || !discardedConflictClose || !dashboardStore.load(restoredDashboards, dashboardError)
         || restoredDashboards.last().name != "Externally saved dashboard")
         return 193;
     if (const int monitoringResult = verifySystemMonitoring(directory.path()))
@@ -1432,5 +2147,168 @@ exec "$@"
     if (!observeArgs.open(QIODevice::ReadOnly)
         || observeArgs.readAll() != "remote\nobserve\n--node\nmonitor-host\n--auth\nnever\n")
         return 245;
+    const LauncherThemeMode originalTheme = dockpipeLauncherThemeMode();
+    window.show();
+    navigation->setCurrentRow(2);
+    window.findChild<QTabBar *>("workflowSections")->setCurrentIndex(0);
+    app.processEvents();
+    {
+        SettingsDialog appearance(settings, &window);
+        appearance.show();
+        auto *theme = appearance.findChild<QComboBox *>("settingsThemeMode");
+        if (!theme || theme->count() != 3)
+            return 367;
+        theme->setCurrentIndex(theme->findData(int(LauncherThemeMode::Dark)));
+        theme->setCurrentIndex(theme->findData(int(LauncherThemeMode::Light)));
+        app.processEvents();
+        if (app.palette().color(QPalette::Window).lightness() < 128)
+            return 368;
+        const auto settingsSurfacesMatch = [&](bool dark) {
+            auto *scroll = appearance.findChild<QScrollArea *>();
+            if (!scroll || (scroll->widget()->palette().color(QPalette::Window).lightness() < 128) != dark)
+                return false;
+            for (auto *edit : appearance.findChildren<QPlainTextEdit *>()) {
+                if ((edit->palette().color(QPalette::Base).lightness() < 128) != dark)
+                    return false;
+            }
+            return true;
+        };
+        if (!settingsSurfacesMatch(false))
+            return 384;
+        auto *workflowCanvas = window.findChild<WorkflowCanvas *>("workflowCanvas");
+        if (!workflowCanvas)
+            return 377;
+        if (workflowCanvas->backgroundBrush().color().lightness() < 128)
+            return 379;
+        const auto canvasImage = workflowCanvas->viewport()->grab().toImage();
+        if (canvasImage.pixelColor(11, 13).lightness() < 128) {
+            std::fprintf(stderr, "Light canvas mismatch: pixel=%s window=%s base=%s text=%s brush=%s\n",
+                qPrintable(canvasImage.pixelColor(11, 13).name()),
+                qPrintable(workflowCanvas->palette().color(QPalette::Window).name()),
+                qPrintable(workflowCanvas->palette().color(QPalette::Base).name()),
+                qPrintable(workflowCanvas->palette().color(QPalette::Text).name()),
+                qPrintable(workflowCanvas->backgroundBrush().color().name()));
+            return 378;
+        }
+        WorkflowCanvas emptyCanvas;
+        emptyCanvas.resize(720, 480);
+        emptyCanvas.show();
+        WorkflowCanvas populatedCanvas;
+        populatedCanvas.resize(720, 480);
+        const QJsonObject themeStep{{"kind", "host"}, {"cmd", "echo theme"}};
+        populatedCanvas.setDocument({{"steps", QJsonArray{themeStep, themeStep}}});
+        populatedCanvas.show();
+        populatedCanvas.fitDocument();
+        app.processEvents();
+        const auto emptyLight = emptyCanvas.viewport()->grab().toImage();
+        if (emptyLight.pixelColor(11, 13).lightness() < 128)
+            return 381;
+        QGraphicsPathItem *themeConnection = nullptr;
+        for (auto *item : populatedCanvas.scene()->items()) {
+            if (auto *connection = dynamic_cast<QGraphicsPathItem *>(item)) {
+                themeConnection = connection;
+                break;
+            }
+        }
+        if (!themeConnection)
+            return 382;
+        const QColor lightConnection = themeConnection->pen().color();
+        if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE")) {
+            window.grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + "-full-editor-light.png");
+            emptyCanvas.grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + "-switched-empty-light.png");
+            populatedCanvas.grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + "-switched-workflow-light.png");
+        }
+        applyDockpipeLauncherTheme(app);
+        if (app.palette().color(QPalette::Window).lightness() < 128)
+            return 369;
+        if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE"))
+            appearance.grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + "-appearance-light.png");
+        theme->setCurrentIndex(theme->findData(int(LauncherThemeMode::Dark)));
+        app.processEvents();
+        if (app.palette().color(QPalette::Window).lightness() >= 128
+            || app.palette().color(QPalette::WindowText).lightness() < 128)
+            return 370;
+        if (workflowCanvas->backgroundBrush().color().lightness() >= 128
+            || workflowCanvas->viewport()->grab().toImage().pixelColor(11, 13).lightness() >= 128)
+            return 380;
+        if (emptyCanvas.viewport()->grab().toImage().pixelColor(11, 13).lightness() >= 128
+            || themeConnection->pen().color() == lightConnection)
+            return 383;
+        if (!settingsSurfacesMatch(true))
+            return 385;
+        theme->setCurrentIndex(theme->findData(int(LauncherThemeMode::Light)));
+        app.processEvents();
+        if (!settingsSurfacesMatch(false) || workflowCanvas->backgroundBrush().color().lightness() < 128)
+            return 386;
+        if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE")) {
+            appearance.grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + "-repeated-settings-light.png");
+            window.grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + "-repeated-editor-light.png");
+        }
+        theme->setCurrentIndex(theme->findData(int(LauncherThemeMode::Dark)));
+        app.processEvents();
+        if (!settingsSurfacesMatch(true))
+            return 387;
+        if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE"))
+            populatedCanvas.grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + "-switched-workflow-dark.png");
+        if (!qEnvironmentVariableIsEmpty("DOCKPIPE_UI_CAPTURE"))
+            appearance.grab().save(qEnvironmentVariable("DOCKPIPE_UI_CAPTURE") + "-appearance-dark.png");
+        appearance.reject();
+        if (dockpipeLauncherThemeMode() != originalTheme
+            || (app.palette().color(QPalette::Window).lightness() < 128) != (originalTheme == LauncherThemeMode::Dark))
+            return 371;
+    }
+    {
+        SettingsDialog appearance(settings, &window);
+        auto *theme = appearance.findChild<QComboBox *>("settingsThemeMode");
+        theme->setCurrentIndex(theme->findData(int(LauncherThemeMode::Dark)));
+        appearance.accept();
+        if (dockpipeLauncherThemeMode() != LauncherThemeMode::Dark)
+            return 372;
+    }
+    {
+        SettingsDialog restored(settings, &window);
+        auto *theme = restored.findChild<QComboBox *>("settingsThemeMode");
+        if (theme->currentData().toInt() != int(LauncherThemeMode::Dark))
+            return 373;
+        app.setPalette(app.style()->standardPalette());
+        applyDockpipeLauncherTheme(app);
+        if (app.palette().color(QPalette::Window).lightness() >= 128)
+            return 374;
+        theme->setCurrentIndex(theme->findData(int(LauncherThemeMode::System)));
+        restored.accept();
+        if (dockpipeLauncherThemeMode() != LauncherThemeMode::System)
+            return 375;
+    }
+    if (!saveDockpipeLauncherThemeMode(originalTheme))
+        return 376;
+    resetDockpipeLauncherThemePreview(app);
+    if (const int notificationResult = verifyWorkflowNotifications(window, directory.path(), cli))
+        return notificationResult;
+    // Launch through the shell again: catalog metadata must rebuild transient override names.
+    QTimer acceptLaunchInputs;
+    QObject::connect(&acceptLaunchInputs, &QTimer::timeout, &window, [&]() {
+        if (auto *dialog = qobject_cast<WorkflowLaunchDialog *>(QApplication::activeModalWidget())) {
+            acceptLaunchInputs.stop();
+            dialog->accept();
+        }
+    });
+    acceptLaunchInputs.start(10);
+    QMetaObject::invokeMethod(&window, "onBasicLaunch", Qt::DirectConnection, Q_ARG(QString, "editor"));
+    const QString inputArgumentsPath = directory.filePath("declared-input-arguments");
+    if (!waitUntil([&]() { return QFile::exists(inputArgumentsPath); }))
+        return 432;
+    acceptLaunchInputs.stop();
+    QFile inputArguments(inputArgumentsPath);
+    if (!inputArguments.open(QIODevice::ReadOnly))
+        return 433;
+    const QByteArray launchedArguments = inputArguments.readAll();
+    if (!launchedArguments.contains("--var\nFIXTURE_MODE=persistent\n")
+        || !launchedArguments.contains("--var\nFIXTURE_CLEAR=\n")
+        || !launchedArguments.contains("--env\nDOCKPIPE_VSCODE_INPUT_TEXT=  exact value  \n")
+        || launchedArguments.contains("DOCKPIPE_VSCODE_INPUT_SECRET="))
+        return 434;
+    auto *inputSessions = window.findChild<SessionManager *>();
+    if (!inputSessions || !waitUntil([&]() { return !inputSessions->isRunning(configuredClone->id); }))
+        return 435;
     return 0;
 }

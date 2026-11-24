@@ -30,6 +30,22 @@ older processes active, incompatible protocols/SDKs loaded, or a broker pointing
 at obsolete bytes. Success must describe the coherent installed and running
 component set, including intentional CLI-only installations.
 
+The 2026-11-11 remote-browser private preview exposed a concrete macOS recovery
+gap: background replacement stopped the old worker, then `launchctl bootstrap`
+failed with exit 5. The new registration and previous executable/definition were
+preserved, but there was no independent automatic rollback path. The same approved
+service replacement succeeded from the user's Terminal. Future activation must
+qualify its native launch context and preserve a proven recovery executor until
+the new worker reconnects; an installed registration alone is insufficient.
+See [TASK-056](../remote-browser-contexts/overview.md) for the bounded feature proof.
+Its later private TLS-sharing handoff kept a separately loaded recovery executor
+until authenticated reconnection, with exact preimage restoration and direct
+execution of the preserved worker if activation failed. A bounded retry after a
+known bootstrap failure and absent registration succeeded on the second attempt.
+Local failure fixtures passed and the real guard committed and was removed after
+health confirmation. General platform qualification and product updater ownership
+remain open; do not treat that private procedure as completed TASK-054 behavior.
+
 ## Proposed design and ownership
 
 1. Add a Dockpipe distribution provider to the shared lifecycle contracts. Core

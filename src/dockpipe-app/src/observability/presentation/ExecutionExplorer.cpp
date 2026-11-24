@@ -1,6 +1,9 @@
 #include "ExecutionExplorer.h"
 #include "MonitoringMachineSelector.h"
 #include "SystemResourceOverview.h"
+#include "SystemProcessInspector.h"
+#include "WorkflowRunInspector.h"
+#include "WorkflowRunStateDelegate.h"
 #include "ExecutionMetricChart.h"
 #include <cmath>
 #include <algorithm>
@@ -11,6 +14,15 @@
 #include "NativeHostSnapshot.h"
 
 #include <QCheckBox>
+#include <QButtonGroup>
+#include <QFrame>
+#include <QMenu>
+#include <QAction>
+#include <QSettings>
+#include <QSplitter>
+#include <QResizeEvent>
+#include <QSignalBlocker>
+#include <QScrollArea>
 #include <QComboBox>
 #include <QDateTime>
 #include <QHeaderView>
@@ -25,104 +37,224 @@
 #include <QVBoxLayout>
 #include <QSet>
 
-ExecutionExplorer::ExecutionExplorer(QWidget *parent) : QWidget(parent), m_command(this)
+ExecutionExplorer::ExecutionExplorer(QWidget *parent, Purpose purpose) : QWidget(parent), m_command(this)
 {
     setObjectName("executionExplorerPage");
     setAttribute(Qt::WA_StyledBackground, true);
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
-    auto *toolbar = new QHBoxLayout;
-    toolbar->setContentsMargins(20, 12, 20, 4);
-    m_mode = new QComboBox;
+    auto *heading = new QVBoxLayout;
+    heading->setContentsMargins(0, 0, 0, 0);
+    heading->setSpacing(4);
+    m_pageTitle = new QLabel(tr("Running workflows"));
+    m_pageTitle->setObjectName("observabilityPageTitle");
+    heading->addWidget(m_pageTitle);
+    m_pageDescription = new QLabel;
+    m_pageDescription->setObjectName("observabilityPageDescription");
+    m_pageDescription->setWordWrap(true);
+    heading->addWidget(m_pageDescription);
+    auto *header = new QHBoxLayout;
+    header->setContentsMargins(24, 16, 24, 8);
+    header->addLayout(heading, 1);
+    auto *monitoringActions = new QHBoxLayout;
+    monitoringActions->setSpacing(8);
+    header->addLayout(monitoringActions);
+    layout->addLayout(header);
+    m_workflowControls = new QWidget;
+    auto *toolbar = new QHBoxLayout(m_workflowControls);
+    toolbar->setContentsMargins(24, 12, 24, 4);
+    m_mode = new QComboBox(this);
     m_mode->setObjectName("executionMode");
     m_mode->addItems({tr("Dockpipe Managed"), tr("System")});
-    toolbar->addWidget(m_mode);
+    m_mode->hide();
+    m_machineBar = new QWidget;
+    m_machineBar->setObjectName("systemMachineBar");
+    auto *machineLayout = new QHBoxLayout(m_machineBar);
+    machineLayout->setContentsMargins(24, 12, 24, 4);
+    machineLayout->addWidget(new QLabel(tr("Machine")));
     m_machine = new MonitoringMachineSelector;
-    toolbar->addWidget(m_machine);
-    m_global = new QCheckBox(tr("Standalone"));
+    machineLayout->addWidget(m_machine);
+    machineLayout->addStretch();
+    m_monitoringCadence = new QLabel(tr("Automatic updates · every 4 seconds"));
+    m_monitoringCadence->setObjectName("systemMonitoringCadence");
+    machineLayout->addWidget(m_monitoringCadence);
+    layout->insertWidget(0, m_machineBar);
+    m_global = new QCheckBox(tr("Standalone runs"), this);
+    m_global->setObjectName("executionStandalone");
     m_global->setToolTip(tr("Show operations recorded without a project."));
-    toolbar->addWidget(m_global);
+    m_global->hide();
+    m_runScope = new QLabel;
+    m_runScope->setObjectName("workflowRunScope");
+    m_runScope->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    toolbar->addWidget(m_runScope);
     m_search = new QLineEdit;
     m_search->setObjectName("executionSearch");
-    m_search->setPlaceholderText(tr("Find a workflow, task or process…"));
-    toolbar->addWidget(m_search, 1);
-    m_resources = new QCheckBox(tr("Resource metrics"));
+    m_search->setPlaceholderText(tr("Search workflows or tasks…"));
+    m_search->setClearButtonEnabled(true);
+    m_search->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Search), QLineEdit::LeadingPosition);
+    m_workflowSearchHost = new QWidget;
+    auto *searchLayout = new QHBoxLayout(m_workflowSearchHost);
+    searchLayout->setContentsMargins(0, 0, 0, 0);
+    searchLayout->addWidget(m_search);
+    toolbar->addWidget(m_workflowSearchHost, 1);
+    m_resources = new QCheckBox(tr("Resource metrics"), this);
+    m_resources->setObjectName("executionResources");
     m_resources->setChecked(true);
-    toolbar->addWidget(m_resources);
+    m_resources->hide();
+    auto *options = new QPushButton(tr("Options"));
+    options->setObjectName("workflowRunOptions");
+    options->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+    options->setIcon(CanvasIcons::icon(CanvasIcons::Symbol::Settings));
+    auto *menu = new QMenu(options);
+    const auto addOption = [menu](const QString &title, QCheckBox *value) {
+        auto *action = menu->addAction(title);
+        action->setCheckable(true);
+        action->setChecked(value->isChecked());
+        action->setToolTip(value->toolTip());
+        QObject::connect(action, &QAction::toggled, value, &QCheckBox::setChecked);
+        QObject::connect(value, &QCheckBox::toggled, action, &QAction::setChecked);
+    };
+    addOption(tr("Standalone runs"), m_global);
+    addOption(tr("Resource metrics"), m_resources);
+    options->setMenu(menu);
+    toolbar->addWidget(options);
     m_refresh = new QPushButton(tr("Refresh"));
     m_refresh->setObjectName("executionRefresh");
-    toolbar->addWidget(m_refresh);
+    m_refresh->setIcon(CanvasIcons::icon(CanvasIcons::Symbol::Refresh));
+    monitoringActions->addWidget(m_refresh);
     m_pause = new QPushButton(tr("Pause updates"));
     m_pause->setObjectName("executionPause");
     m_pause->setCheckable(true);
-    toolbar->addWidget(m_pause);
+    monitoringActions->addWidget(m_pause);
     m_more = new QPushButton(tr("Show more"));
-    toolbar->addWidget(m_more);
-    layout->addLayout(toolbar);
+    m_more->setObjectName("executionMore");
+    monitoringActions->addWidget(m_more);
+    auto *viewSwitcher = new QFrame;
+    viewSwitcher->setObjectName("observabilityViewSwitcher");
+    viewSwitcher->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+    auto *viewLayout = new QHBoxLayout(viewSwitcher);
+    viewLayout->setContentsMargins(3, 3, 3, 3);
+    viewLayout->setSpacing(2);
+    auto *viewButtons = new QButtonGroup(this);
+    m_canvasViewButton = new QPushButton(tr("Canvas"));
+    m_canvasViewButton->setObjectName("executionCanvasView");
+    m_canvasViewButton->setIcon(CanvasIcons::icon(CanvasIcons::Symbol::Branch));
+    m_listViewButton = new QPushButton(tr("List"));
+    m_listViewButton->setObjectName("executionListView");
+    m_listViewButton->setIcon(CanvasIcons::icon(CanvasIcons::Symbol::List));
+    for (auto *button : {m_canvasViewButton, m_listViewButton}) {
+        button->setCheckable(true);
+        viewButtons->addButton(button);
+        viewLayout->addWidget(button);
+    }
+    toolbar->addWidget(viewSwitcher);
+    connect(m_canvasViewButton, &QPushButton::clicked, this, [this]() { setListView(false); });
+    connect(m_listViewButton, &QPushButton::clicked, this, [this]() { setListView(true); });
+    layout->addWidget(m_workflowControls);
     m_overview = new SystemResourceOverview;
     m_overview->hide();
-    layout->addWidget(m_overview);
     connect(m_machine, qOverload<int>(&QComboBox::currentIndexChanged), this, &ExecutionExplorer::changeMachine);
     connect(m_mode, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int mode) {
         m_overview->setVisible(mode == 1);
     });
 
-    auto *inspector = new QWidget;
-    auto *inspectorLayout = new QVBoxLayout(inspector);
-    m_title = new QLabel(tr("Select an execution"));
-    m_title->setObjectName("executionTitle");
-    m_title->setTextFormat(Qt::PlainText);
-    m_title->setWordWrap(true);
-    QFont titleFont = m_title->font();
-    titleFont.setPointSize(16);
-    titleFont.setBold(true);
-    m_title->setFont(titleFont);
-    inspectorLayout->addWidget(m_title);
-    m_details = new QLabel(tr("Managed records come from Dockpipe's execution boundaries. System processes are discovered and are never treated as owned."));
-    m_details->setObjectName("executionDetails");
-    m_details->setTextFormat(Qt::PlainText);
-    m_details->setWordWrap(true);
-    m_details->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    inspectorLayout->addWidget(m_details);
-    m_chart = new ExecutionMetricChart;
-    inspectorLayout->addWidget(m_chart);
-    inspectorLayout->addWidget(new QLabel(tr("Lifecycle & operation log")));
-    m_events = new QPlainTextEdit;
-    m_events->setObjectName("executionEvents");
-    m_events->setReadOnly(true);
-    m_events->setMaximumBlockCount(200);
-    m_events->setMinimumHeight(170);
-    m_events->setPlaceholderText(tr("Select an execution to see its lifecycle. Raw command output stays in the existing run logs."));
-    inspectorLayout->addWidget(m_events, 1);
-    m_canvas = new ResourceCanvas("executionExplorer", tr("Execution Explorer"),
-        tr("Workflow → task → process · authoritative managed associations"), inspector, this, false);
+    m_runInspector = new WorkflowRunInspector;
+    m_inspector = m_runInspector;
+    auto *inspector = m_inspector;
+    m_canvasInspectorHost = new QWidget;
+    auto *canvasInspectorLayout = new QVBoxLayout(m_canvasInspectorHost);
+    canvasInspectorLayout->setContentsMargins(0, 0, 0, 0);
+    canvasInspectorLayout->addWidget(inspector);
+    m_canvas = new ResourceCanvas("executionExplorer", tr("Workflow runs"),
+        tr("Follow each workflow through its tasks and processes."), m_canvasInspectorHost, this, true);
     m_canvas->setObjectName("executionCanvas");
     m_canvas->setDetailsLabel(tr("Execution details & lifecycle"));
-    m_canvas->addInactiveFilter(tr("Finished"));
+
     m_views = new QStackedWidget;
     m_views->addWidget(m_canvas);
-    auto *systemPage = new QWidget;
-    auto *systemLayout = new QVBoxLayout(systemPage);
-    auto *systemNotice = new QLabel(tr("Discovered processes · best effort · no ownership inferred. Select a row to inspect its identity and metrics."));
-    systemNotice->setWordWrap(true);
-    systemLayout->addWidget(systemNotice);
-    m_system = new QTableWidget(0, 6);
-    m_system->setObjectName("systemProcesses");
-    m_system->setHorizontalHeaderLabels({tr("Process"), tr("PID"), tr("Parent PID"), tr("State"), tr("Memory"), tr("CPU")});
-    m_system->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    m_system->horizontalHeader()->setSectionsClickable(true);
-    m_system->horizontalHeader()->setSortIndicatorShown(true);
-    m_system->horizontalHeader()->setSortIndicator(0, Qt::AscendingOrder);
-    connect(m_system->horizontalHeader(), &QHeaderView::sortIndicatorChanged, this, [this]() {
-        if (m_mode->currentIndex() == 1)
+    m_views->addWidget(buildSystemPage());
+    auto *runListContents = new QWidget;
+    runListContents->setObjectName("workflowRunListContents");
+    runListContents->setAttribute(Qt::WA_StyledBackground, true);
+    auto *runListScroll = new QScrollArea;
+    runListScroll->setFrameShape(QFrame::NoFrame);
+    runListScroll->setWidgetResizable(true);
+    runListScroll->setWidget(runListContents);
+    m_runListPage = runListScroll;
+    auto *runListLayout = new QVBoxLayout(runListContents);
+    runListLayout->setContentsMargins(24, 12, 24, 16);
+    m_runListSplitter = new QSplitter(Qt::Horizontal);
+    m_runListSplitter->setObjectName("workflowRunListSplitter");
+    m_runListSplitter->setChildrenCollapsible(false);
+    m_runListSplitter->setHandleWidth(12);
+    auto *runTableCard = new QFrame;
+    runTableCard->setObjectName("workflowRunTableCard");
+    auto *runTableLayout = new QVBoxLayout(runTableCard);
+    runTableLayout->setContentsMargins(16, 16, 16, 12);
+    runTableLayout->setSpacing(14);
+    runTableCard->setMinimumHeight(360);
+    auto *runHeader = new QHBoxLayout;
+    m_runTableTitle = new QLabel;
+    m_runTableTitle->setObjectName("workflowRunTableTitle");
+    runHeader->addWidget(m_runTableTitle);
+    runHeader->addStretch();
+    m_runResults = new QLabel;
+    m_runResults->setObjectName("workflowRunResults");
+    runHeader->addWidget(m_runResults);
+    runTableLayout->addLayout(runHeader);
+    auto *runToolbar = new QHBoxLayout;
+    runToolbar->setSpacing(12);
+    m_runSearchHost = new QWidget;
+    auto *runSearchLayout = new QHBoxLayout(m_runSearchHost);
+    runSearchLayout->setContentsMargins(0, 0, 0, 0);
+    runToolbar->addWidget(m_runSearchHost, 1);
+    m_runStateFilter = new QComboBox;
+    m_runStateFilter->setObjectName("workflowRunStateFilter");
+    m_runStateFilter->setAccessibleName(tr("Filter run history by outcome"));
+    m_runStateFilter->addItem(tr("All states"), "all");
+    for (const QString &state : {QStringLiteral("succeeded"), QStringLiteral("failed"), QStringLiteral("cancelled"),
+                                 QStringLiteral("terminated"), QStringLiteral("unverified")})
+        m_runStateFilter->addItem(WorkflowRunStateDelegate::label(state), state);
+    runToolbar->addWidget(m_runStateFilter);
+    runTableLayout->addLayout(runToolbar);
+    m_runs = new QTableWidget(0, 6);
+    m_runs->setObjectName("workflowRunsTable");
+    m_runs->setItemDelegateForColumn(2, new WorkflowRunStateDelegate(m_runs));
+    m_runs->setHorizontalHeaderLabels({tr("Workflow"), tr("Task"), tr("State"), tr("Runtime"), tr("Started"), tr("Duration")});
+    m_runs->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    m_runs->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    m_runs->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    m_runs->horizontalHeader()->setSortIndicatorShown(true);
+    m_runs->horizontalHeader()->setSortIndicator(4, Qt::DescendingOrder);
+    m_runs->horizontalHeader()->setSectionsClickable(true);
+    m_runs->verticalHeader()->hide();
+    m_runs->verticalHeader()->setDefaultSectionSize(48);
+    m_runs->setShowGrid(false);
+    m_runs->setAlternatingRowColors(true);
+    m_runs->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_runs->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_runs->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_runs->setMinimumHeight(200);
+    runTableLayout->addWidget(m_runs, 1);
+    m_emptyRuns = new QLabel;
+    m_emptyRuns->setObjectName("workflowRunsEmpty");
+    m_emptyRuns->setAlignment(Qt::AlignCenter);
+    m_emptyRuns->setWordWrap(true);
+    runTableLayout->addWidget(m_emptyRuns, 1);
+    m_runListSplitter->addWidget(runTableCard);
+    runListLayout->addWidget(m_runListSplitter);
+    m_views->addWidget(m_runListPage);
+    m_runSummary = buildRunSummary();
+    layout->addWidget(m_runSummary);
+    connect(m_runStateFilter, qOverload<int>(&QComboBox::currentIndexChanged), this, [this]() { render(); });
+    connect(m_runs->horizontalHeader(), &QHeaderView::sortIndicatorChanged, this, [this]() {
+        if (m_mode->currentIndex() == 0)
             render();
     });
-    m_system->verticalHeader()->hide();
-    m_system->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    m_system->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_system->setSelectionMode(QAbstractItemView::SingleSelection);
-    systemLayout->addWidget(m_system);
-    m_views->addWidget(systemPage);
+    connect(m_runs, &QTableWidget::itemSelectionChanged, this, [this]() {
+        if (auto *item = m_runs->item(m_runs->currentRow(), 0))
+            inspect(item->data(Qt::UserRole).toString());
+    });
     layout->addWidget(m_views, 1);
     m_status = new QLabel(tr("Choose a project to inspect its recent executions."));
     m_status->setObjectName("executionStatus");
@@ -139,7 +271,11 @@ ExecutionExplorer::ExecutionExplorer(QWidget *parent) : QWidget(parent), m_comma
     });
     connect(m_canvas, &ResourceCanvas::resourceSelected, this, &ExecutionExplorer::inspect);
     connect(m_search, &QLineEdit::textChanged, this, [this]() { render(); });
-    connect(m_resources, &QCheckBox::toggled, this, [this]() { ++m_generation; refresh(); });
+    connect(m_resources, &QCheckBox::toggled, this, [this]() {
+        ++m_generation;
+        render();
+        refresh();
+    });
     connect(m_global, &QCheckBox::toggled, this, [this]() {
         ++m_generation;
         m_cpuCounters.clear();
@@ -152,6 +288,7 @@ ExecutionExplorer::ExecutionExplorer(QWidget *parent) : QWidget(parent), m_comma
         ++m_generation;
         m_cpuCounters.clear();
         m_pause->setText(paused ? tr("Resume updates") : tr("Pause updates"));
+        m_monitoringCadence->setText(paused ? tr("Updates paused") : tr("Automatic updates · every 4 seconds"));
         if (paused) {
             m_timer->stop();
             m_command.cancel();
@@ -164,35 +301,347 @@ ExecutionExplorer::ExecutionExplorer(QWidget *parent) : QWidget(parent), m_comma
     connect(m_mode, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int mode) {
         ++m_generation;
         m_cpuCounters.clear();
-        m_chart->clear();
-        m_chartSample.clear();
+        m_runInspector->clear();
         m_visibleLimit = mode == 0 ? 32 : 250;
         m_selected.clear();
         m_records.clear();
         m_snapshot = {};
-        m_views->setCurrentIndex(mode);
+        updatePresentation();
         render();
         refresh();
     });
     connect(m_more, &QPushButton::clicked, this, [this]() {
-        const int ceiling = m_mode->currentIndex() == 0 ? 64 : 4096;
-        m_visibleLimit = qMin(ceiling, m_visibleLimit * 2);
+        m_visibleLimit = qMin(visibleRecordCeiling(), m_visibleLimit * 2);
         render();
     });
     connect(m_system, &QTableWidget::itemSelectionChanged, this, &ExecutionExplorer::inspectSystem);
+    if (purpose == Purpose::System)
+        m_mode->setCurrentIndex(1);
+    const bool list = QSettings().value("workflowRuns/viewMode", "list").toString() == "list";
+    setListView(list);
+}
+
+void ExecutionExplorer::setHistory(bool history)
+{
+    if (m_history == history)
+        return;
+    m_history = history;
+    m_selected.clear();
+    m_visibleLimit = 32;
+    const bool runningList = QSettings().value("workflowRuns/viewMode", "list").toString() == "list";
+    setListView(history || runningList);
+}
+
+void ExecutionExplorer::setListView(bool list)
+{
+    m_listView = m_history || list;
+    m_canvasViewButton->setChecked(!m_listView);
+    m_listViewButton->setChecked(m_listView);
+    m_visibleLimit = qMin(m_visibleLimit, visibleRecordCeiling());
+    updatePresentation();
+    render();
+    if (!m_history)
+        QSettings().setValue("workflowRuns/viewMode", list ? "list" : "canvas");
+}
+
+QWidget *ExecutionExplorer::buildRunSummary()
+{
+    auto *summary = new QWidget;
+    auto *layout = new QHBoxLayout(summary);
+    layout->setContentsMargins(24, 12, 24, 8);
+    layout->setSpacing(12);
+    for (int index = 0; index < 4; ++index) {
+        auto *card = new QFrame;
+        card->setObjectName("workflowSummaryCard");
+        m_runSummaryCards[index] = card;
+        auto *cardLayout = new QVBoxLayout(card);
+        cardLayout->setContentsMargins(18, 14, 18, 14);
+        cardLayout->setSpacing(4);
+        m_runSummaryTitles[index] = new QLabel;
+        m_runSummaryTitles[index]->setObjectName("workflowSummaryTitle");
+        m_runSummaryValues[index] = new QLabel;
+        m_runSummaryValues[index]->setObjectName("workflowSummaryValue" + QString::number(index));
+        m_runSummaryValues[index]->setProperty("workflowSummaryValue", true);
+        m_runSummaryCaptions[index] = new QLabel;
+        m_runSummaryCaptions[index]->setObjectName("workflowSummaryCaption");
+        m_runSummaryCaptions[index]->setWordWrap(true);
+        cardLayout->addWidget(m_runSummaryTitles[index]);
+        cardLayout->addWidget(m_runSummaryValues[index]);
+        cardLayout->addWidget(m_runSummaryCaptions[index]);
+        layout->addWidget(card, 1);
+    }
+    return summary;
+}
+
+void ExecutionExplorer::updateRunSummary()
+{
+    int count = 0;
+    int succeeded = 0;
+    int failed = 0;
+    QSet<QString> workflows;
+    QSet<QString> runtimes;
+    for (const auto &value : m_snapshot.value("executions").toArray()) {
+        const auto record = value.toObject();
+        const QString state = record.value("state").toString();
+        if ((state == "running") == m_history)
+            continue;
+        ++count;
+        if (state == "succeeded")
+            ++succeeded;
+        if (state == "failed")
+            ++failed;
+        const QString workflow = record.value("workflow").toString();
+        if (!workflow.isEmpty())
+            workflows.insert(workflow);
+        const QString runtime = record.value("runtime").toString();
+        if (!runtime.isEmpty())
+            runtimes.insert(runtime);
+    }
+    QStringList titles{tr("Active tasks"), tr("Workflows"), tr("Runtimes")};
+    QStringList captions{tr("In the latest snapshot"), tr("Distinct recorded names"), tr("Execution backends in use")};
+    QList<int> values{count, int(workflows.size()), int(runtimes.size())};
+    if (m_history) {
+        titles = {tr("Recorded tasks"), tr("Succeeded"), tr("Failed"), tr("Other states")};
+        captions = {tr("In retained history"), tr("Reported success"), tr("Reported failure"), tr("Includes cancelled and unverified")};
+        values = {count, succeeded, failed, count - succeeded - failed};
+    }
+    for (int index = 0; index < 4; ++index) {
+        m_runSummaryCards[index]->setVisible(index < titles.size());
+        if (index >= titles.size())
+            continue;
+        m_runSummaryTitles[index]->setText(titles[index]);
+        m_runSummaryValues[index]->setText(m_snapshot.value("executions").isArray()
+            ? QString::number(values[index]) : QStringLiteral("—"));
+        m_runSummaryCaptions[index]->setText(captions[index]);
+    }
+    m_runScope->setText(m_global->isChecked() || m_workdir.isEmpty() ? tr("Standalone runs") : tr("Workspace runs"));
+}
+
+void ExecutionExplorer::updateRunLayout()
+{
+    const Qt::Orientation orientation = width() < 1180 ? Qt::Vertical : Qt::Horizontal;
+    const bool changed = m_runListSplitter->orientation() != orientation;
+    if (changed)
+        m_runListSplitter->setOrientation(orientation);
+    const QWidget *table = m_runListSplitter->widget(0);
+    const QSize tableMinimum = table->minimumSizeHint().expandedTo(table->minimumSize());
+    const QSize inspectorMinimum = m_inspector->minimumSizeHint().expandedTo(m_inspector->minimumSize());
+    m_runListSplitter->setMinimumHeight(orientation == Qt::Vertical
+        ? tableMinimum.height() + inspectorMinimum.height() + m_runListSplitter->handleWidth()
+        : qMax(tableMinimum.height(), inspectorMinimum.height()));
+    if (changed) {
+        const QList<int> sizes = orientation == Qt::Horizontal ? QList<int>{800, 420}
+            : QList<int>{tableMinimum.height(), inspectorMinimum.height()};
+        m_runListSplitter->setSizes(sizes);
+    }
+}
+
+QWidget *ExecutionExplorer::buildSystemPage()
+{
+    auto *contents = new QWidget;
+    contents->setObjectName("systemPageContents");
+    contents->setAttribute(Qt::WA_StyledBackground, true);
+    auto *layout = new QVBoxLayout(contents);
+    layout->setContentsMargins(24, 12, 24, 24);
+    layout->setSpacing(20);
+    layout->addWidget(m_overview);
+    m_systemSplitter = new QSplitter(Qt::Horizontal);
+    m_systemSplitter->setObjectName("systemProcessSplitter");
+    m_systemSplitter->setChildrenCollapsible(false);
+    m_systemSplitter->setHandleWidth(12);
+    auto *card = new QFrame;
+    card->setObjectName("systemProcessCard");
+    card->setMinimumHeight(360);
+    auto *cardLayout = new QVBoxLayout(card);
+    cardLayout->setContentsMargins(16, 16, 16, 12);
+    cardLayout->setSpacing(14);
+    auto *header = new QHBoxLayout;
+    auto *title = new QLabel(tr("Processes"));
+    title->setObjectName("systemProcessSectionTitle");
+    header->addWidget(title);
+    header->addStretch();
+    m_processCount = new QLabel(tr("No processes loaded"));
+    m_processCount->setObjectName("systemProcessCount");
+    header->addWidget(m_processCount);
+    cardLayout->addLayout(header);
+    m_systemSearchHost = new QWidget;
+    auto *searchLayout = new QHBoxLayout(m_systemSearchHost);
+    searchLayout->setContentsMargins(0, 0, 0, 0);
+    auto *toolbar = new QHBoxLayout;
+    toolbar->setSpacing(12);
+    toolbar->addWidget(m_systemSearchHost, 1);
+    m_processFilter = new QComboBox;
+    m_processFilter->setObjectName("systemProcessFilter");
+    m_processFilter->setAccessibleName(tr("Filter processes by state"));
+    m_processFilter->addItem(tr("All states"), "all");
+    m_processFilter->addItem(tr("Running"), "R");
+    m_processFilter->addItem(tr("Sleeping"), "S");
+    m_processFilter->addItem(tr("Stopped"), "T");
+    toolbar->addWidget(m_processFilter);
+    cardLayout->addLayout(toolbar);
+    m_system = new QTableWidget(0, 6);
+    m_system->setObjectName("systemProcesses");
+    m_system->setHorizontalHeaderLabels({tr("Process"), tr("PID"), tr("Parent PID"), tr("State"), tr("Memory"), tr("CPU")});
+    m_system->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    m_system->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    m_system->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    m_system->horizontalHeader()->setSectionsClickable(true);
+    m_system->horizontalHeader()->setSortIndicatorShown(true);
+    m_system->horizontalHeader()->setSortIndicator(0, Qt::AscendingOrder);
+    m_system->horizontalHeader()->setMinimumSectionSize(72);
+    m_system->verticalHeader()->hide();
+    m_system->verticalHeader()->setDefaultSectionSize(48);
+    m_system->setShowGrid(false);
+    m_system->setAlternatingRowColors(true);
+    m_system->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_system->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_system->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_system->setMinimumHeight(200);
+    for (int column : {1, 2, 4, 5})
+        m_system->horizontalHeaderItem(column)->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    cardLayout->addWidget(m_system, 1);
+    m_emptyProcesses = new QLabel;
+    m_emptyProcesses->setObjectName("systemProcessesEmpty");
+    m_emptyProcesses->setAlignment(Qt::AlignCenter);
+    m_emptyProcesses->setWordWrap(true);
+    cardLayout->addWidget(m_emptyProcesses, 1);
+    m_systemSplitter->addWidget(card);
+    m_systemInspector = new SystemProcessInspector;
+    m_systemSplitter->addWidget(m_systemInspector);
+    m_systemSplitter->setSizes({800, 420});
+    m_systemSplitter->setStretchFactor(0, 3);
+    layout->addWidget(m_systemSplitter, 1);
+    connect(m_system->horizontalHeader(), &QHeaderView::sortIndicatorChanged, this, [this]() {
+        if (m_mode->currentIndex() == 1)
+            render();
+    });
+    connect(m_processFilter, qOverload<int>(&QComboBox::currentIndexChanged), this, [this]() { render(); });
+    auto *scroll = new QScrollArea;
+    scroll->setObjectName("systemObservabilityScroll");
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setWidgetResizable(true);
+    scroll->setWidget(contents);
+    return scroll;
+}
+
+void ExecutionExplorer::updateSystemLayout()
+{
+    const Qt::Orientation orientation = width() < 1180 ? Qt::Vertical : Qt::Horizontal;
+    const bool changed = m_systemSplitter->orientation() != orientation;
+    if (changed)
+        m_systemSplitter->setOrientation(orientation);
+    const QWidget *table = m_systemSplitter->widget(0);
+    const QSize tableMinimum = table->minimumSizeHint().expandedTo(table->minimumSize());
+    const QSize inspectorMinimum = m_systemInspector->minimumSizeHint().expandedTo(m_systemInspector->minimumSize());
+    // QScrollArea must retain enough content height for both panes when stacked.
+    const int height = orientation == Qt::Vertical
+        ? tableMinimum.height() + inspectorMinimum.height() + m_systemSplitter->handleWidth()
+        : qMax(tableMinimum.height(), inspectorMinimum.height());
+    m_systemSplitter->setMinimumHeight(height);
+    if (changed) {
+        const QList<int> sizes = orientation == Qt::Horizontal
+            ? QList<int>{800, 420} : QList<int>{tableMinimum.height(), inspectorMinimum.height()};
+        m_systemSplitter->setSizes(sizes);
+    }
+}
+
+void ExecutionExplorer::clearSystemProcesses()
+{
+    m_system->setRowCount(0);
+    m_system->hide();
+    m_emptyProcesses->setText(tr("No process data to display\nRefresh to load the selected machine's process list."));
+    m_emptyProcesses->show();
+    m_processCount->setText(tr("No processes loaded"));
+    m_systemInspector->clear();
+    updateSystemLayout();
+    if (m_mode->currentIndex() == 1) {
+        m_selected.clear();
+        m_records.clear();
+    }
+}
+
+int ExecutionExplorer::visibleRecordCeiling() const
+{
+    if (m_mode->currentIndex() == 1)
+        return 4096; // The process snapshot contract.
+    if (m_listView)
+        return 256; // The retained execution snapshot contract.
+    return 64; // Preserve the existing interactive graph budget.
+}
+
+void ExecutionExplorer::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    if (m_mode->currentIndex() == 1) {
+        updateSystemLayout();
+    } else if (m_listView) {
+        updateRunLayout();
+    }
+}
+
+void ExecutionExplorer::updatePresentation()
+{
+    const bool system = m_mode->currentIndex() == 1;
+    if (system) {
+        m_pageTitle->setText(tr("System"));
+        m_pageDescription->setText(tr("Live resource usage and processes on the selected machine."));
+    } else if (m_history) {
+        m_pageTitle->setText(tr("Run history"));
+        m_pageDescription->setText(tr("Recent recorded workflow runs, their outcomes, and lifecycle details."));
+    } else {
+        m_pageTitle->setText(tr("Running workflows"));
+        m_pageDescription->setText(tr("Follow active workflow tasks and their progress."));
+    }
+    m_search->setPlaceholderText(system ? tr("Search by process name or PID…") : tr("Search workflows or tasks…"));
+    m_machineBar->setVisible(system);
+    m_workflowControls->setVisible(!system);
+    QWidget *searchHost = m_workflowSearchHost;
+    if (system)
+        searchHost = m_systemSearchHost;
+    else if (m_listView)
+        searchHost = m_runSearchHost;
+    searchHost->layout()->addWidget(m_search);
+    m_search->show();
+    m_workflowSearchHost->setVisible(!system && !m_listView);
+    m_global->hide();
+    m_resources->hide();
+    m_runSummary->setVisible(!system && m_listView);
+    m_runStateFilter->setVisible(m_history);
+    m_runTableTitle->setText(m_history ? tr("Recorded tasks") : tr("Active tasks"));
+    m_canvasViewButton->parentWidget()->setVisible(!system && !m_history);
+    m_overview->setVisible(system);
+    m_more->setText(system ? tr("Show more processes") : tr("Show more runs"));
+    if (!system && m_listView) {
+        m_runListSplitter->addWidget(m_inspector);
+        m_inspector->setMinimumWidth(360);
+        updateRunLayout();
+        m_inspector->show();
+        m_views->setCurrentWidget(m_runListPage);
+    } else {
+        m_canvasInspectorHost->layout()->addWidget(m_inspector);
+        m_inspector->setMinimumWidth(0);
+        m_inspector->setMinimumHeight(0);
+        m_inspector->show();
+        m_views->setCurrentIndex(system ? 1 : 0);
+    }
+    if (system)
+        updateSystemLayout();
 }
 
 void ExecutionExplorer::inspectSystem()
 {
-    if (m_system->currentRow() < 0)
+    if (m_system->currentRow() < 0) {
+        m_systemInspector->clear();
+        m_selected.clear();
+        updateSystemLayout();
         return;
+    }
     const QString key = m_system->item(m_system->currentRow(), 0)->data(Qt::UserRole).toString();
     m_selected = key;
     const auto record = m_records.value(key);
-    m_status->setText(tr("Discovered · %1 · PID %2 · parent %3 · start identity %4 · memory %5 · CPU %6")
-        .arg(record.value("name").toString()).arg(record.value("pid").toInt())
-        .arg(record.value("parent_pid").toInt()).arg(record.value("start_token").toString(tr("Unavailable")))
-        .arg(metricText(record.value("memory_bytes"), "bytes")).arg(metricText(record.value("cpu_percent"), "%")));
+    m_systemInspector->setProcess(key, record, metricText(record.value("memory_bytes"), "bytes"),
+        metricText(record.value("cpu_percent"), "%"), m_snapshot.value("captured_at").toString());
+    updateSystemLayout();
 }
 
 void ExecutionExplorer::setWorkdir(const QString &workdir)
@@ -200,8 +649,7 @@ void ExecutionExplorer::setWorkdir(const QString &workdir)
     if (m_workdir == workdir)
         return;
     m_cpuCounters.clear();
-    m_chart->clear();
-    m_chartSample.clear();
+    m_runInspector->clear();
     m_workdir = workdir;
     ++m_generation;
     m_snapshot = {};
@@ -288,7 +736,7 @@ void ExecutionExplorer::refreshWithAuthentication(bool allowAuthentication)
         program = DockpipeChoices::operatorDockpipeBinary(&error);
         if (program.isEmpty()) {
             m_overview->clear();
-            m_system->setRowCount(0);
+            clearSystemProcesses();
             m_cpuCounters.clear();
             m_sampleTime = 0;
             m_snapshot = {};
@@ -310,7 +758,7 @@ void ExecutionExplorer::refreshWithAuthentication(bool allowAuthentication)
                     || snapshot.value("node").toString() != node || snapshot.value("state").toString() != "live"
                     || !snapshot.value("execution").isObject()) {
                     m_overview->clear();
-                    m_system->setRowCount(0);
+                    clearSystemProcesses();
                     m_cpuCounters.clear();
                     m_sampleTime = 0;
                     m_snapshot = {};
@@ -323,6 +771,8 @@ void ExecutionExplorer::refreshWithAuthentication(bool allowAuthentication)
             }
             if (!ok || !document.isObject() || !applySnapshot(snapshot)) {
                 m_overview->clear();
+                if (m_mode->currentIndex() == 1)
+                    clearSystemProcesses();
                 m_status->setText(tr("Monitoring unavailable. Displayed data may be stale. Check the CLI version and machine permissions."));
             }
         }, !node.isEmpty() && allowAuthentication ? 150000 : 5000);
@@ -360,14 +810,10 @@ void ExecutionExplorer::clearMonitoringSnapshot(const QString &status)
     m_records.clear();
     m_cpuCounters.clear();
     m_sampleTime = 0;
-    m_chartSample.clear();
-    m_chart->clear();
+    m_runInspector->clear();
     m_overview->clear();
-    m_system->setRowCount(0);
+    clearSystemProcesses();
     m_canvas->setGraph({}, {}, status);
-    m_events->clear();
-    m_title->setText(tr("Select a process or execution"));
-    m_details->clear();
     m_status->setText(status);
 }
 
@@ -382,7 +828,6 @@ void ExecutionExplorer::changeMachine()
     m_resources->setEnabled(!remote);
     if (remote)
         m_mode->setCurrentIndex(1);
-    m_status->setText(tr("Waiting for the selected machine…"));
     QTimer::singleShot(0, this, &ExecutionExplorer::refresh);
 }
 
@@ -452,6 +897,8 @@ QString ExecutionExplorer::metricText(const QJsonValue &value, const QString &un
     if (!value.isDouble())
         return tr("Unavailable");
     const double number = value.toDouble();
+    if (!std::isfinite(number) || (!unit.isEmpty() && number < 0))
+        return tr("Unavailable");
     if (unit == "bytes") {
         if (number >= 1024 * 1024 * 1024)
             return QString::number(number / (1024 * 1024 * 1024), 'f', 1) + " GiB";
@@ -460,6 +907,17 @@ QString ExecutionExplorer::metricText(const QJsonValue &value, const QString &un
     if (unit == "ms")
         return QString::number(number / 1000, 'f', 1) + tr(" s");
     return QString::number(number, 'g', 6) + (unit.isEmpty() ? QString() : " " + unit);
+}
+
+QJsonValue ExecutionExplorer::runDuration(const QJsonObject &record) const
+{
+    if (record.value("state").toString() == "running") {
+        const auto started = QDateTime::fromString(record.value("started_at").toString(), Qt::ISODateWithMs);
+        const auto captured = QDateTime::fromString(m_snapshot.value("captured_at").toString(), Qt::ISODateWithMs);
+        if (started.isValid() && captured.isValid())
+            return double(qMax<qint64>(0, started.msecsTo(captured)));
+    }
+    return record.value("duration_ms");
 }
 
 void ExecutionExplorer::render()
@@ -498,16 +956,61 @@ void ExecutionExplorer::render()
             return left.value("start_token").toString() < right.value("start_token").toString();
         });
     }
+    if (!system) {
+        const QStringList keys{"workflow", "task", "state", "runtime", "started_at", "duration_ms"};
+        const int column = m_runs->horizontalHeader()->sortIndicatorSection();
+        const QString key = keys.value(column, "started_at");
+        const bool ascending = m_runs->horizontalHeader()->sortIndicatorOrder() == Qt::AscendingOrder;
+        std::stable_sort(records.begin(), records.end(), [this, key, column, ascending](const QJsonObject &left, const QJsonObject &right) {
+            if (column == 5) {
+                const auto leftDuration = runDuration(left);
+                const auto rightDuration = runDuration(right);
+                const bool leftKnown = leftDuration.isDouble() && std::isfinite(leftDuration.toDouble()) && leftDuration.toDouble() >= 0;
+                const bool rightKnown = rightDuration.isDouble() && std::isfinite(rightDuration.toDouble()) && rightDuration.toDouble() >= 0;
+                if (leftKnown != rightKnown)
+                    return leftKnown;
+                if (leftKnown && leftDuration.toDouble() != rightDuration.toDouble())
+                    return ascending ? leftDuration.toDouble() < rightDuration.toDouble()
+                                     : leftDuration.toDouble() > rightDuration.toDouble();
+            } else {
+                const int comparison = QString::compare(left.value(key).toString(), right.value(key).toString(), Qt::CaseInsensitive);
+                if (comparison != 0)
+                    return ascending ? comparison < 0 : comparison > 0;
+            }
+            return left.value("id").toString() < right.value("id").toString();
+        });
+        updateRunSummary();
+    }
     const QString query = m_search->text().trimmed();
     QVector<ResourceNode> nodes;
     QVector<ResourceEdge> edges;
     QSet<QString> groups;
     int matching = 0;
+    const QSignalBlocker runSelectionBlocker(m_runs);
+    m_runs->setRowCount(0);
     m_system->blockSignals(true);
     m_system->setRowCount(0);
     for (const auto &record : records) {
+        if (!system) {
+            const bool running = record.value("state").toString() == "running";
+            if (running == m_history)
+                continue;
+            const QString outcome = m_runStateFilter->currentData().toString();
+            if (m_history && outcome != "all" && record.value("state").toString() != outcome)
+                continue;
+        }
         const QString title = system ? record.value("name").toString() : record.value("workflow").toString(tr("Standalone execution"));
-        const QString searchable = title + " " + record.value("task").toString() + " " + record.value("id").toString();
+        QString searchable = title + " " + record.value("task").toString() + " " + record.value("id").toString();
+        if (system) {
+            const QString state = SystemProcessInspector::stateCode(record.value("state").toString());
+            const QString filter = m_processFilter->currentData().toString();
+            const bool matches = filter == "all" || state == filter || (filter == "T" && state == "t");
+            if (!matches)
+                continue;
+            searchable += " " + QString::number(record.value("pid").toInt())
+                + " " + QString::number(record.value("parent_pid").toInt())
+                + " " + SystemProcessInspector::stateLabel(state);
+        }
         if (!searchable.contains(query, Qt::CaseInsensitive))
             continue;
         if (++matching > m_visibleLimit)
@@ -518,14 +1021,40 @@ void ExecutionExplorer::render()
             const int row = m_system->rowCount();
             m_system->insertRow(row);
             QStringList cells{title, QString::number(record.value("pid").toInt()), QString::number(record.value("parent_pid").toInt()),
-                record.value("state").toString(), metricText(record.value("memory_bytes"), "bytes"), metricText(record.value("cpu_percent"), "%")};
+                SystemProcessInspector::stateLabel(record.value("state").toString()),
+                metricText(record.value("memory_bytes"), "bytes"), metricText(record.value("cpu_percent"), "%")};
             for (int column = 0; column < cells.size(); ++column)
                 m_system->setItem(row, column, new QTableWidgetItem(cells[column]));
             m_system->item(row, 0)->setData(Qt::UserRole, key);
+            m_system->item(row, 0)->setToolTip(title);
+            m_system->item(row, 3)->setToolTip(record.value("state").toString());
+            for (int column : {1, 2, 4, 5})
+                m_system->item(row, column)->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
             if (key == m_selected)
                 m_system->selectRow(row);
             continue;
         }
+        const int row = m_runs->rowCount();
+        m_runs->insertRow(row);
+        const auto started = QDateTime::fromString(record.value("started_at").toString(), Qt::ISODateWithMs);
+        const QJsonValue duration = runDuration(record);
+        const QString state = record.value("state").toString();
+        const QString stateLabel = WorkflowRunStateDelegate::label(state);
+        const QStringList cells{title, record.value("task").toString(tr("Standalone")),
+            stateLabel, record.value("runtime").toString(),
+            started.isValid() ? started.toLocalTime().toString("MMM d, HH:mm:ss") : tr("Unavailable"), metricText(duration, "ms")};
+        for (int column = 0; column < cells.size(); ++column)
+            m_runs->setItem(row, column, new QTableWidgetItem(cells[column]));
+        m_runs->item(row, 0)->setData(Qt::UserRole, key);
+        m_runs->item(row, 0)->setToolTip(title + "\n" + key);
+        m_runs->item(row, 2)->setData(Qt::UserRole + 1, state);
+        m_runs->item(row, 2)->setToolTip(record.value("reason").toString(state));
+        m_runs->item(row, 5)->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        if (key == m_selected)
+            m_runs->selectRow(row);
+        // List mode can show the full retained snapshot without expanding the hidden graph.
+        if (matching > 64)
+            continue;
         const QString workflow = "workflow:" + record.value("workflow_run").toString(key);
         const QString task = workflow + ":task:" + record.value("task").toString("standalone");
         if (!groups.contains(workflow)) {
@@ -537,7 +1066,6 @@ void ExecutionExplorer::render()
             edges.append({workflow, task, tr("task"), false});
             groups.insert(task);
         }
-        const QString state = record.value("state").toString();
         ResourceStatus status = ResourceStatus::Inactive;
         if (state == "running")
             status = ResourceStatus::Running;
@@ -578,23 +1106,42 @@ void ExecutionExplorer::render()
         }
     }
     m_system->blockSignals(false);
+    if (system) {
+        const int count = m_system->rowCount();
+        m_processCount->setText(tr("%1 of %2 processes").arg(count).arg(records.size()));
+        m_system->setVisible(count > 0);
+        m_emptyProcesses->setVisible(count == 0);
+        m_emptyProcesses->setText(records.isEmpty()
+            ? tr("No process data to display\nRefresh to load the selected machine's process list.")
+            : tr("No matching processes\nTry another search or state filter."));
+    }
+    m_runResults->setText(tr("%1 of %2 matching tasks").arg(m_runs->rowCount()).arg(matching));
+    m_runs->setVisible(m_runs->rowCount() > 0);
+    m_emptyRuns->setVisible(m_runs->rowCount() == 0);
+    if (!query.isEmpty() || (m_history && m_runStateFilter->currentData().toString() != "all"))
+        m_emptyRuns->setText(tr("No matching workflow tasks\nTry another search or outcome filter."));
+    else if (m_history)
+        m_emptyRuns->setText(tr("No recorded runs yet\nCompleted workflow runs will appear here."));
+    else
+        m_emptyRuns->setText(tr("No workflows running\nStart a workflow from the editor to follow it here."));
     if (!system) {
         for (auto iterator = m_records.cbegin(); iterator != m_records.cend(); ++iterator) {
             const QString parent = iterator.value().value("parent_id").toString();
             if (!iterator.key().startsWith("container:") && !iterator.key().startsWith("resource:") && m_records.contains(parent))
                 edges.append({parent, iterator.key(), tr("managed child"), false});
         }
-        m_canvas->setGraph(nodes, edges, nodes.isEmpty() ? tr("No matching managed executions. Run a workflow with this CLI to populate recent activity.") : QString());
+        m_canvas->setGraph(nodes, edges, nodes.isEmpty() ? tr("No matching workflow runs in this view.") : QString());
         inspect(m_selected);
     }
-    m_more->setEnabled(matching > m_visibleLimit && m_visibleLimit < (system ? 4096 : 64));
+    m_more->setVisible(matching > m_visibleLimit);
+    m_more->setEnabled(matching > m_visibleLimit && m_visibleLimit < visibleRecordCeiling());
     QStringList notices;
     if (m_snapshot.value("truncated").toBool())
         notices << tr("Snapshot limit reached; additional resources may exist");
     for (const auto &notice : m_snapshot.value("notices").toArray())
         notices << notice.toString();
     m_status->setText(tr("%1 of %2 matching %3 · updated %4%5")
-        .arg(qMin(matching, m_visibleLimit)).arg(matching).arg(system ? tr("processes") : tr("executions"))
+        .arg(qMin(matching, m_visibleLimit)).arg(matching).arg(system ? tr("processes") : tr("workflow tasks"))
         .arg(m_snapshot.value("captured_at").toString(tr("not yet")))
         .arg(notices.isEmpty() ? QString() : " · " + notices.join(" · ")));
     if (system)
@@ -603,47 +1150,19 @@ void ExecutionExplorer::render()
 
 void ExecutionExplorer::inspect(const QString &identity)
 {
-    if (m_selected != identity) {
-        m_chart->clear();
-        m_chartSample.clear();
-    }
-    const bool selectionChanged = m_selected != identity;
+    const bool changed = m_selected != identity;
     m_selected = identity;
-    if (selectionChanged)
+    if (changed)
         QTimer::singleShot(0, this, &ExecutionExplorer::refresh);
     if (!m_records.contains(identity)) {
-        m_chart->clear();
-        m_chartSample.clear();
-        m_title->setText(tr("Select an execution"));
-        m_details->setText(tr("Select a process or associated container to inspect its lifecycle. Missing metrics are shown as unavailable."));
-        m_events->clear();
+        m_runInspector->clear();
+        if (m_listView)
+            updateRunLayout();
         return;
     }
     const auto record = m_records.value(identity);
-    const auto process = record.value("process").toObject();
     const auto metrics = record.value("metrics").toObject();
-    QJsonValue duration = record.value("duration_ms");
-    if (record.value("state").toString() == "running") {
-        const auto started = QDateTime::fromString(record.value("started_at").toString(), Qt::ISODateWithMs);
-        const auto captured = QDateTime::fromString(m_snapshot.value("captured_at").toString(), Qt::ISODateWithMs);
-        if (started.isValid() && captured.isValid())
-            duration = double(qMax<qint64>(0, started.msecsTo(captured)));
-    }
-    m_title->setText(record.value("workflow").toString(tr("Standalone execution")) + " · " + record.value("state").toString());
-    m_details->setText(tr("Execution %1\nTask %2 · runtime %3 · machine %4\nPID %5 · parent PID %6\nMemory %7 · CPU %8\nDuration %9\nContainer %10\nOperation log %11")
-        .arg(record.value("id").toString()).arg(record.value("task").toString(tr("None")))
-        .arg(record.value("runtime").toString()).arg(record.value("machine").toString())
-        .arg(process.value("pid").toInt() > 0 ? QString::number(process.value("pid").toInt()) : tr("Unavailable"))
-        .arg(record.value("parent_pid").toInt() > 0 ? QString::number(record.value("parent_pid").toInt()) : tr("Unavailable"))
-        .arg(metricText(metrics.value("memory_bytes"), "bytes")).arg(metricText(metrics.value("cpu_percent"), "%"))
-        .arg(metricText(duration, "ms"))
-        .arg(record.value("container").toString(tr("None"))).arg(record.value("log").toString(tr("Unavailable; Dockpipe logs remain in Activity"))));
-    const QString captured = m_snapshot.value("captured_at").toString();
-    if (m_chartSample != captured) {
-        const auto percent = metrics.value("cpu_percent");
-        m_chart->append(percent.isDouble() ? std::optional<double>(percent.toDouble()) : std::nullopt);
-        m_chartSample = captured;
-    }
+    const QJsonValue duration = runDuration(record);
     QStringList events{record.value("started_at").toString() + tr("  Process registered")};
     if (record.contains("finished_at"))
         events << record.value("finished_at").toString() + "  " + record.value("state").toString()
@@ -657,5 +1176,9 @@ void ExecutionExplorer::inspect(const QString &identity)
         events << event.value("ts").toString() + "  " + event.value("unit").toString()
             + " · " + event.value("status").toString();
     }
-    m_events->setPlainText(events.join('\n'));
+    m_runInspector->setRun(identity, record, metricText(duration, "ms"), metricText(metrics.value("memory_bytes"), "bytes"),
+        metricText(metrics.value("cpu_percent"), "%"), events.join('\n'), m_snapshot.value("captured_at").toString(),
+        m_resources->isChecked(), m_history);
+    if (m_listView)
+        updateRunLayout();
 }

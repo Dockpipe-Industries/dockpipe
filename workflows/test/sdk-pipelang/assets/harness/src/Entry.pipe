@@ -1,0 +1,140 @@
+module Dockpipe.SDK.Proof;
+import Dockpipe.SDK;
+
+public model Class Probe {
+    private Client client;
+
+    public Probe(Transport transport) {
+        this.client = new Client(transport);
+    }
+
+    public async Task<Result<bool,string>> Run(string root, string workflow, string heldWorkflow, CancellationToken token, CancellationToken cancelledToken) {
+        var query = ScopeRequest(root, "source", "", List<string>.Empty(), 32768);
+        var path = await client.Scope(query, 5000, token);
+        if (!path.IsSuccess)
+            return Result<bool,string>.Failure("source scope: " + path.Error);
+
+        if (!path.Value.isPath || path.Value.path != root)
+            return Result<bool,string>.Failure("source scope did not preserve the exact path");
+
+        var scopeStarted = client.StartScope(query);
+        if (!scopeStarted.IsSuccess)
+            return Result<bool,string>.Failure("scope start: " + scopeStarted.Error);
+
+        var scopeObserved = await client.Observe(scopeStarted.Value, 5000, token);
+        if (!scopeObserved.IsSuccess || !scopeObserved.Value.treeComplete || scopeObserved.Value.scopePath != root)
+            return Result<bool,string>.Failure("observed scope query lost its complete service path");
+
+        query.scope = "";
+        var object = await client.Scope(query, 5000, token);
+        if (!object.IsSuccess)
+            return Result<bool,string>.Failure("object scope: " + object.Error);
+
+        if (object.Value.isPath || object.Value.value.kind != "workflow" || object.Value.value.workdir != root)
+            return Result<bool,string>.Failure("scope object did not preserve public fields");
+
+        query.packageName = "sdk-qualification";
+        var packageObject = await client.Scope(query, 5000, token);
+        if (!packageObject.IsSuccess)
+            return Result<bool,string>.Failure("package scope: " + packageObject.Error);
+
+        if (packageObject.Value.isPath || packageObject.Value.value.kind != "package" ||
+                packageObject.Value.value.name != "sdk-qualification")
+            return Result<bool,string>.Failure("package scope did not preserve public fields");
+
+        query.path.Add(".");
+        var packagePath = await client.Scope(query, 5000, token);
+        if (!packagePath.IsSuccess)
+            return Result<bool,string>.Failure("package path: " + packagePath.Error);
+
+        if (!packagePath.Value.isPath || packagePath.Value.path != packageObject.Value.value.root)
+            return Result<bool,string>.Failure("package path did not match its service-owned root");
+
+        query.packageName = "";
+        query.path = List<string>.Empty();
+
+        var variables = List<WorkflowVariable>.Empty();
+        variables.Add(WorkflowVariable("proof", "spaces ; $(literal)"));
+
+        var arguments = List<string>.Empty();
+        arguments.Add("argument with spaces");
+
+        var request = WorkflowRequest(root, workflow, "", "", variables, arguments, 32768);
+        var started = client.Start(request);
+        if (!started.IsSuccess)
+            return Result<bool,string>.Failure("start: " + started.Error);
+
+        var observed = await client.Observe(started.Value, 5000, token);
+        if (!observed.IsSuccess)
+            return Result<bool,string>.Failure("observe: " + observed.Error);
+
+        if (!observed.Value.exited || !observed.Value.treeComplete || observed.Value.forced || observed.Value.exitCode == 0)
+            return Result<bool,string>.Failure("nonzero workflow exit lost its successful complete observation");
+
+        var foreign = OperationId(started.Value.clientId + 1, started.Value.value);
+        var rejected = await client.Observe(foreign, 0, token);
+        if (!rejected.IsFailure)
+            return Result<bool,string>.Failure("foreign operation ID was admitted");
+
+        request.workflowFile = heldWorkflow;
+        var held = client.Start(request);
+        if (!held.IsSuccess)
+            return Result<bool,string>.Failure("held start: " + held.Error);
+
+        var cancelled = await client.Observe(held.Value, 0, cancelledToken);
+        if (!cancelled.IsCancelled)
+            return Result<bool,string>.Failure("cancelled observation lost its cancellation outcome");
+
+        var retained = client.RetainedOperation();
+        if (!retained.IsSuccess || retained.Value != held.Value)
+            return Result<bool,string>.Failure("cancelled observation lost operation custody");
+
+        var second = client.Start(request);
+        if (!second.IsFailure)
+            return Result<bool,string>.Failure("concurrent operation was admitted");
+
+        var ready = false;
+        for (int attempt = 0; attempt < 50 && !ready; attempt = attempt + 1) {
+            var waiting = await client.Observe(held.Value, 100, token);
+            if (!waiting.IsSuccess)
+                return Result<bool,string>.Failure("readiness observation: " + waiting.Error);
+
+            ready = string.Utf8IndexOf(waiting.Value.stdoutText, "SDK_READY", 0) >= 0;
+        }
+
+        if (!ready)
+            return Result<bool,string>.Failure("held workflow never became ready");
+
+        var interrupted = client.Interrupt(held.Value);
+        if (!interrupted.IsSuccess)
+            return Result<bool,string>.Failure("interrupt: " + interrupted.Error);
+
+        var closed = await client.Observe(held.Value, 5000, token);
+        if (!closed.IsSuccess || !closed.Value.treeComplete || closed.Value.forced)
+            return Result<bool,string>.Failure("graceful interruption did not close its unforced tree");
+
+        var none = client.RetainedOperation();
+        if (!none.IsFailure)
+            return Result<bool,string>.Failure("closed tree retained a pending operation");
+
+        var forcedStart = client.Start(request);
+        if (!forcedStart.IsSuccess)
+            return Result<bool,string>.Failure("force fixture start: " + forcedStart.Error);
+
+        var disposed = await client.ForceDispose(forcedStart.Value, 5000, token);
+        if (!disposed.IsSuccess || !disposed.Value.treeComplete || !disposed.Value.forced)
+            return Result<bool,string>.Failure("explicit force disposal lost its complete forced observation");
+
+        query.scope = "source";
+        query.outputLimitBytes = 1;
+        var truncated = await client.Scope(query, 5000, token);
+        if (!truncated.IsFailure)
+            return Result<bool,string>.Failure("truncated scope path was admitted");
+
+        var cancelledScope = await client.Scope(query, 5000, cancelledToken);
+        if (!cancelledScope.IsCancelled)
+            return Result<bool,string>.Failure("pre-cancelled scope was admitted");
+
+        return Result<bool,string>.Success(true);
+    }
+}

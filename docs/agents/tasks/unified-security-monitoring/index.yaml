@@ -1,0 +1,19 @@
+schema: 1
+id: TASK-057
+topic: Unified security monitoring and vulnerability detection
+entrypoint: overview.md
+dispatch:
+  readiness: deferred
+  ownership: unclaimed
+routes:
+  orientation:
+    read: [overview.md]
+  design:
+    read: [overview.md, ../dependency-advisory-monitoring/overview.md, ../dependency-lifecycle/overview.md, ../adaptive-remote-threat-containment/overview.md]
+documents:
+- path: overview.md
+  role: proposed epic, package boundaries, phased scope and acceptance
+maintenance:
+- Resolve document paths relative to this index.
+- Keep dispatch metadata synchronized with docs/agents/task-index.yaml.
+- Proposed after Environments consolidation; backlog is not implementation or scanning authority.

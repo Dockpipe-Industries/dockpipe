@@ -17,7 +17,7 @@ func Run(argv []string, baseEnviron []string) error {
 	if err := checkCLIProjectVersion(argv); err != nil {
 		return err
 	}
-	if handled, err := dispatchCommand(argv); handled {
+	if handled, err := dispatchCommand(argv, baseEnviron); handled {
 		return err
 	}
 	err := executeWorkflowRun(argv, baseEnviron, snapshotRunExecutionServices())

@@ -1,0 +1,5 @@
+module Dockpipe.Product;
+
+public Interface FilePort {
+    Result<FileObservation,string> Observe(string absolutePath, int byteLimit);
+}

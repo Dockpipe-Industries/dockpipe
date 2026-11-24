@@ -1,0 +1,109 @@
+module Dockpipe.Product.RunAdmission.Tests;
+import Dockpipe.Product.RunAdmission;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+public Class AdmissionCase : IProbeTestCase {
+    private JsonReader reader;
+    private QualificationAdmission admission;
+    private int scenario;
+    private int registryDocument = 0;
+    private int planDocument = 0;
+
+    public AdmissionCase(JsonReader reader, QualificationAdmission admission, int scenario) {
+        this.reader = reader;
+        this.admission = admission;
+        this.scenario = scenario;
+    }
+
+    public pure string Id() => "qualification.run_admission." + string.FromInt(scenario);
+    public pure string Name() => "whole-run preflight " + string.FromInt(scenario);
+
+    private pure string Target(string id, string drivers) {
+        string digest = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        return "{\"id\":\"" + id + "\",\"platform\":\"p\",\"kind\":\"vm\",\"artifact_sha256\":\"" + digest +
+               "\",\"drivers\":[" + drivers + "]}";
+    }
+
+    private pure string Driver(string id, string path, string feature) {
+        string digest = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+        return "{\"id\":\"" + id + "\",\"entrypoint\":\"" + path + "\",\"sha256\":\"" + digest +
+               "\",\"features\":[\"" + feature + "\"]}";
+    }
+
+    private Result<void,TestFailure> Append(int document, string text) {
+        return Assert.True(reader.AppendDocument(document, ByteBuffer.FromUtf8(text)).IsSuccess,
+                           "append whole-run fixture document");
+    }
+
+    public Result<void,TestFailure> Setup(CancellationToken token) {
+        JsonReadLimits limits = new JsonReadLimits {};
+        limits.inputBytes = 16384;
+        limits.retainedBytes = 262144;
+        limits.nodes = 256;
+        Result<int,string> registry = reader.BeginDocument(limits);
+        try Assert.True(registry.IsSuccess, "open the registry fixture");
+        registryDocument = registry.Value;
+        Result<int,string> plan = reader.BeginDocument(limits);
+        try Assert.True(plan.IsSuccess, "open the plan fixture");
+        planDocument = plan.Value;
+
+        string registryText = "{\"schema\":\"dockpipe.product-integration.registry/v1\"," +
+            "\"platforms\":[{\"id\":\"p\",\"group\":\"contained\",\"selectors\":[\"all-cli\"]}]," +
+            "\"features\":[{\"id\":\"a\",\"selector\":\"all\",\"critical\":true,\"requires\":[\"bare_metal\"]," +
+            "\"cases\":[{\"scenario\":\"happy\",\"layer\":\"component\",\"required_assertions\":[\"assert.a\"]}]}," +
+            "{\"id\":\"b\",\"selector\":\"desktop\",\"critical\":false,\"cases\":[{" +
+            "\"scenario\":\"happy\",\"layer\":\"component\",\"required_assertions\":[\"assert.b\"]}]}]," +
+            "\"policy\":{\"local_only\":true,\"minimum_coverage\":0.9,\"critical_coverage\":1.0," +
+            "\"unavailable_counts_as_unpassed\":true}}";
+        try Append(registryDocument, registryText);
+
+        string valid = Driver("one", "driver.py", "a");
+        string last = "";
+        if (scenario == 1)
+            last = valid + "," + Driver("two", "driver.py", "a");
+        if (scenario == 2)
+            last = Driver("one", "driver.py", "b");
+        if (scenario == 3)
+            last = Driver("one", "repo://driver.py", "a");
+
+        return Append(planDocument, "{\"schema\":\"dockpipe.product-integration.plan/v1\"," +
+            "\"run_id\":\"run\",\"targets\":[" + Target("first", valid) + "," + Target("second", last) + "]}");
+    }
+
+    public Result<void,TestFailure> Body(CancellationToken token) {
+        return Assert.True(false, "run admission contracts use scoped probe dispatch");
+    }
+
+    public Result<void,TestFailure> BodyWithProbe(CancellationToken token, CancellationToken cancelled) {
+        Result<JsonNode,string> registry = reader.CompleteDocument(registryDocument, token);
+        Result<JsonNode,string> plan = reader.CompleteDocument(planDocument, token);
+        try Assert.True(registry.IsSuccess && plan.IsSuccess, "complete both borrowed input documents");
+        if (scenario == 4) {
+            Result<int,string> cancelledRun = admission.Validate(plan.Value, registry.Value, cancelled);
+            return Assert.True(cancelledRun.IsCancelled, "pre-cancelled run admits no work");
+        }
+
+        Result<int,string> result = admission.Validate(plan.Value, registry.Value, token);
+        if (scenario == 0)
+            return Assert.True(result.IsSuccess && result.Value == 2,
+                "count missing-capability cases once per applicable target, including an unclaimed case");
+
+        string expected = "qualification.driver_claim.overlap";
+        if (scenario == 2)
+            expected = "qualification.driver_claim.no_cases";
+        if (scenario == 3)
+            expected = "qualification.driver_source.digest_mismatch";
+
+        if (result.IsSuccess || result.IsCancelled)
+            return Assert.True(false, "a later bad target prevents whole-run admission");
+
+        return Assert.Equal<string>(expected, result.Error, "retain the later target refusal");
+    }
+
+    public Result<void,TestFailure> Cleanup() {
+        bool planClosed = planDocument == 0 || reader.CloseDocument(planDocument).IsSuccess;
+        bool registryClosed = registryDocument == 0 || reader.CloseDocument(registryDocument).IsSuccess;
+        return Assert.True(planClosed && registryClosed, "release both independent caller-owned inputs");
+    }
+}

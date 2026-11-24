@@ -1,4 +1,5 @@
 #include "TerminalHostLaunch.h"
+#include <QCoreApplication>
 
 #include <QDir>
 #include <QFileInfo>
@@ -171,7 +172,7 @@ TerminalHostLaunch::Plan TerminalHostLaunch::forHost(const QString &shell,
     // below that boundary, including this fixed script and the bridge options.
     constexpr qsizetype maximumBytes = 64 * 1024;
     bool valid = QDir::isAbsolutePath(shell) && QDir::isAbsolutePath(workingDirectory)
-        && validArgument(shell) && validArgument(workingDirectory) && arguments.size() <= 64 && environment.size() <= 64
+        && validArgument(shell) && validArgument(workingDirectory) && arguments.size() <= 64 && environment.size() <= 66
         && shell.size() <= maximumBytes && workingDirectory.size() <= maximumBytes;
     qsizetype bytes = sizeof(Supervisor);
     if (valid)
@@ -200,12 +201,12 @@ TerminalHostLaunch::Plan TerminalHostLaunch::forHost(const QString &shell,
         }
     }
     if (!valid || bytes > maximumBytes) {
-        plan.error = QStringLiteral("The host terminal launch requires absolute paths and at most 64 KiB of valid arguments.");
+        plan.error = QCoreApplication::translate("TerminalHostLaunch", "The host terminal launch requires absolute paths and at most 64 KiB of valid arguments.");
         return plan;
     }
     const QFileInfo executable(bridge);
     if (!executable.isAbsolute() || !executable.isFile() || !executable.isExecutable()) {
-        plan.error = QStringLiteral("The Flatpak host terminal bridge is unavailable.");
+        plan.error = QCoreApplication::translate("TerminalHostLaunch", "The Flatpak host terminal bridge is unavailable.");
         return plan;
     }
     plan.program = bridge;

@@ -1,0 +1,6 @@
+module Dockpipe.SDK.FaultProof;
+
+public Enum OfferFaultKind {
+    PartialAdoption,
+    LateOffer
+}

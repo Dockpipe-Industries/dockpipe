@@ -1,0 +1,8 @@
+module Dockpipe.Product.FreshLane;
+
+public Record LaneLaunchPaths {
+    public string workdir = "";
+    public string entrypoint = "";
+    public string request = "";
+    public string output = "";
+}

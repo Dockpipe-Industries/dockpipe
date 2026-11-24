@@ -131,6 +131,11 @@ def protect_runtime(prefix):
     reader_sections = subprocess.check_output(["readelf", "--wide", "--sections", str(reader)], text=True, timeout=60)
     if re.search(r"\.(?:debug|zdebug|gnu_debugdata|gdb_index)", reader_sections):
         raise ValueError("Private debug sections remain in the workspace reader")
+    terminal_host = prefix / "bin/dockpipe-terminal-host"
+    run(["strip", "--strip-unneeded", terminal_host], 60)
+    terminal_sections = subprocess.check_output(["readelf", "--wide", "--sections", str(terminal_host)], text=True, timeout=60)
+    if re.search(r"\.(?:debug|zdebug|gnu_debugdata|gdb_index)", terminal_sections):
+        raise ValueError("Private debug sections remain in the terminal host")
     # The browser is a linkable SDK archive: its link-time symbols are required.
     run(["strip", "--strip-debug", prefix / "lib/libdockpipe-browser.a"], 60)
 
@@ -180,7 +185,7 @@ def build(source, source_sha, qt, work, output, jobs, browser_sdk):
          f"-DCMAKE_PREFIX_PATH={qt};{browser_sdk}", f"-DQt6_DIR={qt}/lib/cmake/Qt6",
          f"-DCMAKE_INSTALL_PREFIX={prefix}",
          f"-DCMAKE_CXX_FLAGS_RELEASE=-O2 -DNDEBUG -ffile-prefix-map={source}=. -ffile-prefix-map={work}=."], 300)
-    run(["cmake", "--build", native_build, "--target", "dockpipe-launcher-ui", "dockpipe-browser", "dockpipe-workspace-reader",
+    run(["cmake", "--build", native_build, "--target", "dockpipe-launcher-ui", "dockpipe-browser", "dockpipe-workspace-reader", "dockpipe-terminal-host",
          "--parallel", jobs], 1800)
     run(["cmake", "--install", native_build, "--component", "LauncherSDK"], 120)
     relocated = work / ARCHIVE_ROOT

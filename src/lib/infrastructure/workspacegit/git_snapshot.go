@@ -23,7 +23,17 @@ func readWorkspaceGitSnapshot(ctx context.Context, workdir string) (*WorkspaceGi
 	if err != nil {
 		return nil, err
 	}
+
 	root := strings.TrimSuffix(string(rootBytes), "\n")
+	if grantedRoot, restricted := ctx.Value(grantedRepositoryRootKey{}).(os.FileInfo); restricted {
+		// Git may discover an ancestor. Compare directory identity before reading
+		// repository data, allowing equivalent Windows path spellings and worktrees.
+		actualRoot, err := os.Stat(root)
+		if err != nil || !os.SameFile(grantedRoot, actualRoot) {
+			return nil, errGrantedRepositoryRoot
+		}
+	}
+
 	branch, err := workspaceGitCommand(ctx, root, "symbolic-ref", "--quiet", "--short", "HEAD")
 	if err != nil && !workspaceGitMissingRef(err) {
 		return nil, err

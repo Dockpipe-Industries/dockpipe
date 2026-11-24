@@ -1,4 +1,6 @@
 #include "SourceEditor.h"
+#include <QTextDocument>
+#include <QTextOption>
 #include "SourceHighlighter.h"
 #include <definition.h>
 #include <KSyntaxHighlighting/Theme>
@@ -21,6 +23,10 @@ bool usesDarkEditorTheme(const QPalette &palette)
 
 SourceEditor::SourceEditor(QWidget *parent) : QPlainTextEdit(parent), m_gutter(new QWidget(this))
 {
+    setLayoutDirection(Qt::LeftToRight);
+    auto textOptions = document()->defaultTextOption();
+    textOptions.setTextDirection(Qt::LeftToRight);
+    document()->setDefaultTextOption(textOptions);
     auto font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
     font.setPointSize(11);
     setFont(font);
@@ -63,6 +69,47 @@ void SourceEditor::setPlainText(const QString &text)
         highlighter->setTheme(theme);
     highlighter->setDefinition(definition);
     highlighter->rehighlight();
+}
+
+void SourceEditor::loadFileText(const QString &text, const QString &path)
+{
+    // Retire queued QTextBlock callbacks before replacing their document storage.
+    // Configure the next grammar while detached: opening a file must not first
+    // highlight the previous file using the new file's language.
+    delete document()->findChild<SourceHighlighter *>();
+    QPlainTextEdit::setPlainText(text);
+    auto *highlighter = new SourceHighlighter(nullptr);
+    ensurePolished();
+    highlighter->updateTheme(usesDarkEditorTheme(palette()));
+    highlighter->setFileName(path);
+    // Qt schedules the initial highlighting after attachment. The file's text
+    // is available immediately, without several synchronous grammar passes.
+    highlighter->setParent(document());
+    highlighter->setDocument(document());
+}
+
+void SourceEditor::setFileDocument(QTextDocument *fileDocument, const QString &path)
+{
+    if (!fileDocument)
+        return;
+    QPlainTextEdit::setDocument(fileDocument);
+    ensurePolished();
+    if (fileDocument->defaultFont() != font())
+        fileDocument->setDefaultFont(font());
+    auto *highlighter = fileDocument->findChild<SourceHighlighter *>();
+    if (!highlighter) {
+        // Configure before attaching so the first syntax pass remains queued.
+        highlighter = new SourceHighlighter(nullptr);
+        highlighter->updateTheme(usesDarkEditorTheme(palette()));
+        highlighter->setFileName(path);
+        highlighter->setParent(fileDocument);
+        highlighter->setDocument(fileDocument);
+    } else {
+        highlighter->updateTheme(usesDarkEditorTheme(palette()));
+        highlighter->setFileName(path);
+    }
+    updateGutter();
+    highlightCurrentLine();
 }
 
 int SourceEditor::gutterWidth() const
@@ -131,7 +178,27 @@ void SourceEditor::highlightCurrentLine()
     line.format.setProperty(QTextFormat::FullWidthSelection, true);
     line.cursor = textCursor();
     line.cursor.clearSelection();
-    setExtraSelections({line});
+    QList<QTextEdit::ExtraSelection> selections{line};
+    for (const auto &value : document()->property("pipeLangDiagnostics").toList()) {
+        const auto diagnostic = value.toMap();
+        const int start = diagnostic.value("start").toInt();
+        const int end = diagnostic.value("end").toInt();
+        if (start < 0 || end < start || end >= document()->characterCount())
+            continue;
+
+        QTextEdit::ExtraSelection selection;
+        selection.cursor = QTextCursor(document());
+        selection.cursor.setPosition(start);
+        selection.cursor.setPosition(end, QTextCursor::KeepAnchor);
+        if (start == end && end < document()->characterCount() - 1)
+            selection.cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor);
+        selection.format.setUnderlineStyle(QTextCharFormat::WaveUnderline);
+        selection.format.setUnderlineColor(diagnostic.value("severity").toInt() == 1
+            ? QColor(Qt::red) : QColor(180, 120, 0));
+        selection.format.setToolTip(diagnostic.value("message").toString());
+        selections.append(selection);
+    }
+    setExtraSelections(selections);
 }
 
 void SourceEditor::changeEvent(QEvent *event)
@@ -213,4 +280,9 @@ void SourceEditor::keyPressEvent(QKeyEvent *event)
         return;
     }
     QPlainTextEdit::keyPressEvent(event);
+}
+
+void SourceEditor::refreshLanguageDiagnostics()
+{
+    highlightCurrentLine();
 }

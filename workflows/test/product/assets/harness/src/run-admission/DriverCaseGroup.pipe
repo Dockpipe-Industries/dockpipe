@@ -1,0 +1,14 @@
+module Dockpipe.Product.RunAdmission;
+import Dockpipe.Product.Qualification;
+
+public Class DriverCaseGroup {
+    private List<RegistryCase> rows = List<RegistryCase>.Empty();
+
+    public void Add(RegistryCase row) {
+        rows.Add(row);
+    }
+
+    public List<RegistryCase> Rows() {
+        return rows;
+    }
+}

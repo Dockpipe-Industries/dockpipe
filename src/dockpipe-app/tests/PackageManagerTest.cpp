@@ -95,8 +95,10 @@ esac
     }
     auto *typeFilter = dialog.findChild<QComboBox *>(QStringLiteral("packageTypeFilter"));
     if (!typeFilter || marketplace->item(0, 0)->text() != QStringLiteral("Example desktop workspace")
-        || marketplace->item(0, 2)->text() != QStringLiteral("app"))
+        || marketplace->item(0, 2)->text() != QStringLiteral("App")) {
+        std::fprintf(stderr, "Marketplace app title or display label is incorrect\n");
         return 1;
+    }
     typeFilter->setCurrentIndex(typeFilter->findData(QStringLiteral("app")));
     if (installed->rowCount() != 0 || marketplace->rowCount() != 1)
         return 1;

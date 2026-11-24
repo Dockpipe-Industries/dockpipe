@@ -9,3 +9,7 @@ bool openSetupTerminal(const QString &program, const QStringList &arguments, QSt
 
 // Opens a host command in an interactive terminal without substituting the CLI.
 bool openCommandTerminal(const QString &program, const QStringList &arguments, QString *error);
+
+// Opens the trusted Dockpipe CLI in the platform terminal, re-entering the
+// installed Flatpak CLI when the bundled executable is not a host path.
+bool openDockpipeTerminal(const QString &program, const QStringList &arguments, QString *error);

@@ -8,6 +8,7 @@
 #include <QGraphicsSceneContextMenuEvent>
 #include <QGraphicsView>
 #include <QPainter>
+#include <QPainterPath>
 #include <QStyleOptionGraphicsItem>
 #include <cmath>
 
@@ -28,6 +29,74 @@ WorkspaceGraphNode::WorkspaceGraphNode(const QString &path, const QString &kind,
     setCacheMode(DeviceCoordinateCache);
 }
 QRectF WorkspaceGraphNode::boundingRect() const { return m_bounds; }
+
+void WorkspaceGraphNode::setGraphView(bool enabled)
+{
+    if (property("workspaceGraphNode").toBool() == enabled)
+        return;
+    prepareGeometryChange();
+    setProperty("workspaceGraphNode", enabled);
+    setAcceptHoverEvents(enabled);
+    if (enabled) {
+        m_city = false;
+        m_bounds = QRectF(16, 0, 188, 86);
+    } else {
+        m_bounds = QRectF(-2, -2, 224, 62);
+    }
+    update();
+}
+
+QPainterPath WorkspaceGraphNode::shape() const
+{
+    if (!property("workspaceGraphNode").toBool())
+        return QGraphicsObject::shape();
+    QPainterPath hitArea;
+    hitArea.addEllipse(QPointF(110, 29), 20, 20);
+    if (property("graphLabelVisible").toBool() || isSelected())
+        hitArea.addRect(QRectF(24, 48, 172, 28));
+    return hitArea;
+}
+
+void WorkspaceGraphNode::paintGraph(QPainter *painter, bool dark)
+{
+    const bool directory = m_kind == "directory";
+    const QString suffix = QFileInfo(m_name).suffix().toLower();
+    QColor accent(dark ? "#8ba6c7" : "#56789f");
+    if (directory)
+        accent = QColor(dark ? "#76d4bf" : "#248776");
+    else if (suffix == "md" || suffix == "markdown")
+        accent = QColor(dark ? "#baa3e6" : "#8262b0");
+    else if (suffix == "json" || suffix == "yaml" || suffix == "yml" || suffix == "toml")
+        accent = QColor(dark ? "#d7b979" : "#9b762e");
+    else if (m_kind != "file")
+        accent = QColor(dark ? "#ce9986" : "#a1624d");
+    const qreal radius = qBound(5.0, property("graphRadius").toDouble(), 16.0);
+    const QPointF center(110, 29);
+    const bool emphasized = isSelected() || isUnderMouse();
+    painter->setRenderHint(QPainter::Antialiasing);
+    if (emphasized) {
+        QColor halo = accent;
+        halo.setAlpha(dark ? 30 : 24);
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(halo);
+        painter->drawEllipse(center, radius + 9, radius + 9);
+        painter->setPen(QPen(accent, 1.1));
+        painter->setBrush(Qt::NoBrush);
+        painter->drawEllipse(center, radius + 4, radius + 4);
+    }
+    painter->setPen(QPen(accent.lighter(dark ? 130 : 105), 1));
+    painter->setBrush(emphasized ? accent.lighter(120) : accent);
+    painter->drawEllipse(center, radius, radius);
+    if (!property("graphLabelVisible").toBool() && !emphasized)
+        return;
+    auto font = painter->font();
+    font.setPointSizeF(9);
+    font.setWeight(isSelected() ? QFont::DemiBold : QFont::Normal);
+    painter->setFont(font);
+    painter->setPen(QColor(dark ? "#cbd6e4" : "#42566e"));
+    painter->drawText(QRectF(24, center.y() + radius + 9, 172, 24), Qt::AlignHCenter | Qt::AlignTop,
+        painter->fontMetrics().elidedText(m_name, Qt::ElideMiddle, 170));
+}
 void WorkspaceGraphNode::setSummary(const QString &summary)
 {
     m_summary = summary;
@@ -195,6 +264,10 @@ void WorkspaceGraphNode::paintCityLabel(QPainter *painter, const QRectF &rect, b
 void WorkspaceGraphNode::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *)
 {
     const bool dark = scene()->views().first()->palette().color(QPalette::Base).lightness() < 128;
+    if (property("workspaceGraphNode").toBool()) {
+        paintGraph(painter, dark);
+        return;
+    }
     if (m_city) {
         paintCity(painter, dark);
         return;

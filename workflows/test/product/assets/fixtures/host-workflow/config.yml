@@ -1,0 +1,24 @@
+name: product-host-fixture
+description: Observable host output, failure and cleanup behavior for the authored product journey.
+platforms: [linux, deb]
+vault: none
+docker_preflight: false
+steps:
+  - id: produce
+    kind: host
+    cwd: artifacts
+    run: assets/scripts/produce.sh
+    outputs: values.env
+  - id: consume
+    kind: host
+    cwd: artifacts
+    run: assets/scripts/consume.sh
+  - id: after
+    kind: host
+    cwd: artifacts
+    run: assets/scripts/after.sh
+finally:
+  - id: cleanup
+    kind: host
+    cwd: artifacts
+    run: assets/scripts/cleanup.sh

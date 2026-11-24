@@ -1,0 +1,156 @@
+module Dockpipe.Product.QualificationOutput.Tests;
+import Dockpipe.Product.QualificationFiles;
+import Dockpipe.Product.QualificationOutput;
+import PipeLang.IO;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+public Class InputCustodyCase : IProbeTestCase {
+    private QualificationJsonFile input;
+    private QualificationJsonFile registryInput;
+    private QualificationJsonFile runnerInput;
+    private QualificationJsonOutput output;
+    private FileStreams retained;
+    private InputCustodyFixture fixture;
+    private int scenario;
+
+    public InputCustodyCase(JsonReader reader, FileStreams source, FileStreams retained,
+                            ExclusiveFileOutput writer, InputCustodyFixture fixture, int scenario) {
+        input = new QualificationJsonFile(reader, source);
+        registryInput = new QualificationJsonFile(reader, source);
+        runnerInput = new QualificationJsonFile(reader, source);
+        output = new QualificationJsonOutput(reader, writer);
+        this.retained = retained;
+        this.fixture = fixture;
+        this.scenario = scenario;
+    }
+
+    public pure string Id() => "qualification.input_copy." + string.FromInt(scenario);
+    public pure string Name() => "exact captured qualification input " + string.FromInt(scenario);
+
+    public Result<void,TestFailure> Setup(CancellationToken token) {
+        return Result<void,TestFailure>.Success();
+    }
+
+    public Result<void,TestFailure> Cleanup() {
+        Result<void,string> closed = input.Close();
+        Result<void,string> registryClosed = registryInput.Close();
+        Result<void,string> runnerClosed = runnerInput.Close();
+        Result<int,string> remaining = fixture.PendingOperations();
+        return Assert.True(closed.IsSuccess && registryClosed.IsSuccess && runnerClosed.IsSuccess &&
+                           remaining.IsSuccess && remaining.Value == 0,
+                           "independently release reader document, capture and writer");
+    }
+
+    public Result<void,TestFailure> Body(CancellationToken token) {
+        return Assert.True(false, "input custody contracts use scoped probe dispatch");
+    }
+
+    private Result<void,TestFailure> Resume(CancellationToken token, CancellationToken probeToken) {
+        JsonReadLimits limits = new JsonReadLimits {};
+        limits.inputBytes = 32768;
+        limits.nodes = 256;
+        limits.retainedBytes = 262144;
+        Result<CapturedQualificationJson,string> plan = input.Open("plan.json", limits, token);
+        Result<CapturedQualificationJson,string> registry = registryInput.Open("registry.json", limits, token);
+        Result<CapturedQualificationJson,string> runner = runnerInput.Open("runner.json", limits, token);
+        try Assert.True(plan.IsSuccess && registry.IsSuccess && runner.IsSuccess, "capture distinct input identities");
+        ResumeInputPins pins = new ResumeInputPins(retained);
+
+        try Assert.True(output.Store(plan.Value, "plan.json", token).IsSuccess, "persist exact plan bytes");
+        Result<void,string> missing = pins.Verify(plan.Value.sourceFile, registry.Value.sourceFile, token);
+        try Assert.True(missing.IsFailure && missing.Error == "qualification.resume.input.registry.json.io.named_identity",
+                        "retained registry must exist before resume");
+        try Assert.True(output.Store(registry.Value, "registry.json", token).IsSuccess, "persist exact registry bytes");
+        try Assert.True(pins.Verify(plan.Value.sourceFile, registry.Value.sourceFile, token).IsSuccess,
+                        "retained inputs match both selected pins");
+        Result<void,string> missingRunner = pins.VerifyRun(plan.Value.sourceFile, registry.Value.sourceFile,
+            runner.Value.sourceFile, token);
+        try Assert.True(missingRunner.IsFailure && missingRunner.Error == "qualification.resume.input.runner.json.io.named_identity",
+                        "resume refuses a missing runner identity");
+        try Assert.True(output.Store(runner.Value, "runner.json", token).IsSuccess, "retain the exact runner identity");
+        try Assert.True(pins.VerifyRun(plan.Value.sourceFile, registry.Value.sourceFile, runner.Value.sourceFile, token).IsSuccess,
+                        "all three retained identities authorize the run");
+        try Assert.True(runnerInput.Close().IsSuccess, "retire the first runner document before selecting another");
+        Result<CapturedQualificationJson,string> otherRunner = runnerInput.Open("other-runner.json", limits, token);
+        try Assert.True(otherRunner.IsSuccess && otherRunner.Value.sourceFile.byteCount == runner.Value.sourceFile.byteCount,
+                        "select another real runner identity at the same extent");
+        Result<void,string> changedRunner = pins.VerifyRun(plan.Value.sourceFile, registry.Value.sourceFile,
+            otherRunner.Value.sourceFile, token);
+        try Assert.True(changedRunner.IsFailure && changedRunner.Error == "qualification.resume.input_mismatch.runner.json",
+                        "the old runner identity cannot authorize this selection");
+        Result<void,string> cancelled = pins.VerifyRun(plan.Value.sourceFile, registry.Value.sourceFile,
+            runner.Value.sourceFile, probeToken);
+        try Assert.True(cancelled.IsCancelled, "resume evidence admission is cancellable");
+
+        try Assert.True(fixture.ChangeRetainedRegistry().IsSuccess, "change actual retained registry at the same size");
+        Result<void,string> changed = pins.Verify(plan.Value.sourceFile, registry.Value.sourceFile, token);
+        return Assert.True(changed.IsFailure && changed.Error == "qualification.resume.input_mismatch.registry.json",
+                           "a changed digest refuses resume even when extent matches");
+    }
+
+    public Result<void,TestFailure> BodyWithProbe(CancellationToken token, CancellationToken probeToken) {
+        if (scenario == 7)
+            return Resume(token, probeToken);
+
+        string path = "small-" + string.FromInt(scenario) + ".json";
+        JsonReadLimits limits = new JsonReadLimits {};
+        if (scenario == 4) {
+            path = "maximum.json";
+        } else {
+            limits.inputBytes = 32768;
+            limits.nodes = 256;
+            limits.retainedBytes = 262144;
+        }
+
+        Result<CapturedQualificationJson,string> opened = input.Open(path, limits, token);
+        try Assert.True(opened.IsSuccess, "admit the real bounded JSON file");
+        CapturedQualificationJson captured = opened.Value;
+        string expectedHash = captured.sourceFile.sha256;
+        int byteCount = captured.sourceFile.byteCount;
+        if (scenario == 4)
+            try Assert.Equal<int>(4194304, byteCount, "exact 4 MiB original input");
+
+        if (scenario == 1)
+            try Assert.True(fixture.ReplaceInput().IsSuccess, "original name now contains different real bytes");
+
+        string destination = "retained-" + string.FromInt(scenario) + ".json";
+        if (scenario == 3)
+            captured.sourceFile.sha256 = "inconsistent";
+        if (scenario == 5) {
+            Result<FileDigest,IoFailure> cancelled = output.Store(captured, destination, probeToken);
+            try Assert.True(cancelled.IsCancelled && cancelled.Error.effect == OutputEffect.NoDurableOutput,
+                            "pre-cancel preserves custody before exclusive creation");
+            try Assert.True(retained.DigestFile(destination, byteCount, token).IsFailure,
+                            "pre-cancel has no output to digest");
+        }
+        if (scenario == 6)
+            try Assert.True(input.Close().IsSuccess, "explicitly retire the captured document");
+
+        Result<FileDigest,IoFailure> copied = output.Store(captured, destination, token);
+        if (scenario == 3) {
+            try Assert.True(copied.IsFailure && copied.Error.effect == OutputEffect.Committed &&
+                           copied.Error.code == "qualification.input_copy.digest_mismatch",
+                           "mismatched witness reports already committed custody");
+        } else if (scenario == 6) {
+            try Assert.True(copied.IsFailure && copied.Error.effect == OutputEffect.NoDurableOutput,
+                            "a stale JSON handle fails before creation");
+            return Assert.True(retained.DigestFile(destination, byteCount, token).IsFailure,
+                               "no copy from stale document");
+        } else {
+            try Assert.True(copied.IsSuccess, "exact captured bytes committed");
+        }
+
+        if (scenario == 2) {
+            Result<FileDigest,IoFailure> duplicate = output.Store(captured, destination, token);
+            try Assert.True(duplicate.IsFailure && duplicate.Error.code == "io.output_exists" &&
+                            duplicate.Error.effect == OutputEffect.NoDurableOutput,
+                            "repeated copy leaves existing durable bytes intact");
+        }
+
+        Result<FileDigest,IoFailure> checked = retained.DigestFile(destination, byteCount, token);
+        try Assert.True(checked.IsSuccess, "can verify the retained file independently");
+        try Assert.Equal<int>(byteCount, checked.Value.byteCount, "output preserves the exact admitted extent");
+        return Assert.Equal<string>(expectedHash, checked.Value.sha256, "output preserves the exact admitted bytes");
+    }
+}

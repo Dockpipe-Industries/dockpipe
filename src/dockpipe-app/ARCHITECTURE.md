@@ -18,6 +18,7 @@ its owning context; add a layer only when there is real code for that role.
 | `execution` | Saved context values, discovery, process lifecycle, activity and launch UI. |
 | `catalog` | Workflow/input metadata values, CLI discovery client and selection UI. |
 | `workflows` | Script-path policy and workflow editor/canvas presentation. |
+| `environments` | Saved definitions, the asynchronous CLI reader, and passive runtime observations for the shared canvas and list. |
 | `dashboards`, `workspace-graph` | Layout state, persistence, graph reading and views. |
 | `files`, `git`, `remote` | CLI/filesystem adapters and their respective views. |
 | `packages`, `host-sdk` | Package integration, native loading and published host contracts. |
@@ -127,3 +128,94 @@ Use task-owned output directories; do not reuse a CMake cache that names the old
 source directory. A successful configure, focused test, native GUI run and
 cross-platform build are separate evidence. The source cleanup does not itself
 qualify Windows/macOS behavior, packaging, native embedding or GPU presentation.
+
+## Native package worker host
+
+The explicit macOS `--native-worker-host --request <private-file>` mode dispatches
+before QApplication and GUI single-instance handling. It runs one admitted native
+package entrypoint on the main thread inside the existing Dockpipe app identity;
+it does not create a separate provider app or start a remote session implicitly.
+
+The C-compatible Native Worker Package ABI v1 is separate from the Qt Display
+and Workspace SDKs. The package owns its backend, native run loop and opaque local
+profile; the host owns private descriptor/hash/signature admission, stop signaling
+and module lifetime. Production preserves Developer ID/team and library-validation
+boundaries. Explicit hash-pinned ad-hoc review is not production signing. Unknown
+cleanup is never success, and code remains mapped until the dedicated process
+ends. The CLI reference must select the app's bundled CLI. Existing services and
+paired state remain independent in this first slice.
+
+See [Native Worker Package ABI v1](../../docs/packages/native-worker-sdk.md) for the
+bounded descriptor and lifecycle contract. Published Display SDK1.0 is unchanged.
+
+## Optional display pre-close
+
+`packages/infrastructure/NativeDisplaySession` coordinates an optional QObject
+pre-close operation exposed by a package surface. It captures the reference and
+bounded completion budget, ignores foreign or late results, and supports explicit
+cancellation. `PackageDisplayWidget` retains the surface and module until that
+operation finishes, then calls the unchanged synchronous SDK close method before
+deletion. Immediate completion is deferred out of the package's signal stack.
+
+The remote desktop page owns its Closing state and validates completion against
+the selected session context. Hiding the page starts asynchronous closure by
+default. The visible, persisted "Keep connected across tabs" option defaults off;
+opting in retains the surface and session while hidden and clears input focus.
+Explicit disconnect still closes the session. Destruction and legacy providers
+retain bounded synchronous cancellation without
+claiming remote cleanup proof. Protocol, media and native input cleanup stay in
+the package. No asynchronous semantics are added to the published SDK 1.0 virtual
+close contract.
+
+Remote desktop preferences are app-owned presentation and connection options.
+The shell selects an installed resolver by the `remote.desktop` capability and
+the catalog's provider identity/version. It launches that resolver's native display
+with the provider-independent `dockpipe.remote.desktop-display/v1` options envelope:
+`cli`, `state_directory`, the exact `catalog`, `mode`, and the `capture`, `display`
+and `decoder` preference hints. These hints do not select a transport or grant
+capture/input authority. The provider validates its supported settings and reports
+unsupported requests; it owns protocol negotiation and platform behavior. See the
+[native display contract](../../docs/packages/package-model.md#package-owned-native-display-widgets).
+Quality and frame rate are passed to the package at explicit connection time;
+the package owns authenticated media negotiation and the native capture limits.
+The optional virtual-desktop choice uses those same preset sizes and is frozen
+with the capture options. The package owns OS display creation, target selection
+and teardown; the GUI does not create displays or change physical monitor modes.
+The local decoder preference is also frozen per connection. Software preserves
+the existing default; Automatic may fall back with actual-backend reporting,
+while Hardware only must not silently select software. Remote hardware encoding
+remains package-owned and independent of this viewer preference.
+Fit/actual-size and cursor preferences can update an existing surface through the
+optional QObject `setPresentationOptions(QJsonObject)` hook. The generic display
+adapter validates the existing JSON bounds and, when exposed, checks the optional
+`presentationOptions` readback property. This does not change SDK 1.0 virtuals.
+Fullscreen temporarily preserves the same surface while reparenting it and
+restores the user's tab-retention preference when it returns. Dashboard tiles
+reuse this remote-desktop page in compact presentation with independent sessions.
+
+The "Share text clipboard" preference is frozen into control connections as the
+package-owned `capture.clipboard_text` option. It defaults on for control and is
+omitted for view-only sessions or when disabled. The shell does not read remote
+clipboard contents or add clipboard logic to the generic broker. The provider
+owns negotiation, focused-session text transfer, acknowledgment ordering and OS
+access. Clipboard changes apply on the next connection, like capture settings.
+
+Image and regular-file sharing use independent opt-in connection preferences,
+`capture.clipboard_images` and `capture.clipboard_files`. Both default off and
+are omitted for view-only connections. An explicit rich paste shortcut can wait
+for transfer confirmation and finish that original paste once its physical keys
+are released. File drops transfer copies and then paste into the active remote
+application; they do not claim native drag into a destination under the pointer.
+The package binds one pending gesture to the session, clipboard generation,
+focus epoch and modifier policy. Intervening input, focus loss or changed content
+cancels it; ordinary clipboard changes never initiate a paste. Preparation,
+acknowledged byte progress and final publication are shown by the package.
+Image validation, streaming, private staging, quotas and clipboard publication
+remain package-owned. These extensions remain under qualification.
+
+The optional `display.swap_control_command` presentation preference defaults off.
+When enabled, the viewer maps both physical Control keys to Command and both
+Windows/Super keys to Control. Alt/Option is unchanged. A live change releases
+already-sent keys before applying the new map. The physical emergency release
+chord remains Ctrl+Alt+Shift+Escape. This is local viewer behavior and changes no
+Mac keyboard preference or generic input protocol.

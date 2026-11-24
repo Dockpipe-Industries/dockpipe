@@ -1,0 +1,66 @@
+module Dockpipe.Product.LaneRequest.Tests;
+import Dockpipe.Product.DriverSources;
+import Dockpipe.Product.LaneRequest;
+import Dockpipe.Product.Qualification;
+import Dockpipe.Product.QualificationFiles;
+import Dockpipe.Product.RunAdmission;
+import PipeLang.IO;
+import PipeLang.Json;
+
+public model Class LaneRequestSuite {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private FileStreams fixture;
+    private JsonDocumentOutput output;
+
+    public LaneRequestSuite(JsonReader reader, JsonStringIndexer indexer, FileStreams fixture,
+                            JsonDocumentOutput output) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.fixture = fixture;
+        this.output = output;
+    }
+
+    public Result<LaneRequestWrite,string> Run(int driverPosition, bool cancelProjection,
+                                               CancellationToken token, CancellationToken cancelled) {
+        QualificationJsonFile plan = new QualificationJsonFile(reader, fixture);
+        QualificationJsonFile registry = new QualificationJsonFile(reader, fixture);
+        JsonReadLimits limits = new JsonReadLimits {};
+        limits.inputBytes = 16384;
+        limits.retainedBytes = 262144;
+        limits.nodes = 256;
+        try {
+            CapturedQualificationJson planInput = try plan.Open("plan.json", limits, token);
+            CapturedQualificationJson registryInput = try registry.Open("registry.json", limits, token);
+            DriverSourcePins pins = new DriverSourcePins(reader, fixture, fixture);
+            QualificationAdmission admission = new QualificationAdmission(reader, indexer, pins, 4096);
+            int required = try admission.Validate(planInput.root, registryInput.root, token);
+            if (required != 3)
+                return Result<LaneRequestWrite,string>.Failure("unexpected fixture denominator");
+
+            RegistryJson json = new RegistryJson(reader);
+            JsonNode targets = try json.Member(planInput.root, "targets");
+            JsonNode target = try reader.At(targets, 0);
+            JsonNode drivers = try json.Member(target, "drivers");
+            JsonNode driver = try reader.At(drivers, driverPosition - 1);
+            QualificationTarget admitted = try admission.AdmitTarget(target, registryInput.root, 8192, token);
+            string runId = try json.TextMember(planInput.root, "run_id", 128);
+            QualificationRunIdentity identity = QualificationRunIdentity(runId,
+                planInput.sourceFile.sha256, registryInput.sourceFile.sha256);
+
+            LaneRequestProjection projection = new LaneRequestProjection(reader, output);
+            LaneCaseSelection selected = admitted.CasesForDriver(driverPosition);
+            if (cancelProjection)
+                return projection.Write(identity, target, driver, selected, cancelled);
+
+            return projection.Write(identity, target, driver, selected, token);
+        } finally {
+            Result<void,string> closedPlan = plan.Close();
+            Result<void,string> closedRegistry = registry.Close();
+            if (!closedPlan.IsSuccess)
+                throw Error(closedPlan.Error);
+            if (!closedRegistry.IsSuccess)
+                throw Error(closedRegistry.Error);
+        }
+    }
+}

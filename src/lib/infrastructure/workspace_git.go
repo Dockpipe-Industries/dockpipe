@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 
+	"dockpipe/src/lib/domain/invocation"
 	"dockpipe/src/lib/infrastructure/workspacegit"
 )
 
@@ -37,6 +38,11 @@ type WorkspaceGitTagPublication = workspacegit.WorkspaceGitTagPublication
 // RunWorkspaceGit runs a project Git operation through its owning adapter.
 func RunWorkspaceGit(ctx context.Context, request WorkspaceGitRequest) (*WorkspaceGitSnapshot, error) {
 	return workspacegit.RunWorkspaceGit(ctx, request)
+}
+
+// RunWorkspaceGitWithAuthority admits a Git operation from a trusted adapter.
+func RunWorkspaceGitWithAuthority(ctx context.Context, request WorkspaceGitRequest, target invocation.Target, identity invocation.Identity, authorize invocation.Authorize) (*WorkspaceGitSnapshot, error) {
+	return workspacegit.RunWorkspaceGitWithAuthority(ctx, request, target, identity, authorize)
 }
 
 const workspaceGitBytes = 8 * 1024 * 1024 // Maximum review and command output, in bytes.

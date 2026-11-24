@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TerminalLaunchContext.h"
+#include "NativeTerminalLaunch.h"
 
 #include <QByteArray>
 #include <QObject>
@@ -19,12 +20,18 @@ public:
     ~TerminalSession() override;
     bool start(QString workdir, const QString &program = {}, const QStringList &arguments = {},
         const QMap<QString, QString> &environment = {});
+    bool startPrepared(const NativeTerminalLaunch::Snapshot &launch);
     bool send(QByteArray data);
+    quint64 inputWrittenCursor() const;
+    void stopAndWait();
     void resize(int columns, int rows);
     void stop();
     bool running() const;
     QString error() const;
 signals:
+    void started();
+    void inputWritten(quint64 cursor);
+    void cleanupFinished(bool verified);
     void output(QByteArray data);
     void stateChanged();
     void finished(int exitCode);

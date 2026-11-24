@@ -9,7 +9,7 @@ It does not change a repository pin automatically.
 ## Inputs and output
 
 [The producer](../workflows/build/cli-candidate/assets/scripts/build.py) runs on Linux amd64 with the
-existing pinned Go **1.26.10** toolchain. It uses a new module cache, the public
+existing pinned Go **1.26.11** toolchain. It uses a new module cache, the public
 `https://proxy.golang.org` proxy and `sum.golang.org`, disables workspaces and
 private/local proxy overrides, rejects module replacements, downloads/verifies
 all dependencies and preserves the exact `go.mod`/`go.sum` bytes. The independently

@@ -1,0 +1,104 @@
+module Dockpipe.Product.Receipt;
+import PipeLang.IO;
+import PipeLang.Json;
+
+// The caller supplies the held lane-output root and owns the JSON document.
+public Class EvidencePolicy {
+    private JsonReader reader;
+    private FileStreams files;
+
+    public EvidencePolicy(JsonReader reader, FileStreams files) {
+        this.reader = reader;
+        this.files = files;
+    }
+
+    private Result<string,string> TextMember(JsonNode item, string name, int maximumBytes) {
+        string code = "qualification.receipt.evidence_" + name;
+        JsonNode? member = try reader.FindMember(item, name);
+        if (!member.HasValue)
+            return Result<string,string>.Failure(code);
+
+        JsonKind kind = try reader.Kind(member.Value);
+        if (kind != JsonKind.String)
+            return Result<string,string>.Failure(code);
+
+        int size = try reader.ScalarLength(member.Value);
+        if (size > maximumBytes)
+            return Result<string,string>.Failure(code);
+
+        ByteBuffer bytes = try reader.ScalarSlice(member.Value, 0, size);
+        return Result<string,string>.Success(bytes.DecodeUtf8());
+    }
+
+    private pure bool IsDigest(string digest) {
+        if (string.Utf8Length(digest) != 64)
+            return false;
+
+        for (int index = 0; index < 64; index = index + 1) {
+            int character = string.ByteAtOr(digest, index, -1);
+            bool decimal = character >= 48 && character <= 57;
+            bool lowerHex = character >= 97 && character <= 102;
+            if (!decimal && !lowerHex)
+                return false;
+        }
+
+        return true;
+    }
+
+    private Result<void,string> AdmitEntry(JsonNode item, CancellationToken token) {
+        JsonKind kind = try reader.Kind(item);
+        if (kind != JsonKind.Object)
+            return Result<void,string>.Failure("qualification.receipt.evidence_entry");
+
+        string digest = try TextMember(item, "sha256", 64);
+        if (!IsDigest(digest))
+            return Result<void,string>.Failure("qualification.receipt.evidence_sha256");
+
+        // The Linux lane uses the same maximum relative path byte count in
+        // its descriptor profile. The filesystem adapter checks components.
+        string path = try TextMember(item, "path", 4096);
+        int length = string.Utf8Length(path);
+        if (length == 0)
+            return Result<void,string>.Failure("qualification.receipt.evidence_path");
+
+        for (int index = 0; index < length; index = index + 1) {
+            if (string.ByteAtOr(path, index, -1) == 92)
+                return Result<void,string>.Failure("qualification.receipt.evidence_path");
+        }
+
+        Result<FileDigest,IoFailure> actual = files.DigestFile(path, 536870912, token);
+        if (actual.IsCancelled)
+            return Result<void,string>.Cancelled("qualification.receipt.evidence_cancelled");
+        if (actual.IsFailure)
+            return Result<void,string>.Failure("qualification.receipt.evidence_file." + actual.Error.code);
+        if (actual.Value.sha256 != digest)
+            return Result<void,string>.Failure("qualification.receipt.evidence_mismatch");
+
+        return Result<void,string>.Success();
+    }
+
+    // The enclosing case policy decides whether zero receipts can contribute
+    // to its status. Every provided entry must be admitted, in input order.
+    public Result<int,string> Admit(JsonNode items, CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<int,string>.Cancelled("qualification.receipt.evidence_cancelled");
+
+        JsonKind kind = try reader.Kind(items);
+        if (kind != JsonKind.Array)
+            return Result<int,string>.Failure("qualification.receipt.evidence_array");
+
+        int count = try reader.Count(items);
+        if (count > 64)
+            return Result<int,string>.Failure("qualification.receipt.evidence_count");
+
+        for (int index = 0; index < count; index = index + 1) {
+            if (token.IsCancellationRequested)
+                return Result<int,string>.Cancelled("qualification.receipt.evidence_cancelled");
+
+            JsonNode item = try reader.At(items, index);
+            try AdmitEntry(item, token);
+        }
+
+        return Result<int,string>.Success(count);
+    }
+}

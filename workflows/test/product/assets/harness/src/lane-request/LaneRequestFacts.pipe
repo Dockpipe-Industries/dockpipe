@@ -1,0 +1,25 @@
+module Dockpipe.Product.LaneRequest;
+import Dockpipe.Product.LaneReceipt;
+import Dockpipe.Product.Qualification;
+import PipeLang.Json;
+
+// The caller retains the exact request document for receipt admission.
+public Class LaneRequestFacts {
+    private RegistryJson json;
+
+    public LaneRequestFacts(JsonReader reader) {
+        json = new RegistryJson(reader);
+    }
+
+    public Result<ReceiptRequest,string> Read(QualificationRunIdentity identity, JsonNode request) {
+        JsonNode target = try json.Member(request, "target");
+        string id = try json.TextMember(target, "id", 128);
+        string platform = try json.TextMember(target, "platform", 512);
+        string kind = try json.TextMember(target, "kind", 128);
+        string artifact = try json.TextMember(target, "artifact_sha256", 64);
+        JsonNode cases = try json.Member(request, "cases");
+
+        return Result<ReceiptRequest,string>.Success(ReceiptRequest(identity.runId, identity.planSha256,
+            identity.registrySha256, ReceiptTarget(id, platform, kind, artifact), cases));
+    }
+}

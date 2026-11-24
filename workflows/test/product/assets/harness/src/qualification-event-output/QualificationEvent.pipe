@@ -1,0 +1,14 @@
+module Dockpipe.Product.QualificationEventOutput;
+import Dockpipe.Product.Coverage;
+
+public Record QualificationEvent {
+    public QualificationEventKind kind = QualificationEventKind.Started;
+    public string runId = "";
+    public string target = "";
+    public string driver = "";
+    public string feature = "";
+    public string scenario = "";
+    public string reason = "";
+    public int? exitCode;
+    public OverallCoverage? overall;
+}

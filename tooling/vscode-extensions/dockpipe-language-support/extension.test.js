@@ -98,6 +98,11 @@ Module._load = function load(request, parent, isMain) {
 const helpers = require("./extension").__test;
 Module._load = originalLoad;
 
+assert(helpers.DOCKPIPE_TOP_LEVEL_KEYS.includes("control"));
+assert(helpers.DOCKPIPE_STEP_KEYS.includes("control"));
+assert(helpers.hoverForWorkflowKey("control", helpers.TOP_LEVEL_KEY_DETAILS).contents.value.includes("PipeLang"));
+assert(helpers.hoverForWorkflowKey("control", helpers.STEP_KEY_DETAILS).contents.value.includes("control.parameters"));
+
 // Host-shell suggestions use the same lightweight YAML context as the providers.
 const shellWorkflowLines = [
   "steps:",

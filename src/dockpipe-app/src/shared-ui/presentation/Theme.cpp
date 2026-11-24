@@ -11,6 +11,8 @@
 #include <QIODevice>
 #include <QPalette>
 #include <QProcess>
+#include <QSettings>
+#include <QVariant>
 #include <QString>
 #include <QStyle>
 #include <QTextStream>
@@ -63,6 +65,32 @@ QPalette fusionDarkPalette()
     p.setColor(QPalette::Dark, QColor(30, 30, 30));
     p.setColor(QPalette::Shadow, QColor(20, 20, 20));
     return p;
+}
+
+QPalette fusionLightPalette()
+{
+    QPalette palette;
+    palette.setColor(QPalette::Window, QColor("#f3f6fa"));
+    palette.setColor(QPalette::WindowText, QColor("#25344a"));
+    palette.setColor(QPalette::Base, Qt::white);
+    palette.setColor(QPalette::AlternateBase, QColor("#edf2f8"));
+    palette.setColor(QPalette::Text, QColor("#25344a"));
+    palette.setColor(QPalette::Button, QColor("#f7f9fc"));
+    palette.setColor(QPalette::ButtonText, QColor("#25344a"));
+    palette.setColor(QPalette::BrightText, QColor("#ab3544"));
+    palette.setColor(QPalette::Link, QColor("#0d6fd1"));
+    palette.setColor(QPalette::LinkVisited, QColor("#6c4c9c"));
+    palette.setColor(QPalette::Highlight, QColor("#0d6fd1"));
+    palette.setColor(QPalette::HighlightedText, Qt::white);
+    palette.setColor(QPalette::PlaceholderText, QColor("#64758b"));
+    palette.setColor(QPalette::ToolTipBase, Qt::white);
+    palette.setColor(QPalette::ToolTipText, QColor("#25344a"));
+    palette.setColor(QPalette::Light, Qt::white);
+    palette.setColor(QPalette::Midlight, QColor("#e4eaf2"));
+    palette.setColor(QPalette::Mid, QColor("#a1afbf"));
+    palette.setColor(QPalette::Dark, QColor("#64758b"));
+    palette.setColor(QPalette::Shadow, QColor("#34465d"));
+    return palette;
 }
 
 std::optional<bool> tryGnomeColorScheme()
@@ -145,7 +173,7 @@ bool gtkThemeEnvDark()
     return t.contains(QStringLiteral("dark"));
 }
 
-bool isDarkUi()
+bool isDarkUi(const QPalette &systemPalette)
 {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     switch (QGuiApplication::styleHints()->colorScheme()) {
@@ -172,7 +200,7 @@ bool isDarkUi()
 #endif
 
     // Last resort (e.g. qt6ct / custom platform theme with a dark palette). Fusion alone often stays light at startup on Linux.
-    const QColor bg = QGuiApplication::palette().color(QPalette::Window);
+    const QColor bg = systemPalette.color(QPalette::Window);
     return bg.lightnessF() < 0.45;
 }
 
@@ -196,30 +224,80 @@ void applyLauncherFont(QApplication &app)
         break;
     }
     font.setPointSizeF(qMax(10.0, font.pointSizeF()));
-    app.setFont(font);
+    if (app.font() != font)
+        app.setFont(font);
 }
 
 } // namespace
 
+LauncherThemeMode dockpipeLauncherThemeMode()
+{
+    const QString mode = QSettings().value("appearance/theme", "system").toString();
+    if (mode == "dark")
+        return LauncherThemeMode::Dark;
+    if (mode == "light")
+        return LauncherThemeMode::Light;
+    return LauncherThemeMode::System;
+}
+
+bool saveDockpipeLauncherThemeMode(LauncherThemeMode mode)
+{
+    QString value;
+    switch (mode) {
+    case LauncherThemeMode::System:
+        value = "system";
+        break;
+    case LauncherThemeMode::Light:
+        value = "light";
+        break;
+    case LauncherThemeMode::Dark:
+        value = "dark";
+        break;
+    default:
+        return false;
+    }
+    QSettings settings;
+    settings.setValue("appearance/theme", value);
+    settings.sync();
+    return settings.status() == QSettings::NoError;
+}
+
+void previewDockpipeLauncherTheme(QApplication &app, LauncherThemeMode mode)
+{
+    app.setProperty("dockpipeThemePreview", int(mode));
+    applyDockpipeLauncherTheme(app);
+}
+
+void resetDockpipeLauncherThemePreview(QApplication &app)
+{
+    app.setProperty("dockpipeThemePreview", QVariant());
+    applyDockpipeLauncherTheme(app);
+}
+
 void applyDockpipeLauncherTheme(QApplication &app)
 {
     installLauncherWindowChrome(app);
-    QStyle *st = app.style();
-    const bool dark = isDarkUi();
+    if (!app.property("dockpipeSystemPalette").isValid())
+        app.setProperty("dockpipeSystemPalette", QVariant::fromValue(app.palette()));
+    LauncherThemeMode mode = dockpipeLauncherThemeMode();
+    if (app.property("dockpipeThemePreview").isValid())
+        mode = static_cast<LauncherThemeMode>(app.property("dockpipeThemePreview").toInt());
+    const bool dark = mode == LauncherThemeMode::Dark
+        || (mode == LauncherThemeMode::System && isDarkUi(qvariant_cast<QPalette>(app.property("dockpipeSystemPalette"))));
 
     applyLauncherFont(app);
-
-    if (dark)
-        app.setPalette(fusionDarkPalette());
-    else if (st)
-        app.setPalette(st->standardPalette());
-    else
-        app.setPalette(QPalette());
 
     QString sheet = loadResource(QStringLiteral(":/theme/pipeon.qss"));
     sheet += loadResource(dark ? QStringLiteral(":/theme/pipeon-dark.qss")
                                : QStringLiteral(":/theme/pipeon-light.qss"));
-    app.setStyleSheet(sheet);
+    const bool stylesheetChanged = app.styleSheet() != sheet;
+    // Unpolish the old stylesheet before changing the palette. Otherwise its
+    // saved widget palettes can restore dark roles during a switch to Light.
+    if (stylesheetChanged)
+        app.setStyleSheet(QString());
+    app.setPalette(dark ? fusionDarkPalette() : fusionLightPalette());
+    if (stylesheetChanged)
+        app.setStyleSheet(sheet);
 }
 
 void connectDockpipeLauncherThemeUpdates(QApplication &app)

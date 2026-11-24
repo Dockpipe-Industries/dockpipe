@@ -45,13 +45,23 @@ func (policy RemoteSecurityPolicy) Weakens(previous RemoteSecurityPolicy) bool {
 // OperatorScope admits a known operation, never arbitrary signing or a wildcard.
 func OperatorScope(path string) string {
 	switch path {
-	case "/v1/edge-status", "/v1/nodes", "/v1/jobs", "/v1/job", "/v1/observe", "/v1/pairings":
+	case "/v1/network-catalog", "/v1/network-connect", "/v1/network-pulse", "/v1/network-trust":
+		return "remote.network.session"
+	case DesktopAdministratorGrantPath, DesktopAdministratorRelayTicketPath, DesktopAdministratorApprovalPath:
+		return "remote.desktop.administrator-input"
+	case "/v1/desktop-catalog", "/v1/desktop-status":
+		return "remote.desktop.view"
+	case DesktopRelayTicketPath, "/v1/desktop-open", "/v1/desktop-pulse", "/v1/desktop-signal", "/v1/desktop-close":
+		return "remote.desktop.session"
+	case "/v1/edge-status", "/v1/nodes", "/v1/jobs", "/v1/job", "/v1/job-log", "/v1/observe", "/v1/pairings", JobInterruptionInspectPath,
+		"/v1/features-catalog", "/v1/features-read-submit", "/v1/features-read-status", "/v1/terminal-read":
 		return "remote.read"
-	case "/v1/submit", "/v1/cancel":
+	case "/v1/submit", "/v1/cancel", JobInterruptionAcknowledgePath, "/v1/features-write-submit", "/v1/features-write-status", "/v1/features-cancel", "/v1/features-reconcile",
+		"/v1/terminal-open", "/v1/terminal-pulse", "/v1/terminal-input", "/v1/terminal-resize", "/v1/terminal-close", "/v1/terminal-release":
 		return "remote.execute"
-	case "/v1/revoke", "/v1/edge-plan", "/v1/edge-activate":
+	case "/v1/revoke", "/v1/remove", "/v1/edge-plan", "/v1/edge-activate":
 		return "remote.manage"
-	case "/v1/pairing-open", "/v1/pairing-close", "/v1/approve-begin", "/v1/approve", "/v1/deny":
+	case "/v1/pairing-open", "/v1/pairing-close", "/v1/approve-begin", "/v1/approve", "/v1/deny", "/v1/guest-grant", "/v1/guest-grant-revoke":
 		return "remote.pair"
 	default:
 		return ""

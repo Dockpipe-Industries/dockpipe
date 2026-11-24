@@ -1,0 +1,6 @@
+module Dockpipe.Product;
+
+public Enum JourneyKind {
+    FailureRecovery,
+    GracefulCancellation
+}

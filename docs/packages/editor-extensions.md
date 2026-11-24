@@ -9,6 +9,21 @@ Dockpipe declares that extension as a dependency. DorkPipe retains its companion
 extension and AI behavior in its own repository. The CLI runs independently of
 editor extensions.
 
+The PipeLang development extension passed real isolated extension-host tests
+in Visual Studio Code and Cursor 3.29.9 on Linux x64. The checks used an installed
+PipeLang compiler and covered activation, file association, hover, definitions,
+inlay hints, class symbols, and compiler diagnostics after an unsaved edit.
+VSIX installation, distribution and other platforms have separate qualification
+requirements.
+
+The native Dockpipe Files editor has a **PipeLang server…** action. Select
+absolute paths to Node, the standalone PipeLang language server, and the
+PipeLang model compiler. You can also select a source root for imports. The
+editor keeps these selections for the session and uses the shared server for
+diagnostics and hover in `.pipe` documents. A Linux x64 Qt smoke passed against
+the extracted server and installed compiler, including unsaved edits and
+diagnostics in split views.
+
 ## Maintainer build and publication
 
 Run the owning repository's `editor.build` workflow with its pinned Dockpipe CLI:

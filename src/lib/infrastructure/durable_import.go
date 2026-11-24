@@ -33,13 +33,14 @@ type DurableImportMapping struct {
 // DurableCohortImportSpec describes one package-owned durable cohort. The generic importer owns
 // copying and publication; the package caller remains responsible for the exact cohort selection.
 type DurableCohortImportSpec struct {
-	OwnerID     string
-	Cohort      string
-	InstanceID  string
-	RunID       string
-	LegacyRoot  string
-	Mappings    []DurableImportMapping
-	IgnorePaths []string
+	OwnerID        string
+	Cohort         string
+	InstanceID     string
+	RunID          string
+	LegacyRoot     string
+	NoLegacyImport bool
+	Mappings       []DurableImportMapping
+	IgnorePaths    []string
 }
 
 type DurableCohortImportStatus struct {
@@ -185,6 +186,23 @@ func validateDurableImportSpec(workdir string, spec DurableCohortImportSpec) (va
 	if err != nil {
 		return validatedDurableImportSpec{}, err
 	}
+	validated := validatedDurableImportSpec{
+		DurableCohortImportSpec: spec,
+		cohortSegment:           cohortSegment,
+		instanceID:              instanceID,
+		instanceSegment:         instanceSegment,
+		instanceDigest:          instanceDigest,
+		runSegment:              runSegment,
+		ignore:                  map[string]bool{},
+	}
+	validated.Cohort = cohort
+	if spec.NoLegacyImport {
+		if spec.LegacyRoot != "" || len(spec.Mappings) != 0 || len(spec.IgnorePaths) != 0 {
+			return validatedDurableImportSpec{}, errors.New("fresh durable cohorts cannot select legacy sources")
+		}
+		return validated, nil
+	}
+
 	legacyRoot, err := filepath.Abs(filepath.Clean(spec.LegacyRoot))
 	if err != nil {
 		return validatedDurableImportSpec{}, err
@@ -204,15 +222,6 @@ func validateDurableImportSpec(workdir string, spec DurableCohortImportSpec) (va
 		}
 	}
 
-	validated := validatedDurableImportSpec{
-		DurableCohortImportSpec: spec,
-		cohortSegment:           cohortSegment,
-		instanceID:              instanceID,
-		instanceSegment:         instanceSegment,
-		instanceDigest:          instanceDigest,
-		runSegment:              runSegment,
-		ignore:                  map[string]bool{},
-	}
 	validated.Mappings = append([]DurableImportMapping(nil), spec.Mappings...)
 	validated.IgnorePaths = append([]string(nil), spec.IgnorePaths...)
 	legacySourcePath, err := filepath.Rel(stateRoot, legacyRoot)
@@ -220,7 +229,6 @@ func validateDurableImportSpec(workdir string, spec DurableCohortImportSpec) (va
 		return validatedDurableImportSpec{}, err
 	}
 	validated.legacySourcePath = filepath.ToSlash(legacySourcePath)
-	validated.Cohort = cohort
 	validated.LegacyRoot = legacyRoot
 	seenSource, seenDestination := map[string]bool{}, map[string]bool{}
 	for index := range validated.Mappings {

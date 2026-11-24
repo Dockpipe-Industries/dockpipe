@@ -1,0 +1,38 @@
+module Dockpipe.Product.QualificationEvents.Tests;
+import PipeLang.IO;
+import PipeLang.Testing;
+
+public Record EventLogReport {
+    public bool allPassed = false;
+    public List<TestResult> results;
+}
+
+public model Class EventLogSuite {
+    private FileStreams files;
+    private ExclusiveFileOutput output;
+    private ExistingFileAppend append;
+    private EventLogFixture fixture;
+
+    public EventLogSuite(FileStreams files, ExclusiveFileOutput output,
+                         ExistingFileAppend append, EventLogFixture fixture) {
+        this.files = files;
+        this.output = output;
+        this.append = append;
+        this.fixture = fixture;
+    }
+
+    public EventLogReport Run(CancellationToken token, CancellationToken cancelled) {
+        List<TestResult> results = List<TestResult>.Empty();
+        TestRunner runner = new TestRunner();
+        for (int scenario = 0; scenario < 6; scenario = scenario + 1)
+            results.Add(runner.RunProbe(new EventLogCase(files, output, append, fixture, scenario), token, cancelled));
+
+        bool allPassed = results.Count == 6;
+        foreach (TestResult result in results) {
+            if (result.outcome != TestOutcome.Passed || !result.bodyRan || !result.cleanupRan)
+                allPassed = false;
+        }
+
+        return EventLogReport(allPassed, results);
+    }
+}

@@ -14,11 +14,14 @@ import (
 	"syscall"
 	"time"
 
+	contract "dockpipe/src/lib/domain/remote"
+
 	"golang.org/x/sys/unix"
 )
 
 type darwinPlatform struct {
 	run        commandRunner
+	runTrust   commandRunner
 	executable func() (string, error)
 	readClocks func() (time.Duration, error)
 	mutex      sync.Mutex
@@ -26,7 +29,11 @@ type darwinPlatform struct {
 }
 
 func New() (Platform, error) {
-	return &darwinPlatform{run: runSystemCommand, executable: os.Executable, readClocks: darwinSuspendedTime}, nil
+	return &darwinPlatform{run: runSystemCommand, runTrust: runNetworkTrustCommand, executable: os.Executable, readClocks: darwinSuspendedTime}, nil
+}
+
+func runNetworkTrustCommand(ctx context.Context, program string, arguments ...string) ([]byte, error) {
+	return runSystemCommandBounded(ctx, program, contract.MaxNetworkTrustBody, arguments...)
 }
 
 func (platform *darwinPlatform) SuspendGeneration() (uint64, error) {
@@ -78,7 +85,7 @@ func (platform *darwinPlatform) SecurityDirectory() (string, error) {
 }
 
 func (platform *darwinPlatform) verifyHelper(ctx context.Context, helper string) error {
-	if _, err := platform.run(ctx, "/usr/bin/codesign", "--verify", "--strict", "--test-requirement", `identifier "com.dockpipe.system-auth"`, helper); err != nil {
+	if _, err := platform.run(ctx, "/usr/bin/codesign", "--verify", "--strict", "--test-requirement", `=identifier "com.dockpipe.system-auth"`, helper); err != nil {
 		return errors.New("Dockpipe system authentication helper signature is unavailable or invalid")
 	}
 	return nil

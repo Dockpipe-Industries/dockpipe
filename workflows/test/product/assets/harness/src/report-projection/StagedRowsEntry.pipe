@@ -1,0 +1,3 @@
+module Dockpipe.Product.ReportProjection.StagedEntry;
+import Dockpipe.Product.ReportProjection.StagedTests;
+import PipeLang.Json;

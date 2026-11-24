@@ -39,7 +39,7 @@ DashboardAppsDialog::DashboardAppsDialog(const QVector<WorkflowMeta> &workflows,
         ? (DesktopWindowWidget::automaticAcquisitionUnavailableReason().isEmpty()
             ? tr("Apps open in Tiling when their window can be identified. Ambiguous windows require a selection.")
             : tr("Apps open on your desktop, then use the system window picker where supported."))
-        : tr("DockPipe apps run through their existing workflows. Desktop windows are available in tiling mode."));
+        : tr("Dockpipe apps run through their existing workflows. Use Add widget → Desktop window to embed an existing window on the canvas."));
     hint->setWordWrap(true);
     layout->addWidget(hint);
     m_status = new QLabel(tr("Looking for installed applications…"));

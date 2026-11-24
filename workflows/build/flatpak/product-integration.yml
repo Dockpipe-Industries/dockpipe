@@ -1,0 +1,11 @@
+name: flatpak-product-integration
+description: Explicit local installed Flatpak product checks with isolated state; never registered in CI.
+docker_preflight: false
+steps:
+  - id: installed-product
+    kind: host
+    cwd: repo
+    scopes:
+      source: repo
+      artifacts: artifacts
+    cmd: python3 workflows/shared/run.py python3 workflows/build/flatpak/assets/scripts/verify-installed-product.py

@@ -1,0 +1,52 @@
+module Dockpipe.Product.RunReports.Tests;
+import Dockpipe.Product.Coverage;
+import Dockpipe.Product.LaneReceipt;
+import Dockpipe.Product.ReportProjection;
+import Dockpipe.Product.RunReports;
+import PipeLang.Json;
+
+public model Class SealedTargetFixture {
+    private JsonReader reader;
+    private JsonDocumentOutput output;
+
+    public SealedTargetFixture(JsonReader reader, JsonDocumentOutput output) {
+        this.reader = reader;
+        this.output = output;
+    }
+
+    private Result<void,string> Cases(string status, CancellationToken token) {
+        JsonReadLimits limits = new JsonReadLimits {};
+        limits.inputBytes = 4096;
+        limits.retainedBytes = 65536;
+        int document = try reader.BeginDocument(limits);
+        try {
+            try reader.AppendDocument(document, ByteBuffer.FromUtf8(
+                "{\"id\":\"fixture.feature\",\"scenario\":\"happy\",\"layer\":\"component\"," +
+                "\"status\":\"" + status + "\",\"assertions\":[],\"evidence\":[]}"));
+            JsonNode row = try reader.CompleteDocument(document, token);
+            CaseProjection cases = new CaseProjection(reader, output);
+            try output.Name("cases");
+            try output.BeginArray();
+            try cases.Observed(row, true, "selected/fixture/output", token);
+            return output.EndArray();
+        } finally {
+            Result<void,string> closed = reader.CloseDocument(document);
+            if (!closed.IsSuccess)
+                throw Error(closed.Error);
+        }
+    }
+
+    public Result<TargetCoverage,string> Project(string status, CancellationToken token) {
+        TargetCoverageAccumulator accumulator = new TargetCoverageAccumulator("p");
+        try accumulator.Observe("component", status, true, token);
+        TargetCoverage summary = accumulator.Finish();
+        ReceiptTarget target = ReceiptTarget("selected", "p", "local",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+
+        QualificationTargetProjection object = new QualificationTargetProjection(output);
+        try object.Begin();
+        try Cases(status, token);
+        try object.End(target, summary);
+        return Result<TargetCoverage,string>.Success(summary);
+    }
+}

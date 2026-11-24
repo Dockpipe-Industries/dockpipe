@@ -32,6 +32,9 @@ func removeCompiledTarballs(paths []string) error {
 		if err := os.Remove(path + ".sha256"); err != nil && !os.IsNotExist(err) {
 			return err
 		}
+		if err := os.Remove(workflowSourceBindingPath(path)); err != nil && !os.IsNotExist(err) {
+			return err
+		}
 	}
 	return nil
 }

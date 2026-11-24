@@ -30,13 +30,14 @@ func Run(args []string) error {
 		return err
 	}
 	status, err := infrastructure.PrepareDurableCohortImport(parsed.workdir, infrastructure.DurableCohortImportSpec{
-		OwnerID:     parsed.owner,
-		Cohort:      parsed.cohort,
-		InstanceID:  parsed.instance,
-		RunID:       parsed.runID,
-		LegacyRoot:  parsed.legacyRoot,
-		Mappings:    parsed.mappings,
-		IgnorePaths: parsed.ignorePaths,
+		OwnerID:        parsed.owner,
+		Cohort:         parsed.cohort,
+		InstanceID:     parsed.instance,
+		RunID:          parsed.runID,
+		LegacyRoot:     parsed.legacyRoot,
+		NoLegacyImport: parsed.noLegacyImport,
+		Mappings:       parsed.mappings,
+		IgnorePaths:    parsed.ignorePaths,
 	})
 	if err != nil {
 		return err
@@ -156,20 +157,25 @@ func cmdInternalPackageRuntime(args []string) error {
 }
 
 type internalDurableCohortArgs struct {
-	workdir     string
-	owner       string
-	cohort      string
-	instance    string
-	runID       string
-	legacyRoot  string
-	mappings    []infrastructure.DurableImportMapping
-	ignorePaths []string
+	workdir        string
+	owner          string
+	cohort         string
+	instance       string
+	runID          string
+	legacyRoot     string
+	noLegacyImport bool
+	mappings       []infrastructure.DurableImportMapping
+	ignorePaths    []string
 }
 
 func parseInternalDurableCohortArgs(args []string) (internalDurableCohortArgs, error) {
 	parsed := internalDurableCohortArgs{}
 	for index := 0; index < len(args); index++ {
 		name := args[index]
+		if name == "--no-legacy-import" {
+			parsed.noLegacyImport = true
+			continue
+		}
 		if index+1 >= len(args) {
 			return parsed, fmt.Errorf("%s requires a value", name)
 		}
@@ -215,8 +221,14 @@ func parseInternalDurableCohortArgs(args []string) (internalDurableCohortArgs, e
 		return parsed, err
 	}
 	parsed.workdir = workdir
-	if parsed.owner == "" || parsed.cohort == "" || parsed.instance == "" || parsed.runID == "" || parsed.legacyRoot == "" {
-		return parsed, fmt.Errorf("internal durable cohort requires owner, cohort, instance, run, and legacy root")
+	if parsed.owner == "" || parsed.cohort == "" || parsed.instance == "" || parsed.runID == "" {
+		return parsed, fmt.Errorf("internal durable cohort requires owner, cohort, instance, and run")
+	}
+	if parsed.noLegacyImport && (parsed.legacyRoot != "" || len(parsed.mappings) > 0 || len(parsed.ignorePaths) > 0) {
+		return parsed, fmt.Errorf("--no-legacy-import cannot be combined with legacy sources")
+	}
+	if !parsed.noLegacyImport && parsed.legacyRoot == "" {
+		return parsed, fmt.Errorf("internal durable cohort requires --legacy-root or --no-legacy-import")
 	}
 	return parsed, nil
 }

@@ -32,6 +32,9 @@ func (b *Broker) requestPairing(raw []byte) (any, error) {
 		return nil, errors.New("pairing requires proof of the worker machine identity")
 	}
 	now := time.Now().UTC()
+	if b.state.Nodes[request.Node].GuestGrant != "" {
+		return nil, errors.New("node is reserved by a disposable guest enrollment")
+	}
 	hash := Hash(request.Token)
 	for name, node := range b.state.Nodes {
 		if name != request.Node && matches(request.Token, node.TokenHash) {

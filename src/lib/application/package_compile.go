@@ -25,10 +25,6 @@ func compileSingleResolverDir(workdir, destRoot, source, name, defaultNamespace,
 	return packagecompile.CompileResolverDir(workdir, destRoot, source, name, defaultNamespace, defaultVersion, force)
 }
 
-func compileClosureForWorkflow(projectRoot, workflowName string, force bool) error {
-	return packagecompile.CompileClosureForWorkflow(projectRoot, workflowName, force)
-}
-
 func validateCompileOutputsForMode(workdir string, requireWorkflowNamespace bool) error {
 	return packagecompile.ValidateOutputsForMode(workdir, requireWorkflowNamespace)
 }

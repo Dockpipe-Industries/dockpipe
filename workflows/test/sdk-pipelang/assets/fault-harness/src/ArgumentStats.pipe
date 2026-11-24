@@ -1,0 +1,10 @@
+module Dockpipe.SDK.FaultProof;
+
+// Factual receiver statistics. Byte extrema cover only requested payload argv.
+public Record ArgumentStats {
+    public int argumentCount;
+    public int payloadArgumentCount;
+    public int payloadUtf8Bytes;
+    public int minimumByte;
+    public int maximumByte;
+}

@@ -4,6 +4,7 @@
 #include <QGraphicsScene>
 #include <QPainter>
 #include <QWheelEvent>
+#include <QEvent>
 #include <cmath>
 
 // Shared native pan/zoom/grid surface. No timers or simulation.
@@ -18,8 +19,17 @@ public:
         setTransformationAnchor(AnchorUnderMouse);
         setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        refreshTheme();
     }
 protected:
+    void changeEvent(QEvent *event) override
+    {
+        QGraphicsView::changeEvent(event);
+        if (event->type() == QEvent::PaletteChange || event->type() == QEvent::ApplicationPaletteChange
+            || event->type() == QEvent::StyleChange)
+            refreshTheme();
+    }
+
     void drawBackground(QPainter *painter, const QRectF &rect) override
     {
         const bool dark = palette().color(QPalette::Window).lightness() < 128;
@@ -36,6 +46,19 @@ protected:
         const qreal next = qBound(0.15, transform().m11() * std::pow(1.0015, event->angleDelta().y()), 2.5);
         scale(next / transform().m11(), next / transform().m11());
         event->accept();
+    }
+
+private:
+    void refreshTheme()
+    {
+        const bool dark = palette().color(QPalette::Window).lightness() < 128;
+        const QBrush background(QColor(dark ? "#10151c" : "#f6f8fc"));
+        if (backgroundBrush() != background)
+            setBackgroundBrush(background);
+        if (scene())
+            scene()->invalidate(scene()->sceneRect(), QGraphicsScene::AllLayers);
+        resetCachedContent();
+        viewport()->update();
     }
 };
 

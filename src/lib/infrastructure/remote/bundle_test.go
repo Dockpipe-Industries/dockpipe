@@ -2,6 +2,7 @@ package remote
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,6 +54,38 @@ func TestBundleSnapshotAndStage(t *testing.T) {
 	sourceFile(t, source, "work/.env", "secret")
 	if _, err := BuildBundle(source, "work/config.yml", nil, nil, nil); err == nil {
 		t.Fatal("copied private file from workflow tree")
+	}
+}
+
+func TestWindowsDeliveryDirectoryKeepsLongJobIDsOutOfScriptPaths(t *testing.T) {
+	root := t.TempDir()
+	jobID := strings.Repeat("long-job-", 6)
+	shortID := "short-job"
+
+	directory, err := createDeliveryDirectory(root, jobID, "windows")
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := filepath.Base(directory)
+	if len(name) >= len(jobID) || contract.ValidID(name) {
+		t.Fatalf("expected a shorter basename outside the job ID namespace, got %q", name)
+	}
+	if _, err := createDeliveryDirectory(root, jobID, "windows"); !errors.Is(err, os.ErrExist) {
+		t.Fatalf("repeat delivery did not preserve exclusive staging: %v", err)
+	}
+
+	shortDirectory, err := createDeliveryDirectory(root, shortID, "windows")
+	if err != nil || shortDirectory != filepath.Join(root, shortID) {
+		t.Fatalf("short delivery directory changed: %q, %v", shortDirectory, err)
+	}
+
+	legacyRoot := t.TempDir()
+	legacyDirectory, err := createDeliveryDirectory(legacyRoot, jobID, "linux")
+	if err != nil || legacyDirectory != filepath.Join(legacyRoot, jobID) {
+		t.Fatalf("legacy delivery directory changed: %q, %v", legacyDirectory, err)
+	}
+	if _, err := createDeliveryDirectory(legacyRoot, jobID, "windows"); !errors.Is(err, os.ErrExist) {
+		t.Fatalf("existing legacy delivery admitted after upgrade: %v", err)
 	}
 }
 

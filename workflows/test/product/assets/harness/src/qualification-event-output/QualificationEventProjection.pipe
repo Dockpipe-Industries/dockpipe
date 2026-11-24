@@ -1,0 +1,105 @@
+module Dockpipe.Product.QualificationEventOutput;
+import Dockpipe.Product.ReportProjection;
+import PipeLang.Json;
+
+public model Class QualificationEventProjection {
+    private JsonDocumentOutput output;
+
+    public QualificationEventProjection(JsonDocumentOutput output) {
+        this.output = output;
+    }
+
+    private pure string Name(QualificationEventKind kind) {
+        if (kind == QualificationEventKind.Started)
+            return "qualification-started";
+        if (kind == QualificationEventKind.DriverStarted)
+            return "driver-started";
+        if (kind == QualificationEventKind.DriverReceiptRevalidated)
+            return "driver-receipt-revalidated";
+        if (kind == QualificationEventKind.DriverResultRejected)
+            return "driver-result-rejected";
+        if (kind == QualificationEventKind.DriverFinished)
+            return "driver-finished";
+        if (kind == QualificationEventKind.RequiredCheckNotRun)
+            return "required-check-not-run";
+        if (kind == QualificationEventKind.Interrupted)
+            return "qualification-interrupted";
+        if (kind == QualificationEventKind.PlatformProfileNotRun)
+            return "platform-profile-not-run";
+
+        return "qualification-finished";
+    }
+
+    private pure bool Warns(QualificationEventKind kind) {
+        return kind == QualificationEventKind.DriverResultRejected || kind == QualificationEventKind.RequiredCheckNotRun ||
+            kind == QualificationEventKind.Interrupted || kind == QualificationEventKind.PlatformProfileNotRun;
+    }
+
+    private Result<void,string> Text(string field, string value) {
+        try output.Name(field);
+        return output.WriteText(value);
+    }
+
+    private Result<void,string> Fields(QualificationEvent selected, CancellationToken token) {
+        QualificationEventKind kind = selected.kind;
+        if (kind == QualificationEventKind.Started) {
+            try Text("policy", "opt-in-local-no-ci");
+            return Text("run_id", selected.runId);
+        }
+        if (kind == QualificationEventKind.Finished) {
+            if (!selected.overall.HasValue)
+                return Result<void,string>.Failure("qualification.events.overall");
+
+            CoverageProjection coverage = new CoverageProjection(output);
+            return coverage.OverallFields(selected.overall.Value, token);
+        }
+        if (kind == QualificationEventKind.Interrupted || kind == QualificationEventKind.PlatformProfileNotRun)
+            return Text("reason", selected.reason);
+
+        try Text("target", selected.target);
+        if (kind == QualificationEventKind.RequiredCheckNotRun) {
+            try Text("feature", selected.feature);
+            try Text("scenario", selected.scenario);
+            return Text("reason", selected.reason);
+        }
+
+        try Text("driver", selected.driver);
+        if (kind == QualificationEventKind.DriverResultRejected)
+            return Text("reason", selected.reason);
+        if (kind == QualificationEventKind.DriverFinished) {
+            try output.Name("exit_code");
+            if (selected.exitCode.HasValue)
+                return output.WriteInteger(selected.exitCode.Value);
+
+            return output.WriteNull();
+        }
+
+        return Result<void,string>.Success();
+    }
+
+    public Result<QualificationEventWrite,string> Write(QualificationEvent selected, string timestamp,
+                                                        CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<QualificationEventWrite,string>.Cancelled("qualification.events.cancelled");
+
+        string name = Name(selected.kind);
+        bool warns = Warns(selected.kind);
+        string level = "INFO";
+        if (warns)
+            level = "WARNING";
+
+        try output.BeginObject();
+        try Text("event", name);
+        try Text("level", level);
+        try Text("time", timestamp);
+        try Fields(selected, token);
+        try output.EndObject();
+
+        int bytes = try output.Finish();
+        string warning = "";
+        if (warns)
+            warning = "WARNING: " + name + ": " + selected.reason;
+
+        return Result<QualificationEventWrite,string>.Success(QualificationEventWrite(bytes, warning));
+    }
+}

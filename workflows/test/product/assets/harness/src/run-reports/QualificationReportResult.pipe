@@ -1,0 +1,8 @@
+module Dockpipe.Product.RunReports;
+import Dockpipe.Product.Coverage;
+
+public Record QualificationReportResult {
+    public OverallCoverage overall;
+    public int exitCode = 1;
+    public int bytes = 0;
+}

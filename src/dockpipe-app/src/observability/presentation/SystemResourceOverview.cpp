@@ -5,6 +5,7 @@
 #include <QGridLayout>
 #include <QLabel>
 #include <QProgressBar>
+#include <QResizeEvent>
 #include <QVBoxLayout>
 #include <cmath>
 
@@ -31,14 +32,23 @@ SystemResourceOverview::SystemResourceOverview(QWidget *parent, bool compact) : 
 {
     setObjectName("systemResourceOverview");
     auto *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(compact ? 0 : 20, 0, compact ? 0 : 20, 0);
-    auto *grid = new QGridLayout;
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(compact ? 6 : 16);
+    m_grid = new QGridLayout;
+    m_grid->setSpacing(compact ? 6 : 12);
+    auto *grid = m_grid;
+    m_columns = compact ? 2 : 3;
     const QStringList titles{tr("CPU"), tr("Memory"), tr("Swap"), tr("Disk"), tr("Network"), tr("Uptime & load")};
     for (int index = 0; index < titles.size(); ++index) {
         auto *card = new QFrame;
-        card->setObjectName("systemMetricCard");
+        card->setObjectName(compact ? "systemMetricCard" : "systemSummaryCard");
+        m_cards[index] = card;
         card->setFrameShape(QFrame::StyledPanel);
         auto *cardLayout = new QVBoxLayout(card);
+        if (!compact) {
+            cardLayout->setContentsMargins(18, 14, 18, 14);
+            cardLayout->setSpacing(6);
+        }
         auto *title = new QLabel(titles[index]);
         title->setObjectName("systemMetricTitle");
         auto font = title->font();
@@ -52,7 +62,14 @@ SystemResourceOverview::SystemResourceOverview(QWidget *parent, bool compact) : 
         auto valueFont = m_values[index]->font();
         valueFont.setPointSize(compact ? 11 : 13);
         m_values[index]->setFont(valueFont);
+        m_values[index]->setProperty("systemSummaryValue", !compact);
         cardLayout->addWidget(m_values[index]);
+        m_captions[index] = new QLabel;
+        m_captions[index]->setObjectName("systemMetricCaption" + QString::number(index));
+        m_captions[index]->setProperty("systemSummaryCaption", true);
+        m_captions[index]->setWordWrap(true);
+        m_captions[index]->setVisible(!compact);
+        cardLayout->addWidget(m_captions[index]);
         if (index < 4) {
             m_bars[index] = new QProgressBar;
             m_bars[index]->setRange(0, 100);
@@ -60,17 +77,34 @@ SystemResourceOverview::SystemResourceOverview(QWidget *parent, bool compact) : 
             m_bars[index]->setMaximumHeight(8);
             cardLayout->addWidget(m_bars[index]);
         }
-        const int columns = compact ? 2 : 3;
-        grid->addWidget(card, index / columns, index % columns);
+        grid->addWidget(card, index / m_columns, index % m_columns);
     }
     m_values[3]->setToolTip(tr("Capacity of the collector's root filesystem on Linux or system volume on Windows. Includes reserved space in used capacity."));
     m_values[4]->setToolTip(tr("Sum of non-loopback interfaces. Bridges, VPNs and virtual interfaces may count the same traffic more than once."));
     layout->addLayout(grid);
+    m_chartCard = new QFrame;
+    m_chartCard->setObjectName("systemCpuHistoryCard");
+    auto *chartLayout = new QVBoxLayout(m_chartCard);
+    chartLayout->setContentsMargins(16, 12, 16, 12);
     m_chart = new ExecutionMetricChart;
-    m_chart->setCaption(tr("System CPU · all cores = 100% · last 60 samples"));
-    layout->addWidget(m_chart);
-    m_chart->setVisible(!compact);
+    m_chart->setMaximumHeight(100);
+    m_chart->setCaption(tr("CPU activity · all cores = 100% · last 60 samples"));
+    chartLayout->addWidget(m_chart);
+    layout->addWidget(m_chartCard);
     clear();
+}
+
+void SystemResourceOverview::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    if (m_compact)
+        return;
+    const int columns = width() < 900 ? 2 : 3;
+    if (columns == m_columns)
+        return;
+    m_columns = columns;
+    for (int index = 0; index < 6; ++index)
+        m_grid->addWidget(m_cards[index], index / columns, index % columns);
 }
 
 void SystemResourceOverview::clear()
@@ -79,6 +113,9 @@ void SystemResourceOverview::clear()
     m_identity.clear();
     m_sampleTime = 0;
     m_chart->clear();
+    m_chartCard->hide();
+    for (auto *caption : m_captions)
+        caption->setText(tr("Waiting for available measurements"));
     for (auto *label : m_values)
         label->setText(tr("Unavailable"));
     for (auto *bar : m_bars) {
@@ -113,8 +150,21 @@ void SystemResourceOverview::applySnapshot(const QJsonObject &snapshot)
         cpuText = tr("%1% · %2 logical CPUs").arg(*cpu, 0, 'f', 1).arg(resources.value("logical_cpus").toInt());
     else if (measured(resources, "cpu_total"))
         cpuText = tr("Waiting for measurements");
-    m_values[0]->setText(cpuText);
-    m_chart->setVisible(!m_compact && measured(resources, "cpu_total"));
+    if (m_compact) {
+        m_values[0]->setText(cpuText);
+    } else {
+        m_values[0]->setText(cpu ? tr("%1%").arg(*cpu, 0, 'f', 1) : tr("Unavailable"));
+        if (cpu) {
+            const int processors = resources.value("logical_cpus").toInt();
+            m_captions[0]->setText(processors > 0
+                ? tr("%1 logical CPUs · total utilization").arg(processors) : tr("Total CPU utilization"));
+        } else if (measured(resources, "cpu_total") && !boot.isEmpty() && sampleTime > 0) {
+            m_captions[0]->setText(tr("Waiting for a second measurement"));
+        } else {
+            m_captions[0]->setText(tr("CPU measurements unavailable"));
+        }
+    }
+    m_chartCard->setVisible(!m_compact && measured(resources, "cpu_total") && !boot.isEmpty() && sampleTime > 0);
     m_bars[0]->setEnabled(cpu.has_value());
     m_bars[0]->setValue(cpu ? qRound(*cpu) : 0);
     m_chart->append(cpu);
@@ -127,6 +177,19 @@ void SystemResourceOverview::applySnapshot(const QJsonObject &snapshot)
         m_values[index + 1]->setText(valid ? tr("%1 / %2 used").arg(bytes(total - free), bytes(total)) : tr("Unavailable"));
         m_bars[index + 1]->setEnabled(valid);
         m_bars[index + 1]->setValue(valid && total > 0 ? qRound(100 * (total - free) / total) : 0);
+        if (!m_compact) {
+            if (valid && total == 0 && index == 1) {
+                m_values[index + 1]->setText(tr("No swap"));
+                m_captions[index + 1]->setText(tr("Not configured"));
+                m_bars[index + 1]->setEnabled(false);
+            } else if (valid) {
+                m_values[index + 1]->setText(bytes(total - free));
+                m_captions[index + 1]->setText(tr("of %1 · %2% used").arg(bytes(total))
+                    .arg(total > 0 ? 100 * (total - free) / total : 0, 0, 'f', 1));
+            } else {
+                m_captions[index + 1]->setText(tr("Measurement unavailable"));
+            }
+        }
     }
     QStringList rates;
     for (const auto &key : {QStringLiteral("network_received"), QStringLiteral("network_sent")}) {
@@ -138,7 +201,12 @@ void SystemResourceOverview::applySnapshot(const QJsonObject &snapshot)
             rates << tr("Unavailable");
         }
     }
-    m_values[4]->setText(tr("↓ %1   ↑ %2").arg(rates[0], rates[1]));
+    if (m_compact) {
+        m_values[4]->setText(tr("↓ %1   ↑ %2").arg(rates[0], rates[1]));
+    } else {
+        m_values[4]->setText(rates[0] == tr("Unavailable") ? tr("Unavailable") : tr("↓ %1").arg(rates[0]));
+        m_captions[4]->setText(rates[1] == tr("Unavailable") ? tr("Send rate unavailable") : tr("↑ %1 sent").arg(rates[1]));
+    }
     const QString uptime = measured(resources, "uptime_seconds")
         ? tr("%1 h").arg(resources.value("uptime_seconds").toDouble() / 3600, 0, 'f', 1) : tr("Unavailable");
     if (measured(resources, "load_1")) {
@@ -146,6 +214,12 @@ void SystemResourceOverview::applySnapshot(const QJsonObject &snapshot)
         m_values[5]->setText(tr("%1 · load %2 (1 min)").arg(uptime, load));
     } else {
         m_values[5]->setText(uptime);
+    }
+    if (!m_compact) {
+        m_values[5]->setText(uptime);
+        m_captions[5]->setText(measured(resources, "load_1")
+            ? tr("Load %1 · 1 minute average").arg(resources.value("load_1").toDouble(), 0, 'f', 2)
+            : tr("Load average unavailable"));
     }
     m_previous = resources;
     m_identity = identity;

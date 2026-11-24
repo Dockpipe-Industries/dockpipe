@@ -48,6 +48,9 @@ func ValidateLoadedWorkflow(w *Workflow) error {
 	if w == nil {
 		return nil
 	}
+	if err := ValidateWorkflowControl(w); err != nil {
+		return err
+	}
 	if err := packagecontract.ValidateCatalogMetadata(w.CatalogType, w.Categories); err != nil {
 		return err
 	}

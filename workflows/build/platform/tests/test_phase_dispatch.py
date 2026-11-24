@@ -42,7 +42,8 @@ class PlatformPhaseTests(unittest.TestCase):
                            'RECORDED_ARGS': str(output)}
             with patch.dict(os.environ, environment, clear=True):
                 self.assertEqual(phase.main(['cli']), 23)
-            self.assertEqual(json.loads(output.read_text()), ['--output', binary, '--version', '0.6.32'])
+                self.assertEqual(json.loads(output.read_text()),
+                                 ['--output', binary, '--version', '0.6.32', '--worker-host'])
 
     def test_linux_packaging_keeps_its_explicit_shell_and_child_failure(self):
         with tempfile.TemporaryDirectory() as temporary:

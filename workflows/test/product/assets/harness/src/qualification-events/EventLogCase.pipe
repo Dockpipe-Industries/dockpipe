@@ -1,0 +1,104 @@
+module Dockpipe.Product.QualificationEvents.Tests;
+import Dockpipe.Product.QualificationEvents;
+import PipeLang.IO;
+import PipeLang.Testing;
+
+public Class EventLogCase : IProbeTestCase {
+    private FileStreams files;
+    private ExclusiveFileOutput output;
+    private ExistingFileAppend append;
+    private EventLogFixture fixture;
+    private int scenario;
+    private string path;
+    private int snapshotId = 0;
+
+    public EventLogCase(FileStreams files, ExclusiveFileOutput output, ExistingFileAppend append,
+                        EventLogFixture fixture, int scenario) {
+        this.files = files;
+        this.output = output;
+        this.append = append;
+        this.fixture = fixture;
+        this.scenario = scenario;
+        path = "events-" + string.FromInt(scenario) + ".jsonl";
+    }
+
+    public pure string Id() => "qualification.event_log." + string.FromInt(scenario);
+    public pure string Name() => "qualification event log " + string.FromInt(scenario);
+
+    public Result<void,TestFailure> Setup(CancellationToken token) {
+        return Result<void,TestFailure>.Success();
+    }
+
+    public Result<void,TestFailure> Cleanup() {
+        bool closed = true;
+        if (snapshotId != 0)
+            closed = files.CloseSnapshot(snapshotId).IsSuccess;
+
+        Result<int,string> resources = fixture.RetainedOperations();
+        return Assert.True(closed && resources.IsSuccess && resources.Value == 0, "all native file custody released");
+    }
+
+    private Result<void,TestFailure> Verify(string expected, CancellationToken token) {
+        Result<CapturedFile,IoFailure> captured = files.CaptureSnapshot(path, 4096, token);
+        try Assert.True(captured.IsSuccess, "read actual qualification event file");
+        snapshotId = captured.Value.snapshotId;
+        Result<ByteBuffer,IoFailure> bytes = files.ReadSnapshot(snapshotId, 0, captured.Value.file.byteCount);
+        try Assert.True(bytes.IsSuccess, "read exact event bytes");
+        return Assert.Equal<string>(expected, bytes.Value.DecodeUtf8(), "file retains exact event record boundaries");
+    }
+
+    public Result<void,TestFailure> Body(CancellationToken token) {
+        return Assert.True(false, "event clauses require scoped probe dispatch");
+    }
+
+    public Result<void,TestFailure> BodyWithProbe(CancellationToken token, CancellationToken probeToken) {
+        string first = "{\"event\": \"qualification-started\", \"level\": \"INFO\"}\n";
+        string second = "{\"event\": \"driver-started\", \"level\": \"INFO\"}\n";
+        QualificationEventLog log = new QualificationEventLog(output, append, path);
+        if (scenario == 5) {
+            Result<void,IoFailure> cancelled = log.Create(4096, probeToken);
+            try Assert.True(cancelled.IsCancelled && cancelled.Error.effect == OutputEffect.NoDurableOutput,
+                            "pre-cancel does not create the event file");
+            try Assert.True(files.DigestFile(path, 4096, token).IsFailure, "no event file created");
+        }
+
+        try Assert.True(log.Create(4096, token).IsSuccess, "fresh event journal committed");
+        try Assert.True(log.AppendEncodedLine(ByteBuffer.FromUtf8(first), token).IsSuccess, "actual first event");
+        if (scenario == 1) {
+            QualificationEventLog resumed = new QualificationEventLog(output, append, path);
+            try Assert.True(resumed.BindExisting(4096, token).IsSuccess, "bind existing event stream");
+            try Assert.True(resumed.AppendEncodedLine(ByteBuffer.FromUtf8(second), token).IsSuccess,
+                            "resume appends to the actual prior bytes");
+            return Verify(first + second, token);
+        }
+
+        if (scenario == 2) {
+            QualificationEventLog duplicate = new QualificationEventLog(output, append, path);
+            Result<void,IoFailure> refused = duplicate.Create(4096, token);
+            try Assert.True(refused.IsFailure && refused.Error.code == "io.output_exists" &&
+                            refused.Error.effect == OutputEffect.NoDurableOutput, "fresh creation refuses existing stream");
+            return Verify(first, token);
+        }
+
+        if (scenario == 3) {
+            Result<void,IoFailure> refused = log.AppendEncodedLine(ByteBuffer.FromUtf8(first + second), token);
+            try Assert.True(refused.IsFailure && refused.Error.code == "qualification.events.line_boundary",
+                            "an event update admits exactly one physical line");
+            return Verify(first, token);
+        }
+
+        if (scenario == 4) {
+            try Assert.True(fixture.ChangeObservedFile(path).IsSuccess, "real event file changes in place");
+            Result<void,IoFailure> stale = log.AppendEncodedLine(ByteBuffer.FromUtf8(second), token);
+            try Assert.True(stale.IsFailure && stale.Error.code == "io.append_stale", "stale state cannot append");
+            Result<void,IoFailure> unbound = log.AppendEncodedLine(ByteBuffer.FromUtf8(second), token);
+            try Assert.True(unbound.IsFailure && unbound.Error.code == "qualification.events.unbound",
+                            "caller must explicitly reconcile before binding again");
+            return Verify("{\"event\": \"external\"}\n", token);
+        }
+
+        try Assert.True(log.AppendEncodedLine(ByteBuffer.FromUtf8(second), token).IsSuccess,
+                        "append after the latest actual state");
+        return Verify(first + second, token);
+    }
+}

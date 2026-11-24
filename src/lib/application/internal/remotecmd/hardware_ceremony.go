@@ -23,6 +23,8 @@ type hardwareCeremonyOptions struct {
 
 type hardwareInteractionModeKey struct{}
 
+var errNoAccessibleHardwareKey = errors.New("no accessible FIDO2 security key found; connect your key and check OS device permissions")
+
 type nativeHardwareClient interface {
 	Devices(context.Context) ([]nativekey.Device, error)
 	Create(context.Context, nativekey.Device, []byte, []byte) ([]byte, error)
@@ -51,18 +53,18 @@ type hardwareInteraction interface {
 func runHardwareCeremony(ctx context.Context, begin func() (hardwareCeremonyOptions, error), finish func([]byte) (bool, error)) error {
 	ctx, cancel := context.WithTimeout(ctx, hardwarekey.CeremonyLifetime*2)
 	defer cancel()
-	var interaction hardwareInteraction
 	if ctx.Value(hardwareInteractionModeKey{}) == "gui" {
-		interaction = &guiHardwareInteraction{input: hardwareGUIInput(ctx), output: os.Stdout}
-	} else {
-		terminal, err := newTerminalHardwareInteraction()
-		if err != nil {
-			return err
-		}
-		defer terminal.Close()
-		interaction = terminal
+		interaction := &guiHardwareInteraction{input: hardwareGUIInput(ctx), output: os.Stdout}
+		return interaction.run(ctx, begin, finish, systemHardwareClient{})
 	}
-	return performHardwareCeremony(ctx, begin, finish, systemHardwareClient{}, interaction)
+
+	terminal, err := newTerminalHardwareInteraction()
+	if err != nil {
+		return err
+	}
+	defer terminal.Close()
+
+	return performHardwareCeremony(ctx, begin, finish, systemHardwareClient{}, terminal)
 }
 
 func performHardwareCeremony(ctx context.Context, begin func() (hardwareCeremonyOptions, error), finish func([]byte) (bool, error), client nativeHardwareClient, interaction hardwareInteraction) error {
@@ -88,7 +90,7 @@ func performHardwareCeremony(ctx context.Context, begin func() (hardwareCeremony
 			return err
 		}
 		if len(devices) == 0 {
-			return errors.New("no accessible FIDO2 security key found; connect your key and check OS device permissions")
+			return errNoAccessibleHardwareKey
 		}
 		if len(devices) > 8 {
 			return errors.New("too many FIDO2 keys connected; connect at most eight keys")
@@ -133,6 +135,22 @@ func performHardwareCeremony(ctx context.Context, begin func() (hardwareCeremony
 type guiHardwareInteraction struct {
 	input  io.Reader
 	output io.Writer
+}
+
+func (g *guiHardwareInteraction) run(ctx context.Context, begin func() (hardwareCeremonyOptions, error), finish func([]byte) (bool, error), client nativeHardwareClient) error {
+	err := performHardwareCeremony(ctx, begin, finish, client, g)
+	if !errors.Is(err, errNoAccessibleHardwareKey) {
+		return err
+	}
+
+	reportErr := json.NewEncoder(g.output).Encode(struct {
+		Event string `json:"event"`
+	}{"hardware-key-unavailable"})
+	if reportErr != nil {
+		return errors.Join(err, reportErr)
+	}
+
+	return err
 }
 
 func (g *guiHardwareInteraction) Choose(ctx context.Context, options hardwareCeremonyOptions, devices []nativekey.Device) (int, []byte, error) {

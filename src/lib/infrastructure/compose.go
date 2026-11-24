@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"dockpipe/src/lib/domain/invocation"
+	"dockpipe/src/lib/infrastructure/process"
 )
 
 var composeExecCommandFn = exec.CommandContext
@@ -22,13 +25,48 @@ type ComposeLifecycleOpts struct {
 }
 
 func RunComposeLifecycle(opts ComposeLifecycleOpts) error {
+	return RunComposeLifecycleWithAdmission(NativeExecutionAdmission{}, opts)
+}
+
+// Compose remains a typed lifecycle adapter. Its file and service selection is
+// captured in memory before any Docker or filesystem discovery; the executor
+// retains Compose interpretation and the existing two-minute operation budget.
+func RunComposeLifecycleWithAdmission(admission NativeExecutionAdmission, opts ComposeLifecycleOpts) error {
+	_, err := invokeNativeExecution(admission, "dockpipe.containers.compose", opts,
+		func(_ context.Context, input ComposeLifecycleOpts) (invocation.Prepared[struct{}], error) {
+			owned := input
+			owned.Services = append([]string(nil), input.Services...)
+			owned.Env = append([]string(nil), input.Env...)
+			fields := []string{owned.Action, owned.File, owned.Project, owned.ProjectDirectory}
+			for _, group := range [][]string{fields, owned.Services, owned.Env} {
+				if err := ValidateNativeExecutionStrings(group); err != nil {
+					return invocation.Prepared[struct{}]{}, err
+				}
+			}
+			arguments, err := composeLifecycleArguments(owned)
+			if err != nil {
+				return invocation.Prepared[struct{}]{}, err
+			}
+			environment := mergeComposeProcessEnv(owned.Env)
+			prepared := invocation.Prepared[struct{}]{Execute: func(ctx context.Context) (struct{}, error) {
+				return struct{}{}, runComposeLifecycle(ctx, arguments, environment)
+			}}
+			if admission.Authorize != nil {
+				prepared.Digest = NativeExecutionDigest(fields, owned.Services, owned.Env, environment)
+			}
+			return prepared, nil
+		})
+	return err
+}
+
+func composeLifecycleArguments(opts ComposeLifecycleOpts) ([]string, error) {
 	file := strings.TrimSpace(opts.File)
 	if file == "" {
-		return fmt.Errorf("compose file is required")
+		return nil, fmt.Errorf("compose file is required")
 	}
 	action := strings.TrimSpace(opts.Action)
 	if action == "" {
-		return fmt.Errorf("compose action is required")
+		return nil, fmt.Errorf("compose action is required")
 	}
 	projectDir := strings.TrimSpace(opts.ProjectDirectory)
 	if projectDir == "" {
@@ -50,21 +88,37 @@ func RunComposeLifecycle(opts ComposeLifecycleOpts) error {
 	case "ps":
 		args = append(args, "ps")
 	default:
-		return fmt.Errorf("unsupported compose action %q", action)
+		return nil, fmt.Errorf("unsupported compose action %q", action)
 	}
 	for _, service := range opts.Services {
 		service = strings.TrimSpace(service)
+		if strings.HasPrefix(service, "-") {
+			return nil, fmt.Errorf("compose services cannot select command options")
+		}
 		if service != "" {
 			args = append(args, service)
 		}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	return args, nil
+}
+
+func runComposeLifecycle(parent context.Context, arguments, environment []string) error {
+	ctx, cancel := context.WithTimeout(parent, 2*time.Minute)
 	defer cancel()
-	cmd := composeExecCommandFn(ctx, "docker", args...)
-	cmd.Env = mergeComposeProcessEnv(opts.Env)
+	name, err := resolveDockerCommandFromEnvironment(environment)
+	if err != nil {
+		return err
+	}
+	cmd := composeExecCommandFn(ctx, name, arguments...)
+	cmd.Env = dockerCommandEnv(environment, name)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	cmd.WaitDelay = time.Second
+	err = process.Run(cmd)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	return err
 }
 
 func mergeComposeProcessEnv(overrides []string) []string {

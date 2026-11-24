@@ -1,0 +1,3 @@
+module Dockpipe.Product.Coverage.Entry;
+import Dockpipe.Product.Coverage.Tests;
+import PipeLang.Testing;

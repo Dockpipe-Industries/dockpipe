@@ -1,6 +1,8 @@
 #include "WorkflowCanvas.h"
 #include "CanvasIcons.h"
+#include <QCoreApplication>
 #include <QFontDatabase>
+#include <QEvent>
 #include <QGraphicsSceneHoverEvent>
 
 #include <QGraphicsObject>
@@ -18,6 +20,8 @@ constexpr qreal cardWidth = 248;
 constexpr qreal cardHeight = 126;
 
 class StepCard final : public QGraphicsObject {
+    Q_DECLARE_TR_FUNCTIONS(StepCard)
+
 public:
     StepCard(const QJsonObject &step, const QJsonArray &path,
              qreal height, QGraphicsItem *parent = nullptr)
@@ -160,11 +164,34 @@ WorkflowCanvas::WorkflowCanvas(QWidget *parent) : QGraphicsView(parent)
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setTransformationAnchor(AnchorUnderMouse);
     setResizeAnchor(AnchorViewCenter);
-    setBackgroundBrush(QColor("#11151c"));
+    refreshTheme();
     connect(scene(), &QGraphicsScene::selectionChanged, this, [this]() {
         const auto selected = scene()->selectedItems();
         emit nodeSelected(selected.isEmpty() ? QJsonArray() : selected.first()->data(0).toJsonArray());
     });
+}
+
+void WorkflowCanvas::changeEvent(QEvent *event)
+{
+    QGraphicsView::changeEvent(event);
+    if (event->type() == QEvent::PaletteChange || event->type() == QEvent::ApplicationPaletteChange
+        || event->type() == QEvent::StyleChange)
+        refreshTheme();
+}
+
+void WorkflowCanvas::refreshTheme()
+{
+    const bool dark = palette().color(QPalette::Window).lightness() < 128;
+    const QBrush background(QColor(dark ? "#11151c" : "#f7f9fc"));
+    if (backgroundBrush() != background)
+        setBackgroundBrush(background);
+    if (scene()) {
+        if (!m_connections.isEmpty())
+            updateConnections();
+        scene()->invalidate(scene()->sceneRect(), QGraphicsScene::AllLayers);
+    }
+    resetCachedContent();
+    viewport()->update();
 }
 
 void WorkflowCanvas::setDocument(const QJsonObject &document)

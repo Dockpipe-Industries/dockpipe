@@ -1,10 +1,16 @@
 #include "TerminalHub.h"
+#include "ManagedTerminalSession.h"
 #include "TerminalShellCatalog.h"
 #include "TerminalPreferences.h"
 #include "TerminalWidget.h"
+#include "TerminalSettingsDialog.h"
+#include <QTabWidget>
+#include <QTabBar>
+#include <QToolButton>
 #include "SendInputWidget.h"
 #include "DashboardWorkspace.h"
 #include "Theme.h"
+#include "WindowCompositor.h"
 
 #include <QApplication>
 #include <QAction>
@@ -26,6 +32,7 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
+#include <QWindow>
 #include <QWebEnginePage>
 #include <QWebEngineProfile>
 #include <QWebEngineView>
@@ -45,11 +52,185 @@ protected:
 class TerminalWidgetTest final : public QObject {
     Q_OBJECT
 private slots:
+    void firstRendererKeepsHostWindow();
+    void managedOpensOnceAndReusesSessions();
     void terminalAndComposer();
     void compactPanelOwnsOnlyItsSession();
     void canvasTransparencyAndStacking();
     void shellChoicesPreserveExistingSessions();
+    void unavailableContainerTargetDoesNotFallBackToHost();
+    void pairedTargetsRemainVisibleWithoutTerminalGrants();
 };
+
+void TerminalWidgetTest::unavailableContainerTargetDoesNotFallBackToHost()
+{
+    TerminalHub hub(TerminalLaunchContext::Local);
+    TerminalWidget terminal(hub, {});
+    const QString container(64, QLatin1Char('a'));
+    terminal.setEnvironmentContainers({{container, "codex-cli-test"}});
+
+    auto *targets = terminal.findChild<QComboBox *>("terminalTargets");
+    auto *create = terminal.findChild<QPushButton *>("terminalNew");
+    QVERIFY(targets && create);
+    QCOMPARE(targets->count(), 2);
+    QVERIFY(terminal.openEnvironmentContainer(container));
+    QCOMPARE(targets->currentData().toString(), QString("local:") + container);
+
+    terminal.setEnvironmentContainers({});
+    QCOMPARE(targets->currentData().toString(), QString("local:") + container);
+    QVERIFY(!create->isEnabled());
+    QVERIFY(!terminal.openEnvironmentContainer(container));
+    QVERIFY(hub.sessionIds().isEmpty());
+}
+
+void TerminalWidgetTest::pairedTargetsRemainVisibleWithoutTerminalGrants()
+{
+    TerminalHub hub(TerminalLaunchContext::Local);
+    TerminalWidget terminal(hub, {});
+    const QJsonObject target{{"node", "m6"}, {"fingerprint", QString(64, QLatin1Char('a'))},
+        {"generation", QString(64, QLatin1Char('b'))}};
+    const QJsonObject granted{{"target", target}, {"terminal_epoch", QString(64, QLatin1Char('c'))},
+        {"roots", QJsonArray{
+            QJsonObject{{"id", "project"}, {"name", "Project"}, {"terminal", true}},
+            QJsonObject{{"id", "home"}, {"name", "Home"}, {"terminal", true}}}}};
+    terminal.setMachineTargets({"m6", "win11", "Synology"}, QJsonArray{granted}, true);
+
+    auto *picker = terminal.findChild<QComboBox *>("terminalTargets");
+    QVERIFY(picker);
+    QCOMPARE(picker->count(), 5);
+    const auto enabled = [picker](const QString &text) {
+        const int index = picker->findText(text);
+        return index >= 0 && picker->model()->flags(picker->model()->index(index, 0)).testFlag(Qt::ItemIsEnabled);
+    };
+    QVERIFY(enabled("m6"));
+    QVERIFY(picker->itemData(picker->findText("m6")).toString().endsWith(":home"));
+    QVERIFY(enabled("m6 · Project"));
+    QVERIFY(picker->itemData(picker->findText("m6 · Project")).toString().endsWith(":project"));
+    QVERIFY(picker->findText("win11 · Terminal unavailable") >= 0);
+    QVERIFY(!enabled("win11 · Terminal unavailable"));
+    QVERIFY(picker->findText("Synology · Terminal unavailable") >= 0);
+    QVERIFY(!enabled("Synology · Terminal unavailable"));
+    terminal.setMachineTargets({"m6", "win11", "Synology"}, QJsonArray{granted}, false);
+    QVERIFY(picker->findText("m6 · Remote access locked") >= 0);
+    QVERIFY(!enabled("m6 · Remote access locked"));
+}
+
+void TerminalWidgetTest::firstRendererKeepsHostWindow()
+{
+#ifndef Q_OS_UNIX
+    QSKIP("Native renderer startup uses the Unix PTY fixture.");
+#else
+    QTemporaryDir directory;
+    TerminalHub hub(TerminalLaunchContext::Local);
+    QWidget host;
+    prepareLauncherWindowCompositor(host);
+    auto *layout = new QVBoxLayout(&host);
+    host.resize(960, 720);
+    host.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&host));
+    QVERIFY(hub.sessionIds().isEmpty());
+    QVERIFY(!host.findChild<QWebEngineView *>());
+    const WId originalWindow = host.winId();
+    QSignalSpy visibility(host.windowHandle(), &QWindow::visibleChanged);
+    auto *terminal = new TerminalWidget(hub, directory.path(), &host);
+    layout->addWidget(terminal);
+    terminal->show();
+    QTRY_VERIFY_WITH_TIMEOUT(terminal->property("terminalRendererReady").toBool(), 10000);
+    QCOMPARE(host.winId(), originalWindow);
+    QCOMPARE(visibility.size(), 0);
+    for (const QString &id : hub.sessionIds())
+        hub.closeSession(id);
+    QTRY_VERIFY_WITH_TIMEOUT(hub.findChildren<ManagedTerminalSession *>().isEmpty(), 10000);
+#endif
+}
+
+void TerminalWidgetTest::managedOpensOnceAndReusesSessions()
+{
+#ifndef Q_OS_UNIX
+    QSKIP("Managed auto-start integration uses the Unix PTY fixture.");
+#else
+    QTemporaryDir directory;
+    TerminalHub hub(TerminalLaunchContext::Local);
+    TerminalWidget managed(hub, directory.path());
+    managed.resize(1180, 720);
+    QVERIFY(hub.sessionIds().isEmpty());
+    QVERIFY(!managed.findChild<QWebEngineView *>());
+    managed.show();
+    const QString first = managed.sessionId();
+    QVERIFY(!first.isEmpty());
+    QCOMPARE(hub.sessionIds().size(), 1);
+    QTRY_VERIFY(hub.running(first));
+    auto *tabs = managed.findChild<QTabBar *>("terminalTabs");
+    QCOMPARE(tabs->count(), 1);
+    QCOMPARE(tabs->tabData(tabs->currentIndex()).toString(), first);
+    QTRY_VERIFY_WITH_TIMEOUT(managed.property("terminalRendererReady").toBool(), 10000);
+    qInfo() << "Managed terminal geometry" << managed.size() << managed.minimumSize() << managed.minimumSizeHint();
+    auto *managedStatus = managed.findChild<QLabel *>("terminalStatus");
+    QVERIFY2(!managedStatus->isVisible(), qPrintable(managedStatus->text()));
+    QVERIFY(!managed.findChild<QComboBox *>("terminalSessions")->isVisible());
+    auto *view = managed.findChild<QWebEngineView *>();
+    const QPointer<QWebEnginePage> page = view->page();
+    managed.hide();
+    managed.show();
+    QCOMPARE(managed.sessionId(), first);
+    QCOMPARE(hub.sessionIds().size(), 1);
+    QCOMPARE(view->page(), page.data());
+    managed.findChild<QPushButton *>("terminalNew")->click();
+    const QString second = managed.sessionId();
+    QVERIFY(second != first);
+    QCOMPARE(tabs->count(), 2);
+    QTRY_VERIFY(hub.running(second));
+    tabs->setCurrentIndex(0);
+    QCOMPARE(managed.sessionId(), first);
+    QCOMPARE(view->page(), page.data());
+    auto *closeSlot = tabs->tabButton(0, QTabBar::RightSide);
+    QVERIFY(closeSlot);
+    auto *close = closeSlot->findChild<QToolButton *>("terminalTabClose");
+    QVERIFY(close);
+    close->click();
+    QCOMPARE(hub.sessionIds(), QStringList({second}));
+    QCOMPARE(managed.sessionId(), second);
+    QVERIFY(hub.send(second, "printf '\\nDockpipe terminal ready\\n'"));
+    QTest::qWait(200);
+    const QString screenshot = qEnvironmentVariable("DOCKPIPE_TERMINAL_SCREENSHOT");
+    if (!screenshot.isEmpty())
+        QVERIFY(managed.grab().save(screenshot));
+    hub.closeSession(second);
+    QCOMPARE(tabs->count(), 0);
+    managed.hide();
+    managed.show();
+    QVERIFY(hub.sessionIds().isEmpty()); // Closing all tabs must not restart a shell.
+    QVERIFY(managed.findChild<QWidget *>("terminalEmpty")->isVisible());
+    managed.hide();
+    const QString shared = hub.createSession(directory.path());
+    QTRY_VERIFY(hub.running(shared));
+    managed.show();
+    QTest::mouseClick(tabs, Qt::LeftButton, {}, tabs->tabRect(0).center());
+    QCOMPARE(managed.sessionId(), shared);
+    QCOMPARE(hub.sessionIds().size(), 1);
+    managed.hide();
+    {
+        TerminalWidget reuse(hub, directory.path());
+        reuse.show();
+        QCOMPARE(reuse.sessionId(), shared);
+        QCOMPARE(hub.sessionIds().size(), 1);
+    }
+    QVERIFY(hub.running(shared));
+    hub.closeSession(shared);
+    {
+        TerminalWidget failed(hub, directory.filePath("missing-directory"));
+        failed.show();
+        QCOMPARE(hub.sessionIds().size(), 1);
+        QTRY_VERIFY(!hub.error(failed.sessionId()).isEmpty());
+        failed.hide();
+        failed.show();
+        QCOMPARE(hub.sessionIds().size(), 1); // A failed auto-start cannot loop.
+        hub.closeSession(failed.sessionId());
+    }
+    QVERIFY(hub.sessionIds().isEmpty());
+    QTRY_VERIFY_WITH_TIMEOUT(hub.findChildren<ManagedTerminalSession *>().isEmpty(), 10000);
+#endif
+}
 
 void TerminalWidgetTest::shellChoicesPreserveExistingSessions()
 {
@@ -112,7 +293,7 @@ void TerminalWidgetTest::shellChoicesPreserveExistingSessions()
     QVERIFY(hub.running(first) && hub.running(second));
     hub.closeSession(first);
     hub.closeSession(second);
-    QTRY_VERIFY_WITH_TIMEOUT(QCoreApplication::instance()->findChildren<QProcess *>("terminalShell").isEmpty(), 2000);
+    QTRY_VERIFY_WITH_TIMEOUT(hub.findChildren<ManagedTerminalSession *>().isEmpty(), 10000);
 #endif
 }
 
@@ -173,7 +354,7 @@ void TerminalWidgetTest::canvasTransparencyAndStacking()
     QTest::qWait(300);
     QVERIFY2(near(screenPixel(), QColor(99, 38, 55)), "Returning focus must retain terminal opacity");
     workspace.removePanel("terminal");
-    QTRY_VERIFY_WITH_TIMEOUT(QCoreApplication::instance()->findChildren<QProcess *>("terminalShell").isEmpty(), 2000);
+    QTRY_VERIFY_WITH_TIMEOUT(hub.findChildren<ManagedTerminalSession *>().isEmpty(), 10000);
     QVERIFY(TerminalPreferences::instance()->save(TerminalSettings()));
 }
 
@@ -205,7 +386,8 @@ void TerminalWidgetTest::compactPanelOwnsOnlyItsSession()
     QPointer<QWebEnginePage> page = view->page();
     QPointer<QWebEngineProfile> profile = view->page()->profile();
     QVERIFY(!terminal->findChild<QWidget *>("terminalToolbar")->isVisible());
-    QVERIFY(!terminal->findChild<QLabel *>("terminalStatus")->isVisible());
+    auto *terminalStatus = terminal->findChild<QLabel *>("terminalStatus");
+    QVERIFY2(!terminalStatus->isVisible(), qPrintable(terminalStatus->text()));
     QVERIFY(!terminal->findChild<QPushButton *>("terminalNew")->isVisible());
     QVERIFY(!terminal->findChild<QPushButton *>("terminalClose")->isVisible());
     QCOMPARE(view->contextMenuPolicy(), Qt::ActionsContextMenu);
@@ -259,7 +441,7 @@ void TerminalWidgetTest::compactPanelOwnsOnlyItsSession()
     workspace.removePanel("closed-terminal");
     QVERIFY(hub.running(separate));
     hub.closeSession(separate);
-    QTRY_VERIFY_WITH_TIMEOUT(QCoreApplication::instance()->findChildren<QProcess *>("terminalShell").isEmpty(), 2000);
+    QTRY_VERIFY_WITH_TIMEOUT(hub.findChildren<ManagedTerminalSession *>().isEmpty(), 10000);
 #endif
 }
 
@@ -290,9 +472,7 @@ void TerminalWidgetTest::terminalAndComposer()
     auto *terminal = new TerminalWidget(hub, directory.path());
     QVERIFY(workspace.addPanel("terminal-test", "Terminal", terminal));
     host.show();
-    QCOMPARE(hub.sessionIds().size(), 0);
-    QVERIFY(!terminal->findChild<QWebEngineView *>());
-    terminal->findChild<QPushButton *>("terminalNew")->click();
+    QCOMPARE(hub.sessionIds().size(), 1);
     QCOMPARE(hub.sessionIds().size(), 1);
     QVERIFY(!terminal->isWindow());
     QCOMPARE(terminal->window(), &host);
@@ -307,7 +487,7 @@ void TerminalWidgetTest::terminalAndComposer()
     QVERIFY(retainedProfile->isOffTheRecord());
     QTest::qWait(150);
     // Disable echo before asserting output, so command text cannot satisfy the fixture.
-    QVERIFY(hub.send(first, "stty -echo"));
+    QVERIFY2(hub.send(first, "stty -echo"), qPrintable(hub.error(first)));
     QVERIFY(hub.send(first, "printf '\\nRENDERED_%s\\n' terminal"));
     QString rendered;
     const auto readScreen = [&]() {
@@ -501,7 +681,7 @@ void TerminalWidgetTest::terminalAndComposer()
     input->setPlainText("printf selected > selected-target.txt");
     send->click();
     QTRY_VERIFY_WITH_TIMEOUT(QFile::exists(directory.filePath("selected-target.txt")), 3000);
-    QVERIFY(input->toPlainText().isEmpty());
+    QTRY_VERIFY(input->toPlainText().isEmpty());
 
     QSignalSpy outputFrames(terminal, &TerminalWidget::renderOutput);
     appearance.backgroundTarget = "desktop";
@@ -591,6 +771,7 @@ void TerminalWidgetTest::terminalAndComposer()
     int timerTicks = 0;
     QTimer heartbeat;
     heartbeat.setInterval(10);
+    heartbeat.setTimerType(Qt::PreciseTimer);
     connect(&heartbeat, &QTimer::timeout, this, [&]() { ++timerTicks; });
     heartbeat.start();
     // CoreFoundation handles timers differently during manual processEvents
@@ -672,7 +853,7 @@ void TerminalWidgetTest::terminalAndComposer()
     QCOMPARE(closedImage.pixelColor(samplePoint).alpha(), 255);
     QTRY_VERIFY(retainedPage.isNull());
     QTRY_VERIFY(retainedProfile.isNull());
-    QTRY_VERIFY_WITH_TIMEOUT(QCoreApplication::instance()->findChildren<QProcess *>("terminalShell").isEmpty(), 2000);
+    QTRY_VERIFY_WITH_TIMEOUT(hub.findChildren<ManagedTerminalSession *>().isEmpty(), 10000);
     // Failed sessions count toward the same finite registry until closed.
     for (int index = 0; index < 8; ++index)
         QVERIFY(!hub.createSession(directory.filePath("missing-directory")).isEmpty());
@@ -697,6 +878,21 @@ int main(int argc, char **argv)
     QApplication application(argc, argv);
     application.setStyle("Fusion");
     applyDockpipeLauncherTheme(application);
+    previewDockpipeLauncherTheme(application, qEnvironmentVariable("DOCKPIPE_TEST_THEME") == "light"
+        ? LauncherThemeMode::Light : LauncherThemeMode::Dark);
+    const QString settingsImages = qEnvironmentVariable("DOCKPIPE_TERMINAL_SETTINGS_IMAGES");
+    if (!settingsImages.isEmpty()) {
+        TerminalSettingsDialog dialog;
+        dialog.show();
+        QTest::qWait(100);
+        if (!dialog.grab().save(settingsImages + "-appearance.png"))
+            return 1;
+        dialog.findChild<QTabWidget *>("settingsTabs")->setCurrentIndex(1);
+        QTest::qWait(100);
+        if (!dialog.grab().save(settingsImages + "-effects.png"))
+            return 1;
+        return 0;
+    }
     TerminalWidgetTest test;
     return QTest::qExec(&test, argc, argv);
 }

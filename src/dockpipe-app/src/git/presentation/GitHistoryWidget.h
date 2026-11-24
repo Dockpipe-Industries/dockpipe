@@ -12,7 +12,7 @@ class QLineEdit;
 class QListView;
 class QListWidget;
 class QPushButton;
-class SourceEditor;
+class GitDiffWidget;
 
 class DOCKPIPE_LAUNCHER_UI_EXPORT GitHistoryWidget final : public QWidget {
     Q_OBJECT
@@ -31,7 +31,10 @@ private:
     void loadCommit();
     void addSelected();
     void requestCherryPick();
+    void requestCherryPick(const QStringList &ids, bool queued);
     void requestRevert();
+    void requestRevertCommit(const QString &id);
+    void showCommitMenu(const QPoint &point);
     void moveSelected(int direction);
     void updateControls();
 
@@ -66,7 +69,7 @@ private:
     QLabel *m_page;
     QLabel *m_target;
     QListWidget *m_commits;
-    SourceEditor *m_detail;
+    GitDiffWidget *m_detail;
     QListView *m_queueView;
     GitCommitQueueModel *m_queue;
 };

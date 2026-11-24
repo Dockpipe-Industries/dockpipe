@@ -1,4 +1,5 @@
 #include "DesktopBackground.h"
+#include <QCoreApplication>
 
 #import <AppKit/AppKit.h>
 #include <memory>
@@ -25,9 +26,9 @@ DesktopBackgroundResult resolveMacDesktopBackground()
             dispatch_semaphore_signal(completed);
         });
         if (dispatch_semaphore_wait(completed, dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC)) != 0)
-            return {{}, QStringLiteral("macOS wallpaper lookup timed out. Choose an image instead.")};
+            return {{}, QCoreApplication::translate("DesktopBackgroundMac", "macOS wallpaper lookup timed out. Choose an image instead.")};
     }
     if (selectedPath->isEmpty())
-        return {{}, QStringLiteral("macOS did not provide a local wallpaper image for its main screen. Dynamic or video wallpapers may not expose a static image.")};
+        return {{}, QCoreApplication::translate("DesktopBackgroundMac", "macOS did not provide a local wallpaper image for its main screen. Dynamic or video wallpapers may not expose a static image.")};
     return DesktopBackground::localImage(*selectedPath);
 }

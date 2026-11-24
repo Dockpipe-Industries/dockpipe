@@ -1,0 +1,7 @@
+module Dockpipe.Product.RunReports;
+
+// Composition supplies the same writer used by the run report. Each call
+// sends one independently sealed target value to the open targets array.
+public Interface ReportTargetOutput {
+    Result<void,string> WriteTarget(int position, CancellationToken token);
+}

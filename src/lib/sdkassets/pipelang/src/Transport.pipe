@@ -1,0 +1,23 @@
+module Dockpipe.SDK;
+
+// Host integration owns request validation, operation custody and bounded I/O.
+// Cancellation ends a wait; Interrupt and ForceDispose explicitly control the
+// workflow lifecycle. A cancelled wait must not silently release custody.
+public Interface Transport {
+    Result<OperationId,string> Start(WorkflowRequest request);
+
+    Result<OperationId,string> StartScope(ScopeRequest request);
+
+    Task<Result<OperationObservation,string>> Observe(
+        OperationId id, int waitMilliseconds, CancellationToken token);
+
+    Result<bool,string> Interrupt(OperationId id);
+
+    Result<OperationId,string> RetainedOperation();
+
+    Task<Result<OperationObservation,string>> ForceDispose(
+        OperationId id, int waitMilliseconds, CancellationToken token);
+
+    Task<Result<ScopeResult,string>> Scope(
+        ScopeRequest request, int budgetMilliseconds, CancellationToken token);
+}

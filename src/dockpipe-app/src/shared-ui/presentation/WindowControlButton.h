@@ -1,10 +1,13 @@
 #pragma once
 
+#include <QCoreApplication>
+
 #include <QToolButton>
 
 // Shared, original DockPipe artwork for window and embedded-panel controls.
 // The caller owns the action; this widget only renders its accessible control.
 class WindowControlButton : public QToolButton {
+    Q_DECLARE_TR_FUNCTIONS(WindowControlButton)
 public:
     enum Action { Minimize, Maximize, Close };
     explicit WindowControlButton(Action action, QWidget *parent = nullptr);

@@ -1,0 +1,38 @@
+module Dockpipe.Product.DriverSources.Tests;
+import PipeLang.IO;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+public Record DriverPinsReport {
+    public bool allPassed = false;
+    public List<TestResult> results;
+}
+
+public model Class DriverPinsSuite {
+    private JsonReader reader;
+    private FileStreams product;
+    private FileStreams repository;
+    private DriverPinsFixture fixture;
+
+    public DriverPinsSuite(JsonReader reader, FileStreams product, FileStreams repository, DriverPinsFixture fixture) {
+        this.reader = reader;
+        this.product = product;
+        this.repository = repository;
+        this.fixture = fixture;
+    }
+
+    public DriverPinsReport Run(CancellationToken token, CancellationToken cancelled) {
+        List<TestResult> results = List<TestResult>.Empty();
+        TestRunner runner = new TestRunner();
+        for (int scenario = 0; scenario < 13; scenario = scenario + 1)
+            results.Add(runner.RunProbe(new DriverPinsCase(reader, product, repository, fixture, scenario), token, cancelled));
+
+        bool allPassed = results.Count == 13;
+        foreach (TestResult result in results) {
+            if (result.outcome != TestOutcome.Passed || !result.bodyRan || !result.cleanupRan)
+                allPassed = false;
+        }
+
+        return DriverPinsReport(allPassed, results);
+    }
+}

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QCoreApplication>
+
 #include <QTextBrowser>
 #include <QTextCursor>
 
@@ -10,6 +12,7 @@ class QImage;
 // A local text renderer, independent of the browser and optional Cockpit package.
 // Markdown cannot fetch resources or navigate away from the editor implicitly.
 class MarkdownPreview final : public QTextBrowser {
+    Q_DECLARE_TR_FUNCTIONS(MarkdownPreview)
 public:
     explicit MarkdownPreview(QWidget *parent = nullptr);
     void render(const QString &markdown);

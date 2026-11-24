@@ -42,13 +42,16 @@ type EdgeSupervisor struct {
 	ctx           context.Context
 	requests      chan contract.EdgeActivationRequest
 	failures      chan error
-	current       managedEdge
-	readiness     string
-	start         func(context.Context, contract.EdgeConfig) (managedEdge, error)
-	ready         func(context.Context, managedEdge, string) error
-	public        func(context.Context, string) error
-	interval      time.Duration
-	now           func() time.Time
+	// Boot initializes current before broker registration; thereafter the actor
+	// alone writes it. Admission reads only after a settled failed publication,
+	// behind the mutex-protected active-phase and poisoned-journal guards.
+	current   managedEdge
+	readiness string
+	start     func(context.Context, contract.EdgeConfig) (managedEdge, error)
+	ready     func(context.Context, managedEdge, string) error
+	public    func(context.Context, string) error
+	interval  time.Duration
+	now       func() time.Time
 }
 
 func newEdgeSupervisor(ctx context.Context, root string, base contract.EdgeConfig, public func(context.Context, string) error) *EdgeSupervisor {
@@ -82,13 +85,33 @@ func (supervisor *EdgeSupervisor) accept(request contract.EdgeActivationRequest,
 		return supervisor.journal.Result, nil
 	}
 	status := supervisor.journal.Result.Status
-	if status == "accepted" || status == "activating" || status == "recovering" || (status == "healthy" && supervisor.now().Before(supervisor.journal.Result.RecoveryUntil)) {
+	if status == "accepted" || status == "activating" || status == "recovering" || (status == "healthy" && supervisor.journal.Request.ManualRecovery == nil && supervisor.now().Before(supervisor.journal.Result.RecoveryUntil)) {
 		return contract.EdgeActivationStatus{}, errors.New("an edge activation or its recovery window is already active")
 	}
+	if request.ManualRecovery != nil {
+		if err := supervisor.validateManualRecovery(request); err != nil {
+			return contract.EdgeActivationStatus{}, err
+		}
+	}
 	if preview {
-		return contract.EdgeActivationStatus{Schema: contract.EdgeActivationSchema, ID: request.ID(), Status: "ready", Message: "Exact broker configuration accepted. Execution verifies live image and private snapshots before connector replacement; recovery authority is bounded."}, nil
+		message := "Exact broker configuration accepted. Execution verifies live image and private snapshots before connector replacement; recovery authority is bounded."
+		if request.ManualRecovery != nil {
+			message = "Exact failed cutover and prior approved snapshot verified. Approval permits one bounded start without stopping an existing process or retrying automatically."
+		}
+		return contract.EdgeActivationStatus{Schema: contract.EdgeActivationSchema, ID: request.ID(), Status: "ready", Message: message}, nil
 	}
 	journal := edgeActivationJournal{Baseline: supervisor.baseline, Request: request, Result: contract.EdgeActivationStatus{Schema: contract.EdgeActivationSchema, ID: request.ID(), Status: "accepted", Message: "Activation accepted by local broker; do not resubmit on connection loss.", CheckedAt: supervisor.now().UTC(), RecoveryUntil: supervisor.now().Add(time.Duration(request.RecoverySeconds) * time.Second).UTC()}}
+	if request.ManualRecovery != nil {
+		if err := supervisor.archiveFailedJournal(); err != nil {
+			return contract.EdgeActivationStatus{}, err
+		}
+		// This marker prevents failed or interrupted explicit attempts from
+		// acquiring normal startup authority through the preflight branch.
+		journal.CutoverStarted = true
+		if request.ManualRecovery.ExpiresAt.Before(journal.Result.RecoveryUntil) {
+			journal.Result.RecoveryUntil = request.ManualRecovery.ExpiresAt
+		}
+	}
 	if err := WritePrivate(supervisor.journalPath(), journal); err != nil {
 		return contract.EdgeActivationStatus{}, err
 	}
@@ -150,6 +173,15 @@ func (supervisor *EdgeSupervisor) boot() error {
 			return errors.New("edge journal does not match configured broker")
 		}
 		supervisor.journal = journal
+		if journal.Request.ManualRecovery != nil && journal.Result.Status != "healthy" {
+			if journal.Result.Status == "accepted" || journal.Result.Status == "activating" || journal.Result.Status == "recovering" {
+				return supervisor.publish(&journal, "failed", "Interrupted explicit recovery was not replayed; a fresh exact approval is required.", "")
+			}
+			if journal.Result.Status == "failed" {
+				return nil
+			}
+			return errors.New("invalid manual recovery journal status")
+		}
 		switch journal.Result.Status {
 		case "accepted", "activating", "healthy", "recovering", "recovered", "failed":
 		default:
@@ -242,7 +274,7 @@ func (supervisor *EdgeSupervisor) boot() error {
 		defer deadlineCancel()
 	}
 	if err := supervisor.waitHealthy(ctx, child, supervisor.readiness, expected, journal.Request.StableSeconds, true); err != nil {
-		if resumedStatus == "healthy" && supervisor.now().Before(journal.Result.RecoveryUntil) {
+		if resumedStatus == "healthy" && journal.Request.ManualRecovery == nil && supervisor.now().Before(journal.Result.RecoveryUntil) {
 			supervisor.recover(&journal)
 			return nil
 		}
@@ -276,7 +308,11 @@ func (supervisor *EdgeSupervisor) run() {
 			if journal.Result.ID != request.ID() {
 				continue
 			}
-			supervisor.activate(&journal)
+			if request.ManualRecovery != nil {
+				supervisor.activateManualRecovery(&journal)
+			} else {
+				supervisor.activate(&journal)
+			}
 			failures = 0
 		case <-ticker.C:
 			supervisor.mutex.Lock()
@@ -307,7 +343,7 @@ func (supervisor *EdgeSupervisor) run() {
 			if failures < 2 {
 				continue
 			}
-			if journal.Result.Status == "healthy" && supervisor.now().Before(journal.Result.RecoveryUntil) {
+			if journal.Result.Status == "healthy" && journal.Request.ManualRecovery == nil && supervisor.now().Before(journal.Result.RecoveryUntil) {
 				supervisor.recover(&journal)
 			} else {
 				_ = supervisor.publish(&journal, "failed", "Connector health was lost outside available recovery authority; automatic restart/rollback stopped. Inspect locally.", "")
@@ -407,6 +443,10 @@ func (supervisor *EdgeSupervisor) activate(journal *edgeActivationJournal) {
 }
 
 func (supervisor *EdgeSupervisor) recover(journal *edgeActivationJournal) {
+	if journal.Request.ManualRecovery != nil {
+		_ = supervisor.publish(journal, "failed", "Explicit recovery grants no automatic restart or fallback authority; fresh approval is required.", "")
+		return
+	}
 	if !supervisor.now().Before(journal.Result.RecoveryUntil) {
 		_ = supervisor.publish(journal, "failed", "Recovery authority expired; no additional connector mutation was attempted.", "")
 		return
@@ -552,7 +592,7 @@ func (supervisor *EdgeSupervisor) maintenanceActive() bool {
 	supervisor.mutex.Lock()
 	defer supervisor.mutex.Unlock()
 	status := supervisor.journal.Result.Status
-	return status == "accepted" || status == "activating" || status == "recovering" || (status == "healthy" && supervisor.now().Before(supervisor.journal.Result.RecoveryUntil))
+	return status == "accepted" || status == "activating" || status == "recovering" || (status == "healthy" && supervisor.journal.Request.ManualRecovery == nil && supervisor.now().Before(supervisor.journal.Result.RecoveryUntil))
 }
 
 func verifyEdgeInputs(inputs map[string]string) error {

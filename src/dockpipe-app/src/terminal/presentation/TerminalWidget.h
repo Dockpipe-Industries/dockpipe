@@ -2,6 +2,8 @@
 
 #include <QWidget>
 #include <QJsonObject>
+#include <QJsonArray>
+#include <QMap>
 #include <QPointer>
 #include <QStringList>
 
@@ -13,6 +15,7 @@ class QPushButton;
 class QWebEngineView;
 class QTimer;
 class QMenu;
+class QTabBar;
 
 class TerminalWidget final : public QWidget {
     Q_OBJECT
@@ -21,6 +24,14 @@ public:
     TerminalWidget(TerminalHub &hub, const QString &workdir, QWidget *parent = nullptr, Mode mode = Mode::Managed);
     ~TerminalWidget() override;
     void setWorkdir(const QString &workdir);
+    bool setMachineContext(const QJsonObject &catalog, const QString &root, QString *error = nullptr);
+    bool setContainerContext(const QJsonObject &catalog, const QString &container, const QString &shell, QString *error = nullptr);
+    void updateMachineCatalog(const QJsonObject &catalog);
+    void setWorkspaceTarget(const QJsonObject &catalog, const QString &root);
+    void setMachineTargets(const QStringList &paired, const QJsonArray &catalog, bool unlocked);
+    void setEnvironmentContainers(const QMap<QString, QString> &containers);
+    void setRemoteContainers(const QJsonObject &catalog, const QMap<QString, QString> &containers);
+    bool openEnvironmentContainer(const QString &container);
     QString sessionId() const { return m_sessionId; }
 
 public slots:
@@ -41,8 +52,13 @@ protected:
     void paintEvent(QPaintEvent *event) override;
 
 private:
+    bool setTerminalContext(const QJsonObject &catalog, const QString &root, const QString &container, const QString &shell, QString *error);
     void refreshSessions();
     void refreshShells();
+    void refreshTargets();
+    void selectTarget(const QString &target);
+    bool explicitTargetAvailable() const;
+    void updateNewTargetTerminal();
     void createTerminal(const QString &shellProfileId = {});
     void selectSession(const QString &id);
     void ensureRenderer();
@@ -50,6 +66,7 @@ private:
     void scheduleOutput();
     void flushOutput();
     void startDashboardSession();
+    void startManagedSession();
     void showSettings();
     void showStatus(const QString &message, bool issue = true);
 
@@ -59,11 +76,31 @@ private:
     QString m_ownedSessionId;
     QStringList m_ownedSessionIds;
     bool m_dashboardStarted = false;
+    bool m_managedStarted = false;
     QAction *m_restart = nullptr;
     QString m_workdir;
+    QJsonObject m_machineCatalog;
+    QString m_machineRoot;
+    QString m_containerId;
+    QString m_containerShell;
+    QString m_containerName;
+    QString m_targetLabel;
+    QComboBox *m_targets = nullptr;
+    QString m_target;
+    QJsonObject m_workspaceCatalog;
+    QString m_workspaceRoot;
+    QStringList m_pairedMachines;
+    QJsonArray m_machineTargetsCatalog;
+    bool m_machineTargetsUnlocked = false;
+    QMap<QString, QPair<QJsonObject, QString>> m_hostTargets;
+    QMap<QString, QString> m_environmentContainers;
+    QJsonObject m_remoteContainerCatalog;
+    QMap<QString, QString> m_remoteContainers;
     QString m_sessionId;
     QComboBox *m_sessions;
     QComboBox *m_shells;
+    QTabBar *m_tabs;
+    QWidget *m_empty;
     QMenu *m_shellMenu = nullptr;
     QPushButton *m_close;
     QLabel *m_status;

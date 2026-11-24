@@ -1,0 +1,9 @@
+name: product-windows-validation
+description: Export pure Windows qualification validators; no display, guest or CI execution.
+vault: none
+docker_preflight: false
+steps:
+  - id: export-validation
+    kind: host
+    cwd: artifacts
+    cmd: python3 "$DOCKPIPE_WORKFLOW_DIR/../../../../shared/run.py" python3 "$DOCKPIPE_WORKFLOW_DIR/build.py"

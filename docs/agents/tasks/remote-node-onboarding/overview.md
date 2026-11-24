@@ -1,5 +1,223 @@
 # TASK-036 Remote Node Onboarding
 
+## Background worker parity
+
+The current source adds per-user Windows Task Scheduler registration and Linux
+OpenRC and XDG desktop startup paths alongside LaunchAgents and systemd user
+units. The existing pairing remains the authority for supervised workers.
+The worker also keeps polling after transient relay failures outlast one
+request retry budget. Installed service startup, crash recovery and logon
+recovery remain distinct qualification checks for each backend.
+
+Physical Win11 validated the corrected Scheduler adapter with an isolated
+native executable. It normalized the trigger account to the owner SID,
+matched the unified scheduling configuration on readback, and verified
+demand start, repeat activation and exact cleanup. The full private x64
+CLI then activated a temporary owner-bound task on physical Win11, recovered
+from a transient relay failure and passed independent cleanup verification.
+The native Scheduler failure retry did not relaunch a force-terminated action.
+The private q15 CLI now verifies the task before arming its one-minute
+registration repetition. On physical Win11 it relaunched after a forced exit,
+kept one process across the next repetition and explicitly replaced the task
+with the same configuration. MSI installation, actual Windows sign-in and
+native ARM64 remain open.
+
+## Windows foreground delivery checkpoint (2026-11-17)
+
+The Windows worker uses a private NTFS lock shared by pairing and delivery.
+The lock excludes another worker or pairing attempt and prevents replacement
+while held. Windows workflow children receive the Windows user and shell
+environment through the existing allowlist and run in the existing Job Object.
+The released Machines page tells Windows users how to start the paired worker
+in PowerShell. The candidate adds worker service registration on Windows.
+Broker hosting remains a Linux and macOS capability.
+
+On 2026-11-20, physical Win11 resumed delivery after its existing foreground
+worker started and the broker's public connector recovered. A packaged
+PowerShell workflow failed at a 264-character script path and passed with the
+same digest under a shorter submission ID. The worker now shortens long
+Windows delivery staging names without changing submission IDs or reusing
+legacy staging. Native validation on the physical host ran the same staging
+code with an equivalent 264-character fixture, invoked PowerShell through
+the 242-character compact path and rejected duplicate staging. The existing
+paired worker still uses 0.6.39 and has not been upgraded.
+
+The installed Pop!_OS workflow picker omitted a paired physical Windows worker
+that accepted CLI delivery. The source now publishes a signed, expiring
+workflow-only entry for a paired worker with delivery enabled and feature mode
+off. The saved-workflow picker can use that entry while keeping the shared
+workspace on its current machine. The broker checks the captured identity
+through assignment and the worker checks it before execution. The rebuilt picker
+selected a staged delivery-only worker on a disposable Windows 11 Enterprise
+Evaluation x64 VM running build 26300 and returned the exact PowerShell workflow
+artifact through the isolated broker. The physical pairing still needs to be
+rerun with matching broker, worker and operator builds.
+
+Native Windows VM checks pass for lock contention and release, cancellation,
+revocation, workflow execution with returned artifacts, and result journal
+recovery. A Windows CLI built from the current checkout also paired with an
+isolated Linux broker and returned a delivered PowerShell workflow result.
+That test used the broker's signed approval protocol with a test hardware key
+credential. The full local MSI upgraded the retained Windows VM from 0.6.38
+to 0.6.39, installed the exact tested CLI and Start menu shortcut, and passed
+the deployed desktop and managed-terminal smoke. The broader Windows desktop
+suite still has ten failures and six skips.
+
+A paired physical Windows 11 worker ran a broker-delivered PowerShell workflow
+before VM tooling was installed. A subsequent workflow verified and installed
+QEMU 11.1.0. The paired worker then booted a disposable, network-disabled x86
+diagnostic guest under WHPX and returned its serial marker and QEMU exit code.
+The first-party `windows-vm` workflow subsequently resolved the `vm` runtime
+and reached the Windows QEMU backend using workspace-local Bash and GNU
+timeout. A standalone Windows evaluation fixture was then copied to both
+test hosts over private TLS and verified against the same SHA-256. The
+Windows QEMU launcher required a test-copy PowerShell argument fix to reach
+native guest launch. WHPX then exited at runtime before guest readiness, and
+the broker heartbeat stopped the TCG attempts before they returned a guest
+witness. A 110-second PowerShell-only probe on the same worker returned
+successfully. A shorter TCG run used an ephemeral overlay, reported a running
+QEMU guest over QMP, and captured the start of boot from the test disk. Guest
+SSH timed out. A separate readback found zero QEMU processes from that delivery
+and zero listeners on its three loopback ports. A two-vCPU TCG retry also
+lost the broker heartbeat before guest readiness, after its 100-second
+progress marker. The broker journal did not identify the failed heartbeat's
+underlying error. The retry's postflight confirmed zero test-owned QEMU
+processes and loopback listeners and a matching base-image SHA-256. Guest
+command execution, managed persistence and graceful guest shutdown remain
+unverified.
+
+The Windows QEMU argument fix now lives in the owning resolver package. Its
+two launch modes passed a PowerShell argument and exit-code regression.
+The worker now retries transient workflow heartbeats within the existing
+20-second deadline and reports a sanitized failure category. Focused tests
+passed on the physical Windows worker and under the Linux race detector.
+The full Linux remote package suite passed. The installed worker still uses
+the earlier executable.
+
+On the physical Windows worker, WHPX with the Westmere CPU model and
+`kernel-irqchip=off` kept QEMU running through the readiness interval.
+At 105 seconds, the guest still showed the boot spinner and neither SSH nor
+the guest agent responded. The workflow reached its readiness timeout and
+the postflight found zero test-owned processes or loopback listeners.
+
+Local KVM controls booted the same evaluation disk to the Windows lock screen
+from an overlay with fresh firmware variables, without TPM or Secure Boot.
+QEMU 11 with the Westmere CPU model and bundled EDK2 firmware also booted
+the guest, and a loopback-only forward received its SSH banner. A single-vCPU
+WHPX run still timed out, with the display uninitialized at 105 seconds.
+With Westmere and the default WHPX interrupt controller, the physical Win11
+worker reached the Windows lock screen and received the guest SSH banner.
+Authenticated readiness still timed out, and the guest agent did not respond.
+The KVM control completed SSH key exchange and required authentication.
+Postflight found zero test-owned QEMU processes or loopback listeners. A
+hash-verified heartbeat-fix candidate is staged in a private Win11 delivery
+workspace for a foreground test.
+
+A local QEMU 11 KVM control reached the lock screen on two boots with the
+same writable overlay and fresh firmware state. Windows performed an ACPI
+shutdown on each boot, and both QEMU processes exited cleanly.
+
+The broker returned the corrected physical Win11 diagnostic. The guest
+reached the Windows lock screen under WHPX and presented an SSH banner.
+Authenticated SSH and Guest Tools readiness remained unverified. The exact
+postflight found zero QEMU processes and zero listeners on the run's three
+loopback ports. The fixture used provided-only mode without an explicit
+private SSH identity.
+
+A separate macOS qualification worker completed hardware-key pairing and ran
+the digest-bound readiness workflow on Darwin ARM64. It opened the verified
+QCOW2 read-only. The existing macOS enrollment still matched its prior
+broker read-back. The x86-64 emulator advertised TCG. Guest execution and
+lifecycle qualification remain open on this Mac.
+
+A follow-up inventory verified the physical Mac's signed native app bundle and
+recorded the separately installed Review CLI. That CLI initialized a fresh
+project and ran its workflow on macOS ARM64 with a clean environment and a
+canonical project path. The live GUI workflow remains open.
+
+## Host-authorized disposable guest enrollment (2026-11-19)
+
+Automate the installation and enrollment of guests owned by the qualification
+harness. Keep the ordinary physical-machine flow on hardware-key pairing.
+
+- The operator authorizes an authenticated host to enroll a bounded set of
+  disposable guests for a particular run. The authorization names the broker,
+  parent machine, run, allowed worker capabilities, guest limit and expiry.
+  Guest workers cannot enroll other machines.
+- The harness installs the pinned Dockpipe artifact through the owning VM
+  transport. It obtains a guest-generated public identity through the same
+  run-owned transport. The host binds one enrollment to that key and the
+  exact guest and run. The guest proves key possession. Approval consumption
+  and enrollment publication must be atomic and support exact read-back.
+- The broker checks the grant on worker authentication and when it admits or
+  renews a session. Expiry, parent revocation or teardown revokes the guest.
+  The harness verifies worker absence and owned session cleanup. Retries
+  reconcile the original identity. Cached images and bootstrap media contain
+  no broker or guest private identity.
+- Prove install, exact enrollment, a real remote workflow, rejection of
+  sibling and replayed claims, expiry, revocation, restart and exact cleanup
+  on a disposable guest before widening coverage.
+
+The broker and CLI implement the workflow-delivery grant, guest-generated
+claim, expiry, and host teardown. Use the [guest enrollment commands](../../../runtime/remote-nodes.md#enroll-disposable-workflow-workers-through-their-host)
+through the owning guest transport. An isolated broker and a disposable
+Ubuntu 24.04 VM passed candidate DEB installation, delegated enrollment,
+delivery of a real workflow, host release, exact guest removal, worker
+exit and unchanged cached base verification. The isolated broker used the
+test operator authority. In the guided Ubuntu driver the optional run grant is
+paired with pinned CLI and desktop DEBs at the same version. The driver records
+the published baseline before the upgrade, verifies the installed executables
+against the selected packages, and releases the grant before the first shutdown.
+A subsequent isolated run used the broker's reported grant limit to admit one
+guest. Shared grants are rejected before the driver boots the guest because
+teardown releases the entire grant. The guest receives the original preparation
+request fields and can still run the previously qualified worker build.
+The installed Ubuntu candidate also published a workflow-only target, ran a
+workflow addressed to that exact target, and disappeared from discovery after
+release. The broker rejects broader catalogs and reclaims idle guest
+registrations with inactive grants when issuing a new grant. It retains
+guests with unresolved jobs for reconciliation. The combined guided GUI
+path and coverage of other worker capabilities remain open.
+
+## Remote feature continuation (2026-11-08)
+
+Remote container terminals now have an independent worker grant, exact prepared
+references and daemon/ExecID recovery metadata. Git/native mutation recovery uses
+an owner-selected delegated Linux cgroup or pre-effect kernel boot fence; uncertain
+Docker control requires separately authorized retirement of the captured container.
+See [the canonical coverage guide](../../../runtime/invocation-validation.md) for
+the trust boundary, macOS reboot requirement and legacy-receipt limits.
+
+The reviewed broker and Darwin arm64 worker updates were approved and applied,
+with fresh hardware-key pairing and scoped test grants. Live Files, Git commit,
+host PTY, actual container shell/resize/verified close and typed container controls
+passed. Live findings repaired EOF close, receipt publication locking, catalog
+heartbeat preservation and known cancellation receipts; the original uncertain
+terminal obligation remained intact through same-boot rejection. After a separately
+approved reboot, exact-reference container reconciliation and retirement passed;
+readback confirmed resource absence and catalog release. A real interrupted Git
+commit likewise passed same-boot rejection and exact-reference post-reboot
+reconciliation, preserving unknown status and repository head without replay. The
+worker returned automatically after restart. The subsequent host-terminal pass
+added pre-effect boot receipts and exact-reference recovery, fixed Darwin exited-PID
+inspection, and hardened desktop close/quota validation. Actual interrupted host
+recovery and normal Homebrew Colima login startup passed on the paired worker;
+existing containers were preserved. The old receipt-less host reference remains
+historically unknown, without an active orphan entry or invented cleanup proof.
+See the canonical coverage guide for proof and remaining platform limits.
+RDP/Cloudflare configuration changes stay last and have not begun.
+
+The visible-app follow-up repaired missing local terminal companion packaging,
+bounded remote typing latency and native Darwin whole-system monitoring. Installed
+terminal I/O/resize/cleanup, paired-worker timing and live metric samples passed;
+see the canonical coverage guide and
+[platform support](../../../runtime/execution-observability.md#platform-and-transport-support).
+Feature grants and monitoring opt-in remain independent.
+
+Files/Git now also refresh while visible and avoid repeated navigation/review work;
+the canonical coverage guide documents the bounded Files cache and its authority
+invalidation. This does not expand worker grants or index the whole machine.
+
 ## Completed-job capacity and replay safety (2026-10-24)
 
 - A consenting native validation worker reached the documented lifetime limit of 128
@@ -592,3 +810,41 @@ tests; no paired-worker installation or hosted pipeline was changed.
 research proposal for adaptive threat signals and broker-independent worker
 containment. It consumes these authorization outcomes; scores never relax a hard
 denial or replace the authoritative lock boundary.
+
+
+### Remote workspace features implementation in progress (2026-11-08)
+
+The native shell now has an explicit shared machine/root choice for Files, Git,
+Containers and Terminal. Dashboard instances can follow that choice or retain an
+independent captured target. Saved remote targets include the node fingerprint,
+worker generation and root grant ID; missing or changed grants remain unavailable
+and never become local operations. File/Git previews retain their original target.
+
+Authenticated feature calls and interactive terminal sessions are implemented as
+bounded typed protocols through the core admission boundary. Passive catalog
+refresh never prompts for authentication. Loopback/fake-CLI fixtures and local
+native PTY tests are implementation evidence; live paired-worker, Windows,
+installed Flatpak and cross-platform UI qualification remain open.
+
+Desktop clients now prepare canonical IDs before dispatch and retain only bounded
+mutation metadata for the nonmodal Uncertain operations dialog. File reconciliation
+revokes the original admission and requires the serial worker's cleanup proof;
+`unknown` remains unknown and no write is replayed. Git/container unknowns remain
+blocked because descendant-process cleanup proof is unavailable. Reconciled unknown
+broker receipts remain within the existing 128-operation/storage bounds.
+
+Compact and full dashboard workflow launchers now hand off the captured local or
+remote target explicitly. Remote deliveries retain fingerprint, worker generation
+and selected root identity through broker/worker checks and heartbeats, using the
+existing reviewed bundle and independent delivery permission. Workflow authoring
+stays local. Workflow-source and active graph I/O use the admitted asynchronous
+Files client. Fifteen affected native suites now pass, including the full shell,
+workflow-source/graph behavior, captured dashboard targets, remote Files/Git/container
+transports, recovery and close/discard continuations. Save-and-run blocks machine
+changes during preparation; relaunch retains its original target while stopping.
+Full affected Go suites and focused races pass. The Linux desktop/helper and Linux,
+Windows amd64 and macOS arm64 CLI builds pass; cross-builds are compile/link evidence,
+not native platform or live-provider acceptance. All 17 catalogs have 2,412 finished
+messages and pass extraction/lrelease checks. Canonical coverage and explicit
+constraints remain in [invocation validation](../../../runtime/invocation-validation.md).
+Private-endpoint RDP/Cloudflare infrastructure remains last and has not begun.

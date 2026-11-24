@@ -2,11 +2,14 @@ package remote
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base32"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	contract "dockpipe/src/lib/domain/remote"
@@ -14,7 +17,7 @@ import (
 )
 
 func ValidateWorkerAuthority(config contract.WorkerConfig) error {
-	if config.Delivery == nil || len(config.Profiles) > 0 {
+	if config.Delivery == nil && !config.Features || len(config.Profiles) > 0 {
 		if err := ValidateProfiles(config.Profiles); err != nil {
 			return err
 		}
@@ -55,8 +58,8 @@ func StageBundle(ctx context.Context, root string, submission contract.Submissio
 	if err := PrivateDirectory(parent); err != nil {
 		return contract.Profile{}, err
 	}
-	directory := filepath.Join(parent, submission.ID)
-	if err := os.Mkdir(directory, 0o700); err != nil {
+	directory, err := createDeliveryDirectory(parent, submission.ID, runtime.GOOS)
+	if err != nil {
 		return contract.Profile{}, fmt.Errorf("delivery staging must be new: %w", err)
 	}
 	stage, err := os.OpenRoot(directory)
@@ -106,4 +109,30 @@ func StageBundle(ctx context.Context, root string, submission contract.Submissio
 		}
 	}
 	return contract.Profile{Workdir: directory, WorkflowFile: filepath.Join(directory, bundle.WorkflowFile), TimeoutSeconds: timeout, Artifacts: bundle.Artifacts}, nil
+}
+
+func createDeliveryDirectory(parent, jobID, operatingSystem string) (string, error) {
+	directory := filepath.Join(parent, jobID)
+	if operatingSystem == "windows" {
+		// Preserve room for package expansion and native PowerShell path handling.
+		// Retain 128 bits of identity. The leading dot cannot occur in a job ID.
+		digest := sha256.Sum256([]byte(jobID))
+		compactName := "." + strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(digest[:16]))
+		if len(compactName) < len(jobID) {
+			// Older workers created the original ID directory. Never reuse its job.
+			if _, err := os.Lstat(directory); !errors.Is(err, os.ErrNotExist) {
+				if err == nil {
+					return "", fmt.Errorf("legacy delivery directory exists: %w", os.ErrExist)
+				}
+				return "", err
+			}
+
+			directory = filepath.Join(parent, compactName)
+		}
+	}
+
+	if err := os.Mkdir(directory, 0o700); err != nil {
+		return "", err
+	}
+	return directory, nil
 }

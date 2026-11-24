@@ -7,6 +7,7 @@
 #include <QEventLoop>
 #include <QTemporaryDir>
 #include <QThread>
+#include <QTimer>
 #include <cstdio>
 
 // This fixture always supplies its own binary. Discovery must not launch the CLI.
@@ -63,8 +64,24 @@ int main(int argc, char **argv)
     QObject::connect(&manager, &SessionManager::sessionStopped, &application,
                      [&](const QString &, int, QProcess::ExitStatus) { ++stops; });
 
+    auto waitFor = [&](const std::function<bool()> &done) {
+        QElapsedTimer deadline;
+        deadline.start();
+        while (!done() && deadline.elapsed() < 5000) {
+            QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+            QThread::msleep(1);
+        }
+        return done();
+    };
+
     for (int attempt = 1; attempt <= 2; ++attempt) {
-        if (!check(!manager.launch(context, directory.path()), "missing executable unexpectedly launched"))
+        if (!check(manager.launch(context, directory.path()), "missing executable request was not admitted"))
+            return 1;
+        if (!check(failures == attempt - 1 && manager.isRunning(context.id)
+                   && manager.info(context.id).status == SessionStatus::Starting,
+                   "failed start was published before launch returned"))
+            return 1;
+        if (!check(waitFor([&]() { return failures == attempt; }), "missing executable failure did not arrive"))
             return 1;
         QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
         if (!check(failures == attempt && starts == 0 && stops == 0 && consistentFailureState,
@@ -73,7 +90,8 @@ int main(int argc, char **argv)
     }
 
     retryFromFailure = true;
-    if (!check(!manager.launch(context, directory.path()) && retryStarted,
+    if (!check(manager.launch(context, directory.path())
+               && waitFor([&]() { return retryStarted; }),
                "failure handler could not retry the same context"))
         return 1;
     QElapsedTimer elapsed;

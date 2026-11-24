@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -24,6 +25,7 @@ type call struct {
 func withDockerSeams(t *testing.T) {
 	t.Helper()
 	oldExec := execCommandFn
+	oldImageExec := dockerImageCommandFn
 	oldGetwd := getwdDockerFn
 	oldAbs := filepathAbsDocker
 	oldStat := osStatDockerFn
@@ -35,6 +37,7 @@ func withDockerSeams(t *testing.T) {
 	oldCommit := commitOnHostFn
 	t.Cleanup(func() {
 		execCommandFn = oldExec
+		dockerImageCommandFn = oldImageExec
 		getwdDockerFn = oldGetwd
 		filepathAbsDocker = oldAbs
 		osStatDockerFn = oldStat
@@ -847,12 +850,17 @@ func TestRunContainerActionAbsError(t *testing.T) {
 // DockerBuild executes the selected recipe without inferring image dependencies.
 func TestDockerBuildPaths(t *testing.T) {
 	withDockerSeams(t)
-	var calls []call
-	execCommandFn = func(name string, args ...string) *exec.Cmd {
-		calls = append(calls, call{name: name, args: append([]string(nil), args...)})
-		return helperExitCommand(0)
+	fakeDocker := filepath.Join(t.TempDir(), "docker.exe")
+	if err := os.WriteFile(fakeDocker, nil, 0755); err != nil {
+		t.Fatal(err)
 	}
-	wantDocker := dockerCommandName()
+	t.Setenv("DOCKPIPE_DOCKER_BIN", fakeDocker)
+	var calls []call
+	dockerImageCommandFn = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		calls = append(calls, call{name: name, args: append([]string(nil), args...)})
+		return helperExitCommandContext(ctx, 0)
+	}
+	wantDocker := fakeDocker
 	if err := DockerBuild("dockpipe-dev:0.6.0", "/selected/image", "/selected/context"); err != nil {
 		t.Fatal(err)
 	}
@@ -867,15 +875,15 @@ func TestDockerBuildPaths(t *testing.T) {
 
 func TestDockerBuildUsesConfiguredDockerBinary(t *testing.T) {
 	withDockerSeams(t)
-	fakeDocker := filepath.Join(t.TempDir(), "docker-test")
-	if err := os.WriteFile(fakeDocker, []byte(""), 0o755); err != nil {
+	fakeDocker := filepath.Join(t.TempDir(), "docker-test.exe")
+	if err := os.WriteFile(fakeDocker, nil, 0o755); err != nil {
 		t.Fatalf("write fake docker: %v", err)
 	}
 	t.Setenv("DOCKPIPE_DOCKER_BIN", fakeDocker)
 	var calls []call
-	execCommandFn = func(name string, args ...string) *exec.Cmd {
+	dockerImageCommandFn = func(ctx context.Context, name string, args ...string) *exec.Cmd {
 		calls = append(calls, call{name: name, args: append([]string(nil), args...)})
-		return helperExitCommand(0)
+		return helperExitCommandContext(ctx, 0)
 	}
 	if err := DockerBuild("ubuntu:latest", "/repo/templates/core/assets/images/dev", "/repo"); err != nil {
 		t.Fatalf("DockerBuild failed: %v", err)
@@ -1016,4 +1024,11 @@ func TestDockerHelperProcess(t *testing.T) {
 		os.Exit(n)
 	}
 	os.Exit(1)
+}
+
+func helperExitCommandContext(ctx context.Context, code int) *exec.Cmd {
+	fixture := helperExitCommand(code)
+	command := exec.CommandContext(ctx, fixture.Path, fixture.Args[1:]...)
+	command.Env = fixture.Env
+	return command
 }

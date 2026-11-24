@@ -9,22 +9,31 @@ import (
 	"syscall"
 )
 
-// waitHostScriptWithSignalForward forwards terminal-style signals to the bash child so host scripts
-// (e.g. cursor-dev) can trap and run docker stop. Without this, only the dockpipe process receives
-// SIGTERM from `kill <pid>` and the child keeps running. Linux also uses PR_SET_PDEATHSIG (see
-// prescript_runhost_linux.go) when the parent exits without a graceful signal path.
-func waitHostScriptWithSignalForward(cmd *exec.Cmd) error {
-	return waitCommandWithSignalForward(cmd)
-}
-
 func waitCommandWithSignalForward(cmd *exec.Cmd) error {
 	sigCh := make(chan os.Signal, 8)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGQUIT)
+	defer signal.Stop(sigCh)
+	return waitCommandWithSignals(cmd, sigCh)
+}
+
+// A Linux host observation failure transfers its existing signal subscription
+// here after joining group forwarding, so queued cancellation is not discarded.
+func waitCommandWithSignals(cmd *exec.Cmd, sigCh <-chan os.Signal) error {
 	done := make(chan struct{})
+	joined := make(chan struct{})
 	go func() {
+		defer close(joined)
 		for {
 			select {
-			case sig := <-sigCh:
+			case sig, open := <-sigCh:
+				if !open {
+					return
+				}
+				select {
+				case <-done:
+					return
+				default:
+				}
 				if cmd.Process != nil {
 					_ = cmd.Process.Signal(sig)
 				}
@@ -35,6 +44,6 @@ func waitCommandWithSignalForward(cmd *exec.Cmd) error {
 	}()
 	err := cmd.Wait()
 	close(done)
-	signal.Stop(sigCh)
+	<-joined
 	return err
 }

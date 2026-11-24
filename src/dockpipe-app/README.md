@@ -23,6 +23,16 @@ Docker uses the user's saved context or inherited endpoint settings, including a
 profile. The app does not start or switch container providers. See
 [Colima setup](../../docs/install.md#containers-with-colima).
 
+## Containers
+
+Use **Canvas / List** at the top right of the Containers page to choose its
+layout. Dockpipe remembers this choice across launches. Canvas remains the initial
+view. List shows summary cards and tables for containers, networks and
+volumes, with container search and state filters. A dedicated inspector sits beside
+the table, moving below it in narrower windows. Select a row to inspect
+details, logs and available actions. Both layouts share inventory, selection,
+monitoring controls and remote-machine restrictions.
+
 ## Browser
 
 Open **Browser** in the sidebar or **View → Browser** for ordinary web browsing.
@@ -102,6 +112,28 @@ page summaries, annotated requests and approved browser actions is
 It is not implemented by installing the Browser or enabling browser extensions;
 browsing remains available without the DorkPipe package.
 
+Dashboard canvas widgets can be moved from unused space across their header,
+including its side padding. Browser tabs, buttons and input fields keep their normal
+interactions. Canvas widgets retain visible Expand/Restore and Close controls even when widget titles
+are hidden; tiled widgets use their tab close controls. New dashboard browser widgets
+show their address and navigation controls by default; the browser's eye control
+can still collapse them.
+
+**Add widget** also offers **Workflows · Full view**, **Files · Full view**, and
+**Git · Full view**. Each view has an independent **Repository…** picker and a
+**Duplicate view** action for cross-repository work. The selected repository is
+saved with that widget and is not changed by the sidebar's workspace selector.
+The full Workflows view includes Editor, Running, and History. Workflow launches
+use that view's repository and the normal shell configuration/run path.
+
+The slim File manager opens an editable file preview on its own canvas. Git changes
+open a read-only side-by-side diff preview scoped to the selected repository and
+staging area. Reopening the same preview focuses it; it does not reset an open file
+draft. A widget's **Full view on canvas** menu action opens the corresponding full
+view. Unsaved file/workflow edits are guarded when closing widgets, switching their
+repository, removing dashboards, or quitting. File previews retain the existing
+file-tool package hooks and save/conflict checks.
+
 ## Terminal
 
 Open **Terminal** below Browser in the sidebar, or add a **Terminal** widget to a
@@ -114,10 +146,33 @@ output can be discarded if a view falls behind, with a visible notice. Each disp
 keeps 2,000 scrollback lines by default (configurable from 100 to 10,000). Hidden
 views stop rendering.
 
-Use the **Terminal settings** sliders button on the Terminal page, or right-click
+The Terminal page opens a default shell on its first visit, or reuses an already
+running session. Its compact session tabs switch between shells without recreating
+the display or losing output. **New terminal** (Ctrl+Shift+T) opens another shell;
+the arrow beside it exposes installed shell choices and refresh. Each tab's close
+button stops that session for all views. Closing the final tab keeps the page
+empty until another terminal is explicitly opened; navigating away and back does
+not create extra sessions. Existing sessions keep their working directory when
+the selected workspace changes; new sessions use the current workspace.
+
+The main window prepares its Qt compositor before first show. Opening the first
+terminal therefore keeps the native window intact instead of remapping the app.
+This preparation loads no terminal page and starts no shell. The native
+`terminal-widget-test firstRendererKeepsHostWindow` regression can run with
+`QT_QUICK_BACKEND=rhi` to verify window identity and visibility during lazy startup.
+
+Application **Settings** separates **General**, **Packages & paths**, **Security**,
+and **Advanced**. Appearance and sidebar preferences live in General; experimental
+Tiling and Cockpit modes live in Advanced. Each page uses the same light and dark
+form styling as Terminal settings.
+
+Use the **Terminal settings** button on the Terminal page, or right-click
 inside a dashboard terminal and choose **Terminal settings**, for shared themes
 (DockPipe, Amber, Green, Paper, Midnight), monospace font and size, cursor style,
 cursor blinking, scrollback, opacity, and optional static scanlines/text glow.
+**Appearance** groups theme, font, cursor and history controls. **Background & effects**
+groups opacity, transparency targets, scanlines and glow. A persistent preview shows
+font and colors; the transparency restart notice appears when opacity is below 100%.
 Save applies to open terminal pages and widgets without restarting their shells.
 Preferences use the existing app settings store. Transparency is **off by
 default** (100% opacity), and theme changes never enable it. Lower opacity reveals
@@ -152,7 +207,7 @@ and Windows qualification is pending. The native Linux fixture verifies real
 keyboard input, rendering, selected-session delivery, layout retention, bounded
 output and cleanup. Native macOS and Windows qualification remain outstanding.
 
-Choose an installed shell beside **New terminal**. Windows discovery includes
+Choose an installed shell from the arrow beside **New terminal**. Windows discovery includes
 Windows PowerShell, side-by-side PowerShell installations, Git Bash and Bash in
 installed WSL distributions. WSL sessions receive the selected project directory;
 discovery lists distributions without starting them or installing Linux. macOS
@@ -321,14 +376,20 @@ alongside the existing app configuration. Browser sessions, native window
 identities and sharing grants are not saved. Reopening the app restores the
 arrangement; select external windows again. Existing shared-mode dashboards migrate
 ordinary widgets into their last selected environment, retaining widget identities.
-External windows are selected afresh in Tiling. Corrupt or conflicting settings are reported
+External windows are selected afresh in Canvas or Tiling. Corrupt or conflicting settings are reported
 instead of overwritten. Limits are 12 dashboards, 16 widgets per dashboard across
 both environments, and 64 widgets overall, including temporary automatic panels.
 
-**Desktop window** is experimental. The window picker opens when adding a panel.
+**Add widget → Desktop window** embeds one selected app window directly on the
+Canvas without enabling Tiling or automatic app management. The dock's Desktop
+window shortcut opens the same picker. Canvas windows have the usual move, resize,
+Expand/Restore and Close controls; Close releases the app back to the desktop.
+Window identities and sharing grants are session-only and are selected afresh.
+
+The window picker opens when adding a panel.
 There is no inline Choose or Release toolbar; right-click an empty panel to choose
 or reconnect a window. With automatic app management off, closing the panel returns
-the app to the desktop. With management enabled, it requests a normal OS window close;
+the app to the desktop. With management enabled in Tiling, it requests a normal OS window close;
 it never forcibly terminates the application. Linux X11 uses the same native window support as Cockpit,
 now shared by the desktop UI library. External native surfaces can have
 platform-specific stacking behavior when panels overlap. Windows uses a Win32
@@ -355,8 +416,8 @@ margins so app content fills the tile; the hidden dock uses a nonpainting bottom
 hotspot and does not cover the app with an input strip.
 
 Wayland uses the desktop's consent dialog to select one **window**, with a
-view-only preview. It does not embed or control native Wayland apps. Leaving Tiling,
-cancel or widget removal closes the sharing session; no reusable permission
+view-only preview. It does not embed or control native Wayland apps. Leaving its workspace,
+cancelling or removing the widget closes the sharing session; no reusable permission
 token is saved. The optional build needs Qt DBus; the running desktop needs its
 ScreenCast portal, PipeWire, `gst-launch-1.0`, and the GStreamer PipeWire,
 video-conversion/scaling/rate, JPEG and file-descriptor sink plugins. Missing
@@ -466,7 +527,7 @@ development display identity.
 
 ```bash
 cd ~/source/dockpipe
-sudo apt install cmake build-essential qt6-base-dev libqt6opengl6-dev \
+sudo apt install cmake build-essential qt6-base-dev qt6-tools-dev qt6-l10n-tools libqt6opengl6-dev \
   qt6-webengine-dev qt6-webengine-dev-tools libqt6webenginecore6-bin
 cmake -S src/dockpipe-app -B src/dockpipe-app/build
 cmake --build src/dockpipe-app/build
@@ -524,6 +585,12 @@ cmake -S src/dockpipe-app -B src/dockpipe-app/build
 cmake --build src/dockpipe-app/build
 ```
 
+## Translations
+
+The desktop UI uses Qt Linguist catalogs. Choose a language in Settings → General
+→ Appearance, save, and choose **Restart now** to apply it. See [translation maintenance and coverage](translations/README.md)
+for supported languages, build requirements, and validation commands.
+
 ## LGPL / Qt
 
 Qt is available under **LGPL** and commercially. If you **ship binaries**, comply with Qt’s license terms (e.g. dynamic linking and relinking for LGPL) or use a **commercial Qt license**. This README is not legal advice.
@@ -555,6 +622,10 @@ That folder is passed to Dockpipe as `--workdir`.
   **Configure**; double-click and keyboard activation also launch the selected app.
   **View → Icon grid / Compact list** changes presentation. Empty workspaces link directly to
   the package manager. **Refresh** or **F5** reloads the catalog.
+  Declared nonsecret typed input selections use CLI `--var` overrides so workflow defaults cannot
+  replace a saved selection or an explicitly cleared value. Imported VS Code inputs retain
+  their exact-value `--env` transport, as do extra environment entries. Sensitive inputs remain
+  transient process environment values.
 - **Workflows** shows the complete project catalog, a **Run on** machine selector, and run output.
   Right-click a workflow for additional actions.
 - **Containers** shows containers, networks, and volumes on a resource canvas and
@@ -586,7 +657,12 @@ The existing `basic` / `advanced` settings values remain compatible with Apps / 
 
 ## UI
 
-The window uses **Qt Fusion** plus stylesheets embedded in **`dockpipe-launcher.qrc`**: shared `resources/theme/pipeon.qss` plus **`pipeon-light.qss`** or **`pipeon-dark.qss`**. Light/dark is chosen from **`QStyleHints::colorScheme`** when available (Qt 6.5+), and on **Linux** also from **`gsettings`** (`org.gnome.desktop.interface` color-scheme / gtk-theme), **`~/.config/gtk-3.0/settings.ini`** (`gtk-application-prefer-dark-theme`), **KDE** `~/.config/kdeglobals` `ColorScheme`, **`GTK_THEME`**, then palette luminance as a last resort. When dark is selected, the app applies a **Fusion dark palette** so backgrounds match the stylesheet (Qt often defaults to a light palette on Linux). **Light** mode uses stronger text/badge contrast. The stylesheet is **re-applied when the system color scheme changes** (Qt 6.5+). The main header groups **primary** session actions (launch, relaunch, stop, add folder) separately from **secondary** utilities (edit, refresh worktrees, logs, folder, remove, stop all for repo). The context list uses row widgets with a status badge; **Edit context** opens a grouped dialog with combo boxes populated from the dockpipe repo when `DOCKPIPE_REPO_ROOT` or the context workdir resolves to a checkout.
+**Settings → General → Appearance** offers **System / Light / Dark**. Theme changes
+preview immediately across the app; **OK** saves the choice and **Cancel** restores
+the previous appearance. A saved Light or Dark choice overrides the OS and survives
+restarts. System follows the device setting.
+
+The window uses **Qt Fusion** plus stylesheets embedded in **`dockpipe-launcher.qrc`**: shared `resources/theme/pipeon.qss` plus **`pipeon-light.qss`** or **`pipeon-dark.qss`**. In System mode, light/dark is chosen from **`QStyleHints::colorScheme`** when available (Qt 6.5+), and on **Linux** also from **`gsettings`** (`org.gnome.desktop.interface` color-scheme / gtk-theme), **`~/.config/gtk-3.0/settings.ini`** (`gtk-application-prefer-dark-theme`), **KDE** `~/.config/kdeglobals` `ColorScheme`, **`GTK_THEME`**, then palette luminance as a last resort. When dark is selected, the app applies a **Fusion dark palette** so backgrounds match the stylesheet (Qt often defaults to a light palette on Linux). **Light** mode uses stronger text/badge contrast. The stylesheet is **re-applied when the system color scheme changes** (Qt 6.5+). The main header groups **primary** session actions (launch, relaunch, stop, add folder) separately from **secondary** utilities (edit, refresh worktrees, logs, folder, remove, stop all for repo). The context list uses row widgets with a status badge; **Edit context** opens a grouped dialog with combo boxes populated from the dockpipe repo when `DOCKPIPE_REPO_ROOT` or the context workdir resolves to a checkout.
 
 ## Scope
 
@@ -594,20 +670,42 @@ Per design: the app only **controls** sessions. It does **not** replace **DorkPi
 
 ## Workflow workspace and remote machines
 
-The sidebar exposes Apps, Workflows, Machines, Containers, Executions, Files, and Git. Apps continue to use
+The title-bar notification bell stays visible across workspaces. It highlights
+locked or unavailable access, explains the state, and links to Unlock and Security
+settings. Status checks run without authentication every 15 seconds while the app
+is active, and when returning to the app. Opening Machines checks access and offers
+a compact unlock prompt if locked; cancelling keeps a persistent notice with an
+Unlock action. Successful authentication refreshes the machine inventory. An
+unavailable broker is reported separately and does not trigger an authentication
+loop. These states describe local remote-access authorization, not the connection
+health of each paired machine.
+
+The same inbox reports completion, failure, and stops for workflows launched in
+this app session. Local entries open that run's saved log; remote entries select
+the matching broker job. Submitted remote jobs are checked without authentication
+while access is unlocked, and notify only after a confirmed terminal state.
+The bell retains up to 50 recent entries, shows the latest eight, and offers
+**Mark all as read** and **Workflow history**. It tracks at most 128 outstanding
+remote submissions; run history remains the canonical record across app restarts.
+
+
+The sidebar exposes Apps, Workflows, Machines, Containers, System, Files, and Git. Apps continue to use
 `category: app` metadata and the existing local execution path. Workflows show a
 **Run on** selector: this computer, or machines reported as paired by the configured
 broker. Paired is an enrollment state, not a live-presence claim.
 
 Machines uses the public `dockpipe remote` commands and CLI-owned private state.
 Its default view lists managed machines and explains invitation, paired, and removed-access
-states. **Add another machine** guides the managing computer through opening pairing,
-continuing on the other computer, and comparing the verification code. Requests refresh
+states. **Add machine** shows one step at a time: **Prepare → Connect → Approve**.
+Start pairing, copy the address to the other computer, then review its request.
+Requests refresh
 every five seconds while that page is visible; approval requires selecting a request and
-confirming the code. On the other computer, **Connect this computer** accepts the HTTPS
+confirming the code and approving with a security key. On the other computer,
+choose **Add machine → Connect this computer instead** to enter the HTTPS
 address and machine name with explicit workflow-execution consent. Technical output is
 collapsed under **Show details**. No invitation file or SSH
-is required. Start the worker user service after pairing. Cancelling stops the
+is required. The worker starts automatically after pairing; **Recovery options**
+can restart it without repeating enrollment. Cancelling stops the
 local wait; the pending request can still be denied or closed on the broker and
 otherwise expires. Closing the app does not revoke existing enrollment.
 
@@ -631,7 +729,7 @@ selection invalidates approval; changing source contents makes the CLI reject
 submission. Runtime/resolver settings come from the delivered YAML. Local launch
 overrides are not silently dropped or sent. Credentials must never be included.
 
-**Executions → Runs & logs** shows app-owned local sessions and broker jobs. Remote jobs refresh
+**Workflows → Logs & remote jobs** shows app-owned local sessions and broker jobs. Remote jobs refresh
 while Remote jobs is selected after the first successful refresh. Cancellation
 uses the broker's existing cancellation request, and result downloads contain the
 workflow log and requested artifacts. A submitted job is queued, not completed.
@@ -729,22 +827,57 @@ highlighting. A staged-only difference is labelled when the working file matches
 HEAD. Committing still uses saved working files.
 
 The sidebar **Git** page belongs to the project repository, never an individual
-workflow. Refresh reviews saved changes, select files, enter a commit message and
-choose Commit selected. Unselected staged changes remain staged. Pull requires a
+workflow. Refresh reviews saved changes. The Changes tab separates **Unstaged**
+working-tree edits from **Staged** changes in the Git index. Select a file to
+review its corresponding diff, then stage or unstage it beside the diff. A file
+with newer edits after staging appears in both groups. Enter a commit message
+and choose **Commit staged**; this commits the index and leaves newer unstaged
+edits untouched. Pull requires a
 clean checkout and fast-forwards only; Push to origin pushes the current branch
 without force. Git uses existing identity/credentials and must be available to the
 CLI (including inside Flatpak). Save editor buffers before reviewing Git. A stale
 review is rejected; refresh after failures or cancellation to reconcile state.
-The Changes tab can compare combined, staged or unstaged changes, stage or unstage
-the selected file, discard its unstaged changes, and commit the existing index.
+The Changes tab can stage or unstage the selected file and discard its unstaged
+changes after confirmation.
+Its repository summary shows changed, staged and conflicted file counts. Filter
+the file groups by path. **Stage all** and **Unstage all** become **Stage shown**
+and **Unstage shown** while filtering, and affect only the visible files. Commit
+still includes the entire staged index. Review and commit controls occupy separate
+panels.
+The Working changes header switches between a flat **List** and **Folders**.
+The preference is remembered. Both layouts use the same staged/unstaged files,
+path filter and file actions; folder rows are navigation only.
+
+Diff review presents aligned, syntax-highlighted **Before** and **After** source
+panes with original line numbers, synchronized scrolling, red/green change
+highlighting and previous/next change navigation. Patch markers are not shown as
+source. Focused reviews show changed regions and their surrounding context, with
+separators for omitted regions. Binary files, conflicts and review-size limits
+have explicit messages instead of an empty text comparison.
 The History tab searches commit subjects and bodies by keywords, or matches a SHA
 or subject prefix, across all refs or a chosen branch. Results are paged in groups
 of 50. Inspect a commit, select several, and add them to the cherry-pick queue.
+History displays a topologically ordered commit graph with parent lanes, merge
+links, branch labels, HEAD, author and date. It loads when first opened. Dashed
+ends mark parents outside the current page or search results; unrelated matching
+commits are never connected just because they appear next to each other. Selecting
+a commit opens its message and patch in the review panel.
+Commit reviews separate the message from the source diff and provide a file
+selector for commits affecting multiple files. Merge reviews compare the merge
+result with its first parent.
+Right-click a commit for **Open commit preview**, direct cherry-pick, add to the
+cherry-pick queue, revert, or copy SHA. The focused preview opens a separate
+read-only view with a filterable changed-files list beside the diff. Selecting a
+file changes the preview without staging or modifying the working tree. Direct
+cherry-pick and revert retain their confirmations and stale-snapshot checks;
+direct cherry-picking does not clear an existing queue.
+The queue panel starts hidden, can be toggled from the history toolbar, and opens
+when commits are added.
 Move, reverse or remove entries before confirming the exact order and target
 branch; a queue accepts up to 128 distinct commits. A single commit can also be
 reverted. Merge commits require a mainline choice and are rejected by this surface.
 
-Branches / stashes provides branch creation, switching, safe deletion, merging,
+Branches & stashes provides branch creation, switching, safe deletion, merging,
 fetching all remotes without pruning, and stash save/apply/pop/drop. Mutations use
 the reviewed repository snapshot and reject stale state. Branch switching, merging,
 cherry-picking and reverting require a clean working tree; there is no automatic
@@ -775,7 +908,7 @@ keep the canvas open and reveal a floating output panel. **Output** or Ctrl/Cmd+
 toggles that panel; it includes stop, full logs, and input for the running workflow.
 This is a workflow console, not a separate system shell. Its preview is bounded;
 full logs remain available. **Run on** keeps the existing remote source-preview and
-submission flow, with remote results in **Executions → Runs & logs → Remote jobs**.
+submission flow, with remote results in **Workflows → Logs & remote jobs → Remote jobs**.
 
 The lower-left **Properties** control toggles the inspector; selecting a card opens
 it. Ctrl/Cmd+S saves. The keyboard icon lists the shortcuts. **+ Add** groups step types
@@ -848,32 +981,55 @@ limited to 1,024 objects and 4,096 links; warnings explain incomplete discovery 
 rendering, and the inventory remains available under Inspector → All resources…. Docker command
 output is bounded to 32 MiB and each command has a 15-second deadline.
 
-**Machines** uses the same canvas for local, broker, and paired-machine relationships.
-Cards report pairing/access state; they do not claim a paired computer is online.
-Pairing, remote setup, and access controls remain in Details & actions.
+**Machines** offers a remembered **Canvas / List** choice. Canvas shows local,
+broker, and paired-machine relationships. List opens on the machine inventory,
+search, access-state filtering, and **Add machine**. Each row's **Settings** button
+opens a modal for that machine's details, access, and removal actions. Selecting a
+canvas node shows the same focused machine context in its inspector; adding a
+machine stays in the main view controls. **Connection settings** expands setup, provider,
+service-update, and recovery controls; diagnostics appear on failure or on demand.
+Switching views preserves selection and setup drafts. Counts and rows report
+pairing/access state; they do not claim a paired computer is online.
+**Remove access…** revokes the credential while keeping the entry. **Remove
+machine…** deletes its enrollment and pairing records after confirmation, including
+previously revoked entries. Job history is retained; unresolved active jobs block
+removal. Reconnecting requires a fresh pairing.
 
-**Executions → Runs & logs** provides the global run list. The Workflows canvas
-also has a **Runs & logs** button opening a movable panel: local runs are filtered to the current workspace,
-while its Remote jobs view explicitly shows all broker jobs. Existing log, stop, cancel,
-and result-download actions remain available. Apps keeps its card library.
+**Workflows** contains **Editor / Running / History** sections. The editor and its
+unsaved document remain loaded while switching to activity. Running shows active
+workflow tasks; History shows retained records with their recorded outcomes,
+including unverified states. Running offers a remembered **Canvas / List** choice;
+History always uses List. Both share selection, lifecycle details, timing and
+optional resource metrics. History is bounded by the existing CLI record retention
+and snapshot limits; it is not an unlimited archive.
+List views use summary cards and sortable task tables; History also filters by
+recorded outcome. The run inspector groups timing, optional resource metrics,
+lifecycle events, and recorded identifiers into dedicated sections. **Options**
+controls standalone-run scope and resource metrics.
 
-### Execution Explorer
+**Logs & remote jobs** on Workflows opens workspace-scoped local session logs and
+stop controls, plus broker-wide remote job cancellation and result downloads.
+The editor's **Runs & logs** button opens the same view. Apps keeps its card library.
 
-**Executions → Processes & resources** provides a Managed canvas and a separate
-searchable System process view. **Runs & logs** contains local run logs and stop
-controls, plus remote job cancellation and result downloads. Select an execution for lifecycle records, duration, optional CPU/memory
-metrics and its existing log reference. The shared movable/resizable inspector
-keeps the selected resource prominent. Monitoring can be paused; graph, table,
-queue and metric history are bounded. Missing measurements remain unavailable.
+### Workflow and system observability
+
+**System** is dedicated to machine resources and operating-system processes. It
+opens directly on the machine overview and process table, without workflow run
+or log tabs. Search, numeric process sorting, monitoring pause, and paired-machine
+selection remain available. Workflow runs stay in Workflows. Summary cards separate
+headline measurements from capacity and rate captions. The process table supports
+name/PID search and state filtering; a read-only inspector shows the selected
+process identity, memory, CPU and a bounded CPU history. Narrow windows stack the
+table and inspector and scroll the overview. Missing metrics remain explicit.
 
 See [execution observability](../../docs/runtime/execution-observability.md)
 for the CLI contract, runtime associations, privacy model, configuration and honest
-platform/remote support matrix. Native process metrics currently require Linux;
-macOS and Windows lifecycle paths still require native qualification.
+platform/remote support matrix. Missing measurements remain unavailable; observed
+processes are not treated as Dockpipe-owned operations.
 
 ### System resources and remote monitoring
 
-In **Executions → System**, resource cards show total CPU, memory, swap, root disk
+In **System**, resource cards show total CPU, memory, swap, root disk
 capacity, network activity and uptime/load alongside the process list. The
 **System** and **Containers** machine selectors reuse paired machines from **Machines**.
 On a paired worker, `dockpipe remote monitoring --system --docker` enables sharing;
@@ -908,8 +1064,26 @@ The dashboard's compact navigation bar offers Up, Home/project root and an
 editable location. System scope also exposes filesystem roots/drives; Project
 scope continues to reject paths and links outside its project. Double-click or
 press Enter to open a folder or file in the grid. Files-page folder browsing
-retains the current draft; opening a different file still asks about unsaved
-changes. View changes do not read file contents or generate previews/thumbnails.
+retains open drafts. View changes do not read file contents or generate
+previews/thumbnails.
+
+Files uses a workspace header and separate explorer and editor panels. **Filter
+filenames** narrows the file list while retaining folders for navigation. File
+names open on a single click in either view; folders retain double-click/Enter
+navigation. The editor shows the filename, containing folder, unsaved state and
+document status, with actions moving to a second row in narrower panes. File
+replacement retires the old syntax highlighter before loading text and schedules
+one initial highlighting pass for the new document.
+
+Opening a file keeps it in a closable tab, including its unsaved edits and undo
+history. Up to 32 distinct documents can stay open during the panel's lifetime;
+tabs are not restored after restarting. The split menu offers **Split right**,
+**Split below** and **Single pane**. Each pane has its own tabs, cursor and scroll
+position; views of the same file share edits. Tab menus can open or move a file
+to the other pane. Returning to one pane merges its tabs without discarding
+drafts. Save, search, Markdown preview and package tools follow the active pane;
+**Save all files** saves every modified regular file. Closing the last view of
+a modified file or changing the project asks how to handle unsaved edits.
 
 ### Markdown preview
 
@@ -962,16 +1136,25 @@ Drag the background to pan, scroll to zoom, drag nodes to arrange them, and use
 **Options → Reset layout** restores the deterministic tree positions. Files keep
 the existing editor's CRUD commands rather than adding separate graph mutations.
 
-Switch **2D / 3D** in the graph header for a circuit-board city. Files become
-chips whose height reflects file size, folders become teal blocks, and symbolic links/unavailable
+Choose **Graph** for a floating spatial constellation of nodes and links, or
+**Explorer** for the circuit-board view in the graph header. Graph uses a
+deterministic force-directed layout with real depth: Middle/Shift-drag orbits the
+cloud, dragging a node arranges it, and clicking highlights its immediate
+connections. Folders form clusters around their contents; labels concentrate on
+folders, the selected file and its nearby connections. These links currently
+represent folder membership. Layout work runs only when the visible hierarchy
+changes, with a fixed relaxation budget and the same 500-node limit; it does not
+run an idle physics loop. Each view retains its own camera when switching.
+
+In **Explorer**, files become chips whose height reflects file size, folders become teal blocks, and symbolic links/unavailable
 entries use amber. Connections follow circuit traces, while labels stay upright.
 At city-wide zoom, silhouettes replace tiny labels and pins; zoom in for details.
 Folder depth sets the district height. **Middle-mouse drag**, **Shift + drag**, or **Rotate** orbits the
 camera. Background drag pans, scrolling zooms, and **Reset camera** restores the
 initial angle. **Focus** makes the selected card readable; **Fit** shows the loaded
-set. Cards can occlude each other from some angles; orbit or return to 2D to
-separate them. Switching modes preserves loaded branches and manual 2D positions.
-The 3D view uses native orthographic projection with a fixed-size floor grid,
+set. Cards can occlude each other from some angles; orbit or return to **Graph** to
+separate them. Switching modes preserves loaded branches and manual Graph positions.
+Explorer uses native orthographic projection with a fixed-size floor grid,
 without a continuous frame loop. Camera movement
 projects only the already-visible nodes and never reads the filesystem.
 
@@ -979,16 +1162,16 @@ The selected chip's label floats above all geometry at a readable screen size,
 including when zoomed out. Selecting a different chip restores normal depth order
 for the previous label; chip bodies retain their spatial order.
 
-3D automatically tries a hardware OpenGL viewport when opened. The **GPU** or
+Explorer automatically tries a hardware OpenGL viewport when opened. The **GPU** or
 **Software** indicator describes the active renderer in its tooltip. Disable
-**Options → Hardware acceleration (3D)** for raster rendering, or launch with
+**Options → Hardware acceleration (Explorer)** for raster rendering, or launch with
 `DOCKPIPE_GRAPH_SOFTWARE=1` to default to software. Offscreen displays, failed
 contexts and detected software OpenGL drivers use the raster fallback. Returning
-to 2D or closing the graph releases its OpenGL viewport. These checks cannot recover
+to **Graph** or closing the graph releases its OpenGL viewport. These checks cannot recover
 from an operating-system graphics-driver crash. Hardware acceleration affects
 painting; file reads and graph projection retain their existing bounds.
 
-In normal **3D**, clicking a node sends a small drone to hover above it. Opening a
+In **Explorer**, clicking a node sends a small drone to hover above it. Opening a
 file lands the drone before opening the built-in editor; double-clicking a folder
 opens its hangar and moves into that directory. **Parent** returns one level and
 **Root** returns to the workspace. The explicit **Expand/Collapse** controls still
@@ -1079,7 +1262,7 @@ symbol references and other relationship overlays remain future work.
 links/cycles, denied/deleted directories, deep/Unicode paths, cancellation, timeout,
 rapid navigation, editor routing and repeated cleanup. It reports fixture latency,
 layout time, 500-node camera projection/render time, idle CPU and Linux memory samples.
-It also checks 2D position restoration and mouse orbit without new reads.
+It also checks Graph position restoration and mouse orbit without new reads.
 Set `DOCKPIPE_GRAPH_SCREENSHOT` to
 capture the real widgets; `DOCKPIPE_TEST_THEME=light` selects the light fixture.
 `DOCKPIPE_GRAPH_GPU_SMOKE=1` runs the explicit native-display GPU fixture, including
@@ -1166,7 +1349,7 @@ for controls, bounds and the current PR-provider limitation.
 workspace. It is **off by default**, including for existing installations. While
 off, Cockpit is hidden from the sidebar and View menu, the Files graph's flight
 entry is hidden, and the cockpit is not constructed at startup. The ordinary
-Files graph remains available in 2D and 3D.
+Files graph remains available in Graph and Explorer modes.
 
 App control, orbital motion, controller input, local voice commands, spaceship
 visibility and hardware acceleration are nested under **Cockpit mode** in the
@@ -1671,3 +1854,14 @@ Dockpipe's own panels and native VM displays do not require them. Single-window
 dashboard sharing continues to use the macOS content-sharing picker at first
 use; it does not request blanket desktop capture on installation. External test
 controllers and independently launched tools have their own permission identity.
+
+### Package tools in Files
+
+Installed packages can contribute saved-file actions to the editor's **Tools**
+menu, filtered by filename extension. Selecting a tool runs its contained workflow
+and opens a cancellable result panel. Save pending edits first. Discovery does
+not execute package code or create an extra sidebar page for file-only packages.
+See [the package file-tools contract](../../docs/packages/package-model.md#package-file-tools)
+for declarations, per-invocation context, report format and limits. This is the
+initial workflow-backed action/report hook; it does not yet expose formatter
+edits, language-server diagnostics or arbitrary editor panes.

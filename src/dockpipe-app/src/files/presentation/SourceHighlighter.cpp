@@ -35,12 +35,14 @@ SourceHighlighter::SourceHighlighter(QTextDocument *document)
 void SourceHighlighter::setFileName(const QString &path)
 {
     setDefinition(syntaxRepository().definitionForFileName(path));
-    rehighlight();
 }
 
 void SourceHighlighter::updateTheme(bool dark)
 {
-    setTheme(syntaxRepository().theme(dark ? QStringLiteral("Dockpipe Dark") : QStringLiteral("Dockpipe Light")));
+    const auto next = syntaxRepository().theme(dark ? QStringLiteral("Dockpipe Dark") : QStringLiteral("Dockpipe Light"));
+    if (theme().name() == next.name())
+        return;
+    setTheme(next);
     rehighlight();
 }
 

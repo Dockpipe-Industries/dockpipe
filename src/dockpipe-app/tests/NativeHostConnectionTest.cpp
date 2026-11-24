@@ -10,12 +10,12 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
+#include <QProcess>
 #include <QSaveFile>
 #include <QScopeGuard>
 #include <QSet>
 #include <QTemporaryDir>
 #include <QTest>
-#include <QTimer>
 
 namespace {
 QJsonObject connectedStatus()
@@ -52,12 +52,51 @@ int hostFixture(int argc, char **argv)
             {"cwd", QDir::currentPath()}};
         if (!writeFile(qEnvironmentVariable("DOCKPIPE_TEST_NATIVE_TERMINAL"), QJsonDocument(invocation).toJson()))
             return 93;
-        output.write("native-terminal-fixture\n");
-        output.flush();
-        QTimer::singleShot(15000, &application, &QCoreApplication::quit);
-        return application.exec();
+        return output.write("native-terminal-fixture\n") > 0 && output.flush() ? 0 : 95;
     }
     return 94;
+}
+
+int terminalCoreFixture(int argc, char **argv)
+{
+    QCoreApplication application(argc, argv);
+    QFile input;
+    QFile output;
+    if (!input.open(stdin, QIODevice::ReadOnly) || !output.open(stdout, QIODevice::WriteOnly))
+        return 96;
+
+    const auto start = QJsonDocument::fromJson(input.readLine(2 * 1024 * 1024)).object();
+    if (start.value("type") != "start")
+        return 97;
+    NativeTerminalLaunch::Snapshot launch;
+    if (!NativeTerminalLaunch::fromJson(start.value("profile").toObject(), launch) || launch.host)
+        return 98;
+
+    QProcess terminal;
+    terminal.setWorkingDirectory(launch.directory);
+    terminal.start(launch.executable, launch.arguments);
+    if (!terminal.waitForFinished(2000) || terminal.exitCode() != 0)
+        return 99;
+    const auto bytes = terminal.readAllStandardOutput();
+    const auto send = [&output](QJsonObject frame) {
+        frame.insert("schema", "dockpipe.local-terminal/v1");
+        const auto data = QJsonDocument(frame).toJson(QJsonDocument::Compact) + '\n';
+        return output.write(data) == data.size() && output.flush();
+    };
+
+    if (!send({{"type", "ready"}, {"id", 1}, {"session_id", "native-host-fixture"}})
+        || !send({{"type", "output"}, {"id", 0}, {"cursor", bytes.size()},
+            {"data", QString::fromLatin1(bytes.toBase64())}}))
+        return 100;
+    auto command = QJsonDocument::fromJson(input.readLine(96 * 1024)).object();
+    if (command.value("type") == "resize") {
+        if (!send({{"type", "ack"}, {"id", command.value("id")}}))
+            return 101;
+        command = QJsonDocument::fromJson(input.readLine(96 * 1024)).object();
+    }
+    if (command.value("type") != "close")
+        return 101;
+    return send({{"type", "closed"}, {"id", 0}, {"exit_code", 0}, {"cleanup", "complete"}}) ? 0 : 102;
 }
 }
 
@@ -243,6 +282,7 @@ void NativeHostConnectionTest::nativeTerminalUsesWorkerCwdAndClearsOnRevocation(
         return received.contains("native-terminal-fixture");
     };
     QTRY_VERIFY_WITH_TIMEOUT(hasOutput(), 3000);
+    QVERIFY(hub.running(session));
     const QJsonObject unavailable{{"schema", "dockpipe.native_host_status.v1"}, {"available", false}, {"connected", false}};
     QVERIFY(writeFile(statusFile, QJsonDocument(unavailable).toJson()));
     connection.refresh();
@@ -339,6 +379,9 @@ int main(int argc, char **argv)
 {
     if (argc > 1 && QString::fromLocal8Bit(argv[1]) == "host")
         return hostFixture(argc, argv);
+    if (argc == 3 && QString::fromLocal8Bit(argv[1]) == "terminal"
+        && QString::fromLocal8Bit(argv[2]) == "--stdio")
+        return terminalCoreFixture(argc, argv);
     QApplication application(argc, argv);
     NativeHostConnectionTest tests;
     return QTest::qExec(&tests, argc, argv);

@@ -1,0 +1,49 @@
+module Dockpipe.Product.LaneReceipt;
+import Dockpipe.Product.QualificationFiles;
+import PipeLang.IO;
+import PipeLang.Json;
+
+public Class LaneReceiptFile {
+    private FileStreams files;
+    private QualificationJsonFile receipt;
+    private LaneMetadataBudget budget;
+
+    public LaneReceiptFile(JsonReader reader, FileStreams files, LaneMetadataBudget budget) {
+        this.files = files;
+        this.budget = budget;
+        receipt = new QualificationJsonFile(reader, files);
+    }
+
+    private Result<FileDigest,string> Charge(CancellationToken token) {
+        int remaining = try budget.Remaining(token);
+        Result<FileDigest,IoFailure> actual = files.DigestFile("result.json", remaining, token);
+        if (actual.IsCancelled)
+            return Result<FileDigest,string>.Cancelled("qualification.run.receipt_metadata_cancelled");
+        if (actual.IsFailure) {
+            if (actual.Error.code == "io.byte_limit") {
+                Result<void,string> limit = budget.Exhausted();
+                return Result<FileDigest,string>.Failure(limit.Error);
+            }
+
+            return Result<FileDigest,string>.Failure("qualification.lane.receipt." + actual.Error.code);
+        }
+
+        try budget.Charge(actual.Value.byteCount);
+        return Result<FileDigest,string>.Success(actual.Value);
+    }
+
+    public Result<CapturedQualificationJson,string> Open(CancellationToken token) {
+        FileDigest charged = try Charge(token);
+        JsonReadLimits limits = new JsonReadLimits {};
+        limits.detectUnicodeEncoding = true;
+        CapturedQualificationJson opened = try receipt.Open("result.json", limits, token);
+        if (opened.sourceFile.byteCount != charged.byteCount || opened.sourceFile.sha256 != charged.sha256)
+            return Result<CapturedQualificationJson,string>.Failure("qualification.lane.receipt_changed");
+
+        return Result<CapturedQualificationJson,string>.Success(opened);
+    }
+
+    public Result<void,string> Close() {
+        return receipt.Close();
+    }
+}

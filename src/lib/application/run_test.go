@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"os"
@@ -950,7 +951,7 @@ func TestRunAutoBranchForRepoWithoutBranch(t *testing.T) {
 		t.Fatal(err)
 	}
 	selectedHook := ""
-	sourceHostScriptAppFn = func(path string, environment []string) (map[string]string, error) {
+	sourceHostScriptAppFn = func(_ context.Context, path string, environment []string) (map[string]string, error) {
 		selectedHook = path
 		return map[string]string{"DOCKPIPE_WORKDIR": repoRoot}, nil
 	}
@@ -1011,7 +1012,7 @@ isolate: codex
 	dockerBuildAppFn = func(image, dockerfileDir, contextDir string) error { return nil }
 
 	var capturedPreEnv []string
-	sourceHostScriptAppFn = func(scriptPath string, env []string) (map[string]string, error) {
+	sourceHostScriptAppFn = func(_ context.Context, scriptPath string, env []string) (map[string]string, error) {
 		capturedPreEnv = append([]string(nil), env...)
 		return map[string]string{"DOCKPIPE_WORKDIR": filepath.Join(root, "fake-worktree")}, nil
 	}
@@ -1094,7 +1095,7 @@ isolate: codex
 	dockerBuildAppFn = func(image, dockerfileDir, contextDir string) error { return nil }
 
 	var order []string
-	sourceHostScriptAppFn = func(scriptPath string, env []string) (map[string]string, error) {
+	sourceHostScriptAppFn = func(_ context.Context, scriptPath string, env []string) (map[string]string, error) {
 		order = append(order, "before:"+filepath.Base(scriptPath))
 		return nil, nil
 	}

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"dockpipe/src/lib/domain"
+	"dockpipe/src/lib/domain/invocation"
 )
 
 // Host cleanup after kind: host scripts (RunHostScript):
@@ -51,30 +52,59 @@ func hostCleanupSkip(env []string) bool {
 // With DOCKPIPE_RUN_ID, only runs/<id>.container is used (not a global cleanup/ sweep).
 // Call from RunHostScript defer so dockpipe tears down host-started resources the script tracked.
 func ApplyHostCleanup(env []string) {
+	if err := ApplyHostCleanupWithAdmission(NativeExecutionAdmission{}, env); err != nil {
+		fmt.Fprintf(os.Stderr, "[dockpipe] Host cleanup failed: %v\n", err)
+	}
+}
+
+// ApplyHostCleanupWithAdmission freezes the cleanup scope before reading any
+// markers. Existing run-scoped/legacy ownership and best-effort cleanup remain
+// in the executor; admission cannot expand the registered resource selection.
+func ApplyHostCleanupWithAdmission(admission NativeExecutionAdmission, env []string) error {
+	_, err := invokeNativeExecution(admission, "dockpipe.containers.cleanup", env,
+		func(_ context.Context, input []string) (invocation.Prepared[struct{}], error) {
+			if err := ValidateNativeExecutionStrings(input); err != nil {
+				return invocation.Prepared[struct{}]{}, err
+			}
+			owned := append([]string(nil), input...)
+			environment := os.Environ()
+			prepared := invocation.Prepared[struct{}]{Execute: func(ctx context.Context) (struct{}, error) {
+				return struct{}{}, applyHostCleanup(ctx, owned, environment)
+			}}
+			if admission.Authorize != nil {
+				prepared.Digest = NativeExecutionDigest(owned, environment)
+			}
+			return prepared, nil
+		})
+	return err
+}
+
+func applyHostCleanup(parent context.Context, env, environment []string) error {
 	if hostCleanupSkip(env) {
-		return
+		return nil
 	}
 	wd := strings.TrimSpace(envGet(env, "DOCKPIPE_WORKDIR"))
 	if wd == "" {
-		return
+		return nil
 	}
 	wdAbs, err := absHostWorkdir(wd)
 	if err != nil {
-		return
+		return nil
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	ctx, cancel := context.WithTimeout(parent, 45*time.Second)
 	defer cancel()
 
 	runID := strings.TrimSpace(envGet(env, "DOCKPIPE_RUN_ID"))
 	if runID != "" {
 		if !isValidHostRunID(runID) {
-			return
+			return nil
 		}
-		applyRunScopedHostCleanup(ctx, wdAbs, runID)
-		return
+		applyRunScopedHostCleanup(ctx, wdAbs, runID, environment)
+		return ctx.Err()
 	}
 
-	applyLegacyHostCleanupSweep(ctx, wdAbs)
+	applyLegacyHostCleanupSweep(ctx, wdAbs, environment)
+	return ctx.Err()
 }
 
 // isValidHostRunID rejects path segments and spoofed env (expected: 8 hex chars from BeginHostRun).
@@ -94,7 +124,7 @@ func isValidHostRunID(runID string) bool {
 	return true
 }
 
-func applyRunScopedHostCleanup(ctx context.Context, wdAbs, runID string) {
+func applyRunScopedHostCleanup(ctx context.Context, wdAbs, runID string, environment []string) {
 	pidSidecar := filepath.Join(HostRunsDir(wdAbs), runID+".pid")
 	if stopped := tryKillProcessAndRemoveMarker(pidSidecar); stopped {
 		LogOperationResult(os.Stderr, OperationResult{
@@ -119,7 +149,7 @@ func applyRunScopedHostCleanup(ctx context.Context, wdAbs, runID string) {
 		return
 	}
 	marker := sidecar
-	if stopped := tryStopDockerAndRemoveMarker(ctx, cn, marker); stopped {
+	if stopped := tryStopDockerAndRemoveMarker(ctx, cn, marker, environment); stopped {
 		logHostCleanupContainerResult(cn, "run", "sidecar", "stopped", "")
 	}
 	removeCleanupMarkersForContainerName(wdAbs, cn)
@@ -178,7 +208,7 @@ func removeCleanupMarkersForContainerName(wdAbs, cn string) {
 	}
 }
 
-func applyLegacyHostCleanupSweep(ctx context.Context, wdAbs string) {
+func applyLegacyHostCleanupSweep(ctx context.Context, wdAbs string, environment []string) {
 	dir := filepath.Join(wdAbs, hostCleanupDirRel)
 	ents, err := os.ReadDir(dir)
 	if err == nil {
@@ -196,7 +226,7 @@ func applyLegacyHostCleanupSweep(ctx context.Context, wdAbs string) {
 				continue
 			}
 			cn := strings.TrimSpace(string(b))
-			if stopped := tryStopDockerAndRemoveMarker(ctx, cn, p); stopped {
+			if stopped := tryStopDockerAndRemoveMarker(ctx, cn, p, environment); stopped {
 				logHostCleanupContainerResult(cn, "legacy", "cleanup_marker", "stopped", "")
 			}
 		}
@@ -208,7 +238,7 @@ func applyLegacyHostCleanupSweep(ctx context.Context, wdAbs string) {
 		return
 	}
 	cn := strings.TrimSpace(string(b))
-	if stopped := tryStopDockerAndRemoveMarker(ctx, cn, leg); stopped {
+	if stopped := tryStopDockerAndRemoveMarker(ctx, cn, leg, environment); stopped {
 		logHostCleanupContainerResult(cn, "legacy", "legacy_marker", "stopped", "")
 	}
 }
@@ -235,13 +265,19 @@ func logHostCleanupContainerResult(name, scope, markerType, result, skipReason s
 	})
 }
 
-func tryStopDockerAndRemoveMarker(ctx context.Context, name, markerPath string) bool {
+func tryStopDockerAndRemoveMarker(ctx context.Context, name, markerPath string, environment []string) bool {
 	if name == "" || !isSafeDockerContainerName(name) {
 		_ = os.Remove(markerPath)
 		return false
 	}
+	provider, err := resolveDockerCommandFromEnvironment(environment)
+	if err != nil {
+		_ = os.Remove(markerPath)
+		return false
+	}
 	run := func(args ...string) error {
-		cmd := hostCleanupExecCommandFn(ctx, "docker", args...)
+		cmd := hostCleanupExecCommandFn(ctx, provider, args...)
+		cmd.Env = dockerCommandEnv(environment, provider)
 		cmd.Stderr = os.Stderr
 		return cmd.Run()
 	}

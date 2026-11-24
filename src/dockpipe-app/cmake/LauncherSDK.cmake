@@ -25,7 +25,7 @@ set_target_properties(dockpipe-launcher-ui PROPERTIES EXPORT_NAME LauncherUI)
 set_target_properties(dockpipe-browser PROPERTIES EXPORT_NAME HostBrowser)
 target_compile_features(dockpipe-launcher-ui PUBLIC cxx_std_17)
 target_compile_features(dockpipe-browser PUBLIC cxx_std_17)
-install(TARGETS dockpipe-workspace-reader RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT LauncherSDK)
+install(TARGETS dockpipe-workspace-reader dockpipe-terminal-host RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT LauncherSDK)
 install(TARGETS dockpipe-launcher-ui dockpipe-browser dockpipe-launcher-headers
     EXPORT DockPipeLauncherSDKTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT LauncherSDK

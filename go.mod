@@ -2,10 +2,11 @@ module dockpipe
 
 go 1.26.0
 
-toolchain go1.26.10
+toolchain go1.26.11
 
 require (
 	github.com/Dockpipe-Industries/pipelang v0.1.0
+	github.com/coder/websocket v1.8.15
 	github.com/klauspost/compress v1.20.3
 	github.com/mattn/go-shellwords v1.0.16
 	github.com/modelcontextprotocol/go-sdk v1.8.0

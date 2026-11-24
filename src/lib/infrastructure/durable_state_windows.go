@@ -309,7 +309,14 @@ func validatePrivatePath(path string, directory bool) error {
 		return errors.New("private state DACL is not protected")
 	}
 	dacl, _, err := descriptor.DACL()
-	if err != nil || dacl == nil || dacl.AceCount != 2 {
+	if err != nil || dacl == nil {
+		return errors.New("private state path is missing its DACL")
+	}
+
+	// A LocalSystem process has the same SID as the system trustee. A
+	// single grant to that SID protects state from all other principals.
+	systemOwnsState := userSID.Equals(systemSID)
+	if dacl.AceCount != 2 && !(systemOwnsState && dacl.AceCount == 1) {
 		return errors.New("private state DACL must grant only the current user and Local System")
 	}
 	foundUser, foundSystem := false, false
@@ -333,7 +340,7 @@ func validatePrivatePath(path string, directory bool) error {
 			return errors.New("private state DACL grants an unexpected trustee")
 		}
 	}
-	if !foundUser || !foundSystem {
+	if !foundUser || (!systemOwnsState && !foundSystem) {
 		return errors.New("private state DACL is missing the current user or Local System")
 	}
 	return nil

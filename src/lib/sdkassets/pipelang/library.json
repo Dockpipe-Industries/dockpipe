@@ -1,0 +1,44 @@
+{
+  "protocol": "pipelang.source-library.v1",
+  "name": "Dockpipe.SDK",
+  "version": "0.1.0",
+  "source_root": "src",
+  "sources": [
+    {
+      "path": "Client.pipe",
+      "sha256": "77d776b046eb811348ee44079c1b3bc7609845d119a8bf4330212edccecad5ac"
+    },
+    {
+      "path": "OperationId.pipe",
+      "sha256": "b727a5fb1217f313cd1ad7956bc7ca6a00c40d860d2d7ec1f66723354e09e143"
+    },
+    {
+      "path": "OperationObservation.pipe",
+      "sha256": "c1a4b784b598a3a157b2020ae93d00cbfc5a21952864697dbf5c0a6c0a8c9476"
+    },
+    {
+      "path": "ScopeObject.pipe",
+      "sha256": "fa48ee1a5829248e93cd252b4489063cb5923d48dd12cd8eff9fc0892aaf3409"
+    },
+    {
+      "path": "ScopeRequest.pipe",
+      "sha256": "b02503adcea4c78195cf7135b57c98dcc729c518e9e293678c0ec7da455f1b6f"
+    },
+    {
+      "path": "ScopeResult.pipe",
+      "sha256": "35b0d98af129c25dfbcb7508abad5283e936cf1cdf44f901e73cdcad3fe9f4d7"
+    },
+    {
+      "path": "Transport.pipe",
+      "sha256": "cede6edc965da738a9867ab413b456aaa7d94605184ba35a9811321561c0b842"
+    },
+    {
+      "path": "WorkflowRequest.pipe",
+      "sha256": "28c8a401ee778ea56af0802dfc161d123bba91e0a514f61f4c31a3892706dcda"
+    },
+    {
+      "path": "WorkflowVariable.pipe",
+      "sha256": "82de7280ba9ace2a2a222a022cf9d3f274ff6e24027d6e770c68a2779ac929b5"
+    }
+  ]
+}

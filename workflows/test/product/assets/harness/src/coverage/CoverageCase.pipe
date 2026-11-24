@@ -1,0 +1,139 @@
+module Dockpipe.Product.Coverage.Tests;
+import Dockpipe.Product.Coverage;
+import PipeLang.Testing;
+
+public Class CoverageCase : IProbeTestCase {
+    private int scenario;
+
+    public CoverageCase(int scenario) {
+        this.scenario = scenario;
+    }
+
+    public pure string Id() => "qualification.coverage." + string.FromInt(scenario);
+    public pure string Name() => "case and platform coverage " + string.FromInt(scenario);
+
+    public Result<void,TestFailure> Setup(CancellationToken token) {
+        return Result<void,TestFailure>.Success();
+    }
+
+    public Result<void,TestFailure> Cleanup() {
+        return Result<void,TestFailure>.Success();
+    }
+
+    public Result<void,TestFailure> Body(CancellationToken token) {
+        return Assert.True(false, "coverage contracts use method-scoped probe dispatch");
+    }
+
+    private Result<void,TestFailure> Observe(TargetCoverageAccumulator tally, string layer, string status,
+                                             bool critical, CancellationToken token) {
+        return Assert.True(tally.Observe(layer, status, critical, token).IsSuccess, "expected case counted");
+    }
+
+    private Result<void,TestFailure> Target(CancellationToken token, CancellationToken probeToken) {
+        TargetCoverageAccumulator tally = new TargetCoverageAccumulator("linux");
+        if (scenario == 0) {
+            TargetCoverage empty = tally.Finish();
+            try Assert.Equal<int>(0, empty.required, "empty denominator");
+            try Assert.Equal<float>(0.0, empty.coverage, "empty coverage");
+            return Assert.Equal<string>("incomplete", empty.status, "empty target cannot qualify");
+        }
+        if (scenario == 5) {
+            Result<void,string> cancelled = tally.Observe("component", "passed", true, probeToken);
+            try Assert.True(cancelled.IsCancelled, "genuine cancellation remains observable");
+            Result<void,string> wrongLayer = tally.Observe("other", "passed", true, token);
+            Result<void,string> wrongStatus = tally.Observe("component", "unknown", true, token);
+            try Assert.True(wrongLayer.IsFailure && wrongStatus.IsFailure, "unknown row vocabulary refused");
+            return Assert.Equal<int>(0, tally.Finish().required, "refused observation has no tally effect");
+        }
+        if (scenario == 6) {
+            for (int index = 0; index < 8192; index = index + 1)
+                try Observe(tally, "component", "passed", false, token);
+
+            Result<void,string> overflow = tally.Observe("component", "passed", false, token);
+            try Assert.True(overflow.IsFailure && overflow.Error == "qualification.coverage.case_count",
+                            "run's admitted case bound applies");
+            return Assert.Equal<int>(8192, tally.Finish().required, "every admitted case counted once");
+        }
+
+        int passing = 9;
+        if (scenario == 2)
+            passing = 8;
+        for (int index = 0; index < passing; index = index + 1)
+            try Observe(tally, "component", "passed", index == 0, token);
+
+        string status = "not_run";
+        string expected = "qualified";
+        bool critical = false;
+        if (scenario == 2) {
+            status = "blocked";
+            expected = "incomplete";
+        } else if (scenario == 3) {
+            status = "manual_pending";
+            critical = true;
+            expected = "incomplete";
+        } else if (scenario == 4) {
+            status = "failed";
+            expected = "failed";
+        }
+
+        try Observe(tally, "human", status, critical, token);
+        TargetCoverage result = tally.Finish();
+        try Assert.Equal<int>(passing + 1, result.required, "unavailable and human-pending stay in denominator");
+        try Assert.Equal<int>(passing, result.passed, "only passed is counted");
+        try Assert.Equal<int>(1, result.criticalPassed, "critical pass is tracked");
+        try Assert.Equal<int>(1, result.counts.At(status), "exact status bucket");
+        try Assert.Equal<int>(1, result.layers.At("human").required, "independent layer denominator");
+        try Assert.Equal<int>(0, result.layers.At("human").passed, "human failure remains unpassed");
+        try Assert.Equal<float>(float.FromInt(passing) / float.FromInt(passing + 1), result.coverage, "exact ratio");
+        return Assert.Equal<string>(expected, result.status, "exact qualification disposition");
+    }
+
+    private Result<void,TestFailure> Overall(CancellationToken token, CancellationToken probeToken) {
+        List<string> profiles = List<string>.Empty();
+        List<TargetCoverage> targets = List<TargetCoverage>.Empty();
+        if (scenario == 7 || scenario == 8) {
+            profiles.Add("mac");
+            profiles.Add("あ");
+            profiles.Add("A");
+        }
+        profiles.Add("linux");
+
+        OverallCoveragePolicy policy = new OverallCoveragePolicy();
+        if (scenario == 10) {
+            Result<OverallCoverage,string> cancelled = policy.Summarize(profiles, targets, probeToken);
+            return Assert.True(cancelled.IsCancelled, "empty selected scope still observes cancellation");
+        }
+
+        TargetCoverageAccumulator tally = new TargetCoverageAccumulator("linux");
+        try Observe(tally, "component", "passed", true, token);
+        if (scenario != 7)
+            targets.Add(tally.Finish());
+
+        Result<OverallCoverage,string> evaluated = policy.Summarize(profiles, targets, token);
+        try Assert.True(evaluated.IsSuccess, "run summary computed");
+        OverallCoverage summary = evaluated.Value;
+        bool selected = scenario != 7;
+        bool full = scenario == 9;
+        try Assert.Equal<bool>(selected, summary.selectedTargetsQualified, "requires selected qualified targets");
+        try Assert.Equal<bool>(full, summary.fullProductQualified, "every profile needs a selected target");
+        if (scenario == 7 || scenario == 8) {
+            List<string> missing = summary.unconfiguredPlatformProfiles;
+            try Assert.Equal<string>("A", missing.At(0), "missing profiles start in literal lexical order");
+            if (scenario == 8) {
+                try Assert.Equal<string>("mac", missing.At(1), "configured profile excluded");
+                try Assert.Equal<string>("あ", missing.At(2), "Unicode lexical order preserved");
+            } else {
+                try Assert.Equal<string>("linux", missing.At(1), "unselected Linux remains missing");
+            }
+        }
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    public Result<void,TestFailure> BodyWithProbe(CancellationToken token, CancellationToken probeToken) {
+        if (scenario <= 6)
+            return Target(token, probeToken);
+
+        return Overall(token, probeToken);
+    }
+}

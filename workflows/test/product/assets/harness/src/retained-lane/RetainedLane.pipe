@@ -1,0 +1,82 @@
+module Dockpipe.Product.RetainedLane;
+import Dockpipe.Product.QualificationFiles;
+import PipeLang.IO;
+import PipeLang.Json;
+
+// The caller supplies the invocation's descriptor-confined root after
+// checking the run's retained inputs and native runner identity. An error
+// leaves the invocation for reconciliation and cannot authorize a replay.
+public Class RetainedLane {
+    private JsonReader reader;
+    private FileStreams invocation;
+
+    public RetainedLane(JsonReader reader, FileStreams invocation) {
+        this.reader = reader;
+        this.invocation = invocation;
+    }
+
+    private Result<void,string> VerifyRequest(FileDigest expected, CancellationToken token) {
+        Result<FileDigest,IoFailure> checked = invocation.DigestFile("request.json", expected.byteCount, token);
+        if (checked.IsCancelled)
+            return Result<void,string>.Cancelled("qualification.resume.lane.cancelled");
+        if (!checked.IsSuccess)
+            return Result<void,string>.Failure("qualification.resume.lane.request." + checked.Error.code);
+
+        if (checked.Value.byteCount != expected.byteCount || checked.Value.sha256 != expected.sha256)
+            return Result<void,string>.Failure("qualification.resume.lane.request_mismatch");
+
+        return Result<void,string>.Success();
+    }
+
+    private Result<RetainedProcess,string> ReadTerminal(JsonNode receipt) {
+        JsonNode? exit = try reader.FindMember(receipt, "exit_code");
+        JsonNode? reason = try reader.FindMember(receipt, "failure");
+        if (!exit.HasValue || !reason.HasValue)
+            return Result<RetainedProcess,string>.Failure("qualification.resume.lane.process_fields");
+
+        JsonKind disposition = try reader.Kind(exit.Value);
+        if (disposition == JsonKind.Null)
+            return Result<RetainedProcess,string>.Failure("qualification.resume.lane.process_incomplete");
+
+        int exitCode = try reader.Int64Value(exit.Value);
+        JsonKind kind = try reader.Kind(reason.Value);
+        if (kind != JsonKind.String)
+            return Result<RetainedProcess,string>.Failure("qualification.resume.lane.process_failure_text");
+
+        int bytes = try reader.ScalarLength(reason.Value);
+        if (bytes > 4096)
+            return Result<RetainedProcess,string>.Failure("qualification.resume.lane.process_failure_text");
+
+        ByteBuffer detail = try reader.ScalarSlice(reason.Value, 0, bytes);
+        string failure = detail.DecodeUtf8();
+        return Result<RetainedProcess,string>.Success(RetainedProcess(exitCode, failure));
+    }
+
+    public Result<RetainedProcess,string> Terminal(FileDigest canonicalRequest, CancellationToken token) {
+        try VerifyRequest(canonicalRequest, token);
+
+        QualificationJsonFile process = new QualificationJsonFile(reader, invocation);
+        JsonReadLimits limits = new JsonReadLimits {};
+        limits.inputBytes = 65536;
+        limits.decodedBytes = 65536;
+        limits.nameBytes = 4096;
+        limits.nodes = 128;
+        limits.retainedBytes = 262144;
+        try {
+            CapturedQualificationJson receipt = try process.Open("process.json", limits, token);
+            return ReadTerminal(receipt.root);
+        } finally {
+            Result<void,string> closed = process.Close();
+            if (!closed.IsSuccess)
+                throw Error(closed.Error);
+        }
+    }
+
+    public Result<int,string> AdmittedExitCode(FileDigest canonicalRequest, CancellationToken token) {
+        RetainedProcess receipt = try Terminal(canonicalRequest, token);
+        if (receipt.failure != "")
+            return Result<int,string>.Failure(receipt.failure);
+
+        return Result<int,string>.Success(receipt.exitCode);
+    }
+}

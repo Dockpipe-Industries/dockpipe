@@ -1,4 +1,6 @@
 #pragma once
+
+#include <QCoreApplication>
 #include "LauncherUiExport.h"
 #include <QGraphicsObject>
 #include <QPolygonF>
@@ -7,9 +9,12 @@
 class WorkspaceGraphView;
 
 class DOCKPIPE_LAUNCHER_UI_EXPORT WorkspaceGraphNode final : public QGraphicsObject {
+    Q_DECLARE_TR_FUNCTIONS(WorkspaceGraphNode)
 public:
     WorkspaceGraphNode(const QString &path, const QString &kind, qint64 fileBytes = -1);
     QRectF boundingRect() const override;
+    QPainterPath shape() const override;
+    void setGraphView(bool enabled);
     void setSummary(const QString &summary);
     void setCityView(const WorkspaceGraphView *view);
     qreal chipHeight() const;
@@ -28,6 +33,7 @@ protected:
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
 private:
     void paintCity(QPainter *painter, bool dark);
+    void paintGraph(QPainter *painter, bool dark);
     void paintCityLabel(QPainter *painter, const QRectF &rect, bool dark);
     QString m_name;
     QString m_kind;

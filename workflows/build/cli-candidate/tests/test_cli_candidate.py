@@ -277,9 +277,9 @@ class CLIBootstrapTests(unittest.TestCase):
         toolchain = next(line.split()[1] for line in (repository / "go.mod").read_text().splitlines()
                          if line.startswith("toolchain "))
         self.assertEqual(PRODUCER.GO_VERSION, toolchain)
-        self.assertEqual(toolchain, "go1.26.10")
+        self.assertEqual(toolchain, "go1.26.11")
         workflow = (repository / ".github/workflows/cli-candidate.yml").read_text()
-        self.assertIn("go-version: '1.26.10'", workflow)
+        self.assertIn("go-version: '1.26.11'", workflow)
         self.assertEqual(workflow.count("      - workflows/release/metadata/assets/scripts/release-version.py"), 2)
         self.assertIn("GH_TOKEN: ${{ github.token }}", workflow)
 

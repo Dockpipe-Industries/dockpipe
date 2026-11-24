@@ -1,0 +1,301 @@
+module Dockpipe.Product.Qualification.Tests;
+import Dockpipe.Product.Qualification;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+public Class PlanContractCase : IProbeTestCase {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private int indexRetainedBytes;
+    private int scenario;
+    private string caseId;
+    private PlanFixtureDocuments documents;
+    private JsonNode registry;
+
+    public PlanContractCase(JsonReader reader, JsonStringIndexer indexer, int indexRetainedBytes,
+                            int scenario, string caseId) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.indexRetainedBytes = indexRetainedBytes;
+        this.scenario = scenario;
+        this.caseId = caseId;
+        documents = new PlanFixtureDocuments(reader);
+    }
+
+    public pure string Id() => "qualification.plan." + caseId;
+    public pure string Name() => "Source plan schema: " + caseId;
+
+    public Result<void,TestFailure> Setup(CancellationToken token) {
+        int featureCount = 1;
+        if (scenario == 9)
+            featureCount = 65;
+
+        Result<JsonNode,string> parsed = documents.Registry(featureCount, scenario == 5, token);
+        try Assert.True(parsed.IsSuccess, "Source constructs a complete valid registry fixture");
+        registry = parsed.Value;
+        return Result<void,TestFailure>.Success();
+    }
+
+    public Result<void,TestFailure> Cleanup() {
+        return Assert.True(documents.Close().IsSuccess, "Plan and registry documents close independently");
+    }
+
+    private Result<void,string> VerifyIndexReleased(JsonNode root) {
+        JsonStringIndexLimits limits = new JsonStringIndexLimits {};
+        limits.entries = 1;
+        limits.retainedBytes = indexRetainedBytes;
+        JsonStringIndex index = new JsonStringIndex {};
+        try {
+            index = try indexer.BeginStringIndex(root.document, limits);
+            return Result<void,string>.Success();
+        } finally {
+            if (index.generation != 0) {
+                Result<void,string> closed = indexer.CloseStringIndex(index);
+                if (!closed.IsSuccess)
+                    throw Error(closed.Error);
+            }
+        }
+    }
+
+    private Result<void,TestFailure> Check(PlanFixtureOptions options, string expectedError,
+                                          CancellationToken token) {
+        return CheckWithProbe(options, expectedError, token, token);
+    }
+
+    private Result<void,TestFailure> CheckWithProbe(PlanFixtureOptions options, string expectedError,
+                                                   CancellationToken token, CancellationToken probeToken) {
+        Result<JsonNode,string> parsed = documents.Plan(options, token);
+        try Assert.True(parsed.IsSuccess, "Policy stimuli are valid complete JSON, not parser refusals");
+        JsonNode root = parsed.Value;
+        if (scenario == 14) {
+            RegistryJson json = new RegistryJson(reader);
+            JsonNode targets = json.Member(root, "targets").Value;
+            JsonNode target = reader.At(targets, 0).Value;
+            JsonNode drivers = json.Member(target, "drivers").Value;
+            JsonNode driver = reader.At(drivers, 0).Value;
+            JsonNode dependencies = json.Member(driver, "dependencies").Value;
+            JsonNode dependency = reader.At(dependencies, 0).Value;
+            JsonNode path = json.Member(dependency, "path").Value;
+            try Assert.Equal<int>(8192, reader.ScalarLength(path).Value,
+                "Actual decoded dependency path exceeds one Source string");
+        }
+
+        PlanPolicy policy = new PlanPolicy(reader, indexer, indexRetainedBytes);
+        Result<void,string> validated = policy.Validate(root, registry, probeToken);
+        try Assert.True(VerifyIndexReleased(root).IsSuccess, "Policy releases its plan string index on every outcome");
+        try Assert.True(VerifyIndexReleased(registry).IsSuccess, "Registry validation releases its separate index");
+        if (scenario == 17) {
+            try Assert.True(probeToken.IsCancellationRequested, "Native supplies a genuine cancelled token");
+            try Assert.True(validated.IsCancelled, "Plan cancellation remains cancellation");
+            try Assert.Equal<string>("qualification.plan.cancelled", validated.Error, "Exact cancellation owner");
+        } else if (expectedError == "") {
+            try Assert.True(validated.IsSuccess, "Valid plan schema is admitted");
+        } else {
+            try Assert.True(validated.IsFailure, "Invalid plan schema is refused");
+            try Assert.Equal<string>("qualification.plan." + expectedError, validated.Error, "Exact owning schema error");
+        }
+
+        try Assert.True(documents.ClosePlan().IsSuccess, "Each checked plan retires before the next fixture");
+        return Result<void,TestFailure>.Success();
+    }
+
+    public Result<void,TestFailure> Body(CancellationToken token) {
+        PlanFixtureOptions options = new PlanFixtureOptions {};
+        if (scenario == 0) {
+            options.capabilityCount = 2;
+            options.dependencyCount = 2;
+            options.scenarios = "[\"happy\",\"failure\",\"cancellation\",\"restart-recovery\"]";
+            options.layers = "[\"component\",\"installed_e2e\",\"guided_ui\",\"human\"]";
+            options.timeout = "1200";
+            try Check(options, "", token);
+        } else if (scenario == 1) {
+            options.omitOptional = true;
+            try Check(options, "", token);
+            options.omitDrivers = true;
+            try Check(options, "", token);
+            options.omitDrivers = false;
+            options.driverCount = 0;
+            try Check(options, "", token);
+        } else if (scenario == 2) {
+            options.schema = "\"unknown/v1\"";
+            try Check(options, "schema", token);
+            options.schema = "\"dockpipe.product-integration.plan/v1\"";
+            options.runId = "\".invalid\"";
+            try Check(options, "run_id", token);
+            options.runId = "false";
+            try Check(options, "run_id", token);
+            options.runId = "\"\"";
+            try Check(options, "run_id", token);
+            string maximumId = "a";
+            for (int size = 1; size < 128; size = size * 2)
+                maximumId = maximumId + maximumId;
+
+            options.runId = "\"" + maximumId + "\"";
+            try Check(options, "", token);
+            options.runId = "\"" + maximumId + "a\"";
+            try Check(options, "run_id", token);
+        } else if (scenario == 3) {
+            options.driverCount = 0;
+            options.targetCount = 64;
+            try Check(options, "", token);
+            options.targetCount = 65;
+            try Check(options, "target_count", token);
+            options.targetCount = 0;
+            try Check(options, "target_count", token);
+        } else if (scenario == 4) {
+            options.targetCount = 2;
+            options.duplicateTargets = true;
+            try Check(options, "duplicate_target", token);
+            options.targetCount = 1;
+            options.targetId = "\".invalid\"";
+            try Check(options, "target_id", token);
+        } else if (scenario == 5) {
+            options.platform = "\"プロファイル\"";
+            try Check(options, "", token);
+            options.kind = "\"vm\"";
+            try Check(options, "", token);
+            options.kind = "\"remote\"";
+            try Check(options, "", token);
+            options.kind = "\"flatpak\"";
+            try Check(options, "", token);
+            options.kind = "\"container\"";
+            try Check(options, "", token);
+            options.kind = "\"unknown\"";
+            try Check(options, "kind", token);
+            options.kind = "\"local\"";
+            options.platform = "\"p\"";
+            try Check(options, "platform", token);
+        } else if (scenario == 6) {
+            options.artifactDigest = "\"ABCDEFabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd\"";
+            try Check(options, "artifact_digest", token);
+            options.artifactDigest = "\"short\"";
+            try Check(options, "artifact_digest", token);
+            options.artifactDigest = "false";
+            try Check(options, "artifact_digest", token);
+            options.artifactDigest = "\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"";
+            try Check(options, "", token);
+        } else if (scenario == 7) {
+            options.capabilityCount = 64;
+            try Check(options, "", token);
+            options.capabilityCount = 65;
+            try Check(options, "capability_count", token);
+            options.capabilityCount = 2;
+            options.duplicateCapabilities = true;
+            try Check(options, "duplicate_capability", token);
+            options.capabilityCount = 1;
+            options.duplicateCapabilities = false;
+            options.invalidCapability = true;
+            try Check(options, "capability", token);
+        } else if (scenario == 8) {
+            options.driverCount = 64;
+            try Check(options, "", token);
+            options.driverCount = 65;
+            try Check(options, "driver_count", token);
+            options.driverCount = 2;
+            options.duplicateDrivers = true;
+            try Check(options, "duplicate_driver", token);
+            options.driverCount = 1;
+            options.driverId = "\".invalid\"";
+            try Check(options, "driver_id", token);
+        } else if (scenario == 9) {
+            options.featureCount = 65;
+            try Check(options, "", token);
+            options.featureCount = 2;
+            options.duplicateFeatures = true;
+            try Check(options, "duplicate_feature", token);
+            options.featureCount = 1;
+            options.duplicateFeatures = false;
+            options.unknownFeature = true;
+            try Check(options, "feature", token);
+            options.featureCount = 0;
+            try Check(options, "feature_count", token);
+        } else if (scenario == 10) {
+            options.scenarios = "[]";
+            try Check(options, "scenarios", token);
+            options.scenarios = "[\"happy\",\"happy\"]";
+            try Check(options, "scenarios", token);
+            options.scenarios = "[\"unknown\"]";
+            try Check(options, "scenarios", token);
+            options.scenarios = "[\"happy\"]";
+            options.layers = "[\"human\",\"human\"]";
+            try Check(options, "layers", token);
+            options.layers = "[]";
+            try Check(options, "layers", token);
+            options.layers = "[\"unknown\"]";
+            try Check(options, "layers", token);
+        } else if (scenario == 11) {
+            options.configuration = "{\"opaque\":{\"values\":[true,null,1,\"λ\"]}}";
+            options.unknownFields = true;
+            try Check(options, "", token);
+            options.configuration = "[]";
+            try Check(options, "configuration", token);
+            options.configuration = "null";
+            try Check(options, "configuration", token);
+        } else if (scenario == 12) {
+            options.dependencyCount = 1;
+            options.dependencyShape = 1;
+            try Check(options, "dependency_shape", token);
+            options.dependencyShape = 2;
+            try Check(options, "dependency_shape", token);
+            options.dependencyShape = 3;
+            try Check(options, "dependency_path", token);
+            options.dependencyShape = 4;
+            try Check(options, "", token);
+            options.dependencyShape = 5;
+            try Check(options, "", token);
+            options.dependencyShape = 0;
+            options.dependencyDigest = "\"not-a-digest\"";
+            try Check(options, "source_digest", token);
+            options.dependencyCount = 0;
+            options.sourceDigest = "\"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\"";
+            try Check(options, "source_digest", token);
+        } else if (scenario == 13) {
+            options.dependencyCount = 2;
+            options.duplicateDependencies = true;
+            try Check(options, "duplicate_dependency", token);
+        } else if (scenario == 14) {
+            options.dependencyCount = 1;
+            options.largePathChunks = 2;
+            try Check(options, "", token);
+            options.dependencyCount = 2;
+            try Check(options, "duplicate_dependency", token);
+        } else if (scenario == 15) {
+            options.dependencyCount = 64;
+            try Check(options, "", token);
+            options.dependencyCount = 65;
+            try Check(options, "dependency_count", token);
+        } else if (scenario == 16) {
+            options.timeout = "1";
+            try Check(options, "", token);
+            options.timeout = "14400";
+            try Check(options, "", token);
+            options.timeout = "0";
+            try Check(options, "timeout", token);
+            options.timeout = "14401";
+            try Check(options, "timeout", token);
+            options.timeout = "true";
+            try Check(options, "timeout", token);
+            options.timeout = "1.0";
+            try Check(options, "timeout", token);
+            options.timeout = "1e0";
+            try Check(options, "timeout", token);
+            options.timeout = "9223372036854775808";
+            try Check(options, "timeout", token);
+        } else if (scenario == 17) {
+            return Assert.True(false, "Cancellation probe requires the explicit probe runner");
+        } else {
+            return Assert.True(false, "Unknown Source plan case");
+        }
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    public Result<void,TestFailure> BodyWithProbe(CancellationToken token, CancellationToken probeToken) {
+        if (scenario != 17)
+            return Body(token);
+
+        PlanFixtureOptions options = new PlanFixtureOptions {};
+        options.dependencyCount = 2;
+        return CheckWithProbe(options, "", token, probeToken);
+    }
+}

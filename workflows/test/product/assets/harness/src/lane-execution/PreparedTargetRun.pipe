@@ -1,0 +1,10 @@
+module Dockpipe.Product.LaneExecution;
+import Dockpipe.Product.LaneReceipt;
+import PipeLang.Json;
+
+public Record PreparedTargetRun {
+    public ReceiptTarget target;
+    public JsonNode declaration;
+    public int expectedCases = 0;
+    public List<QualificationLaneInput> lanes = List<QualificationLaneInput>.Empty();
+}

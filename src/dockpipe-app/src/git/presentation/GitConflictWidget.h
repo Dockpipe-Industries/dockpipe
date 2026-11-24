@@ -4,6 +4,7 @@
 
 #include <QJsonObject>
 #include <QWidget>
+#include <functional>
 
 class QLabel;
 class QListWidget;
@@ -17,6 +18,7 @@ public:
     void setSnapshot(const QString &workdir, const QJsonObject &snapshot);
     void setBusy(bool busy);
     bool confirmLeave();
+    void confirmLeaveAsync(std::function<void(bool)> completion);
     bool hasUnsavedChanges() const;
 
 signals:
@@ -26,6 +28,7 @@ signals:
 private:
     void openSelected();
     void resolveSelected(const QString &action);
+    void requestOperation(const QString &action, const QString &title = {}, const QString &question = {});
     void updateControls();
     bool confirm(const QString &title, const QString &text);
 

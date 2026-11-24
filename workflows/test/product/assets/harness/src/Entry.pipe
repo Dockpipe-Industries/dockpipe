@@ -1,0 +1,5 @@
+module Dockpipe.Product.Entry;
+import PipeLang.Testing;
+import PipeLang.Testing.Async;
+import Dockpipe.Product;
+import Dockpipe.SDK;

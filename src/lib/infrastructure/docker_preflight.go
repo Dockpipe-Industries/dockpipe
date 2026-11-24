@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
+
+	"dockpipe/src/lib/domain/invocation"
+	"dockpipe/src/lib/infrastructure/process"
 )
 
 // dockerPreflightHook, if non-nil, replaces the default Docker check (tests).
@@ -22,7 +24,7 @@ var dockerPreflightErr error
 // It is skipped when DOCKPIPE_SKIP_DOCKER_PREFLIGHT=1 (application tests).
 func EnsureDockerReachable(stderr *os.File) error {
 	dockerPreflightOnce.Do(func() {
-		dockerPreflightErr = checkDockerReachable(stderr, false)
+		dockerPreflightErr = admitDockerPreflight(NativeExecutionAdmission{}, stderr, false)
 	})
 	return dockerPreflightErr
 }
@@ -30,17 +32,36 @@ func EnsureDockerReachable(stderr *os.File) error {
 // DockerDoctorCheck runs the same logic as EnsureDockerReachable but not memoized (for dockpipe doctor).
 // It ignores DOCKPIPE_SKIP_DOCKER_PREFLIGHT so diagnostics always exercise Docker.
 func DockerDoctorCheck(stderr *os.File) error {
-	return checkDockerReachable(stderr, true)
+	return DockerDoctorCheckWithAdmission(NativeExecutionAdmission{}, stderr)
 }
 
-func checkDockerReachable(stderr *os.File, ignoreSkipEnv bool) error {
+func DockerDoctorCheckWithAdmission(admission NativeExecutionAdmission, stderr *os.File) error {
+	return admitDockerPreflight(admission, stderr, true)
+}
+
+func admitDockerPreflight(admission NativeExecutionAdmission, stderr *os.File, ignoreSkipEnv bool) error {
+	_, err := invokeNativeExecution(admission, "dockpipe.containers.preflight", ignoreSkipEnv,
+		func(_ context.Context, owned bool) (invocation.Prepared[struct{}], error) {
+			environment := os.Environ()
+			prepared := invocation.Prepared[struct{}]{Execute: func(ctx context.Context) (struct{}, error) {
+				return struct{}{}, checkDockerReachable(ctx, stderr, owned, environment)
+			}}
+			if admission.Authorize != nil {
+				prepared.Digest = NativeExecutionDigest([]string{fmt.Sprint(owned), invocationFileName(stderr)}, environment)
+			}
+			return prepared, nil
+		})
+	return err
+}
+
+func checkDockerReachable(parent context.Context, stderr *os.File, ignoreSkipEnv bool, environment []string) error {
 	if dockerPreflightHook != nil {
 		return dockerPreflightHook(stderr)
 	}
-	if !ignoreSkipEnv && os.Getenv("DOCKPIPE_SKIP_DOCKER_PREFLIGHT") == "1" {
+	if !ignoreSkipEnv && envGet(environment, "DOCKPIPE_SKIP_DOCKER_PREFLIGHT") == "1" {
 		return nil
 	}
-	dockerCmd, err := resolveDockerCommandPath()
+	dockerCmd, err := resolveDockerCommandFromEnvironment(environment)
 	if err != nil {
 		return fmt.Errorf(
 			"docker not found in PATH — install the Docker CLI and ensure the daemon is running\n" +
@@ -48,11 +69,21 @@ func checkDockerReachable(stderr *os.File, ignoreSkipEnv bool) error {
 		)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(parent, 15*time.Second)
 	defer cancel()
 	cmd := execCommandContextFn(ctx, dockerCmd, "version")
-	out, err := cmd.CombinedOutput()
-	msg := strings.TrimSpace(string(out))
+	cmd.Env = dockerCommandEnv(environment, dockerCmd)
+	output := &dockerReadOutput{}
+	cmd.Stdout, cmd.Stderr = output, output
+	cmd.WaitDelay = time.Second
+	err = process.Run(cmd)
+	if parent.Err() != nil {
+		return parent.Err()
+	}
+	if output.exhausted {
+		return fmt.Errorf("preflight output from Docker exceeds its 512-KiB diagnostic limit")
+	}
+	msg := strings.TrimSpace(output.buffer.String())
 	if err == nil {
 		return nil
 	}
@@ -84,40 +115,7 @@ func dockerCommandName() string {
 }
 
 func resolveDockerCommandPath() (string, error) {
-	if configured := strings.TrimSpace(os.Getenv("DOCKPIPE_DOCKER_BIN")); configured != "" {
-		if _, err := os.Stat(configured); err != nil {
-			return "", err
-		}
-		return configured, nil
-	}
-	if p, err := exec.LookPath("docker"); err == nil {
-		return p, nil
-	}
-	if runtime.GOOS == "windows" {
-		return resolveWindowsDockerDesktopPath()
-	}
-	return "", exec.ErrNotFound
-}
-
-func resolveWindowsDockerDesktopPath() (string, error) {
-	roots := []string{
-		os.Getenv("ProgramFiles"),
-		os.Getenv("ProgramW6432"),
-		`C:\Program Files`,
-	}
-	seen := map[string]bool{}
-	for _, root := range roots {
-		root = strings.TrimSpace(root)
-		if root == "" || seen[strings.ToLower(root)] {
-			continue
-		}
-		seen[strings.ToLower(root)] = true
-		candidate := filepath.Join(root, "Docker", "Docker", "resources", "bin", "docker.exe")
-		if st, err := os.Stat(candidate); err == nil && !st.IsDir() {
-			return candidate, nil
-		}
-	}
-	return "", exec.ErrNotFound
+	return resolveDockerCommandFromEnvironment(os.Environ())
 }
 
 func dockerDaemonHints() string {

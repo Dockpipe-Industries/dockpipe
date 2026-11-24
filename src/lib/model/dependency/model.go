@@ -9,11 +9,13 @@ type DependencySpec struct {
 
 // HostDependency declares one host tool and optional platform-specific installation hints.
 type HostDependency struct {
-	ID          string                    `yaml:"id,omitempty"`
-	Command     string                    `yaml:"command,omitempty"`
-	Description string                    `yaml:"description,omitempty"`
-	Required    *bool                     `yaml:"required,omitempty"`
-	Install     HostDependencyInstallHint `yaml:"install,omitempty"`
+	ID             string                    `yaml:"id,omitempty"`
+	Command        string                    `yaml:"command,omitempty"`
+	WindowsFeature string                    `yaml:"windows_feature,omitempty"`
+	WindowsService string                    `yaml:"windows_service,omitempty"`
+	Description    string                    `yaml:"description,omitempty"`
+	Required       *bool                     `yaml:"required,omitempty"`
+	Install        HostDependencyInstallHint `yaml:"install,omitempty"`
 }
 
 // HostDependencyInstallHint carries authored platform-specific installation instructions.

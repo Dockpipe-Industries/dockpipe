@@ -1,18 +1,28 @@
 #include "ResourceCanvas.h"
 #include "MainWindow.h"
+#include "WorkspaceNavigationList.h"
+#include "WindowCompositor.h"
 #include "LauncherStatusBar.h"
 #include "ProjectFilesWidget.h"
+#include "FileToolsController.h"
 #include "WorkspacePackageManager.h"
 #include "PackageSurfacePage.h"
 #include "ProjectGitWidget.h"
 
 #include "BasicModeWidget.h"
 #include "BrowserWidget.h"
+#include "RemoteBrowserWidget.h"
 #include "BrowserLinkRouter.h"
 #include "DashboardWidgetFactory.h"
 #include "TerminalWidget.h"
+#include "WorkspaceMachineMenu.h"
 #include "TerminalPreferences.h"
 #include "RemoteWidget.h"
+#include "RemoteDesktopWidget.h"
+#include "RemoteAccessMonitor.h"
+#include "RemoteWorkflowMonitor.h"
+#include "NotificationBell.h"
+#include <QToolBar>
 #include "ActivityWidget.h"
 #include <QTabWidget>
 #include <QTabBar>
@@ -22,10 +32,12 @@
 #include "ContextRowWidget.h"
 #include "DockpipeChoices.h"
 #include "DockerObservabilityWidget.h"
+#include "EnvironmentsPage.h"
 #include "GitHelper.h"
 #include "LogViewerDialog.h"
 #include "PackageManagerDialog.h"
 #include "LauncherEnvironment.h"
+#include "LauncherTranslations.h"
 #include "PromptDialog.h"
 #include "SettingsDialog.h"
 #include "WorkflowLaunchDialog.h"
@@ -57,6 +69,7 @@
 #include <QPlainTextEdit>
 #include <QMenu>
 #include <QMenuBar>
+#include <QLocale>
 #include <QMessageBox>
 #include <QProcess>
 #include <QProcessEnvironment>
@@ -85,6 +98,8 @@ namespace {
 constexpr int browserPageIndex = 7;
 constexpr int cockpitPageIndex = 8;
 constexpr int terminalPageIndex = 9;
+constexpr int desktopPageIndex = 10;
+constexpr int environmentsPageIndex = 2;
 
 QString statusLabel(SessionManager &sm, const QString &id, bool *runningOut, bool *failedOut)
 {
@@ -166,11 +181,14 @@ QMap<QString, QString> parseEnvAssignments(const QStringList &lines)
     return out;
 }
 
-QStringList formatEnvAssignments(const QMap<QString, QString> &values)
+QStringList formatEnvAssignments(const QMap<QString, QString> &values, const QSet<QString> &declaredInputNames)
 {
     QStringList out;
     for (auto it = values.begin(); it != values.end(); ++it) {
-        if (it.key().trimmed().isEmpty() || (!it.key().startsWith("DOCKPIPE_VSCODE_INPUT_") && it.value().trimmed().isEmpty()))
+        if (it.key().trimmed().isEmpty())
+            continue;
+        if (it.value().trimmed().isEmpty() && !declaredInputNames.contains(it.key())
+            && !it.key().startsWith("DOCKPIPE_VSCODE_INPUT_"))
             continue;
         out.append(it.key() + QStringLiteral("=") + it.value());
     }
@@ -215,7 +233,7 @@ bool workflowNeedsConfigPromptInputs(const QVector<WorkflowInputMeta> &inputs, c
     for (const WorkflowInputMeta &input : inputs) {
         const QString envName = input.envName.trimmed().toUpper();
         if (!envName.isEmpty()) {
-            if ((envName.startsWith("DOCKPIPE_VSCODE_INPUT_") && currentValues.contains(envName)) || !currentValues.value(envName).trimmed().isEmpty())
+            if (currentValues.contains(envName))
                 continue;
             if (!input.defaultValue.trimmed().isEmpty())
                 continue;
@@ -279,11 +297,6 @@ QVector<Context> contextsFromCatalog(const QString &workdir, const QString &repo
     Q_UNUSED(repoRoot);
     const QString clean = QDir::cleanPath(workdir);
 
-    QString baseLabel = QFileInfo(clean).fileName();
-    const QString gitRoot = GitHelper::repoRoot(clean);
-    if (!gitRoot.isEmpty())
-        baseLabel = QFileInfo(gitRoot).fileName() + QStringLiteral(" — ") + QFileInfo(clean).fileName();
-
     QVector<Context> out;
     out.reserve(catalog.workflows.size());
     for (const WorkflowMeta &wf : catalog.workflows) {
@@ -315,6 +328,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
 {
+    prepareLauncherWindowCompositor(*this);
     setStatusBar(new LauncherStatusBar(this));
     connect(qApp, &QCoreApplication::aboutToQuit, this, &MainWindow::releaseDashboardWindows);
     // Allocate an alpha surface before native window creation only when opted in.
@@ -364,12 +378,55 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
 
     m_stack->addWidget(m_basicWidget);
     m_stack->addWidget(m_advancedPage);
-    m_remoteWidget = new RemoteWidget;
-    m_activityWidget = new ActivityWidget(m_sessions, m_store);
-    m_stack->addWidget(m_remoteWidget);
+    m_remoteWidget = new RemoteWidget(this);
+    m_remoteWidget->hide();
+    connect(m_remoteAccess, &RemoteAccessMonitor::unlockFinished, this, [this](bool unlocked) {
+        if (unlocked)
+            m_remoteWidget->refresh();
+    });
+    m_activityWidget = new ActivityWidget(m_sessions, m_store, this);
+    m_activityWidget->hide();
+    m_environmentsPage = new EnvironmentsPage;
+    m_environmentsPage->setWorkspace(m_settings.projectFolder);
+    auto *environmentsLayout = qobject_cast<QVBoxLayout *>(m_environmentsPage->layout());
+    environmentsLayout->insertWidget(0, m_notifications->createMachinesNotice(m_environmentsPage));
+    m_stack->addWidget(m_environmentsPage);
+    connect(m_remoteWidget, &RemoteWidget::machineInventoryChanged,
+        m_environmentsPage, &EnvironmentsPage::setMachineInventory);
+    connect(m_environmentsPage, &EnvironmentsPage::addRemoteMachineRequested,
+        m_remoteWidget, &RemoteWidget::beginEnvironmentPairing);
+    connect(m_remoteWidget, &RemoteWidget::environmentFlowFinished,
+        m_environmentsPage, &EnvironmentsPage::showInventory);
+    connect(m_environmentsPage, &EnvironmentsPage::machineRefreshRequested, this, [this] {
+        m_remoteWidget->setWorkdir(m_settings.projectFolder);
+        m_remoteWidget->refresh();
+        if (m_remoteAccess->state() == RemoteAccessMonitor::State::Unlocked)
+            refreshWorkspaceMachines();
+    });
+    connect(m_environmentsPage, &EnvironmentsPage::resourceControlsRequested, this,
+        [this](const QString &kind, const QString &id, const QString &workdir) {
+            if (kind == "vm") {
+                if (auto *page = m_surfacePages.value(QStringLiteral("dockpipe.vm")).data()) {
+                    if (!workdir.isEmpty() && QFileInfo(workdir).isDir()) {
+                        page->setWorkspace(workdir, DockpipeChoices::preferredDockpipeBinary(workdir));
+                        page->setProperty("environmentConsoleWorkdir", workdir);
+                    }
+                    page->selectResourceById(id);
+                    m_environmentsPage->showVirtualMachineControls();
+                }
+            } else if (kind == "container") {
+                ensureTerminal();
+                if (m_terminalWidget && m_terminalWidget->openEnvironmentContainer(id))
+                    selectPage(terminalPageIndex);
+            } else if (kind == "machine") {
+                m_remoteWidget->openMachineSettings(id);
+            } else if (kind == "computer") {
+                m_remoteWidget->beginEnvironmentConnectionSetup();
+            }
+        });
     m_dockerWidget = new DockerObservabilityWidget;
     m_stack->addWidget(m_dockerWidget);
-    m_executionExplorer = new ExecutionExplorer;
+    m_executionExplorer = new ExecutionExplorer(nullptr, ExecutionExplorer::Purpose::System);
     const QString nativeHostReference = qEnvironmentVariable("DOCKPIPE_NATIVE_HOST_CONNECTION");
     if (!nativeHostReference.isEmpty()) {
         m_nativeHost = new NativeHostConnection(nativeHostReference, this);
@@ -383,17 +440,22 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     m_executionTabs->setObjectName("executionTabs");
     m_executionTabs->setDocumentMode(true);
     m_executionTabs->tabBar()->setDrawBase(false);
-    m_executionTabs->addTab(m_executionExplorer, tr("Processes && resources"));
-    m_executionTabs->addTab(m_activityWidget, tr("Runs && logs"));
+    m_executionTabs->addTab(m_executionExplorer, tr("System"));
+    m_executionTabs->tabBar()->hide();
     connect(m_activityWidget, &ActivityWidget::browseWorkflowsRequested, this, [this]() {
+        if (m_workflowRunLogs)
+            m_workflowRunLogs->hide();
+        m_workflowSections->setCurrentIndex(0);
         selectPage(1);
     });
     m_stack->addWidget(m_executionTabs);
     m_projectFiles = new ProjectFilesWidget;
     m_projectFiles->setRoot(m_settings.projectFolder);
     connect(m_projectFiles, &ProjectFilesWidget::workflowOpenRequested, this, [this](const QString &path) {
-        if (m_workflowEditor->openWorkflow(path))
-            selectPage(1);
+        m_workflowEditor->openWorkflowAsync(path, [this](bool opened) {
+            if (opened)
+                selectPage(1);
+        });
     });
     m_stack->addWidget(m_projectFiles);
     m_projectGit = new ProjectGitWidget;
@@ -409,16 +471,42 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     auto *terminalPlaceholder = new QWidget;
     terminalPlaceholder->setObjectName("terminalPlaceholder");
     m_stack->addWidget(terminalPlaceholder);
-    connect(m_executionTabs, &QTabWidget::currentChanged, this, [this](int tab) {
-        m_executionExplorer->setActive(((m_stack->currentWidget() == m_executionTabs
-            || (m_cockpit && m_cockpit->activePanel() == "executions")) && tab == 0)
-            || (m_cockpit && m_cockpit->resourceSection() == "executions"));
-        if (tab == 1)
-            m_activityWidget->refreshLocal();
+    m_remoteDesktopWidget = new RemoteDesktopWidget;
+    m_remoteDesktopWidget->setAccessMonitor(m_remoteAccess);
+    connect(m_remoteDesktopWidget, &RemoteDesktopWidget::installProviderRequested, this, &MainWindow::onManagePackages);
+    connect(m_remoteDesktopWidget, &RemoteDesktopWidget::providerSetupRequested, this, [this](const QString &workflow, const QString &surface, const QString &action) {
+        launchSurfaceWorkflow(workflow, surface, action, {});
     });
-    connect(&m_sessions, &SessionManager::sessionStarted, m_executionExplorer, &ExecutionExplorer::refresh);
-    connect(&m_sessions, &SessionManager::sessionStopped, m_executionExplorer, &ExecutionExplorer::refresh);
-    connect(&m_sessions, &SessionManager::sessionFailed, m_executionExplorer, &ExecutionExplorer::refresh);
+    m_stack->addWidget(m_remoteDesktopWidget);
+    connect(m_environmentsPage, &EnvironmentsPage::applyRequested, this, [this](const EnvironmentDefinition &definition) {
+        Context context = Context::createNew();
+        SessionLaunchOptions options;
+        if (definition.scope == "personal") {
+            context.workdir = m_settings.projectFolder.isEmpty() ? QDir::homePath() : m_settings.projectFolder;
+            options.environmentDefinitionName = definition.name;
+        } else {
+            context.workdir = QFileInfo(definition.path).absolutePath();
+            options.environmentDefinitionFile = definition.path;
+        }
+        context.dockpipeBinary = DockpipeChoices::preferredDockpipeBinary(context.workdir);
+
+        m_environmentRuns.insert(context.id, definition.path);
+        m_environmentsPage->setApplying(definition.path, true);
+        if (!m_sessions.launch(context, ContextStore::logsDir(), options)) {
+            m_environmentRuns.remove(context.id);
+            m_environmentsPage->setApplying(definition.path, false);
+        }
+    });
+    const auto finishEnvironmentRun = [this](const QString &id) {
+        const auto path = m_environmentRuns.take(id);
+        if (!path.isEmpty())
+            m_environmentsPage->setApplying(path, false);
+    };
+    connect(&m_sessions, &SessionManager::sessionStopped, m_environmentsPage, finishEnvironmentRun);
+    connect(&m_sessions, &SessionManager::sessionFailed, m_environmentsPage, finishEnvironmentRun);
+    connect(&m_sessions, &SessionManager::sessionStarted, m_workflowRuns, &ExecutionExplorer::refresh);
+    connect(&m_sessions, &SessionManager::sessionStopped, m_workflowRuns, &ExecutionExplorer::refresh);
+    connect(&m_sessions, &SessionManager::sessionFailed, m_workflowRuns, &ExecutionExplorer::refresh);
 
     auto *shell = new QHBoxLayout;
     shell->setSpacing(0);
@@ -436,7 +524,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     auto *tagline = new QLabel(tr("Your work. Anywhere."));
     tagline->setObjectName(QStringLiteral("appSubtitle"));
     railLayout->addWidget(tagline);
-    m_navigation = new QListWidget;
+    m_navigation = new WorkspaceNavigationList;
     m_navigation->setObjectName(QStringLiteral("workspaceNavigation"));
     for (int page = 0; page < m_pageActions.size(); ++page) {
         auto *item = new QListWidgetItem(m_pageActions[page]->text(), m_navigation);
@@ -493,13 +581,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     m_workspacePath->setObjectName(QStringLiteral("workspacePath"));
     m_workspacePath->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     workspaceLayout->addWidget(m_workspacePath, 1);
+    setupWorkspaceMachineMenu(workspaceLayout);
     workspace->addWidget(workspaceBar);
     workspace->addWidget(m_stack, 1);
     shell->addLayout(workspace, 1);
     outer->addLayout(shell, 1);
     connect(m_navigation, &QListWidget::currentRowChanged, this, [this](int row) {
         const int page = row < 0 ? -1 : m_navigation->item(row)->data(Qt::UserRole).toInt();
-        if (page < 0)
+        if (!m_stack->widget(page))
             return;
         if (page == cockpitPageIndex) {
             if (!m_settings.cockpit.enabled) {
@@ -512,19 +601,32 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
             ensureBrowser();
         if (page == terminalPageIndex)
             ensureTerminal();
-        if (page > terminalPageIndex)
+        if (!m_stack->widget(page)->property("dashboardId").toString().isEmpty())
             ensureDashboard(page);
         m_stack->setCurrentIndex(page);
-        for (const auto &surface : m_surfacePages) {
-            if (surface)
-                surface->setActive(m_stack->widget(page) == surface);
+        m_environmentsPage->setActive(page == environmentsPageIndex);
+        m_environmentsPage->setTerminalInventoryActive(page == terminalPageIndex);
+        if (page == terminalPageIndex)
+            refreshTerminalRemoteContainers();
+        if (page != 2)
+            m_notifications->machinesLeft();
+        if (page != 1 && m_workflowRunLogs)
+            m_workflowRunLogs->hide();
+        for (auto surface = m_surfacePages.cbegin(); surface != m_surfacePages.cend(); ++surface) {
+            if (surface.value() && surface.key() != QStringLiteral("dockpipe.vm"))
+                surface.value()->setActive(m_stack->widget(page) == surface.value());
         }
         updateDashboardFullscreen();
-        m_workspaceBar->setVisible(page == 0 || page == 5 || page == 6 || page == terminalPageIndex);
+        m_workspaceBar->setVisible(page == 0 || (page == 1 && m_workflowSections->currentIndex() > 0)
+            || page == 3 || page == 5 || page == 6
+            || (page >= terminalPageIndex && page != desktopPageIndex));
         m_dockerWidget->setActive(page == 3 || (page == cockpitPageIndex && m_cockpit && m_cockpit->resourceSection() == "containers"));
         m_executionExplorer->setWorkdir(m_settings.projectFolder);
-        m_executionExplorer->setActive((page == 4 && m_executionTabs->currentIndex() == 0)
+        m_executionExplorer->setActive(page == 4
             || (page == cockpitPageIndex && m_cockpit && m_cockpit->resourceSection() == "executions"));
+        m_workflowRuns->setWorkdir(m_settings.projectFolder);
+        m_workflowRuns->setActive(m_workflowSections->currentIndex() > 0 && (page == 1
+            || (page == cockpitPageIndex && m_cockpit && m_cockpit->activePanel() == "workflows")));
         m_pageActions[page]->setChecked(true);
         m_actIcons->setEnabled(page == 0);
         m_actList->setEnabled(page == 0);
@@ -537,8 +639,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
             m_settings.uiMode = QStringLiteral("advanced");
             startAdvancedContextDiscovery();
         } else if (page == 2) {
-            m_remoteWidget->setWorkdir(m_settings.projectFolder);
-            m_remoteWidget->refresh();
+            m_notifications->machinesEntered();
         } else if (page == 3 || page == 4) {
             m_activityWidget->setWorkdir(m_settings.projectFolder);
             m_activityWidget->refreshLocal();
@@ -551,6 +652,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
                 m_cockpit->setWorkspace(m_settings.projectFolder);
         }
     });
+    connect(m_navigation, &QListWidget::itemClicked, this, [this](QListWidgetItem *item) {
+        if (item->data(Qt::UserRole).toInt() == 2)
+            m_notifications->machinesEntered();
+    });
     connect(m_remoteWidget, &RemoteWidget::installProviderRequested, this, [this]() {
         PackageManagerDialog dialog(m_settings.projectFolder, this);
         dialog.showRemoteProviders();
@@ -561,26 +666,22 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
         dialog.exec();
         startWorkflowCatalogDiscovery();
     });
-    connect(m_remoteWidget, &RemoteWidget::nodesChanged, this, [this](const QStringList &nodes) {
-        m_executionExplorer->setNodes(nodes);
-        m_dockerWidget->setNodes(nodes);
-        const QSignalBlocker blocker(m_runTarget);
-        const QSignalBlocker pickerBlocker(m_pickerTarget);
-        const QString selected = m_runTarget->currentData().toString();
-        m_runTarget->clear();
-        m_runTarget->addItem(CanvasIcons::icon(CanvasIcons::Symbol::Monitor), tr("This computer"), QString());
-        for (const auto &node : nodes)
-            m_runTarget->addItem(CanvasIcons::icon(CanvasIcons::Symbol::Monitor), node, node);
-        int index = m_runTarget->findData(selected);
-        if (index < 0) {
-            m_runTarget->addItem(selected + tr(" — unavailable"), selected);
-            index = m_runTarget->count() - 1;
-            m_runTarget->setItemData(index, true, Qt::UserRole + 1);
-        }
-        m_runTarget->setCurrentIndex(index);
-        m_pickerTarget->setCurrentIndex(index);
-        updateWorkflowPreview();
+    connect(m_remoteWidget, &RemoteWidget::pairedMachinesChanged, this, [this](const QJsonArray &machines) {
+        m_pairedMachines.clear();
+        for (const auto &machine : machines)
+            m_pairedMachines.append(machine.toObject().value("node").toString());
+        m_pairedMachines.removeAll(QString());
+        m_pairedMachines.removeDuplicates();
+        m_pairedMachines.sort();
+        m_remoteDesktopWidget->setPairedMachines(machines);
+        if (m_dashboardFactory)
+            m_dashboardFactory->refreshRemoteDesktopMetadata();
+        m_executionExplorer->setNodes(m_pairedMachines);
+        m_dockerWidget->setNodes(m_pairedMachines);
+        updateWorkspaceMachineAccess();
+        updateWorkspaceMachineLabels();
     });
+    QTimer::singleShot(0, m_remoteWidget, [this] { m_remoteWidget->refresh(); });
     connect(m_stack, &QStackedWidget::currentChanged, this, [this](int index) {
         if (selectedPage() != index)
             selectPage(index);
@@ -615,6 +716,54 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     connect(m_basicWidget, &BasicModeWidget::continueLastRequested, this, &MainWindow::onBasicContinueLast);
     connect(m_basicWidget, &BasicModeWidget::backToHomeRequested, this, &MainWindow::onBasicBackHome);
 
+    const auto workflowTitle = [this](const QString &id) {
+        for (const auto &context : m_store.contexts) {
+            if (context.id == id)
+                return context.label.isEmpty() ? context.workflow : context.label;
+        }
+        return tr("Workflow");
+    };
+    connect(&m_sessions, &SessionManager::sessionStopped, this,
+        [this, workflowTitle](const QString &id, int exitCode, QProcess::ExitStatus exitStatus) {
+            const SessionInfo info = m_sessions.info(id);
+            if (!info.notifyWorkflowOutcome)
+                return;
+            auto outcome = NotificationBell::WorkflowOutcome::Completed;
+            if (info.stopRequested)
+                outcome = NotificationBell::WorkflowOutcome::Stopped;
+            else if (exitCode != 0 || exitStatus != QProcess::NormalExit)
+                outcome = NotificationBell::WorkflowOutcome::Failed;
+            m_notifications->notifyWorkflow(workflowTitle(id), info.logPath, outcome);
+        });
+    connect(&m_sessions, &SessionManager::sessionFailed, this,
+        [this, workflowTitle](const QString &id, const QString &) {
+            const SessionInfo info = m_sessions.info(id);
+            // Runtime errors are followed by sessionStopped; startup failures are not.
+            if (info.pid == 0 && info.notifyWorkflowOutcome)
+                m_notifications->notifyWorkflow(workflowTitle(id), info.logPath, NotificationBell::WorkflowOutcome::Failed);
+        });
+    connect(m_notifications, &NotificationBell::workflowLogsRequested, this,
+        [this](const QString &title, const QString &path) {
+            LogViewerDialog dialog(tr("%1 logs").arg(title), path, QString(), false, this);
+            dialog.exec();
+        });
+    connect(m_remoteWorkflows, &RemoteWorkflowMonitor::finished, this,
+        [this](const QString &job, const QString &title, const QString &result) {
+            auto outcome = NotificationBell::WorkflowOutcome::Completed;
+            if (result == "failed")
+                outcome = NotificationBell::WorkflowOutcome::Failed;
+            else if (result == "cancelled")
+                outcome = NotificationBell::WorkflowOutcome::Stopped;
+            m_notifications->notifyRemoteWorkflow(title.isEmpty() ? tr("Remote workflow") : title, job, outcome);
+        });
+    connect(m_notifications, &NotificationBell::remoteJobRequested, this, [this](const QString &job) {
+        openWorkflowRunLogs(true);
+        m_activityWidget->showRemoteJob(job);
+    });
+    connect(m_notifications, &NotificationBell::workflowHistoryRequested, this, [this]() {
+        selectPage(1);
+        m_workflowSections->setCurrentIndex(2);
+    });
     connect(&m_sessions, &SessionManager::sessionStarted, this, &MainWindow::onSessionChanged);
     connect(&m_sessions, &SessionManager::sessionReady, this, &MainWindow::onSessionChanged);
     connect(&m_sessions, &SessionManager::sessionStopped, this, &MainWindow::onSessionChanged);
@@ -702,6 +851,34 @@ void MainWindow::onRestoreThirdPartyDisclaimer()
 
 void MainWindow::setupMenuBar()
 {
+    m_remoteAccess = new RemoteAccessMonitor(this);
+    m_remoteWorkflows = new RemoteWorkflowMonitor(this);
+    connect(m_remoteAccess, &RemoteAccessMonitor::changed, this, [this]() {
+        m_remoteWorkflows->setAccessUnlocked(m_remoteAccess->state() == RemoteAccessMonitor::State::Unlocked);
+    });
+    m_notifications = new NotificationBell(*m_remoteAccess, menuBar());
+#ifdef Q_OS_MACOS
+    // The macOS menu bar is global and cannot host a widget accessory.
+    auto *notifications = new QToolBar(tr("Remote access"), this);
+    notifications->setObjectName("remoteAccessToolbar");
+    notifications->setMovable(false);
+    notifications->setFloatable(false);
+    auto *spacer = new QWidget(notifications);
+    spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    notifications->addWidget(spacer);
+    notifications->addWidget(m_notifications);
+    addToolBar(Qt::TopToolBarArea, notifications);
+    setUnifiedTitleAndToolBarOnMac(true);
+#else
+    menuBar()->setCornerWidget(m_notifications, Qt::TopRightCorner);
+#endif
+    connect(m_notifications, &NotificationBell::securitySettingsRequested, this, [this]() {
+        SettingsDialog dialog(m_settings, this);
+        dialog.showSecurityPage();
+        if (dialog.exec() == QDialog::Accepted && saveSettings(dialog.updatedSettings()))
+            offerLanguageRestart();
+        m_remoteAccess->refresh();
+    });
     QMenu *file = menuBar()->addMenu(tr("File"));
     file->addAction(tr("Open project folder…"), this, &MainWindow::onFileOpenProject, QKeySequence::Open);
     file->addAction(tr("Refresh app list"), this, &MainWindow::onRefreshAppList, QKeySequence::Refresh);
@@ -712,7 +889,7 @@ void MainWindow::setupMenuBar()
     view->setObjectName("workspaceViewMenu");
     auto *modeGroup = new QActionGroup(this);
     m_pageGroup = modeGroup;
-    const QStringList pages{tr("Apps"), tr("Workflows"), tr("Machines"), tr("Containers"), tr("Executions"), tr("Files"), tr("Git"), tr("Browser"), tr("Cockpit · Experimental"), tr("Terminal")};
+    const QStringList pages{tr("Apps"), tr("Workflows"), tr("Environments"), tr("Containers"), tr("System"), tr("Files"), tr("Git"), tr("Browser"), tr("Cockpit · Experimental"), tr("Terminal"), tr("Remote Desktop")};
     for (int page = 0; page < pages.size(); ++page) {
         auto *action = view->addAction(pages[page]);
         action->setCheckable(true);
@@ -722,8 +899,8 @@ void MainWindow::setupMenuBar()
             selectPage(page);
         });
     }
-    view->removeAction(m_pageActions[terminalPageIndex]);
-    view->insertAction(m_pageActions[cockpitPageIndex], m_pageActions[terminalPageIndex]);
+    view->removeAction(m_pageActions[cockpitPageIndex]);
+    view->addAction(m_pageActions[cockpitPageIndex]);
     m_addDashboardAction = view->addAction(tr("New dashboard…"), this, &MainWindow::createDashboard);
     m_addDashboardAction->setObjectName("newDashboardAction");
     m_fullscreenAction = view->addAction(tr("Full screen"), this, &MainWindow::toggleDashboardFullscreen);
@@ -879,9 +1056,101 @@ void MainWindow::onViewCompactList()
 void MainWindow::onOpenSettings()
 {
     SettingsDialog dialog(m_settings, this);
-    if (dialog.exec() != QDialog::Accepted)
+    const int result = dialog.exec();
+    m_remoteAccess->refresh();
+    if (result != QDialog::Accepted)
         return;
-    saveSettings(dialog.updatedSettings());
+    if (saveSettings(dialog.updatedSettings()))
+        offerLanguageRestart();
+}
+
+void MainWindow::offerLanguageRestart()
+{
+    const QString activeLanguage = LauncherTranslations::activeLanguage();
+    const QString requestedLanguage = LauncherTranslations::resolveLanguage(
+        LauncherTranslations::savedLanguage(), QLocale::system().uiLanguages());
+    if (activeLanguage.isEmpty() || requestedLanguage == activeLanguage)
+        return;
+
+    QMessageBox prompt(QMessageBox::Information, tr("Restart Dockpipe"),
+        tr("Your language is saved. Restart Dockpipe now to apply it? Open terminal sessions will close."),
+        QMessageBox::NoButton, this);
+    prompt.setObjectName("languageRestartPrompt");
+    auto *restart = prompt.addButton(tr("Restart now"), QMessageBox::AcceptRole);
+    restart->setObjectName("languageRestartNow");
+    auto *later = prompt.addButton(tr("Later"), QMessageBox::RejectRole);
+    later->setObjectName("languageRestartLater");
+    prompt.setDefaultButton(restart);
+    prompt.setEscapeButton(later);
+    prompt.exec();
+    if (prompt.clickedButton() == restart) {
+        confirmQuitAsync([this](bool accepted) {
+            if (accepted)
+                emit restartRequested();
+        });
+    }
+}
+
+void MainWindow::confirmQuitAsync(std::function<void(bool)> completion)
+{
+    if (property("leaveConfirmationPending").toBool() || property("workspaceChangePending").toBool()) {
+        completion(false);
+        return;
+    }
+    if (m_projectGit && m_projectGit->busy()) {
+        statusBar()->showMessage(tr("Wait for the Git action to finish, or cancel it in Git before quitting."), 8000);
+        completion(false);
+        return;
+    }
+    if (m_cockpit && !m_cockpit->confirmLeave()) {
+        completion(false);
+        return;
+    }
+    setProperty("leaveConfirmationPending", true);
+    const QPointer<MainWindow> guard(this);
+    auto filesFinished = [guard, completion = std::move(completion)](bool accepted) mutable {
+        if (!guard)
+            return;
+        if (!accepted) {
+            guard->setProperty("leaveConfirmationPending", false);
+            completion(false);
+            return;
+        }
+        guard->confirmDashboardCloseAsync([guard, completion = std::move(completion)](bool accepted) {
+            if (!guard)
+                return;
+            guard->setProperty("leaveConfirmationPending", false);
+            completion(accepted);
+        });
+    };
+    auto workflowFinished = [guard, filesFinished = std::move(filesFinished)](bool accepted) mutable {
+        if (!guard)
+            return;
+        if (!accepted) {
+            filesFinished(false);
+            return;
+        }
+        if (guard->m_projectFiles)
+            guard->m_projectFiles->confirmLeaveAsync(std::move(filesFinished));
+        else
+            filesFinished(true);
+    };
+    auto gitFinished = [guard, workflowFinished = std::move(workflowFinished)](bool accepted) mutable {
+        if (!guard)
+            return;
+        if (!accepted) {
+            workflowFinished(false);
+            return;
+        }
+        if (guard->m_workflowEditor)
+            guard->m_workflowEditor->confirmDiscardChangesAsync(std::move(workflowFinished));
+        else
+            workflowFinished(true);
+    };
+    if (m_projectGit)
+        m_projectGit->confirmLeaveAsync(std::move(gitFinished));
+    else
+        gitFinished(true);
 }
 
 void MainWindow::ensureBrowser()
@@ -889,7 +1158,18 @@ void MainWindow::ensureBrowser()
     if (m_browserWidget)
         return;
 
-    m_browserWidget = new BrowserWidget(m_stack);
+    m_browserWidget = new RemoteBrowserWidget(QStringLiteral("main-browser"), m_stack);
+    const auto updateAccess = [this] {
+        m_browserWidget->setMachineCatalog(m_workspaceMachineMenu ? m_workspaceMachineMenu->catalog() : QJsonArray{},
+            m_remoteAccess && m_remoteAccess->state() == RemoteAccessMonitor::State::Unlocked);
+    };
+    updateAccess();
+    if (m_remoteAccess) {
+        connect(m_remoteAccess, &RemoteAccessMonitor::changed, m_browserWidget, updateAccess);
+        connect(m_browserWidget, &RemoteBrowserWidget::unlockRequested, m_remoteAccess, &RemoteAccessMonitor::unlock);
+    }
+    connect(m_browserWidget, &RemoteBrowserWidget::refreshRequested, this, &MainWindow::refreshWorkspaceMachines);
+    updateWorkspaceMachineAccess();
     const QSignalBlocker blocker(m_stack);
     QWidget *placeholder = m_stack->widget(browserPageIndex);
     m_stack->removeWidget(placeholder);
@@ -902,7 +1182,24 @@ void MainWindow::ensureTerminal()
     if (m_terminalWidget || !m_dashboardFactory)
         return;
     m_terminalWidget = new TerminalWidget(m_dashboardFactory->terminals(), m_settings.projectFolder, m_stack);
+    const auto updateContainerTargets = [this] {
+        m_terminalWidget->setEnvironmentContainers(m_environmentsPage->runningContainerTargets());
+    };
+    connect(m_environmentsPage, &EnvironmentsPage::containerTargetsChanged, m_terminalWidget, updateContainerTargets);
+    updateContainerTargets();
+    if (m_workspaceMachineMenu && !m_workspaceMachineMenu->currentTarget().isEmpty()) {
+        QJsonObject selected{{"target", m_workspaceMachineMenu->currentTarget()}};
+        for (const auto &value : m_workspaceMachineMenu->catalog()) {
+            const auto catalog = value.toObject();
+            if (catalog.value("target").toObject() == m_workspaceMachineMenu->currentTarget()) {
+                selected = catalog;
+                break;
+            }
+        }
+        m_terminalWidget->setWorkspaceTarget(selected, m_workspaceMachineMenu->currentRoot());
+    }
     connect(m_dashboardFactory, &DashboardWidgetFactory::workdirChanged, m_terminalWidget, &TerminalWidget::setWorkdir);
+    updateWorkspaceMachineAccess();
     const QSignalBlocker blocker(m_stack);
     QWidget *placeholder = m_stack->widget(terminalPageIndex);
     m_stack->removeWidget(placeholder);
@@ -993,13 +1290,14 @@ void MainWindow::ensureCockpit()
             m_executionExplorer->setWorkdir(m_settings.projectFolder);
             m_executionExplorer->setActive(((active || m_stack->currentWidget() == m_executionTabs) && m_executionTabs->currentIndex() == 0)
                 || m_cockpit->resourceSection() == "executions");
-            if (active)
-                m_activityWidget->refreshLocal();
+
         } else if (key == "machines" && active) {
             m_remoteWidget->setWorkdir(m_settings.projectFolder);
             m_remoteWidget->refresh();
-        } else if (key == "workflows" && active) {
-            startAdvancedContextDiscovery();
+        } else if (key == "workflows") {
+            m_workflowRuns->setActive(m_workflowSections->currentIndex() > 0 && active);
+            if (active)
+                startAdvancedContextDiscovery();
         }
     };
 }
@@ -1066,15 +1364,18 @@ void MainWindow::onFileOpenProject()
     const QString d = QFileDialog::getExistingDirectory(this, tr("Open project folder"), m_settings.projectFolder);
     if (d.isEmpty())
         return;
-    if (!setWorkflowWorkspace(QDir::cleanPath(d)))
-        return;
-    m_settings.projectFolder = QDir::cleanPath(d);
-    m_settings.addRecentProject(m_settings.projectFolder);
-    m_settings.save();
-    m_basicWidget->setRecentProjects(m_settings.recentProjectFolders);
-    m_basicWidget->setContinueLastVisible(true);
-    m_basicWidget->showWorkspacePage();
-    rebuildUi();
+    const QString root = QDir::cleanPath(d);
+    setWorkflowWorkspaceAsync(root, [this, root](bool accepted) {
+        if (!accepted)
+            return;
+        m_settings.projectFolder = root;
+        m_settings.addRecentProject(m_settings.projectFolder);
+        m_settings.save();
+        m_basicWidget->setRecentProjects(m_settings.recentProjectFolders);
+        m_basicWidget->setContinueLastVisible(true);
+        m_basicWidget->showWorkspacePage();
+        rebuildUi();
+    });
 }
 
 void MainWindow::onBasicBackHome()
@@ -1089,15 +1390,18 @@ void MainWindow::onBasicOpenRecent(const QString &absPath)
 {
     if (absPath.isEmpty())
         return;
-    if (!setWorkflowWorkspace(QDir::cleanPath(absPath)))
-        return;
-    m_settings.projectFolder = QDir::cleanPath(absPath);
-    m_settings.addRecentProject(m_settings.projectFolder);
-    m_settings.save();
-    m_basicWidget->setRecentProjects(m_settings.recentProjectFolders);
-    m_basicWidget->setContinueLastVisible(true);
-    m_basicWidget->showWorkspacePage();
-    rebuildUi();
+    const QString root = QDir::cleanPath(absPath);
+    setWorkflowWorkspaceAsync(root, [this, root](bool accepted) {
+        if (!accepted)
+            return;
+        m_settings.projectFolder = root;
+        m_settings.addRecentProject(m_settings.projectFolder);
+        m_settings.save();
+        m_basicWidget->setRecentProjects(m_settings.recentProjectFolders);
+        m_basicWidget->setContinueLastVisible(true);
+        m_basicWidget->showWorkspacePage();
+        rebuildUi();
+    });
 }
 
 void MainWindow::onBasicContinueLast()
@@ -1107,33 +1411,40 @@ void MainWindow::onBasicContinueLast()
         folder = m_settings.recentProjectFolders.first();
     if (folder.isEmpty())
         return;
-    if (!setWorkflowWorkspace(QDir::cleanPath(folder)))
-        return;
-    m_settings.projectFolder = QDir::cleanPath(folder);
-    m_settings.addRecentProject(m_settings.projectFolder);
-    m_settings.save();
-    m_basicWidget->setRecentProjects(m_settings.recentProjectFolders);
-    m_basicWidget->setContinueLastVisible(true);
-    m_basicWidget->showWorkspacePage();
-    rebuildUi();
+    const QString root = QDir::cleanPath(folder);
+    setWorkflowWorkspaceAsync(root, [this, root](bool accepted) {
+        if (!accepted)
+            return;
+        m_settings.projectFolder = root;
+        m_settings.addRecentProject(m_settings.projectFolder);
+        m_settings.save();
+        m_basicWidget->setRecentProjects(m_settings.recentProjectFolders);
+        m_basicWidget->setContinueLastVisible(true);
+        m_basicWidget->showWorkspacePage();
+        rebuildUi();
+    });
 }
 
 void MainWindow::activateHome()
 {
-    if (!setWorkflowWorkspace(QString()))
-        return;
-    m_settings.uiMode = QStringLiteral("basic");
-    m_settings.projectFolder.clear();
-    m_settings.save();
-    m_basicWidget->setRecentProjects(m_settings.recentProjectFolders);
-    m_basicWidget->setContinueLastVisible(!m_settings.recentProjectFolders.isEmpty());
-    m_basicWidget->showHomePage();
-    applyUiMode();
-    show();
-    if (isMinimized())
-        showNormal();
-    raise();
-    activateWindow();
+    const QString root = QString();
+    setWorkflowWorkspaceAsync(root, [this, root](bool accepted) {
+        if (!accepted)
+            return;
+        m_settings.uiMode = QStringLiteral("basic");
+        m_settings.projectFolder.clear();
+        m_settings.save();
+        m_basicWidget->setRecentProjects(m_settings.recentProjectFolders);
+        m_basicWidget->setContinueLastVisible(!m_settings.recentProjectFolders.isEmpty());
+        m_basicWidget->showHomePage();
+        startWorkflowCatalogDiscovery();
+        applyUiMode();
+        show();
+        if (isMinimized())
+            showNormal();
+        raise();
+        activateWindow();
+    });
 }
 
 void MainWindow::onRefreshAppList()
@@ -1144,6 +1455,8 @@ void MainWindow::onRefreshAppList()
 
 void MainWindow::updateBasicPage()
 {
+    if (m_environmentsPage)
+        m_environmentsPage->setWorkspace(m_settings.projectFolder);
     if (m_dashboardFactory) {
         m_dashboardFactory->setWorkdir(m_settings.projectFolder);
         m_dashboardFactory->setWorkflows(m_workspaceWorkflows);
@@ -1158,13 +1471,12 @@ void MainWindow::updateBasicPage()
     m_workspaceButton->setToolTip(folder);
     m_workspacePath->setText(folder);
     m_workspacePath->setToolTip(folder);
+    updateWorkspaceMachineLabels();
     m_remoteWidget->setWorkdir(m_settings.projectFolder);
     m_activityWidget->setWorkdir(m_settings.projectFolder);
     m_executionExplorer->setWorkdir(m_settings.projectFolder);
-    if (m_workflowActivity) {
-        m_workflowActivity->setWorkdir(m_settings.projectFolder);
-        m_workflowActivity->refreshLocal();
-    }
+    m_workflowRuns->setWorkdir(m_settings.projectFolder);
+    m_activityWidget->refreshLocal();
     if (m_settings.projectFolder.isEmpty()) {
         m_basicAppsLoading = false;
         m_basicApps.clear();
@@ -1264,7 +1576,7 @@ void MainWindow::onBasicLaunch(const QString &workflowId)
             return;
         }
         m_basicLaunchingContextId = c->id;
-        if (launchPackageAwareContext(*c))
+        if (launchPackageAwareContext(*c, workflowLaunchOptions(meta)))
             refreshSessionUi();
         else if (!m_sessions.isRunning(c->id)) {
             m_basicLaunchingContextId.clear();
@@ -1336,9 +1648,26 @@ WorkflowMeta MainWindow::findWorkflowMeta(const QString &workdir, const QString 
     return WorkflowMeta{};
 }
 
+SessionLaunchOptions MainWindow::workflowLaunchOptions(const WorkflowMeta &meta)
+{
+    SessionLaunchOptions options;
+    std::function<void(const QVector<WorkflowInputMeta> &)> collectNames;
+    collectNames = [&](const QVector<WorkflowInputMeta> &inputs) {
+        for (const auto &input : inputs) {
+            if (!input.envName.isEmpty() && input.attributes.value("password") != "true"
+                && input.attributes.value("secret") != "true")
+                options.workflowInputOverrideNames.insert(input.envName);
+            collectNames(input.children);
+        }
+    };
+    collectNames(meta.inputs);
+    return options;
+}
+
 bool MainWindow::configureContextForWorkflow(Context &ctx, const WorkflowMeta &meta, bool forceDialog)
 {
     ctx.transientLaunchEnv.clear();
+    const SessionLaunchOptions options = workflowLaunchOptions(meta);
     if (meta.workflowId.trimmed().isEmpty())
         return false;
     if (meta.inputs.isEmpty()) {
@@ -1352,16 +1681,22 @@ bool MainWindow::configureContextForWorkflow(Context &ctx, const WorkflowMeta &m
         return true;
     }
     QSet<QString> transientNames;
-    for (const auto &input : meta.inputs) {
-        if (input.attributes.value("password") == "true" || input.attributes.value("secret") == "true")
-            transientNames.insert(input.envName);
-    }
+    std::function<void(const QVector<WorkflowInputMeta> &)> collectInputNames;
+    collectInputNames = [&](const QVector<WorkflowInputMeta> &inputs) {
+        for (const auto &input : inputs) {
+            if (!input.envName.isEmpty() && (input.attributes.value("password") == "true"
+                || input.attributes.value("secret") == "true"))
+                transientNames.insert(input.envName);
+            collectInputNames(input.children);
+        }
+    };
+    collectInputNames(meta.inputs);
     const QMap<QString, QString> currentValues = parseEnvAssignments(ctx.extraDockpipeEnv);
     QMap<QString, QString> prunedValues = pruneStaleWorkflowValues(meta, currentValues);
     for (const auto &name : transientNames)
         prunedValues.remove(name);
     if (prunedValues != currentValues) {
-        ctx.extraDockpipeEnv = formatEnvAssignments(prunedValues);
+        ctx.extraDockpipeEnv = formatEnvAssignments(prunedValues, options.workflowInputOverrideNames);
         m_store.save();
     }
     if (!forceDialog && !workflowNeedsConfigPrompt(meta, prunedValues))
@@ -1377,12 +1712,9 @@ bool MainWindow::configureContextForWorkflow(Context &ctx, const WorkflowMeta &m
             merged.remove(it.key());
             continue;
         }
-        if (it.value().trimmed().isEmpty() && !it.key().startsWith("DOCKPIPE_VSCODE_INPUT_"))
-            merged.remove(it.key());
-        else
-            merged.insert(it.key(), it.value());
+        merged.insert(it.key(), it.value());
     }
-    ctx.extraDockpipeEnv = formatEnvAssignments(merged);
+    ctx.extraDockpipeEnv = formatEnvAssignments(merged, options.workflowInputOverrideNames);
     m_store.save();
     return true;
 }
@@ -1457,21 +1789,28 @@ void MainWindow::closeEvent(QCloseEvent *event)
         event->ignore();
         return;
     }
-    if (m_projectGit && m_projectGit->busy()) {
-        statusBar()->showMessage(tr("Wait for the Git action to finish, or cancel it in Git before closing."), 8000);
-        event->ignore();
+    if (property("closeConfirmed").toBool()) {
+        setProperty("closeConfirmed", false);
+        QMainWindow::closeEvent(event);
         return;
     }
-    if ((m_projectGit && !m_projectGit->confirmLeave())
-        || (m_cockpit && !m_cockpit->confirmLeave())
-        || (m_projectFiles && !m_projectFiles->confirmLeave())
-        || (m_workflowEditor && !m_workflowEditor->confirmDiscardChanges())
-        || !confirmDashboardClose()) {
-        event->ignore();
-        return;
+    event->ignore();
+    confirmQuitAsync([this](bool accepted) {
+        if (!accepted)
+            return;
+        releaseDashboardWindows();
+        setProperty("closeConfirmed", true);
+        // A nested QWidget::close() can be ignored while the originating close
+        // event is active. Async approval retries after that event has returned.
+        QTimer::singleShot(0, this, [this] {
+            if (isVisible())
+                close();
+        });
+    });
+    if (property("closeConfirmed").toBool()) {
+        setProperty("closeConfirmed", false);
+        QMainWindow::closeEvent(event);
     }
-    releaseDashboardWindows();
-    QMainWindow::closeEvent(event);
 }
 
 MainWindow::~MainWindow()
@@ -1621,20 +1960,7 @@ void MainWindow::startBasicAppDiscovery()
 void MainWindow::startWorkflowCatalogDiscovery()
 {
     const QString workdir = QDir::cleanPath(m_settings.projectFolder);
-    if (workdir.isEmpty()) {
-        m_workflowCatalogRequestedWorkdir.clear();
-        m_workflowCatalogRunningWorkdir.clear();
-        m_workflowCatalogRefreshPending = false;
-        m_advancedDiscoveryLoading = false;
-        m_basicAppsLoading = false;
-        m_advancedSourceContexts.clear();
-        m_workspaceWorkflows.clear();
-        syncPackageSurfaces({});
-        m_basicApps.clear();
-        applyAdvancedContextFilter();
-        updateBasicPage();
-        return;
-    }
+    const bool hasProject = !workdir.isEmpty();
 
     const QString previousRequested = QDir::cleanPath(m_workflowCatalogRequestedWorkdir);
     const bool projectChanged = previousRequested != workdir;
@@ -1642,6 +1968,9 @@ void MainWindow::startWorkflowCatalogDiscovery()
         m_workspaceWorkflows.clear();
         m_advancedSourceContexts.clear();
         m_remoteWidget->setResolvers({});
+        m_remoteDesktopWidget->setResolvers({});
+        if (m_dashboardFactory)
+            m_dashboardFactory->setRemoteDesktopResolvers({});
         syncPackageSurfaces({});
         m_remoteWidget->setWorkdir(workdir);
     }
@@ -1650,8 +1979,8 @@ void MainWindow::startWorkflowCatalogDiscovery()
     m_basicAppsRequestedWorkdir = workdir;
 
     if (m_workflowCatalogWatcher && m_workflowCatalogWatcher->isRunning()) {
-        m_advancedDiscoveryLoading = true;
-        m_basicAppsLoading = true;
+        m_advancedDiscoveryLoading = hasProject;
+        m_basicAppsLoading = hasProject;
         applyAdvancedContextFilter();
         updateBasicPage();
         if (QDir::cleanPath(m_workflowCatalogRunningWorkdir) != workdir)
@@ -1660,8 +1989,8 @@ void MainWindow::startWorkflowCatalogDiscovery()
     }
 
     m_workflowCatalogRefreshPending = false;
-    m_advancedDiscoveryLoading = true;
-    m_basicAppsLoading = true;
+    m_advancedDiscoveryLoading = hasProject;
+    m_basicAppsLoading = hasProject;
     m_workflowCatalogRunningWorkdir = workdir;
     m_advancedDiscoveryRunningWorkdir = workdir;
     m_basicAppsRunningWorkdir = workdir;
@@ -1677,8 +2006,9 @@ void MainWindow::startWorkflowCatalogDiscovery()
         m_workflowCatalogWatcher->setFuture(QtConcurrent::run([workdir]() {
             AsyncWorkflowCatalogResult result;
             result.workdir = workdir;
-            result.repoRoot = DockpipeChoices::findRepoRoot(workdir);
-            result.catalog = WorkflowCatalog::discoverCatalog(workdir);
+            if (!workdir.isEmpty())
+                result.repoRoot = DockpipeChoices::findRepoRoot(workdir);
+            result.catalog = WorkflowCatalog::discoverCatalog(workdir.isEmpty() ? QDir::homePath() : workdir);
             return result;
         }));
     }
@@ -1687,9 +2017,16 @@ void MainWindow::startWorkflowCatalogDiscovery()
 void MainWindow::applyWorkflowCatalogResult(const AsyncWorkflowCatalogResult &result)
 {
     WorkflowCatalogData catalog = result.catalog;
+    if (result.workdir.isEmpty())
+        catalog.workflows.clear();
     m_remoteWidget->setResolvers(catalog.resolverDetails);
+    m_remoteDesktopWidget->setResolvers(catalog.resolverDetails);
+    if (m_dashboardFactory)
+        m_dashboardFactory->setRemoteDesktopResolvers(catalog.resolverDetails);
     m_workspaceWorkflows = catalog.workflows;
     syncPackageSurfaces(catalog.resolverDetails);
+    for (auto *files : findChildren<ProjectFilesWidget *>())
+        FileToolsController::attach(files, catalog.resolverDetails);
     m_advancedSourceContexts = contextsFromCatalog(result.workdir, result.repoRoot, catalog);
     m_basicApps = appWorkflowsFromCatalog(catalog);
     m_advancedDiscoveryLoading = false;
@@ -1855,10 +2192,26 @@ void MainWindow::onLaunch()
 
 bool MainWindow::launchWorkflow(const Context &display)
 {
-    if (m_runTarget->currentData(Qt::UserRole + 1).toBool()) {
-        QMessageBox::information(this, tr("Run target unavailable"),
-            tr("Choose another computer or reconnect this machine before running."));
-        return false;
+    return launchWorkflow(display, m_workspaceMachineMenu->currentTarget(), m_workspaceMachineMenu->currentRoot());
+}
+
+bool MainWindow::launchWorkflow(const Context &display, const QJsonObject &target, const QString &root)
+{
+    if (!target.isEmpty()) {
+        bool available = false;
+        for (const auto &value : m_workspaceMachineMenu->catalog()) {
+            const auto catalog = value.toObject();
+            if (catalog.value("target").toObject() != target)
+                continue;
+            available = root.isEmpty();
+            for (const auto &grant : catalog.value("roots").toArray())
+                available = available || grant.toObject().value("id").toString() == root;
+        }
+        if (!available) {
+            QMessageBox::information(this, tr("Run target unavailable"),
+                tr("Choose another computer or reconnect this machine before running."));
+            return false;
+        }
     }
     Context *c = ensureStoredContextForDisplay(display);
     const WorkflowMeta meta = findWorkflowMeta(c->workdir, c->workflow, c->workflowFile);
@@ -1866,8 +2219,8 @@ bool MainWindow::launchWorkflow(const Context &display)
         QMessageBox::information(this, tr("Workflow unavailable"), meta.catalogDescription());
         return false;
     }
-    const QString node = m_runTarget->currentData().toString();
-    if (!node.isEmpty()) {
+    const QString node = target.value("node").toString();
+    if (!target.isEmpty()) {
         if (meta.source == "vscode") {
             QMessageBox::information(this, tr("Clone for remote execution"),
                 tr("Clone this VS Code entry to workflows before running it on another computer."));
@@ -1887,10 +2240,17 @@ bool MainWindow::launchWorkflow(const Context &display)
             return false;
         }
         RemoteRunDialog dialog(remoteContext, node, this);
+        dialog.setCapturedTarget(target, root);
+        connect(&dialog, &RemoteRunDialog::remoteJobSubmitted, this,
+            [this](const QString &job, const QString &title) {
+                if (!m_remoteWorkflows->track(job, title))
+                    statusBar()->showMessage(tr("Notification limit reached. Follow this run in Logs & remote jobs."), 10000);
+                m_remoteAccess->refresh();
+            });
         if (dialog.exec() == QDialog::Accepted) {
-            selectPage(m_stack->indexOf(m_executionTabs));
-            m_executionTabs->setCurrentWidget(m_activityWidget);
-            m_activityWidget->showRemoteJobs();
+            selectPage(1);
+            m_workflowSections->setCurrentIndex(1);
+            openWorkflowRunLogs(true);
             rememberWorkflowRun(display);
             return true;
         }
@@ -1898,7 +2258,7 @@ bool MainWindow::launchWorkflow(const Context &display)
     }
     if (!meta.workflowId.isEmpty() && !configureContextForWorkflow(*c, meta, false))
         return false;
-    if (launchPackageAwareContext(*c)) {
+    if (launchPackageAwareContext(*c, workflowLaunchOptions(meta))) {
         m_outputContext = *c;
         rememberWorkflowRun(display);
         setWorkflowConsoleVisible(true);
@@ -1916,9 +2276,30 @@ void MainWindow::onRelaunch()
     if (!display)
         return;
     Context *c = ensureStoredContextForDisplay(*display);
-    if (m_sessions.isRunning(c->id))
-        m_sessions.stop(c->id);
-    QTimer::singleShot(400, this, [this]() { onLaunch(); });
+    const Context restart = *c;
+    const auto target = m_workspaceMachineMenu->currentTarget();
+    const QString root = m_workspaceMachineMenu->currentRoot();
+    if (!m_sessions.isRunning(restart.id)) {
+        launchWorkflow(restart, target, root);
+        return;
+    }
+    if (m_sessions.info(restart.id).stopRequested)
+        return;
+    auto *pending = new QObject(this);
+    connect(&m_sessions, &SessionManager::sessionStopped, pending,
+        [this, pending, restart, target, root](const QString &id, int, QProcess::ExitStatus) {
+            if (id != restart.id)
+                return;
+            pending->disconnect();
+            pending->deleteLater();
+            QTimer::singleShot(0, this, [this, restart, target, root]() { launchWorkflow(restart, target, root); });
+        });
+    connect(&m_sessions, &SessionManager::sessionFailed, pending,
+        [pending, expected = restart.id](const QString &id, const QString &) {
+            if (id == expected)
+                delete pending;
+        });
+    m_sessions.stop(restart.id);
 }
 
 void MainWindow::onStop()
@@ -1932,6 +2313,8 @@ void MainWindow::onStop()
 
 void MainWindow::onStopAllForRepo()
 {
+    if (findChild<QObject *>("stopRepositoryDiscovery"))
+        return;
     QString path = m_settings.projectFolder;
     if (path.isEmpty()) {
         if (Context *display = currentAdvancedDisplayContext())
@@ -1939,19 +2322,52 @@ void MainWindow::onStopAllForRepo()
     }
     if (path.isEmpty())
         return;
-    const QString root = GitHelper::repoRoot(path);
-    if (root.isEmpty()) {
-        if (Context *c = currentContext())
-            m_sessions.stop(c->id);
-        refreshSessionUi();
+    QVector<Context> running;
+    for (const auto &context : m_store.contexts) {
+        if (m_sessions.isRunning(context.id))
+            running.append(context);
+    }
+    if (running.isEmpty())
         return;
-    }
-    for (const Context &x : m_store.contexts) {
-        const QString xr = GitHelper::repoRoot(x.workdir);
-        if (xr == root && m_sessions.isRunning(x.id))
-            m_sessions.stop(x.id);
-    }
-    refreshSessionUi();
+    const Context *selected = currentContext();
+    const QString fallbackId = selected ? selected->id : QString();
+    auto *watcher = new QFutureWatcher<QStringList>(this);
+    watcher->setObjectName("stopRepositoryDiscovery");
+    statusBar()->showMessage(tr("Finding running workflows in this repository…"));
+    connect(watcher, &QFutureWatcher<QStringList>::finished, this, [this, watcher, running]() {
+        const QStringList ids = watcher->result();
+        const QSet<QString> requested(ids.cbegin(), ids.cend());
+        QHash<QString, QString> currentWorkdirs;
+        for (const auto &context : m_store.contexts)
+            currentWorkdirs.insert(context.id, context.workdir);
+        watcher->setObjectName(QString());
+        watcher->deleteLater();
+        for (const auto &context : running) {
+            // A project edit during discovery must not stop a different target.
+            if (requested.contains(context.id) && currentWorkdirs.value(context.id) == context.workdir)
+                m_sessions.stop(context.id);
+        }
+        statusBar()->clearMessage();
+        refreshSessionUi();
+    });
+    watcher->setFuture(QtConcurrent::run([path, running, fallbackId]() {
+        QStringList ids;
+        const QString root = GitHelper::repoRoot(path);
+        QHash<QString, QString> roots;
+        roots.insert(path, root);
+        for (const auto &context : running) {
+            if (root.isEmpty()) {
+                if (context.id == fallbackId)
+                    ids.append(context.id);
+                continue;
+            }
+            if (!roots.contains(context.workdir))
+                roots.insert(context.workdir, GitHelper::repoRoot(context.workdir));
+            if (roots.value(context.workdir) == root)
+                ids.append(context.id);
+        }
+        return ids;
+    }));
 }
 
 void MainWindow::onOpenLogs()
@@ -2103,7 +2519,8 @@ QString MainWindow::currentContextCommandLine() const
         program = c->dockpipeBinary.trimmed();
         if (program.isEmpty())
             program = DockpipeChoices::preferredDockpipeBinary(c->workdir);
-        args = SessionManager::dockpipeArguments(*c);
+        const WorkflowMeta meta = findWorkflowMeta(c->workdir, c->workflow, c->workflowFile);
+        args = SessionManager::dockpipeArguments(*c, workflowLaunchOptions(meta));
     }
 
     QStringList parts;

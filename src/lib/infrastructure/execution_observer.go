@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
@@ -10,21 +11,43 @@ import (
 	"strconv"
 	"time"
 
+	"dockpipe/src/lib/infrastructure/packageplatform"
 	"dockpipe/src/lib/infrastructure/telemetry"
 )
 
-// ExecutionHistoryDir shares the existing project run store; standalone callers
-// without a project use the existing per-user data location.
+// ExecutionHistoryDir uses the project run store except for document grants,
+// whose filesystem may not support the store's cross-process lock.
 func ExecutionHistoryDir(workdir string) (string, error) {
 	if workdir != "" {
 		absolute, err := filepath.Abs(workdir)
 		if err != nil {
 			return "", err
 		}
+
+		if grantPath, granted := packageplatform.FlatpakDocumentGrantPath(absolute); granted {
+			return portalExecutionHistoryDir(grantPath)
+		}
 		return filepath.Join(HostRunsDir(absolute), "executions"), nil
 	}
 	root, err := GlobalDockpipeDataDir()
 	return filepath.Join(root, "runs", "executions"), err
+}
+
+func portalExecutionHistoryDir(grantPath string) (string, error) {
+	if err := ValidateUnlinkedPath(grantPath); err != nil {
+		return "", errors.New("execution history unavailable")
+	}
+	info, err := os.Lstat(grantPath)
+	if err != nil || !info.IsDir() {
+		return "", errors.New("execution history unavailable")
+	}
+
+	root, err := DurableStateRoot()
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256([]byte(grantPath))
+	return filepath.Join(root, "runs", "portal", fmt.Sprintf("%x", digest[:]), "executions"), nil
 }
 
 // NewWorkflowRunID uses the same random ID source as the host-run registry.

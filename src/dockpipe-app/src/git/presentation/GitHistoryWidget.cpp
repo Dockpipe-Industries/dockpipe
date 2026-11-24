@@ -2,9 +2,15 @@
 
 #include "CanvasIcons.h"
 #include "GitCommitQueueModel.h"
-#include "SourceEditor.h"
+#include "GitCommitGraphDelegate.h"
+#include "GitDiffWidget.h"
+#include "GitCommitPreviewDialog.h"
+#include "RemoteGitContext.h"
 
 #include <QComboBox>
+#include <QApplication>
+#include <QClipboard>
+#include <QMenu>
 #include <QHBoxLayout>
 #include <QJsonArray>
 #include <QLabel>
@@ -33,6 +39,7 @@ GitHistoryWidget::GitHistoryWidget(QWidget *parent) : QWidget(parent), m_reader(
     setObjectName("gitHistory");
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(14);
     auto *searchBar = new QHBoxLayout;
     m_query = new QLineEdit;
     m_query->setObjectName("gitHistoryQuery");
@@ -53,20 +60,33 @@ GitHistoryWidget::GitHistoryWidget(QWidget *parent) : QWidget(parent), m_reader(
     m_search = namedButton(tr("Search"), "gitHistorySearch", searchBar);
     m_search->setIcon(CanvasIcons::icon(CanvasIcons::Symbol::Search));
     auto *cancel = namedButton(tr("Cancel read"), "gitHistoryCancel", searchBar);
-    cancel->setEnabled(false);
+    cancel->setVisible(false);
     connect(cancel, &QPushButton::clicked, &m_reader, &ProjectGitClient::cancel);
-    connect(&m_reader, &ProjectGitClient::busyChanged, cancel, &QPushButton::setEnabled);
+    connect(&m_reader, &ProjectGitClient::busyChanged, cancel, &QPushButton::setVisible);
+    auto *queueToggle = namedButton(tr("Cherry-pick queue"), "gitQueueToggle", searchBar);
+    queueToggle->setCheckable(true);
     layout->addLayout(searchBar);
 
     auto *splitter = new QSplitter;
     splitter->setChildrenCollapsible(false);
+    splitter->setHandleWidth(12);
     auto *history = new QWidget;
+    history->setProperty("gitCard", true);
+    history->setAttribute(Qt::WA_StyledBackground);
     auto *historyLayout = new QVBoxLayout(history);
-    historyLayout->setContentsMargins(0, 0, 0, 0);
+    historyLayout->setContentsMargins(14, 14, 14, 14);
+    historyLayout->setSpacing(12);
+    auto *historyHeading = new QLabel(tr("Commit graph"));
+    historyHeading->setObjectName("gitPanelTitle");
+    historyLayout->addWidget(historyHeading);
     m_commits = new QListWidget;
     m_commits->setObjectName("gitHistoryCommits");
+    m_commits->setItemDelegate(new GitCommitGraphDelegate(m_commits));
+    m_commits->setSpacing(0);
     m_commits->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    m_commits->setMinimumWidth(250);
+    m_commits->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_commits, &QListWidget::customContextMenuRequested, this, &GitHistoryWidget::showCommitMenu);
+    m_commits->setMinimumWidth(350);
     historyLayout->addWidget(m_commits, 1);
     auto *paging = new QHBoxLayout;
     m_previous = namedButton(tr("Previous"), "gitHistoryPrevious", paging);
@@ -82,19 +102,19 @@ GitHistoryWidget::GitHistoryWidget(QWidget *parent) : QWidget(parent), m_reader(
     historyLayout->addLayout(selection);
     splitter->addWidget(history);
 
-    m_detail = new SourceEditor;
+    m_detail = new GitDiffWidget;
     m_detail->setObjectName("gitHistoryDetail");
-    m_detail->setReadOnly(true);
-    m_detail->setFileName("commit.diff");
-    m_detail->setPlaceholderText(tr("Select a commit to inspect its message and patch."));
     splitter->addWidget(m_detail);
 
     auto *queuePanel = new QWidget;
     queuePanel->setObjectName("gitCherryPickPanel");
+    queuePanel->setProperty("gitCard", true);
+    queuePanel->setAttribute(Qt::WA_StyledBackground);
     auto *queueLayout = new QVBoxLayout(queuePanel);
-    queueLayout->setContentsMargins(8, 0, 0, 0);
-    auto *heading = new QLabel(tr("CHERRY-PICK QUEUE"));
-    heading->setObjectName("editorSectionLabel");
+    queueLayout->setContentsMargins(14, 14, 14, 14);
+    queueLayout->setSpacing(12);
+    auto *heading = new QLabel(tr("Cherry-pick queue"));
+    heading->setObjectName("gitPanelTitle");
     queueLayout->addWidget(heading);
     m_target = new QLabel;
     m_target->setObjectName("gitQueueTarget");
@@ -124,8 +144,21 @@ GitHistoryWidget::GitHistoryWidget(QWidget *parent) : QWidget(parent), m_reader(
     m_pick = namedButton(tr("Cherry-pick queued…"), "gitQueueStart", picking);
     queueLayout->addLayout(picking);
     splitter->addWidget(queuePanel);
+    queuePanel->hide();
+    connect(queueToggle, &QPushButton::toggled, queuePanel, &QWidget::setVisible);
+    connect(m_queue, &QAbstractItemModel::rowsInserted, this, [queueToggle] {
+        queueToggle->setChecked(true);
+    });
+    connect(m_queue, &QAbstractItemModel::rowsInserted, this, [this, queueToggle] {
+        queueToggle->setText(tr("Cherry-pick queue · %1").arg(m_queue->rowCount()));
+    });
+    auto updateQueueLabel = [this, queueToggle] {
+        queueToggle->setText(tr("Cherry-pick queue · %1").arg(m_queue->rowCount()));
+    };
+    connect(m_queue, &QAbstractItemModel::rowsRemoved, this, updateQueueLabel);
+    connect(m_queue, &QAbstractItemModel::modelReset, this, updateQueueLabel);
     splitter->setStretchFactor(1, 1);
-    splitter->setSizes({320, 600, 300});
+    splitter->setSizes({440, 600, 300});
     layout->addWidget(splitter, 1);
     m_status = new QLabel;
     m_status->setObjectName("gitHistoryStatus");
@@ -144,7 +177,7 @@ GitHistoryWidget::GitHistoryWidget(QWidget *parent) : QWidget(parent), m_reader(
     connect(m_commits, &QListWidget::itemSelectionChanged, this, &GitHistoryWidget::updateControls);
     connect(m_add, &QPushButton::clicked, this, &GitHistoryWidget::addSelected);
     connect(m_revert, &QPushButton::clicked, this, &GitHistoryWidget::requestRevert);
-    connect(m_pick, &QPushButton::clicked, this, &GitHistoryWidget::requestCherryPick);
+    connect(m_pick, &QPushButton::clicked, this, [this] { requestCherryPick(); });
     connect(m_up, &QPushButton::clicked, this, [this] { moveSelected(-1); });
     connect(m_down, &QPushButton::clicked, this, [this] { moveSelected(1); });
     connect(m_remove, &QPushButton::clicked, this, [this] { m_queue->removeCommit(m_queueView->currentIndex().row()); });
@@ -165,7 +198,24 @@ GitHistoryWidget::GitHistoryWidget(QWidget *parent) : QWidget(parent), m_reader(
 
 void GitHistoryWidget::setSnapshot(const QString &workdir, const QJsonObject &snapshot)
 {
+    QJsonObject references;
+    for (const auto &value : snapshot.value("catalog").toObject().value("branches").toArray()) {
+        const auto branch = value.toObject();
+        const QString id = branch.value("id").toString();
+        auto labels = references.value(id).toArray();
+        labels.append(branch.value("name").toString());
+        references.insert(id, labels);
+    }
+    const QString head = snapshot.value("head").toString();
+    if (!head.isEmpty()) {
+        auto labels = references.value(head).toArray();
+        labels.prepend(QStringLiteral("HEAD"));
+        references.insert(head, labels);
+    }
+    setProperty("gitGraphReferences", references);
     if (workdir != m_workdir) {
+        setProperty("gitLoadedCommit", QString());
+        setProperty("gitLoadedReview", QJsonObject());
         ++m_generation;
         m_reader.cancel();
         m_workdir = workdir;
@@ -231,19 +281,32 @@ void GitHistoryWidget::search(int offset)
         const QSignalBlocker blocker(m_commits);
         m_commits->clear();
         m_detail->clear();
-        const auto commits = history.value("commits").toArray();
+        auto commits = history.value("commits").toArray();
         if (commits.size() > pageSize) {
             m_status->setText(tr("History reply exceeded the 50-commit page contract."));
             return;
         }
-        for (const auto &value : commits) {
-            const auto commit = value.toObject();
+        const auto references = property("gitGraphReferences").toJsonObject();
+        for (int row = 0; row < commits.size(); ++row) {
+            auto commit = commits.at(row).toObject();
             const QString id = commit.value("id").toString();
+            auto labels = commit.value("refs").toArray();
+            for (const auto &label : references.value(id).toArray()) {
+                if (!labels.contains(label))
+                    labels.append(label);
+            }
+            commit.insert("refs", labels);
+            commits[row] = commit;
             const QString subject = commit.value("subject").toString();
             auto *item = new QListWidgetItem(id.left(12) + "  " + subject, m_commits);
             item->setData(Qt::UserRole, id);
             item->setData(Qt::UserRole + 1, subject);
             item->setToolTip(Qt::convertFromPlainText(id + "\n" + commit.value("author").toString() + "\n" + subject));
+        }
+        if (!GitCommitGraphDelegate::prepare(m_commits, commits)) {
+            m_commits->clear();
+            m_status->setText(tr("History reply could not be displayed as a commit graph."));
+            return;
         }
         m_offset = history.value("offset").toInt();
         m_hasMore = history.value("has_more").toBool();
@@ -252,7 +315,7 @@ void GitHistoryWidget::search(int offset)
         m_pageRef = request.value("ref").toString();
         m_page->setText(commits.isEmpty() ? tr("No matching commits")
             : tr("%1–%2").arg(m_offset + 1).arg(m_offset + commits.size()));
-        m_status->setText(tr("%1 commits loaded. Select commits and add them to the queue in the order you want.").arg(commits.size()));
+        m_status->setText(tr("%1 commits · Select a commit to review. Dashed links continue beyond these results.").arg(commits.size()));
         updateControls();
     });
 }
@@ -274,16 +337,16 @@ void GitHistoryWidget::loadCommit()
                 return;
             }
             const auto review = reply.value("commit_review").toObject();
+            setProperty("gitLoadedReview", review);
+            setProperty("gitLoadedCommit", review.value("commit").toObject().value("id").toString());
             const QString notice = review.value("notice").toString();
-            QString detail = review.value("body").toString() + "\n\n" + review.value("patch").toString();
             if (review.value("limited").toBool()) {
                 const QString limitation = notice.isEmpty() ? tr("The commit exceeds the preview limits. The complete patch is unavailable here.") : notice;
-                detail.prepend(limitation + "\n\n");
                 m_status->setText(limitation);
             } else {
                 m_status->setText(tr("Reviewing the selected commit. The working tree has not changed."));
             }
-            m_detail->setPlainText(detail);
+            m_detail->setCommitReview(review);
         });
 }
 
@@ -315,23 +378,33 @@ void GitHistoryWidget::moveSelected(int direction)
 
 void GitHistoryWidget::requestCherryPick()
 {
-    const QStringList ids = m_queue->commitIds();
-    if (m_parentBusy || m_reader.busy() || ids.isEmpty() || m_workdir.isEmpty())
+    requestCherryPick(m_queue->commitIds(), true);
+}
+
+void GitHistoryWidget::requestCherryPick(const QStringList &ids, bool queued)
+{
+    if (m_parentBusy || m_reader.busy() || ids.isEmpty() || m_workdir.isEmpty()
+        || m_snapshotToken.isEmpty() || m_operationActive)
         return;
     const QString reviewedSnapshot = m_snapshotToken;
     const QString reviewedWorkdir = m_workdir;
-    QMessageBox confirmation(QMessageBox::Question, tr("Cherry-pick queued commits"),
-        tr("Apply %1 commits, in this order, onto %2?").arg(ids.size()).arg(m_branch.isEmpty() ? tr("detached HEAD") : m_branch),
+    const QString target = m_branch.isEmpty() ? tr("detached HEAD") : m_branch;
+    const QString description = queued ? tr("Apply %1 commits, in this order, onto %2?").arg(ids.size()).arg(target)
+        : tr("Apply commit %1 onto %2?").arg(ids.first().left(12), target);
+    QMessageBox confirmation(QMessageBox::Question, queued ? tr("Cherry-pick queued commits") : tr("Cherry-pick commit"),
+        description,
         QMessageBox::Yes | QMessageBox::No, this);
     confirmation.setTextFormat(Qt::PlainText);
     confirmation.setDetailedText(ids.join('\n'));
     confirmation.setDefaultButton(QMessageBox::No);
     if (confirmation.exec() != QMessageBox::Yes)
         return;
-    if (m_parentBusy || reviewedSnapshot != m_snapshotToken || reviewedWorkdir != m_workdir || ids != m_queue->commitIds()) {
+    if (m_parentBusy || m_reader.busy() || m_operationActive || reviewedSnapshot != m_snapshotToken
+        || reviewedWorkdir != m_workdir || (queued && ids != m_queue->commitIds())) {
         m_status->setText(tr("The repository or queue changed during confirmation. Review it before trying again."));
         return;
     }
+    setProperty("gitPickingQueuedCommits", queued);
     emit actionRequested({{"action", "cherry-pick"}, {"commits", QJsonArray::fromStringList(ids)},
         {"snapshot", reviewedSnapshot}, {"confirm", true}});
 }
@@ -342,6 +415,13 @@ void GitHistoryWidget::requestRevert()
     if (m_parentBusy || m_reader.busy() || selected.size() != 1 || m_workdir.isEmpty())
         return;
     const QString id = selected.first()->data(Qt::UserRole).toString();
+    requestRevertCommit(id);
+}
+
+void GitHistoryWidget::requestRevertCommit(const QString &id)
+{
+    if (m_parentBusy || m_reader.busy() || m_workdir.isEmpty() || m_snapshotToken.isEmpty() || m_operationActive)
+        return;
     const QString reviewedSnapshot = m_snapshotToken;
     const QString reviewedWorkdir = m_workdir;
     QMessageBox confirmation(QMessageBox::Question, tr("Revert commit"),
@@ -351,7 +431,8 @@ void GitHistoryWidget::requestRevert()
     confirmation.setDefaultButton(QMessageBox::No);
     if (confirmation.exec() != QMessageBox::Yes)
         return;
-    if (m_parentBusy || reviewedSnapshot != m_snapshotToken || reviewedWorkdir != m_workdir) {
+    if (m_parentBusy || m_reader.busy() || m_operationActive
+        || reviewedSnapshot != m_snapshotToken || reviewedWorkdir != m_workdir) {
         m_status->setText(tr("The repository changed during confirmation. Review it before trying again."));
         return;
     }
@@ -361,7 +442,7 @@ void GitHistoryWidget::requestRevert()
 void GitHistoryWidget::updateControls()
 {
     const bool ready = !m_parentBusy && !m_reader.busy() && !m_workdir.isEmpty();
-    const bool writable = ready && !m_snapshotToken.isEmpty() && !m_operationActive;
+    const bool writable = ready && !m_snapshotToken.isEmpty() && !m_operationActive && RemoteGitContext::canWrite(this);
     m_search->setEnabled(ready);
     m_query->setEnabled(ready);
     m_match->setEnabled(ready);
@@ -383,4 +464,65 @@ void GitHistoryWidget::updateControls()
     m_clear->setEnabled(!m_parentBusy && m_queue->rowCount() > 0);
     m_target->setText(tr("%1 / %2 commits · Target: %3").arg(m_queue->rowCount()).arg(GitCommitQueueModel::maximumCommits)
         .arg(m_branch.isEmpty() ? tr("detached HEAD") : m_branch));
+}
+
+void GitHistoryWidget::showCommitMenu(const QPoint &point)
+{
+    auto *item = m_commits->itemAt(point);
+    if (!item || m_parentBusy || m_reader.busy())
+        return;
+    const QString id = item->data(Qt::UserRole).toString();
+    const QString subject = item->data(Qt::UserRole + 1).toString();
+    const QString workdir = m_workdir;
+    const QString snapshot = m_snapshotToken;
+    {
+        const QSignalBlocker blocker(m_commits);
+        if (!item->isSelected())
+            m_commits->clearSelection();
+        m_commits->setCurrentItem(item, QItemSelectionModel::NoUpdate);
+        item->setSelected(true);
+    }
+    updateControls();
+    QMenu menu(this);
+    menu.setObjectName("gitCommitContextMenu");
+    auto *preview = menu.addAction(tr("Open commit preview"));
+    preview->setObjectName("gitCommitPreviewAction");
+    menu.addSeparator();
+    auto *cherryPick = menu.addAction(tr("Cherry-pick this commit…"));
+    cherryPick->setObjectName("gitCommitCherryPickAction");
+    cherryPick->setEnabled(!m_snapshotToken.isEmpty() && !m_operationActive && RemoteGitContext::canWrite(this));
+    auto *queue = menu.addAction(tr("Add commit to cherry-pick queue"));
+    queue->setObjectName("gitCommitQueueAction");
+    queue->setEnabled(m_queue->rowCount() < GitCommitQueueModel::maximumCommits);
+    auto *revert = menu.addAction(tr("Revert this commit…"));
+    revert->setObjectName("gitCommitRevertAction");
+    revert->setEnabled(cherryPick->isEnabled());
+    menu.addSeparator();
+    auto *copy = menu.addAction(tr("Copy commit SHA"));
+    copy->setObjectName("gitCommitCopyAction");
+    QAction *chosen = menu.exec(m_commits->viewport()->mapToGlobal(point));
+    if (chosen == copy) {
+        QApplication::clipboard()->setText(id);
+    } else if (chosen) {
+        if (m_parentBusy || m_workdir != workdir || m_snapshotToken != snapshot) {
+            m_status->setText(tr("The repository changed while the menu was open. Review it before trying again."));
+            return;
+        }
+        if (chosen == preview) {
+            const bool cached = property("gitLoadedCommit").toString() == id;
+            const auto review = cached ? property("gitLoadedReview").toJsonObject() : QJsonObject();
+            GitCommitPreviewDialog dialog(workdir, id, review, this);
+            dialog.exec();
+        } else if (chosen == cherryPick) {
+            requestCherryPick({id}, false);
+        } else if (chosen == queue) {
+            const bool added = m_queue->addCommit(id, subject);
+            m_status->setText(added ? tr("Commit added to the cherry-pick queue.") : tr("This commit is already queued or cannot be added."));
+            updateControls();
+        } else if (chosen == revert) {
+            requestRevertCommit(id);
+        }
+    }
+    if (!m_parentBusy && m_workdir == workdir)
+        loadCommit();
 }

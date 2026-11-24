@@ -1,0 +1,67 @@
+module Dockpipe.Product.RetainedLane.Tests;
+import Dockpipe.Product.RetainedLane;
+import PipeLang.IO;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+public Class RetainedLaneCase : IProbeTestCase {
+    private JsonReader reader;
+    private FileStreams invocation;
+    private int scenario;
+
+    public RetainedLaneCase(JsonReader reader, FileStreams invocation, int scenario) {
+        this.reader = reader;
+        this.invocation = invocation;
+        this.scenario = scenario;
+    }
+
+    public pure string Id() => "qualification.retained_lane." + string.FromInt(scenario);
+    public pure string Name() => "retained lane custody " + string.FromInt(scenario);
+
+    public Result<void,TestFailure> Setup(CancellationToken token) {
+        return Result<void,TestFailure>.Success();
+    }
+
+    public Result<void,TestFailure> Body(CancellationToken token) {
+        return Assert.True(false, "retained lane contracts use scoped probe dispatch");
+    }
+
+    public Result<void,TestFailure> BodyWithProbe(CancellationToken token, CancellationToken cancelled) {
+        Result<FileDigest,IoFailure> request = invocation.DigestFile("expected.json", 4096, token);
+        try Assert.True(request.IsSuccess, "capture the independent canonical request witness");
+        RetainedLane lane = new RetainedLane(reader, invocation);
+        if (scenario == 6)
+            return Assert.True(lane.AdmittedExitCode(request.Value, cancelled).IsCancelled,
+                "genuine pre-cancellation refuses retained process admission");
+
+        Result<int,string> admitted = lane.AdmittedExitCode(request.Value, token);
+        if (scenario == 0)
+            return Assert.True(admitted.IsSuccess && admitted.Value == 0, "valid complete process can revalidate");
+        if (scenario == 1)
+            return Assert.True(admitted.IsSuccess && admitted.Value == 7,
+                "retain nonzero process status for the later lane receipt gate");
+
+        try Assert.True(admitted.IsFailure, "unreconciled lane refuses resume");
+        if (scenario == 2)
+            return Assert.Equal<string>("qualification.resume.lane.process_incomplete", admitted.Error,
+                "a null exit code carries no terminal process outcome");
+        if (scenario == 3)
+            return Assert.Equal<string>("Driver exceeded its declared deadline", admitted.Error,
+                "retain exact recorded failure");
+        if (scenario == 4)
+            return Assert.Equal<string>("qualification.resume.lane.request_mismatch", admitted.Error,
+                "same-extent request mutation refuses resume even with a complete process file");
+        if (scenario == 5)
+            return Assert.True(string.Utf8IndexOf(admitted.Error, "qualification.json.capture.", 0) == 0,
+                "missing process evidence refuses resume");
+        if (scenario == 7)
+            return Assert.Equal<string>("json.syntax", admitted.Error, "malformed process evidence is refused");
+
+        return Assert.True(string.Utf8IndexOf(admitted.Error, "qualification.resume.lane.request.", 0) == 0,
+            "descriptor confinement refuses a request alias");
+    }
+
+    public Result<void,TestFailure> Cleanup() {
+        return Result<void,TestFailure>.Success();
+    }
+}

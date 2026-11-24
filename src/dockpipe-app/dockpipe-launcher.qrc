@@ -1,5 +1,6 @@
 <RCC>
   <qresource prefix="/">
+    <file alias="theme/settings-check.svg">resources/theme/settings-check.svg</file>
     <file alias="icon.png">resources/images/dockpipe-launcher.png</file>
     <file alias="icons/hicolor/16x16/apps/dockpipe-launcher.png">resources/icons/hicolor/16x16/apps/dockpipe-launcher.png</file>
     <file alias="icons/hicolor/24x24/apps/dockpipe-launcher.png">resources/icons/hicolor/24x24/apps/dockpipe-launcher.png</file>
@@ -13,5 +14,9 @@
     <file alias="theme/pipeon.qss">resources/theme/pipeon.qss</file>
     <file alias="theme/pipeon-light.qss">resources/theme/pipeon-light.qss</file>
     <file alias="theme/pipeon-dark.qss">resources/theme/pipeon-dark.qss</file>
+    <file alias="theme/tab-close-dark.svg">resources/theme/tab-close-dark.svg</file>
+    <file alias="theme/tab-close-light.svg">resources/theme/tab-close-light.svg</file>
+    <file alias="theme/chevron-down-dark.svg">resources/theme/chevron-down-dark.svg</file>
+    <file alias="theme/chevron-down-light.svg">resources/theme/chevron-down-light.svg</file>
   </qresource>
 </RCC>

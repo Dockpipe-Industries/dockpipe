@@ -58,7 +58,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@v7
         with:
-          go-version: '1.26.10'
+          go-version: '1.26.11'
           cache: false
       - name: Verify candidate boundaries
         run: python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/build/cli-candidate/tests --pattern test_cli_candidate.py

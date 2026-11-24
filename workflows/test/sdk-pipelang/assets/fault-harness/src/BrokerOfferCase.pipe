@@ -1,0 +1,307 @@
+module Dockpipe.SDK.FaultProof;
+import Dockpipe.SDK;
+import PipeLang.Testing;
+import PipeLang.Testing.Async;
+
+public Class BrokerOfferCase : IAsyncTestCase {
+    private OfferFaultKind kind;
+    private Client client;
+    private TestClock clock;
+    private FaultInputs inputs;
+    private FixtureControl control;
+    private OperationId active = OperationId(0, 0);
+    private bool owned = false;
+    private bool complete = true;
+
+    public BrokerOfferCase(OfferFaultKind kind, Client client, TestClock clock,
+                           FaultInputs inputs, FixtureControl control) {
+        this.kind = kind;
+        this.client = client;
+        this.clock = clock;
+        this.inputs = inputs;
+        this.control = control;
+    }
+
+    public pure string Id() {
+        if (kind == OfferFaultKind.PartialAdoption)
+            return "sdk.windows.partial-offer-adoption";
+
+        return "sdk.windows.late-offer-deadline";
+    }
+
+    public pure string Name() {
+        return Id();
+    }
+
+    private Result<TestStepResult,string> Failed(string code, string message) {
+        return Result<TestStepResult,string>.Success(
+            TestStepResult(TestOutcome.Failed, TestFailure(code, message)));
+    }
+
+    private Result<TestStepResult,string> Checked(Result<void,TestFailure> assertion) {
+        TestSteps steps = new TestSteps();
+
+        return Result<TestStepResult,string>.Success(steps.From(assertion));
+    }
+
+    private Result<TestStepResult,string> PhaseError(bool cancelled, string message) {
+        if (cancelled)
+            return Result<TestStepResult,string>.Cancelled(message);
+
+        return Result<TestStepResult,string>.Failure(message);
+    }
+
+    private Result<int,string> Remaining(TestDeadline deadline, CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<int,string>.Cancelled("Broker-offer phase cancelled; acquired custody remains retained");
+
+        Result<int,string> now = clock.NowMilliseconds();
+        if (!now.IsSuccess)
+            return now;
+
+        TestDeadlines deadlines = new TestDeadlines();
+        int remaining = deadlines.RemainingMilliseconds(deadline, now.Value);
+        if (remaining == 0)
+            return Result<int,string>.Failure("Broker-offer phase deadline exhausted");
+
+        if (remaining > 5000)
+            remaining = 5000;
+
+        return Result<int,string>.Success(remaining);
+    }
+
+    public async Task<Result<TestStepResult,string>> Setup(TestDeadline deadline, CancellationToken token) {
+        Result<int,string> remaining = Remaining(deadline, token);
+        if (!remaining.IsSuccess)
+            return PhaseError(remaining.IsCancelled, remaining.Error);
+
+        string helper = inputs.partialOfferHelper;
+        if (kind == OfferFaultKind.LateOffer)
+            helper = inputs.lateOfferHelper;
+
+        if (helper == "")
+            return Failed("broker_offer.selection", "The optional case requires its explicitly selected helper artifact");
+
+        if (kind == OfferFaultKind.PartialAdoption) {
+            Result<int,string> previous = control.PartialOfferChildProcessId();
+            if (previous.IsSuccess)
+                return Failed("broker_offer.stale_witness", "Fresh proof directory cannot contain an earlier partial-offer witness");
+        } else {
+            Result<LateOfferReceipt,string> previous = control.LateOfferAttempt();
+            if (previous.IsSuccess)
+                return Failed("broker_offer.stale_witness", "Fresh proof directory cannot contain an earlier late-offer witness");
+        }
+
+        Result<void,string> selected = control.SelectConsoleHelper(helper);
+        if (!selected.IsSuccess)
+            return PhaseError(selected.IsCancelled, selected.Error);
+
+        TestSteps steps = new TestSteps();
+
+        return Result<TestStepResult,string>.Success(steps.Passed());
+    }
+
+    private Result<void,TestFailure> UnknownObservation(OperationObservation observed, bool closed) {
+        try Assert.Equal<OperationId>(active, observed.id, "Observation preserves the actionable operation ID");
+        try Assert.False(observed.exited, "Unknown root exit remains unknown");
+        try Assert.Equal<int>(-1, observed.exitCode, "Unknown root keeps its sentinel exit status");
+        try Assert.Equal<bool>(closed, observed.treeComplete, "Custody closure is independent of root exit");
+        try Assert.Equal<bool>(closed, observed.forced, "Only explicit disposal sets forced");
+        try Assert.Equal<string>("", observed.stdoutText, "Suspended actual child produces no stdout");
+        try Assert.Equal<string>("", observed.stderrText, "Protocol failure produces no application stderr");
+        try Assert.False(observed.stdoutTruncated, "Empty stdout is complete");
+        try Assert.False(observed.stderrTruncated, "Empty stderr is complete");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    private Result<void,TestFailure> Unknown(FaultReceipt receipt, bool closed) {
+        try UnknownObservation(receipt.observation, closed);
+        try Assert.Equal<int>(0, receipt.leaderPid, "No real root PID is invented before complete offer admission");
+        try Assert.True(receipt.infrastructureFailure != "", "Failed startup remains an infrastructure failure");
+        try Assert.False(receipt.interruptRequested, "Refused interruption is never recorded as requested");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    private async Task<Result<LateOfferReceipt,string>> WaitForLateWitness(
+        TestDeadline deadline, CancellationToken token) {
+        for (int attempt = 0; attempt < 400; attempt = attempt + 1) {
+            Result<int,string> remaining = Remaining(deadline, token);
+            if (!remaining.IsSuccess) {
+                if (remaining.IsCancelled)
+                    return Result<LateOfferReceipt,string>.Cancelled(remaining.Error);
+
+                return Result<LateOfferReceipt,string>.Failure(remaining.Error);
+            }
+
+            Result<LateOfferReceipt,string> witness = control.LateOfferAttempt();
+            if (witness.IsSuccess)
+                return witness;
+
+            int slice = 10;
+            if (remaining.Value < slice)
+                slice = remaining.Value;
+
+            Result<OperationObservation,string> observed = await client.Observe(active, slice, token);
+            if (observed.IsCancelled)
+                return Result<LateOfferReceipt,string>.Cancelled(observed.Error);
+
+            if (observed.IsSuccess)
+                return Result<LateOfferReceipt,string>.Failure("Failed startup cannot become successful observation before explicit disposal");
+        }
+
+        return Result<LateOfferReceipt,string>.Failure("Finite late-offer witness polling exhausted");
+    }
+
+    private Result<void,TestFailure> LateFacts(LateOfferReceipt witness) {
+        try Assert.True(witness.processId > 0 && witness.threadId > 0,
+            "The late offer belongs to an actual suspended child");
+        try Assert.True(witness.createdAt > 0 && witness.createdAt < witness.requestDeadline,
+            "Actual suspended child creation completed before the exact request deadline");
+        try Assert.True(witness.attemptedAt > witness.requestDeadline,
+            "A real fixed-offer write was attempted after the exact request deadline");
+
+        // Either a completed write or broken pipe is factual transport data.
+        // Startup Failure and unknown-root custody below prove no late admission.
+        return Result<void,TestFailure>.Success();
+    }
+
+    public async Task<Result<TestStepResult,string>> Body(TestDeadline deadline, CancellationToken token) {
+        Result<int,string> remaining = Remaining(deadline, token);
+        if (!remaining.IsSuccess)
+            return PhaseError(remaining.IsCancelled, remaining.Error);
+
+        List<string> arguments = List<string>.Empty();
+        arguments.Add("hold");
+        arguments.Add("10000");
+        WorkflowRequest request = WorkflowRequest(inputs.ownedRoot, inputs.workflowFile, "", "",
+            List<WorkflowVariable>.Empty(), arguments, 32768);
+        Result<OperationId,string> started = client.Start(request);
+        if (started.IsSuccess) {
+            active = started.Value;
+            owned = true;
+            complete = false;
+            return Failed("broker_offer.admitted", "Invalid or late offers cannot admit or resume the actual child");
+        }
+        if (!started.IsFailure)
+            return Failed("broker_offer.outcome", "Protocol admission failure must report Failure rather than cancellation");
+
+        Result<OperationId,string> retained = client.RetainedOperation();
+        if (!retained.IsSuccess)
+            return Failed("broker_offer.custody", "Failed startup must retain an actionable operation");
+
+        active = retained.Value;
+        owned = true;
+        complete = false;
+        Result<void,TestFailure> assertion = Result<void,TestFailure>.Success();
+        if (kind == OfferFaultKind.PartialAdoption) {
+            Result<int,string> created = control.PartialOfferChildProcessId();
+            if (!created.IsSuccess)
+                return Failed("broker_offer.creation", "Actual suspended child creation must be independently witnessed: " + created.Error);
+
+            assertion = Assert.True(created.Value > 0, "Partial offer follows actual suspended child creation");
+            if (!assertion.IsSuccess)
+                return Checked(assertion);
+
+            assertion = Assert.True(string.Utf8IndexOf(started.Error,
+                "cannot adopt suspended Windows CLI thread capability", 0) >= 0,
+                "SDK adopts the valid process capability before refusing the revoked thread capability");
+            if (!assertion.IsSuccess)
+                return Checked(assertion);
+        } else {
+            Result<LateOfferReceipt,string> witness = await WaitForLateWitness(deadline, token);
+            if (!witness.IsSuccess)
+                return PhaseError(witness.IsCancelled, witness.Error);
+
+            assertion = LateFacts(witness.Value);
+            if (!assertion.IsSuccess)
+                return Checked(assertion);
+        }
+
+        Result<FaultReceipt,string> before = control.Receipt(active);
+        if (!before.IsSuccess)
+            return PhaseError(before.IsCancelled, before.Error);
+
+        assertion = Unknown(before.Value, false);
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        assertion = Assert.Equal<string>(started.Error, before.Value.infrastructureFailure,
+            "The raw retained receipt preserves the reported startup failure");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        assertion = Assert.True(client.Interrupt(active).IsFailure, "Unadmitted unknown root refuses graceful interruption");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        retained = client.RetainedOperation();
+        if (!retained.IsSuccess)
+            return Failed("broker_offer.retention", "Refused interruption must preserve actionable custody");
+
+        assertion = Assert.Equal<OperationId>(active, retained.Value, "Retained ID stays unchanged after refusal");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        remaining = Remaining(deadline, token);
+        if (!remaining.IsSuccess)
+            return PhaseError(remaining.IsCancelled, remaining.Error);
+
+        Result<OperationObservation,string> disposed = await client.ForceDispose(active, remaining.Value, token);
+        if (!disposed.IsSuccess)
+            return PhaseError(disposed.IsCancelled, disposed.Error);
+
+        complete = disposed.Value.treeComplete;
+        assertion = UnknownObservation(disposed.Value, true);
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        Result<FaultReceipt,string> after = control.Receipt(active);
+        if (!after.IsSuccess)
+            return PhaseError(after.IsCancelled, after.Error);
+
+        assertion = Unknown(after.Value, true);
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        assertion = Assert.Equal<string>(before.Value.infrastructureFailure, after.Value.infrastructureFailure,
+            "Explicit custody closure never erases the original startup failure");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        assertion = Assert.True(client.RetainedOperation().IsFailure, "Complete forced custody no longer requires retention");
+
+        return Checked(assertion);
+    }
+
+    public async Task<Result<TestStepResult,string>> Cleanup(TestDeadline deadline, CancellationToken token) {
+        Result<OperationId,string> retained = client.RetainedOperation();
+        if (retained.IsSuccess) {
+            active = retained.Value;
+            owned = true;
+            complete = false;
+        }
+
+        if (owned && !complete) {
+            Result<int,string> remaining = Remaining(deadline, token);
+            if (!remaining.IsSuccess)
+                return PhaseError(remaining.IsCancelled, remaining.Error);
+
+            Result<OperationObservation,string> disposed = await client.ForceDispose(active, remaining.Value, token);
+            if (!disposed.IsSuccess)
+                return PhaseError(disposed.IsCancelled, disposed.Error);
+
+            // Unknown root results need not become exited=true for custody to close.
+            complete = disposed.Value.treeComplete;
+            if (!complete)
+                return Failed("broker_offer.cleanup_incomplete", "Independent cleanup did not prove complete custody closure");
+
+            return Failed("broker_offer.emergency_force", "Cleanup required force before the authored body proved disposal");
+        }
+
+        TestSteps steps = new TestSteps();
+
+        return Result<TestStepResult,string>.Success(steps.Passed());
+    }
+}

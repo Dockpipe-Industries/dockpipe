@@ -84,6 +84,9 @@ verified associations take priority over recent completed executions within the
 256-entry result. Registry discovery examines at most 4096 entries per observation.
 Operations with no
 project use the existing global data directory's `runs/executions` subdirectory.
+Flatpak workspaces opened through the document portal keep history in app-private
+state keyed by the grant path. The portal mount can reject file locks even when
+it permits workspace writes.
 History updates use a cross-process lock and atomic replacement. It is a recent
 activity cache, not a durable audit log. Heavy concurrency can exceed retention;
 the snapshot reports its capacity limit. Crashes can leave `running` records:
@@ -125,11 +128,11 @@ new execution or authorization path.
 | --- | --- | --- | --- |
 | Host/Docker/worker lifecycle metadata | Implemented, local tests | Implemented, cross-build only | Implemented, cross-build only |
 | Process start identity and System discovery | `/proc`, including boot identity | BSD creation seconds/microseconds; native focused tests | Creation FILETIME; native limited-user tests |
-| Host CPU and resident memory | Implemented | Unavailable | Cumulative process CPU; resident memory unavailable |
+| Host process CPU and resident memory | Implemented | Unavailable | Cumulative process CPU; resident memory unavailable |
 | Selected Docker resource metrics | Docker CLI; fixture-qualified | Same CLI contract; native unqualified | Same CLI contract; native unqualified |
 | QEMU host association/start verification | Existing VM runtime adapter | Package adapter implemented; native identity tests pass; complete association qualification pending | Package adapter implemented; native identity tests pass; complete association qualification pending |
-| Whole-system resources | CPU, memory, swap, root disk, network, uptime/load | Unavailable | CPU, physical memory, system-volume capacity, network and uptime; native qualification pending |
-| Opted-in remote monitoring | Outbound snapshots | Docker inventory; native resources unavailable | Worker runtime unsupported |
+| Whole-system resources | CPU, memory, swap, root disk, network, uptime/load | Native CPU, memory, swap, root disk, network, uptime/load; Darwin arm64 live-qualified | CPU, physical memory, system-volume capacity, network and uptime; native qualification pending |
+| Opted-in remote monitoring | Outbound snapshots | Native system/process metadata and Docker inventory; paired-worker qualified | Worker runtime unsupported |
 
 Remote worker execution uses the same local recorder on the worker. Existing
 broker job status and raw logs are available in **Executions → Runs & logs**. Remote monitoring adds an
@@ -155,6 +158,15 @@ virtual interfaces; bridge/VPN traffic may be counted at multiple interfaces.
 The CPU chart retains 60 samples. CPU and network rates need two measurements;
 reboots, counter resets and machine changes reset their baselines.
 
+On macOS, native Mach counters supply cumulative CPU ticks and memory measurements;
+available memory is free plus inactive pages. Native kernel interfaces supply
+swap, root-filesystem capacity, non-loopback network counters, uptime and load.
+These describe the Mac host, including when Docker runs in a separate VM. Failed
+sources remain unavailable. CPU and network rates require a nonempty boot identity
+and two samples. This does not add per-process CPU or resident-memory counters.
+Darwin arm64 native tests and two distinct live paired-worker snapshots have
+qualified this path; Darwin amd64 has compile-only coverage.
+
 On Windows, whole-system measurements use native Windows APIs through the same
 CLI snapshot contract. CPU and network rates appear after two samples. Disk
 capacity describes the Windows system volume. Unix load average and swap are
@@ -169,10 +181,13 @@ parent PID, memory and CPU sort by numeric values; unavailable metrics stay last
 Sorting covers the full collected snapshot before the visible row limit and
 persists across refreshes.
 
-Both **System** and **Containers** offer **This computer** and the paired machines
-from the existing **Machines** connection. Switching targets clears the previous
-machine's data and discards outstanding results from it. Remote System currently
-shows machine resources and discovered processes, not project execution history.
+**System** offers **This computer** and the paired machines from the existing
+**Machines** connection. In **Containers**, the **Machine** selector is available
+when the workspace is on **This computer**. It can show the read-only monitoring
+inventory for a paired worker while the workspace stays local. Switching targets
+clears the previous machine's data and discards outstanding results from it.
+Remote System shows machine resources and discovered processes. Use the separate
+workflow views for project execution history.
 
 The worker owner enables the desired sharing locally, using the same state
 folder as their paired worker:
@@ -206,9 +221,10 @@ maximum); snapshots expire for reads after 30 seconds and disappear on restart
 or revocation. Process lists that exceed the byte budget carry a truncation flag.
 There is no durable telemetry archive.
 
-Remote Docker is a read-only inventory/topology view: containers, networks,
-volumes and their associations. Existing local start/stop, terminals, inspect
-and log controls remain local. Remote snapshots omit command arguments,
+Remote Docker monitoring shows a read-only inventory and topology of containers,
+networks, volumes and their associations. A remote workspace uses its worker's
+separate Docker feature grants for inventory, details and actions. Monitoring
+snapshots omit command arguments,
 environment values, application logs, arbitrary labels and mount source paths.
 Only the Compose project, service and dependency labels are retained. Collection
 uses the worker's Docker CLI/context with a three-second total deadline, a

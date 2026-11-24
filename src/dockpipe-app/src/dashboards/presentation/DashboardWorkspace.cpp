@@ -554,6 +554,7 @@ bool DashboardWorkspace::addPanel(const QString &id, const QString &title, QWidg
     auto *label = new QLabel(title, header);
     label->setObjectName("dashboardPanelTitle");
     label->setTextFormat(Qt::PlainText);
+    label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     label->setAttribute(Qt::WA_TransparentForMouseEvents);
     headerLayout->addWidget(label, 1);
     auto *menu = new QToolButton(header);
@@ -918,7 +919,7 @@ QRect DashboardWorkspace::defaultGeometry(const QString &id, const QMap<QString,
             natural = QSize(520, 96);
         else if (kind == "system")
             natural = QSize(420, 260);
-        else if (kind == "browser")
+        else if (kind == "browser" || kind == "remote-desktop")
             natural = QSize(680, 420);
         else if (kind == "files")
             natural = QSize(480, 340);
@@ -1387,7 +1388,15 @@ void DashboardWorkspace::showPanelMenu(const QString &id, const QPoint &position
         refreshAction->setEnabled(refresh->isEnabled());
         connect(refreshAction, &QAction::triggered, refresh, &QPushButton::click);
     }
-    if (openFullView) {
+    if (auto *canvasView = m_panels.value(id).frame->findChild<QPushButton *>("dashboardOpenCanvasView")) {
+        auto *action = menu->addAction(canvasView->text());
+        connect(action, &QAction::triggered, canvasView, &QPushButton::click);
+    }
+    if (auto *duplicate = m_panels.value(id).frame->findChild<QPushButton *>("dashboardDuplicateView")) {
+        auto *action = menu->addAction(duplicate->text());
+        connect(action, &QAction::triggered, duplicate, &QPushButton::click);
+    }
+    if (openFullView && !openFullView->isHidden()) {
         auto *openAction = menu->addAction(openFullView->text());
         openAction->setEnabled(openFullView->isEnabled());
         connect(openAction, &QAction::triggered, openFullView, &QPushButton::click);
@@ -1887,35 +1896,53 @@ void DashboardWorkspace::applyPanelChrome(const QString &id, bool tiled)
         panel.frame->setMinimumSize(spatial && kind == "send-input" ? QSize(340, 88) : QSize(280, 180));
     }
     const bool viewportBrowser = spatial && kind == "browser";
-    panel.header->setVisible(!viewportBrowser && !tiled && (m_showPanelHeaders || m_expandedPanel == id));
+    panel.header->setVisible(!viewportBrowser && !tiled);
+    if (auto *title = panel.header->findChild<QLabel *>("dashboardPanelTitle"))
+        title->setVisible(m_showPanelHeaders || m_expandedPanel == id);
     auto *menuButton = panel.frame->findChild<QToolButton *>("dashboardPanelMenuButton");
-    auto *browserTabRow = panel.frame->findChild<QHBoxLayout *>("browserTabRow");
-    auto *grip = panel.frame->findChild<QLabel *>("dashboardCanvasBrowserGrip");
+    auto *closeButton = panel.frame->findChild<QToolButton *>("dashboardPanelClose");
+    auto *expandButton = panel.expand;
+    auto *browserTabRow = panel.frame->findChild<QHBoxLayout *>("browserNetworkToolbar");
+    if (!browserTabRow)
+        browserTabRow = panel.frame->findChild<QHBoxLayout *>("browserTabRow");
+    auto *dragBand = panel.frame->findChild<QWidget *>("dashboardBrowserDragBand");
     if (viewportBrowser && menuButton && browserTabRow) {
-        if (!grip) {
-            grip = new QLabel(QString::fromUtf8("⠿"), panel.frame);
-            grip->setObjectName("dashboardCanvasBrowserGrip");
-            grip->setAccessibleName(tr("Move browser widget"));
-            grip->setAlignment(Qt::AlignCenter);
-            grip->setFixedSize(18, 24);
-            browserTabRow->insertWidget(0, grip);
+        if (!dragBand) {
+            dragBand = new QWidget(panel.frame);
+            dragBand->setObjectName("dashboardBrowserDragBand");
+            // A zero-width anchor defines the header height without a visible grip.
+            dragBand->setFixedSize(0, 34);
+            browserTabRow->insertWidget(0, dragBand);
         }
         if (menuButton->parentWidget() != browserTabRow->parentWidget())
             browserTabRow->addWidget(menuButton);
-        grip->show();
+        browserTabRow->addWidget(expandButton);
+        if (closeButton)
+            browserTabRow->addWidget(closeButton);
+        dragBand->show();
         menuButton->show();
-        panel.frame->setDragHandle(grip);
+        if (closeButton)
+            closeButton->show();
+        panel.frame->setDragHandle(dragBand, true);
     } else {
-        if (grip)
-            grip->hide();
+        if (dragBand)
+            dragBand->hide();
         if (menuButton && menuButton->parentWidget() != panel.header)
             qobject_cast<QHBoxLayout *>(panel.header->layout())->addWidget(menuButton);
-        panel.frame->setDragHandle(panel.header);
+        auto *headerLayout = qobject_cast<QHBoxLayout *>(panel.header->layout());
+        headerLayout->addWidget(expandButton);
+        if (closeButton)
+            headerLayout->addWidget(closeButton);
+        panel.frame->setDragHandle(panel.header, true);
     }
-    for (const QString &name : {QString("dashboardPanelClose"), QString("dashboardPanelMinimize"), QString("dashboardPanelExpand")}) {
-        if (auto *control = panel.header->findChild<QWidget *>(name))
-            control->setVisible(!spatial);
+    if (closeButton) {
+        if (spatial && !viewportBrowser)
+            qobject_cast<QHBoxLayout *>(panel.header->layout())->addWidget(closeButton);
+        closeButton->setVisible(!tiled);
     }
+    expandButton->setVisible(!tiled);
+    if (auto *minimize = panel.header->findChild<QWidget *>("dashboardPanelMinimize"))
+        minimize->setVisible(!spatial);
     const bool compact = tiled && (m_compactTiling || panel.frame->property("dashboardExternalApp").toBool());
     if (panel.footer)
         panel.footer->setVisible(!spatial && !compact && !panel.footerInitiallyHidden);

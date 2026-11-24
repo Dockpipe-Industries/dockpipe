@@ -1,0 +1,9 @@
+module Dockpipe.Product.LaneExecution;
+import Dockpipe.Product.LaneReceipt;
+
+public Record QualificationLaneOutcome {
+    public int remainingMetadataBytes = 0;
+    public int? exitCode;
+    public AdmittedReceipt? admitted;
+    public string rejection = "";
+}

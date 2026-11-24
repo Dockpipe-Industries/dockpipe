@@ -72,6 +72,22 @@ func TestNativeHardwareFailureNeverRetriesOrPublishes(t *testing.T) {
 	}
 }
 
+func TestNativeHardwareGUIReportsMissingKeyWithoutApproving(t *testing.T) {
+	var output bytes.Buffer
+	client := &fixtureNativeHardware{}
+	interaction := &guiHardwareInteraction{output: &output}
+	err := interaction.run(context.Background(), fixtureCeremonyOptions, func([]byte) (bool, error) {
+		t.Fatal("missing hardware key reached approval")
+		return false, nil
+	}, client)
+	if !errors.Is(err, errNoAccessibleHardwareKey) || client.calls != 0 {
+		t.Fatal("missing hardware key did not stop before prompting or using a key")
+	}
+	if got := output.String(); got != "{\"event\":\"hardware-key-unavailable\"}\n" {
+		t.Fatalf("unexpected missing-key notification: %s", got)
+	}
+}
+
 func TestNativeHardwareRejectsInputBeforeKeyOperation(t *testing.T) {
 	for _, interaction := range []*fixtureHardwareInteraction{
 		{selection: -1, pin: "1234"},

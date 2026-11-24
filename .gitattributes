@@ -1,2 +1,5 @@
 # Bash scripts require LF line endings, including on Windows Git Bash.
 *.sh text eol=lf
+
+# The embedded PipeLang SDK descriptor pins the exact source bytes.
+/src/lib/sdkassets/pipelang/src/**/*.pipe text eol=lf

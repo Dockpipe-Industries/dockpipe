@@ -1,0 +1,8 @@
+module Dockpipe.Product.Qualification.Tests;
+import Dockpipe.Product.Qualification;
+import PipeLang.Testing;
+
+public Record PlanReport {
+    public bool allPassed = false;
+    public List<TestResult> results;
+}

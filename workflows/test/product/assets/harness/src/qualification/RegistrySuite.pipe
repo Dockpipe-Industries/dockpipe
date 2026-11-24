@@ -1,0 +1,62 @@
+module Dockpipe.Product.Qualification.Tests;
+import Dockpipe.Product.Qualification;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+public model Class RegistrySuite {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private int indexRetainedBytes;
+
+    public RegistrySuite(JsonReader reader, JsonStringIndexer indexer, int indexRetainedBytes) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.indexRetainedBytes = indexRetainedBytes;
+    }
+
+    private pure string Fixture(string featureId, string scenario, string assertions,
+                                 string requirements, string critical, string threshold) {
+        return "{\"schema\":\"dockpipe.product-integration.registry/v1\",\"platforms\":[" +
+            "{\"id\":\"p\",\"group\":\"contained\",\"selectors\":[\"all-cli\"]}]," +
+            "\"features\":[{\"id\":\"" + featureId + "\",\"selector\":\"all\",\"critical\":" + critical +
+            ",\"requires\":" + requirements + ",\"cases\":[{\"scenario\":\"" + scenario +
+            "\",\"layer\":\"component\",\"required_assertions\":" + assertions + "}]}]," +
+            "\"policy\":{\"local_only\":true,\"minimum_coverage\":" + threshold +
+            ",\"critical_coverage\":1.0,\"unavailable_counts_as_unpassed\":true}," +
+            "\"test_capabilities\":[\"bare_metal\"]}";
+    }
+
+    public List<TestResult> Run(CancellationToken token) {
+        List<ITestCase> cases = List<ITestCase>.Empty();
+        cases.Add(new RegistryContractCase(reader, indexer, indexRetainedBytes, 0,
+            Fixture("feature.a", "happy", "[\"assert.a\"]", "[]", "true", "0.9"), "", true));
+        cases.Add(new RegistryContractCase(reader, indexer, indexRetainedBytes, 1,
+            Fixture("feature.a", "happy", "[\"assert.a\"]", "[\"bare_metal\"]", "true", "0.9"), "", false));
+        cases.Add(new RegistryContractCase(reader, indexer, indexRetainedBytes, 2,
+            Fixture("feature.a", "happy", "[\"assert.a\",\"assert.a\"]", "[]", "true", "0.9"),
+            "qualification.registry.duplicate_assertion", false));
+        cases.Add(new RegistryContractCase(reader, indexer, indexRetainedBytes, 3,
+            Fixture("feature.a", "happy", "[\"assert.a\",\"assert.\\u0061\"]", "[]", "true", "0.9"),
+            "qualification.registry.duplicate_assertion", false));
+        cases.Add(new RegistryContractCase(reader, indexer, indexRetainedBytes, 4,
+            Fixture(".invalid", "happy", "[\"assert.a\"]", "[]", "true", "0.9"),
+            "qualification.registry.feature_id", false));
+        cases.Add(new RegistryContractCase(reader, indexer, indexRetainedBytes, 5,
+            Fixture("feature.a", "unknown", "[\"assert.a\"]", "[]", "true", "0.9"),
+            "qualification.registry.case_kind", false));
+        cases.Add(new RegistryContractCase(reader, indexer, indexRetainedBytes, 6,
+            Fixture("feature.a", "happy", "[]", "[]", "true", "0.9"),
+            "qualification.registry.array_bound", false));
+        cases.Add(new RegistryContractCase(reader, indexer, indexRetainedBytes, 7,
+            Fixture("feature.a", "happy", "[\"assert.a\"]", "[]", "1", "0.9"),
+            "qualification.registry.kind", false));
+        cases.Add(new RegistryContractCase(reader, indexer, indexRetainedBytes, 8,
+            Fixture("feature.a", "happy", "[\"assert.a\"]", "[]", "true", "0.8"),
+            "qualification.registry.coverage_policy", false));
+        cases.Add(new RegistryContractCase(reader, indexer, indexRetainedBytes, 9,
+            Fixture("feature.a", "happy", "[\"assert.a\"]", "[\"x\",\"x\"]", "true", "0.9"), "", false));
+
+        TestRunner runner = new TestRunner();
+        return runner.RunAll(cases, token);
+    }
+}

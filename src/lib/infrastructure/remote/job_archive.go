@@ -21,16 +21,12 @@ type archivedJob struct {
 	SHA256 string       `json:"sha256"`
 }
 
-func terminalJob(job contract.Job) bool {
-	return job.Status == "success" || job.Status == "failure" || job.Status == "cancelled"
-}
-
 func jobMetadataHash(job contract.Job) (string, error) {
 	if err := job.Validate(); err != nil {
 		return "", err
 	}
-	if !terminalJob(job) || job.Result != nil {
-		return "", errors.New("job archive requires terminal metadata without a result payload")
+	if !job.Resolved() || job.Result != nil {
+		return "", errors.New("job archive requires resolved metadata without a result payload")
 	}
 	if job.Session != "" && (len(job.Session) != 64 || !contract.ValidID(job.Session)) {
 		return "", errors.New("invalid archived worker session")
@@ -72,12 +68,23 @@ func (b *Broker) readArchivedJob(id string) (contract.Job, error) {
 	if err := readPrivateBounded(path, &record, maxArchivedJobBytes); err != nil {
 		return contract.Job{}, err
 	}
+	if record.Schema != 1 || record.Job.ID != id {
+		return contract.Job{}, errors.New("archived job identity mismatch")
+	}
+	if record.Job.Status == "unknown" {
+		// Shared job metadata omits the private acknowledgement. Recover it
+		// only from the exact receipt and evidence, including on archive reads.
+		if err := b.restoreJobInterruptionAcknowledgement(&record.Job); err != nil {
+			// A missing evidence file is corruption, not an absent job archive.
+			return contract.Job{}, fmt.Errorf("unverifiable archived interruption: %v", err)
+		}
+	}
 	digest, err := jobMetadataHash(record.Job)
 	if err != nil {
 		return contract.Job{}, err
 	}
-	if record.Schema != 1 || record.Job.ID != id || digest != record.SHA256 {
-		return contract.Job{}, errors.New("archived job identity or digest mismatch")
+	if digest != record.SHA256 {
+		return contract.Job{}, errors.New("archived job digest mismatch")
 	}
 	return record.Job, nil
 }
@@ -115,6 +122,16 @@ func (b *Broker) storeArchivedJob(job contract.Job) error {
 	if err != nil {
 		return err
 	}
+	if job.HasAcknowledgedInterruption() {
+		// Confirm that the evidence can stand on its own before publishing an
+		// immutable archive. The private acknowledgement is omitted from Job.
+		if err := b.verifyJobInterruptionAcknowledgement(job.ID, job.InterruptionAcknowledgement); err != nil {
+			return err
+		}
+		if err := b.verifyInterruptionEvidence(job); err != nil {
+			return err
+		}
+	}
 	path, err := b.archivedJobPath(job.ID)
 	if err != nil {
 		return err
@@ -143,7 +160,7 @@ func (b *Broker) storeArchivedJob(job contract.Job) error {
 	return nil
 }
 
-// Retire at most one oldest terminal job for one new admission. No directory
+// Retire at most one oldest resolved job for one new admission. No directory
 // scan or active-job eviction is needed, and the live map is untouched until
 // its replacement and the downgrade guard can be published together.
 func (b *Broker) jobsForAdmission() (map[string]contract.Job, bool, error) {
@@ -156,14 +173,14 @@ func (b *Broker) jobsForAdmission() (map[string]contract.Job, bool, error) {
 	}
 	var oldest *contract.Job
 	for _, job := range jobs {
-		if terminalJob(job) && (oldest == nil || job.CreatedAt.Before(oldest.CreatedAt) ||
+		if job.Resolved() && (oldest == nil || job.CreatedAt.Before(oldest.CreatedAt) ||
 			(job.CreatedAt.Equal(oldest.CreatedAt) && job.ID < oldest.ID)) {
 			selected := job
 			oldest = &selected
 		}
 	}
 	if oldest == nil {
-		return nil, false, errors.New("all 128 recent jobs are unresolved; no terminal job can be archived")
+		return nil, false, errors.New("all 128 recent jobs are unresolved")
 	}
 	if err := b.storeArchivedJob(*oldest); err != nil {
 		b.poisoned = true

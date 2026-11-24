@@ -1,5 +1,6 @@
 #include "DashboardWorkspace.h"
 #include "CanvasPanel.h"
+#include "DashboardDock.h"
 
 #include <QApplication>
 #include <QAbstractButton>
@@ -78,6 +79,8 @@ void movePressedPointer(QWidget *handle, const QPoint &globalPosition)
 class DashboardWorkspaceTest : public QObject {
     Q_OBJECT
 private slots:
+    void interruptedCanvasDragDoesNotBlockOtherControls();
+    void canvasHeadersDragWithoutStealingControls();
     void keepsContentOwnedContainersUnchanged();
     void retainsTilingPresentationAcrossCanvasChanges();
     void addingTilesShowsLiveContentAtFinalGeometry();
@@ -109,6 +112,71 @@ private slots:
     void panelPointerDragCancelsWithoutChangingLayout();
     void floatingPanelsBlockTileDropTargets();
 };
+
+void DashboardWorkspaceTest::interruptedCanvasDragDoesNotBlockOtherControls()
+{
+    QWidget window;
+    window.resize(900, 600);
+    CanvasPanel panel("interrupted-drag", &window, false);
+    panel.setGeometry(100, 100, 400, 300);
+    auto *layout = new QVBoxLayout(&panel);
+    auto *header = new QLabel("Drag here");
+    layout->addWidget(header);
+    layout->addStretch();
+    panel.setDragHandle(header);
+    QPushButton navigation("Navigation", &window);
+    navigation.setGeometry(10, 10, 120, 40);
+    QSignalSpy clicked(&navigation, &QPushButton::clicked);
+    auto *dock = new DashboardDock(&window);
+    dock->setOverlayArea(&window);
+    auto *shortcut = dock->findChild<QToolButton *>("dashboardDockPinned_browser");
+    QVERIFY(shortcut);
+    QSignalSpy dockActivated(dock, &DashboardDock::addWidgetRequested);
+    window.show();
+    QCoreApplication::processEvents();
+    dock->reveal(true);
+    QTRY_VERIFY(dock->isVisible() && dock->geometry().bottom() < window.height());
+
+    const QList<QEvent::Type> interruptions = {QEvent::UngrabMouse, QEvent::MouseMove,
+        QEvent::KeyPress, QEvent::WindowBlocked, QEvent::ApplicationDeactivate, QEvent::GrabMouse};
+    for (const auto interruption : interruptions) {
+        const QPoint point = header->rect().center();
+        const QPoint global = header->mapToGlobal(point);
+        QMouseEvent press(QEvent::MouseButtonPress, point, global,
+            Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+        QApplication::sendEvent(header, &press);
+        const QRect before = panel.geometry();
+        if (interruption == QEvent::UngrabMouse) {
+            QEvent ungrab(QEvent::UngrabMouse);
+            QApplication::sendEvent(&panel, &ungrab);
+        } else if (interruption == QEvent::MouseMove) {
+            const QPoint destination = navigation.rect().center();
+            QMouseEvent move(QEvent::MouseMove, destination, navigation.mapToGlobal(destination),
+                Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+            QApplication::sendEvent(&navigation, &move);
+        } else if (interruption == QEvent::KeyPress) {
+            QTest::keyClick(&panel, Qt::Key_Escape);
+        } else if (interruption == QEvent::GrabMouse) {
+            navigation.grabMouse();
+            QCOMPARE(QWidget::mouseGrabber(), &navigation);
+            navigation.releaseMouse();
+        } else {
+            QEvent interrupted(interruption);
+            QApplication::sendEvent(interruption == QEvent::ApplicationDeactivate
+                ? static_cast<QObject *>(qApp) : &window, &interrupted);
+        }
+        const int previousClicks = clicked.count();
+        QTest::mouseClick(&navigation, Qt::LeftButton);
+        QCOMPARE(clicked.count(), previousClicks + 1);
+        QCOMPARE(panel.geometry(), before);
+        QVERIFY(QWidget::mouseGrabber() != &panel);
+        dock->reveal(true);
+        const int previousActivations = dockActivated.count();
+        QTest::mouseClick(dock->windowHandle(), Qt::LeftButton, {},
+            shortcut->mapTo(dock, shortcut->rect().center()));
+        QCOMPARE(dockActivated.count(), previousActivations + 1);
+    }
+}
 
 void DashboardWorkspaceTest::addingTilesShowsLiveContentAtFinalGeometry()
 {
@@ -145,6 +213,109 @@ void DashboardWorkspaceTest::addingTilesShowsLiveContentAtFinalGeometry()
                 QCOMPARE(probe->shownGeometry.last(), frame->geometry());
         }
     }
+}
+
+void DashboardWorkspaceTest::canvasHeadersDragWithoutStealingControls()
+{
+    DashboardWorkspace workspace("header-drag");
+    workspace.resize(1200, 900);
+    workspace.show();
+    auto *browser = new QWidget;
+    browser->setProperty("dashboardKind", "browser");
+    auto *column = new QVBoxLayout(browser);
+    auto *row = new QHBoxLayout;
+    row->setObjectName("browserTabRow");
+    auto *tabs = new QTabBar;
+    tabs->setExpanding(false);
+    tabs->addTab("First");
+    tabs->addTab("Second");
+    row->addWidget(tabs, 1);
+    auto *add = new QPushButton("+");
+    row->addWidget(add);
+    column->addLayout(row);
+    auto *address = new QLineEdit;
+    column->addWidget(address);
+    column->addStretch();
+    QVERIFY(workspace.addPanel("browser", "Browser", browser));
+    auto *frame = workspace.findChild<CanvasPanel *>("dashboardPanel_browser");
+    frame->setGeometry(100, 100, 680, 380);
+    QCoreApplication::processEvents();
+    auto *close = frame->findChild<QToolButton *>("dashboardPanelClose");
+    QVERIFY(close && close->isVisible());
+    const QRect original = frame->geometry();
+    const QPoint blank(tabs->width() - 10, tabs->height() / 2);
+    QCOMPARE(tabs->tabAt(blank), -1);
+    const QPoint global = tabs->mapToGlobal(blank);
+    QMouseEvent press(QEvent::MouseButtonPress, blank, global,
+        Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+    QApplication::sendEvent(tabs, &press);
+    const QPoint delta(90, 60);
+    QMouseEvent move(QEvent::MouseMove, blank + delta, global + delta,
+        Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+    QApplication::sendEvent(tabs, &move);
+    QMouseEvent release(QEvent::MouseButtonRelease, blank, global + delta,
+        Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+    QApplication::sendEvent(tabs, &release);
+    QCOMPARE(frame->pos(), original.topLeft() + delta);
+    QCOMPARE(frame->size(), original.size());
+    const QRect moved = frame->geometry();
+    QTest::mouseClick(tabs, Qt::LeftButton, {}, tabs->tabRect(1).center());
+    QCOMPARE(tabs->currentIndex(), 1);
+    QCOMPARE(frame->geometry(), moved);
+    QSignalSpy added(add, &QPushButton::clicked);
+    QTest::mouseClick(add, Qt::LeftButton);
+    QCOMPARE(added.count(), 1);
+    QCOMPARE(frame->geometry(), moved);
+    address->setText("example.com");
+    QTest::mouseClick(address, Qt::LeftButton);
+    QCOMPARE(frame->geometry(), moved);
+    auto *expand = frame->findChild<QToolButton *>("dashboardPanelExpand");
+    QVERIFY(expand && expand->isVisible());
+    QTest::mouseClick(expand, Qt::LeftButton);
+    QCOMPARE(workspace.expandedPanel(), QString("browser"));
+    QCOMPARE(expand->toolTip(), QString("Restore panel"));
+    QTest::mouseClick(expand, Qt::LeftButton);
+    QVERIFY(workspace.expandedPanel().isEmpty());
+    QCOMPARE(frame->geometry(), moved);
+    QSignalSpy closed(&workspace, &DashboardWorkspace::panelCloseRequested);
+    QTest::mouseClick(close, Qt::LeftButton);
+    QCOMPARE(closed.count(), 1);
+    QCOMPARE(closed.first().first().toString(), QString("browser"));
+    workspace.setShowPanelHeaders(false);
+    auto *content = new QLabel("Ordinary widget");
+    content->setProperty("dashboardKind", "system");
+    QVERIFY(workspace.addPanel("system", "System", content));
+    auto *system = workspace.findChild<CanvasPanel *>("dashboardPanel_system");
+    QVERIFY(system->findChild<QToolButton *>("dashboardPanelClose")->isVisible());
+    QVERIFY(system->findChild<QLabel *>("dashboardPanelTitle")->isHidden());
+    system->setGeometry(100, 560, 560, 240);
+    QCoreApplication::processEvents();
+    auto *header = system->findChild<QWidget *>("dashboardPanelHeader");
+    const QPoint padding(7, header->mapTo(system, QPoint()).y() + header->height() / 2);
+    const QPoint paddingGlobal = system->mapToGlobal(padding);
+    const QRect systemGeometry = system->geometry();
+    QMouseEvent paddingPress(QEvent::MouseButtonPress, padding, paddingGlobal,
+        Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+    QApplication::sendEvent(system, &paddingPress);
+    QMouseEvent paddingMove(QEvent::MouseMove, padding + delta, paddingGlobal + delta,
+        Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+    QApplication::sendEvent(system, &paddingMove);
+    QMouseEvent paddingRelease(QEvent::MouseButtonRelease, padding, paddingGlobal + delta,
+        Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+    QApplication::sendEvent(system, &paddingRelease);
+    QCOMPARE(system->geometry(), systemGeometry.translated(delta));
+    auto *systemExpand = system->findChild<QToolButton *>("dashboardPanelExpand");
+    QVERIFY(systemExpand && systemExpand->isVisible());
+    QTest::mouseClick(systemExpand, Qt::LeftButton);
+    QCOMPARE(workspace.expandedPanel(), QString("system"));
+    QTest::mouseClick(systemExpand, Qt::LeftButton);
+    QVERIFY(workspace.expandedPanel().isEmpty());
+    QCOMPARE(system->geometry(), systemGeometry.translated(delta));
+
+    QTest::mouseClick(system->findChild<QToolButton *>("dashboardPanelClose"), Qt::LeftButton);
+    QCOMPARE(closed.count(), 2);
+    QCOMPARE(closed.last().first().toString(), QString("system"));
+
 }
 
 void DashboardWorkspaceTest::keepsContentOwnedContainersUnchanged()
@@ -1285,7 +1456,9 @@ void DashboardWorkspaceTest::tiledChromeUsesOneHeaderAndRetainsActions()
     QVERIFY(header->isHidden());
     workspace.setShowPanelHeaders(false);
     workspace.setMode("canvas");
-    QVERIFY(header->isHidden());
+    QVERIFY(header->isVisible());
+    QVERIFY(header->findChild<QLabel *>("dashboardPanelTitle")->isHidden());
+    QVERIFY(header->findChild<QToolButton *>("dashboardPanelClose")->isVisible());
     workspace.setShowPanelHeaders(true);
     QVERIFY(header->isVisible());
     workspace.setCompactTiling(true);
@@ -1427,7 +1600,8 @@ void DashboardWorkspaceTest::expandsCanvasWithoutChangingSavedLayout()
     QVERIFY(workspace.expandedPanel().isEmpty());
     QCOMPARE(frame->geometry(), original);
     QVERIFY(other->isVisible());
-    QVERIFY(header->isHidden());
+    QVERIFY(header->isVisible());
+    QVERIFY(header->findChild<QLabel *>("dashboardPanelTitle")->isHidden());
     QCOMPARE(workspace.saveLayout(), saved);
     QCOMPARE(changed.count(), 0);
 }

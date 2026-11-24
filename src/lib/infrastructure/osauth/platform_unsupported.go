@@ -1,4 +1,4 @@
-//go:build (!linux && !darwin) || (linux && !amd64 && !arm64)
+//go:build (!linux && !darwin && !windows) || (linux && !amd64 && !arm64) || (windows && !amd64 && !arm64)
 
 package osauth
 

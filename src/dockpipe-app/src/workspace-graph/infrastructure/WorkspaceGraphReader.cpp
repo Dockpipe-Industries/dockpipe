@@ -1,19 +1,46 @@
 #include "WorkspaceGraphReader.h"
 #include "WorkspaceGraphPage.h"
+#include "WorkspaceFilesClient.h"
+
 #include <QDir>
-#include <QCoreApplication>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QProcess>
+#include <QStringDecoder>
 
 namespace {
-// A cancelled helper must exit before any view starts another read. This also
-// bounds rapid open/close churn when an OS filesystem syscall is slow to cancel.
 QPointer<QProcess> activeHelper;
+QPointer<WorkspaceGraphReader> activeReader;
+
+// Child-owned implementation state preserves the exported reader's object layout.
+class ReaderState final : public QObject {
+public:
+    explicit ReaderState(QObject *parent) : QObject(parent), client(new WorkspaceFilesClient(this))
+    {
+        setObjectName(QStringLiteral("workspaceGraphAdmissionState"));
+    }
+    WorkspaceFilesClient *client;
+    bool active = false;
+};
+
+ReaderState *state(WorkspaceGraphReader *reader)
+{
+    return static_cast<ReaderState *>(reader->findChild<QObject *>(
+        QStringLiteral("workspaceGraphAdmissionState"), Qt::FindDirectChildrenOnly));
+}
+
+QString relativePath(const QString &root, const QString &path)
+{
+    // Pure lexical conversion only. Core admission owns filesystem inspection,
+    // root confinement, symlink rejection and cursor validation.
+    return QDir::fromNativeSeparators(QDir(root).relativeFilePath(path));
+}
 }
 
 WorkspaceGraphReader::WorkspaceGraphReader(QObject *parent, int deadlineMilliseconds)
     : QObject(parent), m_deadlineMilliseconds(qBound(1, deadlineMilliseconds, 25000))
 {
+    new ReaderState(this);
     m_timeout.setSingleShot(true);
     connect(&m_timeout, &QTimer::timeout, this, [this]() {
         m_failure = tr("Directory read timed out. Retry or choose a smaller folder.");
@@ -21,42 +48,45 @@ WorkspaceGraphReader::WorkspaceGraphReader(QObject *parent, int deadlineMillisec
         m_abandoned = true;
         const quint64 token = m_pending.isEmpty() ? m_token : m_pendingToken;
         m_pending = {};
+        const QPointer<WorkspaceGraphReader> guard(this);
         emit completed(token, {{"error", m_failure}});
-        if (m_process)
-            m_process->kill();
+        if (guard)
+            state(this)->client->cancel();
     });
 }
 
 WorkspaceGraphReader::~WorkspaceGraphReader()
 {
-    if (!m_process)
-        return;
-    auto *process = m_process.data();
-    disconnect(process, nullptr, this, nullptr);
-    process->kill();
-    // Never wait for filesystem I/O in a widget destructor. The transient process
-    // owns its last cleanup callback and no longer references the closed graph.
-    if (process->state() == QProcess::NotRunning) {
-        process->deleteLater();
-    } else {
-        connect(process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), process, &QObject::deleteLater);
-    }
+    // The client reaps its child asynchronously. Keep activeHelper until that
+    // process really exits so a blocked filesystem cannot accumulate readers.
+    delete state(this);
+    if (activeReader == this)
+        activeReader = nullptr;
 }
 
-bool WorkspaceGraphReader::busy() const { return m_process || !m_pending.isEmpty(); }
-bool WorkspaceGraphReader::helperActive() { return !activeHelper.isNull(); }
+bool WorkspaceGraphReader::busy() const
+{
+    auto *self = const_cast<WorkspaceGraphReader *>(this);
+    return state(self)->active || !m_pending.isEmpty();
+}
+
+bool WorkspaceGraphReader::helperActive()
+{
+    return activeReader || (activeHelper && activeHelper->state() != QProcess::NotRunning);
+}
 
 void WorkspaceGraphReader::request(quint64 token, const QJsonObject &request)
 {
-    if (m_process && m_timedOut) {
+    auto *current = state(this);
+    if (current->active && m_timedOut) {
         emit completed(token, {{"error", tr("The timed-out filesystem read is still stopping. No additional reader will be started.")}});
         return;
     }
     m_pending = request;
     m_pendingToken = token;
-    if (m_process) {
+    if (current->active) {
         m_abandoned = true;
-        m_process->kill();
+        current->client->cancel();
         m_timeout.start(m_deadlineMilliseconds);
     } else {
         startPending();
@@ -68,8 +98,7 @@ void WorkspaceGraphReader::cancel()
     m_pending = {};
     m_abandoned = true;
     m_timeout.stop();
-    if (m_process)
-        m_process->kill();
+    state(this)->client->cancel();
 }
 
 void WorkspaceGraphReader::startPending()
@@ -79,75 +108,84 @@ void WorkspaceGraphReader::startPending()
     const auto request = m_pending;
     m_token = m_pendingToken;
     m_pending = {};
-    if (activeHelper) {
+    if (helperActive()) {
         emit completed(m_token, {{"error", tr("The previous directory read is still stopping. Retry in a moment.")}});
         return;
     }
-    m_process = new QProcess(QCoreApplication::instance());
-    activeHelper = m_process;
+    auto *current = state(this);
+    const QString root = request.value("root").toString();
+    const bool preview = request.value("operation").toString() == QStringLiteral("preview");
+    const QString path = relativePath(root, request.value(preview ? "path" : "directory").toString());
+    // This graph belongs to the local Files root. Remote graph support requires
+    // an explicit captured remote context; it must never become a local request.
+    if (request.contains("target") || request.contains("rootId") || !QDir::isAbsolutePath(root)
+        || QJsonDocument(request).toJson(QJsonDocument::Compact).size() > 256 * 1024) {
+        emit completed(m_token, {{"error", tr("Invalid local workspace graph request.")}});
+        return;
+    }
+    QJsonObject operation{{"schema", "dockpipe.files/v1"},
+        {"action", preview ? "read" : "list"}, {"path", path}};
+    if (!preview) {
+        operation.insert("limit", request.value("limit"));
+        operation.insert("hidden", request.value("hidden").toBool(true));
+        operation.insert("after", request.value("after").toString());
+        operation.insert("revision", request.value("stamp").toString());
+    }
+    WorkspaceFilesClient::Context context;
+    context.localRoot = root;
+    current->client->setContext(context);
+    current->active = true;
+    activeReader = this;
     m_abandoned = false;
     m_timedOut = false;
-    m_output.clear();
     m_failure.clear();
-    connect(m_process, &QProcess::readyReadStandardOutput, this, &WorkspaceGraphReader::drain);
-    connect(m_process, &QProcess::readyReadStandardError, this, [this]() {
-        // The helper emits structured errors. Drain diagnostics without retaining them.
-        m_process->readAllStandardError();
-    });
-    connect(m_process, &QProcess::started, this, [this, request]() {
-        m_process->write(QJsonDocument(request).toJson(QJsonDocument::Compact));
-        m_process->closeWriteChannel();
-    });
-    connect(m_process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
-        [this](int exitCode, QProcess::ExitStatus status) { finish(exitCode == 0 && status == QProcess::NormalExit); });
-    connect(m_process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
-        if (error == QProcess::FailedToStart) {
-            m_failure = tr("Cannot start the directory reader: %1").arg(m_process->errorString());
-            finish(false);
-        }
-    });
     m_timeout.start(m_deadlineMilliseconds);
-    const QString helper = qEnvironmentVariable("DOCKPIPE_WORKSPACE_READER",
-        QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("dockpipe-workspace-reader")
-#ifdef Q_OS_WIN
-            + QStringLiteral(".exe")
-#endif
-        ));
-    m_process->start(helper, {"--workspace-graph-page"});
-}
-
-void WorkspaceGraphReader::drain()
-{
-    if (!m_process)
-        return;
-    const QByteArray bytes = m_process->readAllStandardOutput();
-    if (bytes.size() > WorkspaceGraphPage::maximumReplyBytes - m_output.size()) {
-        m_failure = tr("Directory response exceeds the 2 MiB limit. Reduce the page size.");
-        m_process->kill();
-        return;
-    }
-    m_output += bytes;
-}
-
-void WorkspaceGraphReader::finish(bool success)
-{
-    if (!m_process)
-        return;
-    drain();
-    m_timeout.stop();
-    auto *finished = m_process.data();
-    disconnect(finished, nullptr, this, nullptr);
-    m_process = nullptr;
-    activeHelper = nullptr;
-    finished->deleteLater();
-    if (!m_abandoned) {
-        QJsonParseError error;
-        const auto document = QJsonDocument::fromJson(m_output, &error);
-        if (!success || !m_failure.isEmpty() || error.error != QJsonParseError::NoError || !document.isObject()) {
-            emit completed(m_token, {{"error", m_failure.isEmpty() ? tr("Directory read failed. Refresh to retry.") : m_failure}});
-        } else {
-            emit completed(m_token, document.object());
+    current->client->run(operation, this, [this, preview, path, limit = request.value("limit").toInt()](const WorkspaceFilesClient::Result &result) {
+        auto *current = state(this);
+        current->active = false;
+        activeReader = nullptr;
+        m_timeout.stop();
+        if (!m_abandoned) {
+            QJsonObject page;
+            if (!result.success()) {
+                page.insert("error", result.error);
+            } else if (result.value.value("path").toString() != path) {
+                page.insert("error", tr("Directory reader returned a different workspace path."));
+            } else if (preview) {
+                const QByteArray bytes = QByteArray::fromBase64(result.value.value("content").toString().toLatin1());
+                const QByteArray excerpt = bytes.left(8192);
+                if (excerpt.contains('\0')) {
+                    page.insert("text", tr("Binary file · Open in the file viewer for details."));
+                } else {
+                    QStringDecoder decoder(QStringDecoder::Utf8);
+                    const QString text = decoder(excerpt);
+                    if (decoder.hasError()) {
+                        page.insert("text", tr("Non-UTF-8 file · Text preview unavailable."));
+                    } else {
+                        const auto lines = text.split('\n');
+                        page.insert("text", lines.mid(0, 128).join('\n'));
+                        page.insert("truncated", bytes.size() > excerpt.size() || lines.size() > 128);
+                    }
+                }
+            } else if (!result.value.value("entries").isArray()
+                && result.value.contains("entries")) {
+                page.insert("error", tr("Invalid directory page response."));
+            } else if (result.value.value("entries").toArray().size() > qMin(limit, WorkspaceGraphPage::maximumPageNodes)) {
+                page.insert("error", tr("Directory page exceeds the graph node limit."));
+            } else {
+                page = result.value;
+                page.insert("stamp", page.take("revision"));
+            }
+            const QPointer<WorkspaceGraphReader> guard(this);
+            emit completed(m_token, page);
+            if (!guard)
+                return;
         }
-    }
-    startPending();
+        startPending();
+    }, m_deadlineMilliseconds);
+    activeHelper = current->client->findChild<QProcess *>();
 }
+
+// Retained private symbols for the exported class's existing binary layout.
+void WorkspaceGraphReader::drain() {}
+void WorkspaceGraphReader::finish(bool) {}

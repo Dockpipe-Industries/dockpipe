@@ -1,0 +1,42 @@
+module Dockpipe.Product.RunAdmission.Tests;
+import Dockpipe.Product.DriverSources;
+import Dockpipe.Product.RunAdmission;
+import PipeLang.IO;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+public Record AdmissionReport {
+    public bool allPassed = false;
+    public List<TestResult> results;
+}
+
+public model Class AdmissionSuite {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private FileStreams product;
+    private FileStreams repository;
+
+    public AdmissionSuite(JsonReader reader, JsonStringIndexer indexer, FileStreams product, FileStreams repository) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.product = product;
+        this.repository = repository;
+    }
+
+    public AdmissionReport Run(CancellationToken token, CancellationToken cancelled) {
+        DriverSourcePins pins = new DriverSourcePins(reader, product, repository);
+        QualificationAdmission admission = new QualificationAdmission(reader, indexer, pins, 33554432);
+        TestRunner runner = new TestRunner();
+        List<TestResult> results = List<TestResult>.Empty();
+        for (int scenario = 0; scenario < 5; scenario = scenario + 1)
+            results.Add(runner.RunProbe(new AdmissionCase(reader, admission, scenario), token, cancelled));
+
+        bool allPassed = results.Count == 5;
+        foreach (TestResult result in results) {
+            if (result.outcome != TestOutcome.Passed || !result.bodyRan || !result.cleanupRan)
+                allPassed = false;
+        }
+
+        return AdmissionReport(allPassed, results);
+    }
+}

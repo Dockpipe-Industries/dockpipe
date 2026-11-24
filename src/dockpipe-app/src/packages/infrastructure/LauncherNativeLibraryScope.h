@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QDir>
+#include <QCoreApplication>
 #include <QString>
 
 #if defined(Q_OS_WIN)
@@ -31,7 +32,7 @@ public:
         error.clear();
 #if defined(Q_OS_WIN)
         if (m_module) {
-            error = QStringLiteral("Native library scope is already loaded.");
+            error = QCoreApplication::translate("LauncherNativeLibraryScope", "Native library scope is already loaded.");
             return false;
         }
         const QString nativePath = QDir::toNativeSeparators(absoluteModulePath);
@@ -42,7 +43,7 @@ public:
             wchar_t message[1024] = {};
             const DWORD length = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                                                  nullptr, code, 0, message, 1024, nullptr);
-            error = QStringLiteral("Native module load failed (%1): %2")
+            error = QCoreApplication::translate("LauncherNativeLibraryScope", "Native module load failed (%1): %2")
                         .arg(code).arg(QString::fromWCharArray(message, int(length)).trimmed());
             return false;
         }

@@ -1,12 +1,15 @@
 package application
 
 import (
+	"dockpipe/src/lib/application/internal/containerscmd"
 	"dockpipe/src/lib/application/internal/hostcmd"
 	"dockpipe/src/lib/application/internal/machinecmd"
+	"dockpipe/src/lib/application/internal/terminalcmd"
+	"dockpipe/src/lib/application/internal/workspacefilescmd"
 	"dockpipe/src/lib/application/internal/workspacegitcmd"
 )
 
-func dispatchCommand(argv []string) (bool, error) {
+func dispatchCommand(argv, baseEnviron []string) (bool, error) {
 	switch argv[0] {
 	case "init":
 		return true, cmdInit(argv[1:])
@@ -20,6 +23,8 @@ func dispatchCommand(argv []string) (bool, error) {
 		return true, cmdWindows(argv[1:])
 	case "workflow":
 		return true, cmdWorkflow(argv[1:])
+	case "environment":
+		return true, cmdEnvironment(argv[1:], baseEnviron)
 	case "mcp":
 		return true, cmdMCP(argv[1:])
 	case "catalog":
@@ -38,8 +43,14 @@ func dispatchCommand(argv []string) (bool, error) {
 		return true, cmdSession(argv[1:])
 	case "git":
 		return true, workspacegitcmd.Run(argv[1:])
+	case "files":
+		return true, workspacefilescmd.Run(argv[1:])
+	case "containers":
+		return true, containerscmd.Run(argv[1:])
 	case "remote":
 		return true, cmdRemote(argv[1:])
+	case "terminal":
+		return true, terminalcmd.Run(argv[1:])
 	case "machine":
 		return true, machinecmd.Run(argv[1:])
 	case "host":

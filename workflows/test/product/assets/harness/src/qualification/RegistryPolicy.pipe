@@ -1,0 +1,162 @@
+module Dockpipe.Product.Qualification;
+import PipeLang.Json;
+
+// Validates the current registry/v1 policy without owning parser or file effects.
+public Class RegistryPolicy {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private int indexRetainedBytes;
+    private RegistryJson json;
+    private RegistryVocabulary vocabulary;
+
+    public RegistryPolicy(JsonReader reader, JsonStringIndexer indexer, int indexRetainedBytes) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.indexRetainedBytes = indexRetainedBytes;
+        json = new RegistryJson(reader);
+        vocabulary = new RegistryVocabulary();
+    }
+
+    private Result<void,string> ValidatePlatforms(JsonNode platforms, CancellationToken token) {
+        int count = try json.ArrayCount(platforms, 1, 64);
+        HashSet<string> ids = HashSet<string>.Empty();
+        for (int index = 0; index < count; index = index + 1) {
+            if (token.IsCancellationRequested)
+                return Result<void,string>.Cancelled("qualification.registry.cancelled");
+
+            JsonNode platform = try reader.At(platforms, index);
+            string id = try json.TextMember(platform, "id", 512);
+            int characters = json.ScalarCount(id);
+            try json.Require(characters >= 1 && characters <= 128, "qualification.registry.platform_id");
+            try json.Require(ids.Add(id), "qualification.registry.duplicate_platform");
+            string group = try json.TextMember(platform, "group", 128);
+            try json.Require(vocabulary.Group(group), "qualification.registry.platform_group");
+
+            JsonNode selectors = try json.Member(platform, "selectors");
+            int selectorCount = try json.ArrayCount(selectors, 1, 4194304);
+            HashSet<string> seenSelectors = HashSet<string>.Empty();
+            for (int selectorIndex = 0; selectorIndex < selectorCount; selectorIndex = selectorIndex + 1) {
+                JsonNode item = try reader.At(selectors, selectorIndex);
+                string selector = try json.Text(item, 128);
+                try json.Require(vocabulary.Selector(selector), "qualification.registry.selector");
+                try json.Require(seenSelectors.Add(selector), "qualification.registry.duplicate_selector");
+            }
+        }
+
+        return Result<void,string>.Success();
+    }
+
+    private Result<string,string> ValidateCase(JsonNode cases, int index, CancellationToken token) {
+        JsonNode current = try reader.At(cases, index);
+        string scenario = try json.TextMember(current, "scenario", 128);
+        string layer = try json.TextMember(current, "layer", 128);
+        try json.Require(vocabulary.Scenario(scenario) && vocabulary.Layer(layer),
+            "qualification.registry.case_kind");
+        JsonNode assertions = try json.Member(current, "required_assertions");
+        int count = try json.ArrayCount(assertions, 1, 4194304);
+        JsonStringIndexLimits limits = new JsonStringIndexLimits {};
+        limits.entries = count;
+        limits.retainedBytes = indexRetainedBytes;
+        JsonStringIndex assertionIds = new JsonStringIndex {};
+        try {
+            assertionIds = try indexer.BeginStringIndex(assertions.document, limits);
+            for (int assertionIndex = 0; assertionIndex < count; assertionIndex = assertionIndex + 1) {
+                if (token.IsCancellationRequested)
+                    return Result<string,string>.Cancelled("qualification.registry.cancelled");
+
+                JsonNode assertion = try reader.At(assertions, assertionIndex);
+                string id = try json.Text(assertion, 128);
+                try json.Require(json.Identifier(id), "qualification.registry.assertion_id");
+                bool added = try indexer.AddString(assertionIds, assertion, token);
+                try json.Require(added, "qualification.registry.duplicate_assertion");
+            }
+
+            return Result<string,string>.Success(scenario + "/" + layer);
+        } finally {
+            if (assertionIds.generation != 0) {
+                Result<void,string> closed = indexer.CloseStringIndex(assertionIds);
+                if (!closed.IsSuccess)
+                    throw Error(closed.Error);
+            }
+        }
+    }
+
+    private Result<void,string> ValidateFeatures(JsonNode features, CancellationToken token) {
+        int count = try json.ArrayCount(features, 1, 512);
+        HashSet<string> ids = HashSet<string>.Empty();
+        for (int index = 0; index < count; index = index + 1) {
+            if (token.IsCancellationRequested)
+                return Result<void,string>.Cancelled("qualification.registry.cancelled");
+
+            JsonNode feature = try reader.At(features, index);
+            string id = try json.TextMember(feature, "id", 128);
+            try json.Require(json.Identifier(id), "qualification.registry.feature_id");
+            try json.Require(ids.Add(id), "qualification.registry.duplicate_feature");
+            string selector = try json.TextMember(feature, "selector", 128);
+            try json.Require(vocabulary.Selector(selector), "qualification.registry.selector");
+            JsonNode critical = try json.Member(feature, "critical");
+            try json.Kind(critical, JsonKind.Boolean);
+
+            JsonNode? requirements = try reader.FindMember(feature, "requires");
+            if (requirements.HasValue) {
+                int requirementCount = try json.ArrayCount(requirements.Value, 0, 64);
+                for (int requirementIndex = 0; requirementIndex < requirementCount; requirementIndex = requirementIndex + 1) {
+                    JsonNode requirement = try reader.At(requirements.Value, requirementIndex);
+                    string capability = try json.Text(requirement, 128);
+                    try json.Require(json.Identifier(capability), "qualification.registry.capability");
+                }
+            }
+
+            JsonNode cases = try json.Member(feature, "cases");
+            int caseCount = try json.ArrayCount(cases, 1, 4194304);
+            HashSet<string> caseKeys = HashSet<string>.Empty();
+            for (int caseIndex = 0; caseIndex < caseCount; caseIndex = caseIndex + 1) {
+                string key = try ValidateCase(cases, caseIndex, token);
+                try json.Require(caseKeys.Add(key), "qualification.registry.duplicate_case");
+            }
+        }
+
+        return Result<void,string>.Success();
+    }
+
+    private Result<void,string> ValidatePolicy(JsonNode root) {
+        JsonNode policy = try json.Member(root, "policy");
+        JsonNode local = try json.Member(policy, "local_only");
+        JsonNode unavailable = try json.Member(policy, "unavailable_counts_as_unpassed");
+        JsonNode minimum = try json.Member(policy, "minimum_coverage");
+        JsonNode critical = try json.Member(policy, "critical_coverage");
+        bool localOnly = try reader.BoolValue(local);
+        bool countsAsUnpassed = try reader.BoolValue(unavailable);
+        float minimumCoverage = try reader.FiniteFloatValue(minimum);
+        JsonKind criticalKind = try reader.Kind(critical);
+        bool completeCriticalCoverage = false;
+        if (criticalKind == JsonKind.Boolean) {
+            // Python registry/v1 compares this field to 1.0; true compares equal.
+            completeCriticalCoverage = try reader.BoolValue(critical);
+        } else {
+            float criticalCoverage = try reader.FiniteFloatValue(critical);
+            completeCriticalCoverage = criticalCoverage == 1.0;
+        }
+        try json.Require(localOnly && countsAsUnpassed && minimumCoverage == 0.9 && completeCriticalCoverage,
+            "qualification.registry.coverage_policy");
+
+        return Result<void,string>.Success();
+    }
+
+    public Result<void,string> Validate(JsonNode root, CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<void,string>.Cancelled("qualification.registry.cancelled");
+
+        try json.Require(indexRetainedBytes > 0, "qualification.registry.index_budget");
+
+        string schema = try json.TextMember(root, "schema", 128);
+        try json.Require(schema == "dockpipe.product-integration.registry/v1", "qualification.registry.schema");
+        JsonNode platforms = try json.Member(root, "platforms");
+        try ValidatePlatforms(platforms, token);
+        JsonNode features = try json.Member(root, "features");
+        try ValidateFeatures(features, token);
+        try ValidatePolicy(root);
+
+        return Result<void,string>.Success();
+    }
+}

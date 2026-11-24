@@ -1,0 +1,5 @@
+module Dockpipe.Product.RunIdentity;
+
+public Interface RunnerCapture {
+    Result<QualificationRunnerIdentity,string> Capture(CancellationToken token);
+}

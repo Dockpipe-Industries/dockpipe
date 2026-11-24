@@ -120,6 +120,22 @@ int main(int argc, char **argv)
     if (obsoleteCalls.delivered || editor.toPlainText() != "int replacement = 2;"
         || editor.languageName() != "C++" || editor.document()->firstBlock().layout()->formats().isEmpty())
         return 12;
+    highlighter = editor.document()->findChild<SourceHighlighter *>();
+    HighlightCallObserver replacedFileCalls;
+    highlighter->installEventFilter(&replacedFileCalls);
+    if (!QMetaObject::invokeMethod(highlighter, "rehighlightBlock", Qt::QueuedConnection,
+            Q_ARG(QTextBlock, editor.document()->firstBlock())))
+        return 13;
+    editor.loadFileText("def ready():\n    return True\n", "ready.py");
+    if (editor.toPlainText() != "def ready():\n    return True\n"
+        || editor.languageName() != "Python"
+        || !editor.document()->firstBlock().layout()->formats().isEmpty())
+        return 14;
+    QApplication::processEvents();
+    if (replacedFileCalls.delivered
+        || editor.document()->firstBlock().layout()->formats().isEmpty()
+        || !editor.document()->findChild<SourceHighlighter *>())
+        return 15;
     std::puts("Native highlighting covers all 14 SDK languages, YAML, TypeScript and diffs; multiline, themes, long lines, editing and queued replacement verified.");
     return 0;
 }

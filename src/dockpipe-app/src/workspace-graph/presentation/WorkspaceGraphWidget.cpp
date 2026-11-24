@@ -1,5 +1,6 @@
 #include "WorkspaceGraphWidget.h"
 #include "WorkspaceGraphNode.h"
+#include "WorkspaceGraphLayout.h"
 #include "WorkspaceGraphPage.h"
 #include "CanvasView.h"
 #include "CanvasIcons.h"
@@ -10,6 +11,7 @@
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFormLayout>
+#include <QFutureWatcher>
 #include <QFileInfo>
 #include <QGraphicsPathItem>
 #include <QHBoxLayout>
@@ -17,20 +19,45 @@
 #include <QLabel>
 #include <QMenu>
 #include <QPushButton>
+#include <QPointer>
 #include <QSignalBlocker>
 #include <QSet>
 #include <QSpinBox>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QtConcurrent>
 
 namespace {
 constexpr qint64 metadataBudget = 4 * 1024 * 1024; // UTF-16 path storage; node count also bounds scene objects.
+
+// The widget is part of the installed SDK. Keep its asynchronous implementation
+// state in an owned child so separately compiled consumers retain its layout.
+class GraphLayoutState final : public QObject {
+public:
+    explicit GraphLayoutState(QObject *parent) : QObject(parent)
+    {
+        setObjectName("workspaceGraphLayoutState");
+    }
+    QFutureWatcher<QVector<QVector3D>> watcher;
+    QVector<WorkspaceGraphLayoutNode> pendingInputs;
+    std::function<void()> completed;
+    quint64 generation = 0;
+    bool active = false;
+    bool pending = false;
+};
+
+GraphLayoutState &graphLayoutState(WorkspaceGraphWidget *widget)
+{
+    return *static_cast<GraphLayoutState *>(widget->findChild<QObject *>(
+        "workspaceGraphLayoutState", Qt::FindDirectChildrenOnly));
+}
 }
 
 WorkspaceGraphWidget::WorkspaceGraphWidget(const QString &workspaceRoot, const QString &directory,
     QWidget *parent, WorkspaceGraphLimits limits)
     : QWidget(parent), m_workspaceRoot(workspaceRoot), m_limits(limits), m_reader(this)
 {
+    new GraphLayoutState(this);
     m_limits.pageNodes = qBound(1, m_limits.pageNodes, WorkspaceGraphPage::maximumPageNodes);
     m_limits.visibleNodes = qBound(2, m_limits.visibleNodes, WorkspaceGraphPage::maximumVisibleNodes);
     setObjectName("workspaceGraph");
@@ -47,16 +74,19 @@ WorkspaceGraphWidget::WorkspaceGraphWidget(const QString &workspaceRoot, const Q
     header->addWidget(title);
     header->addStretch();
     auto *modes = new QButtonGroup(this);
-    for (const QString &label : {QStringLiteral("2D"), QStringLiteral("3D")}) {
+    for (const bool spatial : {false, true}) {
+        const QString label = spatial ? tr("Explorer") : tr("Graph");
         auto *mode = new QPushButton(label);
-        mode->setObjectName(label == "3D" ? "graph3D" : "graph2D");
+        mode->setObjectName(spatial ? "graph3D" : "graph2D");
         mode->setCheckable(true);
         mode->setProperty("canvasLayerFilter", true);
-        mode->setChecked(label == "2D");
+        mode->setChecked(!spatial);
         mode->setAccessibleName(tr("%1 graph view").arg(label));
+        mode->setToolTip(spatial ? tr("Explore folders and files in a spatial scene")
+                                : tr("Explore a spatial graph of connected folders and files"));
         modes->addButton(mode);
         header->addWidget(mode);
-        connect(mode, &QPushButton::clicked, this, [this, label]() { setSpatial(label == "3D"); });
+        connect(mode, &QPushButton::clicked, this, [this, spatial]() { setSpatial(spatial); });
     }
     auto *parentFolder = new QPushButton(tr("Parent"));
     parentFolder->setObjectName("graphParent");
@@ -80,7 +110,7 @@ WorkspaceGraphWidget::WorkspaceGraphWidget(const QString &workspaceRoot, const Q
         animateSelection();
     });
     menu->addSeparator();
-    auto *accelerated = menu->addAction(tr("Hardware acceleration (3D)"));
+    auto *accelerated = menu->addAction(tr("Hardware acceleration (Explorer)"));
     accelerated->setCheckable(true);
     accelerated->setChecked(!qEnvironmentVariableIsSet("DOCKPIPE_GRAPH_SOFTWARE"));
     connect(accelerated, &QAction::toggled, this, [this](bool enabled) {
@@ -92,14 +122,18 @@ WorkspaceGraphWidget::WorkspaceGraphWidget(const QString &workspaceRoot, const Q
     connect(hidden, &QAction::toggled, this, [this](bool show) { m_showHidden = show; navigate(m_directory); });
     menu->addAction(tr("Node limits…"), this, &WorkspaceGraphWidget::configureLimits);
     menu->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Fit), tr("Reset layout"), this, [this]() {
-        for (auto &node : m_nodes) {
-            node.flatPosition = QPointF(node.depth * 290, node.row * 76);
-            if (!spatial())
-                node.item->setPos(node.flatPosition);
+        const auto resetCamera = [this] {
+            m_view->resetCamera();
+            m_view->resetTransform();
+            m_view->centerOn(m_nodes.value(m_directory).item);
+        };
+        if (!spatial()) {
+            for (auto &node : m_nodes)
+                node.item->setProperty("graphPosition", QVariant());
+            arrangeGraph(resetCamera);
+        } else {
+            resetCamera();
         }
-        m_view->resetCamera();
-        m_view->resetTransform();
-        m_view->centerOn(m_nodes.value(m_directory).item);
     });
     menu->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Refresh), tr("Refresh view"), this, [this]() { navigate(m_directory); });
     options->setMenu(menu);
@@ -111,6 +145,8 @@ WorkspaceGraphWidget::WorkspaceGraphWidget(const QString &workspaceRoot, const Q
     m_location->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     layout->addWidget(m_location);
     m_view = new WorkspaceGraphView;
+    m_view->setProperty("workspaceGraphConstellation", true);
+    m_view->orbit(0, -25);
     m_view->cameraChanged = [this]() {
         cancelTransition();
         projectNodes();
@@ -125,8 +161,8 @@ WorkspaceGraphWidget::WorkspaceGraphWidget(const QString &workspaceRoot, const Q
     m_cameraControls = new QWidget;
     auto *camera = new QHBoxLayout(m_cameraControls);
     camera->setContentsMargins(0, 0, 0, 0);
-    auto *hint = new QLabel(tr("Chip height = file size (log scale) · Middle/Shift-drag to orbit · Drag to pan · Scroll to zoom"));
-    hint->setObjectName("editorMuted");
+    auto *hint = new QLabel(tr("Drag nodes to arrange · Middle/Shift-drag to orbit · Drag background to pan · Scroll to zoom"));
+    hint->setObjectName("graphCameraHint");
     hint->setWordWrap(true);
     camera->addWidget(hint, 1);
     auto *renderer = new QLabel;
@@ -138,6 +174,7 @@ WorkspaceGraphWidget::WorkspaceGraphWidget(const QString &workspaceRoot, const Q
         renderer->setToolTip(m_view->rendererDescription());
     };
     m_view->rendererChanged();
+    renderer->hide();
     auto *rotate = new QPushButton(tr("Rotate"));
     rotate->setObjectName("graphRotate");
     connect(rotate, &QPushButton::clicked, this, [this]() { m_view->orbit(30, 0); });
@@ -146,7 +183,6 @@ WorkspaceGraphWidget::WorkspaceGraphWidget(const QString &workspaceRoot, const Q
     connect(reset, &QPushButton::clicked, this, [this]() { m_view->resetCamera(); });
     camera->addWidget(reset);
     layout->addWidget(m_cameraControls);
-    m_cameraControls->hide();
     m_graphActions = new QWidget;
     auto *actions = new QHBoxLayout(m_graphActions);
     actions->setContentsMargins(0, 0, 0, 0);
@@ -380,50 +416,73 @@ void WorkspaceGraphWidget::setSpatial(bool enabled)
     m_droneMotion.stop();
     if (spatial() == enabled)
         return;
-    if (enabled) {
-        for (auto &node : m_nodes)
-            node.flatPosition = node.item->pos();
-    }
+    m_view->setProperty(spatial() ? "explorerCameraAngles" : "graphCameraAngles", m_view->cameraAngles());
+    m_view->setProperty("workspaceGraphConstellation", !enabled);
     m_view->setSpatial(enabled);
-    m_cameraControls->setVisible(enabled);
+    const QString cameraKey = enabled ? "explorerCameraAngles" : "graphCameraAngles";
+    const QPointF angles = m_view->property(cameraKey.toUtf8().constData()).isValid()
+        ? m_view->property(cameraKey.toUtf8().constData()).toPointF() : QPointF(-20, enabled ? 50 : 25);
+    const QPointF current = m_view->cameraAngles();
+    m_view->orbit(angles.x() - current.x(), angles.y() - current.y());
+    findChild<QLabel *>("graphCameraHint")->setText(enabled
+        ? tr("Chip height = file size · Middle/Shift-drag to orbit · Drag background to pan · Scroll to zoom")
+        : tr("Drag nodes to arrange · Middle/Shift-drag to orbit · Drag background to pan · Scroll to zoom"));
+    findChild<QLabel *>("graphRenderer")->setVisible(enabled);
     findChild<QPushButton *>(enabled ? "graph3D" : "graph2D")->setChecked(true);
-    projectNodes();
-    if (m_nodes.size() <= 30) {
-        m_view->fitInView(m_view->scene()->itemsBoundingRect().adjusted(-60, -60, 60, 60), Qt::KeepAspectRatio);
-        const qreal zoom = m_view->transform().m11();
-        const qreal bounded = qBound(0.65, zoom, 1.0);
-        m_view->scale(bounded / zoom, bounded / zoom);
-    } else if (m_nodes.contains(selection())) {
-        m_view->centerOn(m_nodes.value(selection()).item);
+    invalidateLayout();
+    const auto finishProjection = [this, enabled] {
+        if (!enabled || m_nodes.size() <= 30) {
+            m_view->fitInView(m_view->scene()->itemsBoundingRect().adjusted(-60, -60, 60, 60), Qt::KeepAspectRatio);
+            const qreal zoom = m_view->transform().m11();
+            const qreal bounded = qBound(enabled ? 0.65 : 0.2, zoom, 1.0);
+            m_view->scale(bounded / zoom, bounded / zoom);
+        } else if (m_nodes.contains(selection())) {
+            m_view->centerOn(m_nodes.value(selection()).item);
+        }
+        for (auto it = m_nodes.cbegin(); it != m_nodes.cend(); ++it)
+            updateSummary(it.key());
+        animateSelection();
+    };
+    if (!enabled) {
+        bool needsLayout = false;
+        for (const auto &node : m_nodes)
+            needsLayout = needsLayout || !node.item->property("graphPosition").isValid();
+        if (needsLayout) {
+            arrangeGraph(finishProjection);
+            return;
+        }
+        projectGraph();
+    } else {
+        projectNodes();
     }
-    for (auto it = m_nodes.cbegin(); it != m_nodes.cend(); ++it)
-        updateSummary(it.key());
-    animateSelection();
+    finishProjection();
 }
 
 void WorkspaceGraphWidget::projectNodes()
 {
+    if (!spatial()) {
+        projectGraph();
+        return;
+    }
     // Project the already-visible set only. Camera changes never touch disk.
     m_projecting = true;
     qreal extent = 900;
     for (auto &node : m_nodes) {
-        node.item->setFlag(QGraphicsItem::ItemIsMovable, !spatial());
-        node.item->setCursor(spatial() ? Qt::PointingHandCursor : Qt::OpenHandCursor);
-        node.item->setCityView(spatial() ? m_view : nullptr);
-        if (spatial()) {
-            // Five columns per level, stable slots as pages arrive. Deeper
-            // folders rise above the floor; labels always face the camera.
-            const qreal x = node.parent.isEmpty() ? 0 : ((node.row % 5) - 2) * 350 + node.depth * 80;
-            const qreal z = node.parent.isEmpty() ? -800 : (node.row / 5) * 320;
-            const QVector3D position(x, node.depth * 260, z);
-            node.cityPosition = position;
-            node.item->setPos(m_view->project(position) - QPointF(110, 29));
-            node.item->setZValue(1 + m_view->depth(position));
-            extent = qMax(extent, z + 300);
-        } else {
-            node.item->setPos(node.flatPosition);
-            node.item->setZValue(0);
-        }
+        node.item->setGraphView(false);
+        node.item->setScale(1);
+        node.item->setOpacity(1);
+        node.item->setFlag(QGraphicsItem::ItemIsMovable, false);
+        node.item->setCursor(Qt::PointingHandCursor);
+        node.item->setCityView(m_view);
+        // Five columns per level, stable slots as pages arrive. Deeper
+        // folders rise above the floor; labels always face the camera.
+        const qreal x = node.parent.isEmpty() ? 0 : ((node.row % 5) - 2) * 350 + node.depth * 80;
+        const qreal z = node.parent.isEmpty() ? -800 : (node.row / 5) * 320;
+        const QVector3D position(x, node.depth * 260, z);
+        node.cityPosition = position;
+        node.item->setPos(m_view->project(position) - QPointF(110, 29));
+        node.item->setZValue(1 + m_view->depth(position));
+        extent = qMax(extent, z + 300);
     }
     m_projecting = false;
     for (auto it = m_nodes.cbegin(); it != m_nodes.cend(); ++it)
@@ -431,6 +490,137 @@ void WorkspaceGraphWidget::projectNodes()
     m_view->setGridExtent(extent);
     m_view->setSceneRect(m_view->scene()->itemsBoundingRect().adjusted(-150, -150, 300, 200));
     m_view->viewport()->update();
+}
+
+void WorkspaceGraphWidget::invalidateLayout()
+{
+    auto &state = graphLayoutState(this);
+    ++state.generation;
+    state.pending = false;
+    state.pendingInputs.clear();
+    state.completed = {};
+    setProperty("workspaceGraphLayoutBusy", state.active);
+}
+
+void WorkspaceGraphWidget::arrangeGraph(std::function<void()> completed)
+{
+    auto &state = graphLayoutState(this);
+    invalidateLayout();
+    QMap<QString, int> indexes;
+    for (auto it = m_nodes.cbegin(); it != m_nodes.cend(); ++it) {
+        const auto &node = it.value();
+        const int parent = node.parent.isEmpty() ? -1 : indexes.value(node.parent, -1);
+        indexes.insert(it.key(), state.pendingInputs.size());
+        const QVariant position = node.item->property("graphPosition");
+        state.pendingInputs.append({it.key(), parent, position.value<QVector3D>(), position.isValid()});
+    }
+    state.completed = std::move(completed);
+    state.pending = true;
+    setProperty("workspaceGraphLayoutBusy", true);
+    startPendingLayout();
+}
+
+void WorkspaceGraphWidget::startPendingLayout()
+{
+    auto &state = graphLayoutState(this);
+    if (state.active || !state.pending)
+        return;
+    const auto inputs = std::move(state.pendingInputs);
+    const quint64 generation = state.generation;
+    state.pending = false;
+    state.active = true;
+    disconnect(&state.watcher, nullptr, this, nullptr);
+    connect(&state.watcher, &QFutureWatcher<QVector<QVector3D>>::finished, this,
+        [this, inputs, generation] {
+        auto &state = graphLayoutState(this);
+        const auto positions = state.watcher.result();
+        const QPointer<WorkspaceGraphWidget> guard(this);
+        state.active = false;
+        setProperty("workspaceGraphLayoutBusy", state.pending);
+        if (generation == state.generation && !spatial()) {
+            auto completed = std::move(state.completed);
+            if (positions.size() != inputs.size()) {
+                m_status->setText(tr("The graph could not be arranged. Refresh to retry."));
+            } else {
+                for (qsizetype index = 0; index < inputs.size(); ++index)
+                    m_nodes[inputs.at(index).id].item->setProperty("graphPosition", QVariant::fromValue(positions.at(index)));
+                projectGraph();
+                if (completed)
+                    completed();
+            }
+        }
+        if (guard)
+            startPendingLayout();
+    });
+    // The solver owns only bounded value data (500 nodes, 56 steps). Closing the
+    // view drops its callback without waiting for or exposing UI to the worker.
+    state.watcher.setFuture(QtConcurrent::run([inputs] {
+        return WorkspaceGraphLayout::arrange(inputs);
+    }));
+}
+
+void WorkspaceGraphWidget::projectGraph()
+{
+    m_projecting = true;
+    for (auto &node : m_nodes) {
+        node.item->setGraphView(true);
+        node.item->setFlag(QGraphicsItem::ItemIsMovable, true);
+        node.item->setCursor(Qt::OpenHandCursor);
+        const QVector3D position = node.item->property("graphPosition").value<QVector3D>();
+        const qreal depth = m_view->depth(position);
+        const qreal scale = qBound(0.72, 1.0 + depth / 2200.0, 1.25);
+        node.item->setScale(scale);
+        node.item->setPos(m_view->project(position) - QPointF(110, 29) * scale);
+        node.item->setZValue(depth);
+        node.item->setProperty("graphDepthOpacity", qBound(0.65, 0.88 + depth / 3000.0, 1.0));
+        node.item->setProperty("graphRadius", qBound(5.0, 5.0 + std::sqrt(node.children.size()) * 1.2, 16.0));
+    }
+    m_projecting = false;
+    updateGraphEmphasis();
+    m_view->setSceneRect(m_view->scene()->itemsBoundingRect().adjusted(-150, -150, 150, 150));
+    m_view->viewport()->update();
+}
+
+void WorkspaceGraphWidget::moveGraphNode(const QString &path)
+{
+    if (m_projecting || !m_nodes.contains(path))
+        return;
+    auto &node = m_nodes[path];
+    if (!spatial()) {
+        QVector3D position = node.item->property("graphPosition").value<QVector3D>();
+        const QPointF projected = m_view->project(position) - QPointF(110, 29) * node.item->scale();
+        position += m_view->unprojectDelta(node.item->pos() - projected);
+        node.item->setProperty("graphPosition", QVariant::fromValue(position));
+        auto &layout = graphLayoutState(this);
+        if (layout.active || layout.pending) {
+            auto completed = std::move(layout.completed);
+            arrangeGraph(std::move(completed));
+        }
+    }
+    updateLinks(path);
+}
+
+void WorkspaceGraphWidget::updateGraphEmphasis()
+{
+    if (spatial())
+        return;
+    const QString selected = selection();
+    QSet<QString> neighbors;
+    if (m_nodes.contains(selected)) {
+        neighbors.insert(selected);
+        neighbors.insert(m_nodes[selected].parent);
+        for (const auto &child : m_nodes[selected].children)
+            neighbors.insert(child);
+    }
+    for (auto it = m_nodes.begin(); it != m_nodes.end(); ++it) {
+        const bool related = selected.isEmpty() || neighbors.contains(it.key());
+        const bool labelVisible = related && (m_nodes.size() <= 18 || it.key() == selected
+            || it->kind == "directory" || (!selected.isEmpty() && neighbors.size() <= 12));
+        it->item->setProperty("graphLabelVisible", labelVisible);
+        it->item->setOpacity(it->item->property("graphDepthOpacity").toDouble() * (related ? 1.0 : 0.23));
+        it->item->update();
+        updateLinks(it.key());
+    }
 }
 
 QString WorkspaceGraphWidget::selection() const
@@ -454,6 +644,7 @@ void WorkspaceGraphWidget::navigate(const QString &directory)
     m_droneMotion.stop();
     m_dronePath.clear();
     m_reader.cancel();
+    invalidateLayout();
     ++m_token;
     m_loadingPath.clear();
     const QSignalBlocker blocker(m_view->scene());
@@ -466,8 +657,7 @@ void WorkspaceGraphWidget::navigate(const QString &directory)
         : tr("Workspace / %1").arg(relative));
     m_location->setToolTip(directory);
     addNode(directory, "directory", {});
-    if (spatial())
-        projectNodes();
+    projectNodes();
     selectPath(directory);
     m_view->resetTransform();
     m_view->setSceneRect(-100, -100, 900, 700);
@@ -511,6 +701,7 @@ void WorkspaceGraphWidget::addNode(const QString &path, const QString &kind, con
     node.kind = kind;
     node.depth = parent.isEmpty() ? 0 : m_nodes.value(parent).depth + 1;
     node.item = new WorkspaceGraphNode(path, kind, fileBytes);
+    node.item->setGraphView(!spatial());
     m_view->scene()->addItem(node.item);
     QSet<int> usedRows;
     for (const auto &existing : m_nodes) {
@@ -531,7 +722,7 @@ void WorkspaceGraphWidget::addNode(const QString &path, const QString &kind, con
     m_metadataBytes += path.size() * sizeof(QChar);
     node.item->activated = [this, path]() { activatePath(path); };
     node.item->menuRequested = [this, path](const QPoint &position) { showMenu(path, position); };
-    node.item->moved = [this, path]() { updateLinks(path); };
+    node.item->moved = [this, path]() { moveGraphNode(path); };
     updateLinks(path);
     updateSummary(path);
 }
@@ -578,29 +769,36 @@ void WorkspaceGraphWidget::applyPage(quint64 token, const QJsonObject &page)
     node.more = limited || page.value("more").toBool();
     node.expanded = true;
     updateSummary(path);
-    if (spatial())
+    const auto finishPage = [this, path, firstRootPage, limited, layout] {
+        const auto &node = m_nodes[path];
+        m_view->setSceneRect(m_view->scene()->itemsBoundingRect().adjusted(-150, -150, 300, 200));
+        if (firstRootPage && (!spatial() || m_nodes.size() <= 30)) {
+            m_view->fitInView(m_view->scene()->itemsBoundingRect().adjusted(-40, -40, 40, 40), Qt::KeepAspectRatio);
+            const qreal zoom = m_view->transform().m11();
+            const qreal bounded = qBound(spatial() ? 0.5 : 0.2, zoom, 1.0);
+            m_view->scale(bounded / zoom, bounded / zoom);
+        } else if (selection() == path && !node.children.isEmpty()) {
+            const auto *child = m_nodes.value(node.children.first()).item;
+            m_view->ensureVisible(node.item->sceneBoundingRect().united(child->sceneBoundingRect()), 24, 24);
+        }
+        m_layoutMicroseconds = layout.nsecsElapsed() / 1000;
+        if (limited || (node.more && m_nodes.size() >= m_limits.visibleNodes)) {
+            m_status->setText(tr("More entries exist. Graph limit reached; collapse a branch or explore this folder on its own."));
+        } else if (node.more) {
+            m_status->setText(tr("%1 children shown in this folder. More entries exist — select the folder and choose Load more.").arg(node.children.size()));
+        } else {
+            m_status->setText(node.children.isEmpty() ? tr("This folder is empty with the current filters.")
+                : tr("%1 immediate children loaded. Double-click a folder to expand, or a file to edit.").arg(node.children.size()));
+        }
+        updateActions();
+        emit pageApplied();
+    };
+    if (spatial()) {
         projectNodes();
-    m_view->setSceneRect(m_view->scene()->itemsBoundingRect().adjusted(-150, -150, 300, 200));
-    if (firstRootPage && m_nodes.size() <= 30) {
-        m_view->fitInView(m_view->scene()->itemsBoundingRect().adjusted(-40, -40, 40, 40), Qt::KeepAspectRatio);
-        const qreal zoom = m_view->transform().m11();
-        const qreal bounded = qBound(0.5, zoom, 1.0);
-        m_view->scale(bounded / zoom, bounded / zoom);
-    } else if (selection() == path && !node.children.isEmpty()) {
-        const auto *child = m_nodes.value(node.children.first()).item;
-        m_view->ensureVisible(node.item->sceneBoundingRect().united(child->sceneBoundingRect()), 24, 24);
-    }
-    m_layoutMicroseconds = layout.nsecsElapsed() / 1000;
-    if (limited || (node.more && m_nodes.size() >= m_limits.visibleNodes)) {
-        m_status->setText(tr("More entries exist. Graph limit reached; collapse a branch or explore this folder on its own."));
-    } else if (node.more) {
-        m_status->setText(tr("%1 children shown in this folder. More entries exist — select the folder and choose Load more.").arg(node.children.size()));
+        finishPage();
     } else {
-        m_status->setText(node.children.isEmpty() ? tr("This folder is empty with the current filters.")
-            : tr("%1 immediate children loaded. Double-click a folder to expand, or a file to edit.").arg(node.children.size()));
+        arrangeGraph(finishPage);
     }
-    updateActions();
-    emit pageApplied();
 }
 
 void WorkspaceGraphWidget::collapse(const QString &path)
@@ -636,11 +834,17 @@ void WorkspaceGraphWidget::collapse(const QString &path)
     node.more = false;
     updateSummary(path);
     selectPath(path);
-    if (spatial())
+    const auto finishCollapse = [this] {
+        m_view->setSceneRect(m_view->scene()->itemsBoundingRect().adjusted(-150, -150, 300, 200));
+        m_status->setText(tr("Branch collapsed. Its nodes and metadata have been released."));
+        updateActions();
+    };
+    if (spatial()) {
         projectNodes();
-    m_view->setSceneRect(m_view->scene()->itemsBoundingRect().adjusted(-150, -150, 300, 200));
-    m_status->setText(tr("Branch collapsed. Its nodes and metadata have been released."));
-    updateActions();
+        finishCollapse();
+    } else {
+        arrangeGraph(finishCollapse);
+    }
 }
 
 void WorkspaceGraphWidget::updateSummary(const QString &path)
@@ -669,17 +873,30 @@ void WorkspaceGraphWidget::updateLinks(const QString &path)
         const auto &node = m_nodes[child];
         if (!node.edge || !m_nodes.contains(node.parent))
             continue;
-        const QPointF start = m_nodes[node.parent].item->pos() + QPointF(spatial() ? 110 : 220, 29);
-        const QPointF end = node.item->pos() + QPointF(spatial() ? 110 : 0, 29);
+        const QPointF start = m_nodes[node.parent].item->mapToScene(QPointF(110, 29));
+        const QPointF end = node.item->mapToScene(QPointF(110, 29));
         QPainterPath curve(start);
         if (spatial()) {
+            node.edge->setPen(QPen(QColor("#607a96"), 1));
+            node.edge->setOpacity(1);
             const auto origin = m_nodes[node.parent].cityPosition;
             const auto destination = node.cityPosition;
             curve.lineTo(m_view->project(QVector3D(destination.x(), origin.y(), origin.z())));
             curve.lineTo(m_view->project(QVector3D(destination.x(), origin.y(), destination.z())));
             curve.lineTo(end);
         } else {
-            curve.cubicTo(start + QPointF(40, 0), end - QPointF(40, 0), end);
+            curve.lineTo(end);
+            const bool dark = m_view->palette().color(QPalette::Window).lightness() < 128;
+            const QString selected = selection();
+            const bool highlighted = selected == child || selected == node.parent;
+            QColor color(dark ? "#40556e" : "#9bafc7");
+            if (highlighted)
+                color = QColor(dark ? "#80bcb6" : "#4f8e91");
+            color.setAlpha(highlighted ? 185 : 95);
+            QPen pen(color, highlighted ? 1.15 : 0.8);
+            pen.setCosmetic(true);
+            node.edge->setPen(pen);
+            node.edge->setOpacity(selected.isEmpty() || highlighted ? 1.0 : 0.2);
         }
         node.edge->setPath(curve);
     }
@@ -696,6 +913,7 @@ void WorkspaceGraphWidget::updateActions()
     m_open->setEnabled(node.kind == "file");
     findChild<QPushButton *>("graphCancelRead")->setVisible(!m_loadingPath.isEmpty());
     m_count->setText(tr("%1 / %2 nodes").arg(m_nodes.size()).arg(m_limits.visibleNodes));
+    updateGraphEmphasis();
     m_view->viewport()->update();
 }
 

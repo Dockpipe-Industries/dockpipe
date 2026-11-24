@@ -1,0 +1,69 @@
+module Dockpipe.Product.Coverage;
+
+// Each observation represents one expected case after receipt reconciliation.
+// Missing observations must be supplied as not_run rather than omitted.
+public Class TargetCoverageAccumulator {
+    private TargetCoverage tally = new TargetCoverage {};
+
+    public TargetCoverageAccumulator(string platform) {
+        tally.platform = platform;
+    }
+
+    public Result<void,string> Observe(string layer, string status, bool critical,
+                                       CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<void,string>.Cancelled("qualification.coverage.cancelled");
+        if (tally.required == 8192)
+            return Result<void,string>.Failure("qualification.coverage.case_count");
+        if (layer != "component" && layer != "installed_e2e" && layer != "guided_ui" && layer != "human")
+            return Result<void,string>.Failure("qualification.coverage.layer");
+        if (status != "passed" && status != "failed" && status != "blocked" &&
+                status != "not_run" && status != "manual_pending")
+            return Result<void,string>.Failure("qualification.coverage.status");
+
+        TargetCoverage next = tally;
+        int statusCount = 0;
+        int? previousStatusCount = next.counts.TryGet(status);
+        if (previousStatusCount.HasValue)
+            statusCount = previousStatusCount.Value;
+
+        LayerCoverage selected = new LayerCoverage {};
+        LayerCoverage? previousLayer = next.layers.TryGet(layer);
+        if (previousLayer.HasValue)
+            selected = previousLayer.Value;
+
+        selected.required = selected.required + 1;
+        next.required = next.required + 1;
+        if (critical)
+            next.criticalRequired = next.criticalRequired + 1;
+
+        if (status == "passed") {
+            selected.passed = selected.passed + 1;
+            next.passed = next.passed + 1;
+            if (critical)
+                next.criticalPassed = next.criticalPassed + 1;
+        }
+
+        next.counts.Set(status, statusCount + 1);
+        next.layers.Set(layer, selected);
+        tally = next;
+        return Result<void,string>.Success();
+    }
+
+    public TargetCoverage Finish() {
+        TargetCoverage summary = tally;
+        summary.status = "incomplete";
+
+        if (summary.required > 0)
+            summary.coverage = float.FromInt(summary.passed) / float.FromInt(summary.required);
+
+        if (summary.counts.ContainsKey("failed")) {
+            summary.status = "failed";
+        } else if (summary.required > 0 && summary.passed * 10 >= summary.required * 9 &&
+                   summary.criticalPassed == summary.criticalRequired) {
+            summary.status = "qualified";
+        }
+
+        return summary;
+    }
+}

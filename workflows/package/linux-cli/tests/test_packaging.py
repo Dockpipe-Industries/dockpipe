@@ -63,6 +63,15 @@ class LinuxPackagingTests(unittest.TestCase):
                     PACKAGING.main(['0.6.27; echo unsafe'])
                 run.assert_not_called()
 
+    def test_alpine_package_adds_glibc_compatibility_to_the_cli_dependencies(self):
+        template = ROOT / 'workflows/package/linux-cli/assets/nfpm.yaml.in'
+        config = yaml.safe_load(template.read_text())
+        common_dependencies = set(config['depends'])
+        alpine_dependencies = set(config['overrides']['apk']['depends'])
+
+        self.assertNotIn('gcompat', common_dependencies)
+        self.assertEqual(alpine_dependencies, common_dependencies | {'gcompat'})
+
     def test_migrated_host_workflows_do_not_require_container_outputs(self):
         for path in ('workflows/package/linux-cli/config.yml', 'workflows/build/platform/config.yml'):
             workflow = yaml.load((ROOT / path).read_text(), Loader=yaml.BaseLoader)

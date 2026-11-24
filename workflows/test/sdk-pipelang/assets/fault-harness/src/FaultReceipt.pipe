@@ -1,0 +1,13 @@
+module Dockpipe.SDK.FaultProof;
+import Dockpipe.SDK;
+
+// Mechanical projection of public native RunReceipt facts; source owns assertions.
+public Record FaultReceipt {
+    public OperationObservation observation;
+    public List<string> arguments;
+    public string infrastructureFailure;
+    public int leaderPid;
+    public bool interruptRequested;
+    public bool scopeQuery;
+    public bool scopePathQuery;
+}

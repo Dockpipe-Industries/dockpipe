@@ -44,6 +44,7 @@ public:
                   const QString &notice = QString());
     void showDetails();
     void setDetailsLabel(const QString &label);
+    void setCompactDetails(bool compact, int minimumHeight = 180);
     bool focusResource(const QString &id);
     void setFilter(const QString &filter);
     void addKindFilter(const QString &kind, const QString &label);
@@ -76,6 +77,8 @@ private:
     QLabel *m_detailsTitle;
     QPushButton *m_detailsButton;
     CanvasPanel *m_details;
+    bool m_compactDetails = false;
+    int m_compactDetailsMinimumHeight = 180;
     QMap<QString, QGraphicsItem *> m_nodes;
     QVector<ResourceEdge> m_edges;
     QVector<QGraphicsPathItem *> m_paths;

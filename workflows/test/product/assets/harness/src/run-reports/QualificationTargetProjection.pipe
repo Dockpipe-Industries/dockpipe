@@ -1,0 +1,37 @@
+module Dockpipe.Product.RunReports;
+import Dockpipe.Product.Coverage;
+import Dockpipe.Product.LaneReceipt;
+import Dockpipe.Product.ReportProjection;
+import PipeLang.Json;
+
+public model Class QualificationTargetProjection {
+    private JsonDocumentOutput output;
+    private CoverageProjection statistics;
+
+    public QualificationTargetProjection(JsonDocumentOutput output) {
+        this.output = output;
+        statistics = new CoverageProjection(output);
+    }
+
+    private Result<void,string> Text(string name, string content) {
+        try output.Name(name);
+        return output.WriteText(content);
+    }
+
+    public Result<void,string> Begin() {
+        return output.BeginObject();
+    }
+
+    // Case projection writes the cases array between these two calls.
+    public Result<void,string> End(ReceiptTarget selected, TargetCoverage coverage) {
+        try statistics.TargetStatistics(coverage);
+        try output.Name("target");
+        try output.BeginObject();
+        try Text("artifact_sha256", selected.artifactSha256);
+        try Text("id", selected.id);
+        try Text("kind", selected.kind);
+        try Text("platform", selected.platform);
+        try output.EndObject();
+        return output.EndObject();
+    }
+}

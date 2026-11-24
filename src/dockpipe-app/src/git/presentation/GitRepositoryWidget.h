@@ -9,6 +9,7 @@
 class QCheckBox;
 class QLabel;
 class QLineEdit;
+class QShowEvent;
 class QListWidget;
 
 class DOCKPIPE_LAUNCHER_UI_EXPORT GitRepositoryWidget final : public QWidget {
@@ -20,6 +21,9 @@ public:
 
 signals:
     void actionRequested(const QJsonObject &request);
+
+protected:
+    void showEvent(QShowEvent *event) override;
 
 private:
     void refresh();

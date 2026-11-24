@@ -1,4 +1,5 @@
 #include "ProjectFilesWidget.h"
+#include "WorkspaceFilesTestSupport.h"
 #include "Theme.h"
 #include "MermaidRenderer.h"
 
@@ -96,8 +97,8 @@ void ProjectFilesMarkdownTest::previewRendersDraftWithoutSaving()
     ProjectFilesWidget files;
     files.resize(1280, 780);
     files.show();
-    QVERIFY(files.setRoot(root.path()));
-    QVERIFY(files.createFile("README.md"));
+    QVERIFY(FilesTest::setRoot(files, root.path()));
+    QVERIFY(FilesTest::create(files, "README.md"));
     auto *editor = files.findChild<QPlainTextEdit *>("fileTextEditor");
     auto *toggle = files.findChild<QToolButton *>("fileMarkdownPreviewButton");
     auto *preview = files.findChild<QTextBrowser *>("fileMarkdownPreview");
@@ -122,7 +123,7 @@ void ProjectFilesMarkdownTest::previewRendersDraftWithoutSaving()
     disk.close();
     editor->appendPlainText("Live update");
     QTRY_VERIFY(preview->toPlainText().contains("Live update"));
-    QVERIFY(files.saveFile());
+    QVERIFY(FilesTest::save(files));
     QVERIFY(!files.hasUnsavedChanges());
     QVERIFY(disk.open(QIODevice::ReadOnly));
     QVERIFY(disk.readAll().contains("Live update"));
@@ -140,13 +141,13 @@ void ProjectFilesMarkdownTest::repeatedSavesReleaseConflictCheckHandle()
 {
     QTemporaryDir root;
     ProjectFilesWidget files;
-    QVERIFY(files.setRoot(root.path()));
-    QVERIFY(files.createFile("notes.md"));
+    QVERIFY(FilesTest::setRoot(files, root.path()));
+    QVERIFY(FilesTest::create(files, "notes.md"));
     auto *editor = files.findChild<QPlainTextEdit *>("fileTextEditor");
     for (const QString &text : {QString("First draft"), QString("Second draft")}) {
         editor->setPlainText(text);
         editor->document()->setModified(true);
-        QVERIFY(files.saveFile());
+        QVERIFY(FilesTest::save(files));
         QVERIFY(!files.hasUnsavedChanges());
         QFile disk(root.filePath("notes.md"));
         QVERIFY(disk.open(QIODevice::ReadOnly));
@@ -160,19 +161,19 @@ void ProjectFilesMarkdownTest::switchingFilesAndRootsClearsPreview()
     QTemporaryDir other;
     ProjectFilesWidget files;
     files.show();
-    QVERIFY(files.setRoot(root.path()));
-    QVERIFY(files.createFile("notes.MARKDOWN"));
+    QVERIFY(FilesTest::setRoot(files, root.path()));
+    QVERIFY(FilesTest::create(files, "notes.MARKDOWN"));
     auto *toggle = files.findChild<QToolButton *>("fileMarkdownPreviewButton");
     auto *preview = files.findChild<QTextBrowser *>("fileMarkdownPreview");
     toggle->click();
     QVERIFY(preview->isVisible());
-    QVERIFY(files.createFile("script.py"));
+    QVERIFY(FilesTest::create(files, "script.py"));
     QVERIFY(toggle->isHidden());
     QVERIFY(!toggle->isChecked());
     QVERIFY(preview->isHidden());
-    QVERIFY(files.openFile(root.filePath("notes.MARKDOWN")));
+    QVERIFY(FilesTest::open(files, root.filePath("notes.MARKDOWN")));
     toggle->click();
-    QVERIFY(files.setRoot(other.path()));
+    QVERIFY(FilesTest::setRoot(files, other.path()));
     QVERIFY(!toggle->isChecked());
     QVERIFY(toggle->isHidden());
     QVERIFY(preview->isHidden());
@@ -188,8 +189,8 @@ void ProjectFilesMarkdownTest::previewDoesNotLoadResourcesOrFollowUnsafeLinks()
     secret.close();
     ProjectFilesWidget files;
     files.show();
-    QVERIFY(files.setRoot(root.path()));
-    QVERIFY(files.createFile("README.md"));
+    QVERIFY(FilesTest::setRoot(files, root.path()));
+    QVERIFY(FilesTest::create(files, "README.md"));
     auto *editor = files.findChild<QPlainTextEdit *>("fileTextEditor");
     auto *toggle = files.findChild<QToolButton *>("fileMarkdownPreviewButton");
     auto *preview = files.findChild<QTextBrowser *>("fileMarkdownPreview");
@@ -206,8 +207,8 @@ void ProjectFilesMarkdownTest::previewDoesNotLoadResourcesOrFollowUnsafeLinks()
     QCOMPARE(files.currentPath(), originalPath);
     QVERIFY(files.hasUnsavedChanges());
     editor->document()->setModified(false);
-    QVERIFY(files.createFile("other.md"));
-    QVERIFY(files.openFile(originalPath));
+    QVERIFY(FilesTest::create(files, "other.md"));
+    QVERIFY(FilesTest::open(files, originalPath));
     toggle->click();
     emit preview->anchorClicked(QUrl("other.md"));
     QCOMPARE(files.currentPath(), root.filePath("other.md"));
@@ -218,8 +219,8 @@ void ProjectFilesMarkdownTest::oversizedDraftHasVisibleLimit()
     QTemporaryDir root;
     ProjectFilesWidget files;
     files.show();
-    QVERIFY(files.setRoot(root.path()));
-    QVERIFY(files.createFile("large.md"));
+    QVERIFY(FilesTest::setRoot(files, root.path()));
+    QVERIFY(FilesTest::create(files, "large.md"));
     auto *editor = files.findChild<QPlainTextEdit *>("fileTextEditor");
     auto *toggle = files.findChild<QToolButton *>("fileMarkdownPreviewButton");
     auto *preview = files.findChild<QTextBrowser *>("fileMarkdownPreview");
@@ -242,8 +243,8 @@ void ProjectFilesMarkdownTest::mermaidFencesRenderWithoutChangingDraft()
     QTemporaryDir root;
     ProjectFilesWidget files;
     files.show();
-    QVERIFY(files.setRoot(root.path()));
-    QVERIFY(files.createFile("diagrams.md"));
+    QVERIFY(FilesTest::setRoot(files, root.path()));
+    QVERIFY(FilesTest::create(files, "diagrams.md"));
     auto *editor = files.findChild<QPlainTextEdit *>("fileTextEditor");
     auto *toggle = files.findChild<QToolButton *>("fileMarkdownPreviewButton");
     auto *preview = files.findChild<QTextBrowser *>("fileMarkdownPreview");
@@ -260,7 +261,7 @@ void ProjectFilesMarkdownTest::mermaidFencesRenderWithoutChangingDraft()
     QVERIFY(!preview->toPlainText().contains("dockpipe-mermaid-"));
     QCOMPARE(editor->toPlainText(), draft);
     QVERIFY(files.hasUnsavedChanges());
-    QVERIFY(files.saveFile());
+    QVERIFY(FilesTest::save(files));
     QFile disk(root.filePath("diagrams.md"));
     QVERIFY(disk.open(QIODevice::ReadOnly));
     QCOMPARE(disk.readAll(), draft.toUtf8());
@@ -275,8 +276,8 @@ void ProjectFilesMarkdownTest::mermaidErrorsAndDocumentLimitStayVisible()
     QTemporaryDir root;
     ProjectFilesWidget files;
     files.show();
-    QVERIFY(files.setRoot(root.path()));
-    QVERIFY(files.createFile("many.md"));
+    QVERIFY(FilesTest::setRoot(files, root.path()));
+    QVERIFY(FilesTest::create(files, "many.md"));
     auto *editor = files.findChild<QPlainTextEdit *>("fileTextEditor");
     auto *toggle = files.findChild<QToolButton *>("fileMarkdownPreviewButton");
     auto *preview = files.findChild<QTextBrowser *>("fileMarkdownPreview");
@@ -303,8 +304,8 @@ void ProjectFilesMarkdownTest::mermaidRenderingResumesAfterPageHide()
     QTemporaryDir root;
     ProjectFilesWidget files;
     files.show();
-    QVERIFY(files.setRoot(root.path()));
-    QVERIFY(files.createFile("pending.md"));
+    QVERIFY(FilesTest::setRoot(files, root.path()));
+    QVERIFY(FilesTest::create(files, "pending.md"));
     auto *editor = files.findChild<QPlainTextEdit *>("fileTextEditor");
     auto *toggle = files.findChild<QToolButton *>("fileMarkdownPreviewButton");
     auto *preview = files.findChild<QTextBrowser *>("fileMarkdownPreview");

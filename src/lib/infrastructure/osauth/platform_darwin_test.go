@@ -7,7 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
+	"slices"
 	"testing"
 	"time"
 )
@@ -28,11 +28,13 @@ func darwinFixture(t *testing.T, run commandRunner) (*darwinPlatform, string) {
 
 func TestDarwinUsesSignedFixedSiblingAndNativeAccountHome(t *testing.T) {
 	var programs []string
+	var expectedHelper string
 	platform, directory := darwinFixture(t, func(ctx context.Context, program string, arguments ...string) ([]byte, error) {
 		programs = append(programs, program)
 		if program == "/usr/bin/codesign" {
-			if !strings.Contains(strings.Join(arguments, " "), `identifier "com.dockpipe.system-auth"`) {
-				t.Fatal("native helper signature did not require its installed identifier")
+			expected := []string{"--verify", "--strict", "--test-requirement", `=identifier "com.dockpipe.system-auth"`, expectedHelper}
+			if !slices.Equal(arguments, expected) {
+				t.Fatalf("native helper verification requires an inline code requirement: got %q, want %q", arguments, expected)
 			}
 			return nil, nil
 		}
@@ -41,6 +43,7 @@ func TestDarwinUsesSignedFixedSiblingAndNativeAccountHome(t *testing.T) {
 		}
 		return []byte(`{"schema":"dockpipe.osauth/v1","home":"/Users/ExampleUser"}`), nil
 	})
+	expectedHelper = filepath.Join(directory, "dockpipe-system-auth")
 	t.Setenv("HOME", "/tmp/project-home")
 	t.Setenv("PATH", "/tmp/project-bin")
 	t.Setenv("DOCKPIPE_GLOBAL_ROOT", "/tmp/project-security")
@@ -119,5 +122,40 @@ func TestDarwinSuspendAdmissionUsesOnlyNativeClock(t *testing.T) {
 	second, err := platform.SuspendGeneration()
 	if err != nil || second != first+1 {
 		t.Fatalf("native admission missed resume: %d %v", second, err)
+	}
+}
+
+func TestDarwinNetworkTLSUsesVerifiedFixedHelperAndBoundedTrustRunner(t *testing.T) {
+	verified := false
+	platform, directory := darwinFixture(t, func(ctx context.Context, program string, arguments ...string) ([]byte, error) {
+		if program != "/usr/bin/codesign" {
+			t.Fatal("ordinary authentication runner was used to export public trust")
+		}
+		verified = true
+		return nil, nil
+	})
+	platform.runTrust = func(ctx context.Context, program string, arguments ...string) ([]byte, error) {
+		deadline, exists := ctx.Deadline()
+		if !verified || program != filepath.Join(directory, "dockpipe-system-auth") || !slices.Equal(arguments, []string{"--tls-trust"}) || !exists || time.Until(deadline) > 5*time.Second {
+			t.Fatal("public TLS trust did not use a verified fixed helper with a bounded deadline")
+		}
+		return publicTLSFixture(t), nil
+	}
+	if anchors, err := platform.NetworkTLSAnchors(context.Background()); err != nil || len(anchors) != 1 {
+		t.Fatal("approved signed helper material unavailable", err)
+	}
+	platform.runTrust = func(context.Context, string, ...string) ([]byte, error) {
+		return nil, errors.New("native restrictions cannot be represented")
+	}
+	if anchors, err := platform.NetworkTLSAnchors(context.Background()); err == nil || anchors != nil {
+		t.Fatal("unrepresentable native policy exported partial anchors")
+	}
+	platform.run = func(context.Context, string, ...string) ([]byte, error) { return nil, errors.New("invalid signature") }
+	platform.runTrust = func(context.Context, string, ...string) ([]byte, error) {
+		t.Fatal("unverified helper executed")
+		return nil, nil
+	}
+	if _, err := platform.NetworkTLSAnchors(context.Background()); err == nil {
+		t.Fatal("invalid signed helper trusted")
 	}
 }

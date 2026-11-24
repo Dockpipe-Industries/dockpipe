@@ -1,5 +1,8 @@
 #include "TerminalHub.h"
-#include "TerminalSession.h"
+#include "ManagedTerminalSession.h"
+#include "DockpipeChoices.h"
+#include "NativeTerminalLaunch.h"
+#include "RemoteTerminalSession.h"
 #include "TerminalShellCatalog.h"
 #include "TerminalHostLaunch.h"
 #include "NativeHostConnection.h"
@@ -7,6 +10,8 @@
 #include <QFileInfo>
 #include <QDir>
 #include <QUuid>
+#include <QPointer>
+#include <QRegularExpression>
 
 namespace {
 constexpr qsizetype outputLimit = 256 * 1024;
@@ -77,11 +82,19 @@ void TerminalHub::nativeHostChanged()
 
 QString TerminalHub::createSession(const QString &workdir, const QString &shellProfileId)
 {
+    return createSession(workdir, shellProfileId, {}, {});
+}
+
+QString TerminalHub::createSession(const QString &workdir, const QString &shellProfileId,
+                                   const QJsonObject &catalog, const QString &root)
+{
     m_creationError.clear();
-    if (m_sessions.size() >= sessionLimit) {
+    if (m_sessions.size() + m_closingSessions.size() >= sessionLimit) {
         m_creationError = tr("Eight terminals are already open. Close one before opening another.");
         return {};
     }
+    if (!catalog.isEmpty())
+        return createRemoteSession(catalog, root, {}, {});
     TerminalShellProfile selected;
     QString directory = workdir.isEmpty() ? QDir::homePath() : workdir;
     const bool native = m_nativeHostConfigured && (shellProfileId.isEmpty()
@@ -100,6 +113,7 @@ QString TerminalHub::createSession(const QString &workdir, const QString &shellP
         selected.program = plan.program;
         selected.arguments = plan.arguments;
         selected.label = m_nativeHost->label();
+        selected.id = NativeHostConnection::selectionKey();
         directory = plan.workingDirectory;
     } else if (!shellProfileId.isEmpty()) {
         for (const auto &profile : profiles) {
@@ -124,53 +138,168 @@ QString TerminalHub::createSession(const QString &workdir, const QString &shellP
     if (!native && shellProfileId.isEmpty() && !profiles.isEmpty())
         selected = profiles.first();
 #endif
-    const QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    auto *session = new TerminalSession(native ? TerminalLaunchContext::Local : m_launchContext, this);
-    Entry entry;
-    entry.session = session;
-    entry.native = native;
-    if (native)
-        entry.title = tr("Terminal %1").arg(m_nextTitle++);
-    else
-        entry.title = tr("Terminal %1 · %2").arg(m_nextTitle++).arg(QDir::toNativeSeparators(directory));
+    auto title = native ? tr("Terminal %1").arg(m_nextTitle++)
+        : tr("Terminal %1 · %2").arg(m_nextTitle++).arg(QDir::toNativeSeparators(directory));
     if (!selected.label.isEmpty())
-        entry.title = selected.label + QStringLiteral(" · ") + entry.title;
-    m_sessions.insert(id, entry);
-    m_order.append(id);
-    connect(session, &TerminalSession::output, this, [this, id](const QByteArray &bytes) {
-        auto it = m_sessions.find(id);
-        if (it == m_sessions.end())
-            return;
-        it->end += static_cast<quint64>(bytes.size());
-        it->output.append(bytes);
-        if (it->output.size() > outputLimit)
-            it->output.remove(0, it->output.size() - outputLimit);
-        emit outputAvailable(id);
-    });
-    connect(session, &TerminalSession::stateChanged, this, &TerminalHub::sessionsChanged);
+        title = selected.label + QStringLiteral(" · ") + title;
     QStringList arguments = selected.arguments;
     if (!selected.workingDirectoryArgument.isEmpty()) {
         arguments.prepend(QDir::toNativeSeparators(directory));
         arguments.prepend(selected.workingDirectoryArgument);
     }
-    session->start(native ? directory : workdir, selected.program, arguments, selected.environment);
+    const auto profile = NativeTerminalLaunch::resolve(directory, selected.program, arguments, selected.environment,
+        native ? TerminalLaunchContext::Local : m_launchContext,
+        selected.id.isEmpty() ? QStringLiteral("native-default") : selected.id);
+    return createLocalSession(profile, title, {}, native);
+}
+
+QString TerminalHub::createLocalContainerSession(const QString &container, const QString &name, const QString &shell)
+{
+    m_creationError.clear();
+    if (m_sessions.size() + m_closingSessions.size() >= sessionLimit) {
+        m_creationError = tr("Eight terminals are already open. Close one before opening another.");
+        return {};
+    }
+    static const QRegularExpression fullId(QStringLiteral("\\A[0-9a-f]{64}\\z"));
+    if (!fullId.match(container).hasMatch() || (shell != "/bin/sh" && shell != "/bin/bash")) {
+        m_creationError = tr("The container terminal target is unavailable.");
+        return {};
+    }
+    const auto binary = DockpipeChoices::operatorDockpipeBinary(&m_creationError);
+    if (binary.isEmpty())
+        return {};
+
+    const auto profile = NativeTerminalLaunch::resolve({}, binary,
+        {"containers", "exec", "--container", container, "--shell", shell}, {},
+        TerminalLaunchContext::Local, QStringLiteral("container-terminal"));
+    const auto title = tr("Terminal %1 · %2").arg(m_nextTitle++).arg(name);
+    return createLocalSession(profile, title, "container:" + container + ":" + shell);
+}
+
+QString TerminalHub::createLocalSession(const NativeTerminalLaunch::Snapshot &profile, const QString &title,
+                                        const QString &root, bool nativeHost)
+{
+    const QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    auto *session = new ManagedTerminalSession(this);
+    Entry entry;
+    entry.session = session;
+    entry.native = nativeHost;
+    entry.title = title;
+    entry.root = root;
+    m_sessions.insert(id, entry);
+    m_order.append(id);
+    connect(session, &ManagedTerminalSession::output, this, [this, id](const QByteArray &bytes, quint64 cursor, bool truncated) {
+        auto it = m_sessions.find(id);
+        if (it == m_sessions.end())
+            return;
+        if (truncated || cursor - quint64(bytes.size()) != it->end)
+            it->output.clear();
+        it->end = cursor;
+        it->output.append(bytes);
+        if (it->output.size() > outputLimit)
+            it->output.remove(0, it->output.size() - outputLimit);
+        emit outputAvailable(id);
+    });
+    connect(session, &ManagedTerminalSession::stateChanged, this, &TerminalHub::sessionsChanged);
+    if (!session->start(profile)) {
+        m_creationError = session->error();
+        m_sessions.remove(id);
+        m_order.removeAll(id);
+        session->deleteLater();
+        return {};
+    }
+    emit sessionsChanged();
+    return id;
+}
+
+QString TerminalHub::createContainerSession(const QJsonObject &catalog, const QString &container, const QString &shell)
+{
+    m_creationError.clear();
+    if (catalog.isEmpty() || m_sessions.size() + m_closingSessions.size() >= sessionLimit) {
+        m_creationError = tr("Eight terminals are already open. Close one before opening another.");
+        return {};
+    }
+    return createRemoteSession(catalog, "container:" + container + ":" + shell, container, shell);
+}
+
+QString TerminalHub::createRemoteSession(const QJsonObject &catalog, const QString &root,
+                                       const QString &container, const QString &shell)
+{
+    const QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    auto *session = new RemoteTerminalSession(this);
+    Entry entry;
+    entry.remote = session;
+    entry.catalog = catalog;
+    entry.root = root;
+    entry.title = tr("Terminal %1 · %2").arg(m_nextTitle++)
+        .arg(catalog.value("target").toObject().value("node").toString() + QStringLiteral(" · ") + root);
+    m_sessions.insert(id, entry);
+    m_order.append(id);
+    connect(session, &RemoteTerminalSession::output, this,
+        [this, id](const QByteArray &bytes, quint64 cursor, bool truncated) {
+            auto it = m_sessions.find(id);
+            if (it == m_sessions.end())
+                return;
+            if (truncated || cursor - quint64(bytes.size()) != it->end)
+                it->output.clear();
+            it->end = cursor;
+            it->output.append(bytes);
+            if (it->output.size() > outputLimit)
+                it->output.remove(0, it->output.size() - outputLimit);
+            emit outputAvailable(id);
+        });
+    connect(session, &RemoteTerminalSession::stateChanged, this, &TerminalHub::sessionsChanged);
+    const bool started = container.isEmpty() ? session->start(catalog, root) : session->startContainer(catalog, container, shell);
+    if (!started) {
+        m_creationError = session->error();
+        m_sessions.remove(id);
+        m_order.removeAll(id);
+        session->deleteLater();
+        return {};
+    }
     emit sessionsChanged();
     return id;
 }
 
 QStringList TerminalHub::sessionIds() const { return m_order; }
+
+QStringList TerminalHub::sessionIds(const QJsonObject &catalog, const QString &root) const
+{
+    QStringList result;
+    for (const auto &id : m_order) {
+        const auto &entry = m_sessions[id];
+        if (catalog.isEmpty()) {
+            if (entry.catalog.isEmpty() && entry.root == root)
+                result.append(id);
+        } else if (entry.catalog.value("target") == catalog.value("target")
+                   && entry.root == root) {
+            result.append(id);
+        }
+    }
+    return result;
+}
+
+bool TerminalHub::connecting(const QString &id) const
+{
+    const auto entry = m_sessions.constFind(id);
+    return entry != m_sessions.cend() && entry->remote && entry->remote->running() && !entry->remote->ready();
+}
 QString TerminalHub::title(const QString &id) const { return m_sessions.value(id).title; }
 
 bool TerminalHub::running(const QString &id) const
 {
     const auto it = m_sessions.constFind(id);
-    return it != m_sessions.cend() && it->session->running();
+    return it != m_sessions.cend() && (it->remote ? it->remote->running() : it->session->running());
 }
 
 QString TerminalHub::error(const QString &id) const
 {
     const auto it = m_sessions.constFind(id);
-    return it == m_sessions.cend() ? tr("This terminal session is closed.") : it->session->error();
+    if (it == m_sessions.cend())
+        return tr("This terminal session is closed.");
+    if (it->remote)
+        return it->remote->error();
+    return it->session->error();
 }
 
 bool TerminalHub::send(const QString &id, const QString &text, QString *error)
@@ -191,14 +320,43 @@ bool TerminalHub::send(const QString &id, const QString &text, QString *error)
 bool TerminalHub::sendBytes(const QString &id, const QByteArray &data)
 {
     const auto it = m_sessions.constFind(id);
-    return it != m_sessions.cend() && it->session->send(data);
+    return it != m_sessions.cend() && (it->remote ? it->remote->send(data) : it->session->send(data));
+}
+
+void TerminalHub::sendAsync(const QString &id, const QString &text,
+                            std::function<void(bool, const QString &)> completion)
+{
+    const auto entry = m_sessions.constFind(id);
+    if (entry == m_sessions.cend()) {
+        completion(false, tr("This terminal session is closed."));
+        return;
+    }
+    const QByteArray data = text.toUtf8();
+    if (data.size() >= inputLimit) {
+        completion(false, tr("Input must be smaller than 64 KiB."));
+        return;
+    }
+    const QPointer<TerminalHub> guard(this);
+    auto finished = [guard, id, completion](bool accepted) {
+        if (guard)
+            completion(accepted, accepted ? QString() : guard->error(id));
+    };
+    const bool accepted = entry->remote
+        ? entry->remote->sendAcknowledged(data + '\r', std::move(finished))
+        : entry->session->sendAcknowledged(data + '\r', std::move(finished));
+    if (!accepted)
+        completion(false, tr("The terminal could not accept input. Try again when it is ready."));
 }
 
 void TerminalHub::resize(const QString &id, int columns, int rows)
 {
     const auto it = m_sessions.constFind(id);
-    if (it != m_sessions.cend())
-        it->session->resize(columns, rows);
+    if (it != m_sessions.cend()) {
+        if (it->remote)
+            it->remote->resize(columns, rows);
+        else
+            it->session->resize(columns, rows);
+    }
 }
 
 void TerminalHub::closeSession(const QString &id)
@@ -206,15 +364,72 @@ void TerminalHub::closeSession(const QString &id)
     auto it = m_sessions.find(id);
     if (it == m_sessions.end())
         return;
+    if (it->remote) {
+        auto *session = it->remote;
+        m_sessions.erase(it);
+        m_order.removeAll(id);
+        if (!session->cleanupVerified()) {
+            m_closingSessions.insert(session);
+            connect(session, &RemoteTerminalSession::finished, this, [this, session] {
+                if (session->cleanupVerified()) {
+                    m_closingSessions.remove(session);
+                    session->deleteLater();
+                }
+                emit sessionsChanged();
+            });
+        }
+        session->stop();
+        if (session->cleanupVerified()) {
+            m_closingSessions.remove(session);
+            session->deleteLater();
+        }
+        emit sessionsChanged();
+        return;
+    }
     auto *session = it->session;
     m_sessions.erase(it);
     m_order.removeAll(id);
-    // Keep the backend alive until its asynchronous termination completes.
-    connect(session, &TerminalSession::finished, session, &QObject::deleteLater);
-    session->stop();
-    if (!session->running())
+    // A vanished core process is not proof of native cleanup. Preserve an
+    // unknown reservation rather than opening more shells over unreaped jobs.
+    if (session->active()) {
+        m_closingSessions.insert(session);
+        connect(session, &ManagedTerminalSession::finished, this, [this, session] {
+            if (session->cleanupVerified()) {
+                m_closingSessions.remove(session);
+                session->deleteLater();
+            }
+            emit sessionsChanged();
+        });
+        session->stop();
+    } else if (session->cleanupVerified()) {
         session->deleteLater();
+    } else {
+        m_closingSessions.insert(session);
+    }
     emit sessionsChanged();
+}
+
+void TerminalHub::releaseRecoveredSession(const QJsonObject &reference)
+{
+    for (auto &entry : m_sessions) {
+        if (entry.remote)
+            entry.remote->confirmRecovery(reference);
+    }
+    const auto closing = m_closingSessions;
+    for (auto *object : closing) {
+        auto *session = qobject_cast<RemoteTerminalSession *>(object);
+        if (session && session->confirmRecovery(reference)) {
+            m_closingSessions.remove(session);
+            if (!session->active())
+                session->deleteLater();
+        }
+    }
+    emit sessionsChanged();
+}
+
+void TerminalHub::releaseRecoveredContainerSession(const QJsonObject &reference)
+{
+    releaseRecoveredSession(reference);
 }
 
 QByteArray TerminalHub::readOutput(const QString &id, quint64 &cursor, bool &truncated) const

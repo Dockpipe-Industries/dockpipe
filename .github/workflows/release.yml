@@ -66,7 +66,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@v7
         with:
-          go-version: '1.26.10'
+          go-version: '1.26.11'
           cache: false
       - name: Diagnose only the Windows Git snapshot fixture
         shell: bash
@@ -237,7 +237,7 @@ jobs:
         run: python3 workflows/shared/launch.py workflows/build/desktop/layout-diagnostics.yml -- guard --product-source "$PRODUCT_SOURCE" --evidence "$RUNNER_TEMP/layout-diagnostic/preparation"
       - uses: actions/setup-go@v7
         with:
-          go-version: "1.26.10"
+          go-version: "1.26.11"
       - uses: actions/setup-node@v7.1.0
         with:
           node-version: "22"
@@ -368,7 +368,7 @@ jobs:
 
       - uses: actions/setup-go@v7
         with:
-          go-version: "1.26.10"
+          go-version: "1.26.11"
 
       - uses: actions/setup-node@v7.1.0
         with:
@@ -428,6 +428,8 @@ jobs:
       - name: Smoke test MSI install/uninstall
         if: needs.meta.outputs.build_msi == 'true'
         shell: pwsh
+        env:
+          DOCKPIPE_ADAPTER_0: ${{ needs.meta.outputs.version }}
         run: python workflows/shared/launch.py workflows/package/windows-msi/smoke-release.yml
 
       - name: Collect MSI

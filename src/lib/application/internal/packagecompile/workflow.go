@@ -77,20 +77,28 @@ func cmdPackageCompileWorkflow(args []string) error {
 // compileWorkflowOne validates YAML, materializes a streamable dockpipe-workflow-<name>-<ver>.tar.gz
 // under packages/workflows/ (no expanded directory trees in the store).
 func compileWorkflowOne(workdir, srcAbs, name string, force bool) error {
+	_, err := compileWorkflowEntry(workdir, srcAbs, name, force)
+	return err
+}
+
+// compileWorkflowEntry returns the exact compiled archive entry, including cache hits.
+// Callers must not resolve a workflow name again after compilation selected its source.
+func compileWorkflowEntry(workdir, srcAbs, name string, force bool) (string, error) {
 	cfgPath := filepath.Join(srcAbs, "config.yml")
 	if _, err := os.Stat(cfgPath); err != nil {
-		return fmt.Errorf("workflow source must contain config.yml: %w", err)
+		return "", fmt.Errorf("workflow source must contain config.yml: %w", err)
 	}
 	if err := infrastructure.ValidateWorkflowYAML(cfgPath); err != nil {
-		return fmt.Errorf("validate workflow: %w", err)
+		return "", fmt.Errorf("validate workflow: %w", err)
 	}
 	b, err := os.ReadFile(cfgPath)
 	if err != nil {
-		return err
+		return "", err
 	}
+	authoredConfig := b
 	wf, err := domain.ParseWorkflowYAML(b)
 	if err != nil {
-		return fmt.Errorf("parse workflow: %w", err)
+		return "", fmt.Errorf("parse workflow: %w", err)
 	}
 	pkgName := strings.TrimSpace(name)
 	if pkgName == "" {
@@ -101,7 +109,7 @@ func compileWorkflowOne(workdir, srcAbs, name string, force bool) error {
 	}
 	resolvedVersion, err := packageversion.ForSource(workdir, srcAbs, authoredPackageVersion(workdir))
 	if err != nil {
-		return err
+		return "", err
 	}
 	opIDs := packageCompileIDs(workdir, map[string]string{
 		"package": pkgName,
@@ -109,9 +117,10 @@ func compileWorkflowOne(workdir, srcAbs, name string, force bool) error {
 	})
 	pw, err := infrastructure.PackagesWorkflowsDir(workdir)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return infrastructure.RunOperationWithOptions(os.Stderr, "package.compile.workflow", "Compiling workflow package…", opIDs, infrastructure.OperationOptions{Spinner: false, ProgressEvery: packageCompileProgressEvery}, func() error {
+	var archive string
+	err = infrastructure.RunOperationWithOptions(os.Stderr, "package.compile.workflow", "Compiling workflow package…", opIDs, infrastructure.OperationOptions{Spinner: false, ProgressEvery: packageCompileProgressEvery}, func() error {
 		if err := os.MkdirAll(pw, 0o755); err != nil {
 			return err
 		}
@@ -153,19 +162,29 @@ func compileWorkflowOne(workdir, srcAbs, name string, force bool) error {
 							opIDs["result"] = "skip"
 							opIDs["skip_reason"] = "installed_tarball_materialization"
 							opIDs["output"] = filepath.ToSlash(latestTar)
+							archive = latestTar
 							return nil
 						}
-						stale, err := infrastructure.SourceDirNewerThanPath(srcAbs, latestTar)
+						bound, err := workflowSourceBindingMatches(latestTar, srcAbs, authoredConfig)
 						if err != nil {
 							return err
 						}
-						if !stale {
-							opIDs["result"] = "skip"
-							opIDs["skip_reason"] = "up_to_date_tarball"
-							opIDs["output"] = filepath.ToSlash(latestTar)
-							return nil
+						if !bound {
+							opIDs["rebuild_reason"] = "workflow_source_binding_changed"
+						} else {
+							stale, err := infrastructure.SourceDirNewerThanPath(srcAbs, latestTar)
+							if err != nil {
+								return err
+							}
+							if !stale {
+								opIDs["result"] = "skip"
+								opIDs["skip_reason"] = "up_to_date_tarball"
+								opIDs["output"] = filepath.ToSlash(latestTar)
+								archive = latestTar
+								return nil
+							}
+							opIDs["rebuild_reason"] = "source_newer_than_tarball"
 						}
-						opIDs["rebuild_reason"] = "source_newer_than_tarball"
 						rebuild = true
 					}
 				}
@@ -248,6 +267,9 @@ func compileWorkflowOne(workdir, srcAbs, name string, force bool) error {
 		if err := mergeCompiledCatalogMetadata(manifestPath, filepath.Join(staging, "config.yml")); err != nil {
 			return err
 		}
+		if err := infrastructure.ExportWorkflowControlArtifact(workdir, wf, staging); err != nil {
+			return fmt.Errorf("stage prebuilt workflow control: %w", err)
+		}
 		pmParsed, err := readVersionedCompiledManifest(manifestPath, defaultVersion)
 		if err != nil {
 			return fmt.Errorf("package manifest: %w", err)
@@ -260,13 +282,25 @@ func compileWorkflowOne(workdir, srcAbs, name string, force bool) error {
 			ver = defaultVersion
 		}
 		outPath := filepath.Join(pw, fmt.Sprintf("dockpipe-workflow-%s-%s.tar.gz", packagebuild.SafeTarballToken(pkgName), packagebuild.SafeTarballToken(ver)))
-		if _, err := packagebuild.WriteDirTarGzWithPrefix(staging, outPath, "workflows/"+pkgName); err != nil {
+		archiveDigest, err := packagebuild.WriteDirTarGzWithPrefix(staging, outPath, "workflows/"+pkgName)
+		if err != nil {
 			return err
+		}
+		if err := writeWorkflowSourceBinding(outPath, srcAbs, authoredConfig, archiveDigest); err != nil {
+			return fmt.Errorf("write workflow source binding: %w", err)
 		}
 		opIDs["result"] = "compiled"
 		opIDs["output"] = filepath.ToSlash(outPath)
+		archive = outPath
 		return nil
 	})
+	if err != nil {
+		return "", err
+	}
+	if archive == "" {
+		return "", fmt.Errorf("workflow compilation produced no selected archive")
+	}
+	return infrastructure.FormatTarWorkflowURI(archive, "workflows/"+pkgName+"/config.yml"), nil
 }
 
 func runWorkflowCompileHooks(workdir, srcAbs, staging string, hooks []string) error {

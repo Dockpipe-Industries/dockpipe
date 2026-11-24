@@ -1,7 +1,7 @@
 schema: 1
 id: TASK-046
 topic: Native remote desktop and codec benchmarking
-status: planned
+status: in_progress
 entrypoint: overview.md
 
 dispatch:
@@ -15,15 +15,15 @@ routes:
     read: [overview.md, ../../../architecture/native-remote-desktop.md]
   implementation:
     read: [overview.md, ../../../architecture/native-remote-desktop.md]
-    gate: Future work; requires explicit implementation authority after refactor and stabilization.
+    gate: Native Linux-to-Darwin single-monitor slice authorized 2026-11-09; remaining stories stay planned.
 
 documents:
   - path: overview.md
     role: planned epic, grouped stories, dependencies, acceptance and milestones
   - path: ../../../architecture/native-remote-desktop.md
-    role: canonical proposed architecture; not shipped behavior
+    role: canonical architecture and admitted first slice; qualification remains explicit
 
 maintenance:
   - Resolve document paths relative to this index.
   - Keep dispatch metadata synchronized with docs/agents/task-index.yaml.
-  - Preserve planned status until implementation is explicitly authorized.
+  - Keep implemented scope and actual platform/direct/relay proof distinct from remaining planned stories.

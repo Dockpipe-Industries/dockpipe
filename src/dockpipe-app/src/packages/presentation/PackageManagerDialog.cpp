@@ -26,7 +26,7 @@ QTableWidget *packageTable()
 {
     auto *table = new QTableWidget;
     table->setColumnCount(6);
-    table->setHorizontalHeaderLabels({QObject::tr("Name"), QObject::tr("Version"), QObject::tr("Type"), QObject::tr("Source"), QObject::tr("Size"), QObject::tr("Status")});
+    table->setHorizontalHeaderLabels({PackageManagerDialog::tr("Name"), PackageManagerDialog::tr("Version"), PackageManagerDialog::tr("Type"), PackageManagerDialog::tr("Source"), PackageManagerDialog::tr("Size"), PackageManagerDialog::tr("Status")});
     table->setSelectionBehavior(QAbstractItemView::SelectRows);
     table->setSelectionMode(QAbstractItemView::SingleSelection);
     table->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -52,7 +52,7 @@ QString archiveSize(const QJsonObject &record)
     const double bytes = value.toDouble(-1);
     if (!value.isDouble() || !std::isfinite(bytes) || bytes < 0 || std::floor(bytes) != bytes
         || bytes >= static_cast<double>(std::numeric_limits<qint64>::max()))
-        return QObject::tr("Not available");
+        return PackageManagerDialog::tr("Not available");
     return QLocale().formattedDataSize(static_cast<qint64>(bytes), 1, QLocale::DataSizeIecFormat);
 }
 
@@ -64,6 +64,19 @@ QString catalogType(const QJsonObject &record)
         return type;
     const QString kind = record.value(QStringLiteral("kind")).toString();
     return kind == QStringLiteral("resolver") ? QStringLiteral("integration") : kind;
+}
+
+QString catalogTypeLabel(const QString &type)
+{
+    if (type == QStringLiteral("app"))
+        return PackageManagerDialog::tr("App");
+    if (type == QStringLiteral("workflow"))
+        return PackageManagerDialog::tr("Workflow");
+    if (type == QStringLiteral("integration"))
+        return PackageManagerDialog::tr("Integration");
+    if (type == QStringLiteral("core"))
+        return PackageManagerDialog::tr("Core");
+    return type;
 }
 
 void populate(QTableWidget *table, const QJsonArray &packages, const QString &filter, const QString &status, bool remoteProvidersOnly, const QString &typeFilter)
@@ -95,10 +108,10 @@ void populate(QTableWidget *table, const QJsonArray &packages, const QString &fi
         item->setData(Qt::UserRole, record);
         table->setItem(row, 0, item);
         table->setItem(row, 1, new QTableWidgetItem(record.value(QStringLiteral("version")).toString()));
-        table->setItem(row, 2, new QTableWidgetItem(catalogType(record)));
+        table->setItem(row, 2, new QTableWidgetItem(catalogTypeLabel(catalogType(record))));
         table->setItem(row, 3, new QTableWidgetItem(record.value(QStringLiteral("source")).toString()));
         auto *size = new QTableWidgetItem(archiveSize(record));
-        size->setToolTip(QObject::tr("Compressed package archive size. Does not include extracted files, caches or separately installed dependencies."));
+        size->setToolTip(PackageManagerDialog::tr("Compressed package archive size. Does not include extracted files, caches or separately installed dependencies."));
         table->setItem(row, 4, size);
         table->setItem(row, 5, new QTableWidgetItem(record.value(QStringLiteral("status")).toString(status)));
     }
@@ -362,10 +375,26 @@ void PackageManagerDialog::refreshDetails()
         const QString label = m_tabs->currentIndex() == 1 ? tr("Download size") : tr("Stored archive size");
         lines.append(tr("%1: %2").arg(label, archiveSize(record)));
     }
-    for (const auto &field : {"name", "title", "version", "catalog_type", "kind", "description", "provider", "capability", "source", "path", "sha256"}) {
-        const auto value = record.value(QLatin1String(field)).toString();
-        if (!value.isEmpty())
-            lines.append(QStringLiteral("%1: %2").arg(QLatin1String(field), value));
+    const QList<QPair<QString, QString>> fields{
+        {QStringLiteral("name"), tr("Name")},
+        {QStringLiteral("title"), tr("Title")},
+        {QStringLiteral("version"), tr("Version")},
+        {QStringLiteral("catalog_type"), tr("Type")},
+        {QStringLiteral("kind"), tr("Kind")},
+        {QStringLiteral("description"), tr("Description")},
+        {QStringLiteral("provider"), tr("Provider")},
+        {QStringLiteral("capability"), tr("Capability")},
+        {QStringLiteral("source"), tr("Source")},
+        {QStringLiteral("path"), tr("Path")},
+        {QStringLiteral("sha256"), tr("SHA-256")}
+    };
+    for (const auto &field : fields) {
+        const QString value = record.value(field.first).toString();
+        if (value.isEmpty())
+            continue;
+        const QString displayedValue = field.first == QStringLiteral("catalog_type")
+            ? catalogTypeLabel(value) : value;
+        lines.append(tr("%1: %2").arg(field.second, displayedValue));
     }
     if (m_tabs->currentIndex() == 1 && !record.isEmpty() && !versionInstalled(record)) {
         lines.append(tr("Installs this package only. Required resolvers must also be installed. Existing project packages can take precedence."));
