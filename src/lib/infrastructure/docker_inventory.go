@@ -29,7 +29,7 @@ func (output *inventoryOutput) Write(data []byte) (int, error) {
 func dockerInventoryCommand(ctx context.Context, environment []string, args ...string) ([]byte, error) {
 	commandName, err := resolveDockerCommandFromEnvironment(environment)
 	if err != nil {
-		return nil, errors.New("Docker inventory executable unavailable")
+		return nil, errors.New("no Docker inventory executable available")
 	}
 	command := exec.CommandContext(ctx, commandName, args...)
 	command.Env = dockerCommandEnv(environment, commandName)

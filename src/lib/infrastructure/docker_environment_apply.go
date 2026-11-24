@@ -35,7 +35,7 @@ type DockerEnvironmentApplyRequest struct {
 func localDockerEnvironment(ctx context.Context, environment []string) (environmentDocker, error) {
 	executable, err := resolveDockerCommandFromEnvironment(environment)
 	if err != nil {
-		return environmentDocker{}, errors.New("Docker is unavailable. Install or start Docker on this computer and try again.")
+		return environmentDocker{}, errors.New("unable to use Docker; install or start Docker on this computer and try again")
 	}
 	endpoint := strings.TrimSpace(envGet(environment, "DOCKER_HOST"))
 	docker := environmentDocker{executable: executable, env: environment}
@@ -79,9 +79,9 @@ func (docker environmentDocker) run(ctx context.Context, arguments ...string) ([
 		}
 		message := strings.TrimSpace(diagnostic.String())
 		if message != "" {
-			return nil, fmt.Errorf("Docker: %s", message)
+			return nil, fmt.Errorf("error from Docker: %s", message)
 		}
-		return nil, fmt.Errorf("Docker command failed: %w", err)
+		return nil, fmt.Errorf("command failed in Docker: %w", err)
 	}
 	return output.buffer.Bytes(), nil
 }
@@ -161,7 +161,7 @@ func applyDockerEnvironment(ctx context.Context, name, instanceID string, argume
 		_, err := docker.run(ctx, "container", "start", container.ID)
 		return container.ID, err
 	default:
-		return "", errors.New("the existing container has different settings. Save a new environment to create another container with these settings.")
+		return "", errors.New("the existing container has different settings; save a new environment to create another container with these settings")
 	}
 }
 
@@ -180,7 +180,7 @@ func (docker environmentDocker) create(ctx context.Context, name, instanceID, di
 	}
 	containerID := strings.TrimSpace(string(output))
 	if !isFullContainerID(containerID) {
-		return telemetry.DockerContainer{}, errors.New("Docker did not return an exact ID for the created container")
+		return telemetry.DockerContainer{}, errors.New("no exact container ID returned by Docker after creation")
 	}
 	return telemetry.DockerContainer{ID: containerID}, nil
 }

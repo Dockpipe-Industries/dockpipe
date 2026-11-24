@@ -9,7 +9,7 @@ import (
 
 const Schema = "dockpipe.environment/v1"
 
-var ErrKubernetesPodUnsupported = errors.New("Kubernetes pod environments are unsupported")
+var ErrKubernetesPodUnsupported = errors.New("environments backed by Kubernetes pods are unsupported")
 
 var identifier = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
 

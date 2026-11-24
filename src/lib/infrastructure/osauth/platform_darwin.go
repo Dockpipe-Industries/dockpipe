@@ -14,6 +14,8 @@ import (
 	"syscall"
 	"time"
 
+	contract "dockpipe/src/lib/domain/remote"
+
 	"golang.org/x/sys/unix"
 )
 
@@ -28,6 +30,10 @@ type darwinPlatform struct {
 
 func New() (Platform, error) {
 	return &darwinPlatform{run: runSystemCommand, runTrust: runNetworkTrustCommand, executable: os.Executable, readClocks: darwinSuspendedTime}, nil
+}
+
+func runNetworkTrustCommand(ctx context.Context, program string, arguments ...string) ([]byte, error) {
+	return runSystemCommandBounded(ctx, program, contract.MaxNetworkTrustBody, arguments...)
 }
 
 func (platform *darwinPlatform) SuspendGeneration() (uint64, error) {

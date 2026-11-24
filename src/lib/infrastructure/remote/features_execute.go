@@ -45,7 +45,7 @@ func validateFeaturePayload(request contract.FeatureRequest) error {
 	case strings.HasPrefix(request.Action, "git."):
 		var input workspacegit.WorkspaceGitRequest
 		if decodeFeature(request.Payload, &input) != nil || input.Workdir != "" || "git."+input.Action != request.Action {
-			return errors.New("Git feature payload cannot select a host directory or different action")
+			return errors.New("the Git feature payload cannot select a host directory or different action")
 		}
 	case strings.HasPrefix(request.Action, "containers."):
 		if request.Action == "containers.terminal-recover" {

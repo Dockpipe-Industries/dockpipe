@@ -120,9 +120,9 @@ func TestDesktopRelayRejectsUnboundForeignAndConsumedAuthority(t *testing.T) {
 				}
 				return
 			}
-			client := *fixture.viewer
+			client := fixture.viewer
 			if scenario == "bearer" {
-				client.Token = Hash("wrong-bearer")
+				client = &Client{Endpoint: fixture.viewer.Endpoint, Token: Hash("wrong-bearer"), HTTP: fixture.viewer.HTTP}
 			}
 			if scenario == "lock" {
 				fixture.broker.security.Lock()

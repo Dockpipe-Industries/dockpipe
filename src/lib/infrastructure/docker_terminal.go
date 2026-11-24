@@ -151,7 +151,7 @@ func startDockerTerminal(ctx context.Context, client *dockerEngineClient, reques
 		return nil, err
 	}
 	if !isFullContainerID(created.ID) {
-		return nil, errors.New("Docker returned an invalid exec identity")
+		return nil, errors.New("invalid exec identity returned by Docker")
 	}
 	receipt.ExecID, receipt.Phase = created.ID, "start-requested"
 	if err := observe(receipt); err != nil {
@@ -182,7 +182,7 @@ func startDockerTerminal(ctx context.Context, client *dockerEngineClient, reques
 	if response.StatusCode != 101 {
 		_ = response.Body.Close()
 		_ = connection.Close()
-		return nil, errors.New("Docker exec attachment was not acknowledged")
+		return nil, errors.New("no acknowledgement of exec attachment from Docker")
 	}
 	if err := connection.SetDeadline(time.Time{}); err != nil {
 		_ = connection.Close()
@@ -209,7 +209,7 @@ func startDockerTerminal(ctx context.Context, client *dockerEngineClient, reques
 		select {
 		case <-startup.Done():
 			_ = terminal.Stop()
-			return nil, errors.New("Docker exec launch completion could not be verified")
+			return nil, errors.New("could not verify Docker exec launch completion")
 		case <-time.After(25 * time.Millisecond):
 		}
 	}
@@ -222,7 +222,7 @@ func startDockerTerminal(ctx context.Context, client *dockerEngineClient, reques
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		return nil, errors.New("Docker exec startup was cancelled")
+		return nil, errors.New("startup of Docker exec was cancelled")
 	}
 	transferred = true
 	return terminal, nil
@@ -273,7 +273,7 @@ func (terminal *dockerTerminal) inspect(ctx context.Context) (bool, int, error) 
 	}
 	err := terminal.client.query(ctx, "GET", "/exec/"+terminal.receipt.ExecID+"/json", nil, &state)
 	if err != nil || state.ID != terminal.receipt.ExecID || state.Container != terminal.receipt.Container {
-		return true, -1, errors.New("Docker exec closure identity could not be verified")
+		return true, -1, errors.New("could not verify Docker exec closure identity")
 	}
 	return state.Running, state.ExitCode, nil
 }

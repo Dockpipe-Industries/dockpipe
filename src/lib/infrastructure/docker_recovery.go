@@ -59,7 +59,7 @@ func containerProviderQuery(ctx context.Context, name string, environment []stri
 	command.Stderr = io.Discard
 	command.WaitDelay = time.Second
 	if err := process.RunWithScope(ctx, command); err != nil {
-		return nil, errors.New("Docker provider readback could not be confirmed")
+		return nil, errors.New("could not confirm Docker provider readback")
 	}
 	return bytes.TrimSpace(output.buffer.Bytes()), nil
 }
@@ -67,7 +67,7 @@ func containerProviderQuery(ctx context.Context, name string, environment []stri
 func containerDaemonIdentity(ctx context.Context, name string, environment []string) (string, error) {
 	data, err := containerProviderQuery(ctx, name, environment, "info", "--format", "{{.ID}}")
 	if err != nil || len(data) == 0 || len(data) > 256 || bytes.ContainsAny(data, "\r\n\x00") {
-		return "", errors.New("Docker daemon identity could not be confirmed")
+		return "", errors.New("could not confirm the identity of the Docker daemon")
 	}
 	digest := sha256.Sum256(data)
 	return hex.EncodeToString(digest[:]), nil
@@ -156,7 +156,7 @@ func recoverContainerLifecycle(ctx context.Context, receipt ContainerLifecycleRe
 		return nil
 	}
 	if !retire {
-		return errors.New("Docker completion is uncertain; explicitly retire the captured container to fence delayed daemon work")
+		return errors.New("completion in Docker is uncertain; explicitly retire the captured container to fence delayed daemon work")
 	}
 	if observer, exists := ctx.Value(containerLifecycleKey{}).(containerLifecycleObserver); exists {
 		if err := observer(receipt); err != nil {
@@ -176,7 +176,7 @@ func recoverContainerLifecycle(ctx context.Context, receipt ContainerLifecycleRe
 	}
 	verifiedDaemon, err := containerDaemonIdentity(ctx, name, environment)
 	if err != nil || verifiedDaemon != receipt.Daemon {
-		return errors.New("Docker daemon changed during resource retirement")
+		return errors.New("resource retirement encountered a changed Docker daemon")
 	}
 	return observeContainerCompletion(ctx, &receipt)
 }

@@ -10,7 +10,7 @@ import (
 	remoteio "dockpipe/src/lib/infrastructure/remote"
 )
 
-var errWindowsWorkerTaskUnavailable = errors.New("Windows worker task requires Windows")
+var errWindowsWorkerTaskUnavailable = errors.New("worker task requires Windows")
 
 func prepareWindowsWorkerTask(context.Context, string, []string, string) (string, error) {
 	return "", errWindowsWorkerTaskUnavailable

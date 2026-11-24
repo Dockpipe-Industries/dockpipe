@@ -50,7 +50,7 @@ func (platform *linuxPlatform) SuspendGeneration() (uint64, error) {
 		return 0, err
 	}
 	if platform.suspendCountKnown && !known {
-		return 0, errors.New("Linux kernel suspend statistics became unavailable")
+		return 0, errors.New("suspend statistics from the Linux kernel became unavailable")
 	}
 
 	// Virtualized suspend-to-idle can leave the clock difference unchanged.
@@ -79,7 +79,7 @@ func linuxSuccessfulSuspends() (uint64, bool, error) {
 		return 0, false, err
 	}
 	if len(raw) == 32 {
-		return 0, false, errors.New("Linux kernel suspend statistics exceeded their bound")
+		return 0, false, errors.New("suspend statistics from the Linux kernel exceeded their bound")
 	}
 
 	count, err := strconv.ParseUint(strings.TrimSpace(string(raw)), 10, 64)

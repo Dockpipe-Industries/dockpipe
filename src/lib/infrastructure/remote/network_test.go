@@ -404,8 +404,7 @@ func TestNetworkLeaseRenewalAndFailedTicketConsumption(t *testing.T) {
 	if !after.Equal(expired) {
 		t.Fatal("expired original stream authority was revived")
 	}
-	attacker := *operator
-	attacker.Token = Hash("foreign-bearer")
+	attacker := &Client{Endpoint: operator.Endpoint, Token: Hash("foreign-bearer"), HTTP: operator.HTTP}
 	if socket, err := attacker.attachNetwork(ctx, viewerTicket); err == nil {
 		socket.CloseNow()
 		t.Fatal("foreign bearer attached")

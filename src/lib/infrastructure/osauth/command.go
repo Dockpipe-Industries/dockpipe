@@ -3,7 +3,6 @@ package osauth
 import (
 	"bytes"
 	"context"
-	contract "dockpipe/src/lib/domain/remote"
 	"errors"
 	"os/exec"
 	"time"
@@ -43,10 +42,6 @@ func (output *boundedOutput) String() string {
 
 func runSystemCommand(ctx context.Context, program string, arguments ...string) ([]byte, error) {
 	return runSystemCommandBounded(ctx, program, 64<<10, arguments...)
-}
-
-func runNetworkTrustCommand(ctx context.Context, program string, arguments ...string) ([]byte, error) {
-	return runSystemCommandBounded(ctx, program, contract.MaxNetworkTrustBody, arguments...)
 }
 
 func runSystemCommandBounded(ctx context.Context, program string, maximum int, arguments ...string) ([]byte, error) {

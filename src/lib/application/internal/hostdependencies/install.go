@@ -61,7 +61,7 @@ func (service Service) installMissing(missing []missingHostDependency, approveSy
 		if isWindowsRequirement(dep) {
 			if _, err := service.lookupDependency(missingDep, hostDependencyCommand(dep)); err != nil {
 				if errors.Is(err, os.ErrNotExist) {
-					return fmt.Errorf("Windows requirement %s is still unavailable; restart Windows if requested by setup, then rerun", hostDependencyCommand(dep))
+					return fmt.Errorf("required Windows feature %s is still unavailable; restart Windows if requested by setup, then rerun", hostDependencyCommand(dep))
 				}
 				return err
 			}

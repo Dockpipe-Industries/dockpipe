@@ -497,7 +497,7 @@ func executeLeasedFeatureUsing(parent context.Context, client *Client, root stri
 					// Git must not discover a repository above the granted root.
 					metadata, err := os.Lstat(filepath.Join(permission.Path, ".git"))
 					if err != nil || metadata.Mode()&os.ModeSymlink != 0 {
-						return errors.New("Git grants must select an exact trusted checkout root")
+						return errors.New("an exact trusted checkout root is required for Git grants")
 					}
 				}
 			}

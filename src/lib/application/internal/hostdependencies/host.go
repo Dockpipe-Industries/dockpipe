@@ -42,7 +42,7 @@ func LookupWindowsFeature(name string) (bool, error) {
 	case "2", "3":
 		return false, nil
 	default:
-		return false, fmt.Errorf("Windows optional feature %q is unknown or unavailable", name)
+		return false, fmt.Errorf("unknown or unavailable Windows optional feature %q", name)
 	}
 }
 

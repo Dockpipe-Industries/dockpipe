@@ -226,7 +226,7 @@ func (broker *Broker) serveNetworkRelay(w http.ResponseWriter, request *http.Req
 	}
 	secret := request.Header.Get(networkTicketHeader)
 	if !validMachineNonce(secret) {
-		http.Error(w, "network authorization required", 401)
+		http.Error(w, "network authorization required", http.StatusUnauthorized)
 		return
 	}
 	token := strings.TrimPrefix(request.Header.Get("Authorization"), "Bearer ")
@@ -242,7 +242,7 @@ func (broker *Broker) serveNetworkRelay(w http.ResponseWriter, request *http.Req
 	}
 	if selected == nil {
 		broker.mutex.Unlock()
-		http.Error(w, "network ticket unavailable", 401)
+		http.Error(w, "network ticket unavailable", http.StatusUnauthorized)
 		return
 	}
 	selected.tickets[index] = ""
@@ -250,7 +250,7 @@ func (broker *Broker) serveNetworkRelay(w http.ResponseWriter, request *http.Req
 	authorized := index == 0 && matches(token, broker.state.AdminHash) || index == 1 && !enrollment.Revoked && matches(token, enrollment.TokenHash)
 	if !authorized || selected.reserved[index] || !time.Now().Before(selected.expires) || !broker.networkValid(selected) {
 		broker.mutex.Unlock()
-		http.Error(w, "network authority expired", 403)
+		http.Error(w, "network authority expired", http.StatusForbidden)
 		return
 	}
 	selected.reserved[index] = true

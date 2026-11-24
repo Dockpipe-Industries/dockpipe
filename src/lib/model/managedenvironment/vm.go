@@ -36,7 +36,7 @@ func (settings VM) Validate() error {
 		return errors.New("choose 1–256 CPUs, 1–1024 GiB of RAM, and 1–16384 GiB of disk")
 	}
 	if settings.OS == "windows11" && (settings.CPUs < 2 || settings.MemoryGiB < 4 || settings.DiskGiB < 64) {
-		return errors.New("Windows 11 requires at least 2 CPUs, 4 GiB of RAM, and 64 GiB of disk")
+		return errors.New("at least 2 CPUs, 4 GiB of RAM, and 64 GiB of disk are required for Windows 11")
 	}
 	if settings.InstallerISO != "" && (!strings.EqualFold(filepath.Ext(settings.InstallerISO), ".iso") ||
 		len(settings.InstallerISO) > 4096 || strings.ContainsAny(settings.InstallerISO, "\x00\r\n\t")) {

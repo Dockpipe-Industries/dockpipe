@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -92,7 +93,7 @@ func RunHostScriptWithShell(scriptPath string, env []string, shell string) error
 
 func runHostScriptWithShell(scriptPath string, env []string, shell string) error {
 	if runtime.GOOS == "windows" {
-		return runHostScriptWithContext(nil, scriptPath, env, shell)
+		return runHostScriptWithContext(context.Background(), scriptPath, env, shell)
 	}
 
 	command, commandEnv, err := hostScriptCommand(scriptPath, env, shell)

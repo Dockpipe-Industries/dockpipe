@@ -49,7 +49,7 @@ func (output *dockerReadOutput) Write(data []byte) (int, error) {
 	defer output.mu.Unlock()
 	if len(data) > maxDockerReadBytes-output.buffer.Len() {
 		output.exhausted = true
-		return 0, errors.New("Docker detail response exceeds 512 KiB")
+		return 0, errors.New("detail response from Docker exceeds 512 KiB")
 	}
 	return output.buffer.Write(data)
 }
@@ -61,17 +61,17 @@ func ValidateContainerReadRequest(request ContainerReadRequest) error {
 	switch request.Kind {
 	case "container", "network":
 		if !isFullContainerID(request.Object) {
-			return errors.New("Docker inspection requires an exact full object ID")
+			return errors.New("an exact full object ID is required for Docker inspection")
 		}
 	case "volume":
 		if !isSafeDockerContainerName(request.Object) {
-			return errors.New("Docker inspection requires an exact volume name")
+			return errors.New("an exact volume name is required for Docker inspection")
 		}
 	default:
 		return errors.New("unsupported Docker object kind")
 	}
 	if request.Action == "logs" && request.Kind != "container" {
-		return errors.New("Docker logs require a container")
+		return errors.New("a container is required to read Docker logs")
 	}
 	return nil
 }
@@ -113,7 +113,7 @@ func ReadContainerWithAuthority(ctx context.Context, request ContainerReadReques
 				if ctx.Err() != nil {
 					return ContainerReadResult{}, ctx.Err()
 				}
-				return ContainerReadResult{}, errors.New("Docker detail query failed or exceeded its 512-KiB response limit")
+				return ContainerReadResult{}, errors.New("the detail query to Docker failed or exceeded its 512-KiB response limit")
 			}
 			result := ContainerReadResult{Schema: "dockpipe.containers/v1", Action: owned.Action, Kind: owned.Kind, Object: owned.Object}
 			if owned.Action == "logs" {
@@ -134,7 +134,7 @@ func ReadContainerWithAuthority(ctx context.Context, request ContainerReadReques
 			}
 			var actual string
 			if json.Unmarshal(object[identityField], &actual) != nil || actual != owned.Object {
-				return ContainerReadResult{}, errors.New("Docker inspect returned a different object identity")
+				return ContainerReadResult{}, errors.New("object identity returned by Docker inspect differed from the request")
 			}
 			result.Inspect = append(json.RawMessage(nil), output.buffer.Bytes()...)
 			return result, nil

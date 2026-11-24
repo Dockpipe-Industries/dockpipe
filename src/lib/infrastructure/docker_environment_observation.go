@@ -36,13 +36,13 @@ func (docker environmentDocker) observe(ctx context.Context, id string) (telemet
 	}
 	containers, truncated, err := inventoryRows[telemetry.DockerContainer](output)
 	if err != nil || truncated || len(containers) > 1 {
-		return telemetry.DockerContainer{}, errors.New("Docker environment association is ambiguous or unavailable")
+		return telemetry.DockerContainer{}, errors.New("ambiguous or unavailable Docker environment association")
 	}
 	if len(containers) == 0 {
 		return telemetry.DockerContainer{}, nil
 	}
 	if !isFullContainerID(containers[0].ID) {
-		return telemetry.DockerContainer{}, errors.New("Docker environment association lacks an exact container identity")
+		return telemetry.DockerContainer{}, errors.New("no exact container identity for the Docker environment association")
 	}
 
 	return containers[0], nil

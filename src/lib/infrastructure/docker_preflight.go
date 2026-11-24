@@ -81,7 +81,7 @@ func checkDockerReachable(parent context.Context, stderr *os.File, ignoreSkipEnv
 		return parent.Err()
 	}
 	if output.exhausted {
-		return fmt.Errorf("Docker preflight output exceeds its 512-KiB diagnostic limit")
+		return fmt.Errorf("preflight output from Docker exceeds its 512-KiB diagnostic limit")
 	}
 	msg := strings.TrimSpace(output.buffer.String())
 	if err == nil {

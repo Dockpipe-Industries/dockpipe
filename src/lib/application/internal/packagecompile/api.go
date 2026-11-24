@@ -37,11 +37,6 @@ func CompileWorkflow(workdir, source, name string, force bool) error {
 	return compileWorkflowOne(workdir, source, name, force)
 }
 
-// CompileClosureForWorkflow compiles the transitive package closure for a workflow.
-func CompileClosureForWorkflow(projectRoot, workflowName string, force bool) error {
-	return compileClosureForWorkflow(projectRoot, workflowName, force)
-}
-
 // CompileClosureEntryForWorkflow retains the exact selected root workflow archive.
 func CompileClosureEntryForWorkflow(projectRoot, workflowName string, force bool) (string, error) {
 	return compileClosureEntryForWorkflow(projectRoot, workflowName, force)

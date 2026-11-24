@@ -79,7 +79,7 @@ func (connection *dockerEnginePipe) Close() error {
 		select {
 		case <-connection.done:
 		case <-time.After(time.Second):
-			connection.err = errors.New("Docker native relay cleanup could not be verified")
+			connection.err = errors.New("could not verify Docker native relay cleanup")
 		}
 	})
 	return connection.err
@@ -108,7 +108,7 @@ func (client *dockerEngineClient) nativeDial(ctx context.Context) (net.Conn, err
 		_ = input.Close()
 		_ = output.Close()
 		cancel()
-		return nil, errors.New("Docker native relay requires pollable pipes")
+		return nil, errors.New("pollable pipes are required for the Docker native relay")
 	}
 	closeScope, err := process.AttachScope(ctx, command)
 	if err != nil {
@@ -168,7 +168,7 @@ func (reader *dockerEngineHeaderReader) Read(data []byte) (int, error) {
 	for _, value := range data[:count] {
 		reader.count++
 		if reader.count > 32*1024 {
-			return 0, errors.New("Docker API headers exceed 32 KiB")
+			return 0, errors.New("response headers from the Docker API exceed 32 KiB")
 		}
 		reader.tail = reader.tail<<8 | uint32(value)
 		if reader.tail == 0x0d0a0d0a {
@@ -202,14 +202,14 @@ func (channel *dockerEngineChannel) roundTrip(method, path string, body []byte, 
 func dockerEngineBody(response *http.Response) ([]byte, error) {
 	defer response.Body.Close()
 	if response.ContentLength > dockerEngineMetadataLimit {
-		return nil, errors.New("Docker API metadata exceeds 512 KiB")
+		return nil, errors.New("metadata from the Docker API exceeds 512 KiB")
 	}
 	data, err := io.ReadAll(io.LimitReader(response.Body, dockerEngineMetadataLimit+1))
 	if err != nil || len(data) > dockerEngineMetadataLimit {
-		return nil, errors.New("Docker API metadata unavailable or exceeds 512 KiB")
+		return nil, errors.New("metadata from the Docker API is unavailable or exceeds 512 KiB")
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return nil, errors.New("Docker API operation failed")
+		return nil, errors.New("operation failed in the Docker API")
 	}
 	return data, nil
 }
@@ -244,7 +244,7 @@ func (client *dockerEngineClient) connect(ctx context.Context) (*dockerEngineCha
 	}
 	if err != nil || json.Unmarshal(versionData, &version) != nil {
 		_ = connection.Close()
-		return nil, errors.New("Docker API version unavailable")
+		return nil, errors.New("no version available from the Docker API")
 	}
 	selected, err := dockerEngineVersion(version.API, version.Minimum)
 	if err != nil {
@@ -263,13 +263,13 @@ func (client *dockerEngineClient) connect(ctx context.Context) (*dockerEngineCha
 	}
 	if err != nil || json.Unmarshal(data, &info) != nil || info.ID == "" || len(info.ID) > 256 {
 		_ = connection.Close()
-		return nil, errors.New("Docker daemon identity unavailable")
+		return nil, errors.New("identity of the Docker daemon is unavailable")
 	}
 	digest := sha256.Sum256([]byte(info.ID))
 	identity := hex.EncodeToString(digest[:])
 	if client.daemon != "" && client.daemon != identity {
 		_ = connection.Close()
-		return nil, errors.New("Docker daemon identity changed")
+		return nil, errors.New("identity of the Docker daemon changed")
 	}
 	if client.daemon == "" {
 		client.daemon = identity
@@ -327,7 +327,7 @@ func dockerEngineVersion(server, minimum string) (string, error) {
 	}
 	selected := min(available, 56)
 	if selected < 41 || required > selected {
-		return "", errors.New("Docker daemon has no supported exec API version")
+		return "", errors.New("no supported exec API version is available from the Docker daemon")
 	}
 	return "/v1." + strconv.Itoa(selected), nil
 }

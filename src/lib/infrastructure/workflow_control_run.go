@@ -61,7 +61,7 @@ func RunWorkflowControl(options WorkflowControlRunOptions) error {
 			return struct{}{}, runVerifiedWorkflowControl(options, binary, manifest, input)
 		}}
 		if options.Admission.Authorize != nil {
-			prepared.Digest = NativeExecutionDigest([]string{manifest.DefinitionSHA256, manifest.BinarySHA256}, []string{string(input.Bytes())})
+			prepared.Digest = NativeExecutionDigest([]string{manifest.DefinitionSHA256, manifest.BinarySHA256}, []string{input.String()})
 		}
 		return prepared, nil
 	}, options.Admission.Authorize)

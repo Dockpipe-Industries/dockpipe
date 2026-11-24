@@ -33,7 +33,7 @@ const (
 
 func desktopWorkerDefinition(base, home, root, name string, arguments []string, fingerprint string, flatpak bool) (string, string, []string, error) {
 	if flatpak {
-		return "", "", nil, errors.New("Flatpak worker registration requires a host systemd user manager; use the native Dockpipe installation for XDG desktop autostart")
+		return "", "", nil, errors.New("worker registration from Flatpak requires a host systemd user manager; use the native Dockpipe installation for XDG desktop autostart")
 	}
 
 	if !filepath.IsAbs(base) {

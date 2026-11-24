@@ -197,7 +197,7 @@ func (proxy *NetworkProxy) ServeHTTP(writer http.ResponseWriter, request *http.R
 	case proxy.slots <- struct{}{}:
 		defer func() { <-proxy.slots }()
 	default:
-		http.Error(writer, "network connection capacity reached", 503)
+		http.Error(writer, "network connection capacity reached", http.StatusServiceUnavailable)
 		return
 	}
 	ctx, cancel := context.WithCancel(proxy.context)
@@ -212,7 +212,7 @@ func (proxy *NetworkProxy) ServeHTTP(writer http.ResponseWriter, request *http.R
 		}
 		connection, err := proxy.client.networkDial(ctx, proxy.target, address)
 		if err != nil {
-			http.Error(writer, "remote TCP destination unavailable", 502)
+			http.Error(writer, "remote TCP destination unavailable", http.StatusBadGateway)
 			return
 		}
 		defer connection.Close()
@@ -266,7 +266,7 @@ func (proxy *NetworkProxy) ServeHTTP(writer http.ResponseWriter, request *http.R
 	}
 	response, err := transport.RoundTrip(forwarded)
 	if err != nil {
-		http.Error(writer, "remote HTTP destination unavailable", 502)
+		http.Error(writer, "remote HTTP destination unavailable", http.StatusBadGateway)
 		return
 	}
 	defer response.Body.Close()

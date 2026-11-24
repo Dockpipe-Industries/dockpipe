@@ -37,10 +37,10 @@ func (permissions FeaturePermissions) Validate() error {
 		return errors.New("invalid worker-local feature permissions")
 	}
 	if permissions.DockerControl && !permissions.DockerRead {
-		return errors.New("Docker control requires Docker read permission")
+		return errors.New("permission to read Docker resources is required for control")
 	}
 	if (permissions.DockerExec || permissions.DockerRecovery) && !permissions.DockerRead {
-		return errors.New("Docker exec requires Docker read permission")
+		return errors.New("permission to read Docker resources is required for exec")
 	}
 	seen := map[string]bool{}
 	hasTerminalRoot := false
