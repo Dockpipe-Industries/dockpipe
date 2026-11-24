@@ -52,7 +52,9 @@ if (-not $visualStudio) { throw 'Visual Studio C++ tools are required.' }
 $developerShell = Join-Path $visualStudio 'Common7/Tools/Launch-VsDevShell.ps1'
 & $developerShell -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
 if (-not $env:VCToolsInstallDir) { throw 'The Visual Studio developer environment is incomplete.' }
-cmake -S src/dockpipe-app -B $build -G 'NMake Makefiles' -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release
+# Use the developer environment's Ninja so the full suite can build in parallel.
+$ninja = (Get-Command ninja.exe -ErrorAction Stop).Source
+cmake -S src/dockpipe-app -B $build -G Ninja "-DCMAKE_MAKE_PROGRAM=$ninja" -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release
 if ($LASTEXITCODE -ne 0) { throw 'Native terminal configuration failed.' }
 # Qualify the Core-only transports before compiling the full desktop.
 cmake --build $build --config Release --parallel $Jobs --target terminal-session-win-test hardware-key-transport-test
