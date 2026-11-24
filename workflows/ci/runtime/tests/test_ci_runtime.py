@@ -185,6 +185,10 @@ class RuntimeCITests(unittest.TestCase):
         self.assertIn("toolchain go1.26.11", (Path(__file__).resolve().parents[4] / 'go.mod').read_text())
 
         nested = yaml.load((Path(__file__).resolve().parents[4] / 'workflows/ci/test/config.yml').read_text(), Loader=yaml.BaseLoader)
+        ci = yaml.load((REPOSITORY / '.github/workflows/ci.yml').read_text(), Loader=yaml.BaseLoader)
+        docker_test = next(step for step in ci['jobs']['test']['steps']
+                           if step.get('name') == 'Dockpipe workflow — test')
+        self.assertIn('docker pull golang:1.26.11-bookworm', docker_test['run'])
         for step in nested["steps"]:
             self.assertEqual(step["isolate"], "golang:1.26.11-bookworm")
         lock = json.loads((Path(__file__).resolve().parents[4] / 'workflows/build/flatpak/assets/package-tools.lock.json').read_text())

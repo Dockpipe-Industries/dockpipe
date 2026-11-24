@@ -121,6 +121,7 @@ jobs:
           DOCKPIPE_REPO_ROOT: ${{ github.workspace }}
         run: |
           set -euo pipefail
+          docker pull golang:1.26.11-bookworm
           ./src/bin/dockpipe --workflow test --runtime docker --workdir "${{ github.workspace }}" \
             --mount "$(go env GOPATH)/pkg:/go/pkg:rw" \
             --
