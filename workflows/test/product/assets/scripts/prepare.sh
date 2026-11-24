@@ -69,10 +69,15 @@ for emitted_value in "$run_root" "$run_id" "$source_root"; do
             ;;
     esac
 done
+sdk_descriptor=$("$PRODUCT_DOCKPIPE_BIN" sdk path --language pipelang --workdir "$run_root")
+sdk_descriptor_sha256=$(sha256sum "$sdk_descriptor")
+sdk_descriptor_sha256=${sdk_descriptor_sha256%% *}
 outputs=$("$DOCKPIPE_BIN" scope artifacts product.env)
 {
     printf 'PRODUCT_RUN_ROOT=%s\n' "$run_root"
     printf 'PRODUCT_RUN_ID=%s\n' "$run_id"
     printf 'PRODUCT_SOURCE_ROOT=%s\n' "$source_root"
+    printf 'DOCKPIPE_SOURCE_SDK_DESCRIPTOR=%s\n' "$sdk_descriptor"
+    printf 'DOCKPIPE_SOURCE_SDK_SHA256=%s\n' "$sdk_descriptor_sha256"
 } > "$outputs"
 printf 'Prepared fresh product proof %s\n' "$run_id"

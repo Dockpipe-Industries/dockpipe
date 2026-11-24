@@ -1,0 +1,30 @@
+module Dockpipe.Product.RunReports;
+import Dockpipe.Product.QualificationFiles;
+import PipeLang.IO;
+
+// The composition owns a fresh private staging directory, a writer for its
+// report.json leaf, and replacement authority over the selected run's result.
+public Class QualificationReportCommit {
+    private PrivateJsonStage stage;
+    private AtomicFileReplacement replacement;
+
+    public QualificationReportCommit(PrivateJsonStage stage, AtomicFileReplacement replacement) {
+        this.stage = stage;
+        this.replacement = replacement;
+    }
+
+    public Result<OutputEffect,IoFailure> Publish(int bytes, CancellationToken token) {
+        Result<FileDigest,string> staged = stage.Commit(bytes, token);
+        if (staged.IsCancelled)
+            return Result<OutputEffect,IoFailure>.Cancelled(IoFailure(staged.Error, OutputEffect.Unknown));
+        if (!staged.IsSuccess)
+            return Result<OutputEffect,IoFailure>.Failure(IoFailure(staged.Error, OutputEffect.Unknown));
+
+        FileDigest file = staged.Value;
+        return replacement.ReplaceFile("report.json", "result.json", file.identity, file.byteCount, token);
+    }
+
+    public Result<void,string> Close() {
+        return stage.Close();
+    }
+}

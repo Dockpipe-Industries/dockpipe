@@ -1,0 +1,52 @@
+name: workflow-control-windows-fixture
+platforms: [windows]
+description: Exercise native PipeLang branches, iteration, typed arguments and core cleanup.
+vault: none
+docker_preflight: false
+vars:
+  RUN_TESTS: "true"
+  HOLD: "false"
+  FAIL_TEST: "false"
+control:
+  schema: 1
+  kind: host
+  inputs:
+    runTests: {type: bool, env: RUN_TESTS}
+    hold: {type: bool, env: HOLD}
+    targets: {type: "List<string>", value: [alpha, beta]}
+  source: |
+    if (inputs.runTests) {
+        try steps.test.Run();
+    }
+    if (inputs.hold) {
+        try steps.hold.Run();
+    }
+    foreach (string target in inputs.targets) {
+        try steps.build.Run(target);
+    }
+    try steps.host.Run("literal", "argument", true);
+steps:
+  - id: test
+    kind: host
+    run: assets/scripts/test.ps1
+  - id: hold
+    kind: host
+    run: assets/scripts/hold.ps1
+  - id: build
+    kind: host
+    control:
+      parameters:
+        - {name: target, type: string, env: TARGET}
+    run: assets/scripts/build.ps1
+  - id: host
+    kind: host
+    control:
+      parameters:
+        - {name: host, type: string, env: ARG_A}
+        - {name: controlArguments, type: string, env: ARG_B}
+        - {name: encodedArgument2, type: bool, env: ARG_C}
+    run: assets/scripts/hygiene.ps1
+finally:
+  - id: cleanup
+    kind: host
+    run: assets/scripts/cleanup.ps1

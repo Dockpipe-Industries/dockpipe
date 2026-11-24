@@ -1,0 +1,145 @@
+module Dockpipe.Product.DriverSources.Tests;
+import Dockpipe.Product.DriverSources;
+import PipeLang.IO;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+public Class DriverPinsCase : IProbeTestCase {
+    private JsonReader reader;
+    private DriverSourcePins pins;
+    private DriverPinsFixture fixture;
+    private int scenario;
+    private int document = 0;
+
+    public DriverPinsCase(JsonReader reader, FileStreams product, FileStreams repository,
+                          DriverPinsFixture fixture, int scenario) {
+        this.reader = reader;
+        pins = new DriverSourcePins(reader, product, repository);
+        this.fixture = fixture;
+        this.scenario = scenario;
+    }
+
+    public pure string Id() => "qualification.driver_source." + string.FromInt(scenario);
+    public pure string Name() => "captured driver source identity " + string.FromInt(scenario);
+
+    private Result<void,TestFailure> Append(string text) {
+        return Assert.True(reader.AppendDocument(document, ByteBuffer.FromUtf8(text)).IsSuccess,
+                           "admit actual fixture JSON bytes");
+    }
+
+    public Result<void,TestFailure> Setup(CancellationToken token) {
+        JsonReadLimits limits = new JsonReadLimits {};
+        limits.inputBytes = 32768;
+        limits.nodes = 512;
+        limits.retainedBytes = 262144;
+        Result<int,string> opened = reader.BeginDocument(limits);
+        try Assert.True(opened.IsSuccess, "open bounded driver fixture document");
+        document = opened.Value;
+
+        string driver = "driver.py";
+        string digest = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+        string other = "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437";
+        if (scenario == 1) {
+            driver = "product://driver.py";
+        } else if (scenario == 2) {
+            driver = "repo://driver.py";
+            digest = "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4";
+        } else if (scenario == 3) {
+            driver = "unknown://driver.py";
+        } else if (scenario == 4) {
+            driver = "../driver.py";
+        } else if (scenario == 5) {
+            driver = "driver.txt";
+        } else if (scenario == 6) {
+            digest = other;
+        } else if (scenario == 7) {
+            driver = "mirror.py";
+        } else if (scenario == 9) {
+            driver = ".py";
+        } else if (scenario == 10) {
+            driver = "mutate.py";
+        }
+
+        try Append("{\"entrypoint\":\"" + driver + "\",\"sha256\":\"" + digest + "\"");
+        if (scenario == 1) {
+            try Append(",\"dependencies\":[{\"path\":\"repo://dep\",\"sha256\":\"" + other + "\"}]");
+        } else if (scenario == 11) {
+            try Append(",\"dependencies\":[{\"path\":\"repo://dep\"}]");
+        } else if (scenario == 12) {
+            try Append(",\"dependencies\":[");
+            for (int index = 0; index < 64; index = index + 1) {
+                if (index != 0)
+                    try Append(",");
+
+                try Append("{\"path\":\"repo://dep-" + string.FromInt(index) +
+                           "\",\"sha256\":\"" + other + "\"}");
+            }
+            try Append("]");
+        }
+
+        return Append("}");
+    }
+
+    public Result<void,TestFailure> Cleanup() {
+        if (document == 0)
+            return Result<void,TestFailure>.Success();
+
+        Result<void,string> closed = reader.CloseDocument(document);
+        return Assert.True(closed.IsSuccess && !reader.InputLength(document).IsSuccess,
+                           "independent driver fixture document cleanup");
+    }
+
+    private pure string ExpectedFailure() {
+        if (scenario == 3)
+            return "root";
+        if (scenario == 4)
+            return "file.io.invalid_path";
+        if (scenario == 5 || scenario == 9)
+            return "entrypoint_kind";
+        if (scenario == 6)
+            return "digest_mismatch";
+        if (scenario == 7)
+            return "file.io.file_type";
+
+        return "member.sha256";
+    }
+
+    public Result<void,TestFailure> Body(CancellationToken token) {
+        return Assert.True(false, "pin contracts require scoped probe dispatch");
+    }
+
+    public Result<void,TestFailure> BodyWithProbe(CancellationToken token, CancellationToken probeToken) {
+        Result<JsonNode,string> parsed = reader.CompleteDocument(document, token);
+        try Assert.True(parsed.IsSuccess, "actual driver JSON completed");
+        if (scenario == 8) {
+            Result<List<DriverSourcePin>,string> cancelled = pins.Admit(parsed.Value, probeToken);
+            return Assert.True(cancelled.IsCancelled, "pre-cancel refuses before driver inspection");
+        }
+
+        Result<List<DriverSourcePin>,string> admitted = pins.Admit(parsed.Value, token);
+        if (scenario == 0 || scenario == 1 || scenario == 2 || scenario == 10 || scenario == 12) {
+            try Assert.True(admitted.IsSuccess, "selected real sources match their exact pins");
+            int count = 1;
+            if (scenario == 1) {
+                count = 2;
+            } else if (scenario == 12) {
+                count = 65;
+            }
+
+            try Assert.Equal<int>(count, admitted.Value.Count, "all selected source pins retained");
+            try Assert.True(pins.Revalidate(admitted.Value, token).IsSuccess, "actual sources revalidate");
+            if (scenario == 10) {
+                try Assert.True(fixture.ChangeDriver().IsSuccess, "same-size real driver mutation");
+                Result<void,string> changed = pins.Revalidate(admitted.Value, token);
+                return Assert.True(changed.IsFailure && changed.Error == "qualification.driver_source.digest_mismatch",
+                                   "post-run readback refuses a changed source");
+            }
+
+            return Result<void,TestFailure>.Success();
+        }
+
+        try Assert.True(admitted.IsFailure, "unsafe or changed source cannot be admitted");
+        return Assert.Equal<string>("qualification.driver_source." + ExpectedFailure(), admitted.Error,
+                                    "owning pin refusal");
+    }
+}

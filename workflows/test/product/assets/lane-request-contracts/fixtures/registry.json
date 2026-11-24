@@ -1,0 +1,59 @@
+{
+  "schema": "dockpipe.product-integration.registry/v1",
+  "platforms": [
+    {
+      "id": "Linux Ü",
+      "group": "contained",
+      "selectors": [
+        "all-cli"
+      ]
+    }
+  ],
+  "features": [
+    {
+      "id": "available",
+      "selector": "all",
+      "critical": true,
+      "cases": [
+        {
+          "scenario": "failure",
+          "layer": "component",
+          "required_assertions": [
+            "source-evidence",
+            "actual-error"
+          ]
+        },
+        {
+          "scenario": "happy",
+          "layer": "installed_e2e",
+          "required_assertions": [
+            "actual-activation"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "unavailable",
+      "selector": "all",
+      "critical": true,
+      "requires": [
+        "bare_metal"
+      ],
+      "cases": [
+        {
+          "scenario": "happy",
+          "layer": "human",
+          "required_assertions": [
+            "actual-device"
+          ]
+        }
+      ]
+    }
+  ],
+  "policy": {
+    "local_only": true,
+    "minimum_coverage": 0.9,
+    "critical_coverage": 1.0,
+    "unavailable_counts_as_unpassed": true
+  }
+}

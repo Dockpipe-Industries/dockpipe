@@ -1,0 +1,13 @@
+module Dockpipe.Product.Coverage;
+
+public Record TargetCoverage {
+    public string platform = "";
+    public string status = "";
+    public int required = 0;
+    public int passed = 0;
+    public float coverage = 0.0;
+    public int criticalRequired = 0;
+    public int criticalPassed = 0;
+    public Dictionary<string,int> counts = Dictionary<string,int>.Empty();
+    public Dictionary<string,LayerCoverage> layers = Dictionary<string,LayerCoverage>.Empty();
+}

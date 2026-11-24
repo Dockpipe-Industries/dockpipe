@@ -1,0 +1,13 @@
+module Dockpipe.Product.Qualification;
+import PipeLang.Json;
+
+// Borrowed nodes remain valid only while their caller-owned document stays open.
+public Record RegistryCase {
+    public string id;
+    public string scenario;
+    public string layer;
+    public bool critical = false;
+    public bool applicable = false;
+    public bool capabilitiesAvailable = false;
+    public JsonNode requiredAssertions;
+}

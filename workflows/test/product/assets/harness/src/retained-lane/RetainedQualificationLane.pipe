@@ -1,0 +1,79 @@
+module Dockpipe.Product.RetainedLane;
+import Dockpipe.Product.DriverSources;
+import Dockpipe.Product.LaneReceipt;
+import Dockpipe.Product.LaneRequest;
+import Dockpipe.Product.QualificationFiles;
+import Dockpipe.Product.RunAdmission;
+import PipeLang.IO;
+import PipeLang.Json;
+
+// The output roots were admitted after exact run input and runner identity
+// verification. This path has no process binding or writable file adapter.
+public Class RetainedQualificationLane {
+    private DriverSourcePins pins;
+    private LaneRequestProjection requestWriter;
+    private PrivateJsonStage requestDigest;
+    private QualificationJsonFile requestFile;
+    private LaneReceiptFile resultFile;
+    private LaneRequestFacts requestFacts;
+    private RetainedLane process;
+    private ReceiptPolicy results;
+    private int? exitCode;
+
+    public RetainedQualificationLane(JsonReader reader, JsonStringIndexer indexer, int indexRetainedBytes,
+                                     LaneMetadataBudget budget, FileStreams invocation, FileStreams laneOutput,
+                                     DriverSourcePins pins,
+                                     JsonDocumentOutput requestOutput, PrivateJsonStage requestDigest) {
+        this.pins = pins;
+        this.requestDigest = requestDigest;
+        requestWriter = new LaneRequestProjection(reader, requestOutput);
+        requestFile = new QualificationJsonFile(reader, invocation);
+        resultFile = new LaneReceiptFile(reader, laneOutput, budget);
+        requestFacts = new LaneRequestFacts(reader);
+        process = new RetainedLane(reader, invocation);
+        results = new ReceiptPolicy(reader, indexer, laneOutput, indexRetainedBytes);
+    }
+
+    public Result<AdmittedReceipt?,string> Revalidate(QualificationRunIdentity identity, JsonNode target,
+                                                     JsonNode driver, LaneCaseSelection cases,
+                                                     CancellationToken token) {
+        LaneRequestWrite request = try requestWriter.Write(identity, target, driver, cases, token);
+        if (request.cases == 0)
+            return Result<AdmittedReceipt?,string>.Success(null);
+
+        FileDigest canonical = try requestDigest.Commit(request.bytes, token);
+        RetainedProcess terminal = try process.Terminal(canonical, token);
+        exitCode = terminal.exitCode;
+        if (terminal.failure != "")
+            return Result<AdmittedReceipt?,string>.Failure(terminal.failure);
+        CapturedQualificationJson retained = try requestFile.Open("request.json", new JsonReadLimits {}, token);
+        if (retained.sourceFile.byteCount != canonical.byteCount ||
+            retained.sourceFile.sha256 != canonical.sha256)
+            return Result<AdmittedReceipt?,string>.Failure("qualification.resume.lane.request_mismatch");
+
+        ReceiptRequest expected = try requestFacts.Read(identity, retained.root);
+        List<DriverSourcePin> selected = try pins.Admit(driver, token);
+        CapturedQualificationJson receipt = try resultFile.Open(token);
+        AdmittedReceipt accepted = try results.Admit(receipt.root, expected, terminal.exitCode, token);
+        try pins.Revalidate(selected, token);
+
+        return Result<AdmittedReceipt?,string>.Success(accepted);
+    }
+
+    public pure int? ExitCode() {
+        return exitCode;
+    }
+
+    public Result<void,string> Close() {
+        Result<void,string> request = requestFile.Close();
+        Result<void,string> result = resultFile.Close();
+        Result<void,string> digest = requestDigest.Close();
+
+        if (!request.IsSuccess)
+            return request;
+        if (!result.IsSuccess)
+            return result;
+
+        return digest;
+    }
+}

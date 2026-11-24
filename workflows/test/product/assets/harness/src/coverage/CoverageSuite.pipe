@@ -1,0 +1,21 @@
+module Dockpipe.Product.Coverage.Tests;
+import PipeLang.Testing;
+
+public model Class CoverageSuite {
+    public CoverageSuite() {}
+
+    public CoverageReport Run(CancellationToken token, CancellationToken cancelled) {
+        List<TestResult> results = List<TestResult>.Empty();
+        TestRunner runner = new TestRunner();
+        for (int scenario = 0; scenario < 11; scenario = scenario + 1)
+            results.Add(runner.RunProbe(new CoverageCase(scenario), token, cancelled));
+
+        bool allPassed = results.Count == 11;
+        foreach (TestResult result in results) {
+            if (result.outcome != TestOutcome.Passed || !result.bodyRan || !result.cleanupRan)
+                allPassed = false;
+        }
+
+        return CoverageReport(allPassed, results);
+    }
+}

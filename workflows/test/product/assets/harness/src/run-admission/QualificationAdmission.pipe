@@ -1,0 +1,125 @@
+module Dockpipe.Product.RunAdmission;
+import Dockpipe.Product.DriverClaims;
+import Dockpipe.Product.DriverSources;
+import Dockpipe.Product.Qualification;
+import PipeLang.Json;
+
+public Class QualificationAdmission {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private DriverSourcePins pins;
+    private int indexRetainedBytes;
+    private RegistryJson json;
+
+    public QualificationAdmission(JsonReader reader, JsonStringIndexer indexer, DriverSourcePins pins,
+                                  int indexRetainedBytes) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.pins = pins;
+        this.indexRetainedBytes = indexRetainedBytes;
+        json = new RegistryJson(reader);
+    }
+
+    private Result<void,string> CheckCancellation(CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<void,string>.Cancelled("qualification.admission.cancelled");
+
+        return Result<void,string>.Success();
+    }
+
+    private Result<Dictionary<int,DriverCaseGroup>,string> SelectLanes(List<RegistryCase> rows,
+                                                                       TargetDriverClaims claims,
+                                                                       CancellationToken token) {
+        Dictionary<int,DriverCaseGroup> lanes = Dictionary<int,DriverCaseGroup>.Empty();
+        foreach (RegistryCase row in rows) {
+            try CheckCancellation(token);
+            if (!row.capabilitiesAvailable)
+                continue;
+
+            int driver = try claims.Driver(row.id, row.scenario, row.layer);
+            if (driver == 0)
+                continue;
+            if (!lanes.ContainsKey(driver))
+                lanes.Add(driver, new DriverCaseGroup());
+
+            lanes.At(driver).Add(row);
+        }
+
+        return Result<Dictionary<int,DriverCaseGroup>,string>.Success(lanes);
+    }
+
+    // The complete plan and registry must already have passed schema admission.
+    public Result<QualificationTarget,string> AdmitTarget(JsonNode target, JsonNode registry,
+                                                           int remainingCases, CancellationToken token) {
+        if (remainingCases < 0 || remainingCases > 8192)
+            return Result<QualificationTarget,string>.Failure("qualification.admission.run_case_count");
+
+        RegistrySelection selection = new RegistrySelection(reader, indexer, indexRetainedBytes);
+        try selection.BindAdmitted(registry, target, token);
+
+        TargetDriverClaims claims = new TargetDriverClaims(reader);
+        List<RegistryCase> applicable = List<RegistryCase>.Empty();
+        int featureCount = try selection.FeatureCount();
+        for (int feature = 0; feature < featureCount; feature = feature + 1) {
+            try CheckCancellation(token);
+            int caseCount = try selection.CaseCount(feature);
+            for (int index = 0; index < caseCount; index = index + 1) {
+                RegistryCase row = try selection.CaseAt(feature, index);
+                if (!row.applicable)
+                    continue;
+
+                // Missing capabilities affect execution, but every applicable
+                // case participates in the claim check and run denominator.
+                if (applicable.Count == remainingCases)
+                    return Result<QualificationTarget,string>.Failure("qualification.admission.run_case_count");
+
+                try claims.Include(row.id, row.scenario, row.layer);
+                applicable.Add(row);
+            }
+        }
+
+        JsonNode? drivers = try reader.FindMember(target, "drivers");
+        if (drivers.HasValue) {
+            int driverCount = try reader.Count(drivers.Value);
+            for (int index = 0; index < driverCount; index = index + 1) {
+                try CheckCancellation(token);
+                JsonNode driver = try reader.At(drivers.Value, index);
+                Result<List<DriverSourcePin>,string> admitted = pins.Admit(driver, token);
+                if (admitted.IsCancelled)
+                    return Result<QualificationTarget,string>.Cancelled(admitted.Error);
+                if (!admitted.IsSuccess)
+                    return Result<QualificationTarget,string>.Failure(admitted.Error);
+
+                Result<int,string> claimed = claims.Claim(driver, token);
+                if (claimed.IsCancelled)
+                    return Result<QualificationTarget,string>.Cancelled(claimed.Error);
+                if (!claimed.IsSuccess)
+                    return Result<QualificationTarget,string>.Failure(claimed.Error);
+            }
+        }
+
+        int required = try claims.Seal();
+        Dictionary<int,DriverCaseGroup> lanes = try SelectLanes(applicable, claims, token);
+        return Result<QualificationTarget,string>.Success(new QualificationTarget(selection, claims, lanes, required));
+    }
+
+    // Complete plan preflight. No output, launch, or partial index is exposed
+    // when any of the selected targets fails admission.
+    public Result<int,string> Validate(JsonNode plan, JsonNode registry, CancellationToken token) {
+        PlanPolicy policy = new PlanPolicy(reader, indexer, indexRetainedBytes);
+        try policy.Validate(plan, registry, token);
+        JsonNode targets = try json.Member(plan, "targets");
+        int targetCount = try reader.Count(targets);
+
+        int selected = 0;
+        for (int index = 0; index < targetCount; index = index + 1) {
+            try CheckCancellation(token);
+            JsonNode target = try reader.At(targets, index);
+            QualificationTarget admitted = try AdmitTarget(target, registry, 8192 - selected, token);
+            selected = selected + admitted.Required();
+        }
+
+        try CheckCancellation(token);
+        return Result<int,string>.Success(selected);
+    }
+}

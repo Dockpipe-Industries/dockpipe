@@ -1,0 +1,8 @@
+module Dockpipe.Product.ReportProjection;
+import PipeLang.Json;
+
+public Interface ReportRows {
+    Result<void,string> Stage(int position, JsonNode row, bool critical, string evidenceRoot,
+                              CancellationToken token);
+    Result<void,string> Write(int position, CancellationToken token);
+}

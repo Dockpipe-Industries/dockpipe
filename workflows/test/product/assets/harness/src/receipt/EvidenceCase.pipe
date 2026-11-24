@@ -1,0 +1,159 @@
+module Dockpipe.Product.Receipt.Tests;
+import Dockpipe.Product.Receipt;
+import PipeLang.IO;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+public Class EvidenceCase : IProbeTestCase {
+    private JsonReader reader;
+    private EvidencePolicy policy;
+    private int scenario;
+    private int document = 0;
+
+    public EvidenceCase(JsonReader reader, FileStreams files, int scenario) {
+        this.reader = reader;
+        this.policy = new EvidencePolicy(reader, files);
+        this.scenario = scenario;
+    }
+
+    public pure string Id() => "qualification.receipt.evidence." + string.FromInt(scenario);
+    public pure string Name() => "qualification evidence admission " + string.FromInt(scenario);
+
+    private pure string Entry(string path, string digest) {
+        return "{\"path\":" + path + ",\"sha256\":\"" + digest + "\"}";
+    }
+
+    private Result<void,TestFailure> Append(string text) {
+        Result<void,string> appended = reader.AppendDocument(document, ByteBuffer.FromUtf8(text));
+        return Assert.True(appended.IsSuccess, "fixture JSON bytes appended");
+    }
+
+    private Result<void,TestFailure> Repeat(string item, int count) {
+        try Append("[");
+        for (int index = 0; index < count; index = index + 1) {
+            if (index != 0)
+                try Append(",");
+
+            try Append(item);
+        }
+
+        return Append("]");
+    }
+
+    public Result<void,TestFailure> Setup(CancellationToken token) {
+        Result<int,string> begun = reader.BeginDocument(new JsonReadLimits {});
+        try Assert.True(begun.IsSuccess, "fixture JSON document admitted");
+        document = begun.Value;
+
+        string abc = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+        string empty = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        string item = Entry("\"proof/a.txt\"", abc);
+        if (scenario == 0)
+            return Append("[]");
+        if (scenario == 1)
+            return Append("[" + item + "," + Entry("\"proof/empty\"", empty) + "]");
+        if (scenario == 2)
+            return Repeat(item, 64);
+        if (scenario == 3)
+            return Repeat(item, 65);
+        if (scenario == 4)
+            return Append("{}");
+        if (scenario == 5)
+            return Append("[true]");
+        if (scenario == 6)
+            return Append("[{\"path\":\"proof/a.txt\"}]");
+        if (scenario == 7)
+            return Append("[{\"sha256\":\"" + abc + "\"}]");
+        if (scenario == 8)
+            return Append("[" + Entry("\"proof/a.txt\"", "") + "]");
+        if (scenario == 9)
+            return Append("[" + Entry("\"proof/a.txt\"", "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD") + "]");
+        if (scenario == 10)
+            return Append("[" + item + "," + Entry("\"proof/a.txt\"", empty) + "]");
+        if (scenario == 11)
+            return Append("[" + Entry("\"proof/missing\"", abc) + "]");
+        if (scenario == 12)
+            return Append("[" + Entry("\"proof/leaf-link\"", abc) + "]");
+        if (scenario == 13)
+            return Append("[" + Entry("\"ancestor-link/a.txt\"", abc) + "]");
+        if (scenario == 14)
+            return Append("[" + Entry("\"proof//a.txt\"", abc) + "]");
+        if (scenario == 15)
+            return Append("[" + Entry("\"proof/../proof/a.txt\"", abc) + "]");
+        if (scenario == 16)
+            return Append("[" + Entry("\"proof\\\\a.txt\"", abc) + "]");
+        if (scenario == 17)
+            return Append("[" + Entry("\"/proof/a.txt\"", abc) + "]");
+        if (scenario == 18)
+            return Append("[" + Entry("\"proof/a.txt/\"", abc) + "]");
+        if (scenario == 19)
+            return Append("[" + Entry("\"proof/é.txt\"", abc) + "]");
+
+        return Append("[" + item + "]");
+    }
+
+    private pure string ExpectedFailure() {
+        if (scenario == 3)
+            return "evidence_count";
+        if (scenario == 4)
+            return "evidence_array";
+        if (scenario == 5)
+            return "evidence_entry";
+        if (scenario == 6 || scenario == 8 || scenario == 9)
+            return "evidence_sha256";
+        if (scenario == 7 || scenario == 16)
+            return "evidence_path";
+        if (scenario == 10)
+            return "evidence_mismatch";
+        if (scenario == 11)
+            return "evidence_file.io.named_identity";
+        if (scenario == 12)
+            return "evidence_file.io.file_type";
+        if (scenario == 13)
+            return "evidence_file.io.directory_type";
+
+        return "evidence_file.io.invalid_path";
+    }
+
+    public Result<void,TestFailure> Body(CancellationToken token) {
+        return Assert.True(false, "these contracts use method-scoped probe dispatch");
+    }
+
+    public Result<void,TestFailure> BodyWithProbe(CancellationToken token, CancellationToken probeToken) {
+        Result<JsonNode,string> parsed = reader.CompleteDocument(document, token);
+        try Assert.True(parsed.IsSuccess, "actual JSON reader completed");
+
+        if (scenario == 20) {
+            Result<int,string> cancelled = policy.Admit(parsed.Value, probeToken);
+            try Assert.True(cancelled.IsCancelled, "pre-cancel remains a cancellation");
+            return Assert.Equal<string>("qualification.receipt.evidence_cancelled", cancelled.Error, "typed cancellation code");
+        }
+
+        Result<int,string> admitted = policy.Admit(parsed.Value, token);
+        if (scenario <= 2 || scenario == 19) {
+            int expected = 1;
+            if (scenario == 0) {
+                expected = 0;
+            } else if (scenario == 1) {
+                expected = 2;
+            } else if (scenario == 2) {
+                expected = 64;
+            }
+
+            try Assert.True(admitted.IsSuccess, "actual confined evidence admitted");
+            return Assert.Equal<int>(expected, admitted.Value, "complete admitted entry count");
+        }
+
+        try Assert.True(admitted.IsFailure, "bad evidence prevents receipt admission");
+        return Assert.Equal<string>("qualification.receipt." + ExpectedFailure(), admitted.Error, "owning refusal code");
+    }
+
+    public Result<void,TestFailure> Cleanup() {
+        if (document == 0)
+            return Result<void,TestFailure>.Success();
+
+        Result<void,string> closed = reader.CloseDocument(document);
+        try Assert.True(closed.IsSuccess, "independent JSON cleanup");
+        return Assert.True(!reader.InputLength(document).IsSuccess, "closed document no longer retained");
+    }
+}

@@ -1,0 +1,8 @@
+name: sdk-held-fixture
+platforms: [windows]
+vault: none
+docker_preflight: false
+steps:
+  - id: hold
+    kind: host
+    run: assets/scripts/hold.ps1

@@ -1,10 +1,114 @@
 module Dockpipe.Product;
+import Dockpipe.SDK;
 
-public Interface ProcessPort {
-    Result<int,string> Start(ProcessRequest request);
-    Task<Result<ProcessObservation,string>> Observe(int invocationId, int waitMilliseconds, CancellationToken token);
-    // True means the OS accepted a signal for the owned CLI, not that its handler ran.
-    // False means no signal was accepted and does not release child-tree ownership.
-    Result<bool,string> Interrupt(int invocationId);
-    Task<Result<ProcessObservation,string>> ForceDispose(int waitMilliseconds, CancellationToken token);
+// Journey request policy stays in source. The SDK owns CLI execution and custody;
+// the independent file port checks that returned artifact paths stay confined.
+public Class ProcessPort {
+    private Client client;
+    private FilePort files;
+    private string workflowFile;
+    private int clientIdentity = 0;
+    private int lastInvocation = 0;
+
+    public ProcessPort(Client client, FilePort files, string workflowFile) {
+        this.client = client;
+        this.files = files;
+        this.workflowFile = workflowFile;
+    }
+
+    public Result<int,string> Start(ProcessRequest request) {
+        Result<OperationId,string> started = Result<OperationId,string>.Failure("Unknown journey process operation");
+
+        if (request.operation == ProcessOperation.ScopeQuery) {
+            if (request.workflowFile != "" || request.mode != "" || request.correlation != "" ||
+                    request.workflowScope == "" || string.Utf8Length(request.workflowScope) > 256 ||
+                    string.Utf8IndexOf(request.workflowScope, "\r", 0) >= 0 ||
+                    string.Utf8IndexOf(request.workflowScope, "\n", 0) >= 0)
+                return Result<int,string>.Failure("Invalid journey scope request");
+
+            List<string> path = List<string>.Empty();
+            path.Add(request.workflowScope);
+
+            started = client.StartScope(ScopeRequest(request.workdir, "workflow", "", path,
+                                                     request.outputLimitBytes));
+        } else if (request.operation == ProcessOperation.Workflow) {
+            if (request.workflowScope != "" || request.workflowFile != workflowFile ||
+                    string.Utf8Length(request.mode) > 256 || string.Utf8Length(request.correlation) > 256)
+                return Result<int,string>.Failure("Journey workflow selection or arguments differ from their bounds");
+
+            List<WorkflowVariable> variables = List<WorkflowVariable>.Empty();
+            variables.Add(WorkflowVariable("JOURNEY_MODE", request.mode));
+            variables.Add(WorkflowVariable("JOURNEY_CORRELATION", request.correlation));
+
+            started = client.Start(WorkflowRequest(request.workdir, workflowFile, "", "", variables,
+                                                   List<string>.Empty(), request.outputLimitBytes));
+        }
+
+        if (!started.IsSuccess)
+            return Result<int,string>.Failure(started.Error);
+
+        clientIdentity = started.Value.clientId;
+        lastInvocation = started.Value.value;
+
+        return Result<int,string>.Success(lastInvocation);
+    }
+
+    private Result<ProcessObservation,string> Project(Result<OperationObservation,string> result) {
+        if (!result.IsSuccess) {
+            if (result.IsCancelled)
+                return Result<ProcessObservation,string>.Cancelled(result.Error);
+
+            return Result<ProcessObservation,string>.Failure(result.Error);
+        }
+
+        OperationObservation value = result.Value;
+        if (value.scopePath != "") {
+            Result<FileObservation,string> confined = files.Observe(value.scopePath + "/resource.marker", 256);
+            if (!confined.IsSuccess)
+                return Result<ProcessObservation,string>.Failure(confined.Error);
+        }
+
+        return Result<ProcessObservation,string>.Success(ProcessObservation(value.id.value, value.exited,
+            value.exitCode, value.treeComplete, value.forced, value.stdoutText, value.stderrText,
+            value.scopePath, value.reapedChildren));
+    }
+
+    public async Task<Result<ProcessObservation,string>> Observe(
+        int invocationId, int waitMilliseconds, CancellationToken token) {
+        Result<OperationObservation,string> result = await client.Observe(
+            OperationId(clientIdentity, invocationId), waitMilliseconds, token);
+
+        return Project(result);
+    }
+
+    // A successful request does not prove that the process's handler ran.
+    public Result<bool,string> Interrupt(int invocationId) {
+        return client.Interrupt(OperationId(clientIdentity, invocationId));
+    }
+
+    public Result<int,string> RetainedInvocation() {
+        Result<OperationId,string> retained = client.RetainedOperation();
+        if (!retained.IsSuccess)
+            return Result<int,string>.Failure(retained.Error);
+
+        clientIdentity = retained.Value.clientId;
+        lastInvocation = retained.Value.value;
+
+        return Result<int,string>.Success(lastInvocation);
+    }
+
+    public async Task<Result<ProcessObservation,string>> ForceDispose(
+        int waitMilliseconds, CancellationToken token) {
+        // A failed launch can still own a newer operation than the last
+        // successful Start. Prefer current custody; a closed tree uses its ID.
+        Result<int,string> retained = RetainedInvocation();
+        int invocation = lastInvocation;
+        if (retained.IsSuccess)
+            invocation = retained.Value;
+
+        Result<OperationObservation,string> result = await client.ForceDispose(
+            OperationId(clientIdentity, invocation), waitMilliseconds, token);
+
+        return Project(result);
+    }
 }

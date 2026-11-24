@@ -1,0 +1,13 @@
+module Dockpipe.Product.FreshLane;
+import Dockpipe.Product.DriverExecution;
+import Dockpipe.Product.DriverSources;
+import Dockpipe.Product.LaneReceipt;
+import PipeLang.IO;
+
+public Record PreparedFreshLane {
+    public int requested = 0;
+    public FileDigest request;
+    public ReceiptRequest facts;
+    public List<DriverSourcePin> sourcePins = List<DriverSourcePin>.Empty();
+    public DriverProcessRequest command;
+}

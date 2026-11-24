@@ -1,0 +1,128 @@
+module Dockpipe.Product.TargetReports.Tests;
+import Dockpipe.Product.Coverage;
+import Dockpipe.Product.DriverSources;
+import Dockpipe.Product.LaneReceipt;
+import Dockpipe.Product.LaneRequest;
+import Dockpipe.Product.Qualification;
+import Dockpipe.Product.QualificationFiles;
+import Dockpipe.Product.ReportProjection;
+import Dockpipe.Product.RunAdmission;
+import Dockpipe.Product.TargetReports;
+import PipeLang.IO;
+import PipeLang.Json;
+
+public model Class TargetReportSuite {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private FileStreams inputs;
+    private JsonDocumentOutput output;
+    private ReportRows staged;
+
+    public TargetReportSuite(JsonReader reader, 
+        JsonStringIndexer indexer, 
+        FileStreams inputs,
+        JsonDocumentOutput output, 
+        ReportRows staged) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.inputs = inputs;
+        this.output = output;
+        this.staged = staged;
+    }
+
+    private Result<void,string> ReadAccepted(TargetObservations observations, 
+        QualificationRunIdentity identity,
+        JsonReadLimits limits, 
+        CancellationToken token) {
+        QualificationJsonFile request = new QualificationJsonFile(reader, inputs);
+        QualificationJsonFile receipt = new QualificationJsonFile(reader, inputs);
+
+        try {
+            CapturedQualificationJson requestBytes = try request.Open("request.json", limits, token);
+            LaneRequestFacts requests = new LaneRequestFacts(reader);
+
+            ReceiptRequest facts = try requests.Read(identity, requestBytes.root);
+            CapturedQualificationJson receiptBytes = try receipt.Open("receipt.json", limits, token);
+
+            ReceiptPolicy policy = new ReceiptPolicy(reader, indexer, inputs, 4096);
+            AdmittedReceipt accepted = try policy.Admit(receiptBytes.root, facts, 0, token);
+
+            return observations.Admit(1, accepted, "t/first/output", token);
+        } finally {
+            Result<void,string> requestClosed = request.Close();
+            Result<void,string> receiptClosed = receipt.Close();
+
+            if (!requestClosed.IsSuccess)
+            throw Error(requestClosed.Error);
+
+            if (!receiptClosed.IsSuccess)
+            throw Error(receiptClosed.Error);
+        }
+    }
+
+    private Result<TargetCoverage,string> Execute(CapturedQualificationJson plan,
+        CapturedQualificationJson registry, JsonReadLimits limits,
+        CancellationToken token) {
+        DriverSourcePins pins = new DriverSourcePins(reader, inputs, inputs);
+        QualificationAdmission admission = new QualificationAdmission(reader, indexer, pins, 4096);
+
+        int count = try admission.Validate(plan.root, registry.root, token);
+        if (count != 4)
+        return Result<TargetCoverage,string>.Failure("unexpected fixture denominator");
+
+        RegistryJson json = new RegistryJson(reader);
+
+        JsonNode targets = try json.Member(plan.root, "targets");
+        JsonNode declaration = try reader.At(targets, 0);
+
+        QualificationTarget target = try admission.AdmitTarget(declaration, registry.root, 8192, token);
+        TargetObservations observations = new TargetObservations(reader, target, "p", output, staged);
+
+        try observations.Bind(token);
+
+        QualificationRunIdentity identity = QualificationRunIdentity("test",
+            plan.sourceFile.sha256, registry.sourceFile.sha256);
+
+        try ReadAccepted(observations, identity, limits, token);
+        try observations.Reject(2, "rejected lane", token);
+
+        try output.BeginObject();
+
+        TargetCoverage summary = try observations.Project(token);
+        CoverageProjection statistics = new CoverageProjection(output);
+
+        try statistics.TargetStatistics(summary);
+        try output.EndObject();
+
+        int bytes = try output.Finish();
+        if (bytes <= 0)
+        return Result<TargetCoverage,string>.Failure("missing fixture report");
+
+        return Result<TargetCoverage,string>.Success(summary);
+    }
+
+    public Result<TargetCoverage,string> Run(CancellationToken token) {
+        QualificationJsonFile plan = new QualificationJsonFile(reader, inputs);
+        QualificationJsonFile registry = new QualificationJsonFile(reader, inputs);
+        JsonReadLimits limits = new JsonReadLimits {};
+
+        limits.inputBytes = 16384;
+        limits.retainedBytes = 262144;
+        limits.nodes = 256;
+
+        try {
+            CapturedQualificationJson openedPlan = try plan.Open("plan.json", limits, token);
+            CapturedQualificationJson openedRegistry = try registry.Open("registry.json", limits, token);
+            return Execute(openedPlan, openedRegistry, limits, token);
+        } finally {
+            Result<void,string> closedPlan = plan.Close();
+            Result<void,string> closedRegistry = registry.Close();
+
+            if (!closedPlan.IsSuccess)
+            throw Error(closedPlan.Error);
+
+            if (!closedRegistry.IsSuccess)
+            throw Error(closedRegistry.Error);
+        }
+    }
+}

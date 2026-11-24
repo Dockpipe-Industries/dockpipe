@@ -1,0 +1,5 @@
+module Dockpipe.Product.TargetReports.Entry;
+import Dockpipe.Product.TargetReports.Tests;
+import PipeLang.Crypto;
+import PipeLang.IO;
+import PipeLang.Json;

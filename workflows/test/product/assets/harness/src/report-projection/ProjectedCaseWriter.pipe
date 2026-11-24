@@ -1,0 +1,15 @@
+module Dockpipe.Product.ReportProjection;
+import PipeLang.Json;
+
+public model Class ProjectedCaseWriter {
+    private CaseProjection projection;
+
+    public ProjectedCaseWriter(JsonReader reader, JsonDocumentOutput output) {
+        projection = new CaseProjection(reader, output);
+    }
+
+    public Result<void,string> Write(JsonNode row, bool critical, string evidenceRoot,
+                                     CancellationToken token) {
+        return projection.Observed(row, critical, evidenceRoot, token);
+    }
+}

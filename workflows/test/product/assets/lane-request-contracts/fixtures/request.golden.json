@@ -1,0 +1,43 @@
+{
+  "cases": [
+    {
+      "id": "available",
+      "layer": "component",
+      "required_assertions": [
+        "source-evidence",
+        "actual-error"
+      ],
+      "scenario": "failure"
+    },
+    {
+      "id": "available",
+      "layer": "installed_e2e",
+      "required_assertions": [
+        "actual-activation"
+      ],
+      "scenario": "happy"
+    }
+  ],
+  "configuration": {
+    "a": {
+      "a": "U0001f600",
+      "z": "\u2028"
+    },
+    "large": [
+      1,
+      null,
+      true
+    ],
+    "z": 0.9
+  },
+  "plan_sha256": "6398a21991dfe873dd39130cbf544176eb40e5fa65ca9d245ef1119588b02964",
+  "registry_sha256": "97d98831ff93b38c77ab5c0831cfeab01456e1725618396b7fab7fddaa3eeb3c",
+  "run_id": "qualification-example",
+  "schema": "dockpipe.product-integration.request/v1",
+  "target": {
+    "artifact_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "id": "example",
+    "kind": "vm",
+    "platform": "Linux \u00dc"
+  }
+}

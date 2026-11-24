@@ -1,0 +1,84 @@
+module Dockpipe.Product.Coverage;
+
+public Class OverallCoveragePolicy {
+    private pure bool ComesBefore(string candidate, string existing) {
+        int candidateBytes = string.Utf8Length(candidate);
+        int existingBytes = string.Utf8Length(existing);
+        int common = candidateBytes;
+        if (existingBytes < common)
+            common = existingBytes;
+
+        // UTF-8 byte order preserves Unicode scalar order for valid input.
+        for (int index = 0; index < common; index = index + 1) {
+            int first = string.ByteAtOr(candidate, index, -1);
+            int second = string.ByteAtOr(existing, index, -1);
+            if (first != second)
+                return first < second;
+        }
+
+        return candidateBytes < existingBytes;
+    }
+
+    private pure int InsertionPosition(Array<string> sorted, int size, string profile) {
+        int first = 0;
+        int end = size;
+        while (first < end) {
+            int middle = first + (end - first) / 2;
+            if (ComesBefore(profile, sorted.At(middle)))
+                end = middle;
+            else
+                first = middle + 1;
+        }
+
+        return first;
+    }
+
+    public Result<OverallCoverage,string> Summarize(List<string> profiles, List<TargetCoverage> targets,
+                                                     CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<OverallCoverage,string>.Cancelled("qualification.coverage.cancelled");
+        if (profiles.Count > 64 || targets.Count > 64)
+            return Result<OverallCoverage,string>.Failure("qualification.coverage.target_count");
+
+        OverallCoverage summary = new OverallCoverage {};
+        HashSet<string> selected = HashSet<string>.Empty();
+        summary.selectedTargetsQualified = targets.Count > 0;
+        foreach (TargetCoverage target in targets) {
+            if (token.IsCancellationRequested)
+                return Result<OverallCoverage,string>.Cancelled("qualification.coverage.cancelled");
+            if (target.required > 8192 - summary.required)
+                return Result<OverallCoverage,string>.Failure("qualification.coverage.case_count");
+
+            selected.Add(target.platform);
+            summary.required = summary.required + target.required;
+            summary.passed = summary.passed + target.passed;
+            if (target.status != "qualified")
+                summary.selectedTargetsQualified = false;
+        }
+
+        Array<string> missing = Array<string>.Create(profiles.Count, "");
+        int size = 0;
+        foreach (string profile in profiles) {
+            if (token.IsCancellationRequested)
+                return Result<OverallCoverage,string>.Cancelled("qualification.coverage.cancelled");
+            if (selected.Contains(profile))
+                continue;
+
+            int position = InsertionPosition(missing, size, profile);
+            for (int index = size; index > position; index = index - 1)
+                missing.Set(index, missing.At(index - 1));
+
+            missing.Set(position, profile);
+            size = size + 1;
+        }
+
+        for (int index = 0; index < size; index = index + 1)
+            summary.unconfiguredPlatformProfiles.Add(missing.At(index));
+
+        summary.fullProductQualified = summary.selectedTargetsQualified && size == 0;
+        if (summary.required > 0)
+            summary.selectedCaseCoverage = float.FromInt(summary.passed) / float.FromInt(summary.required);
+
+        return Result<OverallCoverage,string>.Success(summary);
+    }
+}

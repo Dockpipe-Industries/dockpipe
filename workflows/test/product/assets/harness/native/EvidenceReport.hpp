@@ -3,7 +3,7 @@
 #include "FileAdapter.hpp"
 #include "Json.hpp"
 #include "Options.hpp"
-#include "ProcessAdapter.hpp"
+#include "ProcessEvidence.hpp"
 
 namespace product_harness {
 namespace testing = dockpipe_product::source::PipeLang::Testing;
@@ -69,7 +69,7 @@ public:
                 result += ",";
             first = false;
             const auto& observed = receipt.observation;
-            result += "{\"invocationId\":" + std::to_string(observed.invocationId) +
+            result += "{\"invocationId\":" + std::to_string(observed.id.value) +
                 ",\"leaderPid\":" + std::to_string(receipt.leaderPid) +
                 ",\"exited\":" + json(observed.exited) + ",\"exitCode\":" + std::to_string(observed.exitCode) +
                 ",\"treeComplete\":" + json(observed.treeComplete) + ",\"forced\":" + json(observed.forced) +

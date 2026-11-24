@@ -1,0 +1,101 @@
+module Dockpipe.Product.Qualification.Tests;
+import Dockpipe.Product.Qualification;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+public Class RegistryContractCase : ITestCase {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private int indexRetainedBytes;
+    private int number;
+    private string input;
+    private string expectedError;
+    private bool expectedCapabilities;
+    private int document = 0;
+
+    public RegistryContractCase(JsonReader reader, JsonStringIndexer indexer, int indexRetainedBytes,
+                                int number, string input, string expectedError, bool expectedCapabilities) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.indexRetainedBytes = indexRetainedBytes;
+        this.number = number;
+        this.input = input;
+        this.expectedError = expectedError;
+        this.expectedCapabilities = expectedCapabilities;
+    }
+
+    public pure string Id() => "qualification.registry." + string.FromInt(number);
+    public pure string Name() => "Source registry contract " + string.FromInt(number);
+    public Result<void,TestFailure> Setup(CancellationToken token) => Result<void,TestFailure>.Success();
+
+    public Result<void,TestFailure> Cleanup() {
+        if (document != 0)
+            return Assert.True(reader.CloseDocument(document).IsSuccess, "Registry document closes");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    // A fresh index on the still-open document witnesses release after validation,
+    // including duplicate-assertion returns. The witness owns its own cleanup.
+    private Result<void,string> VerifyIndexReleased() {
+        JsonStringIndexLimits limits = new JsonStringIndexLimits {};
+        limits.entries = 1;
+        limits.retainedBytes = indexRetainedBytes;
+        JsonStringIndex reopened = new JsonStringIndex {};
+        try {
+            reopened = try indexer.BeginStringIndex(document, limits);
+            return Result<void,string>.Success();
+        } finally {
+            if (reopened.generation != 0) {
+                Result<void,string> closed = indexer.CloseStringIndex(reopened);
+                if (!closed.IsSuccess)
+                    throw Error(closed.Error);
+            }
+        }
+    }
+
+    public Result<void,TestFailure> Body(CancellationToken token) {
+        Result<int,string> begun = reader.BeginDocument(new JsonReadLimits {});
+        try Assert.True(begun.IsSuccess, "Registry document admission succeeds");
+        document = begun.Value;
+        try Assert.True(reader.AppendDocument(document, ByteBuffer.FromUtf8(input)).IsSuccess,
+            "Source fixture bytes append");
+        Result<JsonNode,string> completed = reader.CompleteDocument(document, token);
+        try Assert.True(completed.IsSuccess, "Source registry fixture is syntactically valid JSON");
+        JsonNode root = completed.Value;
+        RegistryPolicy policy = new RegistryPolicy(reader, indexer, indexRetainedBytes);
+        Result<void,string> validated = policy.Validate(root, token);
+        try Assert.True(VerifyIndexReleased().IsSuccess, "Validation releases its document string index");
+        if (expectedError != "") {
+            try Assert.True(validated.IsFailure, "Invalid registry is refused by source policy");
+            try Assert.Equal<string>(expectedError, validated.Error, "Exact owning policy refusal");
+            return Result<void,TestFailure>.Success();
+        }
+
+        try Assert.True(validated.IsSuccess, "Registry structure and policy are admitted");
+        JsonNode capabilities = reader.FindMember(root, "test_capabilities").Value.Value;
+        RegistrySelection selection = new RegistrySelection(reader, indexer, indexRetainedBytes);
+        try Assert.True(selection.Bind(root, "p", "vm", capabilities, token).IsSuccess,
+            "Admitted platform and capabilities bind");
+        try Assert.Equal<int>(1, selection.FeatureCount().Value, "Feature inventory stays indexed");
+        try Assert.Equal<int>(1, selection.CaseCount(0).Value, "Case remains in denominator");
+        Result<RegistryCase,string> selected = selection.CaseAt(0, 0);
+        try Assert.True(selected.IsSuccess, "Applicable case is queryable");
+        try Assert.True(selected.Value.applicable, "All selector applies");
+        try Assert.Equal<bool>(expectedCapabilities, selected.Value.capabilitiesAvailable,
+            "VM cannot claim bare metal but missing capability never removes the case");
+        try Assert.Equal<string>("feature.a", selected.Value.id, "Exact feature ID survives");
+        try Assert.Equal<string>("happy", selected.Value.scenario, "Exact scenario survives");
+        try Assert.Equal<string>("component", selected.Value.layer, "Exact layer survives");
+        try Assert.Equal<int>(1, reader.Count(selected.Value.requiredAssertions).Value,
+            "Named assertions remain source queryable");
+        RegistryJson json = new RegistryJson(reader);
+        JsonNode assertion = reader.At(selected.Value.requiredAssertions, 0).Value;
+        try Assert.Equal<string>("assert.a", json.Text(assertion, 128).Value, "Exact assertion ID survives");
+        try Assert.True(selection.CaseAt(0, 1).IsFailure, "Out of range case fails");
+        try Assert.True(selection.Bind(root, "missing", "vm", capabilities, token).IsFailure,
+            "Unknown platform cannot bind");
+        try Assert.True(selection.FeatureCount().IsFailure, "Failed rebind invalidates old admission");
+        return Result<void,TestFailure>.Success();
+    }
+}

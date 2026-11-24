@@ -1,0 +1,19 @@
+module Dockpipe.SDK.FaultProof;
+import Dockpipe.SDK;
+
+// Test composition changes only the explicitly selected helper artifact. It may
+// replace a native client only after its existing custody has actually closed.
+public Interface FixtureControl {
+    Result<void,string> SelectConsoleHelper(string absolutePath);
+    Result<void,string> FinalizeTransport();
+    Result<CallerObservation,string> InitialCaller();
+    Result<CallerObservation,string> ObserveCaller();
+    Result<FaultReceipt,string> Receipt(OperationId id);
+    Result<ArgumentMetrics,string> MeasureArguments(OperationId id);
+    Result<int,string> StoredReceiptCount();
+    Result<ArgumentStats,string> DecodeArgumentStats(string output);
+    Result<ChildInputs,string> DecodeChildInputs(string output);
+    Result<int,string> LostOfferChildProcessId();
+    Result<int,string> PartialOfferChildProcessId();
+    Result<LateOfferReceipt,string> LateOfferAttempt();
+}

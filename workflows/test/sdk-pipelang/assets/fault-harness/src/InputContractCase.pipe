@@ -1,0 +1,414 @@
+module Dockpipe.SDK.FaultProof;
+import Dockpipe.SDK;
+import PipeLang.Testing;
+import PipeLang.Testing.Async;
+
+public Class InputContractCase : IAsyncTestCase {
+    private InputContractKind kind;
+    private Client client;
+    private TestClock clock;
+    private FaultInputs inputs;
+    private FixtureControl control;
+    private OperationId active = OperationId(0, 0);
+    private bool owned = false;
+    private bool complete = true;
+
+    public InputContractCase(InputContractKind kind, Client client, TestClock clock,
+                             FaultInputs inputs, FixtureControl control) {
+        this.kind = kind;
+        this.client = client;
+        this.clock = clock;
+        this.inputs = inputs;
+        this.control = control;
+    }
+
+    public pure string Id() {
+        if (kind == InputContractKind.CommandCapacity)
+            return "sdk.windows.command-capacity";
+
+        return "sdk.windows.exact-child-inputs";
+    }
+
+    public pure string Name() {
+        return Id();
+    }
+
+    private Result<TestStepResult,string> Failed(string code, string message) {
+        return Result<TestStepResult,string>.Success(
+            TestStepResult(TestOutcome.Failed, TestFailure(code, message)));
+    }
+
+    private Result<TestStepResult,string> Checked(Result<void,TestFailure> assertion) {
+        TestSteps steps = new TestSteps();
+
+        return Result<TestStepResult,string>.Success(steps.From(assertion));
+    }
+
+    private Result<TestStepResult,string> PhaseError(bool cancelled, string message) {
+        if (cancelled)
+            return Result<TestStepResult,string>.Cancelled(message);
+
+        return Result<TestStepResult,string>.Failure(message);
+    }
+
+    private Result<int,string> Remaining(TestDeadline deadline, CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<int,string>.Cancelled("Input-contract phase cancelled; acquired custody remains retained");
+
+        Result<int,string> now = clock.NowMilliseconds();
+        if (!now.IsSuccess)
+            return now;
+
+        TestDeadlines deadlines = new TestDeadlines();
+        int remaining = deadlines.RemainingMilliseconds(deadline, now.Value);
+        if (remaining == 0)
+            return Result<int,string>.Failure("Input-contract phase deadline exhausted");
+
+        if (remaining > 5000)
+            remaining = 5000;
+
+        return Result<int,string>.Success(remaining);
+    }
+
+    private WorkflowRequest Request(string mode, List<string> payload) {
+        List<string> arguments = List<string>.Empty();
+        arguments.Add(mode);
+        foreach (string value in payload)
+            arguments.Add(value);
+
+        return WorkflowRequest(inputs.ownedRoot, inputs.workflowFile, "", "",
+            List<WorkflowVariable>.Empty(), arguments, 32768);
+    }
+
+    private async Task<Result<OperationObservation,string>> Run(
+        WorkflowRequest request, TestDeadline deadline, CancellationToken token) {
+        Result<int,string> remaining = Remaining(deadline, token);
+        if (!remaining.IsSuccess) {
+            if (remaining.IsCancelled)
+                return Result<OperationObservation,string>.Cancelled(remaining.Error);
+
+            return Result<OperationObservation,string>.Failure(remaining.Error);
+        }
+
+        Result<OperationId,string> started = client.Start(request);
+        if (started.IsSuccess) {
+            active = started.Value;
+            owned = true;
+            complete = false;
+        } else {
+            Result<OperationId,string> retained = client.RetainedOperation();
+            if (retained.IsSuccess) {
+                active = retained.Value;
+                owned = true;
+                complete = false;
+            }
+            if (started.IsCancelled)
+                return Result<OperationObservation,string>.Cancelled(started.Error);
+
+            return Result<OperationObservation,string>.Failure(started.Error);
+        }
+
+        for (int attempt = 0; attempt < 400; attempt = attempt + 1) {
+            remaining = Remaining(deadline, token);
+            if (!remaining.IsSuccess) {
+                if (remaining.IsCancelled)
+                    return Result<OperationObservation,string>.Cancelled(remaining.Error);
+
+                return Result<OperationObservation,string>.Failure(remaining.Error);
+            }
+
+            int slice = 25;
+            if (remaining.Value < slice)
+                slice = remaining.Value;
+
+            Result<OperationObservation,string> observed = await client.Observe(active, slice, token);
+            if (!observed.IsSuccess)
+                return observed;
+
+            complete = observed.Value.treeComplete;
+            if (complete)
+                return observed;
+        }
+
+        return Result<OperationObservation,string>.Failure("Finite input-contract observation count exhausted");
+    }
+
+    private Result<void,TestFailure> Closed(OperationObservation observed) {
+        try Assert.Equal<OperationId>(active, observed.id, "Observation preserves actual operation identity");
+        try Assert.True(observed.exited, "Actual fixture root exit is known");
+        try Assert.True(observed.treeComplete, "Job, retained handles and genuine capture EOF all close");
+        try Assert.Equal<int>(0, observed.exitCode, "Factual input stimulus completed successfully");
+        try Assert.False(observed.forced, "Input proof closes without force");
+        try Assert.False(observed.stdoutTruncated, "Factual output is complete");
+        try Assert.False(observed.stderrTruncated, "Independent stderr is complete");
+        try Assert.Equal<string>("", observed.stderrText, "Factual input stimulus has no stderr failure");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    private pure string RepeatedX(int count) {
+        string result = "";
+        string block = "x";
+        int remaining = count;
+        // Thirteen binary digits cover 0..4096; no string exceeds 4096 bytes.
+        for (int bit = 0; bit < 13; bit = bit + 1) {
+            if (remaining % 2 == 1)
+                result = result + block;
+
+            remaining = remaining / 2;
+            if (remaining > 0)
+                block = block + block;
+        }
+
+        return result;
+    }
+
+    private Result<void,TestFailure> Stats(
+        ArgumentMetrics measured, ArgumentStats received, int bytes, int byteValue) {
+        try Assert.Equal<int>(measured.argumentCount, received.argumentCount,
+            "Actual receiver argv count matches the stored assembled argv");
+        try Assert.Equal<int>(9, received.payloadArgumentCount, "All nine payload slots survive actual parsing");
+        try Assert.Equal<int>(bytes, received.payloadUtf8Bytes, "Actual receiver observes every payload UTF-8 byte");
+        try Assert.Equal<int>(byteValue, received.minimumByte, "Actual payload minimum byte remains exact");
+        try Assert.Equal<int>(byteValue, received.maximumByte, "Actual payload maximum byte remains exact");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    public async Task<Result<TestStepResult,string>> Setup(TestDeadline deadline, CancellationToken token) {
+        Result<int,string> remaining = Remaining(deadline, token);
+        if (!remaining.IsSuccess)
+            return PhaseError(remaining.IsCancelled, remaining.Error);
+
+        if (inputs.ambientSentinel == "" || inputs.expectedExecutable == "" ||
+            inputs.expectedStateDirectory == "" || inputs.expectedCacheDirectory == "")
+            return Failed("input.selection", "Composition must provide real ambient sentinel and opened canonical input facts");
+
+        Result<void,TestFailure> assertion = Assert.Equal<int>(65536, inputs.maximumArgumentBytes,
+            "Full command proof retains the configured 64 KiB UTF-8 argument contract");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        assertion = Assert.True(inputs.maximumOutputBytes >= 32768,
+            "Small factual output fits the selected capture contract");
+
+        return Checked(assertion);
+    }
+
+    private async Task<Result<TestStepResult,string>> Capacity(TestDeadline deadline, CancellationToken token) {
+        List<string> emptyPayload = List<string>.Empty();
+        for (int index = 0; index < 9; index = index + 1)
+            emptyPayload.Add("");
+
+        Result<OperationObservation,string> baseline = await Run(Request("arg-stats", emptyPayload), deadline, token);
+        if (!baseline.IsSuccess)
+            return PhaseError(baseline.IsCancelled, baseline.Error);
+
+        Result<void,TestFailure> assertion = Closed(baseline.Value);
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        Result<ArgumentMetrics,string> baseMetrics = control.MeasureArguments(active);
+        if (!baseMetrics.IsSuccess)
+            return PhaseError(baseMetrics.IsCancelled, baseMetrics.Error);
+
+        Result<ArgumentStats,string> baseStats = control.DecodeArgumentStats(baseline.Value.stdoutText);
+        if (!baseStats.IsSuccess)
+            return PhaseError(baseStats.IsCancelled, baseStats.Error);
+
+        assertion = Stats(baseMetrics.Value, baseStats.Value, 0, 0);
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        int payloadBytes = 32766 - baseMetrics.Value.commandCharacters;
+        assertion = Assert.True(payloadBytes > 0 && payloadBytes <= 8 * 4096,
+            "Measured real UTF-16 front matter leaves capacity in eight bounded payload strings");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        assertion = Assert.True(baseMetrics.Value.argumentStorageBytes + payloadBytes + 1 <= inputs.maximumArgumentBytes,
+            "Both command candidates independently fit the original UTF-8 argument storage charge");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        List<string> maximumPayload = List<string>.Empty();
+        int unfilled = payloadBytes;
+        for (int index = 0; index < 8; index = index + 1) {
+            int count = unfilled;
+            if (count > 4096)
+                count = 4096;
+
+            maximumPayload.Add(RepeatedX(count));
+            unfilled = unfilled - count;
+        }
+        maximumPayload.Add("");
+        assertion = Assert.Equal<int>(0, unfilled, "Binary payload construction fills exact measured command capacity");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        Result<OperationObservation,string> maximum = await Run(Request("arg-stats", maximumPayload), deadline, token);
+        if (!maximum.IsSuccess)
+            return PhaseError(maximum.IsCancelled, maximum.Error);
+
+        assertion = Closed(maximum.Value);
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        Result<ArgumentMetrics,string> maxMetrics = control.MeasureArguments(active);
+        if (!maxMetrics.IsSuccess)
+            return PhaseError(maxMetrics.IsCancelled, maxMetrics.Error);
+
+        Result<ArgumentStats,string> maxStats = control.DecodeArgumentStats(maximum.Value.stdoutText);
+        if (!maxStats.IsSuccess)
+            return PhaseError(maxStats.IsCancelled, maxStats.Error);
+
+        assertion = Assert.Equal<int>(32766, maxMetrics.Value.commandCharacters,
+            "The actual successful assembled Windows command reaches 32766 UTF-16 characters excluding NUL");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        assertion = Assert.Equal<int>(baseMetrics.Value.utf8Bytes + payloadBytes, maxMetrics.Value.utf8Bytes,
+            "Real UTF-8 argv growth is measured separately from Windows UTF-16 command capacity");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        assertion = Assert.Equal<int>(baseMetrics.Value.argumentStorageBytes + payloadBytes,
+            maxMetrics.Value.argumentStorageBytes, "Native argument metadata and UTF-8 storage stay within the same budget");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        assertion = Stats(maxMetrics.Value, maxStats.Value, payloadBytes, 120);
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        Result<int,string> beforeCount = control.StoredReceiptCount();
+        if (!beforeCount.IsSuccess)
+            return PhaseError(beforeCount.IsCancelled, beforeCount.Error);
+
+        List<string> excessivePayload = List<string>.Empty();
+        for (int index = 0; index < 8; index = index + 1)
+            excessivePayload.Add(maximumPayload.At(index));
+        excessivePayload.Add("x");
+
+        // Only one ASCII character changes the ninth slot. Every string still
+        // fits 4096 bytes, while the assembled command would require 32767 chars.
+        Result<OperationId,string> rejected = client.Start(Request("arg-stats", excessivePayload));
+        if (rejected.IsSuccess) {
+            active = rejected.Value;
+            owned = true;
+            complete = false;
+            return Failed("input.command_admitted", "One character beyond the Windows command contract must be refused");
+        }
+
+        assertion = Assert.True(rejected.IsFailure && string.Utf8IndexOf(rejected.Error,
+            "Windows command line exceeds CreateProcessW", 0) >= 0,
+            "The one-character excess fails the Windows command bound before acquiring custody");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        Result<int,string> afterCount = control.StoredReceiptCount();
+        if (!afterCount.IsSuccess)
+            return PhaseError(afterCount.IsCancelled, afterCount.Error);
+
+        assertion = Assert.Equal<int>(beforeCount.Value, afterCount.Value,
+            "Pre-custody command refusal adds no operation receipt");
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        assertion = Assert.True(client.RetainedOperation().IsFailure,
+            "Pre-custody command refusal creates no retained operation");
+
+        return Checked(assertion);
+    }
+
+    private Result<void,TestFailure> EnvironmentValue(ChildInputValue actual, string name, string expected) {
+        try Assert.Equal<string>(name, actual.name, "Receiver reports the explicitly requested environment name");
+        try Assert.True(actual.present, "Prepared child binding is present");
+        try Assert.Equal<string>(expected, actual.value, "Prepared child binding retains its exact canonical value");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    private Result<void,TestFailure> ExactInputs(ChildInputs actual) {
+        try Assert.True(inputs.ambientSentinel != "", "The qualification sentinel actually exists in the caller environment");
+        try Assert.Equal<string>(inputs.ownedRoot, actual.cwd, "Actual child cwd is the opened owned root");
+        try Assert.Equal<int>(6, actual.variables.Count, "Exactly the six requested environment facts are returned");
+        try EnvironmentValue(actual.variables.At(0), "DOCKPIPE_BIN", inputs.expectedExecutable);
+        try EnvironmentValue(actual.variables.At(1), "NO_COLOR", "1");
+        try EnvironmentValue(actual.variables.At(2), "LOCALAPPDATA", inputs.expectedStateDirectory);
+        try EnvironmentValue(actual.variables.At(3), "XDG_STATE_HOME", inputs.expectedStateDirectory);
+        try EnvironmentValue(actual.variables.At(4), "XDG_CACHE_HOME", inputs.expectedCacheDirectory);
+        ChildInputValue sentinel = actual.variables.At(5);
+        try Assert.Equal<string>("DOCKPIPE_QUALIFICATION_SENTINEL", sentinel.name,
+            "The benign ambient sentinel is explicitly queried in the child");
+        try Assert.False(sentinel.present, "Fresh prepared environment does not forward the ambient sentinel");
+        try Assert.Equal<string>("", sentinel.value, "Absent sentinel has no fabricated value");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    private async Task<Result<TestStepResult,string>> ChildInputsCase(TestDeadline deadline, CancellationToken token) {
+        List<string> payload = List<string>.Empty();
+        payload.Add("32768");
+        payload.Add("DOCKPIPE_BIN");
+        payload.Add("NO_COLOR");
+        payload.Add("LOCALAPPDATA");
+        payload.Add("XDG_STATE_HOME");
+        payload.Add("XDG_CACHE_HOME");
+        payload.Add("DOCKPIPE_QUALIFICATION_SENTINEL");
+        Result<OperationObservation,string> observed = await Run(Request("child-inputs", payload), deadline, token);
+        if (!observed.IsSuccess)
+            return PhaseError(observed.IsCancelled, observed.Error);
+
+        Result<void,TestFailure> assertion = Closed(observed.Value);
+        if (!assertion.IsSuccess)
+            return Checked(assertion);
+
+        Result<ChildInputs,string> decoded = control.DecodeChildInputs(observed.Value.stdoutText);
+        if (!decoded.IsSuccess)
+            return PhaseError(decoded.IsCancelled, decoded.Error);
+
+        return Checked(ExactInputs(decoded.Value));
+    }
+
+    public async Task<Result<TestStepResult,string>> Body(TestDeadline deadline, CancellationToken token) {
+        if (kind == InputContractKind.CommandCapacity) {
+            Result<TestStepResult,string> capacity = await Capacity(deadline, token);
+
+            return capacity;
+        }
+
+        Result<TestStepResult,string> childInputs = await ChildInputsCase(deadline, token);
+
+        return childInputs;
+    }
+
+    public async Task<Result<TestStepResult,string>> Cleanup(TestDeadline deadline, CancellationToken token) {
+        Result<OperationId,string> retained = client.RetainedOperation();
+        if (retained.IsSuccess) {
+            active = retained.Value;
+            owned = true;
+            complete = false;
+        }
+
+        if (owned && !complete) {
+            Result<int,string> remaining = Remaining(deadline, token);
+            if (!remaining.IsSuccess)
+                return PhaseError(remaining.IsCancelled, remaining.Error);
+
+            Result<OperationObservation,string> disposed = await client.ForceDispose(active, remaining.Value, token);
+            if (!disposed.IsSuccess)
+                return PhaseError(disposed.IsCancelled, disposed.Error);
+
+            complete = disposed.Value.treeComplete;
+            if (!complete)
+                return Failed("input.cleanup_incomplete", "Independent cleanup did not prove complete custody closure");
+
+            return Failed("input.cleanup_disposal", "Independent disposal was needed before the body proved ordinary closure");
+        }
+
+        TestSteps steps = new TestSteps();
+
+        return Result<TestStepResult,string>.Success(steps.Passed());
+    }
+}

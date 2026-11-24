@@ -1,5 +1,8 @@
 #pragma once
 
+#ifdef _WIN32
+#include "ConfinedFiles_windows.hpp"
+#else
 #include "Descriptor.hpp"
 #include <string>
 #include <string_view>
@@ -26,3 +29,5 @@ private:
 };
 
 }
+
+#endif

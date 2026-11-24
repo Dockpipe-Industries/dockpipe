@@ -5,6 +5,8 @@ umask 077
 : "${PRODUCT_RUN_ROOT:?Preparation must emit the proof directory}"
 : "${PRODUCT_RUN_ID:?Preparation must emit the proof identity}"
 : "${PRODUCT_SOURCE_ROOT:?Preparation must resolve the source scope}"
+: "${DOCKPIPE_SOURCE_SDK_DESCRIPTOR:?Preparation must materialize the typed source SDK}"
+: "${DOCKPIPE_SOURCE_SDK_SHA256:?Preparation must pin the source descriptor}"
 : "${PRODUCT_DOCKPIPE_BIN:?Select the Dockpipe executable under test}"
 : "${PIPELANG_SDK_PREFIX:?Select the installed PipeLang SDK}"
 : "${PIPELANG_SDK_MANIFEST_SHA256:?Pin the SDK manifest}"
@@ -27,6 +29,8 @@ if [ "${1:-}" != --inside ]; then
     exec "$runner" job --output "$run_root/job" --estate "$run_root" --timeout 3600 -- \
         /usr/bin/env PRODUCT_RUN_ROOT="$run_root" PRODUCT_RUN_ID="$PRODUCT_RUN_ID" \
         PRODUCT_SOURCE_ROOT="$source_root" PRODUCT_DOCKPIPE_BIN="$PRODUCT_DOCKPIPE_BIN" \
+        DOCKPIPE_SOURCE_SDK_DESCRIPTOR="$DOCKPIPE_SOURCE_SDK_DESCRIPTOR" \
+        DOCKPIPE_SOURCE_SDK_SHA256="$DOCKPIPE_SOURCE_SDK_SHA256" \
         PIPELANG_SDK_PREFIX="$sdk" PIPELANG_SDK_MANIFEST_SHA256="$PIPELANG_SDK_MANIFEST_SHA256" \
         PIPELANG_TESTING_LIBRARY_SHA256="$PIPELANG_TESTING_LIBRARY_SHA256" \
         PIPELANG_CONTAINED_BIN="$runner" PRODUCT_SANITIZERS="${PRODUCT_SANITIZERS:-OFF}" \
@@ -61,6 +65,7 @@ actual_testing_sha256=$(sha256sum "$testing" | cut -d' ' -f1)
 test "$actual_testing_sha256" = "$PIPELANG_TESTING_LIBRARY_SHA256"
 {
     sha256sum "$PRODUCT_DOCKPIPE_BIN" "$manifest" "$testing"
+    find "$(dirname -- "$DOCKPIPE_SOURCE_SDK_DESCRIPTOR")" -type f -exec sha256sum '{}' ';'
     find "$harness" "$source_root/workflows/test/product/assets/fixtures" -type f \
         -exec sha256sum '{}' ';'
     sha256sum "$source_root/workflows/test/product/config.yml" "$script_directory/prepare.sh" \
@@ -81,6 +86,8 @@ unit configure "$cmake" -S "$harness" -B "$run_root/build" \
     -DPIPELANG_PRODUCT_SDK_PREFIX="$sdk" \
     -DPIPELANG_PRODUCT_SDK_SHA256="$PIPELANG_SDK_MANIFEST_SHA256" \
     -DPIPELANG_PRODUCT_TESTING_SHA256="$PIPELANG_TESTING_LIBRARY_SHA256" \
+    -DDOCKPIPE_SOURCE_SDK_DESCRIPTOR="$DOCKPIPE_SOURCE_SDK_DESCRIPTOR" \
+    -DDOCKPIPE_SOURCE_SDK_SHA256="$DOCKPIPE_SOURCE_SDK_SHA256" \
     -DPipeLangModel_CXX_RESOURCE_PROFILE="${PIPELANG_CXX_RESOURCE_PROFILE-system}" \
     -DCMAKE_CXX_COMPILER="$cxx" -DCMAKE_BUILD_TYPE=Release \
     '-DCMAKE_CXX_FLAGS_RELEASE=-O1 -DNDEBUG' \
@@ -96,6 +103,7 @@ unit journey /usr/bin/env ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
     --recovery-project "$run_root/recovery-project" \
     --cancellation-project "$run_root/cancellation-project" \
     --workflow "$fixture" --run-id "$PRODUCT_RUN_ID" \
+    --outside-file /proc/version --outside-directory /proc \
     --xdg-state "$run_root/xdg-state" --xdg-cache "$run_root/xdg-cache" \
     --identity-file "$run_root/identities.sha256" --report "$run_root/report.json"
 unit sdk-verify-after "$sdk/bin/pipelang-sdk-tool" verify --prefix "$sdk" \

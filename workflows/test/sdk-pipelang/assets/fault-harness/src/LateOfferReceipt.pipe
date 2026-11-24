@@ -1,0 +1,11 @@
+module Dockpipe.SDK.FaultProof;
+
+// Fixed fixture facts, read without deciding whether the authored case passes.
+public Record LateOfferReceipt {
+    public int processId;
+    public int threadId;
+    public int createdAt;
+    public int requestDeadline;
+    public int attemptedAt;
+    public bool writeSucceeded;
+}

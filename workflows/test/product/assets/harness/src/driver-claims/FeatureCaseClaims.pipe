@@ -1,0 +1,30 @@
+module Dockpipe.Product.DriverClaims;
+
+public Class FeatureCaseClaims {
+    // Missing cases use -1. Zero denotes a required case without a driver.
+    // A positive slot stores the driver's one-based plan position.
+    private FixedArray<int,16> owners = FixedArray<int,16>.Create(-1);
+
+    public Result<void,string> Include(int position) {
+        if (owners.At(position) != -1)
+            return Result<void,string>.Failure("qualification.driver_claim.duplicate_expected_case");
+
+        owners.Set(position, 0);
+        return Result<void,string>.Success();
+    }
+
+    public Result<bool,string> Claim(int position, int driver) {
+        int owner = owners.At(position);
+        if (owner < 0)
+            return Result<bool,string>.Success(false);
+        if (owner > 0)
+            return Result<bool,string>.Failure("qualification.driver_claim.overlap");
+
+        owners.Set(position, driver);
+        return Result<bool,string>.Success(true);
+    }
+
+    public int Driver(int position) {
+        return owners.At(position);
+    }
+}

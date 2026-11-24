@@ -1,0 +1,49 @@
+module Dockpipe.Product.QualificationCatalog;
+import Dockpipe.Product.Qualification;
+import Dockpipe.Product.QualificationFiles;
+import PipeLang.IO;
+import PipeLang.Json;
+
+// Listing validates the selected registry and emits its authored coverage
+// inventory without admitting any plans or acquiring process capabilities.
+public model Class QualificationCatalog {
+    private QualificationJsonFile registry;
+    private RegistryPolicy policy;
+    private RegistryJson json;
+    private JsonDocumentOutput output;
+
+    public QualificationCatalog(JsonReader reader, JsonStringIndexer indexer, FileStreams input,
+                                 JsonDocumentOutput output, int indexRetainedBytes) {
+        registry = new QualificationJsonFile(reader, input);
+        policy = new RegistryPolicy(reader, indexer, indexRetainedBytes);
+        json = new RegistryJson(reader);
+        this.output = output;
+    }
+
+    private Result<int,string> Project(JsonNode root, CancellationToken token) {
+        try policy.Validate(root, token);
+        JsonNode platforms = try json.Member(root, "platforms");
+        JsonNode features = try json.Member(root, "features");
+
+        try output.BeginObject();
+        try output.Name("platforms");
+        try output.WriteValue(platforms, token);
+        try output.Name("features");
+        try output.WriteValue(features, token);
+        try output.EndObject();
+        return output.Finish();
+    }
+
+    public Result<int,string> List(string registryFile, CancellationToken token) {
+        JsonReadLimits limits = new JsonReadLimits {};
+        limits.detectUnicodeEncoding = true;
+        try {
+            CapturedQualificationJson input = try registry.Open(registryFile, limits, token);
+            return Project(input.root, token);
+        } finally {
+            Result<void,string> closed = registry.Close();
+            if (!closed.IsSuccess)
+                throw Error(closed.Error);
+        }
+    }
+}

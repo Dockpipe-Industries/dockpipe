@@ -1,0 +1,25 @@
+module Dockpipe.Product.Qualification;
+
+public Class RegistryVocabulary {
+    public pure bool Selector(string value) {
+        return value == "all" || value == "all-cli" || value == "docker-capable" ||
+            value == "desktop-provider" || value == "native-desktop" || value == "desktop" ||
+            value == "editor-host" || value == "linux-x11" || value == "linux-viewer" ||
+            value == "linux-to-darwin" || value == "darwin-sender" || value == "contained" ||
+            value == "vm-host";
+    }
+
+    public pure bool Layer(string value) {
+        return value == "component" || value == "installed_e2e" ||
+            value == "guided_ui" || value == "human";
+    }
+
+    public pure bool Scenario(string value) {
+        return value == "happy" || value == "failure" || value == "cancellation" ||
+            value == "restart-recovery";
+    }
+
+    public pure bool Group(string value) {
+        return value == "native-desktop" || value == "contained" || value == "cli-only";
+    }
+}

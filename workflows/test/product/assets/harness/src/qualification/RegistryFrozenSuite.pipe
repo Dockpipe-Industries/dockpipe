@@ -1,0 +1,34 @@
+module Dockpipe.Product.Qualification.Tests;
+import Dockpipe.Product.Qualification;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+// The frozen data supplies expectations; native code only supplies complete
+// borrowed roots and the explicitly selected reader/index resource profile.
+public model Class RegistryFrozenSuite {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private int indexRetainedBytes;
+
+    public RegistryFrozenSuite(JsonReader reader, JsonStringIndexer indexer, int indexRetainedBytes) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.indexRetainedBytes = indexRetainedBytes;
+    }
+
+    public List<TestResult> Run(JsonNode registry, JsonNode golden, JsonNode emptyCapabilities,
+                                CancellationToken token) {
+        RegistryJson json = new RegistryJson(reader);
+        JsonNode profiles = json.Member(golden, "platforms").Value;
+        List<ITestCase> cases = List<ITestCase>.Empty();
+        for (int index = 0; index < 17; index = index + 1) {
+            JsonNode profile = reader.At(profiles, index).Value;
+            string id = json.TextMember(profile, "id", 512).Value;
+            cases.Add(new RegistryFrozenCase(reader, indexer, indexRetainedBytes,
+                registry, golden, emptyCapabilities, profile, index, id));
+        }
+
+        TestRunner runner = new TestRunner();
+        return runner.RunAll(cases, token);
+    }
+}

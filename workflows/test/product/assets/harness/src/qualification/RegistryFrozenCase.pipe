@@ -1,0 +1,171 @@
+module Dockpipe.Product.Qualification.Tests;
+import Dockpipe.Product.Qualification;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+// Inputs are borrowed complete documents; source owns comparisons and the
+// temporary index-release witness, never the input document lifetime.
+public Class RegistryFrozenCase : ITestCase {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private int indexRetainedBytes;
+    private JsonNode registry;
+    private JsonNode golden;
+    private JsonNode emptyCapabilities;
+    private JsonNode profile;
+    private int profileIndex;
+    private string profileId;
+    private RegistryJson json;
+    private RegistrySelection selection;
+
+    public RegistryFrozenCase(JsonReader reader, JsonStringIndexer indexer, int indexRetainedBytes,
+                              JsonNode registry, JsonNode golden, JsonNode emptyCapabilities,
+                              JsonNode profile, int profileIndex, string profileId) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.indexRetainedBytes = indexRetainedBytes;
+        this.registry = registry;
+        this.golden = golden;
+        this.emptyCapabilities = emptyCapabilities;
+        this.profile = profile;
+        this.profileIndex = profileIndex;
+        this.profileId = profileId;
+        json = new RegistryJson(reader);
+        selection = new RegistrySelection(reader, indexer, indexRetainedBytes);
+    }
+
+    public pure string Id() => "qualification.registry.frozen." + profileId;
+    public pure string Name() => "Frozen registry rows and selectors for " + profileId;
+
+    public Result<void,TestFailure> Setup(CancellationToken token) {
+        try Assert.Equal<int>(0, reader.Count(emptyCapabilities).Value, "Target capabilities are empty");
+        Result<void,string> bound = selection.Bind(registry, profileId, "local", emptyCapabilities, token);
+        if (bound.IsCancelled)
+            return Result<void,TestFailure>.Cancelled(TestFailure("test.cancelled", bound.Error));
+        if (bound.IsFailure)
+            return Result<void,TestFailure>.Failure(TestFailure("qualification.frozen.bind", bound.Error));
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    private Result<void,string> VerifyIndexReleased() {
+        JsonStringIndexLimits limits = new JsonStringIndexLimits {};
+        limits.entries = 1;
+        limits.retainedBytes = indexRetainedBytes;
+        JsonStringIndex reopened = new JsonStringIndex {};
+        try {
+            reopened = try indexer.BeginStringIndex(registry.document, limits);
+            return Result<void,string>.Success();
+        } finally {
+            if (reopened.generation != 0) {
+                Result<void,string> closed = indexer.CloseStringIndex(reopened);
+                if (!closed.IsSuccess)
+                    throw Error(closed.Error);
+            }
+        }
+    }
+
+    public Result<void,TestFailure> Cleanup() {
+        return Assert.True(VerifyIndexReleased().IsSuccess,
+            "Bind validation releases its index without closing the borrowed registry");
+    }
+
+    private Result<void,TestFailure> CompareStrings(JsonNode actual, JsonNode expected,
+                                                    CancellationToken token) {
+        int count = reader.Count(expected).Value;
+        try Assert.Equal<int>(count, reader.Count(actual).Value, "Ordered string array length matches");
+        for (int index = 0; index < count; index = index + 1) {
+            if (token.IsCancellationRequested)
+                return Result<void,TestFailure>.Cancelled(TestFailure("test.cancelled", "Frozen comparison cancelled"));
+
+            JsonNode expectedItem = reader.At(expected, index).Value;
+            JsonNode actualItem = reader.At(actual, index).Value;
+            try Assert.Equal<string>(json.Text(expectedItem, 512).Value, json.Text(actualItem, 512).Value,
+                "Exact ordered string identity matches the frozen row");
+        }
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    private Result<void,TestFailure> CompareRequirements(JsonNode feature, JsonNode row,
+                                                         CancellationToken token) {
+        JsonNode expected = json.Member(row, "requires").Value;
+        JsonNode? actual = reader.FindMember(feature, "requires").Value;
+        if (!actual.HasValue)
+            return Assert.Equal<int>(0, reader.Count(expected).Value, "Absent requirements match the frozen empty list");
+
+        return CompareStrings(actual.Value, expected, token);
+    }
+
+    public Result<void,TestFailure> Body(CancellationToken token) {
+        try Assert.Equal<string>("dockpipe.product-integration.registry-frozen/v1",
+            json.TextMember(golden, "schema", 128).Value, "Exact golden fixture schema");
+        try Assert.Equal<string>("workflows/qualify/product/registry.json",
+            json.TextMember(golden, "source", 128).Value, "Public relative golden provenance");
+        try Assert.Equal<string>("53fa5a6584953cca064dd0be8aa7c2abfa3d8008800fae2f78983b0032e4a859",
+            json.TextMember(golden, "sha256", 128).Value, "Exact frozen registry identity metadata");
+        JsonNode profiles = json.Member(golden, "platforms").Value;
+        JsonNode actualProfiles = json.Member(registry, "platforms").Value;
+        try Assert.Equal<int>(17, reader.Count(profiles).Value, "Seventeen frozen profiles are registered");
+        try Assert.Equal<int>(17, reader.Count(actualProfiles).Value, "Actual profile inventory has no additions or omissions");
+        JsonNode actualProfile = reader.At(actualProfiles, profileIndex).Value;
+        try Assert.Equal<string>(profileId, json.TextMember(actualProfile, "id", 512).Value,
+            "Exact profile order and identity match");
+        try Assert.Equal<string>(json.TextMember(profile, "group", 128).Value,
+            json.TextMember(actualProfile, "group", 128).Value, "Exact platform group matches");
+        try CompareStrings(json.Member(actualProfile, "selectors").Value,
+            json.Member(profile, "selectors").Value, token);
+
+        JsonNode features = json.Member(registry, "features").Value;
+        JsonNode rows = json.Member(golden, "cases").Value;
+        JsonNode applicability = json.Member(profile, "expected_applicable").Value;
+        JsonNode availability = json.Member(profile, "expected_capabilities_available").Value;
+        int featureCount = selection.FeatureCount().Value;
+        try Assert.Equal<int>(49, featureCount, "All frozen features remain in the denominator");
+        try Assert.Equal<int>(49, reader.Count(features).Value, "Direct feature inventory matches selection");
+        try Assert.Equal<int>(178, reader.Count(rows).Value, "Frozen flat row count is exact");
+        try Assert.Equal<int>(178, reader.Count(applicability).Value, "Applicability matrix covers every row");
+        try Assert.Equal<int>(178, reader.Count(availability).Value, "Capability matrix covers every row");
+        int rowIndex = 0;
+        int assertionCount = 0;
+        for (int featureIndex = 0; featureIndex < featureCount; featureIndex = featureIndex + 1) {
+            if (token.IsCancellationRequested)
+                return Result<void,TestFailure>.Cancelled(TestFailure("test.cancelled", "Frozen traversal cancelled"));
+
+            JsonNode feature = reader.At(features, featureIndex).Value;
+            JsonNode actualCases = json.Member(feature, "cases").Value;
+            int caseCount = selection.CaseCount(featureIndex).Value;
+            try Assert.Equal<int>(reader.Count(actualCases).Value, caseCount, "Selection preserves every case");
+            for (int caseIndex = 0; caseIndex < caseCount; caseIndex = caseIndex + 1) {
+                if (token.IsCancellationRequested)
+                    return Result<void,TestFailure>.Cancelled(TestFailure("test.cancelled", "Frozen traversal cancelled"));
+
+                try Assert.True(rowIndex < 178, "Selection has no extra flat rows");
+                JsonNode row = reader.At(rows, rowIndex).Value;
+                Result<RegistryCase,string> selected = selection.CaseAt(featureIndex, caseIndex);
+                try Assert.True(selected.IsSuccess, "Every denominator row remains queryable");
+                RegistryCase actual = selected.Value;
+                try Assert.Equal<string>(json.TextMember(row, "id", 128).Value, actual.id, "Exact feature ID and row order");
+                try Assert.Equal<string>(json.TextMember(row, "scenario", 128).Value, actual.scenario, "Exact scenario and row order");
+                try Assert.Equal<string>(json.TextMember(row, "layer", 128).Value, actual.layer, "Exact layer and row order");
+                try Assert.Equal<bool>(reader.BoolValue(json.Member(row, "critical").Value).Value,
+                    actual.critical, "Exact critical flag");
+                try Assert.Equal<string>(json.TextMember(row, "selector", 128).Value,
+                    json.TextMember(feature, "selector", 128).Value, "Exact selector identity, independent of applicability");
+                try CompareRequirements(feature, row, token);
+                JsonNode expectedAssertions = json.Member(row, "required_assertions").Value;
+                try CompareStrings(actual.requiredAssertions, expectedAssertions, token);
+                assertionCount = assertionCount + reader.Count(actual.requiredAssertions).Value;
+                try Assert.Equal<bool>(reader.BoolValue(reader.At(applicability, rowIndex).Value).Value,
+                    actual.applicable, "Applicability matches the independently frozen profile matrix");
+                try Assert.Equal<bool>(reader.BoolValue(reader.At(availability, rowIndex).Value).Value,
+                    actual.capabilitiesAvailable, "Empty-capability availability matches the frozen matrix");
+                rowIndex = rowIndex + 1;
+            }
+        }
+
+        try Assert.Equal<int>(178, rowIndex, "No frozen denominator rows are missing");
+        try Assert.Equal<int>(546, assertionCount, "All ordered named assertions were compared");
+        return Result<void,TestFailure>.Success();
+    }
+}

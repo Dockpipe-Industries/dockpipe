@@ -1,0 +1,56 @@
+module Dockpipe.Product.QualificationPreflight;
+import Dockpipe.Product.DriverSources;
+import Dockpipe.Product.Qualification;
+import Dockpipe.Product.QualificationFiles;
+import Dockpipe.Product.RunAdmission;
+import PipeLang.IO;
+import PipeLang.Json;
+
+// Native composition binds each input and source directory. This model owns
+// both documents for every consumer of the prepared target and case handles.
+public model Class QualificationPreflight {
+    private QualificationJsonFile plan;
+    private QualificationJsonFile registry;
+    private QualificationAdmission admission;
+    private RegistryJson json;
+    private bool started = false;
+
+    public QualificationPreflight(JsonReader reader, JsonStringIndexer indexer, FileStreams planInput,
+                                  FileStreams registryInput, FileStreams product, FileStreams repository,
+                                  int indexRetainedBytes) {
+        plan = new QualificationJsonFile(reader, planInput);
+        registry = new QualificationJsonFile(reader, registryInput);
+        DriverSourcePins pins = new DriverSourcePins(reader, product, repository);
+        admission = new QualificationAdmission(reader, indexer, pins, indexRetainedBytes);
+        json = new RegistryJson(reader);
+    }
+
+    public Result<PreparedQualificationRun,string> Open(string planName, string registryName,
+                                                        CancellationToken token) {
+        if (started)
+            return Result<PreparedQualificationRun,string>.Failure("qualification.preflight.already_started");
+        if (token.IsCancellationRequested)
+            return Result<PreparedQualificationRun,string>.Cancelled("qualification.preflight.cancelled");
+
+        started = true;
+        JsonReadLimits limits = new JsonReadLimits {};
+        limits.detectUnicodeEncoding = true;
+        CapturedQualificationJson selectedPlan = try plan.Open(planName, limits, token);
+        CapturedQualificationJson selectedRegistry = try registry.Open(registryName, limits, token);
+        int expected = try admission.Validate(selectedPlan.root, selectedRegistry.root, token);
+        string runId = try json.TextMember(selectedPlan.root, "run_id", 128);
+        JsonNode targets = try json.Member(selectedPlan.root, "targets");
+
+        return Result<PreparedQualificationRun,string>.Success(
+            PreparedQualificationRun(runId, selectedPlan, selectedRegistry, targets, expected));
+    }
+
+    public Result<void,string> Close() {
+        Result<void,string> closedPlan = plan.Close();
+        Result<void,string> closedRegistry = registry.Close();
+        if (!closedPlan.IsSuccess)
+            return closedPlan;
+
+        return closedRegistry;
+    }
+}

@@ -1,0 +1,287 @@
+module Dockpipe.Product.Qualification;
+import PipeLang.Json;
+
+// Plan schema admission borrows both complete documents. It performs no file,
+// source-pin, case-ownership, process, evidence or resume operations.
+public Class PlanPolicy {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private int indexRetainedBytes;
+    private RegistryJson registryJson;
+    private RegistryVocabulary vocabulary;
+    // The existing Source collection contract bounds this positive cache to
+    // 4096 owned 64-byte spellings. A full cache never refuses plan input.
+    private HashSet<string> validatedDigests = HashSet<string>.Empty();
+
+    public PlanPolicy(JsonReader reader, JsonStringIndexer indexer, int indexRetainedBytes) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.indexRetainedBytes = indexRetainedBytes;
+        registryJson = new RegistryJson(reader);
+        vocabulary = new RegistryVocabulary();
+    }
+
+    private Result<void,string> Require(bool condition, string code) {
+        if (!condition)
+            return Result<void,string>.Failure("qualification.plan." + code);
+
+        return Result<void,string>.Success();
+    }
+
+    private Result<void,string> Kind(JsonNode value, JsonKind expected, string code) {
+        JsonKind actual = try reader.Kind(value);
+        return Require(actual == expected, code);
+    }
+
+    private Result<JsonNode,string> Member(JsonNode value, string name) {
+        try Kind(value, JsonKind.Object, "object");
+        JsonNode? found = try reader.FindMember(value, name);
+        try Require(found.HasValue, "member." + name);
+        return Result<JsonNode,string>.Success(found.Value);
+    }
+
+    private Result<string,string> Text(JsonNode value, int maximumBytes, string code) {
+        try Kind(value, JsonKind.String, code);
+        int length = try reader.ScalarLength(value);
+        try Require(length <= maximumBytes, code);
+        ByteBuffer bytes = try reader.ScalarSlice(value, 0, length);
+        return Result<string,string>.Success(bytes.DecodeUtf8());
+    }
+
+    private Result<string,string> Identifier(JsonNode value, string code) {
+        string text = try Text(value, 128, code);
+        try Require(registryJson.Identifier(text), code);
+        return Result<string,string>.Success(text);
+    }
+
+    private Result<int,string> ArrayCount(JsonNode value, int minimum, int maximum, string code) {
+        try Kind(value, JsonKind.Array, code);
+        int count = try reader.Count(value);
+        try Require(count >= minimum && count <= maximum, code);
+        return Result<int,string>.Success(count);
+    }
+
+    private Result<void,string> Digest(JsonNode value, string code) {
+        string digest = try Text(value, 64, code);
+        try Require(string.Utf8Length(digest) == 64, code);
+        if (validatedDigests.Contains(digest))
+            return Result<void,string>.Success();
+
+        for (int index = 0; index < 64; index = index + 1) {
+            int character = string.ByteAtOr(digest, index, -1);
+            bool decimal = character >= 48 && character <= 57;
+            bool lowerHex = character >= 97 && character <= 102;
+            try Require(decimal || lowerHex, code);
+        }
+
+        if (validatedDigests.Count < 4096)
+            validatedDigests.Add(digest);
+
+        return Result<void,string>.Success();
+    }
+
+    private Result<void,string> CheckCancellation(CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<void,string>.Cancelled("qualification.plan.cancelled");
+
+        return Result<void,string>.Success();
+    }
+
+    private Result<void,string> ValidateCapabilities(JsonNode target, CancellationToken token) {
+        JsonNode? values = try reader.FindMember(target, "capabilities");
+        if (!values.HasValue)
+            return Result<void,string>.Success();
+
+        int count = try ArrayCount(values.Value, 0, 64, "capability_count");
+        HashSet<string> seen = HashSet<string>.Empty();
+        for (int index = 0; index < count; index = index + 1) {
+            try CheckCancellation(token);
+            JsonNode item = try reader.At(values.Value, index);
+            string id = try Identifier(item, "capability");
+            try Require(seen.Add(id), "duplicate_capability");
+        }
+
+        return Result<void,string>.Success();
+    }
+
+    private Result<void,string> ValidateFeatures(JsonNode driver, HashSet<string> featureIds,
+                                                CancellationToken token) {
+        JsonNode features = try Member(driver, "features");
+        // Unique membership in the <=512-feature registry supplies the bound.
+        int count = try ArrayCount(features, 1, 512, "feature_count");
+        HashSet<string> seen = HashSet<string>.Empty();
+        for (int index = 0; index < count; index = index + 1) {
+            try CheckCancellation(token);
+            JsonNode item = try reader.At(features, index);
+            string id = try Identifier(item, "feature");
+            try Require(featureIds.Contains(id), "feature");
+            try Require(seen.Add(id), "duplicate_feature");
+        }
+
+        return Result<void,string>.Success();
+    }
+
+    private Result<void,string> ValidateFilter(JsonNode driver, string name, bool scenarios,
+                                              CancellationToken token) {
+        JsonNode? filter = try reader.FindMember(driver, name);
+        if (!filter.HasValue)
+            return Result<void,string>.Success();
+
+        // The vocabulary and uniqueness provide the small accepted bound;
+        // the complete borrowed array may itself contain a larger invalid input.
+        int count = try ArrayCount(filter.Value, 1, 4194304, name);
+        HashSet<string> seen = HashSet<string>.Empty();
+        for (int index = 0; index < count; index = index + 1) {
+            try CheckCancellation(token);
+            JsonNode item = try reader.At(filter.Value, index);
+            string id = try Identifier(item, name);
+            bool allowed = vocabulary.Layer(id);
+            if (scenarios)
+                allowed = vocabulary.Scenario(id);
+
+            try Require(allowed && seen.Add(id), name);
+        }
+
+        return Result<void,string>.Success();
+    }
+
+    private Result<void,string> ValidateDependencies(JsonNode driver, CancellationToken token) {
+        JsonNode? dependencies = try reader.FindMember(driver, "dependencies");
+        if (!dependencies.HasValue)
+            return Result<void,string>.Success();
+
+        int count = try ArrayCount(dependencies.Value, 0, 64, "dependency_count");
+        if (count == 0)
+            return Result<void,string>.Success();
+
+        JsonStringIndexLimits limits = new JsonStringIndexLimits {};
+        limits.entries = count;
+        limits.retainedBytes = indexRetainedBytes;
+        JsonStringIndex paths = new JsonStringIndex {};
+        try {
+            paths = try indexer.BeginStringIndex(dependencies.Value.document, limits);
+            for (int index = 0; index < count; index = index + 1) {
+                try CheckCancellation(token);
+                JsonNode item = try reader.At(dependencies.Value, index);
+                try Kind(item, JsonKind.Object, "dependency_shape");
+                int members = try reader.Count(item);
+                try Require(members == 2, "dependency_shape");
+                JsonNode? path = try reader.FindMember(item, "path");
+                JsonNode? digest = try reader.FindMember(item, "sha256");
+                try Require(path.HasValue && digest.HasValue, "dependency_shape");
+                try Kind(path.Value, JsonKind.String, "dependency_path");
+                try Digest(digest.Value, "source_digest");
+                // Decoded paths may exceed one Source string. The maintained
+                // index compares immutable borrowed text without copying it.
+                bool added = try indexer.AddString(paths, path.Value, token);
+                try Require(added, "duplicate_dependency");
+            }
+
+            return Result<void,string>.Success();
+        } finally {
+            if (paths.generation != 0) {
+                Result<void,string> closed = indexer.CloseStringIndex(paths);
+                if (!closed.IsSuccess)
+                    throw Error(closed.Error);
+            }
+        }
+    }
+
+    private Result<void,string> ValidateDriver(JsonNode driver, HashSet<string> featureIds,
+                                              CancellationToken token) {
+        try ValidateFeatures(driver, featureIds, token);
+        JsonNode digest = try Member(driver, "sha256");
+        try Digest(digest, "source_digest");
+        JsonNode? configuration = try reader.FindMember(driver, "configuration");
+        if (configuration.HasValue)
+            try Kind(configuration.Value, JsonKind.Object, "configuration");
+
+        try ValidateFilter(driver, "scenarios", true, token);
+        try ValidateFilter(driver, "layers", false, token);
+        try ValidateDependencies(driver, token);
+        JsonNode? timeout = try reader.FindMember(driver, "timeout_seconds");
+        if (timeout.HasValue) {
+            try Kind(timeout.Value, JsonKind.Number, "timeout");
+            Result<int,string> seconds = reader.Int64Value(timeout.Value);
+            try Require(seconds.IsSuccess, "timeout");
+            try Require(seconds.Value >= 1 && seconds.Value <= 14400, "timeout");
+        }
+
+        return Result<void,string>.Success();
+    }
+
+    private Result<void,string> ValidateTarget(JsonNode target, HashSet<string> platformIds,
+                                              HashSet<string> featureIds, CancellationToken token) {
+        JsonNode platformNode = try Member(target, "platform");
+        string platform = try Text(platformNode, 512, "platform");
+        try Require(platformIds.Contains(platform), "platform");
+        JsonNode kindNode = try Member(target, "kind");
+        string kind = try Text(kindNode, 128, "kind");
+        try Require(kind == "local" || kind == "vm" || kind == "remote" ||
+            kind == "flatpak" || kind == "container", "kind");
+        JsonNode artifact = try Member(target, "artifact_sha256");
+        try Digest(artifact, "artifact_digest");
+        try ValidateCapabilities(target, token);
+
+        JsonNode? drivers = try reader.FindMember(target, "drivers");
+        if (!drivers.HasValue)
+            return Result<void,string>.Success();
+
+        int count = try ArrayCount(drivers.Value, 0, 64, "driver_count");
+        HashSet<string> seen = HashSet<string>.Empty();
+        for (int index = 0; index < count; index = index + 1) {
+            try CheckCancellation(token);
+            JsonNode driver = try reader.At(drivers.Value, index);
+            JsonNode idNode = try Member(driver, "id");
+            string id = try Identifier(idNode, "driver_id");
+            try Require(seen.Add(id), "duplicate_driver");
+            try ValidateDriver(driver, featureIds, token);
+        }
+
+        return Result<void,string>.Success();
+    }
+
+    public Result<void,string> Validate(JsonNode plan, JsonNode registry, CancellationToken token) {
+        validatedDigests.Clear();
+        try CheckCancellation(token);
+        RegistryPolicy registryPolicy = new RegistryPolicy(reader, indexer, indexRetainedBytes);
+        try registryPolicy.Validate(registry, token);
+        JsonNode platforms = try registryJson.Member(registry, "platforms");
+        JsonNode features = try registryJson.Member(registry, "features");
+        HashSet<string> platformIds = HashSet<string>.Empty();
+        HashSet<string> featureIds = HashSet<string>.Empty();
+        int platformCount = try reader.Count(platforms);
+        int featureCount = try reader.Count(features);
+        for (int index = 0; index < platformCount; index = index + 1) {
+            try CheckCancellation(token);
+            JsonNode platform = try reader.At(platforms, index);
+            string id = try registryJson.TextMember(platform, "id", 512);
+            platformIds.Add(id);
+        }
+        for (int index = 0; index < featureCount; index = index + 1) {
+            try CheckCancellation(token);
+            JsonNode feature = try reader.At(features, index);
+            string id = try registryJson.TextMember(feature, "id", 128);
+            featureIds.Add(id);
+        }
+
+        JsonNode schemaNode = try Member(plan, "schema");
+        string schema = try Text(schemaNode, 128, "schema");
+        try Require(schema == "dockpipe.product-integration.plan/v1", "schema");
+        JsonNode runIdNode = try Member(plan, "run_id");
+        string runId = try Identifier(runIdNode, "run_id");
+        JsonNode targets = try Member(plan, "targets");
+        int count = try ArrayCount(targets, 1, 64, "target_count");
+        HashSet<string> seen = HashSet<string>.Empty();
+        for (int index = 0; index < count; index = index + 1) {
+            try CheckCancellation(token);
+            JsonNode target = try reader.At(targets, index);
+            JsonNode idNode = try Member(target, "id");
+            string id = try Identifier(idNode, "target_id");
+            try Require(seen.Add(id), "duplicate_target");
+            try ValidateTarget(target, platformIds, featureIds, token);
+        }
+
+        return Result<void,string>.Success();
+    }
+}

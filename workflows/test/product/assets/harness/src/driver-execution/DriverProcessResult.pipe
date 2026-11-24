@@ -1,0 +1,9 @@
+module Dockpipe.Product.DriverExecution;
+
+public Record DriverProcessResult {
+    public DriverProcessKind kind = DriverProcessKind.Failed;
+    public bool exited = false;
+    public bool treeComplete = false;
+    public int exitCode = 0;
+    public string detail = "";
+}

@@ -1,0 +1,45 @@
+module Dockpipe.Product.RunIdentity.Tests;
+import Dockpipe.Product.QualificationFiles;
+import Dockpipe.Product.QualificationOutput;
+import Dockpipe.Product.RunIdentity;
+import PipeLang.IO;
+import PipeLang.Json;
+
+public model Class RunInputVerifierSuite {
+    private FileStreams input;
+    private ResumeInputPins retained;
+    private RunnerCapture runner;
+    private RunnerIdentityProjection projection;
+
+    public RunInputVerifierSuite(FileStreams input, FileStreams files, RunnerCapture runner,
+                                  JsonDocumentOutput runnerOutput, PrivateJsonStage runnerDigest) {
+        this.input = input;
+        this.runner = runner;
+        retained = new ResumeInputPins(files);
+        projection = new RunnerIdentityProjection(runnerOutput, runnerDigest);
+    }
+
+    private Result<FileDigest,string> Input(string name, CancellationToken token) {
+        Result<FileDigest,IoFailure> actual = input.DigestFile(name, 4194304, token);
+        if (actual.IsCancelled)
+            return Result<FileDigest,string>.Cancelled(actual.Error.code);
+        if (!actual.IsSuccess)
+            return Result<FileDigest,string>.Failure(actual.Error.code);
+
+        return Result<FileDigest,string>.Success(actual.Value);
+    }
+
+    public Result<void,string> Run(CancellationToken token) {
+        try {
+            FileDigest plan = try Input("plan.json", token);
+            FileDigest registry = try Input("registry.json", token);
+            QualificationRunnerIdentity identity = try runner.Capture(token);
+            FileDigest expected = try projection.Seal(identity, token);
+            return retained.VerifyRun(plan, registry, expected, token);
+        } finally {
+            Result<void,string> closed = projection.Close();
+            if (!closed.IsSuccess)
+                throw Error(closed.Error);
+        }
+    }
+}

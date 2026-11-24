@@ -1,0 +1,7 @@
+module Dockpipe.Product.QualificationOutput.Tests;
+
+public Interface InputCustodyFixture {
+    Result<void,string> ReplaceInput();
+    Result<void,string> ChangeRetainedRegistry();
+    Result<int,string> PendingOperations();
+}

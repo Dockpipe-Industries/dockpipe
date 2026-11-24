@@ -1,0 +1,27 @@
+module Dockpipe.Product.RunAdmission;
+import Dockpipe.Product.Qualification;
+
+// Single-use cursor over the registry-order rows admitted for one driver.
+public Class LaneCaseSelection {
+    private List<RegistryCase> selected;
+    private int driver;
+    private int position = 0;
+
+    public LaneCaseSelection(List<RegistryCase> selected, int driver) {
+        this.selected = selected;
+        this.driver = driver;
+    }
+
+    public Result<RegistryCase?,string> Next(CancellationToken token) {
+        if (driver < 1 || driver > 64)
+            return Result<RegistryCase?,string>.Failure("qualification.lane_selection.driver");
+        if (token.IsCancellationRequested)
+            return Result<RegistryCase?,string>.Cancelled("qualification.lane_selection.cancelled");
+        if (position == selected.Count)
+            return Result<RegistryCase?,string>.Success(null);
+
+        RegistryCase row = selected.At(position);
+        position = position + 1;
+        return Result<RegistryCase?,string>.Success(row);
+    }
+}

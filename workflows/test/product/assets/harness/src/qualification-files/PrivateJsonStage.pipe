@@ -1,0 +1,8 @@
+module Dockpipe.Product.QualificationFiles;
+import PipeLang.IO;
+
+// The stage seals the contents emitted by the corresponding JsonDocumentOutput.
+public Interface PrivateJsonStage {
+    Result<FileDigest,string> Commit(int expectedBytes, CancellationToken token);
+    Result<void,string> Close();
+}

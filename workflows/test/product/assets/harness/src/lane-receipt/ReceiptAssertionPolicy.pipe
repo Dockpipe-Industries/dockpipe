@@ -1,0 +1,99 @@
+module Dockpipe.Product.LaneReceipt;
+import PipeLang.Json;
+
+public Class ReceiptAssertionPolicy {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private ReceiptJson json;
+    private int retainedBytes;
+
+    public ReceiptAssertionPolicy(JsonReader reader, JsonStringIndexer indexer,
+                                  ReceiptJson json, int retainedBytes) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.json = json;
+        this.retainedBytes = retainedBytes;
+    }
+
+    private JsonStringIndexLimits Limits(int entries) {
+        JsonStringIndexLimits limits = new JsonStringIndexLimits {};
+        limits.entries = entries;
+        limits.retainedBytes = retainedBytes;
+        return limits;
+    }
+
+    private Result<void,string> Build(JsonNode expected, int count, JsonStringIndex keys,
+                                      CancellationToken token) {
+        for (int index = 0; index < count; index = index + 1) {
+            try json.CheckCancellation(token);
+            JsonNode name = try reader.At(expected, index);
+            bool unique = try indexer.AddString(keys, name, token);
+            try json.Require(unique, "duplicate_expected_assertion");
+        }
+
+        return Result<void,string>.Success();
+    }
+
+    private Result<bool,string> Verify(JsonNode actual, int count, JsonStringIndex keys,
+                                       JsonStringIndex seen, CancellationToken token) {
+        bool allPassed = true;
+        for (int index = 0; index < count; index = index + 1) {
+            try json.CheckCancellation(token);
+            JsonNode assertion = try reader.At(actual, index);
+            try json.Kind(assertion, JsonKind.Object, "assertion_object");
+            JsonNode name = try json.Member(assertion, "id");
+            try json.Kind(name, JsonKind.String, "assertion_id");
+            bool requested = try indexer.ContainsString(keys, name, token);
+            try json.Require(requested, "unrequested_assertion");
+            bool unique = try indexer.AddString(seen, name, token);
+            try json.Require(unique, "duplicate_assertion");
+
+            string status = try json.Field(assertion, "status", 6);
+            try json.Require(status == "passed" || status == "failed", "assertion_status");
+            try json.OptionalDetail(assertion, "detail", token);
+            if (status != "passed")
+                allPassed = false;
+        }
+
+        return Result<bool,string>.Success(allPassed);
+    }
+
+    private Result<bool,string> Inspect(JsonNode expected, int expectedCount, JsonNode actual,
+                                        int actualCount, JsonStringIndex keys,
+                                        JsonStringIndex seen, CancellationToken token) {
+        try Build(expected, expectedCount, keys, token);
+        bool allPassed = try Verify(actual, actualCount, keys, seen, token);
+        return Result<bool,string>.Success(allPassed && actualCount == expectedCount);
+    }
+
+    public Result<bool,string> Admit(JsonNode expected, JsonNode row, CancellationToken token) {
+        int expectedCount = try json.Count(expected, 4194304, "expected_assertions");
+        JsonNode? actual = try reader.FindMember(row, "assertions");
+        if (!actual.HasValue)
+            return Result<bool,string>.Success(expectedCount == 0);
+
+        int actualCount = try json.Count(actual.Value, expectedCount, "assertion_count");
+        if (actualCount == 0)
+            return Result<bool,string>.Success(expectedCount == 0);
+
+        JsonStringIndex keys = new JsonStringIndex {};
+        JsonStringIndex seen = new JsonStringIndex {};
+        try {
+            keys = try indexer.BeginStringIndex(expected.document, Limits(expectedCount));
+            seen = try indexer.BeginStringIndex(actual.Value.document, Limits(actualCount));
+            return Inspect(expected, expectedCount, actual.Value, actualCount, keys, seen, token);
+        } finally {
+            Result<void,string> seenClosed = Result<void,string>.Success();
+            Result<void,string> keysClosed = Result<void,string>.Success();
+            if (seen.generation != 0)
+                seenClosed = indexer.CloseStringIndex(seen);
+            if (keys.generation != 0)
+                keysClosed = indexer.CloseStringIndex(keys);
+
+            if (!seenClosed.IsSuccess)
+                throw Error(seenClosed.Error);
+            if (!keysClosed.IsSuccess)
+                throw Error(keysClosed.Error);
+        }
+    }
+}

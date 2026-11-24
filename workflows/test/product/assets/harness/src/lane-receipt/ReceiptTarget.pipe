@@ -1,0 +1,8 @@
+module Dockpipe.Product.LaneReceipt;
+
+public Record ReceiptTarget {
+    public string id = "";
+    public string platform = "";
+    public string kind = "";
+    public string artifactSha256 = "";
+}

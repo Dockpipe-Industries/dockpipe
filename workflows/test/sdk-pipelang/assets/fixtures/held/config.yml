@@ -1,0 +1,7 @@
+name: sdk-held-fixture
+vault: none
+docker_preflight: false
+steps:
+  - id: hold
+    kind: host
+    run: assets/scripts/hold.sh

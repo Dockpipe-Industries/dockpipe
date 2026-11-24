@@ -1,0 +1,58 @@
+module Dockpipe.WorkflowControl.Proof;
+import Dockpipe.SDK;
+import PipeLang.Testing.Async;
+
+public model Class ControlHarness {
+    private Client primary;
+    private Client relocated;
+    private TestClock clock;
+    private ControlInputs inputs;
+    private TraceFiles files;
+
+    public ControlHarness(Transport primaryTransport, Transport relocatedTransport,
+                          TestClock clock, ControlInputs inputs, TraceFiles files) {
+        this.primary = new Client(primaryTransport);
+        this.relocated = new Client(relocatedTransport);
+        this.clock = clock;
+        this.inputs = inputs;
+        this.files = files;
+    }
+
+    private pure int BodyMilliseconds() {
+        return 8000;
+    }
+
+    private pure int CleanupMilliseconds() {
+        return 5000;
+    }
+
+    private pure bool HasRelocatedProject() {
+        return inputs.relocated.workflowFile != "" && inputs.relocated.workdir != "";
+    }
+
+    public pure int WatchdogMilliseconds() {
+        int count = 4;
+        if (HasRelocatedProject())
+            count = count + 1;
+
+        return count * (BodyMilliseconds() + CleanupMilliseconds()) + 5000;
+    }
+
+    public async Task<Result<List<AsyncTestResult>,string>> Run(
+        CancellationToken bodyToken, CancellationToken cleanupToken) {
+        List<IAsyncTestCase> cases = List<IAsyncTestCase>.Empty();
+        cases.Add(new ControlCase(ControlKind.Default, primary, clock, inputs.primary, files, inputs.maximumTraceBytes));
+        cases.Add(new ControlCase(ControlKind.SkipTests, primary, clock, inputs.primary, files, inputs.maximumTraceBytes));
+        cases.Add(new ControlCase(ControlKind.FailingTest, primary, clock, inputs.primary, files, inputs.maximumTraceBytes));
+        cases.Add(new ControlCase(ControlKind.Interrupt, primary, clock, inputs.primary, files, inputs.maximumTraceBytes));
+        if (HasRelocatedProject())
+            cases.Add(new ControlCase(ControlKind.RelocatedPackage, relocated, clock,
+                inputs.relocated, files, inputs.maximumTraceBytes));
+
+        AsyncTestRunner runner = new AsyncTestRunner(clock);
+        Result<List<AsyncTestResult>,string> results = await runner.RunAll(
+            cases, BodyMilliseconds(), CleanupMilliseconds(), bodyToken, cleanupToken);
+
+        return results;
+    }
+}

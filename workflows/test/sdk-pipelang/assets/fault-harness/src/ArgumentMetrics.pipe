@@ -1,0 +1,9 @@
+module Dockpipe.SDK.FaultProof;
+
+// Actual stored argv, measured using the selected SDK's UTF-16/quoting helpers.
+public Record ArgumentMetrics {
+    public int argumentCount;
+    public int commandCharacters;
+    public int utf8Bytes;
+    public int argumentStorageBytes;
+}

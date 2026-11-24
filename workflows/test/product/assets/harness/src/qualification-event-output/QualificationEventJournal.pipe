@@ -1,0 +1,22 @@
+module Dockpipe.Product.QualificationEventOutput;
+import Dockpipe.Product.QualificationEvents;
+import PipeLang.IO;
+
+public model Class QualificationEventJournal {
+    private QualificationEventLog log;
+
+    public QualificationEventJournal(ExclusiveFileOutput output, ExistingFileAppend append) {
+        log = new QualificationEventLog(output, append, "events.jsonl");
+    }
+
+    public Result<void,IoFailure> Open(bool resume, int maximumBytes, CancellationToken token) {
+        if (resume)
+            return log.BindExisting(maximumBytes, token);
+
+        return log.Create(maximumBytes, token);
+    }
+
+    public Result<void,IoFailure> Append(ByteBuffer line, CancellationToken token) {
+        return log.AppendEncodedLine(line, token);
+    }
+}

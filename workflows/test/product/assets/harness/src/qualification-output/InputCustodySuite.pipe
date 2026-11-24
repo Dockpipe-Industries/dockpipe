@@ -1,0 +1,37 @@
+module Dockpipe.Product.QualificationOutput.Tests;
+import Dockpipe.Product.QualificationOutput;
+import PipeLang.IO;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+public model Class InputCustodySuite {
+    private JsonReader reader;
+    private FileStreams input;
+    private FileStreams retained;
+    private ExclusiveFileOutput output;
+    private InputCustodyFixture fixture;
+
+    public InputCustodySuite(JsonReader reader, FileStreams input, FileStreams retained,
+                             ExclusiveFileOutput output, InputCustodyFixture fixture) {
+        this.reader = reader;
+        this.input = input;
+        this.retained = retained;
+        this.output = output;
+        this.fixture = fixture;
+    }
+
+    public InputCustodyReport Run(CancellationToken token, CancellationToken cancelled) {
+        List<TestResult> results = List<TestResult>.Empty();
+        TestRunner runner = new TestRunner();
+        for (int scenario = 0; scenario < 8; scenario = scenario + 1)
+            results.Add(runner.RunProbe(new InputCustodyCase(reader, input, retained, output, fixture, scenario), token, cancelled));
+
+        bool allPassed = results.Count == 8;
+        foreach (TestResult result in results) {
+            if (result.outcome != TestOutcome.Passed || !result.bodyRan || !result.cleanupRan)
+                allPassed = false;
+        }
+
+        return InputCustodyReport(allPassed, results);
+    }
+}

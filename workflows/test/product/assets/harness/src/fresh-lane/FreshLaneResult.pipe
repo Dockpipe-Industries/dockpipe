@@ -1,0 +1,11 @@
+module Dockpipe.Product.FreshLane;
+import Dockpipe.Product.LaneReceipt;
+import PipeLang.IO;
+
+public Record FreshLaneResult {
+    public int requested = 0;
+    public FileDigest? request;
+    public FileDigest? process;
+    public FileDigest? receipt;
+    public AdmittedReceipt? admitted;
+}

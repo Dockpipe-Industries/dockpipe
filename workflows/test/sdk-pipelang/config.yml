@@ -1,0 +1,57 @@
+name: sdk-pipelang-qualification
+description: Qualify a typed PipeLang consumer of the installed Dockpipe SDK.
+platforms: [linux, deb]
+vault: none
+docker_preflight: false
+vars:
+  PRODUCT_SANITIZERS: "OFF"
+  SDK_ALL_PROFILES: "false"
+control:
+  schema: 1
+  kind: host
+  source: |
+    if (inputs.allProfiles) {
+        foreach (string mode in inputs.profiles) {
+            try steps.prepare.Run(mode);
+            try steps.prove.Run(mode);
+        }
+    } else {
+        try steps.prepare.Run(inputs.selectedProfile);
+        try steps.prove.Run(inputs.selectedProfile);
+    }
+  inputs:
+    allProfiles:
+      type: bool
+      env: SDK_ALL_PROFILES
+    selectedProfile:
+      type: string
+      env: PRODUCT_SANITIZERS
+    profiles:
+      type: List<string>
+      value: ["OFF", "ON"]
+steps:
+  - id: prepare
+    control:
+      parameters:
+        - name: mode
+          type: string
+          env: PRODUCT_SANITIZERS
+    kind: host
+    cwd: artifacts
+    scopes:
+      source: repo
+      artifacts: artifacts
+    run: assets/scripts/prepare.sh
+    outputs: sdk-proof.env
+  - id: prove
+    control:
+      parameters:
+        - name: mode
+          type: string
+          env: PRODUCT_SANITIZERS
+    kind: host
+    cwd: artifacts
+    scopes:
+      source: repo
+      artifacts: artifacts
+    run: assets/scripts/prove.sh

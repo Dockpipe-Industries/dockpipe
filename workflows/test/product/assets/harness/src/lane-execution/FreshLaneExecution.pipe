@@ -1,0 +1,76 @@
+module Dockpipe.Product.LaneExecution;
+import Dockpipe.Product.DriverExecution;
+import Dockpipe.Product.DriverSources;
+import Dockpipe.Product.FreshLane;
+import Dockpipe.Product.LaneReceipt;
+import Dockpipe.Product.QualificationEventOutput;
+import Dockpipe.Product.QualificationFiles;
+import Dockpipe.Product.RunAdmission;
+import PipeLang.IO;
+import PipeLang.Json;
+
+public model Class FreshLaneExecution {
+    private FreshQualificationLane lane;
+    private LaneMetadataBudget budget;
+    private QualificationEventPort events;
+    private string targetId;
+    private string driverId;
+
+    public FreshLaneExecution(JsonReader reader, JsonStringIndexer indexer, int indexRetainedBytes,
+                              FileStreams product, FileStreams repository, FileStreams invocation,
+                              FileStreams output, LanePaths paths, DriverProcess process, QualificationEventPort events,
+                              string targetId, string driverId, int receiptMetadataBytes,
+                              JsonDocumentOutput requestOutput, PrivateJsonStage requestStage,
+                              JsonDocumentOutput processOutput, PrivateJsonStage processStage) {
+        budget = new LaneMetadataBudget(receiptMetadataBytes);
+        DriverSourcePins pins = new DriverSourcePins(reader, product, repository);
+        this.events = events;
+        this.targetId = targetId;
+        this.driverId = driverId;
+        lane = new FreshQualificationLane(reader, indexer, indexRetainedBytes, budget, invocation,
+            output, pins, paths, process, requestOutput, requestStage, processOutput, processStage);
+    }
+
+    public Result<QualificationLaneOutcome,string> Run(QualificationLaneInput selected, CancellationToken token) {
+        LaneCaseSelection cases = new LaneCaseSelection(selected.cases, selected.ordinal);
+        Result<PreparedFreshLane,string> prepared = lane.Prepare(selected.identity, selected.target,
+            selected.driver, cases, token);
+        if (prepared.IsCancelled)
+            return Result<QualificationLaneOutcome,string>.Cancelled(prepared.Error);
+        if (!prepared.IsSuccess)
+            return Outcome(Result<FreshLaneResult,string>.Failure(prepared.Error));
+
+        if (prepared.Value.requested > 0) {
+            QualificationEvent stage = new QualificationEvent {};
+            stage.kind = QualificationEventKind.DriverStarted;
+            stage.target = targetId;
+            stage.driver = driverId;
+            Result<void,IoFailure> published = events.Publish(stage, token);
+            if (published.IsCancelled)
+                return Result<QualificationLaneOutcome,string>.Cancelled(published.Error.code);
+            if (!published.IsSuccess)
+                return Result<QualificationLaneOutcome,string>.Failure(published.Error.code);
+        }
+
+        return Outcome(lane.Observe(prepared.Value, token));
+    }
+
+    private Result<QualificationLaneOutcome,string> Outcome(Result<FreshLaneResult,string> observed) {
+        if (observed.IsCancelled)
+            return Result<QualificationLaneOutcome,string>.Cancelled(observed.Error);
+
+        QualificationLaneOutcome complete = new QualificationLaneOutcome {};
+        complete.remainingMetadataBytes = budget.RemainingBytes();
+        complete.exitCode = lane.ExitCode();
+        if (observed.IsSuccess)
+            complete.admitted = observed.Value.admitted;
+        else
+            complete.rejection = observed.Error;
+
+        return Result<QualificationLaneOutcome,string>.Success(complete);
+    }
+
+    public Result<void,string> Close() {
+        return lane.Close();
+    }
+}

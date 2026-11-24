@@ -1,0 +1,25 @@
+module Dockpipe.Product.RunIdentity;
+import PipeLang.Json;
+
+public Class RunnerIdentityFields {
+    private JsonDocumentOutput output;
+
+    public RunnerIdentityFields(JsonDocumentOutput output) {
+        this.output = output;
+    }
+
+    private Result<void,string> Text(string field, string content) {
+        try output.Name(field);
+        return output.WriteText(content);
+    }
+
+    public Result<void,string> Write(QualificationRunnerIdentity selected) {
+        try output.BeginObject();
+        try Text("driver_executable", selected.driverExecutable);
+        try Text("driver_executable_sha256", selected.driverExecutableSha256);
+        try Text("executable", selected.executable);
+        try Text("executable_sha256", selected.executableSha256);
+        try Text("schema", "dockpipe.product-integration.native-runner/v1");
+        return output.EndObject();
+    }
+}

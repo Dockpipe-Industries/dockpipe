@@ -1,0 +1,339 @@
+module Dockpipe.Product.LaneReceipt.Tests;
+import Dockpipe.Product.LaneReceipt;
+import Dockpipe.Product.QualificationFiles;
+import PipeLang.IO;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+public Class LaneReceiptCase : IProbeTestCase {
+    private JsonReader reader;
+    private ReceiptPolicy policy;
+    private QualificationJsonFile readFile;
+    private int scenario;
+    private int requestDocument = 0;
+    private int receiptDocument = 0;
+
+    public LaneReceiptCase(JsonReader reader, JsonStringIndexer indexer, FileStreams files, int scenario) {
+        this.reader = reader;
+        policy = new ReceiptPolicy(reader, indexer, files, 4096);
+        readFile = new QualificationJsonFile(reader, files);
+        this.scenario = scenario;
+    }
+
+    public pure string Id() => "qualification.receipt.lane." + string.FromInt(scenario);
+    public pure string Name() => "qualification lane receipt admission " + string.FromInt(scenario);
+
+    private pure string Evidence(bool matching) {
+        string digest = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+        if (!matching)
+            digest = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+
+        return ",\"evidence\":[{\"path\":\"proof/a.txt\",\"sha256\":\"" + digest + "\"}]";
+    }
+
+    private pure string Assertion(string id, string status) {
+        return "{\"id\":\"" + id + "\",\"status\":\"" + status + "\"}";
+    }
+
+    private pure string CaseRow(string id, string journey, string layer, string tail) {
+        return "{\"id\":\"" + id + "\",\"scenario\":\"" + journey + "\",\"layer\":\"" + layer + "\"" + tail + "}";
+    }
+
+    private Result<void,TestFailure> Append(int document, string text) {
+        return Assert.True(reader.AppendDocument(document, ByteBuffer.FromUtf8(text)).IsSuccess,
+                           "fixture JSON fragment appended");
+    }
+
+    private pure JsonReadLimits SmallFixtureLimits() {
+        JsonReadLimits limits = new JsonReadLimits {};
+        limits.inputBytes = 32768;
+        limits.nodes = 256;
+        limits.retainedBytes = 262144;
+        return limits;
+    }
+
+    private Result<void,TestFailure> AppendFullMatrix(int document, bool requested) {
+        List<string> layers = List<string>.Empty();
+        layers.Add("component");
+        layers.Add("installed_e2e");
+        layers.Add("guided_ui");
+        layers.Add("human");
+
+        List<string> scenarios = List<string>.Empty();
+        scenarios.Add("happy");
+        scenarios.Add("failure");
+        scenarios.Add("cancellation");
+        scenarios.Add("restart-recovery");
+
+        string tail = ",\"status\":\"not_run\"";
+        if (requested)
+            tail = ",\"required_assertions\":[\"assert.a\"]";
+
+        bool first = true;
+        for (int feature = 0; feature < 512; feature = feature + 1) {
+            string id = "feature." + string.FromInt(feature);
+            foreach (string layer in layers) {
+                foreach (string journey in scenarios) {
+                    if (!first)
+                        try Append(document, ",");
+
+                    first = false;
+                    try Append(document, CaseRow(id, journey, layer, tail));
+                }
+            }
+        }
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    private Result<void,TestFailure> AppendRows() {
+        string a = Assertion("assert.a", "passed");
+        string b = Assertion("assert.b", "passed");
+        string full = ",\"status\":\"passed\",\"assertions\":[" + a + "," + b + "]";
+        string complete = CaseRow("feature", "happy", "component", full + Evidence(true) + ",\"extension\":42");
+        string failed = CaseRow("feature", "failure", "component", ",\"status\":\"failed\"");
+        string human = CaseRow("feature", "happy", "human", ",\"status\":\"manual_pending\"");
+        if (scenario == 0)
+            return Append(receiptDocument, complete + "," + failed + "," + human);
+        if (scenario == 1 || scenario == 13)
+            return Append(receiptDocument, failed + "," + human);
+        if (scenario == 2)
+            return Append(receiptDocument, CaseRow("feature", "happy", "component", full));
+        if (scenario == 3)
+            return Append(receiptDocument, CaseRow("feature", "happy", "component",
+                ",\"status\":\"passed\",\"assertions\":[" + a + "]" + Evidence(true)));
+        if (scenario == 4)
+            return Append(receiptDocument, CaseRow("feature", "happy", "component",
+                ",\"status\":\"passed\",\"assertions\":[" + a + "," + Assertion("assert.c", "passed") + "]" + Evidence(true)));
+        if (scenario == 5)
+            return Append(receiptDocument, CaseRow("feature", "happy", "component",
+                ",\"status\":\"passed\",\"assertions\":[" + a + "," + Assertion("assert.\\u0061", "passed") + "]" + Evidence(true)));
+        if (scenario == 6)
+            return Append(receiptDocument, complete + "," + complete);
+        if (scenario == 7)
+            return Append(receiptDocument, CaseRow("feature", "failure", "installed_e2e", ",\"status\":\"blocked\""));
+        if (scenario == 9)
+            return Append(receiptDocument, CaseRow("feature", "failure", "component",
+                ",\"status\":\"failed\"" + Evidence(false)));
+        if (scenario == 10)
+            return Append(receiptDocument, CaseRow("feature", "happy", "component",
+                ",\"status\":\"passed\",\"assertions\":[" + a + "," + Assertion("assert.b", "failed") + "]" + Evidence(true)));
+        if (scenario == 16)
+            return Append(receiptDocument, CaseRow("feature", "failure", "component", ",\"status\":\"ignored\""));
+        if (scenario == 17)
+            return Append(receiptDocument, CaseRow("feature", "failure", "component", ",\"status\":\"failed\",\"reason\":7"));
+        if (scenario == 18)
+            return Append(receiptDocument, CaseRow("feature", "happy", "component",
+                ",\"status\":\"failed\",\"assertions\":[" + Assertion("assert.a", "unknown") + "]"));
+        if (scenario == 19)
+            return Append(receiptDocument, "true");
+        if (scenario == 20)
+            return Result<void,TestFailure>.Success();
+        if (scenario == 21 || scenario == 22) {
+            try Append(receiptDocument, "{\"id\":\"feature\",\"scenario\":\"failure\",\"layer\":\"component\"," +
+                "\"status\":\"failed\",\"reason\":\"");
+            string text = "é";
+            for (int length = 1; length < 4096; length = length * 2)
+                text = text + text;
+
+            try Append(receiptDocument, text);
+            if (scenario == 22)
+                try Append(receiptDocument, "é");
+
+            return Append(receiptDocument, "\"}");
+        }
+        if (scenario == 23)
+            return Append(receiptDocument, complete + "," + failed + "," + human + "," + failed);
+        if (scenario == 24)
+            return AppendFullMatrix(receiptDocument, false);
+
+        return Append(receiptDocument, complete);
+    }
+
+    public Result<void,TestFailure> Setup(CancellationToken token) {
+        JsonReadLimits limits = SmallFixtureLimits();
+        if (scenario == 24)
+            limits = new JsonReadLimits {};
+
+        Result<int,string> request = reader.BeginDocument(limits);
+        try Assert.True(request.IsSuccess, "request document admitted");
+        requestDocument = request.Value;
+        try Append(requestDocument, "[");
+        if (scenario == 24) {
+            try AppendFullMatrix(requestDocument, true);
+        } else {
+            try Append(requestDocument,
+                CaseRow("feature", "happy", "component", ",\"required_assertions\":[\"assert.a\",\"assert.b\"]") + "," +
+                CaseRow("feature", "failure", "component", ",\"required_assertions\":[\"assert.failure\"]") + "," +
+                CaseRow("feature", "happy", "human", ",\"required_assertions\":[\"assert.human\"]"));
+        }
+        try Append(requestDocument, "]");
+
+        if (scenario >= 25)
+            return Result<void,TestFailure>.Success();
+
+        Result<int,string> received = reader.BeginDocument(limits);
+        try Assert.True(received.IsSuccess, "separate lane document admitted");
+        receiptDocument = received.Value;
+        string target = "\"artifact_sha256\":\"artifact\",\"kind\":\"local\",\"platform\":\"linux\",\"id\":\"target\"";
+        if (scenario == 11)
+            target = target + ",\"extra\":0";
+
+        string runId = "run";
+        if (scenario == 12)
+            runId = "different";
+
+        string plan = "plan";
+        if (scenario == 14)
+            plan = "different";
+
+        string registry = "registry";
+        if (scenario == 15)
+            registry = "different";
+
+        try Append(receiptDocument, "{\"schema\":\"dockpipe.product-integration.lane/v1\",\"run_id\":\"" + runId +
+            "\",\"plan_sha256\":\"" + plan + "\",\"registry_sha256\":\"" + registry +
+            "\",\"target\":{" + target + "},\"cases\":[");
+        try AppendRows();
+        return Append(receiptDocument, "]}");
+    }
+
+    private pure string FailureCode() {
+        if (scenario == 2 || scenario == 3 || scenario == 10)
+            return "incomplete_pass";
+        if (scenario == 4)
+            return "unrequested_assertion";
+        if (scenario == 5)
+            return "duplicate_assertion";
+        if (scenario == 6 || scenario == 7)
+            return "unrequested_or_duplicate_case";
+        if (scenario == 8)
+            return "failing_process_pass";
+        if (scenario == 9)
+            return "evidence_mismatch";
+        if (scenario == 11)
+            return "target_identity";
+        if (scenario == 12)
+            return "run_identity";
+        if (scenario == 14)
+            return "plan_identity";
+        if (scenario == 15)
+            return "registry_identity";
+        if (scenario == 16)
+            return "case_status";
+        if (scenario == 17 || scenario == 22)
+            return "detail.reason";
+        if (scenario == 18)
+            return "text.status";
+        if (scenario == 19)
+            return "case_object";
+
+        return "case_count";
+    }
+
+    private Result<void,TestFailure> FromFile(ReceiptRequest request, CancellationToken token,
+                                              CancellationToken probeToken) {
+        string path = "lane-result.json";
+        string expectedDigest = "f75aef8f265853f8d605edf0ec86f017b4124529b7d0dbab18c6a507610b6390";
+        int expectedBytes = 291;
+        if (scenario == 26) {
+            path = "lane-result-max.json";
+            expectedDigest = "ca76a7c2a7929cf3bae059d83bb7d630c932d202d8bea95bbaf3f07a173ccd1f";
+            expectedBytes = 4194304;
+        } else if (scenario == 27) {
+            path = "lane-result-invalid.json";
+        } else if (scenario == 28) {
+            path = "proof/leaf-link";
+        }
+
+        JsonReadLimits limits = SmallFixtureLimits();
+        if (scenario == 26)
+            limits = new JsonReadLimits {};
+
+        if (scenario == 29) {
+            Result<CapturedQualificationJson,string> cancelled = readFile.Open(path, limits, probeToken);
+            try Assert.True(cancelled.IsCancelled, "pre-cancelled receipt performs no admission");
+        }
+
+        Result<CapturedQualificationJson,string> captured = readFile.Open(path, limits, token);
+        if (scenario == 27)
+            return Assert.True(captured.IsFailure && captured.Error == "json.duplicate_key",
+                               "duplicate keys are refused after real file capture");
+        if (scenario == 28)
+            return Assert.True(captured.IsFailure && captured.Error == "qualification.json.capture.io.file_type",
+                               "a symlink cannot supply receipt bytes");
+
+        try Assert.True(captured.IsSuccess, "actual lane result bytes admitted");
+        try Assert.Equal<int>(expectedBytes, captured.Value.sourceFile.byteCount, "exact captured byte count");
+        try Assert.Equal<string>(expectedDigest, captured.Value.sourceFile.sha256, "exact original file digest");
+        int document = captured.Value.root.document;
+        Result<ByteBuffer,string> prefix = reader.InputSlice(document, 0, 2);
+        try Assert.True(prefix.IsSuccess && prefix.Value.DecodeUtf8() == " \n", "original input whitespace retained");
+        try Assert.Equal<int>(expectedBytes, reader.InputLength(document).Value, "exact captured bytes owned by reader");
+
+        Result<AdmittedReceipt,string> admitted = policy.Admit(captured.Value.root, request, 0, token);
+        try Assert.True(admitted.IsSuccess, "captured lane file passes ordinary receipt admission");
+        try Assert.Equal<int>(0, admitted.Value.passing, "reported failure remains unpassed");
+        return Assert.Equal<int>(1, admitted.Value.count, "exact captured row retained");
+    }
+
+    public Result<void,TestFailure> Body(CancellationToken token) {
+        return Assert.True(false, "these contracts use method-scoped probe dispatch");
+    }
+
+    public Result<void,TestFailure> BodyWithProbe(CancellationToken token, CancellationToken probeToken) {
+        Result<JsonNode,string> cases = reader.CompleteDocument(requestDocument, token);
+        try Assert.True(cases.IsSuccess, "real request JSON parsed");
+        ReceiptRequest request = ReceiptRequest("run", "plan", "registry",
+            ReceiptTarget("target", "linux", "local", "artifact"), cases.Value);
+        if (scenario >= 25)
+            return FromFile(request, token, probeToken);
+
+        Result<JsonNode,string> receipt = reader.CompleteDocument(receiptDocument, token);
+        try Assert.True(receipt.IsSuccess, "real lane JSON parsed");
+        if (scenario == 20) {
+            Result<AdmittedReceipt,string> cancelled = policy.Admit(receipt.Value, request, 0, probeToken);
+            try Assert.True(cancelled.IsCancelled, "pre-cancel keeps the receipt unpublished");
+            return Assert.Equal<string>("qualification.receipt.cancelled", cancelled.Error, "cancellation identity");
+        }
+
+        int exitCode = 0;
+        if (scenario == 8 || scenario == 13)
+            exitCode = 1;
+
+        Result<AdmittedReceipt,string> admitted = policy.Admit(receipt.Value, request, exitCode, token);
+        if (scenario == 0) {
+            try Assert.True(admitted.IsSuccess, "one complete pass and two distinct nonpasses admitted");
+            try Assert.Equal<int>(3, admitted.Value.count, "all original cases preserved");
+            try Assert.Equal<int>(1, admitted.Value.passing, "only fully evidenced pass counted");
+            JsonNode first = reader.At(admitted.Value.rows, 0).Value;
+            return Assert.True(reader.FindMember(first, "extension").Value.HasValue, "borrowed row preserves extension fields");
+        }
+
+        if (scenario == 1 || scenario == 13 || scenario == 21) {
+            try Assert.True(admitted.IsSuccess, "nonpassing receipt accepted");
+            return Assert.Equal<int>(0, admitted.Value.passing, "no passing coverage inferred");
+        }
+        if (scenario == 24) {
+            try Assert.True(admitted.IsSuccess, "full lane case matrix admitted in one invocation");
+            try Assert.Equal<int>(0, admitted.Value.passing, "unobserved cases remain unpassed");
+            return Assert.Equal<int>(8192, admitted.Value.count, "all feature/scenario/layer rows retained");
+        }
+
+        try Assert.True(admitted.IsFailure, "invalid receipt remains unpublished");
+        return Assert.Equal<string>("qualification.receipt." + FailureCode(), admitted.Error, "owning failure identity");
+    }
+
+    public Result<void,TestFailure> Cleanup() {
+        Result<void,string> receiptClosed = Result<void,string>.Success();
+        Result<void,string> requestClosed = Result<void,string>.Success();
+        if (receiptDocument != 0)
+            receiptClosed = reader.CloseDocument(receiptDocument);
+        if (requestDocument != 0)
+            requestClosed = reader.CloseDocument(requestDocument);
+
+        Result<void,string> fileClosed = readFile.Close();
+        return Assert.True(receiptClosed.IsSuccess && requestClosed.IsSuccess && fileClosed.IsSuccess,
+                           "independent request and receipt resource cleanup");
+    }
+}

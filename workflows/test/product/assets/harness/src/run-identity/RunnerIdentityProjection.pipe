@@ -1,0 +1,30 @@
+module Dockpipe.Product.RunIdentity;
+import Dockpipe.Product.QualificationFiles;
+import PipeLang.IO;
+import PipeLang.Json;
+
+public Class RunnerIdentityProjection {
+    private JsonDocumentOutput output;
+    private PrivateJsonStage witness;
+    private RunnerIdentityFields fields;
+
+    public RunnerIdentityProjection(JsonDocumentOutput output, PrivateJsonStage witness) {
+        this.output = output;
+        this.witness = witness;
+        fields = new RunnerIdentityFields(output);
+    }
+
+    public Result<FileDigest,string> Seal(QualificationRunnerIdentity selected, CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<FileDigest,string>.Cancelled("qualification.runner_identity.cancelled");
+
+        try fields.Write(selected);
+
+        int bytes = try output.Finish();
+        return witness.Commit(bytes, token);
+    }
+
+    public Result<void,string> Close() {
+        return witness.Close();
+    }
+}

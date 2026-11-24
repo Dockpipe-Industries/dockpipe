@@ -1,0 +1,11 @@
+module Dockpipe.Product.LaneReceipt;
+import PipeLang.Json;
+
+// Captured and admitted by the caller. This record borrows the cases document.
+public Record ReceiptRequest {
+    public string runId = "";
+    public string planSha256 = "";
+    public string registrySha256 = "";
+    public ReceiptTarget target;
+    public JsonNode cases;
+}

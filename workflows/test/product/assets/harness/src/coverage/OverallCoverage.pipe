@@ -1,0 +1,10 @@
+module Dockpipe.Product.Coverage;
+
+public Record OverallCoverage {
+    public bool selectedTargetsQualified = false;
+    public bool fullProductQualified = false;
+    public float selectedCaseCoverage = 0.0;
+    public int required = 0;
+    public int passed = 0;
+    public List<string> unconfiguredPlatformProfiles = List<string>.Empty();
+}

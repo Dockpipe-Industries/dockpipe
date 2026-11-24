@@ -1,0 +1,9 @@
+module Dockpipe.WorkflowControl.Proof;
+
+public Enum ControlKind {
+    Default,
+    SkipTests,
+    FailingTest,
+    Interrupt,
+    RelocatedPackage
+}

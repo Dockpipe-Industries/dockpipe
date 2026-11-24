@@ -1,0 +1,315 @@
+module Dockpipe.WorkflowControl.Proof;
+import Dockpipe.SDK;
+import PipeLang.Testing;
+import PipeLang.Testing.Async;
+
+public Class ControlCase : IAsyncTestCase {
+    private ControlKind kind;
+    private Client client;
+    private TestClock clock;
+    private ProjectInputs inputs;
+    private TraceFiles files;
+    private int maximumTraceBytes;
+    private string tracePath = "";
+    private OperationId active = OperationId(0, 0);
+    private bool owned = false;
+    private bool complete = true;
+
+    public ControlCase(ControlKind kind, Client client, TestClock clock,
+                       ProjectInputs inputs, TraceFiles files, int maximumTraceBytes) {
+        this.kind = kind;
+        this.client = client;
+        this.clock = clock;
+        this.inputs = inputs;
+        this.files = files;
+        this.maximumTraceBytes = maximumTraceBytes;
+    }
+
+    private pure string PlatformPrefix() {
+        if (inputs.platform == ControlPlatform.Linux)
+            return "workflow-control.linux.";
+
+        return "workflow-control.windows.";
+    }
+
+    public pure string Id() {
+        if (kind == ControlKind.Default)
+            return PlatformPrefix() + "default";
+        if (kind == ControlKind.SkipTests)
+            return PlatformPrefix() + "skip-tests";
+        if (kind == ControlKind.FailingTest)
+            return PlatformPrefix() + "failure-cleanup";
+        if (kind == ControlKind.Interrupt)
+            return PlatformPrefix() + "interrupt-cleanup";
+
+        return PlatformPrefix() + "relocated-package";
+    }
+
+    public pure string Name() {
+        return Id();
+    }
+
+    private pure string TraceName() {
+        if (kind == ControlKind.Default)
+            return "control-source-default.trace";
+        if (kind == ControlKind.SkipTests)
+            return "control-source-skip.trace";
+        if (kind == ControlKind.FailingTest)
+            return "control-source-failure.trace";
+        if (kind == ControlKind.Interrupt)
+            return "control-source-interrupt.trace";
+
+        return "control-source-relocated.trace";
+    }
+
+    private pure string ExpectedTrace() {
+        if (kind == ControlKind.SkipTests)
+            return "build:alpha\nbuild:beta\nhygiene:literal:argument:true\ncleanup\n";
+        if (kind == ControlKind.FailingTest)
+            return "test\ncleanup\n";
+        if (kind == ControlKind.Interrupt)
+            return "test\nready\ncleanup\n";
+
+        return "test\nbuild:alpha\nbuild:beta\nhygiene:literal:argument:true\ncleanup\n";
+    }
+
+    private Result<TestStepResult,string> Failed(string code, string message) {
+        return Result<TestStepResult,string>.Success(
+            TestStepResult(TestOutcome.Failed, TestFailure(code, message)));
+    }
+
+    private Result<TestStepResult,string> Checked(Result<void,TestFailure> assertion) {
+        TestSteps steps = new TestSteps();
+
+        return Result<TestStepResult,string>.Success(steps.From(assertion));
+    }
+
+    private Result<TestStepResult,string> PhaseError(bool cancelled, string message) {
+        if (cancelled)
+            return Result<TestStepResult,string>.Cancelled(message);
+
+        return Result<TestStepResult,string>.Failure(message);
+    }
+
+    private Result<int,string> Remaining(TestDeadline deadline, CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<int,string>.Cancelled("Workflow-control phase cancelled; acquired custody is retained");
+
+        Result<int,string> now = clock.NowMilliseconds();
+        if (!now.IsSuccess)
+            return now;
+
+        TestDeadlines deadlines = new TestDeadlines();
+        int remaining = deadlines.RemainingMilliseconds(deadline, now.Value);
+        if (remaining == 0)
+            return Result<int,string>.Failure("Workflow-control phase deadline exhausted");
+
+        if (remaining > 5000)
+            remaining = 5000;
+
+        return Result<int,string>.Success(remaining);
+    }
+
+    public async Task<Result<TestStepResult,string>> Setup(TestDeadline deadline, CancellationToken token) {
+        Result<int,string> remaining = Remaining(deadline, token);
+        if (!remaining.IsSuccess)
+            return PhaseError(remaining.IsCancelled, remaining.Error);
+
+        if (inputs.workdir == "" || inputs.workflowFile == "" || inputs.traceRoot == "" || maximumTraceBytes <= 0)
+            return Failed("control.inputs", "Composition must supply opened project/config/trace inputs and a byte bound");
+
+        string separator = "\\";
+        if (inputs.platform == ControlPlatform.Linux)
+            separator = "/";
+
+        tracePath = inputs.traceRoot + separator + TraceName();
+        Result<TraceRead,string> previous = files.Read(inputs.rootIndex, tracePath, maximumTraceBytes);
+        if (!previous.IsSuccess)
+            return PhaseError(previous.IsCancelled, previous.Error);
+
+        Result<void,TestFailure> assertion = Assert.False(previous.Value.exists,
+            "Each source case requires a fresh trace path; stale evidence is never overwritten");
+
+        return Checked(assertion);
+    }
+
+    private WorkflowRequest Request() {
+        List<WorkflowVariable> variables = List<WorkflowVariable>.Empty();
+        variables.Add(WorkflowVariable("TRACE", tracePath));
+        if (kind == ControlKind.SkipTests)
+            variables.Add(WorkflowVariable("RUN_TESTS", "false"));
+        if (kind == ControlKind.FailingTest)
+            variables.Add(WorkflowVariable("FAIL_TEST", "true"));
+        if (kind == ControlKind.Interrupt)
+            variables.Add(WorkflowVariable("HOLD", "true"));
+
+        return WorkflowRequest(inputs.workdir, inputs.workflowFile, "", "",
+            variables, List<string>.Empty(), 32768);
+    }
+
+    private Result<OperationId,string> Start() {
+        Result<OperationId,string> started = client.Start(Request());
+        if (started.IsSuccess) {
+            active = started.Value;
+            owned = true;
+            complete = false;
+        } else {
+            Result<OperationId,string> retained = client.RetainedOperation();
+            if (retained.IsSuccess) {
+                active = retained.Value;
+                owned = true;
+                complete = false;
+            }
+        }
+
+        return started;
+    }
+
+    private async Task<Result<OperationObservation,string>> Observe(
+        TestDeadline deadline, CancellationToken token) {
+        Result<int,string> remaining = Remaining(deadline, token);
+        if (!remaining.IsSuccess) {
+            if (remaining.IsCancelled)
+                return Result<OperationObservation,string>.Cancelled(remaining.Error);
+
+            return Result<OperationObservation,string>.Failure(remaining.Error);
+        }
+
+        int slice = 25;
+        if (remaining.Value < slice)
+            slice = remaining.Value;
+
+        Result<OperationObservation,string> observed = await client.Observe(active, slice, token);
+        if (observed.IsSuccess)
+            complete = observed.Value.treeComplete;
+
+        return observed;
+    }
+
+    private async Task<Result<OperationObservation,string>> WaitClosed(
+        TestDeadline deadline, CancellationToken token) {
+        for (int attempt = 0; attempt < 400; attempt = attempt + 1) {
+            Result<OperationObservation,string> observed = await Observe(deadline, token);
+            if (!observed.IsSuccess || observed.Value.treeComplete)
+                return observed;
+        }
+
+        return Result<OperationObservation,string>.Failure("Finite workflow-control closure polling exhausted");
+    }
+
+    private async Task<Result<TestStepResult,string>> InterruptReady(
+        TestDeadline deadline, CancellationToken token) {
+        string lastReadError = "";
+        for (int attempt = 0; attempt < 400; attempt = attempt + 1) {
+            Result<OperationObservation,string> observed = await Observe(deadline, token);
+            if (!observed.IsSuccess)
+                return PhaseError(observed.IsCancelled, observed.Error);
+
+            Result<TraceRead,string> trace = files.Read(inputs.rootIndex, tracePath, maximumTraceBytes);
+            if (trace.IsCancelled)
+                return PhaseError(true, trace.Error);
+            if (trace.IsFailure) {
+                // Concurrent append/read sharing may transiently refuse a read.
+                // Retrying this read is bounded by both the phase and poll count.
+                lastReadError = trace.Error;
+            } else if (trace.Value.exists && string.Utf8IndexOf(trace.Value.contents, "ready\n", 0) >= 0) {
+                Result<void,TestFailure> assertion = Assert.Equal<string>("test\nready\n", trace.Value.contents,
+                    "Ready is an actual raw trace before any subsequent control step or cleanup");
+                if (!assertion.IsSuccess)
+                    return Checked(assertion);
+
+                assertion = Assert.False(observed.Value.exited || observed.Value.treeComplete || observed.Value.forced,
+                    "The actual root and owned tree remain live and unforced before interruption");
+                if (!assertion.IsSuccess)
+                    return Checked(assertion);
+
+                Result<bool,string> interrupted = client.Interrupt(active);
+                if (!interrupted.IsSuccess)
+                    return PhaseError(interrupted.IsCancelled, interrupted.Error);
+
+                assertion = Assert.True(interrupted.Value, "Actual ready CLI accepts a real SDK interruption");
+
+                return Checked(assertion);
+            }
+
+            if (observed.Value.treeComplete || observed.Value.exited)
+                return Failed("control.ready_missing", "Actual root exited before the ready witness: " + lastReadError);
+        }
+
+        return Failed("control.ready_poll_count", "Finite raw-ready polling exhausted: " + lastReadError);
+    }
+
+    private Result<void,TestFailure> Completed(OperationObservation observed, TraceRead trace) {
+        try Assert.Equal<OperationId>(active, observed.id, "Actual operation identity is preserved");
+        try Assert.True(observed.exited, "Actual CLI root exit is observed");
+        try Assert.True(observed.treeComplete, "All owned handles, kernel members and capture writers close");
+        try Assert.False(observed.forced, "Workflow-control acceptance requires unforced closure");
+        try Assert.False(observed.stdoutTruncated, "CLI stdout capture is complete");
+        try Assert.False(observed.stderrTruncated, "CLI stderr capture is complete");
+        if (kind == ControlKind.FailingTest || kind == ControlKind.Interrupt) {
+            try Assert.True(observed.exitCode != 0, "Failure/interruption remains a nonzero CLI result");
+        } else {
+            try Assert.Equal<int>(0, observed.exitCode, "Default and skip paths complete successfully");
+        }
+        try Assert.True(trace.exists, "Actual workflow scripts created the selected trace");
+        try Assert.Equal<string>(ExpectedTrace(), trace.contents,
+            "Raw trace proves branches, typed loop/literal arguments, no later steps after failure and core cleanup");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    public async Task<Result<TestStepResult,string>> Body(TestDeadline deadline, CancellationToken token) {
+        Result<int,string> remaining = Remaining(deadline, token);
+        if (!remaining.IsSuccess)
+            return PhaseError(remaining.IsCancelled, remaining.Error);
+
+        Result<OperationId,string> started = Start();
+        if (!started.IsSuccess)
+            return PhaseError(started.IsCancelled, started.Error);
+
+        if (kind == ControlKind.Interrupt) {
+            Result<TestStepResult,string> ready = await InterruptReady(deadline, token);
+            if (!ready.IsSuccess || ready.Value.outcome != TestOutcome.Passed)
+                return ready;
+        }
+
+        Result<OperationObservation,string> observed = await WaitClosed(deadline, token);
+        if (!observed.IsSuccess)
+            return PhaseError(observed.IsCancelled, observed.Error);
+
+        Result<TraceRead,string> trace = files.Read(inputs.rootIndex, tracePath, maximumTraceBytes);
+        if (!trace.IsSuccess)
+            return PhaseError(trace.IsCancelled, trace.Error);
+
+        return Checked(Completed(observed.Value, trace.Value));
+    }
+
+    public async Task<Result<TestStepResult,string>> Cleanup(TestDeadline deadline, CancellationToken token) {
+        Result<OperationId,string> retained = client.RetainedOperation();
+        if (retained.IsSuccess) {
+            active = retained.Value;
+            owned = true;
+            complete = false;
+        }
+
+        if (owned && !complete) {
+            Result<int,string> remaining = Remaining(deadline, token);
+            if (!remaining.IsSuccess)
+                return PhaseError(remaining.IsCancelled, remaining.Error);
+
+            Result<OperationObservation,string> disposed = await client.ForceDispose(active, remaining.Value, token);
+            if (!disposed.IsSuccess)
+                return PhaseError(disposed.IsCancelled, disposed.Error);
+
+            complete = disposed.Value.treeComplete;
+            if (!complete)
+                return Failed("control.cleanup_incomplete", "Independent cleanup did not prove complete custody closure");
+
+            return Failed("control.emergency_disposal", "Independent force disposal was needed before the body proved unforced closure");
+        }
+
+        TestSteps steps = new TestSteps();
+
+        return Result<TestStepResult,string>.Success(steps.Passed());
+    }
+}

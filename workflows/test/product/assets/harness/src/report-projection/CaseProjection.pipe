@@ -1,0 +1,77 @@
+module Dockpipe.Product.ReportProjection;
+import Dockpipe.Product.Qualification;
+import PipeLang.Json;
+
+public Class CaseProjection {
+    private JsonReader reader;
+    private JsonDocumentOutput output;
+
+    public CaseProjection(JsonReader reader, JsonDocumentOutput output) {
+        this.reader = reader;
+        this.output = output;
+    }
+
+    private Result<void,string> Text(string property, string value) {
+        try output.Name(property);
+        return output.WriteText(value);
+    }
+
+    private Result<void,string> Critical(bool critical) {
+        try output.Name("critical");
+        return output.WriteBoolean(critical);
+    }
+
+    private Result<void,string> Empty(string property) {
+        try output.Name(property);
+        try output.BeginArray();
+        return output.EndArray();
+    }
+
+    public Result<void,string> Missing(RegistryCase expected, string reason, string status,
+                                       CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<void,string>.Cancelled("qualification.report.cancelled");
+        if (status != "not_run" && status != "failed")
+            return Result<void,string>.Failure("qualification.report.synthetic_status");
+
+        try output.BeginObject();
+        try Empty("assertions");
+        try Critical(expected.critical);
+        try Empty("evidence");
+        try Text("id", expected.id);
+        try Text("layer", expected.layer);
+        try Text("reason", reason);
+        try Text("scenario", expected.scenario);
+        try Text("status", status);
+        return output.EndObject();
+    }
+
+    // The passed row must come from an admitted lane receipt. The registry
+    // and invocation supply criticality and evidence root independently.
+    public Result<void,string> Observed(JsonNode row, bool critical, string evidenceRoot,
+                                        CancellationToken token) {
+        if (token.IsCancellationRequested)
+            return Result<void,string>.Cancelled("qualification.report.cancelled");
+
+        int members = try reader.Count(row);
+        try output.BeginObject();
+        try Critical(critical);
+        try Text("evidence_root", evidenceRoot);
+        for (int index = 0; index < members; index = index + 1) {
+            if (token.IsCancellationRequested)
+                return Result<void,string>.Cancelled("qualification.report.cancelled");
+
+            JsonNode field = try reader.At(row, index);
+            int nameBytes = try reader.NameLength(field);
+            ByteBuffer nameData = try reader.NameSlice(field, 0, nameBytes);
+            string name = nameData.DecodeUtf8();
+            if (name == "critical" || name == "evidence_root")
+                continue;
+
+            try output.Name(name);
+            try output.WriteValue(field, token);
+        }
+
+        return output.EndObject();
+    }
+}

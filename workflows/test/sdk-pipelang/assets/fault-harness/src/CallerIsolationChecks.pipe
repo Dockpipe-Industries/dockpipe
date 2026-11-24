@@ -1,0 +1,24 @@
+module Dockpipe.SDK.FaultProof;
+import PipeLang.Testing;
+
+public Class CallerIsolationChecks {
+    private Result<void,TestFailure> Marker(CallerObservation observed) {
+        try Assert.False(observed.missingMarkerRemovalSucceeded,
+            "Platform must distinguish removal of the unique absent test marker");
+        try Assert.True(observed.markerRemoved, "The registered test marker remains present");
+        try Assert.True(observed.markerRestored, "Factual observation restores only the test marker");
+
+        return Result<void,TestFailure>.Success();
+    }
+
+    public Result<void,TestFailure> Compare(CallerObservation initial, CallerObservation observed) {
+        try Marker(initial);
+        try Marker(observed);
+        try Assert.Equal<int>(initial.markerEvents, observed.markerEvents,
+            "SDK activity never dispatches a control event to the caller marker");
+        try Assert.Equal<string>(initial.state, observed.state,
+            "Caller console, standard handles, modes, inventory, code pages and marker facts remain exact");
+
+        return Result<void,TestFailure>.Success();
+    }
+}

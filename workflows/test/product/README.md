@@ -1,7 +1,8 @@
 # Local host product journey
 
 This Linux/deb-only workflow builds a PipeLang consumer with an explicitly selected
-installed SDK and its immutable `PipeLang.Testing` source library. Dockpipe owns
+installed SDK, its immutable `PipeLang.Testing` source library, and a materialized
+`Dockpipe.SDK` bundle from the explicitly selected Dockpipe executable. Dockpipe owns
 preparation, build containment, fixture execution and proof preservation. The
 source harness owns stable case registration, expectations, phase sequencing,
 deadline choices, graceful interrupt requests and cleanup outcomes.
@@ -51,3 +52,27 @@ not evidence of successful source cleanup or product finally behavior.
 
 This family establishes no VM/container/remote/GUI or Windows/macOS acceptance.
 It does not change SDK defaults, packages, release selection or publication state.
+
+## Windows preparation
+
+The source cases receive outside-proof file and directory probes through typed
+inputs. Linux preparation retains `/proc/version` and `/proc`; platform ports
+must supply valid absolute paths for their operating system. The source case IDs,
+assertions and phase budgets are unchanged.
+
+The fixture's `assets/fixtures/host-workflow/windows.yml` selects native PowerShell
+scripts with the same output keys, exit codes and LF receipt bytes as the Linux
+fixture. Local PowerShell component checks do not qualify Windows execution.
+The complete journey remains Linux-only until Windows process ownership,
+file confinement, graceful interruption and native containment are qualified.
+
+The harness's source `ProcessPort` builds typed SDK requests and retains journey
+selection and variable policy. The SDK supplies general CLI invocation, bounded
+capture, scope observation and child custody. Confined file observations remain
+independent. The native product-specific process implementation has been removed.
+
+A deterministic failed-start control also runs the actual source cases against
+an injected transport that reports launch failure after retaining a newer
+operation. It requires primary failure plus successful cleanup of that newer
+handle, without forced disposal. The control creates no OS processes; its
+observations remain separate from the real journey's five process receipts.

@@ -1,0 +1,46 @@
+module Dockpipe.Product.Qualification.Tests;
+import Dockpipe.Product.Qualification;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+// The native fixture supplies the exact pinned registry bytes, never expected policy rows.
+public Class RegistryInventoryChecks {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private int indexRetainedBytes;
+
+    public RegistryInventoryChecks(JsonReader reader, JsonStringIndexer indexer, int indexRetainedBytes) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.indexRetainedBytes = indexRetainedBytes;
+    }
+
+    public Result<void,TestFailure> Check(JsonNode root, CancellationToken token) {
+        RegistryPolicy policy = new RegistryPolicy(reader, indexer, indexRetainedBytes);
+        Result<void,string> validated = policy.Validate(root, token);
+        try Assert.True(validated.IsSuccess, "Pinned registry is admitted by source policy");
+        RegistryJson json = new RegistryJson(reader);
+        JsonNode features = json.Member(root, "features").Value;
+        JsonNode platforms = json.Member(root, "platforms").Value;
+        int featureCount = reader.Count(features).Value;
+        int caseCount = 0;
+        int assertionCount = 0;
+        try Assert.Equal<int>(49, featureCount, "Frozen feature inventory is preserved");
+        try Assert.Equal<int>(17, reader.Count(platforms).Value, "Frozen platform inventory is preserved");
+        for (int featureIndex = 0; featureIndex < featureCount; featureIndex = featureIndex + 1) {
+            JsonNode feature = reader.At(features, featureIndex).Value;
+            JsonNode cases = json.Member(feature, "cases").Value;
+            int count = reader.Count(cases).Value;
+            caseCount = caseCount + count;
+            for (int caseIndex = 0; caseIndex < count; caseIndex = caseIndex + 1) {
+                JsonNode selected = reader.At(cases, caseIndex).Value;
+                JsonNode assertions = json.Member(selected, "required_assertions").Value;
+                assertionCount = assertionCount + reader.Count(assertions).Value;
+            }
+        }
+
+        try Assert.Equal<int>(178, caseCount, "Frozen scenario and layer inventory is preserved");
+        try Assert.Equal<int>(546, assertionCount, "Frozen named assertion inventory is preserved");
+        return Result<void,TestFailure>.Success();
+    }
+}

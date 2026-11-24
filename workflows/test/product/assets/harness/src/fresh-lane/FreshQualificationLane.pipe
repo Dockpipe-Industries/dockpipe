@@ -1,0 +1,140 @@
+module Dockpipe.Product.FreshLane;
+import Dockpipe.Product.DriverExecution;
+import Dockpipe.Product.DriverSources;
+import Dockpipe.Product.LaneReceipt;
+import Dockpipe.Product.LaneRequest;
+import Dockpipe.Product.QualificationFiles;
+import Dockpipe.Product.RunAdmission;
+import PipeLang.IO;
+import PipeLang.Json;
+
+public Class FreshQualificationLane {
+    private JsonReader reader;
+    private LaneRequestFacts requestFacts;
+    private DriverSourcePins pins;
+    private LanePaths paths;
+    private DriverProcess process;
+    private LaneRequestProjection requestWriter;
+    private DriverProcessProjection processWriter;
+    private PrivateJsonStage requestStage;
+    private PrivateJsonStage processStage;
+    private QualificationJsonFile requestFile;
+    private LaneReceiptFile resultFile;
+    private ReceiptPolicy results;
+    private int? exitCode;
+
+    public FreshQualificationLane(JsonReader reader, JsonStringIndexer indexer, int indexRetainedBytes,
+                                  LaneMetadataBudget budget, FileStreams invocation, FileStreams laneOutput,
+                                  DriverSourcePins pins, LanePaths paths,
+                                  DriverProcess process, JsonDocumentOutput requestOutput, PrivateJsonStage requestStage,
+                                  JsonDocumentOutput processOutput, PrivateJsonStage processStage) {
+        this.reader = reader;
+        this.pins = pins;
+        this.paths = paths;
+        this.process = process;
+        this.requestStage = requestStage;
+        this.processStage = processStage;
+        requestFacts = new LaneRequestFacts(reader);
+        requestWriter = new LaneRequestProjection(reader, requestOutput);
+        processWriter = new DriverProcessProjection(processOutput);
+        requestFile = new QualificationJsonFile(reader, invocation);
+        resultFile = new LaneReceiptFile(reader, laneOutput, budget);
+        results = new ReceiptPolicy(reader, indexer, laneOutput, indexRetainedBytes);
+    }
+
+    private Result<DriverProcessRequest,string> Command(JsonNode driver, DriverSourcePin entrypoint) {
+        LaneLaunchPaths launch = try paths.Resolve(entrypoint);
+        List<string> arguments = List<string>.Empty();
+        arguments.Add(launch.entrypoint);
+        arguments.Add("--request");
+        arguments.Add(launch.request);
+        arguments.Add("--output");
+        arguments.Add(launch.output);
+
+        int timeout = 1200;
+        JsonNode? declared = try reader.FindMember(driver, "timeout_seconds");
+        if (declared.HasValue)
+            timeout = try reader.Int64Value(declared.Value);
+
+        return Result<DriverProcessRequest,string>.Success(DriverProcessRequest(launch.workdir, arguments, timeout));
+    }
+
+    // The caller retains the plan and registry through preparation and
+    // observation. Event publication can occur after the request is committed.
+    public Result<PreparedFreshLane,string> Prepare(QualificationRunIdentity identity, JsonNode target,
+                                                    JsonNode driver, LaneCaseSelection cases,
+                                                    CancellationToken token) {
+        LaneRequestWrite request = try requestWriter.Write(identity, target, driver, cases, token);
+        PreparedFreshLane prepared = new PreparedFreshLane {};
+        if (request.cases == 0)
+            return Result<PreparedFreshLane,string>.Success(prepared);
+
+        FileDigest retainedRequest = try requestStage.Commit(request.bytes, token);
+        CapturedQualificationJson capturedRequest = try requestFile.Open("request.json", new JsonReadLimits {}, token);
+        if (capturedRequest.sourceFile.byteCount != retainedRequest.byteCount ||
+            capturedRequest.sourceFile.sha256 != retainedRequest.sha256)
+            return Result<PreparedFreshLane,string>.Failure("qualification.lane.request_changed");
+
+        ReceiptRequest expected = try requestFacts.Read(identity, capturedRequest.root);
+        List<DriverSourcePin> selected = try pins.Admit(driver, token);
+        DriverProcessRequest command = try Command(driver, selected.At(0));
+        prepared.requested = request.cases;
+        prepared.request = retainedRequest;
+        prepared.facts = expected;
+        prepared.sourcePins = selected;
+        prepared.command = command;
+        return Result<PreparedFreshLane,string>.Success(prepared);
+    }
+
+    public Result<FreshLaneResult,string> Observe(PreparedFreshLane prepared, CancellationToken token) {
+        if (prepared.requested == 0)
+            return Result<FreshLaneResult,string>.Success(new FreshLaneResult {});
+
+        DriverProcessResult executed = try process.Run(prepared.command, token);
+        if (executed.exited && executed.treeComplete)
+            exitCode = executed.exitCode;
+        int metadata = try processWriter.Write(executed);
+        FileDigest retainedProcess = try processStage.Commit(metadata, token);
+        string failure = processWriter.FailureText(executed.kind);
+        if (failure != "")
+            return Result<FreshLaneResult,string>.Failure(failure);
+
+        try pins.Revalidate(prepared.sourcePins, token);
+        CapturedQualificationJson receipt = try resultFile.Open(token);
+        AdmittedReceipt accepted = try results.Admit(receipt.root, prepared.facts, executed.exitCode, token);
+        FreshLaneResult terminal = new FreshLaneResult {};
+        terminal.requested = prepared.requested;
+        terminal.request = prepared.request;
+        terminal.process = retainedProcess;
+        terminal.receipt = receipt.sourceFile;
+        terminal.admitted = accepted;
+        return Result<FreshLaneResult,string>.Success(terminal);
+    }
+
+    public Result<FreshLaneResult,string> Run(QualificationRunIdentity identity, JsonNode target,
+                                             JsonNode driver, LaneCaseSelection cases,
+                                             CancellationToken token) {
+        PreparedFreshLane prepared = try Prepare(identity, target, driver, cases, token);
+        return Observe(prepared, token);
+    }
+
+    public pure int? ExitCode() {
+        return exitCode;
+    }
+
+    public Result<void,string> Close() {
+        Result<void,string> request = requestFile.Close();
+        Result<void,string> result = resultFile.Close();
+        Result<void,string> requestClosed = requestStage.Close();
+        Result<void,string> processClosed = processStage.Close();
+
+        if (!request.IsSuccess)
+            return request;
+        if (!result.IsSuccess)
+            return result;
+        if (!requestClosed.IsSuccess)
+            return requestClosed;
+
+        return processClosed;
+    }
+}

@@ -1,0 +1,7 @@
+module Dockpipe.Product.DriverSources;
+
+public Record DriverSourcePin {
+    public DriverSourceRoot root = DriverSourceRoot.Product;
+    public string relative = "";
+    public string sha256 = "";
+}

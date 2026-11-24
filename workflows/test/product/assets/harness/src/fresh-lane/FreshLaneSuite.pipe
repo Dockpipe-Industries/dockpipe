@@ -1,0 +1,101 @@
+module Dockpipe.Product.FreshLane.Tests;
+import Dockpipe.Product.DriverExecution;
+import Dockpipe.Product.DriverSources;
+import Dockpipe.Product.FreshLane;
+import Dockpipe.Product.LaneReceipt;
+import Dockpipe.Product.LaneRequest;
+import Dockpipe.Product.Qualification;
+import Dockpipe.Product.QualificationFiles;
+import Dockpipe.Product.RunAdmission;
+import PipeLang.IO;
+import PipeLang.Json;
+
+public model Class FreshLaneSuite {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private FileStreams fixture;
+    private FileStreams invocation;
+    private FileStreams laneOutput;
+    private LanePaths paths;
+    private DriverProcess process;
+    private JsonDocumentOutput requestOutput;
+    private PrivateJsonStage requestStage;
+    private JsonDocumentOutput processOutput;
+    private PrivateJsonStage processStage;
+
+    public FreshLaneSuite(JsonReader reader, JsonStringIndexer indexer, FileStreams fixture,
+                         FileStreams invocation, FileStreams laneOutput, LanePaths paths, DriverProcess process,
+                         JsonDocumentOutput requestOutput, PrivateJsonStage requestStage,
+                         JsonDocumentOutput processOutput, PrivateJsonStage processStage) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.fixture = fixture;
+        this.invocation = invocation;
+        this.laneOutput = laneOutput;
+        this.paths = paths;
+        this.process = process;
+        this.requestOutput = requestOutput;
+        this.requestStage = requestStage;
+        this.processOutput = processOutput;
+        this.processStage = processStage;
+    }
+
+    private Result<FreshLaneSummary,string> Execute(CapturedQualificationJson plan,
+                                                   CapturedQualificationJson registry,
+                                                   CancellationToken token) {
+        DriverSourcePins pins = new DriverSourcePins(reader, fixture, fixture);
+        QualificationAdmission admission = new QualificationAdmission(reader, indexer, pins, 4096);
+        int required = try admission.Validate(plan.root, registry.root, token);
+        if (required != 1)
+            return Result<FreshLaneSummary,string>.Failure("unexpected fixture denominator");
+
+        RegistryJson json = new RegistryJson(reader);
+        JsonNode targets = try json.Member(plan.root, "targets");
+        JsonNode target = try reader.At(targets, 0);
+        JsonNode drivers = try json.Member(target, "drivers");
+        JsonNode driver = try reader.At(drivers, 0);
+        QualificationTarget targetView = try admission.AdmitTarget(target, registry.root, 8192, token);
+        LaneCaseSelection selected = targetView.CasesForDriver(1);
+        string runId = try json.TextMember(plan.root, "run_id", 128);
+        QualificationRunIdentity identity = QualificationRunIdentity(runId, plan.sourceFile.sha256,
+            registry.sourceFile.sha256);
+        LaneMetadataBudget budget = new LaneMetadataBudget(33554432);
+        FreshQualificationLane lane = new FreshQualificationLane(reader, indexer, 4096, budget,
+            invocation, laneOutput, pins, paths, process, requestOutput, requestStage, processOutput, processStage);
+        try {
+            FreshLaneResult complete = try lane.Run(identity, target, driver, selected, token);
+            if (!complete.admitted.HasValue || !complete.request.HasValue)
+                return Result<FreshLaneSummary,string>.Failure("fixture lane did not return a complete receipt");
+
+            AdmittedReceipt rows = complete.admitted.Value;
+            return Result<FreshLaneSummary,string>.Success(FreshLaneSummary(
+                complete.requested, rows.count, rows.passing, complete.request.Value.sha256));
+        } finally {
+            Result<void,string> closed = lane.Close();
+            if (!closed.IsSuccess)
+                throw Error(closed.Error);
+        }
+    }
+
+    public Result<FreshLaneSummary,string> Run(CancellationToken token) {
+        QualificationJsonFile plan = new QualificationJsonFile(reader, fixture);
+        QualificationJsonFile registry = new QualificationJsonFile(reader, fixture);
+        JsonReadLimits limits = new JsonReadLimits {};
+        limits.inputBytes = 16384;
+        limits.retainedBytes = 262144;
+        limits.nodes = 256;
+        limits.detectUnicodeEncoding = true;
+        try {
+            CapturedQualificationJson capturedPlan = try plan.Open("plan.json", limits, token);
+            CapturedQualificationJson capturedRegistry = try registry.Open("registry.json", limits, token);
+            return Execute(capturedPlan, capturedRegistry, token);
+        } finally {
+            Result<void,string> closedPlan = plan.Close();
+            Result<void,string> closedRegistry = registry.Close();
+            if (!closedPlan.IsSuccess)
+                throw Error(closedPlan.Error);
+            if (!closedRegistry.IsSuccess)
+                throw Error(closedRegistry.Error);
+        }
+    }
+}

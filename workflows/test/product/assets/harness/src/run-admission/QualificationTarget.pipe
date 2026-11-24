@@ -1,0 +1,43 @@
+module Dockpipe.Product.RunAdmission;
+import Dockpipe.Product.DriverClaims;
+import Dockpipe.Product.Qualification;
+
+// An admitted target borrows the plan and registry documents. Its callers
+// retain both documents across every cursor that reads case declarations.
+public Class QualificationTarget {
+    private RegistrySelection registry;
+    private TargetDriverClaims claims;
+    private Dictionary<int,DriverCaseGroup> lanes;
+    private int required;
+
+    public QualificationTarget(RegistrySelection registry, TargetDriverClaims claims,
+                               Dictionary<int,DriverCaseGroup> lanes, int required) {
+        this.registry = registry;
+        this.claims = claims;
+        this.lanes = lanes;
+        this.required = required;
+    }
+
+    public int Required() {
+        return required;
+    }
+
+    public RegistrySelection Cases() {
+        return registry;
+    }
+
+    public Result<int,string> AssignedDriver(RegistryCase row) {
+        return claims.Driver(row.id, row.scenario, row.layer);
+    }
+
+    public List<RegistryCase> DriverCases(int driver) {
+        if (!lanes.ContainsKey(driver))
+            return List<RegistryCase>.Empty();
+
+        return lanes.At(driver).Rows();
+    }
+
+    public LaneCaseSelection CasesForDriver(int driver) {
+        return new LaneCaseSelection(DriverCases(driver), driver);
+    }
+}

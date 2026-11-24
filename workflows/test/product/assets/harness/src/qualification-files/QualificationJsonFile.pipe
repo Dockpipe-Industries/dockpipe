@@ -1,0 +1,95 @@
+module Dockpipe.Product.QualificationFiles;
+import PipeLang.IO;
+import PipeLang.Json;
+
+// One file read owns its borrowed JSON document until the caller closes it.
+// The reader retains the exact admitted bytes for later custody checks.
+public Class QualificationJsonFile {
+    private JsonReader reader;
+    private FileStreams files;
+    private int document = 0;
+    private int snapshotId = 0;
+
+    public QualificationJsonFile(JsonReader reader, FileStreams files) {
+        this.reader = reader;
+        this.files = files;
+    }
+
+    private Result<void,string> ReleaseCapture() {
+        if (snapshotId == 0)
+            return Result<void,string>.Success();
+
+        Result<void,IoFailure> closed = files.CloseSnapshot(snapshotId);
+        if (!closed.IsSuccess)
+            return Result<void,string>.Failure("qualification.json.close_capture." + closed.Error.code);
+
+        snapshotId = 0;
+        return Result<void,string>.Success();
+    }
+
+    private Result<JsonNode,string> Parse(FileDigest sourceFile, JsonReadLimits limits, CancellationToken token) {
+        document = try reader.BeginDocument(limits);
+        int offset = 0;
+        while (offset < sourceFile.byteCount) {
+            if (token.IsCancellationRequested)
+                return Result<JsonNode,string>.Cancelled("qualification.json.cancelled");
+
+            int count = sourceFile.byteCount - offset;
+            if (count > 65536)
+                count = 65536;
+
+            Result<ByteBuffer,IoFailure> fragment = files.ReadSnapshot(snapshotId, offset, count);
+            if (!fragment.IsSuccess)
+                return Result<JsonNode,string>.Failure("qualification.json.read_capture." + fragment.Error.code);
+            if (fragment.Value.Length != count)
+                return Result<JsonNode,string>.Failure("qualification.json.fragment_size");
+
+            try reader.AppendDocument(document, fragment.Value);
+            offset = offset + count;
+        }
+
+        return reader.CompleteDocument(document, token);
+    }
+
+    public Result<CapturedQualificationJson,string> Open(string relative, JsonReadLimits limits,
+                                                        CancellationToken token) {
+        if (document != 0 || snapshotId != 0)
+            return Result<CapturedQualificationJson,string>.Failure("qualification.json.already_open");
+
+        Result<CapturedFile,IoFailure> captured = files.CaptureSnapshot(relative, limits.inputBytes, token);
+        if (captured.IsCancelled)
+            return Result<CapturedQualificationJson,string>.Cancelled("qualification.json.cancelled");
+        if (captured.IsFailure)
+            return Result<CapturedQualificationJson,string>.Failure("qualification.json.capture." + captured.Error.code);
+
+        snapshotId = captured.Value.snapshotId;
+        Result<JsonNode,string> parsed = Result<JsonNode,string>.Failure("qualification.json.parse");
+        try {
+            parsed = Parse(captured.Value.file, limits, token);
+        } finally {
+            Result<void,string> released = ReleaseCapture();
+            if (!released.IsSuccess)
+                throw Error(released.Error);
+        }
+
+        JsonNode root = try parsed;
+        return Result<CapturedQualificationJson,string>.Success(CapturedQualificationJson(root, captured.Value.file));
+    }
+
+    // Called in an independent finally even when Open returns a failure or
+    // cancellation. Attempt both releases before reporting either result.
+    public Result<void,string> Close() {
+        Result<void,string> released = ReleaseCapture();
+        Result<void,string> closed = Result<void,string>.Success();
+        if (document != 0) {
+            closed = reader.CloseDocument(document);
+            if (closed.IsSuccess)
+                document = 0;
+        }
+
+        if (!released.IsSuccess)
+            return released;
+
+        return closed;
+    }
+}

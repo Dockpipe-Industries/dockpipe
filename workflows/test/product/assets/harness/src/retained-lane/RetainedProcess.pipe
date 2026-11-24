@@ -1,0 +1,6 @@
+module Dockpipe.Product.RetainedLane;
+
+public Record RetainedProcess {
+    public int exitCode = 0;
+    public string failure = "";
+}

@@ -1,0 +1,95 @@
+module Dockpipe.Product.Qualification.Tests;
+import Dockpipe.Product.Qualification;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+// Both roots borrow complete caller-owned documents. Only the temporary string
+// index belongs to this case; cleanup must leave the document available.
+public Class RegistryLargeContractCase : ITestCase {
+    private JsonReader reader;
+    private JsonStringIndexer indexer;
+    private int indexRetainedBytes;
+    private JsonNode root;
+    private bool escapedDuplicate;
+
+    public RegistryLargeContractCase(JsonReader reader, JsonStringIndexer indexer, int indexRetainedBytes,
+                                     JsonNode root, bool escapedDuplicate) {
+        this.reader = reader;
+        this.indexer = indexer;
+        this.indexRetainedBytes = indexRetainedBytes;
+        this.root = root;
+        this.escapedDuplicate = escapedDuplicate;
+    }
+
+    public pure string Id() {
+        if (escapedDuplicate)
+            return "qualification.registry.large.escaped_duplicate4097";
+
+        return "qualification.registry.large.distinct4097";
+    }
+
+    public pure string Name() {
+        if (escapedDuplicate)
+            return "4097 assertions with a final escaped-equivalent duplicate";
+
+        return "4097 distinct assertions in one source traversal";
+    }
+
+    public Result<void,TestFailure> Setup(CancellationToken token) => Result<void,TestFailure>.Success();
+
+    private Result<void,string> VerifyIndexReleased() {
+        JsonStringIndexLimits limits = new JsonStringIndexLimits {};
+        limits.entries = 1;
+        limits.retainedBytes = indexRetainedBytes;
+        JsonStringIndex reopened = new JsonStringIndex {};
+        try {
+            reopened = try indexer.BeginStringIndex(root.document, limits);
+            return Result<void,string>.Success();
+        } finally {
+            if (reopened.generation != 0) {
+                Result<void,string> closed = indexer.CloseStringIndex(reopened);
+                if (!closed.IsSuccess)
+                    throw Error(closed.Error);
+            }
+        }
+    }
+
+    public Result<void,TestFailure> Cleanup() {
+        return Assert.True(VerifyIndexReleased().IsSuccess,
+            "Policy releases its string index while the borrowed document remains open");
+    }
+
+    public Result<void,TestFailure> Body(CancellationToken token) {
+        RegistryJson json = new RegistryJson(reader);
+        JsonNode features = json.Member(root, "features").Value;
+        try Assert.Equal<int>(1, reader.Count(features).Value, "Large fixture contains one feature");
+        JsonNode feature = reader.At(features, 0).Value;
+        JsonNode cases = json.Member(feature, "cases").Value;
+        try Assert.Equal<int>(1, reader.Count(cases).Value, "Large fixture contains one case");
+        JsonNode current = reader.At(cases, 0).Value;
+        JsonNode assertions = json.Member(current, "required_assertions").Value;
+        try Assert.Equal<int>(4097, reader.Count(assertions).Value,
+            "One authored validation traverses beyond the ordinary collection capacity");
+        JsonNode first = reader.At(assertions, 0).Value;
+        JsonNode last = reader.At(assertions, 4096).Value;
+        try Assert.Equal<string>("k0000", json.Text(first, 128).Value, "Exact first assertion ID");
+        if (escapedDuplicate) {
+            try Assert.Equal<string>("k0000", json.Text(last, 128).Value,
+                "Final escaped assertion decodes to the first ID");
+        } else {
+            try Assert.Equal<string>("k4096", json.Text(last, 128).Value, "Exact final distinct assertion ID");
+        }
+
+        RegistryPolicy policy = new RegistryPolicy(reader, indexer, indexRetainedBytes);
+        Result<void,string> validated = policy.Validate(root, token);
+        if (escapedDuplicate) {
+            try Assert.True(validated.IsFailure, "One full traversal refuses the final duplicate");
+            try Assert.Equal<string>("qualification.registry.duplicate_assertion", validated.Error,
+                "Large decoded duplicate retains the owning policy error");
+        } else {
+            try Assert.True(validated.IsSuccess, "One full traversal admits all 4097 distinct assertions");
+        }
+
+        return Result<void,TestFailure>.Success();
+    }
+}

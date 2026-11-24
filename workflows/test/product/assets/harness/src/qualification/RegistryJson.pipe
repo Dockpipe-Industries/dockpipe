@@ -1,0 +1,90 @@
+module Dockpipe.Product.Qualification;
+import PipeLang.Json;
+
+// Source-owned schema queries. The caller retains and closes the JSON document.
+public Class RegistryJson {
+    private JsonReader reader;
+
+    public RegistryJson(JsonReader reader) {
+        this.reader = reader;
+    }
+
+    public Result<void,string> Require(bool condition, string message) {
+        if (!condition)
+            return Result<void,string>.Failure(message);
+
+        return Result<void,string>.Success();
+    }
+
+    public Result<void,string> Kind(JsonNode value, JsonKind expected) {
+        JsonKind actual = try reader.Kind(value);
+        return Require(actual == expected, "qualification.registry.kind");
+    }
+
+    public Result<JsonNode,string> Member(JsonNode value, string name) {
+        try Kind(value, JsonKind.Object);
+        JsonNode? found = try reader.FindMember(value, name);
+        try Require(found.HasValue, "qualification.registry.member." + name);
+        return Result<JsonNode,string>.Success(found.Value);
+    }
+
+    public Result<string,string> Text(JsonNode value, int maximumBytes) {
+        try Kind(value, JsonKind.String);
+        int length = try reader.ScalarLength(value);
+        try Require(length <= maximumBytes, "qualification.registry.text_bound");
+        ByteBuffer bytes = try reader.ScalarSlice(value, 0, length);
+        return Result<string,string>.Success(bytes.DecodeUtf8());
+    }
+
+    public Result<string,string> TextMember(JsonNode value, string name, int maximumBytes) {
+        JsonNode member = try Member(value, name);
+        return Text(member, maximumBytes);
+    }
+
+    public Result<int,string> ArrayCount(JsonNode value, int minimum, int maximum) {
+        try Kind(value, JsonKind.Array);
+        int count = try reader.Count(value);
+        try Require(count >= minimum && count <= maximum, "qualification.registry.array_bound");
+        return Result<int,string>.Success(count);
+    }
+
+    public Result<bool,string> Contains(JsonNode values, string selected) {
+        try Kind(values, JsonKind.Array);
+        int count = try reader.Count(values);
+        for (int index = 0; index < count; index = index + 1) {
+            JsonNode item = try reader.At(values, index);
+            if (try Text(item, 512) == selected)
+                return Result<bool,string>.Success(true);
+        }
+
+        return Result<bool,string>.Success(false);
+    }
+
+    public pure bool Identifier(string value) {
+        int length = string.Utf8Length(value);
+        if (length < 1 || length > 128)
+            return false;
+
+        for (int index = 0; index < length; index = index + 1) {
+            int character = string.ByteAtOr(value, index, -1);
+            bool alphanumeric = (character >= 65 && character <= 90) ||
+                (character >= 97 && character <= 122) || (character >= 48 && character <= 57);
+            if (!alphanumeric && (index == 0 ||
+                (character != 46 && character != 95 && character != 45)))
+                return false;
+        }
+
+        return true;
+    }
+
+    public pure int ScalarCount(string value) {
+        int count = 0;
+        for (int index = 0; index < string.Utf8Length(value); index = index + 1) {
+            int character = string.ByteAtOr(value, index, -1);
+            if (character < 128 || character >= 192)
+                count = count + 1;
+        }
+
+        return count;
+    }
+}

@@ -1,0 +1,19 @@
+module Dockpipe.Product.RetainedLane.Tests;
+import PipeLang.IO;
+import PipeLang.Json;
+import PipeLang.Testing;
+
+public model Class RetainedLaneSuite {
+    private JsonReader reader;
+    private FileStreams invocation;
+
+    public RetainedLaneSuite(JsonReader reader, FileStreams invocation) {
+        this.reader = reader;
+        this.invocation = invocation;
+    }
+
+    public TestResult Run(int scenario, CancellationToken token, CancellationToken cancelled) {
+        TestRunner runner = new TestRunner();
+        return runner.RunProbe(new RetainedLaneCase(reader, invocation, scenario), token, cancelled);
+    }
+}

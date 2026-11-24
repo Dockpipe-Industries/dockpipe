@@ -1,5 +1,7 @@
 #include "native/EvidenceReport.hpp"
 #include "native/MonotonicClock.hpp"
+#include "DockpipeSDKBridge.hpp"
+#include "native/FailedStartControl.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -11,12 +13,17 @@ int main(int argc, char** argv) {
     try {
         const auto options = Options::parse(argc, argv);
         ConfinedFiles proofFiles(options.proofRoot);
+#ifdef _WIN32
+        auto recoveryDirectory = proofFiles.directory(options.recoveryProject);
+        auto cancellationDirectory = proofFiles.directory(options.cancellationProject);
+#else
         (void)proofFiles.directory(options.recoveryProject);
         (void)proofFiles.directory(options.cancellationProject);
+#endif
         auto reportOutput = proofFiles.createReport(options.report);
         auto clock = std::make_shared<MonotonicClock>();
         auto files = std::make_shared<FileAdapter>(proofFiles);
-        std::shared_ptr<ProcessAdapter> processes;
+        std::shared_ptr<dockpipe::sdk::Client> processes;
         EvidenceReport report;
         std::string identityEvidence;
         std::string executableIdentity;
@@ -29,18 +36,44 @@ int main(int argc, char** argv) {
                     throw std::runtime_error("selected identity evidence file does not exist");
                 identityEvidence = std::move(contents);
             }
-            processes = std::make_shared<ProcessAdapter>(proofFiles, options.cli, options.workflow,
-                                                         options.stateDirectory, options.cacheDirectory);
+            dockpipe::sdk::ClientConfiguration configuration;
+            configuration.executable = options.cli;
+            configuration.allowedWorkdirRoot = options.proofRoot;
+            configuration.stateDirectory = options.stateDirectory;
+            configuration.cacheDirectory = options.cacheDirectory;
+            configuration.maximumStoredRuns = 64;
+            configuration.maximumActiveRuns = 1;
+            configuration.maximumOutputBytesPerStream = 32768;
+            configuration.maximumInventoryBytes = 1024 * 1024;
+            configuration.maximumArgumentBytes = 65536;
+#ifdef _WIN32
+            configuration.consoleSignalExecutable = options.consoleSignalExecutable;
+#endif
+            processes = std::make_shared<dockpipe::sdk::Client>(std::move(configuration));
+            auto transport = std::make_shared<product_sdk::Transport>(processes);
             executableIdentity = processes->executableIdentity();
             product::HarnessInputs inputs{};
             inputs.runId = options.runId;
             inputs.recoveryProject = options.recoveryProject;
             inputs.cancellationProject = options.cancellationProject;
             inputs.workflowFile = options.workflow;
+            inputs.outsideFile = options.outsideFile;
+            inputs.outsideDirectory = options.outsideDirectory;
+#ifdef _WIN32
+            auto workflowFile = dockpipe::sdk::openWindowsPath(options.workflow, false);
+            auto outsideFile = dockpipe::sdk::openWindowsPath(options.outsideFile, false);
+            auto outsideDirectory = dockpipe::sdk::openWindowsPath(options.outsideDirectory, true);
+            inputs.recoveryProject = dockpipe::sdk::windowsUtf8(recoveryDirectory.nativePath);
+            inputs.cancellationProject = dockpipe::sdk::windowsUtf8(cancellationDirectory.nativePath);
+            inputs.workflowFile = dockpipe::sdk::windowsUtf8(workflowFile.nativePath);
+            inputs.outsideFile = dockpipe::sdk::windowsUtf8(outsideFile.nativePath);
+            inputs.outsideDirectory = dockpipe::sdk::windowsUtf8(outsideDirectory.nativePath);
+#endif
+
             {
                 pipelang::model::CancellationSource bodyCancellation;
                 pipelang::model::CancellationSource cleanupCancellation;
-                product::Harness model(clock, processes, files, inputs);
+                product::Harness model(clock, transport, files, inputs);
                 auto task = model.Run(bodyCancellation.token(), cleanupCancellation.token());
                 // An infrastructure watchdog only: all case ordering, phase
                 // deadlines, interruption decisions and assertions live in source.
@@ -55,6 +88,8 @@ int main(int argc, char** argv) {
                 }
                 report.results(task.result());
             }
+            verifyFailedStartCleanup(clock, proofFiles, inputs, processes->receipts());
+            std::cout << "Failed-start custody recovery control passed\n";
             // Model destruction drains scoped callbacks before these shared ports
             // can be released, including the exception and watchdog paths below.
         } catch (const std::exception& error) {
