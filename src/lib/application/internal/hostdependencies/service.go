@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 
 	"dockpipe/src/lib/application/internal/operationids"
@@ -65,14 +66,20 @@ func (service Service) Check(request Request) error {
 			deps[i].ToolsDir = toolsDir
 		}
 	}
-	missing := service.preflight(deduplicateHostDependencies(deps))
+	missing, err := service.preflight(deduplicateHostDependencies(deps))
+	if err != nil {
+		return err
+	}
 	if len(missing) == 0 {
 		return nil
 	}
 	if err := service.installMissing(missing, request.ApproveSystemChanges); err != nil {
 		return err
 	}
-	missing = service.preflight(deduplicateHostDependencies(deps))
+	missing, err = service.preflight(deduplicateHostDependencies(deps))
+	if err != nil {
+		return err
+	}
 	if len(missing) == 0 {
 		return nil
 	}
@@ -125,7 +132,7 @@ func missingHostDependenciesError(missing []missingHostDependency) error {
 	return fmt.Errorf("%s", b.String())
 }
 
-func (service Service) preflight(deps []hostDependencyCandidate) []missingHostDependency {
+func (service Service) preflight(deps []hostDependencyCandidate) ([]missingHostDependency, error) {
 	var missing []missingHostDependency
 	for _, candidate := range deps {
 		dep := candidate.Dep
@@ -142,9 +149,13 @@ func (service Service) preflight(deps []hostDependencyCandidate) []missingHostDe
 			}), "")
 			continue
 		}
-		path, err := service.adapters.BundledCommandPath(candidate.ToolsDir, cmd)
-		if err != nil {
-			path, err = service.ResolveCommandPath(cmd)
+		if isWindowsRequirement(dep) && CurrentPlatform() != "windows" {
+			continue
+		}
+
+		path, err := service.lookupDependency(candidate, cmd)
+		if err != nil && isWindowsRequirement(dep) && err != os.ErrNotExist {
+			return nil, err
 		}
 		if err == nil {
 			logDependencyResult("dependency.host.preflight", infrastructure.OperationStatusDone, operationids.Merge(ids, map[string]string{
@@ -166,7 +177,36 @@ func (service Service) preflight(deps []hostDependencyCandidate) []missingHostDe
 		}), err.Error())
 		missing = append(missing, missingHostDependency(candidate))
 	}
-	return missing
+	// Native tools can depend on Windows features declared by another manifest.
+	sort.SliceStable(missing, func(i, j int) bool {
+		return isWindowsRequirement(missing[i].Dep) && !isWindowsRequirement(missing[j].Dep)
+	})
+	return missing, nil
+}
+
+func (service Service) lookupDependency(candidate hostDependencyCandidate, command string) (string, error) {
+
+	dep := candidate.Dep
+	if isWindowsRequirement(dep) {
+		lookup := service.adapters.LookupWindowsFeature
+		if dep.WindowsService != "" {
+			lookup = service.adapters.LookupWindowsService
+		}
+		available, err := lookup(command)
+		if err != nil {
+			return "", err
+		}
+		if !available {
+			return "", os.ErrNotExist
+		}
+		return "", nil
+	}
+
+	path, err := service.adapters.BundledCommandPath(candidate.ToolsDir, command)
+	if err != nil {
+		return service.ResolveCommandPath(command)
+	}
+	return path, nil
 }
 
 // ResolveCommandPath checks the host PATH and the native Windows command fallback.
@@ -188,6 +228,11 @@ func deduplicateHostDependencies(deps []hostDependencyCandidate) []hostDependenc
 	for _, candidate := range deps {
 		dep := candidate.Dep
 		key := hostDependencyCommand(dep)
+		if dep.WindowsFeature != "" {
+			key = "windows-feature:" + strings.ToLower(dep.WindowsFeature)
+		} else if dep.WindowsService != "" {
+			key = "windows-service:" + strings.ToLower(dep.WindowsService)
+		}
 		if key == "" {
 			key = hostDependencyID(dep)
 		}
@@ -210,7 +255,17 @@ func hostDependencyID(dep domain.HostDependency) string {
 	return hostDependencyCommand(dep)
 }
 
+func isWindowsRequirement(dep domain.HostDependency) bool {
+	return dep.WindowsFeature != "" || dep.WindowsService != ""
+}
+
 func hostDependencyCommand(dep domain.HostDependency) string {
+	if dep.WindowsFeature != "" {
+		return dep.WindowsFeature
+	}
+	if dep.WindowsService != "" {
+		return dep.WindowsService
+	}
 	if cmd := strings.TrimSpace(dep.Command); cmd != "" {
 		return cmd
 	}

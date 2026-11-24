@@ -2,6 +2,7 @@ package dependency
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	modeldependency "dockpipe/src/lib/model/dependency"
@@ -16,14 +17,26 @@ type HostDependency = modeldependency.HostDependency
 // HostDependencyInstallHint remains as a source-compatible Domain facade for the authored model.
 type HostDependencyInstallHint = modeldependency.HostDependencyInstallHint
 
+var windowsRequirementName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$`)
+
+func ValidWindowsRequirementName(name string) bool {
+	return windowsRequirementName.MatchString(name)
+}
+
 func ValidateDependencySpec(fieldPrefix string, deps DependencySpec) error {
 	seen := map[string]struct{}{}
 	for i, dep := range deps.Host {
 		prefix := fmt.Sprintf("%s.host[%d]", fieldPrefix, i)
 		id := strings.TrimSpace(dep.ID)
 		command := strings.TrimSpace(dep.Command)
-		if id == "" && command == "" {
-			return fmt.Errorf("%s requires id or command", prefix)
+		if id == "" && command == "" && dep.WindowsFeature == "" && dep.WindowsService == "" {
+			return fmt.Errorf("%s requires id, command, windows_feature, or windows_service", prefix)
+		}
+		if dep.WindowsFeature != "" && (!ValidWindowsRequirementName(dep.WindowsFeature) || command != "" || dep.WindowsService != "") {
+			return fmt.Errorf("%s.windows_feature requires a Windows feature name and cannot be combined with command or windows_service", prefix)
+		}
+		if dep.WindowsService != "" && (!ValidWindowsRequirementName(dep.WindowsService) || command != "") {
+			return fmt.Errorf("%s.windows_service requires a Windows service name and cannot be combined with command or windows_feature", prefix)
 		}
 		if id != "" && strings.ContainsAny(id, " \t\r\n") {
 			return fmt.Errorf("%s.id must not contain whitespace", prefix)
@@ -32,6 +45,11 @@ func ValidateDependencySpec(fieldPrefix string, deps DependencySpec) error {
 			return fmt.Errorf("%s.command must be an executable name, not a path", prefix)
 		}
 		key := firstNonEmptyString(command, id)
+		if dep.WindowsFeature != "" {
+			key = "windows-feature:" + strings.ToLower(dep.WindowsFeature)
+		} else if dep.WindowsService != "" {
+			key = "windows-service:" + strings.ToLower(dep.WindowsService)
+		}
 		if _, ok := seen[key]; ok {
 			return fmt.Errorf("%s duplicates dependency %q", prefix, key)
 		}

@@ -5,6 +5,7 @@ const path = require("path");
 const zlib = require("zlib");
 
 const DOCKPIPE_TOP_LEVEL_KEYS = [
+  "control",
   "platforms",
   "name",
   "description",
@@ -42,6 +43,7 @@ const DOCKPIPE_TOP_LEVEL_KEYS = [
 ];
 
 const DOCKPIPE_STEP_KEYS = [
+  "control",
   "id",
   "kind",
   "shell",
@@ -72,6 +74,7 @@ const DOCKPIPE_STEP_KEYS = [
 ];
 
 const TOP_LEVEL_KEY_DETAILS = {
+  control: "Embedded PipeLang host orchestration. Requires schema: 1, kind: host, and a literal source: | block. Declare explicit typed inputs and bounded limits.",
   platforms: "Supported execution platforms: windows, macos, linux, deb, flatpak. Flatpak support requires runtime-compatible bundled tools or explicit host integrations.",
   name: "Workflow name.",
   description: "Human-readable workflow description.",
@@ -109,6 +112,7 @@ const TOP_LEVEL_KEY_DETAILS = {
 };
 
 const STEP_KEY_DETAILS = {
+  control: "Ordered control.parameters bind bool, int, and string Run arguments to explicit safe environment keys. Requires workflow control; unavailable in finally.",
   id: "Stable step label used in logs and outputs.",
   kind: "Step kind. Use host for host actions and container for normal isolated execution.",
   shell: "Host-step interpreter override: bash, powershell (Windows PowerShell), or pwsh (PowerShell 7). Inline commands default to Windows PowerShell on Windows and Bash on Unix. Script files preserve .sh/.ps1 semantics; conflicting overrides fail. Not valid on container, packaged workflow, or host built-in steps.",
@@ -2753,6 +2757,8 @@ module.exports = {
   activate,
   deactivate,
   __test: {
+    DOCKPIPE_TOP_LEVEL_KEYS,
+    TOP_LEVEL_KEY_DETAILS,
     DOCKPIPE_STEP_KEYS,
     STEP_KEY_DETAILS,
     analyzeYamlStructure,

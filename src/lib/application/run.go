@@ -20,7 +20,7 @@ var (
 	templateBuildAppFn     = infrastructure.ResolveTemplateBuild
 	maybeVersionTagAppFn   = infrastructure.MaybeVersionTag
 	resolveActionPathFn    = infrastructure.ResolveActionPath
-	sourceHostScriptAppFn  = infrastructure.SourceHostScript
+	sourceHostScriptAppFn  = executeSourceHostScript
 	runHostScriptAppFn     = infrastructure.RunHostScript
 	dockerBuildAppFn       = infrastructure.DockerBuild
 	dockerImageExistsAppFn = infrastructure.DockerImageExists
@@ -126,6 +126,9 @@ func executeAdmittedWorkflowRun(argv []string, baseEnviron []string, services ru
 		if err := domain.ValidateLoadedWorkflow(wf); err != nil {
 			return err
 		}
+		if err := infrastructure.ValidateWorkflowControlArtifact(projectRoot, wf, wfRoot); err != nil {
+			return err
+		}
 		if err := infrastructure.CheckWorkflowResolverScriptDependencies(effWd, repoRoot, wf, wfRoot, wfConfig); err != nil {
 			return err
 		}
@@ -137,6 +140,7 @@ func executeAdmittedWorkflowRun(argv []string, baseEnviron []string, services ru
 		}
 	}
 
+	controlArtifactWorkdir := projectRoot
 	var gitSession *infrastructure.GitSession
 	if wf != nil && !wf.Workspace.IsEmpty() {
 		session, err := createWorkflowGitSession(wf, effWd, wfRoot, opts)
@@ -338,7 +342,7 @@ func executeAdmittedWorkflowRun(argv []string, baseEnviron []string, services ru
 
 	var preparedResolver *preparedWorkflow
 	if !stepsMode && resolverWorkflow != "" {
-		preparedResolver, err = prepareResolverWorkflow(loadWorkflowAppFn, resolverWorkflow, repoRoot, opts)
+		preparedResolver, err = prepareResolverWorkflow(loadWorkflowAppFn, resolverWorkflow, repoRoot, opts, controlArtifactWorkdir)
 		if err != nil {
 			return err
 		}
@@ -743,6 +747,14 @@ func executeAdmittedWorkflowRun(argv []string, baseEnviron []string, services ru
 	}
 	extraDocker := domain.EnvMapToSlice(dockerEnvMap)
 
+	var workflowRuntimePolicy *domain.CompiledRuntimeManifest
+	if !stepsMode {
+		workflowRuntimePolicy, err = runtimepolicy.ApplyCompiledContainerWorkflowPolicy(nil, wf, wfConfig, wfRoot)
+		if err != nil {
+			return err
+		}
+	}
+
 	if stepsMode {
 		if rm, err := runtimepolicy.ApplyCompiledRuntimePolicy(nil, wfConfig, wfRoot); err != nil {
 			return err
@@ -757,23 +769,24 @@ func executeAdmittedWorkflowRun(argv []string, baseEnviron []string, services ru
 			}
 		}
 		if err := services.executeSteps(runStepsOpts{
-			wf:                    wf,
-			wfRoot:                wfRoot,
-			wfConfig:              wfConfig,
-			repoRoot:              repoRoot,
-			projectRoot:           projectRoot,
-			cliArgs:               rest,
-			envMap:                envMap,
-			locked:                locked,
-			userIsolate:           userIso,
-			userAct:               userAct,
-			firstStepExtra:        firstStepExtra,
-			opts:                  opts,
-			dataVol:               dataVol,
-			dataDir:               dataDir,
-			resolver:              profileLabel,
-			templateName:          templateName,
-			strategyHandlesCommit: strategyHandlesCommit,
+			wf:                     wf,
+			wfRoot:                 wfRoot,
+			wfConfig:               wfConfig,
+			repoRoot:               repoRoot,
+			projectRoot:            projectRoot,
+			controlArtifactWorkdir: controlArtifactWorkdir,
+			cliArgs:                rest,
+			envMap:                 envMap,
+			locked:                 locked,
+			userIsolate:            userIso,
+			userAct:                userAct,
+			firstStepExtra:         firstStepExtra,
+			opts:                   opts,
+			dataVol:                dataVol,
+			dataDir:                dataDir,
+			resolver:               profileLabel,
+			templateName:           templateName,
+			strategyHandlesCommit:  strategyHandlesCommit,
 		}); err != nil {
 			if code, ok := exitCodeFromError(err); ok {
 				return &runProcessExit{code: code}
@@ -884,17 +897,17 @@ func executeAdmittedWorkflowRun(argv []string, baseEnviron []string, services ru
 		BundleOut:               firstNonEmpty(envMap["DOCKPIPE_BUNDLE_OUT"], opts.BundleOut),
 		BundleAll:               strings.TrimSpace(envMap["DOCKPIPE_BUNDLE_ALL"]) == "1",
 	}
-	if rm, err := runtimepolicy.ApplyCompiledRuntimePolicy(&runOpts, wfConfig, wfRoot); err != nil {
+	if err := runtimepolicy.ApplyCompiledRuntimeManifest(&runOpts, workflowRuntimePolicy); err != nil {
 		return err
 	} else {
-		for _, line := range runtimepolicy.CompiledRuntimePolicyLogLines(rm) {
+		for _, line := range runtimepolicy.CompiledRuntimePolicyLogLines(workflowRuntimePolicy) {
 			fmt.Fprintf(os.Stderr, "[dockpipe] %s\n", line)
 		}
 		wfName := strings.TrimSpace(opts.Workflow)
 		if wf != nil && wfName == "" {
 			wfName = strings.TrimSpace(wf.Name)
 		}
-		if err := writeRunPolicyRecord(effWd, wfName, wfConfig, "", image, imageDecision, rm); err != nil {
+		if err := writeRunPolicyRecord(effWd, wfName, wfConfig, "", image, imageDecision, workflowRuntimePolicy); err != nil {
 			return err
 		}
 	}

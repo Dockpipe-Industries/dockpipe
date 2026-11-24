@@ -1,0 +1,13 @@
+module Dockpipe.SDK;
+
+// Select one explicit workflow file, or a package and named workflow.
+// Transport validates the selection before starting any process.
+public Record WorkflowRequest {
+    public string workdir;
+    public string workflowFile;
+    public string packageName;
+    public string workflowName;
+    public List<WorkflowVariable> variables;
+    public List<string> arguments;
+    public int outputLimitBytes;
+}

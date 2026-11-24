@@ -1,18 +1,22 @@
 schema: 1
 id: TASK-055
-topic: Inline typed PipeLang expressions and functions in workflow YAML
-entrypoint: overview.md
+topic: Inline PipeLang host control and deferred pure-expression workflow profile
+entrypoint: host-control.md
 dispatch:
-  readiness: deferred
-  ownership: unclaimed
+  readiness: active
+  ownership: claimed
 routes:
   orientation:
-    read: [overview.md]
+    read: [host-control.md, overview.md]
   architecture:
     read: [architecture-findings.md, ../../workflows/yaml-workflows.md, ../../core/architecture.md]
-  design:
+  host_control:
+    read: [host-control.md, ../../../workflows/workflow-yaml.md]
+  deferred_pure_design:
     read: [overview.md, architecture-findings.md]
 documents:
+- path: host-control.md
+  role: active host orchestration scope, implementation status and pending qualification
 - path: overview.md
   role: deferred proposed syntax, compilation, typed values, dataflow, security, artifacts and acceptance gates
 - path: architecture-findings.md
@@ -21,4 +25,5 @@ maintenance:
 - Resolve document paths relative to this index.
 - Keep dispatch metadata synchronized with docs/agents/task-index.yaml.
 - Recheck owner contracts before implementation; source observations are not installed-release guarantees.
-- This design does not establish supported syntax, select dependencies or authorize implementation.
+- Host control implementation is authorized; the older pure-expression proposal stays deferred.
+- Keep qualification claims tied to native evidence; do not infer platform or package acceptance.

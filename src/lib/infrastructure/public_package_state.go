@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"dockpipe/src/lib/domain"
+	"dockpipe/src/lib/infrastructure/packageplatform"
 )
 
 const publicPackageStateImportCohort = "public-package-state-v1"
@@ -47,6 +48,8 @@ func PreparePackageStateDirWithManifests(workdir, ownerID string, manifests ...s
 	if err != nil {
 		return PackageStateStatus{}, err
 	}
+
+	workdir = packageplatform.FlatpakDocumentPath(workdir)
 	packageOwned, err := packageOwnsCompatibilityImport(workdir, ownerID, manifests...)
 	if err != nil {
 		return PackageStateStatus{}, err
@@ -89,8 +92,13 @@ func packageOwnsCompatibilityImport(workdir, ownerID string, explicitManifests .
 			return nil
 		}
 		path, err := filepath.Abs(filepath.Clean(path))
-		if err != nil || seenManifests[path] {
+		if err != nil {
 			return err
+		}
+
+		path = packageplatform.FlatpakDocumentPath(path)
+		if seenManifests[path] {
+			return nil
 		}
 		seenManifests[path] = true
 		info, err := os.Lstat(path)

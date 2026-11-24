@@ -13,12 +13,13 @@ import (
 // preparedWorkflow binds admission to the workflow that will actually execute.
 // Setup scripts cannot change the selected config between admission and execution.
 type preparedWorkflow struct {
-	workflow    *domain.Workflow
-	name        string
-	root        string
-	config      string
-	workdir     string
-	projectRoot string
+	controlArtifactWorkdir string
+	workflow               *domain.Workflow
+	name                   string
+	root                   string
+	config                 string
+	workdir                string
+	projectRoot            string
 }
 
 func preparePackageWorkflow(o *runStepsOpts, step domain.Step, index int) (*preparedWorkflow, error) {
@@ -30,7 +31,7 @@ func preparePackageWorkflow(o *runStepsOpts, step domain.Step, index int) (*prep
 	if namespace == "" {
 		return nil, fmt.Errorf("step %s: packaged workflow step requires package: <namespace> (must match nested workflow namespace:)", step.DisplayName(index))
 	}
-	workdir := firstNonEmpty(o.envMap["DOCKPIPE_WORKDIR"], o.opts.Workdir)
+	workdir := firstNonEmpty(o.envMap["DOCKPIPE_WORKDIR"], o.opts.Workdir, o.projectRoot)
 	config, err := infrastructure.ResolvePackagedWorkflowConfigPath(o.repoRoot, workdir, name, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("step %s: %w", step.DisplayName(index), err)
@@ -42,13 +43,18 @@ func preparePackageWorkflow(o *runStepsOpts, step domain.Step, index int) (*prep
 	if len(workflow.Steps) == 0 {
 		return nil, fmt.Errorf("step %s: packaged workflow %q has no steps", step.DisplayName(index), name)
 	}
+	onDiskConfig, err := infrastructure.WorkflowConfigOnDiskPath(workdir, config)
+	if err != nil {
+		return nil, fmt.Errorf("step %s: materialize packaged workflow: %w", step.DisplayName(index), err)
+	}
 	prepared := &preparedWorkflow{
-		workflow:    workflow,
-		name:        name,
-		root:        filepath.Dir(config),
-		config:      config,
-		workdir:     workdir,
-		projectRoot: o.projectRoot,
+		workflow:               workflow,
+		name:                   name,
+		root:                   filepath.Dir(onDiskConfig),
+		config:                 config,
+		workdir:                workdir,
+		projectRoot:            o.projectRoot,
+		controlArtifactWorkdir: o.controlArtifactRoot(),
 	}
 	if err := prepared.admit(o.opts != nil && o.opts.ApproveSystemChanges); err != nil {
 		return nil, fmt.Errorf("step %s: %w", step.DisplayName(index), err)
@@ -56,7 +62,7 @@ func preparePackageWorkflow(o *runStepsOpts, step domain.Step, index int) (*prep
 	return prepared, nil
 }
 
-func prepareResolverWorkflow(load func(string) (*domain.Workflow, error), name, repoRoot string, opts *CliOpts) (*preparedWorkflow, error) {
+func prepareResolverWorkflow(load func(string) (*domain.Workflow, error), name, repoRoot string, opts *CliOpts, artifactRoots ...string) (*preparedWorkflow, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, fmt.Errorf("resolver workflow name is empty")
@@ -85,6 +91,9 @@ func prepareResolverWorkflow(load func(string) (*domain.Workflow, error), name, 
 		workdir:     workdir,
 		projectRoot: projectRoot,
 	}
+	if len(artifactRoots) != 0 {
+		prepared.controlArtifactWorkdir = artifactRoots[0]
+	}
 	if err := prepared.admit(opts != nil && opts.ApproveSystemChanges); err != nil {
 		return nil, fmt.Errorf("resolver workflow %q: %w", name, err)
 	}
@@ -93,6 +102,13 @@ func prepareResolverWorkflow(load func(string) (*domain.Workflow, error), name, 
 
 func (workflow *preparedWorkflow) admit(approveSystemChanges bool) error {
 	if err := domain.ValidateLoadedWorkflow(workflow.workflow); err != nil {
+		return err
+	}
+	artifactRoot := workflow.controlArtifactWorkdir
+	if artifactRoot == "" {
+		artifactRoot = workflow.projectRoot
+	}
+	if err := infrastructure.ValidateWorkflowControlArtifact(artifactRoot, workflow.workflow, workflow.root); err != nil {
 		return err
 	}
 	return hostDependencyService().Check(hostdependencies.Request{

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"dockpipe/src/lib/infrastructure/packageplatform"
 	"dockpipe/src/lib/infrastructure/telemetry"
 )
 
@@ -28,9 +29,10 @@ type HostRunRecord struct {
 	Container    string `json:"container,omitempty"`
 }
 
-// HostRunsDir returns the per-project runs directory.
+// HostRunsDir returns the per-project runs directory. In Flatpak, it uses the
+// document grant mount directly so callers can keep rejecting symlinks.
 func HostRunsDir(workdir string) string {
-	return filepath.Join(workdir, DockpipeDirRel, "runs")
+	return filepath.Join(packageplatform.FlatpakDocumentPath(workdir), DockpipeDirRel, "runs")
 }
 
 // BeginHostRun adds DOCKPIPE_RUN_ID and DOCKPIPE_RUN_FILE to env and returns the JSON path to fill after Start.

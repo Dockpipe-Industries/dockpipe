@@ -7,7 +7,7 @@ import (
 	"dockpipe/src/lib/application/internal/workspacegitcmd"
 )
 
-func dispatchCommand(argv []string) (bool, error) {
+func dispatchCommand(argv, baseEnviron []string) (bool, error) {
 	switch argv[0] {
 	case "init":
 		return true, cmdInit(argv[1:])
@@ -21,6 +21,8 @@ func dispatchCommand(argv []string) (bool, error) {
 		return true, cmdWindows(argv[1:])
 	case "workflow":
 		return true, cmdWorkflow(argv[1:])
+	case "environment":
+		return true, cmdEnvironment(argv[1:], baseEnviron)
 	case "catalog":
 		return true, cmdCatalog(argv[1:])
 	case "pipelang":

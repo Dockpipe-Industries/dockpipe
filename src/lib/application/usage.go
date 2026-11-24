@@ -78,6 +78,7 @@ var mainUsageSections = []usageSection{
 			{"compile", "Same as dockpipe package compile (resolvers, workflows)"},
 			{"release upload", "Upload a file to S3-compatible storage (self-hosted; uses aws CLI)"},
 			{"workflow validate|list|clone|document", "Validate YAML, list workflows including VS Code tasks/apps, clone an editor entry, or edit YAML through JSON"},
+			{"environment generate|create|apply|show", "Define and provision environments from container settings or workflows"},
 			{"git --request <file.json>", "Review or perform a human-requested project Git action"},
 			{"files --request <file.json|->", "Read or edit workspace files with bounded native validation"},
 			{"containers --request <file.json|->", "Inspect or control exact containers with bounded native validation"},

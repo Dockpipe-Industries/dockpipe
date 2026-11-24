@@ -119,6 +119,9 @@ func StopScope(ctx context.Context, reference ScopeReference) error {
 	if err := reference.Validate(); err != nil {
 		return err
 	}
+	if reference.Mode == "host-reboot" {
+		return stopHostBootScope(reference)
+	}
 	boot, err := HostBootIdentity()
 	if err != nil {
 		return err
@@ -129,9 +132,6 @@ func StopScope(ctx context.Context, reference ScopeReference) error {
 	if boot != reference.Boot {
 		// A kernel reboot terminates every process from the old scope.
 		return nil
-	}
-	if reference.Mode == "host-reboot" {
-		return ErrRebootRequired
 	}
 	root, file, err := openScope(reference)
 	if os.IsNotExist(err) {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -20,6 +21,9 @@ import (
 const tarWorkflowSep = "##"
 
 func loadWorkflowFromTarball(tarPath, entry string) (*domain.Workflow, error) {
+	if !validTarWorkflowMember(entry) {
+		return nil, fmt.Errorf("invalid contained workflow archive member")
+	}
 	entry = filepath.ToSlash(entry)
 	manifestPath := filepath.ToSlash(filepath.Join(filepath.Dir(entry), PackageManifestFilename))
 	metadata, err := packagebuild.ReadFileFromTarGzLimit(tarPath, manifestPath, maxCompatibilityMetadataBytes)
@@ -48,6 +52,12 @@ func loadWorkflowFromTarball(tarPath, entry string) (*domain.Workflow, error) {
 // When dockpipe.config.json sets packages.namespace, the explicit config namespace or
 // the same archive's validated compiled manifest namespace must match.
 func tryResolveWorkflowTarballURI(repoRoot, workdir, name string) (string, error) {
+	return resolveWorkflowTarballMatching(repoRoot, workdir, name, nil)
+}
+
+// resolveWorkflowTarballMatching keeps archive precedence and project namespace
+// admission identical for ordinary, package-selected and nested workflow calls.
+func resolveWorkflowTarballMatching(repoRoot, workdir, name string, accept func(string, []byte) bool) (string, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return "", nil
@@ -121,6 +131,9 @@ func tryResolveWorkflowTarballURI(repoRoot, workdir, name string) (string, error
 					}
 				}
 			}
+			if accept != nil && !accept(tarPath, b) {
+				continue
+			}
 			absTar, err := filepath.Abs(tarPath)
 			if err != nil {
 				return "", err
@@ -134,25 +147,33 @@ func tryResolveWorkflowTarballURI(repoRoot, workdir, name string) (string, error
 // workflowTarballManifestNamespace reads only the identity-bound manifest beside
 // this workflow's config. The consumer's filter must never supply package identity.
 func workflowTarballManifestNamespace(tarPath, workflowName string) (string, error) {
-	manifestPath := filepath.ToSlash(filepath.Join("workflows", workflowName, PackageManifestFilename))
-	data, err := packagebuild.ReadFileFromTarGzLimit(tarPath, manifestPath, maxCompatibilityMetadataBytes)
+	manifest, err := workflowTarballIdentityManifest(tarPath, workflowName)
 	if err != nil {
 		return "", err
 	}
+	return strings.TrimSpace(manifest.Namespace), nil
+}
+
+func workflowTarballIdentityManifest(tarPath, workflowName string) (*domain.PackageManifest, error) {
+	manifestPath := filepath.ToSlash(filepath.Join("workflows", workflowName, PackageManifestFilename))
+	data, err := packagebuild.ReadFileFromTarGzLimit(tarPath, manifestPath, maxCompatibilityMetadataBytes)
+	if err != nil {
+		return nil, err
+	}
 	var manifest domain.PackageManifest
 	if err := yaml.Unmarshal(data, &manifest); err != nil {
-		return "", err
+		return nil, err
 	}
 	domain.NormalizePackageManifestYAMLAliases(&manifest)
 	if err := domain.ValidatePackageManifest(&manifest); err != nil {
-		return "", err
+		return nil, err
 	}
 	archiveName, archiveVersion, valid := packagebuild.PackageArchiveIdentity(tarPath, "workflow")
 	if !valid || manifest.Schema != 1 || manifest.Kind != "workflow" || manifest.Name != workflowName ||
 		archiveName != packagebuild.SafeTarballToken(workflowName) || manifest.Version != archiveVersion {
-		return "", fmt.Errorf("compiled workflow manifest identity differs from its archive")
+		return nil, fmt.Errorf("compiled workflow manifest identity differs from its archive")
 	}
-	return strings.TrimSpace(manifest.Namespace), nil
+	return &manifest, nil
 }
 
 func workflowTarballSearchDir(repoRoot string, cfg *domain.DockpipeProjectConfig) string {
@@ -177,17 +198,40 @@ func formatTarWorkflowURI(absTarPath, entryInTar string) string {
 	return "tar://" + absTarPath + tarWorkflowSep + entryInTar
 }
 
-// SplitTarWorkflowURI splits a LoadWorkflow path produced by tryResolveWorkflowTarballURI.
-func SplitTarWorkflowURI(path string) (tarPath, entry string, ok bool) {
-	if !strings.HasPrefix(path, "tar://") {
+// FormatTarWorkflowURI names an exact workflow entry in a selected package archive.
+func FormatTarWorkflowURI(absTarPath, entryInTar string) string {
+	return formatTarWorkflowURI(absTarPath, entryInTar)
+}
+
+// SplitTarWorkflowURI splits a catalog locator and admits only canonical,
+// contained POSIX archive members, independently of the current host OS.
+func SplitTarWorkflowURI(locator string) (tarPath, entry string, ok bool) {
+	if !strings.HasPrefix(locator, "tar://") {
 		return "", "", false
 	}
-	rest := strings.TrimPrefix(path, "tar://")
+	rest := strings.TrimPrefix(locator, "tar://")
 	i := strings.Index(rest, tarWorkflowSep)
 	if i < 0 {
 		return "", "", false
 	}
-	return rest[:i], rest[i+len(tarWorkflowSep):], true
+	tarPath, entry = rest[:i], rest[i+len(tarWorkflowSep):]
+	if tarPath == "" || !validTarWorkflowMember(entry) {
+		return "", "", false
+	}
+	return tarPath, entry, true
+}
+
+func validTarWorkflowMember(member string) bool {
+	if member == "" || member == "." || member == ".." || path.IsAbs(member) || path.Clean(member) != member ||
+		strings.HasPrefix(member, "../") || strings.ContainsAny(member, "\\\x00") {
+		return false
+	}
+	// Archive members use POSIX separators on every host. Reject Windows drive
+	// prefixes even when the caller is running on a Unix host.
+	if len(member) >= 2 && member[1] == ':' {
+		return false
+	}
+	return true
 }
 
 // WorkflowCompileStartDir returns an absolute directory containing config.yml for workflowName for
@@ -197,36 +241,11 @@ func SplitTarWorkflowURI(path string) (tarPath, entry string, ok bool) {
 // When resolution is tar://, the workflow tarball is extracted under TarballExtractCacheRoot(projectRoot)
 // and the path to workflows/<name>/ inside that tree is returned.
 func WorkflowCompileStartDir(repoRoot, projectRoot, workflowName string) (string, error) {
-	workflowName = strings.TrimSpace(workflowName)
-	if workflowName == "" {
-		return "", fmt.Errorf("workflow name is empty")
-	}
-	if p := OnDiskWorkflowConfigPath(projectRoot, workflowName); p != "" {
-		return filepath.Dir(p), nil
-	}
-	wfPath, err := ResolveWorkflowConfigPathWithWorkdir(repoRoot, projectRoot, workflowName)
+	source, err := ResolveWorkflowCompileSource(repoRoot, projectRoot, workflowName)
 	if err != nil {
 		return "", err
 	}
-	if strings.HasPrefix(wfPath, "tar://") {
-		tarPath, entry, ok := SplitTarWorkflowURI(wfPath)
-		if !ok {
-			return "", fmt.Errorf("invalid tar workflow path %q", wfPath)
-		}
-		root, err := packagebuild.EnsureTarballExtractedCache(tarPath, TarballExtractCacheRoot(projectRoot))
-		if err != nil {
-			return "", fmt.Errorf("extract workflow tarball for compile: %w", err)
-		}
-		entry = filepath.ToSlash(entry)
-		relDir := filepath.ToSlash(filepath.Dir(entry))
-		start := filepath.Join(root, filepath.FromSlash(relDir))
-		cfg := filepath.Join(start, "config.yml")
-		if st, err := os.Stat(cfg); err != nil || st.IsDir() {
-			return "", fmt.Errorf("extracted workflow tree missing %s", cfg)
-		}
-		return filepath.Clean(start), nil
-	}
-	return filepath.Dir(wfPath), nil
+	return source.Directory, nil
 }
 
 // WorkflowConfigOnDiskPath returns a filesystem path for a workflow config resolved by the CLI.
@@ -249,6 +268,10 @@ func WorkflowConfigOnDiskPath(projectRoot, wfConfig string) (string, error) {
 		return "", fmt.Errorf("extract workflow tarball: %w", err)
 	}
 	cfg := filepath.Join(root, filepath.FromSlash(filepath.ToSlash(entry)))
+	relative, err := filepath.Rel(root, cfg)
+	if err != nil || !filepath.IsLocal(relative) {
+		return "", fmt.Errorf("workflow archive config escapes its extracted root")
+	}
 	if st, err := os.Stat(cfg); err != nil || st.IsDir() {
 		return "", fmt.Errorf("extracted workflow config missing %s", cfg)
 	}

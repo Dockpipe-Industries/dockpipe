@@ -42,6 +42,11 @@ func CompileClosureForWorkflow(projectRoot, workflowName string, force bool) err
 	return compileClosureForWorkflow(projectRoot, workflowName, force)
 }
 
+// CompileClosureEntryForWorkflow retains the exact selected root workflow archive.
+func CompileClosureEntryForWorkflow(projectRoot, workflowName string, force bool) (string, error) {
+	return compileClosureEntryForWorkflow(projectRoot, workflowName, force)
+}
+
 // ValidateOutputsForMode validates compiled outputs using the requested namespace mode.
 func ValidateOutputsForMode(workdir string, requireWorkflowNamespace bool) error {
 	return validateCompileOutputsForMode(workdir, requireWorkflowNamespace)

@@ -58,6 +58,12 @@ func (services runExecutionServices) withNativeAdmission() runExecutionServices 
 		return services
 	}
 	source := services.sourceScript
+	if admission.Context != nil && services.sourceScriptContext != nil {
+		execute := services.sourceScriptContext
+		source = func(path string, environment []string) (map[string]string, error) {
+			return execute(admission.Context, path, environment)
+		}
+	}
 	services.sourceScript = func(path string, env []string) (map[string]string, error) {
 		return infrastructure.AdmitSourceHostScript(admission, path, env, source)
 	}
@@ -78,7 +84,14 @@ func (services *stepExecutionServices) withNativeAdmission(admission infrastruct
 		services = snapshotStepExecutionServices()
 	}
 	owned := *services
+	owned.admission = admission
 	source := services.sourceHostScript
+	if admission.Context != nil && services.sourceHostScriptContext != nil {
+		execute := services.sourceHostScriptContext
+		source = func(path string, environment []string) (map[string]string, error) {
+			return execute(admission.Context, path, environment)
+		}
+	}
 	owned.sourceHostScript = func(path string, env []string) (map[string]string, error) {
 		return infrastructure.AdmitSourceHostScript(admission, path, env, source)
 	}

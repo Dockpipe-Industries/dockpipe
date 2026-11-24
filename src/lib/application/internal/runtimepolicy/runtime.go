@@ -32,6 +32,19 @@ func ApplyCompiledRuntimePolicy(runOpts *infrastructure.RunOpts, wfConfig, wfRoo
 	return rm, nil
 }
 
+// ApplyCompiledContainerWorkflowPolicy admits legacy single-container workflows.
+// Host delegates and host-only step workflows do not enter this boundary.
+func ApplyCompiledContainerWorkflowPolicy(runOpts *infrastructure.RunOpts, wf *domain.Workflow, wfConfig, wfRoot string) (*domain.CompiledRuntimeManifest, error) {
+	rm, err := ApplyCompiledRuntimePolicy(runOpts, wfConfig, wfRoot)
+	if err != nil {
+		return nil, err
+	}
+	if rm == nil && wf != nil && !domain.WorkflowSecurityConfigIsEmpty(wf.Security) {
+		return nil, fmt.Errorf("container workflow declares security policy but has no compiled runtime manifest; compile the workflow and run its compiled catalog entry")
+	}
+	return rm, nil
+}
+
 func effectiveCompiledRuntimePolicyForStep(wf *domain.Workflow, wfConfig, wfRoot string, step domain.Step, stepID string) (*domain.CompiledRuntimeManifest, error) {
 	if rm, err := LoadCompiledRuntimeManifestForStep(wfConfig, wfRoot, stepID); err != nil {
 		return nil, err
@@ -43,6 +56,10 @@ func effectiveCompiledRuntimePolicyForStep(wf *domain.Workflow, wfConfig, wfRoot
 		return nil, err
 	}
 	if rm == nil {
+		workflowDeclaresPolicy := wf != nil && !domain.WorkflowSecurityConfigIsEmpty(wf.Security)
+		if workflowDeclaresPolicy || !domain.WorkflowSecurityConfigIsEmpty(step.Security) {
+			return nil, fmt.Errorf("container step %q declares security policy but has no compiled runtime manifest; compile the workflow and run its compiled catalog entry", stepID)
+		}
 		return nil, nil
 	}
 	if domain.WorkflowSecurityConfigIsEmpty(step.Security) {

@@ -36,7 +36,8 @@ func cmdWorkflowValidate(path string) error {
 
 func cmdWorkflow(args []string) error {
 	if len(args) == 0 {
-		return usageError(`usage: dockpipe workflow validate [path]
+		return usageError(`usage: dockpipe workflow build-control <config.yml> --sdk <prefix> --sdk-sha256 <digest>
+       dockpipe workflow validate [path]
        dockpipe workflow test [--workdir <path>] [--only <workflow>]
        dockpipe workflow list [--workdir <path>] [--format json|text]
        dockpipe workflow clone <workflow-id> [--workdir <path>] [--name <name>] [--format json|text]
@@ -45,6 +46,8 @@ func cmdWorkflow(args []string) error {
   Validates workflow YAML (parse + JSON Schema). Relative paths resolve from the current directory, then from the repo root (DOCKPIPE_REPO_ROOT / materialized bundle). Omit path when exactly one workflows/*/config.yml exists under the workflows root.`)
 	}
 	switch args[0] {
+	case "build-control":
+		return cmdWorkflowBuildControl(args[1:])
 	case "clone":
 		return cmdWorkflowClone(args[1:])
 	case "document":
@@ -116,6 +119,6 @@ Print the workflow catalog resolved by Dockpipe for the given project/workdir.
 	case "test":
 		return cmdWorkflowTest(args[1:])
 	default:
-		return fmt.Errorf("unknown workflow subcommand %q (try: validate, test, list, clone, or document)", args[0])
+		return fmt.Errorf("unknown workflow subcommand %q (try: build-control, validate, test, list, clone, or document)", args[0])
 	}
 }

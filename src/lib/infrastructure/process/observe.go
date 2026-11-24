@@ -6,6 +6,10 @@ import "os/exec"
 // completion callback. No observer may replace process-tree supervision.
 type StartedObserver func(*exec.Cmd) func(error)
 
+// HostStartedObserver completes while host custody is still active. Its
+// completion result reports metadata/output failures independently of root exit.
+type HostStartedObserver func(*exec.Cmd) func(error) error
+
 func Run(command *exec.Cmd) error {
 	return RunObserved(command, nil)
 }

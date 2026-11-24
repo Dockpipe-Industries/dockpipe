@@ -40,6 +40,12 @@ type hostSignalForwardingResult struct {
 // The observer is a local dependency, not a mutable global syscall seam. It
 // observes but never reaps; exec.Cmd remains the only owner of the actual Wait.
 func waitHostProcessGroupWithObservation(cmd *exec.Cmd, signals <-chan os.Signal, observe func(int) error) error {
+	return waitHostProcessGroupWithCompletion(cmd, signals, observe, nil, nil)
+}
+
+// Source output remains supervised while WNOWAIT reserves the exited leader's
+// identity. A denied observation aborts private readers before direct-child wait.
+func waitHostProcessGroupWithCompletion(cmd *exec.Cmd, signals <-chan os.Signal, observe func(int) error, completeOutput, abortOutput func()) error {
 	stop := make(chan struct{})
 	joined := make(chan hostSignalForwardingResult, 1)
 	go func() {
@@ -75,9 +81,15 @@ func waitHostProcessGroupWithObservation(cmd *exec.Cmd, signals <-chan os.Signal
 		}
 	}()
 	observeErr := observe(cmd.Process.Pid)
+	if observeErr == nil && completeOutput != nil {
+		completeOutput()
+	}
 	close(stop)
 	forwarding := <-joined
 	if observeErr != nil {
+		if abortOutput != nil {
+			abortOutput()
+		}
 		// A policy can deny P_PID/WNOWAIT while permitting Go's P_PIDFD/WEXITED
 		// wait. Continue cancellable direct-child waiting with the same queued
 		// signals; never issue another negative-PID signal after this handoff.

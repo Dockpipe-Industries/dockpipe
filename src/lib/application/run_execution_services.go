@@ -1,6 +1,8 @@
 package application
 
 import (
+	"context"
+
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 )
@@ -9,27 +11,29 @@ import (
 // Legacy package seams remain composition adapters for compatibility tests;
 // running sessions and their nested steps use their captured dependencies.
 type runExecutionServices struct {
-	admission    infrastructure.NativeExecutionAdmission
-	sourceScript func(string, []string) (map[string]string, error)
-	hostScript   func(string, []string) error
-	container    func(infrastructure.RunOpts, []string) (int, error)
-	buildImage   func(string, string, string) error
-	runSteps     func(runStepsOpts) error
-	steps        *stepExecutionServices
-	finalize     func(*infrastructure.GitSession, *domain.Workflow) error
-	commit       func(string, string, string, bool) error
+	sourceScriptContext func(context.Context, string, []string) (map[string]string, error)
+	admission           infrastructure.NativeExecutionAdmission
+	sourceScript        func(string, []string) (map[string]string, error)
+	hostScript          func(string, []string) error
+	container           func(infrastructure.RunOpts, []string) (int, error)
+	buildImage          func(string, string, string) error
+	runSteps            func(runStepsOpts) error
+	steps               *stepExecutionServices
+	finalize            func(*infrastructure.GitSession, *domain.Workflow) error
+	commit              func(string, string, string, bool) error
 }
 
 func snapshotRunExecutionServices() runExecutionServices {
 	return runExecutionServices{
-		sourceScript: sourceHostScriptAppFn,
-		hostScript:   runHostScriptAppFn,
-		container:    runContainerAppFn,
-		buildImage:   dockerBuildAppFn,
-		runSteps:     runStepsAppFn,
-		steps:        snapshotStepExecutionServices(),
-		finalize:     finalizeWorkflowGitSession,
-		commit:       runHostCommit,
+		sourceScriptContext: sourceHostScriptAppFn,
+		sourceScript:        sourceHostScriptWithoutContext(sourceHostScriptAppFn),
+		hostScript:          runHostScriptAppFn,
+		container:           runContainerAppFn,
+		buildImage:          dockerBuildAppFn,
+		runSteps:            runStepsAppFn,
+		steps:               snapshotStepExecutionServices(),
+		finalize:            finalizeWorkflowGitSession,
+		commit:              runHostCommit,
 	}
 }
 

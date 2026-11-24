@@ -73,6 +73,43 @@ func TestInternalStateIsHiddenAndRejectsMalformedMappings(t *testing.T) {
 	}
 }
 
+func TestInternalStateFreshCohortKeepsIdentityAndSeparatesRuns(t *testing.T) {
+	base := t.TempDir()
+	workdir := filepath.Join(base, "project")
+	if err := os.Mkdir(workdir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("XDG_STATE_HOME", filepath.Join(base, "durable"))
+	t.Setenv("HOME", filepath.Join(base, "home"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(base, "windows"))
+
+	baseArgs := []string{
+		"prepare-durable-cohort", "--workdir", workdir, "--owner", "vm/runtime/vmimage",
+		"--cohort", "managed", "--instance", "instance-1", "--no-legacy-import",
+	}
+	first, err := captureStdout(t, func() error {
+		return Run(append(baseArgs, "--run", "first"))
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := captureStdout(t, func() error {
+		return Run(append(baseArgs, "--run", "second"))
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	left := strings.Split(strings.TrimSpace(first), "\t")
+	right := strings.Split(strings.TrimSpace(second), "\t")
+	if len(left) != 4 || len(right) != 4 || left[0] != right[0] || left[1] == right[1] ||
+		left[2] != "false" || left[3] != "false" || right[2] != "false" || right[3] != "false" {
+		t.Fatalf("unexpected fresh cohort results: %q, %q", first, second)
+	}
+	if err := Run(append(baseArgs, "--run", "invalid", "--legacy-root", "legacy")); err == nil {
+		t.Fatal("fresh cohort accepted a legacy source")
+	}
+}
+
 func TestInternalStatePackageRuntimeIsCollisionSafeAndNonMutating(t *testing.T) {
 	workdir := filepath.Join(t.TempDir(), "checkout")
 	first, err := captureStdout(t, func() error {

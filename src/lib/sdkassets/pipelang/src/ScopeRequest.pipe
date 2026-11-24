@@ -1,0 +1,12 @@
+module Dockpipe.SDK;
+
+// Mirrors the public scope service: an empty selection requests the current
+// workflow object; packageName selects a package; scope selects a scope path.
+// Path segments are passed to the service rather than joined by the caller.
+public Record ScopeRequest {
+    public string workdir;
+    public string scope;
+    public string packageName;
+    public List<string> path;
+    public int outputLimitBytes;
+}

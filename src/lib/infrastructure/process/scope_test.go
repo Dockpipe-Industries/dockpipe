@@ -26,7 +26,7 @@ func TestScopedProcessChild(t *testing.T) {
 }
 
 func TestBootFencedScopePersistsIdentityBeforeEffectsAndRequiresChangedBoot(t *testing.T) {
-	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
 		t.Skip("native boot identity unavailable")
 	}
 	t.Setenv("DOCKPIPE_PROCESS_RECOVERY", "host-reboot")
@@ -53,14 +53,34 @@ func TestBootFencedScopePersistsIdentityBeforeEffectsAndRequiresChangedBoot(t *t
 		t.Fatal("unchanged worker boot was treated as descendant cleanup proof", err)
 	}
 	priorBoot := captured
-	priorBoot.Boot = "00000000-0000-0000-0000-000000000000"
+	if runtime.GOOS == "windows" {
+		legacy := captured
+		legacy.BootSequence = 0
+		if err := StopScope(context.Background(), legacy); !errors.Is(err, ErrScopeUnavailable) {
+			t.Fatal("a legacy Windows receipt without a sequence cleared the scope", err)
+		}
+
+		future := captured
+		future.BootSequence++
+		if err := StopScope(context.Background(), future); !errors.Is(err, ErrScopeUnavailable) {
+			t.Fatal("a regressed Windows boot sequence cleared the scope", err)
+		}
+		if captured.BootSequence < 2 {
+			t.Log("the current Windows boot is the first nonzero sequence")
+			return
+		}
+
+		priorBoot.BootSequence--
+	} else {
+		priorBoot.Boot = "00000000-0000-0000-0000-000000000000"
+	}
 	if err := StopScope(context.Background(), priorBoot); err != nil {
 		t.Fatal("a valid prior kernel lifetime did not qualify boot-fenced recovery", err)
 	}
 }
 
 func TestScopedProcessCannotStartBeforeReceiptOrWithUnavailableDelegation(t *testing.T) {
-	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
 		t.Skip("native scoped execution unavailable")
 	}
 	root := t.TempDir()

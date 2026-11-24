@@ -1,0 +1,329 @@
+#include "Model.hpp"
+
+#include <array>
+#include <bit>
+#include <cstdint>
+#include <cstdio>
+#include <exception>
+#include <iostream>
+#include <limits>
+#include <memory>
+#include <mutex>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
+
+namespace {
+namespace source = dockpipe_control::source::Dockpipe::WorkflowControl;
+using InvocationResult = pipelang::model::Result<void, std::string>;
+using Bytes = std::vector<std::uint8_t>;
+
+constexpr std::size_t maximumFrameBytes = 1024 * 1024;
+constexpr std::size_t maximumStringBytes = 65536;
+constexpr std::size_t maximumErrorBytes = 4096;
+constexpr std::size_t maximumListItems = 256;
+constexpr std::size_t maximumArguments = 16;
+
+void require(bool condition, const char* message) {
+    if (!condition)
+        throw std::runtime_error(message);
+}
+
+void validateText(const std::string& value, std::size_t maximumBytes) {
+    require(value.size() <= maximumBytes, "control protocol string exceeds its byte limit");
+    require(value.find('\0') == std::string::npos, "control protocol string contains NUL");
+    pipelang::model::validate(value);
+}
+
+Bytes readFrame() {
+    std::array<unsigned char, 4> header{};
+    std::cin.read(reinterpret_cast<char*>(header.data()), header.size());
+    require(static_cast<bool>(std::cin), "control protocol frame header is incomplete");
+    std::uint32_t size = 0;
+    for (unsigned index = 0; index < header.size(); ++index)
+        size |= static_cast<std::uint32_t>(header[index]) << (8 * index);
+    require(size > 0 && size <= maximumFrameBytes, "control protocol frame exceeds its byte limit");
+
+    Bytes payload(size);
+    std::cin.read(reinterpret_cast<char*>(payload.data()), static_cast<std::streamsize>(payload.size()));
+    require(static_cast<bool>(std::cin), "control protocol frame is incomplete");
+    return payload;
+}
+
+class PayloadReader {
+public:
+    explicit PayloadReader(Bytes payload) : payload_(std::move(payload)) {}
+
+    std::uint8_t byte() {
+        require(offset_ < payload_.size(), "control protocol payload is incomplete");
+        return payload_[offset_++];
+    }
+
+    std::uint32_t uint32() {
+        return static_cast<std::uint32_t>(unsignedInteger(4));
+    }
+
+    std::uint64_t uint64() {
+        return unsignedInteger(8);
+    }
+
+    std::string text(std::size_t maximumBytes = maximumStringBytes) {
+        const auto size = uint32();
+        require(size <= maximumBytes, "control protocol string exceeds its byte limit");
+        require(size <= payload_.size() - offset_, "control protocol string is incomplete");
+        std::string value(reinterpret_cast<const char*>(payload_.data() + offset_), size);
+        offset_ += size;
+        validateText(value, maximumBytes);
+        return value;
+    }
+
+    void finish() const {
+        require(offset_ == payload_.size(), "control protocol payload has trailing bytes");
+    }
+
+private:
+    std::uint64_t unsignedInteger(unsigned width) {
+        require(width <= payload_.size() - offset_, "control protocol integer is incomplete");
+        std::uint64_t value = 0;
+        for (unsigned index = 0; index < width; ++index)
+            value |= static_cast<std::uint64_t>(payload_[offset_++]) << (8 * index);
+        return value;
+    }
+
+    Bytes payload_;
+    std::size_t offset_ = 0;
+};
+
+class InputReader {
+public:
+    explicit InputReader(Bytes payload) : reader_(std::move(payload)) {
+        require(reader_.byte() == 0, "control protocol expected INIT");
+        require(reader_.uint32() == 1, "control protocol version is unsupported");
+        inputCount_ = reader_.uint32();
+    }
+
+    void expectInputCount(std::uint32_t count) {
+        require(!countChecked_ && inputCount_ == count, "control protocol input count differs from the control");
+        countChecked_ = true;
+    }
+
+    bool boolean() {
+        expectType(1);
+        const auto value = reader_.byte();
+        require(value <= 1, "control protocol boolean is invalid");
+        return value == 1;
+    }
+
+    std::int64_t integer() {
+        expectType(2);
+        return std::bit_cast<std::int64_t>(reader_.uint64());
+    }
+
+    std::string string() {
+        expectType(3);
+        return reader_.text();
+    }
+
+    pipelang::model::List<std::string> strings() {
+        expectType(4);
+        const auto count = reader_.uint32();
+        require(count <= maximumListItems, "control protocol list exceeds its item limit");
+        auto values = pipelang::model::List<std::string>::Empty();
+        for (std::uint32_t index = 0; index < count; ++index)
+            values.add(reader_.text());
+        return values;
+    }
+
+    void finish() const {
+        require(countChecked_ && inputsRead_ == inputCount_, "control protocol input count is incomplete");
+        reader_.finish();
+    }
+
+private:
+    void expectType(std::uint8_t type) {
+        require(countChecked_ && inputsRead_ < inputCount_, "control protocol has an unexpected input");
+        require(reader_.byte() == type, "control protocol input type differs from the control");
+        ++inputsRead_;
+    }
+
+    PayloadReader reader_;
+    std::uint32_t inputCount_ = 0;
+    std::uint32_t inputsRead_ = 0;
+    bool countChecked_ = false;
+};
+
+class PayloadWriter {
+public:
+    void byte(std::uint8_t value) {
+        require(payload_.size() < maximumFrameBytes, "control protocol frame exceeds its byte limit");
+        payload_.push_back(value);
+    }
+
+    void uint32(std::uint32_t value) {
+        unsignedInteger(value, 4);
+    }
+
+    void uint64(std::uint64_t value) {
+        unsignedInteger(value, 8);
+    }
+
+    void text(const std::string& value, std::size_t maximumBytes = maximumStringBytes) {
+        validateText(value, maximumBytes);
+        require(payload_.size() <= maximumFrameBytes - 4 &&
+                value.size() <= maximumFrameBytes - 4 - payload_.size(),
+                "control protocol frame exceeds its byte limit");
+        uint32(static_cast<std::uint32_t>(value.size()));
+        payload_.insert(payload_.end(), value.begin(), value.end());
+    }
+
+    void send() const {
+        std::array<unsigned char, 4> header{};
+        const auto size = static_cast<std::uint32_t>(payload_.size());
+        for (unsigned index = 0; index < header.size(); ++index)
+            header[index] = static_cast<unsigned char>((size >> (8 * index)) & 0xff);
+        std::cout.write(reinterpret_cast<const char*>(header.data()), header.size());
+        std::cout.write(reinterpret_cast<const char*>(payload_.data()), static_cast<std::streamsize>(payload_.size()));
+        std::cout.flush();
+        require(static_cast<bool>(std::cout), "control protocol output failed");
+    }
+
+private:
+    void unsignedInteger(std::uint64_t value, unsigned width) {
+        for (unsigned index = 0; index < width; ++index)
+            byte(static_cast<std::uint8_t>((value >> (8 * index)) & 0xff));
+    }
+
+    Bytes payload_;
+};
+
+class StepHost final : public source::StepHost {
+public:
+    InvocationResult Run(std::string id, pipelang::model::List<source::Variable> arguments) override {
+        std::lock_guard<std::mutex> guard(mutex_);
+        if (failed_)
+            return InvocationResult::Failure("workflow control host protocol failed");
+
+        try {
+            require(sequence_ < std::numeric_limits<std::uint64_t>::max(), "control protocol sequence exhausted");
+            require(arguments.values().size() <= maximumArguments, "control protocol has too many step arguments");
+            const auto sequence = ++sequence_;
+            PayloadWriter call;
+            call.byte(1);
+            call.uint64(sequence);
+            call.text(id);
+            call.uint32(static_cast<std::uint32_t>(arguments.values().size()));
+            for (const auto& argument : arguments.values()) {
+                call.text(argument.name);
+                call.text(argument.value);
+            }
+            call.send();
+
+            PayloadReader reply(readFrame());
+            require(reply.byte() == 2, "control protocol expected REPLY");
+            require(reply.uint64() == sequence, "control protocol reply sequence differs from the call");
+            const auto outcome = reply.byte();
+            require(outcome <= 2, "control protocol reply outcome is invalid");
+            auto error = reply.text(maximumErrorBytes);
+            reply.finish();
+            if (outcome == 0) {
+                require(error.empty(), "control protocol success has an error");
+                return InvocationResult::Success();
+            }
+            if (outcome == 1)
+                return InvocationResult::Cancelled(std::move(error));
+            return InvocationResult::Failure(std::move(error));
+        } catch (const std::exception&) {
+            // The controller owns callback authority. A failed exchange cannot
+            // be recovered by source code into another native request.
+            failed_ = true;
+            return InvocationResult::Failure("workflow control host protocol failed");
+        }
+    }
+
+    bool failed() const {
+        std::lock_guard<std::mutex> guard(mutex_);
+        return failed_;
+    }
+
+private:
+    mutable std::mutex mutex_;
+    std::uint64_t sequence_ = 0;
+    bool failed_ = false;
+};
+
+std::string boundedDiagnostic(const std::string& error) {
+    try {
+        validateText(error, pipelang::model::maximumStringBytes);
+    } catch (const std::exception&) {
+        return "workflow control returned invalid diagnostic text";
+    }
+    if (error.size() <= maximumErrorBytes)
+        return error;
+
+    constexpr std::string_view marker = " [truncated]";
+    auto length = maximumErrorBytes - marker.size();
+    while (!pipelang::model::isUtf8Boundary(error, length))
+        --length;
+    return error.substr(0, length) + std::string(marker);
+}
+
+void sendDone(const InvocationResult& result) {
+    PayloadWriter done;
+    done.byte(3);
+    std::uint8_t outcome = 2;
+    if (result.is_success()) {
+        outcome = 0;
+    } else if (result.is_cancelled()) {
+        outcome = 1;
+    }
+    done.byte(outcome);
+    done.text(boundedDiagnostic(result.error()), maximumErrorBytes);
+    done.send();
+}
+
+InvocationResult runControl() {
+    source::Inputs inputs{};
+    InputReader reader(readFrame());
+#include "InputDecode.inc"
+
+    auto host = std::make_shared<StepHost>();
+    InvocationResult result;
+    {
+        // The compiler and SDK own source evaluation and its finite budget.
+        source::Control control(std::move(inputs), host);
+        result = control.Run();
+    }
+    if (host->failed())
+        return InvocationResult::Failure("workflow control host protocol failed");
+    return result;
+}
+} // namespace
+
+int main() {
+#ifdef _WIN32
+    if (_setmode(_fileno(stdin), _O_BINARY) == -1 || _setmode(_fileno(stdout), _O_BINARY) == -1) {
+        std::cerr << "workflow control binary protocol initialization failed\n";
+        return 2;
+    }
+#endif
+    InvocationResult result;
+    try {
+        result = runControl();
+    } catch (const std::exception&) {
+        result = InvocationResult::Failure("workflow control initialization or protocol failed");
+    }
+    try {
+        sendDone(result);
+        return 0;
+    } catch (const std::exception&) {
+        std::cerr << "workflow control protocol output failed\n";
+        return 2;
+    }
+}

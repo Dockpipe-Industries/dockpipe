@@ -72,6 +72,9 @@ verified associations take priority over recent completed executions within the
 256-entry result. Registry discovery examines at most 4096 entries per observation.
 Operations with no
 project use the existing global data directory's `runs/executions` subdirectory.
+Flatpak workspaces opened through the document portal keep history in app-private
+state keyed by the grant path. The portal mount can reject file locks even when
+it permits workspace writes.
 History updates use a cross-process lock and atomic replacement. It is a recent
 activity cache, not a durable audit log. Heavy concurrency can exceed retention;
 the snapshot reports its capacity limit. Crashes can leave `running` records:
@@ -166,10 +169,13 @@ parent PID, memory and CPU sort by numeric values; unavailable metrics stay last
 Sorting covers the full collected snapshot before the visible row limit and
 persists across refreshes.
 
-Both **System** and **Containers** offer **This computer** and the paired machines
-from the existing **Machines** connection. Switching targets clears the previous
-machine's data and discards outstanding results from it. Remote System currently
-shows machine resources and discovered processes, not project execution history.
+**System** offers **This computer** and the paired machines from the existing
+**Machines** connection. In **Containers**, the **Machine** selector is available
+when the workspace is on **This computer**. It can show the read-only monitoring
+inventory for a paired worker while the workspace stays local. Switching targets
+clears the previous machine's data and discards outstanding results from it.
+Remote System shows machine resources and discovered processes. Use the separate
+workflow views for project execution history.
 
 The worker owner enables the desired sharing locally, using the same state
 folder as their paired worker:
@@ -203,9 +209,10 @@ maximum); snapshots expire for reads after 30 seconds and disappear on restart
 or revocation. Process lists that exceed the byte budget carry a truncation flag.
 There is no durable telemetry archive.
 
-Remote Docker is a read-only inventory/topology view: containers, networks,
-volumes and their associations. Existing local start/stop, terminals, inspect
-and log controls remain local. Remote snapshots omit command arguments,
+Remote Docker monitoring shows a read-only inventory and topology of containers,
+networks, volumes and their associations. A remote workspace uses its worker's
+separate Docker feature grants for inventory, details and actions. Monitoring
+snapshots omit command arguments,
 environment values, application logs, arbitrary labels and mount source paths.
 Only the Compose project, service and dependency labels are retained. Collection
 uses the worker's Docker CLI/context with a three-second total deadline, a

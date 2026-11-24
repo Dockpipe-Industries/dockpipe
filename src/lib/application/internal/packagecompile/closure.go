@@ -11,6 +11,7 @@ import (
 	"dockpipe/src/lib/application/internal/compileconfig"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
+	"dockpipe/src/lib/infrastructure/packagebuild"
 
 	"gopkg.in/yaml.v3"
 )
@@ -50,34 +51,41 @@ func logCompileClosureSkip(projectRoot, parentWorkflow, relation, missingRef, re
 // resolver/runtime names on the workflow and steps, and nested delegate workflows from merged isolation profiles.
 // projectRoot is the Dockpipe project directory (contains bin/.dockpipe and usually dockpipe.config.json).
 func compileClosureForWorkflow(projectRoot, workflowName string, force bool) error {
+	_, err := compileClosureEntryForWorkflow(projectRoot, workflowName, force)
+	return err
+}
+
+func compileClosureEntryForWorkflow(projectRoot, workflowName string, force bool) (string, error) {
 	repoRoot, err := infrastructure.RepoRoot()
 	if err != nil {
-		return err
+		return "", err
 	}
 	projectRoot, err = filepath.Abs(projectRoot)
 	if err != nil {
-		return err
+		return "", err
 	}
 	cfg, err := compileconfig.Load(projectRoot)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	startDir, err := infrastructure.WorkflowCompileStartDir(repoRoot, projectRoot, workflowName)
+	startSource, err := infrastructure.ResolveWorkflowCompileSource(repoRoot, projectRoot, workflowName)
 	if err != nil {
-		return fmt.Errorf("compile for-workflow: workflow %q: %w", workflowName, err)
+		return "", fmt.Errorf("compile for-workflow: workflow %q: %w", workflowName, err)
 	}
+	startDir := startSource.Directory
 
 	order, resNames, err := closureWorkflowOrderAndResolvers(repoRoot, projectRoot, startDir, cfg)
 	if err != nil {
-		return err
+		return "", err
 	}
 	opIDs := packageCompileIDs(projectRoot, map[string]string{
 		"workflow":       workflowName,
 		"workflow_count": strconv.Itoa(len(order)),
 		"resolver_count": strconv.Itoa(len(resNames)),
 	})
-	return infrastructure.RunOperationWithOptions(os.Stderr, "package.compile.for_workflow", "Compiling workflow dependency closure…", opIDs, infrastructure.OperationOptions{Spinner: false, ProgressEvery: packageCompileProgressEvery}, func() error {
+	var selectedEntry string
+	err = infrastructure.RunOperationWithOptions(os.Stderr, "package.compile.for_workflow", "Compiling workflow dependency closure…", opIDs, infrastructure.OperationOptions{Spinner: false, ProgressEvery: packageCompileProgressEvery}, func() error {
 		destRes, err := infrastructure.PackagesResolversDir(projectRoot)
 		if err != nil {
 			return err
@@ -106,8 +114,28 @@ func compileClosureForWorkflow(projectRoot, workflowName string, force bool) err
 		}
 
 		for _, wfDir := range order {
-			if err := compileWorkflowOne(projectRoot, wfDir, "", force); err != nil {
+			if filepath.Clean(wfDir) == filepath.Clean(startDir) && !force {
+				if archive, _, installed := infrastructure.SplitTarWorkflowURI(startSource.Config); installed {
+					materialized, err := packagebuild.IsTarballExtractionSource(archive, infrastructure.TarballExtractCacheRoot(projectRoot), wfDir)
+					if err != nil {
+						return fmt.Errorf("installed workflow provenance: %w", err)
+					}
+					if !materialized {
+						return fmt.Errorf("installed workflow directory is not its selected archive materialization")
+					}
+					if valid, reason := compiledPackageWorkflowConfigsValid(archive); !valid {
+						return fmt.Errorf("installed workflow archive validation failed: %s", reason)
+					}
+					selectedEntry = startSource.Config
+					continue
+				}
+			}
+			entry, err := compileWorkflowEntry(projectRoot, wfDir, "", force)
+			if err != nil {
 				return fmt.Errorf("workflow %s: %w", wfDir, err)
+			}
+			if filepath.Clean(wfDir) == filepath.Clean(startDir) {
+				selectedEntry = entry
 			}
 		}
 		workflowNames, err := compiledWorkflowNamesForDirs(order)
@@ -120,6 +148,13 @@ func compileClosureForWorkflow(projectRoot, workflowName string, force bool) err
 		opIDs["result"] = "compiled"
 		return nil
 	})
+	if err != nil {
+		return "", err
+	}
+	if selectedEntry == "" {
+		return "", fmt.Errorf("workflow dependency compilation produced no selected entry")
+	}
+	return selectedEntry, nil
 }
 
 func closureWorkflowOrderAndResolvers(dockpipeRepoRoot, projectRoot, startDir string, cfg *domain.DockpipeProjectConfig) ([]string, map[string]bool, error) {

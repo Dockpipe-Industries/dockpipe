@@ -11,7 +11,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -53,7 +52,7 @@ func Resolve(ctx context.Context, workdir, resolver string, request contract.Req
 	if err != nil {
 		return nil, err
 	}
-	scriptPath, err := resolverScript(profilePath, profile["DOCKPIPE_SECRET_ENVIRONMENT_RESOLVE"])
+	scriptPath, err := infrastructure.ResolveResolverHook(profilePath, profile["DOCKPIPE_SECRET_ENVIRONMENT_RESOLVE"])
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +67,7 @@ func Resolve(ctx context.Context, workdir, resolver string, request contract.Req
 	if profile["DOCKPIPE_SECRET_ENVIRONMENT_AUTHENTICATE"] == "" {
 		return nil, contract.ErrAuthenticationRequired
 	}
-	authenticatePath, err := resolverScript(profilePath, profile["DOCKPIPE_SECRET_ENVIRONMENT_AUTHENTICATE"])
+	authenticatePath, err := infrastructure.ResolveResolverHook(profilePath, profile["DOCKPIPE_SECRET_ENVIRONMENT_AUTHENTICATE"])
 	if err != nil {
 		return nil, err
 	}
@@ -77,27 +76,6 @@ func Resolve(ctx context.Context, workdir, resolver string, request contract.Req
 	}
 	// One login attempt, then one resolution. Never loop on provider failures.
 	return resolveProcess(ctx, workdir, scriptPath, input, request)
-}
-
-func resolverScript(profilePath, declared string) (string, error) {
-	script := filepath.FromSlash(declared)
-	if !filepath.IsLocal(script) || script == "." {
-		return "", errors.New("secret environment hook must declare a local script")
-	}
-	scriptPath := filepath.Join(filepath.Dir(profilePath), script)
-	resolvedRoot, err := filepath.EvalSymlinks(filepath.Dir(profilePath))
-	if err != nil {
-		return "", err
-	}
-	resolvedScript, err := filepath.EvalSymlinks(scriptPath)
-	if err != nil {
-		return "", errors.New("secret environment resolver script is unavailable")
-	}
-	relative, err := filepath.Rel(resolvedRoot, resolvedScript)
-	if err != nil || !filepath.IsLocal(relative) {
-		return "", errors.New("secret environment resolver script escapes its package")
-	}
-	return resolvedScript, nil
 }
 
 func resolveProcess(ctx context.Context, workdir, script string, input []byte, request contract.Request) (map[string]string, error) {

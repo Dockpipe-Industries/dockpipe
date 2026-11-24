@@ -2,6 +2,7 @@ package hostdependencies
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -21,6 +22,9 @@ func (service Service) installMissing(missing []missingHostDependency, approveSy
 				"result":      "skip",
 				"skip_reason": "no_installer",
 			}), "")
+			if isWindowsRequirement(dep) {
+				return missingHostDependenciesError([]missingHostDependency{missingDep})
+			}
 			continue
 		}
 		if !PlatformsSupportCurrent(missingDep.Platforms) {
@@ -36,6 +40,9 @@ func (service Service) installMissing(missing []missingHostDependency, approveSy
 			return err
 		}
 		if !approved {
+			if isWindowsRequirement(dep) {
+				return missingHostDependenciesError([]missingHostDependency{missingDep})
+			}
 			continue
 		}
 		ids := operationids.Merge(hostDependencyResultIDs(dep), map[string]string{
@@ -50,6 +57,14 @@ func (service Service) installMissing(missing []missingHostDependency, approveSy
 		})
 		if err != nil {
 			return fmt.Errorf("install dependency %s: %w", hostDependencyID(dep), err)
+		}
+		if isWindowsRequirement(dep) {
+			if _, err := service.lookupDependency(missingDep, hostDependencyCommand(dep)); err != nil {
+				if errors.Is(err, os.ErrNotExist) {
+					return fmt.Errorf("Windows requirement %s is still unavailable; restart Windows if requested by setup, then rerun", hostDependencyCommand(dep))
+				}
+				return err
+			}
 		}
 	}
 	return nil

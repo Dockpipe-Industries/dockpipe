@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"os"
 	"strings"
 
@@ -12,6 +13,11 @@ import (
 // Nested workflows and finally steps inherit it; global seams are only defaults
 // for compatibility callers and tests, not the running invocation's dependencies.
 type stepExecutionServices struct {
+	sourceHostScriptContext func(context.Context, string, []string) (map[string]string, error)
+	runHostScriptContext    func(context.Context, string, []string, string) error
+	runHostCommandContext   func(context.Context, string, []string, string) error
+	runControl              func(infrastructure.WorkflowControlRunOptions) error
+	admission               infrastructure.NativeExecutionAdmission
 	dockerBuild             func(string, string, string) error
 	dockerImageExists       func(string) (bool, error)
 	dockerPull              func(string) error
@@ -29,12 +35,16 @@ type stepExecutionServices struct {
 
 func snapshotStepExecutionServices() *stepExecutionServices {
 	return &stepExecutionServices{
+		sourceHostScriptContext: sourceHostScriptFn,
+		runHostScriptContext:    infrastructure.RunHostScriptWithContext,
+		runHostCommandContext:   infrastructure.RunHostCommandWithContext,
+		runControl:              infrastructure.RunWorkflowControl,
 		dockerBuild:             dockerBuildFn,
 		dockerImageExists:       dockerImageExistsFn,
 		dockerPull:              dockerPullFn,
 		composeLifecycle:        composeLifecycleFn,
 		runContainer:            runContainerFn,
-		sourceHostScript:        sourceHostScriptFn,
+		sourceHostScript:        sourceHostScriptWithoutContext(sourceHostScriptFn),
 		runHostScript:           runHostScriptFn,
 		runHostCommand:          runHostCommandFn,
 		runHostScriptWithShell:  runHostScriptWithShellFn,

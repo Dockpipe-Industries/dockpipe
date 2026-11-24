@@ -60,7 +60,28 @@ func resolveDockerCommandFromEnvironment(environment []string) (string, error) {
 			}
 		}
 	}
-	if runtime.GOOS == "windows" {
+	switch runtime.GOOS {
+	case "darwin":
+		// LaunchAgents need the same standard installations as interactive
+		// shells even when the shell profile never ran.
+		for _, candidate := range []string{
+			"/Applications/Docker.app/Contents/Resources/bin/docker",
+			"/opt/homebrew/bin/docker",
+			"/usr/local/bin/docker",
+		} {
+			if selected, err := exec.LookPath(candidate); err == nil && selected == candidate {
+				return selected, nil
+			}
+		}
+	case "windows":
+		localAppData := envGet(environment, "LOCALAPPDATA")
+		if filepath.IsAbs(localAppData) {
+			candidate := filepath.Join(localAppData, "Programs", "DockerDesktop", "resources", "bin", "docker.exe")
+			if selected, err := exec.LookPath(candidate); err == nil && selected == candidate {
+				return selected, nil
+			}
+		}
+
 		for _, root := range []string{envGet(environment, "ProgramFiles"), envGet(environment, "ProgramW6432"), `C:\Program Files`} {
 			if !filepath.IsAbs(root) {
 				continue

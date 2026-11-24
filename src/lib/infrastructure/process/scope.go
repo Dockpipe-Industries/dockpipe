@@ -19,10 +19,11 @@ import (
 // it is not a security sandbox against a same-UID program deliberately migrating
 // into another writable cgroup. Boot-fenced recovery requires a new kernel life.
 type ScopeReference struct {
-	Mode  string `json:"mode,omitempty"`
-	Boot  string `json:"boot"`
-	Path  string `json:"path"`
-	Inode uint64 `json:"inode"`
+	Mode         string `json:"mode,omitempty"`
+	Boot         string `json:"boot"`
+	Path         string `json:"path"`
+	Inode        uint64 `json:"inode"`
+	BootSequence uint32 `json:"windows_boot_sequence,omitempty"`
 }
 
 func (reference ScopeReference) Validate() error {
@@ -36,9 +37,51 @@ func (reference ScopeReference) Validate() error {
 		}
 		return nil
 	}
-	if reference.Mode != "cgroup-v2" && reference.Mode != "" || !filepath.IsLocal(reference.Path) || len(reference.Path) > 4096 || strings.ContainsAny(reference.Path, "\x00\r\n") || reference.Inode == 0 {
+	if reference.Mode != "cgroup-v2" && reference.Mode != "" || !filepath.IsLocal(reference.Path) || len(reference.Path) > 4096 || strings.ContainsAny(reference.Path, "\x00\r\n") || reference.Inode == 0 || reference.BootSequence != 0 {
 		return errors.New("invalid cgroup scope reference")
 	}
+	return nil
+}
+
+// CaptureHostBootScope records the native evidence needed to reconcile a
+// process scope after a reboot.
+func CaptureHostBootScope() (ScopeReference, error) {
+	boot, err := HostBootIdentity()
+	if err != nil {
+		return ScopeReference{}, err
+	}
+
+	sequence, err := hostBootSequence()
+	if err != nil {
+		return ScopeReference{}, err
+	}
+
+	reference := ScopeReference{Mode: "host-reboot", Boot: boot, BootSequence: sequence}
+	return reference, reference.Validate()
+}
+
+func stopHostBootScope(reference ScopeReference) error {
+	current, err := CaptureHostBootScope()
+	if err != nil {
+		return err
+	}
+
+	if current.BootSequence != 0 {
+		if reference.BootSequence == 0 || reference.BootSequence > current.BootSequence {
+			return ErrScopeUnavailable
+		}
+		if reference.BootSequence == current.BootSequence {
+			return ErrRebootRequired
+		}
+		return nil
+	}
+	if reference.BootSequence != 0 {
+		return ErrScopeUnavailable
+	}
+	if reference.Boot == current.Boot {
+		return ErrRebootRequired
+	}
+
 	return nil
 }
 
@@ -58,7 +101,7 @@ var ErrRebootRequired = errors.New("the worker host must reboot before this unce
 
 func RecoveryMode() string {
 	configured := os.Getenv("DOCKPIPE_PROCESS_RECOVERY")
-	if configured == "host-reboot" && (runtime.GOOS == "linux" || runtime.GOOS == "darwin") {
+	if configured == "host-reboot" && (runtime.GOOS == "linux" || runtime.GOOS == "darwin" || runtime.GOOS == "windows") {
 		return configured
 	}
 	if configured != "" && configured != "cgroup-v2" {
@@ -110,8 +153,7 @@ func AttachScope(ctx context.Context, command *exec.Cmd) (func(), error) {
 		var reference ScopeReference
 		var err error
 		if scope.mode == "host-reboot" {
-			reference.Mode = "host-reboot"
-			reference.Boot, err = HostBootIdentity()
+			reference, err = CaptureHostBootScope()
 		} else {
 			reference, err = createScope(scope.id, scope.root)
 		}

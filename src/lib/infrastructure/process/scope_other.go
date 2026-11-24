@@ -23,15 +23,8 @@ func StopScope(_ context.Context, reference ScopeReference) error {
 	if err := reference.Validate(); err != nil {
 		return err
 	}
-	if reference.Mode == "host-reboot" && reference.Boot != "" {
-		boot, err := HostBootIdentity()
-		if err != nil {
-			return err
-		}
-		if boot != reference.Boot {
-			return nil
-		}
-		return ErrRebootRequired
+	if reference.Mode == "host-reboot" {
+		return stopHostBootScope(reference)
 	}
 	return errors.New("durable process recovery requires Linux delegated cgroup v2")
 }

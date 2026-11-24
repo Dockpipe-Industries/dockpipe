@@ -1,0 +1,8 @@
+module Dockpipe.SDK;
+
+// Both fields belong to the issuing transport. A value from another client is
+// invalid even when its operation counter happens to match.
+public Record OperationId {
+    public int clientId;
+    public int value;
+}
