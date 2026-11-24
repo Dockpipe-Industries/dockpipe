@@ -1,17 +1,29 @@
 #!/bin/sh
 set -eu
 # DSM reads the generated wizard from this framework-owned temporary file.
-if [ -n "${SYNOPKG_PKGDEST_VOL:-}" ] && [ "$SYNOPKG_PKGDEST_VOL" != / ]; then
-    package_home=${SYNOPKG_PKGDEST_VOL%/}/@apphome/dockpipe-desktop
-else
-    package_home=${SYNOPKG_PKGHOME:-/var/packages/dockpipe-desktop/home}
-fi
-if [ -d "$package_home/desktop-settings" ]; then
-    cat > "$SYNOPKG_TEMP_LOGFILE" <<'JSON'
-[{"step_title":"Restore Dockpipe","items":[{"desc":"Your existing Dockpipe sign-in and workspace will be retained. After installation, open Dockpipe from DSM and use your previous sign-in."}]}]
-JSON
-else
-    cat > "$SYNOPKG_TEMP_LOGFILE" <<'JSON'
+@RESTORE_DISCOVERY_HELPERS@
+
+render_install_wizard() {
+    restore_discover "$1" "${SYNOPKG_PKGDEST_VOL:-}" "${SYNOPKG_PKGHOME:-}"
+    if [ "$restore_mode" = fresh ]; then
+        restore_render_wizard > "$SYNOPKG_TEMP_LOGFILE" <<'JSON'
 @INSTALL_WIZARD@
 JSON
-fi
+    else
+        restore_render_wizard > "$SYNOPKG_TEMP_LOGFILE" <<'JSON'
+[
+  {
+    "step_title": "Restore Dockpipe",
+    "items": [
+      {
+        "desc": "Saved Dockpipe settings are checked before continuing. Your existing sign-in and workspace will be retained; no replacement credentials are requested."
+      }
+    ]
+  },
+@HOST_FOLDER_WIZARD@
+]
+JSON
+    fi
+}
+
+render_install_wizard /

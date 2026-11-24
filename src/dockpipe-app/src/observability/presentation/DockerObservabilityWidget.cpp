@@ -1,6 +1,7 @@
 #include "DockerObservabilityWidget.h"
 #include <QCoreApplication>
 #include "MonitoringMachineSelector.h"
+#include "NativeHostConnection.h"
 #include "DockpipeChoices.h"
 #include "CanvasIcons.h"
 #include "DockerResourceInspector.h"
@@ -447,6 +448,7 @@ void DockerObservabilityWidget::buildUi()
             cancelFeatureRead();
             m_remoteCommand.cancel();
             m_autoRefreshTimer->stop();
+            cancelNativeDetails();
         } else if (m_active) {
             m_autoRefreshTimer->start();
             refresh();
@@ -672,6 +674,17 @@ void DockerObservabilityWidget::updateInspector()
 {
     if (!m_inspector)
         return;
+    if (isNativeHostTarget()
+        && m_nativeDisplayedKey != m_selectedResource) {
+        cancelNativeDetails();
+        m_nativeDisplayedKey = m_selectedResource;
+        m_nativeInspectKey.clear();
+        m_nativeInspect = {};
+        m_containerDetails->clear();
+        m_containerLogs->clear();
+        m_networkDetails->clear();
+        m_volumeDetails->clear();
+    }
     DockerInspectorSelection selection;
     selection.key = m_selectedResource;
     const QString kind = m_selectedResource.section(':', 0, 0);
@@ -724,6 +737,26 @@ void DockerObservabilityWidget::updateInspector()
             value = table->item(row, column)->data(Qt::ToolTipRole).toString();
         selection.detailsHtml += "<p><b>" + table->horizontalHeaderItem(column)->text().toHtmlEscaped()
             + "</b><br>" + (value.isEmpty() ? tr("Not reported") : value.toHtmlEscaped()) + "</p>";
+    }
+    if (m_nativeInspectKey == m_selectedResource) {
+        const QStringList sections = {QStringLiteral("State"), QStringLiteral("Config"),
+            QStringLiteral("HostConfig"), QStringLiteral("Mounts"), QStringLiteral("NetworkSettings"),
+            QStringLiteral("IPAM"), QStringLiteral("Containers"), QStringLiteral("Options"),
+            QStringLiteral("Labels"), QStringLiteral("Mountpoint"), QStringLiteral("CreatedAt")};
+        for (const auto &section : sections) {
+            const auto value = m_nativeInspect.value(section);
+            if (value.isUndefined() || value.isNull())
+                continue;
+            QString text;
+            if (value.isObject())
+                text = QString::fromUtf8(QJsonDocument(value.toObject()).toJson(QJsonDocument::Compact));
+            else if (value.isArray())
+                text = QString::fromUtf8(QJsonDocument(value.toArray()).toJson(QJsonDocument::Compact));
+            else
+                text = value.toVariant().toString();
+            selection.detailsHtml += "<p><b>" + section.toHtmlEscaped() + "</b></p><pre>"
+                + text.toHtmlEscaped() + "</pre>";
+        }
     }
     QStringList related;
     const auto append = [&](const QString &relatedKind, const QString &relatedId, const QString &name) {
@@ -1151,6 +1184,7 @@ void DockerObservabilityWidget::setActive(bool active)
     m_remoteCommand.cancel();
     if (m_autoRefreshTimer)
         m_autoRefreshTimer->stop();
+    cancelNativeDetails();
     updateContainerActionState();
     m_pendingContainerDetailId.clear();
     m_pendingNetworkDetailId.clear();
@@ -1474,11 +1508,15 @@ void DockerObservabilityWidget::renderVolumeDetails(const QString &volumeName)
 
 void DockerObservabilityWidget::refreshContainerDetailsAsync(const QString &containerId)
 {
+    if (isNativeHostTarget()) {
+        refreshNativeDetails("container", containerId);
+        return;
+    }
     if (isRemoteTarget()) {
         if (!m_featureTarget.isEmpty())
             refreshFeatureDetails("container", containerId);
         else
-            m_containerLogs->setPlainText(tr("Detailed inspection requires the paired worker's Docker read feature."));
+            m_containerLogs->setPlainText(remoteInspectionNotice());
         return;
     }
 
@@ -1524,11 +1562,15 @@ void DockerObservabilityWidget::refreshContainerDetailsAsync(const QString &cont
 
 void DockerObservabilityWidget::refreshNetworkDetailsAsync(const QString &networkId)
 {
+    if (isNativeHostTarget()) {
+        refreshNativeDetails("network", networkId);
+        return;
+    }
     if (isRemoteTarget()) {
         if (!m_featureTarget.isEmpty())
             refreshFeatureDetails("network", networkId);
         else
-            m_containerLogs->setPlainText(tr("Detailed inspection requires the paired worker's Docker read feature."));
+            m_containerLogs->setPlainText(remoteInspectionNotice());
         return;
     }
 
@@ -1565,11 +1607,15 @@ void DockerObservabilityWidget::refreshNetworkDetailsAsync(const QString &networ
 
 void DockerObservabilityWidget::refreshVolumeDetailsAsync(const QString &volumeName)
 {
+    if (isNativeHostTarget()) {
+        refreshNativeDetails("volume", volumeName);
+        return;
+    }
     if (isRemoteTarget()) {
         if (!m_featureTarget.isEmpty())
             refreshFeatureDetails("volume", volumeName);
         else
-            m_containerLogs->setPlainText(tr("Detailed inspection requires the paired worker's Docker read feature."));
+            m_containerLogs->setPlainText(remoteInspectionNotice());
         return;
     }
 
@@ -1715,6 +1761,10 @@ void DockerObservabilityWidget::runContainerAction(const QString &action)
     if (!fullContainerId.match(id).hasMatch()
         || (action != QStringLiteral("start") && action != QStringLiteral("stop") && action != QStringLiteral("restart"))) {
         setStatus(tr("Container control requires a supported action and an exact full container ID."));
+        return;
+    }
+    if (isNativeHostTarget()) {
+        runNativeContainerAction(action, id, name);
         return;
     }
     if (isRemoteTarget()) {

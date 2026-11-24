@@ -2967,7 +2967,7 @@ L’opération ne s’est pas terminée correctement. Conservez et examinez le j
 <context>
     <name>DockerObservabilityWidget</name>
     <message>
-        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="+328"/>
+        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="+329"/>
         <source>Docker resources</source>
         <translation>Ressources Docker</translation>
     </message>
@@ -2975,27 +2975,27 @@ L’opération ne s’est pas terminée correctement. Conservez et examinez le j
         <location line="+5"/>
         <location line="+12"/>
         <location line="+3"/>
-        <location line="+129"/>
+        <location line="+130"/>
         <location line="+32"/>
         <source>Containers</source>
         <translation>Conteneurs</translation>
     </message>
     <message>
-        <location line="-175"/>
+        <location line="-176"/>
         <location line="+15"/>
-        <location line="+162"/>
+        <location line="+163"/>
         <source>Networks</source>
         <translation>Réseaux</translation>
     </message>
     <message>
-        <location line="-176"/>
+        <location line="-177"/>
         <location line="+15"/>
-        <location line="+162"/>
+        <location line="+163"/>
         <source>Volumes</source>
         <translation>Volumes</translation>
     </message>
     <message>
-        <location line="-166"/>
+        <location line="-167"/>
         <source>Solid arrows: declared dependencies · Dashed lines: network or storage attachments</source>
         <translation>Flèches continues : dépendances déclarées · Lignes pointillées : connexions réseau ou stockage</translation>
     </message>
@@ -3030,7 +3030,7 @@ L’opération ne s’est pas terminée correctement. Conservez et examinez le j
         <translation>Vue en canevas des conteneurs</translation>
     </message>
     <message>
-        <location line="+111"/>
+        <location line="+112"/>
         <source>Manage containers, networks, and persistent storage.</source>
         <translation>Gérer les conteneurs, les réseaux et le stockage persistant.</translation>
     </message>
@@ -3042,12 +3042,12 @@ L’opération ne s’est pas terminée correctement. Conservez et examinez le j
     <message>
         <location line="+1"/>
         <location line="+28"/>
-        <location line="+1277"/>
+        <location line="+1325"/>
         <source>Running</source>
         <translation>En cours</translation>
     </message>
     <message>
-        <location line="-1305"/>
+        <location line="-1353"/>
         <source>Currently active</source>
         <translation>Actuellement actifs</translation>
     </message>
@@ -3083,13 +3083,13 @@ L’opération ne s’est pas terminée correctement. Conservez et examinez le j
     </message>
     <message>
         <location line="+2"/>
-        <location line="+819"/>
-        <location line="+466"/>
+        <location line="+851"/>
+        <location line="+482"/>
         <source>Stopped</source>
         <translation>Arrêté</translation>
     </message>
     <message>
-        <location line="-1284"/>
+        <location line="-1332"/>
         <source>Needs attention</source>
         <translation>À vérifier</translation>
     </message>
@@ -3128,7 +3128,7 @@ Refresh to load inventory from the selected machine.</source>
 Actualisez pour charger l’inventaire de la machine sélectionnée.</translation>
     </message>
     <message>
-        <location line="+87"/>
+        <location line="+98"/>
         <source>Choose a resource in the table or on the canvas.</source>
         <translation>Choisissez une ressource dans le tableau ou sur le canevas.</translation>
     </message>
@@ -3148,7 +3148,7 @@ Actualisez pour charger l’inventaire de la machine sélectionnée.</translatio
         <translation>Non renseigné</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+67"/>
         <source>No linked resources.</source>
         <translation>Aucune ressource liée.</translation>
     </message>
@@ -3233,7 +3233,7 @@ Actualisez pour charger l’inventaire de la machine sélectionnée.</translatio
         <translation>Chargement des objets Docker…</translation>
     </message>
     <message>
-        <location line="+43"/>
+        <location line="+44"/>
         <source>Refresh to load container inventory.</source>
         <translation>Actualisez pour charger l’inventaire des conteneurs.</translation>
     </message>
@@ -3259,13 +3259,13 @@ Actualisez pour charger l’inventaire de la machine sélectionnée.</translatio
     </message>
     <message>
         <location line="+2"/>
-        <location line="+232"/>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+118"/>
+        <location line="+236"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+130"/>
         <source>Loading container logs…</source>
         <translation>Chargement des journaux du conteneur…</translation>
     </message>
     <message>
-        <location line="-230"/>
+        <location line="-234"/>
         <source>Loading Docker networks…</source>
         <translation>Chargement des réseaux Docker…</translation>
     </message>
@@ -3337,7 +3337,7 @@ Actualisez pour charger l’inventaire de la machine sélectionnée.</translatio
         <translation>L’actualisation Docker s’est terminée avec des erreurs.</translation>
     </message>
     <message>
-        <location line="+44"/>
+        <location line="+48"/>
         <source>Loading container details…</source>
         <translation>Chargement des détails du conteneur…</translation>
     </message>
@@ -3360,7 +3360,7 @@ Actualisez pour charger l’inventaire de la machine sélectionnée.</translatio
 %1</translation>
     </message>
     <message>
-        <location line="+23"/>
+        <location line="+27"/>
         <source>Loading network details…</source>
         <translation>Chargement des détails du réseau…</translation>
     </message>
@@ -3374,7 +3374,7 @@ Actualisez pour charger l’inventaire de la machine sélectionnée.</translatio
 %1</translation>
     </message>
     <message>
-        <location line="+23"/>
+        <location line="+27"/>
         <source>Loading volume details…</source>
         <translation>Chargement des détails du volume…</translation>
     </message>
@@ -3408,7 +3408,8 @@ Actualisez pour charger l’inventaire de la machine sélectionnée.</translatio
         <translation>Actualiser la vue Docker</translation>
     </message>
     <message>
-        <location line="+93"/>
+        <location line="+97"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+160"/>
         <source>%1: %2…</source>
         <translation>%1 : %2…</translation>
     </message>
@@ -3483,12 +3484,12 @@ Actualisez pour charger l’inventaire de la machine sélectionnée.</translatio
         <translation> L’affichage des relations est limité à 4 096 liens ; les données d’inspection restent disponibles.</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+122"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-32"/>
         <source>Waiting for the selected machine…</source>
         <translation>En attente de la machine sélectionnée…</translation>
     </message>
     <message>
-        <location line="+46"/>
+        <location line="+238"/>
         <source>%1 · Docker monitoring unavailable or stale. On the paired worker, enable: dockpipe remote monitoring --system --docker. The worker and broker must support monitoring.</source>
         <translation>%1 · Surveillance Docker indisponible ou périmée. Sur la machine d’exécution associée, activez : dockpipe remote monitoring --system --docker. La machine d’exécution et le courtier doivent prendre en charge la surveillance.</translation>
     </message>
@@ -3503,23 +3504,23 @@ Actualisez pour charger l’inventaire de la machine sélectionnée.</translatio
         <translation>Non partagé</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="-839"/>
+        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="-856"/>
         <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+4"/>
         <source> Inventory limited to 256 objects of each kind.</source>
         <translation> Inventaire limité à 256 objets de chaque type.</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+2"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+6"/>
         <source> · Remote inventory · read-only</source>
         <translation> · Inventaire distant · lecture seule</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="+657"/>
+        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="+670"/>
         <source>Container control requires a supported action and an exact full container ID.</source>
         <translation>Le contrôle des conteneurs nécessite une action prise en charge et l’identifiant complet exact du conteneur.</translation>
     </message>
     <message>
-        <location line="+46"/>
+        <location line="+50"/>
         <source>Could not send the container control request.</source>
         <translation>Impossible d’envoyer la demande de contrôle du conteneur.</translation>
     </message>
@@ -3534,7 +3535,7 @@ Actualisez pour charger l’inventaire de la machine sélectionnée.</translatio
         <translation>Réponse de contrôle du conteneur invalide.</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-297"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-499"/>
         <source>Wait for the current container control operation before changing machines.</source>
         <translation>Attendez la fin de l’opération de contrôle du conteneur avant de changer de machine.</translation>
     </message>
@@ -3564,17 +3565,100 @@ Actualisez pour charger l’inventaire de la machine sélectionnée.</translatio
         <translation>%1 · Échec de %2 pour %3 : %4</translation>
     </message>
     <message>
-        <location line="+97"/>
+        <location line="+21"/>
+        <location line="+6"/>
+        <source>Native host — unavailable</source>
+        <translation>Hôte natif — indisponible</translation>
+    </message>
+    <message>
+        <location line="+29"/>
+        <source>Native host inspection and recent logs are available here. Use the host terminal for container shells.</source>
+        <translation>L’inspection de l’hôte natif et les journaux récents sont accessibles ici. Utilisez le terminal de l’hôte pour accéder aux shells des conteneurs.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Remote monitoring shares inventory and topology. Application logs and interactive controls remain local.</source>
+        <translation>La surveillance à distance partage l’inventaire et la topologie. Les journaux des applications et les commandes interactives restent accessibles localement.</translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <source>%1 completed for %2.</source>
+        <translation>%1 a abouti pour %2.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>%1 was not confirmed for %2. Refreshing current state.</source>
+        <translation>%1 n’a pas été confirmé pour %2. Actualisation de l’état en cours.</translation>
+    </message>
+    <message>
+        <location line="+40"/>
+        <source>Loading native host inspection…</source>
+        <translation>Chargement de l’inspection de l’hôte natif…</translation>
+    </message>
+    <message>
+        <location line="+30"/>
+        <source>Native host inspection unavailable or cancelled. Refresh to try again.</source>
+        <translation>L’inspection de l’hôte natif est indisponible ou a été annulée. Actualisez pour réessayer.</translation>
+    </message>
+    <message>
+        <location line="+23"/>
+        <source>Native host inspection refreshed.</source>
+        <translation>L’inspection de l’hôte natif a été actualisée.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Recent logs are unavailable for this container. Its logging driver may not support reading logs.</source>
+        <translation>Les journaux récents de ce conteneur sont indisponibles. Il se peut que son pilote de journalisation ne permette pas de les lire.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Inspection refreshed; recent logs unavailable.</source>
+        <translation>Inspection actualisée. Les journaux récents sont indisponibles.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>
+[Recent logs limited to 64 KiB.]</source>
+        <translation>
+[Les journaux récents ont été limités à 64 Kio.]</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Inspection refreshed; recent logs limited to 64 KiB.</source>
+        <translation>Inspection actualisée. Les journaux récents ont été limités à 64 Kio.</translation>
+    </message>
+    <message>
+        <location line="+47"/>
+        <source>Native host unavailable. Open this application through its authenticated host session.</source>
+        <translation>L’hôte natif est indisponible. Ouvrez cette application depuis sa session authentifiée sur l’hôte.</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Native host Docker monitoring unavailable. Refresh the authenticated host session.</source>
+        <translation>La surveillance Docker de l’hôte natif est indisponible. Actualisez la session authentifiée de l’hôte.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Native host Docker inventory is unavailable for this account.</source>
+        <translation>L’inventaire Docker de l’hôte natif est indisponible pour ce compte.</translation>
+    </message>
+    <message>
+        <location line="+40"/>
         <source>%1 · Remote Docker inventory exceeds the supported bound.</source>
         <translation>%1 · L’inventaire Docker distant dépasse la limite autorisée.</translation>
     </message>
     <message>
-        <location line="+35"/>
+        <location line="+37"/>
+        <source> · Native host inventory</source>
+        <translation> · Inventaire de l’hôte natif</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source> · Remote inventory</source>
         <translation> · Inventaire distant</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="-760"/>
+        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="-777"/>
         <source>Container inventory exceeds its object limit.</source>
         <translation>L’inventaire des conteneurs dépasse sa limite d’objets.</translation>
     </message>
@@ -3589,7 +3673,7 @@ Actualisez pour charger l’inventaire de la machine sélectionnée.</translatio
         <translation>La requête des conteneurs a été annulée ou la CLI Dockpipe de confiance est indisponible.</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-203"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-405"/>
         <source>Could not inspect resource: %1</source>
         <translation>Impossible d’inspecter la ressource : %1</translation>
     </message>
@@ -3604,14 +3688,7 @@ Actualisez pour charger l’inventaire de la machine sélectionnée.</translatio
         <translation>Impossible d’envoyer la requête du conteneur.</translation>
     </message>
     <message>
-        <location line="+523"/>
-        <location line="+50"/>
-        <location line="+41"/>
-        <source>Detailed inspection requires the paired worker&apos;s Docker read feature.</source>
-        <translation>L’inspection détaillée nécessite la fonctionnalité de lecture Docker du worker appairé.</translation>
-    </message>
-    <message>
-        <location line="-560"/>
+        <location line="+54"/>
         <source>Invalid container detail response.</source>
         <translation>Réponse de détails du conteneur invalide.</translation>
     </message>
@@ -4614,7 +4691,7 @@ Sélectionnez une ligne pour commencer.</translation>
 <context>
     <name>ExecutionExplorer</name>
     <message>
-        <location filename="../src/observability/presentation/ExecutionExplorer.cpp" line="+47"/>
+        <location filename="../src/observability/presentation/ExecutionExplorer.cpp" line="+49"/>
         <location line="+543"/>
         <source>Running workflows</source>
         <translation>Workflows en cours d’exécution</translation>
@@ -4908,14 +4985,14 @@ Sélectionnez une ligne pour commencer.</translation>
     </message>
     <message>
         <location line="+68"/>
-        <location line="+508"/>
+        <location line="+563"/>
         <source>No process data to display
 Refresh to load the selected machine&apos;s process list.</source>
         <translation>Aucune donnée de processus à afficher
 Actualisez pour charger la liste des processus de la machine sélectionnée.</translation>
     </message>
     <message>
-        <location line="-473"/>
+        <location line="-528"/>
         <source>Live resource usage and processes on the selected machine.</source>
         <translation>Utilisation des ressources et processus en direct sur la machine sélectionnée.</translation>
     </message>
@@ -4950,7 +5027,17 @@ Actualisez pour charger la liste des processus de la machine sélectionnée.</tr
         <translation>Afficher plus d’exécutions</translation>
     </message>
     <message>
-        <location line="+123"/>
+        <location line="+91"/>
+        <source>Native host unavailable. Open this application through its authenticated host session.</source>
+        <translation>L’hôte natif est indisponible. Ouvrez cette application depuis sa session authentifiée sur l’hôte.</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Native host system monitoring unavailable. Refresh the authenticated host session.</source>
+        <translation>La surveillance système de l’hôte natif est indisponible. Actualisez la session authentifiée de l’hôte.</translation>
+    </message>
+    <message>
+        <location line="+42"/>
         <source>%1 · System monitoring unavailable or stale. On the paired worker, enable it with: dockpipe remote monitoring --system --docker. The worker and broker must support monitoring.</source>
         <translation>%1 · Surveillance système indisponible ou périmée. Sur la machine d’exécution associée, activez-la avec : dockpipe remote monitoring --system --docker. La machine d’exécution et le courtier doivent prendre en charge la surveillance.</translation>
     </message>
@@ -4960,12 +5047,18 @@ Actualisez pour charger la liste des processus de la machine sélectionnée.</tr
         <translation>Surveillance indisponible. Les données affichées peuvent être périmées. Vérifiez la version de l’interface en ligne de commande et les autorisations de la machine.</translation>
     </message>
     <message>
-        <location line="+28"/>
+        <location line="+19"/>
+        <location line="+6"/>
+        <source>Native host — unavailable</source>
+        <translation>Hôte natif — indisponible</translation>
+    </message>
+    <message>
+        <location line="+23"/>
         <source>Waiting for the selected machine…</source>
         <translation>En attente de la machine sélectionnée…</translation>
     </message>
     <message>
-        <location line="+68"/>
+        <location line="+74"/>
         <location line="+3"/>
         <location line="+144"/>
         <source>Unavailable</source>
@@ -7307,15 +7400,62 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
 <context>
     <name>MonitoringMachineSelector</name>
     <message>
-        <location filename="../src/observability/presentation/MonitoringMachineSelector.h" line="+16"/>
-        <location line="+9"/>
+        <location filename="../src/observability/presentation/MonitoringMachineSelector.h" line="+56"/>
+        <source>Application container</source>
+        <translation>Conteneur de l’application</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>This computer</source>
         <translation>Cet ordinateur</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="-11"/>
         <source> — unavailable</source>
         <translation> — indisponible</translation>
+    </message>
+</context>
+<context>
+    <name>NativeHostConnection</name>
+    <message>
+        <location filename="../src/remote/infrastructure/NativeHostConnection.cpp" line="+27"/>
+        <source>Native host — unavailable</source>
+        <translation>Hôte natif — indisponible</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>%1 · %2 · native host</source>
+        <translation>%1 · %2 · hôte natif</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>The native host connection reference exceeds 4096 bytes.</source>
+        <translation>La référence de connexion à l’hôte natif dépasse 4096 octets.</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>The native host connection reference contains invalid characters.</source>
+        <translation>La référence de connexion à l’hôte natif contient des caractères non valides.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>The native host connection requires an available absolute file reference.</source>
+        <translation>La connexion à l’hôte natif nécessite le chemin absolu d’un fichier accessible.</translation>
+    </message>
+    <message>
+        <location line="+44"/>
+        <source>Native host unavailable. Open this application through its authenticated host session.</source>
+        <translation>L’hôte natif est indisponible. Ouvrez cette application depuis sa session authentifiée sur l’hôte.</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>Native host Docker actions require start or stop and a hexadecimal container ID.</source>
+        <translation>Les actions Docker sur l’hôte natif nécessitent start ou stop et un identifiant de conteneur hexadécimal.</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Native host Docker inspection requires a valid container, network or volume identifier.</source>
+        <translation>L’inspection Docker sur l’hôte natif nécessite un identifiant de conteneur, de réseau ou de volume valide.</translation>
     </message>
 </context>
 <context>
@@ -9403,29 +9543,35 @@ Limite de l’aperçu Mermaid : les diagrammes au-delà des 16 premiers sont aff
 <context>
     <name>RemoteCommand</name>
     <message>
-        <location filename="../src/remote/infrastructure/RemoteCommand.cpp" line="+42"/>
+        <location filename="../src/remote/infrastructure/RemoteCommand.cpp" line="+43"/>
         <source>Operation timed out. Existing remote state is preserved.
 </source>
         <translation>L’opération a dépassé le délai imparti. L’état distant existant est conservé.
 </translation>
     </message>
     <message>
-        <location line="+125"/>
-        <location line="+77"/>
-        <source>Output exceeded the display limit.
+        <location line="+108"/>
+        <source>Invalid command response limit.
 </source>
-        <translation>La sortie a dépassé la limite d’affichage.
+        <translation>La limite de réponse de la commande est invalide.
 </translation>
     </message>
     <message>
-        <location line="-7"/>
+        <location line="+53"/>
+        <source>Output exceeded the command response limit.
+</source>
+        <translation>La sortie a dépassé la limite de réponse de la commande.
+</translation>
+    </message>
+    <message>
+        <location line="+68"/>
         <source>Rejected an invalid security-key interaction request.
 </source>
         <translation>Une demande d’interaction avec une clé de sécurité non valide a été rejetée.
 </translation>
     </message>
     <message>
-        <location line="+30"/>
+        <location line="+23"/>
         <source>Security-key response exceeded the protocol limit.
 </source>
         <translation>La réponse de la clé de sécurité a dépassé la limite du protocole.
@@ -12419,14 +12565,29 @@ Cette machine ne figure plus dans l’inventaire disponible.</translation>
 <context>
     <name>TerminalHub</name>
     <message>
-        <location filename="../src/terminal/application/TerminalHub.cpp" line="+48"/>
-        <location line="+48"/>
-        <location line="+57"/>
+        <location filename="../src/terminal/application/TerminalHub.cpp" line="+46"/>
+        <source>Native host — unavailable</source>
+        <translation>Hôte natif — indisponible</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Application container · %1</source>
+        <translation>Conteneur de l’application · %1</translation>
+    </message>
+    <message>
+        <location line="+42"/>
+        <location line="+67"/>
+        <location line="+59"/>
         <source>Eight terminals are already open. Close one before opening another.</source>
         <translation>Huit terminaux sont déjà ouverts. Fermez-en un avant d’en ouvrir un autre.</translation>
     </message>
     <message>
-        <location line="-90"/>
+        <location line="-114"/>
+        <source>Native host unavailable. Open this application through its authenticated host session.</source>
+        <translation>L’hôte natif est indisponible. Ouvrez cette application depuis sa session authentifiée sur l’hôte.</translation>
+    </message>
+    <message>
+        <location line="+21"/>
         <source>This shell is no longer available. Refresh the shell list and try again.</source>
         <translation>Cet interpréteur de commandes n’est plus disponible. Actualisez la liste et réessayez.</translation>
     </message>
@@ -12441,19 +12602,24 @@ Cette machine ne figure plus dans l’inventaire disponible.</translation>
         <translation>Aucun interpréteur de commandes hôte n’est disponible. Vérifiez l’accès à l’hôte Flatpak et actualisez la liste.</translation>
     </message>
     <message>
-        <location line="+10"/>
-        <location line="+32"/>
-        <location line="+57"/>
+        <location line="+9"/>
+        <source>Terminal %1</source>
+        <translation>Terminal %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+33"/>
+        <location line="+59"/>
         <source>Terminal %1 · %2</source>
         <translation>Terminal %1 · %2</translation>
     </message>
     <message>
-        <location line="-67"/>
+        <location line="-69"/>
         <source>The container terminal target is unavailable.</source>
-        <translation>Le terminal de conteneur cible n'est pas disponible.</translation>
+        <translation>Le terminal de conteneur cible n&apos;est pas disponible.</translation>
     </message>
     <message>
-        <location line="+132"/>
+        <location line="+134"/>
         <location line="+32"/>
         <source>This terminal session is closed.</source>
         <translation>Cette session de terminal est fermée.</translation>
@@ -12998,7 +13164,7 @@ $ Prêt pour votre prochaine commande</translation>
 <context>
     <name>TerminalWidget</name>
     <message>
-        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+92"/>
+        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+93"/>
         <source>Terminal</source>
         <translation>Terminal</translation>
     </message>
@@ -13045,12 +13211,12 @@ $ Prêt pour votre prochaine commande</translation>
     </message>
     <message>
         <location line="+6"/>
-        <location line="+742"/>
+        <location line="+748"/>
         <source>Restart DockPipe to enable desktop transparency. Your desktop must support compositing.</source>
         <translation>Redémarrez DockPipe pour activer la transparence du bureau. Votre environnement de bureau doit prendre en charge la composition.</translation>
     </message>
     <message>
-        <location line="-733"/>
+        <location line="-739"/>
         <source>No terminals open</source>
         <translation>Aucun terminal ouvert</translation>
     </message>
@@ -13075,7 +13241,7 @@ $ Prêt pour votre prochaine commande</translation>
         <translation>Démarrer le terminal</translation>
     </message>
     <message>
-        <location line="+45"/>
+        <location line="+50"/>
         <location line="+26"/>
         <source>Discovering installed host shells…</source>
         <translation>Recherche des interpréteurs de commandes installés sur l’hôte…</translation>
@@ -13083,15 +13249,20 @@ $ Prêt pour votre prochaine commande</translation>
     <message>
         <location line="+10"/>
         <source>The selected terminal target is unavailable.</source>
-        <translation>L'objectif terminal sélectionné n'est pas disponible.</translation>
+        <translation>L&apos;objectif terminal sélectionné n&apos;est pas disponible.</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+29"/>
         <source>Default shell</source>
         <translation>Interpréteur de commandes par défaut</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+0"/>
+        <source>Default · native host</source>
+        <translation>Par défaut · hôte natif</translation>
+    </message>
+    <message>
+        <location line="+8"/>
         <source>New default shell</source>
         <translation>Nouvel interpréteur de commandes par défaut</translation>
     </message>

@@ -6,6 +6,7 @@
 
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QVariant>
 
 namespace {
 class ExternalOperation final : public QObject {
@@ -49,7 +50,9 @@ RemoteCommand::RemoteCommand(QObject *parent) : QObject(parent)
             process().terminate();
     });
     connect(&process(), &QProcess::readyReadStandardError, this, [this]() {
-        emit output(QString::fromUtf8(process().readAllStandardError()));
+        const QByteArray data = process().readAllStandardError();
+        if (accountOutput(data.size()))
+            emit output(QString::fromUtf8(data));
     });
     connect(&process(), qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
             [this](int code, QProcess::ExitStatus status) {
@@ -136,8 +139,24 @@ void RemoteCommand::completeExternalOperation()
 void RemoteCommand::run(const QString &program, const QStringList &arguments,
                         Completion completion, int timeoutMs)
 {
+    runBounded(program, arguments, std::move(completion), timeoutMs, 20 * 1024 * 1024);
+}
+
+void RemoteCommand::runBounded(const QString &program, const QStringList &arguments,
+                              Completion completion, int timeoutMs, qsizetype maximumOutputBytes)
+{
     if (busy())
         return;
+    if (maximumOutputBytes <= 0 || maximumOutputBytes > 20 * 1024 * 1024) {
+        emit output(tr("Invalid command response limit.\n"));
+        if (completion)
+            completion(false, {});
+        return;
+    }
+    // Keep the existing exported object's layout and run() symbol compatible.
+    // The process owns these per-invocation counters, including stderr bytes.
+    process().setProperty("_dockpipeOutputLimit", qlonglong(maximumOutputBytes));
+    process().setProperty("_dockpipeOutputRead", qlonglong(0));
     m_stdout.clear();
     m_pendingLine.clear();
     const int interactionOption = arguments.indexOf("--interaction");
@@ -160,17 +179,8 @@ void RemoteCommand::run(const QString &program, const QStringList &arguments,
 void RemoteCommand::drain()
 {
     const QByteArray chunk = process().readAllStandardOutput();
-    // Keep the existing 20 MiB command-output budget while framing control lines.
-    // Check before retaining a chunk so a missing newline cannot grow the buffer.
-    if (m_stdout.size() + m_pendingLine.size() + chunk.size() > 20 * 1024 * 1024) {
-        const QPointer<RemoteCommand> guard(this);
-        emit output(tr("Output exceeded the display limit.\n"));
-        if (guard) {
-            m_pendingLine.clear();
-            cancel();
-        }
+    if (!accountOutput(chunk.size()))
         return;
-    }
     m_pendingLine += chunk;
     while (m_pendingLine.contains('\n')) {
         const qsizetype end = m_pendingLine.indexOf('\n');
@@ -183,13 +193,38 @@ void RemoteCommand::drain()
     }
 }
 
+bool RemoteCommand::accountOutput(qsizetype bytes)
+{
+    if (m_cancelled)
+        return false;
+    const qlonglong maximum = process().property("_dockpipeOutputLimit").toLongLong();
+    const qlonglong retained = process().property("_dockpipeOutputRead").toLongLong();
+    if (bytes > maximum - retained) {
+        const QPointer<RemoteCommand> guard(this);
+        emit output(tr("Output exceeded the command response limit.\n"));
+        if (guard) {
+            m_pendingLine.clear();
+            cancel();
+        }
+        return false;
+    }
+    process().setProperty("_dockpipeOutputRead", retained + bytes);
+    return true;
+}
+
 void RemoteCommand::consumeLine(const QByteArray &line)
 {
-    const auto event = QJsonDocument::fromJson(line).object();
+    if (m_cancelled)
+        return;
+    const auto document = QJsonDocument::fromJson(line);
+    const auto event = document.object();
     const QString eventName = event.value("event").toString();
-    // Reserved frames remain private. Ordinary JSON from non-interactive Git or
-    // file calls may legitimately contain this text in a path or diff.
-    if (eventName.startsWith("hardware-key-") || (m_guiInteraction && line.contains("hardware-key-"))) {
+    // Reserved protocol frames stay private. Ordinary JSON snapshots can contain
+    // the marker in account names, paths or diffs outside an interaction.
+    const bool malformedReservedFrame = line.contains("hardware-key-")
+        && (m_guiInteraction || !document.isObject()
+            || (event.contains("event") && !event.value("event").isString()));
+    if (eventName.startsWith("hardware-key-") || malformedReservedFrame) {
         bool valid = !m_cancelled && m_guiInteraction && line.size() <= 8192;
         if (valid && eventName == "hardware-key-prompt") {
             static const QRegularExpression identifier("\\A[0-9a-f]{32}\\z");
@@ -239,17 +274,10 @@ void RemoteCommand::consumeLine(const QByteArray &line)
             cancel();
         return;
     }
-    if (m_stdout.size() + line.size() > 20 * 1024 * 1024) {
-        const QPointer<RemoteCommand> guard(this);
-        emit output(tr("Output exceeded the display limit.\n"));
-        if (guard)
-            cancel();
-        return;
-    }
     m_stdout += line;
     const QPointer<RemoteCommand> guard(this);
     emit standardOutput(line);
-    if (guard)
+    if (guard && !m_cancelled)
         emit output(QString::fromUtf8(line));
 }
 

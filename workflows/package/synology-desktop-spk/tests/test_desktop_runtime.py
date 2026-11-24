@@ -37,6 +37,8 @@ class DesktopRuntimeTests(unittest.TestCase):
             self.assertIn('dockpipe:x:54321:', (self.runtime / 'group').read_text())
             self.assertEqual(os.environ['NSS_WRAPPER_PASSWD'], str(self.runtime / 'passwd'))
             self.assertEqual(os.environ['HOME'], '/config')
+            self.assertEqual(os.environ['DOCKPIPE_LOCAL_MACHINE_LABEL'], 'Application container')
+            self.assertEqual(os.environ['DOCKPIPE_NATIVE_HOST_CONNECTION'], '/config/native-client/connection.json')
 
     def test_root_and_mismatched_runtime_identities_are_rejected(self):
         for uid, gid in [(0, 54321), (54321, 0), (1000, 1000)]:
@@ -66,6 +68,35 @@ class DesktopRuntimeTests(unittest.TestCase):
             self.assertEqual(RUNTIME.prepare_tls(), (certificate, key))
         run.assert_not_called()
         self.assertEqual(key.stat().st_mode & 0o777, 0o600)
+
+    def test_host_network_service_binds_only_loopback_and_keeps_credentials_out_of_argv(self):
+        password = 'fixture-private-password'
+        (self.settings / 'username').write_text('operator')
+        (self.settings / 'password').write_text(password)
+        with patch.object(RUNTIME, 'DATA', self.root), \
+                patch.object(RUNTIME, 'prepare_identity'), \
+                patch.object(RUNTIME, 'prepare_tls', return_value=('certificate', 'key')), \
+                patch.object(RUNTIME.os, 'execv') as execute, patch.dict(os.environ):
+            RUNTIME.main()
+            arguments = execute.call_args.args[1]
+            self.assertNotIn('--public', arguments)
+            self.assertEqual(arguments[arguments.index('--addr') + 1], '127.0.0.1')
+            self.assertEqual(arguments[arguments.index('--port') + 1], '38139')
+            self.assertNotIn(password, ' '.join(arguments))
+
+    def test_runtime_caps_framerate_despite_saved_browser_preferences(self):
+        (self.settings / 'username').write_text('operator')
+        (self.settings / 'password').write_text('fixture-private-password')
+        with patch.object(RUNTIME, 'DATA', self.root), \
+                patch.object(RUNTIME, 'prepare_identity'), \
+                patch.object(RUNTIME, 'prepare_tls', return_value=('certificate', 'key')), \
+                patch.object(RUNTIME.os, 'execv') as execute, patch.dict(os.environ):
+            RUNTIME.main()
+            arguments = execute.call_args.args[1]
+            self.assertEqual(arguments.count('--framerate'), 1)
+            # Selkies interprets a lone "30" as an initial value within its
+            # default 8–240 range; the explicit range is the enforcement boundary.
+            self.assertEqual(arguments[arguments.index('--framerate') + 1], '30,8-30')
 
 
 if __name__ == '__main__':

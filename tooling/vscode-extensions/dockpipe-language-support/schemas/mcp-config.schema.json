@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DockPipe project MCP configuration",
+  "description": "Schema for the mcp property of dockpipe.config.json. Domain validation additionally checks selected secret environment bindings and platform-specific paths. Validation never starts servers.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "servers": {
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": {"pattern": "^[a-z][a-z0-9._-]{0,63}$", "not": {"enum": ["core", "native", "dockpipe"]}},
+      "additionalProperties": {"$ref": "#/$defs/server"}
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["registry", "name", "version"],
+      "properties": {
+        "registry": {"const": "https://registry.modelcontextprotocol.io"},
+        "name": {"type": "string", "minLength": 1, "maxLength": 512},
+        "version": {"type": "string", "minLength": 1, "maxLength": 512, "not": {"const": "latest"}}
+      }
+    },
+    "local": {
+      "type": "object", "additionalProperties": false,
+      "required": ["executable", "working_directory", "runtime", "platform"],
+      "properties": {
+        "executable": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "working_directory": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "runtime": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{0,63}$"},
+        "platform": {"enum": ["linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"]},
+        "arguments": {"type": "array", "maxItems": 128, "items": {"type": "string", "maxLength": 8192}},
+        "secret_environment": {"type": "string"}
+      }
+    },
+    "remote": {
+      "type": "object", "additionalProperties": false, "required": ["url"],
+      "properties": {
+        "url": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "secret_environment": {"type": "string"},
+        "header_bindings": {"type": "object", "maxProperties": 32, "additionalProperties": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"}}
+      }
+    },
+    "server": {
+      "type": "object", "additionalProperties": false, "required": ["transport"],
+      "properties": {
+        "transport": {"enum": ["stdio", "streamable-http"]},
+        "source": {"$ref": "#/$defs/source"},
+        "local": {"$ref": "#/$defs/local"},
+        "remote": {"$ref": "#/$defs/remote"}
+      },
+      "oneOf": [
+        {"properties": {"transport": {"const": "stdio"}}, "required": ["local"], "not": {"required": ["remote"]}},
+        {"properties": {"transport": {"const": "streamable-http"}}, "required": ["remote"], "not": {"required": ["local"]}}
+      ]
+    }
+  }
+}

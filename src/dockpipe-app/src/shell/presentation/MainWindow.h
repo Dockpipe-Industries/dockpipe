@@ -55,6 +55,7 @@ class QSplitter;
 class LauncherWorkspaceSurface;
 class PackageSurfacePage;
 class EnvironmentsPage;
+class NativeHostConnection;
 
 struct AsyncWorkflowCatalogResult {
     QString workdir;
@@ -209,6 +210,7 @@ private:
     NotificationBell *m_notifications = nullptr;
     ActivityWidget *m_activityWidget = nullptr;
     ExecutionExplorer *m_executionExplorer = nullptr;
+    NativeHostConnection *m_nativeHost = nullptr;
     QTabWidget *m_executionTabs = nullptr;
     QStackedWidget *m_stack = nullptr;
     BasicModeWidget *m_basicWidget = nullptr;

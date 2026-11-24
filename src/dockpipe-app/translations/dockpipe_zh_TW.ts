@@ -2967,7 +2967,7 @@ The operation did not complete successfully. Preserve and inspect the provider j
 <context>
     <name>DockerObservabilityWidget</name>
     <message>
-        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="+328"/>
+        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="+329"/>
         <source>Docker resources</source>
         <translation>Docker 資源</translation>
     </message>
@@ -2975,27 +2975,27 @@ The operation did not complete successfully. Preserve and inspect the provider j
         <location line="+5"/>
         <location line="+12"/>
         <location line="+3"/>
-        <location line="+129"/>
+        <location line="+130"/>
         <location line="+32"/>
         <source>Containers</source>
         <translation>容器</translation>
     </message>
     <message>
-        <location line="-175"/>
+        <location line="-176"/>
         <location line="+15"/>
-        <location line="+162"/>
+        <location line="+163"/>
         <source>Networks</source>
         <translation>網路</translation>
     </message>
     <message>
-        <location line="-176"/>
+        <location line="-177"/>
         <location line="+15"/>
-        <location line="+162"/>
+        <location line="+163"/>
         <source>Volumes</source>
         <translation>磁碟區</translation>
     </message>
     <message>
-        <location line="-166"/>
+        <location line="-167"/>
         <source>Solid arrows: declared dependencies · Dashed lines: network or storage attachments</source>
         <translation>實線箭頭：宣告的相依項目 · 虛線：網路或儲存連接</translation>
     </message>
@@ -3030,7 +3030,7 @@ The operation did not complete successfully. Preserve and inspect the provider j
         <translation>容器畫布檢視</translation>
     </message>
     <message>
-        <location line="+111"/>
+        <location line="+112"/>
         <source>Manage containers, networks, and persistent storage.</source>
         <translation>管理容器、網路和持續性儲存空間。</translation>
     </message>
@@ -3042,12 +3042,12 @@ The operation did not complete successfully. Preserve and inspect the provider j
     <message>
         <location line="+1"/>
         <location line="+28"/>
-        <location line="+1277"/>
+        <location line="+1325"/>
         <source>Running</source>
         <translation>執行中</translation>
     </message>
     <message>
-        <location line="-1305"/>
+        <location line="-1353"/>
         <source>Currently active</source>
         <translation>目前使用中</translation>
     </message>
@@ -3083,13 +3083,13 @@ The operation did not complete successfully. Preserve and inspect the provider j
     </message>
     <message>
         <location line="+2"/>
-        <location line="+819"/>
-        <location line="+466"/>
+        <location line="+851"/>
+        <location line="+482"/>
         <source>Stopped</source>
         <translation>已停止</translation>
     </message>
     <message>
-        <location line="-1284"/>
+        <location line="-1332"/>
         <source>Needs attention</source>
         <translation>需要注意</translation>
     </message>
@@ -3128,7 +3128,7 @@ Refresh to load inventory from the selected machine.</source>
 重新整理以從選取的電腦載入清單。</translation>
     </message>
     <message>
-        <location line="+87"/>
+        <location line="+98"/>
         <source>Choose a resource in the table or on the canvas.</source>
         <translation>在表格或畫布上選擇資源。</translation>
     </message>
@@ -3148,7 +3148,7 @@ Refresh to load inventory from the selected machine.</source>
         <translation>未回報</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+67"/>
         <source>No linked resources.</source>
         <translation>沒有相關資源。</translation>
     </message>
@@ -3233,7 +3233,7 @@ Refresh to load inventory from the selected machine.</source>
         <translation>正在載入 Docker 物件…</translation>
     </message>
     <message>
-        <location line="+43"/>
+        <location line="+44"/>
         <source>Refresh to load container inventory.</source>
         <translation>重新整理以載入容器清單。</translation>
     </message>
@@ -3259,13 +3259,13 @@ Refresh to load inventory from the selected machine.</source>
     </message>
     <message>
         <location line="+2"/>
-        <location line="+232"/>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+118"/>
+        <location line="+236"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+130"/>
         <source>Loading container logs…</source>
         <translation>正在載入容器記錄…</translation>
     </message>
     <message>
-        <location line="-230"/>
+        <location line="-234"/>
         <source>Loading Docker networks…</source>
         <translation>正在載入 Docker 網路…</translation>
     </message>
@@ -3337,7 +3337,7 @@ Refresh to load inventory from the selected machine.</source>
         <translation>Docker 重新整理已完成，但發生錯誤。</translation>
     </message>
     <message>
-        <location line="+44"/>
+        <location line="+48"/>
         <source>Loading container details…</source>
         <translation>正在載入容器詳細資訊…</translation>
     </message>
@@ -3360,7 +3360,7 @@ Refresh to load inventory from the selected machine.</source>
 %1</translation>
     </message>
     <message>
-        <location line="+23"/>
+        <location line="+27"/>
         <source>Loading network details…</source>
         <translation>正在載入網路詳細資訊…</translation>
     </message>
@@ -3374,7 +3374,7 @@ Refresh to load inventory from the selected machine.</source>
 %1</translation>
     </message>
     <message>
-        <location line="+23"/>
+        <location line="+27"/>
         <source>Loading volume details…</source>
         <translation>正在載入磁碟區詳細資訊…</translation>
     </message>
@@ -3408,7 +3408,8 @@ Refresh to load inventory from the selected machine.</source>
         <translation>重新整理 Docker 檢視</translation>
     </message>
     <message>
-        <location line="+93"/>
+        <location line="+97"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+160"/>
         <source>%1: %2…</source>
         <translation>%1：%2…</translation>
     </message>
@@ -3483,12 +3484,12 @@ Refresh to load inventory from the selected machine.</source>
         <translation> 關聯顯示限制為 4,096 個連結；檢查資料仍然可用。</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+122"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-32"/>
         <source>Waiting for the selected machine…</source>
         <translation>正在等待選取的電腦…</translation>
     </message>
     <message>
-        <location line="+46"/>
+        <location line="+238"/>
         <source>%1 · Docker monitoring unavailable or stale. On the paired worker, enable: dockpipe remote monitoring --system --docker. The worker and broker must support monitoring.</source>
         <translation>%1 · Docker 監控無法使用或已過期。請在已配對的工作節點上啟用：dockpipe remote monitoring --system --docker。工作節點和代理必須支援監控。</translation>
     </message>
@@ -3503,23 +3504,23 @@ Refresh to load inventory from the selected machine.</source>
         <translation>未共用</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="-839"/>
+        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="-856"/>
         <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+4"/>
         <source> Inventory limited to 256 objects of each kind.</source>
         <translation> 清單限制為每種類型 256 個物件。</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+2"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+6"/>
         <source> · Remote inventory · read-only</source>
         <translation> · 遠端清單 · 唯讀</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="+657"/>
+        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="+670"/>
         <source>Container control requires a supported action and an exact full container ID.</source>
         <translation>容器控制需要受支援的動作和正確的完整容器 ID。</translation>
     </message>
     <message>
-        <location line="+46"/>
+        <location line="+50"/>
         <source>Could not send the container control request.</source>
         <translation>無法傳送容器控制要求。</translation>
     </message>
@@ -3534,7 +3535,7 @@ Refresh to load inventory from the selected machine.</source>
         <translation>容器控制回應無效。</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-297"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-499"/>
         <source>Wait for the current container control operation before changing machines.</source>
         <translation>變更電腦前，請等待目前的容器控制作業完成。</translation>
     </message>
@@ -3564,17 +3565,100 @@ Refresh to load inventory from the selected machine.</source>
         <translation>%1 · %3 的 %2 失敗：%4</translation>
     </message>
     <message>
-        <location line="+97"/>
+        <location line="+21"/>
+        <location line="+6"/>
+        <source>Native host — unavailable</source>
+        <translation>原生主機 — 無法使用</translation>
+    </message>
+    <message>
+        <location line="+29"/>
+        <source>Native host inspection and recent logs are available here. Use the host terminal for container shells.</source>
+        <translation>可在此處查看原生主機檢查結果與近期日誌。請使用主機終端機開啟容器殼層。</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Remote monitoring shares inventory and topology. Application logs and interactive controls remain local.</source>
+        <translation>遠端監控會共用清單與拓撲。應用程式日誌與互動式控制保留在本機。</translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <source>%1 completed for %2.</source>
+        <translation>已為 %2 完成 %1。</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>%1 was not confirmed for %2. Refreshing current state.</source>
+        <translation>無法確認 %2 的 %1 操作。正在重新整理目前狀態。</translation>
+    </message>
+    <message>
+        <location line="+40"/>
+        <source>Loading native host inspection…</source>
+        <translation>正在載入原生主機檢查結果…</translation>
+    </message>
+    <message>
+        <location line="+30"/>
+        <source>Native host inspection unavailable or cancelled. Refresh to try again.</source>
+        <translation>無法使用原生主機檢查，或檢查已取消。請重新整理後再試一次。</translation>
+    </message>
+    <message>
+        <location line="+23"/>
+        <source>Native host inspection refreshed.</source>
+        <translation>已重新整理原生主機檢查結果。</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Recent logs are unavailable for this container. Its logging driver may not support reading logs.</source>
+        <translation>無法取得此容器的近期日誌。其日誌驅動程式可能不支援讀取日誌。</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Inspection refreshed; recent logs unavailable.</source>
+        <translation>已重新整理檢查結果。無法取得近期日誌。</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>
+[Recent logs limited to 64 KiB.]</source>
+        <translation>
+[近期日誌已限制為 64 KiB。]</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Inspection refreshed; recent logs limited to 64 KiB.</source>
+        <translation>已重新整理檢查結果。近期日誌已限制為 64 KiB。</translation>
+    </message>
+    <message>
+        <location line="+47"/>
+        <source>Native host unavailable. Open this application through its authenticated host session.</source>
+        <translation>無法使用原生主機。請透過已驗證的主機工作階段開啟此應用程式。</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Native host Docker monitoring unavailable. Refresh the authenticated host session.</source>
+        <translation>無法使用原生主機的 Docker 監控。請重新整理已驗證的主機工作階段。</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Native host Docker inventory is unavailable for this account.</source>
+        <translation>此帳戶無法存取原生主機的 Docker 清單。</translation>
+    </message>
+    <message>
+        <location line="+40"/>
         <source>%1 · Remote Docker inventory exceeds the supported bound.</source>
         <translation>%1 · 遠端 Docker 清單超過支援的上限。</translation>
     </message>
     <message>
-        <location line="+35"/>
+        <location line="+37"/>
+        <source> · Native host inventory</source>
+        <translation> · 原生主機清單</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source> · Remote inventory</source>
         <translation> · 遠端清單</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="-760"/>
+        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="-777"/>
         <source>Container inventory exceeds its object limit.</source>
         <translation>容器清單超出了物件數量限制。</translation>
     </message>
@@ -3589,7 +3673,7 @@ Refresh to load inventory from the selected machine.</source>
         <translation>容器查詢已取消，或受信任的 Dockpipe CLI 無法使用。</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-203"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-405"/>
         <source>Could not inspect resource: %1</source>
         <translation>無法檢查資源：%1</translation>
     </message>
@@ -3604,14 +3688,7 @@ Refresh to load inventory from the selected machine.</source>
         <translation>無法傳送容器要求。</translation>
     </message>
     <message>
-        <location line="+523"/>
-        <location line="+50"/>
-        <location line="+41"/>
-        <source>Detailed inspection requires the paired worker&apos;s Docker read feature.</source>
-        <translation>詳細檢查需要已配對工作節點的 Docker 讀取功能。</translation>
-    </message>
-    <message>
-        <location line="-560"/>
+        <location line="+54"/>
         <source>Invalid container detail response.</source>
         <translation>容器詳細資訊回應無效。</translation>
     </message>
@@ -4614,7 +4691,7 @@ Select a row to get started.</source>
 <context>
     <name>ExecutionExplorer</name>
     <message>
-        <location filename="../src/observability/presentation/ExecutionExplorer.cpp" line="+47"/>
+        <location filename="../src/observability/presentation/ExecutionExplorer.cpp" line="+49"/>
         <location line="+543"/>
         <source>Running workflows</source>
         <translation>執行中的工作流程</translation>
@@ -4908,14 +4985,14 @@ Select a row to get started.</source>
     </message>
     <message>
         <location line="+68"/>
-        <location line="+508"/>
+        <location line="+563"/>
         <source>No process data to display
 Refresh to load the selected machine&apos;s process list.</source>
         <translation>沒有可顯示的處理程序資料
 重新整理以載入選取的電腦的處理程序清單。</translation>
     </message>
     <message>
-        <location line="-473"/>
+        <location line="-528"/>
         <source>Live resource usage and processes on the selected machine.</source>
         <translation>選取電腦上的即時資源使用情況和處理程序。</translation>
     </message>
@@ -4950,7 +5027,17 @@ Refresh to load the selected machine&apos;s process list.</source>
         <translation>顯示更多執行</translation>
     </message>
     <message>
-        <location line="+123"/>
+        <location line="+91"/>
+        <source>Native host unavailable. Open this application through its authenticated host session.</source>
+        <translation>無法使用原生主機。請透過已驗證的主機工作階段開啟此應用程式。</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Native host system monitoring unavailable. Refresh the authenticated host session.</source>
+        <translation>無法使用原生主機的系統監控。請重新整理已驗證的主機工作階段。</translation>
+    </message>
+    <message>
+        <location line="+42"/>
         <source>%1 · System monitoring unavailable or stale. On the paired worker, enable it with: dockpipe remote monitoring --system --docker. The worker and broker must support monitoring.</source>
         <translation>%1 · 系統監控無法使用或已過期。請在已配對的工作節點上使用以下命令啟用：dockpipe remote monitoring --system --docker。工作節點和代理必須支援監控。</translation>
     </message>
@@ -4960,12 +5047,18 @@ Refresh to load the selected machine&apos;s process list.</source>
         <translation>監控無法使用。顯示的資料可能已過期。請檢查 CLI 版本和電腦權限。</translation>
     </message>
     <message>
-        <location line="+28"/>
+        <location line="+19"/>
+        <location line="+6"/>
+        <source>Native host — unavailable</source>
+        <translation>原生主機 — 無法使用</translation>
+    </message>
+    <message>
+        <location line="+23"/>
         <source>Waiting for the selected machine…</source>
         <translation>正在等待選取的電腦…</translation>
     </message>
     <message>
-        <location line="+68"/>
+        <location line="+74"/>
         <location line="+3"/>
         <location line="+144"/>
         <source>Unavailable</source>
@@ -7307,15 +7400,62 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
 <context>
     <name>MonitoringMachineSelector</name>
     <message>
-        <location filename="../src/observability/presentation/MonitoringMachineSelector.h" line="+16"/>
-        <location line="+9"/>
+        <location filename="../src/observability/presentation/MonitoringMachineSelector.h" line="+56"/>
+        <source>Application container</source>
+        <translation>應用程式容器</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>This computer</source>
         <translation>這部電腦</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="-11"/>
         <source> — unavailable</source>
         <translation> — 無法使用</translation>
+    </message>
+</context>
+<context>
+    <name>NativeHostConnection</name>
+    <message>
+        <location filename="../src/remote/infrastructure/NativeHostConnection.cpp" line="+27"/>
+        <source>Native host — unavailable</source>
+        <translation>原生主機 — 無法使用</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>%1 · %2 · native host</source>
+        <translation>%1 · %2 · 原生主機</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>The native host connection reference exceeds 4096 bytes.</source>
+        <translation>原生主機連線參照超過 4096 位元組。</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>The native host connection reference contains invalid characters.</source>
+        <translation>原生主機連線參照含有無效的字元。</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>The native host connection requires an available absolute file reference.</source>
+        <translation>連線至原生主機需要指向可存取檔案的絕對路徑。</translation>
+    </message>
+    <message>
+        <location line="+44"/>
+        <source>Native host unavailable. Open this application through its authenticated host session.</source>
+        <translation>無法使用原生主機。請透過已驗證的主機工作階段開啟此應用程式。</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>Native host Docker actions require start or stop and a hexadecimal container ID.</source>
+        <translation>原生主機上的 Docker 操作需要 start 或 stop，以及十六進位的容器 ID。</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Native host Docker inspection requires a valid container, network or volume identifier.</source>
+        <translation>在原生主機上檢查 Docker 需要有效的容器、網路或磁碟區識別碼。</translation>
     </message>
 </context>
 <context>
@@ -9402,29 +9542,35 @@ Mermaid 預覽限制：前 16 個之後的圖表將顯示為原始碼。
 <context>
     <name>RemoteCommand</name>
     <message>
-        <location filename="../src/remote/infrastructure/RemoteCommand.cpp" line="+42"/>
+        <location filename="../src/remote/infrastructure/RemoteCommand.cpp" line="+43"/>
         <source>Operation timed out. Existing remote state is preserved.
 </source>
         <translation>操作逾時。已保留現有遠端狀態。
 </translation>
     </message>
     <message>
-        <location line="+125"/>
-        <location line="+77"/>
-        <source>Output exceeded the display limit.
+        <location line="+108"/>
+        <source>Invalid command response limit.
 </source>
-        <translation>輸出超過顯示上限。
+        <translation>命令回應上限無效。
 </translation>
     </message>
     <message>
-        <location line="-7"/>
+        <location line="+53"/>
+        <source>Output exceeded the command response limit.
+</source>
+        <translation>輸出超過命令回應上限。
+</translation>
+    </message>
+    <message>
+        <location line="+68"/>
         <source>Rejected an invalid security-key interaction request.
 </source>
         <translation>已拒絕無效的安全金鑰互動要求。
 </translation>
     </message>
     <message>
-        <location line="+30"/>
+        <location line="+23"/>
         <source>Security-key response exceeded the protocol limit.
 </source>
         <translation>安全金鑰回應超過通訊協定上限。
@@ -12418,14 +12564,29 @@ This machine is no longer in the available inventory.</source>
 <context>
     <name>TerminalHub</name>
     <message>
-        <location filename="../src/terminal/application/TerminalHub.cpp" line="+48"/>
-        <location line="+48"/>
-        <location line="+57"/>
+        <location filename="../src/terminal/application/TerminalHub.cpp" line="+46"/>
+        <source>Native host — unavailable</source>
+        <translation>原生主機 — 無法使用</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Application container · %1</source>
+        <translation>應用程式容器 · %1</translation>
+    </message>
+    <message>
+        <location line="+42"/>
+        <location line="+67"/>
+        <location line="+59"/>
         <source>Eight terminals are already open. Close one before opening another.</source>
         <translation>已開啟八個終端機。開啟另一個前請先關閉一個。</translation>
     </message>
     <message>
-        <location line="-90"/>
+        <location line="-114"/>
+        <source>Native host unavailable. Open this application through its authenticated host session.</source>
+        <translation>無法使用原生主機。請透過已驗證的主機工作階段開啟此應用程式。</translation>
+    </message>
+    <message>
+        <location line="+21"/>
         <source>This shell is no longer available. Refresh the shell list and try again.</source>
         <translation>此 shell 已無法使用。請重新整理 shell 清單後再試。</translation>
     </message>
@@ -12440,19 +12601,24 @@ This machine is no longer in the available inventory.</source>
         <translation>沒有可用的主機 shell。請檢查 Flatpak 主機存取權限並重新整理 shell 清單。</translation>
     </message>
     <message>
-        <location line="+10"/>
-        <location line="+32"/>
-        <location line="+57"/>
+        <location line="+9"/>
+        <source>Terminal %1</source>
+        <translation>終端機 %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+33"/>
+        <location line="+59"/>
         <source>Terminal %1 · %2</source>
         <translation>終端機 %1 · %2</translation>
     </message>
     <message>
-        <location line="-67"/>
+        <location line="-69"/>
         <source>The container terminal target is unavailable.</source>
         <translation>容器終端目標不可用。</translation>
     </message>
     <message>
-        <location line="+132"/>
+        <location line="+134"/>
         <location line="+32"/>
         <source>This terminal session is closed.</source>
         <translation>此終端機工作階段已關閉。</translation>
@@ -12997,7 +13163,7 @@ $ 準備接收您的下一個命令</translation>
 <context>
     <name>TerminalWidget</name>
     <message>
-        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+92"/>
+        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+93"/>
         <source>Terminal</source>
         <translation>終端機</translation>
     </message>
@@ -13044,12 +13210,12 @@ $ 準備接收您的下一個命令</translation>
     </message>
     <message>
         <location line="+6"/>
-        <location line="+742"/>
+        <location line="+748"/>
         <source>Restart DockPipe to enable desktop transparency. Your desktop must support compositing.</source>
         <translation>重新啟動 DockPipe 以啟用桌面透明效果。桌面必須支援合成。</translation>
     </message>
     <message>
-        <location line="-733"/>
+        <location line="-739"/>
         <source>No terminals open</source>
         <translation>沒有開啟的終端機</translation>
     </message>
@@ -13074,7 +13240,7 @@ $ 準備接收您的下一個命令</translation>
         <translation>啟動終端機</translation>
     </message>
     <message>
-        <location line="+45"/>
+        <location line="+50"/>
         <location line="+26"/>
         <source>Discovering installed host shells…</source>
         <translation>正在尋找已安裝的主機 shell…</translation>
@@ -13085,12 +13251,17 @@ $ 準備接收您的下一個命令</translation>
         <translation>選擇的終端目標不可用。</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+29"/>
         <source>Default shell</source>
         <translation>預設 shell</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+0"/>
+        <source>Default · native host</source>
+        <translation>預設 · 原生主機</translation>
+    </message>
+    <message>
+        <location line="+8"/>
         <source>New default shell</source>
         <translation>新增預設 shell</translation>
     </message>
