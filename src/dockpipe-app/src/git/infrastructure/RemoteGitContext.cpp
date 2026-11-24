@@ -66,4 +66,3 @@ void RemoteGitContext::bind(QObject *object, bool remote, const QJsonObject &tar
     object->setProperty(WriteGrant, grant.value("git_write").toBool());
     object->setProperty(PublishGrant, grant.value("git_publish").toBool());
 }
-
