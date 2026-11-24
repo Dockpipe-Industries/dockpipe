@@ -155,7 +155,8 @@ private slots:
         QCOMPARE(result.outcome, RemoteFeatureClient::Outcome::Cancelled);
         cancel();
         QCOMPARE(calls, 1);
-        RemoteFeatureClient::invoke(&owner, intent(), [&](const auto &value) { result = value; ++calls; }, 150);
+        // Leave time for the prepare subprocess to start before timing out the paused call.
+        RemoteFeatureClient::invoke(&owner, intent(), [&](const auto &value) { result = value; ++calls; }, 1500);
         QTRY_COMPARE(calls, 2);
         QCOMPARE(result.outcome, RemoteFeatureClient::Outcome::Unknown);
     }

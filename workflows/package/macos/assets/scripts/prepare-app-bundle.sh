@@ -24,11 +24,13 @@ trap cleanup EXIT
 browser_sdk="${DOCKPIPE_BROWSER_SDK:?Verified Browser SDK prefix required}"
 resources="$app/Contents/Resources"
 store="$resources/share/dockpipe"
+terminal_provider="$app/Contents/Helpers/dockpipe-terminal-host"
 mkdir -p "$app/Contents/Helpers" "$resources" "$work/DockPipe.iconset"
 cp -R "$root/workflows/build/desktop/assets/licenses" "$resources/"
 cp "$root/LICENSE" "$resources/licenses/DockPipe-LICENSE.txt"
 install -m 755 "$(dirname "$app")/dockpipe-workspace-reader" "$app/Contents/MacOS/dockpipe-workspace-reader"
-install -m 755 "$(dirname "$app")/dockpipe-terminal-host" "$app/Contents/MacOS/dockpipe-terminal-host"
+# Core discovers the installed terminal provider beside its own executable.
+install -m 755 "$(dirname "$app")/dockpipe-terminal-host" "$terminal_provider"
 python3 "$root/workflows/dependencies/browser-sdk/assets/scripts/browser-runtime.py" --sdk "$browser_sdk" --platform "darwin-$arch" \
   --runtime "$app/Contents/Frameworks" --licenses "$resources/licenses/SpatialWebBrowser"
 install -m 755 "$root/src/bin/dockpipe" "$app/Contents/Helpers/dockpipe"
@@ -49,7 +51,8 @@ for size in 16 32 128 256 512; do
   sips -z "$double" "$double" "$icon" --out "$work/DockPipe.iconset/icon_${size}x${size}@2x.png" >/dev/null
 done
 iconutil -c icns "$work/DockPipe.iconset" -o "$resources/DockPipe.icns"
-DYLD_LIBRARY_PATH="$browser_sdk/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}" macdeployqt "$app" -always-overwrite
+DYLD_LIBRARY_PATH="$browser_sdk/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}" \
+  macdeployqt "$app" -always-overwrite "-executable=$terminal_provider"
 webengine="$app/Contents/Frameworks/QtWebEngineCore.framework"
 webengine_helper="$webengine/Helpers/QtWebEngineProcess.app"
 for required in \
@@ -78,7 +81,7 @@ fi
 codesign "${sign_args[@]}" --identifier com.dockpipe.cli "$app/Contents/Helpers/dockpipe"
 codesign "${sign_args[@]}" --identifier com.dockpipe.system-auth "$app/Contents/Helpers/dockpipe-system-auth"
 codesign "${sign_args[@]}" --identifier com.dockpipe.workspace-reader "$app/Contents/MacOS/dockpipe-workspace-reader"
-codesign "${sign_args[@]}" --identifier com.dockpipe.terminal-host "$app/Contents/MacOS/dockpipe-terminal-host"
+codesign "${sign_args[@]}" --identifier com.dockpipe.terminal-host "$terminal_provider"
 codesign "${sign_args[@]}" \
   --entitlements "$webengine_helper/Contents/Resources/QtWebEngineProcess.entitlements" \
   "$webengine_helper"

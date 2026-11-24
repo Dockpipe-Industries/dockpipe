@@ -28,12 +28,13 @@ class RpathTests(unittest.TestCase):
         self.root = Path(self.temporary.name).resolve()
         self.app = self.root / 'DockPipe.app'
         self.executables = self.app / 'Contents/MacOS'
+        self.helpers = self.app / 'Contents/Helpers'
         self.frameworks = self.app / 'Contents/Frameworks'
         self.resources = self.app / 'Contents/Resources'
-        for directory in [self.executables, self.frameworks, self.resources]:
+        for directory in [self.executables, self.helpers, self.frameworks, self.resources]:
             directory.mkdir(parents=True)
         self.images = [self.executables / 'DockPipe', self.frameworks / 'libdockpipe-launcher-ui.1.0.dylib',
-                       self.executables / 'dockpipe-workspace-reader', self.executables / 'dockpipe-terminal-host']
+                       self.executables / 'dockpipe-workspace-reader', self.helpers / 'dockpipe-terminal-host']
         for image in self.images:
             image.write_bytes(b'pure fixture; never executed')
         (self.frameworks / 'libdockpipe-launcher-ui.1.dylib').symlink_to(self.images[1].name)
@@ -78,6 +79,7 @@ class RpathTests(unittest.TestCase):
         foreign.write_bytes(b'foreign stays untouched')
         report = NORMALIZER.normalize(self.app, self.receipt, self.run_tool)
         self.assertEqual(len(report['owned_images']), 4)
+        self.assertIn('Contents/Helpers/dockpipe-terminal-host', [image['path'] for image in report['owned_images']])
         self.assertEqual(self.state[self.images[0]], [NORMALIZER.EXECUTABLE_RPATH])
         self.assertEqual(self.state[self.images[1]], [NORMALIZER.LIBRARY_RPATH])
         self.assertEqual(self.state[self.images[2]], [NORMALIZER.EXECUTABLE_RPATH])
@@ -173,6 +175,8 @@ class RpathTests(unittest.TestCase):
             NORMALIZER.normalize(self.app, self.receipt, self.run_tool)
         self.assertEqual(self.calls, [])
         source = (SCRIPT.parent / 'prepare-app-bundle.sh').read_text()
+        self.assertIn('terminal_provider="$app/Contents/Helpers/dockpipe-terminal-host"', source)
+        self.assertIn('"-executable=$terminal_provider"', source)
         deploy = source.index('macdeployqt "$app"')
         normalize = source.index('normalize-owned-rpaths.py')
         protect = source.index('protect-owned-binaries.py')
