@@ -9,6 +9,7 @@
 #include <QDeadlineTimer>
 #include <QElapsedTimer>
 #include <QFileInfo>
+#include <QLabel>
 #include <QLineEdit>
 #include <QSet>
 #include <QStandardPaths>
@@ -193,6 +194,7 @@ class BrowserNetworkHostTest final : public QObject {
     Q_OBJECT
 private slots:
     void rejectsMalformedPrivateRequests();
+    void missingIsolatedSessionSupportPreventsRelayAndHostStartup();
     void verifiesIdentityBoundTrustSnapshots();
     void retainsOfflineMachineWithoutCreatingLocalBrowser();
     void nodeOnlyMenuExposesNetworkMachines();
@@ -275,6 +277,45 @@ void BrowserNetworkHostTest::rejectsMalformedPrivateRequests()
     QVERIFY(!dispatchBrowserNetworkHost(1, normal).has_value());
 }
 
+void BrowserNetworkHostTest::missingIsolatedSessionSupportPreventsRelayAndHostStartup()
+{
+#if !defined(Q_OS_LINUX)
+    QSKIP("Remote browser embedding requires Linux");
+#endif
+    if (browserNetworkHostSupportsIsolatedSessions())
+        QSKIP("This build has isolated session support");
+
+    QTemporaryDir storage;
+    QVERIFY(storage.isValid());
+    const auto profile = storage.path() + "/profile";
+    const QJsonObject target{{"node", "fixture"}, {"fingerprint", QString(64, 'b')},
+        {"generation", QString(64, 'c')}};
+    BrowserNetworkContext context(target, profile);
+    context.start();
+
+    const auto *status = context.findChild<QLabel *>();
+    QVERIFY(status);
+    QCOMPARE(status->text(), QStringLiteral("Remote browser is unavailable in this build. The Browser SDK lacks isolated session support."));
+    QVERIFY(context.findChildren<QProcess *>().isEmpty());
+    QVERIFY(!QFileInfo::exists(profile));
+
+    QTemporaryFile request;
+    QVERIFY(request.open());
+    const auto valid = QJsonDocument(QJsonObject{{"schema", "dockpipe.browser.host/v1"},
+        {"endpoint", "http://127.0.0.1:12345"}, {"username", "dockpipe"},
+        {"password", QString(64, 'a')}, {"storage", profile}}).toJson(QJsonDocument::Compact);
+    QCOMPARE(request.write(valid), valid.size());
+    QVERIFY(request.flush());
+
+    QByteArray executable("browser-test");
+    QByteArray mode("--browser-network-host");
+    QByteArray option("--request");
+    QByteArray path = QFile::encodeName(request.fileName());
+    char *arguments[] = {executable.data(), mode.data(), option.data(), path.data()};
+    QCOMPARE(dispatchBrowserNetworkHost(4, arguments).value_or(-1), 3);
+    QVERIFY(!QFileInfo::exists(profile));
+}
+
 void BrowserNetworkHostTest::retainsOfflineMachineWithoutCreatingLocalBrowser()
 {
     const QString contextId = QStringLiteral("test-offline-browser");
@@ -319,6 +360,8 @@ void BrowserNetworkHostTest::nodeOnlyMenuExposesNetworkMachines()
 
 void BrowserNetworkHostTest::helperUsesAuthenticatedLoopbackProxyAndStopsOnParentEof()
 {
+    if (!browserNetworkHostSupportsIsolatedSessions())
+        QSKIP("Native helper requires a Browser SDK with isolated session support");
     if (QGuiApplication::platformName() != "xcb")
         QSKIP("Native helper embedding requires X11");
     QTcpServer proxy;
@@ -458,6 +501,8 @@ void BrowserNetworkHostTest::helperUsesAuthenticatedLoopbackProxyAndStopsOnParen
 
 void BrowserNetworkHostTest::contextReleasesOwnedChildren()
 {
+    if (!browserNetworkHostSupportsIsolatedSessions())
+        QSKIP("Native helper requires a Browser SDK with isolated session support");
     if (QGuiApplication::platformName() != "xcb")
         QSKIP("Native helper embedding requires X11");
     QTemporaryDir directory;
@@ -511,6 +556,8 @@ void BrowserNetworkHostTest::productionContextAcceptsNativeKeyboardFocus()
 
 void BrowserNetworkHostTest::checkProductionContext(bool focus)
 {
+    if (!browserNetworkHostSupportsIsolatedSessions())
+        QSKIP("Native helper requires a Browser SDK with isolated session support");
     if (QGuiApplication::platformName() != "xcb")
         QSKIP("Native browser resize requires X11");
 #if defined(Q_OS_LINUX)
@@ -695,6 +742,7 @@ void BrowserNetworkHostTest::liveContextClosesOnAuthorityLoss()
     const auto requestPath = qEnvironmentVariable("DOCKPIPE_BROWSER_LIVE_REQUEST");
     if (requestPath.isEmpty())
         QSKIP("Live authority-loss validation requires an explicit private request");
+    QVERIFY2(browserNetworkHostSupportsIsolatedSessions(), "Live browser context requires a Browser SDK with isolated session support");
     QVERIFY2(QGuiApplication::platformName() == "xcb", "Live browser context requires X11");
     const auto receiptPath = qEnvironmentVariable("DOCKPIPE_BROWSER_LIVE_RECEIPT");
     QVERIFY(QFileInfo(receiptPath).isAbsolute());

@@ -1,4 +1,5 @@
 #include "BrowserNetworkContext.h"
+#include "BrowserNetworkHost.h"
 #include "BrowserNetworkTrust.h"
 #include "DockpipeChoices.h"
 
@@ -94,6 +95,10 @@ void BrowserNetworkContext::start()
     stop(tr("Remote browser embedding is currently supported on Linux X11 only."));
     return;
 #endif
+    if (!browserNetworkHostSupportsIsolatedSessions()) {
+        stop(tr("Remote browser is unavailable in this build. The Browser SDK lacks isolated session support."));
+        return;
+    }
     if (QGuiApplication::platformName() != QStringLiteral("xcb")) {
         stop(tr("Remote browser embedding requires an X11 desktop."));
         return;

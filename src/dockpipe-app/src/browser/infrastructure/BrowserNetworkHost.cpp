@@ -32,6 +32,7 @@
 #endif
 
 namespace {
+#if defined(DOCKPIPE_BROWSER_SDK_HAS_ISOLATED_SESSIONS)
 // A QWidget hosting WebEngine may recreate its native surface when its first
 // render widget enables RHI composition. Export a stable QWindow instead; keep
 // every replacement QWidget surface parented below that window in this process.
@@ -127,7 +128,6 @@ private:
     bool m_activating = false;
 };
 
-#if defined(Q_OS_LINUX)
 QSize nativeWindowSize(quint64 id)
 {
     Display *display = XOpenDisplay(nullptr);
@@ -199,6 +199,15 @@ QJsonObject readPrivateConfig(const QString &path)
 }
 }
 
+bool browserNetworkHostSupportsIsolatedSessions()
+{
+#if defined(DOCKPIPE_BROWSER_SDK_HAS_ISOLATED_SESSIONS)
+    return true;
+#else
+    return false;
+#endif
+}
+
 std::optional<int> dispatchBrowserNetworkHost(int argc, char **argv)
 {
     bool requested = false;
@@ -222,7 +231,7 @@ std::optional<int> dispatchBrowserNetworkHost(int argc, char **argv)
         || !QRegularExpression("\\A[0-9a-f]{64}\\z").match(password).hasMatch()
         || !QDir::isAbsolutePath(storage) || storage.size() > 4096)
         return 2;
-#if !defined(Q_OS_LINUX)
+#if !defined(DOCKPIPE_BROWSER_SDK_HAS_ISOLATED_SESSIONS)
     return 3;
 #else
     // Replace inherited Chromium options: operators cannot accidentally enable

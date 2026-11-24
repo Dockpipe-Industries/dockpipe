@@ -19,7 +19,7 @@ execution, monitoring, or browser network relays.
 | Linux native capture | No backend in the current native package | A working VM display, cross-build or portable fixture does not qualify a desktop sender. |
 | Windows or Darwin native viewing | No viewer artifact in the current native package | Do not infer viewing support from the generic GUI or session API. |
 | RDP | Requires an independently implemented resolver/provider | A generic desktop picker or the VM package does not establish an RDP implementation. |
-| Remote browser presentation | Linux X11 helper embedding | Network relay and trust-sharing tests do not qualify Windows, Darwin or native Wayland embedding. |
+| Remote browser presentation | Linux X11 helper embedding with a Browser SDK that supports isolated sessions | Builds using an older SDK report that remote browsing is unavailable before starting a network relay. Network relay and trust-sharing tests do not qualify Windows, Darwin or native Wayland embedding. |
 | VM management and embedded display | Contributed by the installed VM resolver's surface and native display payload | Old artifacts without that surface cannot expose the VM tab. Package installation, install/manage UI and actual guest embedding require separate checks. |
 
 The Windows private desktop channel now cross-builds for amd64 and arm64.

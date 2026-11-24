@@ -357,6 +357,36 @@ elseif(DOCKPIPE_BROWSER_ABI_PROFILE STREQUAL "native")
 else()
     message(FATAL_ERROR "Unsupported Browser SDK ABI profile: ${DOCKPIPE_BROWSER_ABI_PROFILE}")
 endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    include(CheckCXXSourceCompiles)
+    include(CMakePushCheckState)
+    cmake_push_check_state(RESET)
+    set(CMAKE_REQUIRED_LIBRARIES SpatialWeb::Browser)
+    # The public and private SDKs can share an ABI version. Recheck the selected SDK on reconfigure.
+    unset(DOCKPIPE_BROWSER_SDK_HAS_ISOLATED_SESSIONS CACHE)
+    check_cxx_source_compiles([[
+        #include <SpatialWeb/Browser/BrowserWidget.h>
+
+        int main()
+        {
+            BrowserSessionOptions options;
+            options.contextId = QStringLiteral("probe");
+            options.persistentStoragePath = QStringLiteral("/probe");
+            options.additionalTrustedCertificates = QList<QSslCertificate>();
+            options.allowExtensionInstallation = false;
+            options.configurePage = [](QWebEnginePage *) {};
+
+            BrowserWidget browser(options);
+            return browser.saveSession() ? 0 : 1;
+        }
+    ]] DOCKPIPE_BROWSER_SDK_HAS_ISOLATED_SESSIONS)
+    cmake_pop_check_state()
+    if(NOT DOCKPIPE_BROWSER_SDK_HAS_ISOLATED_SESSIONS)
+        message(STATUS "Remote browser embedding disabled: Browser SDK lacks isolated session support")
+    endif()
+endif()
+
 set(DOCKPIPE_UI_SOURCES
     src/remote/presentation/RemoteDesktopWidget.cpp
     src/remote/presentation/RemoteDesktopSettingsDialog.cpp
@@ -512,6 +542,9 @@ target_include_directories(dockpipe-browser PUBLIC
     "$<INSTALL_INTERFACE:include>")
 target_link_libraries(dockpipe-browser PUBLIC Qt6::WebEngineWidgets Qt6::PrintSupport Qt6::WebChannel dockpipe-launcher-ui)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    if(DOCKPIPE_BROWSER_SDK_HAS_ISOLATED_SESSIONS)
+        target_compile_definitions(dockpipe-browser PRIVATE DOCKPIPE_BROWSER_SDK_HAS_ISOLATED_SESSIONS)
+    endif()
     find_package(X11 REQUIRED)
     target_link_libraries(dockpipe-browser PRIVATE X11::X11)
 endif()

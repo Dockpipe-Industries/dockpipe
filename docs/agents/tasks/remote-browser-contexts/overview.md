@@ -18,6 +18,10 @@ No sibling browser implementation is copied into Dockpipe.
 Qt's application proxy requires a separate local browser helper for each remote
 context. The initial embedding slice targets Linux X11. Other operator platforms
 must report unsupported until their embedding is implemented and qualified.
+The desktop build checks whether the selected Browser SDK can open and save
+isolated sessions. A build without that capability reports it unavailable
+before starting a relay.
+
 Persistent remote profiles are separated by widget context and paired identity;
 changing the global workspace machine does not change a browser's route.
 Each panel runs at most one remote helper and relay. Changing machines saves and
