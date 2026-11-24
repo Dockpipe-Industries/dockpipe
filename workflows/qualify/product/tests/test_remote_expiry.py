@@ -56,9 +56,12 @@ class RemoteExpiryPlanTests(unittest.TestCase):
 
     def test_existing_preparer_preserves_defaults_and_rejects_unpaired_selection(self):
         with tempfile.TemporaryDirectory() as directory:
-            output = Path(directory) / 'default.json'
+            root = Path(directory)
+            output = root / 'default.json'
+            artifact = root / 'portable.tar.gz'
+            artifact.write_bytes(b'portable qualification fixture')
             command = [sys.executable, str(OWNER / 'assets/scripts/prepare-plan.py'),
-                       '--portable-artifact', '/usr/bin/true', '--run-id', 'generated-default',
+                       '--portable-artifact', str(artifact), '--run-id', 'generated-default',
                        '--output', str(output)]
             result = subprocess.run(command, capture_output=True, text=True, timeout=10)
             self.assertEqual(0, result.returncode, result.stderr)

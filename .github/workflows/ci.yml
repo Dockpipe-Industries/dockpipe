@@ -45,7 +45,7 @@ jobs:
   test:
     name: ${{ github.event_name == 'workflow_dispatch' && (inputs.build_go_sdk || inputs.publish_go_sdk) && 'sdk-selection-linux-tests-skipped' || 'test' }}
     if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.build_go_sdk || inputs.publish_go_sdk)) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -68,6 +68,7 @@ jobs:
             cmake \
             build-essential \
             python3-yaml \
+            python3-pil \
             apt-utils \
             gnupg \
             ripgrep \
@@ -83,7 +84,7 @@ jobs:
             libegl1-mesa-dev
 
       - name: Release tooling contracts before builds
-        run: python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml
+        run: PATH="/usr/bin:$PATH" /usr/bin/python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml
 
       # Flatpak qualification owns the native desktop build and tests.
       - name: Build CLI (Bash tests use src/bin/dockpipe)
