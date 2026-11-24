@@ -210,7 +210,7 @@ func claimDesktopWorker(ctx context.Context, root, path, content string) (*os.Fi
 		_ = file.Close()
 		return nil, err
 	}
-	if stat.Mode&unix.S_IFMT != unix.S_IFREG || stat.Mode&0o077 != 0 || stat.Nlink != 1 || stat.Uid != uint32(os.Getuid()) {
+	if stat.Mode&unix.S_IFMT != unix.S_IFREG || stat.Mode&0o077 != 0 || stat.Nlink != 1 || int64(stat.Uid) != int64(os.Getuid()) {
 		_ = file.Close()
 		return nil, errors.New("desktop worker supervisor lock must be a private user-owned regular file")
 	}

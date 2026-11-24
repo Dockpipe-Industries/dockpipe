@@ -77,7 +77,7 @@ func (service *Service) openRoot() (*os.Root, error) {
 	}
 	opened, err := root.Stat(".")
 	if err != nil || !os.SameFile(info, opened) {
-		root.Close()
+		root.Close() // #nosec G104 -- Release the rejected directory handle and preserve ErrChanged.
 		return nil, ErrChanged
 	}
 	service.root = root

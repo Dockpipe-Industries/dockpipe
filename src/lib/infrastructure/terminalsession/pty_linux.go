@@ -27,13 +27,11 @@ func openPTY() (*os.File, *os.File, error) {
 		err = unix.IoctlSetPointerInt(descriptor, unix.TIOCSPTLCK, 0)
 	}
 	if err != nil {
-		master.Close()
-		return nil, nil, err
+		return nil, nil, errors.Join(err, master.Close())
 	}
 	slave, err := os.OpenFile(fmt.Sprintf("/dev/pts/%d", name), os.O_RDWR|unix.O_NOCTTY, 0)
 	if err != nil {
-		master.Close()
-		return nil, nil, err
+		return nil, nil, errors.Join(err, master.Close())
 	}
 	return master, slave, nil
 }

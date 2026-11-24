@@ -27,25 +27,25 @@ func directory(ctx context.Context, root *os.Root, name string) (*os.Root, error
 	}
 	for _, component := range strings.Split(name, "/") {
 		if err := ctx.Err(); err != nil {
-			current.Close()
+			current.Close() // #nosec G104 -- Release the directory handle and preserve cancellation.
 			return nil, err
 		}
 		before, err := current.Lstat(component)
 		if err != nil || !before.IsDir() || before.Mode()&os.ModeSymlink != 0 {
-			current.Close()
+			current.Close() // #nosec G104 -- Release the directory handle and preserve the lookup or boundary error.
 			if err != nil {
 				return nil, err
 			}
 			return nil, ErrOutsideRoot
 		}
 		next, err := current.OpenRoot(component)
-		current.Close()
+		current.Close() // #nosec G104 -- Release the old directory handle after opening its child.
 		if err != nil {
 			return nil, err
 		}
 		opened, err := next.Stat(".")
 		if err != nil || !os.SameFile(before, opened) {
-			next.Close()
+			next.Close() // #nosec G104 -- Release the rejected directory handle and preserve ErrChanged.
 			return nil, ErrChanged
 		}
 		current = next

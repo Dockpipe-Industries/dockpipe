@@ -304,12 +304,10 @@ func exchangeDesktopWorker(ctx context.Context, root string, permissions remotei
 
 	for {
 		if err := fence.Check(ctx); err != nil {
-			drainDesktopWorker(ctx, client, journal, exchange, active, encoder, frames, failures, input, output)
-			return err
+			return errors.Join(err, drainDesktopWorker(ctx, client, journal, exchange, active, encoder, frames, failures, input, output))
 		}
 		if err := remoteio.CheckDesktopPolicy(root, permissions); err != nil {
-			drainDesktopWorker(ctx, client, journal, exchange, active, encoder, frames, failures, input, output)
-			return err
+			return errors.Join(err, drainDesktopWorker(ctx, client, journal, exchange, active, encoder, frames, failures, input, output))
 		}
 		started := time.Now()
 		response, err = client.ExchangeDesktop(ctx, exchange)
@@ -323,8 +321,7 @@ func exchangeDesktopWorker(ctx context.Context, root string, permissions remotei
 			if len(response.Directives) == 1 {
 				active = &response.Directives[0]
 			}
-			drainDesktopWorker(ctx, client, journal, exchange, active, encoder, frames, failures, input, output)
-			return err
+			return errors.Join(err, drainDesktopWorker(ctx, client, journal, exchange, active, encoder, frames, failures, input, output))
 		}
 		for _, reference := range response.Forget {
 			if len(exchange.Reports) == 1 && desktopCleanupAcknowledged(response, exchange.Reports[0]) {

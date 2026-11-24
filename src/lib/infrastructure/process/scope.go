@@ -161,8 +161,10 @@ func AttachScope(ctx context.Context, command *exec.Cmd) (func(), error) {
 			return nil, fmt.Errorf("%w: %v", ErrScopeUnavailable, err)
 		}
 		if scope.persist == nil {
-			discardScope(reference)
-			return nil, errors.New("durable process scope requires a receipt publisher")
+			return nil, errors.Join(
+				errors.New("durable process scope requires a receipt publisher"),
+				discardScope(reference),
+			)
 		}
 		if err := scope.persist(reference); err != nil {
 			return nil, errors.Join(err, discardScope(reference))

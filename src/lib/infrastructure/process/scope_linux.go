@@ -77,19 +77,19 @@ func openScope(reference ScopeReference) (*os.Root, *os.File, error) {
 	}
 	file, err := root.Open(reference.Path)
 	if err != nil {
-		root.Close()
+		root.Close() // #nosec G104 -- Release the mount handle and preserve the open error for missing-scope recovery.
 		return nil, nil, err
 	}
 	info, err := file.Stat()
 	if err != nil {
-		root.Close()
-		file.Close()
+		root.Close() // #nosec G104 -- Release the mount handle and preserve the stat error.
+		file.Close() // #nosec G104 -- The read-only scope handle is discarded after stat fails.
 		return nil, nil, err
 	}
 	stat, ok := info.Sys().(*syscall.Stat_t)
 	if !ok || !info.IsDir() || stat.Ino != reference.Inode {
-		root.Close()
-		file.Close()
+		root.Close() // #nosec G104 -- Release the mount handle after rejecting the scope identity.
+		file.Close() // #nosec G104 -- Release the read-only scope handle after rejecting its identity.
 		return nil, nil, errors.New("process scope kernel identity changed")
 	}
 	return root, file, nil
@@ -112,7 +112,10 @@ func attachScope(command *exec.Cmd, reference ScopeReference) (func(), error) {
 	}
 	command.SysProcAttr.UseCgroupFD = true
 	command.SysProcAttr.CgroupFD = int(file.Fd())
-	return func() { file.Close(); root.Close() }, nil
+	return func() {
+		file.Close() // #nosec G104 -- Release the read-only scope handle after command supervision.
+		root.Close() // #nosec G104 -- Release the mount handle after command supervision.
+	}, nil
 }
 
 func StopScope(ctx context.Context, reference ScopeReference) error {

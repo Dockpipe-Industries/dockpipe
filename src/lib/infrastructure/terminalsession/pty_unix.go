@@ -31,14 +31,12 @@ func startTerminal(ctx context.Context, profile Profile, size Size) (terminalBac
 	defer slave.Close()
 	terminal := &unixTerminal{master: master}
 	if err = terminal.Resize(size); err != nil {
-		master.Close()
-		return nil, err
+		return nil, errors.Join(err, master.Close())
 	}
 	// Cancellation relies on the Go poller interrupting reads/writes at Close.
 	// Fail before spawn if the device cannot provide deadline-aware I/O.
 	if err = master.SetReadDeadline(time.Time{}); err != nil {
-		master.Close()
-		return nil, err
+		return nil, errors.Join(err, master.Close())
 	}
 	command := exec.CommandContext(ctx, profile.Executable, profile.Args...)
 	command.Dir = profile.Dir
@@ -46,8 +44,7 @@ func startTerminal(ctx context.Context, profile Profile, size Size) (terminalBac
 	command.Stdin, command.Stdout, command.Stderr = slave, slave, slave
 	command.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true, Ctty: 0}
 	if err = command.Start(); err != nil {
-		master.Close()
-		return nil, err
+		return nil, errors.Join(err, master.Close())
 	}
 	terminal.command = command
 	terminal.session = command.Process.Pid
@@ -68,13 +65,19 @@ func (terminal *unixTerminal) Close() error {
 }
 
 func (terminal *unixTerminal) Resize(size Size) error {
+	rows, columns := size.Rows, size.Columns
+	if rows < 1 || rows > MaxDimension || columns < 1 || columns > MaxDimension {
+		return ErrInvalid
+	}
+
+	window := unix.Winsize{Row: uint16(rows), Col: uint16(columns)}
 	connection, err := terminal.master.SyscallConn()
 	if err != nil {
 		return err
 	}
 	var resizeError error
 	err = connection.Control(func(descriptor uintptr) {
-		resizeError = unix.IoctlSetWinsize(int(descriptor), unix.TIOCSWINSZ, &unix.Winsize{Row: uint16(size.Rows), Col: uint16(size.Columns)})
+		resizeError = unix.IoctlSetWinsize(int(descriptor), unix.TIOCSWINSZ, &window)
 	})
 	return errors.Join(err, resizeError)
 }
