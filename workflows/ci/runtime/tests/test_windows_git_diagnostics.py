@@ -58,7 +58,7 @@ class WindowsGitDiagnosticsContractTest(unittest.TestCase):
         self.assertEqual(job['permissions'], {'contents': 'read'})
         self.assertEqual(job['timeout-minutes'], 10)
         self.assertEqual(job['steps'][0]['with'], {'persist-credentials': False})
-        self.assertEqual(job['steps'][1]['with'], {'go-version': '1.26.10', 'cache': False})
+        self.assertEqual(job['steps'][1]['with'], {'go-version': '1.26.11', 'cache': False})
         step = job['steps'][2]
         self.assertEqual(step['env'], {'GOTOOLCHAIN': 'local', 'GOWORK': 'off', 'GOMAXPROCS': '2'})
         self.assertEqual(step['run'], 'python3 workflows/shared/launch.py workflows/ci/runtime/windows-git-diagnostics.yml')

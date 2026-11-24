@@ -55,7 +55,7 @@ jobs:
 
       - uses: actions/setup-go@v7
         with:
-          go-version: "1.26.10"
+          go-version: "1.26.11"
 
       - name: Public repository configuration boundary
         run: python3 workflows/shared/launch.py workflows/release/metadata/content.yml
@@ -190,7 +190,7 @@ jobs:
 
       - uses: actions/setup-go@v7
         with:
-          go-version: "1.26.10"
+          go-version: "1.26.11"
 
       - name: Pinned package-store composition on Windows
         run: python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml -- --suite workflows/catalog/compose/tests --pattern test_package_store_composition.py

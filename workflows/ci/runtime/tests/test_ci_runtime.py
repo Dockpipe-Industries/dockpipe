@@ -181,15 +181,15 @@ class RuntimeCITests(unittest.TestCase):
             for job in workflow["jobs"].values():
                 for step in job.get("steps", []):
                     if step.get("uses", "").startswith("actions/setup-go@"):
-                        self.assertEqual(step["with"]["go-version"], "1.26.10")
-        self.assertIn("toolchain go1.26.10", (Path(__file__).resolve().parents[4] / 'go.mod').read_text())
+                        self.assertEqual(step["with"]["go-version"], "1.26.11")
+        self.assertIn("toolchain go1.26.11", (Path(__file__).resolve().parents[4] / 'go.mod').read_text())
 
         nested = yaml.load((Path(__file__).resolve().parents[4] / 'workflows/ci/test/config.yml').read_text(), Loader=yaml.BaseLoader)
         for step in nested["steps"]:
-            self.assertEqual(step["isolate"], "golang:1.26.10-bookworm")
+            self.assertEqual(step["isolate"], "golang:1.26.11-bookworm")
         lock = json.loads((Path(__file__).resolve().parents[4] / 'workflows/build/flatpak/assets/package-tools.lock.json').read_text())
-        self.assertEqual(lock["tools"]["go"]["version"], "1.26.10")
-        self.assertEqual(lock["tools"]["go"]["url"], "https://go.dev/dl/go1.26.10.linux-amd64.tar.gz")
+        self.assertEqual(lock["tools"]["go"]["version"], "1.26.11")
+        self.assertEqual(lock["tools"]["go"]["url"], "https://go.dev/dl/go1.26.11.linux-amd64.tar.gz")
 
     def test_codeql_retains_go_and_actions_coverage(self):
         workflow = yaml.load((Path(__file__).resolve().parents[4] / '.github/workflows/codeql.yml').read_text(), Loader=yaml.BaseLoader)
