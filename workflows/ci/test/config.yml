@@ -83,6 +83,8 @@ steps:
       export GOTMPDIR="$GO_ARTIFACT_DIR/gotmp"
       export GOCACHE="$GO_ARTIFACT_DIR/gocache"
       export GOBIN="$GO_ARTIFACT_DIR/bin"
+      # Leave process slots for Git, shell, and platform helpers in the tests.
+      export GOMAXPROCS=4 GOFLAGS=-p=2
       mkdir -p "$GOTMPDIR" "$GOCACHE" "$GOBIN"
       echo "[demo] --- Step 2: verify artifact + full Go + security scan (same spirit as GitHub CI) ---"
       test -n "${ARTIFACT_SHA256:-}" || { echo "[demo] FAIL missing ARTIFACT_SHA256"; exit 1; }
@@ -91,8 +93,13 @@ steps:
       test "$GOT" = "$ARTIFACT_SHA256" || { echo "[demo] FAIL checksum mismatch"; exit 1; }
       echo "[demo] Checksum OK — same bytes on disk as in step 1."
       export PATH="$GOBIN:$(go env GOPATH)/bin:$PATH"
+      # The isolated profile mounts /tmp noexec. Go tests execute fixture
+      # helpers as well as their binaries, so both need a short executable path.
+      fixture_parent="${DOCKPIPE_CONTAINER_WORKDIR:-/work}/.tmp"
+      test ! -L "$fixture_parent" || exit 1
+      mkdir -p -- "$fixture_parent"
       echo "[demo] Running: python3 workflows/ci/core/assets/scripts/test.py"
-      python3 workflows/ci/core/assets/scripts/test.py
+      DOCKPIPE_TEST_TEMP_PARENT="$fixture_parent" python3 workflows/ci/core/assets/scripts/test.py -parallel 2 ./...
       echo "[demo] Running: go vet ./..."
       go vet ./...
       echo "[demo] go install staticcheck + govulncheck + gosec (must match container Go — do not use host GOBIN in Docker)"
@@ -110,7 +117,7 @@ steps:
         echo "[demo] govulncheck advisory failed (exit $GOVULN_EXIT); host CI govulncheck remains the enforced gate."
       fi
       echo "[demo] Running: gosec (first-party only — exclude .gomodcache if present under the repo)"
-      gosec -conf .gosec.json -fmt text -stdout -exclude-dir=.gomodcache -exclude-dir=bin/.dockpipe -exclude-dir=testdata ./...
+      gosec -concurrency 4 -conf .gosec.json -fmt text -stdout -exclude-dir=.gomodcache -exclude-dir=bin/.dockpipe -exclude-dir=testdata ./...
       echo "[demo] Container scan finished OK (go test + vet + staticcheck + govulncheck + gosec)."
       printf "%s\n" "VERIFY_OK=1" "SCAN_PASS=1" "DEMO_STAGE=scan" > "$DOCKPIPE_STEP_OUTPUTS_FILE"'
 

@@ -66,7 +66,7 @@ class ForgePipeAttestationWorkflowTests(unittest.TestCase):
         self.assertIn('--exports workflows/publish/forgepipe-attestation/assets/forgepipe-public-exports.txt', audit['run'])
         self.assertIn('--tag "$FORGEPIPE_SDK_TAG"', audit['run'])
         self.assertEqual(attest['uses'],
-                         'actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661')
+                         'actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a')
         self.assertEqual(set(attest['with']), {'subject-path'})
         self.assertNotIn('environment', job)
         self.assertNotIn('gh release', yaml.dump(job))
@@ -74,7 +74,9 @@ class ForgePipeAttestationWorkflowTests(unittest.TestCase):
     def test_reusable_release_requests_fit_the_staging_caller_without_attestation_write(self):
         caller = workflow('ci.yml')['jobs']['staging-release']
         self.assertEqual(caller['uses'], './.github/workflows/release.yml')
-        self.assertEqual(caller['permissions'], {'contents': 'write', 'attestations': 'read'})
+        self.assertEqual(caller['permissions'], {
+            'contents': 'write', 'attestations': 'read', 'packages': 'write',
+        })
         release = workflow('release.yml')
         self.assertNotIn('forgepipe_sdk_tag', release['on']['workflow_dispatch']['inputs'])
         self.assertNotIn('attest-forgepipe-sdk', release['jobs'])
@@ -85,6 +87,8 @@ class ForgePipeAttestationWorkflowTests(unittest.TestCase):
                 with self.subTest(job=name, permission=permission):
                     self.assertLessEqual(levels[access],
                                          levels[caller['permissions'].get(permission, 'none')])
+            if requested.get('packages') == 'write':
+                self.assertIn(name, {'publish', 'publish-staging'})
             self.assertNotEqual(requested.get('attestations'), 'write', name)
             self.assertNotEqual(requested.get('id-token'), 'write', name)
 

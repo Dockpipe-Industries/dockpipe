@@ -11,8 +11,10 @@ import (
 	"encoding/json"
 	"math/big"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	contract "dockpipe/src/lib/domain/remote"
@@ -153,50 +155,56 @@ func TestNetworkTrustGenerationImmutabilityAndUnavailableRefusal(t *testing.T) {
 }
 
 func TestNetworkTrustGlobalCacheBoundAndStalePruning(t *testing.T) {
-	broker, _, _, catalog := networkFixture(t)
-	certificates := networkTrustCertificates(t, 240, 8<<10)
-	broker.mutex.Lock()
-	defer broker.mutex.Unlock()
-	enrollment := broker.state.Nodes[catalog.Target.Node]
-	for index := 0; index < 9; index++ {
-		target := catalog.Target
-		target.Node = "trust-worker-" + big.NewInt(int64(index)).String()
-		broker.state.Nodes[target.Node] = enrollment
-		snapshot, err := contract.NewNetworkTrustSnapshot(target, certificates)
-		if err != nil {
-			t.Fatal(err)
-		}
-		raw, err := json.Marshal(snapshot)
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, err = broker.publishNetworkTrust(target.Node, raw)
-		if index < 8 && err != nil {
-			t.Fatalf("bounded trust record %d: %v", index, err)
-		}
-		if index == 8 && err == nil {
-			t.Fatal("aggregate broker trust cache exceeded 16 MiB DER")
-		}
-		if index < 8 {
+	synctest.Test(t, func(t *testing.T) {
+		broker := &Broker{state: BrokerState{Nodes: make(map[string]Enrollment)}}
+		enrollment := Enrollment{MachineKey: remoteidentityMustNew(t).PublicKey}
+		fingerprint := remoteidentity.Fingerprint(enrollment.MachineKey)
+		generation := Hash("trust cache capacity fixture")
+		certificates := networkTrustCertificates(t, 240, 8<<10)
+		state := broker.networkState()
+
+		for index := range 9 {
+			target := contract.FeatureTarget{
+				Node: "trust-worker-" + strconv.Itoa(index), Fingerprint: fingerprint, Generation: generation,
+			}
+			broker.state.Nodes[target.Node] = enrollment
+			snapshot, err := contract.NewNetworkTrustSnapshot(target, certificates)
+			if err != nil {
+				t.Fatal(err)
+			}
+			raw, err := json.Marshal(snapshot)
+			if err != nil {
+				t.Fatal(err)
+			}
+
 			summary := snapshot.Summary()
-			broker.networks.catalogs[target.Node] = contract.NetworkCatalog{Schema: contract.NetworkVersion, Target: target, Enabled: true, ReceivedAt: time.Now(), TLSTrust: &summary}
-		} else {
-			for node, record := range broker.networks.trusts {
-				record.published = time.Now().Add(-10 * time.Second)
-				broker.networks.trusts[node] = record
+			_, err = broker.publishNetworkTrust(target.Node, raw)
+			if index < 8 {
+				if err != nil {
+					t.Fatalf("bounded trust record %d: %v", index, err)
+				}
+				state.catalogs[target.Node] = contract.NetworkCatalog{
+					Schema: contract.NetworkVersion, Target: target, Enabled: true,
+					ReceivedAt: time.Now(), TLSTrust: &summary,
+				}
+				continue
 			}
-			for node, value := range broker.networks.catalogs {
-				value.ReceivedAt = time.Now().Add(-10 * time.Second)
-				broker.networks.catalogs[node] = value
+			if err == nil {
+				t.Fatal("aggregate broker trust cache exceeded 16 MiB DER")
 			}
-			if _, err = broker.publishNetworkTrust(target.Node, raw); err != nil {
+			if len(state.trusts) != index || state.trustBytes != index*summary.Bytes {
+				t.Fatal("rejected publication changed the aggregate trust cache")
+			}
+
+			time.Sleep(contract.NetworkFreshness + time.Nanosecond)
+			if _, err := broker.publishNetworkTrust(target.Node, raw); err != nil {
 				t.Fatal("stale trust did not free bounded cache", err)
 			}
-			if broker.networks.trustBytes > contract.MaxNetworkTrustBytes {
+			if len(state.trusts) != 1 || state.trustBytes != summary.Bytes {
 				t.Fatal("stale cache retained unrelated material")
 			}
 		}
-	}
+	})
 }
 
 // Identity proof payload limits apply to the domain-separated body hash, not the

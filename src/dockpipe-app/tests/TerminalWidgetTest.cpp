@@ -771,6 +771,7 @@ void TerminalWidgetTest::terminalAndComposer()
     int timerTicks = 0;
     QTimer heartbeat;
     heartbeat.setInterval(10);
+    heartbeat.setTimerType(Qt::PreciseTimer);
     connect(&heartbeat, &QTimer::timeout, this, [&]() { ++timerTicks; });
     heartbeat.start();
     // CoreFoundation handles timers differently during manual processEvents

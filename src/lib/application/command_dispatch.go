@@ -2,6 +2,8 @@ package application
 
 import (
 	"dockpipe/src/lib/application/internal/containerscmd"
+	"dockpipe/src/lib/application/internal/hostcmd"
+	"dockpipe/src/lib/application/internal/machinecmd"
 	"dockpipe/src/lib/application/internal/terminalcmd"
 	"dockpipe/src/lib/application/internal/workspacefilescmd"
 	"dockpipe/src/lib/application/internal/workspacegitcmd"
@@ -23,6 +25,8 @@ func dispatchCommand(argv, baseEnviron []string) (bool, error) {
 		return true, cmdWorkflow(argv[1:])
 	case "environment":
 		return true, cmdEnvironment(argv[1:], baseEnviron)
+	case "mcp":
+		return true, cmdMCP(argv[1:])
 	case "catalog":
 		return true, cmdCatalog(argv[1:])
 	case "pipelang":
@@ -47,6 +51,10 @@ func dispatchCommand(argv, baseEnviron []string) (bool, error) {
 		return true, cmdRemote(argv[1:])
 	case "terminal":
 		return true, terminalcmd.Run(argv[1:])
+	case "machine":
+		return true, machinecmd.Run(argv[1:])
+	case "host":
+		return true, hostcmd.Run(argv[1:])
 	case "dependency":
 		return true, cmdDependency(argv[1:])
 	case "install":

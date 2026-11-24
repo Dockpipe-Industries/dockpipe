@@ -15,7 +15,7 @@ def unit_environment(environment, root):
                 if not key.startswith('DOCKPIPE_') or key.startswith(INTENTIONAL_INPUTS)}
     # macOS exposes its default temporary directory through the /var symlink.
     # Keep fixtures on canonical paths without relaxing runtime path guards.
-    for key in ('TMPDIR', 'TMP', 'TEMP'):
+    for key in ('TMPDIR', 'TMP', 'TEMP', 'GOTMPDIR'):
         selected[key] = str(root)
     for key, directory in (('DOCKPIPE_GLOBAL_ROOT', 'global'), ('DOCKPIPE_SYSTEM_ROOT', 'system')):
         path = root / directory
@@ -28,8 +28,20 @@ def main():
     source = Path(os.environ.get('DOCKPIPE_SOURCE_ROOT', os.getcwd())).resolve(strict=True)
     go = os.environ.get('DOCKPIPE_TEST_GO', 'go')
     arguments = sys.argv[1:] or ['./...']
-    with tempfile.TemporaryDirectory(prefix='dockpipe-go-unit-') as temporary:
+    # testing.T.TempDir reads GOTMPDIR. Keep Unix socket fixtures independent
+    # of both the workflow artifact path and the host's long temp path.
+    temporary_parent = Path('/tmp').resolve(strict=True) if os.name == 'posix' else None
+    selected_parent = os.environ.get('DOCKPIPE_TEST_TEMP_PARENT')
+    if selected_parent:
+        directory = Path(selected_parent)
+        if not directory.is_absolute() or directory.is_symlink() or not directory.is_dir():
+            raise ValueError('The Go test temporary parent must be an existing absolute directory')
+
+        temporary_parent = directory.resolve(strict=True)
+
+    with tempfile.TemporaryDirectory(prefix='dp-unit-', dir=temporary_parent) as temporary:
         environment = unit_environment(os.environ, Path(temporary))
+        environment.pop('DOCKPIPE_TEST_TEMP_PARENT', None)
         return subprocess.run([go, 'test', *arguments], cwd=source, env=environment, check=False).returncode
 
 

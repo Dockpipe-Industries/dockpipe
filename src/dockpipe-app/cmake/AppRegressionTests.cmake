@@ -100,6 +100,8 @@ add_executable(app-remote-terminal-session-test
     ${DOCKPIPE_TERMINAL_SOURCES}
     src/terminal/infrastructure/ManagedTerminalSession.cpp
     src/terminal/infrastructure/RemoteTerminalSession.cpp
+    ${DOCKPIPE_NATIVE_HOST_SOURCES}
+    src/remote/infrastructure/RemoteCommand.cpp
     src/catalog/infrastructure/OperatorDockpipeBinary.cpp)
 target_link_libraries(app-remote-terminal-session-test PRIVATE Qt6::Core Qt6::Test)
 if(APPLE)

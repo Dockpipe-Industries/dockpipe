@@ -2967,7 +2967,7 @@ De bewerking is niet geslaagd. Bewaar en inspecteer het providerjournaal voordat
 <context>
     <name>DockerObservabilityWidget</name>
     <message>
-        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="+328"/>
+        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="+329"/>
         <source>Docker resources</source>
         <translation>Docker-resources</translation>
     </message>
@@ -2975,27 +2975,27 @@ De bewerking is niet geslaagd. Bewaar en inspecteer het providerjournaal voordat
         <location line="+5"/>
         <location line="+12"/>
         <location line="+3"/>
-        <location line="+129"/>
+        <location line="+130"/>
         <location line="+32"/>
         <source>Containers</source>
         <translation>Containers</translation>
     </message>
     <message>
-        <location line="-175"/>
+        <location line="-176"/>
         <location line="+15"/>
-        <location line="+162"/>
+        <location line="+163"/>
         <source>Networks</source>
         <translation>Netwerken</translation>
     </message>
     <message>
-        <location line="-176"/>
+        <location line="-177"/>
         <location line="+15"/>
-        <location line="+162"/>
+        <location line="+163"/>
         <source>Volumes</source>
         <translation>Volumes</translation>
     </message>
     <message>
-        <location line="-166"/>
+        <location line="-167"/>
         <source>Solid arrows: declared dependencies · Dashed lines: network or storage attachments</source>
         <translation>Doorgetrokken pijlen: gedeclareerde afhankelijkheden · Stippellijnen: netwerk- of opslagkoppelingen</translation>
     </message>
@@ -3030,7 +3030,7 @@ De bewerking is niet geslaagd. Bewaar en inspecteer het providerjournaal voordat
         <translation>Containercanvasweergave</translation>
     </message>
     <message>
-        <location line="+111"/>
+        <location line="+112"/>
         <source>Manage containers, networks, and persistent storage.</source>
         <translation>Beheer containers, netwerken en permanente opslag.</translation>
     </message>
@@ -3042,12 +3042,12 @@ De bewerking is niet geslaagd. Bewaar en inspecteer het providerjournaal voordat
     <message>
         <location line="+1"/>
         <location line="+28"/>
-        <location line="+1277"/>
+        <location line="+1325"/>
         <source>Running</source>
         <translation>Actief</translation>
     </message>
     <message>
-        <location line="-1305"/>
+        <location line="-1353"/>
         <source>Currently active</source>
         <translation>Momenteel actief</translation>
     </message>
@@ -3083,13 +3083,13 @@ De bewerking is niet geslaagd. Bewaar en inspecteer het providerjournaal voordat
     </message>
     <message>
         <location line="+2"/>
-        <location line="+819"/>
-        <location line="+466"/>
+        <location line="+851"/>
+        <location line="+482"/>
         <source>Stopped</source>
         <translation>Gestopt</translation>
     </message>
     <message>
-        <location line="-1284"/>
+        <location line="-1332"/>
         <source>Needs attention</source>
         <translation>Aandacht vereist</translation>
     </message>
@@ -3128,7 +3128,7 @@ Refresh to load inventory from the selected machine.</source>
 Vernieuw om de inventaris van de geselecteerde machine te laden.</translation>
     </message>
     <message>
-        <location line="+87"/>
+        <location line="+98"/>
         <source>Choose a resource in the table or on the canvas.</source>
         <translation>Kies een resource in de tabel of op het canvas.</translation>
     </message>
@@ -3148,7 +3148,7 @@ Vernieuw om de inventaris van de geselecteerde machine te laden.</translation>
         <translation>Niet gemeld</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+67"/>
         <source>No linked resources.</source>
         <translation>Geen gekoppelde resources.</translation>
     </message>
@@ -3233,7 +3233,7 @@ Vernieuw om de inventaris van de geselecteerde machine te laden.</translation>
         <translation>Docker-objecten laden…</translation>
     </message>
     <message>
-        <location line="+43"/>
+        <location line="+44"/>
         <source>Refresh to load container inventory.</source>
         <translation>Vernieuw om de containerinventaris te laden.</translation>
     </message>
@@ -3259,13 +3259,13 @@ Vernieuw om de inventaris van de geselecteerde machine te laden.</translation>
     </message>
     <message>
         <location line="+2"/>
-        <location line="+232"/>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+118"/>
+        <location line="+236"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+130"/>
         <source>Loading container logs…</source>
         <translation>Containerlogboeken laden…</translation>
     </message>
     <message>
-        <location line="-230"/>
+        <location line="-234"/>
         <source>Loading Docker networks…</source>
         <translation>Docker-netwerken laden…</translation>
     </message>
@@ -3337,7 +3337,7 @@ Vernieuw om de inventaris van de geselecteerde machine te laden.</translation>
         <translation>Docker-vernieuwing voltooid met fouten.</translation>
     </message>
     <message>
-        <location line="+44"/>
+        <location line="+48"/>
         <source>Loading container details…</source>
         <translation>Containerdetails laden…</translation>
     </message>
@@ -3360,7 +3360,7 @@ Vernieuw om de inventaris van de geselecteerde machine te laden.</translation>
 %1</translation>
     </message>
     <message>
-        <location line="+23"/>
+        <location line="+27"/>
         <source>Loading network details…</source>
         <translation>Netwerkdetails laden…</translation>
     </message>
@@ -3374,7 +3374,7 @@ Vernieuw om de inventaris van de geselecteerde machine te laden.</translation>
 %1</translation>
     </message>
     <message>
-        <location line="+23"/>
+        <location line="+27"/>
         <source>Loading volume details…</source>
         <translation>Volumedetails laden…</translation>
     </message>
@@ -3408,7 +3408,8 @@ Vernieuw om de inventaris van de geselecteerde machine te laden.</translation>
         <translation>Docker-weergave vernieuwen</translation>
     </message>
     <message>
-        <location line="+93"/>
+        <location line="+97"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+160"/>
         <source>%1: %2…</source>
         <translation>%1: %2…</translation>
     </message>
@@ -3483,12 +3484,12 @@ Vernieuw om de inventaris van de geselecteerde machine te laden.</translation>
         <translation> Relatieweergave beperkt tot 4.096 koppelingen; inspectiegegevens blijven beschikbaar.</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+122"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-32"/>
         <source>Waiting for the selected machine…</source>
         <translation>Wachten op de geselecteerde machine…</translation>
     </message>
     <message>
-        <location line="+46"/>
+        <location line="+238"/>
         <source>%1 · Docker monitoring unavailable or stale. On the paired worker, enable: dockpipe remote monitoring --system --docker. The worker and broker must support monitoring.</source>
         <translation>%1 · Docker-bewaking niet beschikbaar of verouderd. Schakel op de gekoppelde worker in: dockpipe remote monitoring --system --docker. De worker en broker moeten bewaking ondersteunen.</translation>
     </message>
@@ -3503,23 +3504,23 @@ Vernieuw om de inventaris van de geselecteerde machine te laden.</translation>
         <translation>Niet gedeeld</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="-839"/>
+        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="-856"/>
         <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+4"/>
         <source> Inventory limited to 256 objects of each kind.</source>
         <translation> Inventaris beperkt tot 256 objecten van elk type.</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+2"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="+6"/>
         <source> · Remote inventory · read-only</source>
         <translation> · Externe inventaris · alleen-lezen</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="+657"/>
+        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="+670"/>
         <source>Container control requires a supported action and an exact full container ID.</source>
         <translation>Containerbeheer vereist een ondersteunde actie en de exacte volledige container-ID.</translation>
     </message>
     <message>
-        <location line="+46"/>
+        <location line="+50"/>
         <source>Could not send the container control request.</source>
         <translation>Het containerbeheer-verzoek kon niet worden verzonden.</translation>
     </message>
@@ -3534,7 +3535,7 @@ Vernieuw om de inventaris van de geselecteerde machine te laden.</translation>
         <translation>Ongeldig antwoord voor containerbeheer.</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-297"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-499"/>
         <source>Wait for the current container control operation before changing machines.</source>
         <translation>Wacht tot de huidige containerbeheerbewerking is voltooid voordat u van machine wisselt.</translation>
     </message>
@@ -3564,17 +3565,100 @@ Vernieuw om de inventaris van de geselecteerde machine te laden.</translation>
         <translation>%1 · %2 mislukt voor %3: %4</translation>
     </message>
     <message>
-        <location line="+97"/>
+        <location line="+21"/>
+        <location line="+6"/>
+        <source>Native host — unavailable</source>
+        <translation>Native host — niet beschikbaar</translation>
+    </message>
+    <message>
+        <location line="+29"/>
+        <source>Native host inspection and recent logs are available here. Use the host terminal for container shells.</source>
+        <translation>Inspectiegegevens en recente logboeken van de native host zijn hier beschikbaar. Gebruik de hostterminal voor containershells.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Remote monitoring shares inventory and topology. Application logs and interactive controls remain local.</source>
+        <translation>Externe monitoring deelt inventaris en topologie. Toepassingslogboeken en interactieve bediening blijven lokaal.</translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <source>%1 completed for %2.</source>
+        <translation>%1 voltooid voor %2.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>%1 was not confirmed for %2. Refreshing current state.</source>
+        <translation>%1 is niet bevestigd voor %2. De huidige status wordt vernieuwd.</translation>
+    </message>
+    <message>
+        <location line="+40"/>
+        <source>Loading native host inspection…</source>
+        <translation>Inspectiegegevens van de native host laden…</translation>
+    </message>
+    <message>
+        <location line="+30"/>
+        <source>Native host inspection unavailable or cancelled. Refresh to try again.</source>
+        <translation>Inspectie van de native host is niet beschikbaar of is geannuleerd. Vernieuw om het opnieuw te proberen.</translation>
+    </message>
+    <message>
+        <location line="+23"/>
+        <source>Native host inspection refreshed.</source>
+        <translation>Inspectiegegevens van de native host vernieuwd.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Recent logs are unavailable for this container. Its logging driver may not support reading logs.</source>
+        <translation>Recente logboeken van deze container zijn niet beschikbaar. Het stuurprogramma voor logregistratie ondersteunt mogelijk het lezen van logboeken niet.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Inspection refreshed; recent logs unavailable.</source>
+        <translation>Inspectie vernieuwd. Recente logboeken zijn niet beschikbaar.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>
+[Recent logs limited to 64 KiB.]</source>
+        <translation>
+[Recente logboeken beperkt tot 64 KiB.]</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Inspection refreshed; recent logs limited to 64 KiB.</source>
+        <translation>Inspectie vernieuwd. Recente logboeken zijn beperkt tot 64 KiB.</translation>
+    </message>
+    <message>
+        <location line="+47"/>
+        <source>Native host unavailable. Open this application through its authenticated host session.</source>
+        <translation>De native host is niet beschikbaar. Open deze toepassing via de geverifieerde hostsessie.</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Native host Docker monitoring unavailable. Refresh the authenticated host session.</source>
+        <translation>Docker-monitoring van de native host is niet beschikbaar. Vernieuw de geverifieerde hostsessie.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Native host Docker inventory is unavailable for this account.</source>
+        <translation>De Docker-inventaris van de native host is niet beschikbaar voor dit account.</translation>
+    </message>
+    <message>
+        <location line="+40"/>
         <source>%1 · Remote Docker inventory exceeds the supported bound.</source>
         <translation>%1 · De externe Docker-inventaris overschrijdt de ondersteunde limiet.</translation>
     </message>
     <message>
-        <location line="+35"/>
+        <location line="+37"/>
+        <source> · Native host inventory</source>
+        <translation> · Inventaris van de native host</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source> · Remote inventory</source>
         <translation> · Externe inventaris</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="-760"/>
+        <location filename="../src/observability/presentation/DockerObservabilityWidget.cpp" line="-777"/>
         <source>Container inventory exceeds its object limit.</source>
         <translation>De containerinventaris overschrijdt de objectlimiet.</translation>
     </message>
@@ -3589,7 +3673,7 @@ Vernieuw om de inventaris van de geselecteerde machine te laden.</translation>
         <translation>De containeraanvraag is geannuleerd of de vertrouwde Dockpipe-CLI is niet beschikbaar.</translation>
     </message>
     <message>
-        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-203"/>
+        <location filename="../src/observability/presentation/DockerRemoteMonitoring.cpp" line="-405"/>
         <source>Could not inspect resource: %1</source>
         <translation>Kan bron niet inspecteren: %1</translation>
     </message>
@@ -3604,14 +3688,7 @@ Vernieuw om de inventaris van de geselecteerde machine te laden.</translation>
         <translation>Kan de containeraanvraag niet verzenden.</translation>
     </message>
     <message>
-        <location line="+523"/>
-        <location line="+50"/>
-        <location line="+41"/>
-        <source>Detailed inspection requires the paired worker&apos;s Docker read feature.</source>
-        <translation>Gedetailleerde inspectie vereist de Docker-leesfunctie van de gekoppelde worker.</translation>
-    </message>
-    <message>
-        <location line="-560"/>
+        <location line="+54"/>
         <source>Invalid container detail response.</source>
         <translation>Ongeldig antwoord met containerdetails.</translation>
     </message>
@@ -4614,7 +4691,7 @@ Selecteer een rij om te beginnen.</translation>
 <context>
     <name>ExecutionExplorer</name>
     <message>
-        <location filename="../src/observability/presentation/ExecutionExplorer.cpp" line="+47"/>
+        <location filename="../src/observability/presentation/ExecutionExplorer.cpp" line="+49"/>
         <location line="+543"/>
         <source>Running workflows</source>
         <translation>Actieve workflows</translation>
@@ -4908,14 +4985,14 @@ Selecteer een rij om te beginnen.</translation>
     </message>
     <message>
         <location line="+68"/>
-        <location line="+508"/>
+        <location line="+563"/>
         <source>No process data to display
 Refresh to load the selected machine&apos;s process list.</source>
         <translation>Geen procesgegevens om weer te geven
 Vernieuw om de proceslijst van de geselecteerde machine te laden.</translation>
     </message>
     <message>
-        <location line="-473"/>
+        <location line="-528"/>
         <source>Live resource usage and processes on the selected machine.</source>
         <translation>Live resourcegebruik en processen op de geselecteerde machine.</translation>
     </message>
@@ -4950,7 +5027,17 @@ Vernieuw om de proceslijst van de geselecteerde machine te laden.</translation>
         <translation>Meer uitvoeringen tonen</translation>
     </message>
     <message>
-        <location line="+123"/>
+        <location line="+91"/>
+        <source>Native host unavailable. Open this application through its authenticated host session.</source>
+        <translation>De native host is niet beschikbaar. Open deze toepassing via de geverifieerde hostsessie.</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Native host system monitoring unavailable. Refresh the authenticated host session.</source>
+        <translation>Systeemmonitoring van de native host is niet beschikbaar. Vernieuw de geverifieerde hostsessie.</translation>
+    </message>
+    <message>
+        <location line="+42"/>
         <source>%1 · System monitoring unavailable or stale. On the paired worker, enable it with: dockpipe remote monitoring --system --docker. The worker and broker must support monitoring.</source>
         <translation>%1 · Systeembewaking niet beschikbaar of verouderd. Schakel deze op de gekoppelde worker in met: dockpipe remote monitoring --system --docker. De worker en broker moeten bewaking ondersteunen.</translation>
     </message>
@@ -4960,12 +5047,18 @@ Vernieuw om de proceslijst van de geselecteerde machine te laden.</translation>
         <translation>Bewaking niet beschikbaar. Getoonde gegevens zijn mogelijk verouderd. Controleer de CLI-versie en machinerechten.</translation>
     </message>
     <message>
-        <location line="+28"/>
+        <location line="+19"/>
+        <location line="+6"/>
+        <source>Native host — unavailable</source>
+        <translation>Native host — niet beschikbaar</translation>
+    </message>
+    <message>
+        <location line="+23"/>
         <source>Waiting for the selected machine…</source>
         <translation>Wachten op de geselecteerde machine…</translation>
     </message>
     <message>
-        <location line="+68"/>
+        <location line="+74"/>
         <location line="+3"/>
         <location line="+144"/>
         <source>Unavailable</source>
@@ -7307,15 +7400,62 @@ Mermaid-voorbeeldlimiet: diagrammen na de eerste 16 worden als broncode getoond.
 <context>
     <name>MonitoringMachineSelector</name>
     <message>
-        <location filename="../src/observability/presentation/MonitoringMachineSelector.h" line="+16"/>
-        <location line="+9"/>
+        <location filename="../src/observability/presentation/MonitoringMachineSelector.h" line="+56"/>
+        <source>Application container</source>
+        <translation>Toepassingscontainer</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>This computer</source>
         <translation>Deze computer</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="-11"/>
         <source> — unavailable</source>
         <translation> — niet beschikbaar</translation>
+    </message>
+</context>
+<context>
+    <name>NativeHostConnection</name>
+    <message>
+        <location filename="../src/remote/infrastructure/NativeHostConnection.cpp" line="+27"/>
+        <source>Native host — unavailable</source>
+        <translation>Native host — niet beschikbaar</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>%1 · %2 · native host</source>
+        <translation>%1 · %2 · native host</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>The native host connection reference exceeds 4096 bytes.</source>
+        <translation>De verbindingsreferentie van de native host overschrijdt 4096 bytes.</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>The native host connection reference contains invalid characters.</source>
+        <translation>De verbindingsreferentie van de native host bevat ongeldige tekens.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>The native host connection requires an available absolute file reference.</source>
+        <translation>Voor de verbinding met de native host is een absoluut pad naar een beschikbaar bestand nodig.</translation>
+    </message>
+    <message>
+        <location line="+44"/>
+        <source>Native host unavailable. Open this application through its authenticated host session.</source>
+        <translation>De native host is niet beschikbaar. Open deze toepassing via de geverifieerde hostsessie.</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>Native host Docker actions require start or stop and a hexadecimal container ID.</source>
+        <translation>Docker-acties op de native host vereisen start of stop en een hexadecimale container-ID.</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Native host Docker inspection requires a valid container, network or volume identifier.</source>
+        <translation>Docker-inspectie op de native host vereist een geldige ID van een container, netwerk of volume.</translation>
     </message>
 </context>
 <context>
@@ -9403,29 +9543,35 @@ Mermaid-voorbeeldlimiet: diagrammen na de eerste 16 worden als broncode getoond.
 <context>
     <name>RemoteCommand</name>
     <message>
-        <location filename="../src/remote/infrastructure/RemoteCommand.cpp" line="+42"/>
+        <location filename="../src/remote/infrastructure/RemoteCommand.cpp" line="+43"/>
         <source>Operation timed out. Existing remote state is preserved.
 </source>
         <translation>Bewerking heeft de tijdslimiet overschreden. Bestaande externe status blijft behouden.
 </translation>
     </message>
     <message>
-        <location line="+125"/>
-        <location line="+77"/>
-        <source>Output exceeded the display limit.
+        <location line="+108"/>
+        <source>Invalid command response limit.
 </source>
-        <translation>Uitvoer overschreed de weergavelimiet.
+        <translation>Ongeldige limiet voor het antwoord op de opdracht.
 </translation>
     </message>
     <message>
-        <location line="-7"/>
+        <location line="+53"/>
+        <source>Output exceeded the command response limit.
+</source>
+        <translation>De uitvoer overschrijdt de limiet voor het antwoord op de opdracht.
+</translation>
+    </message>
+    <message>
+        <location line="+68"/>
         <source>Rejected an invalid security-key interaction request.
 </source>
         <translation>Ongeldig beveiligingssleutelinteractieverzoek geweigerd.
 </translation>
     </message>
     <message>
-        <location line="+30"/>
+        <location line="+23"/>
         <source>Security-key response exceeded the protocol limit.
 </source>
         <translation>Beveiligingssleutelantwoord overschreed de protocollimiet.
@@ -12419,14 +12565,29 @@ Deze machine staat niet meer in de beschikbare inventaris.</translation>
 <context>
     <name>TerminalHub</name>
     <message>
-        <location filename="../src/terminal/application/TerminalHub.cpp" line="+48"/>
-        <location line="+48"/>
-        <location line="+57"/>
+        <location filename="../src/terminal/application/TerminalHub.cpp" line="+46"/>
+        <source>Native host — unavailable</source>
+        <translation>Native host — niet beschikbaar</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Application container · %1</source>
+        <translation>Toepassingscontainer · %1</translation>
+    </message>
+    <message>
+        <location line="+42"/>
+        <location line="+67"/>
+        <location line="+59"/>
         <source>Eight terminals are already open. Close one before opening another.</source>
         <translation>Er zijn al acht terminals open. Sluit er een voordat u nog een opent.</translation>
     </message>
     <message>
-        <location line="-90"/>
+        <location line="-114"/>
+        <source>Native host unavailable. Open this application through its authenticated host session.</source>
+        <translation>De native host is niet beschikbaar. Open deze toepassing via de geverifieerde hostsessie.</translation>
+    </message>
+    <message>
+        <location line="+21"/>
         <source>This shell is no longer available. Refresh the shell list and try again.</source>
         <translation>Deze shell is niet meer beschikbaar. Vernieuw de shelllijst en probeer opnieuw.</translation>
     </message>
@@ -12441,19 +12602,24 @@ Deze machine staat niet meer in de beschikbare inventaris.</translation>
         <translation>Geen hostshells beschikbaar. Controleer Flatpak-hosttoegang en vernieuw de shelllijst.</translation>
     </message>
     <message>
-        <location line="+10"/>
-        <location line="+32"/>
-        <location line="+57"/>
+        <location line="+9"/>
+        <source>Terminal %1</source>
+        <translation>Terminal %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+33"/>
+        <location line="+59"/>
         <source>Terminal %1 · %2</source>
         <translation>Terminal %1 · %2</translation>
     </message>
     <message>
-        <location line="-67"/>
+        <location line="-69"/>
         <source>The container terminal target is unavailable.</source>
         <translation>De container terminal doel is niet beschikbaar.</translation>
     </message>
     <message>
-        <location line="+132"/>
+        <location line="+134"/>
         <location line="+32"/>
         <source>This terminal session is closed.</source>
         <translation>Deze terminalsessie is gesloten.</translation>
@@ -12998,7 +13164,7 @@ $ Gereed voor uw volgende opdracht</translation>
 <context>
     <name>TerminalWidget</name>
     <message>
-        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+92"/>
+        <location filename="../src/terminal/presentation/TerminalWidget.cpp" line="+93"/>
         <source>Terminal</source>
         <translation>Terminal</translation>
     </message>
@@ -13045,12 +13211,12 @@ $ Gereed voor uw volgende opdracht</translation>
     </message>
     <message>
         <location line="+6"/>
-        <location line="+742"/>
+        <location line="+748"/>
         <source>Restart DockPipe to enable desktop transparency. Your desktop must support compositing.</source>
         <translation>Start DockPipe opnieuw om bureaubladtransparantie in te schakelen. Uw desktop moet compositing ondersteunen.</translation>
     </message>
     <message>
-        <location line="-733"/>
+        <location line="-739"/>
         <source>No terminals open</source>
         <translation>Geen terminals open</translation>
     </message>
@@ -13075,7 +13241,7 @@ $ Gereed voor uw volgende opdracht</translation>
         <translation>Terminal starten</translation>
     </message>
     <message>
-        <location line="+45"/>
+        <location line="+50"/>
         <location line="+26"/>
         <source>Discovering installed host shells…</source>
         <translation>Geïnstalleerde hostshells zoeken…</translation>
@@ -13086,12 +13252,17 @@ $ Gereed voor uw volgende opdracht</translation>
         <translation>De geselecteerde terminaldoel is niet beschikbaar.</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+29"/>
         <source>Default shell</source>
         <translation>Standaardshell</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+0"/>
+        <source>Default · native host</source>
+        <translation>Standaard · native host</translation>
+    </message>
+    <message>
+        <location line="+8"/>
         <source>New default shell</source>
         <translation>Nieuwe standaardshell</translation>
     </message>

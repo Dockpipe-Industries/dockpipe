@@ -34,6 +34,10 @@ set(CMAKE_AUTOUIC ON)
 include(cmake/AppSourceLayout.cmake)
 include_directories(${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
 
+set(DOCKPIPE_NATIVE_HOST_SOURCES
+    src/remote/domain/NativeHostStatus.cpp
+    src/remote/infrastructure/NativeHostConnection.cpp)
+
 # Qt6Gui depends on WrapOpenGL; without Mesa dev packages, find_package(Qt6) fails obscurely on Linux.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(OpenGL REQUIRED)
@@ -407,6 +411,7 @@ set(DOCKPIPE_UI_SOURCES
     src/files/infrastructure/PipeLangLanguageClient.cpp
     src/files/presentation/PipeLangEditorSession.cpp
     src/execution/infrastructure/SessionManager.cpp
+    ${DOCKPIPE_NATIVE_HOST_SOURCES}
     src/workspace-graph/infrastructure/WorkspaceGraphPage.cpp src/workspace-graph/infrastructure/WorkspaceGraphReader.cpp src/workspace-graph/presentation/WorkspaceGraphNode.cpp
     src/workspace-graph/presentation/WorkspaceGraphView.cpp src/workspace-graph/presentation/WorkspaceGraphWidget.cpp src/workspace-graph/presentation/WorkspaceGraphLayout.cpp
     src/git/presentation/GitCommitQueueModel.cpp src/git/presentation/GitCommitGraphDelegate.cpp src/git/presentation/GitDiffWidget.cpp src/git/presentation/GitCommitPreviewDialog.cpp src/git/presentation/GitHistoryWidget.cpp src/git/presentation/GitRepositoryWidget.cpp src/git/presentation/GitConflictWidget.cpp
@@ -567,6 +572,18 @@ if(BUILD_TESTING)
     target_link_libraries(environments-page-test PRIVATE dockpipe-launcher-ui Qt6::Widgets Qt6::Test)
     add_test(NAME environments-page COMMAND environments-page-test)
     set_tests_properties(environments-page PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+
+    add_executable(native-host-connection-test tests/NativeHostConnectionTest.cpp)
+    target_link_libraries(native-host-connection-test PRIVATE dockpipe-browser Qt6::Test)
+    add_test(NAME native-host-connection COMMAND native-host-connection-test)
+    set_tests_properties(native-host-connection PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 20)
+
+    add_executable(remote-command-budget-test tests/RemoteCommandBudgetTest.cpp
+        src/remote/infrastructure/RemoteCommand.cpp)
+    target_include_directories(remote-command-budget-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
+    target_link_libraries(remote-command-budget-test PRIVATE Qt6::Core Qt6::Test)
+    add_test(NAME remote-command-budget COMMAND remote-command-budget-test)
+    set_tests_properties(remote-command-budget PROPERTIES TIMEOUT 15)
 
     qt_add_executable(desktop-permissions-widget-test
         tests/DesktopPermissionsWidgetTest.cpp src/native-desktop/presentation/DesktopPermissionsWidget.h)

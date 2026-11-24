@@ -22,7 +22,7 @@ func CollectContainerInventoryWithAuthority(ctx context.Context, target invocati
 		func(context.Context, struct{}) (invocation.Prepared[telemetry.DockerSnapshot], error) {
 			environment := os.Environ()
 			prepared := invocation.Prepared[telemetry.DockerSnapshot]{Execute: func(ctx context.Context) (telemetry.DockerSnapshot, error) {
-				result := collectDockerInventory(ctx, environment)
+				result := collectDockerInventoryWithEnvironment(ctx, environment)
 				return result, ctx.Err()
 			}}
 			if authorize != nil || target.Kind == invocation.Remote {

@@ -23,7 +23,7 @@ class GoUnitChildEnvironmentTests(unittest.TestCase):
                                DOCKPIPE_PACKAGES_ROOT='parent-packages', DOCKPIPE_BIN='parent-cli',
                                DOCKPIPE_GLOBAL_ROOT='parent-global', DOCKPIPE_SYSTEM_ROOT='parent-system',
                                DOCKPIPE_BOOTSTRAP_ARCHIVE='selected-bootstrap', DOCKPIPE_GO_SDK_ARCHIVE='selected-sdk',
-                               GOCACHE='selected-go-cache')
+                               GOCACHE='selected-go-cache', GOTMPDIR='parent-workflow-artifacts/gotmp')
             result = subprocess.run([sys.executable, str(script), '-run', 'OwnedTest', './...'],
                                     env=environment, check=True, capture_output=True, text=True, timeout=15)
             child = json.loads(result.stdout)
@@ -38,8 +38,11 @@ class GoUnitChildEnvironmentTests(unittest.TestCase):
             self.assertNotEqual(actual['DOCKPIPE_GLOBAL_ROOT'], environment['DOCKPIPE_GLOBAL_ROOT'])
             self.assertNotEqual(actual['DOCKPIPE_SYSTEM_ROOT'], environment['DOCKPIPE_SYSTEM_ROOT'])
             temporary_root = str(Path(actual['DOCKPIPE_GLOBAL_ROOT']).parent)
-            for name in ('TMPDIR', 'TMP', 'TEMP'):
+            for name in ('TMPDIR', 'TMP', 'TEMP', 'GOTMPDIR'):
                 self.assertEqual(actual[name], temporary_root)
+            if os.name == 'posix':
+                self.assertEqual(Path(temporary_root).parent, Path('/tmp').resolve())
+                self.assertTrue(Path(temporary_root).name.startswith('dp-unit-'))
 
     @unittest.skipIf(sys.platform == 'win32', 'POSIX temporary-directory alias')
     def test_linked_temporary_root_is_canonicalized_before_child_execution(self):
@@ -56,10 +59,36 @@ class GoUnitChildEnvironmentTests(unittest.TestCase):
 
             environment = runner.unit_environment({'TMPDIR': str(alias)}, alias)
 
-            for name in ('TMPDIR', 'TMP', 'TEMP'):
+            for name in ('TMPDIR', 'TMP', 'TEMP', 'GOTMPDIR'):
                 self.assertEqual(environment[name], str(target))
             self.assertEqual(environment['DOCKPIPE_GLOBAL_ROOT'], str(target / 'global'))
             self.assertEqual(environment['DOCKPIPE_SYSTEM_ROOT'], str(target / 'system'))
+
+    @unittest.skipIf(os.name != 'posix', 'POSIX isolated Go runner')
+    def test_container_temporary_parent_applies_to_compiler_and_fixtures(self):
+        script = Path(__file__).resolve().parents[1] / 'assets/scripts/test.py'
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary).resolve()
+            go = parent / 'selected-go'
+            go.write_text(
+                '#!' + sys.executable + '\n'
+                'import json, os, sys\n'
+                'print(json.dumps({"arguments": sys.argv[1:], "environment": dict(os.environ)}))\n'
+            )
+            go.chmod(0o755)
+
+            environment = dict(os.environ, DOCKPIPE_TEST_GO=str(go),
+                               DOCKPIPE_TEST_TEMP_PARENT=str(parent))
+            result = subprocess.run([sys.executable, str(script)], env=environment, check=True,
+                                    capture_output=True, text=True, timeout=15)
+
+            observed = json.loads(result.stdout)
+            self.assertEqual(observed['arguments'], ['test', './...'])
+            fixture_environment = observed['environment']
+            self.assertEqual(fixture_environment['GOTMPDIR'], fixture_environment['TMPDIR'])
+            fixture = Path(fixture_environment['GOTMPDIR'])
+            self.assertEqual(fixture.parent, parent)
+            self.assertFalse(fixture.exists())
 
 
 if __name__ == '__main__':

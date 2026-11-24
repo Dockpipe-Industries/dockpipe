@@ -5,6 +5,8 @@
 #include "LauncherStatusBar.h"
 #include "DashboardPage.h"
 #include "DashboardWidgetFactory.h"
+#include "TerminalHub.h"
+#include "NativeHostConnection.h"
 #include "ProjectFilesWidget.h"
 #include "WorkspaceMachineMenu.h"
 
@@ -49,6 +51,8 @@ void MainWindow::selectPage(int page)
 void MainWindow::setupDashboards()
 {
     m_dashboardFactory = new DashboardWidgetFactory(m_sessions, m_store, this);
+    if (m_nativeHost)
+        m_dashboardFactory->terminals().setNativeHostConnection(m_nativeHost);
     m_dashboardFactory->setWorkdir(m_settings.projectFolder);
     m_dashboardFactory->setRemoteDesktopAccessMonitor(m_remoteAccess);
     m_dashboardFactory->setBrowserAccessMonitor(m_remoteAccess);

@@ -1,6 +1,7 @@
 #include "TerminalWidget.h"
 #include "TerminalHub.h"
 #include "TerminalShellCatalog.h"
+#include "NativeHostConnection.h"
 #include "TerminalBridge.h"
 #include "TerminalPreferences.h"
 #include "TerminalSettingsDialog.h"
@@ -220,7 +221,11 @@ TerminalWidget::TerminalWidget(TerminalHub &hub, const QString &workdir, QWidget
         connect(m_restart, &QAction::triggered, this, &TerminalWidget::startDashboardSession);
         addAction(m_shellMenu->menuAction());
     }
-    connect(&m_hub.shellCatalog(), &TerminalShellCatalog::profilesChanged, this, &TerminalWidget::refreshShells);
+    connect(&m_hub, &TerminalHub::shellProfilesChanged, this, [this] {
+        refreshShells();
+        if (m_mode == Mode::Dashboard && isVisible() && !m_dashboardStarted)
+            startDashboardSession();
+    });
     connect(&m_hub.shellCatalog(), &TerminalShellCatalog::discoveryFinished, this, [this] {
         refreshShells();
         if (!isVisible())
@@ -258,11 +263,11 @@ void TerminalWidget::startDashboardSession()
         }
     }
     const bool flatpak = !qEnvironmentVariable("FLATPAK_ID").isEmpty() || QFileInfo::exists("/.flatpak-info");
-    if (m_machineCatalog.isEmpty() && m_hub.shellCatalog().discovering() && flatpak) {
+    if (m_machineCatalog.isEmpty() && m_containerId.isEmpty() && !m_hub.nativeHostConfigured()
+        && m_hub.shellCatalog().discovering() && flatpak) {
         showStatus(tr("Discovering installed host shells…"));
         return;
     }
-    m_dashboardStarted = true;
     if (!m_ownedSessionId.isEmpty())
         m_hub.closeSession(m_ownedSessionId);
     createTerminal(m_shells->currentData().toString());
@@ -284,7 +289,8 @@ void TerminalWidget::startManagedSession()
         }
     }
     const bool flatpak = !qEnvironmentVariable("FLATPAK_ID").isEmpty() || QFileInfo::exists("/.flatpak-info");
-    if (m_containerId.isEmpty() && m_machineCatalog.isEmpty() && flatpak && m_hub.shellCatalog().discovering()) {
+    if (m_containerId.isEmpty() && m_machineCatalog.isEmpty() && !m_hub.nativeHostConfigured()
+        && flatpak && m_hub.shellCatalog().discovering()) {
         showStatus(tr("Discovering installed host shells…"));
         return;
     }
@@ -322,9 +328,10 @@ void TerminalWidget::refreshShells()
     const QString selected = m_shells->currentData().toString();
     QSignalBlocker blocker(m_shells);
     m_shells->clear();
-    m_shells->addItem(tr("Default shell"), QString());
-    const auto profiles = m_machineCatalog.isEmpty() && m_containerId.isEmpty()
-        ? m_hub.shellCatalog().profiles() : QVector<TerminalShellProfile>{};
+    const bool usesShellProfiles = m_machineCatalog.isEmpty() && m_containerId.isEmpty();
+    const bool nativeDefault = usesShellProfiles && m_hub.nativeHostConfigured();
+    m_shells->addItem(nativeDefault ? tr("Default · native host") : tr("Default shell"), QString());
+    const auto profiles = usesShellProfiles ? m_hub.shellProfiles() : QVector<TerminalShellProfile>{};
     for (const auto &profile : profiles)
         m_shells->addItem(profile.label, profile.id);
     m_shells->setCurrentIndex(qMax(0, m_shells->findData(selected)));

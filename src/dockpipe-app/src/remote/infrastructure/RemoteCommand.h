@@ -19,6 +19,8 @@ public:
     bool busy() const;
     void run(const QString &program, const QStringList &arguments, Completion completion,
              int timeoutMs = 30000);
+    void runBounded(const QString &program, const QStringList &arguments, Completion completion,
+                    int timeoutMs, qsizetype maximumOutputBytes);
     void cancel();
     // Keep busy/cancel compatibility when a typed transport owns the process.
     bool trackExternalOperation(QObject *owner, std::function<void()> cancel);
@@ -38,6 +40,7 @@ private:
     void finish(bool success);
     void drain();
     void consumeLine(const QByteArray &line);
+    bool accountOutput(qsizetype bytes);
     QProcess m_process;
     QTimer m_timeout;
     QByteArray m_stdout;

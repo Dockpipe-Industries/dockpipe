@@ -2,18 +2,20 @@
 
 #include "TerminalLaunchContext.h"
 #include "NativeTerminalLaunch.h"
+#include "TerminalShellCatalog.h"
 
 #include <QByteArray>
 #include <QHash>
 #include <QSet>
 #include <QJsonObject>
 #include <QObject>
+#include <QPointer>
 #include <QStringList>
 #include <functional>
 
 class ManagedTerminalSession;
+class NativeHostConnection;
 class RemoteTerminalSession;
-class TerminalShellCatalog;
 
 // Process lifetime is independent of the page or dashboard displaying it.
 class TerminalHub final : public QObject {
@@ -27,6 +29,10 @@ public:
     QString createContainerSession(const QJsonObject &catalog, const QString &container, const QString &shell);
     QString createLocalContainerSession(const QString &container, const QString &name, const QString &shell);
     TerminalShellCatalog &shellCatalog() const;
+    QVector<TerminalShellProfile> shellProfiles() const;
+    void setNativeHostConnection(NativeHostConnection *connection);
+    NativeHostConnection *nativeHostConnection() const;
+    bool nativeHostConfigured() const;
     QString creationError() const;
     QStringList sessionIds() const;
     QStringList sessionIds(const QJsonObject &catalog, const QString &root) const;
@@ -46,10 +52,13 @@ public:
 signals:
     void sessionsChanged();
     void outputAvailable(const QString &id);
+    void shellProfilesChanged();
 
 private:
-    QString createLocalSession(const NativeTerminalLaunch::Snapshot &profile, const QString &title, const QString &root);
+    QString createLocalSession(const NativeTerminalLaunch::Snapshot &profile, const QString &title, const QString &root,
+                               bool nativeHost = false);
     QString createRemoteSession(const QJsonObject &catalog, const QString &root, const QString &container, const QString &shell);
+    void nativeHostChanged();
     struct Entry {
         ManagedTerminalSession *session = nullptr;
         RemoteTerminalSession *remote = nullptr;
@@ -58,6 +67,7 @@ private:
         QString title;
         QByteArray output;
         quint64 end = 0;
+        bool native = false;
     };
     QHash<QString, Entry> m_sessions;
     QSet<QObject *> m_closingSessions;
@@ -66,4 +76,6 @@ private:
     TerminalShellCatalog *m_shellCatalog = nullptr;
     TerminalLaunchContext m_launchContext = TerminalLaunchContext::Automatic;
     QString m_creationError;
+    QPointer<NativeHostConnection> m_nativeHost;
+    bool m_nativeHostConfigured = false;
 };

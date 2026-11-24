@@ -5,6 +5,8 @@
 #include <memory>
 #include <QWidget>
 #include <QJsonArray>
+#include <QJsonObject>
+#include <QPointer>
 #include "ResourceCanvas.h"
 #include "RemoteCommand.h"
 #include "RemoteFeatureClient.h"
@@ -23,6 +25,7 @@ class QTableWidget;
 class QTimer;
 class QWidget;
 class MonitoringMachineSelector;
+class NativeHostConnection;
 
 class DockerObservabilityWidget : public QWidget {
     Q_OBJECT
@@ -30,6 +33,7 @@ public:
     explicit DockerObservabilityWidget(QWidget *parent = nullptr);
     ~DockerObservabilityWidget() override;
     void setNodes(const QStringList &nodes);
+    void setNativeHostConnection(NativeHostConnection *connection);
     bool controlPending() const { return m_containerActionBusy; }
     bool setFeatureTarget(const QJsonObject &target, bool canControl, QString *error = nullptr);
     bool setFeatureCatalog(const QJsonObject &catalog, QString *error = nullptr);
@@ -58,6 +62,7 @@ private slots:
 private:
     friend class DockerRemoteFeatureTest;
     bool isRemoteTarget() const;
+    bool isNativeHostTarget() const;
     QString targetNode() const;
     bool canControlTarget() const;
     void cancelFeatureRead();
@@ -66,6 +71,13 @@ private:
     void cancelFeatureDetails();
     void runRemoteContainerAction(const QString &action, const QString &id, const QString &name);
     void changeMachine();
+    void clearRemoteSnapshot(const QString &status);
+    void nativeHostChanged();
+    bool nativeContainerControlsAvailable() const;
+    QString remoteInspectionNotice() const;
+    void runNativeContainerAction(const QString &action, const QString &id, const QString &name);
+    void refreshNativeDetails(const QString &kind, const QString &id);
+    void cancelNativeDetails();
     void refreshRemote(bool allowAuthentication = false);
     void applyRemoteSnapshot(const QJsonObject &snapshot);
     MonitoringMachineSelector *m_machine = nullptr;
@@ -81,6 +93,15 @@ private:
     bool m_featureReadBusy = false;
     quint64 m_featureReadGeneration = 0;
     RemoteCommand m_remoteCommand;
+    RemoteCommand m_nativeActionCommand;
+    RemoteCommand m_nativeQueryCommand;
+    QString m_nativeQueryKey;
+    QString m_nativeInspectKey;
+    QString m_nativeDisplayedKey;
+    QJsonObject m_nativeInspect;
+    quint64 m_nativeQuerySerial = 0;
+    QPointer<NativeHostConnection> m_nativeHost;
+    QString m_nativeActionNotice;
     quint64 m_generation = 0;
     quint64 m_localRefreshGeneration = 0;
     struct ContainerRowData {
