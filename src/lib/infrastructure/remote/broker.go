@@ -26,9 +26,11 @@ type Enrollment struct {
 	TokenHash  string    `json:"token_hash,omitempty"`
 	Revoked    bool      `json:"revoked"`
 	MachineKey string    `json:"machine_key,omitempty"`
+	GuestGrant string    `json:"guest_grant,omitempty"`
 }
 
 type BrokerState struct {
+	GuestGrants      map[string]guestGrant     `json:"guest_grants,omitempty"`
 	OperatorSecurity string                    `json:"operator_security,omitempty"`
 	Identity         *remoteidentity.Identity  `json:"machine_identity,omitempty"`
 	PairingKeys      *hardwarekey.Registry     `json:"pairing_keys,omitempty"`
@@ -52,6 +54,7 @@ type Broker struct {
 	pairingChallenges map[string]hardwarePairingChallenge
 	machineChallenges map[string]machineChallenge
 	monitoring        map[string]MachineSnapshot
+	liveLogs          map[string]contract.LiveLog
 	mutex             sync.Mutex
 	path              string
 	state             BrokerState
@@ -71,9 +74,11 @@ func matches(secret, hash string) bool {
 
 func NewBroker(root string) (*Broker, error) {
 	b := &Broker{path: filepath.Join(root, "broker.json")}
-	if err := ReadPrivate(b.path, &b.state); err != nil {
+	state, err := readBrokerStateForStartup(b.path)
+	if err != nil {
 		return nil, err
 	}
+	b.state = state
 	if len(b.state.Nodes) > 64 || len(b.state.Jobs) > contract.MaxJobs || b.state.Schema != contract.Version || len(b.state.AdminHash) != 64 || b.state.Nodes == nil || b.state.Jobs == nil {
 		return nil, errors.New("invalid broker state")
 	}
@@ -100,6 +105,12 @@ func NewBroker(root string) (*Broker, error) {
 	if b.state.Pairings == nil {
 		b.state.Pairings = map[string]PairingSession{}
 	}
+	if err := b.validateGuestGrants(); err != nil {
+		return nil, err
+	}
+	if err := b.loadDesktopAdministratorServices(root); err != nil {
+		return nil, err
+	}
 	// Claimed jobs are never automatically requeued after a crash. The worker
 	// journal may deliver a completed result, otherwise the operator sees unknown.
 	for id, job := range b.state.Jobs {
@@ -110,6 +121,9 @@ func NewBroker(root string) (*Broker, error) {
 			if err := b.storeResult(&job, job.Result); err != nil {
 				return nil, err
 			}
+		}
+		if err := b.restoreJobInterruptionAcknowledgement(&job); err != nil {
+			return nil, err
 		}
 		b.state.Jobs[id] = job
 		if _, _, err := b.lookupJob(id); err != nil {
@@ -150,7 +164,7 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		b.serveNetworkRelay(w, r)
 		return
 	}
-	if r.URL.Path == contract.DesktopRelayPath {
+	if r.URL.Path == contract.DesktopRelayPath || r.URL.Path == contract.DesktopAdministratorRelayPath {
 		b.serveDesktopRelay(w, r)
 		return
 	}
@@ -175,9 +189,13 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		limit = MaxMonitoringBytes
 	}
 	switch r.URL.Path {
-	case "/v1/health", "/v1/edge-health":
+	case "/v1/health", "/v1/edge-health", "/v1/job-log", contract.JobInterruptionInspectPath, contract.JobInterruptionAcknowledgePath:
 		limit = 1024
-	case "/v1/pairing-request":
+	case "/v1/job-log-publish":
+		// The payload is a base64-encoded preview plus bounded job and session IDs.
+		limit = (contract.MaxLiveLog+2)/3*4 + 1024
+	case contract.DesktopAdministratorGrantPath, contract.DesktopAdministratorApprovalPath,
+		contract.DesktopAdministratorRelayTicketPath, contract.DesktopAdministratorServicePath, "/v1/pairing-request", "/v1/guest-grant", "/v1/guest-grant-revoke", "/v1/guest-enroll", "/v1/guest-release":
 		limit = 4096
 	case "/v1/machine-challenge", "/v1/approve-begin":
 		limit = 1024
@@ -225,12 +243,18 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		b.respond(w, func() (any, error) { return b.pair(body) })
 		return
 	}
+	if r.URL.Path == contract.DesktopAdministratorServicePath ||
+		r.URL.Path == contract.DesktopAdministratorRelayTicketPath && !matches(token, b.state.AdminHash) {
+		b.serveDesktopAdministratorService(w, r.URL.Path, body, token)
+		return
+	}
+
 	if matches(token, b.state.AdminHash) {
 		b.serveOperator(w, r, body, admission, authorizationError)
 		return
 	}
 	for node, enrollment := range b.state.Nodes {
-		if !enrollment.Revoked && matches(token, enrollment.TokenHash) {
+		if matches(token, enrollment.TokenHash) && b.enrollmentActive(enrollment, time.Now()) {
 			if enrollment.MachineKey != "" {
 				b.serveMachine(w, r, node, enrollment, body)
 				return
@@ -283,6 +307,8 @@ func (b *Broker) operator(path string, raw []byte) (any, error) {
 		return nil, errors.New("connector maintenance pauses new workflow submissions")
 	}
 	switch path {
+	case "/v1/guest-grant", "/v1/guest-grant-revoke":
+		return b.manageGuestGrant(path, raw)
 	case "/v1/edge-plan", "/v1/edge-activate":
 		if b.edge == nil {
 			return nil, errors.New("edge supervision is unavailable")
@@ -292,7 +318,7 @@ func (b *Broker) operator(path string, raw []byte) (any, error) {
 			return nil, err
 		}
 		for _, job := range b.state.Jobs {
-			if job.Status == "running" || job.Status == "queued" || job.Status == "unknown" {
+			if !job.Resolved() {
 				return nil, errors.New("active jobs block connector replacement")
 			}
 		}
@@ -321,7 +347,7 @@ func (b *Broker) operator(path string, raw []byte) (any, error) {
 			if enrollment.TokenHash != "" {
 				status = "paired"
 			}
-			if enrollment.Revoked {
+			if !b.enrollmentActive(enrollment, time.Now()) {
 				status = "revoked"
 			}
 			nodes = append(nodes, contract.NodeStatus{Node: name, Status: status, Fingerprint: remoteidentity.Fingerprint(enrollment.MachineKey)})
@@ -355,9 +381,15 @@ func (b *Broker) operator(path string, raw []byte) (any, error) {
 		if !os.IsNotExist(err) {
 			return nil, err
 		}
+		if _, err := b.readJobInterruptionAcknowledgement(request.ID); !os.IsNotExist(err) {
+			return nil, errors.New("job interruption acknowledgement requires matching historical job metadata")
+		}
 		node, exists := b.state.Nodes[request.Node]
-		if !exists || node.Revoked || node.TokenHash == "" {
+		if !exists || !b.enrollmentActive(node, time.Now()) || node.TokenHash == "" {
 			return nil, errors.New("node is not enrolled")
+		}
+		if node.GuestGrant != "" && request.BundleHash == "" {
+			return nil, errors.New("disposable guests only accept delivered workflows")
 		}
 		if err := b.validateDeliveryTarget(request.Submission); err != nil {
 			return nil, err
@@ -387,6 +419,10 @@ func (b *Broker) operator(path string, raw []byte) (any, error) {
 		}
 		sort.Slice(jobs, func(i, j int) bool { return jobs[i].CreatedAt.Before(jobs[j].CreatedAt) })
 		return jobs, nil
+	case "/v1/job-log":
+		return b.readLiveLog(raw)
+	case contract.JobInterruptionInspectPath, contract.JobInterruptionAcknowledgePath:
+		return b.jobInterruption(raw, path == contract.JobInterruptionAcknowledgePath)
 	case "/v1/job", "/v1/cancel", "/v1/revoke":
 		var request struct {
 			ID string `json:"id"`
@@ -494,13 +530,16 @@ func (b *Broker) worker(node, path string, raw []byte) (any, error) {
 			return nil, err
 		}
 		if path == "/v1/bundle" {
+			if job.HasAcknowledgedInterruption() {
+				return nil, errors.New("interrupted job no longer permits bundle delivery")
+			}
 			if err := b.validateDeliveryTarget(job.Submission); err != nil {
 				return nil, err
 			}
 			return b.loadBundle(job)
 		}
 		if path == "/v1/pulse" {
-			return map[string]bool{"cancel": job.CancelRequested || b.validateDeliveryTarget(job.Submission) != nil}, nil
+			return map[string]bool{"cancel": job.CancelRequested || job.HasAcknowledgedInterruption() || b.validateDeliveryTarget(job.Submission) != nil}, nil
 		}
 		if request.Result == nil {
 			return nil, errors.New("result required")
@@ -522,6 +561,7 @@ func (b *Broker) worker(node, path string, raw []byte) (any, error) {
 		}
 		job = completed
 		b.state.Jobs[job.ID] = job
+		delete(b.liveLogs, job.ID)
 		return map[string]string{"id": job.ID}, b.save()
 	}
 	return nil, errors.New("unknown worker operation")

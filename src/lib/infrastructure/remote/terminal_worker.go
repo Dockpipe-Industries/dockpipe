@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"os"
-	"path/filepath"
 	"reflect"
+	"runtime"
 	"sync"
 	"time"
 
 	"dockpipe/src/lib/domain/invocation"
 	contract "dockpipe/src/lib/domain/remote"
 	"dockpipe/src/lib/infrastructure"
+	"dockpipe/src/lib/infrastructure/localterminal"
 	"dockpipe/src/lib/infrastructure/osauth"
 	"dockpipe/src/lib/infrastructure/process"
 	"dockpipe/src/lib/infrastructure/remoteidentity"
@@ -21,6 +22,11 @@ import (
 const terminalPollInterval = 200 * time.Millisecond
 const terminalInteractiveInterval = 20 * time.Millisecond
 const terminalInteractiveBurst = 250 * time.Millisecond
+
+// Allow the native Docker closure check, relay reap and terminal session reap
+// to finish before treating cleanup as uncertain. Cancellation still happens
+// immediately and the wait does not renew the operator's lease.
+const terminalCleanupWait = 5 * time.Second
 
 type terminalWorkerRecord struct {
 	mutex       sync.Mutex
@@ -53,7 +59,7 @@ type terminalWorkerService struct {
 	policy           string
 	processRecovery  string
 	catalog          contract.FeatureCatalog
-	manager          *terminalsession.Manager
+	hostManagers     map[string]*terminalsession.Manager
 	records          map[string]*terminalWorkerRecord
 	environment      []string
 	suspendClock     osauth.SuspendClock
@@ -68,7 +74,7 @@ func runTerminalWorker(ctx context.Context, root string, config contract.WorkerC
 	if !config.Features || client == nil || client.Identity == nil || client.BrokerKey == "" || client.Identity.PublicKey != config.MachineKey || !validMachineNonce(instance) {
 		return errors.New("terminal worker requires opt-in and paired identities")
 	}
-	unlock, err := Lock(filepath.Join(root, "terminal.lock"))
+	unlock, err := lockTerminalWorker(root)
 	if err != nil {
 		return err
 	}
@@ -189,18 +195,11 @@ func (service *terminalWorkerService) configure(permissions FeaturePermissions, 
 	target := contract.FeatureTarget{Node: service.config.Node, Fingerprint: remoteidentity.Fingerprint(service.config.MachineKey), Generation: Hash(service.instance + policy)}
 	service.catalog = permissions.catalog(target)
 	service.records = map[string]*terminalWorkerRecord{}
-	service.manager = nil
+	service.hostManagers = nil
 	if permissions.TerminalProfile == nil || !terminalSupported() {
 		return nil
 	}
-	var directory string
-	for _, root := range permissions.Roots {
-		if root.Terminal {
-			directory = root.Path
-		}
-	}
-	profile := terminalsession.Profile{ID: "owner-terminal", Executable: permissions.TerminalProfile.Executable,
-		Args: permissions.TerminalProfile.Args, Env: service.environment, Dir: directory}
+
 	authority := terminalsession.Authority{Target: terminalInvocationTarget(target), Identity: invocation.Identity{Issuer: "dockpipe.worker", Subject: target.Generation},
 		Authorize: func(_ context.Context, binding invocation.Binding) error {
 			if binding.Contract.Action != "release" {
@@ -208,9 +207,29 @@ func (service *terminalWorkerService) configure(permissions FeaturePermissions, 
 			}
 			return nil
 		}}
-	manager, err := terminalsession.New(profile, authority)
-	service.manager = manager
-	return err
+	service.hostManagers = make(map[string]*terminalsession.Manager)
+	for _, root := range permissions.Roots {
+		if !root.Terminal {
+			continue
+		}
+		profile := terminalsession.Profile{ID: "owner-terminal", Executable: permissions.TerminalProfile.Executable,
+			Args: permissions.TerminalProfile.Args, Env: service.environment, Dir: root.Path}
+		manager, err := newHostTerminalManager(profile, authority)
+		if err != nil {
+			return err
+		}
+		service.hostManagers[root.ID] = manager
+	}
+	return nil
+}
+
+func newHostTerminalManager(profile terminalsession.Profile, authority terminalsession.Authority) (*terminalsession.Manager, error) {
+	if runtime.GOOS == "windows" {
+		profile.Route = "native"
+		profile.EnvironmentMode = "complete"
+		return terminalsession.NewOwnedProvider(profile, authority, localterminal.InstalledProvider)
+	}
+	return terminalsession.New(profile, authority)
 }
 
 func terminalInvocationTarget(target contract.FeatureTarget) invocation.Target {
@@ -223,7 +242,7 @@ func (service *terminalWorkerService) cancelSessions() error {
 			record.cancel()
 		}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), terminalCleanupWait)
 	defer cancel()
 	for _, record := range service.records {
 		if record.session != nil {
@@ -262,7 +281,7 @@ func (service *terminalWorkerService) shutdown() error {
 		return err
 	}
 	for _, record := range service.records {
-		if record.manager != nil && record.manager != service.manager && !record.recovered {
+		if record.open.Container != "" && record.manager != nil && !record.recovered {
 			cleanup, stop := context.WithTimeout(context.Background(), 2*time.Second)
 			err := record.manager.Shutdown(cleanup)
 			stop()
@@ -271,10 +290,16 @@ func (service *terminalWorkerService) shutdown() error {
 			}
 		}
 	}
-	if service.manager != nil {
+	if len(service.hostManagers) > 0 {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		return service.manager.Shutdown(ctx)
+		var shutdownErrors []error
+		for _, manager := range service.hostManagers {
+			if err := manager.Shutdown(ctx); err != nil {
+				shutdownErrors = append(shutdownErrors, err)
+			}
+		}
+		return errors.Join(shutdownErrors...)
 	}
 	return nil
 }
@@ -400,14 +425,21 @@ func (service *terminalWorkerService) forget(ctx context.Context, reference cont
 		record.cancel()
 	}
 	if record.session != nil {
-		wait, cancel := context.WithTimeout(ctx, 2*time.Second)
+		wait, cancel := context.WithTimeout(ctx, terminalCleanupWait)
 		result, err := record.session.Wait(wait)
 		cancel()
 		if err != nil || result.CleanupError != nil && !record.recovered {
 			return errors.New("terminal cleanup remains uncertain")
 		}
 		if !record.recovered {
-			if err := record.manager.Release(ctx, record.session.ID()); err != nil {
+			if record.open.Container == "" {
+				err = record.manager.Release(ctx, record.session.ID())
+			} else {
+				// A container manager owns only this ExecID. The worker can
+				// discard its verified closure after the operator lease ends.
+				err = record.manager.Shutdown(ctx)
+			}
+			if err != nil {
 				return err
 			}
 		}
@@ -452,8 +484,12 @@ func (service *terminalWorkerService) apply(ctx context.Context, directive contr
 		// Absolute open deadlines belong to the broker's clock. The worker
 		// admits only the signed remaining duration measured from its own
 		// monotonic request start, never a cross-machine wall-clock comparison.
-		if err != nil || request.Container == "" && service.manager == nil {
+		if err != nil {
 			return errors.New("terminal launch lease expired")
+		}
+		hostManager := service.hostManagers[request.Root]
+		if request.Container == "" && hostManager == nil {
+			return errors.New("terminal root provider unavailable")
 		}
 		record.leaseUntil = deadline
 		lifetime, cancel := context.WithCancel(ctx)
@@ -491,7 +527,7 @@ func (service *terminalWorkerService) apply(ctx context.Context, directive contr
 		}
 		var session *terminalsession.Session
 		if request.Container == "" {
-			record.manager = service.manager
+			record.manager = hostManager
 			if err = service.containerCapacity(request.ID); err == nil {
 				record.hostJournal, err = prepareHostTerminalJournal(service.root, request.Reference(), request.Root)
 			}
@@ -499,7 +535,7 @@ func (service *terminalWorkerService) apply(ctx context.Context, directive contr
 				err = record.hostJournal.phase("start-requested")
 			}
 			if err == nil {
-				session, err = service.manager.OpenAs(lifetime, terminalsession.Size{Columns: request.Columns, Rows: request.Rows}, time.Until(deadline), identity, authorize)
+				session, err = hostManager.OpenAs(lifetime, terminalsession.Size{Columns: request.Columns, Rows: request.Rows}, time.Until(deadline), identity, authorize)
 			}
 			if err == nil {
 				err = record.hostJournal.phase("running")
@@ -521,10 +557,11 @@ func (service *terminalWorkerService) apply(ctx context.Context, directive contr
 			cancel()
 			record.reason = "launch-failed"
 			if record.hostJournal != nil {
-				if session != nil {
+				uncertain := session != nil || errors.Is(err, terminalsession.ErrCleanupIncomplete)
+				if uncertain {
 					record.session, record.state, record.reason = session, "unknown", "cleanup-unverified"
 				}
-				if err := record.hostJournal.finish(session == nil); err != nil {
+				if err := record.hostJournal.finish(!uncertain); err != nil {
 					return err
 				}
 			}

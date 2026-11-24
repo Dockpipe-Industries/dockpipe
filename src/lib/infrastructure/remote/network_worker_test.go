@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"net/http"
 	"path/filepath"
 	"testing"
 	"time"
@@ -12,6 +13,24 @@ import (
 	contract "dockpipe/src/lib/domain/remote"
 	"dockpipe/src/lib/infrastructure/osauth"
 )
+
+func TestNetworkServiceStopReasonDoesNotEchoErrorDetails(t *testing.T) {
+	for _, test := range []struct {
+		err    error
+		reason string
+	}{
+		{errNetworkGrantUnavailable, "grant-unavailable"},
+		{errNetworkSessionUnavailable, "os-session-unavailable"},
+		{errNetworkLockUnavailable, "worker-lock-unavailable"},
+		{&HTTPError{StatusCode: http.StatusForbidden}, "broker-http-403"},
+		{&net.OpError{Op: "dial", Err: errors.New("private endpoint")}, "broker-transport"},
+		{errors.New("private credential"), "worker-error"},
+	} {
+		if reason := networkServiceStopReason(test.err); reason != test.reason {
+			t.Errorf("stop reason %q, want %q", reason, test.reason)
+		}
+	}
+}
 
 func TestNetworkServiceExplicitEnableAndNoUncertainRestart(t *testing.T) {
 	root := privateTestDirectory(t)
@@ -152,10 +171,15 @@ func TestNetworkWorkerDisabledGrantSingletonAndCancellation(t *testing.T) {
 				platform.snapshot.Locked = true
 				platform.mutex.Unlock()
 			}
+			wantStop := map[string]error{
+				"cancel": context.Canceled,
+				"grant":  errNetworkGrantUnavailable,
+				"lock":   errNetworkSessionUnavailable,
+			}[reason]
 			select {
 			case err = <-done:
-				if err == nil {
-					t.Fatal("cancelled network worker reported success")
+				if !errors.Is(err, wantStop) {
+					t.Fatalf("network lifetime ended with %v, want %v", err, wantStop)
 				}
 			case <-time.After(2 * time.Second):
 				t.Fatal("worker did not cancel and join its TCP streams")

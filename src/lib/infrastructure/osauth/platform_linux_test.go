@@ -25,8 +25,9 @@ func fakePlatform(t *testing.T, locked bool, authenticate func(context.Context, 
 			}
 			return "session", nil
 		},
-		displaySession: func(int) (string, error) { return "session", nil },
-		readClocks:     func() (time.Duration, error) { return 0, nil },
+		displaySession:   func(int) (string, error) { return "session", nil },
+		readClocks:       func() (time.Duration, error) { return 0, nil },
+		readSuspendCount: func() (uint64, bool, error) { return 0, false, nil },
 		run: func(ctx context.Context, program string, arguments ...string) ([]byte, error) {
 			if program == "/usr/bin/pkcheck" {
 				if authenticate == nil {
@@ -47,6 +48,8 @@ func fakePlatform(t *testing.T, locked bool, authenticate func(context.Context, 
 					t.Fatal("idle query trusted a caller-selected session bus")
 				}
 				return []byte(`{"type":"t","data":[1200]}`), nil
+			case "GetActive":
+				return nil, errors.New("screen saver service unavailable")
 			default:
 				t.Fatalf("unexpected OS query: %v", arguments)
 				return nil, errors.New("unexpected OS query")
@@ -104,6 +107,33 @@ func TestAuthenticatePreservesCancellationAndFailsClosedOnMissingPolicy(t *testi
 	}
 }
 
+func TestAuthenticateReportsPolkitExitReasons(t *testing.T) {
+	cases := []struct {
+		name string
+		code int
+		want string
+	}{
+		{name: "denied", code: 1, want: "OS authentication was denied"},
+		{name: "no agent", code: 2, want: "OS authentication requires an active local authentication agent"},
+		{name: "dismissed", code: 3, want: "OS authentication was cancelled"},
+		{name: "check failed", code: 127, want: "OS authentication did not complete; install the Dockpipe polkit action and use an active local authentication agent"},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			platform := fakePlatform(t, false, func(ctx context.Context, _ []string) error {
+				_, err := runSystemCommand(ctx, "/bin/sh", "-c", fmt.Sprintf("exit %d", test.code))
+				return err
+			})
+
+			err := platform.Authenticate(context.Background(), os.Getpid())
+			if err == nil || err.Error() != test.want {
+				t.Fatalf("authentication error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
 func TestAuthenticateStillUsesOSWhenLockCapabilityIsUnknown(t *testing.T) {
 	called := false
 	platform := fakePlatform(t, false, nil)
@@ -158,6 +188,34 @@ func TestSuspendAdmissionCheckNeverQueriesDesktopServices(t *testing.T) {
 	platform.readClocks = func() (time.Duration, error) { return 0, errors.New("clock unavailable") }
 	if _, err := platform.SuspendGeneration(); err == nil {
 		t.Fatal("unavailable fast OS clock was accepted")
+	}
+}
+
+func TestSuspendAdmissionDetectsKernelResumeWithUnchangedClocks(t *testing.T) {
+	platform := fakePlatform(t, false, nil)
+	count := uint64(4)
+	available := true
+	platform.readSuspendCount = func() (uint64, bool, error) { return count, available, nil }
+
+	before, err := platform.Snapshot(context.Background())
+	if err != nil || !before.SleepKnown {
+		t.Fatalf("could not establish sleep baseline: %+v %v", before, err)
+	}
+
+	count++
+	generation, err := platform.SuspendGeneration()
+	if err != nil || generation != before.SleepGeneration+1 {
+		t.Fatalf("final admission missed kernel resume with unchanged clocks: generation=%d err=%v", generation, err)
+	}
+
+	after, err := platform.Snapshot(context.Background())
+	if err != nil || after.SleepGeneration != generation {
+		t.Fatalf("the same kernel resume was counted twice: %+v %v", after, err)
+	}
+
+	available = false
+	if _, err := platform.SuspendGeneration(); err == nil {
+		t.Fatal("disappearance of the kernel counter was treated as trusted sleep evidence")
 	}
 }
 
@@ -255,6 +313,57 @@ func TestGnomeShellOwnedScreenLockEndpoint(t *testing.T) {
 		actual, err := readScreenSaverLock(context.Background(), run, os.Getuid())
 		if err != nil || actual != locked {
 			t.Fatalf("shell screen-lock state = %t, %v; want %t", actual, err, locked)
+		}
+	}
+}
+
+func TestCinnamonScreenLockReportsNativeState(t *testing.T) {
+	for _, locked := range []bool{false, true} {
+		run := func(ctx context.Context, program string, arguments ...string) ([]byte, error) {
+			if arguments[5] != "org.cinnamon.ScreenSaver" {
+				return nil, errScreenSaverUnavailable
+			}
+			if program != "/usr/bin/busctl" || arguments[0] != fmt.Sprintf("--address=unix:path=/run/user/%d/bus", os.Getuid()) ||
+				arguments[2] != "--auto-start=no" || arguments[6] != "/org/cinnamon/ScreenSaver" ||
+				arguments[7] != "org.cinnamon.ScreenSaver" || arguments[8] != "GetActive" {
+				t.Fatalf("unexpected Cinnamon screen-lock query: %v", arguments)
+			}
+
+			return []byte(fmt.Sprintf(`{"type":"b","data":[%t]}`, locked)), nil
+		}
+		actual, err := readScreenSaverLock(context.Background(), run, os.Getuid())
+		if err != nil || actual != locked {
+			t.Fatalf("Cinnamon screen-lock state = %t, %v; want %t", actual, err, locked)
+		}
+	}
+}
+
+func TestXfceScreenLockOverridesFalseLogindHint(t *testing.T) {
+	for _, locked := range []bool{false, true} {
+		run := func(ctx context.Context, program string, arguments ...string) ([]byte, error) {
+			switch arguments[len(arguments)-1] {
+			case "session":
+				return []byte(`{"type":"o","data":["/org/freedesktop/login1/session/session"]}`), nil
+			case "org.freedesktop.login1.Session":
+				return sessionReply(false), nil
+			}
+
+			switch arguments[5] {
+			case "org.freedesktop.ScreenSaver":
+				return []byte(`{"type":"b","data":[false]}`), nil
+			case "org.xfce.ScreenSaver":
+				if arguments[6] != "/org/xfce/ScreenSaver" || arguments[7] != "org.xfce.ScreenSaver" {
+					t.Fatalf("unexpected Xfce screen-lock query: %v", arguments)
+				}
+				return []byte(fmt.Sprintf(`{"type":"b","data":[%t]}`, locked)), nil
+			default:
+				return nil, errors.New("screen saver service unavailable")
+			}
+		}
+
+		session, err := readDesktopSession(context.Background(), run, "session")
+		if err != nil || session.locked != locked {
+			t.Fatalf("screen-lock state = %t, %v; want %t", session.locked, err, locked)
 		}
 	}
 }

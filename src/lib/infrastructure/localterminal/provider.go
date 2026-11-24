@@ -20,11 +20,26 @@ import (
 // core's sibling. Neither the project cwd nor PATH participates. Resolution and
 // executable preconditions run inside admitted Execute, never during Prepare.
 func InstalledProvider(ctx context.Context, profile terminalsession.Profile, size terminalsession.Size) (terminalsession.Backend, error) {
+	path, err := installedProviderPath()
+	if err != nil {
+		return nil, err
+	}
+	return startProvider(ctx, path, profile, size)
+}
+
+// InstalledProviderAvailable reports whether the owner-installed companion is
+// present. Opening and verifying a PTY still requires the admitted provider.
+func InstalledProviderAvailable() bool {
+	_, err := installedProviderPath()
+	return err == nil
+}
+
+func installedProviderPath() (string, error) {
 	path := os.Getenv("DOCKPIPE_TERMINAL_PROVIDER")
 	if path == "" {
 		self, err := os.Executable()
 		if err != nil {
-			return nil, errors.New("terminal provider unavailable")
+			return "", errors.New("terminal provider unavailable")
 		}
 		name := "dockpipe-terminal-host"
 		if runtime.GOOS == "windows" {
@@ -33,13 +48,13 @@ func InstalledProvider(ctx context.Context, profile terminalsession.Profile, siz
 		path = filepath.Join(filepath.Dir(self), name)
 	}
 	if !filepath.IsAbs(path) {
-		return nil, errors.New("terminal provider must be an absolute installed executable")
+		return "", errors.New("terminal provider must be an absolute installed executable")
 	}
 	info, err := os.Stat(path)
 	if err != nil || !info.Mode().IsRegular() || runtime.GOOS != "windows" && info.Mode().Perm()&0111 == 0 {
-		return nil, errors.New("terminal provider unavailable")
+		return "", errors.New("terminal provider unavailable")
 	}
-	return startProvider(ctx, path, profile, size)
+	return path, nil
 }
 
 type providerBackend struct {

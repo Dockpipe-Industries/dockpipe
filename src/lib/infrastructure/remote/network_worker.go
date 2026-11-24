@@ -6,13 +6,18 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
 	contract "dockpipe/src/lib/domain/remote"
 	"dockpipe/src/lib/infrastructure/osauth"
 	"dockpipe/src/lib/infrastructure/remoteidentity"
+)
+
+var (
+	errNetworkGrantUnavailable   = errors.New("independent worker TCP network permission is unavailable or changed")
+	errNetworkSessionUnavailable = errors.New("worker OS lock or sleep evidence is unavailable or changed")
+	errNetworkLockUnavailable    = errors.New("worker network lifetime lock is unavailable")
 )
 
 // RunNetworkWorker owns one independent TCP worker lifetime. The caller owns
@@ -29,17 +34,17 @@ func runNetworkWorkerWithPlatform(parent context.Context, root string, config co
 	if client == nil || client.Identity == nil {
 		return errors.New("network worker requires paired machine identity")
 	}
-	unlock, err := Lock(filepath.Join(root, "network-worker.lock"))
+	unlock, err := lockNetworkWorker(root)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", errNetworkLockUnavailable, err)
 	}
 	defer unlock()
 	frozen, err := LoadNetworkPermissions(root)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", errNetworkGrantUnavailable, err)
 	}
 	if frozen.Validate() != nil || !frozen.Enabled {
-		return errors.New("independent worker TCP network permission is disabled")
+		return errNetworkGrantUnavailable
 	}
 	instance, err := Secret()
 	if err != nil {
@@ -47,10 +52,10 @@ func runNetworkWorkerWithPlatform(parent context.Context, root string, config co
 	}
 	fence := NewDesktopSessionFence(platform)
 	if err = fence.Check(parent); err != nil {
-		return err
+		return fmt.Errorf("%w: %w", errNetworkSessionUnavailable, err)
 	}
 	target := contract.FeatureTarget{Node: config.Node, Fingerprint: remoteidentity.Fingerprint(config.MachineKey), Generation: Hash(instance)}
-	material := collectNetworkTrust(parent, platform, target, frozen.ShareTLSTrust)
+	material := collectNetworkTrust(parent, root, platform, target, frozen.ShareTLSTrust)
 	if err := parent.Err(); err != nil {
 		return err
 	}
@@ -74,13 +79,12 @@ func runNetworkWorkerWithPlatform(parent context.Context, root string, config co
 		}
 	}
 
-	ctx, cancel := context.WithCancel(parent)
+	ctx, cancel := context.WithCancelCause(parent)
 	var workers sync.WaitGroup
 	defer workers.Wait()
-	defer cancel()
+	defer cancel(nil)
 	// Separate fence checks cancel a stalled exchange/dial rather than waiting
 	// through its network timeout after a worker lock or grant change.
-	trustChanged := make(chan struct{}, 1)
 	if frozen.ShareTLSTrust {
 		workers.Add(1)
 		go func() {
@@ -92,13 +96,12 @@ func runNetworkWorkerWithPlatform(parent context.Context, root string, config co
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
-					current := collectNetworkTrust(ctx, platform, target, true)
+					current := collectNetworkTrust(ctx, root, platform, target, true)
 					if ctx.Err() != nil {
 						return
 					}
 					if current.summary != material.summary {
-						trustChanged <- struct{}{}
-						cancel()
+						cancel(errNetworkTrustChanged)
 						return
 					}
 				}
@@ -116,8 +119,12 @@ func runNetworkWorkerWithPlatform(parent context.Context, root string, config co
 				return
 			case <-ticker.C:
 				current, permissionErr := LoadNetworkPermissions(root)
-				if permissionErr != nil || current != frozen || fence.Check(ctx) != nil {
-					cancel()
+				if permissionErr != nil || current != frozen {
+					cancel(errNetworkGrantUnavailable)
+					return
+				}
+				if fence.Check(ctx) != nil {
+					cancel(errNetworkSessionUnavailable)
 					return
 				}
 			}
@@ -132,7 +139,7 @@ func runNetworkWorkerWithPlatform(parent context.Context, root string, config co
 		stop()
 		if err != nil {
 			if ctx.Err() != nil {
-				return networkWorkerContextError(ctx, trustChanged)
+				return context.Cause(ctx)
 			}
 			return err
 		}
@@ -152,7 +159,7 @@ func runNetworkWorkerWithPlatform(parent context.Context, root string, config co
 			go func(ticket contract.NetworkTicket) {
 				defer workers.Done()
 				defer func() { <-slots }()
-				_ = client.ServeNetworkTCP(ctx, ticket)
+				_ = client.ServeNetworkTCP(ctx, ticket, frozen)
 			}(ticket)
 		}
 		if !announced {
@@ -165,7 +172,7 @@ func runNetworkWorkerWithPlatform(parent context.Context, root string, config co
 		}
 		select {
 		case <-ctx.Done():
-			return networkWorkerContextError(ctx, trustChanged)
+			return context.Cause(ctx)
 		case <-time.After(500 * time.Millisecond):
 		}
 	}
@@ -193,7 +200,8 @@ func runNetworkService(ctx context.Context, root string, start func(context.Cont
 				previouslyEnabled = false
 			}
 			if startErr != nil && !errors.Is(startErr, errNetworkTrustChanged) && ctx.Err() == nil {
-				fmt.Fprintln(os.Stderr, "Remote TCP network service stopped; inspect the independent grant and OS session before re-enabling it.")
+				fmt.Fprintf(os.Stderr, "Remote TCP network service stopped (%s); verify the worker before re-enabling Network.\n",
+					networkServiceStopReason(startErr))
 			}
 		} else if !enabled {
 			previouslyEnabled = false
@@ -203,5 +211,23 @@ func runNetworkService(ctx context.Context, root string, start func(context.Cont
 			return
 		case <-ticker.C:
 		}
+	}
+}
+
+func networkServiceStopReason(err error) string {
+	var status *HTTPError
+	switch {
+	case errors.Is(err, errNetworkGrantUnavailable):
+		return "grant-unavailable"
+	case errors.Is(err, errNetworkSessionUnavailable):
+		return "os-session-unavailable"
+	case errors.Is(err, errNetworkLockUnavailable):
+		return "worker-lock-unavailable"
+	case errors.As(err, &status):
+		return fmt.Sprintf("broker-http-%d", status.StatusCode)
+	case retryable(err):
+		return "broker-transport"
+	default:
+		return "worker-error"
 	}
 }

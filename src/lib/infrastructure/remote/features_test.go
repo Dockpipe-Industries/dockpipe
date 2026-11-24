@@ -192,6 +192,36 @@ func TestFeatureWorkerFilesEndToEndAndExactRetry(t *testing.T) {
 	if err != nil || string(content) != "operator changed after completion" {
 		t.Fatal("exact retry reran a completed mutation")
 	}
+
+	stale, err := NewFeatureRequest(catalog.Target, "project", "files.write", workspacefiles.Request{
+		Schema: workspacefiles.Schema, Action: "write", Path: "fixture.txt",
+		Revision: Hash("original"), Content: []byte("stale editor save"),
+	}, time.Now().Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := admin.SubmitFeature(ctx, stale); err != nil {
+		t.Fatal(err)
+	}
+	var rejected contract.FeatureOperation
+	for time.Now().Before(deadline) {
+		rejected, err = admin.FeatureStatus(ctx, stale)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rejected.Result != nil {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if rejected.Status != "failure" || rejected.Result == nil || rejected.Result.Error != workspacefiles.ErrChanged.Error() {
+		t.Fatalf("stale save did not report the revision conflict: %+v", rejected.Result)
+	}
+	content, err = os.ReadFile(path)
+	if err != nil || string(content) != "operator changed after completion" {
+		t.Fatal("stale save changed the worker's latest bytes")
+	}
+
 	journal, err := readFeatureJournal(root)
 	if err != nil || journal.Records[request.ID].Result == nil {
 		t.Fatalf("result not durable before acknowledgement: %v", err)

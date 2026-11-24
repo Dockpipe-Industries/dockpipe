@@ -120,7 +120,7 @@ func runFeatureWorkerWithInstance(ctx context.Context, root string, config contr
 	if err := PrivateDirectory(root); err != nil {
 		return err
 	}
-	unlock, err := Lock(filepath.Join(root, "features.lock"))
+	unlock, err := lockFeatureWorker(root)
 	if err != nil {
 		return err
 	}
@@ -177,9 +177,11 @@ func runFeatureWorkerWithInstance(ctx context.Context, root string, config contr
 		if catalog.ProcessRecovery == "" {
 			catalog.ProcessRecovery = process.RecoveryMode()
 		}
-		catalog, err = ContainerTerminalRecoveryCatalog(root, catalog)
-		if err != nil {
-			return err
+		if containerTerminalSupported() {
+			catalog, err = ContainerTerminalRecoveryCatalog(root, catalog)
+			if err != nil {
+				return err
+			}
 		}
 		catalog, err = HostTerminalRecoveryCatalog(root, catalog)
 		if err != nil {
@@ -256,6 +258,7 @@ func runFeatureWorkerWithInstance(ctx context.Context, root string, config contr
 			return err
 		}
 		record, exists := journal.Records[assignment.Request.ID]
+		readOnly := contract.FeatureAccess(assignment.Request.Action) == "read"
 		if !exists {
 			for id, previous := range journal.Records {
 				if previous.Result != nil && (previous.Result.Status != "unknown" || previous.Reconciled) && time.Now().After(previous.Request.Deadline) && time.Now().After(retainedUntil[id]) {
@@ -263,15 +266,25 @@ func runFeatureWorkerWithInstance(ctx context.Context, root string, config contr
 					delete(retainedUntil, id)
 				}
 			}
-			if len(journal.Records) >= contract.MaxJobs {
-				return errors.New("worker feature journal capacity reached")
+			if !readOnly && len(journal.Records) >= contract.MaxJobs {
+				rejection := featureWorkerRecord{
+					Request: assignment.Request,
+					Result: &contract.FeatureResult{
+						Status: "failure",
+						Error:  "Worker mutation journal is full; no native operation started.",
+					},
+				}
+				if err := acknowledgeFeatureResult(ctx, client, rejection); err != nil {
+					return err
+				}
+				continue
 			}
 			record = featureWorkerRecord{Request: assignment.Request}
-			record.Supervised = contract.FeatureAccess(record.Request.Action) != "read" &&
+			record.Supervised = !readOnly &&
 				(strings.HasPrefix(record.Request.Action, "git.") || strings.HasPrefix(record.Request.Action, "containers."))
 			journal.Records[record.Request.ID] = record
 			retainedUntil[record.Request.ID] = time.Now().Add(contract.FeatureLifetime)
-			if contract.FeatureAccess(record.Request.Action) != "read" {
+			if !readOnly {
 				if err := writeFeatureJournal(root, journal); err != nil {
 					return err
 				}
@@ -318,7 +331,7 @@ func runFeatureWorkerWithInstance(ctx context.Context, root string, config contr
 			}
 			record.Result = &result
 			journal.Records[record.Request.ID] = record
-			if contract.FeatureAccess(record.Request.Action) != "read" {
+			if !readOnly {
 				if err := writeFeatureJournal(root, journal); err != nil {
 					return err
 				}
@@ -327,13 +340,15 @@ func runFeatureWorkerWithInstance(ctx context.Context, root string, config contr
 		if record.Result == nil {
 			return errors.New("unfinished feature intent cannot be replayed")
 		}
-		completion := featureCompletionFor(record)
-		var acknowledgement contract.FeatureResultAck
-		if err := client.callWithRetry(ctx, "/v1/features-result", completion, &acknowledgement); err != nil {
+		if err := acknowledgeFeatureResult(ctx, client, record); err != nil {
 			return err
 		}
-		if acknowledgement.Reference != completion.Reference {
-			return errors.New("feature result acknowledgement identity changed")
+		if readOnly {
+			// The broker already holds this read result. Keep the mutation
+			// journal budget available for work that needs durable receipts.
+			delete(journal.Records, record.Request.ID)
+			delete(retainedUntil, record.Request.ID)
+			continue
 		}
 		if record.HostRecovery != nil && record.Result.Status == "success" {
 			if err := removeHostTerminalReceipt(root, record.HostRecovery.Reference); err != nil && !os.IsNotExist(err) {
@@ -355,6 +370,18 @@ func runFeatureWorkerWithInstance(ctx context.Context, root string, config contr
 		journal.Records[record.Request.ID] = record
 	}
 	return ctx.Err()
+}
+
+func acknowledgeFeatureResult(ctx context.Context, client *Client, record featureWorkerRecord) error {
+	completion := featureCompletionFor(record)
+	var acknowledgement contract.FeatureResultAck
+	if err := client.callWithRetry(ctx, "/v1/features-result", completion, &acknowledgement); err != nil {
+		return err
+	}
+	if acknowledgement.Reference != completion.Reference {
+		return errors.New("feature result acknowledgement identity changed")
+	}
+	return nil
 }
 
 func featureCompletionFor(record featureWorkerRecord) contract.FeatureCompletion {

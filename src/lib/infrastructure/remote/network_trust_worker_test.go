@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -38,23 +39,64 @@ func (platform *networkTrustPlatformFixture) NetworkTLSAnchors(ctx context.Conte
 
 func TestNetworkTrustWorkerExplicitSharingAndUnavailableMaterial(t *testing.T) {
 	_, _, _, catalog := networkFixture(t)
+	root := privateTestDirectory(t)
 	platform := &networkTrustPlatformFixture{securityFixturePlatform: &securityFixturePlatform{}, anchors: networkTrustCertificates(t, 1, 0)}
-	disabled := collectNetworkTrust(context.Background(), platform, catalog.Target, false)
+	disabled := collectNetworkTrust(context.Background(), root, platform, catalog.Target, false)
 	if disabled.summary.State != "disabled" || disabled.snapshot != nil || platform.calls != 0 {
 		t.Fatal("public TLS material collected without explicit owner opt-in")
 	}
-	ready := collectNetworkTrust(context.Background(), platform, catalog.Target, true)
+	ready := collectNetworkTrust(context.Background(), root, platform, catalog.Target, true)
 	if ready.summary.State != "ready" || ready.snapshot == nil {
 		t.Fatal("explicit public trust unavailable")
 	}
 	platform.trustError = errors.New("native policy is not representable")
-	unavailable := collectNetworkTrust(context.Background(), platform, catalog.Target, true)
+	unavailable := collectNetworkTrust(context.Background(), root, platform, catalog.Target, true)
 	if unavailable.summary.State != "unavailable" || unavailable.snapshot != nil {
 		t.Fatal("partial anchors accepted after native trust export failure")
 	}
-	unsupported := collectNetworkTrust(context.Background(), platform.securityFixturePlatform, catalog.Target, true)
+	unsupported := collectNetworkTrust(context.Background(), root, platform.securityFixturePlatform, catalog.Target, true)
 	if unsupported.summary.State != "unavailable" || unsupported.snapshot != nil {
 		t.Fatal("unsupported platform silently flattened local trust")
+	}
+}
+
+func TestNetworkTrustWorkerUsesApprovedAnchorsWithoutNativeProvider(t *testing.T) {
+	_, _, _, catalog := networkFixture(t)
+	root := privateTestDirectory(t)
+	path := filepath.Join(root, "network-trust.json")
+	certificates := networkTrustCertificates(t, 1, 0)
+	fixture := &securityFixturePlatform{}
+	operatorMaterial := map[string]any{
+		"schema": contract.NetworkTrustMaterialVersion, "certificates": certificates,
+	}
+	if err := WritePrivate(path, operatorMaterial); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+	disabled := collectNetworkTrust(ctx, root, fixture, catalog.Target, false)
+	ready := collectNetworkTrust(ctx, root, fixture, catalog.Target, true)
+	if disabled.summary.State != "disabled" || disabled.snapshot != nil ||
+		ready.summary.State != "ready" || ready.snapshot == nil || ready.summary.Count != 1 {
+		t.Fatal("worker trust file was not published only on opt-in")
+	}
+
+	native := &networkTrustPlatformFixture{securityFixturePlatform: fixture, anchors: certificates}
+	operatorMaterial["certificates"] = [][]byte{[]byte("invalid DER")}
+	if err := WritePrivate(path, operatorMaterial); err != nil {
+		t.Fatal(err)
+	}
+	invalid := collectNetworkTrust(ctx, root, native, catalog.Target, true)
+	if invalid.summary.State != "unavailable" || invalid.snapshot != nil || native.calls != 0 {
+		t.Fatal("invalid explicit anchors fell back to native trust")
+	}
+
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	without := collectNetworkTrust(ctx, root, fixture, catalog.Target, true)
+	if without.summary.State != "unavailable" || without.snapshot != nil {
+		t.Fatal("removed explicit anchors remained available")
 	}
 }
 

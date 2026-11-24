@@ -28,16 +28,28 @@ const NetworkFreshness = 5 * time.Second
 const NetworkIdle = 120 * time.Second
 
 type NetworkPermissions struct {
-	Schema        string `json:"schema"`
-	Enabled       bool   `json:"enabled"`
-	ShareTLSTrust bool   `json:"share_tls_trust,omitempty"`
+	Schema              string `json:"schema"`
+	Enabled             bool   `json:"enabled"`
+	ShareTLSTrust       bool   `json:"share_tls_trust,omitempty"`
+	LoopbackDestination string `json:"loopback_destination,omitempty"`
 }
 
 func (permission NetworkPermissions) Validate() error {
-	if permission.Schema != NetworkVersion || permission.ShareTLSTrust && !permission.Enabled {
+	if permission.Schema != NetworkVersion || !permission.Enabled && (permission.ShareTLSTrust || permission.LoopbackDestination != "") {
 		return errors.New("invalid independent network permission schema")
 	}
+	if permission.LoopbackDestination != "" {
+		host, _, err := net.SplitHostPort(permission.LoopbackDestination)
+		if err != nil || !net.ParseIP(host).IsLoopback() || ValidateNetworkAddress(permission.LoopbackDestination) != nil {
+			return errors.New("network loopback grant requires an exact loopback IP address and port")
+		}
+	}
+
 	return nil
+}
+
+func (permission NetworkPermissions) AllowsDestination(address string) bool {
+	return permission.Enabled && (permission.LoopbackDestination == "" || permission.LoopbackDestination == address)
 }
 
 type NetworkCatalog struct {

@@ -94,6 +94,7 @@ type Invitation struct {
 }
 
 type WorkerConfig struct {
+	GuestGrant        string              `json:"guest_grant,omitempty"`
 	Features          bool                `json:"features,omitempty"`
 	MachineKey        string              `json:"machine_key,omitempty"`
 	MachinePrivateKey []byte              `json:"machine_private_key,omitempty"`

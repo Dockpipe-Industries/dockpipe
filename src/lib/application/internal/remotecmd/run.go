@@ -15,6 +15,7 @@ import (
 
 	contract "dockpipe/src/lib/domain/remote"
 	"dockpipe/src/lib/infrastructure"
+	"dockpipe/src/lib/infrastructure/process"
 	remoteio "dockpipe/src/lib/infrastructure/remote"
 )
 
@@ -44,6 +45,7 @@ const usage = `dockpipe remote <command> [options]
   pair    --invite <file> --allow-delivery        Trust this broker to send workflows
           [--profiles <json-file>]                Or approve installed profiles
   worker                                         Run the outbound worker
+  job-log --id <job>                             Read the bounded live workflow log preview
   monitoring --system --docker                    Opt in locally on a paired worker
              --disable                           Stop sharing machine snapshots
   observe --node <name>                          Read the latest authorized machine snapshot
@@ -56,6 +58,8 @@ const usage = `dockpipe remote <command> [options]
   desktop-worker --stdio                        Private native provider signaling bridge
   desktop-cleanup --stdio --request <private-file> Exact revoked desktop cleanup with native proof
   desktop-relay --stdio --request <private-file> Opaque binary relay for an existing desktop session
+  desktop-administrator-approval|desktop-administrator-grant|desktop-administrator-service --request <json|->
+  desktop-administrator-relay --stdio --request <private-file> Dedicated administrator input relay
   network-config [--request <private-file>]       Inspect or replace independent TCP network grants
   network-catalog                                List live paired TCP network targets
   network-trust --request <private-file>           Read exact authenticated public TLS anchors
@@ -69,7 +73,8 @@ const usage = `dockpipe remote <command> [options]
   feature-reconcile --request <json-file|->       Revoke a mutation and verify its native cleanup evidence
           [--recovery verify|retire-container]    Retirement requires independent worker recovery permission
           [--expected-container <full-id>]        Required exact reviewed resource for container retirement
-  features-config [--request <json-file|->]       Inspect or replace worker-local feature permissions
+  features-config [--request <json-file|-> | --terminal-home]
+                                                 Inspect or configure worker-local feature permissions
   terminal --request <intent-file>              Private interactive terminal NDJSON transport
   terminal-status --request <reference-file>    Inspect the captured terminal session
   terminal-close --request <reference-file>     Request closure of the captured terminal session
@@ -80,8 +85,16 @@ const usage = `dockpipe remote <command> [options]
           [--expected-digest <sha256>]            Require the reviewed snapshot
   jobs                                           List job states
   result  --id <id> [--out <new-private-directory>] Inspect/download a result
+  job-interruption-inspect --id <id> --node <name>  Review one retained unknown result
+  job-interruption-acknowledge --id <id> --node <name> --review-token <sha256>
+                                                 Release one inspected assignment hold
   cancel  --id <id>                               Request cancellation
   revoke  --id <node>                             Revoke a worker
+  guest-grant --request <file>                     Authorize a host to enroll disposable workflow workers
+  guest-grant-revoke --id <grant>                   End all worker authority granted for the run
+  guest-prepare --request <file>                   Generate a disposable guest identity and print its public claim
+  guest-enroll --request <file>                    Enroll the prepared guest using the authorized host identity
+  guest-release --id <grant>                       End the host's guest grant during teardown
   remove  --id <node>                             Remove a saved worker enrollment
   service --role broker|worker                    Install a user service; --replace updates and restarts it
 All commands accept --state <directory>. Remote nodes currently target Linux/macOS.
@@ -102,6 +115,7 @@ func Run(args []string, checkDependencies func(string) error) error {
 	command := args[0]
 	flags := flag.NewFlagSet("remote "+command, flag.ContinueOnError)
 	activationRequest := flags.String("request", "", "exact edge activation or typed feature JSON request; - reads feature stdin")
+	terminalHome := flags.Bool("terminal-home", false, "grant Terminal on this paired worker, starting in the current account's home folder")
 	desktopStdio := flags.Bool("stdio", false, "private bridge stdin/stdout transport and lifetime")
 	prepareTerminal := flags.Bool("prepare", false, "require canonical prepared-reference acknowledgment before host terminal opening")
 	activationApproval := flags.String("approve", "", "exact activation approval")
@@ -117,6 +131,7 @@ func Run(args []string, checkDependencies func(string) error) error {
 	node := flags.String("node", "", "worker name")
 	profile := flags.String("profile", "", "worker-approved workflow profile")
 	id := flags.String("id", "", "stable job ID or node for revoke/remove")
+	reviewToken := flags.String("review-token", "", "exact job interruption token from operator inspection")
 	out := flags.String("out", "", "private output destination")
 	endpoint := flags.String("endpoint", "", "broker HTTPS origin for online pairing")
 	code := flags.String("code", "", "verification code displayed on the worker")
@@ -151,13 +166,14 @@ func Run(args []string, checkDependencies func(string) error) error {
 		}
 		return err
 	}
-	if *desktopStdio && command != "desktop" && command != "desktop-worker" && command != "desktop-relay" && command != "desktop-cleanup" && command != "network-proxy" && command != "network-worker" {
-		return errors.New("--stdio requires a private desktop or network bridge")
+	desktopWorkerService := command == "service-worker-desktop"
+	if *desktopStdio && command != "desktop" && command != "desktop-worker" && command != "desktop-relay" && command != "desktop-administrator-relay" && command != "desktop-cleanup" && command != "network-proxy" && command != "network-worker" && !desktopWorkerService {
+		return errors.New("--stdio requires a private bridge or desktop service")
 	}
 	if (command == "network-proxy" || command == "network-worker") && !*desktopStdio {
 		return errors.New("network bridges require --stdio private lifetime transport")
 	}
-	if (command == "desktop" || command == "desktop-worker" || command == "desktop-relay" || command == "desktop-cleanup") && !*desktopStdio {
+	if (command == "desktop" || command == "desktop-worker" || command == "desktop-relay" || command == "desktop-administrator-relay" || command == "desktop-cleanup") && !*desktopStdio {
 		return errors.New("desktop bridges require --stdio private signaling transport")
 	}
 	if *replaceService && command != "service" {
@@ -165,6 +181,9 @@ func Run(args []string, checkDependencies func(string) error) error {
 	}
 	if *prepareTerminal && command != "terminal" {
 		return errors.New("--prepare is supported only by remote terminal")
+	}
+	if *terminalHome && (command != "features-config" || *activationRequest != "") {
+		return errors.New("--terminal-home requires features-config without --request")
 	}
 	if (*recoveryChoice != "verify" && *recoveryChoice != "retire-container") || *recoveryChoice != "verify" && command != "feature-reconcile" {
 		return errors.New("--recovery requires feature-reconcile and verify or retire-container")
@@ -197,13 +216,16 @@ func Run(args []string, checkDependencies func(string) error) error {
 			return errors.New("captured target flags require workflow delivery and an exact valid machine identity")
 		}
 	}
-	if *expectedDigest != "" && command != "submit" {
+	if *expectedDigest != "" && command != "submit" && !desktopWorkerService {
 		return errors.New("--expected-digest is supported only by submit")
 	}
 	if *activationApproval != "" && command != "edge-activate" {
 		return errors.New("--approve requires edge-activate")
 	}
-	if *activationRequest != "" && command != "edge-activate" && command != "feature-prepare" && command != "feature-call" && command != "feature-status" && command != "feature-cancel" && command != "feature-reconcile" && command != "features-config" && command != "terminal" && command != "terminal-status" && command != "terminal-close" && !desktopRequestCommand(command) && command != "network-config" && command != "network-proxy" && command != "network-trust" {
+	if *reviewToken != "" && command != "job-interruption-acknowledge" {
+		return errors.New("--review-token requires job-interruption-acknowledge")
+	}
+	if *activationRequest != "" && command != "edge-activate" && command != "feature-prepare" && command != "feature-call" && command != "feature-status" && command != "feature-cancel" && command != "feature-reconcile" && command != "features-config" && command != "terminal" && command != "terminal-status" && command != "terminal-close" && !desktopRequestCommand(command) && command != "network-config" && command != "network-proxy" && command != "network-trust" && !guestRequestCommand(command) && !desktopWorkerService {
 		return errors.New("--request requires edge-activate or an explicit feature request command")
 	}
 	if *dryRun && command != "submit" && command != "edge-activate" {
@@ -253,16 +275,22 @@ func Run(args []string, checkDependencies func(string) error) error {
 	ctx = context.WithValue(ctx, remoteAuthenticationKey{}, *authentication == "auto")
 	// Setup hands the terminal to dependency installers and provider authentication.
 	// An outer spinner would overwrite their prompts even when nested operations are quiet.
-	options := infrastructure.OperationOptions{Spinner: command != "setup" && command != "pair" && command != "approve" && command != "security-key-register" && command != "unlock" && command != "security-policy" && command != "terminal" && command != "desktop" && command != "desktop-worker" && command != "desktop-relay" && command != "desktop-cleanup" && command != "network-proxy" && command != "network-worker"}
-	if *authentication == "auto" {
+	options := infrastructure.OperationOptions{Spinner: command != "setup" && command != "pair" && command != "approve" && command != "security-key-register" && command != "unlock" && command != "security-policy" && command != "terminal" && command != "desktop" && command != "desktop-worker" && command != "desktop-relay" && command != "desktop-administrator-relay" && command != "desktop-cleanup" && command != "network-proxy" && command != "network-worker"}
+	if *authentication == "auto" || desktopWorkerService {
 		options.Spinner = false
 	}
 	return infrastructure.RunOperationWithOptions(os.Stderr, "remote."+command, "Remote "+command, nil, options, func() error {
 		switch command {
+		case "guest-grant", "guest-grant-revoke", "guest-prepare", "guest-enroll", "guest-release":
+			return guestCommand(ctx, root, command, *activationRequest, *id)
 		case "network-config", "network-catalog", "network-proxy", "network-worker", "network-trust":
 			return networkCommand(ctx, root, command, *activationRequest)
 		case "desktop":
 			return desktopViewer(ctx, root, *activationRequest)
+		case "desktop-administrator-relay":
+			return desktopAdministratorRelayBridge(ctx, root, *activationRequest)
+		case "desktop-administrator-approval", "desktop-administrator-grant", "desktop-administrator-service":
+			return desktopAdministratorCommand(ctx, root, command, *activationRequest)
 		case "desktop-relay":
 			return desktopRelayBridge(ctx, root, *activationRequest)
 		case "desktop-cleanup":
@@ -292,6 +320,9 @@ func Run(args []string, checkDependencies func(string) error) error {
 		case "feature-reconcile":
 			return reconcileFeature(ctx, root, *activationRequest, *recoveryChoice, *expectedContainer)
 		case "features-config":
+			if *terminalHome {
+				return configureWorkerFeatures(ctx, root, "", true)
+			}
 			return configureFeatures(ctx, root, *activationRequest)
 		case "terminal":
 			return remoteTerminal(ctx, root, *activationRequest, *prepareTerminal)
@@ -325,11 +356,13 @@ func Run(args []string, checkDependencies func(string) error) error {
 			if err := remoteio.ReadPrivate(filepath.Join(root, "worker.json"), &config); err != nil {
 				return err
 			}
-			executable, err := os.Executable()
+			executable, err := process.Executable()
 			if err != nil {
 				return err
 			}
 			return remoteio.RunWorker(ctx, root, executable, config)
+		case "service-worker-desktop":
+			return superviseDesktopWorker(ctx, root, *activationRequest, *expectedDigest, *desktopStdio)
 		case "service":
 			return installServiceWithReplacement(ctx, root, *role, *replaceService)
 		case "submit":
@@ -343,8 +376,11 @@ func Run(args []string, checkDependencies func(string) error) error {
 				return errors.New("delivery options require --workflow-file")
 			}
 			return operator(ctx, root, command, *node, *profile, *id, *out)
-		case "invite", "nodes", "jobs", "result", "cancel", "revoke", "remove":
+		case "invite", "nodes", "jobs", "result", "job-log", "cancel", "revoke", "remove":
 			return operator(ctx, root, command, *node, *profile, *id, *out)
+		case "job-interruption-inspect", "job-interruption-acknowledge":
+			request := contract.JobInterruptionRequest{ID: *id, Node: *node, ReviewToken: *reviewToken}
+			return reviewJobInterruption(ctx, root, request, command == "job-interruption-acknowledge")
 		default:
 			return fmt.Errorf("unknown remote command %q\n%s", command, usage)
 		}
@@ -406,6 +442,15 @@ func operator(ctx context.Context, root, command, node, profile, id, output stri
 		}
 		job.Result = nil
 		return json.NewEncoder(os.Stdout).Encode(job)
+	case "job-log":
+		if !contract.ValidID(id) {
+			return errors.New("live log preview requires an exact --id")
+		}
+		var preview contract.LiveLogView
+		if err := client.Call(ctx, "/v1/job-log", map[string]string{"id": id}, &preview); err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(preview)
 	case "cancel":
 		var job contract.Job
 		if err := client.Call(ctx, "/v1/cancel", map[string]string{"id": id}, &job); err != nil {
@@ -426,7 +471,7 @@ func pairWithDelivery(ctx context.Context, root, invitePath, profilesPath string
 	if err := remoteio.PrivateDirectory(root); err != nil {
 		return err
 	}
-	unlock, err := remoteio.Lock(filepath.Join(root, "worker.lock"))
+	unlock, err := remoteio.LockWorker(root)
 	if err != nil {
 		return err
 	}

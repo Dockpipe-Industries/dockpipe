@@ -13,22 +13,28 @@ import (
 )
 
 type desktopBroker struct {
-	epoch    string
-	records  map[string]*desktopRecord
-	catalogs map[string]contract.DesktopCatalog
+	epoch               string
+	records             map[string]*desktopRecord
+	catalogs            map[string]contract.DesktopCatalog
+	administratorKeys   map[string]desktopAdministratorService
+	administratorSerial uint64
+	administratorSeen   map[string]time.Time
 }
 
 type desktopRecord struct {
-	open      contract.DesktopOpen
-	admission operatorAdmission
-	state     string
-	reason    string
-	close     bool
-	closingAt time.Time
-	viewer    desktopSignalQueue
-	worker    desktopSignalQueue
-	bytes     int
-	relay     *desktopRelay
+	open                  contract.DesktopOpen
+	admission             operatorAdmission
+	state                 string
+	reason                string
+	close                 bool
+	closingAt             time.Time
+	viewer                desktopSignalQueue
+	worker                desktopSignalQueue
+	bytes                 int
+	relay                 *desktopRelay
+	administrator         *desktopAdministratorAdmission
+	administratorRelay    *desktopRelay
+	administratorApproval *contract.DesktopAdministratorApproval
 }
 
 type desktopSignalQueue struct {
@@ -48,7 +54,7 @@ func (broker *Broker) desktopState() *desktopBroker {
 
 func desktopOperatorPath(path string) bool {
 	switch path {
-	case contract.DesktopRelayTicketPath, "/v1/desktop-catalog", "/v1/desktop-open", "/v1/desktop-status", "/v1/desktop-pulse", "/v1/desktop-close", "/v1/desktop-signal":
+	case contract.DesktopAdministratorGrantPath, contract.DesktopAdministratorApprovalPath, contract.DesktopAdministratorRelayTicketPath, contract.DesktopRelayTicketPath, "/v1/desktop-catalog", "/v1/desktop-open", "/v1/desktop-status", "/v1/desktop-pulse", "/v1/desktop-close", "/v1/desktop-signal":
 		return true
 	}
 	return false
@@ -94,6 +100,18 @@ func (broker *Broker) desktopView(record *desktopRecord, after uint64) (contract
 		view.LeaseMillis = broker.desktopLease(record)
 	}
 	return view, err
+}
+
+func (record *desktopRecord) loseAuthority() {
+	record.close = true
+	if record.state == "queued" {
+		// A worker exchange changes queued to opening before it can return
+		// an open directive. A queued record has no native effects to retire.
+		record.state, record.reason = "closed", "not-dispatched"
+		return
+	}
+
+	record.state, record.reason = "unknown", "authority-lost"
 }
 
 func (record *desktopRecord) addSignal(queue *desktopSignalQueue, signal contract.DesktopSignal, viewer bool) error {
@@ -145,6 +163,14 @@ func (record *desktopRecord) addSignal(queue *desktopSignalQueue, signal contrac
 }
 
 func (broker *Broker) desktopOperator(path string, raw []byte, admission operatorAdmission) (any, error) {
+	switch path {
+	case contract.DesktopAdministratorGrantPath:
+		return broker.grantDesktopAdministratorInput(raw, admission)
+	case contract.DesktopAdministratorApprovalPath:
+		return broker.desktopAdministratorApproval(raw, admission)
+	case contract.DesktopAdministratorRelayTicketPath:
+		return broker.desktopAdministratorRelayTicket(raw, true, "", admission)
+	}
 	state := broker.desktopState()
 	if path == contract.DesktopRelayTicketPath {
 		return broker.desktopRelayTicket(raw, "viewer", "", admission)
@@ -153,13 +179,23 @@ func (broker *Broker) desktopOperator(path string, raw []byte, admission operato
 		var request struct {
 			Schema string `json:"schema"`
 		}
-		if decodeFeature(raw, &request) != nil || request.Schema != contract.DesktopVersion {
+		if decodeFeature(raw, &request) != nil ||
+			request.Schema != contract.DesktopVersion && request.Schema != contract.DesktopDiscoveryVersion {
 			return nil, errors.New("invalid desktop discovery request")
 		}
+		extended := request.Schema == contract.DesktopDiscoveryVersion
 		catalogs := []contract.DesktopCatalog{}
 		for _, catalog := range state.catalogs {
 			if broker.desktopCatalogCurrent(catalog) && catalog.View {
 				catalog.Epoch = state.epoch
+				if extended {
+					service := state.administratorKeys[catalog.Target.Node]
+					catalog.AdministratorInput = catalog.Input && service.fingerprint == catalog.Target.Fingerprint &&
+						service.tokenHash != "" && time.Since(state.administratorSeen[catalog.Target.Node]) <= 10*time.Second
+				} else {
+					catalog.Displays = nil
+					catalog.AdministratorInput = false
+				}
 				catalogs = append(catalogs, catalog)
 			}
 		}
@@ -252,7 +288,7 @@ func (broker *Broker) desktopOperator(path string, raw []byte, admission operato
 		read.After = uint64(len(record.worker.signals))
 	}
 	if broker.desktopLease(record) <= 0 && record.state != "closed" && (record.state != "closing" || time.Since(record.closingAt) >= contract.DesktopLease) {
-		record.close, record.state, record.reason = true, "unknown", "authority-lost"
+		record.loseAuthority()
 	}
 	if metadataRecovery {
 		view, err := record.view(uint64(len(record.worker.signals)))
@@ -269,7 +305,8 @@ func (broker *Broker) desktopWorker(node string, raw []byte) (any, error) {
 	state := broker.desktopState()
 	var exchange contract.DesktopExchange
 	enrollment := broker.state.Nodes[node]
-	if decodeFeature(raw, &exchange) != nil || exchange.Schema != contract.DesktopVersion || exchange.Catalog.Validate() != nil ||
+	if decodeFeature(raw, &exchange) != nil ||
+		exchange.Schema != contract.DesktopVersion && exchange.Schema != contract.DesktopDiscoveryVersion || exchange.Catalog.Validate() != nil ||
 		exchange.Catalog.Target.Node != node || enrollment.Revoked || enrollment.MachineKey == "" ||
 		exchange.Catalog.Target.Fingerprint != remoteidentity.Fingerprint(enrollment.MachineKey) || len(exchange.Reports) > 1 {
 		return nil, errors.New("invalid authenticated desktop worker exchange")
@@ -283,6 +320,10 @@ func (broker *Broker) desktopWorker(node string, raw []byte) (any, error) {
 	}
 	exchange.Catalog.ReceivedAt = time.Now().UTC()
 	exchange.Catalog.Epoch = ""
+	exchange.Catalog.AdministratorInput = false
+	if exchange.Schema == contract.DesktopVersion {
+		exchange.Catalog.Displays = nil
+	}
 	state.catalogs[node] = exchange.Catalog
 	for _, report := range exchange.Reports {
 		record := state.records[report.Reference.ID]
@@ -332,10 +373,10 @@ func (broker *Broker) desktopWorker(node string, raw []byte) (any, error) {
 		if record.open.Target != exchange.Catalog.Target || lease <= 0 {
 			record.close = true
 			if record.state != "closing" || time.Since(record.closingAt) >= contract.DesktopLease {
-				record.state, record.reason = "unknown", "authority-lost"
+				record.loseAuthority()
 			}
 		}
-		if record.open.Target != exchange.Catalog.Target {
+		if record.state == "closed" || record.open.Target != exchange.Catalog.Target {
 			continue
 		}
 		if record.state == "queued" {
@@ -355,5 +396,5 @@ func (broker *Broker) desktopWorker(node string, raw []byte) (any, error) {
 // Desktop paths are an explicit allowlist. Unrecognized prefixed operations do
 // not acquire a signing scope or arbitrary command authority.
 func desktopPath(path string) bool {
-	return desktopOperatorPath(path) || path == "/v1/desktop-worker"
+	return desktopOperatorPath(path) || path == "/v1/desktop-worker" || path == contract.DesktopAdministratorServicePath
 }

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -32,24 +31,38 @@ func (broker *Broker) loadFeatures() error {
 		catalogs: map[string]contract.FeatureCatalog{}, admissions: map[string]operatorAdmission{}, recoveries: map[string]operatorAdmission{},
 	}
 	path := filepath.Join(filepath.Dir(broker.path), "feature-operations.json")
-	ledger := featureLedger{Schema: contract.FeatureVersion, Records: map[string]featureReceipt{}}
-	if err := readPrivateBounded(path, &ledger, contract.MaxFeatureStorage); err != nil && !os.IsNotExist(err) {
+	ledger, err := readFeatureLedger(path)
+	if err != nil {
 		return err
-	}
-	if ledger.Schema != contract.FeatureVersion || ledger.Records == nil || len(ledger.Records) > contract.MaxJobs {
-		return errors.New("invalid remote feature journal")
 	}
 	for id, receipt := range ledger.Records {
 		if id != receipt.ID || receipt.validate() != nil {
 			return errors.New("invalid stored feature receipt")
 		}
-		result := recoveredFeatureResult(receipt.Status)
-		features.state.Operations[id] = contract.FeatureOperation{Request: receipt.requestMetadata(), Status: result.Status,
-			Result: &result, CancelRequested: receipt.CancelRequested, ReceiptOnly: true, ResultDigest: receipt.ResultDigest,
-			RecoveryRequested: receipt.RecoveryRequested, Reconciled: receipt.Reconciled, RecoveryChoice: receipt.RecoveryChoice, RecoveryResource: receipt.RecoveryResource, RecoveryError: receipt.RecoveryError, HostRecovery: receipt.HostRecovery}
+		features.state.Operations[id] = receipt.metadataOperation()
 	}
 	broker.features = features
 	return nil
+}
+
+// Only the status route can read a reclaimed, expired mutation from the last
+// durable snapshot. The caller never gets the payload or an execution lease.
+func (broker *Broker) retainedFeatureStatus(reference contract.FeatureReference) (contract.FeatureOperation, bool) {
+	ledger, err := readFeatureLedger(filepath.Join(filepath.Dir(broker.path), "feature-operations.json"))
+	if err != nil {
+		return contract.FeatureOperation{}, false
+	}
+	receipt, exists := ledger.Records[reference.ID]
+	if !exists || receipt.ID != reference.ID || receipt.Target != reference.Target ||
+		receipt.validate() != nil || time.Now().Before(receipt.Deadline) {
+		return contract.FeatureOperation{}, false
+	}
+	switch receipt.Status {
+	case "success", "failure", "cancelled":
+		return receipt.metadataOperation(), true
+	default:
+		return contract.FeatureOperation{}, false
+	}
 }
 
 func (broker *Broker) storeFeature(operation contract.FeatureOperation) error {
@@ -119,15 +132,22 @@ func (broker *Broker) featureOperator(path string, raw []byte, admission operato
 	broker.reclaimFeatures(time.Now())
 	if path == "/v1/features-catalog" {
 		var request struct {
-			Schema string `json:"schema"`
+			Schema              string `json:"schema"`
+			IncludeWorkflowOnly bool   `json:"include_workflow_only,omitempty"`
 		}
 		if decodeFeature(raw, &request) != nil || request.Schema != contract.FeatureVersion {
 			return nil, errors.New("invalid feature catalog request")
 		}
 		catalogs := []contract.FeatureCatalog{}
 		for _, catalog := range broker.features.catalogs {
+			if catalog.WorkflowOnly && !request.IncludeWorkflowOnly {
+				continue
+			}
 			if broker.featureCatalogCurrent(catalog) {
-				catalogs = append(catalogs, broker.publishTerminalCatalog(catalog))
+				if !catalog.WorkflowOnly {
+					catalog = broker.publishTerminalCatalog(catalog)
+				}
+				catalogs = append(catalogs, catalog)
 			}
 		}
 		sort.Slice(catalogs, func(i, j int) bool { return catalogs[i].Target.Node < catalogs[j].Target.Node })
@@ -193,6 +213,11 @@ func (broker *Broker) featureOperator(path string, raw []byte, admission operato
 		return nil, errors.New("invalid feature operation reference")
 	}
 	operation, exists := broker.features.state.Operations[reference.ID]
+	if !exists && path == "/v1/features-write-status" {
+		if retained, ok := broker.retainedFeatureStatus(reference); ok {
+			return retained, nil
+		}
+	}
 	if !exists || operation.Request.Target != reference.Target {
 		return nil, errors.New("feature operation does not belong to this machine lifetime")
 	}
@@ -260,11 +285,16 @@ func (broker *Broker) featureOperator(path string, raw []byte, admission operato
 
 func (broker *Broker) featureCatalogCurrent(catalog contract.FeatureCatalog) bool {
 	enrollment, exists := broker.state.Nodes[catalog.Target.Node]
-	return exists && !enrollment.Revoked && enrollment.TokenHash != "" && enrollment.MachineKey != "" &&
-		remoteidentity.Fingerprint(enrollment.MachineKey) == catalog.Target.Fingerprint && time.Since(catalog.ReceivedAt) <= contract.FeatureCatalogFreshness
+	now := time.Now()
+	return exists && broker.enrollmentActive(enrollment, now) && enrollment.TokenHash != "" && enrollment.MachineKey != "" &&
+		remoteidentity.Fingerprint(enrollment.MachineKey) == catalog.Target.Fingerprint && now.Sub(catalog.ReceivedAt) <= contract.FeatureCatalogFreshness
 }
 
 func featureCatalogAllows(catalog contract.FeatureCatalog, request contract.FeatureRequest) bool {
+	if catalog.WorkflowOnly {
+		return false
+	}
+
 	access := contract.FeatureAccess(request.Action)
 	if request.Action == "terminal.host-recover" {
 		return terminalRoot(catalog, request.Root)
@@ -321,8 +351,15 @@ func (broker *Broker) featureWorker(node, path string, raw []byte) (any, error) 
 		if decodeFeature(raw, &catalog) != nil || catalog.Validate() != nil || catalog.Target.Node != node || catalog.Target.Fingerprint != remoteidentity.Fingerprint(enrollment.MachineKey) {
 			return nil, errors.New("invalid authenticated feature catalog")
 		}
+		if enrollment.GuestGrant != "" && !catalog.WorkflowOnly {
+			return nil, errors.New("disposable guests can only advertise workflow delivery")
+		}
+
 		catalog.ReceivedAt = time.Now().UTC()
 		broker.features.catalogs[node] = catalog
+		if catalog.WorkflowOnly {
+			return nil, nil
+		}
 		// Recoveries do not execute work. An unrelated unknown receipt must not
 		// prevent the worker from acknowledging the specifically revoked intent.
 		for _, operation := range broker.features.state.Operations {

@@ -38,7 +38,7 @@ func pairOnlineWithFeatures(ctx context.Context, root, endpoint, node string, al
 	if err := remoteio.PrivateDirectory(root); err != nil {
 		return err
 	}
-	unlock, err := remoteio.Lock(filepath.Join(root, "worker.lock"))
+	unlock, err := remoteio.LockWorker(root)
 	if err != nil {
 		return err
 	}
@@ -131,7 +131,8 @@ func pairOnlineWithFeatures(ctx context.Context, root, endpoint, node string, al
 			fmt.Fprintln(os.Stderr, "Previous access was removed. Requesting fresh approval with a new credential.")
 			continue
 		case "approved":
-			fmt.Fprintln(os.Stderr, "Paired. Start this worker with: dockpipe remote service --role worker")
+			fmt.Fprintln(os.Stderr, "Paired. Start the background worker with: dockpipe remote service --role worker. If you specified --state, use the same directory.")
+
 			return nil
 		case "denied":
 			return errors.New("pairing denied by broker")

@@ -123,10 +123,13 @@ func executeFeature(ctx context.Context, permissions FeaturePermissions, request
 			return contract.FeatureResult{Status: "failure", Error: "The original host terminal requires a changed captured kernel boot identity; its host has not rebooted. No quota was released."}
 		}
 		if errors.Is(err, process.ErrScopeUnavailable) {
-			return contract.FeatureResult{Status: "failure", Error: "Recoverable remote Git/container execution requires a writable Linux cgroup-v2 delegation on the worker (Delegate=yes); no native mutation was started."}
+			return contract.FeatureResult{Status: "failure", Error: "Recoverable remote Git/container execution needs an available worker recovery mode: delegated Linux cgroup v2 (Delegate=yes) or owner-selected host-reboot recovery. No native mutation was started."}
 		}
 		if ctx.Err() != nil {
 			return contract.FeatureResult{Status: "cancelled", Error: "Feature authority expired or execution was cancelled; inspect state before a new mutation."}
+		}
+		if errors.Is(err, workspacefiles.ErrChanged) {
+			return contract.FeatureResult{Status: "failure", Error: workspacefiles.ErrChanged.Error()}
 		}
 		return contract.FeatureResult{Status: "failure", Error: "Native feature operation rejected or failed; refresh the selected resource."}
 	}

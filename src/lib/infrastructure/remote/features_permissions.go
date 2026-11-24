@@ -43,10 +43,10 @@ func (permissions FeaturePermissions) Validate() error {
 		return errors.New("Docker exec requires Docker read permission")
 	}
 	seen := map[string]bool{}
-	terminalRoots := 0
+	hasTerminalRoot := false
 	for _, root := range permissions.Roots {
 		if root.Terminal {
-			terminalRoots++
+			hasTerminalRoot = true
 		}
 		if root.FilesWrite && !root.FilesRead || (root.GitWrite || root.GitPublish) && !root.GitRead {
 			return errors.New("file and Git mutations require their corresponding read permission")
@@ -56,8 +56,8 @@ func (permissions FeaturePermissions) Validate() error {
 		}
 		seen[root.ID] = true
 	}
-	if terminalRoots > 1 || (terminalRoots == 1) != (permissions.TerminalProfile != nil) {
-		return errors.New("terminal authority requires exactly one owner root and shell profile")
+	if hasTerminalRoot != (permissions.TerminalProfile != nil) {
+		return errors.New("terminal authority requires owner-granted roots and a shell profile")
 	}
 	if permissions.TerminalProfile != nil {
 		if err := permissions.TerminalProfile.Validate(); err != nil {
@@ -74,7 +74,7 @@ func (permissions FeaturePermissions) catalog(target contract.FeatureTarget) con
 		published.Terminal = published.Terminal && terminalSupported()
 		roots = append(roots, published)
 	}
-	return contract.FeatureCatalog{Schema: contract.FeatureVersion, Target: target, Roots: roots, DockerRead: permissions.DockerRead, DockerControl: permissions.DockerControl, DockerExec: permissions.DockerExec && terminalSupported(), DockerRecovery: permissions.DockerRecovery, ProcessRecovery: permissions.ProcessRecovery}
+	return contract.FeatureCatalog{Schema: contract.FeatureVersion, Target: target, Roots: roots, DockerRead: permissions.DockerRead, DockerControl: permissions.DockerControl, DockerExec: permissions.DockerExec && containerTerminalSupported(), DockerRecovery: permissions.DockerRecovery, ProcessRecovery: permissions.ProcessRecovery}
 }
 
 func loadFeaturePermissions(root string) (FeaturePermissions, error) {
@@ -96,7 +96,7 @@ func SaveFeaturePermissions(root string, permissions FeaturePermissions) error {
 		return err
 	}
 	if permissions.TerminalProfile != nil && !terminalSupported() {
-		return errors.New("remote terminal is unavailable on this platform; a qualified ConPTY backend is required on Windows")
+		return errors.New("remote terminal requires a supported worker and its installed native terminal provider on Windows")
 	}
 	encoded, err := json.Marshal(permissions)
 	if err != nil {

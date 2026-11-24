@@ -11,6 +11,16 @@ import (
 
 type commandRunner func(context.Context, string, ...string) ([]byte, error)
 
+const systemCommandFailureMessage = "OS security service rejected the request or is unavailable"
+
+type systemCommandExitError struct {
+	code int
+}
+
+func (systemCommandExitError) Error() string {
+	return systemCommandFailureMessage
+}
+
 type boundedOutput struct {
 	buffer  bytes.Buffer
 	maximum int
@@ -52,7 +62,13 @@ func runSystemCommandBounded(ctx context.Context, program string, maximum int, a
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		return nil, errors.New("OS security service rejected the request or is unavailable")
+
+		var exit *exec.ExitError
+		if errors.As(err, &exit) {
+			return nil, systemCommandExitError{code: exit.ExitCode()}
+		}
+
+		return nil, errors.New(systemCommandFailureMessage)
 	}
 	return output.Bytes(), nil
 }

@@ -20,6 +20,17 @@ account**, including loopback services, private/LAN networks and public networks
 on ports 1–65535. It does not grant UDP, raw sockets, filesystem access or process
 execution. Enable it only for an operator trusted with those reachable services.
 There is no implicit grant inherited from pairing, features or desktop access.
+
+To allow one service on the worker, set an exact loopback IP and port:
+
+```json
+{"schema":"dockpipe.remote.network/v1","enabled":true,"loopback_destination":"127.0.0.1:8080"}
+```
+
+Use that same IP and port in the Browser URL. Requests for other destinations
+fail on the worker before it opens a socket, including redirects to a different
+port or hostname. Use a worker version that recognizes this field.
+
 Missing, invalid or disabled permissions fail closed. Setting `enabled` to false
 ends the running worker's connections; restarting requires a fresh worker lifetime.
 
@@ -32,6 +43,10 @@ worker restart; unrelated worker capabilities continue. Confirmed public-trust
 changes rotate the network lifetime as described below. No TCP open is retried
 automatically.
 
+The background worker logs a stop category for the grant, OS lock or sleep
+state, worker lock, or broker failure. Broker HTTP failures include the status
+code. The service log omits response bodies and raw transport errors.
+
 A GUI without the normal service can own `dockpipe remote network-worker --stdio`.
 Both entry points share the same implementation and singleton exclusion. One
 worker lifetime per state root publishes an independent generation and services
@@ -41,6 +56,17 @@ A changed permission, an unknown/locked local OS session, sleep/resume or failed
 broker exchange cancels either entry point and its sockets. Its
 private `network-worker.lock` excludes competing lifetimes. Existing worker identity
 and broker identity signatures authenticate every catalog/directive exchange.
+
+On Linux Cinnamon, the running Cinnamon ScreenSaver service can provide the
+native lock state when logind cannot establish it alone. Dockpipe queries the
+existing service and does not activate it. If Cinnamon stops its idle service
+and logind supplies no lock capability, the worker stays unavailable.
+
+On Windows x64 and ARM64, the Network worker needs its own active local console
+session. The worker obtains lock state from Windows session information and
+checks elapsed and working-state clocks for suspension. Locked, disconnected,
+remote-only and session-zero processes cannot establish an unlocked console
+session. This worker support does not enable Windows broker authentication.
 
 ## Operator ownership
 
@@ -149,13 +175,31 @@ only into the selected network context. The ordinary browser public-root baselin
 remains enabled: this additive mechanism does **not** reproduce all native trust
 policy or subtract native distrust from that baseline.
 
+On any supported Network worker, the owner can select explicit public CA roots
+by writing `network-trust.json` in the worker's private state directory beside
+`network.json`. The file takes precedence over native export. The owner must
+keep it private and replace it atomically when rotating the selection.
+
+```json
+{"schema":"dockpipe.remote.network-trust-material/v1","certificates":["<base64 public DER>"]}
+```
+
+Supply an explicit array of valid self-signed CA certificates in DER form. The
+usual count and byte bounds apply. Private keys and native trust restrictions
+are outside this format. Add only roots approved for SSL use on the selected
+worker. An empty array explicitly adds no roots. The worker does not read the
+file unless `share_tls_trust` is enabled. An invalid or inaccessible file makes
+sharing unavailable. Changing the accepted snapshot retires the worker's
+current network generation and its connections.
+
 On macOS the signed, fixed installed `dockpipe-system-auth --tls-trust` helper
 exports only explicit user/admin additional SSL anchors that pass native SSL
 assessment. Unsupported applicable restrictions or distrust yield an unavailable
 result, never a partially accepted set or flattened hostname/application policy.
 Default system roots and their trust-asset policies are not projected. Other
-platforms without an equivalent provider report unavailable when sharing is
-requested. Native verification and certificate collection are read-only.
+platforms without an equivalent provider need the explicit file above when
+sharing is requested. Native verification and certificate collection are
+read-only.
 
 Discovery contains only an optional compact summary:
 

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -46,10 +47,14 @@ func TestDesktopWorkerCleanupAcknowledgesOnlyExactClosedProof(t *testing.T) {
 }
 
 func TestDesktopWorkerFenceDrainOnlyForwardsExactCleanupProof(t *testing.T) {
-	for _, scenario := range []string{"closed", "unknown", "running", "foreign", "signals", "eof"} {
+	for _, scenario := range []string{"closed", "lost-ack", "unknown", "running", "foreign", "signals", "eof"} {
 		t.Run(scenario, func(t *testing.T) {
 			request := desktopTestIntent()
-			catalog := contract.DesktopCatalog{Schema: contract.DesktopVersion, Target: request.Target, Provider: request.Provider, View: true, Input: true}
+			catalog := contract.DesktopCatalog{
+				Schema: contract.DesktopVersion, Target: request.Target, Provider: request.Provider,
+				View: true, Input: true, AdministratorInput: true,
+				Displays: []contract.DesktopDisplay{{Source: "external-display", Width: 3840, Height: 2160}},
+			}
 			var calls atomic.Int32
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				var exchange contract.DesktopExchange
@@ -57,8 +62,8 @@ func TestDesktopWorkerFenceDrainOnlyForwardsExactCleanupProof(t *testing.T) {
 					t.Error(err)
 					return
 				}
-				if exchange.Catalog.View || exchange.Catalog.Input {
-					t.Error("cleanup drain renewed desktop grants")
+				if exchange.Catalog.View || exchange.Catalog.Input || exchange.Catalog.AdministratorInput || len(exchange.Catalog.Displays) != 0 {
+					t.Error("cleanup drain renewed desktop grants or published displays")
 				}
 				count := calls.Add(1)
 				response := contract.DesktopExchangeResult{Schema: contract.DesktopVersion, Epoch: request.Epoch}
@@ -70,6 +75,10 @@ func TestDesktopWorkerFenceDrainOnlyForwardsExactCleanupProof(t *testing.T) {
 					}
 					if scenario == "closed" {
 						response.Forget = []contract.DesktopReference{request.Reference()}
+					}
+					if scenario == "lost-ack" {
+						http.Error(w, "test transport failure", http.StatusServiceUnavailable)
+						return
 					}
 				}
 				_ = json.NewEncoder(w).Encode(response)
@@ -100,10 +109,11 @@ func TestDesktopWorkerFenceDrainOnlyForwardsExactCleanupProof(t *testing.T) {
 				close(frames)
 			}
 			var output desktopBuffer
-			drainDesktopWorker(context.Background(), client, contract.DesktopExchange{Schema: contract.DesktopVersion, Epoch: request.Epoch, Catalog: catalog}, nil,
+			journal := desktopCleanupTestJournal(t)
+			drainDesktopWorker(context.Background(), client, journal, contract.DesktopExchange{Schema: contract.DesktopVersion, Epoch: request.Epoch, Catalog: catalog}, nil,
 				json.NewEncoder(&output), frames, failures, io.NopCloser(strings.NewReader("")), &output)
 			expected := int32(1)
-			if scenario == "closed" || scenario == "unknown" {
+			if scenario == "closed" || scenario == "unknown" || scenario == "lost-ack" {
 				expected = 2
 			}
 			if calls.Load() != expected {
@@ -114,6 +124,10 @@ func TestDesktopWorkerFenceDrainOnlyForwardsExactCleanupProof(t *testing.T) {
 			}
 			if !strings.Contains(output.String(), `"lease_millis":0`) || !strings.Contains(output.String(), `"close":true`) {
 				t.Fatal("native shutdown directive retained desktop authority")
+			}
+			_, err = os.Stat(string(journal))
+			if scenario == "lost-ack" && err != nil || scenario != "lost-ack" && !os.IsNotExist(err) {
+				t.Fatalf("journal must retain only a verified close without an acknowledgment: %v", err)
 			}
 		})
 	}
@@ -143,7 +157,7 @@ func TestDesktopWorkerFencePreservesAlreadyQueuedCleanupProof(t *testing.T) {
 	catalog := contract.DesktopCatalog{Schema: contract.DesktopVersion, Target: request.Target, Provider: request.Provider, View: true, Input: true}
 	active := contract.DesktopDirective{Open: request, Operator: strings.Repeat("a", 64), LeaseMillis: 1}
 	var output desktopBuffer
-	drainDesktopWorker(context.Background(), client, contract.DesktopExchange{Schema: contract.DesktopVersion, Epoch: request.Epoch, Catalog: catalog,
+	drainDesktopWorker(context.Background(), client, desktopCleanupTestJournal(t), contract.DesktopExchange{Schema: contract.DesktopVersion, Epoch: request.Epoch, Catalog: catalog,
 		Reports: []contract.DesktopReport{{Reference: request.Reference(), State: "closed"}}}, &active,
 		json.NewEncoder(&output), nil, nil, io.NopCloser(strings.NewReader("")), &output)
 	if calls.Load() != 1 || !strings.Contains(output.String(), `"type":"forget"`) {
@@ -199,7 +213,7 @@ func TestDesktopWorkerFenceDrainsQueuedOrdinaryReportsBeforeClosedProof(t *testi
 			frames <- desktopFrame{Type: "report", Report: &closed}
 			close(frames)
 			var output desktopBuffer
-			drainDesktopWorker(context.Background(), client, contract.DesktopExchange{Schema: contract.DesktopVersion, Epoch: request.Epoch, Catalog: catalog}, nil,
+			drainDesktopWorker(context.Background(), client, desktopCleanupTestJournal(t), contract.DesktopExchange{Schema: contract.DesktopVersion, Epoch: request.Epoch, Catalog: catalog}, nil,
 				json.NewEncoder(&output), frames, nil, io.NopCloser(strings.NewReader("")), &output)
 			if calls.Load() != 2 {
 				t.Fatalf("queued ordinary report discarded the later native cleanup proof: %d exchanges", calls.Load())

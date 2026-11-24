@@ -1,11 +1,38 @@
 package remote
 
 import (
+	"context"
 	"errors"
+	"time"
 
 	contract "dockpipe/src/lib/domain/remote"
 	"dockpipe/src/lib/infrastructure/remoteidentity"
 )
+
+func workflowOnlyTarget(config contract.WorkerConfig, instance string) contract.FeatureTarget {
+	return contract.FeatureTarget{Node: config.Node, Fingerprint: remoteidentity.Fingerprint(config.MachineKey),
+		Generation: Hash("workflow-delivery:" + instance)}
+}
+
+func publishWorkflowOnly(ctx context.Context, client *Client, target contract.FeatureTarget) {
+	catalog := contract.FeatureCatalog{Schema: contract.FeatureVersion, Target: target, WorkflowOnly: true}
+	for ctx.Err() == nil {
+		request, cancel := context.WithTimeout(ctx, 3*time.Second)
+		err := client.Call(request, "/v1/features-next", catalog, nil)
+		cancel()
+
+		interval := 2 * time.Second
+		var status *HTTPError
+		if errors.As(err, &status) {
+			// A broker that predates workflow-only discovery can still deliver
+			// ordinary jobs, so leave the independent worker loop running.
+			interval = contract.FeatureCatalogFreshness
+		}
+		if !pause(ctx, interval) {
+			return
+		}
+	}
+}
 
 // validateDeliveryTarget runs under the broker lock at submission and assignment.
 // Feature enrollment selects identity only; the worker still owns delivery grants.
@@ -39,8 +66,14 @@ func validateWorkerDeliveryTarget(root string, config contract.WorkerConfig, ins
 	if submission.Target == (contract.FeatureTarget{}) {
 		return nil
 	}
-	if !config.Features || instance == "" {
-		return errors.New("captured workflow target requires the paired feature worker")
+	if instance == "" {
+		return errors.New("captured workflow target requires a live paired worker")
+	}
+	if !config.Features {
+		if config.Delivery == nil || submission.Root != "" || workflowOnlyTarget(config, instance) != submission.Target {
+			return errors.New("captured workflow delivery worker or generation changed")
+		}
+		return nil
 	}
 	permissions, err := loadFeaturePermissions(root)
 	if err != nil {

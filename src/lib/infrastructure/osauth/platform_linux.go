@@ -5,7 +5,9 @@ package osauth
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -16,17 +18,21 @@ import (
 const UnlockAction = "org.dockpipe.remote.unlock"
 
 type linuxPlatform struct {
-	run            commandRunner
-	processSession func(int, int) (string, error)
-	displaySession func(int) (string, error)
-	readClocks     func() (time.Duration, error)
-	sleepMutex     sync.Mutex
-	sleep          suspendTracker
+	run               commandRunner
+	processSession    func(int, int) (string, error)
+	displaySession    func(int) (string, error)
+	readClocks        func() (time.Duration, error)
+	readSuspendCount  func() (uint64, bool, error)
+	sleepMutex        sync.Mutex
+	sleep             suspendTracker
+	suspendCount      uint64
+	suspendCountKnown bool
 }
 
 func New() (Platform, error) {
 	return &linuxPlatform{run: runSystemCommand, processSession: nativeProcessSession,
-		displaySession: nativeDisplaySession, readClocks: linuxSuspendedTime}, nil
+		displaySession: nativeDisplaySession, readClocks: linuxSuspendedTime,
+		readSuspendCount: linuxSuccessfulSuspends}, nil
 }
 
 func (*linuxPlatform) SecurityDirectory() (string, error) { return securityDirectory() }
@@ -38,7 +44,46 @@ func (platform *linuxPlatform) SuspendGeneration() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return platform.sleep.observe(suspended), nil
+
+	count, known, err := platform.readSuspendCount()
+	if err != nil {
+		return 0, err
+	}
+	if platform.suspendCountKnown && !known {
+		return 0, errors.New("Linux kernel suspend statistics became unavailable")
+	}
+
+	// Virtualized suspend-to-idle can leave the clock difference unchanged.
+	// Read the kernel counter at final admission as well as on each snapshot.
+	resumed := known && (!platform.suspendCountKnown || count != platform.suspendCount)
+	if known {
+		platform.suspendCount = count
+		platform.suspendCountKnown = true
+	}
+
+	return platform.sleep.observeWithResumeEvent(suspended, resumed), nil
+}
+
+func linuxSuccessfulSuspends() (uint64, bool, error) {
+	file, err := os.Open("/sys/power/suspend_stats/success")
+	if errors.Is(err, os.ErrNotExist) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	defer file.Close()
+
+	raw, err := io.ReadAll(io.LimitReader(file, 32))
+	if err != nil {
+		return 0, false, err
+	}
+	if len(raw) == 32 {
+		return 0, false, errors.New("Linux kernel suspend statistics exceeded their bound")
+	}
+
+	count, err := strconv.ParseUint(strings.TrimSpace(string(raw)), 10, 64)
+	return count, err == nil, err
 }
 
 func (platform *linuxPlatform) Authenticate(ctx context.Context, peerPID int) error {
@@ -70,6 +115,20 @@ func (platform *linuxPlatform) Authenticate(ctx context.Context, peerPID int) er
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+
+		var exit systemCommandExitError
+		if errors.As(err, &exit) {
+			// pkcheck documents distinct results for denial, no agent, and dismissal.
+			switch exit.code {
+			case 1:
+				return errors.New("OS authentication was denied")
+			case 2:
+				return errors.New("OS authentication requires an active local authentication agent")
+			case 3:
+				return errors.New("OS authentication was cancelled")
+			}
+		}
+
 		return errors.New("OS authentication did not complete; install the Dockpipe polkit action and use an active local authentication agent")
 	}
 	current, err := readProcessIdentity(peerPID)

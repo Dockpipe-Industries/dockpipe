@@ -17,11 +17,12 @@ import (
 	contract "dockpipe/src/lib/domain/remote"
 )
 
-func terminalFixture(t *testing.T) (*Broker, *Client, *Client, string, FeaturePermissions, contract.FeatureCatalog) {
+func terminalFixture(t *testing.T, additionalRoots ...FeatureRootPermission) (*Broker, *Client, *Client, string, FeaturePermissions, contract.FeatureCatalog) {
 	t.Helper()
 	broker, admin, worker, config, root, permissions, _ := featureFixture(t)
 	worker.HTTP.Transport = &featureDisconnectTransport{RoundTripper: worker.HTTP.Transport}
 	permissions.Roots[0].Terminal = true
+	permissions.Roots = append(permissions.Roots, additionalRoots...)
 	permissions.TerminalProfile = &TerminalProfile{Executable: "/bin/sh", Args: []string{"-i"}}
 	if err := SaveFeaturePermissions(root, permissions); err != nil {
 		t.Fatal(err)
@@ -150,6 +151,44 @@ func TestTerminalRealPTYTypedInputResizeAndNoJournal(t *testing.T) {
 			if bytes.Contains(data, []byte(base64.StdEncoding.EncodeToString(input.Data))) {
 				t.Fatal("encoded terminal input reached durable state")
 			}
+		}
+	}
+}
+
+func TestTerminalOpensInEachGrantedRoot(t *testing.T) {
+	home := FeatureRootPermission{
+		FeatureRoot: contract.FeatureRoot{ID: "home", Name: "Home", Terminal: true},
+		Path:        t.TempDir(),
+	}
+	_, admin, _, _, permissions, catalog := terminalFixture(t, home)
+	ctx := context.Background()
+	for _, root := range permissions.Roots {
+		directory, err := filepath.EvalSymlinks(root.Path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		request := terminalIntent(t, catalog)
+		request.Root = root.ID
+		request.ID, _ = request.Digest()
+		if _, err := admin.OpenTerminal(ctx, request); err != nil {
+			t.Fatal(err)
+		}
+
+		reference := request.Reference()
+		input := contract.TerminalInput{Reference: reference, Sequence: 1, Data: []byte("printf '__cwd=%s__\\n' \"$(pwd -P)\"\n")}
+		if _, err := admin.InputTerminal(ctx, input); err != nil {
+			t.Fatal(err)
+		}
+		expected := []byte("__cwd=" + directory + "__\r\n")
+		awaitTerminal(t, admin, reference, func(view contract.TerminalView) bool {
+			return view.AckSequence == 1 && bytes.Contains(view.Data, expected)
+		})
+		if _, err := admin.CloseTerminal(ctx, reference); err != nil {
+			t.Fatal(err)
+		}
+		awaitTerminal(t, admin, reference, func(view contract.TerminalView) bool { return view.State == "closed" })
+		if _, err := admin.ReleaseTerminal(ctx, reference); err != nil {
+			t.Fatal(err)
 		}
 	}
 }

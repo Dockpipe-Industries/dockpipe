@@ -3,6 +3,7 @@ package remote
 import (
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	contract "dockpipe/src/lib/domain/remote"
@@ -21,18 +22,21 @@ type networkTrustMaterial struct {
 	snapshot *contract.NetworkTrustSnapshot
 }
 
-func collectNetworkTrust(parent context.Context, platform DesktopSessionSnapshot, target contract.FeatureTarget, enabled bool) networkTrustMaterial {
+func collectNetworkTrust(parent context.Context, root string, platform DesktopSessionSnapshot, target contract.FeatureTarget, enabled bool) networkTrustMaterial {
 	if !enabled {
 		return networkTrustMaterial{summary: contract.NetworkTrustSummary{State: "disabled"}}
 	}
 	unavailable := networkTrustMaterial{summary: contract.NetworkTrustSummary{State: "unavailable"}}
-	source, supported := platform.(networkTLSAnchorSource)
-	if !supported {
-		return unavailable
-	}
 	ctx, cancel := context.WithTimeout(parent, 5*time.Second)
 	defer cancel()
-	certificates, err := source.NetworkTLSAnchors(ctx)
+	certificates, err := loadNetworkTrustAnchors(root)
+	if errors.Is(err, os.ErrNotExist) {
+		source, supported := platform.(networkTLSAnchorSource)
+		if !supported {
+			return unavailable
+		}
+		certificates, err = source.NetworkTLSAnchors(ctx)
+	}
 	if err != nil || ctx.Err() != nil {
 		return unavailable
 	}
@@ -41,13 +45,4 @@ func collectNetworkTrust(parent context.Context, platform DesktopSessionSnapshot
 		return unavailable
 	}
 	return networkTrustMaterial{summary: snapshot.Summary(), snapshot: &snapshot}
-}
-
-func networkWorkerContextError(ctx context.Context, trustChanged <-chan struct{}) error {
-	select {
-	case <-trustChanged:
-		return errNetworkTrustChanged
-	default:
-		return ctx.Err()
-	}
 }

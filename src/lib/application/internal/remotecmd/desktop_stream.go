@@ -23,6 +23,7 @@ type desktopFrame struct {
 	Provider  *contract.DesktopProvider  `json:"provider,omitempty"`
 	View      bool                       `json:"view,omitempty"`
 	Input     bool                       `json:"input,omitempty"`
+	Displays  []contract.DesktopDisplay  `json:"displays,omitempty"`
 	Signal    *contract.DesktopSignal    `json:"signal,omitempty"`
 	Report    *contract.DesktopReport    `json:"report,omitempty"`
 }
@@ -48,10 +49,19 @@ func decodeDesktopFrame(data []byte) (desktopFrame, error) {
 	if err := decodeFeatureInput(data, &frame); err != nil {
 		return frame, err
 	}
+	if frame.Type != "ready" && frame.Type != "displays" && frame.Displays != nil {
+		return frame, errors.New("desktop display inventory requires provider readiness")
+	}
 	switch frame.Type {
 	case "ready":
-		if frame.Provider == nil || frame.Provider.Validate() != nil || frame.Reference != nil || frame.Signal != nil || frame.Report != nil || frame.Input && !frame.View {
+		if frame.Provider == nil || frame.Provider.Validate() != nil || frame.Reference != nil || frame.Signal != nil ||
+			frame.Report != nil || frame.Input && !frame.View || contract.ValidateDesktopDisplays(frame.View, frame.Displays) != nil {
 			return frame, errors.New("invalid desktop provider readiness")
+		}
+	case "displays":
+		if frame.Displays == nil || frame.Reference != nil || frame.Provider != nil || frame.Signal != nil ||
+			frame.Report != nil || frame.View || frame.Input || contract.ValidateDesktopDisplays(true, frame.Displays) != nil {
+			return frame, errors.New("invalid desktop display inventory update")
 		}
 	case "prepared-ack":
 		if frame.Reference == nil || frame.Reference.Validate() != nil || frame.Provider != nil || frame.Signal != nil || frame.Report != nil || frame.View || frame.Input {
@@ -222,7 +232,7 @@ func streamDesktopWorkerWithSession(parent context.Context, root string, input i
 	defer output.Close()
 	interrupt := context.AfterFunc(ctx, func() { _ = input.Close(); _ = output.Close() })
 	defer interrupt()
-	unlock, err := remoteio.Lock(filepath.Join(root, "desktop.lock"))
+	unlock, err := remoteio.LockDesktopWorker(root)
 	if err != nil {
 		return err
 	}
@@ -262,6 +272,7 @@ func streamDesktopWorkerWithSession(parent context.Context, root string, input i
 	if err != nil {
 		return err
 	}
+	catalog.Displays = ready.Displays
 	return exchangeDesktopWorker(ctx, root, permissions, client, catalog, scanner, input, output, fence)
 }
 
@@ -271,6 +282,11 @@ func exchangeDesktopWorker(ctx context.Context, root string, permissions remotei
 	client desktopWorkerExchangeClient, catalog contract.DesktopCatalog, scanner *bufio.Scanner,
 	input io.ReadCloser, output io.WriteCloser, fence *remoteio.DesktopSessionFence) error {
 	encoder := json.NewEncoder(output)
+	journal := desktopCleanupJournal(filepath.Join(root, "desktop-close-report.json"))
+	if err := journal.recover(ctx, client, catalog); err != nil {
+		return err
+	}
+
 	exchange := contract.DesktopExchange{Schema: contract.DesktopVersion, Catalog: catalog}
 	response, err := client.ExchangeDesktop(ctx, exchange)
 	if err != nil {
@@ -288,26 +304,34 @@ func exchangeDesktopWorker(ctx context.Context, root string, permissions remotei
 
 	for {
 		if err := fence.Check(ctx); err != nil {
-			drainDesktopWorker(ctx, client, exchange, active, encoder, frames, failures, input, output)
+			drainDesktopWorker(ctx, client, journal, exchange, active, encoder, frames, failures, input, output)
 			return err
 		}
 		if err := remoteio.CheckDesktopPolicy(root, permissions); err != nil {
-			drainDesktopWorker(ctx, client, exchange, active, encoder, frames, failures, input, output)
+			drainDesktopWorker(ctx, client, journal, exchange, active, encoder, frames, failures, input, output)
 			return err
 		}
 		started := time.Now()
 		response, err = client.ExchangeDesktop(ctx, exchange)
 		if err != nil {
+			if active != nil {
+				return errors.Join(err, drainDesktopWorker(ctx, client, journal, exchange, active, encoder, frames, failures, input, output))
+			}
 			return err
 		}
 		if err := fence.Check(ctx); err != nil {
 			if len(response.Directives) == 1 {
 				active = &response.Directives[0]
 			}
-			drainDesktopWorker(ctx, client, exchange, active, encoder, frames, failures, input, output)
+			drainDesktopWorker(ctx, client, journal, exchange, active, encoder, frames, failures, input, output)
 			return err
 		}
 		for _, reference := range response.Forget {
+			if len(exchange.Reports) == 1 && desktopCleanupAcknowledged(response, exchange.Reports[0]) {
+				if err := journal.clear(); err != nil {
+					return err
+				}
+			}
 			if err := encoder.Encode(desktopEvent{Type: "forget", Reference: &reference}); err != nil {
 				return err
 			}
@@ -325,7 +349,7 @@ func exchangeDesktopWorker(ctx context.Context, root string, permissions remotei
 			if directive.Close {
 				// The native pipe can contain old ordinary reports. Once revoked,
 				// consume them without another lease exchange per queued frame.
-				return drainDesktopWorker(ctx, client, exchange, active, encoder, frames, failures, input, output)
+				return drainDesktopWorker(ctx, client, journal, exchange, active, encoder, frames, failures, input, output)
 			}
 			if err := encoder.Encode(desktopEvent{Type: "directive", Directive: &directive}); err != nil {
 				return err
@@ -337,10 +361,17 @@ func exchangeDesktopWorker(ctx context.Context, root string, permissions remotei
 		case err := <-failures:
 			return err
 		case frame := <-frames:
+			if frame.Type == "displays" && exchange.Catalog.View {
+				exchange.Catalog.Displays = frame.Displays
+				continue
+			}
 			if frame.Type != "report" || active == nil || frame.Report.Reference != active.Open.Reference() {
 				return errors.New("native desktop report changed the active session")
 			}
 			exchange.Reports = []contract.DesktopReport{*frame.Report}
+			if err := journal.save(exchange); err != nil {
+				return err
+			}
 		case <-ticker.C:
 		}
 	}

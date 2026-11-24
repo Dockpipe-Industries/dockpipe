@@ -11,6 +11,10 @@ import (
 
 const DesktopVersion = "dockpipe.remote.desktop/v1"
 
+// DesktopDiscoveryVersion opts into display inventory and broker-owned
+// administrator-input discovery without changing desktop session references.
+const DesktopDiscoveryVersion = "dockpipe.remote.desktop-discovery/v2"
+
 // One existing-desktop session per enrolled node bounds simultaneous capture and
 // input ownership. 64 nodes each retain at most 512 KiB of ephemeral signaling.
 const MaxDesktopSessions = 64
@@ -58,19 +62,50 @@ func desktopIdentifier(value string, maximum int) bool {
 }
 
 type DesktopCatalog struct {
-	Schema     string          `json:"schema"`
-	Target     FeatureTarget   `json:"target"`
-	Provider   DesktopProvider `json:"provider"`
-	View       bool            `json:"view"`
-	Input      bool            `json:"input"`
-	Epoch      string          `json:"epoch,omitempty"`
-	ReceivedAt time.Time       `json:"received_at"`
+	Schema             string           `json:"schema"`
+	Target             FeatureTarget    `json:"target"`
+	Provider           DesktopProvider  `json:"provider"`
+	View               bool             `json:"view"`
+	Input              bool             `json:"input"`
+	AdministratorInput bool             `json:"administrator_input,omitempty"`
+	Displays           []DesktopDisplay `json:"displays,omitempty"`
+	Epoch              string           `json:"epoch,omitempty"`
+	ReceivedAt         time.Time        `json:"received_at"`
 }
 
 func (catalog DesktopCatalog) Validate() error {
 	if catalog.Schema != DesktopVersion || catalog.Target.Validate() != nil || catalog.Provider.Validate() != nil || catalog.Input && !catalog.View ||
 		catalog.Epoch != "" && !featureDigest(catalog.Epoch) {
 		return errors.New("invalid desktop capability catalog")
+	}
+	return ValidateDesktopDisplays(catalog.View, catalog.Displays)
+}
+
+// DesktopDisplay describes a source the native provider can capture.
+// The ID remains opaque to the broker, which never receives display positions.
+type DesktopDisplay struct {
+	Source  string `json:"source"`
+	Width   int    `json:"width"`
+	Height  int    `json:"height"`
+	Primary bool   `json:"primary"`
+}
+
+func ValidateDesktopDisplays(view bool, displays []DesktopDisplay) error {
+	if len(displays) > 32 || len(displays) != 0 && !view {
+		return errors.New("invalid desktop display inventory")
+	}
+
+	sources := make(map[string]bool, len(displays))
+	var primary bool
+	for _, display := range displays {
+		if !desktopIdentifier(display.Source, 64) || sources[display.Source] ||
+			display.Width < 2 || display.Width > 16384 || display.Height < 2 || display.Height > 16384 ||
+			display.Primary && primary {
+			return errors.New("invalid desktop display inventory")
+		}
+
+		sources[display.Source] = true
+		primary = primary || display.Primary
 	}
 	return nil
 }

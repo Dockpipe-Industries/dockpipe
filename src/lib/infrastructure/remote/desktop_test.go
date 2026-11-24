@@ -205,6 +205,47 @@ func TestDesktopIndependentGrantsIdentityRevocationAndUnknownQuota(t *testing.T)
 	}
 }
 
+func TestDesktopQueuedIntentLosingAuthorityReleasesReservation(t *testing.T) {
+	for _, scenario := range []string{"worker generation changes", "operator admission expires"} {
+		t.Run(scenario, func(t *testing.T) {
+			broker, admin, worker, _, _, _, catalog := desktopFixture(t)
+			ctx := context.Background()
+			request := desktopIntent(t, catalog)
+			initial, err := admin.OpenDesktop(ctx, request)
+			if err != nil || initial.State != "queued" {
+				t.Fatalf("expected an undispatched request: %+v, %v", initial, err)
+			}
+
+			if scenario == "worker generation changes" {
+				catalog.Target.Generation = Hash("replacement desktop worker generation")
+				exchange := contract.DesktopExchange{
+					Schema: contract.DesktopVersion, Epoch: catalog.Epoch, Catalog: catalog,
+				}
+				response, err := worker.ExchangeDesktop(ctx, exchange)
+				if err != nil || len(response.Directives) != 0 {
+					t.Fatalf("retired intent was sent to a worker: %+v, %v", response, err)
+				}
+			} else {
+				broker.mutex.Lock()
+				broker.desktops.records[request.ID].admission.deadline = time.Now().Add(-time.Second)
+				broker.mutex.Unlock()
+			}
+
+			view, err := admin.DesktopStatus(ctx, contract.DesktopRead{
+				Reference: request.Reference(), MetadataOnly: true,
+			})
+			if err != nil || view.State != "closed" || view.LeaseMillis != 0 || view.Reason != "not-dispatched" {
+				t.Fatalf("queued intent retained a reservation: %+v, %v", view, err)
+			}
+
+			next, err := admin.OpenDesktop(ctx, desktopIntent(t, catalog))
+			if err != nil || next.State != "queued" {
+				t.Fatalf("fresh desktop request should be admitted: %+v, %v", next, err)
+			}
+		})
+	}
+}
+
 func TestDesktopOwnerPolicyIsIndependentAndFrozen(t *testing.T) {
 	_, _, _, config, root, permissions, catalog := desktopFixture(t)
 	changed := permissions

@@ -6,12 +6,17 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
 	"dockpipe/src/lib/domain/invocation"
 	"dockpipe/src/lib/infrastructure/nativeinvocation"
 )
+
+type grantedRepositoryRootKey struct{}
+
+var errGrantedRepositoryRoot = errors.New("remote Git grant must select the repository root")
 
 // RunWorkspaceGit admits local human-driven Git actions using native process
 // identity. Repository, review, confirmation and credential checks remain owned
@@ -27,17 +32,18 @@ func RunWorkspaceGit(ctx context.Context, request WorkspaceGitRequest) (*Workspa
 // authorizer and never fall back to the local process identity.
 func RunWorkspaceGitWithAuthority(ctx context.Context, request WorkspaceGitRequest, target invocation.Target, identity invocation.Identity, authorize invocation.Authorize) (*WorkspaceGitSnapshot, error) {
 	id := invocation.ID{Capability: "dockpipe.git", Action: request.Action, Version: "1"}
-	requireAuthorization := target.Kind == invocation.Remote || authorize != nil
+	remote := target.Kind == invocation.Remote
+	requireAuthorization := remote || authorize != nil
 	contract, err := invocation.New(invocation.Definition{
 		ID: id, Target: target, RequireAuthorization: requireAuthorization,
-	}, prepareWorkspaceGit(requireAuthorization), authorize)
+	}, prepareWorkspaceGit(requireAuthorization, remote), authorize)
 	if err != nil {
 		return nil, err
 	}
 	return contract.Invoke(ctx, invocation.Call{Contract: id, Identity: identity, Target: target}, request)
 }
 
-func prepareWorkspaceGit(requireDigest bool) invocation.Prepare[WorkspaceGitRequest, *WorkspaceGitSnapshot] {
+func prepareWorkspaceGit(requireDigest, remote bool) invocation.Prepare[WorkspaceGitRequest, *WorkspaceGitSnapshot] {
 	return func(ctx context.Context, request WorkspaceGitRequest) (invocation.Prepared[*WorkspaceGitSnapshot], error) {
 		if err := ctx.Err(); err != nil {
 			return invocation.Prepared[*WorkspaceGitSnapshot]{}, err
@@ -53,6 +59,16 @@ func prepareWorkspaceGit(requireDigest bool) invocation.Prepare[WorkspaceGitRequ
 		prepared := invocation.Prepared[*WorkspaceGitSnapshot]{
 			Revision: request.Snapshot,
 			Execute: func(ctx context.Context) (*WorkspaceGitSnapshot, error) {
+				if remote {
+					grantedRoot, err := os.Stat(request.Workdir)
+					if err != nil || !grantedRoot.IsDir() {
+						return nil, errGrantedRepositoryRoot
+					}
+
+					// Keep the admitted directory identity across snapshot refreshes.
+					ctx = context.WithValue(ctx, grantedRepositoryRootKey{}, grantedRoot)
+				}
+
 				return executeWorkspaceGit(ctx, request)
 			},
 		}

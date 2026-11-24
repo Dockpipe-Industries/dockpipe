@@ -66,7 +66,10 @@ func TestNetworkConcurrentContextsAndPulseShareGlobalAuthority(t *testing.T) {
 				}
 				for _, ticket := range tickets {
 					streams.Add(1)
-					go func(ticket contract.NetworkTicket) { defer streams.Done(); _ = worker.ServeNetworkTCP(ctx, ticket) }(ticket)
+					go func(ticket contract.NetworkTicket) {
+						defer streams.Done()
+						_ = worker.ServeNetworkTCP(ctx, ticket, contract.NetworkPermissions{Enabled: true})
+					}(ticket)
 				}
 			}
 		}

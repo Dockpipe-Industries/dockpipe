@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"time"
 
 	contract "dockpipe/src/lib/domain/remote"
@@ -36,7 +37,15 @@ func NewFeatureRequest(target contract.FeatureTarget, root, action string, paylo
 
 func (client *Client) FeatureCatalog(ctx context.Context) ([]contract.FeatureCatalog, error) {
 	var catalogs []contract.FeatureCatalog
-	err := client.Call(ctx, "/v1/features-catalog", map[string]string{"schema": contract.FeatureVersion}, &catalogs)
+	request := map[string]any{"schema": contract.FeatureVersion, "include_workflow_only": true}
+	err := client.Call(ctx, "/v1/features-catalog", request, &catalogs)
+	var status *HTTPError
+	if errors.As(err, &status) && status.StatusCode == http.StatusConflict {
+		// Older brokers reject the optional field. A read-only retry preserves
+		// discovery for their existing feature workers.
+		delete(request, "include_workflow_only")
+		err = client.Call(ctx, "/v1/features-catalog", request, &catalogs)
+	}
 	if err != nil {
 		return nil, err
 	}

@@ -25,16 +25,17 @@ type desktopRelayTicket struct {
 }
 
 type desktopRelay struct {
-	context  context.Context
-	cancel   context.CancelFunc
-	ready    chan struct{}
-	tickets  [2]*desktopRelayTicket
-	sockets  [2]*websocket.Conn
-	reserved [2]bool
-	retired  bool
-	watching bool
-	paired   bool
-	started  time.Time
+	context       context.Context
+	cancel        context.CancelFunc
+	ready         chan struct{}
+	tickets       [2]*desktopRelayTicket
+	sockets       [2]*websocket.Conn
+	reserved      [2]bool
+	retired       bool
+	watching      bool
+	paired        bool
+	started       time.Time
+	administrator bool
 }
 
 func desktopRelayRole(role string) int {
@@ -69,22 +70,40 @@ func (broker *Broker) desktopRelayTicket(raw []byte, role, node string, admissio
 		ctx, cancel := context.WithDeadline(context.Background(), record.open.Deadline)
 		record.relay = &desktopRelay{context: ctx, cancel: cancel, ready: make(chan struct{})}
 	}
-	relay := record.relay
-	if relay.retired || relay.reserved[index] {
-		return nil, errors.New("desktop relay endpoint is already attached or permanently disconnected")
+	expires := minDesktopTime(record.open.Deadline, time.Now().Add(contract.DesktopRelayTicketLifetime))
+	return issueDesktopRelayTicket(record, record.relay, request, expires)
+}
+
+func issueDesktopRelayTicket(record *desktopRecord, relay *desktopRelay, request contract.DesktopRelayRequest,
+	expires time.Time) (contract.DesktopRelayTicket, error) {
+	index := desktopRelayRole(request.Role)
+	if relay.retired || relay.reserved[index] || !expires.After(time.Now()) {
+		return contract.DesktopRelayTicket{}, errors.New("desktop relay endpoint is already attached or unavailable")
 	}
 	secret, err := Secret()
 	if err != nil {
-		return nil, err
+		return contract.DesktopRelayTicket{}, err
 	}
-	// Reissuing a not-yet-used ticket invalidates the previous ticket. At most
-	// one pending ticket per role is retained; no arbitrary ticket map grows.
-	expires := time.Now().Add(contract.DesktopRelayTicketLifetime)
-	if record.open.Deadline.Before(expires) {
-		expires = record.open.Deadline
-	}
+
+	// A reissued ticket invalidates any unused ticket for the same endpoint.
 	relay.tickets[index] = &desktopRelayTicket{request: request, hash: Hash(secret), expires: expires}
-	return contract.DesktopRelayTicket{Request: request, Secret: secret, ExpiresAt: expires, Mode: record.open.Mode, Provider: record.open.Provider, LeaseMillis: time.Until(expires).Milliseconds()}, nil
+	return contract.DesktopRelayTicket{Request: request, Secret: secret, ExpiresAt: expires,
+		Mode: record.open.Mode, Provider: record.open.Provider, LeaseMillis: time.Until(expires).Milliseconds()}, nil
+}
+
+func (record *desktopRecord) relayFor(administrator bool) *desktopRelay {
+	if administrator {
+		return record.administratorRelay
+	}
+	return record.relay
+}
+
+func (broker *Broker) desktopRelayCurrent(record *desktopRecord, relay *desktopRelay) bool {
+	return !broker.poisoned && broker.desktops != nil && broker.desktops.records[record.open.ID] == record &&
+		record.relayFor(relay.administrator) == relay && broker.desktopLease(record) > 0 &&
+		relay.context.Err() == nil && !relay.retired &&
+		(!relay.administrator || record.administrator != nil && record.administrator.until.After(time.Now()) &&
+			broker.desktopAdministratorEligible(record, record.open.Reference()))
 }
 
 // GET is admitted only on this fixed upgrade route. All ordinary JSON routes
@@ -102,14 +121,16 @@ func (broker *Broker) serveDesktopRelay(w http.ResponseWriter, request *http.Req
 	}
 	token := strings.TrimPrefix(request.Header.Get("Authorization"), "Bearer ")
 	broker.mutex.Lock()
+	administrator := request.URL.Path == contract.DesktopAdministratorRelayPath
 	var selected *desktopRecord
 	var index int
 	if !broker.poisoned && broker.desktops != nil {
 		for _, record := range broker.desktops.records {
-			if record.relay == nil || record.relay.retired {
+			relay := record.relayFor(administrator)
+			if relay == nil || relay.retired {
 				continue
 			}
-			for role, ticket := range record.relay.tickets {
+			for role, ticket := range relay.tickets {
 				if ticket != nil && matches(secret, ticket.hash) {
 					selected, index = record, role
 				}
@@ -121,7 +142,7 @@ func (broker *Broker) serveDesktopRelay(w http.ResponseWriter, request *http.Req
 		http.Error(w, "desktop relay ticket is unavailable", http.StatusUnauthorized)
 		return
 	}
-	relay := selected.relay
+	relay := selected.relayFor(administrator)
 	ticket := relay.tickets[index]
 	// Every attempt consumes the one-use ticket, including a bad bearer or
 	// failed upgrade. A timeout/lost response never permits implicit reattach.
@@ -129,10 +150,14 @@ func (broker *Broker) serveDesktopRelay(w http.ResponseWriter, request *http.Req
 	authorized := index == 0 && matches(token, broker.state.AdminHash)
 	if index == 1 {
 		enrollment := broker.state.Nodes[selected.open.Target.Node]
-		authorized = !enrollment.Revoked && matches(token, enrollment.TokenHash)
+		tokenHash := enrollment.TokenHash
+		if administrator {
+			tokenHash = broker.desktops.administratorKeys[selected.open.Target.Node].tokenHash
+		}
+		authorized = !enrollment.Revoked && matches(token, tokenHash)
 	}
 	if !authorized || relay.reserved[index] || !time.Now().Before(ticket.expires) || ticket.request.Reference != selected.open.Reference() ||
-		ticket.request.Reference.Epoch != broker.desktops.epoch || broker.desktopLease(selected) <= 0 || relay.context.Err() != nil {
+		ticket.request.Reference.Epoch != broker.desktops.epoch || !broker.desktopRelayCurrent(selected, relay) {
 		broker.mutex.Unlock()
 		http.Error(w, "desktop relay authority expired", http.StatusForbidden)
 		return
@@ -167,8 +192,7 @@ func (broker *Broker) serveDesktopRelay(w http.ResponseWriter, request *http.Req
 		return
 	}
 	broker.mutex.Lock()
-	current := broker.desktops != nil && broker.desktops.records[selected.open.ID] == selected && selected.relay == relay &&
-		broker.desktopLease(selected) > 0 && relay.context.Err() == nil && !relay.retired
+	current := broker.desktopRelayCurrent(selected, relay)
 	if current {
 		relay.sockets[index] = socket
 		if !relay.watching {
@@ -197,9 +221,15 @@ func (broker *Broker) serveDesktopRelay(w http.ResponseWriter, request *http.Req
 	broker.mutex.Unlock()
 	var total, frames uint64
 	for {
-		readContext, stop := context.WithTimeout(relay.context, desktopRelayIdleTimeout)
+		readContext := relay.context
+		var stop context.CancelFunc
+		if !relay.administrator {
+			readContext, stop = context.WithTimeout(relay.context, desktopRelayIdleTimeout)
+		}
 		kind, payload, err := socket.Read(readContext)
-		stop()
+		if stop != nil {
+			stop()
+		}
 		if err != nil || kind != websocket.MessageBinary || len(payload) == 0 || len(payload) > contract.MaxDesktopRelayFrame {
 			return
 		}
@@ -227,8 +257,7 @@ func (broker *Broker) watchDesktopRelay(record *desktopRecord, relay *desktopRel
 			return
 		case <-ticker.C:
 			broker.mutex.Lock()
-			valid := !broker.poisoned && broker.desktops != nil && broker.desktops.records[record.open.ID] == record &&
-				record.relay == relay && broker.desktopLease(record) > 0 &&
+			valid := broker.desktopRelayCurrent(record, relay) &&
 				(relay.paired || time.Since(relay.started) < desktopRelayPairTimeout)
 			broker.mutex.Unlock()
 			if !valid {
@@ -249,7 +278,7 @@ func (broker *Broker) stopDesktopRelay(record *desktopRecord, relay *desktopRela
 	relay.tickets = [2]*desktopRelayTicket{}
 	relay.cancel()
 	sockets := relay.sockets
-	if record.state != "closed" {
+	if !relay.administrator && record.state != "closed" {
 		record.close, record.state, record.reason = true, "unknown", "transport-lost"
 	}
 	broker.mutex.Unlock()
@@ -264,17 +293,23 @@ func (broker *Broker) stopDesktopRelay(record *desktopRecord, relay *desktopRela
 // cannot own their lifetime after a WebSocket upgrade.
 func (broker *Broker) CloseDesktopRelays() {
 	broker.mutex.Lock()
-	var records []*desktopRecord
+	type relayOwner struct {
+		record *desktopRecord
+		relay  *desktopRelay
+	}
+	var relays []relayOwner
 	if broker.desktops != nil {
 		for _, record := range broker.desktops.records {
-			if record.relay != nil {
-				records = append(records, record)
+			for _, relay := range []*desktopRelay{record.relay, record.administratorRelay} {
+				if relay != nil {
+					relays = append(relays, relayOwner{record, relay})
+				}
 			}
 		}
 	}
 	broker.mutex.Unlock()
-	for _, record := range records {
-		broker.stopDesktopRelay(record, record.relay)
+	for _, owner := range relays {
+		broker.stopDesktopRelay(owner.record, owner.relay)
 	}
 }
 
@@ -329,6 +364,10 @@ func (client *Client) DesktopRelayTicket(ctx context.Context, request contract.D
 }
 
 func (client *Client) AttachDesktopRelay(ctx context.Context, ticket contract.DesktopRelayTicket) (*DesktopRelay, error) {
+	return client.attachDesktopRelay(ctx, contract.DesktopRelayPath, ticket)
+}
+
+func (client *Client) attachDesktopRelay(ctx context.Context, path string, ticket contract.DesktopRelayTicket) (*DesktopRelay, error) {
 	if ticket.Request.Validate() != nil || !validMachineNonce(ticket.Secret) || ticket.LeaseMillis <= 0 || ticket.LeaseMillis > contract.DesktopRelayTicketLifetime.Milliseconds() {
 		return nil, errors.New("invalid or expired desktop relay ticket")
 	}
@@ -341,7 +380,7 @@ func (client *Client) AttachDesktopRelay(ctx context.Context, ticket contract.De
 	httpClient.Timeout = 0
 	handshake, stop := context.WithTimeout(ctx, time.Duration(ticket.LeaseMillis)*time.Millisecond)
 	defer stop()
-	socket, _, err := websocket.Dial(handshake, client.Endpoint+contract.DesktopRelayPath, &websocket.DialOptions{
+	socket, _, err := websocket.Dial(handshake, client.Endpoint+path, &websocket.DialOptions{
 		HTTPClient: &httpClient, HTTPHeader: headers, Subprotocols: []string{contract.DesktopRelayProtocol}, CompressionMode: websocket.CompressionDisabled})
 	if err != nil {
 		return nil, errors.New("authenticated desktop relay connection failed")

@@ -3,6 +3,7 @@ package remote
 import (
 	"context"
 	"errors"
+	"net/http"
 	"time"
 
 	contract "dockpipe/src/lib/domain/remote"
@@ -10,7 +11,11 @@ import (
 
 func (client *Client) DesktopCatalog(ctx context.Context) ([]contract.DesktopCatalog, error) {
 	var catalogs []contract.DesktopCatalog
-	if err := client.Call(ctx, "/v1/desktop-catalog", map[string]string{"schema": contract.DesktopVersion}, &catalogs); err != nil {
+	err := client.Call(ctx, "/v1/desktop-catalog", map[string]string{"schema": contract.DesktopDiscoveryVersion}, &catalogs)
+	if desktopDiscoveryUnsupported(err) {
+		err = client.Call(ctx, "/v1/desktop-catalog", map[string]string{"schema": contract.DesktopVersion}, &catalogs)
+	}
+	if err != nil {
 		return nil, err
 	}
 	if len(catalogs) > contract.MaxDesktopSessions {
@@ -22,6 +27,13 @@ func (client *Client) DesktopCatalog(ctx context.Context) ([]contract.DesktopCat
 		}
 	}
 	return catalogs, nil
+}
+
+func desktopDiscoveryUnsupported(err error) bool {
+	// Older brokers reject the discovery schema under their usual signed
+	// operation status. Transport failures and unsigned errors stay terminal.
+	var rejection *HTTPError
+	return errors.As(err, &rejection) && rejection.authenticated && rejection.StatusCode == http.StatusConflict
 }
 
 func (client *Client) OpenDesktop(ctx context.Context, request contract.DesktopOpen) (contract.DesktopView, error) {
@@ -84,19 +96,44 @@ func (client *Client) desktopCall(ctx context.Context, path string, reference co
 	return view, nil
 }
 
-// ExchangeDesktop does not retry publication or replay an opening. Native
-// callers must close media/input when this channel or its remaining lease fails.
+// ExchangeDesktop negotiates discovery only on the read-only epoch probe.
+// Publication and session reports run once. Native callers must close
+// media/input when this channel or its remaining lease fails.
 func (client *Client) ExchangeDesktop(ctx context.Context, exchange contract.DesktopExchange) (contract.DesktopExchangeResult, error) {
 	var response contract.DesktopExchangeResult
 	if exchange.Catalog.Validate() != nil || exchange.Schema != contract.DesktopVersion {
 		return response, errors.New("invalid desktop worker capability publication")
 	}
-	if err := client.Call(ctx, "/v1/desktop-worker", exchange, &response); err != nil {
+
+	wire := exchange
+	wire.Catalog.AdministratorInput = false
+	probe := exchange.Epoch == "" && len(exchange.Reports) == 0
+	negotiate := probe && exchange.Catalog.View && client.Identity != nil
+	discoveryEpoch := client.desktopDiscoveryEpoch.Load()
+	switch {
+	case negotiate:
+		wire.Catalog.Displays = nil
+		wire.Schema = contract.DesktopDiscoveryVersion
+	case discoveryEpoch != nil && exchange.Epoch == *discoveryEpoch:
+		wire.Schema = contract.DesktopDiscoveryVersion
+	default:
+		wire.Catalog.Displays = nil
+	}
+
+	err := client.Call(ctx, "/v1/desktop-worker", wire, &response)
+	if negotiate && desktopDiscoveryUnsupported(err) {
+		wire.Schema = contract.DesktopVersion
+		err = client.Call(ctx, "/v1/desktop-worker", wire, &response)
+	}
+	if err != nil {
 		return response, err
 	}
 	if response.Schema != contract.DesktopVersion || !validMachineNonce(response.Epoch) || len(response.Directives) > 1 || len(response.Forget) > 1 ||
 		exchange.Epoch != "" && response.Epoch != exchange.Epoch {
 		return response, errors.New("desktop broker lifetime or response bounds changed")
+	}
+	if probe && (len(response.Directives) != 0 || len(response.Forget) != 0) {
+		return response, errors.New("desktop broker returned session effects during discovery")
 	}
 	for _, directive := range response.Directives {
 		if directive.Open.Epoch != response.Epoch {
@@ -110,6 +147,10 @@ func (client *Client) ExchangeDesktop(ctx context.Context, exchange contract.Des
 		if reference.Validate() != nil || reference.Epoch != response.Epoch || reference.Target != exchange.Catalog.Target {
 			return response, errors.New("desktop forget changed its original identity")
 		}
+	}
+	if negotiate && wire.Schema == contract.DesktopDiscoveryVersion {
+		epoch := response.Epoch
+		client.desktopDiscoveryEpoch.Store(&epoch)
 	}
 	return response, nil
 }
@@ -127,4 +168,12 @@ func ValidateDesktopDirective(catalog contract.DesktopCatalog, directive contrac
 		}
 	}
 	return nil
+}
+
+// GrantDesktopAdministratorInput requests a distinct broker lease using the
+// signed, service-owned consent for the exact viewer and desktop session.
+func (client *Client) GrantDesktopAdministratorInput(ctx context.Context, consent contract.DesktopAdministratorEnvelope) (contract.DesktopAdministratorEnvelope, error) {
+	var grant contract.DesktopAdministratorEnvelope
+	err := client.Call(ctx, contract.DesktopAdministratorGrantPath, consent, &grant)
+	return grant, err
 }

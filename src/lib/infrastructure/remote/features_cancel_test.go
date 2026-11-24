@@ -8,7 +8,7 @@ import (
 	contract "dockpipe/src/lib/domain/remote"
 )
 
-func TestFeatureCancellationReturnsExpiredQueuedOutcomeBeforeReclamation(t *testing.T) {
+func TestFeatureCancellationPreservesExpiredQueuedOutcomeAfterReclamation(t *testing.T) {
 	broker, admin, _, _, _, _, catalog := featureFixture(t)
 	request := fileFeatureRequest(t, catalog, "create")
 	request.Deadline = time.Now().Add(-time.Minute)
@@ -24,10 +24,14 @@ func TestFeatureCancellationReturnsExpiredQueuedOutcomeBeforeReclamation(t *test
 		operation.Request.Reference() != request.Reference() {
 		t.Fatalf("authoritative queued cancellation was discarded: %+v %v", operation, err)
 	}
-	if _, err := admin.FeatureStatusReference(context.Background(), request.Reference(), request.Action); err == nil {
-		t.Fatal("fixture did not exercise immediate known-terminal reclamation")
+	receipt, err := admin.FeatureStatusReference(context.Background(), request.Reference(), request.Action)
+	if err != nil || !receipt.ReceiptOnly || receipt.Status != "cancelled" || receipt.Request.Reference() != request.Reference() {
+		t.Fatalf("expired queued cancellation was not recoverable as exact metadata: %+v %v", receipt, err)
 	}
-	if operation.Status != "cancelled" || operation.Request.Reference() != request.Reference() {
-		t.Fatal("reclamation erased the already returned authoritative cancellation receipt")
+	broker.mutex.Lock()
+	_, active := broker.features.state.Operations[request.ID]
+	broker.mutex.Unlock()
+	if active {
+		t.Fatal("fixture did not exercise immediate known-terminal reclamation")
 	}
 }

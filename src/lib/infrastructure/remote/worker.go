@@ -27,7 +27,7 @@ func RunWorker(ctx context.Context, root, executable string, config contract.Wor
 	if err := PrivateDirectory(root); err != nil {
 		return err
 	}
-	unlock, err := Lock(filepath.Join(root, "worker.lock"))
+	unlock, err := LockWorker(root)
 	if err != nil {
 		return err
 	}
@@ -41,11 +41,23 @@ func RunWorker(ctx context.Context, root, executable string, config contract.Wor
 		return errors.New("remote features require paired worker and broker machine identities")
 	}
 	instance := ""
-	if config.Features {
+	workflowOnly := !config.Features && config.Delivery != nil && client.Identity != nil
+	if config.Features || workflowOnly {
 		instance, err = Secret()
 		if err != nil {
 			return err
 		}
+	}
+	if workflowOnly {
+		discoveryContext, stopDiscovery := context.WithCancel(ctx)
+		discoveryDone := make(chan struct{})
+		go func() {
+			defer close(discoveryDone)
+			publishWorkflowOnly(discoveryContext, client, workflowOnlyTarget(config, instance))
+		}()
+		defer func() { stopDiscovery(); <-discoveryDone }()
+	}
+	if config.Features {
 		featureContext, stopFeatures := context.WithCancel(ctx)
 		featuresDone := make(chan struct{})
 		go func() {
@@ -91,7 +103,10 @@ func RunWorker(ctx context.Context, root, executable string, config contract.Wor
 	}
 	for ctx.Err() == nil {
 		var job *contract.Job
-		if err := client.callWithRetry(ctx, "/v1/next", map[string]string{"session": session}, &job); err != nil {
+		err := waitForWorkerConnection(ctx, func() error {
+			return client.callWithRetry(ctx, "/v1/next", map[string]string{"session": session}, &job)
+		}, pause)
+		if err != nil {
 			return err
 		}
 		if job == nil {
@@ -108,7 +123,7 @@ func RunWorker(ctx context.Context, root, executable string, config contract.Wor
 		}
 		journalPath := filepath.Join(root, "jobs", job.ID+".json")
 		journal := WorkerJournal{Job: job.Submission, Session: job.Session}
-		err := ReadPrivate(journalPath, &journal)
+		err = ReadPrivate(journalPath, &journal)
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
@@ -173,6 +188,20 @@ func RunWorker(ctx context.Context, root, executable string, config contract.Wor
 	return ctx.Err()
 }
 
+func waitForWorkerConnection(ctx context.Context, poll func() error, wait func(context.Context, time.Duration) bool) error {
+	const reconnectDelay = 30 * time.Second
+	for ctx.Err() == nil {
+		err := poll()
+		if err == nil || !retryable(err) {
+			return err
+		}
+		if !wait(ctx, reconnectDelay) {
+			break
+		}
+	}
+	return ctx.Err()
+}
+
 func executeWithHeartbeat(ctx context.Context, client *Client, executable string, profile contract.Profile, id, session string) contract.Result {
 	runContext, cancel := context.WithCancelCause(ctx)
 	defer cancel(context.Canceled)
@@ -180,23 +209,82 @@ func executeWithHeartbeat(ctx context.Context, client *Client, executable string
 	go func() {
 		defer close(done)
 		for pause(runContext, 2*time.Second) {
-			var response struct {
-				Cancel bool `json:"cancel"`
-			}
-			if err := client.Call(runContext, "/v1/pulse", map[string]string{"id": id, "session": session}, &response); err != nil {
-				cancel(errors.New("broker heartbeat failed; execution stopped"))
+			cancelRequested, err := pollWorkflowCancellation(runContext, client, id, session)
+			if err != nil {
+				cancel(workflowHeartbeatFailure(err))
 				return
 			}
-			if response.Cancel {
+
+			if cancelRequested {
 				cancel(context.Canceled)
 				return
 			}
 		}
 	}()
-	result := Execute(runContext, executable, profile)
+	log := &boundedLog{}
+	if client.Identity != nil {
+		logDone := make(chan struct{})
+		go func() {
+			defer close(logDone)
+			publishWorkflowLog(runContext, client, id, session, log)
+		}()
+		defer func() {
+			cancel(context.Canceled)
+			<-logDone
+		}()
+	}
+
+	result := execute(runContext, executable, profile, log)
 	cancel(context.Canceled)
 	<-done
 	return result
+}
+
+func pollWorkflowCancellation(ctx context.Context, client *Client, id, session string) (bool, error) {
+	// Preserve the existing 20-second request ceiling for the entire heartbeat,
+	// while allowing a transient failure to recover within that same window.
+	const heartbeatBudget = 20 * time.Second
+	const requestBudget = 8 * time.Second
+	heartbeatContext, cancelHeartbeat := context.WithTimeout(ctx, heartbeatBudget)
+	defer cancelHeartbeat()
+
+	request := map[string]string{"id": id, "session": session}
+	var cancelRequested bool
+	err := retryCall(heartbeatContext, func() error {
+		requestContext, cancelRequest := context.WithTimeout(heartbeatContext, requestBudget)
+		defer cancelRequest()
+
+		var response struct {
+			Cancel *bool `json:"cancel"`
+		}
+		if err := client.Call(requestContext, "/v1/pulse", request, &response); err != nil {
+			return err
+		}
+		if response.Cancel == nil {
+			return errors.New("broker heartbeat omitted cancellation state")
+		}
+
+		cancelRequested = *response.Cancel
+		return nil
+	}, pause)
+
+	return cancelRequested, err
+}
+
+func workflowHeartbeatFailure(err error) error {
+	// The result leaves this machine. Keep endpoint URLs, transport details,
+	// and broker response bodies out of the diagnostic.
+	var status *HTTPError
+	switch {
+	case errors.As(err, &status):
+		return fmt.Errorf("broker heartbeat failed; execution stopped: HTTP %d", status.StatusCode)
+	case errors.Is(err, context.DeadlineExceeded):
+		return errors.New("broker heartbeat failed; execution stopped: response deadline exceeded")
+	case retryable(err):
+		return errors.New("broker heartbeat failed; execution stopped: transient connection failure")
+	default:
+		return errors.New("broker heartbeat failed; execution stopped: invalid or unverified response")
+	}
 }
 
 func pause(ctx context.Context, duration time.Duration) bool {

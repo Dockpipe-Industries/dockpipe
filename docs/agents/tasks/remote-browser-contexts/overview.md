@@ -150,6 +150,14 @@ Remaining acceptance:
 - Keep broader operator-platform support and sustained resource/performance
   qualification separate from the first Linux-to-Darwin slice.
 
+The physical Darwin ARM64 background worker reported a previous Network stop
+without its cause. The installed X11 Flatpak later served and reconnected to
+the same paired target using bounded foreground workers under the existing
+Network grant. The source now preserves grant and OS session stop causes
+through cancellation and logs a sanitized reason. Focused race tests and the
+full remote and remote CLI suites passed. The existing background service has
+yet to be qualified using this build.
+
 ## Current native interaction and login follow-up
 
 The installed Linux-to-m6 browser renders the HTTPS development site and runs

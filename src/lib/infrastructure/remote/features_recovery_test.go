@@ -312,17 +312,23 @@ func TestGitRecoveryUsesCapturedBootProofAndPreservesUnknownRepositoryState(t *t
 			if err := worker.Call(context.Background(), "/v1/features-next", catalog, nil); err != nil {
 				t.Fatal(err)
 			}
-			boot, err := process.HostBootIdentity()
+			scope, err := process.CaptureHostBootScope()
 			if err != nil {
 				t.Skip("native kernel boot identity unavailable")
 			}
 			if scenario == "prior-boot" {
-				boot = "00000000-0000-0000-0000-000000000000"
+				if scope.BootSequence > 1 {
+					scope.BootSequence--
+				} else if scope.BootSequence == 1 {
+					t.Skip("native kernel has no prior nonzero boot sequence")
+				} else {
+					scope.Boot = "00000000-0000-0000-0000-000000000000"
+				}
 			}
 			result := recoveredFeatureResult("unknown")
 			record := featureWorkerRecord{Request: request, Result: &result, ReceiptOnly: true, Supervised: scenario != "legacy"}
 			if record.Supervised {
-				record.Scope = &process.ScopeReference{Mode: "host-reboot", Boot: boot}
+				record.Scope = &scope
 			}
 			if err := writeFeatureJournal(root, featureWorkerJournal{Schema: contract.FeatureVersion, Records: map[string]featureWorkerRecord{request.ID: record}}); err != nil {
 				t.Fatal(err)

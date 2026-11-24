@@ -256,9 +256,13 @@ func executeHostTerminalRecovery(ctx context.Context, permissions FeaturePermiss
 				if receipt.Root != request.Root {
 					return nil, errors.New("host terminal recovery changed the original root")
 				}
-				if err := process.StopScope(ctx, receipt.Scope); err != nil {
-					return nil, err
+				// A graceful worker stop can verify cleanup before the broker sees it.
+				if !receipt.CleanupVerified || receipt.Uncertain {
+					if err := process.StopScope(ctx, receipt.Scope); err != nil {
+						return nil, err
+					}
 				}
+
 				receipt.Reconciled = true
 				if err := saveHostTerminalReceipt(root, receipt); err != nil {
 					return nil, err

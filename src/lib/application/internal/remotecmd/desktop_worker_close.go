@@ -18,13 +18,16 @@ type desktopWorkerExchangeClient interface {
 // This bounded drain accepts only original-session cleanup proof, never another
 // opening, signaling message or lease renewal. Capture/key cleanup can take 5s,
 // followed by bounded TLS child termination/reaping; the whole drain is 10s.
-func drainDesktopWorker(parent context.Context, client desktopWorkerExchangeClient, exchange contract.DesktopExchange, fallback *contract.DesktopDirective,
+func drainDesktopWorker(parent context.Context, client desktopWorkerExchangeClient, journal desktopCleanupJournal, exchange contract.DesktopExchange, fallback *contract.DesktopDirective,
 	encoder *json.Encoder, frames <-chan desktopFrame, failures <-chan error, input io.ReadCloser, output io.WriteCloser) error {
 	ctx, stop := context.WithTimeout(context.WithoutCancel(parent), 10*time.Second)
 	defer stop()
 	interrupt := context.AfterFunc(ctx, func() { _ = input.Close(); _ = output.Close() })
 	defer interrupt()
-	exchange.Catalog.View, exchange.Catalog.Input = false, false
+	exchange.Catalog.View = false
+	exchange.Catalog.Input = false
+	exchange.Catalog.AdministratorInput = false
+	exchange.Catalog.Displays = nil
 	queuedCleanup := false
 	if len(exchange.Reports) == 1 && fallback != nil {
 		report := exchange.Reports[0]
@@ -33,10 +36,22 @@ func drainDesktopWorker(parent context.Context, client desktopWorkerExchangeClie
 	if !queuedCleanup {
 		exchange.Reports = nil
 	}
+	if err := journal.save(exchange); err != nil {
+		return err
+	}
 	publication, cancel := context.WithTimeout(ctx, 2*time.Second)
 	response, err := client.ExchangeDesktop(publication, exchange)
 	cancel()
-	if err == nil && queuedCleanup {
+	if queuedCleanup {
+		if err != nil {
+			return err
+		}
+
+		if desktopCleanupAcknowledged(response, exchange.Reports[0]) {
+			if err := journal.clear(); err != nil {
+				return err
+			}
+		}
 		return emitDesktopCleanupForget(encoder, response, exchange.Reports[0])
 	}
 	var closing *contract.DesktopDirective
@@ -76,17 +91,30 @@ func drainDesktopWorker(parent context.Context, client desktopWorkerExchangeClie
 				return errors.New("desktop cleanup requires a content-free native terminal report")
 			}
 			exchange.Reports = []contract.DesktopReport{*frame.Report}
+			if err := journal.save(exchange); err != nil {
+				return err
+			}
 			response, err = client.ExchangeDesktop(ctx, exchange)
 			if err != nil {
 				return err
+			}
+			if desktopCleanupAcknowledged(response, *frame.Report) {
+				if err := journal.clear(); err != nil {
+					return err
+				}
 			}
 			return emitDesktopCleanupForget(encoder, response, *frame.Report)
 		}
 	}
 }
 
+func desktopCleanupAcknowledged(response contract.DesktopExchangeResult, report contract.DesktopReport) bool {
+	return report.State == "closed" && len(response.Forget) == 1 &&
+		response.Forget[0] == report.Reference && len(response.Directives) == 0
+}
+
 func emitDesktopCleanupForget(encoder *json.Encoder, response contract.DesktopExchangeResult, report contract.DesktopReport) error {
-	if report.State != "closed" || len(response.Forget) != 1 || response.Forget[0] != report.Reference || len(response.Directives) != 0 {
+	if !desktopCleanupAcknowledged(response, report) {
 		return errors.New("desktop native cleanup did not receive the exact closed acknowledgment")
 	}
 	return encoder.Encode(desktopEvent{Type: "forget", Reference: &response.Forget[0]})

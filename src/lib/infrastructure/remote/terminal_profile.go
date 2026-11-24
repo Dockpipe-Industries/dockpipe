@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"dockpipe/src/lib/infrastructure/localterminal"
 )
 
 // TerminalProfile is configured only by the worker owner. Terminal permission
@@ -29,5 +31,12 @@ func (profile TerminalProfile) Validate() error {
 }
 
 func terminalSupported() bool {
+	if runtime.GOOS == "windows" {
+		return (runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64") && localterminal.InstalledProviderAvailable()
+	}
+	return containerTerminalSupported()
+}
+
+func containerTerminalSupported() bool {
 	return runtime.GOOS == "linux" || runtime.GOOS == "darwin"
 }

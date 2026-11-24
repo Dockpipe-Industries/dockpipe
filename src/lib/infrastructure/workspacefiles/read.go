@@ -207,11 +207,14 @@ func list(ctx context.Context, root *os.Root, request Request) (Result, error) {
 			return Result{}, err
 		}
 		info, err := selected.Lstat(name)
-		if err != nil {
-			return Result{}, ErrChanged
-		}
 		entry := Entry{Name: name, Kind: "unavailable"}
-		if info.Mode()&os.ModeSymlink != 0 {
+		if err != nil {
+			// An enumerable name can deny metadata access or be locked.
+			// Do not open or classify its target.
+			if !entryMetadataUnavailable(err) {
+				return Result{}, ErrChanged
+			}
+		} else if info.Mode()&os.ModeSymlink != 0 {
 			entry.Kind = "link"
 		} else if info.IsDir() {
 			entry.Kind = "directory"

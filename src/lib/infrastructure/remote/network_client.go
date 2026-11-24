@@ -85,7 +85,7 @@ func (client *Client) networkDial(ctx context.Context, target contract.FeatureTa
 
 // ServeNetworkTCP resolves and opens the destination exclusively on the worker.
 // Cancellation closes both sides and both pumps are joined before return.
-func (client *Client) ServeNetworkTCP(ctx context.Context, ticket contract.NetworkTicket) error {
+func (client *Client) ServeNetworkTCP(ctx context.Context, ticket contract.NetworkTicket, permission contract.NetworkPermissions) error {
 	if ticket.Request.Validate() != nil {
 		return errors.New("invalid network directive")
 	}
@@ -94,6 +94,11 @@ func (client *Client) ServeNetworkTCP(ctx context.Context, ticket contract.Netwo
 		return err
 	}
 	defer socket.CloseNow()
+
+	if !permission.AllowsDestination(ticket.Request.Address) {
+		return errors.New("worker TCP destination is outside the network grant")
+	}
+
 	dialer := net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
 	connection, err := dialer.DialContext(ctx, "tcp", ticket.Request.Address)
 	if err != nil {

@@ -7,6 +7,8 @@ import (
 
 const DesktopRelayPath = "/v1/desktop-relay"
 const DesktopRelayTicketPath = "/v1/desktop-relay-ticket"
+const DesktopAdministratorRelayPath = "/v1/desktop-administrator-relay"
+const DesktopAdministratorRelayTicketPath = "/v1/desktop-administrator-relay-ticket"
 const DesktopRelayProtocol = "dockpipe.desktop.relay.v1"
 const MaxDesktopRelayFrame = 64 << 10
 const MaxDesktopRelayBytes = uint64(16) << 30

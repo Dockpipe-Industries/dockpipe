@@ -3,6 +3,7 @@ package remote
 import (
 	"encoding/json"
 	"errors"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -37,6 +38,17 @@ type featureReceipt struct {
 type featureLedger struct {
 	Schema  string                    `json:"schema"`
 	Records map[string]featureReceipt `json:"records"`
+}
+
+func readFeatureLedger(path string) (featureLedger, error) {
+	ledger := featureLedger{Schema: contract.FeatureVersion, Records: map[string]featureReceipt{}}
+	if err := readPrivateBounded(path, &ledger, contract.MaxFeatureStorage); err != nil && !os.IsNotExist(err) {
+		return featureLedger{}, err
+	}
+	if ledger.Schema != contract.FeatureVersion || ledger.Records == nil || len(ledger.Records) > contract.MaxJobs {
+		return featureLedger{}, errors.New("invalid remote feature journal")
+	}
+	return ledger, nil
 }
 
 func (receipt featureReceipt) validate() error {
@@ -84,6 +96,17 @@ func (receipt featureReceipt) validate() error {
 func (receipt featureReceipt) requestMetadata() contract.FeatureRequest {
 	return contract.FeatureRequest{Schema: contract.FeatureVersion, ID: receipt.ID, Target: receipt.Target,
 		Root: receipt.Root, Action: receipt.Action, Deadline: receipt.Deadline}
+}
+
+func (receipt featureReceipt) metadataOperation() contract.FeatureOperation {
+	result := recoveredFeatureResult(receipt.Status)
+	return contract.FeatureOperation{
+		Request: receipt.requestMetadata(), Status: result.Status, Result: &result,
+		CancelRequested: receipt.CancelRequested, ReceiptOnly: true, ResultDigest: receipt.ResultDigest,
+		RecoveryRequested: receipt.RecoveryRequested, Reconciled: receipt.Reconciled,
+		RecoveryChoice: receipt.RecoveryChoice, RecoveryResource: receipt.RecoveryResource,
+		RecoveryError: receipt.RecoveryError, HostRecovery: receipt.HostRecovery,
+	}
 }
 
 func featureResultDigest(result *contract.FeatureResult) string {

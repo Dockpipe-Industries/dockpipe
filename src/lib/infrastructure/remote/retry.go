@@ -7,12 +7,16 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 )
 
 // HTTPError deliberately excludes the server body: it may reflect credentials
 // or contain provider HTML. Status still gives the operator actionable context.
-type HTTPError struct{ StatusCode int }
+type HTTPError struct {
+	StatusCode    int
+	authenticated bool
+}
 
 func (err *HTTPError) Error() string {
 	return fmt.Sprintf("remote operation rejected (HTTP %d)", err.StatusCode)
@@ -24,6 +28,12 @@ func retryable(err error) bool {
 		return status.StatusCode == http.StatusTooManyRequests || status.StatusCode == http.StatusRequestTimeout || status.StatusCode >= 500 && status.StatusCode <= 599
 	}
 	if errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
+	}
+	// A relay can close before HTTP receives any response, including during
+	// the machine challenge. Keep a decoded empty response permanent.
+	var transport *url.Error
+	if errors.As(err, &transport) && errors.Is(transport.Err, io.EOF) {
 		return true
 	}
 	var dns *net.DNSError

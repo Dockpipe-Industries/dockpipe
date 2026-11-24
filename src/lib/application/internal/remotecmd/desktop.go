@@ -148,7 +148,8 @@ func desktopCommand(ctx context.Context, root, command, input string) error {
 
 func desktopRequestCommand(command string) bool {
 	switch command {
-	case "desktop-cleanup", "desktop-relay", "desktop", "desktop-config", "desktop-prepare", "desktop-open", "desktop-status", "desktop-pulse", "desktop-signal", "desktop-close":
+	case "desktop-administrator-approval", "desktop-administrator-grant", "desktop-administrator-service", "desktop-administrator-relay",
+		"desktop-cleanup", "desktop-relay", "desktop", "desktop-config", "desktop-prepare", "desktop-open", "desktop-status", "desktop-pulse", "desktop-signal", "desktop-close":
 		return true
 	}
 	return false

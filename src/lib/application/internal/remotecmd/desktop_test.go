@@ -103,6 +103,8 @@ func TestDesktopPrivateFramesRejectForeignCapabilitiesAndContent(t *testing.T) {
 		`{"type":"frame","data":"private"}`,
 		`{"type":"signal","signal":{},"input":true}`,
 		`{"type":"close","clipboard":"private"}`,
+		`{"type":"close","displays":[]}`,
+		`{"type":"displays","displays":[{"source":"a","width":1920,"height":1080},{"source":"a","width":3840,"height":2160}]}`,
 		`{"type":"ready","provider":{"id":"fixture","version":"1","artifact":"short"}}`,
 		`{"type":"close","type":"ready"}`,
 	} {
@@ -115,6 +117,13 @@ func TestDesktopPrivateFramesRejectForeignCapabilitiesAndContent(t *testing.T) {
 	}
 	if err := Run([]string{"features", "--stdio"}, nil); err == nil {
 		t.Fatal("desktop transport changed existing feature command options")
+	}
+}
+
+func TestDesktopBridgeAcceptsDisplayInventoryUpdate(t *testing.T) {
+	frame, err := decodeDesktopFrame([]byte(`{"type":"displays","displays":[{"source":"external","width":3840,"height":2160,"primary":false}]}`))
+	if err != nil || len(frame.Displays) != 1 || frame.Displays[0].Source != "external" {
+		t.Fatalf("desktop bridge lost the display update: %+v %v", frame, err)
 	}
 }
 

@@ -47,7 +47,7 @@ func hostTerminalTestService(t *testing.T, root string, provider terminalsession
 		_ = manager.Shutdown(ctx)
 	})
 	service := &terminalWorkerService{root: root, policy: permissionFingerprint(permissions), catalog: permissions.catalog(reference.Target), epoch: reference.Epoch,
-		manager: manager, records: map[string]*terminalWorkerRecord{}}
+		hostManagers: map[string]*terminalsession.Manager{"project": manager}, records: map[string]*terminalWorkerRecord{}}
 	request := contract.TerminalOpen{Schema: contract.TerminalVersion, Target: reference.Target, Epoch: reference.Epoch, Root: "project", Nonce: strings.Repeat("7", 64),
 		Deadline: time.Now().Add(time.Minute), Columns: 80, Rows: 24}
 	request.ID, _ = request.Digest()
@@ -122,6 +122,17 @@ func TestHostTerminalRecoveryRequiresCapturedBootExactReferenceAndIndependentRoo
 		func(context.Context, invocation.Binding) error { return denied }); !errors.Is(err, denied) {
 		t.Fatal("host recovery accessed storage before native authorization", err)
 	}
+
+	journal := hostTerminalJournal{root: root, value: original}
+	if err := journal.finish(true); err != nil {
+		t.Fatal(err)
+	}
+	value, err := executeHostTerminalRecovery(ctx, permissions, request, identity, authorize)
+	verified, ok := value.(contract.HostTerminalRecovery)
+	if err != nil || !ok || verified.Validate() != nil || verified.Reference != original.Reference || verified.Root != original.Root {
+		t.Fatal("locally verified same-boot cleanup lost the original host terminal proof", err)
+	}
+
 	prior := original
 	prior.Scope.Boot = "00000000-0000-0000-0000-000000000000"
 	if err := saveHostTerminalReceipt(root, prior); err != nil {
@@ -153,7 +164,7 @@ func TestHostTerminalRecoveryRequiresCapturedBootExactReferenceAndIndependentRoo
 		})
 	}
 	ctx = WithTerminalStateRoot(context.Background(), root)
-	value, err := executeHostTerminalRecovery(ctx, permissions, request, identity, authorize)
+	value, err = executeHostTerminalRecovery(ctx, permissions, request, identity, authorize)
 	proof, ok := value.(contract.HostTerminalRecovery)
 	if err != nil || !ok || proof.Validate() != nil || proof.Reference != original.Reference || proof.Root != original.Root {
 		t.Fatal("prior-boot host proof lost its original reference/root", err)

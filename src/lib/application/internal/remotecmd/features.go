@@ -303,6 +303,10 @@ func validateFeatureOperation(operation contract.FeatureOperation, request contr
 }
 
 func configureFeatures(ctx context.Context, root, input string) error {
+	return configureWorkerFeatures(ctx, root, input, false)
+}
+
+func configureWorkerFeatures(ctx context.Context, root, input string, terminalHome bool) error {
 	ctx, cancel := context.WithTimeout(ctx, featureCommandTimeout)
 	defer cancel()
 	var permissions remoteio.FeaturePermissions
@@ -328,7 +332,21 @@ func configureFeatures(ctx context.Context, root, input string) error {
 		contract.Endpoint(worker.Endpoint) != nil || identity.Validate() != nil || remoteidentity.Fingerprint(worker.BrokerKey) == "" {
 		return errors.New("feature configuration requires valid paired machine keys")
 	}
-	if input == "" {
+	if input != "" || terminalHome {
+		unlock, err := remoteio.LockFeatureConfiguration(root)
+		if err != nil {
+			return err
+		}
+		defer unlock()
+	}
+	if terminalHome {
+		var err error
+		permissions, err = terminalHomePermissions(root)
+		if err != nil {
+			return err
+		}
+	}
+	if input == "" && !terminalHome {
 		var err error
 		permissions, err = remoteio.LoadFeaturePermissions(root)
 		if err != nil {

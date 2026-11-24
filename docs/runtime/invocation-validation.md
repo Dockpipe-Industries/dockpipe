@@ -135,7 +135,15 @@ On the worker, `remote features-config --request <private-file|->` validates and
 saves local root IDs, paths, file/Git read/write/publication grants and Docker
 read/control grants. Omitting `--request` reads that configuration. A running
 worker must restart after its first feature opt-in; subsequent grant edits reload
-live. Requests never choose the worker's host directory or executable.
+live. To enable Terminal with the worker account's home folder as its starting
+directory, use **Allow Terminal access as my user** during desktop pairing.
+For an existing pairing, use **Manage access → Enable Terminal** on the worker
+computer or run `dockpipe remote features-config --terminal-home` there and
+restart the worker. The convenience command preserves workspace grants and an
+existing shell profile. The shell runs with the worker account's permissions.
+Remote requests select a granted root ID and never supply a host directory or
+shell executable. Advertising multiple Terminal roots requires the updated
+worker and broker. Single-root grants retain their existing wire format.
 
 `remote features --auth never` returns fresh feature catalogs with machine
 fingerprints and worker generations. `remote feature-call --request <file|->`
@@ -162,6 +170,19 @@ broker's known success, failure or cancelled status immediately; running, queued
 unknown or mismatched responses remain uncertain. Unknown mutations remain blocked
 pending reconciliation.
 
+When the desktop confirms the original operation was cancelled, it clears that
+entry from **Uncertain operations…** and asks the operator to refresh the
+affected state before writing again.
+
+After the execution deadline, `remote feature-status` can retrieve an exact
+terminal write receipt while it remains in the broker's durable journal.
+The expired-receipt lookup returns metadata only and leaves the original
+execution deadline in force.
+
+The worker drops each read result after the broker acknowledges it. If the
+worker's mutation journal is full, new writes fail before native execution.
+The worker continues serving authorized reads and processing recovery.
+
 `remote feature-reconcile --request <metadata-file|->` addresses the original mutation.
 Queued work is cancelled before dispatch. Running/unknown work permanently loses
 its original invocation admission, then waits for the exclusively locked serial
@@ -179,12 +200,16 @@ is lifecycle supervision of trusted tools, not confinement against hostile same-
 processes that can migrate out of the delegated tree. Missing delegation fails
 process-backed mutations before effects. Local Git behavior is unchanged.
 
-The worker owner can instead select `process_recovery: host-reboot` (including
-macOS). Normal confirmed results remain usable; uncertain process operations require
+The worker owner can select `process_recovery: host-reboot` on Linux, macOS and
+Windows. Normal confirmed results remain usable. Uncertain process operations require
 a changed kernel boot identity captured before their effects. Reconciliation never
 reboots a host. Legacy receipts without a captured boot/scope cannot retroactively
 gain cleanup proof. Git reconciliation does not replay commands, remove repository
 locks, or abort repository operations; refresh and inspect the repository afterward.
+
+Windows records the kernel boot sequence before starting the native process.
+Recovery requires a later sequence. A GUID-only receipt or a sequence that goes
+backward leaves the operation blocked for inspection.
 
 Native Docker client exit does not prove asynchronous daemon work stopped. Unknown
 container control can use the separate owner grant `docker_recovery` and explicit
@@ -244,6 +269,11 @@ remains uncertain. Input bytes are not persisted. Receipt publication and catalo
 reads share a cross-process store lock. Terminal heartbeats preserve recovery
 entries only for the exact same worker generation; feature heartbeats remain the
 authority for replacing that list.
+
+A worker transport failure cancels the owned shell immediately. The worker waits
+for the bounded Docker closure check and process cleanup before reporting the
+result. After verified closure, the worker can discard the completed container
+session even if its original operator lease has expired.
 
 Unknown sessions retain their quota reservation and appear in the recovery dialog.
 Only a validated receipt matching the original reference releases it. Verification

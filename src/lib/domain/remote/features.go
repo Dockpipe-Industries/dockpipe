@@ -123,6 +123,7 @@ type FeatureCatalog struct {
 	ProcessRecovery    string                       `json:"process_recovery,omitempty"`
 	ContainerTerminals []ContainerTerminalReference `json:"container_terminals,omitempty"`
 	HostTerminals      []HostTerminalReference      `json:"host_terminals,omitempty"`
+	WorkflowOnly       bool                         `json:"workflow_only,omitempty"`
 }
 
 func (catalog FeatureCatalog) Validate() error {
@@ -131,6 +132,11 @@ func (catalog FeatureCatalog) Validate() error {
 	}
 	if catalog.Schema != FeatureVersion || catalog.Target.Validate() != nil || len(catalog.Roots) > 32 || (catalog.DockerExec || catalog.DockerRecovery) && !catalog.DockerRead {
 		return errors.New("invalid feature catalog")
+	}
+	if catalog.WorkflowOnly && (len(catalog.Roots) != 0 || catalog.DockerRead || catalog.DockerControl ||
+		catalog.DockerExec || catalog.DockerRecovery || catalog.TerminalEpoch != "" || catalog.ProcessRecovery != "" ||
+		len(catalog.ContainerTerminals) != 0 || len(catalog.HostTerminals) != 0) {
+		return errors.New("workflow-only catalog cannot advertise feature grants")
 	}
 	if len(catalog.ContainerTerminals)+len(catalog.HostTerminals) > MaxTerminalSessions {
 		return errors.New("container terminal recovery catalog exceeds its session budget")
@@ -147,17 +153,13 @@ func (catalog FeatureCatalog) Validate() error {
 		}
 	}
 	seen := map[string]bool{}
-	terminalRoots := 0
 	for _, root := range catalog.Roots {
-		if root.Terminal {
-			terminalRoots++
-		}
 		if !ValidID(root.ID) || seen[root.ID] || len(root.Name) == 0 || len(root.Name) > 256 || strings.ContainsAny(root.Name, "\x00\r\n") {
 			return errors.New("invalid feature root catalog")
 		}
 		seen[root.ID] = true
 	}
-	if terminalRoots > 1 || catalog.TerminalEpoch != "" && !featureDigest(catalog.TerminalEpoch) {
+	if catalog.TerminalEpoch != "" && !featureDigest(catalog.TerminalEpoch) {
 		return errors.New("invalid terminal catalog")
 	}
 	return nil

@@ -59,6 +59,164 @@ not an OS drag into the remote app.
 Drop gestures have component coverage; the paired file test used clipboard URLs.
 
 Status: **first native slice in progress**, explicitly authorized 2026-11-09.
+
+A Win11 Control reconnect encountered a retained broker reservation after the
+sender generation changed. The Core fix retires a request on authority loss
+only while it is still queued. The worker exchange marks it opening before
+returning an open directive. Opening and running sessions still require
+native cleanup proof. The live retained reservation needs a separate
+recovery receipt.
+
+The 2026-11-20 Windows sender work passed owner-private channel and cancellable
+pipe tests on physical Win11. A separate native capture check read a real
+1920×1200 primary-display frame in memory. A hardware encoder probe scaled a
+real capture to 640×400 and produced H.264 that passed the package's viewer
+frame validator. The per-user Win11 preview sender then streamed the primary
+display into the Linux Dockpipe app. A focused standard-user Win32 fixture
+received the click and physical key sent through the app. The wider Windows
+distribution, display and clipboard matrix remains open.
+See [remote platform qualification](../../../runtime/remote-platforms.md).
+
+### Windows service and administrator-window control
+
+The installed preview uses a least-privilege interactive scheduled task. A live
+Win11 check observed the sender at standard integrity while the foreground app
+was elevated. Input reached the sender, but the elevated window did not receive
+the click. Bringing a standard-user Explorer window forward restored an eligible
+target in the same paired session.
+
+On physical Win11, a missing broker cleanup acknowledgment stopped the preview
+sender while Terminal remained reachable. The package source now treats that
+timeout as recoverable after verified native cleanup and exit of the previous
+bridge. The sender rechecks owner policy and starts a fresh bridge. An
+acknowledgment for a different session still fails closed. A Windows native
+regression test passed. The signed preview sender was installed and advertised
+View and Control with its existing grants and three scheduled restart retries.
+Live reconnect attempts were rejected while an earlier Control session
+retained its reservation with a zero lease and unverified native cleanup.
+
+The worker bridge now journals a verified native close report before delivery.
+After losing a broker response, it replays that report for the exact original
+session before advertising readiness again. The replay carries no input lease
+or signaling. The test-signed bridge was installed in the existing physical
+Win11 sender task. The sender published View and Control after the update
+preserved the original private manifest permissions. Closing the retained
+session again returned to `unknown` at a zero lease, and the desktop app's
+Control attempt ended before streaming. A coordinated Windows reboot and
+broker restart cleared that earlier reservation. The existing connector
+required explicit recovery after its maintenance guard was clear. On
+physical Win11, the Linux viewer then completed three Control disconnects
+and reconnects and verified mouse and keyboard input on the unlocked desktop.
+The preview sender showed a console window because its executable was built
+for the Windows console subsystem. Minimizing that console preserved streaming.
+
+The Linux preview viewer enabled the text clipboard for the same signed
+Win11 sender while withholding the image and file options that it rejects.
+Synthetic text crossed in both directions on physical Win11. The initial
+Windows-to-Linux attempt failed, and the retry passed after refocusing the
+viewer to start a new clipboard watch. A subsequent signed sender preview
+started without a console and streamed the Windows pointer. The Linux viewer
+showed and hid its local pointer when the setting was toggled during Control.
+
+The Windows image clipboard adapter candidate passed bounded PNG and DIB codec
+tests and validation-before-write tests on physical Win11 amd64. It has not
+been integrated into the sender or exercised through Windows clipboard
+publication. The next signed Win11 amd64 sender enabled regular-file
+clipboard sharing. A Linux X11 viewer received a generated Win11 file
+byte-for-byte. Explorer then pasted two generated Linux files, one via the
+keyboard shortcut and one via a viewer drop. A separate Win11 read verified
+both file contents. The Windows ARM64 sender and tests cross-compiled, and
+installed ARM64 qualification remains open.
+
+The Windows installation should use a Dockpipe service to supervise the desktop
+components. Windows runs services in Session 0. Capture and ordinary input still
+belong to the existing user's interactive Default desktop. Administrator-window
+input requires a separate, owner-approved capability and a narrowly scoped
+interactive input helper installed by an administrator from the trusted Windows
+package. The service and helper must authenticate the exact operator and local
+session, expire with the desktop grant, and release owned keys and buttons on
+disconnect. The existing worker, delivery lane and clipboard keep their current
+privileges. UAC secure desktop, OS lock and other user sessions remain outside
+the supported control surface.
+
+Qualification requires an administrator-installed, reviewed package, then live
+input through Dockpipe into both a standard-user fixture and an elevated
+fixture. Also verify denial without the administrator-window grant, lock and
+logoff revocation, and service upgrade and removal. Track signed Windows
+distribution under [TASK-048](../signpath-windows-code-signing/overview.md).
+
+Physical Win11 passed the earlier lifecycle fixtures with a generated endpoint
+and the local identity and session rejection tests. The package now includes
+the SCM runner, an administrator-input helper executable and a protected
+launcher. The launcher requires a valid Windows signature, the installed
+image digest and an approved elevated token for the active console user.
+The local pipe binds the server to the SCM service in Session 0 and the client
+to the exact launched helper process. The helper acknowledges readiness after
+checking the interactive desktop. It enforces the lease and reports whether
+native input cleanup completed. These changes cross-build for Windows amd64
+and arm64. The new launcher and pipe have no physical Windows receipt yet.
+
+The broker source now implements a separate administrator-input operation. It
+requires the original operator, a running Control session and consent signed
+by an independently pinned Windows service key. A broker owner can provision
+those public keys in the private broker state file
+`desktop-administrator-services.json` with schema
+`dockpipe.remote.desktop-admin-services/v1` and `services` entries containing
+`node`, `fingerprint`, `public_key` and `relay_token_hash`. The fingerprint
+identifies the paired machine. The public key and relay credential belong to
+its approved administrator-input service. The relay credential is distinct
+from the desktop worker and operator credentials. Consent and leases bind the
+original operator, exact desktop reference and both TLS endpoints. They expire
+independently of ordinary Control.
+
+The protected Windows helper offers a separate local approval dialog with
+No selected by default. It validates the active console user, desktop and
+elevated integrity before showing the prompt. The service signs only after
+approval and a verified exit of that helper invocation. The helper then
+starts separately when it receives an authenticated input grant.
+
+The native viewer channel accepts a separate private administrator-input
+descriptor and the signed grant in its trusted configuration. It checks the
+service TLS identity and waits for the service to report helper readiness.
+Physical keyboard and mouse events then use only the dedicated input stream.
+The private parent channel can deliver a signed lease renewal. Normal viewer
+sessions keep their existing input path. Broker tests cover issuance, access
+denial, operator and viewer mismatch, and desktop closure. The local TLS
+fixture passed physical keyboard and mouse records through the viewer and
+service. The viewer and service tests cross-build for Windows amd64 and arm64.
+
+The launcher offers Administrator input after an eligible Windows service
+polls the broker. Choosing it sends a separate approval request through the
+native viewer. The SCM service polls with its protected credential, prompts
+at the Windows console and posts the signed decision. The viewer leases and
+renews the resulting dedicated relay. The dedicated relay has separate
+one-use tickets and closes independently of the ordinary media relay. The
+administrator display uses its own launch schema so an older viewer rejects
+the request.
+
+The local **Authorize Administrator Input** shortcut asks Windows to launch the
+installed helper through UAC. The service accepts the exact signed helper for
+the configured logged-on console user and retains its donated token for up to
+five minutes. It revokes input on disconnect, expiry, console changes or
+service stop. Each remote session still requires a separate approval at the
+Windows console.
+
+The Remote Desktop package owns a separate Windows x64 and ARM64 MSI recipe.
+It verifies the architecture and pinned Authenticode publisher of the staged
+executables, registers the service for manual start, and stops and removes the
+service on uninstall. After installation, `administrator-provision` verifies
+the signed service, helper and CLI against their release digests. It generates
+the independent service credentials on Windows, publishes the LocalSystem-only
+state together, and returns only the public service registration and token hash
+for the broker. An identical retry retains the existing enrollment.
+
+The Win11 pairing and active console SID were verified through the existing
+broker and a read-only Windows console lookup. The private qualification draft
+still needs the final three signed executable digests. A native fixture records
+mouse and keyboard events inside an elevated window. The signed MSI build,
+broker rollout, native Win11 approval and input proof, and install, upgrade and
+uninstall checks are pending.
+
 The 2026-11-11 text-clipboard addition is implemented and paired-qualified for
 the Linux X11 viewer and Darwin worker. It negotiates bounded plain-text transfer
 inside the existing encrypted channel, with a host setting and focus/control
@@ -209,7 +367,7 @@ epic, not new global tasks.
 | RD-01 | Architecture and native transport/codec/session interfaces | Stabilization; reuse inventory | Record ownership, native C/C++ WebRTC library assessment, track versus binary-channel feasibility, bounded queues/cancellation, protocol versions, support matrix and open decisions; no mandatory media dependency in generic core |
 | RD-02 | Desktop authorization and broker signaling | RD-01; TASK-036 identity audit | Extend existing broker for authenticated session negotiation/termination and audit; separate view/input/clipboard grants from execution delivery; test expiry, revocation, replay, endpoint substitution and reconnect. Assess enrollment hardening without rebuilding existing protections |
 | RD-03 | ICE/STUN, managed and self-hosted TURN | RD-01, RD-02; TASK-043 | Prove direct connectivity and explicit relay fallback under controlled NAT/failure scenarios; interchangeable Cloudflare and self-hosted providers, short-lived credential handling, bounded recovery and truthful route diagnostics; verify pricing/terms/quotas before rollout |
-| RD-04 | Windows, macOS, Wayland and X11 capture/input | RD-01, RD-02; platform qualification | Qualify real desktop viewing and mouse/keyboard input per backend with consent/permissions, cursor/DPI/resolution handling, lock/secure-session limits and key release on disconnect; stage monitor/audio enhancements separately |
+| RD-04 | Windows, macOS, Wayland and X11 capture/input | RD-01, RD-02; platform qualification | The private Win11 x64 sender and Linux X11 preview passed physical display switching, mixed-DPI fullscreen, clicks and typing in standard Control. Release artifacts, approved administrator input on both displays, other roles and architectures remain open. |
 | RD-05 | Codec abstraction, H.264/AV1 and NLV-1 benchmarking | RD-01, RD-03, RD-04 | Capability negotiation and explicit compatibility fallback; qualified H.264/AV1 paths where practical; versioned Nucleon integration; repeatable codec-only and end-to-end comparisons at comparable visual quality, without assuming NLV-1 wins |
 | RD-06 | RDP/VNC compatibility providers | RD-01, RD-02; existing adapter inventory | Resolver capabilities for Windows RDP, macOS Screen Sharing/VNC and Linux RDP/VNC; disclose existing-desktop versus separate-login semantics; test each provider's authentication, permissions and lifecycle without forcing its media through WebRTC |
 | RD-07 | Dedicated Qt view, Canvas, Tiling and CLI/API | RD-02, RD-04; RD-03 for later ICE/TURN routes; TASK-045 generic seams | Select machine/session independently in each workspace surface; show status, route/codec and recovery; shared lifecycle/authorization through CLI/API; disconnect releases the view/session as intended without stopping unrelated workloads |

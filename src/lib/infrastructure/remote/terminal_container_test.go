@@ -141,23 +141,29 @@ func TestContainerTerminalRecoveryClearsOnlyExactBrokerReservation(t *testing.T)
 	}
 }
 
-type completedContainerTerminalBackend struct{}
+type completedContainerTerminalBackend struct {
+	stopDelay time.Duration
+}
 
 func (*completedContainerTerminalBackend) Read([]byte) (int, error)          { return 0, io.EOF }
 func (*completedContainerTerminalBackend) Write(data []byte) (int, error)    { return len(data), nil }
 func (*completedContainerTerminalBackend) SetWriteDeadline(time.Time) error  { return nil }
 func (*completedContainerTerminalBackend) Resize(terminalsession.Size) error { return nil }
 func (*completedContainerTerminalBackend) Wait() (int, error)                { return 0, nil }
-func (*completedContainerTerminalBackend) Stop() error                       { return nil }
 func (*completedContainerTerminalBackend) Close() error                      { return nil }
 
-func testCompletedContainerTerminalManager(t *testing.T, target contract.FeatureTarget, started *bool) *terminalsession.Manager {
+func (backend *completedContainerTerminalBackend) Stop() error {
+	time.Sleep(backend.stopDelay)
+	return nil
+}
+
+func testCompletedContainerTerminalManager(t *testing.T, target contract.FeatureTarget, started *bool, stopDelay time.Duration) *terminalsession.Manager {
 	t.Helper()
 	manager, err := terminalsession.NewOwnedProvider(terminalsession.Profile{ID: "fixture", Executable: filepath.Join(t.TempDir(), "provider"), Dir: t.TempDir(), Env: []string{"PATH=/usr/bin:/bin"}},
 		terminalsession.Authority{Target: terminalInvocationTarget(target), Identity: invocation.Identity{Issuer: "worker", Subject: "fixture"}, Authorize: func(context.Context, invocation.Binding) error { return nil }},
 		func(context.Context, terminalsession.Profile, terminalsession.Size) (terminalsession.Backend, error) {
 			*started = true
-			return &completedContainerTerminalBackend{}, nil
+			return &completedContainerTerminalBackend{stopDelay: stopDelay}, nil
 		})
 	if err != nil {
 		t.Fatal(err)
@@ -182,9 +188,9 @@ func TestContainerTerminalOrphansConsumeHostTerminalQuotaAfterRestart(t *testing
 		t.Fatal(err)
 	}
 	started := false
-	manager := testCompletedContainerTerminalManager(t, reference.Target, &started)
+	manager := testCompletedContainerTerminalManager(t, reference.Target, &started, 0)
 	service := &terminalWorkerService{root: root, policy: permissionFingerprint(permissions), processRecovery: "host-reboot", catalog: permissions.catalog(reference.Target),
-		epoch: reference.Epoch, manager: manager, records: map[string]*terminalWorkerRecord{}}
+		epoch: reference.Epoch, hostManagers: map[string]*terminalsession.Manager{"project": manager}, records: map[string]*terminalWorkerRecord{}}
 	var orphaned []contract.TerminalReference
 	for index := 0; index < contract.MaxTerminalSessions; index++ {
 		orphan := reference
@@ -232,7 +238,7 @@ func TestContainerTerminalKnownHostRebootShutdownRecordsVerifiedClosure(t *testi
 		t.Fatal(err)
 	}
 	started := false
-	manager := testCompletedContainerTerminalManager(t, reference.Target, &started)
+	manager := testCompletedContainerTerminalManager(t, reference.Target, &started, 2250*time.Millisecond)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	session, err := manager.OpenAs(ctx, terminalsession.Size{Columns: 80, Rows: 24}, 5*time.Second,
@@ -240,14 +246,9 @@ func TestContainerTerminalKnownHostRebootShutdownRecordsVerifiedClosure(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	wait, stop := context.WithTimeout(context.Background(), time.Second)
-	defer stop()
-	if result, err := session.Wait(wait); err != nil || result.CleanupError != nil {
-		t.Fatalf("fixture closure failed: %+v (%v)", result, err)
-	}
 	_, scope := process.WithScopeMode(ctx, reference.ID, "host-reboot", journal.observeScope)
 	service := &terminalWorkerService{processRecovery: "host-reboot", records: map[string]*terminalWorkerRecord{reference.ID: {
-		open: contract.TerminalOpen{ID: reference.ID}, session: session, manager: manager, cancel: cancel, scope: scope, journal: journal}}}
+		open: contract.TerminalOpen{ID: reference.ID, Container: resource.Container}, session: session, manager: manager, cancel: cancel, scope: scope, journal: journal}}}
 	if err := service.cancelSessions(); err != nil {
 		t.Fatal(err)
 	}
@@ -259,5 +260,44 @@ func TestContainerTerminalKnownHostRebootShutdownRecordsVerifiedClosure(t *testi
 	}
 	if _, err := os.Stat(containerTerminalReceiptPath(root, reference.ID)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("verified normal shutdown retained an orphan receipt: %v", err)
+	}
+}
+
+func TestContainerTerminalForgetAfterOperatorLeaseExpires(t *testing.T) {
+	reference := containerTerminalTestReference()
+	profile := terminalsession.Profile{ID: "fixture", Executable: filepath.Join(t.TempDir(), "provider"), Dir: t.TempDir()}
+	authority := terminalsession.Authority{Target: terminalInvocationTarget(reference.Target),
+		Identity: invocation.Identity{Issuer: "operator", Subject: "fixture"},
+		Authorize: func(_ context.Context, binding invocation.Binding) error {
+			if binding.Contract.Action == "release" {
+				return terminalsession.ErrLeaseExpired
+			}
+			return nil
+		}}
+	manager, err := terminalsession.NewOwnedProvider(profile, authority,
+		func(context.Context, terminalsession.Profile, terminalsession.Size) (terminalsession.Backend, error) {
+			return &completedContainerTerminalBackend{}, nil
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	session, err := manager.OpenAs(ctx, terminalsession.Size{Columns: 80, Rows: 24}, time.Second, authority.Identity, authority.Authorize)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Release(ctx, session.ID()); !errors.Is(err, terminalsession.ErrLeaseExpired) {
+		t.Fatalf("expired operator unexpectedly released its session: %v", err)
+	}
+
+	service := &terminalWorkerService{epoch: reference.Epoch, catalog: contract.FeatureCatalog{Target: reference.Target},
+		records: map[string]*terminalWorkerRecord{reference.ID: {
+			open: contract.TerminalOpen{Container: strings.Repeat("a", 64)}, manager: manager, session: session}}}
+	if err := service.forget(ctx, reference); err != nil {
+		t.Fatalf("worker could not discard verified native closure: %v", err)
+	}
+	if service.records[reference.ID] != nil {
+		t.Fatal("worker retained the verified closed container session")
 	}
 }

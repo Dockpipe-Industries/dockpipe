@@ -46,13 +46,29 @@ func installServiceWithReplacement(ctx context.Context, root, role string, repla
 	if err != nil {
 		return err
 	}
-	unlock, err := remoteio.Lock(filepath.Join(root, "service.lock"))
+	if definition.manager == "xdg-autostart" {
+		if err := requireDesktopWorkerSession(); err != nil {
+			return err
+		}
+	}
+
+	unlock, err := lockService(root)
 	if err != nil {
 		return err
 	}
 	defer unlock()
-	if _, _, err := readServiceForReplacement(definition, replace); err != nil {
-		return err
+	if definition.manager == "task-scheduler" {
+		exists, matches, err := readWindowsWorkerTask(ctx, definition.name, definition.content)
+		if err != nil {
+			return err
+		}
+		if exists && !matches && !replace {
+			return fmt.Errorf("worker task %s differs from this Dockpipe installation; review it, then use remote service --role worker --replace", definition.name)
+		}
+	} else {
+		if _, _, err := readServiceForReplacement(definition, replace); err != nil {
+			return err
+		}
 	}
 	pendingPath := filepath.Join(root, role+"-service-update.json")
 	if !replace {
@@ -65,8 +81,10 @@ func installServiceWithReplacement(ctx context.Context, root, role string, repla
 	if err := remoteio.WritePrivate(pendingPath, map[string]bool{"pending": true}); err != nil {
 		return err
 	}
-	if err := publishServiceDefinition(ctx, definition, replace); err != nil {
-		return err
+	if definition.manager != "task-scheduler" {
+		if err := publishServiceDefinition(ctx, definition, replace); err != nil {
+			return err
+		}
 	}
 	if err := activateService(ctx, definition, replace); err != nil {
 		return fmt.Errorf("service activation failed; registration is preserved; retry remote service --role %s --replace: %w", role, err)
@@ -80,6 +98,15 @@ func installServiceWithReplacement(ctx context.Context, root, role string, repla
 }
 
 func activateService(ctx context.Context, definition serviceDefinition, replace bool) error {
+	switch definition.manager {
+	case "task-scheduler":
+		return activateWindowsWorkerTask(ctx, definition.name, definition.content, replace)
+	case "openrc":
+		return activateOpenRCWorker(ctx, definition, replace)
+	case "xdg-autostart":
+		return activateDesktopWorker(ctx, definition)
+	}
+
 	return activateServiceForPlatform(ctx, definition, replace, runtime.GOOS)
 }
 
@@ -128,6 +155,17 @@ func activateServiceForPlatform(ctx context.Context, definition serviceDefinitio
 		return run("systemctl", "--user", "restart", name+".service")
 	}
 	return run("systemctl", "--user", "enable", "--now", name+".service")
+}
+
+func systemdWorkerAvailable(ctx context.Context, flatpak bool) bool {
+	if !flatpak {
+		info, err := os.Stat("/run/systemd/system")
+		return err == nil && info.IsDir()
+	}
+
+	probe, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	return exec.CommandContext(probe, "flatpak-spawn", "--host", "test", "-d", "/run/systemd/system").Run() == nil
 }
 
 func launchAgent(name string, arguments []string, log string, bundleIdentifier string) string {

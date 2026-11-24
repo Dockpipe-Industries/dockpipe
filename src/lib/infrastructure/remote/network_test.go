@@ -168,6 +168,15 @@ func TestNetworkProxyAuthenticationAndWorkerLocalhost(t *testing.T) {
 		_, _ = w.Write([]byte("worker localhost"))
 	}))
 	defer origin.Close()
+	target := strings.TrimPrefix(origin.URL, "http://")
+	permission := contract.NetworkPermissions{
+		Schema:              contract.NetworkVersion,
+		Enabled:             true,
+		LoopbackDestination: target,
+	}
+	if err := permission.Validate(); err != nil {
+		t.Fatal(err)
+	}
 	listener, server, password, err := StartNetworkProxy(ctx, operator, catalog.Target)
 	if err != nil {
 		t.Fatal(err)
@@ -210,7 +219,7 @@ func TestNetworkProxyAuthenticationAndWorkerLocalhost(t *testing.T) {
 					return
 				}
 				for _, ticket := range tickets {
-					go func(ticket contract.NetworkTicket) { _ = worker.ServeNetworkTCP(ctx, ticket) }(ticket)
+					go func(ticket contract.NetworkTicket) { _ = worker.ServeNetworkTCP(ctx, ticket, permission) }(ticket)
 				}
 			}
 		}
@@ -234,7 +243,6 @@ func TestNetworkProxyAuthenticationAndWorkerLocalhost(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer raw.Close()
-	target := strings.TrimPrefix(origin.URL, "http://")
 	credential := base64.StdEncoding.EncodeToString([]byte("dockpipe:" + password))
 	_, _ = io.WriteString(raw, "CONNECT "+target+" HTTP/1.1\r\nHost: "+target+"\r\nProxy-Authorization: Basic "+credential+"\r\n\r\n")
 	reader := bufio.NewReader(raw)
@@ -252,6 +260,20 @@ func TestNetworkProxyAuthenticationAndWorkerLocalhost(t *testing.T) {
 	if err != nil || string(payload) != "worker localhost" {
 		t.Fatal("CONNECT payload changed", string(payload), err)
 	}
+	restrictedOrigin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("worker dialed a port outside the grant")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer restrictedOrigin.Close()
+	rejected, err := client.Get(restrictedOrigin.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rejected.Body.Close()
+	if rejected.StatusCode != http.StatusBadGateway {
+		t.Fatalf("restricted destination returned %d", rejected.StatusCode)
+	}
+
 	cancel()
 	<-workerDone
 }
@@ -326,7 +348,9 @@ func TestNetworkProxyWebSocketUpgrade(t *testing.T) {
 					return
 				}
 				for _, ticket := range tickets {
-					go func(ticket contract.NetworkTicket) { _ = worker.ServeNetworkTCP(ctx, ticket) }(ticket)
+					go func(ticket contract.NetworkTicket) {
+						_ = worker.ServeNetworkTCP(ctx, ticket, contract.NetworkPermissions{Enabled: true})
+					}(ticket)
 				}
 			}
 		}

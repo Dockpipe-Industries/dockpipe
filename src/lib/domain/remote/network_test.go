@@ -14,3 +14,27 @@ func TestNetworkAddressContract(t *testing.T) {
 		}
 	}
 }
+
+func TestNetworkLoopbackPermissionRequiresLiteralIPAndExactPort(t *testing.T) {
+	for _, address := range []string{"127.0.0.1:3000", "[::1]:443"} {
+		permission := NetworkPermissions{Schema: NetworkVersion, Enabled: true, LoopbackDestination: address}
+		if err := permission.Validate(); err != nil || !permission.AllowsDestination(address) {
+			t.Errorf("valid loopback destination %q rejected: %v", address, err)
+		}
+		if permission.AllowsDestination("localhost:3000") || permission.AllowsDestination("127.0.0.1:3001") {
+			t.Error("loopback permission admitted another destination")
+		}
+	}
+
+	for _, address := range []string{"localhost:3000", "192.168.1.2:3000", "127.0.0.1:03000", "127.0.0.1"} {
+		permission := NetworkPermissions{Schema: NetworkVersion, Enabled: true, LoopbackDestination: address}
+		if permission.Validate() == nil {
+			t.Errorf("invalid loopback grant accepted: %q", address)
+		}
+	}
+
+	disabled := NetworkPermissions{Schema: NetworkVersion, LoopbackDestination: "127.0.0.1:3000"}
+	if disabled.Validate() == nil || disabled.AllowsDestination(disabled.LoopbackDestination) {
+		t.Error("disabled permission admitted a destination")
+	}
+}

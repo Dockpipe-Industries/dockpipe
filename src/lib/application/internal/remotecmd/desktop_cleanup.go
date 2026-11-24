@@ -99,7 +99,7 @@ func desktopCleanupBridge(parent context.Context, root, path string) error {
 	if err != nil {
 		return err
 	}
-	unlock, err := remoteio.Lock(filepath.Join(root, "desktop.lock"))
+	unlock, err := remoteio.LockDesktopWorker(root)
 	if err != nil {
 		return err
 	}
