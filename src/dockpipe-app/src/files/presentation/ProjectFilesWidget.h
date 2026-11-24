@@ -8,7 +8,6 @@
 
 class WorkspaceFileModel;
 class WorkspaceFilesController;
-class QAction;
 class QModelIndex;
 class QTreeView;
 class QPlainTextEdit;
@@ -114,13 +113,6 @@ private:
     QLabel *m_status;
     QWidget *m_controls;
     QWidget *m_fileActions;
-    QToolButton *m_newFile;
-    QToolButton *m_newFolder;
-    QPushButton *m_createFile;
-    QLabel *m_emptyHint;
-    QAction *m_renameFile;
-    QAction *m_saveAllFiles;
-    QAction *m_deleteFile;
     QPushButton *m_openWorkflow;
     QPushButton *m_graphButton;
     QToolButton *m_previewButton;

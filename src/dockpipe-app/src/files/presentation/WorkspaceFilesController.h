@@ -5,7 +5,11 @@
 #include <QObject>
 
 class ProjectFilesWidget;
+class QAction;
+class QLabel;
+class QPushButton;
 class QSortFilterProxyModel;
+class QToolButton;
 
 // Private child state keeps the published ProjectFilesWidget object layout stable.
 class WorkspaceFilesController final : public QObject {
@@ -24,6 +28,14 @@ public:
     WorkspaceFilesClient *reader;
     WorkspaceFilesClient *writer;
     QSortFilterProxyModel *filter;
+    QToolButton *newFileButton = nullptr;
+    QToolButton *newFolderButton = nullptr;
+    QPushButton *createFileButton = nullptr;
+    QLabel *emptyHint = nullptr;
+    QAction *renameFileAction = nullptr;
+    QAction *saveAllFilesAction = nullptr;
+    QAction *deleteFileAction = nullptr;
+
     QHash<QString, QString> revisions;
     quint64 openGeneration = 0;
     int pendingWrites = 0;

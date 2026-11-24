@@ -118,8 +118,8 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     m_graphButton->setEnabled(false);
     pageHeader->addWidget(m_graphButton);
     connect(m_graphButton, &QPushButton::clicked, this, &ProjectFilesWidget::openGraph);
-    m_newFile = addTool(toolbar, tr("New file"), CanvasIcons::Symbol::Add, newFile);
-    m_newFolder = addTool(toolbar, tr("New folder"), CanvasIcons::Symbol::Folder, [this]() {
+    files->newFileButton = addTool(toolbar, tr("New file"), CanvasIcons::Symbol::Add, newFile);
+    files->newFolderButton = addTool(toolbar, tr("New folder"), CanvasIcons::Symbol::Folder, [this]() {
         bool ok = false;
         const QString name = QInputDialog::getText(this, tr("New folder"), tr("Folder name"), QLineEdit::Normal, {}, &ok);
         const QString path = resolveWorkspacePath(m_explorerDirectory, name);
@@ -315,7 +315,7 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     addTool(findLayout, tr("Close search"), CanvasIcons::Symbol::Close, [this]() { m_findBar->hide(); });
     auto *more = addTool(actions, tr("File actions"), CanvasIcons::Symbol::More, []() {});
     auto *menu = new QMenu(more);
-    m_renameFile = menu->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Rename), tr("Rename…"), this, [this]() {
+    files->renameFileAction = menu->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Rename), tr("Rename…"), this, [this]() {
         bool ok = false;
         const QString name = QInputDialog::getText(this, tr("Rename file"), tr("Path relative to this folder"),
             QLineEdit::Normal, relativeWorkspacePath(m_path), &ok);
@@ -323,9 +323,9 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
             renameFile(QDir(m_root).filePath(name));
     });
     menu->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Refresh), tr("Reload from disk"), this, [this]() { reloadFileAsync(); });
-    m_saveAllFiles = menu->addAction(tr("Save all files"), this, [this]() { saveAllFilesAsync(); });
+    files->saveAllFilesAction = menu->addAction(tr("Save all files"), this, [this]() { saveAllFilesAsync(); });
     menu->addSeparator();
-    m_deleteFile = menu->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Trash), tr("Delete file…"), this, [this]() {
+    files->deleteFileAction = menu->addAction(CanvasIcons::icon(CanvasIcons::Symbol::Trash), tr("Delete file…"), this, [this]() {
         if (!m_path.isEmpty() && QMessageBox::question(this, tr("Delete file"),
             tr("Permanently delete %1?").arg(relativeWorkspacePath(m_path)),
             QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel) == QMessageBox::Yes)
@@ -367,13 +367,13 @@ ProjectFilesWidget::ProjectFilesWidget(QWidget *parent) : QWidget(parent)
     auto *emptyTitle = new QLabel(tr("Everything in its place"));
     emptyTitle->setObjectName("editorEmptyTitle");
     emptyLayout->addWidget(emptyTitle, 0, Qt::AlignHCenter);
-    m_emptyHint = new QLabel(tr("Select a file to edit, or create something new."));
-    m_emptyHint->setObjectName("editorMuted");
-    m_emptyHint->setWordWrap(true);
-    emptyLayout->addWidget(m_emptyHint, 0, Qt::AlignHCenter);
-    m_createFile = new QPushButton(CanvasIcons::icon(CanvasIcons::Symbol::Add), tr("Create a file"));
-    connect(m_createFile, &QPushButton::clicked, this, newFile);
-    emptyLayout->addWidget(m_createFile, 0, Qt::AlignHCenter);
+    files->emptyHint = new QLabel(tr("Select a file to edit, or create something new."));
+    files->emptyHint->setObjectName("editorMuted");
+    files->emptyHint->setWordWrap(true);
+    emptyLayout->addWidget(files->emptyHint, 0, Qt::AlignHCenter);
+    files->createFileButton = new QPushButton(CanvasIcons::icon(CanvasIcons::Symbol::Add), tr("Create a file"));
+    connect(files->createFileButton, &QPushButton::clicked, this, newFile);
+    emptyLayout->addWidget(files->createFileButton, 0, Qt::AlignHCenter);
     emptyLayout->addStretch();
     m_documents->addWidget(m_empty);
     m_documents->setCurrentWidget(m_empty);
@@ -585,15 +585,16 @@ void ProjectFilesWidget::showMessage(const QString &message)
 
 void ProjectFilesWidget::setWriteAvailable(bool available)
 {
+    auto *files = WorkspaceFilesController::get(this);
     editorWorkspace()->setReadOnly(!available);
-    m_newFile->setEnabled(available);
-    m_newFolder->setEnabled(available);
-    m_createFile->setVisible(available);
-    m_emptyHint->setText(available ? tr("Select a file to edit, or create something new.")
-                                  : tr("Select a file to read."));
-    m_renameFile->setEnabled(available);
-    m_saveAllFiles->setEnabled(available);
-    m_deleteFile->setEnabled(available);
+    files->newFileButton->setEnabled(available);
+    files->newFolderButton->setEnabled(available);
+    files->createFileButton->setVisible(available);
+    files->emptyHint->setText(available ? tr("Select a file to edit, or create something new.")
+                                      : tr("Select a file to read."));
+    files->renameFileAction->setEnabled(available);
+    files->saveAllFilesAction->setEnabled(available);
+    files->deleteFileAction->setEnabled(available);
     updateTitle();
 }
 
