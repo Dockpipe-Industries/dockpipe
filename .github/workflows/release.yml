@@ -337,8 +337,8 @@ jobs:
         if: matrix.platform == 'linux-amd64'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends apt-utils gnupg python3-yaml
-          python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml
+          sudo apt-get install -y --no-install-recommends apt-utils bubblewrap gnupg python3-pil python3-yaml
+          PATH="/usr/bin:$PATH" /usr/bin/python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml
       - uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.platform }}

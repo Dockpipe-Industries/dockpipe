@@ -38,3 +38,8 @@ bool openCommandTerminal(const QString &program, const QStringList &arguments, Q
 {
     return recordTerminalCommand(program, arguments, error);
 }
+
+bool openDockpipeTerminal(const QString &program, const QStringList &arguments, QString *error)
+{
+    return recordTerminalCommand(program, arguments, error);
+}

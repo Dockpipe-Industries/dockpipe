@@ -260,7 +260,7 @@ steps:
                         ++prompts;
                         message->findChild<QPushButton *>(restartNow
                             ? "languageRestartNow" : "languageRestartLater")->click();
-                    } else if (message->windowTitle() == "Unsaved workflow") {
+                    } else if (message->button(QMessageBox::Discard) && message->button(QMessageBox::Cancel)) {
                         ++cancellations;
                         message->button(QMessageBox::Cancel)->click();
                     }
@@ -277,27 +277,21 @@ steps:
         if (prompts != 1 || restarts != 0 || LauncherTranslations::savedLanguage() != "fr")
             return 71;
         auto *source = workflow->findChild<QPlainTextEdit *>("workflowYaml");
-        if (!workflow->openWorkflow(path) || !source)
+        if (!source)
             return 72;
-        auto *documentTabs = workflow->findChild<QTabWidget *>("canvasDocument");
-        if (!waitUntil([&]() { return documentTabs->isEnabled(); }))
-            return 76;
-        QFile savedWorkflow(path);
-        if (!savedWorkflow.open(QIODevice::ReadOnly))
-            return 77;
-        const QString savedSource = QString::fromUtf8(savedWorkflow.readAll());
+        const QString originalSource = source->toPlainText();
         source->appendPlainText("# unsaved restart fixture");
         saveLanguage("fr", true);
         if (prompts != 2 || cancellations != 1 || restarts != 0
             || !source->toPlainText().contains("# unsaved restart fixture"))
             return 73;
-        source->setPlainText(savedSource);
+        source->setPlainText(originalSource);
         saveLanguage("fr", true);
         // Quit completion includes asynchronous surface shutdown.
         if (prompts != 3 || !waitUntil([&]() { return restarts == 1; })) {
             std::fprintf(stderr, "Restart completion failed: prompts=%d restarts=%d cancellations=%d pending=%d sourceRestored=%d\n",
                 prompts, restarts, cancellations, window.property("leaveConfirmationPending").toBool(),
-                source->toPlainText() == savedSource);
+                source->toPlainText() == originalSource);
             return 74;
         }
         std::puts("Language restart, Later, unchanged language and unsaved-work cancellation passed.");

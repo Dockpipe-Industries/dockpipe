@@ -49,6 +49,7 @@ add_subdirectory(third_party/ksyntaxhighlighting)
 if(APPLE)
     enable_language(OBJCXX)
     set_source_files_properties(src/native-desktop/infrastructure/DesktopPermissionAccessMac.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+    set_source_files_properties(src/packages/infrastructure/NativeWorkerHostMac.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
 endif()
 
 # Keep every permission widget consumer paired with its platform factory.
@@ -58,6 +59,15 @@ function(dockpipe_target_desktop_permissions target)
         target_sources(${target} PRIVATE src/native-desktop/infrastructure/DesktopPermissionAccessMac.mm)
         set_target_properties(${target} PROPERTIES OBJCXX_STANDARD 17 OBJCXX_STANDARD_REQUIRED ON)
         target_link_libraries(${target} PRIVATE "-framework ApplicationServices" "-framework CoreGraphics")
+    endif()
+endfunction()
+
+function(dockpipe_target_native_worker_host target)
+    target_sources(${target} PRIVATE src/packages/infrastructure/NativeWorkerHost.cpp)
+    if(APPLE)
+        target_sources(${target} PRIVATE src/packages/infrastructure/NativeWorkerHostMac.mm)
+        set_target_properties(${target} PROPERTIES OBJCXX_STANDARD 17 OBJCXX_STANDARD_REQUIRED ON)
+        target_link_libraries(${target} PRIVATE "-framework Foundation" "-framework Security")
     endif()
 endfunction()
 
@@ -132,7 +142,6 @@ set(DOCKPIPE_APP_SOURCES
     src/shell/presentation/MainWindowWorkflows.cpp
     src/shell/presentation/MainWindowDashboards.cpp
     src/shell/presentation/MainWindowSurfaces.cpp
-    src/packages/infrastructure/NativeWorkerHost.cpp
     src/packages/presentation/PackageSurfacePage.cpp
     src/dashboards/presentation/DashboardPage.cpp src/dashboards/presentation/DashboardPageMachineContext.cpp
     src/dashboards/presentation/DashboardSettingsDialog.cpp
@@ -152,12 +161,9 @@ else()
 endif()
 
 dockpipe_target_desktop_permissions(dockpipe-launcher)
+dockpipe_target_native_worker_host(dockpipe-launcher)
 
 if(APPLE)
-    target_sources(dockpipe-launcher PRIVATE src/packages/infrastructure/NativeWorkerHostMac.mm)
-    set_target_properties(dockpipe-launcher PROPERTIES OBJCXX_STANDARD 17 OBJCXX_STANDARD_REQUIRED ON)
-    set_source_files_properties(src/packages/infrastructure/NativeWorkerHostMac.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
-    target_link_libraries(dockpipe-launcher PRIVATE "-framework Foundation" "-framework Security")
     set_target_properties(dockpipe-launcher PROPERTIES
         MACOSX_BUNDLE TRUE
         OUTPUT_NAME DockPipe
@@ -254,10 +260,12 @@ if(BUILD_TESTING AND UNIX)
     target_include_directories(remote-launcher-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
     target_link_libraries(remote-launcher-test PRIVATE Qt6::Widgets Qt6::Network Qt6::Concurrent)
     dockpipe_target_desktop_permissions(remote-launcher-test)
+    dockpipe_target_native_worker_host(remote-launcher-test)
     add_executable(workflow-workspace-test tests/WorkflowWorkspaceTest.cpp ${REMOTE_LAUNCHER_TEST_SOURCES})
     target_include_directories(workflow-workspace-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
     target_link_libraries(workflow-workspace-test PRIVATE Qt6::Widgets Qt6::Network Qt6::Concurrent)
     dockpipe_target_desktop_permissions(workflow-workspace-test)
+    dockpipe_target_native_worker_host(workflow-workspace-test)
     add_test(NAME workflow-workspace COMMAND workflow-workspace-test)
     add_test(NAME workflow-surface-navigation COMMAND workflow-workspace-test --surfaces)
     add_test(NAME language-restart COMMAND workflow-workspace-test --language-restart)
@@ -660,6 +668,9 @@ if(BUILD_TESTING)
     add_test(NAME terminal-widget COMMAND terminal-widget-test)
     # This test measures UI heartbeat and idle CPU during controlled terminal output.
     set_tests_properties(terminal-widget PROPERTIES TIMEOUT 45 RUN_SERIAL TRUE)
+    if(APPLE)
+        set_tests_properties(terminal-widget PROPERTIES ENVIRONMENT "QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu")
+    endif()
     add_executable(window-controls-test tests/WindowControlsTest.cpp dockpipe-launcher.qrc)
     target_link_libraries(window-controls-test PRIVATE dockpipe-launcher-ui Qt6::Test)
     add_test(NAME window-controls COMMAND window-controls-test)
@@ -1101,14 +1112,10 @@ if(BUILD_TESTING AND UNIX)
     target_compile_features(native-worker-package-contract-test PRIVATE c_std_11)
     set_target_properties(native-worker-package-contract-test PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
     add_test(NAME native-worker-package-contract COMMAND native-worker-package-contract-test)
-    add_executable(native-worker-host-test tests/NativeWorkerHostTest.cpp src/packages/infrastructure/NativeWorkerHost.cpp)
+    add_executable(native-worker-host-test tests/NativeWorkerHostTest.cpp)
     target_include_directories(native-worker-host-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
     target_link_libraries(native-worker-host-test PRIVATE Qt6::Core Qt6::Test)
-    if(APPLE)
-        target_sources(native-worker-host-test PRIVATE src/packages/infrastructure/NativeWorkerHostMac.mm)
-        set_target_properties(native-worker-host-test PROPERTIES OBJCXX_STANDARD 17 OBJCXX_STANDARD_REQUIRED ON)
-        target_link_libraries(native-worker-host-test PRIVATE "-framework Foundation" "-framework Security")
-    endif()
+    dockpipe_target_native_worker_host(native-worker-host-test)
     add_test(NAME native-worker-host COMMAND native-worker-host-test)
     set_tests_properties(native-worker-host native-worker-package-contract PROPERTIES TIMEOUT 15)
 endif()
@@ -1119,7 +1126,9 @@ if(BUILD_TESTING)
     add_executable(browser-network-host-test tests/BrowserNetworkHostTest.cpp)
     target_link_libraries(browser-network-host-test PRIVATE dockpipe-browser Qt6::Test)
     add_test(NAME browser-network-host COMMAND browser-network-host-test)
-    set_tests_properties(browser-network-host PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    set_tests_properties(browser-network-host PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests"
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
 endif()
 
 if(BUILD_TESTING)
@@ -1127,5 +1136,7 @@ if(BUILD_TESTING)
     target_link_libraries(workspace-navigation-test PRIVATE Qt6::Widgets Qt6::Test)
     target_include_directories(workspace-navigation-test PRIVATE ${DOCKPIPE_APP_INCLUDE_DIRECTORIES})
     add_test(NAME workspace-navigation COMMAND workspace-navigation-test)
-    set_tests_properties(workspace-navigation PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    set_tests_properties(workspace-navigation PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests"
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
 endif()

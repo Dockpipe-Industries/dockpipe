@@ -51,18 +51,22 @@ private slots:
         int ticks = 0;
         QTimer timer;
         timer.setInterval(5);
-        connect(&timer, &QTimer::timeout, this, [&] { ++ticks; });
-        timer.start();
+        connect(&timer, &QTimer::timeout, this, [&] {
+            if (++ticks == 6) {
+                timer.stop();
+                surface.complete(outcome);
+            }
+        });
         QElapsedTimer elapsed;
         elapsed.start();
         QVERIFY(session.requestClose(&surface));
         QVERIFY(elapsed.elapsed() < 100);
         QCOMPARE(surface.requests, 1);
-        QTimer::singleShot(100, &surface, [&] { surface.complete(outcome); });
         QCOMPARE(completed.size(), 0);
+        timer.start();
         QTRY_COMPARE(completed.size(), 1);
         QCOMPARE(completed.first().first().toJsonObject().value("outcome").toString(), outcome);
-        QVERIFY(ticks > 5);
+        QCOMPARE(ticks, 6);
         surface.complete("closed");
         QCOMPARE(completed.size(), 1);
     }
