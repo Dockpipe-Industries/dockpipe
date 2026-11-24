@@ -147,6 +147,11 @@ int main(int argc, char **argv)
             return 1;
         }
     }
+    QTemporaryDir replacementDirectory;
+    if (!replacementDirectory.isValid())
+        return 1;
+
+    const QString replacementMarker = replacementDirectory.filePath("replacement-completed");
     RemoteCommand command;
     QElapsedTimer elapsed;
     elapsed.start();
@@ -162,9 +167,13 @@ int main(int argc, char **argv)
                 return;
             QTimer::singleShot(1200, &application, [&]() {
                 secondAttempt = true;
-                command.run(QCoreApplication::applicationFilePath(), {"--child", "--graceful"},
+                // A cancelled command suppresses its remaining output. Use
+                // the child-owned marker to prove it survived the old timer.
+                command.run(QCoreApplication::applicationFilePath(), {"--child", "--graceful", "--marker", replacementMarker},
                     [&](bool secondSuccess, const QByteArray &output) {
-                        passed = !secondSuccess && output.contains("done");
+                        QFile marker(replacementMarker);
+                        passed = !secondSuccess && !output.contains("done")
+                            && marker.open(QIODevice::ReadOnly) && marker.readAll() == "survived shutdown";
                         application.quit();
                     });
             });
