@@ -67,6 +67,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             cmake \
             build-essential \
+            python3-gi \
             python3-yaml \
             python3-pil \
             apt-utils \
