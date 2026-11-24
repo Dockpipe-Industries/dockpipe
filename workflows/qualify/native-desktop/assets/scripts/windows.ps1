@@ -125,6 +125,8 @@ try {
 cmake --build $build --config Release --parallel $Jobs
 if ($LASTEXITCODE -ne 0) { throw 'Native terminal compilation failed.' }
 # Exercise the same full desktop suite that gates the Windows release.
+$env:DOCKPIPE_BIN = $gitCli
+$env:DOCKPIPE_TERMINAL_PROVIDER = Join-Path $build 'dockpipe-terminal-host.exe'
 ctest --test-dir $build -C Release --verbose --no-tests=error --parallel $Jobs --timeout 120 --stop-on-failure
 $qualificationExit = $LASTEXITCODE
 foreach ($testLog in Get-ChildItem -LiteralPath $build -Filter 'native-*-results.txt') {
