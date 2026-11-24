@@ -875,8 +875,8 @@ func TestDockerBuildPaths(t *testing.T) {
 
 func TestDockerBuildUsesConfiguredDockerBinary(t *testing.T) {
 	withDockerSeams(t)
-	fakeDocker := filepath.Join(t.TempDir(), "docker-test")
-	if err := os.WriteFile(fakeDocker, []byte(""), 0o755); err != nil {
+	fakeDocker := filepath.Join(t.TempDir(), "docker-test.exe")
+	if err := os.WriteFile(fakeDocker, nil, 0o755); err != nil {
 		t.Fatalf("write fake docker: %v", err)
 	}
 	t.Setenv("DOCKPIPE_DOCKER_BIN", fakeDocker)

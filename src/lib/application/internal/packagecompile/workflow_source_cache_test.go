@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -172,12 +173,12 @@ func TestWorkflowSourceBindingPublicationIsPrivateAndContainsOnlyDigests(t *test
 }
 
 func TestWorkflowSourceBindingFilesystemFailureIsActionable(t *testing.T) {
-	parent := filepath.Join(t.TempDir(), "not-a-directory")
-	if err := os.WriteFile(parent, []byte("fixture"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	matches, err := workflowSourceBindingMatches(filepath.Join(parent, "archive"), t.TempDir(), nil)
-	if err == nil || matches {
+	// A NUL in the path causes a filesystem error on both POSIX and Windows.
+	archive := filepath.Join(t.TempDir(), "invalid\x00archive")
+	matches, err := workflowSourceBindingMatches(archive, t.TempDir(), nil)
+
+	var pathError *os.PathError
+	if matches || !errors.As(err, &pathError) || pathError.Path != workflowSourceBindingPath(archive) {
 		t.Fatalf("filesystem failure became a cache miss: matches=%v error=%v", matches, err)
 	}
 }
