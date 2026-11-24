@@ -23,7 +23,7 @@ def check_managed_terminal(cli, home, environment, timeout=30):
                 "XDG_CONFIG_HOME": str(home / "config"), "XDG_DATA_HOME": str(home / "data"),
                 "XDG_CACHE_HOME": str(home / "cache"), "XDG_STATE_HOME": str(home / "state")}
     if os.name == "nt":
-        windows = Path(environment["SystemRoot"]).resolve(strict=True)
+        windows = Path(environment.get("SYSTEMROOT") or environment["SystemRoot"]).resolve(strict=True)
         shell = windows / "System32" / "cmd.exe"
         selected.update(SystemRoot=str(windows), WINDIR=str(windows),
                         PATH=os.pathsep.join([str(windows / "System32"), str(windows)]),

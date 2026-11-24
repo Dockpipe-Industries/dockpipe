@@ -16,6 +16,8 @@ def check(runtime):
     if (manifest["qt"] != "6.10.3" or manifest["platform"] not in baselines
             or manifest.get("glibc_max") != baselines[manifest["platform"]]):
         raise RuntimeError("Unexpected deployed Qt runtime identity")
+    if manifest["platform"] == "linux-amd64" and "lib/libQt6Multimedia.so.6" not in manifest["files"]:
+        raise RuntimeError("Missing deployed Qt Multimedia runtime for native display packages")
     environment = dict(os.environ)
     for name in ("LD_LIBRARY_PATH", "QT_PLUGIN_PATH", "QT_QPA_PLATFORM_PLUGIN_PATH",
                  "QTWEBENGINEPROCESS_PATH", "QTWEBENGINE_RESOURCES_PATH", "QTWEBENGINE_LOCALES_PATH"):
@@ -39,6 +41,9 @@ def check(runtime):
                      "translations/qtwebengine_locales/en-US.pak", "plugins/platforms/libqxcb.so"):
         if not (runtime / relative).is_file():
             raise RuntimeError(f"Missing deployed runtime file: {relative}")
+    terminal_host = runtime.parent.parent / "bin/dockpipe-terminal-host"
+    if not terminal_host.is_symlink() or terminal_host.resolve() != runtime / "bin/dockpipe-terminal-host":
+        raise RuntimeError("The installed CLI cannot find its bundled terminal provider")
     print(f"PASS: Qt 6.10.3 runtime closure ({len(manifest['files'])} ELF files), no public debug sections")
 
 

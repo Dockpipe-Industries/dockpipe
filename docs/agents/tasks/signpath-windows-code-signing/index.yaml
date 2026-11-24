@@ -14,11 +14,13 @@ routes:
     read: [overview.md]
   implementation:
     read: [overview.md]
-    gate: Backlog only. Signing implementation requires confirmed SignPath Foundation approval and a later bounded implementation request.
+    gate: Application submitted. Signing implementation requires confirmed SignPath Foundation approval and a later bounded implementation request.
 
 documents:
   - path: overview.md
     role: cross-repository scope, application prerequisites, approval gate and release acceptance
+  - path: windows-msi-license-audit.md
+    role: verified release payload inventory and component license dispositions
 
 maintenance:
   - Resolve document paths relative to this index.

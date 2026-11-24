@@ -1,6 +1,8 @@
 """Failure boundaries for the native Qt runtime packaging contract."""
 import importlib.util
+import json
 from pathlib import Path
+import runpy
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -46,6 +48,16 @@ class LinuxQtRuntimeTests(unittest.TestCase):
                     patch.object(bundle, "dependencies", return_value=linked):
                 with self.assertRaisesRegex(RuntimeError, "not built against"):
                     bundle.deploy(root / "launcher", root / "qt", root / "public", root / "private", "0.6.2")
+
+    def test_amd64_runtime_requires_multimedia_for_native_display_packages(self):
+        check = runpy.run_path(str(SCRIPT.with_name("check-linux-runtime.py")))["check"]
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = Path(directory)
+            manifest = {"qt": "6.10.3", "platform": "linux-amd64", "glibc_max": "2.35", "files": {}}
+            (runtime / "runtime.json").write_text(json.dumps(manifest))
+
+            with self.assertRaisesRegex(RuntimeError, "Missing deployed Qt Multimedia runtime"):
+                check(runtime)
 
 
     def test_compatibility_runtime_retains_license_and_actual_source_link(self):

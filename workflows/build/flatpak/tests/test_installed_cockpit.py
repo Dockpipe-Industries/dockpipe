@@ -78,6 +78,7 @@ class FlatpakDependencyPreservationTest(unittest.TestCase):
             original = library.read_bytes()
             owned = [
                 app / "libexec/dockpipe/dockpipe-launcher",
+                app / "libexec/dockpipe/dockpipe-terminal-host",
                 app / "libexec/dockpipe/dockpipe-workspace-reader",
                 app / "libexec/dockpipe/libdockpipe-launcher-ui.so.1.0",
                 app / "lib/libXRes.so.1",

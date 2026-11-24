@@ -410,6 +410,8 @@ jobs:
       - name: Smoke test MSI install/uninstall
         if: needs.meta.outputs.build_msi == 'true'
         shell: pwsh
+        env:
+          DOCKPIPE_ADAPTER_0: ${{ needs.meta.outputs.version }}
         run: python workflows/shared/launch.py workflows/package/windows-msi/smoke-release.yml
 
       - name: Collect MSI

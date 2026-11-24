@@ -21,6 +21,8 @@ def main(arguments=None):
     if options.phase == 'cli':
         command = [sys.executable, str(source / 'workflows/build/cli/assets/scripts/build.py'),
                    '--output', environment['PLATFORM_BINARY'], '--version', environment['PLATFORM_VERSION']]
+        if system == 'windows':
+            command.append('--worker-host')
     else:
         command = ['bash', str(source / 'workflows/build/platform/assets/scripts/package-linux.sh')]
     return subprocess.run(command, cwd=source, env=environment, check=False).returncode

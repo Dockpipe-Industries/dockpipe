@@ -148,6 +148,15 @@ def deploy(launcher, qt, stage, private_debug, version, browser_sdk=None, platfo
     for group in PLUGIN_GROUPS:
         for plugin in sorted((qt / "plugins" / group).glob("*.so")):
             copy_binary(plugin, runtime / "plugins" / group / plugin.name)
+
+    if platform == "linux-amd64":
+        # Native display packages are loaded after launch. Their Qt runtime
+        # dependencies are absent from the launcher's static dependency list.
+        multimedia = (qt / "lib/libQt6Multimedia.so.6").resolve(strict=True)
+        if not multimedia.is_relative_to(qt) or multimedia.name != f"libQt6Multimedia.so.{QT_VERSION}":
+            raise RuntimeError("Native display packages require Qt Multimedia from the selected SDK")
+        libraries["libQt6Multimedia.so.6"] = multimedia
+
     copied = set()
     while set(libraries) - copied:
         for name in sorted(set(libraries) - copied):
@@ -200,6 +209,8 @@ def deploy(launcher, qt, stage, private_debug, version, browser_sdk=None, platfo
     (runtime / "bin/dockpipe").symlink_to("../../../bin/dockpipe")
     (stage / "usr/bin").mkdir(parents=True, exist_ok=True)
     (stage / "usr/bin/dockpipe-launcher").symlink_to("../lib/dockpipe/bin/dockpipe-launcher")
+    # The installed CLI discovers the native terminal provider beside itself.
+    (stage / "usr/bin/dockpipe-terminal-host").symlink_to("../lib/dockpipe/bin/dockpipe-terminal-host")
 
     shlibs = []
     for binary, owned in binaries:

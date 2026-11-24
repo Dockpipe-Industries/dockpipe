@@ -30,6 +30,10 @@ mkdir -p "$OUT_DIR"
 OUT_DIR="$(cd "$OUT_DIR" && pwd)"
 BUILD_DIR="$(mktemp -d "$OUT_DIR/.deb-stage.XXXXXX")"
 trap 'rm -rf -- "$BUILD_DIR"' EXIT
+# Keep the staging root private while giving archive directories their required modes.
+caller_umask="$(umask)"
+umask 022
+
 binary="${DOCKPIPE_RELEASE_BINARY:?An explicit built CLI is required}"
 [[ -f "$binary" && ! -L "$binary" ]] || { echo 'CLI input must be a regular file' >&2; exit 1; }
 mkdir -p "${BUILD_DIR}/usr/bin"
@@ -52,6 +56,7 @@ cp -r docs "${BUILD_DIR}/usr/share/doc/dockpipe/" 2>/dev/null || true
 mkdir -p "${BUILD_DIR}/DEBIAN"
 sed -e "s/^Version: .*/Version: ${VERSION}/" -e "s/^Architecture: .*/Architecture: ${DEB_ARCH}/" "${PKG_ROOT}/control" > "${BUILD_DIR}/DEBIAN/control"
 
+umask "$caller_umask"
 run_with_elapsed_status "Building Debian package ${PACKAGE}.deb" \
   dpkg-deb --root-owner-group --build "${BUILD_DIR}" "${OUT_DIR}/${PACKAGE}.deb"
 echo "Built: ${OUT_DIR}/${PACKAGE}.deb"
