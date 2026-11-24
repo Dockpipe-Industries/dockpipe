@@ -15,6 +15,18 @@ Legacy installed IDs and SDK symbols remain compatibility contracts.
 
 ## Global Hard Rules
 
+Prefer PipeLang for new application behaviour, workflow policy, and tests. Keep native code
+focused on platform integration and performance requirements. When a valid requirement exposes
+a missing PipeLang capability, fix and validate it in the owning compiler, runtime, or SDK before
+building dependent work. Do not introduce consumer workarounds that compound the limitation.
+Preserve working implementations unless migration has a concrete benefit.
+
+Use blank lines between logical steps in authored code, especially after guard
+clauses and between setup, execution, validation, and result handling. Keep
+closely related statements together, but do not compress an entire method into
+an uninterrupted block. Apply this to PipeLang, native code, tests, scripts, and
+templates; do not remove visual separation to save tokens.
+
 When user input is genuinely required and the host supports structured prompts, use Yes/No for
 binary decisions or 2-3 mutually exclusive choices with the recommended option first. Use prose
 when the decision needs more than three meaningful choices, structured choices would misrepresent
@@ -42,8 +54,8 @@ it, or the host lacks that UI.
 
 ## Task Routing
 
-Default agent execution uses `gpt-6.1-sol` with Medium reasoning. Delegate bounded,
-independent work when its expected value exceeds coordination and context cost.
+Default to Medium reasoning. Delegate bounded, independent work when its expected
+value exceeds coordination and context cost.
 Prefer one stronger direct worker when that is cheaper overall; reserve escalation
 for difficult architecture, security, or repeated repair. Keep ownership and checks
 explicit, and avoid overlapping edits or automatic fanout.

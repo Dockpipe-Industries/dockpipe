@@ -228,14 +228,28 @@ tasks:
   topic: Inline typed PipeLang expressions and functions in workflow YAML
   path: docs/agents/tasks/inline-pipelang-workflows/index.yaml
   dispatch:
-    readiness: deferred
-    ownership: unclaimed
+    readiness: active
+    ownership: claimed
 - id: TASK-056
   topic: Local browser contexts routed through paired worker networks
   path: docs/agents/tasks/remote-browser-contexts/index.yaml
   dispatch:
     readiness: ready
     ownership: unclaimed
+
+- id: TASK-057
+  topic: Unified security monitoring and vulnerability detection
+  path: docs/agents/tasks/unified-security-monitoring/index.yaml
+  dispatch:
+    readiness: deferred
+    ownership: unclaimed
+
+- id: TASK-058
+  topic: CLI and GUI Environments
+  path: docs/agents/tasks/managed-environments/index.yaml
+  dispatch:
+    readiness: active
+    ownership: claimed
 
 maintenance:
 - Keep tasks open-only and core-owned; external_backlogs route independent owners without claiming their
