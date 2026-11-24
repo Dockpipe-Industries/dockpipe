@@ -8,6 +8,7 @@
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QElapsedTimer>
 #include <QSettings>
 #include <QFile>
 #include <QJsonArray>
@@ -68,8 +69,22 @@ int fixture(const QStringList &arguments)
             view.remove("lease_millis");
         response = QJsonDocument(view);
     } else if (command == "desktop-catalog") {
-        if (mode == "pause")
-            QThread::msleep(300);
+        if (mode == "pause") {
+            const auto root = qEnvironmentVariable("DOCKPIPE_DESKTOP_WIDGET_ROOT");
+            QFile waiting(root + "/catalog-waiting");
+            if (!waiting.open(QIODevice::WriteOnly))
+                return 9;
+            waiting.close();
+
+            const auto releasePath = root + "/catalog-release";
+            QElapsedTimer deadline;
+            deadline.start();
+            while (!QFile::exists(releasePath)) {
+                if (deadline.elapsed() >= 2000)
+                    return 10;
+                QThread::msleep(5);
+            }
+        }
         auto value = catalog();
         if (mode == "view-only")
             value["input"] = false;
@@ -203,14 +218,22 @@ private slots:
         int ticks = 0;
         QTimer timer;
         timer.setInterval(10);
-        connect(&timer, &QTimer::timeout, this, [&] { ++ticks; });
+        connect(&timer, &QTimer::timeout, this, [&] {
+            if (!QFile::exists(root.filePath("catalog-waiting")))
+                return;
+            if (++ticks == 11) {
+                timer.stop();
+                QFile release(root.filePath("catalog-release"));
+                QVERIFY(release.open(QIODevice::WriteOnly));
+            }
+        });
         timer.start();
         page.show();
         for (int index = 0; index < 20; ++index)
             page.refresh();
         QTRY_COMPARE(page.findChild<QComboBox *>("desktopMachine")->count(), 1);
         QTRY_VERIFY(page.findChild<QPushButton *>("desktopRefresh")->isEnabled());
-        QVERIFY(ticks > 10);
+        QCOMPARE(ticks, 11);
         QFile commands(root.filePath("commands"));
         QVERIFY(commands.open(QIODevice::ReadOnly));
         const auto contents = commands.readAll();

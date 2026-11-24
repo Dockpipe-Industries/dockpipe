@@ -17,6 +17,8 @@ type commandResult struct {
 	err     error
 }
 
+const outputBatchInterval = 8 * time.Millisecond
+
 // Stream owns exactly one local session. The desktop owns its eight-session
 // retained/closing quota; this CLI does not create a machine-wide daemon/quota.
 // The first private stdin frame holds the full owned launch snapshot. No frame
@@ -107,36 +109,38 @@ func Stream(parent context.Context, input io.ReadCloser, output io.WriteCloser, 
 	lastID := uint64(1)
 	inputBusy, closing := false, false
 	results := make(chan commandResult, 1)
-	drain := func() (bool, error) {
-		// One retained ring per turn prevents a continuously producing shell
-		// from starving input, close or cancellation dispatch.
-		for chunk := 0; chunk < terminalsession.MaxOutput/MaxOutputChunk; chunk++ {
-			view, err := session.Read(context.Background(), cursor, MaxOutputChunk)
-			if err != nil {
-				return false, err
-			}
-			cursor = view.Cursor
-			if len(view.Data) != 0 || view.Truncated {
-				if err := emit(Event{Type: "output", Data: view.Data, Cursor: cursor, Oldest: view.Oldest, Truncated: view.Truncated}); err != nil {
-					return false, err
-				}
-			}
-			if len(view.Data) < MaxOutputChunk {
-				return view.Closed, nil
+	drain := func() (closed bool, more bool, err error) {
+		view, err := session.Read(context.Background(), cursor, MaxOutputChunk)
+		if err != nil {
+			return false, false, err
+		}
+		cursor = view.Cursor
+		if len(view.Data) != 0 || view.Truncated {
+			if err := emit(Event{Type: "output", Data: view.Data, Cursor: cursor, Oldest: view.Oldest, Truncated: view.Truncated}); err != nil {
+				return false, false, err
 			}
 		}
-		return false, nil
+		more = len(view.Data) == MaxOutputChunk
+		return view.Closed && !more, more, nil
 	}
 	closeSession := func() { closing = true; _ = session.Close(context.Background()) }
-	outputPending := false
-	immediate := make(chan struct{})
-	close(immediate)
+	outputTimer := time.NewTimer(outputBatchInterval)
+	outputTimer.Stop()
+	defer outputTimer.Stop()
+	var nextOutput <-chan time.Time
+	scheduleOutput := func() {
+		if nextOutput == nil {
+			outputTimer.Reset(outputBatchInterval)
+			nextOutput = outputTimer.C
+		}
+	}
+	sessionDone := session.Done()
 	for {
-		// Drain at most one ring per iteration, then return to command dispatch.
-		// New producer data coalesces another notification without idle polling.
-		var nextOutput <-chan struct{}
-		if outputPending {
-			nextOutput = immediate
+		// Batch producer wakeups so a continuous output stream leaves time for
+		// the frontend's input and paint events. An idle stream never polls.
+		var outputReady <-chan struct{}
+		if nextOutput == nil {
+			outputReady = session.OutputReady()
 		}
 		select {
 		case <-ctx.Done():
@@ -190,13 +194,14 @@ func Stream(parent context.Context, input io.ReadCloser, output io.WriteCloser, 
 			} else if err := emit(Event{Type: "ack", ID: result.command.ID, Bytes: result.bytes}); err != nil {
 				return err
 			}
-		case <-session.OutputReady():
-			outputPending = true
-		case <-session.Done():
-			outputPending = true
+		case <-outputReady:
+			scheduleOutput()
+		case <-sessionDone:
+			sessionDone = nil
+			scheduleOutput()
 		case <-nextOutput:
-			outputPending = false
-			closed, err := drain()
+			nextOutput = nil
+			closed, more, err := drain()
 			if err != nil {
 				return err
 			}
@@ -215,6 +220,9 @@ func Stream(parent context.Context, input io.ReadCloser, output io.WriteCloser, 
 					}
 				}
 				return emit(Event{Type: "closed", Cursor: cursor, ExitCode: result.ExitCode, Cleanup: cleanup})
+			}
+			if more {
+				scheduleOutput()
 			}
 		}
 	}
