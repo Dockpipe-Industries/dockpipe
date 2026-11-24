@@ -1,6 +1,5 @@
 """Private NoCloud fixture inputs for one new, disposable Ubuntu guest."""
 from pathlib import Path
-import crypt
 import hashlib
 import json
 import os
@@ -9,14 +8,20 @@ import subprocess
 
 
 def prepare(directory, run_id):
+    password = secrets.token_urlsafe(24)
+    password_hash = subprocess.run(
+        ['/usr/bin/openssl', 'passwd', '-6', '-stdin'], input=password + '\n',
+        text=True, capture_output=True, check=True, timeout=10,
+    ).stdout.strip()
+    if not password_hash.startswith('$6$') or '\n' in password_hash:
+        raise ValueError('OpenSSL did not return a SHA-512 password hash')
+
     directory = Path(directory)
     directory.mkdir(mode=0o700, parents=True, exist_ok=False)
     key = directory / 'guest-key'
     subprocess.run(['/usr/bin/ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-f', str(key)],
                    check=True, timeout=10)
     public_key = key.with_suffix('.pub').read_text().strip()
-    password = secrets.token_urlsafe(24)
-    password_hash = crypt.crypt(password, crypt.mksalt(crypt.METHOD_SHA512))
     token = secrets.token_hex(24)
     metadata = {'instance-id': run_id, 'local-hostname': 'dockpipe-qualification'}
     (directory / 'meta-data').write_text(json.dumps(metadata) + '\n')

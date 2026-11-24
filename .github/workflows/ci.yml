@@ -45,7 +45,7 @@ jobs:
   test:
     name: ${{ github.event_name == 'workflow_dispatch' && (inputs.build_go_sdk || inputs.publish_go_sdk) && 'sdk-selection-linux-tests-skipped' || 'test' }}
     if: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.build_go_sdk || inputs.publish_go_sdk)) }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
@@ -72,6 +72,7 @@ jobs:
             python3-pil \
             apt-utils \
             gnupg \
+            openssl \
             ripgrep \
             shellcheck \
             qt6-base-dev \

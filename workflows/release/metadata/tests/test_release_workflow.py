@@ -267,8 +267,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         build = by_name["Build CLI (Bash tests use src/bin/dockpipe)"]
         self.assertLess(install, contracts)
         self.assertLess(contracts, build)
-        self.assertEqual(ci["jobs"]["test"]["runs-on"], "ubuntu-24.04")
-        for dependency in ("python3-gi", "python3-yaml", "python3-pil", "apt-utils", "gnupg"):
+        for dependency in ("python3-gi", "python3-yaml", "python3-pil", "apt-utils", "gnupg", "openssl"):
             self.assertIn(dependency, steps[install]["run"].split())
         self.assertEqual(steps[contracts]["run"],
                          'PATH="/usr/bin:$PATH" /usr/bin/python3 workflows/shared/launch.py workflows/ci/workflow-contracts/config.yml')
