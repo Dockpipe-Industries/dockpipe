@@ -1,11 +1,11 @@
 # TASK-057 Unified Security Monitoring & Vulnerability Detection
 
-**Project:** Dockpipe  
-**Component:** Security Monitoring  
-**Priority:** Medium — after Environments consolidation  
-**Status:** Proposed — deferred, unclaimed; documentation only  
-**Implementation:** Native, deterministic, cross-platform  
-**AI dependency:** None
+- **Project:** Dockpipe
+- **Component:** Security Monitoring
+- **Priority:** Medium — after Environments consolidation
+- **Status:** Proposed — deferred, unclaimed; documentation only
+- **Implementation:** Native, deterministic, cross-platform
+- **AI dependency:** None
 
 ## Planning status and related owners
 

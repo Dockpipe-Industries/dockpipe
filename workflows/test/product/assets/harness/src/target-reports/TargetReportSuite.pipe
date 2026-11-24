@@ -18,10 +18,10 @@ public model Class TargetReportSuite {
     private JsonDocumentOutput output;
     private ReportRows staged;
 
-    public TargetReportSuite(JsonReader reader, 
-        JsonStringIndexer indexer, 
+    public TargetReportSuite(JsonReader reader,
+        JsonStringIndexer indexer,
         FileStreams inputs,
-        JsonDocumentOutput output, 
+        JsonDocumentOutput output,
         ReportRows staged) {
         this.reader = reader;
         this.indexer = indexer;
@@ -30,9 +30,9 @@ public model Class TargetReportSuite {
         this.staged = staged;
     }
 
-    private Result<void,string> ReadAccepted(TargetObservations observations, 
+    private Result<void,string> ReadAccepted(TargetObservations observations,
         QualificationRunIdentity identity,
-        JsonReadLimits limits, 
+        JsonReadLimits limits,
         CancellationToken token) {
         QualificationJsonFile request = new QualificationJsonFile(reader, inputs);
         QualificationJsonFile receipt = new QualificationJsonFile(reader, inputs);
