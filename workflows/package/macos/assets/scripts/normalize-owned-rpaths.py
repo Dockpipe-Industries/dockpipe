@@ -143,8 +143,10 @@ def owned_images(app):
         raise ValueError("Application root is not a directory")
     frameworks = (app / "Contents/Frameworks").resolve(strict=True)
     executables = (app / "Contents/MacOS").resolve(strict=True)
-    if (not frameworks.is_relative_to(app) or not executables.is_relative_to(app)
-            or (executables / "../Frameworks").resolve(strict=True) != frameworks):
+    helpers = (app / "Contents/Helpers").resolve(strict=True)
+    if (not frameworks.is_relative_to(app) or not executables.is_relative_to(app) or not helpers.is_relative_to(app)
+            or (executables / "../Frameworks").resolve(strict=True) != frameworks
+            or (helpers / "../Frameworks").resolve(strict=True) != frameworks):
         raise ValueError("Owned bundle directories escape the application")
     main = contained_image(app, app / "Contents/MacOS/DockPipe", executables, "DockPipe")
     libraries = set()
@@ -162,7 +164,7 @@ def owned_images(app):
     if len(libraries) != 1:
         raise ValueError("Expected one canonical owned host UI image")
     reader = contained_image(app, app / "Contents/MacOS/dockpipe-workspace-reader", executables, "dockpipe-workspace-reader")
-    terminal = contained_image(app, app / "Contents/MacOS/dockpipe-terminal-host", executables, "dockpipe-terminal-host")
+    terminal = contained_image(app, app / "Contents/Helpers/dockpipe-terminal-host", helpers, "dockpipe-terminal-host")
     return app, [(main, EXECUTABLE_RPATH), (next(iter(libraries)), LIBRARY_RPATH),
                  (reader, EXECUTABLE_RPATH), (terminal, EXECUTABLE_RPATH)]
 
