@@ -116,6 +116,24 @@ func TestDesktopRelayRejectsOversizeOrTruncatedPrivateFrames(t *testing.T) {
 	}
 }
 
+func TestDesktopRelayRejectsInvalidNetworkFrameLengths(t *testing.T) {
+	for _, length := range []int{0, contract.MaxDesktopRelayFrame + 1} {
+		relay := newDesktopRelayPipeFixture()
+		relay.incoming <- make([]byte, length)
+		input, writer := io.Pipe()
+		var output desktopBuffer
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		err := streamDesktopRelay(ctx, relay, input, &output)
+		cancel()
+		_ = writer.Close()
+
+		if err == nil || output.Len() != 0 {
+			t.Fatalf("invalid network frame length %d reached private output: %v", length, err)
+		}
+	}
+}
+
 func TestDesktopRelayOwnerPolicyChangeStopsPrivateTransport(t *testing.T) {
 	root := privateConnectionDirectory(t)
 	frozen := remoteio.DesktopPermissions{Schema: contract.DesktopVersion, Provider: desktopTestIntent().Provider, View: true, Input: true}

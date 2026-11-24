@@ -25,7 +25,7 @@ func openControlRegular(path string) (*os.File, error) {
 	file := os.NewFile(uintptr(descriptor), path)
 	after, err := file.Stat()
 	if err != nil || !after.Mode().IsRegular() || !os.SameFile(before, after) {
-		file.Close()
+		_ = file.Close() // Preserve the admission failure while releasing the read-only handle.
 		return nil, fmt.Errorf("control artifact changed during admission")
 	}
 	return file, nil

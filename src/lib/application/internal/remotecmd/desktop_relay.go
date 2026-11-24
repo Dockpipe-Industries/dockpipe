@@ -151,7 +151,13 @@ func streamDesktopRelay(parent context.Context, relay desktopBinaryRelay, input 
 				finished <- errors.New("desktop relay connection closed while reading")
 				return
 			}
-			binary.BigEndian.PutUint32(header[:], uint32(len(payload)))
+			payloadLength := len(payload)
+			if payloadLength < 1 || payloadLength > contract.MaxDesktopRelayFrame {
+				finished <- errors.New("desktop relay private frame exceeds its bound")
+				return
+			}
+
+			binary.BigEndian.PutUint32(header[:], uint32(payloadLength))
 			deadline := time.AfterFunc(5*time.Second, cancel)
 			err = writeDesktopRelayBytes(output, header[:])
 			if err == nil {

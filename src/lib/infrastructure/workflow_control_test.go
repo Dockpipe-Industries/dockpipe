@@ -46,6 +46,11 @@ func TestWorkflowControlWireRejectsMalformedAndBoundedInputs(t *testing.T) {
 		}
 	}
 	writer := &controlWireWriter{}
+	var output bytes.Buffer
+	if err := writer.send(&output); err == nil || output.Len() != 0 {
+		t.Fatal("empty frame was not rejected before writing")
+	}
+
 	writer.byte(1)
 	writer.number(1, 8)
 	writer.text("test")

@@ -108,7 +108,13 @@ func runVerifiedWorkflowControl(options WorkflowControlRunOptions, binary string
 	var diagnostics controlBuildOutput
 	command.Stderr = &diagnostics
 	var closeOnce sync.Once
-	closeChildEnds := func() { closeOnce.Do(func() { inputRead.Close(); outputWrite.Close() }) }
+	closeChildEnds := func() {
+		closeOnce.Do(func() {
+			// Release the parent's copies once the start attempt has finished.
+			_ = inputRead.Close()
+			_ = outputWrite.Close()
+		})
+	}
 	exited := make(chan error, 1)
 	go func() {
 		exited <- ownedprocess.RunObserved(command, func(*exec.Cmd) func(error) { closeChildEnds(); return nil })
@@ -134,8 +140,9 @@ func runVerifiedWorkflowControl(options WorkflowControlRunOptions, binary string
 	var processErr error
 	defer func() {
 		cancel()
-		inputWrite.Close()
-		outputRead.Close()
+		// Closing the pipes unblocks I/O. Abort paths may have closed them already.
+		_ = inputWrite.Close()
+		_ = outputRead.Close()
 		if exited != nil {
 			<-exited
 		}
@@ -155,12 +162,12 @@ func runVerifiedWorkflowControl(options WorkflowControlRunOptions, binary string
 		case err := <-done:
 			return err
 		case <-ctx.Done():
-			inputWrite.Close()
+			_ = inputWrite.Close() // Unblock the write and preserve the cancellation result.
 			<-done
 			return ctx.Err()
 		case <-timer.C:
 			cancel()
-			inputWrite.Close()
+			_ = inputWrite.Close() // Unblock the write and preserve the timeout result.
 			<-done
 			return fmt.Errorf("workflow control compute timeout during protocol write")
 		}

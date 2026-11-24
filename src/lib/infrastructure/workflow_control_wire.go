@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -48,8 +49,13 @@ func (writer *controlWireWriter) send(target io.Writer) error {
 	if writer.failure != nil {
 		return writer.failure
 	}
+	frameSize := writer.Len()
+	if frameSize <= 0 || frameSize > controlFrameLimit {
+		return fmt.Errorf("control frame exceeds its byte limit")
+	}
+
 	var length [4]byte
-	binary.LittleEndian.PutUint32(length[:], uint32(writer.Len()))
+	binary.LittleEndian.PutUint32(length[:], uint32(frameSize))
 	if _, err := io.Copy(target, bytes.NewReader(length[:])); err != nil {
 		return err
 	}
@@ -84,10 +90,15 @@ func (reader controlWireReader) text(limit uint64) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if size > limit || size > uint64(reader.Len()) {
+	if size > limit || size > math.MaxInt {
 		return "", fmt.Errorf("invalid control protocol string length")
 	}
-	value := make([]byte, int(size))
+	length := int(size)
+	if length > reader.Len() {
+		return "", fmt.Errorf("invalid control protocol string length")
+	}
+
+	value := make([]byte, length)
 	if _, err := io.ReadFull(reader.Reader, value); err != nil {
 		return "", err
 	}
@@ -156,7 +167,7 @@ func encodeControlInputs(control *workflow.WorkflowControl, environment map[stri
 				return nil, fmt.Errorf("control input %s has the wrong integer type", name)
 			}
 			writer.byte(2)
-			writer.number(uint64(number), 8)
+			writer.number(uint64(number), 8) // #nosec G115 -- The wire format preserves the signed integer's two's-complement bits.
 		case "string":
 			text, ok := value.(string)
 			if !ok {

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -196,12 +197,10 @@ func BuildWorkflowControl(ctx context.Context, options WorkflowControlBuildOptio
 		return "", err
 	}
 	temporaryName := temporary.Name()
-	if _, err := temporary.Write(selected); err != nil {
-		temporary.Close()
-		return "", err
-	}
-	if err := temporary.Close(); err != nil {
-		return "", err
+	_, writeErr := temporary.Write(selected)
+	closeErr := temporary.Close()
+	if writeErr != nil || closeErr != nil {
+		return "", errors.Join(writeErr, closeErr)
 	}
 	if err := os.Rename(temporaryName, filepath.Join(root, "selected.json")); err != nil {
 		return "", err

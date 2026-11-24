@@ -85,12 +85,13 @@ func networkTrustDigest(certificates [][]byte, canonical bool) (string, int, err
 	digest := sha256.New()
 	_, _ = digest.Write([]byte(NetworkTrustVersion + "\n"))
 	for _, certificate := range certificates {
-		if len(certificate) == 0 || len(certificate) > MaxNetworkTrustCertificateBytes || len(certificate) > MaxNetworkTrustBytes-total {
+		certificateBytes := len(certificate)
+		if certificateBytes == 0 || certificateBytes > MaxNetworkTrustCertificateBytes || certificateBytes > MaxNetworkTrustBytes-total {
 			return "", 0, errors.New("network trust DER byte budget exceeded")
 		}
-		total += len(certificate)
+		total += certificateBytes
 		parsed, err := x509.ParseCertificate(certificate)
-		if err != nil || len(parsed.Raw) != len(certificate) {
+		if err != nil || len(parsed.Raw) != certificateBytes {
 			return "", 0, errors.New("network trust requires public X.509 DER certificates")
 		}
 		fingerprint := sha256.Sum256(certificate)
@@ -101,7 +102,7 @@ func networkTrustDigest(certificates [][]byte, canonical bool) (string, int, err
 		seen[key] = true
 		previous = key
 		var length [4]byte
-		binary.BigEndian.PutUint32(length[:], uint32(len(certificate)))
+		binary.BigEndian.PutUint32(length[:], uint32(certificateBytes))
 		_, _ = digest.Write(length[:])
 		_, _ = digest.Write(certificate)
 	}

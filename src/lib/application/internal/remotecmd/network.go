@@ -112,6 +112,7 @@ func networkCommand(parent context.Context, root, command, path string) error {
 	if err != nil {
 		return err
 	}
+	// #nosec G117 -- The private network-proxy readiness protocol delivers the per-instance loopback credential to its caller.
 	if err = json.NewEncoder(os.Stdout).Encode(struct {
 		Type     string                         `json:"type"`
 		Endpoint string                         `json:"endpoint"`
