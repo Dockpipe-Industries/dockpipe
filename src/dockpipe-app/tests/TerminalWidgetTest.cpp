@@ -27,6 +27,7 @@
 #include <QPushButton>
 #include <QSignalSpy>
 #include <QScreen>
+#include <QSocketNotifier>
 #include <QPainter>
 #include <QVBoxLayout>
 #include <QTemporaryDir>
@@ -36,13 +37,48 @@
 #include <QWebEnginePage>
 #include <QWebEngineProfile>
 #include <QWebEngineView>
-#include <atomic>
-#include <chrono>
 #include <ctime>
 #include <memory>
-#include <thread>
-#ifdef Q_OS_MACOS
-#include <pthread.h>
+#ifdef Q_OS_UNIX
+#include <unistd.h>
+#endif
+
+#ifdef Q_OS_UNIX
+namespace {
+constexpr int heartbeatIntervalMs = 10;
+constexpr int floodDurationMs = 350;
+
+int runHeartbeatSource(int argc, char **argv)
+{
+    QCoreApplication application(argc, argv);
+    QTimer heartbeat;
+    heartbeat.setSingleShot(true);
+    heartbeat.setTimerType(Qt::PreciseTimer);
+    QObject::connect(&heartbeat, &QTimer::timeout, &application, [&]() {
+        if (::write(STDOUT_FILENO, "H", 1) != 1)
+            application.exit(1);
+    });
+
+    QSocketNotifier acknowledge(STDIN_FILENO, QSocketNotifier::Read);
+    QObject::connect(&acknowledge, &QSocketNotifier::activated, &application, [&]() {
+        char request = 0;
+        const auto received = ::read(STDIN_FILENO, &request, 1);
+        if (received == 0) {
+            application.quit();
+            return;
+        }
+        if (received != 1 || request != 'A' || heartbeat.isActive()) {
+            application.exit(1);
+            return;
+        }
+        heartbeat.start(heartbeatIntervalMs);
+    });
+    if (::write(STDOUT_FILENO, "R", 1) != 1)
+        return 1;
+
+    return application.exec();
+}
+}
 #endif
 
 // A composited host with an opaque backdrop, like the launcher main window.
@@ -734,6 +770,13 @@ void TerminalWidgetTest::terminalAndComposer()
     workspace.hide();
     QTest::qWait(100);
     outputFrames.clear();
+    // Use a separate core event loop to supply input independently of Cocoa
+    // GUI scheduling. Its single outstanding heartbeat cannot queue a burst.
+    QProcess heartbeat;
+    heartbeat.start(QCoreApplication::applicationFilePath(), {"--heartbeat-source"});
+    QVERIFY2(heartbeat.waitForReadyRead(3000), qPrintable(heartbeat.errorString()));
+    QCOMPARE(heartbeat.readAllStandardOutput(), QByteArray("R"));
+
     bool floodStarted = false;
     bool replayOverflowed = false;
     {
@@ -774,60 +817,43 @@ void TerminalWidgetTest::terminalAndComposer()
     }
     QVERIFY(floodStarted);
     QVERIFY2(replayOverflowed, "The hidden flood must overflow the replay window within three seconds before measuring fairness");
-    constexpr auto floodDuration = std::chrono::milliseconds(350);
-    constexpr auto heartbeatInterval = std::chrono::milliseconds(10);
     int timerTicks = 0;
-    int heartbeatWakeups = 0;
-    int heartbeatSchedulingError = 0;
     int measuredOutputBatches = 0;
+    bool heartbeatProtocolValid = true;
     {
         QEventLoop floodLoop;
+        QElapsedTimer floodElapsed;
         connect(&hub, &TerminalHub::outputAvailable, &floodLoop, [&](const QString &id) {
-            if (id == second)
+            if (id == second && floodElapsed.elapsed() < floodDurationMs)
                 ++measuredOutputBatches;
         });
-        QTimer floodDeadline;
-        floodDeadline.setSingleShot(true);
-        floodDeadline.setTimerType(Qt::PreciseTimer);
-        connect(&floodDeadline, &QTimer::timeout, &floodLoop, &QEventLoop::quit);
+        connect(&heartbeat, &QProcess::readyReadStandardOutput, &floodLoop, [&]() {
+            if (heartbeat.readAllStandardOutput() != "H") {
+                heartbeatProtocolValid = false;
+                floodLoop.quit();
+                return;
+            }
+            if (floodElapsed.elapsed() >= floodDurationMs)
+                return;
 
-        // Post from outside the GUI dispatcher so native timer coalescing does
-        // not count as a blocked UI. Allow only one outstanding heartbeat so a
-        // stalled loop cannot satisfy the budget by draining queued ticks.
-        std::atomic<bool> measurementFinished = false;
-        std::atomic<bool> heartbeatPending = false;
-        const auto deadline = std::chrono::steady_clock::now() + floodDuration;
-        std::thread heartbeat([&]() {
-#ifdef Q_OS_MACOS
-            // Model incoming interactive events, whose timing is independent
-            // of the background scheduling of the application being tested.
-            heartbeatSchedulingError = pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
-#endif
-            while (!measurementFinished) {
-                std::this_thread::sleep_for(heartbeatInterval);
-                if (measurementFinished || std::chrono::steady_clock::now() >= deadline)
-                    break;
-
-                ++heartbeatWakeups;
-                if (heartbeatPending.exchange(true))
-                    continue;
-
-                QMetaObject::invokeMethod(&floodLoop, [&]() {
-                    if (std::chrono::steady_clock::now() < deadline)
-                        ++timerTicks;
-                    heartbeatPending = false;
-                }, Qt::QueuedConnection);
+            ++timerTicks;
+            if (heartbeat.write("A", 1) != 1) {
+                heartbeatProtocolValid = false;
+                floodLoop.quit();
             }
         });
-        floodDeadline.start(floodDuration);
+        floodElapsed.start();
+        QVERIFY(heartbeat.write("A", 1) == 1);
+        QTimer::singleShot(floodDurationMs, Qt::PreciseTimer, &floodLoop, &QEventLoop::quit);
         floodLoop.exec();
-        measurementFinished = true;
-        heartbeat.join();
     }
+    heartbeat.closeWriteChannel();
+    QVERIFY(heartbeat.waitForFinished(3000));
+    QCOMPARE(heartbeat.exitStatus(), QProcess::NormalExit);
+    QCOMPARE(heartbeat.exitCode(), 0);
+    QVERIFY(heartbeatProtocolValid);
     qInfo() << "Hidden terminal flood heartbeat ticks" << timerTicks
-            << "producer wakeups" << heartbeatWakeups << "output batches" << measuredOutputBatches;
-    QCOMPARE(heartbeatSchedulingError, 0);
-    QVERIFY2(heartbeatWakeups >= 10, "The heartbeat producer missed its interactive scheduling budget");
+            << "output batches" << measuredOutputBatches;
     QVERIFY(timerTicks >= 10);
     QVERIFY2(measuredOutputBatches > 0, "Terminal output must keep advancing during the fairness measurement");
     QCOMPARE(outputFrames.size(), 0);
@@ -899,6 +925,10 @@ void TerminalWidgetTest::terminalAndComposer()
 
 int main(int argc, char **argv)
 {
+#ifdef Q_OS_UNIX
+    if (argc == 2 && QByteArrayView(argv[1]) == "--heartbeat-source")
+        return runHeartbeatSource(argc, argv);
+#endif
     if (qEnvironmentVariableIsEmpty("QT_QUICK_BACKEND"))
         qputenv("QT_QUICK_BACKEND", "software");
     QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
