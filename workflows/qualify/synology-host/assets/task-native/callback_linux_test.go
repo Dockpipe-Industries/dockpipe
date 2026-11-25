@@ -5,11 +5,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -69,7 +71,7 @@ func realAccount(t *testing.T) localaccount.Account {
 	return localaccount.Account{Username: "fixture-operator", UID: uint32(os.Getuid()), GID: uint32(os.Getgid()), Groups: identifiers}
 }
 
-func sendCallback(t *testing.T, socket string, data []byte) bool {
+func sendCallback(t *testing.T, socket string, data []byte) (bool, error) {
 	t.Helper()
 	connection, err := net.Dial("unix", socket)
 	if err != nil {
@@ -79,16 +81,16 @@ func sendCallback(t *testing.T, socket string, data []byte) bool {
 	if connection.SetDeadline(time.Now().Add(time.Second)) != nil {
 		t.Fatal("deadline")
 	}
-	if _, err = connection.Write(data); err != nil {
-		t.Fatal(err)
+	if _, err := connection.Write(data); err != nil {
+		return false, err
 	}
 	var acknowledgement struct {
 		Accepted bool `json:"accepted"`
 	}
 	if json.NewDecoder(connection).Decode(&acknowledgement) != nil {
-		return false
+		return false, nil
 	}
-	return acknowledgement.Accepted
+	return acknowledgement.Accepted, nil
 }
 
 func TestActualUnixPeerCredentialsAndOversizedCallback(t *testing.T) {
@@ -97,8 +99,8 @@ func TestActualUnixPeerCredentialsAndOversizedCallback(t *testing.T) {
 	account := realAccount(t)
 	challenge, _ := current.view(account, true, false, "")
 	oversized := []byte(strings.Repeat(" ", maximumReportBytes) + "\n")
-	if sendCallback(t, socket, oversized) {
-		t.Fatal("oversized callback accepted")
+	if accepted, err := sendCallback(t, socket, oversized); accepted || err != nil {
+		t.Fatalf("oversized callback acceptance = %v (%v)", accepted, err)
 	}
 	host, err := hostidentity.Read(schema)
 	if err != nil {
@@ -106,15 +108,16 @@ func TestActualUnixPeerCredentialsAndOversizedCallback(t *testing.T) {
 	}
 	message := callback{Nonce: challenge.Challenge.Nonce, Report: probeReport{Host: host, Docker: commandCheck{Outcome: "docker_start_failed"}, HTTPS: commandCheck{Outcome: "https_unavailable"}}}
 	data, _ := json.Marshal(message)
-	if !sendCallback(t, socket, append(data, '\n')) {
-		t.Fatal("valid native peer callback rejected")
+	if accepted, err := sendCallback(t, socket, append(data, '\n')); !accepted || err != nil {
+		t.Fatalf("valid native peer callback acceptance = %v (%v)", accepted, err)
 	}
 	report, _ := current.view(account, false, false, "")
 	if report.Result == nil || report.Result.PeerUID != uint32(os.Getuid()) || report.Result.PeerGID != uint32(os.Getgid()) || report.Result.PeerPID != int32(os.Getpid()) {
 		t.Fatal("kernel peer identity not retained")
 	}
-	if sendCallback(t, socket, append(data, '\n')) {
-		t.Fatal("replayed callback accepted")
+	// A consumed challenge can close the replay connection before any bytes arrive.
+	if accepted, err := sendCallback(t, socket, append(data, '\n')); accepted || (err != nil && !errors.Is(err, syscall.EPIPE)) {
+		t.Fatalf("replayed callback acceptance = %v (%v)", accepted, err)
 	}
 }
 

@@ -23,12 +23,19 @@ const dockerEngineFixtureSource = `import sys,os,json,fcntl,urllib.parse
 state_path=os.environ['DOCKER_ENGINE_FIXTURE_STATE']
 
 def state(change=None):
-    with open(state_path,'a+') as f:
-        fcntl.flock(f,fcntl.LOCK_EX)
-        f.seek(0)
-        data=json.loads(f.read() or '{}')
-        if change: change(data)
-        f.seek(0); f.truncate(); json.dump(data,f); f.flush()
+    with open(state_path + '.lock', 'a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            with open(state_path) as source:
+                data = json.load(source)
+        except FileNotFoundError:
+            data = {}
+        if change:
+            change(data)
+            temporary = state_path + '.pending'
+            with open(temporary, 'w') as output:
+                json.dump(data, output)
+            os.replace(temporary, state_path)
         return data
 
 def send(value,status='200 OK'):
@@ -203,12 +210,13 @@ func TestDockerRemoteTerminalUnknownClosureRetainsSession(t *testing.T) {
 	root := nativeDockerEngineFixture(t, "ignored-eof")
 	target, identity, authorize := remoteDockerAuthority()
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	terminal, err := OpenContainerTerminal(ctx, ContainerExecRequest{Container: strings.Repeat("a", 64), Shell: "/bin/sh"}, os.Environ(), target, identity, authorize,
 		terminalsession.Size{Columns: 80, Rows: 24}, 5*time.Second, func(DockerExecReceipt) error { return nil })
 	if err != nil {
-		cancel()
 		t.Fatal(err)
 	}
+	waitDockerTerminalOutput(t, terminal.Session, "fixture-ready")
 	cancel()
 	wait, stop := context.WithTimeout(context.Background(), 4*time.Second)
 	defer stop()
