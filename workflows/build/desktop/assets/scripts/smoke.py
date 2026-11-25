@@ -189,9 +189,10 @@ def check(launcher, expected_cli, inventory_system_root=None):
         reader = launcher.parent / ("dockpipe-workspace-reader.exe" if os.name == "nt" else "dockpipe-workspace-reader")
         if not reader.is_file():
             raise RuntimeError("Installed workspace reader is missing beside the launcher")
-        terminal_host = launcher.parent / ("dockpipe-terminal-host.exe" if os.name == "nt" else "dockpipe-terminal-host")
+        terminal_directory = launcher.parent.parent / "Helpers" if sys.platform == "darwin" else launcher.parent
+        terminal_host = terminal_directory / ("dockpipe-terminal-host.exe" if os.name == "nt" else "dockpipe-terminal-host")
         if not terminal_host.is_file():
-            raise RuntimeError("Installed terminal host is missing beside the launcher")
+            raise RuntimeError("Installed terminal host is missing from the desktop installation")
         # Invalid arguments exercise dependency loading without opening a shell.
         terminal_probe = subprocess.run([str(terminal_host)], cwd=home, env=environment,
                                         capture_output=True, timeout=15)
