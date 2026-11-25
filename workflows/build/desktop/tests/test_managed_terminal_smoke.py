@@ -118,6 +118,26 @@ class ManagedTerminalSmokeTests(unittest.TestCase):
     def test_actual_output_ack_resize_and_cleanup_required(self):
         self.run_fixture("success")
 
+    @unittest.skipIf(os.name == "nt", "macOS bundle layout uses Unix executable names")
+    def test_macos_startup_probe_finds_terminal_provider_beside_native_cli(self):
+        contents = self.home / "DockPipe.app" / "Contents"
+        executables = contents / "MacOS"
+        helpers = contents / "Helpers"
+        executables.mkdir(parents=True)
+        helpers.mkdir()
+        launcher = executables / "DockPipe"
+        launcher.touch()
+        (executables / "dockpipe-workspace-reader").touch()
+        terminal = helpers / "dockpipe-terminal-host"
+        terminal.touch()
+
+        with patch.object(smoke.sys, "platform", "darwin"), patch.object(smoke.subprocess, "run") as run:
+            run.return_value.returncode = 1
+            with self.assertRaisesRegex(RuntimeError, "failed its no-session startup probe"):
+                smoke.check(launcher, executables / "dockpipe-cli")
+
+        self.assertEqual(run.call_args.args[0], [str(terminal.resolve())])
+
     def test_existing_cli_with_missing_provider_fails(self):
         with self.assertRaisesRegex(RuntimeError, "protocol smoke"):
             self.run_fixture("missing-provider")

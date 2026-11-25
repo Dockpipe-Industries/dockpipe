@@ -17,7 +17,8 @@ type commandResult struct {
 	err     error
 }
 
-const outputBatchInterval = 8 * time.Millisecond
+// Leave time for frontend timers to run between sustained output batches.
+const outputBatchInterval = 16 * time.Millisecond
 
 // Stream owns exactly one local session. The desktop owns its eight-session
 // retained/closing quota; this CLI does not create a machine-wide daemon/quota.

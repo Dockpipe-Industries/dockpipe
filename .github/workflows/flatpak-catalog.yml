@@ -57,7 +57,7 @@ jobs:
           export FLATPAK_USER_DIR="$RUNNER_TEMP/dockpipe-flatpak-installation"
           printf 'FLATPAK_USER_DIR=%s\n' "$FLATPAK_USER_DIR" >> "$GITHUB_ENV"
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends flatpak python3-yaml xvfb xauth
+          sudo apt-get install -y --no-install-recommends flatpak python3-pil python3-yaml xvfb xauth
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
           flatpak install --user --noninteractive --assumeyes flathub org.kde.Sdk//6.10 org.kde.Platform//6.10 io.qt.qtwebengine.BaseApp//6.10
           python3 -B workflows/build/flatpak/assets/scripts/prepare-flatpak-browser-sdk.py \
