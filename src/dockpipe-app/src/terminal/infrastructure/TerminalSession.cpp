@@ -37,8 +37,6 @@ namespace {
 constexpr qsizetype InputLimit = 64 * 1024;
 constexpr qsizetype ReadLimit = 64 * 1024;
 #ifdef Q_OS_UNIX
-constexpr int PtyReadResumeIntervalMs = 8;
-
 struct TerminalGroupMember {
     pid_t process;
     pid_t group;
@@ -388,7 +386,7 @@ bool TerminalSession::startPrepared(const NativeTerminalLaunch::Snapshot &prepar
     m_state->readResume = new QTimer(this);
     m_state->readResume->setSingleShot(true);
     m_state->readResume->setTimerType(Qt::PreciseTimer);
-    m_state->readResume->setInterval(PtyReadResumeIntervalMs);
+    m_state->readResume->setInterval(1);
     connect(m_state->readResume, &QTimer::timeout, this, [this, generation] {
         if (generation == m_state->generation && m_state->reader)
             m_state->reader->setEnabled(true);

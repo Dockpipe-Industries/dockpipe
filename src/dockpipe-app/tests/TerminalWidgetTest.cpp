@@ -41,6 +41,9 @@
 #include <ctime>
 #include <memory>
 #include <thread>
+#ifdef Q_OS_MACOS
+#include <pthread.h>
+#endif
 
 // A composited host with an opaque backdrop, like the launcher main window.
 class TerminalTestHost final : public QWidget {
@@ -775,6 +778,7 @@ void TerminalWidgetTest::terminalAndComposer()
     constexpr auto heartbeatInterval = std::chrono::milliseconds(10);
     int timerTicks = 0;
     int heartbeatWakeups = 0;
+    int heartbeatSchedulingError = 0;
     int measuredOutputBatches = 0;
     {
         QEventLoop floodLoop;
@@ -794,9 +798,14 @@ void TerminalWidgetTest::terminalAndComposer()
         std::atomic<bool> heartbeatPending = false;
         const auto deadline = std::chrono::steady_clock::now() + floodDuration;
         std::thread heartbeat([&]() {
+#ifdef Q_OS_MACOS
+            // Model incoming interactive events, whose timing is independent
+            // of the background scheduling of the application being tested.
+            heartbeatSchedulingError = pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+#endif
             while (!measurementFinished) {
                 std::this_thread::sleep_for(heartbeatInterval);
-                if (measurementFinished)
+                if (measurementFinished || std::chrono::steady_clock::now() >= deadline)
                     break;
 
                 ++heartbeatWakeups;
@@ -817,6 +826,8 @@ void TerminalWidgetTest::terminalAndComposer()
     }
     qInfo() << "Hidden terminal flood heartbeat ticks" << timerTicks
             << "producer wakeups" << heartbeatWakeups << "output batches" << measuredOutputBatches;
+    QCOMPARE(heartbeatSchedulingError, 0);
+    QVERIFY2(heartbeatWakeups >= 10, "The heartbeat producer missed its interactive scheduling budget");
     QVERIFY(timerTicks >= 10);
     QVERIFY2(measuredOutputBatches > 0, "Terminal output must keep advancing during the fairness measurement");
     QCOMPARE(outputFrames.size(), 0);
