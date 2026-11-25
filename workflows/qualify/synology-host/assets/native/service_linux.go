@@ -151,6 +151,10 @@ func qualificationServer(handler http.Handler) *http.Server {
 }
 
 func serveWithAuthentication(ctx context.Context, socket, authListen string) error {
+	return serveQualificationService(ctx, socket, authListen, net.Listen)
+}
+
+func serveQualificationService(ctx context.Context, socket, authListen string, listenReport func(network, address string) (net.Listener, error)) error {
 	ctx, cancelService := context.WithCancel(ctx)
 	defer cancelService()
 	if os.Getuid() == 0 || os.Geteuid() == 0 {
@@ -176,7 +180,7 @@ func serveWithAuthentication(ctx context.Context, socket, authListen string) err
 	listeners := []net.Listener{&privateListener{UnixListener: listener, slots: slots}}
 	servers := []*http.Server{qualificationServer(serviceHandler())}
 	if authListen != "" {
-		authListener, err := net.Listen("tcp4", authListen)
+		authListener, err := listenReport("tcp4", authListen)
 		if err != nil {
 			return errors.New("cannot bind authentication report listener")
 		}
