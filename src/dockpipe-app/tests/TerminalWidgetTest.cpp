@@ -36,8 +36,11 @@
 #include <QWebEnginePage>
 #include <QWebEngineProfile>
 #include <QWebEngineView>
+#include <atomic>
+#include <chrono>
 #include <ctime>
 #include <memory>
+#include <thread>
 
 // A composited host with an opaque backdrop, like the launcher main window.
 class TerminalTestHost final : public QWidget {
@@ -768,33 +771,47 @@ void TerminalWidgetTest::terminalAndComposer()
     }
     QVERIFY(floodStarted);
     QVERIFY2(replayOverflowed, "The hidden flood must overflow the replay window within three seconds before measuring fairness");
+    constexpr auto floodDuration = std::chrono::milliseconds(350);
+    constexpr auto heartbeatInterval = std::chrono::milliseconds(10);
     int timerTicks = 0;
-    QTimer heartbeat;
-    heartbeat.setInterval(10);
-    heartbeat.setTimerType(Qt::PreciseTimer);
-    connect(&heartbeat, &QTimer::timeout, this, [&]() { ++timerTicks; });
-    heartbeat.start();
-    // CoreFoundation handles timers differently during manual processEvents
-    // polling. Measure the application's real event loop with the same deadline.
-    QEventLoop floodLoop;
     int measuredOutputBatches = 0;
-    const auto measuredOutput = connect(&hub, &TerminalHub::outputAvailable,
-        &floodLoop, [&](const QString &id) {
+    {
+        QEventLoop floodLoop;
+        connect(&hub, &TerminalHub::outputAvailable, &floodLoop, [&](const QString &id) {
             if (id == second)
                 ++measuredOutputBatches;
         });
-    QTimer floodDeadline;
-    floodDeadline.setSingleShot(true);
-    floodDeadline.setTimerType(Qt::PreciseTimer);
-    connect(&floodDeadline, &QTimer::timeout, &floodLoop, &QEventLoop::quit);
-    QElapsedTimer floodElapsed;
-    floodElapsed.start();
-    floodDeadline.start(350);
-    floodLoop.exec();
-    disconnect(measuredOutput);
-    floodDeadline.stop();
-    qInfo() << "Hidden terminal flood elapsed ms" << floodElapsed.elapsed()
-            << "heartbeat ticks" << timerTicks << "output batches" << measuredOutputBatches;
+        QTimer floodDeadline;
+        floodDeadline.setSingleShot(true);
+        floodDeadline.setTimerType(Qt::PreciseTimer);
+        connect(&floodDeadline, &QTimer::timeout, &floodLoop, &QEventLoop::quit);
+
+        // Post from outside the GUI dispatcher so native timer coalescing does
+        // not count as a blocked UI. Allow only one outstanding heartbeat so a
+        // stalled loop cannot satisfy the budget by draining queued ticks.
+        std::atomic<bool> measurementFinished = false;
+        std::atomic<bool> heartbeatPending = false;
+        const auto deadline = std::chrono::steady_clock::now() + floodDuration;
+        std::thread heartbeat([&]() {
+            while (!measurementFinished) {
+                std::this_thread::sleep_for(heartbeatInterval);
+                if (measurementFinished || heartbeatPending.exchange(true))
+                    continue;
+
+                QMetaObject::invokeMethod(&floodLoop, [&]() {
+                    if (std::chrono::steady_clock::now() < deadline)
+                        ++timerTicks;
+                    heartbeatPending = false;
+                }, Qt::QueuedConnection);
+            }
+        });
+        floodDeadline.start(floodDuration);
+        floodLoop.exec();
+        measurementFinished = true;
+        heartbeat.join();
+    }
+    qInfo() << "Hidden terminal flood heartbeat ticks" << timerTicks
+            << "output batches" << measuredOutputBatches;
     QVERIFY(timerTicks >= 10);
     QVERIFY2(measuredOutputBatches > 0, "Terminal output must keep advancing during the fairness measurement");
     QCOMPARE(outputFrames.size(), 0);
@@ -826,7 +843,6 @@ void TerminalWidgetTest::terminalAndComposer()
     QTRY_VERIFY_WITH_TIMEOUT(quietElapsed.elapsed() >= 250, 3000);
     disconnect(renderedTail);
     disconnect(nativeTail);
-    heartbeat.stop();
     outputFrames.clear();
     const std::clock_t idleStart = std::clock();
     QEventLoop idle;
