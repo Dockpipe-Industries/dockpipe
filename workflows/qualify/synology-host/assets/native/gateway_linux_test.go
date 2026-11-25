@@ -132,27 +132,36 @@ func TestHTTPReportServiceLifecycle(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	completed := make(chan error, 1)
-	go func() { completed <- serveWithAuthentication(ctx, socket, authenticationListenAddress) }()
-	deadline := time.Now().Add(2 * time.Second)
+	bound := make(chan string, 1)
+	listenReport := func(network, address string) (net.Listener, error) {
+		if network != "tcp4" || address != authenticationListenAddress {
+			return nil, errors.New("unexpected report listener request")
+		}
+		listener, err := net.Listen(network, "127.0.0.1:0")
+		if err != nil {
+			return nil, err
+		}
+		bound <- listener.Addr().String()
+		return listener, nil
+	}
+	go func() { completed <- serveQualificationService(ctx, socket, authenticationListenAddress, listenReport) }()
+
+	var address string
+	select {
+	case address = <-bound:
+	case err := <-completed:
+		t.Fatalf("report service exited before readiness: %v", err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("report listener was not ready")
+	}
 	client := &http.Client{Timeout: time.Second}
-	for {
-		select {
-		case err := <-completed:
-			t.Fatalf("report service exited before readiness: %v", err)
-		default:
-		}
-		response, err := client.Get("http://" + authenticationListenAddress + "/report")
-		if err == nil {
-			response.Body.Close()
-			if response.StatusCode != 403 {
-				t.Fatalf("unforwarded local request returned %d", response.StatusCode)
-			}
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("report listener was not ready")
-		}
-		time.Sleep(5 * time.Millisecond)
+	response, err := client.Get("http://" + address + "/report")
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != 403 {
+		t.Fatalf("unforwarded local request returned %d", response.StatusCode)
 	}
 	if !querySocket(ctx, socket).Available {
 		t.Fatal("private status listener unavailable alongside report listener")
@@ -169,7 +178,7 @@ func TestHTTPReportServiceLifecycle(t *testing.T) {
 	if _, err := os.Lstat(socket); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("report service left private socket behind")
 	}
-	connection, err := net.DialTimeout("tcp4", authenticationListenAddress, 100*time.Millisecond)
+	connection, err := net.DialTimeout("tcp4", address, 100*time.Millisecond)
 	if err == nil {
 		connection.Close()
 		t.Fatal("report listener survived shutdown")
@@ -180,7 +189,7 @@ func TestReportListenerFailureReleasesPrivateSocket(t *testing.T) {
 	if os.Getuid() == 0 || os.Geteuid() == 0 {
 		t.Skip("service intentionally refuses root")
 	}
-	occupied, err := net.Listen("tcp4", authenticationListenAddress)
+	occupied, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,8 +197,15 @@ func TestReportListenerFailureReleasesPrivateSocket(t *testing.T) {
 	directory := t.TempDir()
 	_ = os.Chmod(directory, 0700)
 	socket := filepath.Join(directory, "probe.sock")
-	if err := serveWithAuthentication(context.Background(), socket, authenticationListenAddress); err == nil {
-		t.Fatal("occupied report port was accepted")
+	listenReport := func(network, address string) (net.Listener, error) {
+		if address != authenticationListenAddress {
+			t.Fatalf("unexpected report listener request %s", address)
+		}
+		return net.Listen(network, occupied.Addr().String())
+	}
+	err = serveQualificationService(context.Background(), socket, authenticationListenAddress, listenReport)
+	if err == nil || err.Error() != "cannot bind authentication report listener" {
+		t.Fatalf("expected report bind failure, got %v", err)
 	}
 	if _, err := os.Lstat(socket); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("partial startup failure left private socket behind")
