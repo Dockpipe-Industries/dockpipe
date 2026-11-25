@@ -11,6 +11,9 @@
 #include <QTest>
 #include <QTimer>
 #include <cstdio>
+#ifdef Q_OS_UNIX
+#include <unistd.h>
+#endif
 
 namespace {
 QJsonObject catalog()
@@ -48,7 +51,8 @@ int fixture(QCoreApplication &application)
     if (mode == "wrong-target")
         reference["target"] = QJsonObject{{"node", "wrong"}};
     QFile input;
-    if (!input.open(stdin, QIODevice::ReadOnly))
+    // Keep unread frames on the descriptor so the notifier sees each one.
+    if (!input.open(STDIN_FILENO, QIODevice::ReadOnly | QIODevice::Unbuffered))
         return 4;
     if (prepare) {
         if (!intent.value("container").toString().isEmpty()
@@ -95,7 +99,7 @@ int fixture(QCoreApplication &application)
             application.quit();
         });
     }
-    QSocketNotifier notifier(0, QSocketNotifier::Read);
+    QSocketNotifier notifier(STDIN_FILENO, QSocketNotifier::Read);
     QObject::connect(&notifier, &QSocketNotifier::activated, &application, [&] {
         const auto line = input.readLine(96 * 1024);
         if (line.isEmpty()) {
