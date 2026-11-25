@@ -774,6 +774,7 @@ void TerminalWidgetTest::terminalAndComposer()
     constexpr auto floodDuration = std::chrono::milliseconds(350);
     constexpr auto heartbeatInterval = std::chrono::milliseconds(10);
     int timerTicks = 0;
+    int heartbeatWakeups = 0;
     int measuredOutputBatches = 0;
     {
         QEventLoop floodLoop;
@@ -795,7 +796,11 @@ void TerminalWidgetTest::terminalAndComposer()
         std::thread heartbeat([&]() {
             while (!measurementFinished) {
                 std::this_thread::sleep_for(heartbeatInterval);
-                if (measurementFinished || heartbeatPending.exchange(true))
+                if (measurementFinished)
+                    break;
+
+                ++heartbeatWakeups;
+                if (heartbeatPending.exchange(true))
                     continue;
 
                 QMetaObject::invokeMethod(&floodLoop, [&]() {
@@ -811,7 +816,7 @@ void TerminalWidgetTest::terminalAndComposer()
         heartbeat.join();
     }
     qInfo() << "Hidden terminal flood heartbeat ticks" << timerTicks
-            << "output batches" << measuredOutputBatches;
+            << "producer wakeups" << heartbeatWakeups << "output batches" << measuredOutputBatches;
     QVERIFY(timerTicks >= 10);
     QVERIFY2(measuredOutputBatches > 0, "Terminal output must keep advancing during the fairness measurement");
     QCOMPARE(outputFrames.size(), 0);
